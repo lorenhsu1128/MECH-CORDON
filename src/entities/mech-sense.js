@@ -41,6 +41,7 @@ Object.assign(MechEntity.prototype, {
       !g.range &&
       !g.tut &&
       !g.aiOld &&
+      !g.airMode && // 空域的空戰 AI 一開始就交戰（mech-air.js）
       !this.isBoss &&
       !this.opts.bossKind &&
       !NO_TOKEN.has(this.ai);

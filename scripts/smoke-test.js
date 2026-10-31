@@ -5951,7 +5951,7 @@ async function testAir(browser, base) {
   await page.evaluate(() => {
     localStorage.setItem('rubicon_map', 'airspace');
     const g = window.__game;
-    g.save.level = 3;
+    g.save.level = 5; // 不是 Boss 關
     g.startMission();
     g.player.hp = g.player.maxHp = 1e7;
   });
@@ -5968,9 +5968,17 @@ async function testAir(browser, base) {
     o.setup = [g.airMode, p.air, w.size, w.cell, g.chase].join();
     o.sel = g.mapOptionsHtml(true).includes('airspace');
     o.mpSel = !g.mapOptionsHtml(false).includes('airspace');
-    // 讓敵人不打擾：拿遠
-    for (const e of g.enemies) e.pos.x += 4000;
-    // 巡航：水平直飛
+    // 敵人的種類；之後先拿出敵人清單（空戰 AI 會追過來），檢查完飛行再放回去
+    o.kinds = {};
+    for (const e of g.enemies) o.kinds[e.airRole || e.ai] = (o.kinds[e.airRole || e.ai] || 0) + 1;
+    o.flakGround = g.enemies
+      .filter((e) => e.ai === 'flak')
+      .every((e) => Math.abs(e.pos.y - w.terrainHeight(e.pos.x, e.pos.z)) < 3);
+    const kept = g.enemies.splice(0);
+    g.wavePend = { t: 1e9, pos: p.pos.clone(), list: [] }; // 清單是空的也不算清除
+    for (const e of kept) e.pos.x += 4000;
+    // 巡航：水平直飛（比山頂高，不會撞上島）
+    p.pos.y = 700;
     g.fpYaw = p.yaw;
     g.fpPitch = 0;
     window.__pump(2);
@@ -6054,9 +6062,11 @@ async function testAir(browser, base) {
     window.__pump(4);
     p.hp = p.maxHp = 1e7;
     // 空中的敵人
+    g.enemies.push(...kept);
+    g.wavePend = null;
     for (const e of g.enemies) e.pos.x -= 4000;
     window.__pump(2); // 移回來之後回到離地的高度
-    const fl = g.enemies.filter((e) => !e.dead);
+    const fl = g.enemies.filter((e) => !e.dead && e.ai !== 'flak');
     o.foes = fl.length;
     o.foeAlt = Math.round(Math.min(...fl.map((e) => e.pos.y - p.airFloor(e.pos.x, e.pos.z))));
     g.drawHud(1 / 60);
@@ -6068,7 +6078,7 @@ async function testAir(browser, base) {
   );
   check(r.sel && r.mpSel, '機甲庫的地圖選單有「空域」，多人的選單沒有');
   check(
-    Math.abs(r.cruise - 70) < 12 && Math.abs(r.alt0 - 320) < 40,
+    Math.abs(r.cruise - 70) < 12 && Math.abs(r.alt0 - 700) < 40,
     `巡航 ${r.cruise} m/s、維持高度（${r.alt0} m）`,
   );
   check(r.boost > 95, `按住推進加速到 ${r.boost} m/s`);
@@ -6085,6 +6095,353 @@ async function testAir(browser, base) {
     `撞到海面：受傷 ${r.crashDmg}%、彈開、沒有被擊破`,
   );
   check(r.foes >= 4 && r.foeAlt > 50, `空中的敵人 ${r.foes} 台（最低離海面 ${r.foeAlt} m）`);
+  // 第 2 期：內建的空戰導彈、鎖定距離、導彈警報與機動甩掉、敵對 AC 的空戰 AI、島上的防空
+  const cb = await page.evaluate(() => {
+    const g = window.__game,
+      p = g.player,
+      K = g.keymap;
+    const o = {};
+    const key = (k, on) => (g.down[K[k]] = on);
+    const fwd = () => p.airDirNow();
+    // 其他敵人拿遠、不打擾
+    const park = () => {
+      for (const e of g.enemies) if (!e.dead) e.pos.set(e.pos.x + 9000, 600, e.pos.z);
+    };
+    // 敵對 AC 在最後一波、自殺無人機不一定在第一波：直接生成
+    if (!g.enemies.some((e) => e.airRole === 'ace' && !e.dead)) g.airSpawnOne('ac', g.airRing(1200, 1500));
+    const n0 = new Set(g.enemies);
+    g.airSpawnOne('swarm', g.airRing(1200, 1500));
+    o.kami = g.enemies.filter((e) => !n0.has(e) && e.airRole === 'kami').length;
+    park();
+    p.pos.set(0, 660, 0); // 兩層雲之間（雲裡不能鎖定）
+    p.vel.set(0, 0, 0);
+    g.fpPitch = 0;
+    g.fpYaw = p.yaw;
+    window.__pump(1);
+    o.reach = g.lockReach(p);
+    // 內建的空戰導彈：機首前方 400 m 的無人機，鎖定 → 發射 → 擊墜
+    const dr =
+      g.enemies.find((e) => e.airRole === 'drone' && !e.dead) ||
+      g.airSpawnOne('drone', g.airRing(1200, 1500));
+    const put = (e, dist, sideOff = 0) => {
+      const f = fwd(),
+        rt = new THREE.Vector3(-f.z, 0, f.x).normalize();
+      e.pos.copy(p.center()).addScaledVector(f, dist).addScaledVector(rt, sideOff);
+      e.vel.set(0, 0, 0);
+      e.airAim = f.clone();
+      e.yaw = p.yaw;
+    };
+    put(dr, 400);
+    dr.hp = dr.maxHp;
+    p.lock = dr;
+    o.can = p.aamCan(dr);
+    o.n0 = p.aam.n;
+    key('aam', true);
+    window.__pump(1 / 60);
+    key('aam', false);
+    o.n1 = p.aam.n;
+    const ms = g.projectiles.find((x) => x.aam && x.owner === p);
+    o.homing = !!ms && ms.target === dr;
+    o.kill = window.__pump(4, () => dr.dead);
+    // 機首前方以外（背後）的目標鎖不到：直線飛出
+    const dr2 =
+      g.enemies.find((e) => e.airRole === 'drone' && !e.dead && e !== dr) ||
+      g.airSpawnOne('drone', g.airRing(1200, 1500));
+    if (!dr2.dead) {
+      window.__pump(2.5);
+      put(dr2, -300);
+      p.lock = dr2;
+      o.behind = p.aamCan(dr2);
+      key('aam', true);
+      window.__pump(1 / 60);
+      key('aam', false);
+      const m2 = g.projectiles.filter((x) => x.aam && x.owner === p).pop();
+      o.dumb = !!m2 && !m2.target;
+      park();
+    }
+    // 敵人的空戰導彈：警報、迎面直飛就打中；時機剛好的側滾翻＝甩掉
+    const ace = g.enemies.find((e) => e.airRole === 'ace' && !e.dead);
+    o.ace = !!ace;
+    if (ace) {
+      p.hp = p.maxHp = 1e6;
+      const shoot = () => {
+        park();
+        g.projectiles.length = 0;
+        p.pos.set(0, 660, 0); // 兩層雲之間（雲裡不能鎖定）
+        window.__pump(0.5);
+        const f = fwd();
+        ace.pos.copy(p.center()).addScaledVector(f, 700);
+        ace.yaw = p.yaw + Math.PI;
+        ace.airPit = 0;
+        ace.aam.rail = [0, 0];
+        ace.hitStunT = 0;
+        ace.aamLaunch(p);
+        ace.hitStunT = 30; // 發射之後不再開槍（只看這一枚導彈）
+        return g.projectiles.find((x) => x.aam && x.owner === ace);
+      };
+      ace.airAiS.cd = 1e9; // 這段不讓它自己再發射
+      let m = shoot();
+      o.npcHoming = !!m && m.target === p;
+      window.__pump(1 / 60);
+      o.warn = (g.airMsl || []).length;
+      const hp0 = p.hp;
+      window.__pump(5, () => m.dead);
+      o.hitHp = Math.round(hp0 - p.hp);
+      // 側滾翻：導彈快打到時（0.3 秒內）
+      m = shoot();
+      window.__pump(4, () => m.dead || m.pos.distanceTo(p.center()) / m.vel.length() < 0.3);
+      const hp1 = p.hp;
+      key('right', true);
+      key('qb', true);
+      window.__pump(1 / 60);
+      key('qb', false);
+      window.__pump(0.4);
+      key('right', false);
+      window.__pump(3, () => m.dead);
+      o.dodged = !!m.dodged;
+      o.dodgeHp = Math.round(hp1 - p.hp);
+      window.__pump(0.5);
+      o.warnOff = (g.airMsl || []).length;
+      // 敵對 AC 的空戰 AI：從 900 m 外追過來、開火、不撞地；玩家直飛
+      g.projectiles.length = 0;
+      p.pos.set(0, 660, 0);
+      g.fpPitch = 0;
+      window.__pump(0.5);
+      const f = fwd();
+      ace.pos.copy(p.center()).addScaledVector(f, -900).setY(660);
+      ace.yaw = p.yaw;
+      ace.aam.n = 999;
+      ace.airAiS.cd = 0;
+      ace.airAiS.ext = 0;
+      ace.hitStunT = 0;
+      let dMin = 1e9,
+        lowMin = 1e9,
+        aamShot = 0;
+      for (let i = 0; i < 20 * 15; i++) {
+        window.__pump(1 / 15);
+        dMin = Math.min(dMin, ace.pos.distanceTo(p.pos));
+        lowMin = Math.min(lowMin, ace.pos.y - ace.airFloor(ace.pos.x, ace.pos.z));
+        aamShot = Math.max(aamShot, 999 - ace.aam.n);
+        if (ace.dead) break;
+      }
+      o.aceClose = Math.round(dMin);
+      o.aceLow = Math.round(lowMin);
+      o.aceAam = aamShot;
+      o.aceAlive = !ace.dead;
+      // 敵對 AC 也會翻滾閃避追著它的導彈
+      let tried = 0,
+        shook = 0;
+      const sk0 = ace.aiSkill;
+      ace.aiSkill = 1.5; // 高技巧：閃避的機率 60%
+      for (let k = 0; k < 8; k++) {
+        g.projectiles.length = 0;
+        ace.pos.copy(p.center()).addScaledVector(fwd(), 500);
+        ace.airAiS.rollCD = 0;
+        ace.hp = ace.maxHp;
+        p.lock = ace;
+        p.aam.rail = [0, 0];
+        p.aam.n = 50;
+        p.staggerT = p.hitStunT = 0; // AC 的槍打出的硬直不影響發射
+        if (!p.aamLaunch(ace)) continue;
+        const mm = g.projectiles.find((x) => x.aam && x.owner === p);
+        tried++;
+        window.__pump(4, () => mm.dead);
+        if (mm.dodged) shook++;
+      }
+      ace.aiSkill = sk0;
+      o.aceTried = tried;
+      o.aceShook = shook;
+    }
+    // 島上的防空砲：射程內、看得到時發射空戰導彈
+    const fk = g.enemies.find((e) => e.ai === 'flak' && !e.dead);
+    o.flak = !!fk;
+    if (fk) {
+      g.projectiles.length = 0;
+      const top = fk.center();
+      p.pos.set(top.x + 250, Math.max(top.y + 300, p.airFloor(top.x + 250, top.z) + 150), top.z);
+      (fk.airAiS || (fk.airAiS = {})).cd = 0;
+      window.__pump(0.5);
+      o.sam = g.projectiles.some((x) => x.aam && x.owner === fk);
+      o.flakShell = g.projectiles.some((x) => x.kind === 'shell' && x.owner === fk);
+    }
+    p.hp = p.maxHp = 1e7;
+    g.drawHud(1 / 60);
+    return o;
+  });
+  check(
+    r.kinds.drone >= 1 && r.kinds.bomber >= 1 && r.kinds.flak >= 2 && r.flakGround && cb.kami === 3 && cb.ace,
+    `空域的敵人：無人機、轟炸機、島上的防空砲（第一波 ${JSON.stringify(r.kinds)}）、自殺無人機 3 台一組、敵對 AC`,
+  );
+  check(cb.reach === 900, `空域的鎖定距離 ${cb.reach} m`);
+  check(
+    cb.can && cb.n1 === cb.n0 - 1 && cb.homing && cb.kill >= 0,
+    `內建的空戰導彈：鎖定、發射（${cb.n0} → ${cb.n1}）、追蹤並擊墜無人機（${cb.kill.toFixed(1)} 秒）`,
+  );
+  check(cb.behind === false && cb.dumb, '背後的目標鎖不到，導彈直線飛出');
+  check(
+    cb.ace && cb.npcHoming && cb.warn >= 1 && cb.hitHp > 0,
+    `敵人的空戰導彈：導彈警報、直飛就被打中（${cb.hitHp}）`,
+  );
+  check(cb.dodged && cb.dodgeHp === 0 && cb.warnOff === 0, '導彈快打到時側滾翻＝甩掉，警報消失');
+  check(
+    cb.aceClose < 450 && cb.aceLow > 30 && cb.aceAam >= 1,
+    `敵對 AC 的空戰 AI：追到 ${cb.aceClose} m、發射空戰導彈 ${cb.aceAam} 枚、最低離地 ${cb.aceLow} m`,
+  );
+  check(cb.aceTried >= 6 && cb.aceShook >= 1, `敵對 AC 翻滾閃避導彈（${cb.aceShook}／${cb.aceTried}）`);
+  check(cb.flak && cb.sam, `島上的防空砲：發射空戰導彈（防空彈 ${cb.flakShell}）`);
+  // 截圖：鎖定前方的敵對 AC、側後方追來的導彈（警報與畫面邊緣的箭頭）
+  await page.evaluate(() => {
+    const g = window.__game,
+      p = g.player;
+    g.projectiles.length = 0;
+    p.pos.set(0, 660, 0);
+    g.fpPitch = 0.02;
+    g.fpYaw = p.yaw;
+    window.__pump(0.5);
+    const f = p.airDirNow(),
+      rt = new THREE.Vector3(-f.z, 0, f.x).normalize();
+    const ace = g.enemies.find((e) => e.airRole === 'ace' && !e.dead);
+    if (ace) {
+      ace.pos.copy(p.center()).addScaledVector(f, 450).addScaledVector(rt, 25);
+      ace.hitStunT = 2;
+      p.lock = ace;
+    }
+    const fk = g.enemies.find((e) => e.ai === 'flak' && !e.dead);
+    if (fk) {
+      const at = p.center().addScaledVector(f, -350).addScaledVector(rt, 260);
+      const y0 = fk.yaw,
+        pos0 = fk.pos.clone();
+      fk.pos.copy(at);
+      fk.yaw = Math.atan2(-(p.pos.x - at.x), -(p.pos.z - at.z));
+      fk.airPit = 0;
+      if (!fk.aam) fk.aamInit(9);
+      fk.aam.rail = [0, 0];
+      fk.aamLaunch(p);
+      fk.pos.copy(pos0);
+      fk.yaw = y0;
+    }
+    window.__pump(0.3, () => Math.floor(g.time * 5.5) % 2 === 0 && g.airMsl.length > 0);
+  });
+  await page.screenshot({ path: path.join(SHOT_DIR, 'air-combat.png') });
+  // 第 3 期：友軍雷達站與轟炸機、從遠方飛來的增援、雲裡不能鎖定、殘骸連鎖、擊墜數與結果、過關條件
+  const c3 = await page.evaluate(() => {
+    const g = window.__game,
+      p = g.player;
+    const o = {};
+    const B = g.airBase;
+    o.base = !!B && B.team === 'ally' && !B.dead && B.name === '友軍雷達站';
+    o.wavesLeft = g.waves.length;
+    const goal = g.goalSpec();
+    o.goal = goal ? goal.win.join() + '／' + goal.lose.join() : '';
+    p.hp = p.maxHp = 1e7;
+    // 其他敵人拿遠
+    const park = () => {
+      for (const e of g.enemies) if (!e.dead && e.ai !== 'flak') e.pos.set(e.pos.x + 9000, 600, e.pos.z);
+    };
+    park();
+    // 增援：從 1.8 km 外的空中飛來（預告 → 3 秒後生成）
+    const n0 = new Set(g.enemies);
+    if (g.waves.length) {
+      g.waveLaunch();
+      const w = g.wavePend;
+      o.pendAir = !!(w && w.air);
+      o.pendD = w ? Math.round(Math.hypot(w.pos.x - p.pos.x, w.pos.z - p.pos.z)) : 0;
+      o.pendY = w ? Math.round(w.pos.y) : 0;
+      window.__pump(6, () => !g.wavePend); // 節奏設定（ctrl.pace）可能小於 1
+      const nw = g.enemies.filter((e) => !n0.has(e) && !e.dead);
+      o.waveN = nw.length;
+      o.waveAir = nw.filter((e) => e.air || e.airAlt !== undefined).length;
+      park();
+    }
+    // 轟炸機：飛向雷達站上空投彈
+    const bm = g.airSpawnOne('bomber', B.center().add(new THREE.Vector3(500, 240, 0)));
+    o.bomber = bm ? bm.airRole + ' ' + bm.name : '';
+    const hp0 = B.hp;
+    o.bombT = Math.round(window.__pump(40, () => B.hp < hp0) * 10) / 10;
+    o.bmInfo = [
+      bm.dead,
+      Math.round(Math.hypot(bm.pos.x - B.pos.x, bm.pos.z - B.pos.z)),
+      Math.round(bm.pos.y - B.pos.y),
+    ].join();
+    o.baseDmg = Math.round((1 - B.hp / B.maxHp) * 100);
+    // 殘骸連鎖：擊墜轟炸機時，旁邊 40 m 的無人機也受傷
+    const dr =
+      g.enemies.find((e) => e.airRole === 'drone' && !e.dead) ||
+      g.airSpawnOne('drone', g.airRing(1200, 1500));
+    const k0 = g.airStats.kills;
+    if (dr) {
+      dr.pos.copy(bm.center()).add(new THREE.Vector3(30, 10, 20));
+      dr.hp = dr.maxHp;
+      bm.takeDamage(bm.hp + 99999, 100, p, bm.center(), new THREE.Vector3(0, 1, 0), null, null, 'exp');
+      o.chainHp = Math.round((1 - Math.max(0, dr.hp) / dr.maxHp) * 100);
+    }
+    o.kills = g.airStats.kills - k0;
+    o.chainN = g.airStats.chain;
+    o.rows = g
+      .airResultRows()
+      .map((r) => r[0])
+      .join();
+    // 雲裡不能鎖定：敵人在雲團中心、或玩家自己在雲裡
+    // 挑一團：旁邊（玩家的位置）與上方（出了雲的位置）都不在別的雲裡
+    const V = (x, y, z) => new THREE.Vector3(x, y, z);
+    const cb =
+      g.airBanks.find(
+        (b) =>
+          !g.airInCloud(V(b.x - b.r - 150, b.y + 6, b.z)) &&
+          !g.airInCloud(V(b.x - b.r + 150, b.y + b.h + 66, b.z)),
+      ) || g.airBanks[0];
+    const e2 = g.airSpawnOne('drone', g.airRing(1200, 1500));
+    if (e2) {
+      p.pos.set(cb.x - cb.r - 150, cb.y, cb.z);
+      p.yaw = -Math.PI / 2; // 朝 +X
+      p.airPit = 0;
+      e2.pos.set(cb.x, cb.y, cb.z);
+      o.cloudPool = g.lockPool(p).includes(e2);
+      o.cloudAam = p.aamCan(e2);
+      e2.pos.set(cb.x - cb.r - 150 + 300, cb.y + cb.h + 60, cb.z);
+      o.clearPool = g.lockPool(p).includes(e2);
+      o.cdbg = [g.airInCloud(e2.center()), g.airInCloud(p.center())].join();
+    }
+    return o;
+  });
+  check(
+    c3.base && c3.goal.includes('友軍雷達站') && c3.goal.includes('擊墜'),
+    `友軍雷達站與過關條件（${c3.goal}）`,
+  );
+  check(
+    c3.wavesLeft >= 1 &&
+      c3.pendAir &&
+      c3.pendD > 1500 &&
+      c3.pendY > 200 &&
+      c3.waveN >= 1 &&
+      c3.waveAir === c3.waveN,
+    `增援從遠方的空中飛來（${c3.pendD} m 外、高度 ${c3.pendY} m，${c3.waveN} 台都在飛）`,
+  );
+  check(
+    c3.bomber === 'bomber 轟炸機' && c3.bombT >= 0 && c3.baseDmg > 2,
+    `轟炸機飛到雷達站投彈（${c3.bombT} 秒、雷達站受損 ${c3.baseDmg}%；${c3.bmInfo}）`,
+  );
+  check(c3.kills >= 1 && c3.chainHp > 20 && c3.chainN >= 1, `殘骸連鎖：旁邊的無人機受傷 ${c3.chainHp}%`);
+  check(c3.rows.includes('擊墜數') && c3.rows.includes('友軍雷達站'), `結果畫面：${c3.rows}`);
+  check(
+    c3.cloudPool === false && c3.cloudAam === false && c3.clearPool,
+    `雲裡的敵人不能鎖定，出了雲就可以（${c3.cdbg}）`,
+  );
+  // 截圖：從 600 m 外看友軍雷達站，轟炸機在上空
+  await page.evaluate(() => {
+    const g = window.__game,
+      p = g.player,
+      B = g.airBase;
+    const bc = B.center();
+    p.pos.set(bc.x - 600, Math.max(bc.y + 180, p.airFloor(bc.x - 600, bc.z) + 120), bc.z);
+    p.vel.set(0, 0, 0);
+    g.fpYaw = p.yaw = -Math.PI / 2;
+    g.fpPitch = -0.2;
+    const bm = g.airSpawnOne('bomber', bc.clone().add(new THREE.Vector3(-150, 220, 40)));
+    if (bm) p.lock = bm;
+    window.__pump(0.8);
+  });
+  await page.screenshot({ path: path.join(SHOT_DIR, 'air-base.png') });
   // 截圖：飛行中、側滾翻中、懸停
   await page.evaluate(() => {
     const g = window.__game,
@@ -6154,6 +6511,17 @@ async function testAir(browser, base) {
   });
   check(cl.n >= 40 && cl.puffs > 400 && cl.inC && !cl.outC, `雲：${cl.n} 團、${cl.puffs} 顆粒子，雲裡的判定`);
   await page.screenshot({ path: path.join(SHOT_DIR, 'air-clouds.png') });
+  // 友軍雷達站被摧毀＝任務失敗
+  const fail = await page.evaluate(() => {
+    const g = window.__game,
+      B = g.airBase;
+    B.takeDamage(B.hp + 1e7, 0, null, B.center(), new THREE.Vector3(0, 1, 0), null, null, 'none');
+    window.__pump(0.2);
+    return { dead: B.dead, st: g.state };
+  });
+  await page.waitForFunction(() => window.__game.state === 'result', null, { timeout: 8000 }).catch(() => {});
+  const failT = await page.evaluate(() => document.getElementById('rTitle').textContent);
+  check(fail.dead && fail.st === 'ending' && failT === '任務失敗', `友軍雷達站被摧毀＝任務失敗（${failT}）`);
   const camFar = await page.evaluate(() => {
     const g = window.__game;
     g.clearMission();
@@ -6165,6 +6533,62 @@ async function testAir(browser, base) {
   check(camFar < 2000, `離開空域後鏡頭距離還原（${camFar}）`);
   await thawLoop(page);
   await ctx.close();
+  // 空中的 Boss：空域的 Boss 關只排空中要塞（在空中、發射空戰導彈）
+  {
+    const { ctx: c4, page: pb } = await newPage(browser, 'air-boss');
+    await pb.goto(base + '?test');
+    await waitVisible(pb, 'title');
+    await pb.evaluate(() => {
+      localStorage.setItem('rubicon_map', 'airspace');
+      const g = window.__game;
+      g.save.level = 3; // Boss 關
+      g.startMission();
+      g.player.hp = g.player.maxHp = 1e7;
+    });
+    await freezeLoop(pb);
+    const bo = await pb.evaluate(() => {
+      const g = window.__game,
+        p = g.player;
+      const b = g.bosses.find((x) => !x.dead && x.ai !== 'part');
+      const o = { boss: g.isBossLevel, kind: b && b.opts.bossKind, name: b && b.name };
+      o.alt = Math.round(b.pos.y - p.airFloor(b.pos.x, b.pos.z));
+      o.dist = Math.round(b.pos.distanceTo(p.pos));
+      const parts = g.enemies.filter((e) => !e.dead && e.opts && e.opts.parent === b.id);
+      o.parts = parts.length;
+      o.partsNear = parts.every((e) => e.pos.distanceTo(b.pos) < 120);
+      // 玩家飛到要塞附近：要塞發射空戰導彈
+      const f = b.pos.clone().sub(p.pos).setY(0).normalize();
+      p.pos
+        .copy(b.pos)
+        .addScaledVector(f, -500)
+        .setY(b.pos.y + 40);
+      g.fpYaw = p.yaw = Math.atan2(-f.x, -f.z);
+      g.fpPitch = 0;
+      o.t = Math.round(window.__pump(20, () => g.projectiles.some((x) => x.aam && x.owner === b)) * 10) / 10;
+      o.goal = (g.goalSpec() || { win: [] }).win.join();
+      p.lock = b;
+      window.__pump(0.5);
+      return o;
+    });
+    check(
+      bo.boss && bo.kind === 'fortress' && bo.alt >= 200 && bo.parts >= 1 && bo.partsNear,
+      `空域的 Boss 關：${bo.name}（離地 ${bo.alt} m、部位 ${bo.parts} 個跟著）`,
+    );
+    check(
+      bo.t >= 0 && bo.goal.includes('擊破'),
+      `空中要塞發射空戰導彈（${bo.t} 秒）；過關條件「${bo.goal}」`,
+    );
+    await pb.screenshot({ path: path.join(SHOT_DIR, 'air-boss.png') });
+    await pb.evaluate(() => {
+      const g = window.__game;
+      g.clearMission();
+      g.state = 'title';
+      g.showScreen('title');
+      localStorage.removeItem('rubicon_map');
+    });
+    await thawLoop(pb);
+    await c4.close();
+  }
   // 平板（觸控）與手機：左搖桿往上＝推進，觸控的跳躍鍵變成急轉
   for (const [W, H, tag] of [
     [1180, 820, 'tablet'],
@@ -6182,10 +6606,13 @@ async function testAir(browser, base) {
     await pg.evaluate(() => {
       localStorage.setItem('rubicon_map', 'airspace');
       const g = window.__game;
-      g.save.level = 3;
+      g.save.level = 5; // 不是 Boss 關
       g.touchActive = true;
       g.startMission();
       g.player.hp = g.player.maxHp = 1e7;
+      // 只留直升機（定點懸停）與防空砲當鎖定的目標：會追過來的空戰 AI 不打擾觸控的檢查
+      g.enemies = g.enemies.filter((e) => e.ai === 'heli' || e.ai === 'flak');
+      for (const e of g.enemies) e.updateAI = () => {}; // 不開火（防空砲的導彈會打斷推進）
     });
     await freezeLoop(pg);
     const o = await pg.evaluate(() => {
@@ -6197,11 +6624,11 @@ async function testAir(browser, base) {
       g.touchMove.set(0, 0, 0);
       window.__pump(0.5);
       const jb = document.querySelector('#vpad .vbtn[data-a="jump"]');
-      return { v: Math.round(v), jb: jb ? jb.textContent : '' };
+      return { v: Math.round(v), jb: jb ? jb.offsetWidth : -1 };
     });
     const nm = tag === 'tablet' ? '平板' : '手機';
-    check(o.v > 95 && o.jb.includes('急轉'), `${nm}：左搖桿往上推進（${o.v} m/s）、跳躍鍵變成急轉`);
-    // 右搖桿（浮動）：按下的地方就是中心、往右推＝往右轉、推的時候目標輔助讓開，放開 0.8 秒後恢復；
+    check(o.v > 95 && o.jb === 0, `${nm}：左搖桿往上推進（${o.v} m/s）、沒有急轉鍵（右搖桿推到底＝急轉）`);
+    // 右搖桿（固定）：往右推＝機首往右轉、推過 90%＝急轉彎、鏡頭只比機首超前一點；推的時候目標輔助讓開，放開 0.8 秒後恢復；
     // 空域的射擊鍵兼搖桿；按鈕不重疊、都在畫面裡；自動攻擊只打鎖定框裡的目標
     const rs = await pg.evaluate(() => {
       const g = window.__game,
@@ -6222,21 +6649,34 @@ async function testAir(browser, base) {
       const zone = document.getElementById('vsRZone'),
         stick = document.getElementById('vsR');
       const zr = zone.getBoundingClientRect();
-      const x0 = zr.right - 90,
-        y0 = zr.bottom - 160;
+      const sr0 = stick.getBoundingClientRect();
+      const x0 = sr0.left + sr0.width / 2,
+        y0 = sr0.top + sr0.height / 2;
+      out.inZone = x0 > zr.left && x0 < zr.right && y0 > zr.top && y0 < zr.bottom;
       // 有鎖定目標（目標輔助開著）
       const e = g.enemies.find((q) => !q.dead);
       p.lock = e;
       out.assist0 = g.assistOn();
       T(zone, 'touchstart', x0, y0);
       const sr = stick.getBoundingClientRect();
-      out.float = Math.hypot(sr.left + sr.width / 2 - x0, sr.top + sr.height / 2 - y0) < 3;
+      out.fixed = Math.abs(sr.left - sr0.left) < 1 && Math.abs(sr.top - sr0.top) < 1;
+      const dyaw = (a, b) =>
+        Math.abs(((((a - b + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) - Math.PI);
+      // 推一半：一般轉彎
+      T(zone, 'touchmove', x0 + sr0.width * 0.25, y0);
+      window.__pump(0.4);
+      out.gHalf = !!p.airG;
+      // 推到底：急轉彎、機首跟著轉
       T(zone, 'touchmove', x0 + 60, y0);
       out.ax = +g.touchAim.x.toFixed(2);
       out.assistOff = !g.assistOn();
-      const yaw0 = g.fpYaw;
-      window.__pump(0.5);
+      const yaw0 = g.fpYaw,
+        ny0 = p.yaw;
+      window.__pump(0.6);
       out.turn = +(yaw0 - g.fpYaw).toFixed(2); // 往右轉＝fpYaw 變小
+      out.nose = +(ny0 - p.yaw).toFixed(2);
+      out.g = !!(g.airStickG && p.airG);
+      out.lead = +dyaw(g.fpYaw, p.yaw).toFixed(2);
       T(zone, 'touchend', x0 + 60, y0);
       window.__pump(0.3);
       out.assistWait = !g.assistOn();
@@ -6253,7 +6693,26 @@ async function testAir(browser, base) {
       out.fireHeld = !!g.down['Touch_attack'];
       T(ab, 'touchend', fx, fy - 45);
       // 按鈕：互相不重疊、都在畫面裡
-      const ids = ['#vbAttack', '#vbShoulder', '#vpad .vbtn[data-a="jump"]', '#vbQB', '#vsR', '#vsL'];
+      // 空戰導彈鍵：按一下發射一枚
+      const mb = document.getElementById('vbAam'),
+        mr = mb.getBoundingClientRect();
+      out.aamVis = !!mb.offsetWidth;
+      const n0 = p.aam.n;
+      p.aam.rail = [0, 0];
+      T(mb, 'touchstart', mr.left + mr.width / 2, mr.top + mr.height / 2);
+      window.__pump(1 / 60);
+      T(mb, 'touchend', mr.left + mr.width / 2, mr.top + mr.height / 2);
+      window.__pump(1 / 60);
+      out.aamTouch = n0 - p.aam.n;
+      const ids = [
+        '#vbAttack',
+        '#vbShoulder',
+        '#vpad .vbtn[data-a="jump"]',
+        '#vbQB',
+        '#vbAam',
+        '#vsR',
+        '#vsL',
+      ];
       const R = ids
         .map((s) => document.querySelector(s))
         .filter((el) => el && el.offsetWidth)
@@ -6263,8 +6722,12 @@ async function testAir(browser, base) {
         for (let j = i + 1; j < R.length; j++) {
           const a = R[i],
             b = R[j];
-          if (a.left < b.right - 2 && b.left < a.right - 2 && a.top < b.bottom - 2 && b.top < a.bottom - 2)
-            ov++;
+          // 都是圓形：圓心距離比兩個半徑和還近才算重疊
+          const d = Math.hypot(
+            a.left + a.width / 2 - b.left - b.width / 2,
+            a.top + a.height / 2 - b.top - b.height / 2,
+          );
+          if (d < (a.width + b.width) / 2 - 2) ov++;
         }
       out.overlap = ov;
       out.inside = R.every(
@@ -6279,8 +6742,12 @@ async function testAir(browser, base) {
       out.boxBack = g.inLockBox(p, e);
       return out;
     });
-    check(rs.cls && rs.float, `${nm}：空域有右搖桿，浮動（按下的地方就是中心）`);
-    check(rs.ax > 0.9 && rs.turn > 0.3, `${nm}：右搖桿往右推＝往右轉（${rs.ax}、轉了 ${rs.turn} rad）`);
+    check(rs.cls && rs.fixed && rs.inZone, `${nm}：空域有右搖桿（固定位置）`);
+    check(
+      rs.ax > 0.9 && rs.turn > 0.3 && rs.nose > 0.3 && rs.lead < 0.37,
+      `${nm}：右搖桿往右推＝機首往右轉（鏡頭 ${rs.turn}、機首 ${rs.nose} rad，鏡頭超前 ${rs.lead}）`,
+    );
+    check(rs.g && !rs.gHalf, `${nm}：右搖桿推到底＝急轉彎，推一半是一般轉彎`);
     check(
       rs.assist0 && rs.assistOff && rs.assistWait && rs.assistBack,
       `${nm}：推右搖桿時目標輔助讓開，放開 0.8 秒後恢復`,
@@ -6289,6 +6756,7 @@ async function testAir(browser, base) {
       rs.fireHeld && rs.fireSteer < -0.5,
       `${nm}：空域的射擊鍵兼搖桿（按住射擊、往上滑 ${rs.fireSteer}）`,
     );
+    check(rs.aamVis && rs.aamTouch === 1, `${nm}：空戰導彈鍵（按一下發射 ${rs.aamTouch} 枚）`);
     check(rs.overlap === 0 && rs.inside, `${nm}：右搖桿與按鈕不重疊（${rs.overlap}）、都在畫面裡`);
     check(
       rs.boxFront && !rs.boxBack,
@@ -6308,9 +6776,41 @@ async function testAir(browser, base) {
       const top = document.body.classList.contains('rstick');
       g.setView('chase', true);
       g.updateVpad();
-      return { chase, top };
+      // 地面：上方是跳躍鍵（沒有導彈鍵），按鈕不重疊
+      const ids = [
+        '#vbAttack',
+        '#vbShoulder',
+        '#vpad .vbtn[data-a="jump"]',
+        '#vbQB',
+        '#vbAam',
+        '#vsR',
+        '#vsL',
+      ];
+      const R = ids
+        .map((q) => document.querySelector(q))
+        .filter((el) => el && el.offsetWidth)
+        .map((el) => el.getBoundingClientRect());
+      let ov = 0;
+      for (let i = 0; i < R.length; i++)
+        for (let j = i + 1; j < R.length; j++) {
+          const a = R[i],
+            b = R[j];
+          // 都是圓形：圓心距離比兩個半徑和還近才算重疊
+          const d = Math.hypot(
+            a.left + a.width / 2 - b.left - b.width / 2,
+            a.top + a.height / 2 - b.top - b.height / 2,
+          );
+          if (d < (a.width + b.width) / 2 - 2) ov++;
+        }
+      const jump = document.querySelector('#vpad .vbtn[data-a="jump"]').offsetWidth > 0;
+      const aam = document.getElementById('vbAam').offsetWidth > 0;
+      return { chase, top, ov, n: R.length, jump, aam };
     });
     check(gr.chase && !gr.top, `${nm}：地面的追尾視角也有右搖桿、俯視沒有`);
+    check(
+      gr.jump && !gr.aam && gr.n === 6 && gr.ov === 0,
+      `${nm}：地面的右搖桿周圍是跳躍鍵（沒有導彈鍵），按鈕不重疊（${gr.ov}）`,
+    );
     await pg.evaluate(() => window.__pump(0.5));
     await pg.screenshot({ path: path.join(SHOT_DIR, `chase-rstick-${tag}.png`) });
     await thawLoop(pg);
@@ -13012,7 +13512,11 @@ async function testWater(browser, base) {
       g.startMission();
       g.waves = [];
       g.wavePend = null;
-      for (const e of g.enemies) e.pos.x += 2000;
+      // 敵人拿遠、停住 AI：飛回來的直升機與無人機的下洗氣流會在水面推出水波，讓「慢慢靜下來」的檢查偶發失敗
+      for (const e of g.enemies) {
+        e.pos.x += 2000;
+        e.updateAI = () => {};
+      }
       const w = g.world,
         pl = g.player;
       pl.hp = pl.maxHp = 1e7;

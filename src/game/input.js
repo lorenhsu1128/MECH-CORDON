@@ -30,6 +30,7 @@ Object.assign(Game.prototype, {
       kit: 'KeyR',
       cs1: 'Digit1',
       cs2: 'Digit2',
+      aam: 'KeyC',
       pause: 'Escape',
     };
   },
@@ -92,6 +93,7 @@ Object.assign(Game.prototype, {
       kit: 'Pad2',
       cs1: 'Pad12',
       cs2: 'Pad13',
+      aam: 'Pad8',
       pause: 'Pad9',
     };
   },
@@ -353,6 +355,7 @@ Object.assign(Game.prototype, {
       fireL: 'Touch_fireL',
       backR: 'Touch_backR',
       backL: 'Touch_backL',
+      aam: 'Touch_aam',
     };
     const tapLock = (e) => {
       if (!this.vpadWanted() || this.state !== 'play') return;
@@ -389,17 +392,14 @@ Object.assign(Game.prototype, {
         if (id !== null) return;
         const t = e.changedTouches[0];
         id = t.identifier;
-        cx = t.clientX;
-        cy = t.clientY;
+        // 固定的搖桿（2026-10-31 使用者定案）：中心＝搖桿的中心，按下的位置就已經是推的方向
+        const rr = rs.getBoundingClientRect();
+        cx = rr.left + rr.width / 2;
+        cy = rr.top + rr.height / 2;
         t0 = performance.now();
         mx = 0;
-        const zr = zone.getBoundingClientRect();
-        const w = rs.offsetWidth;
-        rs.style.left = cx - zr.left - w / 2 + 'px';
-        rs.style.top = cy - zr.top - w / 2 + 'px';
-        rs.style.right = rs.style.bottom = 'auto';
         rs.classList.add('act');
-        this.touchAim.set(0, 0, 0);
+        this.rsSet(this.touchAim, t.clientX - cx, t.clientY - cy, R());
         this.rsAct = true;
       },
       { passive: false },
@@ -429,8 +429,7 @@ Object.assign(Game.prototype, {
           this.touchAim.set(0, 0, 0);
           knob.style.transform = '';
           rs.classList.remove('act');
-          rs.style.left = rs.style.top = rs.style.right = rs.style.bottom = '';
-          // 甩動換目標：0.3 秒內推到左右邊就放開（有鎖定目標時）
+          // 甩動換目標：0.3 秒內推到左右邊就放開（有鎖定目標時；空域裡推到底是急轉，不換目標）
           const p = this.player;
           if (
             performance.now() - t0 < 300 &&
@@ -438,7 +437,8 @@ Object.assign(Game.prototype, {
             p &&
             p.lock &&
             !p.lock.dead &&
-            this.chase
+            this.chase &&
+            !this.airMode
           )
             this.chaseFlick(Math.sign(mx));
         }

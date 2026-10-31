@@ -32,6 +32,7 @@ Object.assign(Game.prototype, {
       ['kit', '修復套件'],
       ['cs1', '消耗品 1'],
       ['cs2', '消耗品 2'],
+      ['aam', '空戰導彈（空域）'],
       ['pause', '暫停'],
     ];
     const padOnly = { up: '左搖桿', down: '左搖桿', left: '左搖桿', right: '左搖桿' };

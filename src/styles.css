@@ -511,13 +511,14 @@ table.keys td {
 #vsL {
   left: calc(30px + env(safe-area-inset-left, 0px));
 }
-/* 右搖桿（浮動）：追尾、第一人稱、空域時（body.rstick）右下角的區域，按下的地方就是搖桿中心 */
+/* 右搖桿（固定，2026-10-31 使用者定案）：追尾、第一人稱、空域時（body.rstick）在右下角；
+   觸控區域只比搖桿大一點，四顆按鈕（射擊、肩部、導彈／跳躍、QB）在搖桿的左方與上方圍成一圈 */
 #vsRZone {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  width: calc(330px + env(safe-area-inset-right, 0px));
-  height: calc(270px + env(safe-area-inset-bottom, 0px));
+  right: calc(10px + env(safe-area-inset-right, 0px));
+  bottom: calc(30px + env(safe-area-inset-bottom, 0px));
+  width: 200px;
+  height: 200px;
   pointer-events: auto;
   display: none;
 }
@@ -525,33 +526,44 @@ body.rstick #vsRZone {
   display: block;
 }
 #vsR {
-  width: 130px;
-  height: 130px;
+  width: 140px;
+  height: 140px;
   left: auto;
-  right: calc(70px + env(safe-area-inset-right, 0px));
-  bottom: calc(60px + env(safe-area-inset-bottom, 0px));
-  opacity: 0.45;
+  right: 30px; /* 在觸控區域（200×200）的正中央 */
+  bottom: 30px;
+  opacity: 0.55;
   pointer-events: none;
 }
 #vsR.act {
   opacity: 1;
 }
-/* 右搖桿時按鈕排成弧形，圍在搖桿區域的上方與左方 */
+/* 按鈕圍在搖桿的左方與上方（搖桿中心離右下 110／130 px）：上＝導彈（空域）或跳躍、左上＝肩部、左＝射擊、左下＝QB */
 body.rstick #vbAttack {
-  right: calc(340px + env(safe-area-inset-right, 0px)) !important;
-  bottom: calc(70px + env(safe-area-inset-bottom, 0px)) !important;
+  right: calc(190px + env(safe-area-inset-right, 0px)) !important;
+  bottom: calc(110px + env(safe-area-inset-bottom, 0px)) !important;
 }
 body.rstick #vbShoulder {
-  right: calc(350px + env(safe-area-inset-right, 0px)) !important;
-  bottom: calc(190px + env(safe-area-inset-bottom, 0px)) !important;
+  right: calc(151px + env(safe-area-inset-right, 0px)) !important;
+  bottom: calc(185px + env(safe-area-inset-bottom, 0px)) !important;
 }
-body.rstick .vbtn[data-a='jump'] {
-  right: calc(250px + env(safe-area-inset-right, 0px)) !important;
-  bottom: calc(285px + env(safe-area-inset-bottom, 0px)) !important;
+body.rstick .vbtn[data-a='jump'],
+body.rstick #vbAam {
+  right: calc(78px + env(safe-area-inset-right, 0px)) !important;
+  bottom: calc(212px + env(safe-area-inset-bottom, 0px)) !important;
 }
 body.rstick #vbQB {
-  right: calc(130px + env(safe-area-inset-right, 0px)) !important;
-  bottom: calc(295px + env(safe-area-inset-bottom, 0px)) !important;
+  right: calc(171px + env(safe-area-inset-right, 0px)) !important;
+  bottom: calc(33px + env(safe-area-inset-bottom, 0px)) !important;
+}
+/* 空域：沒有急轉鍵（右搖桿推到底＝急轉），上方換成空戰導彈鍵 */
+#vbAam {
+  display: none;
+}
+body.airMode #vbAam {
+  display: flex;
+}
+body.airMode .vbtn[data-a='jump'] {
+  display: none !important;
 }
 .vbtn {
   position: absolute;
@@ -745,14 +757,16 @@ body.vpad #vpad .top {
     bottom: calc(112px + env(safe-area-inset-bottom, 0px)) !important;
   }
   body.rstick #vsRZone {
-    width: calc(220px + env(safe-area-inset-right, 0px));
-    height: calc(180px + env(safe-area-inset-bottom, 0px));
+    right: calc(2px + env(safe-area-inset-right, 0px));
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    width: 140px;
+    height: 140px;
   }
   body.rstick #vsR {
     width: 96px;
     height: 96px;
-    right: calc(40px + env(safe-area-inset-right, 0px));
-    bottom: calc(30px + env(safe-area-inset-bottom, 0px));
+    right: 22px;
+    bottom: 22px;
   }
   body.rstick #vsR .knob {
     width: 40px;
@@ -760,20 +774,21 @@ body.vpad #vpad .top {
     margin: -20px 0 0 -20px;
   }
   body.rstick #vbAttack {
-    right: calc(228px + env(safe-area-inset-right, 0px)) !important;
-    bottom: calc(34px + env(safe-area-inset-bottom, 0px)) !important;
+    right: calc(127px + env(safe-area-inset-right, 0px)) !important;
+    bottom: calc(66px + env(safe-area-inset-bottom, 0px)) !important;
   }
   body.rstick #vbShoulder {
-    right: calc(238px + env(safe-area-inset-right, 0px)) !important;
-    bottom: calc(112px + env(safe-area-inset-bottom, 0px)) !important;
+    right: calc(99px + env(safe-area-inset-right, 0px)) !important;
+    bottom: calc(121px + env(safe-area-inset-bottom, 0px)) !important;
   }
-  body.rstick .vbtn[data-a='jump'] {
-    right: calc(166px + env(safe-area-inset-right, 0px)) !important;
-    bottom: calc(190px + env(safe-area-inset-bottom, 0px)) !important;
+  body.rstick .vbtn[data-a='jump'],
+  body.rstick #vbAam {
+    right: calc(48px + env(safe-area-inset-right, 0px)) !important;
+    bottom: calc(140px + env(safe-area-inset-bottom, 0px)) !important;
   }
   body.rstick #vbQB {
-    right: calc(84px + env(safe-area-inset-right, 0px)) !important;
-    bottom: calc(196px + env(safe-area-inset-bottom, 0px)) !important;
+    right: calc(114px + env(safe-area-inset-right, 0px)) !important;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px)) !important;
   }
   body.vpad #vpad .top {
     top: calc(6px + env(safe-area-inset-top, 0px)) !important;

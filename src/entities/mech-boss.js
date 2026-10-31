@@ -433,6 +433,7 @@ Object.assign(MechEntity.prototype, {
       this.hoverH = 10 * DS;
       this.speedMul *= 0.7;
       g.msgAll('引擎全毀 — 空中要塞高度下降！', 0xffb020);
+      if (this.airAlt !== undefined) this.airAlt = Math.max(160, this.airAlt * 0.55); // 空域
       this.bossOpen(6); // Boss 改版：降下之後＝破綻
     }
     // 繞著目標慢慢盤旋
@@ -461,6 +462,8 @@ Object.assign(MechEntity.prototype, {
       if (alive < 14)
         g.spawnType('swarm', g.scaleHp || 1, g.scaleDmg || 1, this.pos.clone().setY(this.pos.y - 3 * MS), 3);
     }
+    // 空域（game/air.js）：要塞的防空（空戰導彈），第二型態起更密
+    if (g.airMode) this.airSamTick(dt * (this.phase2() ? 2.2 : 1.5), pl);
     // 投彈：沿機身前進方向一排落點
     s.bombT = (s.bombT === undefined ? 8 : s.bombT) - dt;
     if (s.bombT <= 0 && d < 35 * DS && this.canAct()) {

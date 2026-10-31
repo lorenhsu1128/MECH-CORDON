@@ -90,6 +90,8 @@ Object.assign(Game.prototype, {
         lose: [down],
       };
     }
+    // 空域（game/air.js）
+    if (this.airStats && this.airMode) return this.airGoal(down);
     // 自由出擊
     if (this.isBossLevel) {
       const n = bossNames();

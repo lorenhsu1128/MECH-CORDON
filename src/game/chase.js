@@ -94,6 +94,8 @@ Object.assign(Game.prototype, {
   // 目標輔助：鏡頭自動跟著鎖定的目標（觸控一律開啟）
   assistOn() {
     // 觸控：推右搖桿（或空域的射擊鍵）轉向時讓出優先權，放開 0.8 秒後恢復（input.js 的 touchSteering）
+    // 空域：手把的右搖桿推著時也讓開（右搖桿直接控制機首）
+    if (this.airMode && this.padAim && this.padAim.lengthSq() > 0.09) return false;
     return !!(this.chase && (this.assist || (this.touchActive && !this.touchSteering())));
   },
   toggleAssist() {
@@ -132,8 +134,12 @@ Object.assign(Game.prototype, {
   // 每格的瞄準輸入（第一人稱／追尾；單機 updatePlayer 與客機 buildLocalInput 共用）
   camAimInput(p, dt) {
     const pa = this.padAim && this.padAim.lengthSq() > 0.09 ? this.padAim : null;
+    const air = this.airMode && p.air;
+    this.airStickG = false;
     if (pa) {
-      if (this.assistOn() && p.lock && !p.lock.dead) {
+      if (air)
+        this.airStickTurn(p, pa.x, pa.z, dt); // 空域：右搖桿直接控制機首（game/air.js）
+      else if (this.assistOn() && p.lock && !p.lock.dead) {
         if (Math.abs(pa.x) > 0.75) {
           if (!this.padFlick) this.chaseFlick(Math.sign(pa.x));
           this.padFlick = true;
@@ -151,7 +157,8 @@ Object.assign(Game.prototype, {
     if (this.rsHoldT > 0) this.rsHoldT -= dt;
     // 觸控的右搖桿：推的幅度用指數曲線（小推微調、推到底快轉）
     const ta = !pa && this.touchAimVec();
-    if (ta) {
+    if (ta && air) this.airStickTurn(p, ta.x, ta.z, dt);
+    else if (ta) {
       const m = ta.length(),
         k = Math.pow(m, 1.7) / Math.max(m, 1e-3);
       const sn = this.ctrl.sens || 1;

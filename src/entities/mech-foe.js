@@ -19,6 +19,7 @@
 import { SFX } from '../audio/audio.js';
 import { DS, MS } from '../core/scale.js';
 import { clamp, rnd } from '../core/math.js';
+import { AIR } from '../data/air.js';
 import { FOES_b1 } from '../data/foes-b1.js';
 import { FOES_b2 } from '../data/foes-b2.js';
 import { FOES_C1 } from '../data/foes-c1.js';
@@ -829,7 +830,9 @@ Object.assign(MechEntity.prototype, {
       g = this.game;
     const air = pl.pos.y - g.world.groundAt(pl.pos.x, pl.pos.z, pl.pos.y + 0.5 * MS) > 3 * MS;
     s.fkT = (s.fkT || 0) - dt;
-    if (air && s.fkT <= 0 && d < 80 * DS && this.canAct()) {
+    if (g.airMode) this.airSamTick(dt, pl); // 空域：另外發射空戰導彈（mech-air.js）
+    const R = 80 * DS * (g.airMode ? AIR.FLAK_R : 1); // 空域的射程放大
+    if (air && s.fkT <= 0 && d < R && this.canAct()) {
       s.fkT = 0.35;
       s.fkN = (s.fkN || 0) + 1; // 射出的空炸彈數
       const mz = this.muzzle('rarm');

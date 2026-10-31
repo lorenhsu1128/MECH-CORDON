@@ -302,10 +302,10 @@ Object.assign(Game.prototype, {
       return this.campBeginMp(this.net.pvpSet.sid);
     // 多人自訂關卡（level-net.js）
     if (mp0 && this.net.pvpSet && this.net.pvpSet.mode === 'level') return this.lvBeginMp();
-    // 空域（空戰，game/air.js）：只有單人；第 1 期沒有 Boss 關
+    // 空域（空戰，game/air.js）：只有單人；Boss 關只排空中要塞
     const air0 = !mp0 && this.mapPref() === 'airspace';
-    const boss = !air0 && isBossLevel(L) && !(mp0 && this.net.pvpSet && this.net.pvpSet.mode === 'pvp');
-    const bd0 = boss ? bossForLevel(L) : null;
+    const boss = isBossLevel(L) && !(mp0 && this.net.pvpSet && this.net.pvpSet.mode === 'pvp');
+    const bd0 = boss ? (air0 ? this.airBossDef() : bossForLevel(L)) : null;
     this.clearMission();
     // 地圖：單人用車庫選的，多人用房主在大廳選的；沒選（隨機）或不認得時隨機
     const want = mp0 ? (this.net.pvpSet || {}).map : this.mapPref();
@@ -404,6 +404,7 @@ Object.assign(Game.prototype, {
     else this.spawnComp(this.foeMix(this.rollComp(L, np), theme, 0, true), np, scaleHp, scaleDmg);
     this.scaleHp = scaleHp;
     this.scaleDmg = scaleDmg;
+    if (boss && air) this.airBossSetup(); // 空中要塞移到空中、島上的防空砲
     if (!boss && !air) this.outpostsPlan(L); // 據點與補給箱
     this.hkReset(); // 人員擊殺數（crowd.js）
     if (!air) this.crowdPlan(); // 地圖上的小人
@@ -600,10 +601,11 @@ Object.assign(Game.prototype, {
     return out;
   },
   spawnType(t, scaleHp, scaleDmg, at, count) {
+    if (this.airMode) t = this.airType(t); // 空域：地面的敵人換成無人機（game/air.js）
     const d = ENEMY_TYPES[t] || FOES[t];
-    if (FOES[t] && this.simMark && !this.sim && !this.lv) this.simMark('foes', t); // 遇過的專屬敵人（模擬器、自由出擊）
+    if (FOES[t] && this.simMark && !this.sim && !this.lv && !this.airMode) this.simMark('foes', t); // 遇過的專屬敵人（模擬器、自由出擊）
     // 新類型第一次出現：提示打法
-    if (d.intro && !d.roster) {
+    if (d.intro && !d.roster && !this.airMode) {
       if (!this.introSeen) this.introSeen = new Set();
       if (!this.introSeen.has(t)) {
         this.introSeen.add(t);
@@ -764,6 +766,7 @@ Object.assign(Game.prototype, {
     e.yaw = e.aimYaw = Math.atan2(-(0 - sp.x), -(0 - sp.z));
     e.mesh.position.copy(e.pos);
     this.enemies.push(e);
+    if (this.airMode) this.airAdopt(e, o); // 空域：飛行的敵人進入飛行狀態（game/air.js）
     this.fx.ring(e.pos.clone(), 4, 0xff4040);
     return e;
   },
@@ -792,7 +795,9 @@ Object.assign(Game.prototype, {
     if (from && from.pmv && !from.dead && from.pmv('killHeal') > 0)
       from.hp = Math.min(from.maxHp, from.hp + from.maxHp * from.pmv('killHeal'));
     if (from && from.pmv && from.team === 'player') this.modKillFx(e, from);
-    if (!this.isClient) this.dropAmmo(e); // 彈藥箱（map-extras.js）
+    if (this.airMode)
+      this.airKilled(e, from); // 空域：擊墜數、殘骸連鎖（game/air.js）
+    else if (!this.isClient) this.dropAmmo(e); // 彈藥箱（map-extras.js）
     this.fbKill(e, from); // 擊破確認音與連殺（feedback.js）
     // 主線：擊破精英區段的宿敵 AC 時的台詞
     if (this.camp && this.camp.ss && this.camp.ss.ace && e === this.camp.ss.elite)
@@ -940,7 +945,8 @@ Object.assign(Game.prototype, {
     let baseBonus = 0;
     if (success) {
       bonus = Math.round((8000 + L * 2500) * bossMul);
-      const score = (p.dmgTaken / p.maxHp) * 0.6 + (Math.max(0, this.missionT - 90) / 180) * 0.4;
+      const tA = this.airStats ? 240 : 90; // 空域的任務比較長
+      const score = (p.dmgTaken / p.maxHp) * 0.6 + (Math.max(0, this.missionT - tA) / (tA * 2)) * 0.4;
       rank = score < 0.25 ? 'S' : score < 0.5 ? 'A' : score < 0.85 ? 'B' : 'C';
       const mul = { S: 1.5, A: 1.2, B: 1, C: 0.8 }[rank];
       baseBonus = Math.round(bonus * mul * this.tierPartsK()); // Boss 改版的 J：打壞的部位 COAM +8%
@@ -971,6 +977,7 @@ Object.assign(Game.prototype, {
           this.enemies.filter((e) => !e.decoy).length,
       ],
       ['受損 AP', Math.round(p.dmgTaken)],
+      ...this.airResultRows(), // 空域：擊墜數、殘骸連鎖、友軍雷達站（game/air.js）
       ...this.hkRows(), // 人員擊殺數（crowd.js）
       // Boss 改版：擊破速度的評價（S 擊破獎金 ×1.5、A ×1.2）
       ...(this.bossRank && success ? [['Boss 擊破評價', this.tierRankTxt(this.bossRank)]] : []),

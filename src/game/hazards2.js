@@ -193,13 +193,15 @@ Object.assign(Game.prototype, {
   },
   // 鎖定看不到這個目標（目標或自己在煙裡、或中間隔著煙）
   smokeHides(p, e) {
+    if (this.airMode && e && !e.isShot && (this.airInCloud(e.center()) || this.airInCloud(p.center())))
+      return true; // 空域：雲裡不能鎖定（game/air.js）
     if (!this.zones || !this.zones.length || !e || e.isShot) return false;
     return this.smokeBetween(p.center(), e.center());
   },
   // 鎖定的候選（player.js、chase.js、input.js）：敵人（扣掉被煙擋住的）＋可以打掉的投射物
   lockPool(p) {
     let L = this.hostilesOfEnt(p);
-    if (this.zones && this.zones.length) L = L.filter((e) => !this.smokeHides(p, e));
+    if ((this.zones && this.zones.length) || this.airMode) L = L.filter((e) => !this.smokeHides(p, e));
     const S = this.shotTargets(p.team);
     return S.length ? L.concat(S) : L;
   },

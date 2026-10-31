@@ -3202,6 +3202,9 @@ export class MechEntity {
         }
       }
     }
+    // 空域：友軍雷達站只有轟炸機去炸，其他的一律追玩家（game/air.js）
+    if (g.airMode && pl && pl.ai === 'objective' && this.airRole !== 'bomber' && g.player && !g.player.dead)
+      pl = g.player;
     this.lockAge(pl); // 導彈的鎖定時間
     // 第三型態的專屬招式（mech-boss3.js）；有刁鑽度時每個型態的大招都先蓄力、可以打斷（mech-boss-tier.js）
     if (this.isBoss && this.tierOn()) this.tierTick(dt, pl);
@@ -3225,7 +3228,9 @@ export class MechEntity {
         return;
       }
     }
-    if (!pl) {
+    if (this.air) {
+      if (!pl) return this.airAI(dt, null, null); // 空域的空戰 AI（mech-air.js）
+    } else if (!pl) {
       this.move(dt, new THREE.Vector3(), false, false, false, null);
       return;
     }
@@ -3238,6 +3243,7 @@ export class MechEntity {
       .center()
       .addScaledVector(pl.vel, leadT * (this.isBoss ? 0.9 : 0.7) * Math.min(1.3, this.aiSkill));
     this.setAim(aimPos);
+    if (this.air) return this.airAI(dt, pl, aimPos); // 空域：同一套飛行模型的空戰 AI（mech-air.js）
     let wish = new THREE.Vector3();
     let hover = false,
       qb = false,

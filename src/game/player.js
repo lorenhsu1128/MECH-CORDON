@@ -2,11 +2,13 @@
 import { SFX } from '../audio/audio.js';
 import { clamp } from '../core/math.js';
 import { DS } from '../core/scale.js';
+import { AIR } from '../data/air.js';
 import { Game } from './game.js';
 
 Object.assign(Game.prototype, {
   // 鎖定的有效距離：裝備的武器（不含近戰）最遠的射程，上限是火控的鎖定距離；只有近戰武器時用鎖定距離
   lockReach(p) {
+    if (p.air) return AIR.AAM_R; // 空域：鎖定距離＝內建空戰導彈的射程（game/air.js）
     let r = 0;
     for (const k in p.weapons) {
       const d = p.weapons[k].def;
@@ -148,7 +150,7 @@ Object.assign(Game.prototype, {
     let aimEnt0 = null;
     if (p.lock) {
       const d = p.lock.pos.distanceTo(p.pos);
-      const inRange = d < p.stats.lockRange;
+      const inRange = d < (p.air ? AIR.AAM_R : p.stats.lockRange);
       if (inRange) {
         // aim toward lock but let mouse steer slightly
         const lead = clamp(d / 95, 0, 0.9);
@@ -194,7 +196,8 @@ Object.assign(Game.prototype, {
       p.aimYaw = this.fpYaw;
       p.aimPitch = this.fpPitch;
     } else p.fpFace = this.chase || !!p.air; // 追尾：機體面向準星（瞄準方向由 setAim 決定）
-    p.move(dt, wish, this.act('jump'), qb, this.act('ab'), p.lock);
+    // 空域：右搖桿推到底＝急轉彎（game/air.js 的 airStickTurn）
+    p.move(dt, wish, this.act('jump') || !!(p.air && this.airStickG), qb, this.act('ab'), p.lock);
     // weapons
     const aimR = this.chase ? this.mouseWorld.clone() : this.reticlePoint(p);
     this.aimRet = aimR;
@@ -267,6 +270,7 @@ Object.assign(Game.prototype, {
     fireSlot('larm', this.act('fireL'));
     fireSlot('lback', this.act('backL'));
     fireSlot('rback', this.act('backR'));
+    if (p.air) this.airPlayerTick(p, dt); // 空域：內建的空戰導彈、導彈警報（game/air.js）
     if (this.playerFiredAt > 0) this.playerFiredAt -= dt;
   },
 });

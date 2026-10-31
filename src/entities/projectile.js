@@ -9,6 +9,7 @@ import { DS, MS } from '../core/scale.js';
 import { buildProjectileMesh } from '../render/extra-models.js';
 import { targetDist, targetSegT } from '../world/prop-hit.js';
 
+const AAM_LOSE = 1.3; // 空戰導彈失去追蹤的夾角（data/air.js 的 AAM_LOSE）
 const BEND_CONE = 0.25; // 彈道修正只修正這個角度（弧度）以內的偏差：差一點擦過的會修正，大幅閃避照樣打不中
 
 export class Projectile {
@@ -75,7 +76,12 @@ export class Projectile {
       const sp = this.vel.length();
       const cur = this.vel.clone().normalize();
       const ang = cur.angleTo(to);
-      const maxA = this.turn * dt * (d < 10 * DS ? 2.2 : this.age > 0.5 ? 1.4 : 1);
+      // 空戰導彈（entities/mech-air.js）：擦身而過（夾角太大）就失去追蹤；轉向不會在近距離加快，急轉彎甩得掉
+      if (this.aam && ((ang > AAM_LOSE && this.age > 0.3) || (g.airInCloud && g.airInCloud(tc)))) {
+        this.target = null;
+        this.dodged = true;
+      }
+      const maxA = this.turn * dt * (this.aam ? 1 : d < 10 * DS ? 2.2 : this.age > 0.5 ? 1.4 : 1);
       if (ang > maxA) {
         const axis = cur.clone().cross(to).normalize();
         if (axis.lengthSq() > 0.5) cur.applyAxisAngle(axis, maxA);

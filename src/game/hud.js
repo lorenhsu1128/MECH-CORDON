@@ -639,7 +639,9 @@ Object.assign(Game.prototype, {
       c.fillStyle = '#80ffb0';
       c.font = '11px Chakra Petch';
       c.textAlign = 'center';
-      c.fillText(a.name + ' ' + Math.max(0, Math.ceil(a.allyT)) + 's', s.x, s.y - 4);
+      // 友軍 AC 顯示剩下的秒數；防衛目標（allyT 極大）只顯示名字
+      const left = a.allyT < 1e6 ? ' ' + Math.max(0, Math.ceil(a.allyT)) + 's' : '';
+      c.fillText(a.name + left, s.x, s.y - 4);
     }
     p.lockT = (p.lockT || 0) + dt;
     const tt = this.time;

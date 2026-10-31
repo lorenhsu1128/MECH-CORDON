@@ -61,6 +61,7 @@ Object.assign(Game.prototype, {
   },
   // 派出下一波：決定進入方式與地點、預告，WAVE_WARN 秒後生成
   waveLaunch() {
+    if (this.airMode) return this.airWaveLaunch(); // 空域：從遠方的空中飛來（game/air.js）
     if (!this.waveN) {
       // 沒經過 spawnComp 的波次（防衛區段自己排的）
       this.waveN = this.waves.length + 1;
@@ -122,6 +123,7 @@ Object.assign(Game.prototype, {
     );
   },
   waveSpawn(w) {
+    if (w.air) return this.airWaveSpawn(w);
     this.waveAt = w;
     try {
       for (const t of w.list) this.spawnType(t, this.scaleHp, this.scaleDmg);
@@ -139,7 +141,9 @@ Object.assign(Game.prototype, {
   // 顯示預告（房主與客機各自依自己的鏡頭算方向）：ECHO 的通訊、畫面邊緣的指示
   waveShow(ev) {
     const pos = new THREE.Vector3(ev.p[0], 0, ev.p[1]);
-    if (this.world) pos.y = this.world.groundAt(pos.x, pos.z, 999) + 2 * DS;
+    if (ev.y !== undefined)
+      pos.y = ev.y; // 空域：空中的地點
+    else if (this.world) pos.y = this.world.groundAt(pos.x, pos.z, 999) + 2 * DS;
     this.waveMarks = (this.waveMarks || []).concat([{ pos, t: MARK_T, drop: !!ev.d }]);
     const me = this.player && !this.player.dead ? this.player.pos : this.camera.position;
     const f = new THREE.Vector3();
