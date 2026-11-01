@@ -112,7 +112,7 @@ function writePack(dir, file, name, title) {
   );
 }
 // 音效改版（docs/audio-design.md）的音檔：資料夾裡的 *.mp3 → window.<name>＝{ 檔名（不含副檔名）: base64 }，不內嵌，
-// 遊戲啟動後（sfx2）、第一次進任務（bgm）、第一次播通訊（voice）才以 <script> 載入
+// 遊戲啟動後（sfx2）、第一次進任務（bgm）才以 <script> 載入
 function writeAudio(dir, file, name, title) {
   if (!fs.existsSync(dir)) return;
   const data = {};
@@ -147,12 +147,6 @@ function writeSounds() {
     'bgm-assets.js',
     'RUBICON_BGM',
     '任務中的配樂（src/assets/bgm/）',
-  );
-  writeAudio(
-    path.join(SRC, 'assets', 'voice', 'echo'),
-    'voice-assets.js',
-    'RUBICON_VOICE',
-    'ECHO 的語音（src/assets/voice/echo/，Kokoro-82M v1.1-zh 產生）',
   );
 }
 function writeHangar() {

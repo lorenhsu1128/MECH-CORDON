@@ -593,10 +593,9 @@ export class MechEntity {
     if (usesAmmo(d) && w.mag <= 0) {
       if (w.ammo <= 0) {
         if (this.isPlayer && !w.emptyCue) {
-          // 彈藥用完：空扳機＋ECHO 提醒（docs/audio-design.md 第 4 期）
+          // 彈藥用完：空扳機（docs/audio-design.md 第 4 期）
           w.emptyCue = true;
           SFX.empty();
-          g.voiceCue('ammoOut');
         }
         if (slot.endsWith('arm') && !w.dropped) this.dropWeapon(slot);
         return false;
@@ -1138,11 +1137,6 @@ export class MechEntity {
         w.reloadT = d.reload;
         if (this.isPlayer)
           SFX.reloadStart(d.type === 'missile' || d.type === 'shell' || d.type === 'grenade');
-      }
-      if (this.isPlayer) {
-        // 彈藥剩兩成時提醒一次
-        w.amMax = Math.max(w.amMax || 0, w.ammo + 1);
-        if (w.ammo === Math.floor(w.amMax * 0.2) && w.amMax >= 10) g.voiceCue('ammoLow');
       }
     }
     return true;

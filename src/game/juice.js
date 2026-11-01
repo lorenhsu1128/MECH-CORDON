@@ -489,7 +489,6 @@ Object.assign(Game.prototype, {
       b.introShown = true;
       if (this.lab) continue;
       this.showBanner('WARNING', b.name, '#ff4030', 2.8, { k: 'warning' });
-      this.voiceCue('boss');
       if (/^ECHO-/.test(b.name)) this.tfx('echo', '殘響反應', 'ECHO');
     }
     const B = this.banner;

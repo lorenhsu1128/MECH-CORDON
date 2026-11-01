@@ -126,7 +126,6 @@ Object.assign(Game.prototype, {
     if (this.extract > 0) return true;
     if (!this.cachesLeft()) return false;
     this.extract = EXTRACT_T;
-    this.voiceCue('extract');
     this.flashMsg(`主要目標完成 — ${EXTRACT_T} 秒後撤離（可以先回收補給箱）`, 0x7ee081, 3);
     return true;
   },

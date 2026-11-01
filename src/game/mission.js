@@ -47,7 +47,6 @@ Object.assign(Game.prototype, {
     p.en = Math.min(p.enMax, p.en + p.enMax * p.pmv('kitEn'));
     this.fx.ring(p.center(), 5, 0x7ee081);
     SFX.kit();
-    this.voiceCue('kit');
     this.rumble(0.15, 0.4, 180);
     this.flashMsg('修復完成', 0x7ee081, 0.8);
   },
@@ -944,7 +943,6 @@ Object.assign(Game.prototype, {
     const earned = this.missionEarned || 0;
     const xpAll = this.pilotEndXpPve(success, aborted); // 要在關卡前進之前計算
     let baseBonus = 0;
-    if (success && !aborted) this.voiceCue('success');
     if (success) {
       bonus = Math.round((8000 + L * 2500) * bossMul);
       const tA = this.airStats ? 240 : 90; // 空域的任務比較長

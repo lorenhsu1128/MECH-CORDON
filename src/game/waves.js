@@ -166,11 +166,6 @@ Object.assign(Game.prototype, {
     SFX.waveAlert(Math.sin(ang), ev.i >= ev.N); // 從預告的方向（左右聲道）響起
     if (ev.i >= ev.N && ev.N > 1) this.tfx('lastwave', '最終波', `${clock} 點鐘方向・${ev.n} 機`);
     this.commSay('echo', text);
-    // 語音：方向（＋敵對 AC＋最後一波），句子裡的距離是動態的，所以用預先產生的片段（data/voice.js）
-    const ids = [(ev.d ? 'waveDrop' : 'waveIn') + clock];
-    if (ev.a) ids.push('waveAc');
-    if (ev.i >= ev.N) ids.push('waveLast');
-    if (this.voiceSeq) this.voiceSeq(ids, 2);
   },
   // HUD：增援地點的指示（畫面外是邊緣的箭頭，畫面內是菱形標記）
   drawWaveMarks(c, W, H, p, dt) {

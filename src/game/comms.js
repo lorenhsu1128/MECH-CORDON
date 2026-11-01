@@ -99,20 +99,7 @@ Object.assign(Game.prototype, {
     el.style.borderLeftColor = fx && S.faction ? S.color : '';
     el.classList.add('on');
     SFX.radio();
-    let show = 1.8 + text.length * 0.09;
-    // ECHO 的語音（game/voice.js）：解碼完知道長度後，顯示時間至少到唸完
-    if (sp === 'echo' && this.voiceSay) {
-      const t0 = performance.now();
-      this.voiceSay(text).then((d) => {
-        if (!d || this.commCur !== ln) return;
-        const need = d + 0.6;
-        if (need <= show) return;
-        show = need;
-        clearTimeout(this.commTo);
-        this.commTo = setTimeout(() => this.commNext(), Math.max(0, need * 1000 - (performance.now() - t0)));
-      });
-    }
-    this.commCur = ln;
+    const show = 1.8 + text.length * 0.09;
     // 文字演出：預告「打字機」的逐字（最多花顯示時間的 45%）
     this.commTypeEnd = fx
       ? performance.now() + revealDom(el.querySelector('span'), 'comm', { limit: show * 0.45 }) * 1000
@@ -138,12 +125,10 @@ Object.assign(Game.prototype, {
       return revealFinish(document.querySelector('#comm span'));
     }
     clearTimeout(this.commTo);
-    if (this.voiceStop) this.voiceStop();
     this.commNext();
   },
   commClear() {
     clearTimeout(this.commTo);
-    if (this.voiceStop) this.voiceStop();
     this.commQ = [];
     this.commBusy = false;
     const el = document.getElementById('comm');

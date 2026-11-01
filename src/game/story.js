@@ -74,7 +74,6 @@ Object.assign(Game.prototype, {
     this.storyNext();
   },
   storyNext() {
-    this.voiceStop();
     const k = (this.storyQ || []).shift();
     if (!k) {
       const f = this.storyDone;
@@ -109,7 +108,6 @@ Object.assign(Game.prototype, {
       .join('');
     const end = this.tfxStory(it.title);
     this.storyTypeEnd = end ? performance.now() + end * 1000 : 0;
-    this.voiceStory(it.lines, end || 0); // ECHO 的台詞（game/voice.js）
   },
   // 「繼續」：逐字還沒完時先全部顯示
   storyContinue() {

@@ -11751,9 +11751,9 @@ async function testAudio(browser, base) {
   await ctx.close();
 }
 
-// 音效改版（docs/audio-design.md）：分層的槍聲、發聲上限、反射、掠過聲、彈殼、多人的轉送、音量、ECHO 的語音、動態配樂
+// 音效改版（docs/audio-design.md）：分層的槍聲、發聲上限、反射、掠過聲、彈殼、多人的轉送、音量、動態配樂
 async function testAudio2(browser, base) {
-  console.log('音效改版：分層的槍聲、發聲上限、反射、掠過、多人轉送、音量、ECHO 語音、動態配樂');
+  console.log('音效改版：分層的槍聲、發聲上限、反射、掠過、多人轉送、音量、動態配樂');
   const { ctx, page } = await newPage(browser, 'audio2');
   await page.goto(base + '?test');
   await waitVisible(page, 'title');
@@ -11825,30 +11825,12 @@ async function testAudio2(browser, base) {
       S.netPlay(sent[1][0], JSON.parse(JSON.stringify(sent[1][1])), (id) => g.entById(id)),
     );
     // 音量
-    g.ctrl.vol = { m: 0.5, s: 0.8, b: 0.3, v: 1, u: 1 };
+    g.ctrl.vol = { m: 0.5, s: 0.8, b: 0.3, u: 1 };
     S.setVol(g.ctrl.vol);
     await new Promise((res) => setTimeout(res, 300));
     out.mGain = S.master.gain.value;
     out.bGain = S.bgmBus.gain.value;
     S.setVol({});
-    // ECHO 的語音：通訊的台詞與系統提示
-    out.vLoad = await g.voiceLoad();
-    out.vKeys = Object.keys(window.RUBICON_VOICE || {}).length;
-    out.vSay = await g.voiceSay('空降完成。這次作戰由我管制。');
-    out.vNone = await g.voiceSay('（沒有這句的語音）');
-    g.voiceStop();
-    g.voiceCd = {};
-    g.voiceCue('missile');
-    await new Promise((res) => setTimeout(res, 1500));
-    out.vCue = !!g.voiceCur;
-    g.ctrl.voice = 'comm';
-    g.voiceStop();
-    g.voiceCd = {};
-    g.voiceCue('ap25');
-    await new Promise((res) => setTimeout(res, 300));
-    out.vCommOnly = !g.voiceCur;
-    g.ctrl.voice = 'on';
-    g.voiceStop();
     // 動態配樂：載入後依戰況選強度（測試的 state 不是任務中，主迴圈的 bgmFrame 會停掉配樂，所以先換掉）
     const frame0 = g.bgmFrame;
     g.bgmFrame = () => {};
@@ -11904,11 +11886,6 @@ async function testAudio2(browser, base) {
     Math.abs(r.mGain - 0.35) < 0.05 && Math.abs(r.bGain - 0.165) < 0.05,
     `音量設定（主 ${r.mGain.toFixed(2)}、配樂 ${r.bGain.toFixed(2)}）`,
   );
-  check(
-    r.vLoad && r.vKeys >= 300 && r.vSay > 0.5 && r.vNone === 0,
-    `ECHO 的語音（${r.vKeys} 句、${r.vSay.toFixed(1)} 秒）`,
-  );
-  check(r.vCue && r.vCommOnly, '系統提示（導彈接近）、設定「只有通訊」時不唸');
   check(
     r.bLoad && r.lv0 === 0 && r.lv2 === 2 && r.bCur && r.bKey === 2,
     `動態配樂（探索 ${r.lv0} → 交戰 ${r.lv2}、播放中 ${r.bKey}）`,

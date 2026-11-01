@@ -44,7 +44,7 @@ const NET_FNS = {
 };
 
 // 混音：音效（sfx）與環境音（amb）→ world（音效音量）→ muf（低 AP 時低通變悶）→ duck（大爆炸、通訊時壓低）→ master；
-// 介面（ui）、語音（voice）、配樂（mus 過場、bgm 任務中）不受壓低與變悶，各自的音量直接進 master。
+// 介面（ui）、配樂（mus 過場、bgm 任務中）不受壓低與變悶，各自的音量直接進 master。
 // 音效另外送一份到殘響（依地圖主題，地下長、空曠短）與反射（env：兩條延遲線，依主題）。
 // master → 壓縮 → 限幅 → 輸出。
 export const SFX = {
@@ -59,7 +59,7 @@ export const SFX = {
   mirror: null, // 房主把有位置的音效轉送給客機：(k, vol, rate, pos) => void，由 Game 設定（mp-lobby.js）
   mirrorCall: null, // 房主把高階的呼叫轉送給客機：(名稱, 參數, 位置) => void
   netDepth: 0, // 高階呼叫裡面的 play 不再個別轉送
-  vol: { m: 1, s: 1, b: 1, v: 1, u: 1 }, // 主音量、音效、配樂、語音、介面（ctrl.vol）
+  vol: { m: 1, s: 1, b: 1, u: 1 }, // 主音量、音效、配樂、介面（ctrl.vol）
   voices: [],
   threatOf: null, // (實體) => 1 一般／>1 正在攻擊玩家（威脅導向的混音，Game 設定）
   surfAt: null, // (位置) => 地面材質（命中依材質，Game 設定）
@@ -95,9 +95,7 @@ export const SFX = {
       this.amb.connect(this.world);
       this.uiBus = c.createGain();
       this.uiBus.connect(this.master);
-      this.voiceBus = c.createGain();
-      this.voiceBus.connect(this.master);
-      // 任務中的配樂（game/bgm.js）：自己的壓低（語音時）與音量
+      // 任務中的配樂（game/bgm.js）：自己的壓低（Boss 的重音時）與音量
       this.bgmDuck = c.createGain();
       this.bgmBus = c.createGain();
       this.bgmBus.connect(this.bgmDuck);
@@ -131,16 +129,15 @@ export const SFX = {
       this.on = false;
     }
   },
-  // 音量（0～1）：m 主音量、s 音效與環境音、b 配樂、v 語音、u 介面
+  // 音量（0～1）：m 主音量、s 音效與環境音、b 配樂、u 介面
   setVol(v) {
-    this.vol = Object.assign({ m: 1, s: 1, b: 1, v: 1, u: 1 }, v || {});
+    this.vol = Object.assign({ m: 1, s: 1, b: 1, u: 1 }, v || {});
     if (!this.ctx) return;
     const t = this.ctx.currentTime,
       V = this.vol;
     this.master.gain.setTargetAtTime(0.7 * V.m, t, 0.03);
     this.world.gain.setTargetAtTime(V.s, t, 0.03);
     this.uiBus.gain.setTargetAtTime(V.u, t, 0.03);
-    this.voiceBus.gain.setTargetAtTime(V.v * 1.1, t, 0.03);
     this.bgmBus.gain.setTargetAtTime(V.b * 0.55, t, 0.03);
     this.musOut.gain.setTargetAtTime(V.b * 2.2, t, 0.03);
   },
@@ -279,7 +276,7 @@ export const SFX = {
     g.linearRampToValueAtTime(1 - amt, t + 0.03);
     g.setTargetAtTime(1, t + dur, dur * 0.6);
   },
-  // 配樂的壓低（語音說話時）：amt 0～1，dur 秒後恢復
+  // 配樂的壓低（Boss 的重音時）：amt 0～1，dur 秒後恢復
   duckBgm(amt, dur) {
     if (!this.ctx) return;
     const g = this.bgmDuck.gain,
@@ -425,7 +422,7 @@ export const SFX = {
     this.voiceKill(low, t);
     return true;
   },
-  // bus：'ui' 不受壓低與變悶、'voice' 語音；delay：延遲秒數（分層的尾音）
+  // bus：'ui' 不受壓低與變悶；delay：延遲秒數（分層的尾音）
   // o：{ pr 類別權重（自機 3、威脅 1.6、一般 1）, hp 高通 Hz, send 反射的送出量, vr 音量隨機（dB）, max 同鍵上限 }
   play(k, vol = 1, rate = 1, detune = 0.06, minGap = 0.03, pos = null, bus = null, delay = 0, o = null) {
     if (pos && this.mirror && !this.netDepth) this.mirror(k, vol, rate, pos);
@@ -440,7 +437,7 @@ export const SFX = {
     const rate1 = rate * (1 + (arnd() * 2 - 1) * detune);
     const vr = o && o.vr !== undefined ? o.vr : 1.5;
     const vol1 = vol * Math.pow(10, ((arnd() * 2 - 1) * vr) / 20);
-    const ui = bus === 'ui' || bus === 'voice';
+    const ui = bus === 'ui';
     if (!ui) {
       // 優先度＝音量 × 距離衰減 × 類別
       const ref = 7 * this.dk,
@@ -459,7 +456,7 @@ export const SFX = {
     const g = this.ctx.createGain();
     g.gain.value = vol1;
     s.connect(g);
-    g.connect(bus === 'voice' ? this.voiceBus : this.uiBus);
+    g.connect(this.uiBus);
     s.start(t + delay);
   },
   voiceStart(k, b, vol, rate, pos, d, delay, o, pr, t) {
@@ -558,7 +555,7 @@ export const SFX = {
     g.gain.value = vol * 0.5;
     s.connect(f);
     f.connect(g);
-    g.connect(bus === 'ui' ? this.uiBus : bus === 'voice' ? this.voiceBus : this.sfx);
+    g.connect(bus === 'ui' ? this.uiBus : this.sfx);
     s.start(c.currentTime + delay);
   },
   tone(f0, f1, dur, vol, type = 'square', bus = 'sfx', delay = 0) {
@@ -574,7 +571,7 @@ export const SFX = {
     g.gain.linearRampToValueAtTime(vol * 0.4, t + 0.004);
     g.gain.exponentialRampToValueAtTime(0.001, t + dur);
     o.connect(g);
-    g.connect(bus === 'ui' ? this.uiBus : bus === 'voice' ? this.voiceBus : this.sfx);
+    g.connect(bus === 'ui' ? this.uiBus : this.sfx);
     o.start(t);
     o.stop(t + dur + 0.02);
   },
