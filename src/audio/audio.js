@@ -41,6 +41,7 @@ const NET_FNS = {
   casing: 0,
   servo: 1,
   empBlast: 0,
+  bark: 1,
 };
 
 // 混音：音效（sfx）與環境音（amb）→ world（音效音量）→ muf（低 AP 時低通變悶）→ duck（大爆炸、通訊時壓低）→ master；
@@ -63,6 +64,7 @@ export const SFX = {
   voices: [],
   threatOf: null, // (實體) => 1 一般／>1 正在攻擊玩家（威脅導向的混音，Game 設定）
   surfAt: null, // (位置) => 地面材質（命中依材質，Game 設定）
+  barkSrc: null, // (鍵, 位置) => void：敵兵的喊話（Game 的 barkPlay：載入、解碼後呼叫 SFX.barkPlay）
   init() {
     if (this.ctx) return;
     try {
@@ -461,6 +463,20 @@ export const SFX = {
     s.connect(g);
     g.connect(bus === 'voice' ? this.voiceBus : this.uiBus);
     s.start(t + delay);
+  },
+  // 敵兵的無線電喊話（game/voice.js 的 barkSay）：key＝'<聲音>/<鍵>'；NET_FNS 的高階呼叫，客機照自己的距離重播
+  bark(key, pos) {
+    if (this.barkSrc) this.barkSrc(key, pos);
+  },
+  // 解碼好的喊話在位置上播（高通＝無線電的薄）；同時最多 2 句
+  barkPlay(b, pos) {
+    this.buf['@bark'] = b;
+    this.netDepth++;
+    try {
+      this.play('@bark', 1.4, 1, 0.02, 0.05, pos, null, 0, { pr: 1.4, hp: 280, max: 2, vr: 0 });
+    } finally {
+      this.netDepth--;
+    }
   },
   voiceStart(k, b, vol, rate, pos, d, delay, o, pr, t) {
     const c = this.ctx;

@@ -212,6 +212,11 @@ Object.assign(MechEntity.prototype, {
         n++;
       }
       if (n) g.msgAll(`指揮官擊破 — ${n} 台敵機陷入混亂`, 0xffc040);
+      if (n)
+        g.barkSay(
+          this.friendsOf().find((f) => f.confuseT === 4 && !f.dead),
+          'cmdDown',
+        );
     }
     if (this.ai === 'dropship' && !this.gone && !this.aiState.dropped && from)
       g.msgAll('運輸機擊落 — 投放阻止', 0x7ee081);

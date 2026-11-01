@@ -1172,8 +1172,8 @@ Object.assign(Game.prototype, {
       c.commT = c.t;
     }
     if (who && who !== 'station') SFX.radio();
-    // ECHO 的台詞也唸（game/voice.js；沒有這句的語音就只有字幕）
-    if (who === 'echo' && this.voiceSay) this.voiceSay(text);
+    // 角色的台詞也唸（game/voice.js；沒有這句的語音就只有字幕）
+    if (who && this.voiceSay) this.voiceSay(text, who);
     else if (who === 'station') SFX.play('glitch', 0.3, 0.6, 0.02, 0.1, null, 'ui');
     c.subUntil = c.t + dur;
   },

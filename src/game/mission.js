@@ -782,6 +782,7 @@ Object.assign(Game.prototype, {
       return this.tutKilled(e);
     }
     this.foeScavenge(e);
+    if (!this.isClient) this.barkAllyDown(e); // 敵兵的喊話（game/voice.js）
     if (!this.isClient) this.tierPartDown(e); // Boss 改版的 J：部位破壞（boss-tier.js）
     // 自訂關卡：沒有擊破獎金、不寫存檔（擊破音、連殺、彈藥箱照常）
     if (this.lv) {

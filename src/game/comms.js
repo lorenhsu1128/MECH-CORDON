@@ -100,10 +100,10 @@ Object.assign(Game.prototype, {
     el.classList.add('on');
     SFX.radio();
     let show = 1.8 + text.length * 0.09;
-    // ECHO 的語音（game/voice.js）：解碼完知道長度後，顯示時間至少到唸完
-    if (sp === 'echo' && this.voiceSay) {
+    // 角色的語音（game/voice.js）：解碼完知道長度後，顯示時間至少到唸完
+    if (this.voiceSay) {
       const t0 = performance.now();
-      this.voiceSay(text).then((d) => {
+      this.voiceSay(text, sp).then((d) => {
         if (!d || this.commCur !== ln) return;
         const need = d + 0.6;
         if (need <= show) return;

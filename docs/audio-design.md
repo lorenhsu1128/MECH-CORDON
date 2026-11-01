@@ -146,6 +146,15 @@
 - **台詞**：`scripts/voice-lines.js` 收集 364 句（通訊、程式裡的 `commSay('echo', …)`、劇情畫面、系統提示、過場動畫（每個周目 × 抉擇的組合都產生一次劇本））→ `src/assets/voice/lines.json`＝{ 鍵: { t 台詞, k 情境 } }；情境（alarm 緊急的系統提示、sys、comm、story、cine、private 私人頻道、end 結局與記憶片段）決定語氣指示（`voice-gen.py` 的 `STYLE`，有「！」再加「語氣有力」）。
 - **產生**（`scripts/voice-gen.py`）：參考音檔＝試聽那個候選的第 1 句（`src/assets/voice/ref/<聲音>.flac`），VoxCPM2 的 controllable cloning 每句 2 次 → faster-whisper（large-v3）轉寫、只比中文字的相似度（英文名字與數字的寫法不算），長度不合理的扣分，留最像的；太低的寫進 `src/assets/voice/<聲音>/report.txt`，`--retry` 再產生 2 次重挑。唸法：「ECHO」這類 4 個字母以上的全大寫名字改成一般大小寫照單字唸（試聽時全大寫被逐字母唸成「一差丑」），AP、AC、COAM 照字母；R-07 唸「R 零七」；「……」換成停頓。響度以 RMS 對齊，24 kHz 單聲道 40 kbps。暫存的每一次產生放在系統暫存的 `rubicon-voice-takes/`。
 
+### 其他角色的語音與敵兵的喊話（2026-11-01）
+
+使用者定案：ECHO 以外的角色也配音，**聲音照劇本的角色設定直接產生**（不經過試聽）；派克是女性；敵兵的無線電喊話一起做。
+
+- **角色**（`data/voice.js` 的 `CAST_IDS`，資料夾＝說話者 id）：委託方代表（霍斯特、薩奇、派克、諾拉、米拉）、軌道站（機械語音：產生後加環形調變與短的金屬共鳴，`voice-gen.py` 的 `robot`）、教官（通訊、課程的開場／結業、`data/tutorial*.js` 的提示 `say`、「第 n 課」）、宿敵 13 位＋IGUAZU／VOLTA。聲音設計的描述與說話方式在 `voice-gen.py` 的 `CAST`（性別：劇本寫明的 SIROCCO、WHITEOUT 是女性，VOLTA 為了和 IGUAZU 對比設成女性，其他宿敵男性）。
+- **聲音怎麼決定**：沒有參考音檔的聲音，以描述唸一句代表台詞（長度最接近 26 字、沒有英文）產生 3 個候選，faster-whisper 的相似度＋音高（男聲 165 Hz 以下、女聲以上，不對的扣分）挑一個存成 `src/assets/voice/ref/<聲音>.flac`（提交；`--recast` 重新設計）。之後和 ECHO 一樣以參考音檔克隆、每句 2 次挑最像的；語氣指示＝角色的說話方式＋情境。
+- **播放**：`voiceSay(text, 說話者)`（通訊、過場字幕）、`voiceStory` 以 `storyQuote` 認出「霍斯特：「…」」「諾拉在頻道裡哭了：「…」」的說話者；`voiceFolder(說話者)`＝聲音資料夾（ECHO＝設定選的、其他角色在設定「其他角色的語音」`ctrl.voiceCast` 沒關時）。每個角色一個 `lib/voice-<id>.js`，用到時才載入；解碼過的最多留 80 句。
+- **敵兵的喊話**（`BARKS`：察覺 spot、搜索 search、拿到攻擊權杖 attack、一次受到 12% 以上的傷害 hurt、同伴被擊毀 allyDown、指揮官倒下 cmdDown，各 3 句；三個敵兵的聲音 grunt1～3 依實體 id 分配）：房主／單機在 AI 的事件呼叫 `barkSay`（有腳的一般敵人，不含 Boss、精英、宿敵、飛行的；離玩家 70 m 內；全體 3.5 秒、各事件 `BARK_CD`、同一台 6 秒的冷卻）→ `SFX.bark`（`NET_FNS` 的高階呼叫，客機照自己的距離重播，`NET_VERSION` 11.17）→ `SFX.barkSrc`＝`barkPlay`（設定「敵兵的無線電喊話」`ctrl.barks`）載入、解碼 → `SFX.barkPlay` 在位置上播（高通 280 Hz、同時最多 2 句）。
+
 ### 之後可以再做
 
 - 依武器的「近距離」再多錄幾種（目前霰彈、步槍各 3～4 個素材，機槍 3 個）；同一台的多把相同武器只播一把（War Robots 的作法）。

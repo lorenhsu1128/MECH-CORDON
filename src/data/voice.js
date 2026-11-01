@@ -1,13 +1,59 @@
 // ============================================================
-//  ECHO 的語音（docs/audio-design.md）：純資料與純函式。
+//  角色的語音（docs/audio-design.md）：純資料與純函式。
 //  語音檔由 scripts/voice-lines.js 收集台詞 → scripts/voice-gen.py（VoxCPM2，以每個聲音的參考音檔克隆）產生，
-//  放在 src/assets/voice/<聲音>/<鍵>.mp3：劇情台詞的鍵＝vkey(文字)，系統提示的鍵＝'s_' + id。
-//  改了台詞就要重新產生（沒有語音的台詞照舊只有文字）。
+//  放在 src/assets/voice/<聲音>/<鍵>.mp3：劇情台詞的鍵＝vkey(文字)，系統提示的鍵＝'s_' + id，敵兵喊話＝'b_' + 事件 + 編號。
+//  聲音資料夾：ECHO 有兩個（gentle／ai，設定選一個），其他角色一個資料夾＝說話者 id（data/story.js 的 SPEAKERS），
+//  敵兵三個（grunt1～3）。改了台詞就要重新產生（沒有語音的台詞照舊只有文字）。
 // ============================================================
 
 // 聲音（設定 ctrl.voice 的值，第一個是預設）：語音試聽的溫柔知性 #2、AI 系統感 #3
 export const VOICE_IDS = ['gentle', 'ai'];
 export const VOICE_NAMES = { gentle: '溫柔知性', ai: 'AI 系統感' };
+
+// ECHO 以外有語音的說話者（資料夾＝說話者 id；設定 ctrl.voiceCast 關掉時不唸）
+export const CAST_IDS = [
+  'castron',
+  'aetheric',
+  'veerwell',
+  'sancta',
+  'mira',
+  'station',
+  'instructor',
+  'rust',
+  'sirocco',
+  'prospector',
+  'stevedore',
+  'sluice',
+  'marsh',
+  'whiteout',
+  'specimen',
+  'spire',
+  'countdown',
+  'undertow',
+  'zenith',
+  'iguazu',
+  'volta',
+];
+// 序章與章節畫面裡的名字 → 說話者
+const STORY_NAMES = {
+  ECHO: 'echo',
+  霍斯特: 'castron',
+  薩奇: 'aetheric',
+  派克: 'veerwell',
+  諾拉: 'sancta',
+  米拉: 'mira',
+};
+
+// 敵兵的無線電喊話（game/voice.js 的 barkSay）：事件 → 台詞（每個事件 3 句，三個敵兵的聲音都唸）
+export const BARKS = {
+  spot: ['發現目標！', '敵方 AC，就在那裡！', '接觸！目標出現！'],
+  search: ['人跑到哪去了？', '目標消失，繼續搜索。', '散開，把他找出來。'],
+  attack: ['開火！開火！', '壓制他！別讓他抬頭！', '上！別讓他喘氣！'],
+  hurt: ['我被打中了！', '機體受損！', '可惡，裝甲撐不住了！'],
+  allyDown: ['我們的人被擊毀了！', '失去一台！', '該死，他被幹掉了！'],
+  cmdDown: ['指揮官倒了！', '沒有指揮了，怎麼辦？', '指揮官失聯！'],
+};
+export const GRUNTS = ['grunt1', 'grunt2', 'grunt3'];
 
 // 文字 → 鍵（FNV-1a 32 位元，36 進位）；全形與半形空白、前後的空白不算
 export function vkey(text) {
@@ -20,10 +66,15 @@ export function vkey(text) {
   return 'h' + h.toString(36);
 }
 
-// 序章與章節畫面的台詞：「ECHO：「……」」或「ECHO（私人頻道）：「……」」→ 引號裡的句子；不是 ECHO 的回傳 null
+// 序章與章節畫面的台詞：「名字：「……」」「ECHO（私人頻道）：「……」」「諾拉在頻道裡哭了：「……」」
+// → { sp 說話者, q 引號裡的句子 }；不是有語音的角色（旁白、資料）回傳 null
+export function storyQuote(line) {
+  const m = /^(ECHO|霍斯特|薩奇|派克|諾拉|米拉)[^：「」]{0,12}：「(.+)」$/.exec(String(line).trim());
+  return m ? { sp: STORY_NAMES[m[1]], q: m[2] } : null;
+}
 export function echoQuote(line) {
-  const m = /^ECHO(?:（[^）]*）)?：「(.+)」$/.exec(String(line).trim());
-  return m ? m[1] : null;
+  const r = storyQuote(line);
+  return r && r.sp === 'echo' ? r.q : null;
 }
 
 // 增援預告的鐘點（1～12）念法

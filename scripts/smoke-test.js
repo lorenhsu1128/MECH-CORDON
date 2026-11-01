@@ -11897,6 +11897,37 @@ async function testAudio2(browser, base) {
     out.vOff = !g.voiceCur && out.vOffSay === 0;
     g.ctrl.voice = 'gentle';
     g.voiceStop();
+    // 其他角色的語音（委託方）與設定關閉
+    out.vCast = await g.voiceSay('通訊局的入口在橋梁群底下。進去，毀掉它，什麼都別聽。', 'castron');
+    g.voiceStop();
+    g.ctrl.voiceCast = 'off';
+    out.vCastOff = await g.voiceSay('通訊局的入口在橋梁群底下。進去，毀掉它，什麼都別聽。', 'castron');
+    g.ctrl.voiceCast = 'on';
+    // 敵兵的喊話：有腳的敵人察覺時喊、多人轉送高階呼叫、設定關閉時不播
+    const grunt = g.enemies.find(
+      (e) => !e.dead && !e.isBoss && e.stats && e.stats.parts && e.stats.parts.legs,
+    );
+    out.bark = null;
+    if (grunt) {
+      grunt.pos.copy(pl.pos).add(new THREE.Vector3(12, 0, 0));
+      const sent2 = [];
+      const mc0 = S.mirrorCall;
+      S.mirrorCall = (f, a) => sent2.push(f);
+      g.barkCd = null;
+      grunt.barkT = -99;
+      S.buf['@bark'] = null;
+      g.barkSay(grunt, 'spot');
+      S.mirrorCall = mc0;
+      const t0 = performance.now();
+      while (!S.buf['@bark'] && performance.now() - t0 < 8000)
+        await new Promise((res) => setTimeout(res, 100));
+      out.bark = { played: !!S.buf['@bark'], sent: sent2.join() };
+      g.ctrl.barks = 'off';
+      S.buf['@bark'] = null;
+      await g.barkPlay('grunt1/b_spot0', grunt.pos);
+      out.bark.off = !S.buf['@bark'];
+      g.ctrl.barks = 'on';
+    }
     // 動態配樂：載入後依戰況選強度（測試的 state 不是任務中，主迴圈的 bgmFrame 會停掉配樂，所以先換掉）
     const frame0 = g.bgmFrame;
     g.bgmFrame = () => {};
@@ -11958,6 +11989,14 @@ async function testAudio2(browser, base) {
   );
   check(r.vAi > 0.5 && r.vAiId === 'ai', `切換成 AI 系統感（${r.vAi.toFixed(1)} 秒）`);
   check(r.vCue && r.vOff, '系統提示（導彈接近）、設定「關閉」時不唸');
+  check(
+    r.vCast > 0.5 && r.vCastOff === 0,
+    `其他角色的語音（霍斯特 ${r.vCast.toFixed(1)} 秒）、設定關閉時不唸`,
+  );
+  check(
+    r.bark && r.bark.played && r.bark.sent === 'bark' && r.bark.off,
+    `敵兵的喊話（播放、多人轉送 ${r.bark && r.bark.sent}、設定關閉時不播）`,
+  );
   check(
     r.bLoad && r.lv0 === 0 && r.lv2 === 2 && r.bCur && r.bKey === 2,
     `動態配樂（探索 ${r.lv0} → 交戰 ${r.lv2}、播放中 ${r.bKey}）`,

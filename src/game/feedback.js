@@ -125,6 +125,7 @@ Object.assign(Game.prototype, {
     // 槍聲、爆炸的反射（docs/audio-design.md）：依主題，有岩頂＝室內
     SFX.setEnv(T.roof ? 'indoor' : ENV_OF_THEME[w.themeKey] || 'open');
     SFX.surfAt = (p) => this.surfAt(p.x, p.z, p.y);
+    SFX.barkSrc = (k, p) => this.barkPlay(k, p); // 敵兵的喊話（game/voice.js）
     SFX.threatOf = (e) => this.sfxThreat(e);
   },
   // 威脅導向的混音：正在攻擊玩家的敵人（主攻、預警中、Boss、敵對 AC）大聲一點、優先度高

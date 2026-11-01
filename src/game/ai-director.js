@@ -187,6 +187,7 @@ Object.assign(Game.prototype, {
         const sn = e.sn;
         sn.tok = true;
         sn.tokT = 0;
+        this.barkSay(e, 'attack'); // 敵兵的喊話（game/voice.js）
         sn.hold = rnd(TOKEN_HOLD[0], TOKEN_HOLD[1]);
         sn.mvCd = Math.min(sn.mvCd, rnd(0.2, 0.8));
         holders.push(e);

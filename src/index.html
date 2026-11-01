@@ -1009,13 +1009,27 @@
           <h3 style="margin: 14px 0 6px; font-size: 15px">聲音</h3>
           <div id="volBox"></div>
           <div class="krow">
-            <span>ECHO 的語音</span
+            <span>ECHO 的聲音</span
             ><select
               id="ctrlVoice"
               title="通訊、劇情畫面、過場動畫與駕駛艙的系統提示由 ECHO 唸出（VoxCPM2 產生）；關閉時只有文字"
             >
               <option value="gentle">溫柔知性（預設）</option>
               <option value="ai">AI 系統感</option>
+              <option value="off">關閉</option>
+            </select>
+          </div>
+          <div class="krow">
+            <span>其他角色的語音</span
+            ><select id="ctrlVoiceCast" title="委託方、宿敵、教官、軌道站的台詞也唸出來；關閉時只有文字">
+              <option value="on">開啟（預設）</option>
+              <option value="off">關閉</option>
+            </select>
+          </div>
+          <div class="krow">
+            <span>敵兵的無線電喊話</span
+            ><select id="ctrlBarks" title="附近的敵兵察覺、搜索、進攻、受傷、同伴被擊毀時的喊話">
+              <option value="on">開啟（預設）</option>
               <option value="off">關閉</option>
             </select>
           </div>

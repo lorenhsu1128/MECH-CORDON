@@ -838,6 +838,15 @@ Object.assign(Game.prototype, {
       this.saveKeys();
       if (e.target.value !== 'off') this.voiceTest(); // 換聲音時試聽一句
     };
+    document.getElementById('ctrlVoiceCast').onchange = (e) => {
+      this.ctrl.voiceCast = e.target.value; // 其他角色的語音（game/voice.js 的 voiceFolder）
+      this.voiceStop();
+      this.saveKeys();
+    };
+    document.getElementById('ctrlBarks').onchange = (e) => {
+      this.ctrl.barks = e.target.value; // 敵兵的無線電喊話（game/voice.js 的 barkPlay）
+      this.saveKeys();
+    };
     document.getElementById('ctrlBgm').onchange = (e) => {
       this.ctrl.bgm = e.target.value; // 戰鬥配樂（game/bgm.js）
       this.saveKeys();

@@ -169,6 +169,7 @@ Object.assign(MechEntity.prototype, {
     // 整隊都看不到：搜索（敵對 AC 不會跟丟）
     if (!this.ace && g.time - sn.knT > LOST_T) {
       if (sn.tok) g.aiRelease(this);
+      if (sn.st !== 3) g.barkSay(this, 'search');
       sn.st = 3;
       sn.srchT = 0;
       sn.meter = 0;
@@ -311,6 +312,7 @@ Object.assign(MechEntity.prototype, {
     sn.blind = 0;
     if (was !== 2) sn.spotT = g.time;
     if (radio && was !== 2) sn.radioT = RADIO_DL;
+    if (radio && was !== 2) g.barkSay(this, 'spot'); // 敵兵的喊話（game/voice.js）
     if (this.guardOf) for (const o of g.enemies) if (o.guardOf === this.guardOf) o.guardAlert = true;
   },
   // 聽到聲音（玩家開火、QB）：src 是發出聲音的機體
@@ -331,6 +333,7 @@ Object.assign(MechEntity.prototype, {
     if (!sn || !from || from.team === this.team || from.dead === undefined) return;
     sn.th.set(from.id, (sn.th.get(from.id) || 0) + clamp((dmg / this.maxHp) * 100, 0.5, 60));
     if (sn.st !== 2) this.senseEngage(from, true);
+    else if (dmg > this.maxHp * 0.12 && this.hp > 0) this.game.barkSay(this, 'hurt');
   },
   // 自己看不到目標（地形、障礙物擋住）：往最後已知位置繞過去找射線，卡住就跳；回傳懸浮
   seekLos(wish, dt) {
