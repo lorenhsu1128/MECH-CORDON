@@ -508,9 +508,10 @@ Object.assign(Game.prototype, {
         this.airMslT = clamp(tMin * 0.22, 0.07, 0.45);
         SFX.tone(1180, 1180, 0.05, 0.2, 'square', 'ui');
       }
-      // 第三級：快要打中（docs/audio-design.md 第 5 期）＝急促的警報
+      // 第三級：快要打中（docs/audio-design.md 第 5 期）＝急促的警報＋ECHO
       if (tMin < 1.2 && !this.airMslHi) {
         SFX.play('warnB', 0.5, 1.1, 0.02, 0.6, null, 'ui');
+        this.voiceCue('missile');
       }
       this.airMslHi = tMin < 1.2;
     } else this.airMslT = 0;
@@ -645,6 +646,7 @@ Object.assign(Game.prototype, {
       this.airTailT -= dt;
       if (this.airTailT <= 0) {
         this.airTailT = 0.9;
+        this.voiceCue('airLock');
         SFX.tone(560, 470, 0.12, 0.14, 'triangle', 'ui');
       }
     } else this.airTailT = 0;

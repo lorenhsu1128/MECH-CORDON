@@ -106,6 +106,7 @@ import './game/editor-trig.js';
 import './game/editor-pick.js';
 import './game/fx-ambient.js';
 import './game/water.js';
+import './game/voice.js';
 import './game/bgm.js';
 
 new Game();

@@ -191,6 +191,21 @@ Object.assign(Game.prototype, {
     a.sp = lerp(a.sp, sp, 0.3);
     if (a.ab && !(p.abT > 0)) SFX.abEnd(null);
     a.ab = p.abT > 0;
+    // ECHO 的系統提示（第 4 期）：AP 一半與危險、自機失衡（回復到門檻以上才會再提醒）
+    const hr = p.hp / p.maxHp;
+    if (!this.lab && !this.range) {
+      if (hr <= 0.25 && !a.ap25) {
+        a.ap25 = a.ap50 = true;
+        this.voiceCue('ap25');
+      } else if (hr <= 0.5 && !a.ap50) {
+        a.ap50 = true;
+        this.voiceCue('ap50');
+      }
+    }
+    if (hr > 0.6) a.ap50 = a.ap25 = false;
+    else if (hr > 0.35) a.ap25 = false;
+    if (p.staggerT > 0 && !a.stg) this.voiceCue('stagger');
+    a.stg = p.staggerT > 0;
     // EN 用完：推進器過熱的嘶＋警示音
     const enOut = p.en < (p.enMax || 1) * 0.03;
     if (enOut && !a.enOut) SFX.overheat();
@@ -229,6 +244,7 @@ Object.assign(Game.prototype, {
       if (ph <= b.phCue) continue;
       b.phCue = ph;
       SFX.cue('phase');
+      this.voiceCue('bossPhase');
       this.camShake = Math.max(this.camShake, 0.25);
       this.showBanner(ph >= 3 ? '最終型態' : '第二型態', b.name, '#ff4030', 2.2, { k: 'phase' });
     }
@@ -269,8 +285,10 @@ Object.assign(Game.prototype, {
     s.n++;
     s.t = this.time;
     by[key] = s;
-    if (from.isPlayer) this.fbKillLocal(s.n, big);
-    else if (from.slot !== undefined && this.net && this.net.role === 'host')
+    if (from.isPlayer) {
+      this.fbKillLocal(s.n, big);
+      if (big && !e.isBoss && (e.ai === 'ac' || e.isElite) && !this.camp) this.voiceCue('aceDown'); // 主線有通訊的台詞
+    } else if (from.slot !== undefined && this.net && this.net.role === 'host')
       this.netEv({ t: 'fb', s: from.slot, k: 'kill', n: s.n, b: big ? 1 : 0 });
   },
   fbKillLocal(n, big) {
@@ -283,7 +301,10 @@ Object.assign(Game.prototype, {
     if (from.isPlayer) {
       SFX.breakFx();
       this.popBreak(t);
-      if (t.isBoss) SFX.stinger(false); // Boss 的 BREAK：配樂的重音
+      if (t.isBoss) {
+        SFX.stinger(false); // Boss 的 BREAK：配樂的重音
+        this.voiceCue('bossBreak');
+      }
     } else if (from.slot !== undefined && this.net && this.net.role === 'host')
       this.netEv({ t: 'fb', s: from.slot, k: 'break', i: t.id });
   },

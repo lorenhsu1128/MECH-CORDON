@@ -137,7 +137,14 @@
 - **聲音**：只參考二次元遊戲的**選角類型**，用文字描述產生，**不克隆任何遊戲的原聲**（配音員的聲音與錄音都有權利，克隆後散布不行）。6 種類型（冷靜管制官、溫柔知性、AI 系統感、慵懶酷系、成熟低音、可愛活潑）× 3 個候選（種子）。聲音設計每次的音色不同，所以每個候選先用描述產生第 1 句，其他句子拿那一句當參考音檔克隆，音色才一致；正式產生全部台詞時也這樣做。
 - **口音**：先只在描述裡寫「台灣口音」試（VoxCPM2 的方言清單沒有台灣口音）；不夠時再考慮克隆有授權的台灣口音參考錄音或 LoRA 微調（5～10 分鐘的錄音）。
 - **試聽**：`scripts/voice-audition.py` → `src/assets/voice-audition/`（`<候選>-<台詞>.mp3`＋`index.json`；參考音檔在 gitignore 的 `ref/`）→ `dist/lib/voice-audition.js`（`RUBICON_VOICE_AUD`，`'@index'` 是說明）。標題的「ECHO 語音試聽」（`game/voice-lab.js`，`state` 'voicelab'）：7 句試聽台詞 × 18 個候選的格子、同一句依序比較、音色（原音／駕駛艙／無線電）、評分與備註（localStorage `rubicon_voice_aud`）、複製評分。
-- **下一步**：使用者挑定聲音後，照 d32068a 的 `game/voice.js`／`data/voice.js`／`scripts/voice-lines.js` 放回播放與系統提示，產生腳本改成 VoxCPM2（固定那個候選的參考音檔克隆全部台詞）。
+- **選定**（2026-11-01 使用者）：溫柔知性 #2 與 AI 系統感 #3 兩個都配進遊戲，設定頁切換；範圍＝全部（通訊、序章與章節畫面、系統提示、增援預告）＋過場動畫裡 ECHO 的字幕；每句產生 2 次挑好的；試聽頁保留。
+
+### ECHO 的語音（VoxCPM2，兩個聲音）
+
+- **播放**：d32068a 的 `game/voice.js`／`data/voice.js` 放回來（通訊 `voiceSay`、系統提示 `voiceCue`、增援預告 `voiceSeq`、劇情畫面 `voiceStory`、說話時壓低音效與配樂、無線電／駕駛艙的音色），改成兩個聲音：設定「ECHO 的聲音」`ctrl.voice`＝gentle 溫柔知性（預設）／ai AI 系統感／off（舊設定的 on／comm 當成 gentle）；`data/voice.js` 的 `VOICE_IDS`。語音檔每個聲音一個 `lib/voice-<聲音>.js`（`RUBICON_VOICE_<聲音>`），只載入選的那個，換聲音時清掉解碼過的。換聲音時試聽一句。
+- **過場動畫**：`cineSub` 遇到 who 是 echo 的字幕就 `voiceSay`；跳時間、暫停、略過時停掉。
+- **台詞**：`scripts/voice-lines.js` 收集 364 句（通訊、程式裡的 `commSay('echo', …)`、劇情畫面、系統提示、過場動畫（每個周目 × 抉擇的組合都產生一次劇本））→ `src/assets/voice/lines.json`＝{ 鍵: { t 台詞, k 情境 } }；情境（alarm 緊急的系統提示、sys、comm、story、cine、private 私人頻道、end 結局與記憶片段）決定語氣指示（`voice-gen.py` 的 `STYLE`，有「！」再加「語氣有力」）。
+- **產生**（`scripts/voice-gen.py`）：參考音檔＝試聽那個候選的第 1 句（`src/assets/voice/ref/<聲音>.flac`），VoxCPM2 的 controllable cloning 每句 2 次 → faster-whisper（large-v3）轉寫、只比中文字的相似度（英文名字與數字的寫法不算），長度不合理的扣分，留最像的；太低的寫進 `src/assets/voice/<聲音>/report.txt`，`--retry` 再產生 2 次重挑。唸法：「ECHO」這類 4 個字母以上的全大寫名字改成一般大小寫照單字唸（試聽時全大寫被逐字母唸成「一差丑」），AP、AC、COAM 照字母；R-07 唸「R 零七」；「……」換成停頓。響度以 RMS 對齊，24 kHz 單聲道 40 kbps。暫存的每一次產生放在系統暫存的 `rubicon-voice-takes/`。
 
 ### 之後可以再做
 

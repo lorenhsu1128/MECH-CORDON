@@ -169,6 +169,7 @@ Object.assign(Game.prototype, {
     // 跳時間：清掉字幕、機器文字與字卡
     c.subUntil = c.sysUntil = 0;
     $('cineSub').classList.remove('on');
+    if (this.voiceStop) this.voiceStop();
     $('cineSys').innerHTML = '';
     if (this.textfx) this.textfx.clear((x) => x.opt && x.opt.cine);
   },
@@ -195,6 +196,7 @@ Object.assign(Game.prototype, {
     if (c.shot >= 0) this.cineHookCall(c.def.shots[c.shot], 'exit');
     this.cine = null;
     SFX.musicStop(skipped ? 0.25 : 1.2);
+    if (skipped && this.voiceStop) this.voiceStop();
     SFX.loopSet('cine', 'engineLoop', 0);
     if (!c.live) SFX.stopLoops();
     this.cineClearSet(c);
@@ -1170,6 +1172,8 @@ Object.assign(Game.prototype, {
       c.commT = c.t;
     }
     if (who && who !== 'station') SFX.radio();
+    // ECHO 的台詞也唸（game/voice.js；沒有這句的語音就只有字幕）
+    if (who === 'echo' && this.voiceSay) this.voiceSay(text);
     else if (who === 'station') SFX.play('glitch', 0.3, 0.6, 0.02, 0.1, null, 'ui');
     c.subUntil = c.t + dur;
   },

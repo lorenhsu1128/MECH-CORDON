@@ -832,6 +832,12 @@ Object.assign(Game.prototype, {
       this.ctrl.cine = e.target.value;
       this.saveKeys();
     };
+    document.getElementById('ctrlVoice').onchange = (e) => {
+      this.ctrl.voice = e.target.value; // ECHO 的聲音（game/voice.js）：gentle／ai／off
+      this.voiceStop();
+      this.saveKeys();
+      if (e.target.value !== 'off') this.voiceTest(); // 換聲音時試聽一句
+    };
     document.getElementById('ctrlBgm').onchange = (e) => {
       this.ctrl.bgm = e.target.value; // 戰鬥配樂（game/bgm.js）
       this.saveKeys();

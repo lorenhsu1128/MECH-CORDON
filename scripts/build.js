@@ -112,7 +112,7 @@ function writePack(dir, file, name, title) {
   );
 }
 // 音效改版（docs/audio-design.md）的音檔：資料夾裡的 *.mp3 → window.<name>＝{ 檔名（不含副檔名）: base64 }，不內嵌，
-// 遊戲啟動後（sfx2）、第一次進任務（bgm）才以 <script> 載入
+// 遊戲啟動後（sfx2）、第一次進任務（bgm）、第一次播通訊（voice）才以 <script> 載入
 function writeAudio(dir, file, name, title) {
   if (!fs.existsSync(dir)) return;
   const data = {};
@@ -157,6 +157,17 @@ function writeSounds() {
     'RUBICON_VOICE_AUD',
     'ECHO 的語音試聽（src/assets/voice-audition/，scripts/voice-audition.py）',
   );
+  // ECHO 的語音：每個聲音一個檔案（src/assets/voice/<聲音>/ → lib/voice-<聲音>.js），只載入設定選的那個
+  const vdir = path.join(SRC, 'assets', 'voice');
+  if (fs.existsSync(vdir))
+    for (const v of fs.readdirSync(vdir))
+      if (fs.statSync(path.join(vdir, v)).isDirectory() && v !== 'ref')
+        writeAudio(
+          path.join(vdir, v),
+          `voice-${v}.js`,
+          `RUBICON_VOICE_${v.toUpperCase()}`,
+          `ECHO 的語音（src/assets/voice/${v}/，scripts/voice-gen.py）`,
+        );
 }
 function writeHangar() {
   writePack(HANGAR_DIR, 'hangar-assets.js', 'RUBICON_HANGAR', '機甲庫格納庫的素材（src/assets/hangar/）');

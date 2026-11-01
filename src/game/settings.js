@@ -73,6 +73,7 @@ Object.assign(Game.prototype, {
     $('ctrlWater').value = this.ctrl.water || '';
     $('ctrlTfx').value = this.ctrl.tfx || 'full';
     $('ctrlCine').value = this.ctrl.cine || 'on';
+    $('ctrlVoice').value = this.voiceId() || 'off';
     $('ctrlBgm').value = this.ctrl.bgm || 'on';
     this.renderVolSettings();
     $('ctrlExec').value = this.ctrl.exec || 'on';
@@ -88,9 +89,9 @@ Object.assign(Game.prototype, {
     this.renderStyleSettings();
     this.renderIkSettings();
   },
-  // 聲音的音量（ctrl.vol：m 主音量、s 音效、b 配樂、u 介面；docs/audio-design.md）：下拉選單，手把左右就能改
+  // 聲音的音量（ctrl.vol：m 主音量、s 音效、b 配樂、v 語音、u 介面；docs/audio-design.md）：下拉選單，手把左右就能改
   renderVolSettings() {
-    const V = Object.assign({ m: 1, s: 1, b: 1, u: 1 }, this.ctrl.vol || {});
+    const V = Object.assign({ m: 1, s: 1, b: 1, v: 1, u: 1 }, this.ctrl.vol || {});
     const opts = (x) =>
       Array.from({ length: 11 }, (_, i) => i / 10)
         .map(
@@ -102,6 +103,7 @@ Object.assign(Game.prototype, {
       ['m', '主音量'],
       ['s', '音效（槍聲、爆炸、環境音）'],
       ['b', '配樂（任務中與過場）'],
+      ['v', '語音（ECHO）'],
       ['u', '介面音'],
     ];
     const box = $('volBox');
@@ -116,7 +118,8 @@ Object.assign(Game.prototype, {
       this.ctrl.vol = Object.assign({}, V, this.ctrl.vol || {}, { [k]: +e.target.value });
       SFX.setVol(this.ctrl.vol);
       this.saveKeys();
-      SFX.ui('ok');
+      if (k === 'v' && this.voiceTest) this.voiceTest();
+      else SFX.ui('ok');
     };
   },
   // 動作 IK：和渲染風格實驗室的面板共用開關（rubicon_ik），任務中也能改、立即生效

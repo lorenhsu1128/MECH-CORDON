@@ -218,6 +218,7 @@ Object.assign(Game.prototype, {
     $('clPause').textContent = c.paused ? '▶' : '❚❚';
     if (c.paused) {
       SFX.musicStop(0.1);
+      this.voiceStop();
       c.music = [];
     } else this.cineStartClock(c.t);
   },
