@@ -13,6 +13,7 @@ import { hrBodyRestore } from '../render/hit-react-pose.js';
 import { buildWormSegments } from '../render/boss-models.js';
 import { MechEntity } from './mech-entity.js';
 import { BOSS_ENRAGE_TEMPO, BOSS_PHASES, BOSS_STAG_GUARD, BOSS_TEMPO } from '../data/enemies.js';
+import { AIR } from '../data/air.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
 const BOSS_AI = new Set(['worm', 'spider', 'fortress', 'flagship', 'artillery', 'hunter']);
@@ -131,6 +132,7 @@ Object.assign(MechEntity.prototype, {
   },
   // 開火：一般武器迴圈照常（回傳 false），部位與鑽地蟲在自己的 AI 裡處理；第三批 Boss 見 boss2Fire
   bossFire(dt, d, aimPos, pl) {
+    if (this.ai === 'fortress' && this.game.airMode) return true; // 空域：airFortressTick 自己開火
     return this.boss2Fire(dt, d, aimPos, pl);
   },
   phase2() {
@@ -173,7 +175,10 @@ Object.assign(MechEntity.prototype, {
     const aimPos = pl.center().addScaledVector(pl.vel, clamp(d / (95 * DS), 0, 0.6));
     if (k === 'fturret') {
       const w = this.weapons.rarm;
-      if (this.canAct() && d < 75 * DS && Math.random() < dt * (p2 ? 5 : 3.5)) this.fire('rarm', aimPos, pl);
+      // 空域：不打正後方與機腹（mech-air.js 的 airTurretOk），射速放慢
+      const ok = g.airMode ? this.airTurretOk(par, pl) : d < 75 * DS;
+      if (this.canAct() && ok && Math.random() < dt * (p2 ? 5 : 3.5) * (g.airMode ? 0.45 : 1))
+        this.fire('rarm', aimPos, pl);
       if (w.mag <= 0 && w.reloadT <= 0 && w.ammo > 0) w.reloadT = w.def.reload;
     } else if (k === 'cannon') {
       // 三發一組的砲擊（落點有預警圈）
@@ -462,8 +467,8 @@ Object.assign(MechEntity.prototype, {
       if (alive < 14)
         g.spawnType('swarm', g.scaleHp || 1, g.scaleDmg || 1, this.pos.clone().setY(this.pos.y - 3 * MS), 3);
     }
-    // 空域（game/air.js）：要塞的防空（空戰導彈），第二型態起更密
-    if (g.airMode) this.airSamTick(dt * (this.phase2() ? 2.2 : 1.5), pl);
+    // 空域（game/air.js）：空戰的打法（mech-air.js 的 airFortressTick：主砲、彈幕、空戰導彈、安全區），不投彈
+    if (g.airMode) return this.airFortressTick(dt, d, perp, wish, pl);
     // 投彈：沿機身前進方向一排落點
     s.bombT = (s.bombT === undefined ? 8 : s.bombT) - dt;
     if (s.bombT <= 0 && d < 35 * DS && this.canAct()) {
@@ -648,6 +653,14 @@ Object.assign(MechEntity.prototype, {
     const k2 = this.boss2Defense(dmg, impact, from, at, wid, melee);
     if (k2 === null) return null;
     if (k2 !== undefined) k = k2;
+    // 空域的空中要塞：懸吊砲塔還在時引擎有掩護（先拆砲塔 → 引擎 → 本體）
+    if (g.airMode && this.opts.partKind === 'engine') {
+      const par = this.parentEnt();
+      if (par && !par.dead && par.partsOf('fturret').length) {
+        k = AIR.FZ_ENG_K;
+        hint('引擎有砲塔掩護 — 先打掉下方的懸吊砲塔');
+      }
+    }
     switch (this.ai) {
       case 'worm':
         if (this.bossVis & 1) return null;

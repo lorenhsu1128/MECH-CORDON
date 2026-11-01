@@ -150,7 +150,8 @@ Object.assign(MechEntity.prototype, {
       yawT = Math.atan2(-aim.x, -aim.z);
       pitT = clamp(Math.atan2(aim.y, Math.hypot(aim.x, aim.z)), -AIR.PITCH_MAX, AIR.PITCH_MAX);
     }
-    const yaw0 = this.yaw;
+    const yaw0 = this.yaw,
+      pit0 = this.airPit;
     if (this.airRev) {
       const R = this.airRev;
       R.t += dt / AIR.REV_T;
@@ -181,6 +182,15 @@ Object.assign(MechEntity.prototype, {
         Math.max(dt, 1e-3),
       Math.min(1, dt * 8),
     );
+    // 直線飛了多久（敵人的預判照它：轉彎、翻滾、急轉、橫移就重來；airAimK）
+    const turning =
+      Math.abs(this.airYawV) > 0.25 ||
+      Math.abs(this.airPit - pit0) > 0.25 * dt ||
+      this.qbT > 0 ||
+      !!this.airRev ||
+      gTurn ||
+      Math.abs(side) > 0.3;
+    this.airSteady = turning ? 0 : (this.airSteady || 0) + dt;
     this.aimYaw = this.aimYaw === undefined ? this.yaw : this.aimYaw;
     // ---- 速度 ----
     if (gTurn) vT = Math.min(vT, Math.max(45 * sk, this.airV - AIR.GDRAG * dt * 4));
@@ -372,16 +382,18 @@ Object.assign(MechEntity.prototype, {
     this.airAiS = { cd: rnd(2, 4), ext: 0, side: Math.random() < 0.5 ? 1 : -1, rollCD: 0, sideT: 0, sv: 0 };
   },
   // updateAI 選好目標後（pl 可能是 null；aimPos＝含前置量的瞄準點）
+  // 攻擊名額（game/air.js 的 airDirTick）：airTok 為 false＝沒拿到，在 ORBIT_R 外繞圈、不開火；airIdle＝第一波還沒察覺，照巡邏航線飛
   airAI(dt, pl, aimPos) {
-    const g = this.game,
-      w = g.world;
+    const g = this.game;
     const S = this.airAiS || (this.airAiS = { cd: 3, ext: 0, side: 1, rollCD: 0, sideT: 0, sv: 0 });
     if (this.airRole === 'bomber') return this.airBomberAI(dt);
+    if (this.airIdle) return this.airPatrol(dt);
     // 友軍雷達站只有轟炸機去炸；其他的一律追玩家
     if (pl && pl.ai === 'objective') {
       pl = g.player && !g.player.dead ? g.player : null;
       aimPos = pl ? pl.center() : null;
     }
+    const hold = this.airTok !== false;
     const sk = clamp(this.aiSkill || 1, 0.5, 1.6);
     const me = this.center();
     const fwd = dirOf(this.yaw, this.airPit || 0, _f);
@@ -397,19 +409,32 @@ Object.assign(MechEntity.prototype, {
       const to = tc.clone().sub(me);
       d = to.length();
       ang = fwd.angleTo(to);
-      // 前置量：照彈速（或撞上來）的飛行時間
-      const lead = clamp(d / (this.airRole === 'kami' ? 160 : 260), 0, 1.6);
-      aim
-        .copy(tc)
-        .addScaledVector(pl.vel, lead * 0.7)
-        .sub(me);
-      if (this.airRole === 'kami') {
+      if (!hold) {
+        // 沒拿到攻擊名額：在玩家周圍 ORBIT_R 的圈上繞（往自己這一側偏一點），太遠就推進回來
+        const b = Math.atan2(me.z - tc.z, me.x - tc.x) + S.side * 0.45;
+        aim.set(
+          tc.x + Math.cos(b) * AIR.ORBIT_R - me.x,
+          tc.y + 80 - me.y,
+          tc.z + Math.sin(b) * AIR.ORBIT_R - me.z,
+        );
+        if (this.en < this.enMax * 0.15) S.enLow = true;
+        else if (this.en > this.enMax * 0.45) S.enLow = false;
+        thr = d > AIR.ORBIT_R * 1.6 && !S.enLow ? 1 : 0;
+      } else {
+        // 前置量：照彈速（或撞上來）的飛行時間
+        const lead = clamp(d / (this.airRole === 'kami' ? 160 : 260), 0, 1.6);
+        aim
+          .copy(tc)
+          .addScaledVector(pl.vel, lead * 0.7)
+          .sub(me);
+      }
+      if (hold && this.airRole === 'kami') {
         thr = 1;
         if (d < 10 * this.scale + (this.radius || 2)) {
           this.die(pl);
           return;
         }
-      } else {
+      } else if (hold) {
         // 迎面太近：先拉開（往側上方飛一段），之後再回頭
         if (S.ext <= 0 && d < AIR.AI_EXTEND && ang < 0.8) S.ext = rnd(2, 3.2);
         if (S.ext > 0) {
@@ -427,28 +452,15 @@ Object.assign(MechEntity.prototype, {
           // 目標在側面或背後：急轉彎繞過去（敵對 AC）
           G = this.airRole === 'ace' && ang > 1.1 && d < 700 && this.en > this.enMax * 0.3;
         }
-        // 偶爾橫移，不要一直直線飛
-        if ((S.sideT -= dt) <= 0) {
-          S.sideT = rnd(1.5, 3.5);
-          S.sv = Math.random() < 0.5 ? rnd(-1, 1) : 0;
-        }
-        side = S.sv;
       }
+      // 偶爾橫移，不要一直直線飛
+      if ((S.sideT -= dt) <= 0) {
+        S.sideT = rnd(1.5, 3.5);
+        S.sv = Math.random() < 0.5 ? rnd(-1, 1) : 0;
+      }
+      if (this.airRole !== 'kami' || !hold) side = S.sv;
     }
-    // 留在空域裡
-    const lim = w.lim * 0.85;
-    if (Math.abs(this.pos.x) > lim || Math.abs(this.pos.z) > lim)
-      aim.set(-this.pos.x, 0, -this.pos.z).normalize().setY(0.1);
-    // 低空或前方有山：拉起
-    const floor = Math.max(
-      this.airFloor(this.pos.x, this.pos.z),
-      this.airFloor(this.pos.x + fwd.x * 220, this.pos.z + fwd.z * 220),
-    );
-    if (this.pos.y - floor < AIR.AI_FLOOR) {
-      aim.normalize();
-      aim.y = Math.max(aim.y, clamp((AIR.AI_FLOOR - (this.pos.y - floor)) / AIR.AI_FLOOR, 0.2, 0.9));
-    }
-    if (this.pos.y > AIR.CEIL - 60) aim.y = Math.min(aim.y, -0.1);
+    this.airSafeAim(aim, fwd);
     // 導彈快打到：翻滾閃避（敵對 AC；無人機不會）
     if (this.airRole === 'ace' && (S.rollCD -= dt) <= 0) {
       for (const pr of g.projectiles) {
@@ -467,7 +479,8 @@ Object.assign(MechEntity.prototype, {
     this.airAim = aim.clone();
     this.airIn = { thr, side };
     this.move(dt, ZERO, G, qb, false, null);
-    if (!pl || pl.dead) return;
+    if (this.aam) this.aamTick(dt);
+    if (!pl || pl.dead || !hold) return;
     if (g.airInCloud && g.airInCloud(pl.center())) return; // 目標躲在雲裡：看不到、不開火
     // 開火：武器在機首前方、射程內
     if (ang < AIR.AI_FIRE_CONE && this.airRole !== 'kami') {
@@ -478,11 +491,76 @@ Object.assign(MechEntity.prototype, {
       }
     }
     // 空戰導彈（敵對 AC）
-    if (this.aam) {
-      this.aamTick(dt);
-      if ((S.cd -= dt) <= 0 && this.aamCan(pl) && this.aamLaunch(pl))
-        S.cd = rnd(AIR.NPC_AAM_CD[0], AIR.NPC_AAM_CD[1]) / sk;
+    if (this.aam && (S.cd -= dt) <= 0 && this.aamCan(pl) && this.aamLaunch(pl))
+      S.cd = rnd(AIR.NPC_AAM_CD[0], AIR.NPC_AAM_CD[1]) / sk;
+  },
+  // 留在空域裡、低空或前方有山時拉起、不超過高度上限（改 aim）
+  airSafeAim(aim, fwd) {
+    const lim = this.game.world.lim * 0.85;
+    if (Math.abs(this.pos.x) > lim || Math.abs(this.pos.z) > lim)
+      aim.set(-this.pos.x, 0, -this.pos.z).normalize().setY(0.1);
+    const floor = Math.max(
+      this.airFloor(this.pos.x, this.pos.z),
+      this.airFloor(this.pos.x + fwd.x * 220, this.pos.z + fwd.z * 220),
+    );
+    if (this.pos.y - floor < AIR.AI_FLOOR) {
+      aim.normalize();
+      aim.y = Math.max(aim.y, clamp((AIR.AI_FLOOR - (this.pos.y - floor)) / AIR.AI_FLOOR, 0.2, 0.9));
     }
+    if (this.pos.y > AIR.CEIL - 60) aim.y = Math.min(aim.y, -0.1);
+  },
+  // 第一波還沒察覺（airIdle＝{ c 巡邏的中心, a 角度, dir }）：繞著中心慢慢巡邏、不開火（game/air.js 的 airDirTick 叫醒）
+  airPatrol(dt) {
+    const I = this.airIdle;
+    if (I.a === undefined) I.a = Math.atan2(this.pos.z - I.c.z, this.pos.x - I.c.x);
+    I.a += dt * 0.16 * (I.dir || 1);
+    const fwd = dirOf(this.yaw, this.airPit || 0, _f);
+    const aim = _t.set(
+      I.c.x + Math.cos(I.a + 0.5 * (I.dir || 1)) * AIR.PATROL_R - this.pos.x,
+      I.c.y - this.pos.y,
+      I.c.z + Math.sin(I.a + 0.5 * (I.dir || 1)) * AIR.PATROL_R - this.pos.z,
+    );
+    this.airSafeAim(aim, fwd);
+    this.airAim = aim.clone();
+    this.airIn = { thr: -0.4, side: 0 };
+    this.move(dt, ZERO, false, false, false, null);
+  },
+  // 敵人瞄準飛行中的目標（B1）：[預判的倍率, 擴散的倍率]。目標直線飛越久越準；不在目標背後（咬尾）時預判差；越遠越散
+  airAimK(t, dist) {
+    const st = clamp((t.airSteady || 0) / AIR.AIM_STEADY, 0, 1);
+    const tf = dirOf(t.yaw, t.airPit || 0, _a);
+    const tail = tf.dot(_r.copy(this.center()).sub(t.center()).normalize()) < AIR.TAIL_DOT;
+    const L = AIR.AIM_LEAD,
+      P = AIR.AIM_SPREAD;
+    return [
+      (L[0] + (L[1] - L[0]) * st) * (tail ? 1 : AIR.AIM_SIDE),
+      (P[0] + (P[1] - P[0]) * st) * (1 + dist / AIR.AIM_DIST),
+    ];
+  },
+  // 敵人的雷射打飛行中的目標（B2）：先拉 BEAM_WARN 秒的預警線，之後射向預警時的位置；回傳 null＝這次不射
+  airBeamGate(w, d, muzzle, t) {
+    const W = w.airW,
+      el = W ? this.t - W.t0 : 1e9;
+    if (el < AIR.BEAM_WARN) return null;
+    if (el < AIR.BEAM_WARN + (d.type === 'empbeam' ? 1.2 : 1)) {
+      if (d.type !== 'empbeam') w.airW = null;
+      return W.at.clone();
+    }
+    const at = t.center().addScaledVector(t.vel, AIR.BEAM_WARN * 0.5);
+    w.airW = { t0: this.t, at };
+    const end = muzzle.clone().add(
+      at
+        .clone()
+        .sub(muzzle)
+        .setLength(Math.max(d.range || 0, at.distanceTo(muzzle) * 1.3)),
+    );
+    this.game.fx.warnLine(muzzle.clone(), end, AIR.BEAM_WARN, 0xff3030, 0.5);
+    return null;
+  },
+  // MS-4／MS-8 在空域的齊射（C3）：回傳鎖定的目標（可能是空陣列＝打目前的鎖定目標）；不是這兩把時回傳 null
+  airMlTargets(d) {
+    if (!this.air || !this.pilotEnt() || !AIR.ML_IDS.includes(d.id)) return null;
+    return (this.airML || []).filter((x) => x.t >= AIR.ML_LOCK && !x.e.dead).map((x) => x.e);
   },
   // 轟炸機（第 3 期，airAI 呼叫）：飛到友軍雷達站上空 220 m 投下 4 枚炸彈，之後飛遠一點再回頭；不閃避、不開槍
   airBomberAI(dt) {
@@ -539,8 +617,9 @@ Object.assign(MechEntity.prototype, {
     this.airIn = { thr: 0, side: 0 };
     this.move(dt, ZERO, false, false, false, null);
   },
-  // 地面的防空（防空砲，aiSpecialFire 之前）：空域裡另外定期發射空戰導彈（被山擋住時不打）
-  airSamTick(dt, pl) {
+  // 地面的防空（防空砲，aiSpecialFire 之前）與空中要塞：空域裡另外定期發射空戰導彈（被山擋住時不打）
+  // o：{ r0 最近, r1 最遠, h 目標比自己高不到多少才打 }
+  airSamTick(dt, pl, o = {}) {
     if (!pl || pl.dead || !pl.air) return;
     if (!this.aam) this.aamInit(999);
     this.aamTick(dt);
@@ -549,7 +628,10 @@ Object.assign(MechEntity.prototype, {
     S.cd = rnd(AIR.NPC_AAM_CD[0] + 2, AIR.NPC_AAM_CD[1] + 3);
     const me = this.center(),
       tc = pl.center();
-    if (me.distanceTo(tc) > AIR.AAM_R * 0.9 || this.game.world.losBlocked(me, tc)) return;
+    const dd = me.distanceTo(tc);
+    if (dd > (o.r1 || AIR.AAM_R * 0.9) || dd < (o.r0 || 0)) return;
+    if (o.h !== undefined && tc.y - me.y > o.h) return;
+    if (this.game.world.losBlocked(me, tc)) return;
     // 地面的發射架沒有機首：直接朝目標
     const to = tc.sub(me);
     const y0 = this.yaw;
@@ -557,6 +639,129 @@ Object.assign(MechEntity.prototype, {
     this.airPit = Math.atan2(to.y, Math.hypot(to.x, to.z));
     this.aamLaunch(pl);
     this.yaw = y0;
+  },
+  // 防空砲的範圍（A3）：目標在這裡面才發射空戰導彈（HUD 的「防空區」、紅色的網格圓頂）
+  airFlakIn(pl) {
+    const me = this.center(),
+      tc = pl.center();
+    const h = Math.hypot(tc.x - me.x, tc.z - me.z) / AIR.FLAK_SAM_R,
+      v = Math.max(0, tc.y - me.y) / AIR.FLAK_SAM_H;
+    return h * h + v * v < 1; // 圓頂（橢球）裡面
+  },
+  // ---------- 空中要塞（D，fortressAI 在空域呼叫；回傳後不投彈） ----------
+  // 機首轉得很慢：主砲（預警線 → 光束）與彈幕（慢速大顆彈）只打前方 FZ_GUN_R 內；空戰導彈不打 FZ_SAM_MIN 內；
+  // 懸吊砲塔不打正後方（mech-boss.js 的 partAI → airTurretOk）。所以貼近要塞的正後方或機腹＝安全區
+  airFortressTick(dt, d, perp, wish, pl) {
+    const g = this.game,
+      S = this.airFz || (this.airFz = { cn: 5, br: 3, tur: -1 });
+    const p2 = this.phase2();
+    if (this.tierOn()) {
+      const ts = this.tierState();
+      if (ts.openT > 0) ts.openT -= dt; // 破綻的計時（空域不放 tierTick 的大招）
+    }
+    // 砲塔全毀：引擎失去掩護
+    const tur = this.partsOf('fturret').length;
+    if (S.tur > 0 && !tur) g.msgAll('懸吊砲塔全毀 — 引擎失去掩護', 0x7ee081);
+    S.tur = tur;
+    // 慢慢轉向目標（move 的轉向關掉：yawRate 很小）
+    this.yawRate = 1e-4;
+    const me = this.center(),
+      tc = pl.center();
+    const want = Math.atan2(-(tc.x - me.x), -(tc.z - me.z));
+    const dy = Math.atan2(Math.sin(want - this.yaw), Math.cos(want - this.yaw));
+    this.yaw += clamp(dy, -AIR.FZ_YAW * dt, AIR.FZ_YAW * dt);
+    this.aimYaw = this.yaw;
+    // 移動：遠的時候慢慢靠近，近了就橫移
+    if (d > 450) wish.copy(tc.clone().sub(me).setY(0).normalize()).multiplyScalar(0.6);
+    else wish.copy(perp).multiplyScalar(0.5);
+    // 空戰導彈：遠距離也打，但很慢；貼近（FZ_SAM_MIN 內）不打
+    this.airSamTick(dt * (p2 ? 1.4 : 1), pl, { r0: AIR.FZ_SAM_MIN });
+    if (!this.canAct()) {
+      S.ch = null;
+      return;
+    }
+    const fwd = dirOf(this.yaw, 0, _f);
+    const to = tc.clone().sub(me);
+    const dd = to.length();
+    const front = fwd.angleTo(_a.copy(to).setY(0)) < AIR.FZ_FRONT && dd < AIR.FZ_GUN_R;
+    const nose = me.clone().addScaledVector(fwd, (this.radius || 6) + 4);
+    // 主砲：預警線 FZ_CH 秒（方向在預警時就固定）→ 光束；之後短暫的破綻
+    if (S.ch) {
+      if ((S.ch.t -= dt) <= 0) {
+        g.beamAttack(this, S.ch.from, S.ch.dir, {
+          range: (AIR.FZ_GUN_R * 1.4) / g.fx.k,
+          dmg: 2000 * this.dmgMul,
+          im: 900 * this.dmgMul,
+          w: 2.5,
+          color: 0xff5040,
+          width: 1.4,
+        });
+        g.fx.shockwave(S.ch.from, 6, 0xff7050, 0.4);
+        SFX.play('laser2', 1, 0.5, 0.05, 0.05, S.ch.from);
+        this.bossOpen(2.5);
+        S.ch = null;
+      }
+      return;
+    }
+    if ((S.cn -= dt) <= 0 && front) {
+      S.cn = AIR.FZ_CN[p2 ? 1 : 0];
+      const at = tc.clone().addScaledVector(pl.vel, 0.35);
+      const dir = at.sub(nose).normalize();
+      S.ch = { t: AIR.FZ_CH, from: nose.clone(), dir };
+      g.fx.warnLine(
+        nose.clone(),
+        nose.clone().addScaledVector(dir, AIR.FZ_GUN_R * 1.4),
+        AIR.FZ_CH,
+        0xff3030,
+        1.2,
+      );
+      g.alertAll('空中要塞主砲充能 — 離開紅線！');
+      return;
+    }
+    // 彈幕：慢速、大顆的彈往前方扇形射出，從縫隙飛過去
+    if ((S.br -= dt) <= 0 && front) {
+      S.br = AIR.FZ_BR[p2 ? 1 : 0];
+      const n = AIR.FZ_BAR_N[p2 ? 1 : 0];
+      const base = to.clone().normalize();
+      for (let i = 0; i < n; i++) {
+        const k = n > 1 ? i / (n - 1) - 0.5 : 0;
+        const v = base
+          .clone()
+          .applyAxisAngle(_Y, k * 1.0 + rnd(-0.03, 0.03))
+          .add(_a.set(0, rnd(-0.08, 0.08), 0))
+          .normalize()
+          .multiplyScalar(AIR.FZ_BAR_V);
+        g.projectiles.push(
+          new Projectile(g, {
+            pos: nose.clone(),
+            vel: v,
+            kind: 'shell',
+            dmg: 300 * this.dmgMul,
+            impactV: 300 * this.dmgMul,
+            team: this.team,
+            owner: this,
+            color: 0xff60d0,
+            life: (AIR.FZ_GUN_R * 1.3) / AIR.FZ_BAR_V,
+            splash: 4,
+            scale: 5,
+            attr: 'en',
+          }),
+        );
+      }
+      g.fx.muzzle(nose, base, 0xff60d0, 3, 'bz');
+      SFX.shot('shell', undefined, nose);
+    }
+  },
+  // 懸吊砲塔（部位）在空域能不能打：不打正後方、太近（機腹）與射程外
+  airTurretOk(par, pl) {
+    if (!par || par.dead) return false;
+    const me = this.center(),
+      tc = pl.center();
+    const dd = me.distanceTo(tc);
+    const R = (this.weapons.rarm.def.range || 200) * 0.95;
+    if (dd < AIR.FZ_MIN || dd > R) return false;
+    const pf = dirOf(par.yaw, 0, _f);
+    return pf.angleTo(_a.copy(tc).sub(par.center()).setY(0)) < AIR.FZ_REAR;
   },
   // 空域結束（離開任務、clearMission）
   airOff() {

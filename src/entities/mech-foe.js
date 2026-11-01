@@ -830,13 +830,16 @@ Object.assign(MechEntity.prototype, {
       g = this.game;
     const air = pl.pos.y - g.world.groundAt(pl.pos.x, pl.pos.z, pl.pos.y + 0.5 * MS) > 3 * MS;
     s.fkT = (s.fkT || 0) - dt;
-    if (g.airMode) this.airSamTick(dt, pl); // 空域：另外發射空戰導彈（mech-air.js）
-    const R = 80 * DS * (g.airMode ? AIR.FLAK_R : 1); // 空域的射程放大
-    if (air && s.fkT <= 0 && d < R && this.canAct()) {
-      s.fkT = 0.35;
+    // 空域：低空飛過才發射空戰導彈（防空區，mech-air.js 的 airFlakIn）；空炸彈的射程以直線距離、預判照空戰的瞄準
+    if (g.airMode && pl.air && this.airFlakIn(pl)) this.airSamTick(dt, pl);
+    const R = 80 * DS * (g.airMode ? AIR.FLAK_R : 1);
+    const dd = g.airMode ? this.center().distanceTo(pl.center()) : d;
+    if (air && s.fkT <= 0 && dd < R && this.canAct()) {
+      s.fkT = g.airMode ? 0.6 : 0.35;
       s.fkN = (s.fkN || 0) + 1; // 射出的空炸彈數
       const mz = this.muzzle('rarm');
-      const tgt = pl.center().addScaledVector(pl.vel, d / (70 * DS));
+      const lk = g.airMode && pl.air ? this.airAimK(pl, dd)[0] : 1;
+      const tgt = pl.center().addScaledVector(pl.vel, (dd / (70 * DS)) * lk);
       const v = tgt
         .sub(mz)
         .normalize()
@@ -852,7 +855,7 @@ Object.assign(MechEntity.prototype, {
           team: this.team,
           owner: this,
           color: 0x60e0ff,
-          life: d / (70 * DS) + 0.15,
+          life: dd / (70 * DS) + 0.15,
           splash: 3.2 * MS,
         }),
       );

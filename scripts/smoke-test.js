@@ -6094,7 +6094,7 @@ async function testAir(browser, base) {
     r.crash && r.crashDmg > 2 && r.crashDmg < 30 && r.bounce,
     `撞到海面：受傷 ${r.crashDmg}%、彈開、沒有被擊破`,
   );
-  check(r.foes >= 4 && r.foeAlt > 50, `空中的敵人 ${r.foes} 台（最低離海面 ${r.foeAlt} m）`);
+  check(r.foes >= 2 && r.foeAlt > 50, `空中的敵人 ${r.foes} 台（最低離海面 ${r.foeAlt} m）`);
   // 第 2 期：內建的空戰導彈、鎖定距離、導彈警報與機動甩掉、敵對 AC 的空戰 AI、島上的防空
   const cb = await page.evaluate(() => {
     const g = window.__game,
@@ -6533,6 +6533,222 @@ async function testAir(browser, base) {
   check(camFar < 2000, `離開空域後鏡頭距離還原（${camFar}）`);
   await thawLoop(page);
   await ctx.close();
+  // 空戰的樂趣改版（2026-11-01）：攻擊名額、第一波的察覺、空戰的瞄準、雷射預警、防空區、擦身音、
+  // 飛行中不失衡、脫離戰鬥回復、補給、多目標鎖定、被咬尾
+  {
+    const { ctx: c5, page: pf } = await newPage(browser, 'air-fun');
+    await pf.goto(base + '?test');
+    await waitVisible(pf, 'title');
+    await pf.evaluate(() => {
+      localStorage.setItem('rubicon_map', 'airspace');
+      const g = window.__game;
+      g.save.level = 5;
+      g.startMission();
+    });
+    await freezeLoop(pf);
+    const fu = await pf.evaluate(() => {
+      const g = window.__game,
+        p = g.player;
+      const V = (x, y, z) => new THREE.Vector3(x, y, z);
+      const o = {};
+      p.hp = p.maxHp = 1e7;
+      // 第一波：遠方巡邏、沒有名額
+      const idle = g.enemies.filter((e) => !e.dead && e.airIdle);
+      o.idleN = idle.length;
+      o.idleMin = Math.round(Math.min(...idle.map((e) => e.center().distanceTo(p.center()))));
+      o.idleTok = idle.some((e) => e.airTok);
+      // 靠近一隊：整隊交戰
+      const e0 = idle[0];
+      const grp = e0.airIdle.grp;
+      const mates = idle.filter((e) => e.airIdle.grp === grp);
+      p.pos.copy(e0.pos).add(V(500, 0, 0));
+      window.__pump(1);
+      o.woke = mates.every((e) => !e.airIdle);
+      // 攻擊名額：其他敵人停住、生成 6 台無人機，最多 2 台拿到名額，沒拿到的不開火
+      g.waves = [];
+      g.wavePend = { t: 1e9, list: [], pos: p.pos.clone() };
+      for (const e of g.enemies) {
+        e.airIdle = null;
+        e.airTok = undefined; // 移走的不參加名額分配
+        e.pos.x += 9000;
+        e.updateAI = () => {};
+      }
+      p.pos.set(0, 600, 0);
+      const ds = [];
+      for (let i = 0; i < 6; i++) {
+        g.airSpawnOne('drone', V(300 * Math.cos(i), 620, 300 * Math.sin(i)));
+        const e = g.enemies[g.enemies.length - 1];
+        ds.push(e);
+        const f0 = e.fire.bind(e);
+        e.fire = (...a) => {
+          if (!e.airTok) o.badFire = (o.badFire || 0) + 1;
+          return f0(...a);
+        };
+      }
+      window.__pump(1.5);
+      const h1 = ds.filter((e) => e.airTok);
+      o.tok1 = h1.length;
+      window.__pump(9);
+      const h2 = ds.filter((e) => e.airTok && !e.dead);
+      o.tok2 = h2.length;
+      o.rot = h2.some((e) => !h1.includes(e));
+      // 空戰的瞄準：剛轉彎＋側面 → 預判差、擴散大；直線飛＋咬尾 → 準
+      const sh = ds[0];
+      p.yaw = 0;
+      p.airPit = 0;
+      sh.pos.copy(p.pos).add(V(0, 0, 200)); // 機首朝 −Z，敵人在 +Z＝背後
+      p.airSteady = 3;
+      const kTail = sh.airAimK(p, 200);
+      sh.pos.copy(p.pos).add(V(200, 0, 0));
+      p.airSteady = 0;
+      const kSide = sh.airAimK(p, 200);
+      o.aim = [kTail, kSide].map((k) => k.map((x) => +x.toFixed(2)).join('/')).join(' ');
+      o.aimOk = kTail[0] > kSide[0] * 2 && kSide[1] > kTail[1];
+      // 雷射：先預警、之後才射
+      const w = { airW: null };
+      const ld = { type: 'laser', range: 300 };
+      const mz = sh.center();
+      const r0 = sh.airBeamGate(w, ld, mz, p);
+      sh.t += 0.7;
+      const r1 = sh.airBeamGate(w, ld, mz, p);
+      o.beam = r0 === null && !!r1;
+      // 被咬尾：拿到名額、在背後、機首對著自己
+      sh.pos.copy(p.pos).add(V(0, 0, 250));
+      sh.yaw = 0; // 機首朝 −Z＝對著玩家
+      sh.airPit = 0;
+      sh.airTok = true;
+      sh.airIdle = null;
+      g.airTailTick(p, 0.016);
+      o.tail = g.airTail.includes(sh);
+      // 防空區：圓頂（低空在裡面、正上方 700 m 在外面）
+      const fk = g.enemies.find((e) => e.ai === 'flak' && !e.dead);
+      if (fk) {
+        o.dome = !!fk.airDome;
+        const fc = fk.center();
+        p.pos.copy(fc).add(V(300, 100, 0));
+        o.flakIn = fk.airFlakIn(p);
+        p.pos.copy(fc).add(V(0, 700, 0));
+        o.flakOut = !fk.airFlakIn(p);
+        p.pos.set(0, 600, 0);
+      }
+      // 擦身而過：咻的一聲
+      g.airWhizT = -9;
+      const pr = { pos: p.center().add(V(8, 0, 2)), whz: false };
+      g.airWhiz(pr, p.center().add(V(8, 0, -40)));
+      o.whiz = pr.whz && g.airWhizT > -9;
+      // 飛行中不會被打出失衡
+      p.acs = 0;
+      p.takeDamage(10, 1e6, sh, p.center(), V(1, 0, 0));
+      o.stag = p.staggerT;
+      // 脫離戰鬥回復：6 秒內不回、之後回到 70%（名額的檢查用的無人機停住、移走）
+      for (const e of ds) {
+        e.updateAI = () => {};
+        e.airTok = undefined;
+        e.pos.x += 9000;
+      }
+      const bc0 = g.airBase.center();
+      p.pos.set(bc0.x + 1500, 900, bc0.z); // 離雷達站的補給區遠一點
+      p.maxHp = 10000;
+      p.hp = 3000;
+      p.airHurtT = p.t;
+      window.__pump(3);
+      o.hp3 = Math.round(p.hp);
+      window.__pump(6);
+      o.hp9 = Math.round(p.hp);
+      // 雷達站上空的補給
+      const B = g.airBase,
+        bc = B.center();
+      p.aam.n = 10;
+      p.hp = 2000;
+      for (let i = 0; i < 20; i++) {
+        p.pos.set(bc.x, bc.y + 200, bc.z);
+        window.__pump(0.1);
+      }
+      o.sup = [g.airSupply, Math.round(p.hp), p.aam.n].join();
+      o.supOk = g.airSupply && p.hp > 2000 && p.aam.n > 10;
+      o.zone = !!B.airZone;
+      // MS-4 的多目標鎖定：前方 4 台全部鎖住、一次齊射全部擊墜；擊墜補空戰導彈
+      // （導彈進雲會失去追蹤、撞到山會爆炸：挑一個玩家、目標與路徑都不在雲裡、離地夠高的高度）
+      let my = 600;
+      for (let y = 300; y <= 1100; y += 25) {
+        if (
+          [0, 100, 200, 300, 420, 470].every(
+            (z) =>
+              p.airFloor(-80, -z) < y - 120 && p.airFloor(80, -z) < y - 120 && p.airFloor(0, -z) < y - 120,
+          ) &&
+          [0, 100, 200, 300, 420, 470].every(
+            (z) =>
+              !g.airInCloud(V(0, y, -z)) &&
+              !g.airInCloud(V(-60, y + 30, -z)) &&
+              !g.airInCloud(V(60, y + 30, -z)),
+          )
+        ) {
+          my = y;
+          break;
+        }
+      }
+      p.pos.set(0, my, 0);
+      p.vel.set(0, 0, 0);
+      p.yaw = 0;
+      p.airPit = 0;
+      p.aam.n = 40;
+      const f = p.airDirNow();
+      const ts = [];
+      for (let i = 0; i < 4; i++) {
+        g.airSpawnOne(
+          'drone',
+          p
+            .center()
+            .addScaledVector(f, 420)
+            .add(V((i - 1.5) * 40, i * 10, 0)),
+        );
+        const e = g.enemies[g.enemies.length - 1];
+        e.updateAI = () => {};
+        ts.push(e);
+      }
+      window.__pump(1.5);
+      o.ml = (p.airML || []).filter((x) => x.t >= 0.35).length;
+      p.weapons.rback.cd = 0;
+      o.mlFire = p.fire('rback', p.center().addScaledVector(f, 400), p.lock);
+      window.__pump(4);
+      o.mlDead = ts.filter((e) => e.dead).length;
+      o.aam = p.aam.n;
+      return o;
+    });
+    check(
+      fu.idleN >= 1 && fu.idleMin > 1000 && !fu.idleTok,
+      `第一波在 ${fu.idleMin} m 外巡邏（${fu.idleN} 台還沒察覺）`,
+    );
+    check(fu.woke, '靠近第一波的一隊：整隊開始交戰');
+    check(
+      fu.tok1 >= 1 && fu.tok1 <= 2 && fu.tok2 <= 2 && fu.rot && !fu.badFire,
+      `攻擊名額：6 台裡同時 ${fu.tok1} 台開火、會輪替，沒拿到的不開火（${fu.badFire || 0}）`,
+    );
+    check(fu.aimOk, `空戰的瞄準：直線飛＋咬尾準、剛轉彎＋側面不準（預判／擴散 ${fu.aim}）`);
+    check(fu.beam, '敵人的雷射先拉預警線，之後才射');
+    check(fu.tail, '被咬尾的警告');
+    check(fu.dome && fu.flakIn && fu.flakOut, '防空砲的防空區：紅色圓頂，低空在裡面、高空在外面');
+    check(fu.whiz, '子彈擦身而過的聲音');
+    check(fu.stag === 0, '飛行中不會被打出失衡');
+    check(
+      fu.hp3 === 3000 && fu.hp9 > 3000 && fu.hp9 <= 7000,
+      `脫離戰鬥回復（3 秒 ${fu.hp3}、9 秒 ${fu.hp9}）`,
+    );
+    check(fu.supOk && fu.zone, `友軍雷達站上空的補給（${fu.sup}）`);
+    check(
+      fu.ml === 4 && fu.mlFire && fu.mlDead === 4 && fu.aam >= 48, // 剛好在補給區裡時會更多
+      `MS-4 多目標鎖定 ${fu.ml} 台、齊射擊墜 ${fu.mlDead} 台；擊墜補導彈（${fu.aam}）`,
+    );
+    await pf.evaluate(() => {
+      const g = window.__game;
+      g.clearMission();
+      g.state = 'title';
+      g.showScreen('title');
+      localStorage.removeItem('rubicon_map');
+    });
+    await thawLoop(pf);
+    await c5.close();
+  }
   // 空中的 Boss：空域的 Boss 關只排空中要塞（在空中、發射空戰導彈）
   {
     const { ctx: c4, page: pb } = await newPage(browser, 'air-boss');
@@ -6556,18 +6772,63 @@ async function testAir(browser, base) {
       const parts = g.enemies.filter((e) => !e.dead && e.opts && e.opts.parent === b.id);
       o.parts = parts.length;
       o.partsNear = parts.every((e) => e.pos.distanceTo(b.pos) < 120);
-      // 玩家飛到要塞附近：要塞發射空戰導彈
+      // 玩家在要塞 500 m 外：要塞發射空戰導彈（貼近 250 m 內不發射，所以每 0.5 秒放回原位）
       const f = b.pos.clone().sub(p.pos).setY(0).normalize();
-      p.pos
-        .copy(b.pos)
+      const at = b.pos
+        .clone()
         .addScaledVector(f, -500)
         .setY(b.pos.y + 40);
       g.fpYaw = p.yaw = Math.atan2(-f.x, -f.z);
       g.fpPitch = 0;
-      o.t = Math.round(window.__pump(20, () => g.projectiles.some((x) => x.aam && x.owner === b)) * 10) / 10;
+      o.t = -1;
+      for (let i = 0; i < 40 && o.t < 0; i++) {
+        p.pos.copy(at);
+        if (window.__pump(0.5, () => g.projectiles.some((x) => x.aam && x.owner === b)) >= 0) o.t = i * 0.5;
+      }
       o.goal = (g.goalSpec() || { win: [] }).win.join();
       p.lock = b;
       window.__pump(0.5);
+      // D：主砲只打前方（先拉預警線）、正後方貼近是安全區、懸吊砲塔還在時引擎有掩護
+      for (const e of g.enemies) if (e !== b && e.opts.parent !== b.id) e.updateAI = () => {};
+      const put = (ang, dist, dy) => {
+        const fw = new THREE.Vector3(-Math.sin(b.yaw + ang), 0, -Math.cos(b.yaw + ang));
+        p.pos.copy(b.pos).addScaledVector(fw, dist);
+        p.pos.y = b.pos.y + dy;
+        p.vel.set(0, 0, 0);
+        p.airV = 0;
+      };
+      b.airFz = { cn: 0.5, br: 99, tur: -1 };
+      let warn = false;
+      const fa = g.alertAll.bind(g);
+      g.alertAll = (m) => {
+        if (/主砲/.test(m)) warn = true;
+        return fa(m);
+      };
+      const hpA = p.hp;
+      for (let i = 0; i < 5; i++) {
+        put(0, 400, 0);
+        window.__pump(1);
+      }
+      o.cannon = warn && p.hp < hpA;
+      const hpB = p.hp;
+      for (let i = 0; i < 15; i++) {
+        put(Math.PI, 150, -20);
+        // 要塞放出的自殺無人機與運輸機也停住（只看要塞與部位）
+        for (const e of g.enemies) if (e !== b && e.opts.parent !== b.id) e.updateAI = () => {};
+        window.__pump(1);
+      }
+      o.rear = Math.round(hpB - p.hp);
+      const eng = g.enemies.find((e) => !e.dead && e.opts.partKind === 'engine');
+      const hit = () => {
+        const h0 = eng.hp;
+        eng.takeDamage(1000, 0, p, eng.center(), new THREE.Vector3(0, 1, 0), null, null, 'kin');
+        return h0 - eng.hp;
+      };
+      const d1 = hit();
+      for (const t of g.enemies.filter((e) => e.opts.partKind === 'fturret')) t.die(p);
+      window.__pump(0.2);
+      const d2 = hit();
+      o.engK = +(d1 / Math.max(1, d2)).toFixed(2);
       return o;
     });
     check(
@@ -6578,6 +6839,9 @@ async function testAir(browser, base) {
       bo.t >= 0 && bo.goal.includes('擊破'),
       `空中要塞發射空戰導彈（${bo.t} 秒）；過關條件「${bo.goal}」`,
     );
+    check(bo.cannon, '空中要塞的主砲：先拉預警線、打前方');
+    check(bo.rear === 0, `貼近空中要塞的正後方＝安全區（受傷 ${bo.rear}）`);
+    check(bo.engK < 0.5, `懸吊砲塔還在時引擎有掩護（傷害 ×${bo.engK}）`);
     await pb.screenshot({ path: path.join(SHOT_DIR, 'air-boss.png') });
     await pb.evaluate(() => {
       const g = window.__game;

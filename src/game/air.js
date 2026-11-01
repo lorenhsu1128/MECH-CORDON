@@ -49,6 +49,11 @@ Object.assign(Game.prototype, {
     document.body.classList.add('airMode');
     this.airCloudsInit(this.worldSeed || 1);
     this.airStickG = false;
+    this.airDir = { t: 0, stall: 0, told: false };
+    this.airTail = [];
+    this.airTailT = 0;
+    this.airMlT = 0;
+    this.airSupAcc = 0;
   },
   // 離開空域（clearMission）
   airEnd() {
@@ -204,7 +209,20 @@ Object.assign(Game.prototype, {
     this.waveSize = Math.max(1, Math.ceil(body.length / n));
     this.waveGap = 2.5;
     this.wavePend = null;
-    for (const t of first) this.airSpawnOne(t, this.airRing(500, 1100));
+    // 第一波（A2）：轟炸機直接飛向雷達站；其他分成 1～3 隊、在 FIRST_R 外巡邏，察覺之後才交戰（airDirTick）
+    for (const t of first.filter((x) => x === 'bomber')) this.airSpawnOne(t, this.airRing(900, 1300));
+    const rest = first.filter((x) => x !== 'bomber');
+    const ng = clamp(Math.ceil(rest.length / 3), 1, 3);
+    for (let gi = 0; gi < ng; gi++) {
+      const c = this.airRing(AIR.FIRST_R[0], AIR.FIRST_R[1]);
+      const before = new Set(this.enemies);
+      rest
+        .filter((_, i) => i % ng === gi)
+        .forEach((t) => this.airSpawnOne(t, c.clone().add(_p.set(rnd(-90, 90), rnd(-30, 30), rnd(-90, 90)))));
+      const dir = Math.random() < 0.5 ? 1 : -1;
+      for (const e of this.enemies)
+        if (!before.has(e) && e.airTok === false) e.airIdle = { c: c.clone(), grp: gi + 1, dir };
+    }
   },
   // 玩家周圍 r0～r1 公尺、離地 120 m 以上的一點（空域裡面）
   airRing(r0, r1, c) {
@@ -230,19 +248,13 @@ Object.assign(Game.prototype, {
   },
   // spawnEnemy 的最後（空域）：飛行的敵人進入飛行狀態、分配角色
   airAdopt(e, o) {
-    if (
-      e.team !== 'enemy' ||
-      e.isBoss ||
-      o.isBoss ||
-      e.ai === 'part' ||
-      e.ai === 'objective' ||
-      e.ai === 'flak'
-    )
-      return;
+    if (e.ai === 'flak' && e.team === 'enemy') return this.airFlakDome(e);
+    if (e.team !== 'enemy' || e.isBoss || o.isBoss || e.ai === 'part' || e.ai === 'objective') return;
     const ace = e.ai === 'ac' || !!o.ace;
     if (!o.flying && !ace) return;
     const at = o.at || e.pos;
     const alt = Math.max(at.y > 100 ? at.y : rnd(250, 500), this.player.airFloor(e.pos.x, e.pos.z) + 120);
+    e.airTok = false; // 攻擊名額（airDirTick 分配）
     if (e.ai === 'heli') {
       e.airAlt = alt; // 直升機：照原本的定點懸停（慢）
       e.pos.y = alt;
@@ -258,6 +270,7 @@ Object.assign(Game.prototype, {
           : 'drone';
     e.airFoeInit(role, alt, this.player.pos);
     if (role === 'bomber') {
+      e.airTok = undefined; // 轟炸機不開火、不排名額
       e.name = '轟炸機';
       e.opts.cargo = null;
       if (!this.airBomberTold) {
@@ -283,6 +296,45 @@ Object.assign(Game.prototype, {
     const b = this.campObjective(at, 'ally');
     b.name = '友軍雷達站';
     this.airBase = b;
+    // 補給區（C4）：雷達站上空的青色網格圓柱
+    const z = new THREE.Mesh(
+      new THREE.CylinderGeometry(AIR.BASE_R, AIR.BASE_R, AIR.BASE_H, 32, 4, true),
+      new THREE.MeshBasicMaterial({
+        color: 0x60d8ff,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.14,
+        depthWrite: false,
+      }),
+    );
+    this.airHelper(z, b, AIR.BASE_H / 2);
+    b.airZone = z;
+  },
+  // 空域的輔助外觀（補給區、防空區）：掛在實體的模型底下（跟著它被移除），抵銷模型的縮放
+  airHelper(m, e, y) {
+    m.userData.helper = true;
+    m.userData.noAO = true;
+    m.userData.noFade = true;
+    const k = 1 / (e.mesh.scale.x || 1);
+    m.scale.multiplyScalar(k);
+    m.position.y = y * k;
+    e.mesh.add(m);
+  },
+  // 防空砲的防空區（A3）：紅色的網格圓頂（低空飛進去才會被發射空戰導彈，mech-air.js 的 airFlakIn）
+  airFlakDome(e) {
+    const m = new THREE.Mesh(
+      new THREE.SphereGeometry(AIR.FLAK_SAM_R, 20, 6, 0, Math.PI * 2, 0, Math.PI / 2),
+      new THREE.MeshBasicMaterial({
+        color: 0xff5040,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.16,
+        depthWrite: false,
+      }),
+    );
+    m.scale.set(1, AIR.FLAK_SAM_H / AIR.FLAK_SAM_R, 1);
+    this.airHelper(m, e, 0);
+    e.airDome = m;
   },
   // 島上的防空砲：離玩家 600～2200 m、海拔 30 m 以上（找不到時放寬到 3.2 km、15 m）
   airFlakPlan(L) {
@@ -355,6 +407,10 @@ Object.assign(Game.prototype, {
     if (e.ai === 'flak' || (!e.air && !e.opts.flying && !e.isBoss)) S.ground++;
     else S.kills++;
     if (e.airRole === 'ace') S.aces++;
+    if (e.airDome) e.airDome.visible = false;
+    // 補給（C4）：玩家擊墜一台補空戰導彈
+    const P = this.player;
+    if (from === P && P && P.aam) P.aam.n = Math.min(AIR.AAM_N, P.aam.n + AIR.KILL_AAM);
     if (this.isClient) return;
     const big = e.isBoss || e.airRole === 'bomber';
     const R = e.isBoss ? 180 : big ? 90 : 60;
@@ -419,6 +475,12 @@ Object.assign(Game.prototype, {
       setTimeout(() => this.state === 'ending' && this.endMission(false, false), 1800);
       return;
     }
+    this.airDirTick(dt);
+    this.airTailTick(p, dt);
+    this.airMlTick(p, dt);
+    this.airSupplyTick(p, dt);
+    if (this.airBase && this.airBase.dead && this.airBase.airZone) this.airBase.airZone.visible = false;
+    this.airInFlak = this.enemies.some((e) => !e.dead && e.ai === 'flak' && e.airFlakIn(p));
     if (!p.aam) return;
     p.aamTick(dt);
     const held = this.act('aam');
@@ -446,6 +508,197 @@ Object.assign(Game.prototype, {
         SFX.tone(1180, 1180, 0.05, 0.2, 'square', 'ui');
       }
     } else this.airMslT = 0;
+  },
+  // ---------- 空戰的節奏（A：攻擊名額、第一波的察覺；airPlayerTick 每格） ----------
+  // 同時最多 TOK_N 台開火（敵對 AC 另外 TOK_ACE 台）；拿著 TOK_HOLD 秒、有人在等時交出並休息 TOK_REST 秒；
+  // 等越久、越近的先拿到。第一波（airIdle）在 WAKE_R 內、被打中、同一隊有人交戰時才交戰；名牌的標示照 e.aw（ai-director.js）
+  airDirTick(dt) {
+    const D = this.airDir || (this.airDir = { t: 0, stall: 0, told: false });
+    for (const e of this.enemies) if (e.airRest > 0) e.airRest -= dt;
+    if ((D.t -= dt) > 0) return;
+    D.t = 0.3;
+    const p = this.player,
+      pc = p.center();
+    const pool = [],
+      wake = new Set();
+    let idleNear = null,
+      idleD = 1e9;
+    for (const e of this.enemies) {
+      if (e.dead || e.airTok === undefined) continue;
+      const dd = e.center().distanceTo(pc);
+      if (e.airIdle) {
+        e.aw = 1;
+        if (dd < AIR.WAKE_R || e.hp < e.maxHp) wake.add(e.airIdle.grp);
+        if (dd < idleD) {
+          idleD = dd;
+          idleNear = e;
+        }
+        continue;
+      }
+      pool.push([e, dd]);
+    }
+    // 場上沒有交戰中的敵機：STALL_T 秒後最近的一隊來找
+    if (!pool.length && idleNear) {
+      D.stall += 0.3;
+      if (D.stall > AIR.STALL_T) {
+        D.stall = 0;
+        wake.add(idleNear.airIdle.grp);
+      }
+    } else D.stall = 0;
+    if (wake.size) this.airWake(wake);
+    for (const ace of [true, false]) {
+      const cap = ace ? AIR.TOK_ACE : AIR.TOK_N;
+      const list = pool.filter(([e]) => (e.airRole === 'ace') === ace);
+      let n = 0;
+      for (const [e] of list) {
+        if (!e.airTok) continue;
+        e.airTokT = (e.airTokT || 0) + 0.3;
+        if (e.airTokT > AIR.TOK_HOLD && list.length > cap) {
+          e.airTok = false;
+          e.airRest = AIR.TOK_REST;
+        } else n++;
+      }
+      const cand = list
+        .filter(([e]) => !e.airTok && !(e.airRest > 0))
+        .sort((a, b) => a[1] - (a[0].airWait || 0) * 60 - (b[1] - (b[0].airWait || 0) * 60));
+      for (const [e] of cand) {
+        if (n >= cap) break;
+        e.airTok = true;
+        e.airTokT = 0;
+        e.airWait = 0;
+        n++;
+      }
+      for (const [e] of list) {
+        if (!e.airTok) e.airWait = (e.airWait || 0) + 0.3;
+        e.aw = 3 + (e.airTok ? 8 : 0); // 交戰；拿到名額＝名牌的紅色倒三角
+      }
+    }
+  },
+  // 叫醒第一波的隊伍（grp 的集合）
+  airWake(grps) {
+    let n = 0;
+    for (const e of this.enemies)
+      if (!e.dead && e.airIdle && grps.has(e.airIdle.grp)) {
+        e.airIdle = null;
+        e.airTok = false;
+        n++;
+      }
+    if (!n) return;
+    const D = this.airDir;
+    if (D && !D.told) {
+      D.told = true;
+      this.commSay('echo', '敵機編隊發現我們了。牠們會輪流進攻，盯住正在咬你的那一台。');
+    } else this.flashAlert('敵機編隊開始交戰');
+  },
+  // 被咬尾（B3）：拿到名額的敵機在背後、機首對著自己、在射程附近
+  airTailTick(p, dt) {
+    const T = [];
+    const f = p.airDirNow(),
+      pc = p.center();
+    for (const e of this.enemies) {
+      if (e.dead || !e.air || e.airIdle || !e.airTok || e.airRole === 'bomber' || e.airRole === 'kami')
+        continue;
+      const to = pc.clone().sub(e.center());
+      if (to.length() > 650 || e.airDirNow().angleTo(to) > 0.4) continue;
+      if (f.dot(to.normalize().negate()) >= AIR.TAIL_DOT) continue;
+      T.push(e);
+    }
+    this.airTail = T;
+    if (T.length) {
+      this.airTailT -= dt;
+      if (this.airTailT <= 0) {
+        this.airTailT = 0.9;
+        SFX.tone(560, 470, 0.12, 0.14, 'triangle', 'ui');
+      }
+    } else this.airTailT = 0;
+  },
+  // 子彈擦身而過（B4，projectile.js 每格呼叫）：咻的一聲、鏡頭輕晃
+  airWhiz(pr, prev) {
+    const p = this.player;
+    if (!p || p.dead || !p.air) return;
+    const c = p.center();
+    const seg = _d.copy(pr.pos).sub(prev);
+    const L2 = seg.lengthSq();
+    if (L2 < 1e-6) return;
+    const t = clamp(_v.copy(c).sub(prev).dot(seg) / L2, 0, 1);
+    const dd = _v.copy(prev).addScaledVector(seg, t).distanceTo(c);
+    if (dd > AIR.WHIZ_R || dd < (p.radius || 2) + 1.5) return;
+    pr.whz = true;
+    if (this.time - (this.airWhizT || -9) < 0.12) return;
+    this.airWhizT = this.time;
+    SFX.tone(1500, 380, 0.18, 0.1, 'sawtooth', 'ui');
+    this.camShake = Math.max(this.camShake || 0, 0.05);
+  },
+  // MS-4／MS-8 的多目標鎖定（C3）：機首前方 ML_CONE、ML_R 內，每 ML_STEP 秒多鎖一台（最多 ML_MAX），ML_LOCK 秒鎖滿
+  airMlTick(p, dt) {
+    const has = ['rback', 'lback'].some((k) => p.weapons[k] && AIR.ML_IDS.includes(p.weapons[k].def.id));
+    if (!has) {
+      p.airML = null;
+      return;
+    }
+    const L = p.airML || (p.airML = []);
+    const pc = p.center(),
+      f = p.airDirNow();
+    const cloud = this.airInCloud(pc);
+    const ok = (e, keep) => {
+      if (e.dead || e.noLock || e.decoy || e.team === p.team || e.departing) return false;
+      const c = e.center();
+      const to = c.clone().sub(pc);
+      const k = keep ? 1.2 : 1;
+      return to.length() < AIR.ML_R * k && f.angleTo(to) < AIR.ML_CONE * k && !this.airInCloud(c);
+    };
+    for (let i = L.length - 1; i >= 0; i--) {
+      const x = L[i];
+      if (cloud || !ok(x.e, true)) L.splice(i, 1);
+      else if (x.t < AIR.ML_LOCK && (x.t += dt) >= AIR.ML_LOCK)
+        SFX.tone(1320, 1320, 0.05, 0.12, 'square', 'ui');
+    }
+    if ((this.airMlT -= dt) > 0 || cloud || L.length >= AIR.ML_MAX) return;
+    let best = null,
+      ba = 9;
+    for (const e of this.enemies) {
+      if (L.some((x) => x.e === e) || !ok(e, false)) continue;
+      const a = f.angleTo(e.center().sub(pc));
+      if (a < ba) {
+        ba = a;
+        best = e;
+      }
+    }
+    if (best) {
+      L.push({ e: best, t: 0 });
+      this.airMlT = AIR.ML_STEP;
+    }
+  },
+  // 回復與補給（C2、C4）：沒被打中一段時間後慢慢回復；友軍雷達站上空回復 AP、空戰導彈與彈藥
+  airSupplyTick(p, dt) {
+    const hurt = p.airHurtT === undefined ? -99 : p.airHurtT;
+    this.airRegen = false;
+    if (p.hp > 0 && p.t - hurt > AIR.REGEN_DELAY && p.hp < p.maxHp * AIR.REGEN_CAP) {
+      p.hp = Math.min(p.maxHp * AIR.REGEN_CAP, p.hp + p.maxHp * AIR.REGEN_RATE * dt);
+      this.airRegen = true;
+    }
+    const B = this.airBase;
+    this.airSupply = false;
+    if (!B || B.dead) return;
+    const bc = B.center();
+    if (Math.hypot(p.pos.x - bc.x, p.pos.z - bc.z) > AIR.BASE_R || p.pos.y - bc.y > AIR.BASE_H) return;
+    this.airSupply = true;
+    p.hp = Math.min(p.maxHp, p.hp + p.maxHp * AIR.BASE_AP * dt);
+    this.airSupAcc += AIR.BASE_AAM * dt;
+    const add = Math.floor(this.airSupAcc);
+    this.airSupAcc -= add;
+    if (p.aam && add) p.aam.n = Math.min(AIR.AAM_N, p.aam.n + add);
+    let ch = false;
+    for (const w of Object.values(p.weapons || {})) {
+      if (!w || !w.def || !(w.def.ammo > 0) || w.ammo >= w.def.ammo) continue;
+      w.airAcc = (w.airAcc || 0) + w.def.ammo * AIR.BASE_AMMO * dt;
+      const a = Math.floor(w.airAcc);
+      if (!a) continue;
+      w.airAcc -= a;
+      w.ammo = Math.min(w.def.ammo, w.ammo + a);
+      ch = true;
+    }
+    if (ch) this.renderWeaponHud(true);
   },
   // 雲團：每團是十幾顆很大的煙霧粒子（顯示卡粒子、一般混合、壽命很長＝一直留著）；上面亮、底下偏灰
   airCloudsInit(seed) {
@@ -577,6 +830,32 @@ Object.assign(Game.prototype, {
         }
       }
     }
+    // MS-4／MS-8 的多目標鎖定（C3）：鎖定中＝黃色菱形、鎖滿＝紅色
+    const ML = p.airML;
+    if (ML) {
+      const nOk = ML.filter((x) => x.t >= AIR.ML_LOCK).length;
+      c.textAlign = 'center';
+      c.fillStyle = nOk ? red : col;
+      c.fillText(`ML ${nOk}/${AIR.ML_MAX}`, W * 0.5 + 380 * S, H * 0.5 + 100 * S);
+      c.save();
+      c.lineWidth = Math.max(1, 2 * S);
+      for (const x of ML) {
+        const q = this.proj(x.e.center());
+        if (!q.in) continue;
+        const k = x.t >= AIR.ML_LOCK,
+          r = (k ? 15 : 15 + 12 * (1 - x.t / AIR.ML_LOCK)) * S;
+        c.strokeStyle = k ? red : 'rgba(255,220,90,0.95)';
+        c.beginPath();
+        c.moveTo(q.x, q.y - r);
+        c.lineTo(q.x + r, q.y);
+        c.lineTo(q.x, q.y + r);
+        c.lineTo(q.x - r, q.y);
+        c.closePath();
+        c.stroke();
+      }
+      c.restore();
+    }
+    this.drawAirTail(c, W, H, S);
     // 導彈警報：畫面上方閃爍，各枚導彈在畫面上的位置（畫面外的畫在邊緣的箭頭）
     const inc = this.airMsl || [];
     if (!inc.length) return;
@@ -620,6 +899,46 @@ Object.assign(Game.prototype, {
     }
     c.restore();
   },
+  // 被咬尾（B3）：畫面上方的提示＋咬著自己的敵機（畫面外的畫成邊緣的橘色箭頭）
+  drawAirTail(c, W, H, S) {
+    const T = this.airTail || [];
+    if (!T.length) return;
+    const org = 'rgba(255,150,40,0.95)';
+    c.save();
+    if (Math.floor((this.time || 0) * 2.5) % 2 === 0) {
+      c.fillStyle = org;
+      c.textAlign = 'center';
+      c.font = `bold ${Math.round(18 * S)}px "Share Tech Mono", monospace`;
+      c.fillText('被咬尾 — 急轉或翻滾甩開', W / 2, H * 0.205);
+    }
+    c.fillStyle = org;
+    c.strokeStyle = org;
+    c.lineWidth = Math.max(1, 2 * S);
+    const inv = this.camera.matrixWorldInverse;
+    for (const e of T) {
+      const v = _v.copy(e.center()).applyMatrix4(inv);
+      const q = this.proj(e.center());
+      if (v.z < 0 && q.x > 0 && q.x < W && q.y > 0 && q.y < H) {
+        c.strokeRect(q.x - 18 * S, q.y - 18 * S, 36 * S, 36 * S);
+        continue;
+      }
+      let dx = v.x,
+        dy = -v.y;
+      if (Math.hypot(dx, dy) < 1e-3) dy = 1;
+      const a = Math.atan2(dy, dx);
+      c.save();
+      c.translate(W / 2 + Math.cos(a) * (W / 2 - 150 * S), H / 2 + Math.sin(a) * (H / 2 - 120 * S));
+      c.rotate(a);
+      c.beginPath();
+      c.moveTo(22 * S, 0);
+      c.lineTo(-8 * S, -12 * S);
+      c.lineTo(-8 * S, 12 * S);
+      c.closePath();
+      c.fill();
+      c.restore();
+    }
+    c.restore();
+  },
   drawAirHud(c, W, H, p) {
     if (!p.air) return;
     const S = Math.min(W, H) / 900;
@@ -653,6 +972,18 @@ Object.assign(Game.prototype, {
       p.abT > 0 ? 'ASSAULT' : p.airG ? 'HIGH-G' : p.airV < 20 ? 'HOVER' : p.boost ? 'BOOST' : 'CRUISE';
     c.textAlign = 'center';
     c.fillText(st, xl, yC + 30 * S);
+    // 狀態：防空區（A3）、補給中（C4）、AP 回復中（C2）
+    const tags = [];
+    if (this.airInFlak) tags.push(['防空區', warn]);
+    if (this.airSupply) tags.push(['補給中', 'rgba(120,220,255,0.95)']);
+    else if (this.airRegen) tags.push(['AP 回復中', col]);
+    c.font = `${Math.round(13 * S)}px "Share Tech Mono", monospace`;
+    tags.forEach(([t, cl], i) => {
+      c.fillStyle = cl;
+      c.fillText(t, xl, yC + (52 + i * 18) * S);
+    });
+    c.fillStyle = col;
+    c.font = `${Math.round(15 * S)}px "Share Tech Mono", monospace`;
     // 俯仰刻度（畫面中央兩側的短線，跟著機首的俯仰）
     const pit = p.airPit || 0;
     c.textAlign = 'left';

@@ -131,6 +131,9 @@ export class Projectile {
           g.fx.boostFlame(this.pos.clone(), this.vel.clone().normalize().negate(), 0xffb060);
       }
     }
+    // 空域：敵人的子彈擦過玩家身邊（game/air.js 的 airWhiz）
+    if (g.airMode && !this.whz && this.team === 'enemy' && (this.kind === 'bullet' || this.kind === 'shell'))
+      g.airWhiz(this, prev);
     // 護盾產生器的護盾、盾牌 MT 的盾（game/support.js）；路徑經過地雷時引爆
     if (g.projBlock(this, prev)) return;
     // swept hits: closest point on segment prev→pos to target sphere

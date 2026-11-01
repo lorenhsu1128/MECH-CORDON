@@ -94,6 +94,7 @@ import { WP } from '../data/weak.js';
 import { PW_FX } from '../data/charge.js';
 import { FEEL } from '../data/feel.js';
 import { PROP_PAD, targetDist, targetNear } from '../world/prop-hit.js';
+import { AIR } from '../data/air.js';
 
 let MECH_ID = 0;
 
@@ -605,9 +606,17 @@ export class MechEntity {
     const tgtOk = targetEnt && !targetEnt.dead && targetEnt.center;
     const distT = (tgtOk ? targetEnt.center() : targetPos).distanceTo(muzzle);
     const assist = this.fcsAssist(distT);
+    // 空域：敵人打飛行中的目標（mech-air.js）：雷射先拉預警線、子彈越遠越散、曳光放大
+    const airFoe = !!(g.airMode && tgtOk && targetEnt.air && !this.pilotEnt());
     if (tgtOk && (d.type === 'bullet' || d.type === 'shotgun' || d.type === 'shell'))
       targetPos = this.leadPoint(targetEnt, d.speed, muzzle); // 依彈速算攔截點
     else if (tgtOk && (d.type === 'laser' || d.type === 'empbeam')) targetPos = targetEnt.center(); // 即時命中：不預判
+    if (airFoe && (d.type === 'laser' || d.type === 'empbeam')) {
+      const at = this.airBeamGate(w, d, muzzle, targetEnt);
+      if (!at) return false;
+      targetPos = at;
+    }
+    const airSp = airFoe ? this.airAimK(targetEnt, distT)[1] : 1;
     // 高度優勢：射手比目標高 → 擴散縮小；比目標低 → 擴散放大（每 3 m 高度差 ±7%，上限 ±45%）
     let hmul = 1;
     if (targetEnt && !targetEnt.dead) {
@@ -641,7 +650,8 @@ export class MechEntity {
         near *
         (rb ? rb.spread : 1) *
         (pwfx ? pwfx.spread : 1) *
-        (this.wpOff && this.wpOff.sen ? WP.SEN_SPREAD : 1) + // 感測器被打壞（mech-weak.js）
+        (this.wpOff && this.wpOff.sen ? WP.SEN_SPREAD : 1) * // 感測器被打壞（mech-weak.js）
+        airSp +
       (hmul > 1 ? 0.015 * (hmul - 1) * 4 : 0);
     // 彈道方向：從實際槍口指向瞄準點（不是從機體中心），手部與肩部武器落點都對準準星
     const dir = targetPos.clone().sub(muzzle).normalize();
@@ -702,6 +712,7 @@ export class MechEntity {
             rbT || {},
             wpk ? { wpk } : {},
             pwX,
+            airFoe && kind === 'bullet' ? { scale: 2.2 } : {}, // 空域：敵人的曳光放大（看得出從哪裡打來）
             extra || {},
           ),
         ),
@@ -817,11 +828,29 @@ export class MechEntity {
         break;
       case 'missile':
         {
-          const n = this.missileN(d, targetEnt); // 多連導彈：鎖定時間不夠時發射數量較少
+          // 空域的 MS-4／MS-8（mech-air.js 的 airMlTargets）：鎖定的最多 4 台分著打、沿機首射出、追得上飛機
+          const ml = this.airMlTargets(d);
+          const n = ml ? d.count || 1 : this.missileN(d, targetEnt); // 多連導彈：鎖定時間不夠時發射數量較少
           this.lkT0 = this.t; // 發射後重新鎖定
+          const af = ml ? this.airDirNow() : null;
           for (let i = 0; i < n; i++) {
             const up = new THREE.Vector3(rnd(-0.6, 0.6), 1.2, rnd(-0.6, 0.6)).normalize();
-            const v = up.multiplyScalar(d.speed);
+            const v = ml
+              ? af
+                  .clone()
+                  .add(new THREE.Vector3(rnd(-0.25, 0.25), rnd(0, 0.3), rnd(-0.25, 0.25)))
+                  .normalize()
+                  .multiplyScalar(AIR.ML_V)
+              : up.multiplyScalar(d.speed);
+            const mlx = ml
+              ? {
+                  dmg: dmg * AIR.ML_DMG,
+                  target: ml.length ? ml[i % ml.length] : targetEnt,
+                  turn: AIR.ML_TURN,
+                  life: AIR.ML_R / AIR.ML_V + 1.5,
+                  aam: true,
+                }
+              : null;
             g.projectiles.push(
               new Projectile(g, {
                 pos: muzzle.clone().add(new THREE.Vector3(rnd(-0.3, 0.3), 0.3, rnd(-0.3, 0.3))),
@@ -840,9 +869,11 @@ export class MechEntity {
                 rb: rbT ? rbT.rb : 0,
                 wpk,
                 ...(foeShot ? this.foeShotOpt(dmg, 'missile') : {}),
+                ...(mlx || {}),
               }),
             );
           }
+          if (ml) this.airMLFired = this.t;
           g.fx.muzzle(muzzle, dir, 0xffc0a0, 1.2, 'ms'); // 導彈莢艙：發射口的小閃光與往後的煙
           for (let i = 0; i < 3; i++)
             g.fx.smoke(
@@ -853,7 +884,7 @@ export class MechEntity {
               2.5,
             );
           SFX.shot('missile', undefined, SP);
-          w.cd = d.rof;
+          w.cd = ml ? Math.max(d.rof, AIR.ML_CD * Math.sqrt((d.count || 4) / 4)) : d.rof;
           if (this.isPlayer) g.rumble(0.2, 0.7, 160);
         }
         break;
@@ -1863,7 +1894,10 @@ export class MechEntity {
     const V = this.trackVel(t);
     let tt = c.distanceTo(muzzle) / speed;
     for (let i = 0; i < 2; i++) tt = c.clone().addScaledVector(V, tt).distanceTo(muzzle) / speed;
-    return c.addScaledVector(V, tt * this.leadK(c.distanceTo(muzzle)));
+    const dist = c.distanceTo(muzzle);
+    // 空域：敵人瞄準飛行中的目標照空戰的預判（直線飛越久越準、咬尾才準；mech-air.js 的 airAimK）
+    const k = this.game.airMode && t.air && !this.pilotEnt() ? this.airAimK(t, dist)[0] : this.leadK(dist);
+    return c.addScaledVector(V, tt * k);
   }
   // 鎖定時間：每格以目前的目標更新（玩家在 move、電腦在 updateAI）
   lockAge(t) {
@@ -2088,6 +2122,7 @@ export class MechEntity {
     const hpBefore = Math.max(0, this.hp);
     if (g.pilotCreditHit) g.pilotCreditHit(from, this, wid, Math.min(real, hpBefore));
     this.hp -= real;
+    if (real > 0 && this.air) this.airHurtT = this.t; // 空域：脫離戰鬥的回復（game/air.js）
     if (real > 0 && (this.isBoss || this.opts.parent !== undefined)) this.tierGauge(real, from); // 打斷大招的量表
     // 戰術模組「能量虹吸」：命中回復 EN（近戰多）
     if (from && from !== this && from.pm && real > 0 && from.pmv('hitEn') > 0)
@@ -2109,7 +2144,8 @@ export class MechEntity {
       if (this.team === 'player' && this.slot !== undefined && g.mpStats[this.slot])
         g.mpStats[this.slot].taken += eff;
     }
-    if (this.staggerT <= 0) {
+    // 空域：玩家飛行中不會被打出失衡（docs/air-combat-design.md）
+    if (this.staggerT <= 0 && !(this.air && this.pilotEnt())) {
       // 高處優勢：攻擊者比自己高 12 m 以上時衝擊 +25%
       const high =
         from && from !== this && from.center && from.center().y - this.center().y > 4 * this.dk ? 1.25 : 1;
@@ -3207,7 +3243,10 @@ export class MechEntity {
       pl = g.player;
     this.lockAge(pl); // 導彈的鎖定時間
     // 第三型態的專屬招式（mech-boss3.js）；有刁鑽度時每個型態的大招都先蓄力、可以打斷（mech-boss-tier.js）
-    if (this.isBoss && this.tierOn()) this.tierTick(dt, pl);
+    // 空域的空中要塞改用空戰的招式（mech-air.js 的 airFortressTick），不放這兩套
+    if (this.isBoss && g.airMode) {
+      /* 空域 */
+    } else if (this.isBoss && this.tierOn()) this.tierTick(dt, pl);
     else if (this.isBoss && pl) this.boss3Tick(dt, pl);
     if (this.team === 'ally') {
       this.allyT -= dt;
@@ -3481,6 +3520,11 @@ export class MechEntity {
       // firing
       s.fireT -= dt;
       if (this.ai === 'kamikaze' || this.ai === 'swarm') {
+        this.move(dt, wish, hover, qb, ab, null);
+        return;
+      }
+      // 空域：沒拿到攻擊名額（或還沒察覺）的直升機不開火（game/air.js 的 airDirTick）
+      if (g.airMode && (this.airTok === false || this.airIdle) && !this.isBoss && this.ai !== 'part') {
         this.move(dt, wish, hover, qb, ab, null);
         return;
       }
