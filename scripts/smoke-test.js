@@ -11947,6 +11947,17 @@ async function testAudio2(browser, base) {
     out.bKey = g.bgm && g.bgm.key;
     g.bgmStop(0.1);
     g.bgmFrame = frame0;
+    // 日文語音：ECHO、其他角色、敵兵都換成 <聲音>_ja；沒有日文的句子改唸中文（載入日文的語音包要一段時間，放在最後，不影響前面依戰況的檢查）
+    g.ctrl.voiceLang = 'ja';
+    g.voiceStop();
+    out.vJa = await g.voiceSay('空降完成。這次作戰由我管制。');
+    out.vJaId = g.vbufId;
+    g.voiceStop();
+    out.vJaCast = await g.voiceSay('通訊局的入口在橋梁群底下。進去，毀掉它，什麼都別聽。', 'castron');
+    out.vJaCastId = g.vbufId;
+    g.voiceStop();
+    out.vJaBark = !!(await g.voiceBuf('b_spot0', 'grunt1_ja'));
+    g.ctrl.voiceLang = 'zh';
     g.clearMission();
     localStorage.setItem('rubicon_map', 'industrial');
     g.state = 'title';
@@ -11992,6 +12003,10 @@ async function testAudio2(browser, base) {
   check(
     r.vCast > 0.5 && r.vCastOff === 0,
     `其他角色的語音（霍斯特 ${r.vCast.toFixed(1)} 秒）、設定關閉時不唸`,
+  );
+  check(
+    r.vJa > 0.5 && r.vJaId === 'gentle_ja' && r.vJaCast > 0.5 && r.vJaCastId === 'castron_ja' && r.vJaBark,
+    `日文語音（ECHO ${r.vJa.toFixed(1)} 秒、霍斯特 ${r.vJaCast.toFixed(1)} 秒、敵兵）`,
   );
   check(
     r.bark && r.bark.played && r.bark.sent === 'bark' && r.bark.off,

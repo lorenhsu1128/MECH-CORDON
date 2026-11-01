@@ -3,6 +3,7 @@
 //  兩個聲音（VoxCPM2 產生，scripts/voice-gen.py）：設定 ctrl.voice＝gentle 溫柔知性／ai AI 系統感／off。
 //  語音檔在 lib/voice-<聲音>.js（window.RUBICON_VOICE_<聲音>＝{ 鍵: base64 mp3 }），第一次要說話時只載入選的那個，
 //  每句第一次播時才解碼。同一時間只說一句：優先度高的打斷低的（系統提示的「導彈接近」打斷通訊）。
+//  語言：設定 ctrl.voiceLang＝zh 中文／ja 日文（日文的聲音在 <聲音>_ja 資料夾；沒有日文的句子改唸中文）。
 //  音色：俯視與追尾＝輕微的無線電（帶通、一點點飽和），第一人稱＝駕駛艙內（乾淨）。多人各端依自己的設定播。
 // ============================================================
 import { Game } from './game.js';
@@ -31,14 +32,21 @@ Object.assign(Game.prototype, {
   voiceOn() {
     return !!this.voiceId();
   },
-  // 說話者 → 聲音資料夾（ECHO＝設定選的聲音；其他角色在 CAST_IDS 裡、設定 ctrl.voiceCast 沒關時＝說話者 id）
+  // 語音的語言 → 資料夾的後綴（日文＝_ja）
+  voiceSuf() {
+    return this.ctrl && this.ctrl.voiceLang === 'ja' ? '_ja' : '';
+  },
+  // 說話者 → 聲音資料夾（ECHO＝設定選的聲音；其他角色在 CAST_IDS 裡、設定 ctrl.voiceCast 沒關時＝說話者 id）＋語言的後綴
   voiceFolder(sp = 'echo') {
-    if (sp === 'echo') return this.voiceId();
+    if (sp === 'echo') {
+      const v = this.voiceId();
+      return v && v + this.voiceSuf();
+    }
     if (!CAST_IDS.includes(sp) || (this.ctrl && this.ctrl.voiceCast === 'off')) return null;
-    return sp;
+    return sp + this.voiceSuf();
   },
   // 第一次要說話時以 <script> 載入 lib/voice-<聲音>.js（ECHO 約 11 MB、其他角色 0.1～1.5 MB，不內嵌）
-  voiceLoad(id = this.voiceId()) {
+  voiceLoad(id = this.voiceFolder()) {
     if (!id) return Promise.resolve(false);
     const G = 'RUBICON_VOICE_' + id.toUpperCase();
     if (window[G]) return Promise.resolve(true);
@@ -57,15 +65,16 @@ Object.assign(Game.prototype, {
     }));
   },
   // 鍵 → AudioBuffer（沒有這句的語音＝null）；folder＝聲音資料夾（預設＝ECHO 目前的聲音）
-  async voiceBuf(key, folder = this.voiceId()) {
+  async voiceBuf(key, folder = this.voiceFolder()) {
     if (!SFX.ctx || !folder) return null;
     this.vbuf = this.vbuf || {};
     this.vbufId = folder;
     const ck = folder + '/' + key;
     if (ck in this.vbuf) return this.vbuf[ck];
-    if (!(await this.voiceLoad(folder))) return null;
-    const b64 = window['RUBICON_VOICE_' + folder.toUpperCase()][key];
-    if (!b64) return (this.vbuf[ck] = null);
+    // 日文的聲音沒有這句（還沒翻譯、載不到）時改唸中文
+    const zh = folder.endsWith('_ja') ? folder.slice(0, -3) : null;
+    const b64 = (await this.voiceLoad(folder)) && window['RUBICON_VOICE_' + folder.toUpperCase()][key];
+    if (!b64) return (this.vbuf[ck] = zh ? await this.voiceBuf(key, zh) : null);
     const b = await new Promise((res) => SFX.ctx.decodeAudioData(SFX.b64(b64), res, () => res(null)));
     // 解碼過的最多留 80 句（先解碼的先丟）
     const ks = Object.keys(this.vbuf);
@@ -73,7 +82,7 @@ Object.assign(Game.prototype, {
     return (this.vbuf[ck] = b);
   },
   // 播一句：回傳語音的長度（秒；沒有語音或被擋下＝0）。prio＝優先度（正在說的比較高就不播）；folder＝聲音資料夾
-  async voicePlay(key, prio = 1, kind = 'comm', folder = this.voiceId()) {
+  async voicePlay(key, prio = 1, kind = 'comm', folder = this.voiceFolder()) {
     if (!SFX.ctx || !SFX.on || !folder) return 0;
     const tok = (this.voiceTok = (this.voiceTok || 0) + 1);
     const b = await this.voiceBuf(key, folder);
@@ -235,7 +244,7 @@ Object.assign(Game.prototype, {
   async barkPlay(key, pos) {
     if ((this.ctrl && this.ctrl.barks === 'off') || !SFX.ctx || !SFX.on) return;
     const [folder, k] = key.split('/');
-    const b = await this.voiceBuf(k, folder);
+    const b = await this.voiceBuf(k, folder + this.voiceSuf());
     if (!b) return;
     SFX.barkPlay(b, pos);
   },

@@ -19,6 +19,8 @@
   python scripts/voice-gen.py --voice ai --force    # 只做一個聲音、全部重做
   python scripts/voice-gen.py --retry               # report.txt 裡的句子再產生 2 次重挑
   python scripts/voice-gen.py --voice rust --recast # 重新設計這個角色的聲音（刪掉參考音檔）並重做全部台詞
+  python scripts/voice-gen.py --lang ja             # 日文語音：台詞＝src/assets/voice/lines-ja.json（鍵同 lines.json），
+                                                    # 每個聲音（ECHO 也是）以日系的描述重新設計 → <聲音>_ja/、ref/<聲音>_ja.flac
 之後 npm run build（建置成 dist/lib/voice-<聲音>.js）。
 """
 import argparse
@@ -70,6 +72,24 @@ CAST = {
     'grunt3': ('f', '年輕女性士兵，幹練、聲音清亮', ''),
 }
 ECHO = ['gentle', 'ai']
+# 日文語音（--lang ja）：所有聲音都重新設計（日本動畫的聲優類型），ECHO 的兩個聲音也是
+ACCENT_JA = '標準日語，日本動畫配音員的演技，'
+ECHO_JA = {
+    'gentle': ('f', '二十多歲的年輕女性，溫柔知性的大姊姊，聲音柔和清澈、語速從容，冷靜裡帶著體貼', '溫柔、冷靜'),
+    'ai': ('f', '年輕女性，冷靜的人工智慧管制官，聲音清澈平穩、略帶機械感、感情很少、字字清楚', '冷靜、平板'),
+}
+# 日文版重新設計時男聲一直出不來的角色：描述再強調男聲
+CAST_JA = {
+    # COUNTDOWN：日文的聲音設計試了 3 種描述（24 個候選）都是 160 Hz 以上的高音，所以 ref/countdown_ja.flac 直接用
+    # 中文版的參考音檔（跨語言克隆，122 Hz）；--recast 會刪掉它重新設計，不要對 countdown 用
+    'countdown': ('m', '四十多歲的男人，聲音渾厚低沉的男低音，粗獷的爆破技師', '亢奮、瘋狂'),
+    'spire': ('m', '二十多歲的男人，低沉的男中音，傲慢、愛炫耀的年輕男子，自信張揚', '傲慢、張揚'),
+}
+# 唸法（lines-ja.json 的 '@yomi'＝{ 詞: 假名 }）：短的漢字詞常被唸成中文的讀音，只在唸給 TTS 時換成假名（轉寫的比對照原文）
+YOMI = []
+SAMPLE_JA = {'grunt': '了解、指定位置へ移動中。隊形を維持する。', 'countdown': '今回の標的は船だ、お前じゃない。でもまあ、ついでにお前もいいぜ。'}
+SUF = ''  # 資料夾的後綴（日文＝_ja）
+JA = False
 VOICES = ECHO + list(CAST)
 # 聲音 → lines.json 的說話者
 LINES_OF = {'gentle': 'echo', 'ai': 'echo', 'grunt1': 'grunt', 'grunt2': 'grunt', 'grunt3': 'grunt'}
@@ -93,6 +113,10 @@ WORDS = {'KEY': 'Key'}
 CC = None
 
 
+def fold(v):
+    return v + SUF
+
+
 def to_simp(s):
     global CC
     if CC is None:
@@ -102,6 +126,12 @@ def to_simp(s):
 
 
 def say(text):
+    if JA:
+        # 日文：不轉簡體（會改掉漢字）；停頓與被遮蔽的字換成「、」
+        for a, b in YOMI:
+            text = text.replace(a, b)
+        s = text.replace('……', '、').replace('――', '、').replace('──', '、')
+        return re.sub('█+', '、', s)
     s = text.replace('……', '，').replace('──', '，').replace('——', '，')
     s = s.replace('R-07', 'R零七')
     s = re.sub('█+', '，', s)  # 軌道站被遮蔽的字：停頓
@@ -186,10 +216,12 @@ def f0_median(w, sr):
 
 def sample_line(lines, sp):
     """設計聲音時唸的代表台詞：長度最接近 26 字、沒有英文的那一句"""
-    if sp in SAMPLE:
-        return SAMPLE[sp]
+    smp = SAMPLE_JA if JA else SAMPLE
+    if sp in smp:
+        return smp[sp]
     cand = [l['t'] for l in lines[sp].values() if not re.search('[A-Za-z]', l['t'])] or [l['t'] for l in lines[sp].values()]
-    return min(cand, key=lambda t: (abs(len(t) - 26), t))
+    n = 34 if JA else 26  # 日文同樣長度的句子字數比較多
+    return min(cand, key=lambda t: (abs(len(t) - n), t))
 
 
 def load_vox():
@@ -219,17 +251,21 @@ def free(m):
 
 
 def norm(s):
+    if JA:
+        # 日文：只比假名＋漢字（片假名統一成平假名：轉寫有時把外來語寫成平假名）
+        s = re.sub(r'[^\u3041-\u3096\u30a1-\u30fa\u30fc\u4e00-\u9fff]', '', s)
+        return ''.join(chr(ord(c) - 0x60) if '\u30a1' <= c <= '\u30f6' else c for c in s)
     return re.sub(r'[^一-鿿]', '', to_simp(s))  # 只比中文字（英文名字、數字的寫法不算）
 
 
 def asr_score(asr, w, sr, text):
     w16 = np.interp(np.arange(0, len(w), sr / 16000), np.arange(len(w)), w).astype(np.float32)
-    segs, _ = asr.transcribe(w16, language='zh', beam_size=5)
+    segs, _ = asr.transcribe(w16, language='ja' if JA else 'zh', beam_size=5)
     got = ''.join(s.text for s in segs)
     r = difflib.SequenceMatcher(None, norm(text), norm(got)).ratio()
     # 長度不合理（每秒少於 1.5 或多於 9 個字）的扣分
     cps = len(norm(text)) / max(len(w) / sr, 0.1)
-    if cps < 1.5 or cps > 9:
+    if cps < 1.5 or cps > (15 if JA else 9):
         r -= 0.3
     return r, got
 
@@ -253,7 +289,7 @@ def design(lines, need):
         g, desc, _ = CAST[v]
         pre, post = GENDER[g]
         text = sample_line(lines, LINES_OF.get(v, v))
-        prompt = to_simp(pre + ACCENT + desc + post)
+        prompt = to_simp(pre + (ACCENT_JA if JA else ACCENT) + desc + post)
         n = 0
         for rnd in range(2):
             good = 0
@@ -261,7 +297,7 @@ def design(lines, need):
                 seed(77 + c * 131 + (zlib.crc32(v.encode()) & 0xfff))
                 w = trim(np.asarray(model.generate(text=f'({prompt}){say(text)}', cfg_value=2.0,
                                                     inference_timesteps=10), dtype=np.float32), sr)
-                sf.write(os.path.join(tmp, f'{v}-{c}.wav'), w, sr)
+                sf.write(os.path.join(tmp, f'{fold(v)}-{c}.wav'), w, sr)
                 good += ok_gender(g, w)[0]
             n += 4
             if good:
@@ -275,7 +311,7 @@ def design(lines, need):
         text = sample_line(lines, LINES_OF.get(v, v))
         best = None
         for c in range(nc[v]):
-            w, sr = sf.read(os.path.join(tmp, f'{v}-{c}.wav'), dtype='float32')
+            w, sr = sf.read(os.path.join(tmp, f'{fold(v)}-{c}.wav'), dtype='float32')
             r, got = asr_score(asr, w, sr, text)
             good, f0 = ok_gender(g, w)
             # 性別不對（男聲的音高在 150 Hz 以下、女聲在 175 Hz 以上；邊緣的常常聽起來是中性）的大幅扣分
@@ -284,7 +320,7 @@ def design(lines, need):
             print(f'  {v}#{c} 相似度 {r:.2f} 音高 {f0:.0f} Hz　{got}', flush=True)
             if not best or r > best[0]:
                 best = (r, w, sr)
-        sf.write(os.path.join(VDIR, 'ref', v + '.flac'), best[1], best[2])
+        sf.write(os.path.join(VDIR, 'ref', fold(v) + '.flac'), best[1], best[2])
     free(asr)
 
 
@@ -297,14 +333,14 @@ def generate(lines, todo, takes):
     i = 0
     t_all = time.time()
     for v, keys in todo.items():
-        ref = os.path.join(VDIR, 'ref', v + '.flac')
+        ref = os.path.join(VDIR, 'ref', fold(v) + '.flac')
         L0 = lines[LINES_OF.get(v, v)]
-        os.makedirs(os.path.join(TAKES, v), exist_ok=True)
+        os.makedirs(os.path.join(TAKES, fold(v)), exist_ok=True)
         for k in keys:
             st = style_of(v, L0[k])
             text = (f'({to_simp(st)})' if st else '') + say(L0[k]['t'])
             for tk in takes:
-                out = os.path.join(TAKES, v, f'{k}-{tk}.wav')
+                out = os.path.join(TAKES, fold(v), f'{k}-{tk}.wav')
                 i += 1
                 if os.path.exists(out):
                     continue
@@ -325,7 +361,7 @@ def pick(lines, todo, force):
         for k in keys:
             best = None
             for tk in range(1, 9):
-                f = os.path.join(TAKES, v, f'{k}-{tk}.wav')
+                f = os.path.join(TAKES, fold(v), f'{k}-{tk}.wav')
                 if not os.path.exists(f):
                     continue
                 w, sr = sf.read(f, dtype='float32')
@@ -343,10 +379,10 @@ def pick(lines, todo, force):
                     best = (r, w, sr, got)
             if not best:
                 continue
-            write_mp3(best[1], best[2], os.path.join(VDIR, v, k + '.mp3'), 'robot' if v == 'station' else None)
+            write_mp3(best[1], best[2], os.path.join(VDIR, fold(v), k + '.mp3'), 'robot' if v == 'station' else None)
             if best[0] < 0.75:
                 rep.append(f'{k}\t{best[0]:.2f}\t{L0[k]["t"]}\t{best[3]}')
-        rp = os.path.join(VDIR, v, 'report.txt')
+        rp = os.path.join(VDIR, fold(v), 'report.txt')
         old = []
         if not force and os.path.exists(rp):
             done = set(keys)
@@ -359,10 +395,10 @@ def pick(lines, todo, force):
 
 
 def credits(v):
-    who = {'gentle': 'ECHO（溫柔知性）', 'ai': 'ECHO（AI 系統感）'}.get(v, v)
-    with open(os.path.join(VDIR, v, 'CREDITS.txt'), 'w', encoding='utf-8', newline='\n') as f:
+    who = {'gentle': 'ECHO（溫柔知性）', 'ai': 'ECHO（AI 系統感）'}.get(v, v) + ('（日文）' if JA else '')
+    with open(os.path.join(VDIR, fold(v), 'CREDITS.txt'), 'w', encoding='utf-8', newline='\n') as f:
         f.write(f'{who} 的語音：VoxCPM2（OpenBMB，https://github.com/OpenBMB/VoxCPM，Apache-2.0）以 '
-                f'src/assets/voice/ref/{v}.flac 克隆，scripts/voice-gen.py 產生。AI 合成語音，不是任何配音員的聲音。\n')
+                f'src/assets/voice/ref/{fold(v)}.flac 克隆，scripts/voice-gen.py 產生。AI 合成語音，不是任何配音員的聲音。\n')
 
 
 def main():
@@ -374,16 +410,36 @@ def main():
     ap.add_argument('--retry', action='store_true', help='report.txt 裡的句子再多產生 2 次重挑')
     ap.add_argument('--only', default='', help='只做這些鍵（逗號分隔）')
     ap.add_argument('--more', action='store_true', help='每句再多產生 2 次（第 takes+1、+2 次），和原本的一起重挑')
+    ap.add_argument('--lang', default='zh', choices=['zh', 'ja'], help='ja＝日文語音（lines-ja.json，資料夾 <聲音>_ja）')
     a = ap.parse_args()
     lines = json.load(open(os.path.join(VDIR, 'lines.json'), encoding='utf-8'))
+    if a.lang == 'ja':
+        global JA, SUF
+        JA, SUF = True, '_ja'
+        CAST.update(ECHO_JA)
+        CAST.update(CAST_JA)
+        # 日文的台詞（鍵同 lines.json，情境照中文的）；還沒翻譯的句子不產生
+        ja = json.load(open(os.path.join(VDIR, 'lines-ja.json'), encoding='utf-8'))
+        YOMI.extend(sorted(ja.get('@yomi', {}).items(), key=lambda x: -len(x[0])))
+        miss = 0
+        for sp, L in lines.items():
+            for k in list(L):
+                t = ja.get(sp, {}).get(k)
+                if t:
+                    L[k] = {'t': t, 'k': L[k]['k']}
+                else:
+                    del L[k]
+                    miss += 1
+        if miss:
+            print(f'lines-ja.json 少了 {miss} 句的翻譯（略過；先補翻譯）', flush=True)
     voices = [v for v in a.voice.split(',') if v in VOICES]
     if a.recast:
         a.force = True
         for v in voices:
-            p = os.path.join(VDIR, 'ref', v + '.flac')
+            p = os.path.join(VDIR, 'ref', fold(v) + '.flac')
             if v in CAST and os.path.exists(p):
                 os.unlink(p)
-    need = [v for v in voices if not os.path.exists(os.path.join(VDIR, 'ref', v + '.flac'))]
+    need = [v for v in voices if not os.path.exists(os.path.join(VDIR, 'ref', fold(v) + '.flac'))]
     bad = [v for v in need if v not in CAST]
     if bad:
         sys.exit(f'沒有參考音檔：{bad}')
@@ -392,27 +448,27 @@ def main():
     takes = list(range(1, a.takes + 1))
     for v in voices:
         L0 = lines.get(LINES_OF.get(v, v), {})
-        os.makedirs(os.path.join(VDIR, v), exist_ok=True)
+        os.makedirs(os.path.join(VDIR, fold(v)), exist_ok=True)
         if a.retry:
-            rp = os.path.join(VDIR, v, 'report.txt')
+            rp = os.path.join(VDIR, fold(v), 'report.txt')
             keys = [l.split('\t')[0] for l in open(rp, encoding='utf-8').read().splitlines()] if os.path.exists(rp) else []
         elif a.only:
             keys = a.only.split(',')
         elif a.more:
             keys = list(L0)
         else:
-            keys = [k for k in L0 if a.force or not os.path.exists(os.path.join(VDIR, v, k + '.mp3'))]
+            keys = [k for k in L0 if a.force or not os.path.exists(os.path.join(VDIR, fold(v), k + '.mp3'))]
         todo[v] = [k for k in keys if k in L0]
         if a.force:
             for k in todo[v]:
                 for tk in range(1, 9):
-                    f = os.path.join(TAKES, v, f'{k}-{tk}.wav')
+                    f = os.path.join(TAKES, fold(v), f'{k}-{tk}.wav')
                     if os.path.exists(f):
                         os.unlink(f)
         # 拿掉台詞已經不在的語音檔
-        for f in os.listdir(os.path.join(VDIR, v)):
+        for f in os.listdir(os.path.join(VDIR, fold(v))):
             if f.endswith('.mp3') and f[:-4] not in L0:
-                os.unlink(os.path.join(VDIR, v, f))
+                os.unlink(os.path.join(VDIR, fold(v), f))
         credits(v)
     if a.retry or a.more:
         takes = [a.takes + 1, a.takes + 2]

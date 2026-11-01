@@ -74,6 +74,7 @@ Object.assign(Game.prototype, {
     $('ctrlTfx').value = this.ctrl.tfx || 'full';
     $('ctrlCine').value = this.ctrl.cine || 'on';
     $('ctrlVoice').value = this.voiceId() || 'off';
+    $('ctrlVoiceLang').value = this.ctrl.voiceLang === 'ja' ? 'ja' : 'zh';
     $('ctrlVoiceCast').value = this.ctrl.voiceCast === 'off' ? 'off' : 'on';
     $('ctrlBarks').value = this.ctrl.barks === 'off' ? 'off' : 'on';
     $('ctrlBgm').value = this.ctrl.bgm || 'on';

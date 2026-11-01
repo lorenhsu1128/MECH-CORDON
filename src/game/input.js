@@ -838,6 +838,12 @@ Object.assign(Game.prototype, {
       this.saveKeys();
       if (e.target.value !== 'off') this.voiceTest(); // 換聲音時試聽一句
     };
+    document.getElementById('ctrlVoiceLang').onchange = (e) => {
+      this.ctrl.voiceLang = e.target.value; // 語音的語言（game/voice.js 的 voiceSuf）：zh／ja
+      this.voiceStop();
+      this.saveKeys();
+      if (this.voiceOn()) this.voiceTest(); // 換語言時試聽一句
+    };
     document.getElementById('ctrlVoiceCast').onchange = (e) => {
       this.ctrl.voiceCast = e.target.value; // 其他角色的語音（game/voice.js 的 voiceFolder）
       this.voiceStop();
