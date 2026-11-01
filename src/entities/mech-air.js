@@ -552,9 +552,9 @@ Object.assign(MechEntity.prototype, {
       at
         .clone()
         .sub(muzzle)
-        .setLength(Math.max(d.range || 0, at.distanceTo(muzzle) * 1.3)),
+        .setLength(at.distanceTo(muzzle) * 0.6), // 只畫到 60%：目標往前飛時終點會跑到鏡頭旁邊，透視下變得很粗
     );
-    this.game.fx.warnLine(muzzle.clone(), end, AIR.BEAM_WARN, 0xff3030, 0.5);
+    this.game.fx.warnLine(muzzle.clone(), end, AIR.BEAM_WARN, 0xff3030, 0.06);
     return null;
   },
   // MS-4／MS-8 在空域的齊射（C3）：回傳鎖定的目標（可能是空陣列＝打目前的鎖定目標）；不是這兩把時回傳 null
@@ -694,7 +694,7 @@ Object.assign(MechEntity.prototype, {
           im: 900 * this.dmgMul,
           w: 2.5,
           color: 0xff5040,
-          width: 1.4,
+          width: 0.5,
         });
         g.fx.shockwave(S.ch.from, 6, 0xff7050, 0.4);
         SFX.play('laser2', 1, 0.5, 0.05, 0.05, S.ch.from);
@@ -706,14 +706,15 @@ Object.assign(MechEntity.prototype, {
     if ((S.cn -= dt) <= 0 && front) {
       S.cn = AIR.FZ_CN[p2 ? 1 : 0];
       const at = tc.clone().addScaledVector(pl.vel, 0.35);
+      const aimD = at.distanceTo(nose);
       const dir = at.sub(nose).normalize();
       S.ch = { t: AIR.FZ_CH, from: nose.clone(), dir };
       g.fx.warnLine(
         nose.clone(),
-        nose.clone().addScaledVector(dir, AIR.FZ_GUN_R * 1.4),
+        nose.clone().addScaledVector(dir, aimD * 0.6), // 只畫到 60%（玩家往前飛時終點會跑到追尾鏡頭旁邊）
         AIR.FZ_CH,
         0xff3030,
-        1.2,
+        0.12,
       );
       g.alertAll('空中要塞主砲充能 — 離開紅線！');
       return;

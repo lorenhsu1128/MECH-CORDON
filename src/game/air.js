@@ -422,7 +422,7 @@ Object.assign(Game.prototype, {
       const d = o.center().distanceTo(c);
       if (d > R) continue;
       hit++;
-      this.fx.warnLine(c, o.center(), 0.35, 0xffa040, 0.6);
+      this.fx.warnLine(c, o.center(), 0.35, 0xffa040, 0.06);
       o.takeDamage(
         dmg * (1 - (d / R) * 0.5),
         250,
