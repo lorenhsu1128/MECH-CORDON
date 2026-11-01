@@ -119,6 +119,9 @@ function writeAudio(dir, file, name, title) {
   for (const f of fs.readdirSync(dir).sort())
     if (f.endsWith('.mp3'))
       data[f.replace(/\.mp3$/, '')] = fs.readFileSync(path.join(dir, f)).toString('base64');
+  // 說明（語音試聽的候選與台詞）放在 '@index'
+  const ix = path.join(dir, 'index.json');
+  if (fs.existsSync(ix)) data['@index'] = JSON.parse(fs.readFileSync(ix, 'utf8'));
   const cr = path.join(dir, 'CREDITS.txt');
   const credits = fs.existsSync(cr)
     ? fs
@@ -147,6 +150,12 @@ function writeSounds() {
     'bgm-assets.js',
     'RUBICON_BGM',
     '任務中的配樂（src/assets/bgm/）',
+  );
+  writeAudio(
+    path.join(SRC, 'assets', 'voice-audition'),
+    'voice-audition.js',
+    'RUBICON_VOICE_AUD',
+    'ECHO 的語音試聽（src/assets/voice-audition/，scripts/voice-audition.py）',
   );
 }
 function writeHangar() {

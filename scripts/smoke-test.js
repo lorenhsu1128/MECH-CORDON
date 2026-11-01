@@ -11752,6 +11752,44 @@ async function testAudio(browser, base) {
 }
 
 // 音效改版（docs/audio-design.md）：分層的槍聲、發聲上限、反射、掠過聲、彈殼、多人的轉送、音量、動態配樂
+async function testVoiceLab(browser, base) {
+  console.log('ECHO 語音試聽：標題按鈕、載入試聽音檔、候選 × 台詞、播放、評分保留');
+  const { ctx, page } = await newPage(browser, 'voicelab');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await page.click('#btnVoiceLab');
+  await waitVisible(page, 'voiceLab');
+  await page.waitForFunction(() => document.querySelectorAll('.vlCand').length > 0, null, { timeout: 30000 });
+  const r = await page.evaluate(async () => {
+    const I = window.RUBICON_VOICE_AUD['@index'];
+    const out = {
+      cands: document.querySelectorAll('.vlCand').length,
+      n: I.cands.length,
+      lines: I.lines.length,
+    };
+    const keys = I.cands.flatMap((c) => I.lines.map((l) => `${c.id}-${l.id}`));
+    out.missing = keys.filter((k) => !window.RUBICON_VOICE_AUD[k]).length;
+    document.querySelector('.vlBtns button').click();
+    const t0 = performance.now();
+    while (!document.querySelector('.vlBtns button.on') && performance.now() - t0 < 8000)
+      await new Promise((r) => setTimeout(r, 100));
+    out.playing = !!document.querySelector('.vlBtns button.on');
+    const sel = document.querySelector('select[data-r]');
+    sel.value = '4';
+    sel.onchange();
+    out.saved = (JSON.parse(localStorage.getItem('rubicon_voice_aud')) || {})[I.cands[0].id];
+    return out;
+  });
+  await page.screenshot({ path: path.join(SHOT_DIR, 'voice-lab.png') });
+  check(r.cands === r.n && r.n >= 6 && r.lines >= 5, `試聽的候選 ${r.cands}／${r.n}、台詞 ${r.lines}`);
+  check(r.missing === 0, `每個候選的每一句都有音檔（缺 ${r.missing}）`);
+  check(r.playing, '點一下播放（解碼並標示正在播的那一句）');
+  check(r.saved && r.saved.r === '4', '評分存進 localStorage');
+  await page.click('#btnVlBack');
+  await waitVisible(page, 'title');
+  await ctx.close();
+}
+
 async function testAudio2(browser, base) {
   console.log('音效改版：分層的槍聲、發聲上限、反射、掠過、多人轉送、音量、動態配樂');
   const { ctx, page } = await newPage(browser, 'audio2');
@@ -23559,6 +23597,7 @@ const STEPS = [
   ['testAim', (c) => testAim(c.browser, c.base)],
   ['testAudio', (c) => testAudio(c.browser, c.base)],
   ['testAudio2', (c) => testAudio2(c.browser, c.base)],
+  ['testVoiceLab', (c) => testVoiceLab(c.browser, c.base)],
   ['testJuice', (c) => testJuice(c.browser, c.base)],
   ['testFoesB1', (c) => testFoesB1(c.browser, c.base)],
   ['testBossPower', (c) => testBossPower(c.browser, c.base)],

@@ -4272,6 +4272,69 @@ body.edPicking #edTrig {
 #cineLib {
   overflow-y: auto;
 }
+/* ECHO 語音試聽（game/voice-lab.js） */
+#voiceLab {
+  overflow-y: auto;
+}
+#voiceLab .brBox {
+  width: min(980px, 100%);
+}
+#vlOpts {
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+}
+.vlLines {
+  margin: 6px 0;
+  padding-left: 22px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.vlLines b {
+  color: #ffb070;
+}
+#vlList h3 {
+  margin: 14px 0 0;
+  font-size: 15px;
+  color: #ffb070;
+}
+.vlDesc {
+  margin: 2px 0 6px;
+  font-size: 12px;
+}
+.vlCand {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.vlName {
+  width: 120px;
+  font-size: 13px;
+}
+.vlBtns {
+  display: flex;
+  gap: 4px;
+}
+.vlBtns button {
+  min-width: 34px;
+  padding: 4px 8px;
+}
+.vlBtns button.on {
+  background: #ffb070;
+  color: #111;
+}
+.vlCand input {
+  flex: 1;
+  min-width: 140px;
+}
+#vlOut {
+  white-space: pre-wrap;
+  font-size: 12px;
+  margin: 0;
+}
 #clOpts {
   flex-wrap: wrap;
   gap: 8px 16px;

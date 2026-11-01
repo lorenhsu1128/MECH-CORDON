@@ -190,6 +190,12 @@
               過場動畫
             </button>
             <button
+              id="btnVoiceLab"
+              title="試聽 ECHO 的候選語音（VoxCPM2 產生的聲音類型），評分後決定用哪一個"
+            >
+              ECHO 語音試聽
+            </button>
+            <button
               id="btnLmReload"
               title="單人模式使用模型庫存在這個瀏覽器的 GLB 與關節設定（在按鍵與操作設定開啟）"
             >
@@ -349,6 +355,19 @@
           <div id="clOpts" class="row"></div>
           <div id="clList"></div>
           <div class="row"><button id="btnClBack">回標題</button></div>
+        </div>
+      </div>
+      <div id="voiceLab" class="screen center">
+        <div class="brBox">
+          <h2>ECHO 語音試聽</h2>
+          <p class="dim">
+            候選聲音由 VoxCPM2
+            的聲音設計產生（參考二次元遊戲的選角類型，不是任何配音員的聲音）。每個候選先以描述產生第 1
+            句，其他句子用那一句當參考音檔克隆，所以同一個候選的音色一致。評分與備註存在這個瀏覽器，按「複製評分」貼給開發者。
+          </p>
+          <div id="vlList"></div>
+          <pre id="vlOut" class="dim"></pre>
+          <div class="row"><button id="btnVlBack">回標題</button></div>
         </div>
       </div>
       <div id="storyScr" class="screen">
