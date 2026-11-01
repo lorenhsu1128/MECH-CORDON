@@ -364,6 +364,7 @@ Object.assign(Game.prototype, {
     if (L.mode === 'ctrl') this.updateLoops();
     else {
       SFX.loopSet('thrust', 'thrustLoop', 0);
+      SFX.loopSet('thrustHi', '~jetLoop', 0);
       SFX.loopSet('engine', 'engineHi', 0);
     }
     this.renderMain();

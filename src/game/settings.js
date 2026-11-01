@@ -1,5 +1,6 @@
 // Game：設定畫面與按鍵綁定
 import { escHtml } from '../core/html.js';
+import { SFX } from '../audio/audio.js';
 import { IK, IK_ITEMS, setIK } from '../render/mech-ik.js';
 import { StyleStore } from '../render/style/store.js';
 import { Game } from './game.js';
@@ -72,6 +73,9 @@ Object.assign(Game.prototype, {
     $('ctrlWater').value = this.ctrl.water || '';
     $('ctrlTfx').value = this.ctrl.tfx || 'full';
     $('ctrlCine').value = this.ctrl.cine || 'on';
+    $('ctrlVoice').value = this.ctrl.voice || 'on';
+    $('ctrlBgm').value = this.ctrl.bgm || 'on';
+    this.renderVolSettings();
     $('ctrlExec').value = this.ctrl.exec || 'on';
     $('ctrlMeleeAssist').value = this.ctrl.meleeAssist || 'easy';
     $('ctrlCharge').value = this.ctrl.chargeMode || 'auto';
@@ -84,6 +88,39 @@ Object.assign(Game.prototype, {
     this.renderLocalModels();
     this.renderStyleSettings();
     this.renderIkSettings();
+  },
+  // 聲音的音量（ctrl.vol：m 主音量、s 音效、b 配樂、v 語音、u 介面；docs/audio-design.md）：下拉選單，手把左右就能改
+  renderVolSettings() {
+    const V = Object.assign({ m: 1, s: 1, b: 1, v: 1, u: 1 }, this.ctrl.vol || {});
+    const opts = (x) =>
+      Array.from({ length: 11 }, (_, i) => i / 10)
+        .map(
+          (v) =>
+            `<option value="${v}" ${Math.abs(v - x) < 0.01 ? 'selected' : ''}>${Math.round(v * 100)}%</option>`,
+        )
+        .join('');
+    const rows = [
+      ['m', '主音量'],
+      ['s', '音效（槍聲、爆炸、環境音）'],
+      ['b', '配樂（任務中與過場）'],
+      ['v', '語音（ECHO）'],
+      ['u', '介面音'],
+    ];
+    const box = $('volBox');
+    box.innerHTML = rows
+      .map(
+        ([k, l]) => `<div class="krow"><span>${l}</span><select data-vol="${k}">${opts(V[k])}</select></div>`,
+      )
+      .join('');
+    box.onchange = (e) => {
+      const k = e.target.dataset && e.target.dataset.vol;
+      if (!k) return;
+      this.ctrl.vol = Object.assign({}, V, this.ctrl.vol || {}, { [k]: +e.target.value });
+      SFX.setVol(this.ctrl.vol);
+      this.saveKeys();
+      if (k === 'v' && this.voiceTest) this.voiceTest();
+      else SFX.ui('ok');
+    };
   },
   // 動作 IK：和渲染風格實驗室的面板共用開關（rubicon_ik），任務中也能改、立即生效
   renderIkSettings() {

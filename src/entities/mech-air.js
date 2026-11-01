@@ -359,7 +359,7 @@ Object.assign(MechEntity.prototype, {
       }),
     );
     g.fx.muzzle(pos, f, 0xffc0a0, 1, 'ms');
-    SFX.shot('missile', undefined, this.isPlayer ? null : pos);
+    SFX.shot('missile', undefined, pos, this);
     if (this.isPlayer) g.rumble(0.2, 0.5, 120);
     return true;
   },
@@ -750,7 +750,7 @@ Object.assign(MechEntity.prototype, {
         );
       }
       g.fx.muzzle(nose, base, 0xff60d0, 3, 'bz');
-      SFX.shot('shell', undefined, nose);
+      SFX.shot('shell', 'air_cannon', nose, this);
     }
   },
   // 懸吊砲塔（部位）在空域能不能打：不打正後方、太近（機腹）與射程外

@@ -378,7 +378,7 @@ Object.assign(MechEntity.prototype, {
           c.hitOut = new Set();
           c.hitBack = new Set();
           c.n = (c.n || 0) + 1;
-          SFX.play('swing', 0.9, 0.8, 0.05, 0.05, c.bp);
+          SFX.meleeSwing('blade', 's', null, c.bp); // 迴旋刃擲出的風切聲
         } else {
           c.ph = 0;
           c.t = 1;

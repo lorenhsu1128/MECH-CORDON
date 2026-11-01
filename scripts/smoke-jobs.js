@@ -86,6 +86,7 @@ const DEFAULT_TIMES = {
   testAttrs: 2601,
   testAim: 1844,
   testAudio: 1848,
+  testAudio2: 9000,
   testJuice: 2421,
   testFoesB1: 29235,
   testBossPower: 1775,

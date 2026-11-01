@@ -23,6 +23,11 @@ Object.assign(Game.prototype, {
       if (this._noMirror) return;
       this.netEv({ t: 'sfx', k, v, r, p: [+pos.x.toFixed(1), +pos.y.toFixed(1), +pos.z.toFixed(1)] });
     };
+    // 高階的呼叫（開火、爆炸、命中…）整個轉送一次，客機依自己的距離決定播哪幾層（docs/audio-design.md）
+    SFX.mirrorCall = (f, a) => {
+      if (this._noMirror) return;
+      this.netEv({ t: 'sfx', f, a });
+    };
     const $ = (id) => document.getElementById(id);
     $('btnMP').onclick = () => {
       SFX.init();

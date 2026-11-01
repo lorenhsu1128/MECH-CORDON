@@ -141,11 +141,14 @@ export class Game {
     const p = this.player;
     if (!p || p.dead || p.downed) {
       SFX.loopSet('thrust', 'thrustLoop', 0);
+      SFX.loopSet('thrustHi', '~jetLoop', 0);
       SFX.loopSet('engine', 'engineHi', 0);
       return;
     }
     const thr = p.abT > 0 ? 0 : p.boost ? 0.9 : p.hover ? 0.75 : !p.grounded ? 0.45 : p.moving ? 0.25 : 0;
+    // 推進器兩層：低沉的轟（thrustLoop）＋高頻的嘶（合成），推得越用力嘶越多（docs/audio-design.md 第 3 期）
     SFX.loopSet('thrust', 'thrustLoop', thr * 0.6, p.boost ? 1.25 : 1.0);
+    SFX.loopSet('thrustHi', '~jetLoop', thr * thr * 0.22, p.boost ? 1.15 : 0.9);
     SFX.loopSet('engine', 'engineHi', p.abT > 0 ? 0.9 : 0, 1.1);
   }
   // 機體之間的碰撞分離（無傷害）：兩兩相互推開；第一人稱時本地玩家與敵人保持更大距離
@@ -203,7 +206,7 @@ export class Game {
     this.fx.flash(c, 2.5, 0xbfe8ff, 0.25);
     this.fx.arc(c, 3, color || 0x9fe0ff); // 電弧（docs/vfx-design.md）
     for (let i = 0; i < 14; i++) this.fx.streaks(c, 3, 0x9fe0ff, rr * 0.9, 0.35, rr * 2);
-    SFX.play('overload', 0.9, 1.3, 0.05, 0.05, src.isPlayer ? null : c);
+    SFX.empBlast(src.isPlayer ? null : c, true);
     SFX.play('laserBig', 0.6, 0.6, 0.05, 0.05, src.isPlayer ? null : c);
     if (src.isPlayer) {
       this.camShake = Math.max(this.camShake, 0.2);
@@ -394,6 +397,7 @@ export class Game {
     this.lastT = now;
     this.lastDt = dt;
     this.tfxTick(); // 文字演出（game/textfx.js）
+    this.bgmFrame(dt); // 任務中的動態配樂（game/bgm.js）
     this.pollGamepad(dt);
     if (this.camp && this.camp.wait) this.campWaitTick(); // 主線多人：轉場中等待隊友（不靠會被節流的計時器）
     if ((this.frames & 15) === 0) this.updateVpad();

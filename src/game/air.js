@@ -477,6 +477,7 @@ Object.assign(Game.prototype, {
     }
     this.airDirTick(dt);
     this.airTailTick(p, dt);
+    this.airFlybyTick(p);
     this.airMlTick(p, dt);
     this.airSupplyTick(p, dt);
     if (this.airBase && this.airBase.dead && this.airBase.airZone) this.airBase.airZone.visible = false;
@@ -507,7 +508,44 @@ Object.assign(Game.prototype, {
         this.airMslT = clamp(tMin * 0.22, 0.07, 0.45);
         SFX.tone(1180, 1180, 0.05, 0.2, 'square', 'ui');
       }
+      // 第三級：快要打中（docs/audio-design.md 第 5 期）＝急促的警報＋ECHO
+      if (tMin < 1.2 && !this.airMslHi) {
+        SFX.play('warnB', 0.5, 1.1, 0.02, 0.6, null, 'ui');
+        this.voiceCue('missile');
+      }
+      this.airMslHi = tMin < 1.2;
     } else this.airMslT = 0;
+  },
+  // 敵機從身邊飛過（docs/audio-design.md 第 5 期）：相對位置與相對速度的內積由負轉正（接近 → 遠離）的那一刻，
+  // 在它的位置播飛掠聲，音高照相對速度（都卜勒：自己算，Web Audio 已經拿掉 PannerNode 的都卜勒）
+  airFlybyTick(p) {
+    const R = 120 * p.dk;
+    for (const e of this.enemies) {
+      if (e.dead || !e.air || !e.vel) continue;
+      const rx = e.pos.x - p.pos.x,
+        ry = e.pos.y - p.pos.y,
+        rz = e.pos.z - p.pos.z;
+      const vx = e.vel.x - p.vel.x,
+        vy = e.vel.y - p.vel.y,
+        vz = e.vel.z - p.vel.z;
+      const dot = rx * vx + ry * vy + rz * vz;
+      const was = e.fbDot;
+      e.fbDot = dot;
+      if (was === undefined || was >= 0 || dot < 0) continue;
+      const d = Math.hypot(rx, ry, rz),
+        v = Math.hypot(vx, vy, vz);
+      if (d > R || v < 25 * p.dk || this.time - (e.fbT || -9) < 2) continue;
+      e.fbT = this.time;
+      const k = SFX.pickKey(
+        e.isBoss ? ['fly3', 'fly5'] : v > 70 * p.dk ? ['flyHi1', 'flyHi2', 'fly4'] : ['fly1', 'fly2', 'fly4'],
+      );
+      const rate = clamp(0.85 + v / (180 * p.dk), 0.85, 1.35);
+      if (k)
+        SFX.play(k, clamp(1.1 - d / R, 0.3, 1), rate, 0.04, 0.05, e.pos.clone(), null, 0, {
+          pr: 2,
+          send: 0.2,
+        });
+    }
   },
   // ---------- 空戰的節奏（A：攻擊名額、第一波的察覺；airPlayerTick 每格） ----------
   // 同時最多 TOK_N 台開火（敵對 AC 另外 TOK_ACE 台）；拿著 TOK_HOLD 秒、有人在等時交出並休息 TOK_REST 秒；
@@ -608,6 +646,7 @@ Object.assign(Game.prototype, {
       this.airTailT -= dt;
       if (this.airTailT <= 0) {
         this.airTailT = 0.9;
+        this.voiceCue('airLock');
         SFX.tone(560, 470, 0.12, 0.14, 'triangle', 'ui');
       }
     } else this.airTailT = 0;
@@ -626,7 +665,8 @@ Object.assign(Game.prototype, {
     pr.whz = true;
     if (this.time - (this.airWhizT || -9) < 0.12) return;
     this.airWhizT = this.time;
-    SFX.tone(1500, 380, 0.18, 0.1, 'sawtooth', 'ui');
+    SFX.tone(1500, 380, 0.18, 0.06, 'sawtooth', 'ui');
+    SFX.whiz(_v.copy(prev).addScaledVector(seg, t), pr.kind !== 'bullet' && pr.kind !== 'shell');
     this.camShake = Math.max(this.camShake || 0, 0.05);
   },
   // MS-4／MS-8 的多目標鎖定（C3）：機首前方 ML_CONE、ML_R 內，每 ML_STEP 秒多鎖一台（最多 ML_MAX），ML_LOCK 秒鎖滿

@@ -197,7 +197,7 @@ Object.assign(MechEntity.prototype, {
         s.hk = 'fly';
         s.hkT = 1.5;
         g.fx.muzzle(mz, v.clone().normalize(), 0xff6040, 1.6);
-        SFX.shot('missile', undefined, mz);
+        SFX.shot('missile', undefined, mz, this);
       }
     } else if (s.hk === 'fly') {
       wish.set(0, 0, 0);
@@ -311,7 +311,7 @@ Object.assign(MechEntity.prototype, {
       }),
     );
     g.fx.muzzle(mz, v.clone().normalize(), 0xd0d4dc, 1.8);
-    SFX.shot('grenade', undefined, mz);
+    SFX.shot('grenade', undefined, mz, this);
     g.fx.warnCircle(land, 8 * MS, T, 0xd0d4dc);
     g.netEv({ t: 'warn', p: land.toArray().map(r2), R: 8 * MS, dl: T, c: 0xd0d4dc });
     const s = this.aiState;

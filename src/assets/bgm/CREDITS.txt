@@ -1,0 +1,14 @@
+Music: Kevin MacLeod (incompetech.com)
+License: Licensed under Creative Commons: By Attribution 4.0 (https://creativecommons.org/licenses/by/4.0/)
+Source: https://incompetech.com/music/royalty-free/
+Changes: a section of each track was cut into a seamless loop (3 s equal-power crossfade), normalized and re-encoded to 80 kbps MP3 by scripts/bgm-prep.py for the in-mission dynamic music (docs/audio-design.md).
+explore1.mp3 = "Lightless Dawn"
+explore2.mp3 = "Hiding Your Reality"
+alert1.mp3 = "Crypto"
+alert2.mp3 = "Interloper"
+combat1.mp3 = "Cyborg Ninja"
+combat2.mp3 = "Volatile Reaction"
+combat3.mp3 = "Movement Proposition"
+boss1.mp3 = "Clash Defiant"
+boss2.mp3 = "Five Armies"
+air1.mp3 = "Heroic Age"

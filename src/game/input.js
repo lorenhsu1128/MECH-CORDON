@@ -55,6 +55,7 @@ Object.assign(Game.prototype, {
       );
       const pm = JSON.parse(localStorage.getItem('rubicon_pad') || 'null');
       this.padmap = Object.assign(this.defaultPad(), pm || {});
+      SFX.setVol(this.ctrl.vol); // 音量（設定的「聲音」）
     } catch (e) {
       this.keymap = this.defaultKeys();
       this.padmap = this.defaultPad();
@@ -828,6 +829,15 @@ Object.assign(Game.prototype, {
     };
     document.getElementById('ctrlCine').onchange = (e) => {
       this.ctrl.cine = e.target.value;
+      this.saveKeys();
+    };
+    document.getElementById('ctrlVoice').onchange = (e) => {
+      this.ctrl.voice = e.target.value; // ECHO 的語音（game/voice.js）
+      if (e.target.value === 'off') this.voiceStop();
+      this.saveKeys();
+    };
+    document.getElementById('ctrlBgm').onchange = (e) => {
+      this.ctrl.bgm = e.target.value; // 戰鬥配樂（game/bgm.js）
       this.saveKeys();
     };
     document.getElementById('ctrlExec').onchange = (e) => {

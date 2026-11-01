@@ -592,10 +592,17 @@ export class MechEntity {
     if ((w.cd > 0 && !graceOk) || w.reloadT > 0) return false;
     if (usesAmmo(d) && w.mag <= 0) {
       if (w.ammo <= 0) {
+        if (this.isPlayer && !w.emptyCue) {
+          // 彈藥用完：空扳機＋ECHO 提醒（docs/audio-design.md 第 4 期）
+          w.emptyCue = true;
+          SFX.empty();
+          g.voiceCue('ammoOut');
+        }
         if (slot.endsWith('arm') && !w.dropped) this.dropWeapon(slot);
         return false;
       }
       w.reloadT = d.reload;
+      if (this.isPlayer) SFX.reloadStart(d.type === 'missile' || d.type === 'shell' || d.type === 'grenade');
       return false;
     }
     const muzzle = this.muzzle(slot);
@@ -727,7 +734,8 @@ export class MechEntity {
         shoot(jitter(dir), 'bullet');
         g.fx.muzzle(muzzle, dir, d.color || 0xffd080, slot.endsWith('back') ? 1.1 : 0.9);
         g.fx.casing(muzzle.clone().addScaledVector(dir, -1.2 * this.dk), w.side, dir);
-        SFX.shot('bullet', d.id, SP);
+        SFX.shot('bullet', d.id, muzzle, this);
+        SFX.casing(muzzle, !!d.spin && slot.endsWith('back'));
         w.cd = d.rof * (d.spin ? 2.5 - 1.5 * clamp(w.streak / d.spin, 0, 1) : 1); // 加特林：轉速慢慢提升
         this.recoil[w.side > 0 ? 'r' : 'l'] = 0.35;
         if (slot.endsWith('back')) this.recoil[w.side > 0 ? 'br' : 'bl'] = 0.35; // 肩上武器的轉管
@@ -746,7 +754,8 @@ export class MechEntity {
         for (let i = 0; i < (pwK === 'slug' ? 1 : d.pellets); i++) shoot(jitter(dir), 'bullet');
         g.fx.muzzle(muzzle, dir, 0xffa050, 1.8, 'sg'); // 霰彈槍：前方扇形的煙
         g.fx.casing(muzzle.clone().addScaledVector(dir, -1 * this.dk), w.side, dir);
-        SFX.shot('shotgun', undefined, SP);
+        SFX.shot('shotgun', d.id, muzzle, this);
+        if (!d.enShot) SFX.casing(muzzle, true);
         w.cd = d.rof;
         this.recoil[w.side > 0 ? 'r' : 'l'] = 0.9;
         if (this.isPlayer) {
@@ -765,7 +774,7 @@ export class MechEntity {
         );
         g.fx.muzzle(muzzle, dir, 0xff8040, 2.4, 'bz'); // 火箭筒：筒子後方的後焰
         g.fx.smoke(muzzle.clone().addScaledVector(dir, -1.5), 1.2, 0x9a9ea6, 0.8, 2);
-        SFX.shot('shell', undefined, SP);
+        SFX.shot('shell', d.id, muzzle, this);
         w.cd = d.rof;
         this.vel.addScaledVector(dir, -5);
         this.recoil[w.side > 0 ? 'r' : 'l'] = 1.2;
@@ -816,7 +825,7 @@ export class MechEntity {
             }),
           );
           g.fx.muzzle(muzzle, dir, 0xff8040, 2.4, 'bz');
-          SFX.shot('grenade', undefined, SP);
+          SFX.shot('grenade', d.id, muzzle, this);
           w.cd = d.rof;
           this.recoil[w.side > 0 ? 'r' : 'l'] = 1;
           if (slot.endsWith('back')) this.recoil[w.side > 0 ? 'br' : 'bl'] = 1;
@@ -883,7 +892,7 @@ export class MechEntity {
               0.8,
               2.5,
             );
-          SFX.shot('missile', undefined, SP);
+          SFX.shot('missile', d.id, muzzle, this);
           w.cd = ml ? Math.max(d.rof, AIR.ML_CD * Math.sqrt((d.count || 4) / 4)) : d.rof;
           if (this.isPlayer) g.rumble(0.2, 0.7, 160);
         }
@@ -961,6 +970,7 @@ export class MechEntity {
           g.fx.empBeam(w, muzzle, end, d.color);
           if (!w.sndT || w.sndT <= 0) {
             SFX.play('laser2', 0.35, 0.6, 0.1, 0.05, SP);
+            SFX.play('~empS', 0.3, 1.2, 0.1, 0.2, SP);
             w.sndT = 0.12;
           }
           w.sndT -= dtb;
@@ -1035,7 +1045,7 @@ export class MechEntity {
             );
             if (this.isPlayer) g.camShake = Math.max(g.camShake, 0.14);
           }
-          SFX.shot(charged ? 'laserCharged' : 'laser', d.id, SP);
+          SFX.shot(charged ? 'laserCharged' : 'laser', d.id, muzzle, this);
           if (g.range && this === g.player) g.rangeShot(d.id);
           w.cd = d.rof * (charged ? 1.6 : 1);
           this.recoil[w.side > 0 ? 'r' : 'l'] = charged ? 1 : 0.4;
@@ -1124,7 +1134,16 @@ export class MechEntity {
       w.mag--;
       w.ammo--;
       if (w.arN > 0) w.arN--;
-      if (w.mag <= 0 && w.ammo > 0) w.reloadT = d.reload;
+      if (w.mag <= 0 && w.ammo > 0) {
+        w.reloadT = d.reload;
+        if (this.isPlayer)
+          SFX.reloadStart(d.type === 'missile' || d.type === 'shell' || d.type === 'grenade');
+      }
+      if (this.isPlayer) {
+        // 彈藥剩兩成時提醒一次
+        w.amMax = Math.max(w.amMax || 0, w.ammo + 1);
+        if (w.ammo === Math.floor(w.amMax * 0.2) && w.amMax >= 10) g.voiceCue('ammoLow');
+      }
     }
     return true;
   }
@@ -2268,6 +2287,7 @@ export class MechEntity {
       const rk = g.tierBossRank(this);
       const sub = `${this.name} 擊破` + (rk ? ' — ' + g.tierRankTxt(rk) : '');
       g.showBanner('TARGET DESTROYED', sub, '#ffb020', 3, { k: 'kill', m: '擊破', s: sub });
+      SFX.stinger(true); // Boss 擊破：長的配樂重音（docs/audio-design.md）
       g.netEv({ t: 'bossDown', n: this.name, r: rk || undefined });
     }
     // 自己擊破敵人：頓格與衝擊環（擊破的回饋）

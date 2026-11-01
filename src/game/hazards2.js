@@ -724,7 +724,8 @@ Object.assign(Game.prototype, {
       rec.k === 'ice' ? 0xdff4ff : 0x9a8a78,
     );
     this.fx._nested = nest;
-    SFX.play(rec.k === 'ice' ? 'shield' : 'wreck', 0.6, rec.k === 'ice' ? 1.6 : 0.8, 0.05, 0.03, p);
+    if (rec.k === 'ice') SFX.play('shield', 0.6, 1.6, 0.05, 0.03, p);
+    else SFX.wreck(p); // 岩牆碎裂
   },
   // 外觀：冰（半透明的冰塊＋上緣的冰刺）、岩（崎嶇的岩塊＋碎石）；原點在底面中心、寬沿 X、厚沿 Z
   tempWallMesh(rec) {

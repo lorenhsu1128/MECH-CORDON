@@ -111,6 +111,50 @@ function writePack(dir, file, name, title) {
     `// ${title}，由 scripts/build.js 產生\n` + credits + `window.${name} = ${JSON.stringify(data)};\n`,
   );
 }
+// 音效改版（docs/audio-design.md）的音檔：資料夾裡的 *.mp3 → window.<name>＝{ 檔名（不含副檔名）: base64 }，不內嵌，
+// 遊戲啟動後（sfx2）、第一次進任務（bgm）、第一次播通訊（voice）才以 <script> 載入
+function writeAudio(dir, file, name, title) {
+  if (!fs.existsSync(dir)) return;
+  const data = {};
+  for (const f of fs.readdirSync(dir).sort())
+    if (f.endsWith('.mp3'))
+      data[f.replace(/\.mp3$/, '')] = fs.readFileSync(path.join(dir, f)).toString('base64');
+  const cr = path.join(dir, 'CREDITS.txt');
+  const credits = fs.existsSync(cr)
+    ? fs
+        .readFileSync(cr, 'utf8')
+        .split(/\r?\n/)
+        .filter((l) => l.trim())
+        .map((l) => '// ' + l)
+        .join('\n') + '\n'
+    : '';
+  const out = path.join(LIB, file);
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  fs.writeFileSync(
+    out,
+    `// ${title}，由 scripts/build.js 產生\n` + credits + `window.${name} = ${JSON.stringify(data)};\n`,
+  );
+}
+function writeSounds() {
+  writeAudio(
+    path.join(SRC, 'assets', 'sfx2'),
+    'sfx-assets.js',
+    'RUBICON_SFX2',
+    '分層的音效素材（src/assets/sfx2/）',
+  );
+  writeAudio(
+    path.join(SRC, 'assets', 'bgm'),
+    'bgm-assets.js',
+    'RUBICON_BGM',
+    '任務中的配樂（src/assets/bgm/）',
+  );
+  writeAudio(
+    path.join(SRC, 'assets', 'voice', 'echo'),
+    'voice-assets.js',
+    'RUBICON_VOICE',
+    'ECHO 的語音（src/assets/voice/echo/，Kokoro-82M v1.1-zh 產生）',
+  );
+}
 function writeHangar() {
   writePack(HANGAR_DIR, 'hangar-assets.js', 'RUBICON_HANGAR', '機甲庫格納庫的素材（src/assets/hangar/）');
   writePack(PEOPLE_DIR, 'people-assets.js', 'RUBICON_PEOPLE', '過場動畫的人物（src/assets/people/）');
@@ -288,6 +332,7 @@ async function main() {
   writeDraco();
   writeMusic();
   writeHangar();
+  writeSounds();
   copySubprojects();
   copyServerDefault();
   if (!watch) {

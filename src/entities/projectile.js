@@ -106,6 +106,14 @@ export class Projectile {
     this.mesh.position.copy(this.pos);
     this.orient();
     if (g.waterCross) g.waterCross(prev, this.pos, this.kind); // 穿過水面：水花與漣漪（game/water.js，只有外觀）
+    if (!this.whz && !g.airMode && g.projWhiz) g.projWhiz(this, prev); // 子彈從身邊飛過（game/feedback.js，各端自己算）
+    // 追著自機的導彈接近：ECHO 提醒（game/voice.js，各端自己算）
+    if (this.kind === 'missile' && !this.mcue && g.player && this.target === g.player && !g.player.dead) {
+      if (this.pos.distanceTo(g.player.pos) < 80 * g.player.dk) {
+        this.mcue = true;
+        g.voiceCue('missile');
+      }
+    }
     if (this.visual) {
       if (this.life <= 0) {
         this.dead = true;

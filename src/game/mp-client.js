@@ -331,7 +331,8 @@ Object.assign(Game.prototype, {
         }
         break;
       case 'sfx':
-        SFX.play(e.k, e.v, e.r, 0.06, 0.03, e.p ? new THREE.Vector3(e.p[0], e.p[1], e.p[2]) : null);
+        if (e.f) SFX.netPlay(e.f, e.a, (id) => this.entById(id));
+        else SFX.play(e.k, e.v, e.r, 0.06, 0.03, e.p ? new THREE.Vector3(e.p[0], e.p[1], e.p[2]) : null);
         break;
       case 'proj':
         {
@@ -428,6 +429,7 @@ Object.assign(Game.prototype, {
         this.tierClientRank(e.r); // Boss 改版：擊破速度的評價（房主的計時）
         const sub = `${e.n} 擊破` + (e.r ? ' — ' + this.tierRankTxt(e.r) : '');
         this.showBanner('TARGET DESTROYED', sub, '#ffb020', 3, { k: 'kill', m: '擊破', s: sub });
+        SFX.stinger(true);
         break;
       }
       case 'bounty':

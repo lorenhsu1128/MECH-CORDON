@@ -1,0 +1,21 @@
+Sound effects for the audio overhaul (docs/audio-design.md). Produced by scripts/sfx-prep.py:
+sliced into single shots, trimmed, faded, peak-normalized and re-encoded as mono MP3. The key -> source mapping is the MAP table in that script.
+
+CC0 (public domain dedication, https://creativecommons.org/publicdomain/zero/1.0/):
+- Still North Media - "The Free Firearm Sound Library" (rifleN*, rifleF*, pistolN*, pistolF1, smgN*, smgF1, sgN*, sgF*, hvyN*, hvyF*) https://opengameart.org/content/the-free-firearm-sound-library
+- Still North Media - "Medieval sound effects - Weapon impacts" (clash*) https://opengameart.org/node/146863
+- Black Lodge Games - "50 Free SciFi SFX" (beam*, eLow*, eMid*, eHi*, wobble, fly*, flyHi*, warnA, warnB, servo*) https://opengameart.org/content/50-free-scifi-soundfx-192khz-64-bit-24576kbps-wav
+- Black Lodge Games - "27 Metal Audio Samples" (mHit*, mHvy*, mWob*, grit, clangs) https://opengameart.org/content/27-metal-audio-samples-sfx
+- rubberduck - "50 CC0 sci-fi SFX" (rLaser, sciBoom, rocket) https://opengameart.org/content/50-cc0-sci-fi-sfx
+- rubberduck - "25 CC0 bang / firework SFX" (cannon*, boomLow, bang*) https://opengameart.org/content/25-cc0-bang-firework-sfx
+- Kenney - "63 Digital Sound Effects" (lzA*, lzB*, zap*, phUp, phDown) https://opengameart.org/content/63-digital-sound-effects-lasers-phasers-space-etc
+- qubodup - "Mech stomp step sound" (qStomp) https://opengameart.org/content/mech-stomp-step-sound
+- qubodup - "Impact" (impStone, impMetal) https://opengameart.org/content/impact
+- "Metal Impact Sounds" (clink*, bing) https://opengameart.org/content/metal-impact-sounds
+- bart - "33 metal clang sounds from cast iron pans" (iron*) https://opengameart.org/node/5249
+
+CC-BY 3.0 (https://creativecommons.org/licenses/by/3.0/):
+- Sounds (c) by Michel Baradari apollo-music.de - "Chaingun, pistol, rifle, shotgun shots" (bChain, bRifle, bShotgun, bPistol) https://opengameart.org/content/chaingun-pistol-rifle-shotgun-shots
+- Sounds (c) by Michel Baradari apollo-music.de - "2 High Quality Explosions" (exA, exMini) https://opengameart.org/content/2-high-quality-explosions
+- Lee Barkovich - "Robotic/mechanic step sounds" (robo1, robo2, roboStand, mStep*, mStomp) https://opengameart.org/content/robotic-mechanic-step-sounds
+- Blender Foundation - "Big Explosion" (DeathFlash, from Elephants Dream / apricot) (exHuge) https://opengameart.org/content/big-explosion

@@ -11751,6 +11751,171 @@ async function testAudio(browser, base) {
   await ctx.close();
 }
 
+// 音效改版（docs/audio-design.md）：分層的槍聲、發聲上限、反射、掠過聲、彈殼、多人的轉送、音量、ECHO 的語音、動態配樂
+async function testAudio2(browser, base) {
+  console.log('音效改版：分層的槍聲、發聲上限、反射、掠過、多人轉送、音量、ECHO 語音、動態配樂');
+  const { ctx, page } = await newPage(browser, 'audio2');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await page.evaluate(() => window.__sfx.init());
+  await page.waitForFunction(() => window.__sfx.ready && window.__sfx.pack, null, { timeout: 30000 });
+  const r = await page.evaluate(async () => {
+    const g = window.__game,
+      S = window.__sfx;
+    const out = { nPack: Object.keys(window.RUBICON_SFX2 || {}).length, syn: !!S.buf['~thA'] };
+    const log = [];
+    const play0 = S.play.bind(S);
+    S.play = (k, ...a) => (log.push(k), play0(k, ...a));
+    const took = (f) => {
+      log.length = 0;
+      f();
+      return log.slice();
+    };
+    localStorage.setItem('rubicon_map', 'snow');
+    g.startMission();
+    g.state = 'audio-test';
+    g.waves = [];
+    g.wavePend = null;
+    const pl = g.player;
+    pl.hp = pl.maxHp = 1e7;
+    g.audioTick(0.016);
+    out.env = S.envName;
+    S.setListener(pl.center());
+    // 自機的步槍：near＋body＋low（自機才有）
+    out.own = took(() => S.shot('bullet', 'w_rifle', pl.center(), pl));
+    // 遠處敵人的步槍：far 層、沒有 body／low
+    const e = g.spawnType('mt', 1, 1);
+    e.pos.copy(pl.pos).add(new THREE.Vector3(0, 0, -100 * pl.dk));
+    out.far = took(() => S.shot('bullet', 'w_rifle', e.center(), e));
+    // 武器各自的聲音：雷射霰彈槍、MS-8、電漿導彈不再共用
+    out.lsg = took(() => S.shot('shotgun', 'w_lsg', pl.center(), pl));
+    out.ms8 = took(() => S.shot('missile', 'bw_ms8', pl.center(), pl));
+    out.pm = took(() => S.shot('missile', 'bw_pm', pl.center(), pl));
+    // 發聲上限
+    for (let i = 0; i < 300; i++)
+      S.play(['exA', 'rifleN1', 'mHit1', 'clink1'][i % 4], 0.5, 1, 0.05, 0, pl.center());
+    out.voices = S.voices.filter((v) => !v.dead && v.end > S.ctx.currentTime).length;
+    // 子彈掠過：敵人的子彈從自機旁邊飛過
+    out.whiz = took(() => {
+      const side = pl.center().add(new THREE.Vector3(4 * pl.dk, 0, 0));
+      const pr = {
+        pos: side.clone().add(new THREE.Vector3(0, 0, -3)),
+        team: 'enemy',
+        kind: 'bullet',
+        owner: e,
+      };
+      g.whizT = -9;
+      g.projWhiz(pr, side.clone().add(new THREE.Vector3(0, 0, 3)));
+    });
+    // 彈殼與命中依材質（雪地）
+    out.casing = took(() => S.casing(pl.center(), false));
+    out.hitW = took(() => S.hitWorld(pl.pos.clone()));
+    // 多人：高階的呼叫整個轉送一次（裡面的 play 不個別轉送），客機依自己的距離重播
+    const sent = [],
+      single = [];
+    S.mirrorCall = (f, a) => sent.push([f, a]);
+    S.mirror = (k) => single.push(k);
+    S.explode(true, e.center());
+    S.shot('bullet', 'w_rifle', pl.center(), pl);
+    S.mirrorCall = null;
+    S.mirror = null;
+    out.mc = sent.map((x) => x[0]);
+    out.single = single.length;
+    out.net = took(() =>
+      S.netPlay(sent[1][0], JSON.parse(JSON.stringify(sent[1][1])), (id) => g.entById(id)),
+    );
+    // 音量
+    g.ctrl.vol = { m: 0.5, s: 0.8, b: 0.3, v: 1, u: 1 };
+    S.setVol(g.ctrl.vol);
+    await new Promise((res) => setTimeout(res, 300));
+    out.mGain = S.master.gain.value;
+    out.bGain = S.bgmBus.gain.value;
+    S.setVol({});
+    // ECHO 的語音：通訊的台詞與系統提示
+    out.vLoad = await g.voiceLoad();
+    out.vKeys = Object.keys(window.RUBICON_VOICE || {}).length;
+    out.vSay = await g.voiceSay('空降完成。這次作戰由我管制。');
+    out.vNone = await g.voiceSay('（沒有這句的語音）');
+    g.voiceStop();
+    g.voiceCd = {};
+    g.voiceCue('missile');
+    await new Promise((res) => setTimeout(res, 1500));
+    out.vCue = !!g.voiceCur;
+    g.ctrl.voice = 'comm';
+    g.voiceStop();
+    g.voiceCd = {};
+    g.voiceCue('ap25');
+    await new Promise((res) => setTimeout(res, 300));
+    out.vCommOnly = !g.voiceCur;
+    g.ctrl.voice = 'on';
+    g.voiceStop();
+    // 動態配樂：載入後依戰況選強度（測試的 state 不是任務中，主迴圈的 bgmFrame 會停掉配樂，所以先換掉）
+    const frame0 = g.bgmFrame;
+    g.bgmFrame = () => {};
+    out.bLoad = await g.bgmLoad();
+    for (const x of g.enemies) x.sn && (x.sn.st = 0);
+    g.bgmHp = pl.hp;
+    out.lv0 = g.bgmTarget();
+    if (e.sn) e.sn.st = 2;
+    out.lv2 = g.bgmTarget();
+    g.bgm = null;
+    g.bgmTick(0.1);
+    g.bgmTick(0.1);
+    await new Promise((res) => setTimeout(res, 1500));
+    g.bgmTick(1);
+    await new Promise((res) => setTimeout(res, 1500));
+    out.bCur = !!(g.bgm && g.bgm.cur);
+    out.bKey = g.bgm && g.bgm.key;
+    g.bgmStop(0.1);
+    g.bgmFrame = frame0;
+    g.clearMission();
+    localStorage.setItem('rubicon_map', 'industrial');
+    g.state = 'title';
+    return out;
+  });
+  check(r.nPack >= 100 && r.syn, `分層素材 ${r.nPack} 個、合成音`);
+  check(r.env === 'snow', `冰原的反射（${r.env}）`);
+  check(
+    r.own.some((k) => /^rifleN/.test(k)) && r.own.includes('bRifle') && r.own.includes('~thA'),
+    `自機的步槍：近距離＋本體＋超低頻（${r.own.join('+')}）`,
+  );
+  check(
+    r.far.some((k) => /^rifleF/.test(k)) && !r.far.includes('~thA'),
+    `遠處敵人的步槍：遠距離層（${r.far.join('+')}）`,
+  );
+  check(
+    !r.lsg.includes('shotgun') && !r.lsg.some((k) => /^sgN/.test(k)) && r.ms8.join() !== r.pm.join(),
+    `武器各自的聲音（雷射霰彈 ${r.lsg.join('+')}／MS-8 ${r.ms8.join('+')}／電漿 ${r.pm.join('+')}）`,
+  );
+  check(r.voices <= 48, `發聲上限（同時 ${r.voices} 個）`);
+  check(
+    r.whiz.some((k) => /^~whiz/.test(k)),
+    `子彈掠過（${r.whiz.join('+')}）`,
+  );
+  check(
+    r.casing.length >= 1 && r.hitW.some((k) => /^stepSnow/.test(k)),
+    `彈殼（${r.casing.join('+')}）、雪地的命中（${r.hitW.join('+')}）`,
+  );
+  check(
+    r.mc.join() === 'explode,shot' && r.single === 0 && r.net.some((k) => /^rifle/.test(k)),
+    `多人只轉送高階呼叫（${r.mc.join(',')}、個別 ${r.single}）、客機重播（${r.net.join('+')}）`,
+  );
+  check(
+    Math.abs(r.mGain - 0.35) < 0.05 && Math.abs(r.bGain - 0.165) < 0.05,
+    `音量設定（主 ${r.mGain.toFixed(2)}、配樂 ${r.bGain.toFixed(2)}）`,
+  );
+  check(
+    r.vLoad && r.vKeys >= 300 && r.vSay > 0.5 && r.vNone === 0,
+    `ECHO 的語音（${r.vKeys} 句、${r.vSay.toFixed(1)} 秒）`,
+  );
+  check(r.vCue && r.vCommOnly, '系統提示（導彈接近）、設定「只有通訊」時不唸');
+  check(
+    r.bLoad && r.lv0 === 0 && r.lv2 === 2 && r.bCur && r.bKey === 2,
+    `動態配樂（探索 ${r.lv0} → 交戰 ${r.lv2}、播放中 ${r.bKey}）`,
+  );
+  await ctx.close();
+}
+
 async function testJuice(browser, base) {
   console.log('打擊回饋：傷害數字、連殺、BREAK、重擊閃光、擊破演出、Boss 橫幅');
   const { ctx, page } = await newPage(browser, 'juice');
@@ -23416,6 +23581,7 @@ const STEPS = [
   ['testAttrs', (c) => testAttrs(c.browser, c.base)],
   ['testAim', (c) => testAim(c.browser, c.base)],
   ['testAudio', (c) => testAudio(c.browser, c.base)],
+  ['testAudio2', (c) => testAudio2(c.browser, c.base)],
   ['testJuice', (c) => testJuice(c.browser, c.base)],
   ['testFoesB1', (c) => testFoesB1(c.browser, c.base)],
   ['testBossPower', (c) => testBossPower(c.browser, c.base)],

@@ -4,10 +4,12 @@
 // ============================================================
 import { Game } from './game.js';
 import { SFX } from '../audio/audio.js';
-import { clamp } from '../core/math.js';
+import { clamp, lerp } from '../core/math.js';
+import { ENV_OF_THEME } from '../audio/recipes.js';
 import { DS, MS } from '../core/scale.js';
 
 const STREAK_T = 4; // 連殺：上一次擊破後幾秒內再擊破才算連續
+const WHIZ_R = 7; // 子彈掠過：離自機中心幾公尺內（× DS）
 
 // 各主題的環境音（k＝循環檔、syn＝合成的風聲／海浪；v＝音量）與殘響（秒數、送出量）
 const AMB = {
@@ -120,10 +122,118 @@ Object.assign(Game.prototype, {
     if (T.weather === 'rain' && !L.some((x) => x.k === 'ambRain')) L.push({ k: 'ambRain', v: 0.3 });
     SFX.ambient(L, key);
     SFX.setReverb(rev[0], rev[1]);
+    // 槍聲、爆炸的反射（docs/audio-design.md）：依主題，有岩頂＝室內
+    SFX.setEnv(T.roof ? 'indoor' : ENV_OF_THEME[w.themeKey] || 'open');
+    SFX.surfAt = (p) => this.surfAt(p.x, p.z, p.y);
+    SFX.threatOf = (e) => this.sfxThreat(e);
+  },
+  // 威脅導向的混音：正在攻擊玩家的敵人（主攻、預警中、Boss、敵對 AC）大聲一點、優先度高
+  sfxThreat(e) {
+    if (!e || e.team !== 'enemy') return 1;
+    const sn = e.sn;
+    if (e.isBoss || e.ai === 'ac' || (sn && (sn.tok || (sn.mv && sn.mv.ph === 'wind')))) return 1.6;
+    return 1;
+  },
+  // 子彈從身邊飛過（docs/audio-design.md 第 2 期）：敵方的投射物經過自機 WHIZ_R 內（沒有打中）時，
+  // 在最近的那一點播掠過聲（實彈＝撕裂聲、能量＝電弧的嗡）；房主與客機各自依自己的機體算，不轉送
+  projWhiz(pr, prev) {
+    const p = this.player;
+    if (!p || p.dead || pr.owner === p || pr.team === p.team || !SFX.ctx) return;
+    if (pr.kind === 'crate' || pr.kind === 'grenade') return;
+    const c = p.center();
+    const sx = pr.pos.x - prev.x,
+      sy = pr.pos.y - prev.y,
+      sz = pr.pos.z - prev.z;
+    const L2 = sx * sx + sy * sy + sz * sz;
+    if (L2 < 1e-6) return;
+    const t = clamp(((c.x - prev.x) * sx + (c.y - prev.y) * sy + (c.z - prev.z) * sz) / L2, 0, 1);
+    const q = { x: prev.x + sx * t, y: prev.y + sy * t, z: prev.z + sz * t };
+    const dd = Math.hypot(q.x - c.x, q.y - c.y, q.z - c.z);
+    if (dd > WHIZ_R * DS || dd < (p.radius || 2) + 1.2 * DS) return;
+    // 還在接近中（最近點在線段的終點）就等下一格
+    if (t >= 1) return;
+    pr.whz = true;
+    if (this.time - (this.whizT || -9) < 0.07) return;
+    this.whizT = this.time;
+    SFX.whiz(
+      new THREE.Vector3(q.x, q.y, q.z),
+      pr.kind !== 'bullet' && pr.kind !== 'shell' && pr.kind !== 'missile',
+    );
+  },
+  // 機甲的重量（第 3 期）：自機的伺服馬達（轉身、起步、急停）、突擊推進的收尾、附近機體的推進器循環音
+  audioMechTick(dt) {
+    const p = this.player;
+    if (!p || p.dead || !SFX.ctx || this.cine) {
+      SFX.loopsAtTick();
+      return;
+    }
+    const a = (this.sndM = this.sndM || { yaw: p.yaw, sp: 0, cd: 0, ab: false, turn: false });
+    a.cd -= dt;
+    let dy = p.yaw - a.yaw;
+    dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+    const w = Math.abs(dy) / Math.max(dt, 1e-3);
+    const sp = Math.hypot(p.vel.x, p.vel.z);
+    if (a.cd <= 0 && p.grounded && !p.boost) {
+      if (w > 2.4 && !a.turn) {
+        SFX.servo('turn', null, clamp(w / 6, 0.4, 1));
+        a.cd = 0.35;
+        a.turn = true;
+      } else if (sp > 5 * DS && a.sp < 2 * DS) {
+        SFX.servo('start');
+        a.cd = 0.45;
+      } else if (sp < 1.5 * DS && a.sp > 7 * DS) {
+        SFX.servo('stop');
+        a.cd = 0.45;
+      }
+    }
+    if (w < 1) a.turn = false;
+    a.yaw = p.yaw;
+    a.sp = lerp(a.sp, sp, 0.3);
+    if (a.ab && !(p.abT > 0)) SFX.abEnd(null);
+    a.ab = p.abT > 0;
+    // ECHO 的系統提示（第 4 期）：AP 一半與危險、自機失衡（回復到門檻以上才會再提醒）
+    const hr = p.hp / p.maxHp;
+    if (!this.lab && !this.range) {
+      if (hr <= 0.25 && !a.ap25) {
+        a.ap25 = a.ap50 = true;
+        this.voiceCue('ap25');
+      } else if (hr <= 0.5 && !a.ap50) {
+        a.ap50 = true;
+        this.voiceCue('ap50');
+      }
+    }
+    if (hr > 0.6) a.ap50 = a.ap25 = false;
+    else if (hr > 0.35) a.ap25 = false;
+    if (p.staggerT > 0 && !a.stg) this.voiceCue('stagger');
+    a.stg = p.staggerT > 0;
+    // EN 用完：推進器過熱的嘶＋警示音
+    const enOut = p.en < (p.enMax || 1) * 0.03;
+    if (enOut && !a.enOut) SFX.overheat();
+    a.enOut = enOut;
+    // 附近機體的推進器（AC6 的評論：玩家靠聲音追蹤畫面外的高速機體）：最近的 4 台正在推進／懸浮的
+    const L = [];
+    for (const e of this.enemies || []) {
+      if (e.dead || !e.pos || !(e.stats && e.stats.parts && e.stats.parts.legs)) continue;
+      const on = e.abT > 0 ? 1 : e.boost || e.qbT > 0 ? 0.85 : e.hover ? 0.55 : !e.grounded ? 0.35 : 0;
+      if (!on) continue;
+      const d = SFX.dist(e.pos);
+      if (d < 70 * DS) L.push([d, e, on]);
+    }
+    L.sort((x, y) => x[0] - y[0]);
+    for (const [, e, on] of L.slice(0, 4))
+      SFX.loopAt(
+        'th' + e.id,
+        'thrustLoop',
+        on * 0.55 * (e.isBoss ? 1.3 : 1),
+        e.abT > 0 ? 1.3 : e.boost ? 1.2 : 0.95,
+        e.pos,
+      );
+    SFX.loopsAtTick();
   },
   // 主迴圈（任務中）每格：環境音、低 AP 心跳、Boss 第二型態
   audioTick(dt) {
     this.audioScene();
+    this.audioMechTick(dt);
     const p = this.player;
     const k = p && !p.dead && !this.lab ? clamp((0.3 - p.hp / p.maxHp) / 0.3, 0, 1) : 0;
     SFX.heartbeat(k, dt);
@@ -134,6 +244,7 @@ Object.assign(Game.prototype, {
       if (ph <= b.phCue) continue;
       b.phCue = ph;
       SFX.cue('phase');
+      this.voiceCue('bossPhase');
       this.camShake = Math.max(this.camShake, 0.25);
       this.showBanner(ph >= 3 ? '最終型態' : '第二型態', b.name, '#ff4030', 2.2, { k: 'phase' });
     }
@@ -161,7 +272,7 @@ Object.assign(Game.prototype, {
     // 房主與客機各自依步伐算腳步聲，不轉送
     const m = SFX.mirror;
     SFX.mirror = null;
-    SFX.step(surf, clamp(wt * (e.scale || 1), 0, 1), e.isPlayer ? null : e.pos);
+    SFX.step(surf, clamp(wt * (e.scale || 1), 0, 1), e.isPlayer ? null : e.pos, L.type);
     SFX.mirror = m;
   },
   // 擊破的回饋（房主／單機，onEnemyKilled）：自己的連殺與確認音；客機玩家的以事件送過去
@@ -174,8 +285,10 @@ Object.assign(Game.prototype, {
     s.n++;
     s.t = this.time;
     by[key] = s;
-    if (from.isPlayer) this.fbKillLocal(s.n, big);
-    else if (from.slot !== undefined && this.net && this.net.role === 'host')
+    if (from.isPlayer) {
+      this.fbKillLocal(s.n, big);
+      if (big && !e.isBoss && (e.ai === 'ac' || e.isElite) && !this.camp) this.voiceCue('aceDown'); // 主線有通訊的台詞
+    } else if (from.slot !== undefined && this.net && this.net.role === 'host')
       this.netEv({ t: 'fb', s: from.slot, k: 'kill', n: s.n, b: big ? 1 : 0 });
   },
   fbKillLocal(n, big) {
@@ -188,6 +301,10 @@ Object.assign(Game.prototype, {
     if (from.isPlayer) {
       SFX.breakFx();
       this.popBreak(t);
+      if (t.isBoss) {
+        SFX.stinger(false); // Boss 的 BREAK：配樂的重音
+        this.voiceCue('bossBreak');
+      }
     } else if (from.slot !== undefined && this.net && this.net.role === 'host')
       this.netEv({ t: 'fb', s: from.slot, k: 'break', i: t.id });
   },
