@@ -48,9 +48,9 @@ export function buildWreck(p, seed, step) {
   const col = propDebrisCol(p, false);
   const R = hrng((p.idx + 1) * 2654435761 + (seed | 0) * 97 + 13);
   const r = (a, b) => a + (b - a) * R();
-  const hw = wreckHeight(H, step);
+  const hw = p.crushed ? Math.min(0.45, wreckHeight(H, step)) : wreckHeight(H, step);
   const k = new PK();
-  const o = { W, D, H, hw, col, base, M, r };
+  const o = { W, D, H: p.crushed ? Math.min(H, 2) : H, hw, col, base, M, r };
   if (WRECK[p.kind]) WRECK[p.kind](k, o);
   else wreckGeneric(k, o);
   // 地上的焦痕（可燃的比較黑、比較大）

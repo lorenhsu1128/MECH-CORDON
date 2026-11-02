@@ -128,3 +128,26 @@ export function propHpFor(h, w, d, mat) {
   const base = lo + Math.min(1, Math.sqrt(area) / 30) * (hi - lo);
   return Math.round((base * (MAT_HP[mat] || 0.7)) / 50) * 50;
 }
+
+// 踩平（docs/destruction-design.md）：機甲走過、QB 撞到就直接變成殘骸的雜物——高 2.6 m 以下且不太長的，
+// 再加上這些細高的（燈桿、樹、護欄）
+export const CRUSH = new Set([
+  'barrier',
+  'lamppost',
+  'streetlamp',
+  'lamp',
+  'beacon',
+  'pillar',
+  'pine',
+  'planter',
+  'barrels',
+  'drum',
+  'car',
+  'fence',
+  'mast',
+]);
+export function propCrushable(p) {
+  const sh = p.shape0 || p.shape;
+  if (CRUSH.has(p.kind)) return true;
+  return sh.y1 - sh.y0 <= 2.6 && Math.max(sh.x1 - sh.x0, sh.z1 - sh.z0) <= 14;
+}

@@ -24169,6 +24169,39 @@ async function testDestruct(browser, base) {
       g.damageProp(big, 1e7, 0, null, pl, 'exp');
       out.bigDead = big.dead && !!big.wreck;
     }
+    // 第 3 期：踩平——機甲走過雜物直接變成扁的殘骸、稍微減速；送出帶 cr 的 propDie
+    const crushed = near(
+      (p) => (p.kind === 'barrier' || p.kind === 'car' || p.kind === 'pillar') && p.st === undefined,
+    );
+    out.crushHas = !!crushed;
+    if (crushed) {
+      const sent2 = [];
+      const ne2 = g.netEv;
+      g.netEv = (e) => sent2.push(e);
+      const sh = crushed.shape;
+      pl.pos.set(
+        (sh.x0 + sh.x1) / 2,
+        w.groundAt((sh.x0 + sh.x1) / 2, (sh.z0 + sh.z1) / 2, 1e3),
+        (sh.z0 + sh.z1) / 2,
+      );
+      pl.vel.set(10, 0, 0);
+      g.propCrushTick();
+      g.netEv = ne2;
+      out.crush = crushed.dead && !!crushed.wreck && crushed.wreck.top - crushed.wreck.y <= 1.0;
+      out.crushSlow = pl.vel.x < 10;
+      out.crushEv = sent2.some((e) => e.t === 'propDie' && e.cr === 1 && e.i === crushed.idx);
+      pl.vel.set(0, 0, 0);
+      // 站著不動不會踩壞
+      const still = near(
+        (p) => p.st === undefined && (p.kind === 'barrier' || p.kind === 'car' || p.kind === 'pillar'),
+      );
+      if (still) {
+        const s2 = still.shape;
+        pl.pos.set((s2.x0 + s2.x1) / 2, pl.pos.y, (s2.z0 + s2.z1) / 2);
+        g.propCrushTick();
+        out.still = !still.dead;
+      }
+    }
     // 同步：房主把這一格的血量合併成一個事件、血量表；客機套用血量表時直接換成殘骸
     const sent = [];
     const ne = g.netEv;
@@ -24220,6 +24253,10 @@ async function testDestruct(browser, base) {
   check(
     r.tall && r.tallCut && r.tallTop && r.groundCut,
     '高的物件第 3 階段切掉上段：網格變少、碰撞與站立高度降低',
+  );
+  check(
+    r.crushHas && r.crush && r.crushSlow && r.crushEv && r.still !== false,
+    '踩平：走過雜物變成扁的殘骸、減速、送出事件；站著不動不會踩壞',
   );
   check(r.evN === 1 && r.evL === 2 && r.tbl, `同步：合併的血量事件（${r.evN} 個、${r.evL} 項）與血量表`);
   check(r.cli, '客機套用血量表：直接換成殘骸');

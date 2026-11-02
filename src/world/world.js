@@ -2188,6 +2188,7 @@ export class World {
       const k = this.meshes.indexOf(g);
       if (k >= 0) this.meshes.splice(k, 1);
     }
+    if (o.cr) p.crushed = true; // 被踩平：殘骸是扁的（prop-wreck.js）
     if (fx && !o.quiet) fx.shatterProp(p, this, o);
     if (!o.noWreck) this.addWreck(p);
   }

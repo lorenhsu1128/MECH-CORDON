@@ -3,7 +3,7 @@
 //   判定只在房主／單機（propDamage）；房主把這一格血量有變的物件合併成一個 propHp 事件、每 2 秒在快照帶一份
 //   受損物件的血量表（prs：重連、觀戰、漏掉事件、房主遷移都靠它對齊）；客機依血量自己演出，特效一律不轉送。
 import { weaponAttr } from '../data/attrs.js';
-import { PMAT, PROP_CHAR, propAttrK, propDebrisCol, propStage } from '../data/destruct.js';
+import { PMAT, PROP_CHAR, propAttrK, propCrushable, propDebrisCol, propStage } from '../data/destruct.js';
 import { weaponById } from '../data/parts.js';
 import { fling, local } from '../render/foe-damage.js';
 import { isOutline } from '../render/geometry.js';
@@ -16,6 +16,7 @@ const TABLE_DT = 2; // 房主送血量表的間隔（秒）
 const WRECK_BURN = 22; // 可燃物的殘骸繼續燒幾秒
 const WRECK_SMOKE = 7; // 其他殘骸冒煙／揚塵幾秒
 const FLASH_MS = 70;
+const CRUSH_SLOW = 0.85; // 踩平時機甲的速度倍率
 
 const GEO_OWNER = new WeakMap(); // 幾何 → 改了它的物件（共用的幾何先複製一份）
 const BLACK = new THREE.Color(0);
@@ -348,6 +349,46 @@ Object.assign(Game.prototype, {
       const q = pt().add(new THREE.Vector3(0, Math.random() * 0.8, 0));
       fx.flash(q, 0.3 * S * (0.6 + Math.random() * 0.5), Math.random() < 0.6 ? 0xd8480a : 0xff7018, 0.18);
       if (Math.random() < 0.3) fx.streaks(q, 2, 0xff9a30, 4, 0.5, -6);
+    }
+  },
+  // ---------- 踩平（房主／單機）----------
+  // 機甲（玩家、敵人、友軍、載具）在地上移動、腳的範圍碰到雜物（data/destruct.js 的 propCrushable）就直接變成殘骸：
+  // 不算傷害數字與賞金，機甲稍微減速；客機收到帶 cr 的 propDie 自己演出
+  propCrushTick() {
+    const w = this.world;
+    if (!w || !w.props || this.range || this.cine) return;
+    if (this.crushW !== w) {
+      this.crushW = w;
+      this.crushList = w.props.filter((p) => !p.dead && propCrushable(p));
+    }
+    const L = this.crushList;
+    if (!L.length) return;
+    for (const m of this.crowdMechs()) {
+      if (m.flying || !m.vel) continue;
+      const v2 = m.vel.x * m.vel.x + m.vel.z * m.vel.z;
+      if (v2 < 1) continue;
+      // 碰到就算：比移動的碰撞半徑（radius × 0.8）大一點，所以推著雜物走也會踩壞
+      const R = Math.max(this.crowdCrushR(m) + 0.3, (m.radius || 2) * 0.8 + 0.5);
+      const x = m.pos.x,
+        z = m.pos.z;
+      for (let i = L.length - 1; i >= 0; i--) {
+        const p = L[i];
+        if (p.dead) {
+          L.splice(i, 1);
+          continue;
+        }
+        const sh = p.shape;
+        // 到外形（水平）的距離；腳要在物件頂附近以下（站在高處的不算）
+        const dx = Math.max(sh.x0 - x, 0, x - sh.x1),
+          dz = Math.max(sh.z0 - z, 0, z - sh.z1);
+        if (dx * dx + dz * dz > R * R || m.pos.y > sh.y1 + 1) continue;
+        L.splice(i, 1);
+        const dir = new THREE.Vector3(m.vel.x, 0, m.vel.z).normalize();
+        this.propKill(p, dir, { cr: true });
+        m.vel.x *= CRUSH_SLOW;
+        m.vel.z *= CRUSH_SLOW;
+        if (m === this.player) this.rumbleAt(p.center(), 0.25, 0.2, 90, 20);
+      }
     }
   },
   // ---------- 多人同步 ----------

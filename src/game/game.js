@@ -569,6 +569,7 @@ export class Game {
     this.updateShocks(dt);
     this.updateSupport(dt);
     this.updateHazards(dt);
+    this.propCrushTick(); // 機甲踩平雜物（game/destruct.js）
     if (this.crowd) this.crowdTick(dt); // 地圖上的小人（crowd.js）
     this.fx.update(dt);
     this.tickPopups(dt);
