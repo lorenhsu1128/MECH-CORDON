@@ -24372,7 +24372,10 @@ async function testDestructCollapse(browser, base) {
         y0 = pl.pos.y;
       window.__pump(5);
       out.fell = pl.pos.y < y0 - 1;
-      out.dy = +(pl.pos.y - y0).toFixed(1) + '/' + +(bb.min.y - w.groundAt((bb.min.x + bb.max.x) / 2, (bb.min.z + bb.max.z) / 2, bb.min.y)).toFixed(1);
+      out.dy =
+        +(pl.pos.y - y0).toFixed(1) +
+        '/' +
+        +(bb.min.y - w.groundAt((bb.min.x + bb.max.x) / 2, (bb.min.z + bb.max.z) / 2, bb.min.y)).toFixed(1);
       out.landed = !!B.landed;
       out.wreck = !!B.wreck && w.obstacles.includes(B.wreck);
       out.gone = !B.obs.some((o) => w.obstacles.includes(o));
