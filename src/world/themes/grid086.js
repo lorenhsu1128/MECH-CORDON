@@ -311,11 +311,12 @@ function buildStructures(w) {
     if (pillars.has(k)) return;
     pillars.add(k);
     w.addPillar(x, z, 0.9 * G, y0, y1, null);
+    w.obstacles[w.obstacles.length - 1].seg = 'grid'; // 甲板格子的支柱：局部打穿（docs/destruction-design.md 第 6 期）
   };
   for (const [i, j, cx, cz] of cells) {
     const k = key(i, j);
     if (!L1.has(k)) continue;
-    w.addDeck(cx, cz, deckW, deckW, Y1, THICK, false, null);
+    w.addDeck(cx, cz, deckW, deckW, Y1, THICK, false, null).seg = 'grid';
     for (const sx of [-1, 1])
       for (const sz of [-1, 1])
         pillar(
@@ -325,7 +326,7 @@ function buildStructures(w) {
           Y1 - THICK,
         );
     if (L2.has(k)) {
-      w.addDeck(cx, cz, deckW, deckW, Y2, THICK, false, null);
+      w.addDeck(cx, cz, deckW, deckW, Y2, THICK, false, null).seg = 'grid';
       for (const sx of [-1, 1])
         for (const sz of [-1, 1])
           pillar(cx + sx * (TILE / 2 - 2 * G), cz + sz * (TILE / 2 - 2 * G), Y1, Y2 - THICK);

@@ -27,6 +27,7 @@ const FALL_DIRS = [
 const WARN_T = 1.5; // 倒塌：預警的秒數
 const FALL_T = 1.4; // 倒下的秒數
 const SINK_T = 2; // 往下塌的秒數
+const DROP_T = 1; // 甲板掉下來的秒數
 
 const GEO_OWNER = new WeakMap(); // 幾何 → 改了它的物件（共用的幾何先複製一份）
 const BLACK = new THREE.Color(0);
@@ -63,7 +64,7 @@ Object.assign(Game.prototype, {
     if (p.dead) return;
     this.propDirty && this.propDirty.delete(p);
     this.world.destroyProp(p, this.fx, { dir, cr: o.cr });
-    if (p.support) this.propSupportDown(p, false);
+    if (p.support && !p.sep) this.propSupportDown(p, false);
     else this.propWreckFx(p);
     this.netEv({
       t: 'propDie',
@@ -72,7 +73,7 @@ Object.assign(Game.prototype, {
       cr: o.cr ? 1 : 0,
     });
     // 承重柱全壞：結構倒下（方向依最後一擊；客機收到 pcol 照同樣的方向演出）
-    if (p.support && p.of.sup.every((q) => q.dead) && !p.of.collapsed) {
+    if (p.support && p.of.sup.every((q) => q.dead) && !p.of.collapsed && !p.of.noCollapse) {
       const di = this.propFallDir(p.of, dir);
       this.netEv({ t: 'pcol', i: p.of.idx, d: di });
       this.propCollapse(p.of, di, false);
@@ -440,8 +441,11 @@ Object.assign(Game.prototype, {
       pz = cz + dz * half,
       y0 = bb.min.y;
     const g = b.ob.group;
-    // 寬的建築：往下塌成瓦礫堆（像控制爆破）；細高的（高 > 寬 × 1.5）才整個倒下
-    if (H <= Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) * 1.5) return this.propSink(b, quiet);
+    this.propRampsOff(b);
+    // 甲板：掉到地上；寬的建築與上面站得了東西的：往下塌成瓦礫堆（像控制爆破）；細高的（高 > 寬 × 1.5）才整個倒下
+    if (b.mode === 'drop') return this.propDrop(b, quiet);
+    if (b.forceSink || H <= Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) * 1.5)
+      return this.propSink(b, quiet);
     // 模型掛在底邊的樞軸上（保留世界座標）
     const piv = new THREE.Object3D();
     piv.position.set(px, y0, pz);
@@ -629,6 +633,134 @@ Object.assign(Game.prototype, {
       () => land(true),
     );
   },
+  // 接著它的坡道一起拿掉（碰撞與模型）
+  propRampsOff(b) {
+    const R = this.world.ramps;
+    for (const r of b.ramps || []) {
+      const i = R ? R.indexOf(r) : -1;
+      if (i >= 0) R.splice(i, 1);
+      if (r.mesh) r.mesh.visible = false;
+    }
+  },
+  // 甲板掉下來（docs/destruction-design.md 第 5 期）：預警（甲板底下的地面）、晃動 → 往下掉到地上（稍微傾斜）→
+  // 換成平放的碰撞（低的方塊，機甲走得上去）；上面的物件摔壞、站在上面的機體跟著掉、底下的受到爆發傷害
+  propDrop(b, quiet) {
+    const w = this.world,
+      fx = this.fx,
+      bb = b.base;
+    const cx = (bb.min.x + bb.max.x) / 2,
+      cz = (bb.min.z + bb.max.z) / 2;
+    const yTop = b.ob.top !== undefined ? b.ob.top : bb.max.y;
+    const thick = Math.max(0.5, yTop - bb.min.y);
+    // 掉到的地面（甲板的碰撞已經拿掉）：中央的地面（橋掉進底下的河道、壕溝；兩端埋進岸邊）
+    const gy = w.groundAt(cx, cz, bb.min.y);
+    const drop = Math.max(0, bb.min.y - gy);
+    const g = b.ob.group;
+    const piv = new THREE.Object3D();
+    piv.position.set(cx, bb.min.y, cz);
+    this.scene.add(piv);
+    piv.updateMatrixWorld(true);
+    if (g) piv.attach(g);
+    b.piv = piv;
+    // 放在甲板上的物件跟著掉（落地時摔壞，propFallHit）
+    for (const q of w.props || []) {
+      if (q.dead || q.of === b || q === b || !q.ob.group || q.ob.group === g) continue;
+      const sh = q.shape;
+      if (sh.x1 < bb.min.x || sh.x0 > bb.max.x || sh.z1 < bb.min.z || sh.z0 > bb.max.z) continue;
+      if (Math.abs(sh.y0 - yTop) < 1.5) piv.attach(q.ob.group);
+    }
+    const tilt = (b.idx % 2 ? 1 : -1) * 0.05;
+    const top = gy + Math.min(thick, 2.5);
+    const lie = {
+      kind: 'box',
+      x: cx,
+      z: cz,
+      w: bb.max.x - bb.min.x,
+      d: bb.max.z - bb.min.z,
+      y: gy - 0.5,
+      top,
+      group: piv,
+      mats: [],
+      box: new THREE.Box3(
+        new THREE.Vector3(bb.min.x, gy - 0.5, bb.min.z),
+        new THREE.Vector3(bb.max.x, top, bb.max.z),
+      ),
+      wreck: b,
+    };
+    const place = (f) => {
+      piv.position.y = bb.min.y - drop * f;
+      if (bb.max.x - bb.min.x >= bb.max.z - bb.min.z) piv.rotation.x = tilt * f;
+      else piv.rotation.z = tilt * f;
+    };
+    const land = (loud) => {
+      place(1);
+      w.obstacles.push(lie);
+      b.wreck = lie;
+      b.landed = true;
+      if (!loud || !fx) return;
+      const R = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z);
+      local(fx, () => {
+        const n = Math.max(2, Math.min(6, Math.round(R / 15)));
+        const ax = bb.max.x - bb.min.x >= bb.max.z - bb.min.z;
+        for (let i = 0; i <= n; i++) {
+          const t = i / n - 0.5;
+          fx.dust(
+            new THREE.Vector3(cx + (ax ? t * R : 0), gy + 0.3, cz + (ax ? 0 : t * R)),
+            Math.max(3, Math.min(8, R * 0.12)),
+            12,
+            0xa09a90,
+          );
+        }
+      });
+      SFX.netDepth++;
+      try {
+        SFX.explode(true, new THREE.Vector3(cx, gy, cz));
+        SFX.wreck(new THREE.Vector3(cx, gy, cz));
+      } finally {
+        SFX.netDepth--;
+      }
+      this.rumbleAt(new THREE.Vector3(cx, gy, cz), 0.9, 0.6, 360, R + 40);
+      if (!(this.net && this.net.role === 'client')) {
+        const box = new THREE.Box3(
+          new THREE.Vector3(bb.min.x - 2, gy - 1, bb.min.z - 2),
+          new THREE.Vector3(bb.max.x + 2, bb.max.y + 6, bb.max.z + 2),
+        );
+        this.propFallHit(
+          b,
+          { box, x: cx, z: cz, w: box.max.x - box.min.x, d: box.max.z - box.min.z },
+          Math.max(8, drop + 8),
+          0,
+          0,
+        );
+      }
+    };
+    this.propWreckFx(b);
+    if (quiet || !fx || drop < 0.3) return land(!quiet && !!fx);
+    local(fx, () =>
+      fx.warnRect(
+        new THREE.Vector3(cx, gy + 0.05, cz),
+        0,
+        bb.max.x - bb.min.x + 4,
+        bb.max.z - bb.min.z + 4,
+        WARN_T + DROP_T,
+        0xff3020,
+      ),
+    );
+    const T = WARN_T + DROP_T;
+    fx.task(
+      T,
+      (e, t) => {
+        const tt = t * T;
+        if (tt < WARN_T) {
+          piv.position.y = bb.min.y - 0.05 * Math.abs(Math.sin(tt * 23)) * (tt / WARN_T);
+          return;
+        }
+        const f = (tt - WARN_T) / DROP_T;
+        place(f * f);
+      },
+      () => land(true),
+    );
+  },
   // 倒下壓到的：機體受到爆發傷害（衝擊大、會失衡）、地圖物件受傷、小人死亡（房主／單機）
   propFallHit(b, lie, H, dx, dz) {
     const dmg = Math.max(2000, Math.min(6000, H * 160));
@@ -644,7 +776,9 @@ Object.assign(Game.prototype, {
       const sh = q.shape;
       if (sh.x1 < box.min.x || sh.x0 > box.max.x || sh.z1 < box.min.z || sh.z0 > box.max.z) continue;
       if (sh.y0 > box.max.y) continue;
-      this.propDamage(q, dmg * 2, 0, q.center(), null, 'exp');
+      // 放在上面的（甲板、屋頂上）跟著掉下來摔壞
+      if (b.base && sh.y0 > b.base.max.y - 2.5) this.propDamage(q, 1e7, 0, q.center(), null, 'none');
+      else this.propDamage(q, dmg * 2, 0, q.center(), null, 'exp');
     }
     if (this.crowd && this.crowdBlast) {
       const n = Math.max(2, Math.round(H / 10));
@@ -753,7 +887,7 @@ Object.assign(Game.prototype, {
       if (!p.dead) {
         p.hp = h;
         this.world.destroyProp(p, this.fx, { quiet: true });
-        if (p.support) this.propSupportDown(p, true);
+        if (p.support && !p.sep) this.propSupportDown(p, true);
       }
       return;
     }
@@ -774,7 +908,7 @@ Object.assign(Game.prototype, {
     const dir = e.d ? new THREE.Vector3(e.d[0], 0, e.d[1]) : null;
     p.hp = Math.min(p.hp, 0);
     this.world.destroyProp(p, this.fx, { dir, cr: !!e.cr });
-    if (p.support) this.propSupportDown(p, false);
+    if (p.support && !p.sep) this.propSupportDown(p, false);
     else this.propWreckFx(p);
   },
   // 客機：結構倒下的事件

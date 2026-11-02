@@ -427,6 +427,7 @@ export class World {
     // 其他打得到的物件也登記成可破壞（不用亂數，照障礙物的順序；現有物件的編號不變）
     this.regRest();
     this.regStructs();
+    this.regDecks();
     // 邊界外的遠景地形與剪影物件（edges.js，獨立的亂數串，不影響上面的生成）
     withRng(seed * 97 + 41, () => {
       for (const o of buildBackdrop(this) || []) {
@@ -2185,14 +2186,18 @@ export class World {
       L.push(o);
     }
     for (const [g, L] of byG) {
-      if (L.some((o) => o.deck || o.seg || (o.kind === 'circle' && o.top !== undefined))) continue;
+      if (L.some((o) => o.seg || (o.kind === 'circle' && o.top !== undefined))) continue;
+      // 只有甲板的群組（橋面、高架、掩體頂）由 regDecks 處理；甲板＋牆（機庫、有平台的地標）整個往下塌
+      const hasDeck = L.some((o) => o.deck);
+      if (hasDeck && L.every((o) => o.deck)) continue;
       const b = new THREE.Box3();
       for (const o of L) b.union(this.obBox(o));
       if (b.isEmpty()) continue;
       const sz = b.getSize(new THREE.Vector3());
-      if (this.nearRamp(b) || this.underDeck(b)) continue;
+      if (this.underDeck(b, g)) continue;
+      const ramps = this.rampsNear(b);
       const mat0 = propMatOf('struct', this.themeKey);
-      if (sz.y < 4) {
+      if (sz.y < 4 && !ramps.length) {
         const p = this.regProp(
           'misc',
           this.unionOb(L, b, g, b.min.y),
@@ -2216,6 +2221,9 @@ export class World {
       body.y0 = b.min.y;
       body.base = b.clone();
       body.sup = [];
+      // 上面站得了東西的（甲板＋牆、接著坡道的高台）：一律往下塌，坡道一起拿掉
+      if (hasDeck || ramps.length) body.forceSink = true;
+      body.ramps = ramps;
       const cells =
         n === 1
           ? [[0, 0, 1, 1]]
@@ -2282,7 +2290,7 @@ export class World {
     );
   }
   // 撐著甲板的（橋墩、高架管線的腳、甲板下的牆）：頂在甲板底附近、水平重疊（第 5 期和甲板一起處理）
-  underDeck(b) {
+  underDeck(b, g) {
     const cx = (b.min.x + b.max.x) / 2,
       cz = (b.min.z + b.max.z) / 2;
     const hx = (b.max.x - b.min.x) / 2,
@@ -2290,10 +2298,124 @@ export class World {
     return this.obstacles.some(
       (d) =>
         d.deck &&
+        d.group !== g &&
         Math.abs(d.x - cx) < d.w / 2 + hx + 1 &&
         Math.abs(d.z - cz) < d.d / 2 + hz + 1 &&
         Math.abs(d.y - b.max.y) < 4,
     );
+  }
+  // 接著這個外框的坡道（坡道的高端在外框的頂附近、水平相接）
+  rampsNear(b) {
+    return (this.ramps || []).filter(
+      (r) =>
+        Math.abs(r.x - (b.min.x + b.max.x) / 2) < r.w / 2 + (b.max.x - b.min.x) / 2 + 2 &&
+        Math.abs(r.z - (b.min.z + b.max.z) / 2) < r.d / 2 + (b.max.z - b.min.z) / 2 + 2 &&
+        Math.abs(r.y1 - b.max.y) < 3,
+    );
+  }
+  // 甲板（橋面、高架、掩體頂、虛空上的橋；docs/destruction-design.md 第 5 期）：甲板本體（noDie）＋撐著它的
+  // 橋墩、支柱、牆（各自的物件，有自己的碰撞與模型：sep）；找不到時在甲板上沿長邊分 2～4 段當承重的區段。
+  // 承重的全壞時甲板掉到地上（propDrop）。虛空上的橋不會斷：沒有承重、最多打到第 3 階段
+  regDecks() {
+    const decks = this.obstacles.filter(
+      (o) => o.deck && !o.prop && !o.seg && o.group && o.group !== this.decorG,
+    );
+    const claimed = new Set();
+    for (const ob of decks) {
+      const L = this.obstacles.filter((o) => o.group === ob.group);
+      if (L.some((o) => !o.deck || o.prop)) continue;
+      const b = new THREE.Box3();
+      for (const o of L) b.union(this.obBox(o));
+      const sz = b.getSize(new THREE.Vector3());
+      const mat0 = propMatOf('deck', this.themeKey);
+      const body = this.regProp('deck', this.unionOb(L, b, ob.group, b.min.y), 1, 0, L);
+      body.name = '橋面';
+      body.body = true;
+      body.noDie = true;
+      body.noCut = true;
+      body.base = b.clone();
+      body.sup = [];
+      body.mode = 'drop';
+      body.ramps = this.rampsNear(b);
+      // 虛空上的橋：不會斷
+      let vd = false;
+      for (const [u, v] of [
+        [0.5, 0.5],
+        [0.2, 0.5],
+        [0.8, 0.5],
+        [0.5, 0.2],
+        [0.5, 0.8],
+      ])
+        if (this.theme.void && this.terrainHeight(b.min.x + sz.x * u, b.min.z + sz.z * v) < this.theme.void.y)
+          vd = true; // 只看地形（isVoid 會把橋面本身當成地面）
+      if (vd) {
+        body.noCollapse = true;
+        body.hp = body.maxHp = propHpFor(8, sz.x, sz.z, mat0) * 3;
+        continue;
+      }
+      // 撐著它的：頂在甲板底附近、水平重疊（橋墩、支柱、牆）
+      const hx = sz.x / 2 + 1,
+        hz = sz.z / 2 + 1,
+        cx = (b.min.x + b.max.x) / 2,
+        cz = (b.min.z + b.max.z) / 2;
+      const under = this.obstacles.filter(
+        (o) =>
+          !o.deck &&
+          !o.prop &&
+          !o.seg &&
+          !claimed.has(o) &&
+          o.group &&
+          o.group !== this.decorG &&
+          Math.abs(o.x - cx) < hx + (o.kind === 'box' ? o.w / 2 : o.r) &&
+          Math.abs(o.z - cz) < hz + (o.kind === 'box' ? o.d / 2 : o.r) &&
+          Math.abs(this.obBox(o).max.y - ob.y) < 4,
+      );
+      let hpSum = 0;
+      for (const o of under) {
+        claimed.add(o);
+        const ob2 = this.obBox(o);
+        const s2 = ob2.getSize(new THREE.Vector3());
+        const hp = Math.max(3000, Math.min(9000, propHpFor(Math.min(s2.y, 8), s2.x, s2.z, mat0) * 1.5));
+        const sp = this.regProp('support', o, hp, 0, [o]);
+        sp.name = '橋墩';
+        sp.support = true;
+        sp.sep = true; // 有自己的模型與碰撞：損毀時照一般的物件換成殘骸
+        sp.of = body;
+        body.sup.push(sp);
+        hpSum += hp;
+      }
+      if (!under.length) {
+        // 沒有找到：甲板沿長邊分段（打斷這幾段就掉下來）
+        const n = Math.max(2, Math.min(4, Math.round(Math.max(sz.x, sz.z) / 30)));
+        for (let i = 0; i < n; i++) {
+          const ax = sz.x >= sz.z;
+          const x0 = ax ? b.min.x + (sz.x * i) / n : b.min.x,
+            x1 = ax ? b.min.x + (sz.x * (i + 1)) / n : b.max.x,
+            z0 = ax ? b.min.z : b.min.z + (sz.z * i) / n,
+            z1 = ax ? b.max.z : b.min.z + (sz.z * (i + 1)) / n;
+          const sob = {
+            kind: 'box',
+            x: (x0 + x1) / 2,
+            z: (z0 + z1) / 2,
+            w: x1 - x0,
+            d: z1 - z0,
+            y: ob.y,
+            top: ob.top,
+            group: ob.group,
+            mats: ob.mats,
+            box: new THREE.Box3(new THREE.Vector3(x0, ob.y, z0), new THREE.Vector3(x1, ob.top + 0.9, z1)),
+          };
+          const hp = Math.max(3000, Math.min(9000, propHpFor(4, x1 - x0, z1 - z0, mat0)));
+          const sp = this.regProp('support', sob, hp, 0, []);
+          sp.name = '橋面的接縫';
+          sp.support = true;
+          sp.of = body;
+          body.sup.push(sp);
+          hpSum += hp;
+        }
+      }
+      body.hp = body.maxHp = Math.round(hpSum * 1.5);
+    }
   }
   nearRamp(b) {
     return (this.ramps || []).some(
@@ -2322,7 +2444,7 @@ export class World {
     if (p.dead) return;
     p.dead = true;
     p.hp = Math.min(p.hp, 0);
-    if (p.support) return; // 承重柱：結構的碰撞與模型不動（Game 的 propSupportDown 演出、全壞時倒塌）
+    if (p.support && !p.sep) return; // 承重柱：結構的碰撞與模型不動（Game 的 propSupportDown 演出、全壞時倒塌）
     for (const ob of p.obs || [p.ob]) {
       const i = this.obstacles.indexOf(ob);
       if (i >= 0) this.obstacles.splice(i, 1);
@@ -2635,7 +2757,17 @@ export class World {
           this.scene.add(rg);
           this.meshes.push(rg);
           this.ramps = this.ramps || [];
-          this.ramps.push({ x: rx, z: rz, w: rw, d: rd, side, y0: y0 - sk, y1: y0 + h - sk, len: rl });
+          this.ramps.push({
+            x: rx,
+            z: rz,
+            w: rw,
+            d: rd,
+            side,
+            y0: y0 - sk,
+            y1: y0 + h - sk,
+            len: rl,
+            mesh: rg,
+          });
         }
       }
     }

@@ -24072,13 +24072,14 @@ async function testDestruct(browser, base) {
     const grp = new Map();
     out.dupGroup = 0;
     for (const p of w.props) {
-      if (!p.ob.group) continue;
+      if (!p.ob.group || (p.support && !p.sep)) continue; // 承重的區段和結構共用模型
       if (grp.has(p.ob.group)) out.dupGroup++;
       grp.set(p.ob.group, p);
     }
+    // 一般的物件（結構本體與承重的另外在 testDestructCollapse）
     const near = (f) =>
       w.props
-        .filter((p) => !p.dead && f(p))
+        .filter((p) => !p.dead && !p.body && !p.support && f(p))
         .sort((a, b) => a.pos.distanceTo(pl.pos) - b.pos.distanceTo(pl.pos))[0];
     const met = near((p) => p.mat === 'metal' && p.maxHp >= 1000);
     const veh = near((p) => p.mat === 'vehicle');
@@ -24174,6 +24175,7 @@ async function testDestruct(browser, base) {
       (p) => (p.kind === 'barrier' || p.kind === 'car' || p.kind === 'pillar') && p.st === undefined,
     );
     out.crushHas = !!crushed;
+    out.crushKind = crushed && crushed.kind + ':' + (crushed.shape.y1 - crushed.shape.y0).toFixed(1);
     if (crushed) {
       const sent2 = [];
       const ne2 = g.netEv;
@@ -24220,7 +24222,7 @@ async function testDestruct(browser, base) {
     g.propTblT = 0;
     const tbl = g.propNetTable();
     out.tbl = !!tbl && tbl.some((x) => x[0] === a.idx) && tbl.some((x) => x[0] === met.idx && x[1] <= 0);
-    const c = near((p) => p !== a && p !== b);
+    const c = near((p) => p !== a && p !== b && !p.body && !p.support);
     g.propApplyTable([[c.idx, -5]]);
     out.cli = c.dead && !!c.wreck;
     // 截圖：玩家附近的物件各在不同的階段
@@ -24256,7 +24258,7 @@ async function testDestruct(browser, base) {
   );
   check(
     r.crushHas && r.crush && r.crushSlow && r.crushEv && r.still !== false,
-    '踩平：走過雜物變成扁的殘骸、減速、送出事件；站著不動不會踩壞',
+    `踩平：走過雜物變成扁的殘骸、減速、送出事件；站著不動不會踩壞（${[r.crushHas, r.crush, r.crushSlow, r.crushEv, r.still, r.crushKind].join(',')}）`,
   );
   check(r.evN === 1 && r.evL === 2 && r.tbl, `同步：合併的血量事件（${r.evN} 個、${r.evL} 項）與血量表`);
   check(r.cli, '客機套用血量表：直接換成殘骸');
@@ -24271,6 +24273,8 @@ async function testDestructCollapse(browser, base) {
   for (const [map, mode] of [
     ['flooded', 'sink'],
     ['spaceport', 'fall'],
+    ['industrial', 'drop'],
+    ['xylem', 'void'],
   ]) {
     const { ctx, page } = await newPage(browser, 'collapse-' + map);
     await page.goto(base);
@@ -24301,7 +24305,21 @@ async function testDestructCollapse(browser, base) {
         const b = p.base;
         return b.max.y - b.min.y > Math.max(b.max.x - b.min.x, b.max.z - b.min.z) * 1.5;
       };
-      const bodies = w.props.filter((p) => p.body && (mode === 'fall') === slender(p));
+      // 虛空上的橋：沒有承重、打不斷（第 5 期）
+      if (mode === 'void') {
+        const V = w.props.filter((p) => p.mode === 'drop' && p.noCollapse);
+        out.n = V.length;
+        if (V[0]) {
+          g.damageProp(V[0], 1e8, 0, null, pl, 'none');
+          out.void = V.every((p) => p.sup.length === 0) && !V[0].dead && V[0].hp >= 1;
+        }
+        return out;
+      }
+      const bodies = w.props.filter((p) =>
+        mode === 'drop'
+          ? p.mode === 'drop' && !p.noCollapse && p.sup.length
+          : p.body && p.mode !== 'drop' && !p.forceSink && (mode === 'fall') === slender(p),
+      );
       out.n = bodies.length;
       const B = bodies.sort((a, b) => b.base.max.y - a.base.max.y)[0];
       if (!B) return out;
@@ -24328,7 +24346,11 @@ async function testDestructCollapse(browser, base) {
       out.sank = !!B.sank;
       // 倒下的範圍裡放玩家
       let px, pz;
-      if (mode === 'sink') {
+      if (mode === 'drop') {
+        // 站在甲板上：跟著掉下來
+        px = (bb.min.x + bb.max.x) / 2;
+        pz = (bb.min.z + bb.max.z) / 2;
+      } else if (mode === 'sink') {
         px = bb.max.x + 2;
         pz = (bb.min.z + bb.max.z) / 2;
       } else {
@@ -24344,15 +24366,18 @@ async function testDestructCollapse(browser, base) {
         px = c.x + d[0] * (half + H * 0.5);
         pz = c.z + d[1] * (half + H * 0.5);
       }
-      pl.pos.set(px, w.groundAt(px, pz, 1e3), pz);
+      pl.pos.set(px, mode === 'drop' ? bb.max.y : w.groundAt(px, pz, 1e3), pz);
       pl.vel.set(0, 0, 0);
-      const hp0 = pl.hp;
+      const hp0 = pl.hp,
+        y0 = pl.pos.y;
       window.__pump(5);
+      out.fell = pl.pos.y < y0 - 1;
       out.landed = !!B.landed;
       out.wreck = !!B.wreck && w.obstacles.includes(B.wreck);
       out.gone = !B.obs.some((o) => w.obstacles.includes(o));
       out.hurt = pl.hp < hp0;
-      out.low = B.wreck ? B.wreck.top - bb.min.y <= 7.01 : false;
+      out.low = B.wreck ? B.wreck.top - (mode === 'drop' ? B.wreck.y + 0.5 : bb.min.y) <= 7.01 : false;
+      out.supWreck = mode !== 'drop' || B.sup.every((q) => q.dead && q.wreck);
       out.wreck0 = !!W === false;
       // 客機：血量表帶方向時直接躺好
       const C = w.props.find((p) => p.body && !p.collapsed);
@@ -24362,14 +24387,26 @@ async function testDestructCollapse(browser, base) {
       }
       return out;
     }, mode);
-    check(r.n > 0 && r.sup >= 1 && r.supNames, `${map}：結構本體＋${r.sup} 根承重柱（${r.n} 棟）`);
+    if (mode === 'void') {
+      check(r.n > 0 && r.void, `${map}：虛空上的橋沒有承重、打不斷（${r.n} 座）`);
+      await thawLoop(page);
+      await ctx.close();
+      continue;
+    }
+    check(
+      r.n > 0 && r.sup >= 1 && (r.supNames || mode === 'drop'),
+      `${map}：結構本體＋${r.sup} 根承重柱（${r.n} 個）`,
+    );
     check(r.bodyAlive, `${map}：只打本體不會倒（只會受損到第 3 階段）`);
     check(r.notYet && r.ev, `${map}：承重柱全壞才倒、送出 pcol（方向 ${r.dir}）`);
     check(
-      r.landed && r.wreck && r.gone && r.low && (mode === 'sink') === r.sank,
-      `${map}：${mode === 'sink' ? '往下塌成瓦礫堆' : '整個倒下'}，換成矮的碰撞`,
+      r.landed && r.wreck && r.gone && r.low && (mode === 'sink') === r.sank && r.supWreck,
+      `${map}：${{ sink: '往下塌成瓦礫堆', fall: '整個倒下', drop: '甲板掉到地上（橋墩換成殘骸）' }[mode]}，換成矮的碰撞`,
     );
-    check(r.hurt, `${map}：壓到的玩家受傷`);
+    check(
+      r.hurt && (mode !== 'drop' || r.fell),
+      `${map}：壓到的玩家受傷${mode === 'drop' ? '、站在甲板上的跟著掉' : ''}`,
+    );
     check(r.cli !== false, `${map}：客機套用血量表時直接躺好`);
     await page.screenshot({ path: path.join(SHOT_DIR, `destruct-collapse-${map}.png`) });
     await thawLoop(page);
