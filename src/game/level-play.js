@@ -797,6 +797,9 @@ Object.assign(Game.prototype, {
         case 'prop':
           hit = q.some((x) => x.k === 'prop' && (!ev.tag || x.tag === ev.tag));
           break;
+        case 'pstage':
+          hit = q.some((x) => x.k === 'pstage' && (!ev.tag || x.tag === ev.tag) && x.st >= +(ev.st || 1));
+          break;
         case 'trig':
           hit = q.some((x) => x.k === 'trig' && x.tr === ev.tr);
           break;
@@ -1264,5 +1267,9 @@ Object.assign(Game.prototype, {
   // 物件被破壞（map-extras.js 的 damageProp 呼叫）
   lvPropDown(p) {
     if (this.lv) this.lvEmit('prop', { tag: p.lvTag || '' });
+  },
+  // 物件受損到第 st 階段（game/destruct.js 的 propStageCheck，房主／單機）
+  lvPropStage(p, st) {
+    if (this.lv) this.lvEmit('pstage', { tag: p.lvTag || '', st });
   },
 });

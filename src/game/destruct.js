@@ -107,6 +107,7 @@ Object.assign(Game.prototype, {
           this.propCollapse(b, di, false);
         }
     this.lvPropDown(p); // 自訂關卡的觸發器（物件被破壞）
+    this.propCrowdDown(p); // 小人
     if (!o.cr) this.rumbleAt(p.center(), 0.5, 0.3, 160, 30);
   },
   // 受擊閃光（只對可淡出的材質有效；propDmgTick 還原）
@@ -123,6 +124,7 @@ Object.assign(Game.prototype, {
     const st0 = p.st || 0;
     if (st <= st0) return;
     p.st = st;
+    if (!quiet && !(this.net && this.net.role === 'client')) this.lvPropStage(p, st); // 自訂關卡的觸發器
     if (p.support || (p.seg && !p.grid)) {
       // 承重柱、巨型結構的一段：只噴碎板（模型是整個結構共用的，焦黑與脫落由結構本體決定）
       if (!quiet && this.fx) this.propShards(p, st >= 3 && st0 < 3 ? 3 : 1);
@@ -162,7 +164,10 @@ Object.assign(Game.prototype, {
       keepOut: quiet,
       clipTop: cut !== null ? cut : undefined,
     });
-    if (cut !== null) this.world.propCut(p, cut);
+    if (cut !== null) {
+      this.world.propCut(p, cut);
+      this.propCrowdDown(p, cut);
+    }
     if (quiet) return;
     if (!r.pieces.length) {
       this.propShards(p, s === 1 ? (r.n ? 2 : 0) : s === 2 ? 2 : 4);
@@ -1096,6 +1101,48 @@ Object.assign(Game.prototype, {
       SFX.wreck(new THREE.Vector3(cx, gy, cz));
     } finally {
       SFX.netDepth--;
+    }
+  },
+  // ---------- 其他系統（第 8 期）----------
+  // Boss 場地的臨時掩體（game/hazards2.js）：和地圖物件同一套的焦黑與碎板
+  twStage(W) {
+    if (!(W.hpMax > 0) || !W.grp) return;
+    const st = Math.min(3, propStage(W.hp, W.hpMax));
+    if (st <= (W.st || 0)) return;
+    W.st = st;
+    const b = W.ob.box;
+    const pp =
+      W.pp ||
+      (W.pp = {
+        ob: { group: W.grp, mats: W.ob.mats },
+        obs: [W.ob],
+        shape: { x0: b.min.x, x1: b.max.x, z0: b.min.z, z1: b.max.z, y0: b.min.y, y1: b.max.y },
+        mat: W.k === 'ice' ? 'ice' : W.k === 'crate' ? 'metal' : 'rock',
+        col: 0x302c28,
+        idx: W.i,
+        center: () => b.getCenter(new THREE.Vector3()),
+      });
+    this.propChar(pp, PROP_CHAR[st]);
+    if (this.fx) this.propShards(pp, st >= 3 ? 3 : 1);
+  },
+  // 地圖物件壞了、變矮了：站在上面的小人掉下來（高的摔死），旁邊的受驚逃開（房主／單機）
+  propCrowdDown(p, cutY) {
+    const C = this.crowd;
+    if (!C || (this.net && this.net.role === 'client')) return;
+    const sh = p.shape0 || p.shape,
+      w = this.world;
+    const cx = (sh.x0 + sh.x1) / 2,
+      cz = (sh.z0 + sh.z1) / 2;
+    const top = cutY !== undefined ? cutY : sh.y0 + 0.5;
+    for (const h of C.list) {
+      if (!h.alive) continue;
+      const inside = h.x > sh.x0 - 0.5 && h.x < sh.x1 + 0.5 && h.z > sh.z0 - 0.5 && h.z < sh.z1 + 0.5;
+      if (inside && h.y > top) {
+        const g = w.groundAt(h.x, h.z, top);
+        if (h.y - g > 4) this.crowdKill(h, null, 'blast');
+        else h.y = g;
+      } else if (Math.hypot(h.x - cx, h.z - cz) < Math.max(12, (sh.x1 - sh.x0 + sh.z1 - sh.z0) * 0.6))
+        this.crowdScareOne(h, cx, cz);
     }
   },
   // ---------- 踩平（房主／單機）----------

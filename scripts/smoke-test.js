@@ -24208,6 +24208,36 @@ async function testDestruct(browser, base) {
         out.still = !still.dead;
       }
     }
+    // 第 8 期：自訂關卡的觸發器（物件受損到第幾階段）、Boss 場地的臨時掩體、小人
+    const lvs = [];
+    const lps = g.lvPropStage;
+    g.lvPropStage = (q, st) => lvs.push(st);
+    const ps = near((p) => p.maxHp >= 600 && !p.st);
+    if (ps) g.damageProp(ps, ps.hp - ps.maxHp * 0.4, 0, null, pl, 'none');
+    g.lvPropStage = lps;
+    out.lvStage = lvs.join();
+    const wi = g.addTempWall(pl.pos.clone().add(new THREE.Vector3(20, 0, 0)), {
+      kind: 'rock',
+      hp: 3000,
+      life: 30,
+    });
+    const W = (g.tWalls || []).find((x) => x.i === wi);
+    if (W) {
+      g.tempWallDamage(W, 2400, W.pos.clone());
+      out.tw = W.st === 3 && !!W.pp;
+    }
+    if (g.crowd && g.crowd.list.length) {
+      const h = g.crowd.list.find((x) => x.alive);
+      const pc = near((p) => p.shape.y1 - p.shape.y0 > 2 && p.shape.y1 - p.shape.y0 < 4 && !p.st);
+      if (h && pc) {
+        const sh = pc.shape;
+        h.x = (sh.x0 + sh.x1) / 2;
+        h.z = (sh.z0 + sh.z1) / 2;
+        h.y = sh.y1;
+        g.damageProp(pc, 1e7, 0, null, pl, 'none');
+        out.crowd = !h.alive || h.y < sh.y1 - 0.3; // 落在殘骸上（殘骸比原本矮）
+      }
+    }
     // 同步：房主把這一格的血量合併成一個事件、血量表；客機套用血量表時直接換成殘骸
     const sent = [];
     const ne = g.netEv;
@@ -24265,6 +24295,12 @@ async function testDestruct(browser, base) {
     r.crushHas && r.crush && r.crushSlow && r.crushEv && r.still !== false,
     `踩平：走過雜物變成扁的殘骸、減速、送出事件；站著不動不會踩壞（${[r.crushHas, r.crush, r.crushSlow, r.crushEv, r.still, r.crushKind].join(',')}）`,
   );
+  check(
+    r.lvStage === '2',
+    `自訂關卡的觸發器：受損到第幾階段（一次打到第 2 階段：${r.lvStage}；比對是「達到以上」）`,
+  );
+  check(r.tw, 'Boss 場地的臨時掩體：同一套的焦黑與碎板（第 3 階段）');
+  check(r.crowd !== false, '站在物件上的小人：物件壞了掉下來');
   check(r.evN === 1 && r.evL === 2 && r.tbl, `同步：合併的血量事件（${r.evN} 個、${r.evL} 項）與血量表`);
   check(r.cli, '客機套用血量表：直接換成殘骸');
   await page.screenshot({ path: path.join(SHOT_DIR, 'destruct-stages.png') });

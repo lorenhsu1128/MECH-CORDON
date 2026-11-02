@@ -838,6 +838,7 @@ Object.assign(Game.prototype, {
   },
   tempWallDamage(W, dmg, at) {
     W.hp -= Math.round(dmg);
+    this.twStage(W);
     W.flashT = 0.07;
     for (const m of W.ob.mats) if (m.emissive) m.emissive.setRGB(0.6, 0.6, 0.6);
     this.popDamage(at, Math.round(dmg), false, false, false, 0, -1);
@@ -1069,6 +1070,7 @@ Object.assign(Game.prototype, {
         const W = (this.tWalls || []).find((x) => x.i === e.i);
         if (W) {
           W.hp = e.h;
+          this.twStage(W);
           W.flashT = 0.07;
           for (const m of W.ob.mats) if (m.emissive) m.emissive.setRGB(0.6, 0.6, 0.6);
         }

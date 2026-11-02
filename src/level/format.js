@@ -100,6 +100,19 @@ export const EVENTS = {
     ],
   },
   prop: { name: '物件被破壞', p: [{ k: 'tag', type: 'tag', name: '物件標籤' }] },
+  pstage: {
+    name: '物件受損到第幾階段',
+    p: [
+      { k: 'tag', type: 'tag', name: '物件標籤' },
+      {
+        k: 'st',
+        type: 'sel',
+        name: '階段',
+        opts: { 1: '輕損（75%）', 2: '中損（50%）', 3: '重損（25%）' },
+        def: '2',
+      },
+    ],
+  },
   target: { name: '目標設施被破壞', p: [{ k: 'm', type: 'mark', mk: 'target', name: '目標（空白＝任一）' }] },
   defend: { name: '防衛目標被毀', p: [{ k: 'm', type: 'mark', mk: 'defend', name: '目標（空白＝任一）' }] },
   cache: { name: '補給箱打開', p: [{ k: 'm', type: 'mark', mk: 'cache', name: '補給箱（空白＝任一）' }] },

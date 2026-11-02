@@ -1,5 +1,6 @@
 // Game：關卡編輯器的面板——上方工具列、左側的調色盤（依工具）、右側的屬性、下方狀態列、設定、確認視窗。
 // 觸控（平板）時左右面板可以收合；所有操作都有按鈕（不靠快捷鍵）。
+import { PMAT, propMatOf } from '../data/destruct.js';
 import { escHtml } from '../core/html.js';
 import {
   BEHAVIORS,
@@ -545,6 +546,14 @@ Object.assign(Game.prototype, {
       if (!def.ramp)
         h += field('碰撞', sel('col', o.col, { box: '方塊（外框）', circle: '圓柱', none: '無（純裝飾）' }));
       if (!def.ramp) h += field('耐久（0＝不可破壞）', num('hp', o.hp, 0, 99999, 50));
+      if (!def.ramp && o.hp > 0) {
+        // 材質（data/destruct.js）：決定實彈／爆發／能量的傷害倍率、受損的效果、會不會起火
+        const M = PMAT[propMatOf(String(def.id).replace(/^ed\//, ''), '')] || PMAT.metal;
+        h += field(
+          '材質',
+          `<span class="muted">${M.name}：實彈 ×${M.k[0]}・爆發 ×${M.k[1]}・能量 ×${M.k[2]}${M.fire ? '・會起火' : ''}</span>`,
+        );
+      }
       h += field('標籤（觸發器用）', txt('tag', o.tag, 24));
       if (o.yaw && Math.abs(o.yaw % (Math.PI / 2)) > 0.01 && o.col === 'box')
         h += '<div class="dim">斜放時碰撞用轉過之後的外框，會比外觀大。</div>';
