@@ -23,7 +23,7 @@ export function dmgStage(frac) {
 export const dmgOn = (ent) => !!(ent && ent.model && (ent.team === 'enemy' || ent.model.dmg));
 
 // 不轉送給客機的特效呼叫
-function local(fx, fn) {
+export function local(fx, fn) {
   const nest = fx._nested;
   fx._nested = true;
   try {
@@ -60,7 +60,7 @@ function setOpacity(obj, k) {
 }
 
 // 拋出一個碎片：v 初速、life 總時間（最後 1.2 秒淡出）
-function fling(fx, world, obj, v, life) {
+export function fling(fx, world, obj, v, life) {
   const av = new THREE.Vector3(rnd(-5, 5), rnd(-5, 5), rnd(-5, 5));
   let rest = false;
   fx.add(obj, life, (e, t, dt) => {

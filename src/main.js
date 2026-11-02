@@ -25,6 +25,7 @@ import './entities/mech-boss2.js';
 import './entities/mech-boss3.js';
 import './entities/mech-boss-tier.js'; // Boss 改版：刁鑽度、失衡遞增、破綻、打斷大招、破甲彈（docs/boss-design.md）
 import './game/map-extras.js';
+import './game/destruct.js';
 import './game/shockwave.js';
 import './game/support.js';
 import './game/bosses.js';

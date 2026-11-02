@@ -150,7 +150,10 @@ export function removePlaced(w, rec) {
 }
 // 依標籤隱藏／顯示（觸發器的「移除物件（開門）」）；隱藏時碰撞一起拿掉
 export function setPlacedVisible(w, rec, on) {
-  rec.group.visible = on;
+  // 已經打壞的物件不會再出現（殘骸跟著顯示／隱藏）
+  const dead = rec.obs.find((ob) => ob.prop && ob.prop.dead);
+  rec.group.visible = on && !dead;
+  if (dead && dead.prop.wreck) dead.prop.wreck.group.visible = on;
   rec.hidden = !on;
   for (const ob of rec.obs) {
     const a = w.obstacles.indexOf(ob);

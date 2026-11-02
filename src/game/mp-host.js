@@ -216,6 +216,7 @@ Object.assign(Game.prototype, {
       this.snapAcc = 0;
       const ents = [];
       for (const e of [...this.players, ...this.enemies, ...this.allies]) ents.push(serEnt(e));
+      this.propNetFlush(); // 地圖物件：這一格血量有變的（game/destruct.js）
       const snap = {
         t: 's',
         k: ++n.tick,
@@ -267,6 +268,7 @@ Object.assign(Game.prototype, {
           lvState: this.lvSnap(), // 自訂關卡的觸發器狀態（有變動時才帶）
         },
         ev: this.netEvents,
+        prs: this.propNetTable(), // 受損物件的血量表（每 2 秒）
       };
       this.netEvents = [];
       n.tr.broadcast(snap);

@@ -1180,7 +1180,7 @@ Object.assign(MechEntity.prototype, {
           for (const p of this.tierFlag('blade') ? [] : g.destructibles()) {
             if (!p.isProp || p.dead || !p.center) continue;
             if (p.center().setY(front.y).distanceTo(front) < 5 * MS + (p.radius || 1)) {
-              g.damageProp(p, 1e5, 2000, p.center());
+              g.damageProp(p, 1e5, 2000, p.center(), this, 'none');
               broke = true;
             }
           }

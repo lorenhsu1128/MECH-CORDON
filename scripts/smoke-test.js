@@ -24036,10 +24036,203 @@ async function testServerSeed() {
   fs.rmSync(base, { recursive: true, force: true });
 }
 
+// 地圖物件的破壞（docs/destruction-design.md）：依材質的屬性倍率、四段受損、只有可燃的起火、殘骸與碰撞、
+// 以前打不壞的物件也登記、多人的血量合併事件與血量表
+async function testDestruct(browser, base) {
+  console.log('地圖物件的破壞：材質倍率、四段受損、起火、殘骸、新登記的物件、同步');
+  const { ctx, page } = await newPage(browser, 'destruct');
+  await page.goto(base);
+  await waitVisible(page, 'title');
+  await page.evaluate(async () => {
+    const G = window.__game;
+    await G.lmRefresh();
+    G.save.level = 1;
+    localStorage.setItem('rubicon_map', 'industrial');
+    localStorage.setItem('rubicon_variant', 'base');
+    G.startMission();
+  });
+  check(await waitVisible(page, 'hudWrap', 20000), '破壞：出擊');
+  await freezeLoop(page);
+  const r = await page.evaluate(() => {
+    const g = window.__game,
+      w = g.world,
+      pl = g.player;
+    for (const e of g.enemies) {
+      e.dead = true;
+      g.scene.remove(e.mesh);
+    }
+    g.enemies = [];
+    g.waves = [];
+    g.wavePend = null;
+    const out = { n: w.props.length };
+    const misc = w.props.filter((p) => p.kind === 'misc' && !p.dead);
+    out.misc = misc.length;
+    out.miscNames = [...new Set(misc.map((p) => p.name))];
+    // 同一個群組不會登記成兩個物件
+    const grp = new Map();
+    out.dupGroup = 0;
+    for (const p of w.props) {
+      if (!p.ob.group) continue;
+      if (grp.has(p.ob.group)) out.dupGroup++;
+      grp.set(p.ob.group, p);
+    }
+    const near = (f) =>
+      w.props
+        .filter((p) => !p.dead && f(p))
+        .sort((a, b) => a.pos.distanceTo(pl.pos) - b.pos.distanceTo(pl.pos))[0];
+    const met = near((p) => p.mat === 'metal' && p.maxHp >= 1000);
+    const veh = near((p) => p.mat === 'vehicle');
+    const con = near((p) => p.mat === 'concrete' || p.mat === 'rock');
+    out.has = [!!met, !!veh, !!con];
+    // 屬性倍率：金屬 能量 0.7、爆發 1.3
+    let h = met.hp;
+    g.damageProp(met, 100, 0, null, pl, 'en');
+    out.en = h - met.hp;
+    h = met.hp;
+    g.damageProp(met, 100, 0, null, pl, 'exp');
+    out.exp = h - met.hp;
+    h = con.hp;
+    g.damageProp(con, 100, 0, null, pl, 'en');
+    out.conEn = h - con.hp;
+    // 四段：依血量比例
+    out.stages = [];
+    for (const f of [0.7, 0.45, 0.2]) {
+      g.damageProp(met, met.hp - met.maxHp * f, 0, null, pl, 'none');
+      out.stages.push(met.st);
+    }
+    // 焦黑：頂點色變暗
+    let dark = 0;
+    met.ob.group.traverse((o) => {
+      const ca = o.isMesh && o.geometry && o.geometry.attributes.color;
+      if (ca) for (let i = 0; i < Math.min(ca.count, 50); i++) dark += ca.getX(i);
+    });
+    out.dark = dark;
+    // 起火：金屬重損不起火、車輛重損起火（數火的顏色的閃光）
+    const FIRE = new Set([0xd8480a, 0xff7018]);
+    let fires = 0;
+    const of = g.fx.flash;
+    g.fx.flash = function (p, r, c, l) {
+      if (FIRE.has(c)) fires++;
+      return of.call(this, p, r, c, l);
+    };
+    g.propActive = [met];
+    pl.pos.copy(met.pos).add(new THREE.Vector3(0, 0, 25));
+    window.__pump(2);
+    out.metFire = fires;
+    g.damageProp(veh, veh.hp - veh.maxHp * 0.2, 0, null, pl, 'none');
+    g.propActive = [veh];
+    fires = 0;
+    window.__pump(2);
+    out.vehFire = fires;
+    g.fx.flash = of;
+    // 第 2 期：零件分批脫落（標出的：路燈的燈第 1 階段掉）、高的物件第 3 階段切掉上段、碰撞跟著降低
+    const tris = (p) => {
+      let n = 0;
+      p.ob.group.traverse((o) => {
+        if (o.isMesh && o.visible && o.geometry && o.geometry.attributes.position)
+          n += o.geometry.attributes.position.count / 3;
+      });
+      return n;
+    };
+    const lamp = near((p) => p.kind === 'pillar');
+    out.lamp = !!lamp;
+    if (lamp) {
+      const t0 = tris(lamp);
+      g.damageProp(lamp, lamp.hp - lamp.maxHp * 0.7, 0, null, pl, 'none');
+      out.lampT1 = tris(lamp) < t0;
+      const y1 = lamp.shape.y1;
+      g.damageProp(lamp, lamp.hp - lamp.maxHp * 0.2, 0, null, pl, 'none');
+      out.lampCut = lamp.shape.y1 < y1 - 2;
+    }
+    const tall = misc.filter((p) => !p.dead && p.shape.y1 - p.shape.y0 > 6)[0];
+    out.tall = !!tall;
+    if (tall) {
+      const H = tall.shape.y1 - tall.shape.y0,
+        t0 = tris(tall);
+      g.damageProp(tall, tall.hp - tall.maxHp * 0.2, 0, null, pl, 'none');
+      out.tallCut = tall.shape.y1 < tall.shape.y0 + H * 0.7 && tris(tall) < t0;
+      out.tallTop = tall.obs.every((o) => o.top === undefined || o.top <= tall.shape.y1 + 0.01);
+      out.groundCut = w.groundAt(tall.shape.cx, tall.shape.cz, 1e3) <= tall.shape.y1 + 0.01;
+    }
+    // 損毀：碰撞換成較矮的殘骸
+    const top0 = met.shape.y1;
+    g.damageProp(met, 1e7, 0, null, pl, 'none');
+    out.dead = met.dead;
+    out.obGone = !(met.obs || [met.ob]).some((o) => w.obstacles.includes(o));
+    out.wreckIn = !!met.wreck && w.obstacles.includes(met.wreck);
+    out.wreckLow = met.wreck ? met.wreck.top < top0 : false;
+    out.wreckVis = !!(met.wreck && met.wreck.group.parent);
+    out.origHidden = met.ob.group.visible === false;
+    // 新登記的大型物件也打得壞
+    const big = misc.sort((a, b) => b.maxHp - a.maxHp)[0];
+    if (big) {
+      g.damageProp(big, 1e7, 0, null, pl, 'exp');
+      out.bigDead = big.dead && !!big.wreck;
+    }
+    // 同步：房主把這一格的血量合併成一個事件、血量表；客機套用血量表時直接換成殘骸
+    const sent = [];
+    const ne = g.netEv;
+    g.netEv = (e) => sent.push(e);
+    const a = near((p) => p.maxHp >= 600),
+      b = near((p) => p.maxHp >= 600 && p !== a);
+    g.propDirty = new Set();
+    g.damageProp(a, 50, 0, null, pl, 'none');
+    g.damageProp(a, 50, 0, null, pl, 'none');
+    g.damageProp(b, 50, 0, null, pl, 'none');
+    g.propNetFlush();
+    g.netEv = ne;
+    const ev = sent.filter((e) => e.t === 'propHp');
+    out.evN = ev.length;
+    out.evL = ev[0] && ev[0].l ? ev[0].l.length : 0;
+    g.propTblT = 0;
+    const tbl = g.propNetTable();
+    out.tbl = !!tbl && tbl.some((x) => x[0] === a.idx) && tbl.some((x) => x[0] === met.idx && x[1] <= 0);
+    const c = near((p) => p !== a && p !== b);
+    g.propApplyTable([[c.idx, -5]]);
+    out.cli = c.dead && !!c.wreck;
+    // 截圖：玩家附近的物件各在不同的階段
+    const L = w.props
+      .filter((p) => !p.dead && p.maxHp >= 600)
+      .sort((x, y) => x.pos.distanceTo(pl.pos) - y.pos.distanceTo(pl.pos))
+      .slice(0, 4);
+    L.forEach((p, i) => g.damageProp(p, p.hp - p.maxHp * [0.7, 0.45, 0.2, -1][i], 0, null, pl, 'none'));
+    g.propActive = (g.propActive || []).concat(L.filter((p) => !p.dead));
+    window.__pump(1.5);
+    return out;
+  });
+  check(
+    r.misc > 0 && r.dupGroup === 0,
+    `以前打不壞的物件也登記（${r.misc} 個：${r.miscNames.join('、')}；全部 ${r.n}）、同一群組不重複`,
+  );
+  check(r.has.every(Boolean), '找到金屬、車輛、混凝土／岩石物件');
+  check(
+    r.en === 70 && r.exp === 130 && r.conEn <= 50,
+    `材質倍率：金屬 能量 ${r.en}、爆發 ${r.exp}；混凝土／岩石 能量 ${r.conEn}`,
+  );
+  check(r.stages.join() === '1,2,3' && r.dark > 0, `四段受損 ${r.stages.join('→')}`);
+  check(r.metFire === 0 && r.vehFire > 0, `只有可燃的起火（金屬 ${r.metFire}、車輛 ${r.vehFire}）`);
+  check(
+    r.dead && r.obGone && r.wreckIn && r.wreckLow && r.wreckVis && r.origHidden,
+    '損毀：原本的碰撞拿掉、換成較矮的殘骸',
+  );
+  check(r.bigDead !== false, '新登記的大型物件打得壞並留下殘骸');
+  check(r.lamp && r.lampT1 && r.lampCut, '零件分批脫落：路燈的燈第 1 階段掉、第 3 階段桿子折斷（碰撞變矮）');
+  check(
+    r.tall && r.tallCut && r.tallTop && r.groundCut,
+    '高的物件第 3 階段切掉上段：網格變少、碰撞與站立高度降低',
+  );
+  check(r.evN === 1 && r.evL === 2 && r.tbl, `同步：合併的血量事件（${r.evN} 個、${r.evL} 項）與血量表`);
+  check(r.cli, '客機套用血量表：直接換成殘骸');
+  await page.screenshot({ path: path.join(SHOT_DIR, 'destruct-stages.png') });
+  await thawLoop(page);
+  await ctx.close();
+}
+
 const STEPS = [
   ['testFile', (c) => testFile(c.browser)],
   ['testSolo', (c) => testSolo(c.browser, c.base)],
   ['testMaps', (c) => testMaps(c.browser, c.base + '?test')],
+  ['testDestruct', (c) => testDestruct(c.browser, c.base + '?test')],
   ['testSaves', (c) => testSaves(c.browser, c.base + '?test')],
   ['testPilot', (c) => testPilot(c.browser, c.base)],
   ['testLibrary', (c) => testLibrary(c.browser, c.base)],

@@ -174,7 +174,7 @@ Object.assign(Game.prototype, {
     hits.sort((a, b) => a.proj - b.proj);
     for (const h of o.pierce === false ? hits.slice(0, 1) : hits) {
       const pt = from.clone().addScaledVector(dir, h.proj);
-      if (h.t.isProp) this.damageProp(h.t, o.dmg, o.im, pt);
+      if (h.t.isProp) this.damageProp(h.t, o.dmg, o.im, pt, null, 'en');
       else h.t.takeDamage(o.dmg, o.im, owner, pt, dir.clone(), undefined, undefined, 'en');
       this.fx.spark(pt, o.color, dir);
       if (o.pierce === false) stop = h.proj;

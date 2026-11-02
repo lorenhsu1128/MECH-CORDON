@@ -120,7 +120,7 @@ Object.assign(MechEntity.prototype, {
         const w = this.game.world;
         const p = (w.props || []).find((q) => !q.dead && q.pos && q.pos.distanceTo(this.pos) < 22 * DS);
         if (p) {
-          this.game.damageProp(p, p.hp + 1, 0, p.pos.clone());
+          this.game.damageProp(p, p.hp + 1, 0, p.pos.clone(), this, 'none');
           this.shell = Math.min(this.shellMax, this.shell + this.shellMax * 0.35);
           this.game.fx.ring(this.center(), 5, 0xc07040);
           this.game.netEv({ t: 'alert', txt: '廢鐵合成體吸附物件補強外殼' });

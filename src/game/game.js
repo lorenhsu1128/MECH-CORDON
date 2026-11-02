@@ -340,7 +340,7 @@ export class Game {
           k *= 0.3;
           im = 0;
         }
-        if (t.isProp) this.damageProp(t, dmg * k, im, p);
+        if (t.isProp) this.damageProp(t, dmg * k, im, p, owner, 'exp');
         else t.takeDamage(dmg * k, im, owner, p, t.center().sub(p).normalize(), undefined, undefined, 'exp');
       }
     }

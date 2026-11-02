@@ -942,7 +942,7 @@ export class MechEntity {
           if (pf) {
             stop *= pf[1];
             const pt = muzzle.clone().addScaledVector(bdir, stop);
-            g.damageProp(pf[0], dmg * dtb, imp * dtb, pt, this);
+            g.damageProp(pf[0], dmg * dtb, imp * dtb, pt, this, undefined, d.id);
             if (Math.random() < dtb * 4) g.fx.spark(pt, d.color, bdir);
           }
           const targets = g.hostilesOf(this.team, this).concat(g.destructibles(this.team));
@@ -955,7 +955,7 @@ export class MechEntity {
             const perp = ap.clone().sub(bdir.clone().multiplyScalar(proj)).length();
             if (perp < t.radius + 0.8) {
               const pt = muzzle.clone().addScaledVector(bdir, proj);
-              if (t.isProp) g.damageProp(t, dmg * dtb, imp * dtb, pt, this);
+              if (t.isProp) g.damageProp(t, dmg * dtb, imp * dtb, pt, this, undefined, d.id);
               else {
                 t.empTickT = (t.empTickT || 0) + dtb;
                 if (t.empTickT >= 0.2) {
@@ -1019,7 +1019,7 @@ export class MechEntity {
           for (const h of hits) {
             const pt = muzzle.clone().addScaledVector(bdir, h.proj);
             const fall = Math.max(0.55, 1 - n * 0.15);
-            if (h.t.isProp) g.damageProp(h.t, ldmg * fall, limp * fall, pt, this);
+            if (h.t.isProp) g.damageProp(h.t, ldmg * fall, limp * fall, pt, this, undefined, d.id);
             else {
               h.t.rbGold = !!rbT; // 有加成的命中：金色的傷害數字
               h.t.wpAimK = wpk;
@@ -1750,7 +1750,15 @@ export class MechEntity {
         const wgt = meleeWeight(d, st),
           sw = meleeSwingOf(st);
         if (t.isProp) {
-          g.damageProp(t, st.dmg * mk * this.dmgMul * this.stats.parts.arms.melee, st.impact, hp);
+          g.damageProp(
+            t,
+            st.dmg * mk * this.dmgMul * this.stats.parts.arms.melee,
+            st.impact,
+            hp,
+            this,
+            undefined,
+            d.id,
+          );
           g.fx.meleeHit(hp, d.color, !!st.finisher, m.dir.clone(), { sw });
           continue;
         }

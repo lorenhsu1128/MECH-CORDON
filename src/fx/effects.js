@@ -12,6 +12,7 @@ import { GhostFx } from '../render/ghost.js';
 import { ThrusterFx } from './thruster.js';
 import { RibbonFx } from './trail.js';
 import { MB } from '../core/scale.js';
+import { PMAT, propDebrisCol } from '../data/destruct.js';
 
 // 擊破時跪倒崩落的秒數（之後才碎裂）
 export const COLLAPSE_T = 0.55;
@@ -1113,54 +1114,142 @@ Object.assign(Effects.prototype, {
       },
     });
   },
-  shatterProp(p, world) {
-    const c = p.center();
-    const list = [];
-    const ob = p.ob;
-    const origin = c.clone();
-    const K = p.kind;
-    if (K === 'container' || K === 'pillarBlock' || K === 'truck') {
-      const size = ob.box ? ob.box.getSize(new THREE.Vector3()) : new THREE.Vector3(3, 2.4, 7);
-      const n = K === 'pillarBlock' ? 14 : 12;
-      for (let i = 0; i < n; i++) {
-        const w = rnd(0.6, 1.8) * Math.max(0.6, size.x / 4),
-          h = rnd(0.1, 0.35),
-          d = rnd(0.6, 1.8) * Math.max(0.6, size.z / 4);
-        list.push({
-          geo: new THREE.BoxGeometry(w, h, d),
-          pos: c
-            .clone()
-            .add(
-              new THREE.Vector3(
-                rnd(-size.x / 2, size.x / 2),
-                rnd(-size.y / 2, size.y / 2),
-                rnd(-size.z / 2, size.z / 2),
-              ),
-            ),
-          origin,
-        });
-      }
-    } else if (K === 'rock') {
-      for (let i = 0; i < 10; i++) {
-        list.push({
-          geo: new THREE.DodecahedronGeometry(rnd(0.4, 1.1), 0),
-          pos: c.clone().add(new THREE.Vector3(rnd(-1.5, 1.5), rnd(-1, 1), rnd(-1.5, 1.5))),
-          origin,
-        });
-      }
-    } else {
-      for (let i = 0; i < 6; i++) {
-        list.push({
-          geo: new THREE.BoxGeometry(0.6, rnd(0.8, 1.6), 0.6),
-          pos: c.clone().add(new THREE.Vector3(rnd(-0.3, 0.3), rnd(-2, 2), rnd(-0.3, 0.3))),
-          origin,
-        });
-      }
+  // 碎片落地後縮小消失（地圖物件的碎裂；殘骸本身另外留在原地，world/prop-wreck.js）
+  propDebris(list, color, world, dir) {
+    const scene = this.scene;
+    const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0.2, flatShading: true });
+    const K = this.k;
+    const pieces = list.map((d) => {
+      const m = new THREE.Mesh(d.geo, mat);
+      m.position.copy(d.pos);
+      m.rotation.set(rnd(0, 3), rnd(0, 3), rnd(0, 3));
+      m.castShadow = true;
+      scene.add(m);
+      const v = d.pos.clone().sub(d.origin).setY(0);
+      if (v.lengthSq() < 1e-4) v.set(rnd(-1, 1), 0, rnd(-1, 1));
+      v.normalize().multiplyScalar(rnd(3, 8) * d.sp);
+      if (dir) v.addScaledVector(dir, rnd(2, 6) * d.sp);
+      v.y = rnd(4, 10) * d.sp;
+      v.multiplyScalar(K);
+      return { m, v, av: new THREE.Vector3(rnd(-6, 6), rnd(-6, 6), rnd(-6, 6)), rest: false, s: 1 };
+    });
+    const life = 6;
+    this.list.push({
+      mesh: null,
+      life,
+      max: life,
+      fn: (e, t, dt) => {
+        const left = (1 - t) * life;
+        for (const p of pieces) {
+          if (!p.rest) {
+            p.v.y -= 34 * K * dt;
+            p.m.position.addScaledVector(p.v, dt);
+            p.m.rotation.x += p.av.x * dt;
+            p.m.rotation.y += p.av.y * dt;
+            p.m.rotation.z += p.av.z * dt;
+            const gy = world.groundAt(p.m.position.x, p.m.position.z, p.m.position.y + 1) + 0.2;
+            if (p.m.position.y < gy) {
+              p.m.position.y = gy;
+              if (Math.abs(p.v.y) < 2.5 * K) p.rest = true;
+              else {
+                p.v.y *= -0.35;
+                p.v.x *= 0.5;
+                p.v.z *= 0.5;
+                p.av.multiplyScalar(0.5);
+              }
+            }
+          }
+          if (left < 1.5) p.m.scale.setScalar(Math.max(0.001, left / 1.5));
+        }
+      },
+      end: () => {
+        for (const p of pieces) scene.remove(p.m);
+        mat.dispose();
+      },
+    });
+  },
+  // 地圖物件完全損毀（docs/destruction-design.md）：依大小與材質的碎片、爆發；只在各端自己播（不轉送，客機收到
+  // propDie 自己播一次）。o＝{ dir 衝擊方向, cr 被踩平 }
+  shatterProp(p, world, o = {}) {
+    const nest = this._nested;
+    this._nested = true;
+    SFX.netDepth++;
+    try {
+      this.shatterPropIn(p, world, o);
+    } finally {
+      this._nested = nest;
+      SFX.netDepth--;
     }
-    this.explosion(c, K === 'rock' ? 3 : 2.5, K === 'rock' ? 0xc0b090 : 0xffa040, false);
-    this.dust(c.clone().setY(world.terrainHeight(c.x, c.z) + 0.1), 3, 8);
-    SFX.explode(false, c);
-    this.debrisPieces(list, p.color, { world });
+  },
+  shatterPropIn(p, world, o) {
+    const sh = p.shape;
+    const W = Math.max(0.5, sh.x1 - sh.x0),
+      D = Math.max(0.5, sh.z1 - sh.z0),
+      H = Math.max(0.5, sh.y1 - sh.y0);
+    const c = new THREE.Vector3((sh.x0 + sh.x1) / 2, (sh.y0 + sh.y1) / 2, (sh.z0 + sh.z1) / 2);
+    const M = PMAT[p.mat] || PMAT.metal;
+    const size = Math.cbrt(W * D * H);
+    const big = size > 7;
+    const gy = world.groundAt(c.x, c.z, sh.y0 + 1);
+    const ground = new THREE.Vector3(c.x, gy + 0.1, c.z);
+    const col = propDebrisCol(p, true);
+    // 碎片
+    const n = Math.max(5, Math.min(o.cr ? 8 : 22, Math.round(size * 1.6)));
+    const s = Math.max(0.3, Math.min(2.8, size * 0.17));
+    const list = [];
+    for (let i = 0; i < n; i++) {
+      let geo;
+      const q = s * rnd(0.6, 1.3);
+      if (M.deb === 'rock' || M.deb === 'chunk' || M.deb === 'ice')
+        geo = new THREE.DodecahedronGeometry(q * 0.6, 0);
+      else if (M.deb === 'plank') geo = new THREE.BoxGeometry(q * 0.2, q * 0.16, q * 1.5);
+      else if (M.deb === 'crystal') geo = new THREE.ConeGeometry(q * 0.3, q * 1.1, 5);
+      else geo = new THREE.BoxGeometry(q, q * 0.1, q * 0.75);
+      list.push({
+        geo,
+        pos: new THREE.Vector3(sh.x0 + rnd(0, 1) * W, sh.y0 + rnd(0.2, 0.95) * H, sh.z0 + rnd(0, 1) * D),
+        origin: c,
+        sp: o.cr ? 0.5 : 1,
+      });
+    }
+    this.propDebris(list, col, world, o.dir || null);
+    // 爆發（依材質）
+    const r = Math.max(1.2, Math.min(9, (Math.max(W, D, H * 0.6) * 0.45) / (this.k || 1)));
+    if (o.cr) {
+      this.dust(ground, Math.min(2.5, r), 6, M.col !== undefined ? M.col : 0x9aa0a8);
+      SFX.hitWorld(c);
+      return;
+    }
+    if (M.boom === 'fire') {
+      this.explosion(c, r, 0xffa040, big);
+      if (size > 3) this.killBurst(c, Math.min(2.4, size / 5), big, gy);
+      SFX.explode(big, c);
+    } else if (M.boom === 'arc') {
+      this.arc(c, r * 0.8, 0x9fe0ff);
+      this.flash(c, r * 0.5, 0xbfe8ff, 0.2);
+      this.streaks(c, 14, 0xbfe8ff, 14, 0.4, 20);
+      this.explosion(c, r * 0.5, 0xffc060, false);
+      SFX.explode(false, c);
+    } else if (M.boom === 'coral') {
+      this.flash(c, r * 0.8, 0xff3040, 0.35);
+      this.star(c, r, 0xff5060);
+      this.streaks(c, 16, 0xff4050, 12, 0.6, 8);
+      SFX.explode(false, c);
+    } else {
+      // 混凝土、岩石、冰、金屬的崩落：粉塵為主
+      const dc = M.col !== undefined ? M.col : 0xa09a90;
+      this.explosion(c, r * 0.45, M.deb === 'ice' ? 0xd8eef8 : M.fx === 'dust' ? 0xc0b090 : 0xffa040, false);
+      for (let i = 0; i < 4; i++)
+        this.smoke(
+          new THREE.Vector3(c.x + rnd(-0.4, 0.4) * W, sh.y0 + rnd(0.1, 0.6) * H, c.z + rnd(-0.4, 0.4) * D),
+          Math.max(1, size * 0.35),
+          dc,
+          2.2,
+          1.4,
+        );
+      SFX.wreck(c);
+    }
+    this.dust(ground, r, big ? 12 : 8, M.col !== undefined ? M.col : 0x9aa0a8);
   },
   shatterVehicle(v) {
     const world = v.game.world;

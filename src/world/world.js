@@ -14,6 +14,8 @@ import {
   warehouseRidge,
 } from './cover-models.js';
 import { mergeStatic } from '../render/mesh-merge.js';
+import { propHpFor, propMatOf } from '../data/destruct.js';
+import { buildWreck } from './prop-wreck.js';
 import {
   LANE_MARK,
   RAIL_STRIPS,
@@ -129,6 +131,28 @@ function resampleGrid(src, N2) {
       );
     }
   return out;
+}
+// 物件的代表顏色（殘骸、碎片用）：第一個有顏色的材質（頂點色的類別材質是白色，改取頂點色的平均）
+function groupColor(g) {
+  let c = null;
+  g.traverse((o) => {
+    if (c || !o.isMesh || !o.visible) return;
+    const m = Array.isArray(o.material) ? o.material[0] : o.material;
+    const ca = o.geometry && o.geometry.attributes.color;
+    if (ca && m.vertexColors) {
+      let r = 0,
+        gg = 0,
+        b = 0;
+      const n = Math.min(ca.count, 600);
+      for (let i = 0; i < n; i++) {
+        r += ca.getX(i);
+        gg += ca.getY(i);
+        b += ca.getZ(i);
+      }
+      c = new THREE.Color(r / n, gg / n, b / n);
+    } else if (m && m.color && !m.transparent) c = m.color.clone();
+  });
+  return c ? c.getHex() : 0x80827f;
 }
 function fadeMatsOf(g) {
   const out = [];
@@ -386,6 +410,8 @@ export class World {
       }
       this.buildTerrain();
       if (!(LV && LV.blank)) this.buildFeatures();
+      // 地形特徵與主題的大型結構：承重柱倒塌、局部打穿另外處理（docs/destruction-design.md），不併進一般物件
+      for (const o of this.obstacles) o.struct = true;
       const ob0 = this.obstacles.length,
         me0 = this.meshes.length;
       if (!(LV && (LV.blank || LV.props === 'none'))) this.buildProps();
@@ -398,6 +424,8 @@ export class World {
       if (LV) this.levelGenItems(ob0, me0);
       else mergeStatic(this.decorG, new Set(), true);
     });
+    // 其他打得到的物件也登記成可破壞（不用亂數，照障礙物的順序；現有物件的編號不變）
+    this.regRest();
     // 邊界外的遠景地形與剪影物件（edges.js，獨立的亂數串，不影響上面的生成）
     withRng(seed * 97 + 41, () => {
       for (const o of buildBackdrop(this) || []) {
@@ -1330,11 +1358,12 @@ export class World {
     const g = L.build();
     const y = spot.lo - (L.sink || 0);
     g.position.y = y;
-    this.addBig(
+    for (const o of this.addBig(
       g,
       spot,
       L.shapes.map((sh) => (sh.box ? { ...sh, y: y + sh.y, top: y + sh.top } : { ...sh })),
-    );
+    ))
+      o.struct = 'lm';
     this.landmark = { key, name: L.name, x: spot.x, z: spot.z };
     return this.landmark;
   }
@@ -2016,7 +2045,7 @@ export class World {
     this.meshes.push(c);
     this.obstacles.push({ kind: 'circle', x, z, r: r * 1.1, group: c, mats: [], box: null, top: y1 });
   }
-  regProp(kind, ob, hp, color) {
+  regProp(kind, ob, hp, color, obs) {
     this.props = this.props || [];
     const id = this.props.length;
     const c = ob.box
@@ -2064,22 +2093,143 @@ export class World {
       center: () => c.clone(),
       flashT: 0,
       shape: propShape(this, ob), // 命中形狀＝碰撞障礙物（world/prop-hit.js）；radius 只剩粗略的用途
+      mat: propMatOf(String(kind).replace(/^ed\//, ''), this.themeKey), // 材質（data/destruct.js）
+      obs: obs || [ob], // 這個物件的全部障礙物（產生器放的大型物件可能有好幾個）
+      col: ob.group ? groupColor(ob.group) : 0x202224, // 實際的顏色（線性值；碎片與殘骸用）
     };
+    for (const o of p.obs) o.prop = p;
     ob.prop = p;
     this.props.push(p);
     return p;
   }
-  destroyProp(p, fx) {
+  // 其他打得到的物件（以前打不壞的：倉庫、高的貨櫃堆、變體與主題放的大型物件…）登記成可破壞：同一個群組的障礙物
+  // 算一個物件（命中形狀＝它們的外框）。地形特徵、主題的大型結構、地標、甲板（上面站得了東西）、承重柱與很大的
+  // （高 30 m 以上或長 50 m 以上）在之後的倒塌與局部打穿處理（docs/destruction-design.md）
+  regRest() {
+    const byG = new Map();
+    // 已經是可破壞物件的群組：同一個群組的其他障礙物併進那個物件（低的貨櫃堆：一堆有好幾個）
+    const owner = new Map();
+    for (const p of this.props || []) if (p.ob.group && !p.dead) owner.set(p.ob.group, p);
+    for (const o of this.obstacles) {
+      if (o.prop || o.struct || !o.group || o.group === this.decorG) continue;
+      const own = owner.get(o.group);
+      if (own) {
+        own.obs.push(o);
+        o.prop = own;
+        continue;
+      }
+      let L = byG.get(o.group);
+      if (!L) byG.set(o.group, (L = []));
+      L.push(o);
+    }
+    const nearRamp = (b) =>
+      (this.ramps || []).some(
+        (r) =>
+          Math.abs(r.x - (b.min.x + b.max.x) / 2) < r.w / 2 + (b.max.x - b.min.x) / 2 + 2 &&
+          Math.abs(r.z - (b.min.z + b.max.z) / 2) < r.d / 2 + (b.max.z - b.min.z) / 2 + 2,
+      );
+    for (const [g, L] of byG) {
+      if (L.some((o) => o.deck || o.struct || (o.kind === 'circle' && o.top !== undefined))) continue;
+      const b = new THREE.Box3();
+      for (const o of L) {
+        if (o.box && !o.box.isEmpty()) b.union(o.box);
+        else {
+          const gy = this.terrainHeight(o.x, o.z);
+          const h = o.top !== undefined ? o.top - gy : o.h || (o.r || 1) * 2;
+          const hx = o.kind === 'box' ? o.w / 2 : o.r,
+            hz = o.kind === 'box' ? o.d / 2 : o.r;
+          b.union(
+            new THREE.Box3(
+              new THREE.Vector3(o.x - hx, gy, o.z - hz),
+              new THREE.Vector3(o.x + hx, gy + h, o.z + hz),
+            ),
+          );
+        }
+      }
+      if (b.isEmpty()) continue;
+      const sz = b.getSize(new THREE.Vector3());
+      if (sz.y > 30 || Math.max(sz.x, sz.z) > 50 || nearRamp(b)) continue;
+      let ob = L[0];
+      if (L.length > 1) {
+        // 好幾個障礙物：命中形狀用它們的外框（一個方塊）
+        ob = {
+          kind: 'box',
+          x: (b.min.x + b.max.x) / 2,
+          z: (b.min.z + b.max.z) / 2,
+          w: sz.x,
+          d: sz.z,
+          y: b.min.y,
+          top: b.max.y,
+          group: g,
+          mats: L[0].mats,
+          box: b,
+        };
+      }
+      const kind = 'misc';
+      const mat0 = propMatOf(kind, this.themeKey);
+      const p = this.regProp(kind, ob, propHpFor(sz.y, sz.x, sz.z, mat0), 0x80827f, L);
+      p.name = sz.y >= 10 ? '大型建築' : sz.y >= 4.5 ? '建築物' : '掩體';
+    }
+  }
+  // 完全損毀：拿掉碰撞與原本的模型，換成殘骸（prop-wreck.js）與殘骸的碰撞；o.quiet＝不播碎裂（重連時直接套用）
+  destroyProp(p, fx, o = {}) {
     if (p.dead) return;
     p.dead = true;
-    const i = this.obstacles.indexOf(p.ob);
-    if (i >= 0) this.obstacles.splice(i, 1);
-    const j = this.occluders.indexOf(p.ob);
-    if (j >= 0) this.occluders.splice(j, 1);
-    if (p.ob.group) {
-      p.ob.group.visible = false;
+    p.hp = Math.min(p.hp, 0);
+    for (const ob of p.obs || [p.ob]) {
+      const i = this.obstacles.indexOf(ob);
+      if (i >= 0) this.obstacles.splice(i, 1);
+      const j = this.occluders.indexOf(ob);
+      if (j >= 0) this.occluders.splice(j, 1);
     }
-    if (fx) fx.shatterProp(p, this);
+    const g = p.ob.group;
+    if (g) {
+      g.visible = false;
+      const k = this.meshes.indexOf(g);
+      if (k >= 0) this.meshes.splice(k, 1);
+    }
+    if (fx && !o.quiet) fx.shatterProp(p, this, o);
+    if (!o.noWreck) this.addWreck(p);
+  }
+  // 第 3 階段：y 以上塌掉（docs/destruction-design.md 第 2 期）：碰撞的頂與命中形狀降到 y，站在上面的機體掉下來
+  propCut(p, y) {
+    for (const ob of new Set([p.ob, ...(p.obs || [])])) {
+      if (ob.kind === 'box') ob.top = Math.min(ob.top !== undefined ? ob.top : y, y);
+      else ob.top = Math.min(ob.top !== undefined ? ob.top : y, y);
+      if (ob.box && ob.box.max.y > y) ob.box.max.y = Math.max(ob.box.min.y, y);
+      if (ob.h !== undefined) ob.h = Math.min(ob.h, Math.max(0.5, y - this.terrainHeight(ob.x, ob.z)));
+    }
+    p.shape0 = p.shape0 || p.shape;
+    p.shape = propShape(this, p.ob);
+    p.cutY = y;
+  }
+  addWreck(p) {
+    const sh = p.shape;
+    const cx = (sh.x0 + sh.x1) / 2,
+      cz = (sh.z0 + sh.z1) / 2;
+    const gy = Math.max(this.groundAt(cx, cz, sh.y0 + STEP_H), sh.y0);
+    const wr = buildWreck(p, this.seed, STEP_H);
+    wr.group.position.set(cx, gy, cz);
+    this.scene.add(wr.group);
+    const ob = {
+      kind: 'box',
+      x: cx,
+      z: cz,
+      w: wr.w,
+      d: wr.d,
+      y: gy - 0.5,
+      top: gy + wr.h,
+      group: wr.group,
+      mats: [],
+      box: new THREE.Box3(
+        new THREE.Vector3(cx - wr.w / 2, gy - 0.5, cz - wr.d / 2),
+        new THREE.Vector3(cx + wr.w / 2, gy + wr.h, cz + wr.d / 2),
+      ),
+      wreck: p,
+    };
+    this.obstacles.push(ob);
+    p.wreck = ob;
+    return ob;
   }
   buildCorridor() {
     const c = this.corridor;

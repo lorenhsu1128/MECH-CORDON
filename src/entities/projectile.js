@@ -207,7 +207,16 @@ export class Projectile {
             k *= 0.3;
             im = 0;
           }
-          if (t.isProp) g.damageProp(t, this.dmg * k, im, this.pos, this.owner);
+          if (t.isProp)
+            g.damageProp(
+              t,
+              this.dmg * k,
+              im,
+              this.pos,
+              this.owner,
+              this.attr || (this.wid ? undefined : 'exp'),
+              this.wid,
+            );
           else {
             t.rbGold = !!this.rb; // 邊閃邊打的加成：金色的傷害數字（mech-ranged.js）
             t.hrPw = !!this.pwk; // 蓄力強力彈：受擊反應放大（mech-hit-react.js）
@@ -239,7 +248,8 @@ export class Projectile {
       }
     } else if (direct) {
       const dir = this.vel.clone().normalize();
-      if (direct.isProp) g.damageProp(direct, this.dmg, this.impactV, this.pos, this.owner);
+      if (direct.isProp)
+        g.damageProp(direct, this.dmg, this.impactV, this.pos, this.owner, this.attr, this.wid);
       else {
         // 實彈：超過理想射程遞減（data/attrs.js）
         let fk = 1;

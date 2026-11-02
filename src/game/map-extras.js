@@ -5,8 +5,6 @@ import { MS } from '../core/scale.js';
 import { PICKUP_DEFS, Pickup, Vehicle } from '../world/map-extras.js';
 import { Game } from './game.js';
 
-const BLACK = new THREE.Color(0);
-
 Object.assign(Game.prototype, {
   mapExtrasInit() {
     this.vehicles = [];
@@ -32,29 +30,9 @@ Object.assign(Game.prototype, {
     if (team) out.push(...this.shotTargets(team));
     return out;
   },
-  damageProp(p, dmg, impact, at, from) {
-    if (p.dead) return;
-    if (p.isShot) return this.shotDamage(p, dmg, at, from); // 可以打掉的投射物（hazards2.js）
-    p.hp -= Math.round(dmg);
-    p.flashT = 0.06;
-    if (p.ob.mats)
-      for (const m of p.ob.mats) {
-        if (m.emissive) m.emissive.setRGB(0.6, 0.6, 0.6);
-      }
-    setTimeout(() => {
-      if (p.ob.mats)
-        for (const m of p.ob.mats) {
-          if (m.emissive) m.emissive.copy(m.userData.emis0 || BLACK); // GLB 材質還原原本的自發光
-        }
-    }, 70);
-    this.popDamage(at || p.center(), Math.round(dmg), false, false, false, 0, -1, impact);
-    this.netEv({ t: 'propHp', i: p.idx, h: p.hp });
-    if (p.hp <= 0) {
-      this.world.destroyProp(p, this.fx);
-      this.netEv({ t: 'propDie', i: p.idx });
-      this.lvPropDown(p); // 自訂關卡的觸發器（物件被破壞）
-      this.rumbleAt(p.center(), 0.5, 0.3, 160, 30);
-    }
+  // 地圖物件受傷（房主／單機）：attr＝屬性、wid＝武器 id（依材質的倍率，game/destruct.js）
+  damageProp(p, dmg, impact, at, from, attr, wid) {
+    this.propDamage(p, dmg, impact, at, from, attr, wid);
   },
   spawnPickup(kind, pos, id) {
     const pk = new Pickup(this, kind, pos, id);
@@ -213,27 +191,13 @@ Object.assign(Game.prototype, {
         return true;
       }
       case 'propHp': {
-        const p = this.world.props && this.world.props[e.i];
-        if (p) {
-          p.hp = e.h;
-          if (p.ob.mats)
-            for (const m of p.ob.mats) {
-              if (m.emissive) m.emissive.setRGB(0.6, 0.6, 0.6);
-            }
-          setTimeout(() => {
-            if (p.ob.mats)
-              for (const m of p.ob.mats) {
-                if (m.emissive) m.emissive.copy(m.userData.emis0 || BLACK);
-              }
-          }, 70);
-        }
+        // 這一格血量有變的物件（game/destruct.js）；舊格式的單一物件 { i, h }
+        if (e.l) for (const [i, h] of e.l) this.propApplyHp(i, h, true);
+        else this.propApplyHp(e.i, e.h, true);
         return true;
       }
       case 'propDie': {
-        const p = this.world.props && this.world.props[e.i];
-        if (p && !p.dead) {
-          this.world.destroyProp(p, this.fx);
-        }
+        this.propApplyDie(e);
         return true;
       }
       case 'pk': {

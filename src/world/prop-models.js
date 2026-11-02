@@ -5,6 +5,7 @@ import { OUTLINE_MAT } from '../render/geometry.js';
 import { materialSlot } from '../render/glb.js';
 import { providedModel } from '../render/model-provider.js';
 import { D, classMat, fineReg, matClass, tintCtx, tintMerge, upgradeGeo, vcMat } from '../render/detail.js';
+import { setDmgInfo } from './prop-split.js';
 // 岩石的形狀：依尺寸決定 24 種之一（不用亂數；同一種共用幾何）
 const rockSeed = (v) => (Math.floor(Math.abs(v) * 977) % 24) + 1;
 
@@ -163,6 +164,7 @@ function chamferGeo(w, h, d, c) {
 }
 // 精細版的預設選項（docs/model-detail.md）：地圖物件一律打開；建好之後還會改材質顏色的模型（過場）用 new PK(false)
 const PK_TINT = { ao: 0.75, grime: 0.22, lite: true };
+const _cv = new THREE.Vector3();
 export class PK {
   constructor(t) {
     this.tintOpts = t === false ? null : t || PK_TINT;
@@ -197,6 +199,13 @@ export class PK {
     return this.geoAt(m, g, compose(x, y, z, rx, ry, rz, sx, sy, sz).premultiply(this.top));
   }
   geoAt(m, g, mm) {
+    if (this.tierN) {
+      // 受損時第 tierN 批脫落的零件：記下外框（world/prop-split.js）
+      if (!g.boundingBox) g.computeBoundingBox();
+      ((this.tierB = this.tierB || {})[this.tierN] = this.tierB[this.tierN] || []).push(
+        g.boundingBox.clone().applyMatrix4(mm),
+      );
+    }
     let km = this.keys.get(m);
     if (!km) this.keys.set(m, (km = new Map()));
     const kk = this.isFine ? this.cur + 'f' : this.cur;
@@ -312,6 +321,7 @@ export class PK {
     const inv = new THREE.Matrix4(),
       m2 = new THREE.Matrix4(),
       nm = new THREE.Matrix3();
+    this.dmgInfo(group);
     if (this.tintOpts) return this.buildTint(group, shadow, parts, union);
     for (const [key, list] of this.by) {
       const [m, pi] = key;
@@ -416,6 +426,26 @@ export class PK {
     this.by.clear();
     this.keys.clear();
     this.parts = null;
+    return group;
+  }
+  // 受損（docs/destruction-design.md）：fn 裡加入的零件在第 n 階段（1 ≤ 75%、2 ≤ 50%、3 ≤ 25%）脫落
+  dmgTier(n, fn) {
+    const prev = this.tierN;
+    this.tierN = n;
+    fn();
+    this.tierN = prev;
+    return this;
+  }
+  // 受損：第 3 階段時 y（目前的座標）以上塌掉，碰撞的頂降到這裡；沒有標時高的物件自動切掉最上面一段
+  dmgCut(y) {
+    this.cutY = _cv.set(0, y, 0).applyMatrix4(this.top).y;
+    return this;
+  }
+  dmgInfo(group) {
+    if (this.tierB || this.cutY !== undefined)
+      setDmgInfo(group, { tiers: this.tierB || null, cut: this.cutY });
+    this.tierB = null;
+    this.cutY = undefined;
     return group;
   }
   // 外框：世界的掩體牆、可破壞物件的命中半徑與鏡頭遮擋、自訂關卡的碰撞都由 Box3.setFromObject／外框量測產生，
@@ -877,10 +907,14 @@ export function buildLampPost(h, m) {
   k.cyl(m, 0.2, 0.28, h - 0.6, 0, b + 0.35 + (h - 0.6) / 2, 0);
   k.cb(m, 0.36, 0.5, 0.1, 0, b + 1.6, 0.25, 0, 0, 0, 0.03);
   k.box(DETAIL.yellow, 0.37, 0.06, 0.11, 0, b + 1.75, 0.25);
-  k.cyl(m, 0.24, 0.24, 0.25, 0, h / 2 - 0.4, 0);
-  k.bar(m, [0, h / 2 - 0.35, 0], [0.75, h / 2 - 0.15, 0], 0.1);
-  k.cb(m, 0.6, 0.16, 0.34, 0.85, h / 2 - 0.12, 0, 0, 0, 0.1, 0.04);
-  k.box(DETAIL.lamp, 0.46, 0.04, 0.24, 0.86, h / 2 - 0.21, 0, 0, 0, 0.1);
+  // 受損：懸臂燈先掉（第 1 階段）、第 3 階段桿子上半段折斷
+  k.dmgTier(1, () => {
+    k.cyl(m, 0.24, 0.24, 0.25, 0, h / 2 - 0.4, 0);
+    k.bar(m, [0, h / 2 - 0.35, 0], [0.75, h / 2 - 0.15, 0], 0.1);
+    k.cb(m, 0.6, 0.16, 0.34, 0.85, h / 2 - 0.12, 0, 0, 0, 0.1, 0.04);
+    k.box(DETAIL.lamp, 0.46, 0.04, 0.24, 0.86, h / 2 - 0.21, 0, 0, 0, 0.1);
+  });
+  k.dmgCut(b + h * 0.45);
   return k.build();
 }
 // 散落碎塊（中心在原點；GLB 原點在底面中心、以 0.75 × 0.35 × 0.75 m 製作）：碎板＋折斷的鋼樑頭
@@ -1662,12 +1696,16 @@ export function buildFloodlight(h, color) {
   k.box(m, hw, 0.06, 1.0, 0, h - 1.4, -0.2);
   railing(k, m, hw, HUMAN.rail, 0, h - 1.4, -0.7, 0, 1.5, 0.04);
   k.mark('walk_lamp', 0, h - 1.37, -0.2, 0);
+  k.dmgCut(h * 0.55); // 受損：第 3 階段上半段折斷
   for (let j = 0; j < nl; j++)
     k.inPart(3 + j, () =>
-      k.at(lx(j), h - 0.85, 0.2, 0.3, 0, 0, () => {
-        k.cb(m, 0.8, 0.6, 0.45, 0, 0, -0.05, 0, 0, 0, 0.05);
-        k.box(lm, 0.72, 0.52, 0.05, 0, 0, 0.19);
-      }),
+      k.at(lx(j), h - 0.85, 0.2, 0.3, 0, 0, () =>
+        // 受損：燈一盞一盞掉（第 1、2 階段輪流）
+        k.dmgTier(1 + (j % 2), () => {
+          k.cb(m, 0.8, 0.6, 0.45, 0, 0, -0.05, 0, 0, 0, 0.05);
+          k.box(lm, 0.72, 0.52, 0.05, 0, 0, 0.19);
+        }),
+      ),
     );
   return k.build();
 }
@@ -1922,10 +1960,15 @@ function radarKit(k, m, dk) {
   k.cyl(m, 0.7, 0.8, 0.35, 0, 1.17, 0, 0, 0, 0, 10);
   k.cur = 1;
   k.cyl(dk, 0.35, 0.45, 4, 0, 3, 0, 0, 0, 0, 8);
-  k.inPart(3, () =>
-    k.geo(m, new THREE.SphereGeometry(3, 16, 6, 0, Math.PI * 2, 0, 0.9), 0, 5.2, 0.6, -2.2, 0, 0),
+  // 受損：饋源先掉（第 1 階段）、碟面第 2 階段掉、第 3 階段桅桿折斷
+  k.dmgCut(3.2);
+  k.dmgTier(2, () =>
+    k.inPart(3, () =>
+      k.geo(m, new THREE.SphereGeometry(3, 16, 6, 0, Math.PI * 2, 0, 0.9), 0, 5.2, 0.6, -2.2, 0, 0),
+    ),
   );
   k.cur = 2;
+  k.tierN = 1;
   const a = [0, -Math.sin(0.63), -Math.cos(0.63)],
     v = [0, -Math.cos(0.63), Math.sin(0.63)],
     C = [0, 5.2, 0.6];
@@ -1944,6 +1987,7 @@ function radarKit(k, m, dk) {
     k.bar(dk, [rc[0] + c, rc[1] + v[1] * s, rc[2] + v[2] * s], f, 0.07);
   }
   k.pipe(dk, f, at(1.1), 0.18, 6);
+  k.tierN = 0;
 }
 // 舊時代觀測圓頂（大型，不可破壞）：圓形基座＋半球＋觀測縫＋天線；原點在地面中心；DOME_R＝基座半徑
 // 現實尺寸：舊模型放大 DOME_S 倍（基座直徑約 37 m 的雷達罩）；入口的人用門與走道欄杆照人的尺寸；GLB 以這個大小製作

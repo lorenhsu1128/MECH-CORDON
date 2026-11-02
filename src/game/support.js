@@ -416,7 +416,7 @@ Object.assign(Game.prototype, {
       const d = targetDist(t, p); // 物件以外形最近點算距離
       if (d >= splash) continue;
       const k = clamp(1 - (d / splash) * 0.5, 0.4, 1) * this.groundBlastK(t, p);
-      if (t.isProp) this.damageProp(t, dmg * k, impact * k, p);
+      if (t.isProp) this.damageProp(t, dmg * k, impact * k, p, owner, 'exp');
       else
         t.takeDamage(
           dmg * k,

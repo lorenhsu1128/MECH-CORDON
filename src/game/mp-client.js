@@ -291,6 +291,7 @@ Object.assign(Game.prototype, {
     if (m.camp && this.campC) this.campClientView(m.camp);
     if (m.lvState) this.lvClientState(m.lvState);
     for (const ev of s.ev) this.clientEvent(ev);
+    if (s.prs) this.propApplyTable(s.prs); // 受損物件的血量表（game/destruct.js）
   },
   clientEvent(e) {
     if (CROWD_EV.has(e.t)) return this.crowdNetEvent(e); // 地圖上的小人（crowd.js）：放最前面，別的處理不會先接走

@@ -77,6 +77,7 @@ Object.assign(Game.prototype, {
     if (this.world && this.world.weather)
       this.world.weather.update(this.camera, t, this.renderer.getPixelRatio());
     this.fxAmbientTick(); // 地圖的持續特效（game/fx-ambient.js）
+    this.propDmgTick(); // 地圖物件的受損效果（game/destruct.js）
     this.waterTick(); // 水面與雲海（game/water.js）：模擬、焦散、平面反射
     if (this.post.enabled && this.post.ok) this.stylePipe.render(P, t, lab && lab.cmp ? lab.cmpArg() : null);
     else this.stylePipe.renderPlain(P, t);
