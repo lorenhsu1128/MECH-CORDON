@@ -9,6 +9,8 @@ import { weaponById } from '../data/parts.js';
 import { fling, local } from '../render/foe-damage.js';
 import { isOutline } from '../render/geometry.js';
 import { CH0, cellHash, cutHeight, splitTris, tierBoxes } from '../world/prop-split.js';
+import { WRECK_SLOT } from '../world/prop-wreck.js';
+import { providedModel } from '../render/model-provider.js';
 import { Game } from './game.js';
 
 const NEAR = 170; // 持續效果：離鏡頭多遠以內（公尺）
@@ -18,6 +20,20 @@ const WRECK_BURN = 22; // 可燃物的殘骸繼續燒幾秒
 const WRECK_SMOKE = 7; // 其他殘骸冒煙／揚塵幾秒
 const FLASH_MS = 70;
 const CRUSH_SLOW = 0.85; // 踩平時機甲的速度倍率
+// 受損姿勢（propPose）：往一邊歪的、第 3 階段傾斜的
+const POSE_LEAN = new Set([
+  'lamppost',
+  'streetlamp',
+  'lamp',
+  'floodlight',
+  'beacon',
+  'mast',
+  'commmast',
+  'pillar',
+  'pine',
+  'radar',
+]);
+const POSE_TILT = new Set(['car', 'bus', 'truck', 'fueltruck', 'mtwreck']);
 const FALL_DIRS = [
   [1, 0],
   [-1, 0],
@@ -114,6 +130,8 @@ Object.assign(Game.prototype, {
     }
     for (let s = st0 + 1; s <= st; s++) this.propTier(p, s, quiet || !this.fx);
     this.propChar(p, PROP_CHAR[st]);
+    this.propPose(p, st);
+    if (st >= 3) this.propDmgGlb(p);
     if (st >= 2) this.propActivate(p);
   },
   // 第 s 階段的零件脫落（world/prop-split.js）：標出的區域，沒有時自動（小細節分兩批、高的物件切掉最上面一段）
@@ -160,6 +178,54 @@ Object.assign(Game.prototype, {
       if (cut !== null || s >= 2)
         fx.dust(q, Math.max(1.5, Math.min(5, size * 0.3)), 8, M.col !== undefined ? M.col : 0x9aa0a8);
     });
+  },
+  // 依階段的受損姿勢（第 7 期）：燈桿、天線、樹往一邊歪（彎折），車輛第 3 階段爆胎往一邊傾；繞底部中心轉，碰撞不變
+  propPose(p, st) {
+    const g = p.ob.group;
+    if (!g || g.parent !== this.scene) return;
+    const ang = POSE_LEAN.has(p.kind)
+      ? [0, 0, 0.09, 0.16][st]
+      : POSE_TILT.has(p.kind)
+        ? [0, 0, 0, 0.07][st]
+        : 0;
+    if (!ang) return;
+    if (!p.pose0) p.pose0 = { pos: g.position.clone(), q: g.quaternion.clone() };
+    const sh = p.shape0 || p.shape;
+    const B = new THREE.Vector3((sh.x0 + sh.x1) / 2, sh.y0, (sh.z0 + sh.z1) / 2);
+    const a = hash3(p.idx, 3, 7) * Math.PI * 2;
+    const ql = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(Math.cos(a), 0, Math.sin(a)), ang);
+    g.position.copy(p.pose0.pos).sub(B).applyQuaternion(ql).add(B);
+    g.quaternion.copy(ql).multiply(p.pose0.q);
+  },
+  // 模型庫的重損 GLB（prop/dmg_<類>）：第 3 階段時換上（原本的網格隱藏，GLB 縮放到原本的外框）
+  propDmgGlb(p) {
+    const g = p.ob.group;
+    const slot = WRECK_SLOT[p.kind];
+    if (!g || !slot || p.dmgGlb) return;
+    const obj = providedModel('prop/dmg_' + slot, null, true);
+    if (!obj) return;
+    g.updateMatrixWorld(true);
+    const b = new THREE.Box3().setFromObject(g);
+    if (b.isEmpty()) return;
+    const sz = b.getSize(new THREE.Vector3());
+    obj.updateMatrixWorld(true);
+    const ob = new THREE.Box3().setFromObject(obj);
+    const os = ob.getSize(new THREE.Vector3());
+    obj.scale.multiply(
+      new THREE.Vector3(
+        sz.x / Math.max(0.01, os.x),
+        sz.y / Math.max(0.01, os.y),
+        sz.z / Math.max(0.01, os.z),
+      ),
+    );
+    obj.updateMatrixWorld(true);
+    const b2 = new THREE.Box3().setFromObject(obj);
+    obj.position.add(b.getCenter(new THREE.Vector3()).sub(b2.getCenter(new THREE.Vector3())));
+    for (const c of g.children) c.visible = false;
+    this.scene.add(obj);
+    g.attach(obj);
+    obj.visible = true;
+    p.dmgGlb = obj;
   },
   propActivate(p) {
     const A = this.propActive || (this.propActive = []);

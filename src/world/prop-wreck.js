@@ -5,6 +5,7 @@
 //   碰撞：比原本矮的方塊（雜物 ≤ 0.5 m、一般 ≤ 跨越的高度、全身掩體以上 ≤ 5 m 的半身掩體），機甲跨得過去的就只擋子彈。
 import { PMAT, propDebrisCol } from '../data/destruct.js';
 import { PK, mat } from './prop-models.js';
+import { providedModel } from '../render/model-provider.js';
 
 export const WRECK = {}; // 種類 → (k: PK, o) => void（專屬的殘骸造型；o 見 buildWreck）
 
@@ -38,7 +39,8 @@ export function wreckHeight(H, step) {
 }
 
 // p＝物件（shape 是損毀前的外形）、seed＝地圖種子、step＝跨越的高度；回傳 { group（原點在地面中心）, w, d, h }
-export function buildWreck(p, seed, step) {
+// prog＝只用程式模型（模型庫的預覽）
+export function buildWreck(p, seed, step, prog) {
   const sh = p.shape0 || p.shape; // 損毀前的外形（第 3 階段切掉上段之前）
   const W = Math.max(0.6, sh.x1 - sh.x0),
     D = Math.max(0.6, sh.z1 - sh.z0),
@@ -48,6 +50,10 @@ export function buildWreck(p, seed, step) {
   const col = propDebrisCol(p, false);
   const R = hrng((p.idx + 1) * 2654435761 + (seed | 0) * 97 + 13);
   const r = (a, b) => a + (b - a) * R();
+  // 模型庫的 GLB（prop/wreck_<類>）：水平縮放到外框、高度等比例（最多殘骸高度的 1.6 倍）
+  const slot = WRECK_SLOT[p.kind];
+  const glb = !prog && slot ? providedModel('prop/wreck_' + slot, null, true) : null;
+  if (glb) return fitWreckGlb(glb, W, D, wreckHeight(H, step));
   const hw = p.crushed
     ? Math.min(0.45, wreckHeight(H, step))
     : p.lowWreck
@@ -65,6 +71,22 @@ export function buildWreck(p, seed, step) {
   return { group, w: W * 0.9, d: D * 0.9, h: hw };
 }
 
+function fitWreckGlb(obj, W, D, hw) {
+  obj.updateMatrixWorld(true);
+  const b = new THREE.Box3().setFromObject(obj);
+  const sz = b.getSize(new THREE.Vector3());
+  const sx = (W * 0.9) / Math.max(0.01, sz.x),
+    sz2 = (D * 0.9) / Math.max(0.01, sz.z);
+  const sy = Math.min((sx + sz2) / 2, (hw * 1.6) / Math.max(0.01, sz.y));
+  obj.scale.multiply(new THREE.Vector3(sx, sy, sz2));
+  obj.updateMatrixWorld(true);
+  const b2 = new THREE.Box3().setFromObject(obj);
+  const c = b2.getCenter(new THREE.Vector3());
+  obj.position.sub(new THREE.Vector3(c.x, b2.min.y, c.z));
+  const group = new THREE.Group();
+  group.add(obj);
+  return { group, w: W * 0.9, d: D * 0.9, h: Math.min(hw, b2.max.y - b2.min.y) };
+}
 export function wreckGeneric(k, o) {
   const { W, D, H, hw, col, M, r } = o;
   const mBase = mat(darken(col, 0.55), { roughness: 0.9 });
@@ -160,3 +182,280 @@ export function wreckGeneric(k, o) {
   }
 }
 const R2 = (r) => r() < 0.5;
+
+// ---------- 專屬的殘骸造型（docs/destruction-design.md 第 7 期）----------
+// o＝{ W, D, H（外框）, hw（殘骸高度）, col（顏色）, M（材質）, r（雜湊亂數 r()）}；原點在地面中心。長邊依外框
+const SOOTY = (c, k = 0.45) => mix(darken(c, k), SOOT, 0.35);
+function longAxis(o) {
+  return o.W >= o.D ? { L: o.W, S: o.D, ax: 'x' } : { L: o.D, S: o.W, ax: 'z' };
+}
+// 沿長邊放一個方塊（u＝長邊上的位置，v＝短邊上的位置）
+function along(k, a, m, l, h, s, u, y, v, rl = 0, ry = 0, rs = 0) {
+  // rl＝繞長邊轉、rs＝繞短邊轉
+  if (a.ax === 'x') k.box(m, l, h, s, u, y, v, rl, ry, rs);
+  else k.box(m, s, h, l, v, y, u, rs, ry, rl);
+}
+// 貨櫃類：壓扁、側板翹起、門掉在旁邊
+function wreckContainer(k, o) {
+  const a = longAxis(o),
+    r = o.r;
+  const m = mat(SOOTY(o.col, 0.6), { roughness: 0.8, metalness: 0.4 }),
+    d = mat(SOOTY(o.col, 0.35), { roughness: 0.9 });
+  const n = Math.max(1, Math.round(a.L / 12.2));
+  for (let i = 0; i < n; i++) {
+    const u = -a.L / 2 + (a.L / n) * (i + 0.5);
+    const h = Math.min(o.hw, 1.2) * r(0.7, 1);
+    along(
+      k,
+      a,
+      i % 2 ? d : m,
+      (a.L / n) * 0.94,
+      h,
+      a.S * r(0.85, 0.98),
+      u,
+      h / 2,
+      r(-0.2, 0.2),
+      r(-0.05, 0.05),
+      r(-0.06, 0.06),
+      r(-0.08, 0.08),
+    );
+    // 翹起的側板
+    along(
+      k,
+      a,
+      m,
+      (a.L / n) * 0.7,
+      0.08,
+      a.S * 0.8,
+      u,
+      h + 0.5,
+      (a.S / 2) * (i % 2 ? 1 : -1),
+      r(-0.1, 0.1),
+      0,
+      0.5 * (i % 2 ? 1 : -1),
+    );
+  }
+  // 門掉在一端
+  for (const s of [-1, 1])
+    along(
+      k,
+      a,
+      d,
+      0.1,
+      a.S * 0.45,
+      2.4,
+      a.L / 2 + 1.2,
+      0.3,
+      s * a.S * 0.3,
+      0,
+      r(-0.4, 0.4),
+      Math.PI / 2 - 0.15,
+    );
+}
+// 車輛：燒黑的車身塌下去、車頂歪、輪胎掉在旁邊
+function wreckVehicle(k, o) {
+  const a = longAxis(o),
+    r = o.r;
+  const body = mat(SOOTY(o.col, 0.5), { roughness: 0.85, metalness: 0.3 }),
+    burnt = mat(SOOT, { roughness: 1 }),
+    tire = mat(0x141414, { roughness: 1 });
+  const L = a.L * 0.92,
+    S = a.S * 0.85;
+  const h = Math.min(Math.max(0.6, o.H * 0.35), 1.4);
+  along(k, a, body, L, h, S, 0, h / 2 + 0.2, 0, r(-0.04, 0.04), 0, r(-0.06, 0.06));
+  along(
+    k,
+    a,
+    burnt,
+    L * 0.4,
+    h * 0.6,
+    S * 0.8,
+    L * 0.22,
+    h + 0.2,
+    0,
+    r(-0.15, 0.15),
+    r(-0.2, 0.2),
+    r(-0.12, 0.12),
+  );
+  const nw = a.L > 8 ? 3 : 2;
+  for (let i = 0; i < nw; i++)
+    for (const s of [-1, 1]) {
+      const u = -L / 2 + (L / (nw - 1 || 1)) * i;
+      const off = r() < 0.35;
+      const v = s * (S / 2 + (off ? r(0.8, 2.2) : 0));
+      const x = a.ax === 'x' ? u : v,
+        z = a.ax === 'x' ? v : u;
+      k.cyl(
+        tire,
+        0.5,
+        0.5,
+        0.35,
+        x,
+        off ? 0.18 : 0.45,
+        z,
+        off ? 0 : Math.PI / 2,
+        a.ax === 'x' ? 0 : Math.PI / 2,
+        off ? 0 : 0,
+        10,
+      );
+    }
+}
+// 燈桿、天線、信號燈：底座的斷口＋倒在地上的桿子
+function wreckPole(k, o) {
+  const r = o.r;
+  const m = mat(SOOTY(o.col, 0.6), { roughness: 0.7, metalness: 0.5 });
+  const R = Math.max(0.15, Math.min(o.W, o.D) * 0.3);
+  k.cyl(m, R * 0.9, R, 1.4, 0, 0.7, 0, r(-0.08, 0.08), 0, r(-0.08, 0.08), 8);
+  const len = Math.min(o.H * 0.85, 16),
+    a = r(0, Math.PI * 2);
+  const ex = Math.cos(a) * len,
+    ez = Math.sin(a) * len;
+  k.bar(m, [Math.cos(a) * 0.8, R + 0.1, Math.sin(a) * 0.8], [ex, R + 0.05, ez], R * 1.6);
+  k.box(mat(0x2a2a2a, { roughness: 0.9 }), 0.9, 0.4, 0.6, ex, 0.3, ez, 0, -a, 0.2);
+}
+// 儲槽、球形槽：破裂的殼一圈往外翻，中間燒黑
+function wreckTank(k, o) {
+  const r = o.r;
+  const m = mat(SOOTY(o.col, 0.55), { roughness: 0.75, metalness: 0.4 });
+  const R = Math.min(o.W, o.D) * 0.45;
+  const n = 10;
+  const h = Math.max(1.2, Math.min(o.hw * 1.6, o.H * 0.3));
+  for (let i = 0; i < n; i++) {
+    if (r() < 0.25) continue; // 缺口
+    const t = (i / n) * Math.PI * 2;
+    const hh = h * r(0.5, 1.2);
+    k.box(
+      m,
+      ((Math.PI * 2 * R) / n) * 1.02,
+      hh,
+      0.15,
+      Math.sin(t) * R,
+      hh / 2,
+      Math.cos(t) * R,
+      r(0.1, 0.45),
+      t,
+      0,
+    );
+  }
+  k.cyl(mat(SOOT, { roughness: 1 }), R * 0.95, R * 0.95, 0.12, 0, 0.06, 0, 0, 0, 0, 16);
+}
+// 牆類：斷成幾塊、倒在地上，斷口露出鋼筋
+function wreckWall(k, o) {
+  const a = longAxis(o),
+    r = o.r;
+  const m = mat(SOOTY(o.col, 0.7), { roughness: 0.95 }),
+    d = mat(SOOTY(o.col, 0.45), { roughness: 0.95 });
+  const n = Math.max(2, Math.round(a.L / 3));
+  const th = Math.max(0.3, a.S);
+  for (let i = 0; i < n; i++) {
+    const u = -a.L / 2 + (a.L / n) * (i + 0.5);
+    const lay = r() < 0.6;
+    const hh = lay ? th : Math.min(o.H * r(0.25, 0.5), o.hw * 2);
+    along(
+      k,
+      a,
+      i % 2 ? m : d,
+      (a.L / n) * 0.9,
+      lay ? Math.min(o.H, 3) * 0.5 : hh,
+      lay ? Math.min(o.H, 3) : th,
+      u,
+      (lay ? th : hh) / 2,
+      lay ? (r() < 0.5 ? -1 : 1) * Math.min(o.H, 3) * 0.4 : 0,
+      0,
+      r(-0.3, 0.3),
+      lay ? 0 : r(-0.15, 0.15),
+    );
+    if (i % 2)
+      k.bar(
+        d,
+        [a.ax === 'x' ? u : 0, th, a.ax === 'x' ? 0 : u],
+        [a.ax === 'x' ? u + r(-1, 1) : r(-1, 1), th + 1.2, a.ax === 'x' ? r(-1, 1) : u + r(-1, 1)],
+        0.05,
+      );
+  }
+}
+// 樹：倒下的樹幹＋樹樁
+function wreckTree(k, o) {
+  const r = o.r;
+  const bark = mat(0x3a2a1c, { roughness: 1 }),
+    leaf = mat(SOOTY(0x2e4a2a, 0.6), { roughness: 1 });
+  const R = Math.max(0.2, Math.min(o.W, o.D) * 0.08);
+  k.cyl(bark, R, R * 1.1, 0.9, 0, 0.45, 0, 0, 0, 0, 7);
+  const a = r(0, Math.PI * 2),
+    len = Math.min(o.H * 0.9, 18);
+  k.bar(bark, [0, R, 0], [Math.cos(a) * len, R, Math.sin(a) * len], R * 1.8);
+  k.cyl(
+    leaf,
+    0,
+    Math.max(1, o.W * 0.35),
+    len * 0.5,
+    Math.cos(a) * len * 0.7,
+    Math.max(1, o.W * 0.3),
+    Math.sin(a) * len * 0.7,
+    Math.PI / 2,
+    -a,
+    0,
+    7,
+  );
+}
+for (const kd of ['container', 'stack', 'boxcar', 'cargopod']) WRECK[kd] = wreckContainer;
+for (const kd of ['car', 'bus', 'truck', 'mtwreck', 'fueltruck']) WRECK[kd] = wreckVehicle;
+for (const kd of ['lamppost', 'streetlamp', 'lamp', 'floodlight', 'beacon', 'mast', 'commmast', 'pillar'])
+  WRECK[kd] = wreckPole;
+for (const kd of ['tank', 'fuelsphere', 'coraltank']) WRECK[kd] = wreckTank;
+for (const kd of ['twall', 'blastwall', 'barrier', 'ruinwall', 'fence', 'snowwall']) WRECK[kd] = wreckWall;
+WRECK.pine = wreckTree;
+// 模型庫的預覽與 GLB 槽位（prop/wreck_<種類>）：代表的外形尺寸 [寬, 高, 深]
+export const WRECK_REF = {
+  container: [12.2, 2.6, 2.4],
+  car: [4.4, 1.5, 1.8],
+  bus: [12, 3.2, 2.5],
+  truck: [16, 4, 2.5],
+  lamppost: [0.6, 12, 0.6],
+  tank: [12, 14, 12],
+  twall: [3, 4, 1],
+  pine: [5, 14, 5],
+};
+export const WRECK_NAME = {
+  container: '貨櫃類（貨櫃、疊放貨櫃、有蓋貨車、貨物艙）',
+  car: '車輛（車、MT 殘骸）',
+  bus: '公車',
+  truck: '卡車、燃料車',
+  lamppost: '燈桿與天線（路燈、照明塔、信號燈桿、天線桿）',
+  tank: '儲槽（儲槽、燃料槽、Coral 收容槽）',
+  twall: '牆（T 型牆、防爆牆、護欄、斷牆、防風牆、雪牆）',
+  pine: '針葉樹',
+};
+// 種類 → GLB 槽位（同一類共用一個槽位）
+export const WRECK_SLOT = {};
+for (const kd of ['container', 'stack', 'boxcar', 'cargopod']) WRECK_SLOT[kd] = 'container';
+for (const kd of ['car', 'mtwreck']) WRECK_SLOT[kd] = 'car';
+WRECK_SLOT.bus = 'bus';
+for (const kd of ['truck', 'fueltruck']) WRECK_SLOT[kd] = 'truck';
+for (const kd of ['lamppost', 'streetlamp', 'lamp', 'floodlight', 'beacon', 'mast', 'commmast', 'pillar'])
+  WRECK_SLOT[kd] = 'lamppost';
+for (const kd of ['tank', 'fuelsphere', 'coraltank']) WRECK_SLOT[kd] = 'tank';
+for (const kd of ['twall', 'blastwall', 'barrier', 'ruinwall', 'fence', 'snowwall']) WRECK_SLOT[kd] = 'twall';
+WRECK_SLOT.pine = 'pine';
+// 模型庫的預覽：代表尺寸的殘骸
+export function wreckPreview(slot) {
+  const [W, H, D] = WRECK_REF[slot];
+  const kind = slot === 'twall' ? 'twall' : slot;
+  const p = {
+    kind,
+    idx: 7,
+    shape: { x0: -W / 2, x1: W / 2, z0: -D / 2, z1: D / 2, y0: 0, y1: H },
+    mat: {
+      container: 'metal',
+      car: 'vehicle',
+      bus: 'vehicle',
+      truck: 'vehicle',
+      lamppost: 'electric',
+      tank: 'fuel',
+      twall: 'concrete',
+      pine: 'wood',
+    }[slot],
+    col: 0x3a3c40,
+  };
+  return buildWreck(p, 1, 1.8, true).group;
+}

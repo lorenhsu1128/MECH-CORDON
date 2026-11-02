@@ -24144,6 +24144,8 @@ async function testDestruct(browser, base) {
       const y1 = lamp.shape.y1;
       g.damageProp(lamp, lamp.hp - lamp.maxHp * 0.2, 0, null, pl, 'none');
       out.lampCut = lamp.shape.y1 < y1 - 2;
+      // 第 7 期：受損姿勢（燈桿往一邊歪）
+      out.lampPose = !!lamp.pose0 && !lamp.ob.group.quaternion.equals(lamp.pose0.q);
     }
     const tall = misc.filter((p) => !p.dead && p.shape.y1 - p.shape.y0 > 6)[0];
     out.tall = !!tall;
@@ -24163,6 +24165,8 @@ async function testDestruct(browser, base) {
     out.wreckIn = !!met.wreck && w.obstacles.includes(met.wreck);
     out.wreckLow = met.wreck ? met.wreck.top < top0 : false;
     out.wreckVis = !!(met.wreck && met.wreck.group.parent);
+    // 第 7 期：專屬的殘骸造型（貨櫃類＝壓扁的貨櫃＋翹起的側板，比通用殘骸的網格多）
+    out.wreckKind = met.kind;
     out.origHidden = met.ob.group.visible === false;
     // 新登記的大型物件也打得壞
     const big = misc.sort((a, b) => b.maxHp - a.maxHp)[0];
@@ -24252,6 +24256,7 @@ async function testDestruct(browser, base) {
   );
   check(r.bigDead !== false, '新登記的大型物件打得壞並留下殘骸');
   check(r.lamp && r.lampT1 && r.lampCut, '零件分批脫落：路燈的燈第 1 階段掉、第 3 階段桿子折斷（碰撞變矮）');
+  check(r.lampPose, '受損姿勢：路燈往一邊歪');
   check(
     r.tall && r.tallCut && r.tallTop && r.groundCut,
     '高的物件第 3 階段切掉上段：網格變少、碰撞與站立高度降低',

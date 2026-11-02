@@ -17,6 +17,7 @@ import { PIECE_NAMES, SIDE_NAMES, buildMech, buildPiece, partPieces } from './me
 import { THEMES } from '../world/world.js';
 import { LANDMARKS } from '../world/landmarks.js';
 import { VARIANT_CATALOG } from '../world/variants.js';
+import { WRECK_NAME, WRECK_REF, wreckPreview } from '../world/prop-wreck.js';
 import {
   box,
   ISO,
@@ -682,12 +683,47 @@ addPlain(
   'prop',
   'obs_dome',
   '舊時代觀測圓頂',
-  '冰原的大型建築；現實尺寸基座半徑 18 m 的雷達罩，走道欄杆與入口照人的尺寸，不可破壞',
+  '冰原的大型建築；現實尺寸基座半徑 18 m 的雷達罩，走道欄杆與入口照人的尺寸；承重柱全壞時往下塌',
   () => buildObsDome(0xc8d0d8),
 );
 addPlain('prop', 'ice_shard', '碎冰', '冰原的裝飾，0.6–1.6 m' + PROP_SCALED, () =>
   buildIceShard(1.2, 0.4, 1),
 );
+// 地圖物件的殘骸與重損（docs/destruction-design.md 第 7 期）：每一類一個 GLB 槽位（同一類的種類共用）
+{
+  const SRC = {
+    container: 'prop/container',
+    car: 'prop/car',
+    bus: 'prop/bus',
+    truck: 'prop/parked_truck',
+    lamppost: 'prop/lamp_post',
+    tank: 'prop/storage_tank',
+    twall: 'prop/t_wall',
+    pine: 'prop/pine',
+  };
+  for (const slot of Object.keys(WRECK_REF)) {
+    addPlain(
+      'prop',
+      'wreck_' + slot,
+      '殘骸：' + WRECK_NAME[slot],
+      '完全損毀後留在原地的殘骸；GLB 水平縮放到物件的外框、高度等比例（最多是殘骸碰撞高度的 1.6 倍）',
+      () => wreckPreview(slot),
+    );
+    const src = SRC[slot];
+    add({
+      id: 'prop/dmg_' + slot,
+      cat: 'prop',
+      name: '重損：' + WRECK_NAME[slot],
+      note: '血量 25% 以下時換上的造型（預覽是完好的程式模型）；GLB 縮放到物件原本的外框',
+      noPal: true,
+      spec: 'prop',
+      build: () => {
+        const e = entries.find((x) => x.id === src);
+        return e ? e.build() : wreckPreview(slot);
+      },
+    });
+  }
+}
 // 主題版的地形特徵（荒野／沙丘／冰原的橋面板、支柱、掩體牆、高台、坡道、隧道口；尺寸與原點同程式模型）
 // 主題模組（world/themes/*.js）登記的物件：theme.catalog＝[[key, 名稱, 備註, build, extra?]]
 for (const T of Object.values(THEMES))
@@ -702,7 +738,7 @@ for (const th in LANDMARKS)
       'prop',
       `lm_${th}_${key}`,
       `地標：${L.name}`,
-      `${THEMES[th].name}；主線區段的大型地標（遊戲中以舊尺度的造型放大 ${WS} 倍），不可破壞`,
+      `${THEMES[th].name}；主線區段的大型地標（遊戲中以舊尺度的造型放大 ${WS} 倍）；承重柱全壞時倒塌`,
       () => {
         const o = new THREE.Group();
         const g = L.build();
