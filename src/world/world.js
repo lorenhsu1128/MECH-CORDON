@@ -426,6 +426,7 @@ export class World {
     });
     // 其他打得到的物件也登記成可破壞（不用亂數，照障礙物的順序；現有物件的編號不變）
     this.regRest();
+    this.regStructs();
     // 邊界外的遠景地形與剪影物件（edges.js，獨立的亂數串，不影響上面的生成）
     withRng(seed * 97 + 41, () => {
       for (const o of buildBackdrop(this) || []) {
@@ -2171,11 +2172,157 @@ export class World {
       p.name = sz.y >= 10 ? '大型建築' : sz.y >= 4.5 ? '建築物' : '掩體';
     }
   }
+  // 高聳的結構與大型建築（地形特徵、主題的大型結構、地標、很大的物件；docs/destruction-design.md 第 4 期）：
+  // 結構本體（打得到、會受損，但不會因為傷害而損毀：noDie）＋底部 1～4 根承重柱（各自的可破壞物件，沒有自己的碰撞）。
+  // 承重柱全壞時由 Game 的 propCollapse 讓本體倒下。有甲板（上面站得了東西）、承重柱（有頂的圓柱）、坡道旁的、
+  // 壩體（局部打穿）不在這裡。不用亂數，照障礙物的順序
+  regStructs() {
+    const byG = new Map();
+    for (const o of this.obstacles) {
+      if (o.prop || !o.group || o.group === this.decorG) continue;
+      let L = byG.get(o.group);
+      if (!L) byG.set(o.group, (L = []));
+      L.push(o);
+    }
+    for (const [g, L] of byG) {
+      if (L.some((o) => o.deck || o.seg || (o.kind === 'circle' && o.top !== undefined))) continue;
+      const b = new THREE.Box3();
+      for (const o of L) b.union(this.obBox(o));
+      if (b.isEmpty()) continue;
+      const sz = b.getSize(new THREE.Vector3());
+      if (this.nearRamp(b) || this.underDeck(b)) continue;
+      const mat0 = propMatOf('struct', this.themeKey);
+      if (sz.y < 4) {
+        const p = this.regProp(
+          'misc',
+          this.unionOb(L, b, g, b.min.y),
+          propHpFor(sz.y, sz.x, sz.z, mat0),
+          0,
+          L,
+        );
+        p.name = '掩體';
+        continue;
+      }
+      // 承重柱的高度與配置：小的 1 根（中央）、長的 2 根（長邊兩端）、大的 4 根（四角）
+      const hs = Math.max(2.5, Math.min(9, sz.y * 0.22));
+      const big = Math.max(sz.x, sz.z),
+        small = Math.min(sz.x, sz.z);
+      const n = big < 14 ? 1 : small < 14 ? 2 : 4;
+      const body = this.regProp('struct', this.unionOb(L, b, g, b.min.y + hs), 1, 0, L);
+      body.name = sz.y > big * 2 ? '高塔' : sz.y >= 12 ? '大型建築' : '建築物';
+      body.body = true;
+      body.noDie = true;
+      body.noCut = true;
+      body.y0 = b.min.y;
+      body.base = b.clone();
+      body.sup = [];
+      const cells =
+        n === 1
+          ? [[0, 0, 1, 1]]
+          : n === 2
+            ? sz.x >= sz.z
+              ? [
+                  [0, 0, 0.5, 1],
+                  [0.5, 0, 1, 1],
+                ]
+              : [
+                  [0, 0, 1, 0.5],
+                  [0, 0.5, 1, 1],
+                ]
+            : [
+                [0, 0, 0.5, 0.5],
+                [0.5, 0, 1, 0.5],
+                [0, 0.5, 0.5, 1],
+                [0.5, 0.5, 1, 1],
+              ];
+      let hpSum = 0;
+      for (const [u0, v0, u1, v1] of cells) {
+        const x0 = b.min.x + sz.x * u0,
+          x1 = b.min.x + sz.x * u1,
+          z0 = b.min.z + sz.z * v0,
+          z1 = b.min.z + sz.z * v1;
+        const sb = new THREE.Box3(
+          new THREE.Vector3(x0, b.min.y, z0),
+          new THREE.Vector3(x1, b.min.y + hs, z1),
+        );
+        const sob = {
+          kind: 'box',
+          x: (x0 + x1) / 2,
+          z: (z0 + z1) / 2,
+          w: x1 - x0,
+          d: z1 - z0,
+          y: b.min.y,
+          top: b.min.y + hs,
+          group: g,
+          mats: L[0].mats,
+          box: sb,
+        };
+        const hp = Math.max(4000, Math.min(12000, propHpFor(sz.y, x1 - x0, z1 - z0, mat0)));
+        hpSum += hp;
+        const sp = this.regProp('support', sob, hp, 0, []);
+        sp.name = body.name + '的支柱';
+        sp.support = true;
+        sp.body = null;
+        sp.of = body;
+        body.sup.push(sp);
+      }
+      body.hp = body.maxHp = Math.round(hpSum * 1.5);
+    }
+  }
+  // 障礙物的外框（沒有網格外框的圓柱、方塊依尺寸算）
+  obBox(o) {
+    if (o.box && !o.box.isEmpty()) return o.box.clone();
+    const gy = this.terrainHeight(o.x, o.z);
+    const h = o.top !== undefined ? o.top - gy : o.h || (o.r || 1) * 2;
+    const hx = o.kind === 'box' ? o.w / 2 : o.r,
+      hz = o.kind === 'box' ? o.d / 2 : o.r;
+    return new THREE.Box3(
+      new THREE.Vector3(o.x - hx, gy, o.z - hz),
+      new THREE.Vector3(o.x + hx, gy + h, o.z + hz),
+    );
+  }
+  // 撐著甲板的（橋墩、高架管線的腳、甲板下的牆）：頂在甲板底附近、水平重疊（第 5 期和甲板一起處理）
+  underDeck(b) {
+    const cx = (b.min.x + b.max.x) / 2,
+      cz = (b.min.z + b.max.z) / 2;
+    const hx = (b.max.x - b.min.x) / 2,
+      hz = (b.max.z - b.min.z) / 2;
+    return this.obstacles.some(
+      (d) =>
+        d.deck &&
+        Math.abs(d.x - cx) < d.w / 2 + hx + 1 &&
+        Math.abs(d.z - cz) < d.d / 2 + hz + 1 &&
+        Math.abs(d.y - b.max.y) < 4,
+    );
+  }
+  nearRamp(b) {
+    return (this.ramps || []).some(
+      (r) =>
+        Math.abs(r.x - (b.min.x + b.max.x) / 2) < r.w / 2 + (b.max.x - b.min.x) / 2 + 2 &&
+        Math.abs(r.z - (b.min.z + b.max.z) / 2) < r.d / 2 + (b.max.z - b.min.z) / 2 + 2,
+    );
+  }
+  // 好幾個障礙物合成一個命中形狀（外框的方塊，底在 y0）
+  unionOb(L, b, g, y0) {
+    return {
+      kind: 'box',
+      x: (b.min.x + b.max.x) / 2,
+      z: (b.min.z + b.max.z) / 2,
+      w: b.max.x - b.min.x,
+      d: b.max.z - b.min.z,
+      y: y0,
+      top: b.max.y,
+      group: g,
+      mats: L[0].mats,
+      box: new THREE.Box3(new THREE.Vector3(b.min.x, y0, b.min.z), b.max.clone()),
+    };
+  }
   // 完全損毀：拿掉碰撞與原本的模型，換成殘骸（prop-wreck.js）與殘骸的碰撞；o.quiet＝不播碎裂（重連時直接套用）
   destroyProp(p, fx, o = {}) {
     if (p.dead) return;
     p.dead = true;
     p.hp = Math.min(p.hp, 0);
+    if (p.support) return; // 承重柱：結構的碰撞與模型不動（Game 的 propSupportDown 演出、全壞時倒塌）
     for (const ob of p.obs || [p.ob]) {
       const i = this.obstacles.indexOf(ob);
       if (i >= 0) this.obstacles.splice(i, 1);
@@ -2205,7 +2352,7 @@ export class World {
     p.cutY = y;
   }
   addWreck(p) {
-    const sh = p.shape;
+    const sh = p.shape0 || p.shape; // 損毀前的外形（切掉上段、結構本體的命中形狀從承重柱以上開始）
     const cx = (sh.x0 + sh.x1) / 2,
       cz = (sh.z0 + sh.z1) / 2;
     const gy = Math.max(this.groundAt(cx, cz, sh.y0 + STEP_H), sh.y0);

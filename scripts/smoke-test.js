@@ -24265,11 +24265,124 @@ async function testDestruct(browser, base) {
   await ctx.close();
 }
 
+// 地圖物件的破壞 第 4 期：結構本體＋承重柱，承重柱全壞時寬的建築往下塌、細高的整個倒下（docs/destruction-design.md）
+async function testDestructCollapse(browser, base) {
+  console.log('地圖物件的破壞：承重柱與倒塌（往下塌、倒下、壓到的受傷、同步）');
+  for (const [map, mode] of [
+    ['flooded', 'sink'],
+    ['spaceport', 'fall'],
+  ]) {
+    const { ctx, page } = await newPage(browser, 'collapse-' + map);
+    await page.goto(base);
+    await waitVisible(page, 'title');
+    await page.evaluate(async (map) => {
+      const G = window.__game;
+      await G.lmRefresh();
+      G.save.level = 1;
+      localStorage.setItem('rubicon_map', map);
+      localStorage.setItem('rubicon_variant', 'base');
+      G.startMission();
+    }, map);
+    check(await waitVisible(page, 'hudWrap', 20000), `倒塌（${map}）：出擊`);
+    await freezeLoop(page);
+    const r = await page.evaluate((mode) => {
+      const g = window.__game,
+        w = g.world,
+        pl = g.player;
+      for (const e of g.enemies) {
+        e.dead = true;
+        g.scene.remove(e.mesh);
+      }
+      g.enemies = [];
+      g.waves = [];
+      g.wavePend = null;
+      const out = {};
+      const slender = (p) => {
+        const b = p.base;
+        return b.max.y - b.min.y > Math.max(b.max.x - b.min.x, b.max.z - b.min.z) * 1.5;
+      };
+      const bodies = w.props.filter((p) => p.body && (mode === 'fall') === slender(p));
+      out.n = bodies.length;
+      const B = bodies.sort((a, b) => b.base.max.y - a.base.max.y)[0];
+      if (!B) return out;
+      out.sup = B.sup.length;
+      out.supNames = B.sup.every((s) => s.name.endsWith('的支柱'));
+      // 打本體不會倒（只會受損）
+      g.damageProp(B, 1e7, 0, null, pl, 'none');
+      out.bodyAlive = !B.dead && B.hp >= 1 && B.st === 3;
+      const bb = B.base;
+      // 玩家站在倒下的範圍裡（往下塌：外框外 2 m；倒下：倒的方向上）
+      const sent = [];
+      const ne = g.netEv;
+      g.netEv = (e) => sent.push(e);
+      for (const s of B.sup.slice(0, -1)) g.damageProp(s, 1e7, 0, null, pl, 'none');
+      out.notYet = !B.collapsed;
+      const last = B.sup[B.sup.length - 1];
+      const from = last.center().add(new THREE.Vector3(30, 0, 0));
+      g.damageProp(last, 1e7, 0, null, { pos: from }, 'none');
+      g.netEv = ne;
+      const ev = sent.find((e) => e.t === 'pcol');
+      out.ev = !!ev && ev.i === B.idx;
+      out.dir = B.colDir;
+      const W = B.wreck;
+      out.sank = !!B.sank;
+      // 倒下的範圍裡放玩家
+      let px, pz;
+      if (mode === 'sink') {
+        px = bb.max.x + 2;
+        pz = (bb.min.z + bb.max.z) / 2;
+      } else {
+        const H = bb.max.y - bb.min.y;
+        const d = [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [0, -1],
+        ][B.colDir];
+        const c = bb.getCenter(new THREE.Vector3());
+        const half = d[0] ? (bb.max.x - bb.min.x) / 2 : (bb.max.z - bb.min.z) / 2;
+        px = c.x + d[0] * (half + H * 0.5);
+        pz = c.z + d[1] * (half + H * 0.5);
+      }
+      pl.pos.set(px, w.groundAt(px, pz, 1e3), pz);
+      pl.vel.set(0, 0, 0);
+      const hp0 = pl.hp;
+      window.__pump(5);
+      out.landed = !!B.landed;
+      out.wreck = !!B.wreck && w.obstacles.includes(B.wreck);
+      out.gone = !B.obs.some((o) => w.obstacles.includes(o));
+      out.hurt = pl.hp < hp0;
+      out.low = B.wreck ? B.wreck.top - bb.min.y <= 7.01 : false;
+      out.wreck0 = !!W === false;
+      // 客機：血量表帶方向時直接躺好
+      const C = w.props.find((p) => p.body && !p.collapsed);
+      if (C) {
+        g.propApplyTable([[C.idx, 0, 2]]);
+        out.cli = C.collapsed && C.landed && w.obstacles.includes(C.wreck);
+      }
+      return out;
+    }, mode);
+    check(r.n > 0 && r.sup >= 1 && r.supNames, `${map}：結構本體＋${r.sup} 根承重柱（${r.n} 棟）`);
+    check(r.bodyAlive, `${map}：只打本體不會倒（只會受損到第 3 階段）`);
+    check(r.notYet && r.ev, `${map}：承重柱全壞才倒、送出 pcol（方向 ${r.dir}）`);
+    check(
+      r.landed && r.wreck && r.gone && r.low && (mode === 'sink') === r.sank,
+      `${map}：${mode === 'sink' ? '往下塌成瓦礫堆' : '整個倒下'}，換成矮的碰撞`,
+    );
+    check(r.hurt, `${map}：壓到的玩家受傷`);
+    check(r.cli !== false, `${map}：客機套用血量表時直接躺好`);
+    await page.screenshot({ path: path.join(SHOT_DIR, `destruct-collapse-${map}.png`) });
+    await thawLoop(page);
+    await ctx.close();
+  }
+}
+
 const STEPS = [
   ['testFile', (c) => testFile(c.browser)],
   ['testSolo', (c) => testSolo(c.browser, c.base)],
   ['testMaps', (c) => testMaps(c.browser, c.base + '?test')],
   ['testDestruct', (c) => testDestruct(c.browser, c.base + '?test')],
+  ['testDestructCollapse', (c) => testDestructCollapse(c.browser, c.base + '?test')],
   ['testSaves', (c) => testSaves(c.browser, c.base + '?test')],
   ['testPilot', (c) => testPilot(c.browser, c.base)],
   ['testLibrary', (c) => testLibrary(c.browser, c.base)],

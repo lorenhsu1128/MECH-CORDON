@@ -481,6 +481,7 @@ function buildStructures(w) {
       y: y0,
       group: g,
       mats,
+      seg: 'dam', // 壩體：局部打穿（docs/destruction-design.md 第 6 期），不整個倒
       box: new THREE.Box3(
         new THREE.Vector3(a, y0, zc - THICK / 2),
         new THREE.Vector3(b, TOP, zc + THICK / 2),

@@ -200,6 +200,10 @@ Object.assign(Game.prototype, {
         this.propApplyDie(e);
         return true;
       }
+      case 'pcol': {
+        this.propApplyCollapse(e); // 結構倒下（game/destruct.js）
+        return true;
+      }
       case 'pk': {
         if (!this.pickups.find((p) => p.id === e.i))
           this.pickups.push(new Pickup(this, e.k, new THREE.Vector3(e.p[0], e.p[1], e.p[2]), e.i));
