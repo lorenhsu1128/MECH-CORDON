@@ -16,6 +16,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `scripts/build.js`：建置腳本；`scripts/smoke-test.js`：冒煙測試；`scripts/test-server-preload.js`：測試時讓 server.js 改聽 127.0.0.1 測試 port、不開瀏覽器。
 - `docs/glb-spec.md`：給美術的 GLB 製作規格。
 - `docs/crew-civilians-design.md`：分階段受損、乘員逃出、地圖上的小人（踩死、血跡、人員擊殺數）的定案與分期；改受損外觀、乘員、小人時照它進行並同步更新。
+- `docs/destruction-design.md`：地圖物件的破壞（全部物件可破壞、四段受損（零件分批脫落與變矮＋重要物件的專屬造型）、殘骸與殘骸的碰撞、依材質的屬性倍率與「只有可燃的起火」、踩平雜物、承重柱倒塌（平台與橋也會倒、虛空上的橋例外）、巨型結構的局部打穿、多人同步與狀態表；分 8 期）的定案與分期；改地圖物件的受損、殘骸、倒塌時照它進行並同步更新。
 - `docs/humanoid-assets.md`：人形素材的整理（現在格納庫用的 Quaternius 三隻、過場動畫的 11 隻（`src/assets/people/`）、之後小人與過場可以用的 CC0 人物與動畫包、授權的注意（不用 Mixamo））；新增人物素材時照它挑並同步更新。
 - `docs/world-scale.md`：遊戲的尺度（機甲三倍高改版：機甲 9.7 m、`core/scale.js` 的 MS／WS／DS 三個倍率）與地圖物件的現實尺寸、人的尺寸（之後的小人互動）、掩體的分級；改尺度、新增或重做地圖物件時照它進行並同步更新。程式裡寫死的距離寫成「舊數字 × 倍率」（實體裡用 `this.dk`）。
 - `docs/campaign-design.md`：主線任務模式（機戰傭兵6＋黑帝斯）的設計文件與實作分期；做主線相關功能時照它進行，設計有變動時同步更新。
