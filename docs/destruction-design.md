@@ -328,7 +328,7 @@
   - 房主 `propNetFlush`：每次送快照前，把血量有變的物件合併成一個 `propHp { l }`。
   - 快照的 `prs`：每 2 秒一份受損物件的血量表（`propNetTable`）。
   - 客機 `propApplyHp`／`propApplyTable`／`propApplyDie`。
-  - `NET_VERSION` 11.18。
+  - `NET_VERSION` 11.18；第 4～6 期又加了 `pcol`、`roofx` 事件與血量表的新項目，全部完成後提高到 11.19。
 - **修正的 bug**：
   - 客機上碎裂特效出現兩次
   - EMP 光束每格送一次事件
