@@ -448,7 +448,8 @@ Object.assign(Game.prototype, {
       ? log
           .map((l) => {
             const S = SPEAKERS[l.sp] || SPEAKERS.echo;
-            return `<div class="hubLogRow">${speakerBadge(l.sp, 30)}<div><b style="color:${S.color}">${escHtml(S.name)}</b><span>${escHtml(l.text)}</span></div></div>`;
+            // 字幕的語言（日文時查翻譯；「不顯示」照中文）
+            return `<div class="hubLogRow">${speakerBadge(l.sp, 30)}<div><b style="color:${S.color}">${escHtml(this.subName(l.sp, S.name))}</b><span>${escHtml(this.subText(l.text, l.sp))}</span></div></div>`;
           })
           .join('')
       : '<p class="dim">還沒有通訊紀錄。</p>';

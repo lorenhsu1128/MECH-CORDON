@@ -163,6 +163,16 @@ Object.assign(Game.prototype, {
       : `${head}敵方增援 ${ev.n} 機從 ${clock} 點鐘方向接近，距離 ${dist} m。`;
     if (ev.a) text += '敵對 AC 也在裡面。';
     if (ev.i >= ev.N) text += '這是最後一波。';
+    // 日文字幕（game/voice.js 的 subLang）：句子裡有動態的數字，所以另外組
+    if (this.subLang && this.subLang() === 'ja') {
+      text = `第 ${ev.i}/${ev.N} 波：${
+        ev.d
+          ? `輸送機が${clock}時の方向に ${ev.n} 機降下、距離 ${dist} m！`
+          : `敵の増援 ${ev.n} 機が${clock}時の方向から接近、距離 ${dist} m。`
+      }`;
+      if (ev.a) text += '敵の AC もいる。';
+      if (ev.i >= ev.N) text += 'これが最後の波。';
+    }
     SFX.waveAlert(Math.sin(ang), ev.i >= ev.N); // 從預告的方向（左右聲道）響起
     if (ev.i >= ev.N && ev.N > 1) this.tfx('lastwave', '最終波', `${clock} 點鐘方向・${ev.n} 機`);
     this.commSay('echo', text);

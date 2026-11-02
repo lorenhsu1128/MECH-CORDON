@@ -4,11 +4,26 @@
 //  語音檔在 lib/voice-<聲音>.js（window.RUBICON_VOICE_<聲音>＝{ 鍵: base64 mp3 }），第一次要說話時只載入選的那個，
 //  每句第一次播時才解碼。同一時間只說一句：優先度高的打斷低的（系統提示的「導彈接近」打斷通訊）。
 //  語言：設定 ctrl.voiceLang＝zh 中文／ja 日文（日文的聲音在 <聲音>_ja 資料夾；沒有日文的句子改唸中文）。
+//  字幕：設定 ctrl.sub＝zh 繁體中文／ja 日文／off 不顯示（通訊框只留說話者，唸不出來的照樣顯示文字），ctrl.subSize 大小；
+//  字幕跟著語音：語音開始播才顯示、顯示到唸完（通訊框、過場字幕、系統提示與敵兵喊話的字幕條 #subBar）。
 //  音色：俯視與追尾＝輕微的無線電（帶通、一點點飽和），第一人稱＝駕駛艙內（乾淨）。多人各端依自己的設定播。
 // ============================================================
 import { Game } from './game.js';
 import { SFX } from '../audio/audio.js';
-import { vkey, storyQuote, VOICE_CUES, VOICE_IDS, CAST_IDS, BARKS, GRUNTS } from '../data/voice.js';
+import {
+  vkey,
+  storyQuote,
+  VOICE_CUES,
+  VOICE_IDS,
+  CAST_IDS,
+  BARKS,
+  GRUNTS,
+  JA_DISP,
+  SPEAKER_JA,
+} from '../data/voice.js';
+import { SPEAKERS } from '../data/story.js';
+import { escHtml } from '../core/html.js';
+import LINES_JA from '../assets/voice/lines-ja.json';
 
 // 飽和的曲線（無線電的一點點破音）
 let SAT = null;
@@ -22,7 +37,70 @@ function satCurve() {
   return SAT;
 }
 
+// 日文字幕的顯示寫法（lines-ja.json 是唸給 TTS 的寫法）
+const jaDisp = (t) => JA_DISP.reduce((a, [x, y]) => a.split(x).join(y), t);
+
 Object.assign(Game.prototype, {
+  // ---------- 字幕 ----------
+  // 字幕的語言：zh／ja／off
+  subLang() {
+    const v = this.ctrl && this.ctrl.sub;
+    return v === 'ja' || v === 'off' ? v : 'zh';
+  },
+  // 台詞的字幕文字：日文時查翻譯（鍵＝中文台詞的 vkey；沒有翻譯的照中文）
+  subText(text, sp = 'echo', key = null) {
+    if (this.subLang() !== 'ja') return text;
+    const L = LINES_JA[sp];
+    const t = L && L[key || vkey(text)];
+    return t ? jaDisp(t) : text;
+  },
+  // 說話者的名稱（日文字幕時換成日文的寫法）
+  subName(sp, name) {
+    return (this.subLang() === 'ja' && SPEAKER_JA[sp]) || name;
+  },
+  // 這句有沒有語音（lines-ja.json 收了所有產生過語音的台詞，鍵相同，所以拿它當索引；不用等語音包載入）
+  voiceHas(text, sp = 'echo') {
+    const L = LINES_JA[sp];
+    return !!(this.voiceFolder(sp) && SFX.on && SFX.ctx && L && L[vkey(text)]);
+  },
+  // 字幕大小：body 的 data-sub（styles.css 的 --subK）
+  subApply() {
+    const z = this.ctrl && this.ctrl.subSize;
+    document.body.dataset.sub = z === 's' || z === 'l' ? z : 'm';
+  },
+  // 畫面下方中央的字幕條（系統提示、敵兵喊話）：最多兩行，各自顯示到唸完；who＝echo／grunt
+  subBar(text, who, dur) {
+    if (this.subLang() === 'off' || !text) return;
+    const el = document.getElementById('subBar');
+    if (!el) return;
+    const now = performance.now();
+    const rows = (this.subRows = (this.subRows || []).filter((r) => r.until > now && r.text !== text));
+    rows.push({ text, who, until: now + (dur + 0.4) * 1000 });
+    if (rows.length > 2) rows.shift();
+    const draw = () => {
+      const t = performance.now();
+      this.subRows = (this.subRows || []).filter((r) => r.until > t);
+      el.innerHTML = this.subRows
+        .map((r) => {
+          const S = r.who === 'grunt' ? { name: '敵兵', color: '#ff6b6b' } : SPEAKERS[r.who] || SPEAKERS.echo;
+          const nm = r.who === 'echo' ? 'ECHO' : this.subName(r.who, S.name);
+          return `<p><b style="color:${S.color}">${escHtml(nm)}</b>${escHtml(r.text)}</p>`;
+        })
+        .join('');
+      el.classList.toggle('on', this.subRows.length > 0);
+      clearTimeout(this.subBarTo);
+      if (this.subRows.length)
+        this.subBarTo = setTimeout(draw, Math.max(50, Math.min(...this.subRows.map((r) => r.until)) - t));
+    };
+    draw();
+  },
+  subBarClear() {
+    this.subRows = [];
+    clearTimeout(this.subBarTo);
+    const el = document.getElementById('subBar');
+    if (el) el.classList.remove('on');
+  },
+
   // 目前的聲音（gentle／ai；關閉＝null）。舊設定的 on／comm 當成預設的溫柔知性
   voiceId() {
     const v = (this.ctrl && this.ctrl.voice) || VOICE_IDS[0];
@@ -161,7 +239,9 @@ Object.assign(Game.prototype, {
     this.voiceCd = this.voiceCd || {};
     if (C.cd && now - (this.voiceCd[id] || -999) < C.cd) return;
     this.voiceCd[id] = now;
-    this.voicePlay('s_' + id, C.p, 'sys');
+    this.voicePlay('s_' + id, C.p, 'sys').then(
+      (d) => d && this.subBar(this.subText(C.t, 'echo', 's_' + id), 'echo', d),
+    );
   },
   // 依序播幾句（增援預告：方向＋敵對 AC＋最後一波）
   async voiceSeq(ids, prio = 2) {
@@ -182,7 +262,7 @@ Object.assign(Game.prototype, {
     let pos = 0,
       at = 0.6;
     const t0 = performance.now();
-    for (const l of lines) {
+    for (const [i, l] of lines.entries()) {
       const r = storyQuote(l);
       const start = (pos / all) * (total || 0) + 0.3;
       pos += l.length;
@@ -196,7 +276,19 @@ Object.assign(Game.prototype, {
         if (!b || sq !== this.voiceSeqN) return;
         const wait = Math.max(0, when * 1000 - (performance.now() - t0));
         this.voiceSeqTo = this.voiceSeqTo || [];
-        this.voiceSeqTo.push(setTimeout(() => this.voicePlay(key, 2, 'comm', f), wait));
+        this.voiceSeqTo.push(
+          setTimeout(
+            () =>
+              this.voicePlay(key, 2, 'comm', f).then((d) => {
+                // 劇情畫面：正在唸的那一行亮起來（字幕跟著語音）
+                const p = d && document.querySelectorAll('#stLines p')[i];
+                if (!p || sq !== this.voiceSeqN) return;
+                p.classList.add('speaking');
+                this.voiceSeqTo.push(setTimeout(() => p.classList.remove('speaking'), d * 1000 + 200));
+              }),
+            wait,
+          ),
+        );
       });
       // 估計長度：每秒約 4 個字（實際長度要解碼之後才知道，所以排程用估計值，播的時候照實際的）
       at += q.length / 4 + 0.5;
@@ -247,6 +339,11 @@ Object.assign(Game.prototype, {
     const b = await this.voiceBuf(k, folder + this.voiceSuf());
     if (!b) return;
     SFX.barkPlay(b, pos);
+    // 字幕：40 m 內的敵兵才顯示（遠的只聽得到聲音）
+    const me = this.player;
+    const m = /^b_([a-zA-Z]+)(d+)$/.exec(k);
+    if (m && me && !me.dead && pos && me.pos.distanceTo(pos) < 40 * (me.dk || 1) && BARKS[m[1]])
+      this.subBar(this.subText(BARKS[m[1]][+m[2]], 'grunt', k), 'grunt', b.duration);
   },
 });
 const BARK_CD = { spot: 5, search: 9, attack: 7, hurt: 4, allyDown: 5, cmdDown: 8 };

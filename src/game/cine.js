@@ -1164,18 +1164,29 @@ Object.assign(Game.prototype, {
           ? '軌道站'
           : S.name.replace(/（.*）/, '')
       : '';
-    el.innerHTML = `${name ? `<b style="color:${S.color}">${escHtml(name)}</b>` : ''}<span>${escHtml(text)}</span>`;
-    el.classList.toggle('radio', !!who && who !== 'narr');
-    el.classList.add('on');
+    // 字幕（game/voice.js）：角色的台詞依設定的語言，旁白照中文；「不顯示」時角色的台詞要唸不出來才顯示
+    const voiced = who && who !== 'narr';
+    const sub = this.subLang ? this.subLang() : 'zh';
+    const shown = voiced && this.subText ? this.subText(text, who) : text;
+    const nm = voiced && this.subName ? this.subName(who, name) : name;
+    el.innerHTML = `${nm ? `<b style="color:${S.color}">${escHtml(nm)}</b>` : ''}<span>${escHtml(shown)}</span>`;
+    el.classList.toggle('radio', !!voiced);
+    el.classList.toggle('on', !(voiced && sub === 'off'));
     if (who) {
       c.commWho = who;
       c.commT = c.t;
     }
     if (who && who !== 'station') SFX.radio();
-    // 角色的台詞也唸（game/voice.js；沒有這句的語音就只有字幕）
-    if (who && this.voiceSay) this.voiceSay(text, who);
-    else if (who === 'station') SFX.play('glitch', 0.3, 0.6, 0.02, 0.1, null, 'ui');
     c.subUntil = c.t + dur;
+    const tok = (c.subTok = (c.subTok || 0) + 1);
+    // 角色的台詞也唸（game/voice.js；沒有這句的語音就只有字幕）：唸得比劇本的時間長時，字幕顯示到唸完
+    if (who && this.voiceSay)
+      this.voiceSay(text, who).then((d) => {
+        if (this.cine !== c || c.subTok !== tok) return;
+        if (!d) return el.classList.add('on');
+        c.subUntil = Math.max(c.subUntil, c.t + d + 0.3);
+      });
+    else if (who === 'station') SFX.play('glitch', 0.3, 0.6, 0.02, 0.1, null, 'ui');
   },
   // 字卡（文字演出）：style＝card（黑底的電影字距）、logo、chapter、name（宿敵名牌，左下）、loc（地點，左上）
   cineCard(ev) {

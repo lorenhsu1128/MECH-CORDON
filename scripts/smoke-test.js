@@ -11904,8 +11904,18 @@ async function testAudio2(browser, base) {
     out.vCastOff = await g.voiceSay('通訊局的入口在橋梁群底下。進去，毀掉它，什麼都別聽。', 'castron');
     g.ctrl.voiceCast = 'on';
     // 敵兵的喊話：有腳的敵人察覺時喊、多人轉送高階呼叫、設定關閉時不播
+    // 和 barkSay 的條件相同（精英、宿敵、飛行的、部位不喊；隨機的編成可能挑到它們）
     const grunt = g.enemies.find(
-      (e) => !e.dead && !e.isBoss && e.stats && e.stats.parts && e.stats.parts.legs,
+      (e) =>
+        !e.dead &&
+        !e.isBoss &&
+        !e.isElite &&
+        !e.ace &&
+        !e.flying &&
+        e.ai !== 'part' &&
+        e.stats &&
+        e.stats.parts &&
+        e.stats.parts.legs,
     );
     out.bark = null;
     if (grunt) {
@@ -11934,7 +11944,17 @@ async function testAudio2(browser, base) {
     out.bLoad = await g.bgmLoad();
     for (const x of g.enemies) x.sn && (x.sn.st = 0);
     g.bgmHp = pl.hp;
+    g.bgmHitT = -99; // 主迴圈照常在跑，前面可能被打過（最近被打＝交戰）
     out.lv0 = g.bgmTarget();
+    if (out.lv0 !== 0)
+      out.lv0Why = {
+        boss: (g.bosses || []).filter((b) => !b.dead).length,
+        hit: g.time - (g.bgmHitT || -99),
+        wave: !!(g.wavePend || (g.waveMarks && g.waveMarks.length)),
+        en: g.enemies
+          .filter((x) => !x.dead && !x.decoy && !x.isObjective)
+          .map((x) => [x.ai, x.sn && x.sn.on, x.sn && x.sn.st, x.aw, Math.round(x.pos.distanceTo(pl.pos))]),
+      };
     if (e.sn) e.sn.st = 2;
     out.lv2 = g.bgmTarget();
     g.bgm = null;
@@ -11958,6 +11978,49 @@ async function testAudio2(browser, base) {
     g.voiceStop();
     out.vJaBark = !!(await g.voiceBuf('b_spot0', 'grunt1_ja'));
     g.ctrl.voiceLang = 'zh';
+    // 字幕：日文（語音是中文也可以）、語音開始才出現、不顯示時只留說話者、沒有語音的照樣顯示、系統提示的字幕條、大小
+    const wait = (ms) => new Promise((res) => setTimeout(res, ms));
+    const cEl = document.getElementById('comm');
+    const cSpan = () => cEl.querySelector('span');
+    g.ctrl.sub = 'ja';
+    g.voiceStop();
+    g.commClear();
+    g.commSay('echo', '空降完成。這次作戰由我管制。');
+    out.subHold = cSpan().style.visibility === 'hidden';
+    const t1 = performance.now();
+    while (cSpan().style.visibility === 'hidden' && performance.now() - t1 < 5000) await wait(50);
+    out.subJa = cEl.textContent;
+    g.commClear();
+    g.voiceStop();
+    g.ctrl.sub = 'off';
+    g.commSay('echo', '空降完成。這次作戰由我管制。');
+    await wait(1600);
+    out.subOff =
+      cEl.classList.contains('subOff') &&
+      getComputedStyle(cSpan()).display === 'none' &&
+      cEl.textContent.includes('ECHO');
+    g.commClear();
+    g.voiceStop();
+    g.commSay('echo', '（沒有語音的台詞）');
+    await wait(600);
+    out.subOffNoVoice = !cEl.classList.contains('subOff') && cSpan().style.visibility !== 'hidden';
+    g.commClear();
+    g.voiceStop();
+    g.ctrl.sub = 'ja';
+    g.voiceCd = {};
+    g.voiceCue('missile');
+    const sb = document.getElementById('subBar');
+    const t2 = performance.now();
+    while (!sb.classList.contains('on') && performance.now() - t2 < 5000) await wait(50);
+    out.subBar = sb.textContent;
+    g.ctrl.subSize = 'l';
+    g.subApply();
+    out.subK = getComputedStyle(document.body).getPropertyValue('--subK').trim();
+    g.ctrl.subSize = 'm';
+    g.subApply();
+    g.ctrl.sub = 'zh';
+    g.subBarClear();
+    g.voiceStop();
     g.clearMission();
     localStorage.setItem('rubicon_map', 'industrial');
     g.state = 'title';
@@ -12009,12 +12072,21 @@ async function testAudio2(browser, base) {
     `日文語音（ECHO ${r.vJa.toFixed(1)} 秒、霍斯特 ${r.vJaCast.toFixed(1)} 秒、敵兵）`,
   );
   check(
+    r.subHold &&
+      /降下完了/.test(r.subJa) &&
+      r.subOff &&
+      r.subOffNoVoice &&
+      /ECHO.*ミサイル/.test(r.subBar) &&
+      r.subK === '1.3',
+    `字幕（日文「${r.subJa}」、語音開始才出現、不顯示時只留說話者、系統提示「${r.subBar}」、大小 ×${r.subK}）`,
+  );
+  check(
     r.bark && r.bark.played && r.bark.sent === 'bark' && r.bark.off,
     `敵兵的喊話（播放、多人轉送 ${r.bark && r.bark.sent}、設定關閉時不播）`,
   );
   check(
     r.bLoad && r.lv0 === 0 && r.lv2 === 2 && r.bCur && r.bKey === 2,
-    `動態配樂（探索 ${r.lv0} → 交戰 ${r.lv2}、播放中 ${r.bKey}）`,
+    `動態配樂（探索 ${r.lv0} → 交戰 ${r.lv2}、播放中 ${r.bKey}）${r.lv0Why ? JSON.stringify(r.lv0Why) : ''}`,
   );
   await ctx.close();
 }

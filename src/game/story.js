@@ -4,6 +4,7 @@ import { SFX } from '../audio/audio.js';
 import { escHtml } from '../core/html.js';
 import { SORTIES } from '../data/campaign.js';
 import { BRIEFINGS, CHAPTER_NAMES, CHAPTER_TEXT, PROLOGUE, pickLines } from '../data/story.js';
+import { storyQuote } from '../data/voice.js';
 import { Game } from './game.js';
 
 const NUM = ['', '一', '二', '三', '四', '五', '六'];
@@ -104,8 +105,13 @@ Object.assign(Game.prototype, {
     $('stSub').textContent = it.sub;
     $('stTitle').textContent = it.title;
     // 角色的台詞（「名字：「…」」）用不同的顏色
+    // 字幕是日文時，角色的台詞（「名字：「…」」的引號裡）換成日文，旁白照中文
+    const say = (l) => {
+      const r = storyQuote(l);
+      return r ? l.replace(`「${r.q}」`, `「${this.subText(r.q, r.sp)}」`) : l;
+    };
     $('stLines').innerHTML = it.lines
-      .map((l) => `<p${/^[^「」]{1,16}：「/.test(l) ? ' class="say"' : ''}>${escHtml(l)}</p>`)
+      .map((l) => `<p${/^[^「」]{1,16}：「/.test(l) ? ' class="say"' : ''}>${escHtml(say(l))}</p>`)
       .join('');
     const end = this.tfxStory(it.title);
     this.storyTypeEnd = end ? performance.now() + end * 1000 : 0;

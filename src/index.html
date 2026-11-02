@@ -94,6 +94,7 @@
 
     <div id="ui">
       <div id="comm"></div>
+      <div id="subBar"></div>
       <!-- 主線：戰術模組的三選一與商店（game/tactics.js），遊戲暫停 -->
       <div id="modPick">
         <h2 id="mpTitle"></h2>
@@ -1027,6 +1028,25 @@
             >
               <option value="zh">中文（預設）</option>
               <option value="ja">日本語</option>
+            </select>
+          </div>
+          <div class="krow">
+            <span>字幕</span
+            ><select
+              id="ctrlSub"
+              title="通訊、過場動畫、系統提示、敵兵喊話的字幕跟著語音顯示；不顯示＝通訊框只留說話者（沒有語音的台詞照樣顯示文字）"
+            >
+              <option value="zh">繁體中文（預設）</option>
+              <option value="ja">日本語</option>
+              <option value="off">不顯示</option>
+            </select>
+          </div>
+          <div class="krow">
+            <span>字幕大小</span
+            ><select id="ctrlSubSize">
+              <option value="s">小</option>
+              <option value="m">中（預設）</option>
+              <option value="l">大</option>
             </select>
           </div>
           <div class="krow">

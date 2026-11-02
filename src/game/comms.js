@@ -93,30 +93,50 @@ Object.assign(Game.prototype, {
     const S = nm ? { ...S0, name: nm } : S0; // 自訂關卡的自訂名字
     const fx = this.textfx && this.textfx.on;
     const rival = /宿敵/.test(S.note || '');
-    el.innerHTML = `${speakerBadge(sp)}<div><b style="color:${S.color}">${escHtml(S.name)}</b><span><p>${escHtml(text)}</p></span></div>`;
+    // 字幕（game/voice.js）：語言依設定；「不顯示」時只留說話者（唸不出來的照樣顯示文字）
+    const sub = this.subLang ? this.subLang() : 'zh';
+    const shown = this.subText ? this.subText(text, sp) : text;
+    const name = this.subName ? this.subName(sp, S.name) : S.name;
+    el.innerHTML = `${speakerBadge(sp)}<div><b style="color:${S.color}">${escHtml(name)}</b><span><p>${escHtml(shown)}</p></span></div>`;
     el.classList.toggle('echo', fx && sp === 'echo');
     el.classList.toggle('rival', fx && rival);
     el.style.borderLeftColor = fx && S.faction ? S.color : '';
     el.classList.add('on');
     SFX.radio();
     let show = 1.8 + text.length * 0.09;
-    // 角色的語音（game/voice.js）：解碼完知道長度後，顯示時間至少到唸完
-    if (this.voiceSay) {
+    this.commCur = ln;
+    // 文字演出：預告「打字機」的逐字（沒有語音＝最多花顯示時間的 45%；有語音＝語音開始時才開始、花唸的時間的 80%）
+    const span = el.querySelector('span');
+    let shownYet = false;
+    const reveal = (limit) => {
+      if (shownYet || this.commCur !== ln) return;
+      shownYet = true;
+      span.style.visibility = '';
+      el.classList.remove('subOff');
+      this.commTypeEnd = fx ? performance.now() + revealDom(span, 'comm', { limit }) * 1000 : 0;
+    };
+    this.commTypeEnd = 0;
+    clearTimeout(this.commRevealTo);
+    // 角色的語音（game/voice.js）：解碼完開始唸時字幕才出現，顯示時間至少到唸完
+    const voiced = !!(this.voiceHas && this.voiceHas(text, sp));
+    this.commWait = voiced ? reveal : null; // 等語音的時候點一下＝整句顯示
+    if (voiced) {
+      span.style.visibility = 'hidden';
+      el.classList.toggle('subOff', sub === 'off');
       const t0 = performance.now();
       this.voiceSay(text, sp).then((d) => {
-        if (!d || this.commCur !== ln) return;
+        if (this.commCur !== ln) return;
+        if (!d) return reveal(show * 0.45); // 沒有這句的語音：照舊顯示文字
+        if (sub !== 'off') reveal(Math.max(0.3, d * 0.8));
         const need = d + 0.6;
         if (need <= show) return;
         show = need;
         clearTimeout(this.commTo);
         this.commTo = setTimeout(() => this.commNext(), Math.max(0, need * 1000 - (performance.now() - t0)));
       });
-    }
-    this.commCur = ln;
-    // 文字演出：預告「打字機」的逐字（最多花顯示時間的 45%）
-    this.commTypeEnd = fx
-      ? performance.now() + revealDom(el.querySelector('span'), 'comm', { limit: show * 0.45 }) * 1000
-      : 0;
+      // 語音包還在載入（第一次）：等太久就先顯示文字
+      if (sub !== 'off') this.commRevealTo = setTimeout(() => reveal(show * 0.45), 1500);
+    } else reveal(show * 0.45);
     clearTimeout(this.commTo);
     this.commTo = setTimeout(() => this.commNext(), show * 1000);
   },
@@ -133,6 +153,14 @@ Object.assign(Game.prototype, {
   // 點一下：直接換下一句
   commTap() {
     if (!this.commBusy) return;
+    // 還在等語音開始：整句顯示（「不顯示」字幕時照常換下一句）
+    const sp = document.querySelector('#comm span');
+    if (this.commWait && sp && sp.style.visibility === 'hidden' && this.subLang() !== 'off') {
+      this.commWait(0.01);
+      this.commWait = null;
+      this.commTypeEnd = 0;
+      return revealFinish(sp);
+    }
     if (this.commTypeEnd > performance.now()) {
       this.commTypeEnd = 0;
       return revealFinish(document.querySelector('#comm span'));
@@ -143,6 +171,7 @@ Object.assign(Game.prototype, {
   },
   commClear() {
     clearTimeout(this.commTo);
+    clearTimeout(this.commRevealTo);
     if (this.voiceStop) this.voiceStop();
     this.commQ = [];
     this.commBusy = false;

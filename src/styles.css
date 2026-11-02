@@ -5928,3 +5928,87 @@ select:disabled option {
     max-width: 220px;
   }
 }
+
+/* ---------- 字幕（game/voice.js）：大小 --subK、系統提示與敵兵喊話的字幕條、劇情畫面正在唸的那一行 ---------- */
+body {
+  --subK: 1;
+}
+body[data-sub='s'] {
+  --subK: 0.85;
+}
+body[data-sub='l'] {
+  --subK: 1.3;
+}
+#comm span {
+  font-size: calc(13px * var(--subK));
+}
+#comm.menu span {
+  font-size: calc(12px * var(--subK));
+}
+#cineSub {
+  font-size: calc(clamp(15px, 2.3vh, 22px) * var(--subK));
+}
+/* 字幕「不顯示」：通訊框只留說話者 */
+#comm.subOff span {
+  display: none;
+}
+#subBar {
+  position: absolute;
+  left: 50%;
+  /* 畫面邊緣的敵人指示與下方的鎖定文字之上 */
+  bottom: max(25vh, 180px);
+  transform: translateX(-50%);
+  max-width: min(720px, calc(100vw - 32px));
+  text-align: center;
+  pointer-events: none;
+  z-index: 31;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+#subBar.on {
+  opacity: 1;
+}
+#subBar p {
+  margin: 3px 0;
+  display: inline-block;
+  padding: 3px 12px;
+  background: rgba(6, 10, 16, 0.72);
+  color: #eef3f8;
+  font-size: calc(15px * var(--subK));
+  line-height: 1.5;
+  text-shadow: 0 1px 2px #000;
+}
+#subBar p + p {
+  display: block;
+  width: fit-content;
+  margin: 3px auto 0;
+}
+#subBar b {
+  margin-right: 0.7em;
+  font-family: 'Share Tech Mono', monospace;
+  letter-spacing: 0.08em;
+}
+/* 觸控：下方中央、通訊框的上面（搖桿與右側按鈕之間） */
+body.vpad #subBar {
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  max-width: min(440px, 46vw);
+}
+#stLines p.speaking {
+  color: #fff;
+  text-shadow: 0 0 10px rgba(127, 200, 255, 0.8);
+}
+@media (max-height: 540px) {
+  #comm span,
+  #comm.menu span {
+    font-size: calc(11px * var(--subK));
+  }
+  #subBar {
+    bottom: 110px;
+  }
+  body.vpad #subBar {
+    bottom: calc(62px + env(safe-area-inset-bottom, 0px));
+  }
+  #subBar p {
+    font-size: calc(12px * var(--subK));
+  }
+}

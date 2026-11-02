@@ -55,6 +55,34 @@ export const BARKS = {
 };
 export const GRUNTS = ['grunt1', 'grunt2', 'grunt3'];
 
+// 日文字幕（game/voice.js 的 subText）：lines-ja.json 是唸給 TTS 的寫法（英文字母都寫成片假名），顯示時換回來
+export const JA_DISP = [
+  ['アール・ゼロナナ', 'R-07'],
+  ['キー・ゼロナナ', 'KEY-07'],
+  ['キー・ゼロ', 'KEY-0'],
+  ['グリッド・ゼロハチロク', 'Grid 086'],
+  ['エーシーエス', 'ACS'],
+  ['エーシー', 'AC'],
+  ['エーピー', 'AP'],
+  ['イーエムピー', 'EMP'],
+  ['エムティー', 'MT'],
+  ['ビックリマーク', '「!」'],
+];
+// 日文字幕的說話者名稱（沒有列的照中文：ECHO 與宿敵是代號）
+export const SPEAKER_JA = {
+  instructor: '教官 INSTRUCTOR',
+  castron: 'ホルスト（キャストロン）',
+  aetheric: 'サキ博士（エセリック）',
+  veerwell: 'パイク（ヴィアウェル）',
+  sancta: 'ノーラ（聖域）',
+  mira: 'ミラ（エセリック）',
+  station: '軌道ステーション',
+  enemy: '敵通信',
+  ally: '友軍',
+  cmd: '指揮官',
+  custom: '通信',
+};
+
 // 文字 → 鍵（FNV-1a 32 位元，36 進位）；全形與半形空白、前後的空白不算
 export function vkey(text) {
   const s = String(text).replace(/\s+/g, ''); // \s 包含全形空白（U+3000）

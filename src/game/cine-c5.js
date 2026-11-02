@@ -960,7 +960,7 @@ Object.assign(Game.prototype, {
   c5Echo(text, dur) {
     const c = this.cine;
     const el = $('cineSub');
-    el.innerHTML = `<b style="color:#7fc8ff">ECHO</b><span>${escHtml(text)}</span>`;
+    el.innerHTML = `<b style="color:#7fc8ff">ECHO</b><span>${escHtml(this.subText ? this.subText(text) : text)}</span>`;
     el.classList.remove('radio');
     el.classList.add('on');
     c.subUntil = c.t + dur;
