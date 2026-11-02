@@ -166,6 +166,17 @@ export class Projectile {
       return;
     }
     const mid = prev.clone().addScaledVector(seg, 0.5);
+    // 打到地下的岩頂（docs/destruction-design.md 第 6 期）
+    // （拋物線的砲彈不算：照舊越過岩頂打到目標）
+    if (
+      g.world.roofMesh &&
+      !this.gravity &&
+      this.pos.y > g.world.roofLow &&
+      g.roofDamage(this.pos, this.dmg, this.attr || 'kin')
+    ) {
+      this.impact(null);
+      return;
+    }
     if (g.world.hitsWorld(this.pos) || g.world.hitsWorld(mid) || this.life <= 0) {
       this.impact(null);
     }

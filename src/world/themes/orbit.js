@@ -343,6 +343,7 @@ function buildStructures(w) {
     slab.position.set(cx, (H - 2) * G, cz);
     w.scene.add(slab);
     w.meshes.push(slab);
+    (w.rimMeshes = w.rimMeshes || []).push(slab); // 平台外緣（打得掉：docs/destruction-design.md 第 6 期）
   }
 }
 function buildProps(w) {

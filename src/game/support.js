@@ -291,7 +291,11 @@ Object.assign(Game.prototype, {
       if (f.dmgT > 0) continue;
       f.dmgT = 0.25;
       const dir = new THREE.Vector3(f.dx, 0, f.dz);
-      for (const t of this.hostilesOf(f.team, f.src)) {
+      const L =
+        f.team === 'all'
+          ? [...this.playersAlive(), ...this.allies, ...this.enemies]
+          : this.hostilesOf(f.team, f.src);
+      for (const t of L) {
         if (
           t.dead ||
           t.flying ||

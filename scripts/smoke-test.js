@@ -24372,6 +24372,7 @@ async function testDestructCollapse(browser, base) {
         y0 = pl.pos.y;
       window.__pump(5);
       out.fell = pl.pos.y < y0 - 1;
+      out.dy = +(pl.pos.y - y0).toFixed(1) + '/' + +(bb.min.y - w.groundAt((bb.min.x + bb.max.x) / 2, (bb.min.z + bb.max.z) / 2, bb.min.y)).toFixed(1);
       out.landed = !!B.landed;
       out.wreck = !!B.wreck && w.obstacles.includes(B.wreck);
       out.gone = !B.obs.some((o) => w.obstacles.includes(o));
@@ -24405,10 +24406,162 @@ async function testDestructCollapse(browser, base) {
     );
     check(
       r.hurt && (mode !== 'drop' || r.fell),
-      `${map}：壓到的玩家受傷${mode === 'drop' ? '、站在甲板上的跟著掉' : ''}`,
+      `${map}：壓到的玩家受傷${mode === 'drop' ? '、站在甲板上的跟著掉' : ''}（${r.hurt},${r.fell},${r.dy},${r.landed},${r.ev}）`,
     );
     check(r.cli !== false, `${map}：客機套用血量表時直接躺好`);
     await page.screenshot({ path: path.join(SHOT_DIR, `destruct-collapse-${map}.png`) });
+    await thawLoop(page);
+    await ctx.close();
+  }
+}
+
+// 地圖物件的破壞 第 6 期：巨型結構的局部打穿——壩體的缺口與水流、Grid 086 的甲板格子、隧道口坍方、岩頂開洞、
+// 平台外緣；出生點附近只受損（docs/destruction-design.md）
+async function testDestructSegs(browser, base) {
+  console.log('地圖物件的破壞：局部打穿（壩體、甲板格子、隧道口、岩頂、平台外緣）');
+  for (const map of ['dam', 'grid086', 'institute', 'xylem', 'industrial']) {
+    const { ctx, page } = await newPage(browser, 'segs-' + map);
+    await page.goto(base);
+    await waitVisible(page, 'title');
+    await page.evaluate(async (map) => {
+      const G = window.__game;
+      await G.lmRefresh();
+      G.save.level = 1;
+      localStorage.setItem('rubicon_map', map);
+      localStorage.setItem('rubicon_variant', 'base');
+      G.startMission();
+    }, map);
+    check(await waitVisible(page, 'hudWrap', 20000), `局部打穿（${map}）：出擊`);
+    await freezeLoop(page);
+    const r = await page.evaluate((map) => {
+      const g = window.__game,
+        w = g.world,
+        pl = g.player;
+      for (const e of g.enemies) {
+        e.dead = true;
+        g.scene.remove(e.mesh);
+      }
+      g.enemies = [];
+      g.waves = [];
+      g.wavePend = null;
+      window.__pump(0.1); // 記下出生點（segProtected）
+      const out = {};
+      const far = (p) => {
+        const c = p.center();
+        return Math.hypot(c.x - pl.pos.x, c.z - pl.pos.z) > 60;
+      };
+      const kill = (p) => g.damageProp(p, 1e8, 0, p.center(), pl, 'none');
+      if (map === 'dam') {
+        const secs = w.props.filter((p) => p.seg === 'dam');
+        out.n = secs.length;
+        // 最深的一段（兩岸的壩體很矮）
+        const s = secs
+          .filter((p) => far(p) && w.terrainHeight(p.shape.cx, p.shape.cz) < p.shape.y1 - 8)
+          .sort((a, b) => a.shape.y0 - b.shape.y0)[0];
+        const rec = s.rec;
+        const n0 = rec.obs.length;
+        const fl0 = (g.flows || []).length;
+        kill(s);
+        out.breach = s.dead && rec.obs.length >= 1 && rec.obs.length <= n0 + 1;
+        // 缺口的中間沒有碰撞（只剩低的瓦礫）
+        const cx = (s.a + s.b) / 2;
+        out.open = w.groundAt(cx, rec.ob.z, rec.ob.top + 5) < rec.ob.top - 3;
+        out.dbg = [
+          n0,
+          rec.obs.length,
+          +w.groundAt(cx, rec.ob.z, rec.ob.top + 5).toFixed(1),
+          +rec.ob.top.toFixed(1),
+          +s.shape.y0.toFixed(1),
+          s.dead,
+        ];
+        out.flow = (g.flows || []).length > fl0;
+        // 出生點附近的只受損
+        const near = secs.find((p) => !far(p) && !p.dead && g.segProtected(p));
+        if (near) {
+          kill(near);
+          out.prot = !near.dead && near.hp >= 1;
+        }
+      } else if (map === 'grid086') {
+        const T = w.props.filter((p) => p.grid && !p.collapsed && far(p) && p.sup.length);
+        out.n = T.length;
+        const t = T[0];
+        const top = t.ob.top;
+        const shared = t.sup.filter((q) => q.ofs.length > 1).length;
+        out.shared = shared;
+        kill(t);
+        window.__pump(3);
+        out.drop = t.collapsed && t.landed && !w.obstacles.includes(t.ob) && t.wreck.top < top - 3;
+        out.pillars = t.sup.filter((q) => q.ofs.length > 1).every((q) => !q.dead); // 旁邊的格子的支柱還在
+      } else if (map === 'institute') {
+        out.roof = !!w.roofMesh;
+        const C = w.roofCell;
+        const x = pl.pos.x + 80,
+          z = pl.pos.z;
+        let hits = 0;
+        while (!(g.roofGone || []).length && hits < 100) {
+          g.roofDamage(new THREE.Vector3(x, w.roofLow + 1, z), 2000, 'exp');
+          hits++;
+        }
+        out.hole = (g.roofGone || []).length === 1;
+        const k = g.roofGone[0];
+        // 洞的格子裡的三角形拿掉了、地上有瓦礫
+        const pos = w.roofMesh.geometry.attributes.position;
+        let inCell = 0;
+        const [ix, iz] = k.split(',').map(Number);
+        for (let i = 0; i < pos.count; i += 3) {
+          const cx = (pos.getX(i) + pos.getX(i + 1) + pos.getX(i + 2)) / 3,
+            cz = (pos.getZ(i) + pos.getZ(i + 1) + pos.getZ(i + 2)) / 3;
+          if (cx >= ix * C && cx < (ix + 1) * C && cz >= iz * C && cz < (iz + 1) * C) inCell++;
+        }
+        out.cell = inCell === 0;
+        out.through = !g.roofDamage(new THREE.Vector3(x, w.roofLow + 1, z), 2000, 'exp');
+        out.tbl = (g.propNetTable() || []).some((e) => e[0] === 'r');
+      } else if (map === 'xylem') {
+        const R = w.props.filter((p) => p.seg === 'rim');
+        out.n = R.length;
+        const rr = R.find(far);
+        const tri = () =>
+          rr.meshes.reduce(
+            (a, m) =>
+              a + (m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count) / 3,
+            0,
+          );
+        const t0 = tri();
+        kill(rr);
+        const t1 = tri();
+        out.rim = rr.dead && t1 < t0 && !rr.wreck;
+      } else {
+        const T = w.props.filter((p) => p.seg === 'tunnel');
+        out.n = T.length;
+        if (T[0]) {
+          kill(T[0]);
+          out.tunnel = T[0].dead && !!T[0].wreck && T[0].wreck.top - T[0].wreck.y <= 2.5;
+        }
+      }
+      window.__pump(1);
+      return out;
+    }, map);
+    if (map === 'dam') {
+      check(
+        r.n > 0 && r.breach && r.open,
+        `壩體分成 ${r.n} 段：打穿一段變成缺口（中間沒有碰撞）（${r.dbg}）`,
+      );
+      check(r.flow, '壩體的缺口：上游的水從缺口噴出（水流）');
+      check(r.prot !== false, '出生點附近的壩體只受損');
+    } else if (map === 'grid086') {
+      check(r.n > 0 && r.drop, `Grid 086 的甲板格子（${r.n} 格）：整格掉下去、碰撞換到下面`);
+      check(r.pillars, `共用的支柱留著（${r.shared} 根撐著旁邊的格子）`);
+    } else if (map === 'institute') {
+      check(
+        r.roof && r.hole && r.cell && r.through && r.tbl,
+        '岩頂開洞：拿掉那一格、子彈從洞穿過去、血量表帶著',
+      );
+    } else if (map === 'xylem') {
+      check(r.n > 0 && r.rim, `平台外緣（${r.n} 段）：打掉的那一段掉進虛空`);
+    } else {
+      check(r.n === 0 || r.tunnel, `隧道口（${r.n} 座）：坍方留下低的岩塊`);
+    }
+    await page.screenshot({ path: path.join(SHOT_DIR, `destruct-seg-${map}.png`) });
     await thawLoop(page);
     await ctx.close();
   }
@@ -24420,6 +24573,7 @@ const STEPS = [
   ['testMaps', (c) => testMaps(c.browser, c.base + '?test')],
   ['testDestruct', (c) => testDestruct(c.browser, c.base + '?test')],
   ['testDestructCollapse', (c) => testDestructCollapse(c.browser, c.base + '?test')],
+  ['testDestructSegs', (c) => testDestructSegs(c.browser, c.base + '?test')],
   ['testSaves', (c) => testSaves(c.browser, c.base + '?test')],
   ['testPilot', (c) => testPilot(c.browser, c.base)],
   ['testLibrary', (c) => testLibrary(c.browser, c.base)],

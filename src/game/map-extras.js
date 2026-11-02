@@ -200,6 +200,10 @@ Object.assign(Game.prototype, {
         this.propApplyDie(e);
         return true;
       }
+      case 'roofx': {
+        this.roofBreak(e.k, false); // 岩頂開洞（game/destruct.js）
+        return true;
+      }
       case 'pcol': {
         this.propApplyCollapse(e); // 結構倒下（game/destruct.js）
         return true;

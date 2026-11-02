@@ -16,6 +16,7 @@ import {
 import { mergeStatic } from '../render/mesh-merge.js';
 import { propHpFor, propMatOf } from '../data/destruct.js';
 import { buildWreck } from './prop-wreck.js';
+import { tessellate } from './prop-split.js';
 import {
   LANE_MARK,
   RAIL_STRIPS,
@@ -428,6 +429,7 @@ export class World {
     this.regRest();
     this.regStructs();
     this.regDecks();
+    this.regSegs();
     // 邊界外的遠景地形與剪影物件（edges.js，獨立的亂數串，不影響上面的生成）
     withRng(seed * 97 + 41, () => {
       for (const o of buildBackdrop(this) || []) {
@@ -1085,6 +1087,11 @@ export class World {
     );
     m.position.y = R.y;
     m.userData.noFade = true; // 岩頂：俯視鏡頭本來就看得穿
+    // 岩頂開洞（game/destruct.js 的 roofDamage）：格子＝平面的一格
+    this.roofMesh = m;
+    this.roofY = R.y;
+    this.roofLow = R.y - (R.bump || 8 * G);
+    this.roofCell = ((FAR_R + 40) * 2) / 48;
     this.scene.add(m);
     this.meshes.push(m);
   }
@@ -2272,6 +2279,7 @@ export class World {
         sp.support = true;
         sp.body = null;
         sp.of = body;
+        sp.ofs = [body];
         body.sup.push(sp);
       }
       body.hp = body.maxHp = Math.round(hpSum * 1.5);
@@ -2318,7 +2326,7 @@ export class World {
   // 承重的全壞時甲板掉到地上（propDrop）。虛空上的橋不會斷：沒有承重、最多打到第 3 階段
   regDecks() {
     const decks = this.obstacles.filter(
-      (o) => o.deck && !o.prop && !o.seg && o.group && o.group !== this.decorG,
+      (o) => o.deck && !o.prop && (!o.seg || o.seg === 'grid') && o.group && o.group !== this.decorG,
     );
     const claimed = new Set();
     for (const ob of decks) {
@@ -2337,6 +2345,14 @@ export class World {
       body.sup = [];
       body.mode = 'drop';
       body.ramps = this.rampsNear(b);
+      // Grid 086 的甲板格子：直接打得壞（整格掉下去），四角的支柱和旁邊的格子共用
+      const grid = ob.seg === 'grid';
+      if (grid) {
+        body.grid = true;
+        body.seg = 'grid';
+        body.noDie = false;
+        body.name = '甲板格子';
+      }
       // 虛空上的橋：不會斷
       let vd = false;
       for (const [u, v] of [
@@ -2361,9 +2377,7 @@ export class World {
       const under = this.obstacles.filter(
         (o) =>
           !o.deck &&
-          !o.prop &&
-          !o.seg &&
-          !claimed.has(o) &&
+          (grid ? o.seg === 'grid' : !o.prop && !o.seg && !claimed.has(o)) &&
           o.group &&
           o.group !== this.decorG &&
           Math.abs(o.x - cx) < hx + (o.kind === 'box' ? o.w / 2 : o.r) &&
@@ -2373,6 +2387,12 @@ export class World {
       let hpSum = 0;
       for (const o of under) {
         claimed.add(o);
+        if (o.prop) {
+          // 共用的支柱（Grid 086）：撐著好幾格
+          o.prop.ofs.push(body);
+          body.sup.push(o.prop);
+          continue;
+        }
         const ob2 = this.obBox(o);
         const s2 = ob2.getSize(new THREE.Vector3());
         const hp = Math.max(3000, Math.min(9000, propHpFor(Math.min(s2.y, 8), s2.x, s2.z, mat0) * 1.5));
@@ -2381,8 +2401,13 @@ export class World {
         sp.support = true;
         sp.sep = true; // 有自己的模型與碰撞：損毀時照一般的物件換成殘骸
         sp.of = body;
+        sp.ofs = [body];
         body.sup.push(sp);
         hpSum += hp;
+      }
+      if (grid) {
+        body.hp = body.maxHp = 12000;
+        continue;
       }
       if (!under.length) {
         // 沒有找到：甲板沿長邊分段（打斷這幾段就掉下來）
@@ -2410,12 +2435,169 @@ export class World {
           sp.name = '橋面的接縫';
           sp.support = true;
           sp.of = body;
+          sp.ofs = [body];
           body.sup.push(sp);
           hpSum += hp;
         }
       }
       body.hp = body.maxHp = Math.round(hpSum * 1.5);
     }
+  }
+  // 跟地形連在一起的巨型結構的局部打穿（docs/destruction-design.md 第 6 期）：每一段各自是一個物件（沒有自己的碰撞，
+  // p.seg）——壩體每 12～16 m 一段、隧道口、洋上都市與高空軌道的平台外緣每 ~30 m 一段。岩頂不在這裡（Game 的 roofDamage
+  // 依格子記血量，不進 props，不拖慢投射物的判定）。不用亂數
+  regSegs() {
+    // 壩體：沿 X 分段
+    this.damRecs = [];
+    for (const ob of this.obstacles.filter((o) => o.seg === 'dam')) {
+      const x0 = ob.x - ob.w / 2,
+        x1 = ob.x + ob.w / 2;
+      const n = Math.max(1, Math.round(ob.w / 14));
+      const rec = { ob, obs: [ob], x0, x1, secs: [], seg: 'dam' };
+      tessellate(ob.group, 7); // 一片牆是整段長的三角形：細分才切得出缺口
+      for (let i = 0; i < n; i++) {
+        const a = x0 + (ob.w * i) / n,
+          b = x0 + (ob.w * (i + 1)) / n;
+        if (Math.abs((a + b) / 2) > this.limOut || Math.abs(ob.z) > this.limOut) continue; // 場地外的不登記
+        const sob = {
+          kind: 'box',
+          x: (a + b) / 2,
+          z: ob.z,
+          w: b - a,
+          d: ob.d,
+          y: ob.y,
+          top: ob.top,
+          group: ob.group,
+          mats: ob.mats,
+          box: new THREE.Box3(
+            new THREE.Vector3(a, ob.y, ob.z - ob.d / 2),
+            new THREE.Vector3(b, ob.top, ob.z + ob.d / 2),
+          ),
+        };
+        const sp = this.regProp('damseg', sob, 14000, 0, []);
+        sp.name = '壩體';
+        sp.seg = 'dam';
+        sp.rec = rec;
+        sp.a = a;
+        sp.b = b;
+        sp.lowWreck = true;
+        rec.secs.push(sp);
+      }
+      this.damRecs.push(rec);
+    }
+    // 隧道口：拱門與門柱（外框的下面 30 m）
+    for (const g of this.tunnels || []) {
+      g.updateMatrixWorld(true);
+      const b = new THREE.Box3().setFromObject(g);
+      if (b.isEmpty()) continue;
+      b.max.y = Math.min(b.max.y, b.min.y + 30);
+      tessellate(g, 6);
+      const sob = this.unionOb([{ mats: fadeMatsOf(g) }], b, g, b.min.y);
+      const sp = this.regProp('tunnel', sob, 16000, 0, []);
+      sp.name = '隧道口';
+      sp.seg = 'tunnel';
+      sp.lowWreck = true;
+      sp.mat = 'rock';
+    }
+    // 平台外緣：每個街區的四邊，每 ~30 m 一段（外側 3 m 寬的帶）
+    if (this.islands && this.rimMeshes && this.rimMeshes.length) {
+      // 整條的方塊（洋上都市的護欄）細分：三角形的重心要分散在各段裡才切得開
+      for (const m of this.rimMeshes) {
+        const P = m.geometry && m.geometry.parameters;
+        if (m.geometry && m.geometry.type === 'BoxGeometry' && P) {
+          const L = Math.max(P.width, P.depth);
+          const n = Math.max(1, Math.round(L / 4));
+          m.geometry = new THREE.BoxGeometry(
+            P.width,
+            P.height,
+            P.depth,
+            P.width >= P.depth ? n : 1,
+            1,
+            P.width >= P.depth ? 1 : n,
+          );
+        }
+      }
+      for (const bk of this.islands.blocks) {
+        const top = this.terrainHeight((bk.x0 + bk.x1) / 2, (bk.z0 + bk.z1) / 2);
+        const edges = [
+          [bk.x0, bk.z0, bk.x1, bk.z0, 0, -1],
+          [bk.x0, bk.z1, bk.x1, bk.z1, 0, 1],
+          [bk.x0, bk.z0, bk.x0, bk.z1, -1, 0],
+          [bk.x1, bk.z0, bk.x1, bk.z1, 1, 0],
+        ];
+        for (const [ax, az, bx, bz, nx, nz] of edges) {
+          const len = Math.hypot(bx - ax, bz - az);
+          const n = Math.max(1, Math.round(len / 30));
+          for (let i = 0; i < n; i++) {
+            const t0 = i / n,
+              t1 = (i + 1) / n;
+            const px0 = ax + (bx - ax) * t0,
+              px1 = ax + (bx - ax) * t1,
+              pz0 = az + (bz - az) * t0,
+              pz1 = az + (bz - az) * t1;
+            const box = new THREE.Box3(
+              new THREE.Vector3(
+                Math.min(px0, px1) - (nx ? 3 : 0),
+                top - 8,
+                Math.min(pz0, pz1) - (nz ? 3 : 0),
+              ),
+              new THREE.Vector3(
+                Math.max(px0, px1) + (nx ? 3 : 0),
+                top + 2.5,
+                Math.max(pz0, pz1) + (nz ? 3 : 0),
+              ),
+            );
+            const meshes = this.rimMeshes.filter((m) => {
+              m.updateMatrixWorld(true);
+              return new THREE.Box3().setFromObject(m).intersectsBox(box);
+            });
+            if (!meshes.length) continue;
+            const sob = this.unionOb([{ mats: [] }], box, null, box.min.y);
+            const sp = this.regProp('rim', sob, 5000, 0, []);
+            sp.name = '平台外緣';
+            sp.seg = 'rim';
+            sp.mat = 'metal';
+            sp.meshes = meshes;
+            sp.noWreckSeg = true;
+          }
+        }
+      }
+    }
+  }
+  // 壩體的一段打穿：沒打穿的部分重新做成碰撞方塊（每一個連續的區間一個）
+  damBreach(sp) {
+    const rec = sp.rec;
+    for (const ob of rec.obs) {
+      const i = this.obstacles.indexOf(ob);
+      if (i >= 0) this.obstacles.splice(i, 1);
+      const j = this.occluders.indexOf(ob);
+      if (j >= 0) this.occluders.splice(j, 1);
+    }
+    const o0 = rec.ob;
+    rec.obs = [];
+    let a = null;
+    const flush = (b) => {
+      if (a === null || b - a < 0.5) return;
+      const ob = {
+        ...o0,
+        x: (a + b) / 2,
+        w: b - a,
+        box: new THREE.Box3(
+          new THREE.Vector3(a, o0.y, o0.z - o0.d / 2),
+          new THREE.Vector3(b, o0.top, o0.z + o0.d / 2),
+        ),
+      };
+      this.obstacles.push(ob);
+      this.occluders.push(ob);
+      rec.obs.push(ob);
+    };
+    for (const s of rec.secs) {
+      if (s.dead) {
+        flush(s.a);
+        a = null;
+      } else if (a === null) a = s.a;
+    }
+    flush(rec.x1);
   }
   nearRamp(b) {
     return (this.ramps || []).some(
@@ -2444,6 +2626,7 @@ export class World {
     if (p.dead) return;
     p.dead = true;
     p.hp = Math.min(p.hp, 0);
+    if (p.seg && !p.grid) return; // 巨型結構的一段（壩體、隧道口、平台外緣）：Game 的 propSegDown 演出
     if (p.support && !p.sep) return; // 承重柱：結構的碰撞與模型不動（Game 的 propSupportDown 演出、全壞時倒塌）
     for (const ob of p.obs || [p.ob]) {
       const i = this.obstacles.indexOf(ob);
@@ -2551,6 +2734,7 @@ export class World {
       g.rotation.y = Math.atan2(t.x, t.y) + (sgn > 0 ? Math.PI : 0);
       this.scene.add(g);
       this.meshes.push(g);
+      (this.tunnels = this.tunnels || []).push(g); // 隧道口（坍方：docs/destruction-design.md 第 6 期）
     }
     this.corridorHalf = half;
   }

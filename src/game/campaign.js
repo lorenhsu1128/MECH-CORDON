@@ -688,6 +688,7 @@ Object.assign(Game.prototype, {
   },
   // 地面光環＋光柱＋標籤（出口、補給台、資料終端共用；不碰撞、不投影）
   campRing(pos, color, title, sub, r = PAD_R) {
+    if (this.world) (this.world.protect = this.world.protect || []).push(pos.clone()); // 地圖物件的局部打穿避開（destruct.js）
     const col = new THREE.Color(color);
     const g = new THREE.Group();
     g.position.copy(pos);

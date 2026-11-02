@@ -28,6 +28,9 @@ const WARN_T = 1.5; // 倒塌：預警的秒數
 const FALL_T = 1.4; // 倒下的秒數
 const SINK_T = 2; // 往下塌的秒數
 const DROP_T = 1; // 甲板掉下來的秒數
+const SEG_SAFE = 25; // 局部打穿：出生點、出口、目標附近幾公尺內只受損
+const BREACH_FLOW_T = 40; // 壩體缺口的水流持續幾秒
+const ROOF_HP = 9000; // 岩頂每一格的血量
 
 const GEO_OWNER = new WeakMap(); // 幾何 → 改了它的物件（共用的幾何先複製一份）
 const BLACK = new THREE.Color(0);
@@ -52,11 +55,17 @@ Object.assign(Game.prototype, {
     this.propFlash(p);
     this.popDamage(at || p.center(), d, false, false, false, 0, -1, impact);
     (this.propDirty || (this.propDirty = new Set())).add(p);
+    if (p.hp <= 0 && (p.seg || p.grid) && this.segProtected(p)) p.hp = 1; // 出生點、出口、目標附近只受損
     if (p.hp <= 0) {
       const src = from && from.pos ? from.pos : at;
       const dir = src ? p.center().sub(src).setY(0) : null;
       if (dir && dir.lengthSq() > 1e-4) dir.normalize();
-      this.propKill(p, dir);
+      if (p.body) {
+        // 直接打得壞的甲板格子（Grid 086）：整格掉下去
+        this.propDirty && this.propDirty.delete(p);
+        this.netEv({ t: 'pcol', i: p.idx, d: 0 });
+        this.propCollapse(p, 0, false);
+      } else this.propKill(p, dir);
     } else this.propStageCheck(p);
   },
   // 完全損毀（房主／單機）：o.cr＝被踩平
@@ -64,7 +73,8 @@ Object.assign(Game.prototype, {
     if (p.dead) return;
     this.propDirty && this.propDirty.delete(p);
     this.world.destroyProp(p, this.fx, { dir, cr: o.cr });
-    if (p.support && !p.sep) this.propSupportDown(p, false);
+    if (p.seg) this.propSegDown(p, false);
+    else if (p.support && !p.sep) this.propSupportDown(p, false);
     else this.propWreckFx(p);
     this.netEv({
       t: 'propDie',
@@ -73,11 +83,13 @@ Object.assign(Game.prototype, {
       cr: o.cr ? 1 : 0,
     });
     // 承重柱全壞：結構倒下（方向依最後一擊；客機收到 pcol 照同樣的方向演出）
-    if (p.support && p.of.sup.every((q) => q.dead) && !p.of.collapsed && !p.of.noCollapse) {
-      const di = this.propFallDir(p.of, dir);
-      this.netEv({ t: 'pcol', i: p.of.idx, d: di });
-      this.propCollapse(p.of, di, false);
-    }
+    if (p.support)
+      for (const b of p.ofs || [p.of])
+        if (b.sup.every((q) => q.dead) && !b.collapsed && !b.noCollapse && !(b.seg && this.segProtected(b))) {
+          const di = this.propFallDir(b, dir);
+          this.netEv({ t: 'pcol', i: b.idx, d: di });
+          this.propCollapse(b, di, false);
+        }
     this.lvPropDown(p); // 自訂關卡的觸發器（物件被破壞）
     if (!o.cr) this.rumbleAt(p.center(), 0.5, 0.3, 160, 30);
   },
@@ -95,8 +107,8 @@ Object.assign(Game.prototype, {
     const st0 = p.st || 0;
     if (st <= st0) return;
     p.st = st;
-    if (p.support) {
-      // 承重柱：只噴碎板（模型是整個結構共用的，焦黑與脫落由結構本體決定）
+    if (p.support || (p.seg && !p.grid)) {
+      // 承重柱、巨型結構的一段：只噴碎板（模型是整個結構共用的，焦黑與脫落由結構本體決定）
       if (!quiet && this.fx) this.propShards(p, st >= 3 && st0 < 3 ? 3 : 1);
       return;
     }
@@ -269,6 +281,12 @@ Object.assign(Game.prototype, {
       this.propW = w;
       this.propActive = [];
       this.propT = fx.time;
+      this.roofHp = {};
+      this.roofGone = [];
+      // 出生點：局部打穿避開（segProtected）
+      w.protect = (w.protect || []).concat(
+        (this.players || [this.player]).filter(Boolean).map((p) => p.pos.clone()),
+      );
     }
     const dt = fx.time - this.propT;
     this.propT = fx.time;
@@ -424,7 +442,10 @@ Object.assign(Game.prototype, {
     b.dead = true;
     b.hp = 0;
     b.colDir = di;
-    for (const q of b.sup) if (!q.dead) w.destroyProp(q, null, { quiet: true });
+    // 承重的一起拿掉（共用的支柱：撐著的格子都倒了才拿掉）
+    for (const q of b.sup)
+      if (!q.dead && (q.ofs || [q.of]).every((x) => x === b || x.collapsed))
+        w.destroyProp(q, null, { quiet: true });
     for (const ob of b.obs) {
       const i = w.obstacles.indexOf(ob);
       if (i >= 0) w.obstacles.splice(i, 1);
@@ -814,6 +835,203 @@ Object.assign(Game.prototype, {
       fling(fx, this.world, o, out, big ? 6 : 4.5);
     }
   },
+  // ---------- 巨型結構的局部打穿（docs/destruction-design.md 第 6 期）----------
+  // 出生點、出口與補給台（campRing）、目標物與護送車隊附近的只受損：打穿會讓那裡到不了
+  segProtected(p) {
+    const w = this.world,
+      sh = p.shape;
+    const near = (x, z) => {
+      const dx = Math.max(sh.x0 - x, 0, x - sh.x1),
+        dz = Math.max(sh.z0 - z, 0, z - sh.z1);
+      return dx * dx + dz * dz < SEG_SAFE * SEG_SAFE;
+    };
+    for (const q of w.protect || []) if (near(q.x, q.z)) return true;
+    for (const e of this.enemies || [])
+      if (!e.dead && (e.ai === 'objective' || e.ai === 'convoy') && near(e.pos.x, e.pos.z)) return true;
+    for (const e of this.allies || [])
+      if (!e.dead && (e.ai === 'objective' || e.ai === 'convoy') && near(e.pos.x, e.pos.z)) return true;
+    return false;
+  },
+  // 一段打穿（quiet＝只套結果：重連、血量表）
+  propSegDown(p, quiet) {
+    const w = this.world,
+      fx = this.fx;
+    const sh = p.shape;
+    const box = new THREE.Box3(
+      new THREE.Vector3(sh.x0, sh.y0, sh.z0),
+      new THREE.Vector3(sh.x1, sh.y1, sh.z1),
+    );
+    const big = box.clone().expandByScalar(0.4);
+    if (p.seg === 'dam') {
+      // 壩體的扶壁、上下游面在碰撞的厚度之外：深度方向放寬
+      big.min.z -= 12;
+      big.max.z += 12;
+    }
+    const size = Math.cbrt((sh.x1 - sh.x0) * (sh.z1 - sh.z0) * Math.max(1, sh.y1 - sh.y0));
+    const pieces = [];
+    const cut = (root) => {
+      if (!root) return;
+      const r = splitTris(root, (c) => (big.containsPoint(c) ? 1 : 0), {
+        cell: Math.max(2, Math.min(7, size / 2.5)),
+        max: quiet ? 0 : 5,
+        keepOut: quiet,
+      });
+      pieces.push(...r.pieces);
+    };
+    if (p.seg === 'rim') for (const m of p.meshes || []) cut(m);
+    else cut(p.ob.group);
+    if (p.seg === 'dam') {
+      w.damBreach(p);
+      // 放在這一段上面的物件（壩頂的機房、路燈…）掉下來摔壞
+      if (!(this.net && this.net.role === 'client'))
+        for (const q of w.props || []) {
+          if (q.dead || q.seg || q === p) continue;
+          const s2 = q.shape;
+          const cx = (s2.x0 + s2.x1) / 2,
+            cz = (s2.z0 + s2.z1) / 2;
+          if (cx < sh.x0 || cx > sh.x1 || cz < sh.z0 - 1 || cz > sh.z1 + 1 || s2.y0 < sh.y1 - 2) continue;
+          this.propDamage(q, 1e7, 0, q.center(), null, 'none');
+        }
+    }
+    // 殘骸：壩體的缺口底部與隧道口前面的岩塊（低的瓦礫，機甲走得過去）；平台外緣的掉進虛空
+    if (!p.noWreckSeg) {
+      if (p.seg === 'tunnel') p.mat = 'rock';
+      w.addWreck(p);
+    }
+    if (p.seg === 'tunnel' && p.ob.group) this.propChar(p, 0.5);
+    this.propWreckFx(p);
+    // 壩體打穿：上游有水時從缺口噴出水流（推走、受傷；所有人）
+    if (p.seg === 'dam' && !(this.net && this.net.role === 'client') && w.dam && w.theme.water) {
+      const up = w.dam.up || 1;
+      if (w.theme.water.level > sh.y0 + 1) {
+        this.addFlow({
+          x: (sh.x0 + sh.x1) / 2,
+          z: w.dam.zc,
+          dx: 0,
+          dz: -up,
+          len: 48 * w.k,
+          hw: (sh.x1 - sh.x0) / 2,
+          t: BREACH_FLOW_T,
+          dps: 90,
+          team: 'all',
+        });
+      }
+    }
+    if (quiet || !fx) return;
+    this.propFling(p, pieces);
+    const c = box.getCenter(new THREE.Vector3());
+    const M = PMAT[p.mat] || PMAT.metal;
+    local(fx, () => {
+      fx.dust(
+        new THREE.Vector3(c.x, sh.y0 + 0.5, c.z),
+        Math.max(3, Math.min(9, size * 0.5)),
+        12,
+        M.col !== undefined ? M.col : 0x9aa0a8,
+      );
+      fx.explosion(c, Math.max(2, size * 0.3), 0xc0b090, true);
+      if (p.seg === 'tunnel') this.fx.shatterProp({ ...p, mat: 'rock', crushed: false }, w, {});
+    });
+    SFX.netDepth++;
+    try {
+      SFX.explode(true, c);
+      SFX.wreck(c);
+    } finally {
+      SFX.netDepth--;
+    }
+    this.rumbleAt(c, 0.8, 0.6, 320, size + 40);
+  },
+  // 地下的岩頂（技研都市、礦坑的坑道網）：投射物打到岩頂的格子（房主／單機），血量打完就開洞
+  roofDamage(pos, dmg, attr) {
+    const w = this.world;
+    if (this.net && this.net.role === 'client') return true;
+    const C = w.roofCell;
+    const ix = Math.floor(pos.x / C),
+      iz = Math.floor(pos.z / C);
+    if (Math.abs(ix * C) > w.limOut + C || Math.abs(iz * C) > w.limOut + C) return true;
+    const k = ix + ',' + iz;
+    if ((this.roofGone || []).includes(k)) return false; // 已經是洞：穿過去
+    const H = this.roofHp || (this.roofHp = {});
+    if (H[k] === undefined) H[k] = ROOF_HP;
+    H[k] -= dmg * propAttrK('rock', attr);
+    if (H[k] <= 0) {
+      this.netEv({ t: 'roofx', k });
+      this.roofBreak(k, false);
+    }
+    return true;
+  },
+  // 岩頂開洞：拿掉那一格、落石、光柱照進來、地上留下岩塊
+  roofBreak(k, quiet) {
+    const w = this.world;
+    const G = this.roofGone || (this.roofGone = []);
+    if (G.includes(k) || !w.roofMesh) return;
+    G.push(k);
+    const C = w.roofCell;
+    const [ix, iz] = k.split(',').map(Number);
+    const x0 = ix * C,
+      z0 = iz * C,
+      cx = x0 + C / 2,
+      cz = z0 + C / 2;
+    splitTris(w.roofMesh, (c) => (c.x >= x0 && c.x < x0 + C && c.z >= z0 && c.z < z0 + C ? 1 : 0), {
+      max: 0,
+      keepOut: true,
+    });
+    // 光柱：從洞照到地上（加色、不寫深度）
+    const gy = w.groundAt(cx, cz, w.roofLow);
+    const h = w.roofY - gy;
+    const shaft = new THREE.Mesh(
+      new THREE.CylinderGeometry(C * 0.3, C * 0.42, h, 16, 1, true),
+      new THREE.MeshBasicMaterial({
+        color: 0xfff0d0,
+        transparent: true,
+        opacity: 0.07,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      }),
+    );
+    shaft.position.set(cx, gy + h / 2, cz);
+    shaft.userData.noFade = true;
+    this.scene.add(shaft);
+    // 地上的岩塊（低的瓦礫）
+    const ps = { x0: cx - C * 0.3, x1: cx + C * 0.3, z0: cz - C * 0.3, z1: cz + C * 0.3, y0: gy, y1: gy + 6 };
+    const pseudo = {
+      shape: ps,
+      shape0: ps,
+      mat: 'rock',
+      col: 0x2a2622,
+      idx: 900000 + (ix + 500) * 1000 + (iz + 500),
+      lowWreck: true,
+    };
+    w.addWreck(pseudo);
+    if (quiet || !this.fx) return;
+    const fx = this.fx;
+    const list = [];
+    for (let i = 0; i < 14; i++) {
+      const q = 1 + Math.random() * 2.5;
+      list.push({
+        geo: new THREE.DodecahedronGeometry(q, 0),
+        pos: new THREE.Vector3(
+          cx + (Math.random() - 0.5) * C * 0.6,
+          w.roofLow - 2,
+          cz + (Math.random() - 0.5) * C * 0.6,
+        ),
+        origin: new THREE.Vector3(cx, w.roofY + 10, cz),
+        sp: 0.3,
+      });
+    }
+    local(fx, () => {
+      fx.propDebris(list, 0x3a342c, w, null);
+      fx.dust(new THREE.Vector3(cx, gy + 0.5, cz), Math.min(9, C * 0.15), 14, 0x9a8f80);
+      fx.explosion(new THREE.Vector3(cx, w.roofLow, cz), 4, 0xc0b090, true);
+    });
+    SFX.netDepth++;
+    try {
+      SFX.explode(true, new THREE.Vector3(cx, w.roofLow, cz));
+      SFX.wreck(new THREE.Vector3(cx, gy, cz));
+    } finally {
+      SFX.netDepth--;
+    }
+  },
   // ---------- 踩平（房主／單機）----------
   // 機甲（玩家、敵人、友軍、載具）在地上移動、腳的範圍碰到雜物（data/destruct.js 的 propCrushable）就直接變成殘骸：
   // 不算傷害數字與賞金，機甲稍微減速；客機收到帶 cr 的 propDie 自己演出
@@ -873,6 +1091,7 @@ Object.assign(Game.prototype, {
     for (const p of (this.world && this.world.props) || [])
       if (p.collapsed) out.push([p.idx, 0, p.colDir]);
       else if (p.hp < p.maxHp && !p.genGone) out.push([p.idx, Math.round(p.hp)]);
+    for (const k of this.roofGone || []) out.push(['r', k]); // 岩頂的洞
     return out;
   },
   // 客機：套用一個物件的血量（表或事件）；flash＝事件來的（閃一下）
@@ -887,7 +1106,8 @@ Object.assign(Game.prototype, {
       if (!p.dead) {
         p.hp = h;
         this.world.destroyProp(p, this.fx, { quiet: true });
-        if (p.support && !p.sep) this.propSupportDown(p, true);
+        if (p.seg) this.propSegDown(p, true);
+        else if (p.support && !p.sep) this.propSupportDown(p, true);
       }
       return;
     }
@@ -899,7 +1119,10 @@ Object.assign(Game.prototype, {
   },
   propApplyTable(t) {
     if (!Array.isArray(t)) return;
-    for (const [i, h, d] of t) this.propApplyHp(i, h, false, true, d);
+    for (const [i, h, d] of t) {
+      if (i === 'r') this.roofBreak(h, true);
+      else this.propApplyHp(i, h, false, true, d);
+    }
   },
   // 客機：損毀的事件（各端自己演出碎裂與殘骸）
   propApplyDie(e) {
@@ -908,7 +1131,8 @@ Object.assign(Game.prototype, {
     const dir = e.d ? new THREE.Vector3(e.d[0], 0, e.d[1]) : null;
     p.hp = Math.min(p.hp, 0);
     this.world.destroyProp(p, this.fx, { dir, cr: !!e.cr });
-    if (p.support && !p.sep) this.propSupportDown(p, false);
+    if (p.seg) this.propSegDown(p, false);
+    else if (p.support && !p.sep) this.propSupportDown(p, false);
     else this.propWreckFx(p);
   },
   // 客機：結構倒下的事件

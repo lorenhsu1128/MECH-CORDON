@@ -180,3 +180,68 @@ export function splitTris(root, pred, o = {}) {
   });
   return { pieces: out, n: cutN };
 }
+
+// 長的三角形細分到每條邊不超過 maxEdge（局部打穿的壩體、隧道口：一片牆是整段長的三角形，重心不會落在各段裡）。
+// 沿最長的邊從中點切開，所有頂點屬性一起內插；換成新的幾何（不改原本的：可能是共用的）
+export function tessellate(root, maxEdge, maxTris = 60000) {
+  root.traverse((m) => {
+    if (!m.isMesh || !m.geometry || m.isInstancedMesh || m.isSkinnedMesh || Array.isArray(m.material)) return;
+    if (isOutline(m.material) || !m.geometry.attributes.position) return;
+    const g0 = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry;
+    const names = Object.keys(g0.attributes);
+    const A = names.map((n) => g0.attributes[n]);
+    const sc = new THREE.Vector3();
+    m.updateMatrixWorld(true);
+    m.matrixWorld.decompose(new THREE.Vector3(), new THREE.Quaternion(), sc);
+    const k = Math.max(sc.x, sc.y, sc.z) || 1;
+    const lim2 = (maxEdge / k) * (maxEdge / k);
+    // 每個頂點＝各屬性的值（攤平）
+    const tris = [];
+    const P = g0.attributes.position;
+    for (let t = 0; t < P.count / 3; t++) {
+      const v = [0, 1, 2].map((j) =>
+        A.map((a) => Array.from({ length: a.itemSize }, (_, q) => a.array[(t * 3 + j) * a.itemSize + q])),
+      );
+      tris.push(v);
+    }
+    const out = [];
+    const d2 = (a, b) => {
+      const p = a[names.indexOf('position')],
+        r = b[names.indexOf('position')];
+      return (p[0] - r[0]) ** 2 + (p[1] - r[1]) ** 2 + (p[2] - r[2]) ** 2;
+    };
+    const mid = (a, b) => a.map((arr, i) => arr.map((x, q) => (x + b[i][q]) / 2));
+    let changed = false;
+    while (tris.length) {
+      const v = tris.pop();
+      if (out.length + tris.length > maxTris) {
+        out.push(v);
+        continue;
+      }
+      const e = [d2(v[0], v[1]), d2(v[1], v[2]), d2(v[2], v[0])];
+      const i = e.indexOf(Math.max(...e));
+      if (e[i] <= lim2) {
+        out.push(v);
+        continue;
+      }
+      changed = true;
+      const a = v[i],
+        b = v[(i + 1) % 3],
+        c = v[(i + 2) % 3];
+      const mm = mid(a, b);
+      tris.push([a, mm, c], [mm, b, c]);
+    }
+    if (!changed) return;
+    const geo = new THREE.BufferGeometry();
+    names.forEach((n, i) => {
+      const a = A[i];
+      const arr = new a.array.constructor(out.length * 3 * a.itemSize);
+      let o = 0;
+      for (const v of out) for (const vert of v) for (const x of vert[i]) arr[o++] = x;
+      geo.setAttribute(n, new THREE.BufferAttribute(arr, a.itemSize, a.normalized));
+    });
+    if (m.geometry.boundingBox) geo.boundingBox = m.geometry.boundingBox.clone();
+    geo.computeBoundingSphere();
+    m.geometry = geo;
+  });
+}

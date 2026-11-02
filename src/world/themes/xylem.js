@@ -328,6 +328,7 @@ function buildStructures(w) {
       );
       w.scene.add(r);
       w.meshes.push(r);
+      (w.rimMeshes = w.rimMeshes || []).push(r); // 平台外緣（打得掉：docs/destruction-design.md 第 6 期）
     }
   }
 }
