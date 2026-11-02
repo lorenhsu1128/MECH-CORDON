@@ -19,10 +19,12 @@
   },
   "dependencies": {
     "qrcode-generator": "^1.4.4",
+    "selfsigned": "^5.5.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
+    "@mediapipe/tasks-vision": "^1.2.0",
     "@yao-pkg/pkg": "^6.0.0",
     "esbuild": "^0.28.2",
     "eslint": "^9.0.0",

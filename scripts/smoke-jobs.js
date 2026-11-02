@@ -78,6 +78,7 @@ const DEFAULT_TIMES = {
   testLevels: 35443,
   testWaves: 2921,
   testGoals: 5403,
+  testGaze: 50000,
   testOutposts: 4148,
   testModFx: 2149,
   testSupply: 2433,

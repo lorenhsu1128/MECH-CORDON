@@ -108,5 +108,6 @@ import './game/fx-ambient.js';
 import './game/water.js';
 import './game/voice.js';
 import './game/bgm.js';
+import './game/gaze.js';
 
 new Game();

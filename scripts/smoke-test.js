@@ -88,6 +88,8 @@ async function startGameServer(models = SERVER_MODELS, seed = path.join(WORK_DIR
       ...process.env,
       TEST_GAME_PORT: 0,
       TEST_CONTROL_PORT: 0,
+      TEST_HTTPS_PORT: 0,
+      RUBICON_CERT_DIR: path.join(WORK_DIR, 'cert'),
       RUBICON_MODELS_DIR: models,
       RUBICON_SEED_DIR: seed,
     },
@@ -9957,6 +9959,312 @@ async function testFoesC2(browser, base) {
 
 // 增援波次：編成分成 3～5 波、敵對 AC 在最後一波、剩下少數時預告方向（ECHO、光柱、畫面指示）後在預告地點出現
 // 過關條件：每個回合開始時中央的卡片（過關／失敗條件）、之後左上一直顯示；自由出擊、主線的防衛區段、自訂關卡
+// 眼動追蹤（docs/gaze-design.md）：直接開檔時 MediaPipe 從 lib/gaze-assets.js 初始化並抓到照片裡的臉（478 點、特徵）；
+// 其他用模擬的特徵（window.__gazeSim，不開攝影機）：設定的開關、9＋5 點校準與誤差、看哪鎖哪（停留時間、兩個開關各自獨立）、
+// 頭部延伸視角（追尾／第一人稱轉頭＝鏡頭轉、擺正就停、關掉時不動）
+async function testGaze(browser, base) {
+  console.log('眼動追蹤：MediaPipe 初始化與臉部特徵、設定、校準、看哪鎖哪、頭部延伸視角');
+  const { ctx, page } = await newPage(browser, 'gaze');
+  await seededRandom(page);
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  // 1. 真的 MediaPipe：lib/gaze-assets.js（wasm 與模型內含，file:// 不能 fetch 本地檔案）→ 偵測照片
+  const face =
+    'data:image/jpeg;base64,' +
+    fs.readFileSync(path.join(ROOT, 'scripts/fixtures/face.jpg')).toString('base64');
+  const mp = await page.evaluate(async (face) => {
+    const g = window.__game;
+    try {
+      const t0 = performance.now();
+      const fl = await g.gazeLandmarker();
+      const init = performance.now() - t0;
+      const im = new window.Image();
+      im.src = face;
+      await im.decode();
+      const c = document.createElement('canvas');
+      c.width = im.width;
+      c.height = im.height;
+      c.getContext('2d').drawImage(im, 0, 0);
+      const res = fl.detectForVideo(c, performance.now());
+      const lm = res.faceLandmarks[0];
+      const F = window.__gazeConst.gazeFeatures(
+        lm,
+        res.faceBlendshapes[0] && res.faceBlendshapes[0].categories,
+        res.facialTransformationMatrixes[0] && res.facialTransformationMatrixes[0].data,
+      );
+      return {
+        init: Math.round(init),
+        n: lm ? lm.length : 0,
+        f: F && F.f.length,
+        ok: !!F && F.f.every(Number.isFinite),
+        blink: F ? F.blink : 1,
+        yaw: F ? F.head.yaw : 9,
+      };
+    } catch (e) {
+      return { err: String(e && e.message), n: 0, yaw: 9 };
+    }
+  }, face);
+  check(
+    !mp.err && mp.n === 478,
+    `MediaPipe 從 lib/gaze-assets.js 初始化（${mp.init} ms）並抓到照片的臉（${mp.n} 點${mp.err ? '，' + mp.err : ''}）`,
+  );
+  check(
+    mp.f === 13 && mp.ok && mp.blink < 0.5 && Math.abs(mp.yaw) < 0.3,
+    `臉部特徵：${mp.f} 個、沒有眨眼、正臉（yaw ${mp.yaw.toFixed(2)}）`,
+  );
+
+  // 2. 模擬的特徵：眼睛看的位置 window.__tg（0～1）、頭的轉向 window.__th → 特徵（線性＋小雜訊）
+  await page.evaluate(() => {
+    window.__tg = { x: 0.5, y: 0.5 };
+    window.__th = { yaw: 0, pitch: 0 };
+    window.__noFace = false;
+    let s = 1;
+    const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647 - 0.5) * 2;
+    window.__gazeSim = (t, g) => {
+      if (window.__noFace) return null;
+      // 校準中：眼睛看著校準點
+      const cal = g.gzCal;
+      let tg = window.__tg;
+      if (cal && (cal.ph === 'run' || cal.ph === 'val') && cal.t > 0.3) {
+        const p = g.gazeCalTarget(cal);
+        tg = { x: p[0], y: p[1] };
+      }
+      const h = window.__th;
+      const ex = 0.08 * (tg.x - 0.5) - 0.05 * h.yaw + 0.002 * rnd(),
+        ey = 0.05 * (tg.y - 0.5) + 0.03 * h.pitch + 0.002 * rnd();
+      const f = [
+        ex,
+        ey,
+        0.3 - 0.1 * (tg.y - 0.5),
+        0.6 * (tg.x - 0.5) + 0.02 * rnd(),
+        -0.5 * (tg.y - 0.5) + 0.02 * rnd(),
+        h.yaw,
+        h.pitch,
+        0,
+        0,
+        ex * ex,
+        ey * ey,
+        ex * h.yaw,
+        ey * h.pitch,
+      ];
+      return { f, blink: 0, head: { yaw: h.yaw, pitch: h.pitch, roll: 0, x: 0, y: 0, z: -55 } };
+    };
+  });
+  // 設定：開關與狀態
+  await page.evaluate(() => window.__game.openSettings('title'));
+  await waitVisible(page, 'settings');
+  const st0 = await page.evaluate(() => {
+    const box = document.getElementById('gazeBox');
+    return {
+      on: !!box.querySelector('[data-gz="on"]'),
+      lock: !!box.querySelector('[data-gz="lock"]'),
+      head: !!box.querySelector('[data-gz="head"]'),
+      calDis: document.getElementById('gazeCalBtn').disabled,
+      subDis:
+        box.querySelector('[data-gz="lock"]').disabled && box.querySelector('[data-gz="head"]').disabled,
+    };
+  });
+  check(
+    st0.on && st0.lock && st0.head && st0.calDis && st0.subDis,
+    '設定：總開關、看哪鎖哪與頭部延伸視角兩個獨立的開關（總開關關閉時子項與校準停用）',
+  );
+  await page.click('#gazeBox [data-gz="on"]');
+  await page.waitForFunction(() => window.__game.gz && window.__game.gz.st === 'ready');
+  await page
+    .waitForFunction(() => /偵測到臉/.test(document.getElementById('gazeStatus').textContent), null, {
+      timeout: 5000,
+    })
+    .catch(() => {});
+  const st1 = await page.evaluate(() => ({
+    ctrl: JSON.parse(localStorage.getItem('rubicon_ctrl')).gaze,
+    status: document.getElementById('gazeStatus').textContent,
+    cal: !document.getElementById('gazeCalBtn').disabled,
+  }));
+  check(
+    st1.ctrl && st1.ctrl.on && st1.cal && /偵測到臉/.test(st1.status) && /尚未校準/.test(st1.status),
+    `打開後存進設定、狀態「${st1.status}」`,
+  );
+  await page.screenshot({ path: path.join(SHOT_DIR, 'gaze-settings.png') });
+  // 校準：9 點＋驗證 5 點（每點 1.6 秒，實際時間）
+  await page.click('#gazeCalBtn');
+  await waitVisible(page, 'gazeCal');
+  await page
+    .waitForFunction(() => !document.getElementById('gcGo').disabled, null, { timeout: 5000 })
+    .catch(() => {});
+  await page.screenshot({ path: path.join(SHOT_DIR, 'gaze-cal-prep.png') });
+  await page.click('#gcGo');
+  await wait(2500);
+  await page.screenshot({ path: path.join(SHOT_DIR, 'gaze-cal-run.png') });
+  await page
+    .waitForFunction(() => window.__game.gzCal && window.__game.gzCal.ph === 'done', null, { timeout: 40000 })
+    .catch(() => {});
+  const cal = await page.evaluate(() => ({
+    ph: window.__game.gzCal && window.__game.gzCal.ph,
+    msg: document.getElementById('gcMsg').textContent,
+    err: window.__game.gz.cal ? window.__game.gz.cal.err : 999,
+    saved: !!JSON.parse(localStorage.getItem('rubicon_gaze') || 'null'),
+  }));
+  await page.screenshot({ path: path.join(SHOT_DIR, 'gaze-cal-done.png') });
+  check(
+    cal.ph === 'done' && cal.saved && cal.err < 40 && /平均誤差/.test(cal.msg),
+    `校準完成：平均誤差 ${cal.err.toFixed(1)} px、存進 rubicon_gaze`,
+  );
+  await page.click('#gcGo'); // 完成
+  const closed = await page.evaluate(
+    () =>
+      !document.getElementById('gazeCal') && /已校準/.test(document.getElementById('gazeStatus').textContent),
+  );
+  check(closed, '按完成關閉校準畫面、設定顯示「已校準」');
+  // 校準後：看左上 → 注視點在左上
+  const pr = await page.evaluate(() => {
+    const g = window.__game;
+    window.__tg = { x: 0.2, y: 0.25 };
+    for (let i = 0; i < 30; i++) {
+      g.gz.lastT = 0;
+      g.gazeTick();
+    }
+    return { x: g.gz.x / window.innerWidth, y: g.gz.y / window.innerHeight, valid: g.gz.valid };
+  });
+  check(
+    pr.valid && Math.abs(pr.x - 0.2) < 0.05 && Math.abs(pr.y - 0.25) < 0.05,
+    `注視點跟著眼睛（${pr.x.toFixed(2)}, ${pr.y.toFixed(2)}）`,
+  );
+
+  // 3. 看哪鎖哪：兩台敵人在畫面左右，看著右邊那台停留後才鎖定
+  const lk = await page.evaluate((SC) => {
+    const g = window.__game;
+    window.__reseed(77);
+    g.save.level = 1;
+    g.startMission();
+    g.state = 'gaze-test';
+    for (const e of g.enemies) e.pos.set(200 * SC, -50, 200 * SC);
+    const pl = g.player;
+    pl.hp = pl.maxHp = 1e7;
+    const y0 = g.world.terrainHeight(0, 0);
+    pl.pos.set(0, y0, 0);
+    pl.yaw = pl.aimYaw = 0;
+    const es = g.enemies.slice(0, 2);
+    while (es.length < 2) es.push(g.spawnEnemy({ name: 'T', asm: pl.asm, pal: 'enemy', ai: 'mt' }));
+    const put = (e, x, z) => {
+      e.pos.set(x, y0, z);
+      e.mesh.position.copy(e.pos);
+    };
+    put(es[0], -5 * SC, -9 * SC);
+    put(es[1], 5 * SC, -9 * SC);
+    for (let i = 0; i < 40; i++) g.updateCamera(1 / 60);
+    g.camera.updateMatrixWorld(true);
+    pl.lock = es[0];
+    const at = (e) => {
+      const s = g.proj(e.center());
+      window.__tg = { x: s.x / window.innerWidth, y: s.y / window.innerHeight };
+    };
+    const step = (n) => {
+      for (let i = 0; i < n; i++) {
+        g.gz.lastT = 0;
+        g.gazeTick();
+        g.lastDt = 0.03;
+        g.autoLock(pl);
+      }
+    };
+    at(es[1]);
+    step(4); // 約 0.1 秒：還在停留
+    const early = pl.lock === es[0];
+    const ring = g.gz.cand === es[1];
+    step(12);
+    const switched = pl.lock === es[1];
+    // 看哪鎖哪關掉：看左邊那台也不換
+    at(es[0]);
+    g.gazeSet('lock', false);
+    step(20);
+    const off = pl.lock === es[1];
+    g.gazeSet('lock', true);
+    step(20);
+    const back = pl.lock === es[0];
+    // 看沒有敵人的地方：不解除鎖定
+    window.__tg = { x: 0.5, y: 0.04 };
+    step(20);
+    const keep = pl.lock === es[0];
+    // 找不到臉：注視點失效、不換
+    window.__noFace = true;
+    at(es[1]);
+    step(20);
+    const lost = pl.lock === es[0] && !g.gz.valid;
+    window.__noFace = false;
+    return { early, ring, switched, off, back, keep, lost };
+  }, SC);
+  check(lk.early && lk.ring, '看哪鎖哪：停留時間還沒到不換（候選目標畫停留圈）');
+  check(lk.switched, '看哪鎖哪：看著另一台 0.25 秒後鎖定它');
+  check(lk.off && lk.back, '看哪鎖哪的開關：關掉時不換、打開後照常');
+  check(lk.keep && lk.lost, '看沒有敵人的地方、找不到臉時不解除也不換鎖定');
+
+  // 4. 頭部延伸視角：追尾視角轉頭＝鏡頭轉、擺正就停；開關關掉時不動（和看哪鎖哪各自獨立）
+  const hd = await page.evaluate(() => {
+    const g = window.__game;
+    const pl = g.player;
+    g.gazeSet('head', true);
+    g.gazeSet('lock', false);
+    g.setView('chase');
+    g.assist = false;
+    window.__th = { yaw: 0, pitch: 0 };
+    const tick = (n) => {
+      for (let i = 0; i < n; i++) {
+        g.gz.lastT = 0;
+        g.gazeTick();
+        pl.lock = null;
+        g.camAimInput(pl, 1 / 30);
+      }
+    };
+    g.gz.neutral = null;
+    tick(20); // 量中心
+    const y0 = g.fpYaw;
+    tick(10);
+    const still = Math.abs(g.fpYaw - y0) < 1e-6;
+    window.__th = { yaw: 0.3, pitch: 0 }; // 往自己的左邊轉頭
+    tick(15);
+    const left = g.fpYaw - y0;
+    window.__th = { yaw: -0.3, pitch: 0 };
+    const y1 = g.fpYaw;
+    tick(15);
+    const right = g.fpYaw - y1;
+    window.__th = { yaw: 0, pitch: 0.32 };
+    const p1 = g.fpPitch;
+    tick(15);
+    const up = g.fpPitch - p1;
+    window.__th = { yaw: 0, pitch: 0 };
+    tick(10);
+    const y2 = g.fpYaw;
+    tick(10);
+    const stop = Math.abs(g.fpYaw - y2) < 1e-6;
+    window.__th = { yaw: 0.3, pitch: 0 };
+    g.gazeSet('head', false);
+    const y3 = g.fpYaw;
+    tick(15);
+    const off = Math.abs(g.fpYaw - y3) < 1e-6;
+    g.gazeSet('head', true);
+    g.gazeSet('lock', true);
+    window.__th = { yaw: 0, pitch: 0 };
+    return { still, left, right, up, stop, off };
+  });
+  check(hd.still, '頭部延伸視角：頭擺正時鏡頭不動');
+  check(
+    hd.left > 0.1 && hd.right < -0.1,
+    `往左轉頭鏡頭往左（${hd.left.toFixed(2)}）、往右轉往右（${hd.right.toFixed(2)}）`,
+  );
+  check(hd.up > 0.05, `抬頭鏡頭往上（${hd.up.toFixed(2)}）`);
+  check(hd.stop && hd.off, '頭擺正就停、開關關掉時不動');
+  // 任務中的畫面：注視點與停留圈
+  await page.evaluate(() => {
+    const g = window.__game;
+    g.gazeSet('dot', true);
+    g.state = 'play';
+    g.showScreen('');
+  });
+  await wait(600);
+  await page.screenshot({ path: path.join(SHOT_DIR, 'gaze-hud.png') });
+  await page.evaluate(() => window.__game.gazeStop());
+  await ctx.close();
+}
+
 async function testGoals(browser, base) {
   console.log('過關條件：回合開始的卡片與左上的常駐顯示');
   const { ctx, page } = await newPage(browser, 'goals');
@@ -23487,6 +23795,39 @@ async function testServerBasics(browser, game) {
   const page = await (await browser.newContext()).newPage();
   await page.goto(game.url);
   check(await page.evaluate(() => !!window.RUBICON_SERVER), '遊戲頁已注入 window.RUBICON_SERVER');
+  // 安全連線（自簽憑證，眼動追蹤要開攝影機）：https 的 /health、注入 RUBICON_HTTPS、wss 中繼
+  const hm = game.log().match(/\[test-port\] 443 (\d+)/);
+  const hport = hm ? +hm[1] : 0;
+  const hget = (u) =>
+    new Promise((res) => {
+      require('https')
+        .get(`https://127.0.0.1:${hport}${u}`, { rejectUnauthorized: false }, (r) => {
+          let b = '';
+          r.on('data', (d) => (b += d));
+          r.on('end', () => res({ code: r.statusCode, body: b }));
+        })
+        .on('error', (e) => res({ code: 0, body: e.message }));
+    });
+  const hh = await hget('/health');
+  check(
+    hport && hh.code === 200 && hh.body.includes('"ok":true'),
+    `https（自簽憑證）的 /health（port ${hport}）`,
+  );
+  check(
+    (await page.evaluate(() => window.RUBICON_HTTPS)) === hport &&
+      (await hget('/')).body.includes('RUBICON_HTTPS'),
+    '遊戲頁注入 window.RUBICON_HTTPS（https 的 port）',
+  );
+  const wssOk = await new Promise((res) => {
+    const ws = new (require('ws').WebSocket)(`wss://127.0.0.1:${hport}/ws`, { rejectUnauthorized: false });
+    ws.on('open', () => {
+      ws.close();
+      res(true);
+    });
+    ws.on('error', () => res(false));
+    setTimeout(() => res(false), 5000);
+  });
+  check(wssOk, 'https 上的 WebSocket 中繼（wss://…/ws）');
   const lib = await fetch(game.url + 'models');
   check(lib.ok && (await lib.text()).includes('模型庫'), '/models 提供模型庫頁面');
   await waitVisible(page, 'title');
@@ -23745,6 +24086,7 @@ const STEPS = [
   ['testWaves', (c) => testWaves(c.browser, c.base)],
   ['testEnemyAI', (c) => testEnemyAI(c.browser, c.base)],
   ['testGoals', (c) => testGoals(c.browser, c.base)],
+  ['testGaze', (c) => testGaze(c.browser, c.base)],
   ['testOutposts', (c) => testOutposts(c.browser, c.base)],
   ['testModFx', (c) => testModFx(c.browser, c.base)],
   ['testSupply', (c) => testSupply(c.browser, c.base)],

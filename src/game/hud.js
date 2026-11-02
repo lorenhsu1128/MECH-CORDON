@@ -590,6 +590,7 @@ Object.assign(Game.prototype, {
       c.fillText(txt, W / 2, H * 0.68);
     }
     this.drawCacheMarks(c, W, H, p);
+    this.gazeHud(c, W, H, p); // 眼動追蹤：停留中的目標、注視點、狀態（game/gaze.js）
     this.drawWaveMarks(c, W, H, p, dt);
     // reticle at mouse
     if (this.pvp) this.drawPvpHud(c, W, H, p);

@@ -1,0 +1,8 @@
+face_landmarker.task — MediaPipe Face Landmarker（float16, v1）
+來源：https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task
+授權：Apache License 2.0（Google）。https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker
+
+程式庫 @mediapipe/tasks-vision（npm，Apache License 2.0）由 scripts/build.js 打包進 dist/lib/gaze-assets.js。
+
+scripts/fixtures/face.jpg（冒煙測試用的照片，不進遊戲）：美國總統官方肖像（Pete Souza, 2012），美國聯邦政府作品，公有領域。
+https://commons.wikimedia.org/wiki/File:President_Barack_Obama.jpg

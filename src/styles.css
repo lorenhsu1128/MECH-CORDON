@@ -6012,3 +6012,110 @@ body.vpad #subBar {
     font-size: calc(12px * var(--subK));
   }
 }
+
+/* 眼動追蹤（game/gaze.js）：攝影機的影像平時隱藏（不能 display: none，有的瀏覽器會停播）；校準畫面蓋在所有畫面上 */
+#gazeVideo {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 2px;
+  height: 2px;
+  opacity: 0.01;
+  pointer-events: none;
+}
+#gazeCal {
+  position: fixed;
+  inset: 0;
+  z-index: 10002;
+  background: rgba(6, 9, 13, 0.94);
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  justify-content: safe center;
+  overflow: auto;
+}
+#gazeCal .gcPanel {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  max-width: min(760px, 94vw);
+  padding: 18px 22px;
+  background: #121821;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+#gazeCal .gcPanel h3 {
+  margin: 0 0 8px;
+  color: var(--acc);
+}
+#gazeCal .gcPanel p {
+  margin: 0 0 12px;
+  line-height: 1.6;
+}
+#gazeCal .gcVid video {
+  width: 220px;
+  height: 165px;
+  object-fit: cover;
+  transform: scaleX(-1); /* 鏡像，像照鏡子 */
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #000;
+  position: static;
+  opacity: 1;
+}
+/* 收集中：面板移到下方、變淡，不擋住校準點 */
+#gazeCal.run .gcPanel {
+  position: fixed;
+  left: 50%;
+  bottom: 24%;
+  transform: translateX(-50%);
+  opacity: 0.55;
+}
+#gazeCal.run .gcVid {
+  display: none;
+}
+#gcDot {
+  position: fixed;
+  width: 0;
+  height: 0;
+  display: none;
+  pointer-events: none;
+  --k: 0;
+}
+#gcDot::before {
+  content: '';
+  position: absolute;
+  left: -16px;
+  top: -16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--acc);
+  transform: scale(calc(1 - var(--k) * 0.6));
+}
+#gcDot i {
+  position: absolute;
+  left: -4px;
+  top: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+}
+#gcDot.live::before {
+  border-color: var(--acc2);
+  transform: none;
+}
+#gcDot.live i {
+  background: var(--acc2);
+}
+@media (max-height: 540px) {
+  #gazeCal .gcVid video {
+    width: 140px;
+    height: 105px;
+  }
+}
+#gazeCal.run #gcGo {
+  display: none;
+}

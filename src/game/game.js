@@ -399,6 +399,7 @@ export class Game {
     this.tfxTick(); // 文字演出（game/textfx.js）
     this.bgmFrame(dt); // 任務中的動態配樂（game/bgm.js）
     this.pollGamepad(dt);
+    this.gazeTick(); // 眼動追蹤（game/gaze.js）：約 30 Hz 偵測一次臉
     if (this.camp && this.camp.wait) this.campWaitTick(); // 主線多人：轉場中等待隊友（不靠會被節流的計時器）
     if ((this.frames & 15) === 0) this.updateVpad();
     // 一般任務的節奏設定（ctrl.pace）

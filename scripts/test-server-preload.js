@@ -7,7 +7,11 @@ const cp = require('child_process');
 
 // port 設成 0 時由系統挑空的 port，實際的 port 印成「[test-port] 原本 實際」給冒煙測試讀
 // （分段平行時多個伺服器同時啟動，不能先找空 port 再交給伺服器，中間可能被別的程序搶走）
-const PORTS = { 80: +process.env.TEST_GAME_PORT, 8090: +process.env.TEST_CONTROL_PORT };
+const PORTS = {
+  80: +process.env.TEST_GAME_PORT,
+  443: +process.env.TEST_HTTPS_PORT,
+  8090: +process.env.TEST_CONTROL_PORT,
+};
 const listen = net.Server.prototype.listen;
 net.Server.prototype.listen = function (port, host, ...rest) {
   if (typeof port === 'number' && port in PORTS && Number.isFinite(PORTS[port])) {

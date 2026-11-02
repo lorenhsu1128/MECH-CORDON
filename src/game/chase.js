@@ -169,6 +169,15 @@ Object.assign(Game.prototype, {
         hi = al || (this.chase ? PITCH_MAX : 0.9);
       this.fpPitch = clamp(this.fpPitch - ta.z * k * dt * 1.8 * sn * inv, lo, hi);
     }
+    // 頭部延伸視角（game/gaze.js）：轉頭＝鏡頭往那邊轉（空域除外）
+    const hv = !air && this.gazeHeadRate(p);
+    if (hv) {
+      const al = this.airPitchLim(),
+        lo = al ? -al : this.chase ? PITCH_MIN : -1.1,
+        hi = al || (this.chase ? PITCH_MAX : 0.9);
+      this.fpYaw += hv.x * dt;
+      this.fpPitch = clamp(this.fpPitch + hv.y * dt, lo, hi);
+    }
     if (this.fp) {
       const look = this.fpLookDir(this.fpYaw, this.fpPitch);
       this.mouseWorld.copy(this.fpEye(p)).addScaledVector(look, 40 * this.camK());
@@ -362,7 +371,7 @@ Object.assign(Game.prototype, {
   chaseAutoLock(p) {
     const now = performance.now();
     const c = this.lockCands(p);
-    if (p.lock && !c.includes(p.lock) && !this.assistOn()) {
+    if (p.lock && !c.includes(p.lock) && !this.assistOn() && !this.gazeHolds(p)) {
       if (!this.lockLostT) this.lockLostT = now;
       if (now - this.lockLostT > LOST_T * 1000) {
         p.lock = c[0] || null;

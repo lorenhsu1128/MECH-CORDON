@@ -315,6 +315,41 @@ const options = (page) => ({
   ],
 });
 
+// 眼動追蹤（docs/gaze-design.md）：MediaPipe Tasks Vision 的 JS（打包成 IIFE，window.RUBICON_GAZE_LIB）＋
+// wasm 載入程式（文字）＋wasm 與臉部模型 src/assets/gaze/face_landmarker.task（base64）→ dist/lib/gaze-assets.js
+// （window.RUBICON_GAZE）。不內嵌（約 25 MB）：設定裡打開眼動追蹤時才以 <script> 載入（game/gaze.js）。
+// 直接開檔時不能 fetch 本地檔案，所以 wasm 與模型都包在 JS 裡，載入程式與 wasm 以 data:／blob: 網址交給 MediaPipe
+const GAZE_DIR = path.join(SRC, 'assets', 'gaze');
+async function writeGaze() {
+  const model = path.join(GAZE_DIR, 'face_landmarker.task');
+  const mp = path.join(NODE_MODULES, '@mediapipe/tasks-vision');
+  if (!fs.existsSync(model) || !fs.existsSync(mp)) return;
+  const r = await esbuild.build({
+    stdin: {
+      contents:
+        "import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';\n" +
+        'window.RUBICON_GAZE_LIB = { FaceLandmarker, FilesetResolver };\n',
+      resolveDir: ROOT,
+    },
+    bundle: true,
+    format: 'iife',
+    target: 'es2020',
+    minify: true,
+    write: false,
+    logLevel: 'warning',
+  });
+  const loader = fs.readFileSync(path.join(mp, 'wasm/vision_wasm_internal.js'), 'utf8');
+  const wasm = fs.readFileSync(path.join(mp, 'wasm/vision_wasm_internal.wasm')).toString('base64');
+  const task = fs.readFileSync(model).toString('base64');
+  const ver = JSON.parse(fs.readFileSync(path.join(mp, 'package.json'), 'utf8')).version;
+  fs.writeFileSync(
+    path.join(LIB, 'gaze-assets.js'),
+    `// 眼動追蹤：@mediapipe/tasks-vision ${ver}（Apache-2.0）與 Face Landmarker 模型（Apache-2.0），由 scripts/build.js 產生\n` +
+      r.outputFiles[0].text +
+      `window.RUBICON_GAZE = { loader: ${JSON.stringify(loader)}, wasm: ${JSON.stringify(wasm)}, model: ${JSON.stringify(task)} };\n`,
+  );
+}
+
 // 子專案（納入本版本庫的純靜態網站，不需建置）原樣複製到 dist/ 底下，伺服器在 /<資料夾>/ 提供：
 // 文字動畫 APNG 產生器 rubicon_apng_gen/ → dist/apng/；貼圖繪製 rubicon_paint/ → dist/paint/。
 const SUBPROJECTS = [
@@ -334,6 +369,13 @@ function copySubprojects() {
 
 // 伺服器預設組的內建來源（src/assets/server-default/，檔名＝槽位 id）：複製到 dist/server-default/，
 // 伺服器啟動時自動匯入（server.js 的 seedDefaults；exe 版要把這個資料夾放在 exe 旁）
+// 區網伺服器 https 的自簽憑證（server.js 的 loadCert；提交進 git）：複製到 dist/rubicon-cert/，exe 版讀 exe 旁的這一份
+function copyCert() {
+  const src = path.join(ROOT, 'rubicon-cert', 'cert.json');
+  if (!fs.existsSync(src)) return;
+  fs.mkdirSync(path.join(DIST, 'rubicon-cert'), { recursive: true });
+  fs.copyFileSync(src, path.join(DIST, 'rubicon-cert', 'cert.json'));
+}
 function copyServerDefault() {
   const src = path.join(SRC, 'assets', 'server-default');
   const out = path.join(DIST, 'server-default');
@@ -347,8 +389,10 @@ async function main() {
   writeMusic();
   writeHangar();
   writeSounds();
+  await writeGaze();
   copySubprojects();
   copyServerDefault();
+  copyCert();
   if (!watch) {
     for (const page of PAGES) {
       const r = await esbuild.build(options(page));

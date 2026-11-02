@@ -1,6 +1,7 @@
 // RUBICON PROTOCOL — 區網伺服器（網頁服務 + 房間登記 + WebSocket 中繼 + 控制台）
 'use strict';
 const http = require('http'),
+  https = require('https'),
   fs = require('fs'),
   path = require('path'),
   os = require('os'),
@@ -30,7 +31,7 @@ const MIME = {
 };
 const CONTROL_PORT = 8090;
 const VERSION = '1.0';
-let cfg = { port: 80, autoStart: true };
+let cfg = { port: 80, httpsPort: 443, autoStart: true };
 try {
   cfg = Object.assign(cfg, JSON.parse(fs.readFileSync(CFG_PATH, 'utf8')));
 } catch (e) {}
@@ -563,8 +564,80 @@ function gameHtml() {
   const p = path.join(WEB_DIR, 'rubicon-protocol.html');
   if (!fs.existsSync(p)) return null;
   let h = fs.readFileSync(p, 'utf8');
-  h = h.replace('<head>', '<head><script>window.RUBICON_SERVER=' + JSON.stringify(VERSION) + ';</script>');
+  // RUBICON_HTTPS：安全連線的 port（眼動追蹤要開攝影機，區網的 http 網址不行，遊戲的設定畫面提示改用 https）
+  const hp = game && game.httpsPort ? ';window.RUBICON_HTTPS=' + game.httpsPort : '';
+  h = h.replace(
+    '<head>',
+    '<head><script>window.RUBICON_SERVER=' + JSON.stringify(VERSION) + hp + ';</script>',
+  );
   return h;
+}
+
+// ===================== 安全連線（自簽憑證） =====================
+// 瀏覽器只在安全環境（https、localhost、file://）開放攝影機，眼動追蹤（docs/gaze-design.md）從別台電腦連進來時要用 https。
+// 憑證放在 rubicon-cert/cert.json（開發時是專案根目錄、exe 版是 exe 旁；RUBICON_CERT_DIR 可改位置），提交進 git、
+// 建置時複製到 dist/rubicon-cert/，所以別台電腦 pull 下來就有同一張；沒有或快過期時才產生新的（10 年）。
+// 自簽的憑證瀏覽器一律會警告一次（按「進階 → 繼續前往」），主體別名和目前的 IP 不同也一樣可以繼續，所以 IP 變了不重新產生
+const CERT_DIR = process.env.RUBICON_CERT_DIR || path.join(BASE, 'rubicon-cert');
+const CERT_FILE = path.join(CERT_DIR, 'cert.json');
+function certNames() {
+  return ['localhost', os.hostname().toLowerCase(), '127.0.0.1', ...localIPs().map((i) => i.ip)];
+}
+async function loadCert() {
+  const names = certNames();
+  try {
+    const c = JSON.parse(fs.readFileSync(CERT_FILE, 'utf8'));
+    if (c.key && c.cert && c.until > Date.now() + 864e5) return c;
+  } catch (e) {}
+  const selfsigned = require('selfsigned');
+  const until = new Date(Date.now() + 3650 * 864e5);
+  const isIp = (n) => /^\d+\.\d+\.\d+\.\d+$/.test(n);
+  const pem = await selfsigned.generate([{ name: 'commonName', value: 'RUBICON PROTOCOL LAN Server' }], {
+    keySize: 2048,
+    algorithm: 'sha256',
+    notAfterDate: until,
+    extensions: [
+      { name: 'basicConstraints', cA: false },
+      { name: 'keyUsage', digitalSignature: true, keyEncipherment: true },
+      { name: 'extKeyUsage', serverAuth: true },
+      {
+        name: 'subjectAltName',
+        altNames: names.map((n) => (isIp(n) ? { type: 7, ip: n } : { type: 2, value: n })),
+      },
+    ],
+  });
+  const c = { key: pem.private, cert: pem.cert, names, until: until.getTime() };
+  try {
+    fs.mkdirSync(CERT_DIR, { recursive: true });
+    writeAtomic(CERT_FILE, JSON.stringify(c));
+  } catch (e) {
+    log('憑證存檔失敗：' + e.message);
+  }
+  log('產生自簽憑證：' + names.join('、'));
+  return c;
+}
+// 遊戲伺服器的 https（和 http 共用同一個處理函式與 WebSocket 中繼）；失敗只記日誌，不影響 http
+async function startHttps(g, handler, upgrade, port) {
+  if (!port) return;
+  try {
+    const c = await loadCert();
+    if (game !== g) return;
+    const srv = https.createServer({ key: c.key, cert: c.cert }, handler);
+    srv.on('upgrade', upgrade);
+    await new Promise((res, rej) => {
+      srv.once('error', rej);
+      srv.listen(port, '0.0.0.0', res);
+    });
+    if (game !== g) return srv.close();
+    g.https = srv;
+    g.httpsPort = srv.address().port;
+    log(`安全連線（https）：port ${g.httpsPort}`);
+  } catch (e) {
+    log(
+      '安全連線（https）沒有啟動：' +
+        (e.code === 'EADDRINUSE' ? `port ${port} 已被其他程式佔用（在控制台改 HTTPS port）` : e.message),
+    );
+  }
 }
 
 // ===================== 遊戲伺服器（可啟停） =====================
@@ -603,7 +676,7 @@ function startGame(port) {
         console.warn('[models] 自動匯入失敗：' + e.message);
       }
     });
-    const server = http.createServer((req, resp) => {
+    const handler = (req, resp) => {
       const u = req.url.split('?')[0];
       if (
         u.startsWith('/api/models/') ||
@@ -686,8 +759,15 @@ function startGame(port) {
         resp.writeHead(404);
         resp.end('not found');
       }
-    });
-    const wss = new WebSocketServer({ server, path: '/ws' });
+    };
+    const server = http.createServer(handler);
+    // WebSocket 中繼：http 與 https 共用（noServer，兩個伺服器的 upgrade 都交給同一個 wss）
+    const wss = new WebSocketServer({ noServer: true });
+    const upgrade = (req, sock, head) => {
+      if (req.url.split('?')[0] !== '/ws') return sock.destroy();
+      wss.handleUpgrade(req, sock, head, (ws) => wss.emit('connection', ws, req));
+    };
+    server.on('upgrade', upgrade);
     const send = (p, o) => {
       if (p && p.ws.readyState === WebSocket.OPEN) {
         try {
@@ -799,9 +879,9 @@ function startGame(port) {
       );
     });
     server.listen(port, '0.0.0.0', () => {
-      game = { server, wss, peers, rooms, startedAt: Date.now(), port };
+      game = { server, wss, peers, rooms, startedAt: Date.now(), port, https: null, httpsPort: null };
       log(`遊戲伺服器啟動：port ${port}`);
-      res();
+      startHttps(game, handler, upgrade, cfg.httpsPort).then(res, res);
     });
   });
 }
@@ -817,6 +897,7 @@ function stopGame() {
       } catch (e) {}
     }
     g.wss.close();
+    if (g.https) g.https.close();
     g.server.close(() => {
       log('遊戲伺服器已停止');
       res();
@@ -830,8 +911,8 @@ function controlPage() {
   return `<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RUBICON 伺服器控制台</title>
 <style>body{margin:0;background:#0f1319;color:#e6edf3;font:14px/1.6 "Noto Sans TC",system-ui,sans-serif}.wrap{max-width:980px;margin:0 auto;padding:20px}h1{font-size:20px;margin:0 0 6px;color:#ffb020;letter-spacing:.1em}h2{font-size:15px;margin:22px 0 8px;color:#5cc8ff}.card{background:#171c24;border:1px solid #2a3644;border-radius:6px;padding:14px 16px;margin:10px 0}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}button{font:inherit;padding:7px 16px;border:1px solid #3a4655;background:#222a35;color:#e6edf3;cursor:pointer;border-radius:4px}button.p{background:#ffb020;color:#111;border-color:#ffb020;font-weight:700}button.d{background:#5a1f24;border-color:#8a2a32}button:disabled{opacity:.4;cursor:default}input{font:inherit;background:#0f1319;color:#e6edf3;border:1px solid #3a4655;padding:6px 10px;border-radius:4px;width:90px}.st{display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:700}.on{background:#1f6b3a;color:#b6ffcf}.off{background:#5a1f24;color:#ffb6b6}table{border-collapse:collapse;width:100%;font-size:13px}th,td{border-bottom:1px solid #2a3644;padding:6px 8px;text-align:left}th{color:#9aa6b6;font-weight:400}pre{background:#0b0e13;border:1px solid #2a3644;padding:10px;height:180px;overflow:auto;font-size:12px;margin:0}.qr{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}.qr img{background:#fff;padding:6px;border-radius:4px}.dim{color:#9aa6b6}code{background:#0b0e13;padding:2px 6px;border-radius:3px}</style></head><body><div class="wrap">
 <h1>RUBICON PROTOCOL — 伺服器控制台</h1><div class="dim">版本 ${VERSION} · 控制台 port 8090 · 遊戲網頁與房間中繼由下方遊戲伺服器提供</div>
-<div class="card"><div class="row"><span>狀態：<span id="st" class="st off">停止</span></span><span>遊戲 port <input id="port" type="number" min="1" max="65535"></span><button class="p" id="bStart">啟動</button><button id="bStop">停止</button><button id="bRestart">重啟</button><button class="d" id="bQuit">結束程式</button><span id="err" style="color:#ff8a8a"></span></div>
-<div class="dim" style="margin-top:8px">port 80 被佔用時（IIS／Skype／其他網頁伺服器）請改用 8080 等其他 port。第一次啟動請在 Windows 防火牆詢問時按「允許」。</div></div>
+<div class="card"><div class="row"><span>狀態：<span id="st" class="st off">停止</span></span><span>遊戲 port <input id="port" type="number" min="1" max="65535"></span><span title="安全連線（自簽憑證）：眼動追蹤要開攝影機，別台電腦要用 https 網址；0＝不開">HTTPS port <input id="hport" type="number" min="0" max="65535"></span><button class="p" id="bStart">啟動</button><button id="bStop">停止</button><button id="bRestart">重啟</button><button class="d" id="bQuit">結束程式</button><span id="err" style="color:#ff8a8a"></span></div>
+<div class="dim" style="margin-top:8px">port 80 被佔用時（IIS／Skype／其他網頁伺服器）請改用 8080 等其他 port。第一次啟動請在 Windows 防火牆詢問時按「允許」。<br>https 網址用自簽憑證：第一次開啟時瀏覽器會警告，按「進階 → 繼續前往」即可（要在遊戲裡用眼動追蹤的電腦才需要 https）。</div></div>
 <h2>玩家連線位址（區網內用瀏覽器開啟即可玩單機或多人）</h2><div class="card qr" id="addrs"></div>
 <h2>伺服器模型組</h2><div class="card" id="models"></div>
 <h2>自訂關卡</h2><div class="card"><table><thead><tr><th>名稱</th><th>作者</th><th>主題</th><th>遊玩／通關</th><th>上傳</th><th></th></tr></thead><tbody id="levels"></tbody></table></div>
@@ -840,8 +921,8 @@ function controlPage() {
 <script>
 const $=id=>document.getElementById(id); let cur={};
 async function api(p,b){ const r=await fetch(p,{method:b?'POST':'GET',headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):undefined}); return r.json(); }
-async function refresh(){ try{ const s=await api('/api/status'); cur=s; $('st').textContent=s.running?'執行中（port '+s.port+'）':'停止'; $('st').className='st '+(s.running?'on':'off'); if(document.activeElement!==$('port')) $('port').value=s.cfgPort; $('bStart').disabled=s.running; $('bStop').disabled=!s.running; $('bRestart').disabled=!s.running;
-  $('addrs').innerHTML=s.running? s.ips.map(i=>{ const url='http://'+i.ip+(s.port===80?'':':'+s.port)+'/'; return '<div><div><b>'+i.name+'</b>　<a style="color:#5cc8ff" href="'+url+'" target="_blank">'+url+'</a>　<a class="dim" href="'+url+'models" target="_blank">模型庫</a>　<a class="dim" href="'+url+'apng/" target="_blank">文字動畫</a>　<a class="dim" href="'+url+'paint/" target="_blank">貼圖繪製</a></div><img src="/api/qr?text='+encodeURIComponent(url)+'" width="140" height="140"></div>'; }).join('') : '<span class="dim">伺服器未啟動</span>';
+async function refresh(){ try{ const s=await api('/api/status'); cur=s; $('st').textContent=s.running?'執行中（port '+s.port+'）':'停止'; $('st').className='st '+(s.running?'on':'off'); if(document.activeElement!==$('port')) $('port').value=s.cfgPort; if(document.activeElement!==$('hport')) $('hport').value=s.cfgHttpsPort; $('bStart').disabled=s.running; $('bStop').disabled=!s.running; $('bRestart').disabled=!s.running;
+  $('addrs').innerHTML=s.running? s.ips.map(i=>{ const url='http://'+i.ip+(s.port===80?'':':'+s.port)+'/'; const hurl=s.httpsPort?'https://'+i.ip+(s.httpsPort===443?'':':'+s.httpsPort)+'/':''; return '<div><div><b>'+i.name+'</b>　<a style="color:#5cc8ff" href="'+url+'" target="_blank">'+url+'</a>'+(hurl?'　<a class="dim" href="'+hurl+'" target="_blank" title="安全連線（眼動追蹤用）">'+hurl+'</a>':'')+'　<a class="dim" href="'+url+'models" target="_blank">模型庫</a>　<a class="dim" href="'+url+'apng/" target="_blank">文字動畫</a>　<a class="dim" href="'+url+'paint/" target="_blank">貼圖繪製</a></div><img src="/api/qr?text='+encodeURIComponent(url)+'" width="140" height="140"></div>'; }).join('') : '<span class="dim">伺服器未啟動</span>';
   $('rooms').innerHTML=(s.rooms||[]).map(r=>'<tr><td>'+esc(r.room)+'</td><td>'+esc(r.host)+'</td><td>'+r.n+'/4</td><td>'+r.level+'</td><td>'+(r.state==='play'?'<span class="st on">任務中</span>':'大廳')+'</td><td>'+(r.spectators||0)+'</td><td><button onclick="spectate(\\''+r.peerId+'\\')">觀戰</button></td></tr>').join('')||'<tr><td colspan="7" class="dim">目前沒有房間</td></tr>';
   const md=s.models||{}; $('models').innerHTML='伺服器預設組：GLB '+(md.glb||0)+' 個・關節設定 '+(md.joints||0)+' 個・玩家上傳的模型組 '+(md.uploads||0)+' 個<div class="dim">在模型庫的「模型組」選單選「伺服器預設組」即可編輯；敵人、AI 機甲、載具、地圖物件與沒上傳模型組的玩家都用這一組。資料夾：<code>'+esc(md.dir||'')+'</code></div>';
   $('levels').innerHTML=(s.levels||[]).map(l=>'<tr><td>'+esc(l.name)+'</td><td>'+esc(l.author)+'</td><td>'+esc(l.theme)+'</td><td>'+(l.plays||0)+'／'+(l.clears||0)+'</td><td>'+new Date(l.t).toLocaleString()+'</td><td><button class="d" onclick="delLevel(\\''+l.id+'\\')">刪除</button></td></tr>').join('')||'<tr><td colspan="6" class="dim">還沒有人上傳關卡</td></tr>';
@@ -849,8 +930,8 @@ async function refresh(){ try{ const s=await api('/api/status'); cur=s; $('st').
 function esc(s){ return String(s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
 async function delLevel(id){ if(confirm('確定要刪除這個關卡？')){ await api('/api/levels/delete',{id}); refresh(); } }
 function spectate(id){ const host=location.hostname; window.open('http://'+host+(cur.port===80?'':':'+cur.port)+'/?spectate='+id,'_blank'); }
-$('bStart').onclick=async()=>{ $('err').textContent=''; const r=await api('/api/start',{port:+$('port').value}); if(r.error) $('err').textContent=r.error; refresh(); };
-$('bStop').onclick=async()=>{ await api('/api/stop',{}); refresh(); }; $('bRestart').onclick=async()=>{ $('err').textContent=''; const r=await api('/api/restart',{port:+$('port').value}); if(r.error) $('err').textContent=r.error; refresh(); };
+$('bStart').onclick=async()=>{ $('err').textContent=''; const r=await api('/api/start',{port:+$('port').value,httpsPort:+$('hport').value}); if(r.error) $('err').textContent=r.error; refresh(); };
+$('bStop').onclick=async()=>{ await api('/api/stop',{}); refresh(); }; $('bRestart').onclick=async()=>{ $('err').textContent=''; const r=await api('/api/restart',{port:+$('port').value,httpsPort:+$('hport').value}); if(r.error) $('err').textContent=r.error; refresh(); };
 $('bQuit').onclick=async()=>{ if(confirm('確定要結束伺服器程式？所有房間會中斷。')){ await api('/api/quit',{}); document.body.innerHTML='<div class="wrap"><h1>程式已結束</h1></div>'; } };
 refresh(); setInterval(refresh,1500);
 </script></body></html>`;
@@ -860,6 +941,8 @@ function status() {
     running: !!game,
     port: game ? game.port : null,
     cfgPort: cfg.port,
+    httpsPort: game ? game.httpsPort : null,
+    cfgHttpsPort: cfg.httpsPort,
     ips: localIPs(),
     peers: game ? game.peers.size : 0,
     rooms: game
@@ -918,6 +1001,8 @@ const control = http.createServer((req, resp) => {
         b = JSON.parse(body || '{}');
       } catch (e) {}
       const port = b.port > 0 && b.port < 65536 ? b.port : cfg.port;
+      if (Number.isInteger(b.httpsPort) && b.httpsPort >= 0 && b.httpsPort < 65536)
+        cfg.httpsPort = b.httpsPort;
       try {
         if (u.pathname === '/api/start') {
           cfg.port = port;

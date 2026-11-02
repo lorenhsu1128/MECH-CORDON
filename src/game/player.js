@@ -68,6 +68,7 @@ Object.assign(Game.prototype, {
         this.smokeHides(p, p.lock))
     )
       p.lock = null;
+    this.gazeLockTick(p); // 看哪鎖哪（game/gaze.js）
     if (this.chase) return this.chaseAutoLock(p);
     if (!p.lock) p.lock = this.lockCands(p)[0] || null;
   },

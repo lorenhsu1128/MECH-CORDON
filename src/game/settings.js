@@ -93,6 +93,7 @@ Object.assign(Game.prototype, {
     this.renderLocalModels();
     this.renderStyleSettings();
     this.renderIkSettings();
+    this.renderGazeSettings();
   },
   // 聲音的音量（ctrl.vol：m 主音量、s 音效、b 配樂、v 語音、u 介面；docs/audio-design.md）：下拉選單，手把左右就能改
   renderVolSettings() {
