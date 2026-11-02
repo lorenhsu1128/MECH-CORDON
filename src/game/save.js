@@ -99,12 +99,16 @@ Object.assign(Game.prototype, {
   loadSave() {
     return this.readSlot(this.saveSlot || 1);
   },
+  // 回傳是否寫入成功（存檔終端的「保存進度」要告訴玩家）
   writeSave() {
     try {
       this.save.t = Date.now();
       localStorage.setItem(slotKey(this.saveSlot || 1), JSON.stringify(this.save));
       this.saveFlashT = performance.now(); // 作戰室的存檔終端：燈條閃一下
-    } catch (e) {}
+      return true;
+    } catch (e) {
+      return false;
+    }
   },
   // 切換目前的槽位並載入（空的槽位載入新存檔，但要等 writeSave 才會寫入）
   useSlot(i) {
@@ -282,7 +286,7 @@ Object.assign(Game.prototype, {
   },
   // ---------- 作戰室的存檔終端（docs/hub-ui.md 第六期） ----------
   // 遊戲一直自動存在目前的槽位，所以這裡管理三個槽位：把目前的進度存一份到別的槽位（備份、分歧點）、換到別的槽位、
-  // 匯出／匯入、刪除（目前的槽位只能匯出）；另有抉擇前備份（接下有陣營抉擇的委託時自動存一份，可以讀回）
+  // 匯出／匯入、刪除（目前的槽位只能「保存進度」＝立即寫入一次、匯出）；另有抉擇前備份（接下有陣營抉擇的委託時自動存一份，可以讀回）
   hubSaves(open) {
     const el = document.getElementById('hubSaveBox');
     el.style.display = open ? '' : 'none';
@@ -338,7 +342,7 @@ Object.assign(Game.prototype, {
         .join('');
       const row =
         i === cur
-          ? btn('exp', '匯出')
+          ? btn('save', '保存進度', true) + btn('exp', '匯出')
           : btn('save', '存到這一格') +
             btn('load', '讀取', true) +
             btn('exp', '匯出') +
@@ -351,7 +355,7 @@ Object.assign(Game.prototype, {
       const so = SORTIES[bk.sid];
       html += `<div class="hsCard bk" data-slot="bk"><div><b>抉擇前備份</b><span class="tag">存檔 ${cur}</span></div><p>接下「${escHtml(so ? so.name : bk.sid)}」之前的進度</p><p class="dim">${escHtml(fmtTime(bk.t))}</p><div class="row">${btn('load', '讀回')}</div></div>`;
     }
-    html += `<p class="dim" style="font-size: 12px">進度會一直自動存在使用中的存檔。接下有陣營抉擇的委託時，會自動存一份抉擇前備份（每個存檔最近一份）。</p>`;
+    html += `<p class="dim" style="font-size: 12px">進度會一直自動存在使用中的存檔，也可以按「保存進度」立即保存。接下有陣營抉擇的委託時，會自動存一份抉擇前備份（每個存檔最近一份）。</p>`;
     document.getElementById('hubSaveList').innerHTML = html;
   },
   hubSaveAct(i, act) {
@@ -374,6 +378,12 @@ Object.assign(Game.prototype, {
         },
         '讀回',
       );
+    }
+    // 使用中的存檔：立即寫入一次（平常就會自動存，這裡讓玩家確定已經存好）
+    if (act === 'save' && i === cur) {
+      if (!this.writeSave()) return this.savesMsg('寫入失敗（瀏覽器儲存空間不足或被停用）', true);
+      this.savesMsg(`已保存進度到存檔 ${cur}（${fmtTime(this.save.t)}）`);
+      return this.hubSaveRender();
     }
     if (act === 'save') {
       const go = () => {

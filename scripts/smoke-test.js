@@ -7343,30 +7343,13 @@ async function testCampaign(browser, base) {
     return { st: g.state, seg: g.camp.seg, fails: g.camp.fails, alive: !g.player.dead };
   });
   check(s3.st === 'play' && s3.seg === 1 && s3.fails === 1 && s3.alive, '從紀錄點繼續：回到區段 2 的起點');
-  // 暫停選單的「保存並回作戰室」：紀錄點留著，作戰室「繼續出擊」接回同一段
-  await page.evaluate(() => {
-    const g = window.__game;
-    g.state = 'pause';
-    g.showScreen('pause');
-  });
-  check(await visible(page, 'btnSuspend'), '暫停選單有「保存並回作戰室」');
-  await page.click('#btnSuspend');
-  await waitVisible(page, 'hub');
-  const sp = await page.evaluate(() => {
-    const g = window.__game;
-    return { camp: !!g.camp, ck: g.save.story.sortie && g.save.story.sortie.seg, hud: !!g.player };
-  });
+  // 「保存並回作戰室」已經拿掉（2026-11-02）：暫停選單、轉場、失敗畫面都沒有這顆按鈕
   check(
-    !sp.camp && sp.ck === 1 && (await visible(page, 'hubActive')),
-    `保存並回作戰室：紀錄點保留（區段 ${sp.ck + 1}）、作戰室顯示進行中的出擊`,
+    await page.evaluate(
+      () => !document.querySelector('.campSusp, #btnSuspend, #btnCampSuspend, #btnCampSuspend2'),
+    ),
+    '暫停選單、轉場、失敗畫面沒有「保存並回作戰室」',
   );
-  await page.click('#btnHubResume');
-  await page.waitForFunction(() => document.getElementById('ctBtns').style.visibility === 'visible', null, {
-    timeout: 8000,
-  });
-  await page.click('#btnCampGo');
-  const s3b = await page.evaluate(() => ({ st: window.__game.state, seg: window.__game.camp.seg }));
-  check(s3b.st === 'play' && s3b.seg === 1, '作戰室「繼續出擊」：接回區段 2 的起點');
   // 第 4 段（礦場外圍）往礦坑深處：垂直下降型出口（在場內）
   await page.evaluate(() => {
     const g = window.__game;
@@ -7393,6 +7376,15 @@ async function testCampaign(browser, base) {
     '機庫的通訊紀錄列出播過的通訊',
   );
   await page.click('#btnHubLogClose');
+  // 作戰室「繼續出擊」：從紀錄點那一段的開頭接回
+  const ckSeg = await page.evaluate(() => window.__game.save.story.sortie.seg);
+  await page.click('#btnHubResume');
+  await page.waitForFunction(() => document.getElementById('ctBtns').style.visibility === 'visible', null, {
+    timeout: 8000,
+  });
+  await page.click('#btnCampGo');
+  const s3b = await page.evaluate(() => ({ st: window.__game.state, seg: window.__game.camp.seg }));
+  check(s3b.st === 'play' && s3b.seg === ckSeg, `重新整理後作戰室「繼續出擊」：接回區段 ${ckSeg + 1} 的起點`);
   // 最後一段：Boss 擊破 → 出擊完成
   await page.evaluate(() => {
     const g = window.__game;
@@ -7456,8 +7448,11 @@ async function testCampaign(browser, base) {
     (await page.textContent('#btnPilotBack')) === '返回作戰室',
     '從作戰室開駕駛員：返回按鈕是「返回作戰室」',
   );
+  // 右上角還在播的通訊框會蓋住返回鍵（這裡只測畫面切換）
+  await page.evaluate(() => window.__game.commClear());
   await page.click('#btnPilotBack');
   await waitVisible(page, 'hub');
+  await page.evaluate(() => window.__game.commClear());
   // 作戰室的「回標題」
   await page.click('#btnHubBack');
   check(await waitVisible(page, 'title'), '作戰室「回標題」回到標題畫面');
@@ -11522,7 +11517,7 @@ async function testHubSave(browser, base) {
       l.kept === 1,
     `讀取存檔 3：換到那個槽位、作戰室依它重建（COAM ${l.hud}、${l.ch}），原本的存檔 1 已自動存好`,
   );
-  // 刪除存檔 2（目前的存檔只能匯出）
+  // 刪除存檔 2（目前的存檔只有「保存進度」與匯出）
   await page.click('#btnHubSave');
   await wait(150);
   const curBtns = await page.evaluate(() =>
@@ -11536,7 +11531,34 @@ async function testHubSave(browser, base) {
     gone: localStorage.getItem('rubicon_save_2') === null,
     empty: document.querySelector('#hubSaveList .hsCard[data-slot="2"]').classList.contains('empty'),
   }));
-  check(curBtns === 'exp' && d.gone && d.empty, `刪除存檔 2（確認後）；使用中的存檔只能匯出（${curBtns}）`);
+  check(
+    curBtns === 'save,exp' && d.gone && d.empty,
+    `刪除存檔 2（確認後）；使用中的存檔只有保存進度與匯出（${curBtns}）`,
+  );
+  // 使用中的存檔「保存進度」：不用確認，立即寫入目前的槽位並顯示訊息
+  const sv = await page.evaluate(async () => {
+    const g = window.__game;
+    g.save.coam = 55555; // 只改記憶體裡的，按下才寫入
+    const before = JSON.parse(localStorage.getItem('rubicon_save_3')).coam;
+    const t0 = performance.now();
+    document.querySelector('#hubSaveList .hsCard[data-slot="3"] button[data-act="save"]').click();
+    await new Promise((r) => setTimeout(r, 100));
+    return {
+      before,
+      coam: JSON.parse(localStorage.getItem('rubicon_save_3')).coam,
+      modal: !!g.uiModalOn,
+      msg: document.getElementById('hubSaveMsg').textContent,
+      flash: g.saveFlashT >= t0,
+    };
+  });
+  check(
+    sv.before !== 55555 &&
+      sv.coam === 55555 &&
+      !sv.modal &&
+      sv.msg.includes('已保存進度到存檔 3') &&
+      sv.flash,
+    `存檔終端「保存進度」：立即寫入使用中的存檔 3、燈條閃一下（${sv.msg}）`,
+  );
   // 抉擇前備份：沒有抉擇的委託不存，有抉擇的（c2s2）接下時存一份；讀回
   const bk = await page.evaluate(() => {
     const g = window.__game;

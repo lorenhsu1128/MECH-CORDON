@@ -376,9 +376,6 @@ export class Game {
     // 結果畫面的標題與評價（文字演出；內容在 showScreen 前後設定，所以等這段程式跑完）
     if (id === 'result' && this.tfxResult) Promise.resolve().then(() => this.tfxResult());
     if (id === 'title' && this.renderContinue) this.renderContinue();
-    // 主線（單人）才有「保存並回作戰室」
-    const susp = !!(this.camp && !this.campMp() && !this.sim && !this.lab);
-    for (const b of document.querySelectorAll('.campSusp')) b.style.display = susp ? '' : 'none';
     for (const b of document.querySelectorAll('.rangeOnly')) b.style.display = this.range ? '' : 'none';
     for (const b of document.querySelectorAll('.tutOnly')) b.style.display = this.tut ? '' : 'none';
     // 自訂關卡的試玩：暫停選單的「放棄任務」＝回編輯器

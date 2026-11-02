@@ -1191,8 +1191,6 @@ Object.assign(Game.prototype, {
     $('btnRangeCfgP').onclick = () => this.openRangeMenu();
     $('btnRangeLog').onclick = () => this.rangeLogOpen(true);
     $('btnRangeLogClose').onclick = () => this.rangeLogOpen(false);
-    for (const id of ['btnSuspend', 'btnCampSuspend', 'btnCampSuspend2'])
-      $(id).onclick = () => this.campSuspend();
     $('btnRandomAsm').onclick = () => {
       this.randomAsm();
       this.renderGarage();
