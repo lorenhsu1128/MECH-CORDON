@@ -15472,6 +15472,23 @@ async function testFx(browser, base) {
     out.bolt = [bolt('rich'), bolt('std'), bolt('rich', 's')];
     out.boltNet = fx.bolt.toString().includes('netEv');
     g.ctrl.fxLv = 'rich';
+    // 第 7.4 期：六角格護盾（護盾產生器的護盾球，華麗＝著色器、標準＝原本的半透明球＋線框；命中的波紋）
+    const n0e = g.enemies.length;
+    g.spawnType('mt_dome', 1, 1, at(12, -6, 0), 1);
+    const dm = g.enemies[n0e];
+    dm.domeFrac = 1;
+    dm.domeHp = dm.domeMax = 1e9;
+    dm.specialFx(1 / 60);
+    const hx = dm.sx && dm.sx.hex;
+    out.hex = { made: !!hx, vis: !!(hx && hx.visible), old: !!(dm.sx && dm.sx.domeShell.visible) };
+    dm.domeAbsorb(1, dm.pos.clone().add(new THREE.Vector3(dm.domeRadius(), 0, 0)));
+    dm.specialFx(1 / 60);
+    out.hex.hit = hx ? hx.material.uniforms.uHit.value.some((v) => v.w > -50) : false;
+    g.ctrl.fxLv = 'std';
+    dm.specialFx(1 / 60);
+    out.hex.std = [!!(hx && hx.visible), !!dm.sx.domeShell.visible];
+    g.ctrl.fxLv = 'rich';
+    dm.takeDamage(1e9, 0, null, dm.center());
     fx.clear();
     return out;
   });
@@ -15517,6 +15534,10 @@ async function testFx(browser, base) {
   check(r.vortex >= 30, `黑洞：往中心旋進去的光條、核心、弧光（${r.vortex} 顆）`);
   check(r.ribbon === 5, `導彈的白煙帶（${r.ribbon} 點）`);
   check(r.slash === 3, `華麗的迴旋斬：刀光外多一圈能量環（${r.slash} 層）`);
+  check(
+    r.hex.made && r.hex.vis && !r.hex.old && r.hex.hit && !r.hex.std[0] && r.hex.std[1],
+    `六角格護盾：華麗時是著色器的護盾球、被打中記下波紋；標準時換回原本的球（${JSON.stringify(r.hex)}）`,
+  );
   check(
     r.bolt[0][0] >= 8 &&
       r.bolt[0][1] > 0 &&

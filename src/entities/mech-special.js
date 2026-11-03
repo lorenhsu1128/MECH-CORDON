@@ -7,6 +7,7 @@ import { SFX } from '../audio/audio.js';
 import { clamp, rnd } from '../core/math.js';
 import { DS, MS } from '../core/scale.js';
 import { foeDamageTick } from '../render/foe-damage.js';
+import { hexShieldMat, hexShieldHit } from '../render/hex-shield.js';
 import { MechEntity } from './mech-entity.js';
 
 const DOME_R = 9 * MS; // 護盾半徑（以產生器腳底為中心的球）
@@ -30,6 +31,8 @@ const SHIELD_DOT = 0.35; // 盾牌涵蓋的正面角度（cos，約 ±70°）
 // 連線光束的顏色（linkKind）：0 修理、1 電磁牽引、2 護盾發生器 → 指揮艦
 const LINK_COL = [0x60ff9a, 0x60a8ff, 0x60e0ff];
 
+// 六角格護盾（砲火特效「華麗」，render/hex-shield.js）的球：比原本的半透明球細，格紋才圓
+const HEX_GEO = new THREE.SphereGeometry(1, 48, 32);
 const glowMat = (color, opacity = 0.9) =>
   new THREE.MeshBasicMaterial({
     color,
@@ -129,6 +132,9 @@ Object.assign(MechEntity.prototype, {
   domeAbsorb(dmg, at) {
     const g = this.game;
     this.domeHitT = 0.25;
+    // 六角格護盾的命中波紋（specialFx；客機不知道命中點，改從自己的機體的方向）
+    this.domeHitN = (this.domeHitN || 0) + 1;
+    this.domeHitP = at ? at.clone() : null;
     if (at) SFX.hitDome(at);
     if (this.domeInf) {
       if (at) g.fx.spark(at, 0x80e0ff);
@@ -287,7 +293,10 @@ Object.assign(MechEntity.prototype, {
         sx.domeShell = shell;
         sx.domeWire = wire;
       }
-      if (!host && sx.lastDf !== undefined && df < sx.lastDf - 0.001) this.domeHitT = 0.25;
+      if (!host && sx.lastDf !== undefined && df < sx.lastDf - 0.001) {
+        this.domeHitT = 0.25;
+        this.domeHitN = (this.domeHitN || 0) + 1;
+      }
       sx.dome.visible = true;
       sx.dome.position.copy(this.pos);
       sx.dome.scale.setScalar(this.domeRadius());
@@ -295,6 +304,33 @@ Object.assign(MechEntity.prototype, {
       const hit = this.domeHitT > 0 ? this.domeHitT * 2 : 0;
       sx.domeShell.material.opacity = 0.08 + 0.1 * df + hit * 0.25;
       sx.domeWire.material.opacity = 0.12 + 0.18 * df + hit * 0.4;
+      // 砲火特效「華麗」：六角格的著色器取代半透明球＋線框（設定改了下一格就換）
+      const rich = g.fx.rich;
+      if (rich && !sx.hex) {
+        sx.hex = new THREE.Mesh(HEX_GEO, hexShieldMat(0x50d0ff));
+        sx.hex.renderOrder = 4;
+        sx.hex.userData.noFade = true;
+        sx.dome.add(sx.hex);
+        sx.hitN = this.domeHitN || 0;
+      }
+      sx.domeShell.visible = sx.domeWire.visible = !rich;
+      if (sx.hex) {
+        sx.hex.visible = rich;
+        const U = sx.hex.material.uniforms;
+        U.uTime.value = g.fx.time;
+        U.uOp.value = 0.45 + 0.35 * df + hit * 0.4;
+        if ((this.domeHitN || 0) !== sx.hitN) {
+          sx.hitN = this.domeHitN || 0;
+          // 命中點（房主）或自己的機體（客機）→ 護盾的物件座標（球繞 Y 轉）
+          const P = this.domeHitP || (g.player && !g.player.dead ? g.player.center() : null);
+          this.domeHitP = null;
+          if (P) {
+            const d = P.clone().sub(this.pos);
+            d.applyAxisAngle(new THREE.Vector3(0, 1, 0), -sx.dome.rotation.y);
+            if (d.lengthSq() > 1e-6) hexShieldHit(sx.hex.material, d);
+          }
+        }
+      }
     } else if (sx.dome) sx.dome.visible = false;
     sx.lastDf = df;
     if (this.domeHitT > 0) this.domeHitT -= dt;
