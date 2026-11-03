@@ -82,6 +82,12 @@ import { Weather } from './weather.js';
 import { buildWaterMesh, disposeWater } from '../fx/water/surface.js';
 import { FAR_R, OOB_BUF, buildBackdrop, edgeDelta, planEdges } from './edges.js';
 
+// 鏡頭遮擋：擋住時淡到的不透明度。大型建築（外框高 FADE_BIG_H 以上）有很多層樓板與牆，每層都留一點就疊成一片白霧，
+// 所以淡得更透明（2026-11-03 使用者定案）
+const FADE_OP = 0.15,
+  FADE_OP_BIG = 0.04,
+  FADE_BIG_H = 15;
+const fadeTo = (b) => (b.max.y - b.min.y >= FADE_BIG_H ? FADE_OP_BIG : FADE_OP);
 const BOUND_R = 20 * DS; // 作戰區域的邊界線：機體離邊界這麼近才顯示、亮的半徑
 const OPEN_KEEP = 0.2; // Boss 關（opt.open）：地圖物件只留這個比例當掩體
 const OPEN_MID = 0.4; // Boss 關：地圖中央這個半徑（× lim）內的物件全部拿掉
@@ -3271,6 +3277,8 @@ export class World {
     // 由這裡管理淡出的群組與材質（fadeMeshes 略過這些；其他半透明的由 fadeMeshes 處理）
     const og = this._occG || (this._occG = new Map());
     og.clear();
+    const mt = this._occT || (this._occT = new Map());
+    mt.clear();
     for (const o of this.occluders) {
       if (!o.box) continue;
       if (o.group && o.mats.length) og.set(o.group, o.mats);
@@ -3288,11 +3296,13 @@ export class World {
         }
       }
       if (hit) any = true;
-      const target = hit ? 0.15 : 1;
-      for (const m of o.mats) {
-        m.opacity = lerp(m.opacity, target, Math.min(1, dt * 10));
-        m.depthWrite = m.opacity > 0.9;
-      }
+      // 同一個材質可能好幾個物件共用：取最透明的目標（擋住的那個優先）
+      const target = hit ? fadeTo(o.fbox) : 1;
+      for (const m of o.mats) if (!(mt.get(m) <= target)) mt.set(m, target);
+    }
+    for (const [m, target] of mt) {
+      m.opacity = lerp(m.opacity, target, Math.min(1, dt * 10));
+      m.depthWrite = m.opacity > 0.9;
     }
     return any;
   }
@@ -3344,12 +3354,17 @@ export class World {
       if (!act.has(o)) {
         const m = o.material.clone();
         m.transparent = true;
-        act.set(o, { orig: o.material, m, op0: o.material.opacity });
+        act.set(o, {
+          orig: o.material,
+          m,
+          op0: o.material.opacity,
+          to: fadeTo(new THREE.Box3().setFromObject(o)),
+        });
         o.material = m;
       }
     for (const [o, f] of act) {
       const on = this._fadeHit.has(o);
-      f.m.opacity = lerp(f.m.opacity, on ? Math.min(0.18, f.op0) : f.op0, Math.min(1, dt * 10));
+      f.m.opacity = lerp(f.m.opacity, on ? Math.min(f.to, f.op0) : f.op0, Math.min(1, dt * 10));
       f.m.depthWrite = f.m.opacity > 0.9 * f.op0;
       if (!on && f.m.opacity > f.op0 - 0.02) {
         o.material = f.orig;
