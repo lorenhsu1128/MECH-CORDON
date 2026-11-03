@@ -7,6 +7,7 @@ import { SFX } from '../audio/audio.js';
 import { clamp } from '../core/math.js';
 import { DS, MS } from '../core/scale.js';
 import { buildProjectileMesh } from '../render/extra-models.js';
+import { shotColor } from '../fx/palette.js';
 import { targetDist, targetSegT } from '../world/prop-hit.js';
 
 const AAM_LOSE = 1.3; // 空戰導彈失去追蹤的夾角（data/air.js 的 AAM_LOSE）
@@ -18,10 +19,24 @@ export class Projectile {
     this.game = game;
     this.p0 = this.pos.clone(); // 發射點（實彈的距離衰減）
     const col = o.color || 0xffe0a0;
+    // 屬性（顯示用的換色）：房主依武器算、隨 proj 事件的 at 給客機
+    if (!this.visual && !this.at && (this.wid || this.attr))
+      this.at = this.attr || weaponAttr(weaponById(this.wid));
+    // 砲火特效「華麗」：子彈、砲彈、榴彈、導彈依陣營＋屬性換色（fx/palette.js，各端依自己的設定；
+    // 主題專屬敵人的特殊彈體（冰錐、魚雷、貨櫃…）沒有屬性，照原本的顏色）
+    const rich = !!(game.fx && game.fx.rich);
+    const tint = rich && !!this.at && /^(bullet|shell|grenade|missile)$/.test(o.kind);
+    if (tint) this.color = shotColor(this.team, this.at);
     // 發光的彈體用粒子批次（fx/batch.js），每顆子彈不再各自一個網格與材質
     // 彈體的外觀照舊尺度建（曳光的長度依舊尺度的彈速），再整體放大 MS
     const K = MS;
-    this.mesh = buildProjectileMesh(o.kind, col, this.vel.length() / K, game.fx && game.fx.projPart);
+    this.mesh = buildProjectileMesh(
+      o.kind,
+      tint ? this.color : col,
+      this.vel.length() / K,
+      game.fx && game.fx.projPart,
+      rich ? { rich: true, team: this.team } : null,
+    );
     this.mesh.scale.setScalar((o.scale || 1) * K); // o.scale：外觀的放大（誘導飛彈架的大型飛彈；客機以 proj 事件的 sc 照做）
     this.mesh.position.copy(this.pos);
     game.scene.add(this.mesh);
@@ -45,9 +60,31 @@ export class Projectile {
         sh: this.shootable || undefined, // 可以打掉的投射物：血量與判定半徑（game/hazards2.js）
         sr: this.shootable ? this.shotR : undefined,
         sc: this.scale || undefined,
+        at: this.at || undefined, // 屬性（客機的換色）
       });
     }
     if (this.shootable) game.shotInit(this); // 代理目標（鎖定、子彈與爆炸打得到）
+  }
+  // 導彈、砲彈、榴彈的尾煙與尾焰（各端自己畫、不轉送）；砲火特效「華麗」時煙更粗更白、導彈多一道火焰尾巴
+  trailFx(dt) {
+    this.trailT += dt;
+    if (this.trailT <= 0.045) return;
+    this.trailT = 0;
+    const fx = this.game.fx,
+      R = fx.rich;
+    const back = this.vel.clone().normalize().negate();
+    const ms = this.kind === 'missile';
+    fx.smoke(
+      this.pos.clone(),
+      (ms ? 0.45 : 0.7) * (R ? 1.35 : 1),
+      R ? (ms ? 0xd4d8de : 0xa0a4aa) : 0x8a8f96,
+      R ? 1.25 : 0.7,
+      R ? 0.6 : 1.2,
+    );
+    if (this.kind === 'grenade') return;
+    const fc = R && this.color ? this.color : 0xffb060;
+    fx.boostFlame(this.pos.clone(), back, fc);
+    if (R) fx.tailFlame(this.pos, back, fc, ms ? 1 : 0.7);
   }
   orient() {
     if (this.kind === 'crate') {
@@ -119,26 +156,10 @@ export class Projectile {
         this.dead = true;
         g.scene.remove(this.mesh);
       }
-      if (this.kind === 'missile' || this.kind === 'shell' || this.kind === 'grenade') {
-        this.trailT += dt;
-        if (this.trailT > 0.045) {
-          this.trailT = 0;
-          g.fx.smoke(this.pos.clone(), this.kind === 'missile' ? 0.45 : 0.7, 0x8a8f96, 0.7, 1.2);
-          if (this.kind !== 'grenade')
-            g.fx.boostFlame(this.pos.clone(), this.vel.clone().normalize().negate(), 0xffb060);
-        }
-      }
+      if (this.kind === 'missile' || this.kind === 'shell' || this.kind === 'grenade') this.trailFx(dt);
       return;
     }
-    if (this.kind === 'missile' || this.kind === 'shell' || this.kind === 'grenade') {
-      this.trailT += dt;
-      if (this.trailT > 0.045) {
-        this.trailT = 0;
-        g.fx.smoke(this.pos.clone(), this.kind === 'missile' ? 0.45 : 0.7, 0x8a8f96, 0.7, 1.2);
-        if (this.kind !== 'grenade')
-          g.fx.boostFlame(this.pos.clone(), this.vel.clone().normalize().negate(), 0xffb060);
-      }
-    }
+    if (this.kind === 'missile' || this.kind === 'shell' || this.kind === 'grenade') this.trailFx(dt);
     // 空域：敵人的子彈擦過玩家身邊（game/air.js 的 airWhiz）
     if (g.airMode && !this.whz && this.team === 'enemy' && (this.kind === 'bullet' || this.kind === 'shell'))
       g.airWhiz(this, prev);

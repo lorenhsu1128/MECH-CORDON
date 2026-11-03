@@ -813,7 +813,10 @@ const withFins = (body, y, span, h) => {
 };
 export const ProjGeo = new THREE.BoxGeometry(0.16, 0.16, 0.9),
   MissileGeo = withFins(new THREE.ConeGeometry(0.18, 0.8, 6), -0.3, 0.42, 0.2),
-  ShellGeo = new THREE.SphereGeometry(0.28, 6, 5);
+  ShellGeo = new THREE.SphereGeometry(0.28, 6, 5),
+  FlameGeo = new THREE.SphereGeometry(0.2, 6, 5), // 飛彈的尾焰（共用幾何）
+  // 華麗的曳光：兩端尖的紡錘形（寬 0.12、沿 Z 長 1）
+  SpindleGeo = new THREE.OctahedronGeometry(0.5, 0).scale(0.12, 0.12, 1);
 const TorpedoGeo = withFins(new THREE.CylinderGeometry(0.2, 0.22, 1.8, 8), -0.75, 0.7, 0.26);
 const glow = (color, opacity) =>
   new THREE.MeshBasicMaterial({
@@ -823,6 +826,8 @@ const glow = (color, opacity) =>
     blending: THREE.AdditiveBlending,
     depthWrite: false,
   });
+const solid = (color, opacity) =>
+  new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: false });
 // 彈體 GLB：命名為 glow 的材質改成武器的彈色（同一個顏色共用材質）
 const PROJ_SLOT = {
   bullet: 'proj_bullet',
@@ -838,7 +843,7 @@ const projPal = (col) => {
 const bulletLen = (speed) => Math.min(2.0, Math.max(0.9, speed * 0.009));
 // GLB 彈體：外層群組由 Projectile.orient 以 lookAt 讓 +Z 朝飛行方向，所以 GLB（正面 −Z）轉 180°；
 // 子彈依彈速沿前後拉長（GLB 以 0.9 倍長度製作）；飛彈尾端保留程式的尾焰
-function glbProjectile(kind, col, speed) {
+function glbProjectile(kind, col, speed, rich) {
   const slot = PROJ_SLOT[kind];
   const inner = slot ? providedModel('small/' + slot, projPal(col)) : null;
   if (!inner) return null;
@@ -848,7 +853,7 @@ function glbProjectile(kind, col, speed) {
   mesh.add(inner);
   if (kind === 'missile') {
     const box = new THREE.Box3().setFromObject(inner);
-    const fl = new THREE.Mesh(new THREE.SphereGeometry(0.2, 6, 5), glow(0xffb060, 0.9));
+    const fl = new THREE.Mesh(FlameGeo, glow(rich ? col : 0xffb060, 0.9));
     fl.position.z = box.isEmpty() ? -0.5 : box.min.z;
     mesh.add(fl);
   }
@@ -858,18 +863,30 @@ function glbProjectile(kind, col, speed) {
 // 子彈的拖曳長度依速度決定（speed：彈速 m/s）
 // part(geo, color, opacity, parent)：遊戲傳入時，發光的部分改用粒子批次（fx/batch.js 的 attached 代理，
 // Effects.projPart），不建立自己的網格與材質；沒傳時（模型庫）照原本建網格
-export function buildProjectileMesh(kind, color, speed, part = null) {
+// o：{ rich, team }＝砲火特效「華麗」（docs/vfx-design.md 第 7 期）：曳光更長、更亮、多一條淡的拖尾，芯依陣營
+export function buildProjectileMesh(kind, color, speed, part = null, o = null) {
   const col = color || 0xffe0a0;
-  const g = glbProjectile(kind, col, speed);
+  const rich = !!(o && o.rich);
+  const g = glbProjectile(kind, col, speed, rich);
   if (g) return g;
   const mesh = new THREE.Group();
-  const gm = (geo, c, op) => {
-    if (part) return part(geo, c, op, mesh);
-    const m = new THREE.Mesh(geo, glow(c, op));
+  const gm = (geo, c, op, normal = false) => {
+    if (part) return part(geo, c, op, mesh, normal);
+    const m = new THREE.Mesh(geo, normal ? solid(c, op) : glow(c, op));
     mesh.add(m);
     return m;
   };
-  if (kind === 'bullet') {
+  if (kind === 'bullet' && rich) {
+    // 兩端尖的紡錘形（SpindleGeo，長 1、沿 +Z＝飛行方向）：芯是一般混合的實色（加色的芯在沙地、雪地上看不見），
+    // 外面白熱的加色芯、光暈，後面一條淡的長拖尾
+    const L = bulletLen(speed) * 1.8;
+    gm(SpindleGeo, col, 1, true).scale.set(0.9, 0.9, L);
+    gm(SpindleGeo, o.team === 'enemy' ? 0xffd6dc : 0xfff2c8, 0.9).scale.set(1.1, 1.1, L * 0.8);
+    gm(SpindleGeo, col, 0.5).scale.set(3.2, 3.2, L * 1.15);
+    const tail = gm(SpindleGeo, col, 0.2);
+    tail.scale.set(1.8, 1.8, L * 2.4);
+    tail.position.z = -L * 1.1;
+  } else if (kind === 'bullet') {
     const L = bulletLen(speed);
     const core = gm(ProjGeo, 0xfff2c8, 0.95);
     core.scale.set(0.4, 0.4, L);
@@ -880,10 +897,20 @@ export function buildProjectileMesh(kind, color, speed, part = null) {
       MissileGeo,
       new THREE.MeshStandardMaterial({ color: 0xd0d4d8, metalness: 0.6, roughness: 0.4 }),
     );
-    const fl = new THREE.Mesh(new THREE.SphereGeometry(0.2, 6, 5), glow(0xffb060, 0.9));
+    const fl = new THREE.Mesh(FlameGeo, glow(rich ? col : 0xffb060, 0.9));
     fl.position.y = -0.5;
     mesh.add(body);
     mesh.add(fl);
+    if (rich) {
+      // 華麗：尾焰的白熱芯＋大一圈的光暈
+      const hot = new THREE.Mesh(FlameGeo, glow(0xfff4d8, 0.95));
+      hot.scale.setScalar(0.6);
+      hot.position.y = -0.5;
+      const hal = new THREE.Mesh(FlameGeo, glow(col, 0.3));
+      hal.scale.setScalar(2.4);
+      hal.position.y = -0.55;
+      mesh.add(hot, hal);
+    }
   } else if (kind === 'torpedo') {
     // 潛航砲艇的魚雷：沿水面直線前進（長軸沿 Z）
     const body = new THREE.Mesh(
@@ -912,8 +939,8 @@ export function buildProjectileMesh(kind, color, speed, part = null) {
     }
   } else {
     const geo = kind === 'shell' || kind === 'grenade' ? ShellGeo : ProjGeo;
-    gm(geo, col, 0.95);
-    gm(geo, col, 0.4).scale.setScalar(2.2);
+    gm(geo, rich ? 0xfff0e0 : col, 0.95);
+    gm(geo, col, rich ? 0.5 : 0.4).scale.setScalar(rich ? 2.8 : 2.2);
   }
   return mesh;
 }

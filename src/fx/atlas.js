@@ -5,6 +5,7 @@
 //  72 以後：程式產生的形狀（T1）。素材載入前或載不到時，整張由程式產生（同樣的格號，形狀近似）。
 //  遊戲與模型庫共用一張貼圖（FXA.tex，所有粒子系統的 uniform 指向它，載入後只換圖片）。
 // ============================================================
+import { frand } from './rand.js';
 import ATLAS from '../assets/fx/atlas.json';
 
 const CELLS_X = 8,
@@ -54,7 +55,7 @@ export const FXG = {
   twirl: range('twirl', 1, 3),
   slash: range('slash', 1, 4),
 };
-export const pickCell = (g) => g[Math.floor(Math.random() * g.length)];
+export const pickCell = (g) => g[Math.floor(frand() * g.length)];
 
 export const FXA = { tex: null, ready: false, failed: false, p: null };
 if (/[?&]test\b/.test(location.search)) window.__FXA = FXA; // 冒煙測試等圖集載入完

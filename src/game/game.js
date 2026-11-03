@@ -68,6 +68,9 @@ export class Game {
     this.setupPost();
     this.fx = new Effects(this.scene);
     this.fx.setK(DS); // 特效的大小倍率
+    // 砲火特效（設定 ctrl.fxLv：rich 華麗（預設）／std 標準＝改版前）與彈殼、焦痕用的地面高度（只看地形，便宜）
+    this.fx.richOf = () => this.ctrl.fxLv !== 'std';
+    this.fx.ground = (x, z) => (this.world ? this.world.terrainHeight(x, z) : null);
     this.wrapFx();
     this.projSeq = 0;
     this.rangeRing = new THREE.Mesh(

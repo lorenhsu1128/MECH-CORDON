@@ -2,12 +2,13 @@
 //  EFFECTS — 加色發光粒子、曳光、衝擊波、塵土、彈殼
 // ============================================================
 import { SFX } from '../audio/audio.js';
-import { rnd } from '../core/math.js';
+import { frand, frnd as rnd } from './rand.js';
 import { mergeGeos } from '../render/geometry.js';
 import { FxBatch } from './batch.js';
 import { GpuFx } from './gpu.js';
 import { FXC, FXG, pickCell, SOFT, LINE, BEAM } from './atlas.js';
 import { emitPreset } from './presets.js';
+import { beamColor } from './palette.js';
 import { GhostFx } from '../render/ghost.js';
 import { ThrusterFx } from './thruster.js';
 import { RibbonFx } from './trail.js';
@@ -65,6 +66,14 @@ export class Effects {
     };
     this.batchList = Object.values(this.batches);
     this.projPart = this.projPartOf.bind(this); // 傳給 buildProjectileMesh（entities/projectile.js）
+    // 砲火特效（設定 ctrl.fxLv，docs/vfx-design.md 第 7 期）：Game 設定 richOf；沒有設定（模型庫）時一律華麗
+    this.richOf = null;
+    // 地面高度（彈殼落地、爆炸的焦痕）：Game 設定 (x, z) → 高度；沒有時不做落地
+    this.ground = null;
+  }
+  // 華麗＝參考 Oh! Robot 的加強版砲火；標準＝改版前的樣子
+  get rich() {
+    return this.richOf ? this.richOf() : true;
   }
   setK(k) {
     this.k = k;
@@ -77,13 +86,19 @@ export class Effects {
     return this.batches[kind].get(color, opacity);
   }
   // 子彈的發光部分（render/extra-models.js 的 buildProjectileMesh 的 part）：依幾何各一個 attached 批次，
-  // 代理掛在彈體的群組裡；彈體從場景移除時自動放掉
-  projPartOf(geo, color, opacity, parent) {
+  // 代理掛在彈體的群組裡；彈體從場景移除時自動放掉。normal＝一般混合（華麗的曳光芯：明亮的地面上也看得到）
+  projPartOf(geo, color, opacity, parent, normal = false) {
     const M = this.projB || (this.projB = new Map());
-    let b = M.get(geo);
+    const key = normal ? 'n' : 'a';
+    let m = M.get(geo);
+    if (!m) M.set(geo, (m = {}));
+    let b = m[key];
     if (!b) {
-      b = new FxBatch(this.scene, geo, { attached: true });
-      M.set(geo, b);
+      b = m[key] = new FxBatch(
+        this.scene,
+        geo,
+        normal ? { attached: true, blending: THREE.NormalBlending, renderOrder: 4 } : { attached: true },
+      );
       this.batchList.push(b);
     }
     return b.get(color, opacity, parent);
@@ -184,7 +199,7 @@ export class Effects {
       a: 0.85,
       cell: pickCell(FXG.smoke),
       fade: 1,
-      rot: Math.random() * 6.28,
+      rot: frand() * 6.28,
       rv: rnd(-0.8, 0.8),
     });
   }
@@ -196,8 +211,8 @@ export class Effects {
   // 擊破時人形機甲先跪倒崩落（COLLAPSE_T 秒、冒火花），之後才碎裂（end）；動作直接改關節（實體已經不更新）
   collapse(ent, end) {
     const m = ent.model;
-    const side = Math.random() < 0.5 ? -1 : 1,
-      back = Math.random() < 0.35; // 往後倒（否則往前跪倒）
+    const side = frand() < 0.5 ? -1 : 1,
+      back = frand() < 0.35; // 往後倒（否則往前跪倒）
     const legs = m.legs.map((L) => ({
       L,
       th: L.thigh.rotation.x,
@@ -283,18 +298,18 @@ export class Effects {
       acc = 0;
       const q = new THREE.Vector3(p.x + rnd(-0.6, 0.6) * sc * K, gy + 0.6 * K, p.z + rnd(-0.6, 0.6) * sc * K);
       this.smoke(q, (1.4 + t) * sc, t < 0.2 ? 0x3a3530 : 0x24262a, 2.6, 3.2);
-      if (t < 0.4 && Math.random() < 0.35) this.flash(q, 0.7 * sc, 0xff7a20, 0.15);
+      if (t < 0.4 && frand() < 0.35) this.flash(q, 0.7 * sc, 0xff7a20, 0.15);
     });
     // 地面焦痕（平放的焦痕貼圖，維持 8 秒後淡出）
     this.g.dc.emit({
       p: new THREE.Vector3(p.x, gy + 0.08, p.z),
-      life: 12,
+      life: this.rich ? 45 : 12,
       s0: 7.4 * sc * K * (big ? 1.6 : 1),
       c0: 0x0c0a08,
       a: 0.8,
       cell: pickCell(FXG.scorch),
       fade: 5,
-      rot: Math.random() * 6.28,
+      rot: frand() * 6.28,
     });
   }
   // 蓄力（倒著播）：粒子從半徑 r（舊尺度）的球面往 p 吸進去，在 dur 秒內陸續出發（每次呼叫一小段，跟著槍口移動）；
@@ -335,20 +350,33 @@ export class Effects {
       s1: rk * 2.8,
       c0: color,
       cell: FXC.ring,
-      rot: Math.random() * 6.28,
+      rot: frand() * 6.28,
     });
   }
   explosion(p, r, color = 0xffa040, big = false) {
     if (this.water) this.water.blast(p, r * this.k * (big ? 1.4 : 1)); // 水面的波（fx/water，各端自己算）
-    this.flash(p, r * 0.32, 0xffffff, 0.08);
-    this.flash(p, r * 0.45, color, 0.18);
+    const R = this.rich;
+    this.flash(p, r * (R ? 0.42 : 0.32), 0xffffff, R ? 0.1 : 0.08);
+    this.flash(p, r * (R ? 0.62 : 0.45), color, R ? 0.24 : 0.18);
     const K = this.k;
     // 火球：幾團火焰貼圖由白熱轉成暗紅，往外膨脹、旋轉（特效預設 fireball，fx/presets.js）
-    emitPreset(this.g, 'fireball', p, { S: r * K, n: big ? 2 : 1, lifeK: big ? 1.5 : 1 });
-    this.shockwave(p.clone().setY(p.y - r * 0.3 * K), r * 1.6, 0xffc080, big ? 0.5 : 0.3);
-    this.streaks(p, big ? 26 : 12, 0xffa030, rnd(16, 26) * (big ? 1.5 : 1), big ? 0.9 : 0.5, 32);
+    emitPreset(this.g, 'fireball', p, {
+      S: r * K * (R ? 1.25 : 1),
+      n: (big ? 2 : 1) * (R ? 1.5 : 1),
+      lifeK: (big ? 1.5 : 1) * (R ? 1.3 : 1),
+    });
+    this.shockwave(p.clone().setY(p.y - r * 0.3 * K), r * (R ? 2 : 1.6), 0xffc080, big ? 0.5 : 0.3);
+    this.streaks(
+      p,
+      (big ? 26 : 12) * (R ? 1.5 : 1),
+      0xffa030,
+      rnd(16, 26) * (big ? 1.5 : 1),
+      big ? 0.9 : 0.5,
+      32,
+    );
     this.streaks(p, big ? 10 : 5, 0xffe0a0, rnd(24, 34), 0.25, 10);
-    for (let i = 0; i < (big ? 14 : 6); i++) {
+    if (R) this.blastExtra(p, r, big);
+    for (let i = 0; i < (big ? 14 : 6) * (R ? 1.6 : 1); i++) {
       const s = this.P('dk', 0x2a2a2a);
       s.position.copy(p);
       s.scale.setScalar(rnd(0.1, 0.24) * (big ? 1.6 : 1) * K);
@@ -364,21 +392,93 @@ export class Effects {
         if (t > 0.8) e.mesh.scale.multiplyScalar(0.9);
       });
     }
-    for (let i = 0; i < (big ? 8 : 4); i++)
+    for (let i = 0; i < (big ? 8 : 4) * (R ? 1.75 : 1); i++)
       this.smoke(
         p.clone().add(new THREE.Vector3(rnd(-1, 1), rnd(0, 1.5), rnd(-1, 1)).multiplyScalar(r * 0.3 * K)),
-        r * 0.35 * rnd(0.7, 1.3),
-        0x2e3136,
-        big ? 1.6 : 1.0,
-        2.5,
+        r * (R ? 0.45 : 0.35) * rnd(0.7, 1.3),
+        R ? (i % 2 ? 0x1c1d20 : 0x2a2b2e) : 0x2e3136,
+        (big ? 1.6 : 1.0) * (R ? 1.7 : 1),
+        R ? 3.2 : 2.5,
       );
-    this.flashLight(p, color, big ? 40 : 18);
+    this.flashLight(p, color, (big ? 40 : 18) * (R ? 1.6 : 1));
+  }
+  // 華麗的爆炸多出來的部分（不轉送；explosion 已經轉送過）：拖著火與黑煙飛出去的碎塊、貼地爆炸的焦痕
+  blastExtra(p, r, big) {
+    const K = this.k;
+    if (!this.far(p)) {
+      const n = big ? 5 : 3;
+      for (let i = 0; i < n; i++) {
+        // 拋物線（解析解）：每 0.05 秒在目前的位置放火焰與黑煙
+        const v = new THREE.Vector3(rnd(-1, 1), rnd(0.5, 1.4), rnd(-1, 1))
+          .normalize()
+          .multiplyScalar(rnd(10, 18) * K * (big ? 1.4 : 1) * Math.min(1.6, Math.max(0.7, r / 3)));
+        const G = 26 * K,
+          q = new THREE.Vector3();
+        let acc = 0,
+          tt = 0;
+        const life = rnd(0.55, 0.9);
+        this.task(life, (e, t, dt) => {
+          tt += dt;
+          acc += dt;
+          if (acc < 0.045) return;
+          acc = 0;
+          q.copy(p).addScaledVector(v, tt);
+          q.y -= 0.5 * G * tt * tt;
+          const u = 1 - t;
+          this.g.gl.emit({
+            p: q,
+            life: 0.22,
+            s0: 1.3 * K * u + 0.3 * K,
+            s1: 0.3 * K,
+            c0: 0xffe0a0,
+            c1: 0xff5010,
+            a: 0.9,
+            occ: 0.3,
+            cell: pickCell(FXG.flame),
+            rot: frand() * 6.28,
+          });
+          if (frand() < 0.6) this.smoke(q.clone(), 0.5 + u * 0.4, 0x1c1d20, 1.2, 1.5);
+        });
+      }
+    }
+    // 貼地的爆炸留下焦痕（放大的焦痕比擊破的小一點；dc 是一般混合，蓋在地面上）
+    if (this.ground && !(this.water && this.water.wet(p.x, p.z))) {
+      const gy = this.ground(p.x, p.z);
+      if (gy != null && p.y - gy < (2 + r * 0.6) * K && p.y - gy > -1)
+        this.g.dc.emit({
+          p: new THREE.Vector3(p.x, gy + 0.06, p.z),
+          life: 30,
+          s0: r * K * rnd(1.4, 1.9) * (big ? 1.3 : 1),
+          c0: 0x0c0a08,
+          a: 0.7,
+          cell: pickCell(FXG.scorch),
+          fade: 5,
+          rot: frand() * 6.28,
+        });
+    }
   }
   spark(p, color = 0xffe080, dir = null) {
-    this.flash(p, 0.3, 0xffffff, 0.06);
-    this.flash(p, 0.28, color, 0.12);
-    this.streaks(p, 7, color, rnd(12, 18), 0.3, 30, dir ? dir.clone().negate() : null, 1.2);
-    this.smoke(p, 0.35, 0x6a6e75, 0.45, 1.5);
+    const R = this.rich;
+    this.flash(p, R ? 0.45 : 0.3, 0xffffff, R ? 0.07 : 0.06);
+    this.flash(p, R ? 0.5 : 0.28, color, R ? 0.15 : 0.12);
+    const back = dir ? dir.clone().negate() : null;
+    this.streaks(p, R ? 13 : 7, color, rnd(12, 18) * (R ? 1.35 : 1), R ? 0.38 : 0.3, 30, back, 1.2);
+    if (R && !this.far(p)) {
+      // 華麗：白熱的短火花往回濺＋十字星光
+      this.streaks(p, 5, 0xffffff, rnd(22, 30), 0.12, 6, back, 0.8);
+      this.g.gl.emit({
+        p,
+        life: 0.09,
+        s0: 1.7 * this.k,
+        s1: 0.5 * this.k,
+        c0: 0xffffff,
+        c1: color,
+        k: 1.5,
+        cell: pickCell(FXG.star),
+        rot: frand() * 6.28,
+      });
+    }
+    this.smoke(p, R ? 0.5 : 0.35, 0x6a6e75, 0.45, 1.5);
   }
   // kind（第 5 個參數，隨轉送帶給客機；docs/vfx-design.md 第 6 期）：'sg' 霰彈槍＝前方扇形的煙、
   // 'bz' 火箭筒與榴彈＝筒子後方的後焰、'ms' 導彈莢艙＝發射口的小閃光與往後的煙（沒有槍口火焰）
@@ -399,28 +499,50 @@ export class Effects {
       emitPreset(this.g, 'bzBlast', p, { S: this.k * size * 0.5, axis: dir.clone().negate(), n: 0.6 });
       return;
     }
+    const R = this.rich;
     if (kind === 'sg') emitPreset(this.g, 'sgSmoke', p, { S: this.k, axis: dir });
     else if (kind === 'bz')
       emitPreset(this.g, 'bzBlast', p.clone().addScaledVector(dir, -2.2 * this.k), {
         S: this.k,
         axis: dir.clone().negate(),
       });
-    this.g.gl.emit({ p, life: 0.06, s0: sz * 1.05, s1: sz * 0.55, c0: 0xffffff, cell: SOFT });
+    const S = R ? 1.5 : 1;
+    this.g.gl.emit({ p, life: 0.06, s0: sz * 1.05 * S, s1: sz * 0.55 * S, c0: 0xffffff, cell: SOFT });
     // 槍口火焰：沿槍管方向從槍口往外（aspect 負的＝一端固定在槍口）
     this.g.ln.emit({
       p,
       life: 0.07,
-      s0: sz * 2,
-      s1: sz * 2.5,
+      s0: sz * 2 * S,
+      s1: sz * 2.5 * S,
       c0: 0xffffff,
       c1: color,
       a: 0.95,
       cell: pickCell(FXG.muzzle),
       axis: dir,
-      asp: -sz * 2.2,
+      asp: -sz * 2.2 * (R ? 1.6 : 1),
     });
+    if (R) {
+      // 華麗：往兩側斜開的側焰（星形的槍口火光）＋一圈大的光暈
+      const side = new THREE.Vector3(-dir.z, 0, dir.x);
+      if (side.lengthSq() < 1e-4) side.set(1, 0, 0);
+      side.normalize();
+      for (const s of [-1, 1])
+        this.g.ln.emit({
+          p,
+          life: 0.05,
+          s0: sz * 1.2,
+          s1: sz * 1.5,
+          c0: 0xffffff,
+          c1: color,
+          a: 0.8,
+          cell: pickCell(FXG.muzzle),
+          axis: side.clone().multiplyScalar(s).addScaledVector(dir, 0.7),
+          asp: -sz * 1.3,
+        });
+      this.g.gl.emit({ p, life: 0.08, s0: sz * 3.2, s1: sz * 4, c0: color, a: 0.35, cell: SOFT });
+    }
     if (this.far(p)) return; // 遠處只留閃光
-    this.streaks(p, 3, color, 14, 0.14, 4, dir, 0.5);
+    this.streaks(p, R ? 5 : 3, color, R ? 18 : 14, 0.14, 4, dir, 0.5);
     this.smoke(p.clone().addScaledVector(dir, 0.6 * this.k), 0.25, 0x8a8e96, 0.4, 1.5);
   }
   empBeam(w, a, b, color) {
@@ -444,10 +566,12 @@ export class Effects {
     grp.rotateX(Math.PI / 2);
     w.beamCore.scale.set(this.k, d, this.k);
     w.beamGlow.scale.set(this.k, d, this.k);
-    w.beamGlow.material.opacity = 0.12 + Math.random() * 0.08;
+    w.beamGlow.material.opacity = 0.12 + frand() * 0.08;
     w.beamHideT = 0.08;
   }
-  beam(a, b, color, width = 0.12) {
+  // team（第 5 個參數，隨轉送帶給客機）：砲火特效「華麗」時依陣營換色（fx/palette.js：敵人的雷射＝洋紅）
+  beam(a, b, color, width = 0.12, team) {
+    if (team && this.rich) color = beamColor(team);
     const d = a.distanceTo(b);
     const w0 = width;
     width *= this.k;
@@ -501,7 +625,7 @@ export class Effects {
         c0: color,
         a: 0.7,
         cell: pickCell(FXG.smoke),
-        rot: Math.random() * 6.28,
+        rot: frand() * 6.28,
         rv: rnd(-1, 1),
       });
     }
@@ -509,22 +633,51 @@ export class Effects {
   }
   casing(p, side, dir) {
     if (this.skip(p, 3)) return;
-    const s = this.P('cs', 0xd4a54a);
-    s.position.copy(p);
+    const R = this.rich;
     const K = this.k;
-    s.scale.set(0.05 * K, 0.05 * K, 0.14 * K);
-    const right = new THREE.Vector3(-dir.z, 0, dir.x).multiplyScalar(side);
-    const v = right
-      .multiplyScalar(rnd(3, 5))
-      .add(new THREE.Vector3(0, rnd(4, 6), 0))
-      .multiplyScalar(K);
-    const rv = rnd(10, 25);
-    this.add(s, 1.2, (e, t, dt) => {
-      v.y -= 30 * K * dt;
-      e.mesh.position.addScaledVector(v, dt);
-      e.mesh.rotation.x += rv * dt;
-      e.mesh.rotation.z += rv * 0.5 * dt;
-    });
+    // 華麗：彈殼大一點、彈出來時閃一下，落地彈跳後在地上留一下（ground 有設定時）
+    const gy = R && this.ground ? this.ground(p.x, p.z) : null;
+    const n = R && !this.far(p) ? 2 : 1;
+    for (let i = 0; i < n; i++) {
+      const s = this.P('cs', 0xd4a54a);
+      s.position.copy(p);
+      const sk = R ? 1.6 : 1;
+      s.scale.set(0.05 * K * sk, 0.05 * K * sk, 0.14 * K * sk);
+      const right = new THREE.Vector3(-dir.z, 0, dir.x).multiplyScalar(side);
+      const v = right
+        .multiplyScalar(rnd(3, 5) * (i ? 0.7 : 1))
+        .add(new THREE.Vector3(0, rnd(4, 6), 0))
+        .addScaledVector(dir, i ? rnd(-1.5, 0) : 0)
+        .multiplyScalar(K);
+      let rv = rnd(10, 25),
+        bounce = 0;
+      // 落地：彈殼飛出去好幾公尺，地面高度照目前的位置查（斜坡上不會陷進去或浮著）
+      const floorAt =
+        gy == null || p.y - gy > 40 * K ? null : (m) => this.ground(m.position.x, m.position.z) + 0.05 * K;
+      this.add(s, floorAt ? 2.6 : 1.2, (e, t, dt) => {
+        const m = e.mesh;
+        if (bounce > 2) {
+          if (t > 0.85) m.scale.multiplyScalar(0.85);
+          return;
+        }
+        v.y -= 30 * K * dt;
+        m.position.addScaledVector(v, dt);
+        m.rotation.x += rv * dt;
+        m.rotation.z += rv * 0.5 * dt;
+        const floor = floorAt && v.y < 0 ? floorAt(m) : null;
+        if (floor != null && m.position.y < floor) {
+          m.position.y = floor;
+          bounce++;
+          v.y = -v.y * 0.35;
+          v.x *= 0.5;
+          v.z *= 0.5;
+          rv *= 0.5;
+          if (bounce > 2) m.rotation.x = Math.PI / 2;
+        }
+      });
+    }
+    if (R && !this.far(p))
+      this.g.gl.emit({ p, life: 0.05, s0: 0.6 * K, s1: 0.2 * K, c0: 0xffe0a0, a: 0.8, cell: SOFT });
   }
   boostFlame(p, dir, color) {
     if (this.skip(p, 1)) return;
@@ -538,6 +691,23 @@ export class Effects {
       c0: color,
       a: 0.7,
       cell: SOFT,
+    });
+  }
+  // 導彈與砲彈的火焰尾巴（砲火特效「華麗」，projectile.js 的 trailFx；不轉送）：沿飛行的反方向拉長的火焰
+  tailFlame(p, back, color, sc = 1) {
+    if (this.skip(p, 2)) return;
+    const K = this.k * sc;
+    this.g.ln.emit({
+      p,
+      life: 0.1,
+      s0: 1.1 * K,
+      s1: 0.4 * K,
+      c0: 0xfff0c0,
+      c1: color,
+      a: 0.9,
+      cell: pickCell(FXG.flame),
+      axis: back,
+      asp: -3.2 * K,
     });
   }
   ring(p, r, color) {
@@ -696,8 +866,8 @@ export class Effects {
       acc += dt;
       if (acc > 0.06 && fade > 0.3) {
         acc = 0;
-        const a = Math.random() * Math.PI * 2,
-          r = Math.random() * R * 0.85;
+        const a = frand() * Math.PI * 2,
+          r = frand() * R * 0.85;
         const K = this.k;
         const q = p.clone().add(new THREE.Vector3(Math.cos(a) * r, 0.3 * K, Math.sin(a) * r));
         // 火苗：直立的火舌貼圖往上飄、縮小
@@ -708,12 +878,12 @@ export class Effects {
           s0: 2.6 * K,
           s1: 0.5 * K,
           c0: C[1],
-          c1: Math.random() < 0.5 ? C[2] : C[3],
+          c1: frand() < 0.5 ? C[2] : C[3],
           a: 0.85,
           occ: 0.4,
           cell: pickCell(FXG.tongue),
         });
-        if (Math.random() < 0.15) this.smoke(q.clone().setY(q.y + K), 0.9, C[4], 1.2, 3);
+        if (frand() < 0.15) this.smoke(q.clone().setY(q.y + K), 0.9, C[4], 1.2, 3);
       }
     });
   }
@@ -733,11 +903,11 @@ export class Effects {
         s0: 0.8 * K,
         s1: 4.6 * K,
         c0: 0xffe0a0,
-        c1: Math.random() < 0.6 ? 0xa02800 : 0xc06000,
+        c1: frand() < 0.6 ? 0xa02800 : 0xc06000,
         a: 0.85,
         occ: 0.45,
         cell: pickCell(FXG.fire),
-        rot: Math.random() * 6.28,
+        rot: frand() * 6.28,
         rv: rnd(-3, 3),
       });
     }
@@ -804,13 +974,13 @@ export class Effects {
         .add(new THREE.Vector3(rnd(-2, 2), rnd(4, 11), rnd(-2, 2)))
         .multiplyScalar(K);
       const av = new THREE.Vector3(rnd(-7, 7), rnd(-7, 7), rnd(-7, 7));
-      const burning = Math.random() < 0.35;
+      const burning = frand() < 0.35;
       let rest = false;
       let smokeT = 0;
       pieces.push(g);
       this.list.push({
         mesh: g,
-        life: 9 + Math.random() * 2,
+        life: 9 + frand() * 2,
         max: 11,
         fn: (e, t, dt) => {
           if (!rest) {
@@ -830,7 +1000,7 @@ export class Effects {
                 v.z *= 0.55;
                 av.multiplyScalar(0.5);
                 this.dust(g.position.clone().setY(gy - 0.3 * K), 1.2, 5);
-                if (Math.random() < 0.5) this.streaks(g.position, 4, 0xffc050, 10, 0.3, 20);
+                if (frand() < 0.5) this.streaks(g.position, 4, 0xffc050, 10, 0.3, 20);
               }
             }
           }
@@ -839,7 +1009,7 @@ export class Effects {
             if (smokeT > 0.12) {
               smokeT = 0;
               this.smoke(g.position.clone(), 0.7, 0x3a3d44, 1.2, 2.2);
-              if (Math.random() < 0.5)
+              if (frand() < 0.5)
                 this.boostFlame(
                   g.position
                     .clone()
@@ -924,8 +1094,8 @@ export class Effects {
     // 刀痕：依揮的方向（Euler YXZ：先俯仰再偏航，長邊是本地 z）
     const yaw = dir && dir.x !== undefined ? Math.atan2(dir.x, dir.z) : 0;
     const sw = o.sw || 'h';
-    const tilt = (Math.random() - 0.5) * 0.3;
-    let pitch = 0.6 * (Math.random() < 0.5 ? 1 : -1),
+    const tilt = (frand() - 0.5) * 0.3;
+    let pitch = 0.6 * (frand() < 0.5 ? 1 : -1),
       ry = yaw + Math.PI / 2,
       len = 1,
       mv = null; // 刀痕移動的方向（往上挑、往下砸）

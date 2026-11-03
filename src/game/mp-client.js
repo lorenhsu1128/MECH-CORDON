@@ -357,6 +357,7 @@ Object.assign(Game.prototype, {
             shootable: e.sh || 0, // 可以打掉的投射物（hazards2.js：血條與鎖定）
             shotR: e.sr,
             scale: e.sc || 0,
+            at: e.at,
             visual: true,
             netId: e.i,
           });

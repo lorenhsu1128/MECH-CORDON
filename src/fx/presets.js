@@ -13,6 +13,7 @@
 //    cells  貼圖：圖集的組或格的名稱，逗號分隔（fx/atlas.js 的 FXG、FXC）
 //    fade   淡出曲線（fx/gpu.js）；g 重力（× S，負的往上飄）；drag 空氣阻力；rot 1＝隨機的角度；rv 旋轉速度；asp 拉長的比例
 // ============================================================
+import { frand } from './rand.js';
 import BUILTIN from '../assets/fx/presets.json';
 import { FXC, FXG } from './atlas.js';
 
@@ -100,7 +101,7 @@ function cellsOf(L) {
   Object.defineProperty(L, '_cs', { value: L.cells, writable: true, enumerable: false });
   return L._cells;
 }
-const rr = (a, d = 0) => (Array.isArray(a) ? a[0] + Math.random() * (a[1] - a[0]) : a != null ? a : d);
+const rr = (a, d = 0) => (Array.isArray(a) ? a[0] + frand() * (a[1] - a[0]) : a != null ? a : d);
 const hexOf = (c, color) =>
   c === '$' ? (color != null ? color : 0xffffff) : c ? parseInt(c.slice(1), 16) : null;
 const _ax = new THREE.Vector3(),
@@ -123,7 +124,7 @@ export function emitPreset(sys, id, p, o = {}) {
     const c0 = hexOf(L.c0, o.color),
       c1 = hexOf(L.c1, o.color);
     for (let i = 0; i < n; i++) {
-      if (L.chance != null && Math.random() >= L.chance) continue;
+      if (L.chance != null && frand() >= L.chance) continue;
       // 方向：範圍內取亂數（沒有範圍＝球面上隨機）
       if (L.dir)
         _d.set(
@@ -131,7 +132,7 @@ export function emitPreset(sys, id, p, o = {}) {
           rr([L.dir[0][1], L.dir[1][1]]),
           rr([L.dir[0][2], L.dir[1][2]]),
         );
-      else _d.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5);
+      else _d.set(frand() - 0.5, frand() - 0.5, frand() - 0.5);
       // o.axis：方向＝軸（正規化）＋範圍內的偏移（槍口、後焰這類依呼叫端的方向）
       if (o.axis) _d.add(_ax.copy(o.axis).normalize());
       if (_d.lengthSq() < 1e-6) _d.set(0, 1, 0);
@@ -145,9 +146,9 @@ export function emitPreset(sys, id, p, o = {}) {
       } else {
         if (L.pos) {
           const r = rr(L.pos) * S;
-          _p.x += (Math.random() * 2 - 1) * r;
-          _p.y += (Math.random() * 2 - 1) * r;
-          _p.z += (Math.random() * 2 - 1) * r;
+          _p.x += (frand() * 2 - 1) * r;
+          _p.y += (frand() * 2 - 1) * r;
+          _p.z += (frand() * 2 - 1) * r;
         }
         if (L.ring) {
           const h = Math.hypot(_d.x, _d.z) || 1;
@@ -169,11 +170,11 @@ export function emitPreset(sys, id, p, o = {}) {
         k: L.k,
         a: L.a,
         occ: L.occ,
-        cell: cells[Math.floor(Math.random() * cells.length)],
+        cell: cells[Math.floor(frand() * cells.length)],
         fade: L.fade,
         g: (L.g || 0) * S,
         drag: L.drag,
-        rot: L.rot ? Math.random() * 6.28 : 0,
+        rot: L.rot ? frand() * 6.28 : 0,
         rv: L.rv ? rr(L.rv) : 0,
         asp: L.asp,
       });

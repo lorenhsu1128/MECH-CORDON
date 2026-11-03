@@ -3,6 +3,7 @@
 //  從背包的噴口連接點沿噴口方向（連接點的 −Y 軸）噴出：剛噴出時白熱、隨後轉成噴焰色並變大淡出（docs/vfx-design.md）。
 //  遊戲（Effects.thruster）與模型庫檢視窗共用；時間是自己的（update 的 dt 累加，暫停時不更新）。
 // ============================================================
+import { frand } from './rand.js';
 import { GpuFx } from './gpu.js';
 import { SOFT, LINE } from './atlas.js';
 import { JetFx } from './jet.js';
@@ -61,8 +62,8 @@ export class ThrusterFx {
     for (const nz of model.nozzles) {
       nozzleWorld(nz, pos, dir, false);
       for (let k = 0; k < 8; k++) {
-        const sp = (14 + Math.random() * 16) * scale;
-        v.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5)
+        const sp = (14 + frand() * 16) * scale;
+        v.set(frand() - 0.5, frand() - 0.5, frand() - 0.5)
           .multiplyScalar(0.7)
           .add(dir)
           .normalize()
@@ -71,9 +72,9 @@ export class ThrusterFx {
         this.sys.emit({
           p: pos,
           v,
-          life: 0.12 + Math.random() * 0.14,
-          s0: (0.35 + Math.random() * 0.3) * scale,
-          s1: (1.2 + Math.random() * 0.6) * scale,
+          life: 0.12 + frand() * 0.14,
+          s0: (0.35 + frand() * 0.3) * scale,
+          s1: (1.2 + frand() * 0.6) * scale,
           c0: 0xffffff,
           c1: color,
           k: 1.8,
@@ -103,7 +104,7 @@ export class ThrusterFx {
         (0.1 + 0.07 * thrust) * scale,
         0.35 + 0.65 * thrust,
         color,
-        i * 1.7 + (model._jSeed || (model._jSeed = Math.random() * 10)),
+        i * 1.7 + (model._jSeed || (model._jSeed = frand() * 10)),
       );
     }
     const rate = (4 + 40 * thrust) * dt;
@@ -118,22 +119,16 @@ export class ThrusterFx {
     for (let i = 0; i < nzs.length; i++) {
       nozzleWorld(nzs[i], pos, dir, model.nzFresh);
       for (let k = 0; k < n; k++) {
-        const sp = (3 + 8 * thrust) * scale * (0.8 + Math.random() * 0.4);
-        v.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5)
+        const sp = (3 + 8 * thrust) * scale * (0.8 + frand() * 0.4);
+        v.set(frand() - 0.5, frand() - 0.5, frand() - 0.5)
           .multiplyScalar(0.35)
           .add(dir)
           .normalize()
           .multiplyScalar(sp);
         if (carry) v.addScaledVector(carry, 0.35);
         // 一幀內分散在噴口附近，避免一團一團
-        _v.copy(pos).addScaledVector(dir, Math.random() * sp * dt);
-        this.emit(
-          _v,
-          v,
-          color,
-          (0.4 + 0.6 * thrust) * scale * (0.8 + Math.random() * 0.4),
-          0.1 + 0.14 * thrust,
-        );
+        _v.copy(pos).addScaledVector(dir, frand() * sp * dt);
+        this.emit(_v, v, color, (0.4 + 0.6 * thrust) * scale * (0.8 + frand() * 0.4), 0.1 + 0.14 * thrust);
       }
     }
   }

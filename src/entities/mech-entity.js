@@ -1035,7 +1035,7 @@ export class MechEntity {
           }
           const end = muzzle.clone().addScaledVector(bdir, stop);
           if (stop < d.range && !hits.length) g.fx.spark(end, 0xffffff);
-          g.fx.beam(muzzle, end, d.color, charged ? 0.4 : 0.13);
+          g.fx.beam(muzzle, end, d.color, charged ? 0.4 : 0.13, this.team); // team：華麗時敵人的雷射換成洋紅
           if (charged) {
             g.fx.shockwave(
               hits.length ? muzzle.clone().addScaledVector(bdir, hits[0].proj) : end,

@@ -11071,7 +11071,7 @@ async function testEnemyAI(browser, base) {
         supD: L.supD / Math.max(1, L.supN),
       };
     };
-    const R = [16, 17, 18, 19].map(run);
+    const R = [16, 17, 18, 19, 20, 21, 22, 23].map(run);
     const mean = (k) => R.reduce((a, r) => a + r[k], 0) / R.length;
     return {
       maxHold: Math.max(...R.map((r) => r.maxHold)),
@@ -11084,7 +11084,7 @@ async function testEnemyAI(browser, base) {
   }, SC);
   check(
     t.maxHold <= 3 && t.avg >= 1,
-    `一群敵人同時最多 3 台主攻（4 個種子：最多 ${t.maxHold}、平均 ${t.avg}）`,
+    `一群敵人同時最多 3 台主攻（8 個種子：最多 ${t.maxHold}、平均 ${t.avg}）`,
   );
   check(t.rot >= 3.5, `主攻會輪替（拿過權杖的 ${t.rots} 台，平均 ${t.rot}）`);
   check(t.moves.split(',').filter(Boolean).length >= 2, `主攻放預警招式（${t.moves}）`);
@@ -15381,6 +15381,57 @@ async function testFx(browser, base) {
     out.lowhp = G.gl.n + G.sm.n + G.ln.n - lo0;
     pl.hp = hp0;
     out.noAO = fx.gList.every((x) => x.mesh.userData.noAO && x.mesh.userData.noFade);
+    // 第 7 期（參考 Oh! Robot）：砲火特效「華麗」比「標準」多、子彈依陣營＋屬性換色、彈殼落地、貼地爆炸留下焦痕
+    const cnt = () => G.gl.n + G.sm.n + G.ln.n + G.rg.n + G.dc.n + fx.list.length;
+    const boom = (lv) => {
+      g.ctrl.fxLv = lv;
+      fx.clear();
+      fx.explosion(at(-12, 8, 1), 4, 0xffa040, false);
+      fx.spark(at(6, 8, 3), 0xffe080, new THREE.Vector3(1, 0, 0));
+      fx.muzzle(at(0, 8, 3), new THREE.Vector3(1, 0, 0), 0xffd080, 1);
+      return { n: cnt(), dc: G.dc.n };
+    };
+    out.std = boom('std');
+    out.rich = boom('rich');
+    const shot = (lv, tm, a) => {
+      g.ctrl.fxLv = lv;
+      const P0 = at(0, 0, 4);
+      g.clientEvent({
+        t: 'proj',
+        i: 990001,
+        p: [P0.x, P0.y, P0.z],
+        v: [100, 0, 0],
+        k: 'bullet',
+        tm,
+        c: 0x123456,
+        l: 0.5,
+        at: a,
+      });
+      const p = g.projectiles[g.projectiles.length - 1];
+      g.scene.remove(p.mesh);
+      g.projectiles.pop();
+      return p.color;
+    };
+    out.tint = [
+      shot('rich', 'enemy', 'en'),
+      shot('rich', 'player', 'kin'),
+      shot('rich', 'enemy', 'kin'),
+      shot('std', 'enemy', 'en'),
+    ];
+    g.ctrl.fxLv = 'rich';
+    fx.clear();
+    const l0 = fx.list.length;
+    fx.casing(at(0, 0, 3), 1, new THREE.Vector3(1, 0, 0));
+    out.cas = fx.list.length - l0;
+    for (let i = 0; i < 90; i++) fx.update(1 / 60);
+    const cs = fx.list.filter((e) => e.mesh && e.mesh.fxBatch === fx.batches.cs);
+    out.casFloor =
+      cs.length > 0 &&
+      cs.every(
+        (e) => Math.abs(e.mesh.position.y - g.world.terrainHeight(e.mesh.position.x, e.mesh.position.z)) < 1,
+      );
+    g.ctrl.fxLv = 'rich';
+    fx.clear();
     return out;
   });
   check(r.atlas && r.w === 2048, `Kenney 的粒子圖集載入（${r.w} px）`);
@@ -15404,6 +15455,15 @@ async function testFx(browser, base) {
     `殘影：QB 時留下（${r.ghost} 個、${r.ghostMesh} 個網格）、0.25 秒後消失、設定關閉時沒有`,
   );
   check(r.lowhp > 5, `低 AP（10%）：冒煙、火花、起火（${r.lowhp} 顆）`);
+  check(
+    r.rich.n > r.std.n * 1.3 && r.rich.dc > r.std.dc,
+    `砲火特效：華麗的爆炸、火花、槍口火光比標準多（${r.rich.n}／${r.std.n}），貼地的爆炸留下焦痕（${r.rich.dc}／${r.std.dc}）`,
+  );
+  check(
+    r.tint[0] === 0xff3ce0 && r.tint[1] === 0xffd27a && r.tint[2] === 0xff4a36 && r.tint[3] === 0x123456,
+    `子彈依陣營＋屬性換色：敵人能量＝洋紅、自己實彈＝金、敵人實彈＝紅；標準照原色（${r.tint.map((c) => c.toString(16))}）`,
+  );
+  check(r.cas === 2 && r.casFloor, `華麗的彈殼：一次 2 個、落地後留在地上（${r.cas}、${r.casFloor}）`);
   check(
     r.gather === 8 && r.arcStar >= 4 && r.amb >= 2,
     `蓄力往中心吸（${r.gather}）、電弧與星光（${r.arcStar}）、燃燒的殘骸與蒸氣（${r.amb}）`,

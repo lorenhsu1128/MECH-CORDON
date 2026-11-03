@@ -22,14 +22,41 @@ const SET_TABS = {
 const PRESETS = {
   gfx: {
     name: '畫面品質',
-    tip: '一次調整解析度、水面、機甲特效、文字演出與殘影；效能＝比較慢的電腦、平板與手機',
+    tip: '一次調整解析度、水面、機甲特效、砲火特效、文字演出與殘影；效能＝比較慢的電腦、平板與手機',
     list: [
       [
         '效能',
-        { styleRes: '0.7', ctrlWater: 'low', ctrlMechFx: 'simple', ctrlTfx: 'simple', ctrlGhost: 'off' },
+        {
+          styleRes: '0.7',
+          ctrlWater: 'low',
+          ctrlMechFx: 'simple',
+          ctrlFxLv: 'std',
+          ctrlTfx: 'simple',
+          ctrlGhost: 'off',
+        },
       ],
-      ['平衡', { styleRes: '1', ctrlWater: '', ctrlMechFx: 'full', ctrlTfx: 'full', ctrlGhost: 'on' }],
-      ['品質', { styleRes: '1', ctrlWater: 'high', ctrlMechFx: 'full', ctrlTfx: 'full', ctrlGhost: 'on' }],
+      [
+        '平衡',
+        {
+          styleRes: '1',
+          ctrlWater: '',
+          ctrlMechFx: 'full',
+          ctrlFxLv: 'rich',
+          ctrlTfx: 'full',
+          ctrlGhost: 'on',
+        },
+      ],
+      [
+        '品質',
+        {
+          styleRes: '1',
+          ctrlWater: 'high',
+          ctrlMechFx: 'full',
+          ctrlFxLv: 'rich',
+          ctrlTfx: 'full',
+          ctrlGhost: 'on',
+        },
+      ],
     ],
     def: 1,
   },
@@ -320,6 +347,7 @@ Object.assign(Game.prototype, {
     $('ctrlCamDist').value = this.ctrl.camDist || 'std';
     $('ctrlCamCU').value = this.ctrl.camCU || 'on';
     $('ctrlMechFx').value = this.ctrl.mechFx || 'full';
+    $('ctrlFxLv').value = this.ctrl.fxLv || 'rich';
     $('ctrlGhost').value = this.ctrl.ghost || 'on';
     $('ctrlWater').value = this.ctrl.water || '';
     $('ctrlTfx').value = this.ctrl.tfx || 'full';

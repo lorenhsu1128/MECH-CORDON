@@ -790,6 +790,10 @@ Object.assign(Game.prototype, {
       this.ctrl.mechFx = e.target.value;
       this.saveKeys();
     };
+    document.getElementById('ctrlFxLv').onchange = (e) => {
+      this.ctrl.fxLv = e.target.value; // 砲火特效（fx.rich，下一顆子彈、下一個爆炸就生效）
+      this.saveKeys();
+    };
     document.getElementById('ctrlWater').onchange = (e) => {
       this.ctrl.water = e.target.value; // 水面品質（game/water.js 每格套用）
       this.saveKeys();
