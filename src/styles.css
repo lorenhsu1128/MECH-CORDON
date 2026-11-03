@@ -555,6 +555,38 @@ body.rstick #vbQB {
   right: calc(171px + env(safe-area-inset-right, 0px)) !important;
   bottom: calc(33px + env(safe-area-inset-bottom, 0px)) !important;
 }
+/* 地面的追尾視角：右搖桿兼攻擊鍵（body.rsfire，2026-11-04 使用者定案）——按住搖桿＝攻擊＋轉鏡頭，射擊鍵收起；
+   搖桿的鈕上顯示「射擊／斬擊」，斬擊時在搖桿上滑一下＝方向派生 */
+.rsLbl {
+  display: none;
+}
+body.rsfire .rsLbl {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  font:
+    700 12px/1 'Chakra Petch',
+    sans-serif;
+  color: #fff;
+  pointer-events: none;
+}
+body.rsfire #vbAttack {
+  display: none !important;
+}
+body.rsfire #vsR {
+  opacity: 0.8;
+  border-color: var(--acc);
+  background: rgba(255, 176, 32, 0.16);
+}
+body.rsfire #vsR.act {
+  opacity: 1;
+}
+body.rsfire #vsR.melee {
+  border-color: #ff6ab0;
+  background: rgba(255, 106, 176, 0.22);
+}
 /* 空域：沒有急轉鍵（右搖桿推到底＝急轉），上方換成空戰導彈鍵 */
 #vbAam {
   display: none;

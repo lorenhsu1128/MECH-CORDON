@@ -7268,11 +7268,48 @@ async function testAir(browser, base) {
         }
       const jump = document.querySelector('#vpad .vbtn[data-a="jump"]').offsetWidth > 0;
       const aam = document.getElementById('vbAam').offsetWidth > 0;
-      return { chase, top, ov, n: R.length, jump, aam };
+      // 右搖桿兼攻擊鍵：射擊鍵收起、按住搖桿＝攻擊＋轉鏡頭；斬擊時滑一下＝方向派生、不轉鏡頭
+      const atkHidden = !document.getElementById('vbAttack').offsetWidth;
+      const zone = document.getElementById('vsRZone'),
+        sr = document.getElementById('vsR').getBoundingClientRect();
+      const x0 = sr.left + sr.width / 2,
+        y0 = sr.top + sr.height / 2;
+      const T = (type, x, y) => {
+        const t = new window.Touch({ identifier: 9, target: zone, clientX: x, clientY: y });
+        zone.dispatchEvent(
+          new window.TouchEvent(type, {
+            changedTouches: [t],
+            touches: type === 'touchend' ? [] : [t],
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+      };
+      g.smartMode = 'fire';
+      T('touchstart', x0, y0);
+      T('touchmove', x0 + 40, y0);
+      const fireHeld = !!g.down['Touch_attack'],
+        steer = +g.touchAim.x.toFixed(2);
+      T('touchend', x0 + 40, y0);
+      const released = !g.down['Touch_attack'];
+      g.smartMode = 'melee';
+      g.swipePulse = null;
+      T('touchstart', x0, y0);
+      T('touchmove', x0, y0 - 40);
+      const swipe = g.swipePulse ? g.swipePulse.k : '',
+        noSteer = g.touchAim.lengthSq() === 0 && !!g.down['Touch_attack'];
+      T('touchend', x0, y0 - 40);
+      g.swipePulse = null;
+      return { chase, top, ov, n: R.length, jump, aam, atkHidden, fireHeld, steer, released, swipe, noSteer };
     });
+    check(
+      gr.atkHidden && gr.fireHeld && gr.steer > 0.5 && gr.released,
+      `${nm}：追尾視角的右搖桿兼攻擊鍵（射擊鍵收起、按住攻擊＋轉鏡頭 ${gr.steer}、放開停止）`,
+    );
+    check(gr.swipe === 'f' && gr.noSteer, `${nm}：斬擊時在右搖桿上滑一下＝方向派生（${gr.swipe}），不轉鏡頭`);
     check(gr.chase && !gr.top, `${nm}：地面的追尾視角也有右搖桿、俯視沒有`);
     check(
-      gr.jump && !gr.aam && gr.n === 6 && gr.ov === 0,
+      gr.jump && !gr.aam && gr.n === 5 && gr.ov === 0,
       `${nm}：地面的右搖桿周圍是跳躍鍵（沒有導彈鍵），按鈕不重疊（${gr.ov}）`,
     );
     await pg.evaluate(() => window.__pump(0.5));

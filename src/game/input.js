@@ -375,7 +375,9 @@ Object.assign(Game.prototype, {
     document.getElementById('hud').addEventListener('touchstart', tapLock, { passive: true });
   },
   // 右搖桿（浮動）：追尾、第一人稱、空域時右下角的區域（body.rstick），按下的地方就是中心；
-  // 推的方向與幅度＝鏡頭的轉向速度（camAimInput，和手把的右搖桿相同）。短而快地推到左右邊＝換鎖定目標（甩動）
+  // 推的方向與幅度＝鏡頭的轉向速度（camAimInput，和手把的右搖桿相同）。短而快地推到左右邊＝換鎖定目標（甩動）。
+  // 地面的追尾視角（body.rsfire）：搖桿兼攻擊鍵——按住＝攻擊（Touch_attack，applySmartAttack 照樣切射擊／斬擊）；
+  // 按下時是斬擊的話，這一次按住不轉鏡頭，滑一下＝方向派生（和攻擊鍵上的滑動相同）
   setupRStick() {
     const zone = document.getElementById('vsRZone'),
       rs = document.getElementById('vsR'),
@@ -386,7 +388,9 @@ Object.assign(Game.prototype, {
       cx = 0,
       cy = 0,
       t0 = 0,
-      mx = 0;
+      mx = 0,
+      fire = false, // 這一次按住兼攻擊
+      sw = 0; // 0＝轉鏡頭、1＝斬擊的滑動、2＝已經滑過
     const R = () => rs.offsetWidth * 0.42 || 50;
     zone.addEventListener(
       'touchstart',
@@ -404,6 +408,17 @@ Object.assign(Game.prototype, {
         t0 = performance.now();
         mx = 0;
         rs.classList.add('act');
+        fire = document.body.classList.contains('rsfire');
+        sw = fire && this.smartMode === 'melee' ? 1 : 0;
+        if (fire) {
+          this.down['Touch_attack'] = true;
+          this.vibrate(8);
+        }
+        if (sw) {
+          cx = t.clientX; // 滑動從按下的地方算
+          cy = t.clientY;
+          return;
+        }
         this.rsSet(this.touchAim, t.clientX - cx, t.clientY - cy, R());
         this.rsAct = true;
       },
@@ -416,6 +431,19 @@ Object.assign(Game.prototype, {
         for (const t of e.changedTouches)
           if (t.identifier === id) {
             const r = R();
+            if (sw) {
+              const dx = t.clientX - cx,
+                dy = t.clientY - cy;
+              if (sw === 1 && Math.hypot(dx, dy) >= SWIPE_PX) {
+                sw = 2;
+                if (Math.abs(dy) >= Math.abs(dx)) this.touchSwipe(dy < 0 ? 'f' : 'b', 0);
+                else this.touchSwipe('s', dx > 0 ? 1 : -1);
+              }
+              const k = Math.min(1, Math.hypot(dx, dy) / r),
+                a = Math.atan2(dy, dx);
+              knob.style.transform = `translate(${Math.cos(a) * k * r}px,${Math.sin(a) * k * r}px)`;
+              continue;
+            }
             this.rsSet(this.touchAim, t.clientX - cx, t.clientY - cy, r);
             if (Math.abs(this.touchAim.x) > Math.abs(mx)) mx = this.touchAim.x;
             const k = Math.min(1, Math.hypot(t.clientX - cx, t.clientY - cy) / r);
@@ -429,14 +457,19 @@ Object.assign(Game.prototype, {
       for (const t of e.changedTouches)
         if (t.identifier === id) {
           id = null;
+          if (fire) this.down['Touch_attack'] = false;
+          fire = false;
+          const swiped = sw;
+          sw = 0;
           this.rsAct = false;
-          this.rsHoldT = RS_HOLD;
+          if (!swiped) this.rsHoldT = RS_HOLD;
           this.touchAim.set(0, 0, 0);
           knob.style.transform = '';
           rs.classList.remove('act');
           // 甩動換目標：0.3 秒內推到左右邊就放開（有鎖定目標時；空域裡推到底是急轉，不換目標）
           const p = this.player;
           if (
+            !swiped &&
             performance.now() - t0 < 300 &&
             Math.abs(mx) > 0.85 &&
             p &&
@@ -548,6 +581,11 @@ Object.assign(Game.prototype, {
       }
       btn.classList.toggle('melee', !!meleeSlot);
       btn.classList.toggle('dim', auto && !meleeSlot);
+      // 右搖桿兼攻擊鍵（追尾視角）：鈕上的字與顏色跟著攻擊鍵
+      const lb = document.getElementById('vsRLbl');
+      if (lb && lb.textContent !== txt) lb.textContent = txt;
+      const rs = document.getElementById('vsR');
+      if (rs) rs.classList.toggle('melee', !!meleeSlot);
     }
     const sb = document.getElementById('vbShoulder');
     if (sb)
@@ -569,6 +607,8 @@ Object.assign(Game.prototype, {
     if (this.vpadEl) this.vpadEl.classList.toggle('on', on);
     document.body.classList.toggle('vpad', on);
     document.body.classList.toggle('rstick', on && this.camAim() && !this.spectator); // 右搖桿（setupRStick）
+    // 地面的追尾視角：右搖桿兼攻擊鍵（第一人稱、空域照舊有射擊鍵）
+    document.body.classList.toggle('rsfire', on && this.chase && !this.airMode && !this.spectator);
   },
   pollGamepad(dt) {
     const gps = navigator.getGamepads ? navigator.getGamepads() : null;
