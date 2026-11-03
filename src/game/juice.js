@@ -43,6 +43,20 @@ const STREAK_NAMES = [
 const font = (px) => `bold ${Math.round(px)}px Chakra Petch`;
 
 Object.assign(Game.prototype, {
+  // 連鎖的鋸齒電弧：從 c 連到最近的一台，再依序跳到離上一台最近的（最多 8 台；fx.bolt 會轉送給客機）
+  boltChain(c, list, color) {
+    const left = list.filter((t) => !t.dead).slice(0, 8);
+    let at = c;
+    while (left.length) {
+      let k = 0;
+      for (let i = 1; i < left.length; i++)
+        if (left[i].center().distanceToSquared(at) < left[k].center().distanceToSquared(at)) k = i;
+      const t = left.splice(k, 1)[0];
+      const p = t.center();
+      this.fx.bolt(at, p, color, 0.32);
+      at = p;
+    }
+  },
   // 近戰命中時鏡頭往揮的方向推一下（camera.js／chase.js／first-person.js 加在位置上，很快衰減）：
   // 突刺＝往前、往下砸＝往下、上挑＝往上、橫斬與迴旋＝往側面（反手的往另一邊）
   camPunch(dir, sw, k = 1) {

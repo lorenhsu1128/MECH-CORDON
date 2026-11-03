@@ -565,6 +565,20 @@ Object.assign(Game.prototype, {
       case 'electro':
         F.disc.material.opacity = (0.12 + 0.1 * Math.random()) * f;
         F.ring.material.opacity = 0.55 * f;
+        F.zapT = (F.zapT || 0) - dt;
+        if (F.zapT <= 0 && f > 0.5 && this.fx.rich) {
+          F.zapT = 0.18 + Math.random() * 0.25;
+          const pt = () => {
+            const a = Math.random() * Math.PI * 2,
+              r = Math.random() * z.r * 0.9;
+            return new THREE.Vector3(
+              g.position.x + Math.cos(a) * r,
+              g.position.y + 0.4 * this.fx.k,
+              g.position.z + Math.sin(a) * r,
+            );
+          };
+          this.fx.zap(pt(), pt(), 0x9ff0ff, 0.2);
+        }
         F.acc -= dt;
         if (F.acc <= 0) {
           F.acc = 0.07;

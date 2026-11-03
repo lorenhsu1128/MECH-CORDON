@@ -8,6 +8,8 @@
 import { Game } from './game.js';
 import { SFX } from '../audio/audio.js';
 import { buildField, conformField } from '../render/boss-field-models.js';
+import { MS } from '../core/scale.js';
+import { frnd } from '../fx/rand.js';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const arr = (v) => [+v.x.toFixed(2), +v.y.toFixed(2), +v.z.toFixed(2)];
@@ -165,8 +167,18 @@ Object.assign(Game.prototype, {
             if (ph === 2) {
               f.st.n = (f.st.n || 0) + 1;
               SFX.play('laser2', 0.8, 0.7, 0.05, 0.05, f.p);
+              // 天上劈下的閃電（fx.bolt 會轉送給客機；砲火特效「華麗」時畫）
+              const sky = (p) => this.fx.bolt(p.clone().setY(p.y + 50 * MS), p, 0x9fe8ff, 0.3, 's');
+              for (let i = 0; i < 2; i++) {
+                const a = frnd(0, 6.283),
+                  rr = frnd(0, 0.8) * f.r; // 外觀用特效的亂數（不動遊戲的亂數順序）
+                const x = f.p.x + Math.cos(a) * rr,
+                  z = f.p.z + Math.sin(a) * rr;
+                sky(new THREE.Vector3(x, this.world.groundAt(x, z, f.p.y + 5 * MS), z));
+              }
               for (const t of hs) {
                 if (!this.bfIn(f, t)) continue;
+                sky(t.center());
                 t.takeDamage(160 * dm, 300 * dm, src, t.center(), null, undefined, undefined, 'en');
                 if (t.en !== undefined) t.en = Math.max(0, t.en - (t.enMax || 0) * 0.2); // 扣 EN
               }

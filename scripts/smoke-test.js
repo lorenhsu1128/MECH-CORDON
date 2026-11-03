@@ -15460,6 +15460,18 @@ async function testFx(browser, base) {
     out.ribbon = fx.ribbons.map.has(fake) ? fx.ribbons.map.get(fake).pts.length : 0;
     fx.slash(at(0, 0, 3), 0, 360, 9, 0x80d0ff, false, 0.1, 0.4, true);
     out.slash = fx.list[fx.list.length - 1].mesh.children.length;
+    // 第 7.3 期：鋸齒電弧（華麗才畫、每 0.045 秒重新長一次、會轉送給客機）
+    const bolt = (lv, kind) => {
+      g.ctrl.fxLv = lv;
+      fx.clear();
+      fx.bolt(at(-15, 0, 4), at(15, 0, 4), 0xc080ff, 0.3, kind);
+      const n0 = G.ln.n;
+      for (let i = 0; i < 6; i++) fx.update(1 / 60);
+      return [n0, G.ln.n - n0];
+    };
+    out.bolt = [bolt('rich'), bolt('std'), bolt('rich', 's')];
+    out.boltNet = fx.bolt.toString().includes('netEv');
+    g.ctrl.fxLv = 'rich';
     fx.clear();
     return out;
   });
@@ -15505,6 +15517,14 @@ async function testFx(browser, base) {
   check(r.vortex >= 30, `黑洞：往中心旋進去的光條、核心、弧光（${r.vortex} 顆）`);
   check(r.ribbon === 5, `導彈的白煙帶（${r.ribbon} 點）`);
   check(r.slash === 3, `華麗的迴旋斬：刀光外多一圈能量環（${r.slash} 層）`);
+  check(
+    r.bolt[0][0] >= 8 &&
+      r.bolt[0][1] > 0 &&
+      r.bolt[1][0] === 0 &&
+      r.bolt[2][0] > r.bolt[0][0] * 0.5 &&
+      r.boltNet,
+    `鋸齒電弧：華麗時畫折線與分岔並重新長形狀、標準時不畫、天上劈下的、會轉送給客機（${JSON.stringify(r.bolt)}）`,
+  );
   check(
     r.gather === 8 && r.arcStar >= 4 && r.amb >= 2,
     `蓄力往中心吸（${r.gather}）、電弧與星光（${r.arcStar}）、燃燒的殘骸與蒸氣（${r.amb}）`,

@@ -324,6 +324,132 @@ export class Effects {
     if (this.skip(p, r)) return;
     emitPreset(this.g, 'arc', p, { S: r * this.k, color, n: r > 2 ? 5 / 3 : 1 });
   }
+  // 鋸齒電弧（docs/vfx-design.md 第 7.3 期，參考 Oh! Robot 的連鎖閃電）：a → b 的鋸齒折線加隨機分岔，
+  // dur 秒內每 0.045 秒重新長一次形狀；kind 's'＝從天上劈下來（落地的閃光、衝擊環、往上的火花）。
+  // 會轉送給客機（render-setup.js 的清單）；各端自己畫，砲火特效「標準」時不畫（呼叫端原本的特效照舊）
+  bolt(a, b, color = 0x9fe0ff, dur = 0.3, kind) {
+    this.zap(a, b, color, dur, kind);
+  }
+  // 不轉送的版本（各端自己呼叫的地方用，例如電鰻的電流區）
+  zap(a, b, color = 0x9fe0ff, dur = 0.3, kind) {
+    if (!this.rich) return;
+    const d = a.distanceTo(b);
+    if (d < 0.05 || this.skip(a.clone().lerp(b, 0.5), d / (2 * this.k))) return;
+    const A = a.clone(),
+      B = b.clone(),
+      K = this.k,
+      sky = kind === 's';
+    let acc = 0;
+    this.task(dur, (e, t, dt) => {
+      acc -= dt;
+      if (acc > 0) return;
+      acc = 0.045;
+      this.boltDraw(A, B, color, sky ? 0.11 : 0.08, 1 - t * 0.6, sky);
+    });
+    this.boltDraw(A, B, color, sky ? 0.11 : 0.08, 1, sky);
+    // 打中的地方：閃爍的光、電擊的貼圖
+    this.g.gl.emit({
+      p: B,
+      life: dur,
+      s0: 3.4 * K,
+      s1: 1.6 * K,
+      c0: 0xffffff,
+      c1: color,
+      k: 1.4,
+      fade: 4,
+      cell: SOFT,
+    });
+    emitPreset(this.g, 'arc', B, { S: 1.3 * K, color, n: 1 });
+    if (sky) {
+      this.g.gl.emit({
+        p: B,
+        life: 0.12,
+        s0: 9 * K,
+        s1: 14 * K,
+        c0: 0xffffff,
+        c1: color,
+        a: 0.8,
+        cell: SOFT,
+      });
+      this.shockwave(B.clone().setY(B.y + 0.2), 5, color, 0.35);
+      this.streaks(B, 10, 0xe8f6ff, 26, 0.3, 14, new THREE.Vector3(0, 1, 0), 1.2);
+      this.flashLight(B.clone().setY(B.y + 3 * K), color, 45);
+    } else this.flashLight(A.clone().lerp(B, 0.5), color, 10);
+  }
+  // 一次的形狀：主幹＋1～3 條分岔（u＝亮度）
+  boltDraw(A, B, color, jag, u, sky) {
+    const pts = this.boltPts(A, B, jag);
+    this.boltSeg(pts, color, u, sky ? 1.3 : 1);
+    const nb = 1 + Math.floor(frand() * (sky ? 3 : 2));
+    const L = A.distanceTo(B);
+    for (let i = 0; i < nb && pts.length > 3; i++) {
+      const from = pts[1 + Math.floor(frand() * (pts.length - 2))];
+      const dir = B.clone()
+        .sub(A)
+        .normalize()
+        .add(new THREE.Vector3(rnd(-1, 1), rnd(-0.6, 0.6), rnd(-1, 1)).multiplyScalar(0.9))
+        .normalize();
+      const end = from.clone().addScaledVector(dir, L * rnd(0.15, 0.35));
+      this.boltSeg(this.boltPts(from, end, jag * 1.3), color, u * 0.7, 0.5);
+    }
+  }
+  // 折線的點：兩端固定、中間往兩個垂直方向隨機偏移（兩端小、中間大）
+  boltPts(A, B, jag) {
+    const D = B.clone().sub(A),
+      L = D.length();
+    const n = Math.max(4, Math.min(16, Math.round(L / (2.2 * this.k))));
+    const dir = D.clone().divideScalar(L || 1);
+    const p1 = new THREE.Vector3(0, 1, 0).cross(dir);
+    if (p1.lengthSq() < 1e-4) p1.set(1, 0, 0);
+    p1.normalize();
+    const p2 = dir.clone().cross(p1);
+    const out = [A.clone()];
+    for (let i = 1; i < n; i++) {
+      const s = Math.sin((Math.PI * i) / n) * L * jag;
+      out.push(
+        A.clone()
+          .addScaledVector(D, i / n)
+          .addScaledVector(p1, rnd(-1, 1) * s)
+          .addScaledVector(p2, rnd(-1, 1) * s),
+      );
+    }
+    out.push(B.clone());
+    return out;
+  }
+  // 折線畫成拉長的粒子（光束的格子）：白熱的芯＋屬性色的光暈，每段 0.06 秒（下一次重畫之前消失＝閃爍）
+  boltSeg(pts, color, u, w) {
+    const K = this.k;
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const a = pts[i],
+        b = pts[i + 1];
+      const ax = b.clone().sub(a),
+        len = ax.length();
+      if (len < 1e-3) continue;
+      const mid = a.clone().lerp(b, 0.5);
+      this.g.ln.emit({
+        p: mid,
+        life: 0.06,
+        s0: 0.7 * K * w,
+        c0: 0xffffff,
+        c1: color,
+        a: 0.95 * u,
+        k: 1.3,
+        cell: BEAM,
+        axis: ax,
+        asp: len * 1.06,
+      });
+      this.g.ln.emit({
+        p: mid,
+        life: 0.07,
+        s0: 3.2 * K * w,
+        c0: color,
+        a: 0.45 * u,
+        cell: BEAM,
+        axis: ax,
+        asp: len * 1.1,
+      });
+    }
+  }
   // 十字星光：彈刀、完美迴避、處決的最後一擊（r 舊尺度，會轉送給客機）
   star(p, r, color = 0xfff0c0) {
     emitPreset(this.g, 'star', p, { S: r * this.k, color });

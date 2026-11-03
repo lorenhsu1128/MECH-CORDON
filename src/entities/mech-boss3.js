@@ -247,6 +247,7 @@ Object.assign(MechEntity.prototype, {
       g.netEv({ t: 'warn', p: p.toArray().map((x) => +x.toFixed(2)), R: 3.5 * MS, dl });
       g.later(dl, () => {
         if (this.dead) return;
+        g.fx.bolt(p.clone().setY(p.y + 60 * MS), p, 0xbfe8ff, 0.3, 's'); // 天上劈下的閃電（砲火特效「華麗」）
         g.fx.pillarStrike(p, 3.5 * MS);
         g.blastTeam(p.clone().setY(p.y + 1 * MS), 520 * dm, 900 * dm, 3.8 * MS, this.team, this);
       });

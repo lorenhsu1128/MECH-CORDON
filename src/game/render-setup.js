@@ -136,6 +136,7 @@ Object.assign(Game.prototype, {
       'gather',
       'arc',
       'star',
+      'bolt', // 鋸齒電弧（第 7.3 期，NET_VERSION 11.21）
     ];
     const fx = this.fx;
     const g = this;

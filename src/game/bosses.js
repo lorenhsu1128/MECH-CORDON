@@ -136,6 +136,7 @@ Object.assign(Game.prototype, {
     for (let i = 0; i < 16; i++) this.fx.streaks(src.center(), 2, 0x80c8ff, rr * 0.9, 0.35, rr * 1.5);
     SFX.play('overload', 1, 0.8, 0.05, 0.05, c);
     SFX.play('laserBig', 0.7, 0.5, 0.05, 0.05, c);
+    const chain = []; // 鋸齒電弧的連鎖（juice.js 的 boltChain）
     for (const t of this.hostilesOfEnt(src)) {
       if (t.dead || t.isProp || !t.pos) continue;
       if (Math.hypot(t.pos.x - c.x, t.pos.z - c.z) > R + t.radius) continue;
@@ -153,8 +154,10 @@ Object.assign(Game.prototype, {
       t.empLockT = 3;
       this.fx.ring(t.center(), 3, 0x80c8ff);
       this.fx.arc(t.center(), 1.6, 0x80c8ff);
+      chain.push(t);
       if (t.isPlayer) this.rumble(1, 1, 400);
     }
+    this.boltChain(src.center(), chain, 0x80c8ff);
     this.alertAll('電磁封鎖 — QB 與懸浮暫時無法使用');
   },
   // 鑽地蟲擊破：身體各節依序爆開（房主與客機都會呼叫）

@@ -216,6 +216,7 @@ export class Game {
       this.rumble(0.7, 0.9, 300);
     }
     let n = 0;
+    const chain = []; // 鋸齒電弧的連鎖（fx.bolt：砲火特效「華麗」時畫）
     for (const t of this.hostilesOfEnt(src)) {
       if (t.dead || t.isProp) continue;
       const d = t.center().distanceTo(c) - t.radius;
@@ -228,6 +229,7 @@ export class Game {
         const s = stun * (t.isBoss ? 0.4 : 1);
         t.staggerT = Math.max(t.staggerT, s);
         this.fx.arc(t.center(), 1.6, color || 0x9fe0ff);
+        chain.push(t);
         t.acs = t.acsMax;
         t.comboHits = 0;
         if (t.melee && t.melee.active) {
@@ -247,6 +249,7 @@ export class Game {
         n++;
       }
     }
+    this.boltChain(c, chain, color || 0x9fe0ff);
     if (src.isPlayer) this.flashMsg(n ? `電磁脈衝 — ${n} 台敵機硬直` : '電磁脈衝 — 未命中', 0x80c8ff, 1.4);
   }
   // 準星所指的世界點：沿鏡頭射線步進，碰到地形／障礙物就停；沒碰到就取 120 m 處。光束武器一律以此為瞄準點
