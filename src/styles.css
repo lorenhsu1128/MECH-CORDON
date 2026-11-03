@@ -6174,6 +6174,8 @@ body.vpad #subBar {
 #gazeCal .gcVid video {
   width: 220px;
   height: 165px;
+  opacity: 1; /* 蓋掉 #gazeVideo 平時隱藏的透明度 */
+  position: static;
   object-fit: cover;
   transform: scaleX(-1); /* 鏡像，像照鏡子 */
   border: 1px solid var(--line);
@@ -6320,7 +6322,7 @@ body.vpad #subBar {
   justify-content: center;
 }
 #gazeTune .gtPanel {
-  width: min(860px, 96vw);
+  width: min(1120px, 97vw);
   height: min(760px, 94vh);
   display: flex;
   flex-direction: column;
@@ -6361,11 +6363,46 @@ body.vpad #subBar {
   background: rgba(255, 176, 32, 0.2);
   color: var(--acc);
 }
+/* 左邊固定的即時追蹤欄＋右邊的分頁 */
+#gazeTune .gtMain {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 16px;
+}
+#gazeTune .gtLive {
+  width: 252px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: auto;
+}
+#gazeTune .gtSide {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 #gtBody {
   flex: 1;
   min-height: 0;
   overflow: auto;
   padding-right: 6px;
+}
+#gazeTune .gtViewWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+#gtView {
+  width: 100%;
+  border: 1px solid var(--line);
+}
+#gazeTune .gtViewWrap small {
+  font-size: 11px;
+  color: var(--dim);
 }
 #gtBody h4 {
   margin: 12px 0 2px;
@@ -6405,6 +6442,7 @@ body.vpad #subBar {
   position: relative;
   width: 240px;
   height: 180px;
+  flex-shrink: 0;
   background: #0a0e14;
   border: 1px solid var(--line);
 }
@@ -6415,6 +6453,7 @@ body.vpad #subBar {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  opacity: 1; /* 蓋掉 #gazeVideo 平時隱藏的透明度 */
 }
 #gazeTune .gtVidWrap.mir video,
 #gazeTune .gtVidWrap.mir #gtLm {
@@ -6437,7 +6476,12 @@ body.vpad #subBar {
 }
 #gtStat {
   font-size: 12px;
-  margin: 6px 0;
+  line-height: 1.5;
+  white-space: pre-line;
+  color: var(--hp);
+}
+#gtStat.bad {
+  color: #ffb080;
 }
 #gazeTune .gtBtns {
   margin: 4px 0;
@@ -6471,6 +6515,13 @@ body.vpad #subBar {
   border: 1px solid var(--line);
   margin: 4px 0;
 }
+#gazeTune .krow > span:first-child {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+#gazeTune .krow select {
+  max-width: min(420px, 60%);
+}
 #gazeTune .gtPre.cur {
   background: rgba(255, 176, 32, 0.08);
 }
@@ -6496,19 +6547,22 @@ body.vpad #subBar {
   display: none;
   z-index: 2;
 }
-@media (max-height: 540px) {
+@media (max-height: 540px), (max-width: 900px) {
   #gazeTune .gtPanel {
     height: 96vh;
     padding: 8px 12px;
     gap: 5px;
+  }
+  #gazeTune .gtLive {
+    width: 170px;
   }
   #gazeTune .gtVidWrap {
     width: 160px;
     height: 120px;
   }
   #gazeTune .gtPlots canvas {
-    width: 110px;
-    height: 110px;
+    width: 76px;
+    height: 76px;
   }
   #gtCurve {
     width: 300px;

@@ -10693,6 +10693,66 @@ async function testGaze(browser, base) {
     g.settingsFrom = 'title';
     g.closeSettings();
   });
+
+  // 7. 真的攝影機（瀏覽器的假攝影機，沒有臉）：調校視窗切分頁、套用設定組合、關閉之後影像都還在頁面裡、偵測一直進行
+  //    （以前分頁重畫會把影像元素移出頁面，瀏覽器暫停播放，偵測就停住了）
+  const rc0 = await page.evaluate(async () => {
+    const g = window.__game;
+    window.__simSave = window.__gazeSim;
+    window.__gazeSim = null;
+    g.gazeStop();
+    g.openSettings('title', 'adv');
+    g.gazeTuneOpen('ov');
+    for (let i = 0; i < 100 && !(g.gz.st === 'ready' && g.gz.frame > 5); i++)
+      await new Promise((r) => setTimeout(r, 100));
+    return {
+      st: g.gz.st,
+      msg: g.gz.msg,
+      f: g.gz.frame,
+    };
+  });
+  const rcf = () =>
+    page.evaluate(() => {
+      const g = window.__game;
+      const v = g.gz.video;
+      return {
+        f: g.gz.frame,
+        inDoc: !!v && document.contains(v),
+        playing: !!v && !v.paused,
+        live:
+          !!document.querySelector('#gazeTune .gtLive .gtVid video') &&
+          !document.querySelector('#gtBody video'),
+        view: !!document.getElementById('gtView'),
+      };
+    });
+  const rcs = [];
+  for (const tab of ['yaw', 'pitch', 'eye', 'cam', 'pre']) {
+    await page.click(`#gtTabs button[data-gt="${tab}"]`);
+    await wait(500);
+    rcs.push(await rcf());
+  }
+  await page.click('[data-apply="b2"]');
+  await wait(600);
+  const rcA = await rcf();
+  await page.click('#gtClose');
+  await wait(600);
+  const rcB = await rcf();
+  await page.screenshot({ path: path.join(SHOT_DIR, 'gaze-realcam.png') });
+  const grow = [...rcs, rcA, rcB].every(
+    (r, i, a) => r.inDoc && r.playing && (i === 0 ? r.f > rc0.f : r.f > a[i - 1].f),
+  );
+  check(
+    rc0.st === 'ready' && grow && rcs.every((r) => r.live && r.view),
+    `真的攝影機：切分頁、套用設定組合、關閉調校視窗之後影像一直在播、偵測持續（${rc0.f} → ${rcB.f} 次${rc0.msg ? '，' + rc0.msg : ''}）、每個分頁都有即時追蹤欄${grow ? '' : '（' + rc0.st + ' ' + JSON.stringify([...rcs, rcA, rcB]) + '）'}`,
+  );
+  await page.evaluate(async () => {
+    const g = window.__game;
+    g.gazeStop();
+    window.__gazeSim = window.__simSave;
+    await g.gazeStart();
+    g.settingsFrom = 'title';
+    g.closeSettings();
+  });
   // 任務中的畫面：注視點與停留圈
   await page.evaluate(() => {
     const g = window.__game;
@@ -25335,6 +25395,9 @@ async function launchBrowser() {
           ]
         : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader']),
       '--autoplay-policy=no-user-gesture-required',
+      // 眼動追蹤：瀏覽器內建的假攝影機（testGaze 測真的影像在調校視窗裡不會停住；其他測試不開攝影機）
+      '--use-fake-device-for-media-stream',
+      '--use-fake-ui-for-media-stream',
     ],
   });
   // 印出實際的 WebGL 算繪器（要求 GPU 卻拿到 SwiftShader 時提示）

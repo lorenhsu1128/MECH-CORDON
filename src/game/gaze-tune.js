@@ -6,7 +6,7 @@
 import { SFX } from '../audio/audio.js';
 import { escHtml } from '../core/html.js';
 import { clamp } from '../core/math.js';
-import { OUT_K, TUNE_DEF, axisMap, curveEval, tuneSanitize } from '../core/gaze.js';
+import { HEAD_V, OUT_K, TUNE_DEF, axisMap, curveEval, tuneSanitize } from '../core/gaze.js';
 import { Game } from './game.js';
 
 const $ = (id) => document.getElementById(id);
@@ -145,13 +145,36 @@ Object.assign(Game.prototype, {
     el.id = 'gazeTune';
     el.innerHTML =
       `<div class="gtPanel"><div class="gtHead"><h3>眼動追蹤的調校</h3><span id="gtNow" class="dim"></span>` +
-      `<button id="gtClose">關閉</button></div>` +
-      `<div id="gtTabs" data-padtabs="button">${TABS.map(([k, n]) => `<button data-gt="${k}">${n}</button>`).join('')}</div>` +
-      `<div id="gtBody"></div><div id="gtDesc"></div></div><div id="gtGaze"></div>`;
+      `<button id="gtClose">關閉</button></div><div class="gtMain">` +
+      `<div class="gtLive" data-desc="即時追蹤：攝影機畫面與特徵點、頭部的輸入（框＝死區，外框＝最大輸入）、鏡頭的輸出，以及模擬的鏡頭畫面；在每個分頁調整時都看得到效果">` +
+      `<div class="gtVidWrap"><div class="gtVid"></div><canvas id="gtLm"></canvas></div>` +
+      `<div id="gtStat" class="dim"></div>` +
+      `<div class="gtPlots"><div><canvas id="gtIn" width="116" height="116"></canvas><small>頭部（輸入）</small></div>` +
+      `<div><canvas id="gtOut" width="116" height="116"></canvas><small>鏡頭（輸出）</small></div></div>` +
+      `<div class="gtViewWrap"><canvas id="gtView" width="240" height="120"></canvas><small id="gtViewCap">鏡頭看出去（模擬）</small></div>` +
+      `<div class="row gtBtns"><button id="gtCenter" data-desc="把現在的頭部姿勢當成中心（任務中的快速鍵：按鍵設定的「眼動：頭部置中」）">置中</button>` +
+      `<button id="gtPause" data-desc="暫停頭部追蹤：鏡頭停在現在的位置，再按一次繼續（任務中的快速鍵：「眼動：暫停頭部追蹤」）">暫停</button>` +
+      `<button id="gtReopen2" data-desc="關掉再重新開啟攝影機（畫面卡住、換了攝影機時）">重開攝影機</button></div></div>` +
+      `<div class="gtSide"><div id="gtTabs" data-padtabs="button">${TABS.map(([k, n]) => `<button data-gt="${k}">${n}</button>`).join('')}</div>` +
+      `<div id="gtBody"></div></div></div><div id="gtDesc"></div></div><div id="gtGaze"></div>`;
     this.gazeLayer().appendChild(el);
-    const T = (this.gzTune = { el, tab: tab || 'ov', side: 'pos', sel: 1, ren: -1, last: performance.now() });
+    const T = (this.gzTune = {
+      el,
+      tab: tab || 'ov',
+      side: 'pos',
+      sel: 1,
+      ren: -1,
+      last: performance.now(),
+      sim: 0,
+    });
     for (const b of el.querySelectorAll('#gtTabs button')) b.onclick = () => this.gazeTuneTab(b.dataset.gt);
     $('gtClose').onclick = () => this.gazeTuneClose();
+    $('gtCenter').onclick = () => {
+      if (!this.gazeCenter()) this.gazeTuneNote('找不到臉，不能置中');
+      T.simY = T.simP = 0;
+    };
+    $('gtPause').onclick = () => this.gazePauseToggle();
+    $('gtReopen2').onclick = () => this.gazeCamRestart();
     const body = $('gtBody');
     body.addEventListener('input', (e) => this.gazeTuneInput(e, false));
     body.addEventListener('change', (e) => this.gazeTuneInput(e, true));
@@ -168,6 +191,7 @@ Object.assign(Game.prototype, {
     this.gzState().tried = true;
     this.gazeStart().then(() => this.gzTune === T && this.gazeVideoHome());
     this.gazeTuneTab(T.tab);
+    this.gazeTuneDesc(null);
     const loop = () => {
       if (this.gzTune !== T) return;
       requestAnimationFrame(loop);
@@ -225,12 +249,8 @@ Object.assign(Game.prototype, {
     let h = '';
     if (T.tab === 'ov') {
       h =
-        `<div class="gtTop"><div class="gtVidWrap ${this.gazeCam().mirror ? 'mir' : ''}"><div class="gtVid"></div><canvas id="gtLm"></canvas></div>` +
-        `<div class="gtPlots" data-desc="左：頭部的轉向（扣掉中心、平滑之後；框＝死區，外框＝最大輸入）。右：鏡頭的輸出（偏移模式＝多看的角度、速度模式＝轉動的方向與快慢）"><div><canvas id="gtIn" width="170" height="170"></canvas><small>頭部（輸入）</small></div><div><canvas id="gtOut" width="170" height="170"></canvas><small>鏡頭（輸出）</small></div></div></div>` +
-        `<div id="gtStat" class="dim"></div>` +
-        `<div class="row gtBtns"><button id="gtCenter" data-desc="把現在的頭部姿勢當成中心（任務中的快速鍵：按鍵設定的「眼動：頭部置中」）">置中</button>` +
-        `<button id="gtPause" data-desc="暫停頭部追蹤：鏡頭停在現在的位置，再按一次繼續（任務中的快速鍵：「眼動：暫停頭部追蹤」）">${this.gz && this.gz.paused ? '繼續' : '暫停'}</button>` +
-        `<button id="gtCal" data-desc="看著畫面上的點讓注視點對上畫面（看哪鎖哪要先校準）">開始校準…</button></div>` +
+        `<p class="dim" style="font-size:12px;margin:0 0 6px">轉轉頭，看左邊的「頭部」點和「鏡頭看出去」怎麼動；一邊調下面的數值一邊看效果。</p>` +
+        `<div class="row gtBtns"><button id="gtCal" data-desc="看著畫面上的點讓注視點對上畫面（看哪鎖哪要先校準）">開始校準…</button></div>` +
         `<h4>頭部延伸視角</h4>` +
         `<div class="krow" data-desc="偏移＝頭轉幾度鏡頭就多看幾度，頭擺正回到原位（像 TrackIR）；速度＝頭偏著鏡頭就一直往那邊轉，頭擺正就停"><span>方式</span><select data-gc="headMode"><option value="offset" ${mode === 'offset' ? 'selected' : ''}>偏移（預設）</option><option value="rate" ${mode === 'rate' ? 'selected' : ''}>速度</option></select></div>` +
         ck('head', '頭部延伸視角', '追尾視角與第一人稱時轉頭＝鏡頭跟著轉（和設定裡的開關相同）', 'c') +
@@ -299,12 +319,12 @@ Object.assign(Game.prototype, {
           '°',
           '頭要轉多大才到曲線的盡頭；脖子不方便轉或想小動作就看很遠時調小',
         ) +
-        sl(`${k}.dead`, '死區', 0, 1, 0.05, '', '這個軸的死區倍率（乘在全域的上面）；這個軸比較會飄時調大') +
+        sl(`${k}.dead`, '死區', 0, 2, 0.05, '', '這個軸的死區倍率（乘在全域的上面）；這個軸比較會飄時調大') +
         sl(
           `${k}.smooth`,
           '平滑度',
           0,
-          1,
+          2,
           0.05,
           '',
           '這個軸的平滑倍率（乘在全域的上面）；這個軸比較抖時調大',
@@ -398,13 +418,6 @@ Object.assign(Game.prototype, {
       const e = $(id);
       if (e) e.onclick = fn;
     };
-    on('gtCenter', () => {
-      if (!this.gazeCenter()) this.gazeTuneNote('找不到臉，不能置中');
-    });
-    on('gtPause', () => {
-      this.gazePauseToggle();
-      this.gazeTuneRender();
-    });
     on('gtCal', () => this.gazeCalOpen());
     on('gtCal2', () => this.gazeCalOpen());
     on('gtDrift', () =>
@@ -728,6 +741,85 @@ Object.assign(Game.prototype, {
     };
     cv.padDec = () => this.gazeCurveDel();
   },
+  // 模擬的鏡頭畫面：偏移模式＝鏡頭多看的角度、速度模式＝依轉速累積的角度；遠處的方塊與每 15° 的刻度跟著轉
+  gazeTuneView(mode, ay, ap) {
+    const T = this.gzTune;
+    const c = $('gtView');
+    if (!c) return;
+    const now = performance.now();
+    const dt = Math.min(0.1, (now - (T.vt || now)) / 1000);
+    T.vt = now;
+    let cy, cp;
+    if (mode === 'offset') {
+      cy = ay.out;
+      cp = ap.out;
+      T.simY = T.simP = 0;
+    } else {
+      T.simY = (T.simY || 0) + (ay.out * HEAD_V.yaw * dt) / D2R;
+      T.simP = clamp((T.simP || 0) + (ap.out * HEAD_V.pitch * dt) / D2R, -40, 40);
+      cy = T.simY;
+      cp = T.simP;
+    }
+    const x = c.getContext('2d');
+    const W = c.width,
+      H = c.height;
+    const ppd = W / 70; // 水平視野 70°
+    const hy = H / 2 + cp * ppd; // 地平線
+    const sky = x.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, '#1b2a3a');
+    sky.addColorStop(1, '#2c4058');
+    x.fillStyle = sky;
+    x.fillRect(0, 0, W, H);
+    x.fillStyle = '#2a2a24';
+    x.fillRect(0, hy, W, H - hy);
+    // 正前方的角度＝0，往左為正（和頭轉的方向一樣）；畫面上 x＝中央 −（角度 − 鏡頭的角度）× ppd
+    const sx = (d) => W / 2 - (d - cy) * ppd;
+    const wrap = (d) => ((((d - cy + 180) % 360) + 360) % 360) - 180 + cy;
+    x.fillStyle = '#56606b';
+    for (const [d, w, h] of [
+      [-75, 10, 26],
+      [-40, 16, 18],
+      [-12, 8, 34],
+      [22, 20, 14],
+      [50, 9, 30],
+      [95, 14, 22],
+      [140, 18, 16],
+      [-130, 12, 28],
+    ]) {
+      const px = sx(wrap(d));
+      if (px < -40 || px > W + 40) continue;
+      x.fillRect(px - (w * ppd) / 8, hy - h, (w * ppd) / 4, h);
+    }
+    x.strokeStyle = 'rgba(255,255,255,.25)';
+    x.fillStyle = 'rgba(255,255,255,.6)';
+    x.font = '10px "Noto Sans TC", sans-serif';
+    x.textAlign = 'center';
+    for (let d = Math.ceil((cy - 40) / 15) * 15; d <= cy + 40; d += 15) {
+      const px = sx(d);
+      x.beginPath();
+      x.moveTo(px, hy - 4);
+      x.lineTo(px, hy + 4);
+      x.stroke();
+      const n = ((((Math.round(d) + 180) % 360) + 360) % 360) - 180;
+      if (n % 30 === 0) x.fillText(n === 0 ? '前' : n > 0 ? '左' + n : '右' + -n, px, hy + 15);
+    }
+    // 準星（畫面中央）
+    x.strokeStyle = '#ffb020';
+    x.lineWidth = 1.5;
+    x.beginPath();
+    x.moveTo(W / 2 - 8, H / 2);
+    x.lineTo(W / 2 + 8, H / 2);
+    x.moveTo(W / 2, H / 2 - 8);
+    x.lineTo(W / 2, H / 2 + 8);
+    x.stroke();
+    const cap = $('gtViewCap');
+    if (cap) {
+      const n = ((((cy + 180) % 360) + 360) % 360) - 180;
+      const lr = Math.abs(n) < 0.5 ? '正前方' : (n > 0 ? '左 ' : '右 ') + Math.abs(Math.round(n)) + '°';
+      const ud = Math.abs(cp) < 0.5 ? '' : (cp > 0 ? '・上 ' : '・下 ') + Math.abs(Math.round(cp)) + '°';
+      cap.textContent = `鏡頭看出去（模擬）：${lr}${ud}${mode === 'rate' ? '（速度模式，按「置中」歸零）' : ''}`;
+    }
+  },
   // ---------- 每格重畫（預覽、輸入與輸出、曲線、狀態） ----------
   gazeTuneDraw() {
     const T = this.gzTune;
@@ -743,6 +835,9 @@ Object.assign(Game.prototype, {
       const raw = (S && S.raw) || [];
       const mu = raw.reduce((a, b) => a + b, 0) / Math.max(1, raw.length);
       const jit = Math.sqrt(raw.reduce((a, b) => a + (b - mu) * (b - mu), 0) / Math.max(1, raw.length));
+      // 超過 1 秒沒有新的偵測＝影像停住了（偵測頻率不再沿用舊的數字）
+      const stale = ready && g.lastT && performance.now() - g.lastT > 1000;
+      st.classList.toggle('bad', !ready || stale || !g.face);
       st.textContent =
         !g || g.st === 'off'
           ? '攝影機沒有開啟'
@@ -750,17 +845,21 @@ Object.assign(Game.prototype, {
             ? '載入中…'
             : g.st === 'error'
               ? '錯誤：' + g.msg
-              : [
-                  g.face ? '偵測到臉 ✓' : '找不到臉',
-                  `偵測 ${Math.round(S.fps)} 次／秒`,
-                  `抖動 ${jit.toFixed(2)}°`,
-                  g.head ? `距離約 ${Math.round(Math.abs(g.head.z))} cm` : '',
-                  g.neutral ? '' : '量測中心中…',
-                  g.paused ? '暫停中' : '',
-                ]
-                  .filter(Boolean)
-                  .join('　｜　');
+              : stale
+                ? '影像停住了：按「重開攝影機」'
+                : [
+                    (g.face ? '偵測到臉 ✓' : '找不到臉') + (g.paused ? '・暫停中' : ''),
+                    `偵測 ${Math.round(S.fps)} 次／秒・抖動 ${jit.toFixed(2)}°`,
+                    (g.head ? `距離約 ${Math.round(Math.abs(g.head.z))} cm` : '') +
+                      (g.neutral ? '' : '・量測中心中…'),
+                  ]
+                    .filter(Boolean)
+                    .join('\n');
     }
+    const pb = $('gtPause');
+    if (pb) pb.textContent = g && g.paused ? '繼續' : '暫停';
+    const vw0 = T.el.querySelector('.gtVidWrap');
+    if (vw0) vw0.classList.toggle('mir', !!this.gazeCam().mirror);
     // 特徵點（疊在預覽上；鏡像時畫布跟著影像一起翻）
     const lm = $('gtLm');
     if (lm) {
@@ -867,6 +966,7 @@ Object.assign(Game.prototype, {
         x.stroke();
       }
     });
+    this.gazeTuneView(mode, ay, ap);
     // 對應曲線
     const cv = $('gtCurve');
     if (cv && (T.tab === 'yaw' || T.tab === 'pitch')) {

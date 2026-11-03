@@ -6,6 +6,7 @@ import { SFX } from '../audio/audio.js';
 import { escHtml } from '../core/html.js';
 import { clamp } from '../core/math.js';
 import {
+  HEAD_V,
   OneEuro,
   TUNE_DEF,
   axisMap,
@@ -25,10 +26,8 @@ const DEF = { on: false, lock: true, head: false, dwell: 0.25, headMode: 'offset
 const CAM_DEF = { id: '', res: '480', mirror: true };
 const DET_DT = 30; // 偵測間隔（毫秒，約 30 Hz）
 const LOST_T = 0.4; // 看不到臉或眨眼超過這麼久，注視點就失效
-// 頭部延伸視角：速度模式最快的轉速（弧度／秒）、偏移模式鏡頭追上頭的最快速度（弧度／秒）
-const HEAD_YAW_V = 1.8,
-  HEAD_PITCH_V = 1.0,
-  OFF_V = 8;
+// 頭部延伸視角：偏移模式鏡頭追上頭的最快速度（弧度／秒；速度模式的轉速是 core/gaze.js 的 HEAD_V）
+const OFF_V = 8;
 const D2R = Math.PI / 180;
 // 校準：9 點（每點 1.6 秒，前 0.6 秒移動與穩定、之後收集）＋驗證 5 點
 const CAL_PTS = [
@@ -175,6 +174,8 @@ Object.assign(Game.prototype, {
     g.msg = '';
     this.gazeUiStatus();
     g.p = (async () => {
+      // 先讓出一次：不然整段同步跑完時 finally 的 g.p = null 會比外面的 g.p = 這個 Promise 先執行，標記就一直留著
+      await null;
       try {
         if (window.__gazeSim) {
           // 冒煙測試：不開攝影機，特徵由測試提供（window.__gazeSim(秒) → { f, blink, head }）
@@ -306,6 +307,10 @@ Object.assign(Game.prototype, {
     if (window.__gazeSim) r = window.__gazeSim(now / 1000, this);
     else {
       const v = g.video;
+      if (v && v.paused && v.srcObject && now - (g.playT || 0) > 1000) {
+        g.playT = now;
+        v.play().catch(() => {});
+      }
       if (!v || v.readyState < 2 || v.currentTime === g.lastVT) return;
       g.lastVT = v.currentTime;
       try {
@@ -475,7 +480,7 @@ Object.assign(Game.prototype, {
     const ay = T.yaw.on ? axisMap((g.hs.yaw - g.neutral.yaw) / D2R, T.yaw, T.g, mode) : { out: 0 };
     const ap = T.pitch.on ? axisMap((g.hs.pitch - g.neutral.pitch) / D2R, T.pitch, T.g, mode) : { out: 0 };
     const inv = this.ctrl.invY ? -1 : 1;
-    if (mode === 'rate') return { rate: true, x: ay.out * HEAD_YAW_V, y: ap.out * HEAD_PITCH_V * inv };
+    if (mode === 'rate') return { rate: true, x: ay.out * HEAD_V.yaw, y: ap.out * HEAD_V.pitch * inv };
     return { off: true, yaw: ay.out * D2R, pitch: ap.out * D2R * inv };
   },
   // chase.js 的 camAimInput：改鏡頭的 fpYaw／fpPitch（lo～hi＝pitch 的範圍）。偏移模式記下已經加上的角度，

@@ -232,8 +232,8 @@ function axisOk(a, d) {
   return {
     on: a.on !== false,
     sens: num(a.sens, 0.1, 5, d.sens),
-    smooth: num(a.smooth, 0, 1, d.smooth),
-    dead: num(a.dead, 0, 1, d.dead),
+    smooth: num(a.smooth, 0, 2, d.smooth),
+    dead: num(a.dead, 0, 2, d.dead),
     maxIn: num(a.maxIn, 5, 60, d.maxIn),
     off: num(a.off, -45, 45, 0),
     inv: !!a.inv,
@@ -291,6 +291,8 @@ export function curveEval(pts, x) {
     (t3 - t2) * h[i] * m(i + 1)
   );
 }
+// 頭部的速度模式：最快的轉速（弧度／秒）
+export const HEAD_V = { yaw: 1.8, pitch: 1.0 };
 // 頭部的偏移模式：曲線的輸出 1＝最大輸入的 OUT_K 倍（頭轉 30° 鏡頭多看 60°，LookPilot 的預設也是真實角度的 2 倍）
 export const OUT_K = 2;
 // 速度模式另外加的保持區（度）：頭幾乎擺正時鏡頭不會慢慢飄
