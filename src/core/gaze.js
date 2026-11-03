@@ -184,3 +184,131 @@ export function headRate(off, dead, span) {
   if (a <= 0) return 0;
   return Math.sign(off) * Math.min(1, a / span) ** 1.4;
 }
+
+// ---------- 調校（docs/gaze-design.md 的「調校」，參考 LookPilot 的 Tracking settings） ----------
+// 對應曲線：[[輸入 0～1, 輸出 0～1], …]，x 由小到大、第一個點固定 (0, 0)、最後一個點的 x 固定 1
+const LIN = () => [
+  [0, 0],
+  [1, 1],
+];
+const AXIS = (maxIn) => ({
+  on: true,
+  sens: 1,
+  smooth: 1,
+  dead: 1,
+  maxIn,
+  off: 0,
+  inv: false,
+  asym: false,
+  pos: LIN(),
+  neg: LIN(),
+});
+// g：全域（靈敏度、平滑度、死區都是倍率；follow＝頭擺正時中心慢慢跟上坐姿）；yaw／pitch：每個軸（死區、最大輸入、偏移的單位是度）；
+// eye：注視點的平滑倍率與眨眼的門檻
+export const TUNE_DEF = {
+  v: 1,
+  g: { sens: 1, smooth: 1, dead: 1, follow: true },
+  yaw: AXIS(30),
+  pitch: AXIS(20),
+  eye: { smooth: 1, blink: 0.5 },
+};
+const num = (v, lo, hi, d) => (typeof v === 'number' && isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d);
+function curveOk(c) {
+  if (!Array.isArray(c) || c.length < 2 || c.length > 12) return LIN();
+  const pts = c
+    .filter((p) => Array.isArray(p) && p.length === 2)
+    .map(([x, y]) => [num(x, 0, 1, 0), num(y, 0, 1, 0)])
+    .sort((a, b) => a[0] - b[0]);
+  if (pts.length < 2) return LIN();
+  pts[0] = [0, 0];
+  pts[pts.length - 1][0] = 1;
+  // 相鄰的點至少隔 0.02（拖曳時夾住，避免重疊）
+  for (let i = 1; i < pts.length; i++)
+    if (pts[i][0] - pts[i - 1][0] < 0.02) pts[i][0] = Math.min(1, pts[i - 1][0] + 0.02);
+  return pts;
+}
+function axisOk(a, d) {
+  a = a && typeof a === 'object' ? a : {};
+  return {
+    on: a.on !== false,
+    sens: num(a.sens, 0.1, 5, d.sens),
+    smooth: num(a.smooth, 0, 1, d.smooth),
+    dead: num(a.dead, 0, 1, d.dead),
+    maxIn: num(a.maxIn, 5, 60, d.maxIn),
+    off: num(a.off, -45, 45, 0),
+    inv: !!a.inv,
+    asym: !!a.asym,
+    pos: curveOk(a.pos),
+    neg: curveOk(a.neg),
+  };
+}
+// 讀檔、匯入、設定組合一律經過這裡：補齊欄位、限制範圍
+export function tuneSanitize(t) {
+  t = t && typeof t === 'object' ? t : {};
+  const g = t.g || {},
+    e = t.eye || {};
+  return {
+    v: 1,
+    g: {
+      sens: num(g.sens, 0.1, 5, 1),
+      smooth: num(g.smooth, 0, 3, 1),
+      dead: num(g.dead, 0, 3, 1),
+      follow: g.follow !== false,
+    },
+    yaw: axisOk(t.yaw, TUNE_DEF.yaw),
+    pitch: axisOk(t.pitch, TUNE_DEF.pitch),
+    eye: { smooth: num(e.smooth, 0.3, 3, 1), blink: num(e.blink, 0.2, 0.8, 0.5) },
+  };
+}
+// 單調的三次曲線（Fritsch–Carlson）：穿過每個控制點、不會過衝
+export function curveEval(pts, x) {
+  const n = pts.length;
+  if (x <= pts[0][0]) return pts[0][1];
+  if (x >= pts[n - 1][0]) return pts[n - 1][1];
+  let i = 0;
+  while (i < n - 2 && x > pts[i + 1][0]) i++;
+  const h = [],
+    s = [];
+  for (let k = 0; k < n - 1; k++) {
+    h[k] = pts[k + 1][0] - pts[k][0] || 1e-6;
+    s[k] = (pts[k + 1][1] - pts[k][1]) / h[k];
+  }
+  const m = (k) => {
+    if (k === 0) return s[0];
+    if (k === n - 1) return s[n - 2];
+    if (s[k - 1] * s[k] <= 0) return 0;
+    const w1 = 2 * h[k] + h[k - 1],
+      w2 = h[k] + 2 * h[k - 1];
+    return (w1 + w2) / (w1 / s[k - 1] + w2 / s[k]);
+  };
+  const t = (x - pts[i][0]) / h[i];
+  const t2 = t * t,
+    t3 = t2 * t;
+  return (
+    (2 * t3 - 3 * t2 + 1) * pts[i][1] +
+    (t3 - 2 * t2 + t) * h[i] * m(i) +
+    (-2 * t3 + 3 * t2) * pts[i + 1][1] +
+    (t3 - t2) * h[i] * m(i + 1)
+  );
+}
+// 頭部的偏移模式：曲線的輸出 1＝最大輸入的 OUT_K 倍（頭轉 30° 鏡頭多看 60°，LookPilot 的預設也是真實角度的 2 倍）
+export const OUT_K = 2;
+// 速度模式另外加的保持區（度）：頭幾乎擺正時鏡頭不會慢慢飄
+export const RATE_HOLD = 4;
+// 一個軸：扣掉中心之後的角度（度，已平滑）→ { x 輸入（-1～1）, y 曲線的輸出（-1～1）, out }
+// 偏移模式的 out＝鏡頭多看的角度（度）；速度模式的 out＝-1～1（乘上最快的轉速）
+export function axisMap(deg, A, G, mode) {
+  let v = A.inv ? -deg : deg;
+  const dz = A.dead * G.dead * 2 + (mode === 'rate' ? RATE_HOLD : 0); // 死區 1＝2°
+  const s = Math.sign(v);
+  const a = Math.max(0, Math.abs(v) - dz);
+  const x = Math.min(1, a / Math.max(1, A.maxIn - dz));
+  const y = curveEval(s < 0 && A.asym ? A.neg : A.pos, x);
+  const k = A.sens * G.sens;
+  const out = mode === 'rate' ? s * y * k : s * y * A.maxIn * OUT_K * k + A.off;
+  return { x: s * x, y: s * y, out, dz };
+}
+// 平滑度 → One-Euro 的參數（角度用度）：平滑度 0＝幾乎不濾
+export function smoothCut(sm) {
+  return 3 / (0.5 + Math.max(0, sm));
+}

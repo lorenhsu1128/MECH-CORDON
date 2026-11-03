@@ -10200,9 +10200,10 @@ async function testGaze(browser, base) {
       // 校準中：眼睛看著校準點
       const cal = g.gzCal;
       let tg = window.__tg;
-      if (cal && (cal.ph === 'run' || cal.ph === 'val') && cal.t > 0.3) {
+      if (cal && (cal.ph === 'run' || cal.ph === 'val' || cal.ph === 'redo') && cal.t > 0.3) {
         const p = g.gazeCalTarget(cal);
         tg = { x: p[0], y: p[1] };
+        if (cal.ph === 'val' && cal.i === window.__calBad) tg = { x: p[0] + 0.3, y: p[1] };
       }
       const h = window.__th;
       const ex = 0.08 * (tg.x - 0.5) - 0.05 * h.yaw + 0.002 * rnd(),
@@ -10266,20 +10267,47 @@ async function testGaze(browser, base) {
   await page
     .waitForFunction(() => !document.getElementById('gcGo').disabled, null, { timeout: 5000 })
     .catch(() => {});
+  const chk = await page.evaluate(() =>
+    [...document.querySelectorAll('#gcChecks li')].map((l) => l.className + ':' + l.textContent),
+  );
+  check(
+    chk.length >= 4 && chk.every((c) => c.startsWith('ok')) && chk.some((c) => /距離/.test(c)),
+    `校準前的檢查：${chk.map((c) => c.split(':')[1]).join('、')}`,
+  );
   await page.screenshot({ path: path.join(SHOT_DIR, 'gaze-cal-prep.png') });
+  await page.evaluate(() => (window.__calBad = 2));
   await page.click('#gcGo');
   await wait(2500);
   await page.screenshot({ path: path.join(SHOT_DIR, 'gaze-cal-run.png') });
   await page
     .waitForFunction(() => window.__game.gzCal && window.__game.gzCal.ph === 'done', null, { timeout: 40000 })
     .catch(() => {});
+  const bad = await page.evaluate(() => ({
+    ph: window.__game.gzCal && window.__game.gzCal.ph,
+    redo: !document.getElementById('gcRedo').hidden,
+    bad: window.__game.gazeCalBad(window.__game.gzCal),
+  }));
+  await page.screenshot({ path: path.join(SHOT_DIR, 'gaze-cal-bad.png') });
+  check(
+    bad.ph === 'done' && bad.redo && bad.bad.join() === '2',
+    `驗證結果圖：偏掉的點標成差的點（${bad.bad.join('、')}）、出現「重做差的點」`,
+  );
+  await page.evaluate(() => (window.__calBad = -1));
+  await page.click('#gcRedo');
+  await wait(300);
+  await page
+    .waitForFunction(() => window.__game.gzCal && window.__game.gzCal.ph === 'done', null, { timeout: 15000 })
+    .catch(() => {});
   const cal = await page.evaluate(() => ({
     ph: window.__game.gzCal && window.__game.gzCal.ph,
     msg: document.getElementById('gcMsg').textContent,
     err: window.__game.gz.cal ? window.__game.gz.cal.err : 999,
+    redo: !document.getElementById('gcRedo').hidden,
+    pts: window.__game.gz.cal ? window.__game.gz.cal.pts.length : 0,
     saved: !!JSON.parse(localStorage.getItem('rubicon_gaze') || 'null'),
   }));
   await page.screenshot({ path: path.join(SHOT_DIR, 'gaze-cal-done.png') });
+  check(cal.ph === 'done' && !cal.redo && cal.pts === 5, '重做差的點之後沒有差的點、存下 5 個驗證點的結果');
   check(
     cal.ph === 'done' && cal.saved && cal.err < 40 && /平均誤差/.test(cal.msg),
     `校準完成：平均誤差 ${cal.err.toFixed(1)} px、存進 rubicon_gaze`,
@@ -10377,6 +10405,7 @@ async function testGaze(browser, base) {
     const g = window.__game;
     const pl = g.player;
     g.gazeSet('head', true);
+    g.gazeSet('headMode', 'rate');
     g.gazeSet('lock', false);
     g.setView('chase');
     g.assist = false;
@@ -10427,6 +10456,243 @@ async function testGaze(browser, base) {
   );
   check(hd.up > 0.05, `抬頭鏡頭往上（${hd.up.toFixed(2)}）`);
   check(hd.stop && hd.off, '頭擺正就停、開關關掉時不動');
+
+  // 5. 偏移模式（預設）：頭轉幾度鏡頭多看幾度、擺正回原位；曲線、暫停、置中
+  const of = await page.evaluate(() => {
+    const g = window.__game;
+    const pl = g.player;
+    const D = Math.PI / 180;
+    g.gazeSet('headMode', 'offset');
+    g.gazeSet('lock', false);
+    g.gazeTuneSet(null);
+    g.gazeHeadReset();
+    const tick = (n) => {
+      for (let i = 0; i < n; i++) {
+        g.gz.lastT = 0;
+        g.gazeTick();
+        pl.lock = null;
+        g.camAimInput(pl, 1 / 30);
+      }
+    };
+    window.__th = { yaw: 0, pitch: 0 };
+    g.gz.neutral = null;
+    tick(30);
+    const y0 = g.fpYaw;
+    const deg = () => (g.fpYaw - y0) / D;
+    window.__th = { yaw: 15 * D, pitch: 0 };
+    tick(45);
+    const d1 = deg();
+    window.__th = { yaw: 0, pitch: 0 };
+    tick(45);
+    const back = deg();
+    // 滑鼠轉的照常疊加（頭擺正之後還在）
+    g.fpYaw += 0.2;
+    tick(10);
+    const mouse = deg() - 0.2 / D;
+    g.fpYaw -= 0.2;
+    // 精準曲線：中間平
+    const t = JSON.parse(JSON.stringify(g.gazeTune()));
+    t.yaw.pos = [
+      [0, 0],
+      [0.5, 0.1],
+      [1, 1],
+    ];
+    t.yaw.neg = t.yaw.pos;
+    g.gazeTuneSet(t);
+    window.__th = { yaw: 15 * D, pitch: 0 };
+    tick(45);
+    const d2 = deg();
+    // 暫停：頭擺正也停在原地；繼續後回到原位
+    g.gazePauseToggle();
+    window.__th = { yaw: 0, pitch: 0 };
+    tick(30);
+    const held = deg();
+    g.gazePauseToggle();
+    tick(45);
+    const rel = deg();
+    // 置中：頭轉 12° 時置中＝鏡頭不多看
+    g.gazeTuneSet(null);
+    window.__th = { yaw: 12 * D, pitch: 0 };
+    tick(30);
+    g.gazeCenter();
+    tick(45);
+    const cen = deg();
+    window.__th = { yaw: 0, pitch: 0 };
+    g.gazeCenter();
+    tick(30);
+    return { d1, back, mouse, d2, held, rel, cen };
+  });
+  // 線性：(15 − 死區 2°) ÷ (30 − 2) × 30 × 2 ≈ 27.9°
+  check(
+    Math.abs(of.d1 - 27.9) < 1.5 && Math.abs(of.back) < 0.5 && Math.abs(of.mouse) < 0.5,
+    `偏移模式：頭轉 15° 鏡頭多看 ${of.d1.toFixed(1)}°、擺正回原位（${of.back.toFixed(2)}°）、滑鼠照常疊加`,
+  );
+  check(of.d2 > 3 && of.d2 < of.d1 * 0.5, `對應曲線：精準曲線時同樣轉頭看得比較少（${of.d2.toFixed(1)}°）`);
+  check(
+    Math.abs(of.held - of.d2) < 0.5 && Math.abs(of.rel) < 0.5,
+    `暫停：鏡頭停住（${of.held.toFixed(1)}°）、繼續後回到原位`,
+  );
+  check(Math.abs(of.cen) < 0.5, `置中：現在的姿勢當成中心（${of.cen.toFixed(2)}°）`);
+
+  // 6. 調校視窗：分頁、即時狀態、滑桿、曲線編輯（滑鼠與手把）、設定組合、快速修正偏移
+  await page.evaluate(() => {
+    const g = window.__game;
+    g.state = 'title';
+    g.showScreen('title');
+    g.openSettings('title', 'adv');
+  });
+  await page.click('#gazeTuneBtn');
+  await waitVisible(page, 'gazeTune');
+  await wait(600);
+  const tu0 = await page.evaluate(() => ({
+    tabs: [...document.querySelectorAll('#gtTabs button')].map((b) => b.textContent),
+    stat: document.getElementById('gtStat').textContent,
+    now: document.getElementById('gtNow').textContent,
+  }));
+  await page.screenshot({ path: path.join(SHOT_DIR, 'gaze-tune-overview.png') });
+  check(
+    tu0.tabs.length === 6 && /偵測到臉/.test(tu0.stat) && /標準/.test(tu0.now),
+    `調校視窗：${tu0.tabs.join('／')}、即時狀態（${tu0.stat.slice(0, 24)}…）、設定組合「標準」`,
+  );
+  await page.evaluate(() => {
+    const el = document.querySelector('#gtBody input[data-t="g.sens"]');
+    el.value = '1.5';
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  const tu1 = await page.evaluate(() => ({
+    sens: window.__game.gazeTune().g.sens,
+    saved: JSON.parse(localStorage.getItem('rubicon_ctrl')).gaze.tune.g.sens,
+    now: document.getElementById('gtNow').textContent,
+  }));
+  check(
+    tu1.sens === 1.5 && tu1.saved === 1.5 && /自訂/.test(tu1.now),
+    '滑桿：全域靈敏度改了立刻存檔、設定組合變成「自訂」',
+  );
+  // 曲線：滑鼠點一下加點、手把移動與刪除、形狀按鈕
+  await page.click('#gtTabs button[data-gt="yaw"]');
+  const box = await page.$eval('#gtCurve', (c) => {
+    const r = c.getBoundingClientRect();
+    return { x: r.left, y: r.top, w: r.width, h: r.height, cw: c.width, ch: c.height };
+  });
+  // 曲線圖內 (0.5, 0.3) 的位置（左下角留 30 px）
+  const cx = box.x + ((30 + 0.5 * (box.cw - 40)) / box.cw) * box.w,
+    cy = box.y + ((box.ch - 30 - 0.3 * (box.ch - 42)) / box.ch) * box.h;
+  await page.mouse.click(cx, cy);
+  const cu1 = await page.evaluate(() => window.__game.gazeTune().yaw.pos);
+  const cu2 = await page.evaluate(() => {
+    const g = window.__game;
+    const cv = document.getElementById('gtCurve');
+    g.gzTune.sel = 1;
+    cv.padAdj(0, -1); // 十字鍵上：往上
+    cv.padAdj(0, -1);
+    const a = g.gazeTune().yaw.pos[1][1];
+    cv.padDec();
+    return { a, n: g.gazeTune().yaw.pos.length };
+  });
+  await page.click('[data-shape="prec"]');
+  const cu3 = await page.evaluate(() =>
+    window.__game
+      .gazeTune()
+      .yaw.pos.map((p) => p.join(','))
+      .join(' '),
+  );
+  await page.screenshot({ path: path.join(SHOT_DIR, 'gaze-tune-curve.png') });
+  check(
+    cu1.length === 3 && Math.abs(cu1[1][0] - 0.5) < 0.03 && Math.abs(cu1[1][1] - 0.3) < 0.03,
+    `曲線：滑鼠點一下加一個點（${cu1[1].map((v) => v.toFixed(2)).join(', ')}）`,
+  );
+  check(
+    Math.abs(cu2.a - (cu1[1][1] + 0.04)) < 0.005 && cu2.n === 2 && cu3 === '0,0 0.45,0.18 1,1',
+    '曲線：手把十字鍵移動點、X 刪除、形狀按鈕（精準）',
+  );
+  // 設定組合：存成新的、匯出、套用內建、匯入
+  await page.click('#gtTabs button[data-gt="pre"]');
+  await page.fill('#gtNewName', '測試組合');
+  await page.click('#gtSaveNew');
+  const pr1 = await page.evaluate(() => {
+    const g = window.__game;
+    const list = JSON.parse(localStorage.getItem('rubicon_gaze_presets'));
+    document.querySelector('[data-exp="0"]').click();
+    return {
+      n: list.length,
+      name: list[0].name,
+      cur: !!document.querySelector('.gtPre.cur'),
+      exp: g.gzLastExport,
+    };
+  });
+  await page.click('[data-apply="b1"]');
+  const pr2 = await page.evaluate(() => ({
+    now: document.getElementById('gtNow').textContent,
+    sens: window.__game.gazeTune().g.sens,
+  }));
+  const pr3 = await page.evaluate((txt) => {
+    const g = window.__game;
+    const ok = g.gazePresetImport(txt, 'x.json');
+    const bad = g.gazePresetImport('{"x":1}', 'y.json');
+    return { ok, bad, n: JSON.parse(localStorage.getItem('rubicon_gaze_presets')).length };
+  }, pr1.exp);
+  await page.screenshot({ path: path.join(SHOT_DIR, 'gaze-tune-presets.png') });
+  check(
+    pr1.n === 1 &&
+      pr1.name === '測試組合' &&
+      pr1.cur &&
+      /"rubicon-gaze"/.test(pr1.exp) &&
+      /測試組合/.test(pr1.exp),
+    '設定組合：存成新的（使用中）、匯出 JSON',
+  );
+  check(/穩定/.test(pr2.now) && pr2.sens === 0.9, `套用內建的設定組合（${pr2.now}）`);
+  check(pr3.ok && !pr3.bad && pr3.n === 2, '匯入設定組合（不對的檔案拒絕）');
+  // 眼睛：快速修正偏移（看著中央時眼睛的特徵其實指向 (0.6, 0.55)）
+  await page.click('#gtTabs button[data-gt="eye"]');
+  await page.evaluate(() => (window.__tg = { x: 0.6, y: 0.55 }));
+  await page.click('#gtDrift');
+  await wait(2700);
+  const dr = await page.evaluate(() => {
+    const g = window.__game;
+    for (let i = 0; i < 30; i++) {
+      g.gz.lastT = 0;
+      g.gazeTick();
+    }
+    return {
+      bias: g.gz.cal.bias,
+      x: g.gz.x / window.innerWidth,
+      y: g.gz.y / window.innerHeight,
+      gone: !document.getElementById('gazeDrift'),
+    };
+  });
+  check(
+    dr.gone &&
+      dr.bias &&
+      Math.abs(dr.bias[0] + 0.1) < 0.03 &&
+      Math.abs(dr.x - 0.5) < 0.04 &&
+      Math.abs(dr.y - 0.5) < 0.04,
+    `快速修正偏移：偏差（${dr.bias ? dr.bias.map((v) => v.toFixed(2)).join(', ') : '—'}）修正後注視點回到中央`,
+  );
+  await page.screenshot({ path: path.join(SHOT_DIR, 'gaze-tune-eye.png') });
+  await page.click('#gtTabs button[data-gt="cam"]');
+  const camOk = await page.evaluate(
+    () => !!document.getElementById('gtDev') && !!document.getElementById('gtRes'),
+  );
+  check(camOk, '攝影機分頁：選攝影機、解析度');
+  // Esc 關閉、設定的子項目
+  await page.keyboard.press('Escape');
+  const closed2 = await page.evaluate(() => ({
+    gone: !document.getElementById('gazeTune'),
+    st: window.__game.state,
+    mode: !!document.querySelector('#gazeBox [data-gz="headMode"]'),
+  }));
+  check(
+    closed2.gone && closed2.st === 'settings' && closed2.mode,
+    'Esc 關閉調校視窗回到設定、設定裡有頭部延伸視角的方式',
+  );
+  await page.evaluate(() => {
+    window.__tg = { x: 0.5, y: 0.5 };
+    const g = window.__game;
+    g.gazeTuneSet(null);
+    g.settingsFrom = 'title';
+    g.closeSettings();
+  });
   // 任務中的畫面：注視點與停留圈
   await page.evaluate(() => {
     const g = window.__game;

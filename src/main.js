@@ -110,5 +110,6 @@ import './game/water.js';
 import './game/voice.js';
 import './game/bgm.js';
 import './game/gaze.js';
+import './game/gaze-tune.js';
 
 new Game();

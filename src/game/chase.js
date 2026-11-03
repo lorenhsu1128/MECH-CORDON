@@ -35,6 +35,7 @@ Object.assign(Game.prototype, {
       this.fpPitch = 0;
     }
     if (v === 'chase') this.fpPitch = clamp(this.fpPitch || 0, PITCH_MIN, PITCH_MAX);
+    this.gazeHeadReset();
     this.fp = v === 'fp';
     this.chase = v === 'chase';
     this.camera.fov = this.fp ? FP_FOV : this.chase ? this.chaseFov() : TP_FOV;
@@ -72,6 +73,7 @@ Object.assign(Game.prototype, {
   },
   // 出擊時：回到設定的預設視角
   viewReset() {
+    this.gazeHeadReset();
     this.fp = false;
     this.chase = false;
     this.assist = false;
@@ -169,15 +171,8 @@ Object.assign(Game.prototype, {
         hi = al || (this.chase ? PITCH_MAX : 0.9);
       this.fpPitch = clamp(this.fpPitch - ta.z * k * dt * 1.8 * sn * inv, lo, hi);
     }
-    // 頭部延伸視角（game/gaze.js）：轉頭＝鏡頭往那邊轉（空域除外）
-    const hv = !air && this.gazeHeadRate(p);
-    if (hv) {
-      const al = this.airPitchLim(),
-        lo = al ? -al : this.chase ? PITCH_MIN : -1.1,
-        hi = al || (this.chase ? PITCH_MAX : 0.9);
-      this.fpYaw += hv.x * dt;
-      this.fpPitch = clamp(this.fpPitch + hv.y * dt, lo, hi);
-    }
+    // 頭部延伸視角（game/gaze.js）：偏移模式＝頭轉幾度鏡頭多看幾度、速度模式＝頭偏著鏡頭就一直轉（空域除外）
+    if (!air) this.gazeHeadApply(p, dt, this.chase ? PITCH_MIN : -1.1, this.chase ? PITCH_MAX : 0.9);
     if (this.fp) {
       const look = this.fpLookDir(this.fpYaw, this.fpPitch);
       this.mouseWorld.copy(this.fpEye(p)).addScaledVector(look, 40 * this.camK());

@@ -32,6 +32,8 @@ Object.assign(Game.prototype, {
       cs2: 'Digit2',
       aam: 'KeyC',
       pause: 'Escape',
+      gzCenter: 'KeyG',
+      gzPause: '',
     };
   },
   loadKeys() {
@@ -96,6 +98,8 @@ Object.assign(Game.prototype, {
       cs2: 'Pad13',
       aam: 'Pad8',
       pause: 'Pad9',
+      gzCenter: '',
+      gzPause: '',
     };
   },
   padLabel(code) {
@@ -592,7 +596,7 @@ Object.assign(Game.prototype, {
     this.padAim = new THREE.Vector3(dz(gp.axes[2] || 0), 0, dz(gp.axes[3] || 0));
     if (this.padMove.length() > 0.01 || this.padAim.length() > 0.01) this.padActive = true;
     const prev = this.padPrev || {};
-    const one = ['lock', 'assist', 'kit', 'cs1', 'cs2', 'pause'];
+    const one = ['lock', 'assist', 'kit', 'cs1', 'cs2', 'pause', 'gzCenter', 'gzPause'];
     for (let i = 0; i < gp.buttons.length && i < 16; i++) {
       const b = gp.buttons[i];
       const pressed = b.pressed || b.value > 0.5;
@@ -623,6 +627,8 @@ Object.assign(Game.prototype, {
               if (nm === 'kit') this.useKit();
               if (nm === 'cs1') this.useConsumable('c1');
               if (nm === 'cs2') this.useConsumable('c2');
+              if (nm === 'gzCenter') this.gazeCenter();
+              if (nm === 'gzPause') this.gazePauseToggle();
             }
           }
         }
@@ -965,6 +971,8 @@ Object.assign(Game.prototype, {
         this.net.signal(parseInt(e.code.slice(1)) - 1);
       }
       if (e.code === km.kit && this.state === 'play') this.useKit();
+      if (e.code && e.code === km.gzCenter && this.state === 'play') this.gazeCenter(); // 眼動：頭部置中
+      if (e.code && e.code === km.gzPause && this.state === 'play') this.gazePauseToggle();
       if (e.code === km.cs1 && this.state === 'play') this.useConsumable('c1');
       if (e.code === km.cs2 && this.state === 'play') this.useConsumable('c2');
     });

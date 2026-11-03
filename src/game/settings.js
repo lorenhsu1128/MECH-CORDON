@@ -281,6 +281,8 @@ Object.assign(Game.prototype, {
       ['cs2', '消耗品 2'],
       ['aam', '空戰導彈（空域）'],
       ['pause', '暫停'],
+      ['gzCenter', '眼動：頭部置中'],
+      ['gzPause', '眼動：暫停頭部追蹤'],
     ];
     const padOnly = { up: '左搖桿', down: '左搖桿', left: '左搖桿', right: '左搖桿' };
     const defK = this.defaultKeys(),

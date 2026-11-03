@@ -107,6 +107,7 @@ Object.assign(Game.prototype, {
     if (!el) return;
     el.classList.add('padFocus');
     if (this.state === 'settings' && this.setDescFor) this.setDescFor(el); // 設定畫面的說明欄
+    if (this.gzTune) this.gazeTuneDesc(el); // 眼動追蹤的調校視窗的說明欄
     try {
       el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     } catch (e) {}
@@ -335,7 +336,9 @@ Object.assign(Game.prototype, {
       }
       if (fire) {
         const el = this.puEl;
-        if (dx && el && this.padUiAdjust(el, dx)) {
+        if (el && el.padAdj && el.padAdj(dx, dy)) {
+          /* 焦點元素自己處理方向鍵（眼動調校的曲線編輯器） */
+        } else if (dx && el && this.padUiAdjust(el, dx)) {
           /* 左右改值 */
         } else this.padUiMove(dx, dy);
       }

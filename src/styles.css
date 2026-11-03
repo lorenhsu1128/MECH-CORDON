@@ -6237,3 +6237,285 @@ body.vpad #subBar {
 #gazeCal.run #gcGo {
   display: none;
 }
+/* 眼動追蹤：校準前的檢查、驗證結果圖、快速修正偏移（game/gaze.js） */
+#gcChecks {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.7;
+}
+#gcChecks li.ok {
+  color: var(--hp);
+}
+#gcChecks li.ng {
+  color: #ffb080;
+}
+#gcPlot {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+#gazeCal.done .gcPanel {
+  position: fixed;
+  left: 50%;
+  top: 8px;
+  bottom: auto;
+  transform: translateX(-50%);
+  padding: 10px 16px;
+}
+#gazeCal.done .gcVid {
+  display: none;
+}
+#gazeDrift {
+  position: fixed;
+  inset: 0;
+  z-index: 10003;
+  background: rgba(6, 9, 13, 0.92);
+  pointer-events: auto;
+  --k: 0;
+}
+#gazeDrift p {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% + 40px);
+  text-align: center;
+  color: var(--ink);
+}
+#gdDot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+}
+#gdDot::before {
+  content: '';
+  position: absolute;
+  left: -18px;
+  top: -18px;
+  width: 36px;
+  height: 36px;
+  border: 2px solid var(--acc);
+  border-radius: 50%;
+  transform: scale(calc(1 - var(--k) * 0.7));
+}
+#gdDot i {
+  position: absolute;
+  left: -4px;
+  top: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--acc);
+}
+/* 眼動追蹤的調校視窗（game/gaze-tune.js） */
+#gazeTune {
+  position: fixed;
+  inset: 0;
+  z-index: 9990;
+  background: rgba(6, 9, 13, 0.88);
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#gazeTune .gtPanel {
+  width: min(860px, 96vw);
+  height: min(760px, 94vh);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 18px;
+  background: #121821;
+  border: 1px solid var(--line);
+}
+#gazeTune .gtHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+#gazeTune .gtHead h3 {
+  margin: 0;
+  color: var(--acc);
+}
+#gazeTune .gtHead #gtNow {
+  flex: 1;
+  font-size: 12px;
+}
+#gtTabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 6px;
+}
+#gtTabs button {
+  white-space: nowrap;
+  padding: 6px 11px;
+  font-size: 13px;
+}
+#gtTabs button.on,
+#gazeTune .gtSide button.on {
+  border-color: var(--acc);
+  background: rgba(255, 176, 32, 0.2);
+  color: var(--acc);
+}
+#gtBody {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 6px;
+}
+#gtBody h4 {
+  margin: 12px 0 2px;
+  font-size: 13px;
+  color: var(--acc);
+}
+#gtDesc {
+  flex-shrink: 0;
+  min-height: 3em;
+  border-top: 1px solid var(--line);
+  padding-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #b9c6d3;
+}
+#gazeTune .gtSl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#gazeTune .gtSl input {
+  width: min(260px, 40vw);
+}
+#gazeTune .gtSl b {
+  min-width: 44px;
+  text-align: right;
+  font-weight: 500;
+  color: var(--acc2);
+}
+#gazeTune .gtTop {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+#gazeTune .gtVidWrap {
+  position: relative;
+  width: 240px;
+  height: 180px;
+  background: #0a0e14;
+  border: 1px solid var(--line);
+}
+#gazeTune .gtVid video,
+#gazeTune #gtLm {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+#gazeTune .gtVidWrap.mir video,
+#gazeTune .gtVidWrap.mir #gtLm {
+  transform: scaleX(-1);
+}
+#gazeTune .gtPlots {
+  display: flex;
+  gap: 10px;
+}
+#gazeTune .gtPlots > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--dim);
+}
+#gazeTune .gtPlots canvas {
+  border: 1px solid var(--line);
+}
+#gtStat {
+  font-size: 12px;
+  margin: 6px 0;
+}
+#gazeTune .gtBtns {
+  margin: 4px 0;
+}
+#gazeTune .gtCurveRow {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin: 6px 0;
+}
+#gtCurve {
+  border: 1px solid var(--line);
+  background: #0a0e14;
+  touch-action: none;
+  max-width: 100%;
+}
+#gazeTune .gtCurveSide {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 180px;
+}
+#gazeTune .gtShapes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+#gazeTune .gtCalWrap canvas {
+  border: 1px solid var(--line);
+  margin: 4px 0;
+}
+#gazeTune .gtPre.cur {
+  background: rgba(255, 176, 32, 0.08);
+}
+#gazeTune .gtPre em {
+  color: var(--acc);
+  font-style: normal;
+  font-size: 12px;
+}
+#gazeTune input[type='text'],
+#gazeTune input:not([type]) {
+  flex: 1;
+  min-width: 140px;
+}
+#gtGaze {
+  position: fixed;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 50%;
+  border: 2px solid var(--acc2);
+  background: rgba(92, 200, 255, 0.3);
+  pointer-events: none;
+  display: none;
+  z-index: 2;
+}
+@media (max-height: 540px) {
+  #gazeTune .gtPanel {
+    height: 96vh;
+    padding: 8px 12px;
+    gap: 5px;
+  }
+  #gazeTune .gtVidWrap {
+    width: 160px;
+    height: 120px;
+  }
+  #gazeTune .gtPlots canvas {
+    width: 110px;
+    height: 110px;
+  }
+  #gtCurve {
+    width: 300px;
+    height: 197px;
+  }
+  #gtDesc {
+    min-height: 2.4em;
+    font-size: 11px;
+  }
+}
