@@ -3,13 +3,14 @@
 //   損毀時的演出 boom（'fire' 火球、'arc' 電弧、'coral' Coral 光）、碎片的形狀 deb、碎片的顏色 col（沒有時用物件的顏色）。
 //   只有 fuel、vehicle、wood 會起火（2026-11-02 使用者定案：不是所有物件都會起火）。
 
+// 倍率最低 0.6（2026-11-03 使用者定案：能量打岩石 ×0.4 太懲罰）
 export const PMAT = {
-  concrete: { name: '混凝土', k: [0.6, 1.6, 0.5], fx: 'dust', deb: 'chunk', col: 0x8a8780 },
+  concrete: { name: '混凝土', k: [0.6, 1.6, 0.6], fx: 'dust', deb: 'chunk', col: 0x8a8780 },
   metal: { name: '金屬', k: [0.8, 1.3, 0.7], fx: 'smoke', spark: true, deb: 'plate' },
   fuel: { name: '燃料', k: [1, 1.5, 1], fx: 'smoke', fire: true, boom: 'fire', deb: 'plate' },
   vehicle: { name: '車輛', k: [0.9, 1.4, 0.9], fx: 'smoke', fire: true, boom: 'fire', deb: 'plate' },
   electric: { name: '電氣', k: [0.8, 1.3, 1.2], fx: 'spark', spark: true, boom: 'arc', deb: 'plate' },
-  rock: { name: '岩石', k: [0.5, 1.6, 0.4], fx: 'dust', deb: 'rock', col: 0x8c7f6c },
+  rock: { name: '岩石', k: [0.6, 1.6, 0.6], fx: 'dust', deb: 'rock', col: 0x8c7f6c },
   ice: { name: '冰', k: [0.7, 1.3, 1.5], fx: 'ice', deb: 'ice', col: 0xcfe6f2 },
   wood: { name: '木', k: [1, 1.3, 1.2], fx: 'smoke', fire: true, deb: 'plank', col: 0x6b5236 },
   glass: { name: '玻璃帷幕', k: [1, 1.4, 1], fx: 'dust', deb: 'plate', col: 0x7d8a96 },
@@ -146,8 +147,16 @@ export const CRUSH = new Set([
   'fence',
   'mast',
 ]);
-export function propCrushable(p) {
+export function propCrushable(p, easy) {
   const sh = p.shape0 || p.shape;
   if (CRUSH.has(p.kind)) return true;
-  return sh.y1 - sh.y0 <= 2.6 && Math.max(sh.x1 - sh.x0, sh.z1 - sh.z0) <= 14;
+  return sh.y1 - sh.y0 <= (easy ? 4 : 2.6) && Math.max(sh.x1 - sh.x0, sh.z1 - sh.z0) <= 14;
 }
+// 設定「地圖物件的破壞」（ctrl.destruct；多人時以房主的為準）：easy 易破壞、normal 可破壞（預設）、off 不可破壞
+//   easy：傷害 ×4、材質倍率最低 0.8、高 4 m 以下的踩得平、承重的壞一半就倒
+//   off：只有改版前就打得壞的物件（p.legacy）可以打壞，沒有受損階段與殘骸；不踩平、不倒塌、岩頂不開洞
+export const DESTRUCT = {
+  easy: { k: 4, floor: 0.8 },
+  normal: { k: 1, floor: 0 },
+  off: { k: 1, floor: 0 },
+};

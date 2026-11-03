@@ -24238,6 +24238,31 @@ async function testDestruct(browser, base) {
         out.crowd = !h.alive || h.y < sh.y1 - 0.3; // 落在殘骸上（殘骸比原本矮）
       }
     }
+    // 設定「地圖物件的破壞」：易破壞＝×4、材質倍率最低 0.8；不可破壞＝只有改版前的物件打得壞、沒有受損階段
+    const m0 = g.ctrl.destruct;
+    g.ctrl.destruct = 'easy';
+    const ez = near((p) => p.mat === 'metal' && p.maxHp >= 1000 && !p.st);
+    if (ez) {
+      const h0 = ez.hp;
+      g.damageProp(ez, 100, 0, null, pl, 'en');
+      out.easy = h0 - ez.hp; // 100 × max(0.8, 0.7) × 4
+    }
+    g.ctrl.destruct = 'off';
+    const nw = w.props.find((p) => !p.dead && !p.legacy && !p.body && !p.support);
+    if (nw) {
+      const h0 = nw.hp;
+      g.damageProp(nw, 1e7, 0, null, pl, 'none');
+      out.offNew = nw.hp === h0 && !nw.dead && !g.destructibles().includes(nw);
+    }
+    const lg = near((p) => p.legacy && !p.st && p.maxHp > 300);
+    if (lg) {
+      g.damageProp(lg, lg.maxHp * 0.6, 0, null, pl, 'none');
+      out.offLegacy = lg.hp < lg.maxHp && !lg.st;
+      g.damageProp(lg, 1e7, 0, null, pl, 'none');
+      out.offLegacy = out.offLegacy && lg.dead && !lg.wreck;
+    }
+    out.ui = !!document.getElementById('ctrlDestruct');
+    g.ctrl.destruct = m0;
     // 同步：房主把這一格的血量合併成一個事件、血量表；客機套用血量表時直接換成殘骸
     const sent = [];
     const ne = g.netEv;
@@ -24275,7 +24300,7 @@ async function testDestruct(browser, base) {
   );
   check(r.has.every(Boolean), '找到金屬、車輛、混凝土／岩石物件');
   check(
-    r.en === 70 && r.exp === 130 && r.conEn <= 50,
+    r.en === 70 && r.exp === 130 && r.conEn === 60,
     `材質倍率：金屬 能量 ${r.en}、爆發 ${r.exp}；混凝土／岩石 能量 ${r.conEn}`,
   );
   check(r.stages.join() === '1,2,3' && r.dark > 0, `四段受損 ${r.stages.join('→')}`);
@@ -24301,6 +24326,11 @@ async function testDestruct(browser, base) {
   );
   check(r.tw, 'Boss 場地的臨時掩體：同一套的焦黑與碎板（第 3 階段）');
   check(r.crowd !== false, '站在物件上的小人：物件壞了掉下來');
+  check(r.easy === 320, `易破壞：傷害 ×4、材質倍率最低 0.8（金屬被能量打 100 → ${r.easy}）`);
+  check(
+    r.offNew && r.offLegacy && r.ui,
+    '不可破壞：改版後登記的物件打不壞、不算目標；改版前的小物件照舊打得壞（沒有受損階段與殘骸）',
+  );
   check(r.evN === 1 && r.evL === 2 && r.tbl, `同步：合併的血量事件（${r.evN} 個、${r.evL} 項）與血量表`);
   check(r.cli, '客機套用血量表：直接換成殘骸');
   await page.screenshot({ path: path.join(SHOT_DIR, 'destruct-stages.png') });

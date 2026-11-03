@@ -118,7 +118,15 @@ Object.assign(MechEntity.prototype, {
       if (s.absT <= 0 && this.shell < this.shellMax * 0.9) {
         s.absT = 6;
         const w = this.game.world;
-        const p = (w.props || []).find((q) => !q.dead && q.pos && q.pos.distanceTo(this.pos) < 22 * DS);
+        const p = (w.props || []).find(
+          (q) =>
+            this.game.propLive(q) &&
+            !q.body &&
+            !q.support &&
+            !q.seg &&
+            q.pos &&
+            q.pos.distanceTo(this.pos) < 22 * DS,
+        );
         if (p) {
           this.game.damageProp(p, p.hp + 1, 0, p.pos.clone(), this, 'none');
           this.shell = Math.min(this.shellMax, this.shell + this.shellMax * 0.35);

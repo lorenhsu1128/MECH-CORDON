@@ -25,7 +25,7 @@ Object.assign(Game.prototype, {
   // team：攻擊者的隊伍（有給時另外加上它打得到的投射物，game/hazards2.js）
   destructibles(team) {
     const out = [];
-    if (this.world && this.world.props) for (const p of this.world.props) if (!p.dead) out.push(p);
+    if (this.world && this.world.props) for (const p of this.world.props) if (this.propLive(p)) out.push(p); // 不可破壞時改版後的物件不算
     for (const v of this.vehicles) if (!v.dead) for (const pt of v.parts) out.push(pt);
     if (team) out.push(...this.shotTargets(team));
     return out;

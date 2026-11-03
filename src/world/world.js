@@ -426,10 +426,13 @@ export class World {
       else mergeStatic(this.decorG, new Set(), true);
     });
     // 其他打得到的物件也登記成可破壞（不用亂數，照障礙物的順序；現有物件的編號不變）
+    // 改版後才登記的物件（legacy＝false）：設定「不可破壞」時打不壞
+    this.regNew = true;
     this.regRest();
     this.regStructs();
     this.regDecks();
     this.regSegs();
+    this.regNew = false;
     // 邊界外的遠景地形與剪影物件（edges.js，獨立的亂數串，不影響上面的生成）
     withRng(seed * 97 + 41, () => {
       for (const o of buildBackdrop(this) || []) {
@@ -2104,6 +2107,7 @@ export class World {
       shape: propShape(this, ob), // 命中形狀＝碰撞障礙物（world/prop-hit.js）；radius 只剩粗略的用途
       mat: propMatOf(String(kind).replace(/^ed\//, ''), this.themeKey), // 材質（data/destruct.js）
       obs: obs || [ob], // 這個物件的全部障礙物（產生器放的大型物件可能有好幾個）
+      legacy: !this.regNew, // 改版前就打得壞的（設定「不可破壞」時只有這些打得壞）
       col: ob.group ? groupColor(ob.group) : 0x202224, // 實際的顏色（線性值；碎片與殘骸用）
     };
     for (const o of p.obs) o.prop = p;

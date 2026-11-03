@@ -288,6 +288,7 @@ Object.assign(Game.prototype, {
     this.clientAlive = m.alive;
     this.clientWaves = m.waves;
     this.clientBoss = m.boss;
+    this.destructNet = m.dm; // 地圖物件的破壞設定（房主的）
     if (m.camp && this.campC) this.campClientView(m.camp);
     if (m.lvState) this.lvClientState(m.lvState);
     for (const ev of s.ev) this.clientEvent(ev);

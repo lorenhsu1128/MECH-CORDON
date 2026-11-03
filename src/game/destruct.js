@@ -4,7 +4,15 @@
 //   受損物件的血量表（prs：重連、觀戰、漏掉事件、房主遷移都靠它對齊）；客機依血量自己演出，特效一律不轉送。
 import { SFX } from '../audio/audio.js';
 import { weaponAttr } from '../data/attrs.js';
-import { PMAT, PROP_CHAR, propAttrK, propCrushable, propDebrisCol, propStage } from '../data/destruct.js';
+import {
+  DESTRUCT,
+  PMAT,
+  PROP_CHAR,
+  propAttrK,
+  propCrushable,
+  propDebrisCol,
+  propStage,
+} from '../data/destruct.js';
 import { weaponById } from '../data/parts.js';
 import { fling, local } from '../render/foe-damage.js';
 import { isOutline } from '../render/geometry.js';
@@ -59,12 +67,24 @@ const hash3 = (x, y, z) => {
 };
 
 Object.assign(Game.prototype, {
+  // 設定「地圖物件的破壞」：easy／normal／off（客機用房主送來的）
+  destructMode() {
+    const m = this.net && this.net.role === 'client' ? this.destructNet : this.ctrl && this.ctrl.destruct;
+    return m === 'easy' || m === 'off' ? m : 'normal';
+  },
+  // 這個物件現在打得壞嗎（設定「不可破壞」時只有改版前就打得壞的）
+  propLive(p) {
+    return !p.dead && (p.legacy || this.destructMode() !== 'off');
+  },
   // 房主／單機：物件受傷。attr＝屬性（沒有時依武器 id 推算，都沒有時算實彈）；'none'＝不看材質
   propDamage(p, dmg, impact, at, from, attr, wid) {
     if (p.dead) return;
     if (p.isShot) return this.shotDamage(p, dmg, at, from); // 可以打掉的投射物（hazards2.js）
+    const mode = this.destructMode();
+    if (mode === 'off' && !p.legacy) return;
     const a = attr || (wid ? weaponAttr(weaponById(wid)) : 'kin');
-    const d = Math.round(dmg * propAttrK(p.mat, a));
+    const DM = DESTRUCT[mode];
+    const d = Math.round(dmg * Math.max(DM.floor, propAttrK(p.mat, a)) * DM.k);
     if (!(d > 0)) return;
     if (p.noDie && p.hp - d <= 0) p.hp = Math.min(p.hp, 1);
     else p.hp -= d;
@@ -88,7 +108,7 @@ Object.assign(Game.prototype, {
   propKill(p, dir, o = {}) {
     if (p.dead) return;
     this.propDirty && this.propDirty.delete(p);
-    this.world.destroyProp(p, this.fx, { dir, cr: o.cr });
+    this.world.destroyProp(p, this.fx, { dir, cr: o.cr, noWreck: this.destructMode() === 'off' });
     if (p.seg) this.propSegDown(p, false);
     else if (p.support && !p.sep) this.propSupportDown(p, false);
     else this.propWreckFx(p);
@@ -99,9 +119,16 @@ Object.assign(Game.prototype, {
       cr: o.cr ? 1 : 0,
     });
     // 承重柱全壞：結構倒下（方向依最後一擊；客機收到 pcol 照同樣的方向演出）
+    // 承重的壞了：全壞（易破壞：壞一半）就倒
+    const easy = this.destructMode() === 'easy';
     if (p.support)
       for (const b of p.ofs || [p.of])
-        if (b.sup.every((q) => q.dead) && !b.collapsed && !b.noCollapse && !(b.seg && this.segProtected(b))) {
+        if (
+          b.sup.filter((q) => q.dead).length >= (easy ? Math.ceil(b.sup.length / 2) : b.sup.length) &&
+          !b.collapsed &&
+          !b.noCollapse &&
+          !(b.seg && this.segProtected(b))
+        ) {
           const di = this.propFallDir(b, dir);
           this.netEv({ t: 'pcol', i: b.idx, d: di });
           this.propCollapse(b, di, false);
@@ -119,7 +146,7 @@ Object.assign(Game.prototype, {
   },
   // 血量變了：進入新的階段時套外觀（quiet＝不拋碎片，重連時直接套用）
   propStageCheck(p, quiet) {
-    if (p.dead) return;
+    if (p.dead || this.destructMode() === 'off') return; // 不可破壞：和改版前一樣沒有受損階段
     const st = Math.min(3, propStage(p.hp, p.maxHp));
     const st0 = p.st || 0;
     if (st <= st0) return;
@@ -1014,6 +1041,7 @@ Object.assign(Game.prototype, {
   // 地下的岩頂（技研都市、礦坑的坑道網）：投射物打到岩頂的格子（房主／單機），血量打完就開洞
   roofDamage(pos, dmg, attr) {
     const w = this.world;
+    if (this.destructMode() === 'off') return false; // 不可破壞：岩頂和以前一樣不擋子彈
     if (this.net && this.net.role === 'client') return true;
     const C = w.roofCell;
     const ix = Math.floor(pos.x / C),
@@ -1023,7 +1051,8 @@ Object.assign(Game.prototype, {
     if ((this.roofGone || []).includes(k)) return false; // 已經是洞：穿過去
     const H = this.roofHp || (this.roofHp = {});
     if (H[k] === undefined) H[k] = ROOF_HP;
-    H[k] -= dmg * propAttrK('rock', attr);
+    const DM = DESTRUCT[this.destructMode()];
+    H[k] -= dmg * Math.max(DM.floor, propAttrK('rock', attr)) * DM.k;
     if (H[k] <= 0) {
       this.netEv({ t: 'roofx', k });
       this.roofBreak(k, false);
@@ -1151,9 +1180,12 @@ Object.assign(Game.prototype, {
   propCrushTick() {
     const w = this.world;
     if (!w || !w.props || this.range || this.cine) return;
-    if (this.crushW !== w) {
+    const mode = this.destructMode();
+    if (mode === 'off') return; // 不可破壞：不踩平
+    if (this.crushW !== w || this.crushMode !== mode) {
       this.crushW = w;
-      this.crushList = w.props.filter((p) => !p.dead && propCrushable(p));
+      this.crushMode = mode;
+      this.crushList = w.props.filter((p) => !p.dead && propCrushable(p, mode === 'easy'));
     }
     const L = this.crushList;
     if (!L.length) return;

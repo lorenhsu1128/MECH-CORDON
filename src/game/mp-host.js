@@ -265,6 +265,7 @@ Object.assign(Game.prototype, {
           scaleHp: this.scaleHp,
           scaleDmg: this.scaleDmg,
           waveList: this.waves,
+          dm: this.destructMode(), // 地圖物件的破壞設定（房主的）
           lvState: this.lvSnap(), // 自訂關卡的觸發器狀態（有變動時才帶）
         },
         ev: this.netEvents,
