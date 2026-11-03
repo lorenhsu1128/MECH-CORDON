@@ -255,7 +255,8 @@ void main() {
 `;
 
 const lin = (hex) => new THREE.Color(hex).convertSRGBToLinear();
-const NIL = (() => {
+// 沒有內容時綁的 1×1 貼圖（fx/water/index.js 不用螢幕空間反射時也換回它，見 noPrev）
+export const NIL = (() => {
   const t = new THREE.DataTexture(new Uint8Array(4), 1, 1, THREE.RGBAFormat);
   t.needsUpdate = true;
   return t;

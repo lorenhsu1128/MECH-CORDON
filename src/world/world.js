@@ -2668,6 +2668,7 @@ export class World {
     const wr = buildWreck(p, this.seed, STEP_H);
     wr.group.position.set(cx, gy, cz);
     this.scene.add(wr.group);
+    this.meshes.push(wr.group); // 擋住鏡頭時淡出（fadeMeshes；殘骸不再受傷，但不能一直擋住視野）
     const ob = {
       kind: 'box',
       x: cx,
@@ -3267,11 +3268,20 @@ export class World {
     }));
     const tmp = new THREE.Vector3();
     let any = false;
+    // 由這裡管理淡出的群組與材質（fadeMeshes 略過這些；其他半透明的由 fadeMeshes 處理）
+    const og = this._occG || (this._occG = new Map());
+    og.clear();
     for (const o of this.occluders) {
       if (!o.box) continue;
+      if (o.group && o.mats.length) og.set(o.group, o.mats);
+      // 判定框：碰撞的方塊＋模型實際的外框（橋面上的結構、高出碰撞的部分擋住時也要淡出；fadeMeshes 不管這些群組）
+      if (!o.fbox) {
+        o.fbox = o.box.clone();
+        if (o.group && o.group.parent) o.fbox.union(new THREE.Box3().setFromObject(o.group));
+      }
       let hit = false;
       for (const R of rays) {
-        const r = R.ray.intersectBox(o.box, tmp);
+        const r = R.ray.intersectBox(o.fbox, tmp);
         if (r && r.distanceTo(camPos) < R.dist - MS) {
           hit = true;
           break;
@@ -3286,9 +3296,11 @@ export class World {
     }
     return any;
   }
-  // 沒有登記成 occluders 的網格（大型結構、地標、起重機、支柱…）擋住機體時，各自換成可以淡出的材質副本，
-  // 不再擋住、淡回不透明後還原原本的材質。射線每 3 格打一次；地形、水面、岩頂、遠景、半透明與 InstancedMesh 略過。
-  // 回傳有沒有網格擋住
+  // 沒有登記成 occluders 的網格（大型結構、地標、起重機、支柱、殘骸、倒下的結構…）擋住機體時，各自換成可以淡出的材質副本，
+  // 不再擋住、淡回原本的不透明度後還原原本的材質。射線每 3 格打一次；地形、水面、岩頂、遠景與 InstancedMesh 略過。
+  // 半透明材質只略過 updateOcclusion 管理的（occluders 的群組）與特效類的（很淡、加色）：可以淡出的材質（fadeMat）沒登記
+  // 成 occluders 時（岩石、橋墩、技研都市的高塔、倒下的結構…）以前會被當成已經處理而永遠不淡出。
+  // 用群組判斷、不用材質：同一個材質可能也被別的 occluder 用到（那個沒擋住時這個就永遠不淡出）。回傳有沒有網格擋住
   fadeMeshes(camPos, pts, dt) {
     const rc = this._rc || (this._rc = new THREE.Raycaster());
     const last = this.meshes[this.meshes.length - 1];
@@ -3314,7 +3326,14 @@ export class World {
           if (!o.isMesh || o.isInstancedMesh || !o.visible || h.point.y < floor) continue;
           const f = this._fading && this._fading.get(o);
           const m = o.material;
-          if (!f && (!m || Array.isArray(m) || m.transparent)) continue; // 已經是半透明（含 occluders 的淡出材質）
+          if (
+            !f &&
+            (!m ||
+              Array.isArray(m) ||
+              (m.transparent &&
+                (m.opacity < 0.5 || m.blending !== THREE.NormalBlending || this.occOwned(o, m))))
+          )
+            continue;
           hit.add(o);
         }
       }
@@ -3325,20 +3344,30 @@ export class World {
       if (!act.has(o)) {
         const m = o.material.clone();
         m.transparent = true;
-        act.set(o, { orig: o.material, m });
+        act.set(o, { orig: o.material, m, op0: o.material.opacity });
         o.material = m;
       }
     for (const [o, f] of act) {
       const on = this._fadeHit.has(o);
-      f.m.opacity = lerp(f.m.opacity, on ? 0.18 : 1, Math.min(1, dt * 10));
-      f.m.depthWrite = f.m.opacity > 0.9;
-      if (!on && f.m.opacity > 0.98) {
+      f.m.opacity = lerp(f.m.opacity, on ? Math.min(0.18, f.op0) : f.op0, Math.min(1, dt * 10));
+      f.m.depthWrite = f.m.opacity > 0.9 * f.op0;
+      if (!on && f.m.opacity > f.op0 - 0.02) {
         o.material = f.orig;
         f.m.dispose();
         act.delete(o);
       }
     }
     return this._fadeHit.size > 0;
+  }
+  // 網格 o 的材質 m 由 updateOcclusion 淡出（屬於 occluders 的群組，而且在它登記的材質清單裡）
+  occOwned(o, m) {
+    const og = this._occG;
+    if (!og || !og.size) return false;
+    for (let a = o; a && a !== this.scene; a = a.parent) {
+      const L = og.get(a);
+      if (L) return L.includes(m);
+    }
+    return false;
   }
   // 線段 a→b 是否被地形擋住（鏡頭用；取樣檢查）
   terrainBlocks(a, b, n = 16) {

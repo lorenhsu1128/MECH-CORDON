@@ -11,7 +11,7 @@
 import { DROPS, SPHERES, WaterSim, simFormat } from './sim.js';
 import { Caustics, causTex, refractK } from './caustics.js';
 import { PlanarRefl } from './reflect.js';
-import { rebakeWater } from './surface.js';
+import { NIL, rebakeWater } from './surface.js';
 import { SU } from '../../render/style/shader.js';
 
 const Q = {
@@ -181,6 +181,7 @@ export class WaterFx {
     U.win.value.set(this.win.x, this.win.y, sim ? this.win.z : 0, sim ? 1 : 0);
     U.uRefl.value = 0;
     if (!sim) {
+      this.noPrev(U, env.pipe, false);
       this.styleUniforms(env, 0);
       return;
     }
@@ -259,8 +260,16 @@ export class WaterFx {
       U.tPrevD.value = P.prev.depth;
       U.uPrevVP.value.copy(P.prevVP);
       U.uCamNF.value.set(env.cam.near, env.cam.far);
-    } else if (P) P.keepPrev = C.refl === 1;
+    } else this.noPrev(U, P, C.refl === 1);
     this.styleUniforms(env, this.caus ? 1 : 0);
+  }
+  // 這一格不用螢幕空間反射：上一格畫面的取樣器換回空貼圖。管線的兩張畫面貼圖輪流當算繪目標，取樣器還指著其中一張時，
+  // 畫到那一張就是 WebGL 的回授迴圈，整個水面的繪製會被拒絕（中品質切到低品質後水面消失、只剩水底的地形）。
+  // keep＝管線繼續留著上一格（中品質還沒有上一格的時候）
+  noPrev(U, P, keep) {
+    U.tPrevC.value = NIL;
+    U.tPrevD.value = NIL;
+    if (P) P.keepPrev = keep;
   }
   // 平面反射（品質 high）：在場景算繪之前
   preRender(scene, cam) {

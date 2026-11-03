@@ -6015,6 +6015,16 @@ async function testCamOcclusion(browser, base) {
       um.visible = false;
       run(120);
       out.meshBack = mesh[0].material === orig;
+      // 可淡出的半透明材質（fadeMat）但沒登記成遮擋物（岩石、橋墩、技研都市的高塔、倒下的結構…）：以前被當成已經處理而不淡出
+      const tm = new THREE.MeshStandardMaterial({ color: 0x8a6a4a, transparent: true });
+      um.material = tm;
+      um.visible = true;
+      put(mesh[1], mesh[2]);
+      run(60);
+      out.tFade = um.material !== tm && um.material.opacity < 0.4;
+      um.visible = false;
+      run(120);
+      out.tBack = um.material === tm && tm.opacity === 1;
     }
     put(open[0], open[1]);
     run(240);
@@ -6051,6 +6061,12 @@ async function testCamOcclusion(browser, base) {
     out.cuOff = !g.camCU;
     g.ctrl.camCU = 'on';
     foe.takeDamage(1e9, 0, null, foe.center());
+    // 殘骸（打壞的物件留下的）擋住鏡頭時也要淡出：加進 meshes（fadeMeshes）
+    const wp = (w.props || []).find((p) => !p.dead && !p.body && !p.support && !p.seg && p.ob.group);
+    if (wp) {
+      g.propKill(wp);
+      out.wreck = !!(wp.wreck && w.meshes.includes(wp.wreck.group));
+    }
     return out;
   });
   check(
@@ -6091,6 +6107,8 @@ async function testCamOcclusion(browser, base) {
     `沒有登記的大型結構擋住時也會淡出（${r.meshFade}）、顯示輪廓（${r.meshXray}），離開後還原材質（${r.meshBack}）` +
       (r.meshFade ? '' : r.meshDbg),
   );
+  check(r.tFade && r.tBack, `沒有登記的半透明材質擋住時也會淡出（${r.tFade}），離開後還原（${r.tBack}）`);
+  check(r.wreck, '打壞的物件留下的殘骸擋住鏡頭時會淡出（加進 meshes）');
   check(
     Math.abs(r.back) < 0.02 && r.xray2 < 0.05,
     `回到空曠的地方：鏡頭轉回原本的角度（${r.back}）、輪廓消失（${r.xray2}）`,
@@ -15104,6 +15122,29 @@ async function testWater(browser, base) {
     '水面（低）：沒有模擬與焦散，只有細碎波紋與天空的反射',
   );
   await page.screenshot({ path: path.join(SHOT_DIR, 'water-dam-low.png') });
+  // 同一場由中品質切到低品質（平板的效能組合）：上一格畫面的取樣器不能還指著管線的畫面貼圖，否則畫到那一張時是
+  // WebGL 的回授迴圈，整個水面的繪製被拒絕（水面消失、畫面只剩淺色的水底）
+  await start('mid');
+  const sw = await page.evaluate(() => {
+    const g = window.__game,
+      U = g.water.g.userData.water.U,
+      P = g.stylePipe;
+    window.__pump(0.3);
+    const ssr = U.uRefl.value;
+    g.ctrl.water = 'low';
+    window.__pump(0.3);
+    const rts = [P.rtScene, P.rtPrev].filter(Boolean);
+    return {
+      ssr,
+      q: g.water.quality,
+      keep: P.keepPrev,
+      loop: rts.some((t) => t.texture === U.tPrevC.value || t.depthTexture === U.tPrevD.value),
+    };
+  });
+  check(
+    sw.ssr === 1 && sw.q === 'low' && !sw.keep && !sw.loop,
+    `水面：中品質切到低品質後不再取樣管線的畫面貼圖（${JSON.stringify(sw)}）`,
+  );
   // 關卡編輯器的筆刷改了地形：重烘地形高度貼圖
   const rb = await page.evaluate(() => {
     const g = window.__game,

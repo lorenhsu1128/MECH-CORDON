@@ -59,6 +59,10 @@
     `blast`（靠近水面的爆炸）、`cross`（線段穿過水面）。
   - 螢幕空間反射：`StylePipeline` 的 `keepPrev` 讓場景的算繪目標兩張輪流用，`prev` 是上一格的顏色與深度（投影用 `prevVP`）；
     水面的著色器沿反射方向前進、投影到上一格的畫面，深度在後面就算打到。
+    **這一格不用螢幕空間反射時（低、高、中但還沒有上一格）一律 `noPrev`**：`tPrevC`／`tPrevD` 換回空貼圖 `NIL`、管線的 `keepPrev` 照品質設定。
+    取樣器還指著管線的畫面貼圖時，管線輪流畫到那一張就是 WebGL 的回授迴圈（`Feedback loop formed between Framebuffer and active Texture`），
+    整個水面的繪製被拒絕——2026-11-03 修正：中品質切到低品質（平板的效能組合，或標題畫面時還沒判定成觸控裝置）後水面消失，
+    畫面只剩淺色的水底與雨霧，看起來一片白茫茫。
   - 水面下：`fogTweak`（`StylePipeline` 的 `sceneTweak`）把霧換成水色、拉近。
   - 地形與物件的著色器（`render/style/shader.js` 的 `stWa`／`stWb`／`stWc`／`stWd`、`stCau`／`stCauT`）：
     水位以上一小段是濕的岸邊（變暗、反光變強）、水位以下變暗並加上焦散。渲染完 `waterAfter` 關掉（機甲庫、作戰室共用同一份著色器）。
@@ -88,4 +92,4 @@
 - 第 2 章過場動畫的水位動畫照舊改 `world.waterMesh.position.y`（現在是群組）。
 - 遮擋淡出、實驗室的展示、過場動畫的清場都以 `world.waterMesh` 判斷，群組照樣排除（`noFade`）。
 - 冒煙測試 `testWater`：中（模擬、地形高度貼圖、水滴的水波與靜下來、機體走過的水波、砲彈與爆炸推水、焦散、螢幕空間反射、水面下的霧）、
-  高（512 格、平面反射）、低（沒有模擬）、地形改了重烘、雲海（粒子、雲底）；截圖 `water-dam-mid／high／low.png`、`water-orbit-clouds.png`。
+  高（512 格、平面反射）、低（沒有模擬）、同一場中品質切到低品質後不再取樣管線的畫面貼圖、地形改了重烘、雲海（粒子、雲底）；截圖 `water-dam-mid／high／low.png`、`water-orbit-clouds.png`。
