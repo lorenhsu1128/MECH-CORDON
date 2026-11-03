@@ -15489,6 +15489,15 @@ async function testFx(browser, base) {
     out.hex.std = [!!(hx && hx.visible), !!dm.sx.domeShell.visible];
     g.ctrl.fxLv = 'rich';
     dm.takeDamage(1e9, 0, null, dm.center());
+    // 第 7.5 期：鏡頭的角度（廣角＝視角 62°、俯角變陡、距離拉近）
+    const cam = (v) => {
+      g.ctrl.camAngle = v;
+      for (let i = 0; i < 90; i++) g.updateCamera(1 / 30);
+      const d = g.camera.position.clone().sub(g.camTarget);
+      return { fov: g.camera.fov, pitch: +Math.atan2(d.y, Math.hypot(d.x, d.z)).toFixed(2) };
+    };
+    out.cam = [cam('wide'), cam('std')];
+    delete g.ctrl.camAngle;
     fx.clear();
     return out;
   });
@@ -15534,6 +15543,10 @@ async function testFx(browser, base) {
   check(r.vortex >= 30, `黑洞：往中心旋進去的光條、核心、弧光（${r.vortex} 顆）`);
   check(r.ribbon === 5, `導彈的白煙帶（${r.ribbon} 點）`);
   check(r.slash === 3, `華麗的迴旋斬：刀光外多一圈能量環（${r.slash} 層）`);
+  check(
+    r.cam[0].fov === 62 && r.cam[1].fov === 42 && r.cam[0].pitch > r.cam[1].pitch + 0.05,
+    `鏡頭的角度：廣角的視角與俯角（${JSON.stringify(r.cam)}）`,
+  );
   check(
     r.hex.made && r.hex.vis && !r.hex.old && r.hex.hit && !r.hex.std[0] && r.hex.std[1],
     `六角格護盾：華麗時是著色器的護盾球、被打中記下波紋；標準時換回原本的球（${JSON.stringify(r.hex)}）`,

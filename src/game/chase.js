@@ -38,10 +38,10 @@ Object.assign(Game.prototype, {
     this.gazeHeadReset();
     this.fp = v === 'fp';
     this.chase = v === 'chase';
-    this.camera.fov = this.fp ? FP_FOV : this.chase ? this.chaseFov() : TP_FOV;
+    this.camera.fov = this.fp ? FP_FOV : this.chase ? this.chaseFov() : this.tpFov();
     this.camera.updateProjectionMatrix();
     if (this.camScratch) {
-      this.camScratch.fov = TP_FOV;
+      this.camScratch.fov = this.tpFov();
       this.camScratch.updateProjectionMatrix();
     }
     if (!this.fp) this.fpShow();
@@ -78,7 +78,7 @@ Object.assign(Game.prototype, {
     this.chase = false;
     this.assist = false;
     this.fpShow();
-    this.camera.fov = TP_FOV;
+    this.camera.fov = this.tpFov();
     this.camera.updateProjectionMatrix();
     document.body.classList.remove('chaseView');
     const v = this.airMode

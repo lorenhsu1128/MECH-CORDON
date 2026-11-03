@@ -646,6 +646,7 @@ Object.assign(Game.prototype, {
     }
     p.lockT = (p.lockT || 0) + dt;
     const tt = this.time;
+    const rich = !!(this.fx && this.fx.rich);
     for (const e of this.hostilesOfEnt(p)) {
       if (e.dead || e.noLock) continue; // 迷彩中、分離中、在隧道裡的 Boss 不顯示名牌與畫面外指示
       const top = e.center();
@@ -729,6 +730,24 @@ Object.assign(Game.prototype, {
         c.fillText('STAGGER', s.x, s.y - 4);
       }
       this.drawAwareMark(c, e, s); // 警戒標示與主攻（ai-director.js）
+      // 砲火特效「華麗」：攻擊距離內、還沒鎖定的敵人身上一個橘色菱形（參考 Oh! Robot 的鎖定標記）
+      if (rich && !isLock && e.pos.distanceTo(p.pos) < (p.stats.lockRange || 0)) {
+        const cs = this.proj(e.center());
+        const r = 8 + 1.5 * Math.sin(tt * 5 + e.id);
+        c.save();
+        c.strokeStyle = 'rgba(255,140,40,.9)';
+        c.lineWidth = 2;
+        c.shadowColor = 'rgba(0,0,0,.7)';
+        c.shadowBlur = 3;
+        c.beginPath();
+        c.moveTo(cs.x, cs.y - r);
+        c.lineTo(cs.x + r, cs.y);
+        c.lineTo(cs.x, cs.y + r);
+        c.lineTo(cs.x - r, cs.y);
+        c.closePath();
+        c.stroke();
+        c.restore();
+      }
       if (isLock) {
         const cs = this.proj(e.center());
         const base = (e.isBoss ? 56 : 34) * Math.min(1.6, e.scale || 1);
@@ -759,6 +778,21 @@ Object.assign(Game.prototype, {
         c.beginPath();
         c.arc(cs.x, cs.y, bx * 1.25, tt * 2 + Math.PI, tt * 2 + Math.PI * 1.5);
         c.stroke();
+        if (rich) {
+          // 華麗：旋轉的黃色方框（鎖上時從大縮進來）＋反方向轉的淡框
+          const q = bx * 1.05;
+          c.lineWidth = 2.5;
+          c.strokeStyle = '#ffd23a';
+          c.save();
+          c.translate(cs.x, cs.y);
+          c.rotate(Math.PI / 4 + tt * 1.6);
+          c.strokeRect(-q, -q, q * 2, q * 2);
+          c.rotate(-tt * 3.2);
+          c.strokeStyle = 'rgba(255,210,58,.35)';
+          c.lineWidth = 1.5;
+          c.strokeRect(-q * 0.72, -q * 0.72, q * 1.44, q * 1.44);
+          c.restore();
+        }
         c.fillStyle = '#ffb020';
         c.font = 'bold 13px Chakra Petch';
         c.textAlign = 'left';

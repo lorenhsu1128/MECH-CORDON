@@ -3,11 +3,16 @@ import { clamp, lerp, rnd } from '../core/math.js';
 import { DS, MS } from '../core/scale.js';
 import { isOutline } from '../render/geometry.js';
 import { meleeMove } from '../data/melee.js';
+import { TP_FOV } from './constants.js';
 
 const EXEC_ZOOM = 0.5; // 處決中的鏡頭距離倍率
 import { Game } from './game.js';
 
 const CAM_PITCH = Math.atan2(30, 17.5); // 第三人稱鏡頭的俯角（約 60°）
+// 鏡頭的角度「廣角」（設定 ctrl.camAngle，參考 Oh! Robot）：視角加寬、俯角變陡、距離拉近——畫面邊緣的建築往外倒
+const WIDE_FOV = 62,
+  WIDE_PITCH = 1.2, // 約 69°
+  WIDE_DIST = 0.72;
 // 鏡頭的位移（機甲三倍高改版：跟著機體放大 DS 倍）
 const CAM_OFF = new THREE.Vector3(0, 30, 17.5).multiplyScalar(DS);
 const CAM_PITCH_MAX = 1.31; // 地形擋住時最多轉到約 75°，還是擋住就把鏡頭拉近
@@ -50,7 +55,7 @@ Object.assign(Game.prototype, {
   },
   // 給定注視點與縮放倍率，兩個點是否都在畫面內（NDC 邊距 margin）
   fitsAt(target, zoom, pts, margin = 0.82) {
-    const a = this.camPitch0 || CAM_PITCH,
+    const a = this.camPitch0 || this.camPitchStd(),
       L = this.camOff().length() * zoom;
     const off = new THREE.Vector3(0, Math.sin(a) * L, Math.cos(a) * L);
     this.camScratch.position.copy(target).add(off);
@@ -65,7 +70,14 @@ Object.assign(Game.prototype, {
   },
   // 平時的鏡頭距離（倍率）
   camBase() {
-    return CAM_DIST[this.ctrl.camDist] || CAM_DIST.std;
+    return (CAM_DIST[this.ctrl.camDist] || CAM_DIST.std) * (this.ctrl.camAngle === 'wide' ? WIDE_DIST : 1);
+  },
+  // 第三人稱（俯視）的視角與俯角：設定「鏡頭的角度」ctrl.camAngle（std 標準／wide 廣角）
+  tpFov() {
+    return this.ctrl.camAngle === 'wide' ? WIDE_FOV : TP_FOV;
+  },
+  camPitchStd() {
+    return this.ctrl.camAngle === 'wide' ? WIDE_PITCH : CAM_PITCH;
   },
   // 特寫鏡頭：foe＝對手（可以沒有），sec＝秒數；exec＝處決（每格延長，不看間隔）
   camCloseup(foe, sec, exec) {
@@ -242,6 +254,12 @@ Object.assign(Game.prototype, {
     if (!this.camScratch) {
       this.camScratch = new THREE.PerspectiveCamera(42, 1, 0.5 * this.camK(), 400 * this.camK());
     }
+    // 鏡頭的角度（設定）：俯視的視角
+    const fov = this.tpFov();
+    if (Math.abs(this.camera.fov - fov) > 0.01) {
+      this.camera.fov = fov;
+      this.camera.updateProjectionMatrix();
+    }
     this.camScratch.aspect = this.camera.aspect;
     this.camScratch.fov = this.camera.fov;
     this.camScratch.updateProjectionMatrix();
@@ -345,8 +363,8 @@ Object.assign(Game.prototype, {
     this.camZoom = lerp(this.camZoom || B, zoomT, Math.min(1, dt * (zoomT < (this.camZoom || B) ? 4 : 2)));
     // 俯角：近戰時壓低
     this.camPitch0 = lerp(
-      this.camPitch0 || CAM_PITCH,
-      this.camMode === 'melee' && !this.spectator ? CAM_PITCH_MELEE : CAM_PITCH,
+      this.camPitch0 || this.camPitchStd(),
+      this.camMode === 'melee' && !this.spectator ? CAM_PITCH_MELEE : this.camPitchStd(),
       Math.min(1, dt * 2.5),
     );
     const tgt = focus;

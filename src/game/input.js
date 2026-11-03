@@ -786,6 +786,10 @@ Object.assign(Game.prototype, {
       this.ctrl.camDist = e.target.value;
       this.saveKeys();
     };
+    document.getElementById('ctrlCamAngle').onchange = (e) => {
+      this.ctrl.camAngle = e.target.value; // 俯視的視角與俯角（camera.js 的 tpFov／camPitchStd，下一格就生效）
+      this.saveKeys();
+    };
     document.getElementById('ctrlMechFx').onchange = (e) => {
       this.ctrl.mechFx = e.target.value;
       this.saveKeys();

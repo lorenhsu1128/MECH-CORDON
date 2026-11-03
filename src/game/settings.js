@@ -345,6 +345,7 @@ Object.assign(Game.prototype, {
     $('ctrlPace').value = String(this.ctrl.pace || 0.85);
     $('ctrlCamMax').value = String(this.ctrl.camMax || 1.8);
     $('ctrlCamDist').value = this.ctrl.camDist || 'std';
+    $('ctrlCamAngle').value = this.ctrl.camAngle === 'wide' ? 'wide' : 'std';
     $('ctrlCamCU').value = this.ctrl.camCU || 'on';
     $('ctrlMechFx').value = this.ctrl.mechFx || 'full';
     $('ctrlFxLv').value = this.ctrl.fxLv || 'rich';
