@@ -816,7 +816,8 @@ export const ProjGeo = new THREE.BoxGeometry(0.16, 0.16, 0.9),
   ShellGeo = new THREE.SphereGeometry(0.28, 6, 5),
   FlameGeo = new THREE.SphereGeometry(0.2, 6, 5), // 飛彈的尾焰（共用幾何）
   // 華麗的曳光：兩端尖的紡錘形（寬 0.12、沿 Z 長 1）
-  SpindleGeo = new THREE.OctahedronGeometry(0.5, 0).scale(0.12, 0.12, 1);
+  SpindleGeo = new THREE.OctahedronGeometry(0.5, 0).scale(0.12, 0.12, 1),
+  OrbGeo = new THREE.SphereGeometry(0.28, 14, 10); // 電漿彈的光球（比 ShellGeo 圓）
 const TorpedoGeo = withFins(new THREE.CylinderGeometry(0.2, 0.22, 1.8, 8), -0.75, 0.7, 0.26);
 const glow = (color, opacity) =>
   new THREE.MeshBasicMaterial({
@@ -867,7 +868,8 @@ function glbProjectile(kind, col, speed, rich) {
 export function buildProjectileMesh(kind, color, speed, part = null, o = null) {
   const col = color || 0xffe0a0;
   const rich = !!(o && o.rich);
-  const g = glbProjectile(kind, col, speed, rich);
+  const plasma = rich && kind === 'missile' && o.at === 'en';
+  const g = plasma ? null : glbProjectile(kind, col, speed, rich);
   if (g) return g;
   const mesh = new THREE.Group();
   const gm = (geo, c, op, normal = false) => {
@@ -892,6 +894,11 @@ export function buildProjectileMesh(kind, color, speed, part = null, o = null) {
     core.scale.set(0.4, 0.4, L);
     const halo = gm(ProjGeo, col, 0.5);
     halo.scale.set(1.3, 1.3, L * 1.1);
+  } else if (plasma) {
+    // 電漿彈（能量的導彈，例如 PM-6）：白熱的芯＋紫色的光球＋大一圈的光暈，沒有彈體
+    gm(OrbGeo, 0xfff0ff, 1).scale.setScalar(0.65);
+    gm(OrbGeo, col, 0.7).scale.setScalar(1.15);
+    gm(OrbGeo, col, 0.22).scale.setScalar(2);
   } else if (kind === 'missile') {
     const body = new THREE.Mesh(
       MissileGeo,

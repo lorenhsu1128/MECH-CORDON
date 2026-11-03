@@ -521,6 +521,9 @@ Object.assign(Game.prototype, {
       g.position.x = z.p.x; // moveZone 跟著移動
       g.position.z = z.p.z;
     }
+    // 砲火特效「華麗」：重力場與吸入區的中心畫成黑洞（fx.vortex，各端自己畫）
+    if ((z.k === 'gravity' || z.k === 'suction') && f > 0.3 && this.fx.rich)
+      this.fx.vortex(g.position, z.r, dt, F, z.k === 'suction' ? 1 : 0);
     switch (z.k) {
       case 'smoke':
         g.position.set(z.p.x, w.groundAt(z.p.x, z.p.z, z.p.y + 2), z.p.z);

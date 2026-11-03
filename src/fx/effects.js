@@ -6,7 +6,7 @@ import { frand, frnd as rnd } from './rand.js';
 import { mergeGeos } from '../render/geometry.js';
 import { FxBatch } from './batch.js';
 import { GpuFx } from './gpu.js';
-import { FXC, FXG, pickCell, SOFT, LINE, BEAM } from './atlas.js';
+import { FXC, FXG, pickCell, SOFT, LINE, BEAM, CRATER, RIM } from './atlas.js';
 import { emitPreset } from './presets.js';
 import { beamColor } from './palette.js';
 import { GhostFx } from '../render/ghost.js';
@@ -303,7 +303,7 @@ export class Effects {
     // 地面焦痕（平放的焦痕貼圖，維持 8 秒後淡出）
     this.g.dc.emit({
       p: new THREE.Vector3(p.x, gy + 0.08, p.z),
-      life: this.rich ? 45 : 12,
+      life: this.rich ? 60 : 12,
       s0: 7.4 * sc * K * (big ? 1.6 : 1),
       c0: 0x0c0a08,
       a: 0.8,
@@ -311,6 +311,7 @@ export class Effects {
       fade: 5,
       rot: frand() * 6.28,
     });
+    if (this.rich) this.crater(p.x, gy, p.z, 2.6 * sc * K * (big ? 1.5 : 1)); // 坑洞與裂痕
   }
   // 蓄力（倒著播）：粒子從半徑 r（舊尺度）的球面往 p 吸進去，在 dur 秒內陸續出發（每次呼叫一小段，跟著槍口移動）；
   // 中心的光核同時變亮。蓄力射擊、雷射蓄力、電磁砲台、Boss 的大招（會轉送給客機）
@@ -353,9 +354,11 @@ export class Effects {
       rot: frand() * 6.28,
     });
   }
-  explosion(p, r, color = 0xffa040, big = false) {
+  // kind（第 5 個參數，隨轉送帶給客機）：'pl'＝能量的爆炸（電漿導彈），砲火特效「華麗」時畫成電漿爆炸
+  explosion(p, r, color = 0xffa040, big = false, kind) {
     if (this.water) this.water.blast(p, r * this.k * (big ? 1.4 : 1)); // 水面的波（fx/water，各端自己算）
     const R = this.rich;
+    if (R && kind === 'pl') return this.plasmaBlast(p, r, big);
     this.flash(p, r * (R ? 0.42 : 0.32), 0xffffff, R ? 0.1 : 0.08);
     this.flash(p, r * (R ? 0.62 : 0.45), color, R ? 0.24 : 0.18);
     const K = this.k;
@@ -444,10 +447,10 @@ export class Effects {
     // 貼地的爆炸留下焦痕（放大的焦痕比擊破的小一點；dc 是一般混合，蓋在地面上）
     if (this.ground && !(this.water && this.water.wet(p.x, p.z))) {
       const gy = this.ground(p.x, p.z);
-      if (gy != null && p.y - gy < (2 + r * 0.6) * K && p.y - gy > -1)
+      if (gy != null && p.y - gy < (2 + r * 0.6) * K && p.y - gy > -1) {
         this.g.dc.emit({
           p: new THREE.Vector3(p.x, gy + 0.06, p.z),
-          life: 30,
+          life: 60,
           s0: r * K * rnd(1.4, 1.9) * (big ? 1.3 : 1),
           c0: 0x0c0a08,
           a: 0.7,
@@ -455,7 +458,219 @@ export class Effects {
           fade: 5,
           rot: frand() * 6.28,
         });
+        if (r >= 2) this.crater(p.x, gy, p.z, r * K * rnd(0.45, 0.6) * (big ? 1.3 : 1));
+      }
     }
+  }
+  // 地面的坑洞＋往外的裂痕（砲火特效「華麗」，不轉送）：深色的坑、淺色的土邊、裂痕各一張平放的貼圖，留 60 秒；s＝坑的直徑（公尺）
+  crater(x, gy, z, s) {
+    const rot = frand() * 6.28;
+    const D = this.g.dc;
+    D.emit({
+      p: new THREE.Vector3(x, gy + 0.07, z),
+      life: 60,
+      s0: s,
+      c0: 0x0a0806,
+      a: 0.85,
+      cell: CRATER,
+      fade: 5,
+      rot,
+    });
+    D.emit({
+      p: new THREE.Vector3(x, gy + 0.08, z),
+      life: 60,
+      s0: s * 1.3,
+      c0: 0x6e655a,
+      a: 0.5,
+      cell: RIM,
+      fade: 5,
+      rot,
+    });
+    D.emit({
+      p: new THREE.Vector3(x, gy + 0.09, z),
+      life: 60,
+      s0: s * rnd(1.6, 1.9),
+      c0: 0x0a0908,
+      a: 0.6,
+      cell: pickCell(FXG.crack),
+      fade: 5,
+      rot: frand() * 6.28,
+    });
+  }
+  // 電漿爆炸（explosion 的 kind 'pl'＋砲火特效「華麗」）：白光、紫色的光球往外撐開、兩圈衝擊環、紫與粉紅的光點與火花，沒有火與黑煙
+  plasmaBlast(p, r, big) {
+    const K = this.k,
+      rk = r * K * (big ? 1.3 : 1);
+    const C = 0xb060ff,
+      C2 = 0xff6ae0;
+    this.g.gl.emit({ p, life: 0.14, s0: rk * 1.6, s1: rk * 3.4, c0: 0xffffff, k: 1.6, cell: SOFT });
+    this.g.gl.emit({ p, life: 0.32, s0: rk * 2.2, s1: rk * 4.4, c0: C, a: 0.8, cell: SOFT });
+    this.g.gl.emit({
+      p,
+      life: 0.22,
+      s0: rk * 2.4,
+      s1: rk * 1.2,
+      c0: 0xffffff,
+      c1: C2,
+      cell: pickCell(FXG.star),
+    });
+    const gy = p.y - r * 0.3 * K;
+    this.shockwave(p.clone().setY(gy), r * 1.4, 0xffffff, 0.22);
+    this.shockwave(p.clone().setY(gy), r * 2.6, C, 0.45);
+    for (let i = 0; i < (big ? 30 : 20); i++) {
+      const v = new THREE.Vector3(rnd(-1, 1), rnd(-0.3, 1), rnd(-1, 1))
+        .normalize()
+        .multiplyScalar(rnd(8, 20) * K);
+      this.g.gl.emit({
+        p,
+        v,
+        drag: 3,
+        life: rnd(0.35, 0.7),
+        s0: rnd(0.5, 1.1) * K,
+        s1: 0.1 * K,
+        c0: 0xffe8ff,
+        c1: frand() < 0.5 ? C : C2,
+        k: 1.3,
+        cell: SOFT,
+      });
+    }
+    this.streaks(p, big ? 14 : 9, C2, rnd(18, 26), 0.3, 6);
+    // 往外撐開的光球（半透明的球殼）
+    const m = new THREE.Mesh(this.sphereGeo, this.addM(C, 0.4));
+    m.material.side = THREE.DoubleSide;
+    m.position.copy(p);
+    m.renderOrder = 4;
+    this.add(m, 0.3, (e, t) => {
+      e.mesh.scale.setScalar(Math.max(0.2, rk * 1.1 * (0.3 + t)));
+      e.mesh.material.opacity = 0.4 * (1 - t) * (1 - t);
+    });
+    this.flashLight(p, C, big ? 60 : 35);
+  }
+  // 電漿彈的尾巴（projectile.js 的 trailFx）：紫色的光點，沒有煙
+  plasmaTrail(p, back, color) {
+    if (this.skip(p, 2)) return;
+    const K = this.k;
+    this.g.gl.emit({
+      p,
+      v: back.clone().multiplyScalar(3 * K),
+      life: 0.28,
+      s0: 1.5 * K,
+      s1: 0.2 * K,
+      c0: 0xffffff,
+      c1: color,
+      a: 0.85,
+      cell: SOFT,
+    });
+    if (frand() < 0.4)
+      this.g.ln.emit({
+        p,
+        v: back
+          .clone()
+          .multiplyScalar(6 * K)
+          .add(new THREE.Vector3(rnd(-3, 3), rnd(-3, 3), rnd(-3, 3)).multiplyScalar(K)),
+        life: 0.2,
+        s0: 0.25 * K,
+        c0: color,
+        cell: LINE,
+        asp: 0.3,
+      });
+  }
+  // 導彈彎曲的白煙帶（projectile.js 的 trailFx，砲火特效「華麗」）：key＝導彈，帶子的寬度朝向鏡頭
+  smokeRibbon(key, p) {
+    if (this.far(p)) return;
+    // 鏡頭的方向（沒有鏡頭資訊時當作從正上方看）
+    const eye = this.view ? this.viewPos.clone().sub(p).normalize() : new THREE.Vector3(0, 1, 0);
+    const side = key.vel.clone().cross(eye);
+    if (side.lengthSq() < 1e-6) return;
+    side.normalize().multiplyScalar(0.13 * this.k);
+    this.ribbons.push(key, p.clone().add(side), p.clone().sub(side), {
+      color: 0xe6eaee,
+      opacity: 0.38,
+      life: 1.1,
+      max: 28,
+    });
+  }
+  // 黑洞（重力場、吸入區；game/hazards2.js 的 zoneAnim 每格呼叫，砲火特效「華麗」，不轉送）：
+  // 往中心旋進去的光條、黑色的核心與紫色的光、繞著轉的紅色弧光、偶爾往外甩的火焰；p＝地面中心、r＝半徑（世界尺寸）、
+  // st＝呼叫端保存的計時、kind 1＝吸入區（藍色系）
+  vortex(p, r, dt, st, kind = 0) {
+    st.vxT = (st.vxT || 0) - dt;
+    if (st.vxT > 0) return;
+    st.vxT = 0.05;
+    if (this.skip(p, r)) return;
+    const K = this.k;
+    const C = kind ? [0x6ac8ff, 0x2050ff, 0x9fe8ff] : [0xb060ff, 0xff3050, 0xe0a0ff];
+    const c = p.clone().setY(p.y + 1.6 * K);
+    // 核心：黑色的球（一般混合）＋紫色的光暈脈動
+    this.g.sm.emit({
+      p: c,
+      life: 0.35,
+      s0: r * 0.42,
+      s1: r * 0.36,
+      c0: 0x050308,
+      a: 0.9,
+      cell: SOFT,
+      rot: 0,
+    });
+    this.g.gl.emit({ p: c, life: 0.2, s0: r * 0.8, s1: r * 0.55, c0: C[0], a: 0.55, cell: SOFT });
+    // 往中心旋進去的光條
+    for (let i = 0; i < 3; i++) {
+      const a = frand() * 6.2832,
+        rr = r * rnd(0.6, 1.05);
+      const q = new THREE.Vector3(p.x + Math.cos(a) * rr, p.y + rnd(0.3, 3) * K, p.z + Math.sin(a) * rr);
+      const life = rnd(0.35, 0.55);
+      // 往中心＋切線（旋轉方向）
+      const v = c
+        .clone()
+        .sub(q)
+        .multiplyScalar(0.9 / life)
+        .add(new THREE.Vector3(-Math.sin(a), 0, Math.cos(a)).multiplyScalar((rr / life) * 0.55));
+      this.g.ln.emit({
+        p: q,
+        v,
+        life,
+        s0: 0.3 * K,
+        c0: C[2],
+        c1: C[0],
+        a: 0.9,
+        cell: LINE,
+        fade: 6,
+        asp: 0.4,
+      });
+    }
+    // 貼地繞著轉的弧光
+    if (frand() < 0.5)
+      this.g.rg.emit({
+        p: p.clone().setY(p.y + 0.2),
+        life: 0.4,
+        s0: r * 1.5,
+        s1: r * 1.1,
+        c0: C[1],
+        a: 0.75,
+        cell: pickCell(FXG.slash),
+        rot: frand() * 6.28,
+        rv: kind ? -5 : 5,
+      });
+    // 偶爾往外甩的火焰與黑煙
+    if (frand() < 0.2) {
+      const a = frand() * 6.2832;
+      const d = new THREE.Vector3(Math.cos(a), rnd(0.1, 0.5), Math.sin(a));
+      this.g.ln.emit({
+        p: c,
+        v: d.clone().multiplyScalar(r * 2.2),
+        drag: 2,
+        life: 0.5,
+        s0: 1.4 * K,
+        s1: 0.4 * K,
+        c0: 0xffe0a0,
+        c1: kind ? 0x3070ff : 0xff4010,
+        a: 0.9,
+        occ: 0.3,
+        cell: pickCell(FXG.flame),
+        asp: 2.5,
+      });
+    }
+    if (frand() < 0.15) this.smoke(c.clone(), r * 0.12, 0x141218, 1.4, 1.2);
   }
   spark(p, color = 0xffe080, dir = null) {
     const R = this.rich;
@@ -932,6 +1147,58 @@ export class Effects {
     });
     this.shockwave(p.clone().setY(p.y + 0.2), (R * 2.2) / K, color, 0.4);
     this.flashLight(p.clone().setY(p.y + 3 * K), color, 30);
+    if (this.rich) this.pillarExtra(p, R, color);
+  }
+  // 華麗的光柱（不轉送，pillarStrike 已經轉送過）：落地的大白光、往外撐開的半透明衝擊波球、地面鋪開的火、往上噴的火花、坑洞
+  pillarExtra(p, R, color) {
+    const K = this.k;
+    const q = p.clone().setY(p.y + 1.5 * K);
+    this.g.gl.emit({ p: q, life: 0.16, s0: R * 1.6, s1: R * 2.8, c0: 0xffffff, k: 1.4, cell: SOFT });
+    this.g.gl.emit({
+      p: q,
+      life: 0.3,
+      s0: R * 1.4,
+      s1: R * 2.4,
+      c0: color,
+      a: 0.7,
+      cell: pickCell(FXG.star),
+    });
+    const m = new THREE.Mesh(this.sphereGeo, this.addM(color, 0.35));
+    m.material.side = THREE.DoubleSide;
+    m.position.copy(p);
+    m.renderOrder = 4;
+    this.add(m, 0.4, (e, t) => {
+      e.mesh.scale.setScalar(Math.max(0.2, R * 1.7 * Math.sqrt(t)));
+      e.mesh.material.opacity = 0.35 * (1 - t);
+    });
+    // 地面鋪開的火：貼地往外推、很快慢下來
+    for (let i = 0; i < 18; i++) {
+      const a = (i / 18) * 6.2832 + rnd(-0.15, 0.15);
+      const v = new THREE.Vector3(Math.cos(a), rnd(0.05, 0.3), Math.sin(a)).multiplyScalar(
+        rnd(8, 18) * K * Math.max(1, R / (3 * K)),
+      );
+      this.g.gl.emit({
+        p: p.clone().setY(p.y + 0.6 * K),
+        v,
+        drag: 2.6,
+        life: rnd(0.6, 1.1),
+        s0: 1.6 * K,
+        s1: 3.6 * K,
+        c0: 0xffe0a0,
+        c1: frand() < 0.5 ? 0xff4010 : 0xc02000,
+        a: 0.85,
+        occ: 0.35,
+        cell: pickCell(FXG.fire),
+        rot: frand() * 6.28,
+        rv: rnd(-2, 2),
+      });
+    }
+    this.streaks(q, 14, 0xfff0d0, rnd(22, 32), 0.45, 18, new THREE.Vector3(0, 1, 0), 0.8);
+    for (let i = 0; i < 3; i++) this.smoke(q.clone(), 1.6, 0x24262a, 2.2, 3);
+    if (this.ground) {
+      const gy = this.ground(p.x, p.z);
+      if (gy != null && Math.abs(p.y - gy) < 3 * K) this.crater(p.x, gy, p.z, R * 1.3);
+    }
   }
   // big additive thruster glare (billboard sphere) — used every frame by mechs, pooled per entity
   // 批次的代理（fx/batch.js 的 attached）：掛在場景裡，別處照舊 scene.remove／visible／position／scale／material.opacity
@@ -1062,6 +1329,18 @@ export class Effects {
     a.material.side = b.material.side = THREE.DoubleSide;
     grp.add(a);
     grp.add(b);
+    // 華麗：刀光外面一圈往粉紅偏的能量環（參考 Oh! Robot 的光束刀），迴旋斬再加地面的衝擊環與一圈火花
+    let c = null;
+    if (this.rich) {
+      const pk = new THREE.Color(color).lerp(new THREE.Color(0xff4fd8), 0.45).getHex();
+      c = mk(radius * 0.9, radius * 1.16, pk, 0.75);
+      c.material.side = THREE.DoubleSide;
+      grp.add(c);
+      if (spin) {
+        this.shockwave(center.clone().setY(center.y - 0.5 * this.k), (radius * 1.25) / this.k, pk, dur * 1.6);
+        this.streaks(center, 12, pk, 22, 0.3, 4);
+      }
+    }
     this.scene.add(grp);
     this.list.push({
       mesh: grp,
@@ -1071,6 +1350,7 @@ export class Effects {
         e.mesh.scale.setScalar(0.7 + t * 0.5);
         a.material.opacity = 0.85 * (1 - t * t);
         b.material.opacity = 0.8 * (1 - t);
+        if (c) c.material.opacity = 0.75 * (1 - t);
         e.mesh.rotation.z = (mirror ? 1 : -1) * (spin ? t * Math.PI * 2 : t * len * 0.8);
       },
     });

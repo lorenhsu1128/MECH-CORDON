@@ -11003,7 +11003,7 @@ async function testEnemyAI(browser, base) {
   check(r.noise === 1, `玩家開火讓附近的待機敵人起疑（狀態 ${r.noise}）`);
   check(r.hit === 2 && r.threat > 0, `受到攻擊直接交戰、累積仇恨（${r.threat}）`);
   check(r.radio0 === 0 && r.radio === 2, '發現後以無線電通知附近的待機友軍');
-  // 攻擊權杖：一大群敵人在鏡頭前方，推進 16 秒遊戲時間——同時最多 3 台主攻、會輪替、會放預警招式；沒拿到的退到外圈。
+  // 攻擊權杖：一大群敵人在鏡頭前方，推進 24 秒遊戲時間——同時最多 3 台主攻、會輪替、會放預警招式；沒拿到的退到外圈。
   // 權杖的分配很吃亂數的運氣（只看一個種子時，任何地方多取或少取一次亂數結果就變），所以 4 個種子各跑一次、取平均
   const t = await page.evaluate((SC) => {
     const run = (seed) => {
@@ -11036,7 +11036,7 @@ async function testEnemyAI(browser, base) {
         supD: 0,
         supN: 0,
       };
-      for (let k = 0; k < 480; k++) {
+      for (let k = 0; k < 720; k++) {
         g.time += dt;
         pl.pos.set(0, g.world.groundAt(0, 0, 999), 0);
         g.aiDirectorTick(dt);
@@ -15430,7 +15430,36 @@ async function testFx(browser, base) {
       cs.every(
         (e) => Math.abs(e.mesh.position.y - g.world.terrainHeight(e.mesh.position.x, e.mesh.position.z)) < 1,
       );
+    // 第 7.2 期：坑洞與裂痕、電漿爆炸、光柱、黑洞、導彈的白煙帶、斬擊的能量環
+    fx.clear();
+    let d0 = G.dc.n;
+    fx.explosion(at(-12, 8, 1), 4, 0xffa040, true);
+    out.crater = G.dc.n - d0; // 焦痕＋坑＋邊＋裂痕
+    fx.clear();
+    const s0p = G.sm.n,
+      l0p = fx.list.length;
+    fx.explosion(at(8, 8, 3), 4, 0xffa040, false, 'pl');
+    out.plasma = { sm: G.sm.n - s0p, mesh: fx.list.length - l0p, gl: G.gl.n };
+    const pil = (lv) => {
+      g.ctrl.fxLv = lv;
+      fx.clear();
+      fx.pillarStrike(at(0, -8, 0), 7);
+      return G.gl.n + G.dc.n;
+    };
+    out.pillar = [pil('rich'), pil('std')];
     g.ctrl.fxLv = 'rich';
+    fx.clear();
+    const st = {};
+    for (let i = 0; i < 10; i++) fx.vortex(at(0, 10, 0), 7, 0.05, st, 0);
+    out.vortex = G.ln.n + G.gl.n + G.rg.n;
+    const fake = { vel: new THREE.Vector3(30, 0, 0) };
+    const view0 = fx.view;
+    fx.view = null; // 不做距離減量（前面產生的粒子很多）
+    for (let i = 0; i < 5; i++) fx.smokeRibbon(fake, at(i * 2, 0, 5));
+    fx.view = view0;
+    out.ribbon = fx.ribbons.map.has(fake) ? fx.ribbons.map.get(fake).pts.length : 0;
+    fx.slash(at(0, 0, 3), 0, 360, 9, 0x80d0ff, false, 0.1, 0.4, true);
+    out.slash = fx.list[fx.list.length - 1].mesh.children.length;
     fx.clear();
     return out;
   });
@@ -15464,6 +15493,18 @@ async function testFx(browser, base) {
     `子彈依陣營＋屬性換色：敵人能量＝洋紅、自己實彈＝金、敵人實彈＝紅；標準照原色（${r.tint.map((c) => c.toString(16))}）`,
   );
   check(r.cas === 2 && r.casFloor, `華麗的彈殼：一次 2 個、落地後留在地上（${r.cas}、${r.casFloor}）`);
+  check(r.crater >= 4, `貼地的大爆炸：焦痕＋坑＋坑的邊＋裂痕（${r.crater} 張）`);
+  check(
+    r.plasma.sm === 0 && r.plasma.mesh >= 1 && r.plasma.gl > 15,
+    `電漿爆炸：沒有黑煙、往外撐開的光球、紫色的光點（${JSON.stringify(r.plasma)}）`,
+  );
+  check(
+    r.pillar[0] > r.pillar[1] + 10,
+    `華麗的光柱：落地的白光、地面的火、坑洞（${r.pillar[0]}／標準 ${r.pillar[1]}）`,
+  );
+  check(r.vortex >= 30, `黑洞：往中心旋進去的光條、核心、弧光（${r.vortex} 顆）`);
+  check(r.ribbon === 5, `導彈的白煙帶（${r.ribbon} 點）`);
+  check(r.slash === 3, `華麗的迴旋斬：刀光外多一圈能量環（${r.slash} 層）`);
   check(
     r.gather === 8 && r.arcStar >= 4 && r.amb >= 2,
     `蓄力往中心吸（${r.gather}）、電弧與星光（${r.arcStar}）、燃燒的殘骸與蒸氣（${r.amb}）`,

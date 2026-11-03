@@ -18,7 +18,12 @@ export const SOFT = 72, // 柔邊圓點（高斯）
   LINE = 76, // 直線（上下兩端漸細）：火花、曳光、光束
   SHARD = 77, // 尖角碎片（火星）
   CORE = 78, // 很亮的小核心＋柔和外圈（爆炸、閃光）
-  BEAM = 79; // 直線（兩端不漸細）：光束
+  BEAM = 79, // 直線（兩端不漸細）：光束
+  // 砲火特效改版（docs/vfx-design.md 第 7 期）：地面的坑洞（深色的坑＋淺色的邊）與往外裂開的裂痕
+  CRATER = 80,
+  RIM = 81,
+  CRACK = 82,
+  CRACK2 = 83;
 // 名稱 → 格號（Kenney 的檔名去掉 .png，例如 smoke_03）
 export const FXC = {
   ...ATLAS,
@@ -30,6 +35,10 @@ export const FXC = {
   shard: SHARD,
   core: CORE,
   beam: BEAM,
+  crater: CRATER,
+  rim: RIM,
+  crack: CRACK,
+  crack2: CRACK2,
 };
 // 一組裡挑一個（煙、火焰…）
 const range = (pre, a, b) => {
@@ -54,6 +63,7 @@ export const FXG = {
   dirt: range('dirt', 1, 3),
   twirl: range('twirl', 1, 3),
   slash: range('slash', 1, 4),
+  crack: [CRACK, CRACK2],
 };
 export const pickCell = (g) => g[Math.floor(frand() * g.length)];
 
@@ -134,6 +144,49 @@ const SHAPES = {
     return Math.exp(-((r - 1.1) ** 2) / 0.006) * sstep(0.9, 0.2, Math.abs(x)) * (y > -0.6 ? 1 : 0);
   },
   scratch: (x, y) => SHAPES.line(x - y * 0.3, y),
+  // 坑：中間深、邊緣不規則
+  crater: (x, y, s) => {
+    const r = Math.hypot(x, y) + (fbm(x * 3.5, y * 3.5, s) - 0.5) * 0.28;
+    return sstep(0.66, 0.34, r) * (0.75 + 0.25 * sstep(0.5, 0, r));
+  },
+  // 坑的邊：一圈被炸起來的土，外側漸淡
+  rim: (x, y, s) => {
+    const r = Math.hypot(x, y) + (fbm(x * 4, y * 4, s + 3) - 0.5) * 0.22;
+    return sstep(0.5, 0.62, r) * sstep(0.95, 0.68, r) * (0.55 + 0.45 * fbm(x * 9, y * 9, s));
+  },
+  // 裂痕：從中心往外的 6～8 條彎曲的裂縫，越外越細，每條有一根分岔
+  crack: (x, y, s) => {
+    const r = Math.hypot(x, y);
+    if (r > 0.98) return 0;
+    const a = Math.atan2(y, x);
+    const N = 6 + Math.floor(hash(s, 9, 1) * 3);
+    let v = 0;
+    for (let i = 0; i < N; i++) {
+      const a0 = (i / N) * 6.2832 + (hash(i, 1, s) - 0.5) * 0.7;
+      const len = 0.5 + 0.48 * hash(i, 2, s);
+      const w0 = 0.022 * (0.6 + 0.6 * hash(i, 5, s));
+      if (r < len) {
+        const wig = ((vnoise(r * 7 + i * 3.1, i * 1.7, s) - 0.5) * 0.9) / Math.max(0.25, r * 2.2);
+        let da = a - a0 - wig;
+        da = Math.atan2(Math.sin(da), Math.cos(da));
+        const w = w0 * (1 - r / len) + 0.008;
+        v = Math.max(v, sstep(w, w * 0.35, Math.abs(da) * r));
+      }
+      // 分岔：從主裂縫的中段斜著岔出去
+      const b0 = len * (0.35 + 0.3 * hash(i, 3, s)),
+        ab = a0 + (hash(i, 4, s) > 0.5 ? 0.55 : -0.55),
+        bl = 0.18 + 0.2 * hash(i, 6, s);
+      const px = x - Math.cos(a0) * b0,
+        py = y - Math.sin(a0) * b0;
+      const t = px * Math.cos(ab) + py * Math.sin(ab);
+      if (t > 0 && t < bl) {
+        const d = Math.abs(-px * Math.sin(ab) + py * Math.cos(ab));
+        const w = w0 * 0.6 * (1 - t / bl) + 0.007;
+        v = Math.max(v, sstep(w, w * 0.35, d));
+      }
+    }
+    return v * sstep(1, 0.75, r);
+  },
 };
 const SLOT_SHAPE = {
   [SOFT]: 'soft',
@@ -144,6 +197,10 @@ const SLOT_SHAPE = {
   [SHARD]: 'shard',
   [CORE]: 'core',
   [BEAM]: 'beam',
+  [CRATER]: 'crater',
+  [RIM]: 'rim',
+  [CRACK]: 'crack',
+  [CRACK2]: 'crack',
 };
 for (const [n, i] of Object.entries(ATLAS)) SLOT_SHAPE[i] = n.replace(/_\d+$/, '');
 

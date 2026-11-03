@@ -35,7 +35,7 @@ export class Projectile {
       tint ? this.color : col,
       this.vel.length() / K,
       game.fx && game.fx.projPart,
-      rich ? { rich: true, team: this.team } : null,
+      rich ? { rich: true, team: this.team, at: this.at } : null,
     );
     this.mesh.scale.setScalar((o.scale || 1) * K); // o.scale：外觀的放大（誘導飛彈架的大型飛彈；客機以 proj 事件的 sc 照做）
     this.mesh.position.copy(this.pos);
@@ -74,11 +74,18 @@ export class Projectile {
       R = fx.rich;
     const back = this.vel.clone().normalize().negate();
     const ms = this.kind === 'missile';
+    if (R && ms && this.at === 'en') {
+      fx.plasmaTrail(this.pos, back, this.color); // 電漿彈：紫色的光點尾巴、沒有煙
+      return;
+    }
+    // 華麗的導彈：彎曲的白煙帶（fx.ribbons，每顆導彈一條；key＝這顆導彈）
+    if (R && ms) fx.smokeRibbon(this, this.pos);
     fx.smoke(
       this.pos.clone(),
-      (ms ? 0.45 : 0.7) * (R ? 1.35 : 1),
-      R ? (ms ? 0xd4d8de : 0xa0a4aa) : 0x8a8f96,
-      R ? 1.25 : 0.7,
+      // 華麗的導彈：煙團小一點（尾跡交給白煙帶），砲彈的煙粗一點
+      ms ? (R ? 0.3 : 0.45) : 0.7 * (R ? 1.35 : 1),
+      R ? (ms ? 0xc4c8ce : 0xa0a4aa) : 0x8a8f96,
+      R ? (ms ? 0.9 : 1.25) : 0.7,
       R ? 0.6 : 1.2,
     );
     if (this.kind === 'grenade') return;
@@ -211,7 +218,14 @@ export class Projectile {
     if (!direct || this.splash > 0) g.hz2Blast(this.pos, this.dmg, this.splash, this.attr);
     if (g.crowd && this.splash > 0) g.crowdBlast(this.pos, this.splash, this.owner); // 爆炸炸到小人（crowd.js）
     if (this.splash > 0) {
-      g.fx.explosion(this.pos, (this.splash * 0.9) / g.fx.k, 0xffa040, this.splash > 4 * MS);
+      // 第 5 個參數：'pl'＝能量的爆炸（電漿導彈；砲火特效「華麗」時畫成紫色的電漿爆炸，隨轉送帶給客機）
+      g.fx.explosion(
+        this.pos,
+        (this.splash * 0.9) / g.fx.k,
+        0xffa040,
+        this.splash > 4 * MS,
+        this.at === 'en' ? 'pl' : undefined,
+      );
       SFX.explode(this.splash > 4 * MS, this.pos);
       g.rumbleAt(
         this.pos,
