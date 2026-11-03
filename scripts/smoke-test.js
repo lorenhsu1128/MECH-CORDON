@@ -317,6 +317,7 @@ async function testFile(browser) {
     await injectLibrary(lib, [], { 'arms/a_std/l_upper': { elbow: { p: [0, -0.9, 0], r: [0, 0, 0] } } });
     await lib.close();
     await page.click('#btnSettings');
+    await page.click('#setTabs button[data-st="adv"]');
     await page.check('#lmOn');
     await wait(1500);
     const t = (await page.textContent('#lmBox')) || '';
@@ -1590,6 +1591,7 @@ async function testStyleLab(browser) {
   );
   await page.click('#btnSettings');
   await waitVisible(page, 'settings');
+  await page.click('#setTabs button[data-st="gfx"]');
   check(
     ((await page.$eval('#styleSel', (s) => s.selectedOptions[0].textContent)) || '').includes('測試風格'),
     '設定畫面的「畫面風格」顯示套用的風格',
@@ -4011,6 +4013,7 @@ async function testLocalModels(browser, base) {
   // 設定畫面：開啟總開關 → 讀取
   await page.click('#btnSettings');
   check(await waitVisible(page, 'settings'), '設定畫面顯示');
+  await page.click('#setTabs button[data-st="adv"]');
   check(!(await page.isChecked('#lmOn')), '本地模型庫預設關閉');
   await page.check('#lmOn');
   await wait(2500);
@@ -4061,6 +4064,7 @@ async function testLocalModels(browser, base) {
   // 暫停 → 設定：確認遊戲中真的用到了 GLB
   await page.click('#btnSettingsP');
   await waitVisible(page, 'settings');
+  await page.click('#setTabs button[data-st="adv"]');
   await page.click('.lmUsed summary');
   const used = async (id) =>
     page.$eval(
@@ -4422,6 +4426,7 @@ async function testModelSets(browser, base) {
   await waitVisible(game, 'title');
   await game.click('#btnSettings');
   await waitVisible(game, 'settings');
+  await game.click('#setTabs button[data-st="adv"]');
   await game.check('#lmOn');
   // 讀完模型庫才重畫設定（選單也是那時才有），等到狀態不是「尚未讀取」
   await game
@@ -4717,6 +4722,7 @@ async function testServerModels(browser, url) {
   await waitVisible(game, 'title');
   await game.click('#btnSettings');
   await waitVisible(game, 'settings');
+  await game.click('#setTabs button[data-st="adv"]');
   await wait(1500);
   let t = (await game.textContent('#lmBox')) || '';
   check(
@@ -5479,6 +5485,171 @@ async function testChase(browser, base) {
 
 // 手把操作選單：模擬手把（navigator.getGamepads），十字鍵移動焦點、A 決定、B 返回、LB／RB 分頁、左右改下拉選單、
 // 模組三選一、確認視窗、暫停；各選單畫面都有可以操作的元素
+// 設定畫面（docs/settings-ui.md）：分頁、說明欄、改過的標記、快速設定的組合與常用項目、恢復這一頁的預設、任務中的提示、三種大小
+async function testSettingsUi(browser, base) {
+  console.log('設定畫面：分頁、說明欄、改過的標記、快速設定、恢復這一頁的預設');
+  const { ctx, page } = await newPage(browser, 'setui');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  check((await page.textContent('#btnSettings')).trim() === '設定', '標題的按鈕叫「設定」');
+  await page.click('#btnSettings');
+  await waitVisible(page, 'settings');
+  const t0 = await page.evaluate(() => ({
+    tabs: [...document.querySelectorAll('#setTabs button')].map((b) => b.textContent.trim()),
+    on: document.querySelector('#setTabs button.on').dataset.st,
+    pages: document.querySelectorAll('#setBody .setPage.on').length,
+    chg: [...document.querySelectorAll('#setBody .chg')].map((r) => r.textContent.trim().slice(0, 12)),
+    quick: document.querySelectorAll('#setQuick select[data-mirror]').length,
+    pre: document.querySelectorAll('#setQuick .qPre.on').length,
+  }));
+  // ?test 時整備演出預設是「簡短」（hangarFx），所以不算
+  const chg0 = t0.chg.filter((c) => !c.startsWith('整備演出'));
+  check(
+    t0.tabs.length === 8 &&
+      t0.on === 'quick' &&
+      t0.pages === 1 &&
+      t0.quick >= 6 &&
+      t0.pre === 2 &&
+      !chg0.length,
+    `8 個分頁、開在快速設定、常用 ${t0.quick} 項、兩組組合都是預設、沒有改過的標記（${t0.tabs.join('／')}${chg0.length ? '；' + chg0.join('、') : ''}）`,
+  );
+  await page.screenshot({ path: path.join(SHOT_DIR, 'settings-quick.png') });
+  // 分頁：只顯示那一頁；滑鼠停在項目上，說明欄顯示說明（原本的 title）
+  await page.click('#setTabs button[data-st="cam"]');
+  await page.hover('#ctrlSway');
+  const t1 = await page.evaluate(() => ({
+    vis: !!document.getElementById('ctrlSway').offsetParent,
+    hid: !document.getElementById('ctrlVoice').offsetParent,
+    desc: document.getElementById('setDesc').textContent,
+    title: document.getElementById('ctrlSway').hasAttribute('title'),
+  }));
+  check(
+    t1.vis && t1.hid && t1.desc.includes('鏡頭落後機體') && !t1.title,
+    `分頁只顯示那一頁、說明欄顯示說明（${t1.desc.slice(0, 16)}…）`,
+  );
+  // 改一項：那一列與分頁按鈕標小圓點；快速設定的常用項目和分頁裡的同步
+  await page.selectOption('#ctrlSway', '0.6');
+  await page.click('#setTabs button[data-st="quick"]');
+  await page.selectOption('#setQuick select[data-mirror="#ctrlCamDist"]', 'far');
+  const t2 = await page.evaluate(() => ({
+    sway: window.__game.ctrl.chaseSway,
+    dist: window.__game.ctrl.camDist,
+    row: document.getElementById('ctrlSway').closest('.krow').classList.contains('chg'),
+    tab: document.querySelector('#setTabs button[data-st="cam"]').classList.contains('chg'),
+    qrow: document
+      .querySelector('#setQuick select[data-mirror="#ctrlCamDist"]')
+      .closest('.krow')
+      .classList.contains('chg'),
+  }));
+  check(
+    t2.sway === 0.6 && t2.dist === 'far' && t2.row && t2.tab && t2.qrow,
+    '改過的項目與分頁按鈕標小圓點、快速設定的常用項目寫回原本的設定',
+  );
+  // 組合：畫面品質「效能」一次改五項；操作輔助「老手」
+  await page.click('.qPre[data-pre="gfx:0"]');
+  await page.click('.qPre[data-pre="assist:2"]');
+  const t3 = await page.evaluate(() => {
+    const c = window.__game.ctrl;
+    return {
+      gfx: [document.getElementById('styleRes').value, c.water, c.mechFx, c.tfx, c.ghost].join(','),
+      as: [c.aim, c.meleeAssist, c.pace].join(','),
+      on: [...document.querySelectorAll('#setQuick .qPre.on')].map((b) => b.dataset.pre).join(','),
+    };
+  });
+  check(
+    t3.gfx === '0.7,low,simple,simple,off' && t3.as === 'mouse,std,1' && t3.on === 'gfx:0,assist:2',
+    `快速設定的組合：效能（${t3.gfx}）、老手（${t3.as}）`,
+  );
+  // 恢復這一頁的預設：先確認，取消＝不變；鏡頭頁只重設鏡頭（快速設定改的畫面品質保留）
+  await page.click('#setTabs button[data-st="cam"]');
+  await page.click('#btnKeysReset');
+  const modal = await page.evaluate(() => document.getElementById('uiModal').textContent);
+  await page.click('#uiModal button:not(.primary)');
+  const t4a = await page.evaluate(() => window.__game.ctrl.chaseSway);
+  await page.click('#btnKeysReset');
+  await page.click('#uiModal button.primary');
+  const t4 = await page.evaluate(() => ({
+    sway: window.__game.ctrl.chaseSway,
+    dist: window.__game.ctrl.camDist,
+    water: window.__game.ctrl.water,
+    tab: document.querySelector('#setTabs button[data-st="cam"]').classList.contains('chg'),
+    on: document.querySelector('#setTabs button.on').dataset.st,
+  }));
+  check(
+    modal.includes('鏡頭') &&
+      t4a === 0.6 &&
+      t4.sway === 1 &&
+      t4.dist === 'std' &&
+      !t4.tab &&
+      t4.water === 'low' &&
+      t4.on === 'cam',
+    '恢復這一頁的預設：先確認（取消不變）、只重設這一頁（其他頁保留）',
+  );
+  // 快速設定那一頁的恢復：組合回到平衡與標準
+  await page.click('#setTabs button[data-st="quick"]');
+  await page.click('#btnKeysReset');
+  await page.click('#uiModal button.primary');
+  const t5 = await page.evaluate(() =>
+    [...document.querySelectorAll('#setQuick .qPre.on')].map((b) => b.dataset.pre).join(','),
+  );
+  check(t5 === 'gfx:1,assist:1', `快速設定的恢復預設：組合回到平衡與標準（${t5}）`);
+  // 按鍵頁：改一個鍵 → 標記 → 恢復
+  await page.evaluate(() => {
+    const g = window.__game;
+    g.keymap.qb = 'KeyZ';
+    g.saveKeys();
+    g.settingsTab('keys');
+    g.renderSettings();
+  });
+  const k1 = await page.evaluate(() =>
+    document.querySelector('#setTabs button[data-st="keys"]').classList.contains('chg'),
+  );
+  await page.click('#btnKeysReset');
+  await page.click('#uiModal button.primary');
+  const k2 = await page.evaluate(() => [window.__game.keymap.qb, window.__game.defaultKeys().qb]);
+  check(k1 && k2[0] === k2[1], '按鍵頁：改過的鍵標記、恢復預設改回原本的鍵');
+  await page.click('#btnSettingsBack');
+  await waitVisible(page, 'title');
+  // 任務中（從暫停選單開）：預設視角標「下次出擊生效」、渲染風格停用；暫停選單的按鈕叫「設定」
+  check((await page.textContent('#btnSettingsP')).trim() === '設定', '暫停選單的按鈕叫「設定」');
+  await page.evaluate(() => window.__game.openSettings('pause', 'cam'));
+  const m = await page.evaluate(() => ({
+    after: getComputedStyle(
+      document.querySelector('#ctrlView').closest('.krow').querySelector('span'),
+      '::after',
+    ).content,
+    style: document.getElementById('styleSel').disabled,
+  }));
+  check(
+    m.after.includes('下次出擊生效') && m.style,
+    `任務中：預設視角標「下次出擊生效」、渲染風格停用（${m.after}）`,
+  );
+  await page.evaluate(() => {
+    const g = window.__game;
+    g.settingsFrom = 'title';
+    g.closeSettings();
+  });
+  // 平板與手機橫式：分頁、說明欄、返回鍵都在畫面內
+  for (const [w, h, name] of [
+    [1180, 820, 'tablet'],
+    [844, 390, 'phone'],
+  ]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.evaluate(() => window.__game.openSettings('title', 'snd'));
+    await wait(200);
+    const r = await page.evaluate(() => {
+      const a = document.getElementById('setDesc').getBoundingClientRect();
+      const b = document.getElementById('btnSettingsBack').getBoundingClientRect();
+      const t = document.getElementById('setTabs').getBoundingClientRect();
+      return a.bottom <= window.innerHeight && b.bottom <= window.innerHeight && t.top >= 0 && b.height > 0;
+    });
+    await page.screenshot({ path: path.join(SHOT_DIR, `settings-${name}.png`) });
+    check(r, `設定畫面（${w}×${h}）：分頁、說明欄、返回鍵都在畫面內`);
+    await page.click('#btnSettingsBack');
+  }
+  await ctx.close();
+}
+
 async function testPadUi(browser, base) {
   console.log('手把操作選單：焦點移動、A／B、分頁、下拉選單、模組三選一、確認視窗、暫停、各畫面');
   const { ctx, page } = await newPage(browser, 'padui');
@@ -5528,11 +5699,20 @@ async function testPadUi(browser, base) {
   await focusId('btnSettings');
   await press(0);
   const st1 = await page.evaluate(() => window.__game.state);
+  await page.evaluate(() => window.__game.settingsTab('cam'));
   const v0 = await page.evaluate(() => document.getElementById('ctrlView').value);
   await focusId('ctrlView');
   await press(15);
   const v1 = await page.evaluate(() => [document.getElementById('ctrlView').value, window.__game.ctrl.view]);
   await press(14);
+  // 設定的分頁：焦點的說明顯示在說明欄、RB 換到下一頁
+  const descV = await page.evaluate(() => document.getElementById('setDesc').textContent);
+  await press(5);
+  const tab2 = await page.evaluate(() => document.querySelector('#setTabs button.on').dataset.st);
+  check(
+    descV.includes('依序切換') && tab2 === 'gfx',
+    `設定：手把焦點的說明顯示在說明欄、RB 換分頁（鏡頭 → ${tab2}）`,
+  );
   await press(1);
   const st2 = await page.evaluate(() => window.__game.state);
   check(
@@ -10046,7 +10226,7 @@ async function testGaze(browser, base) {
     };
   });
   // 設定：開關與狀態
-  await page.evaluate(() => window.__game.openSettings('title'));
+  await page.evaluate(() => window.__game.openSettings('title', 'adv'));
   await waitVisible(page, 'settings');
   const st0 = await page.evaluate(() => {
     const box = document.getElementById('gazeBox');
@@ -13730,7 +13910,7 @@ async function testTextFx(browser, base) {
   await page.goto(base + '?test');
   await waitVisible(page, 'title');
   // 設定：預設完整，改成簡化再改回來
-  await page.evaluate(() => window.__game.openSettings('title'));
+  await page.evaluate(() => window.__game.openSettings('title', 'ui'));
   const set0 = await page.evaluate(() => document.getElementById('ctrlTfx').value);
   await page.selectOption('#ctrlTfx', 'simple');
   const set1 = await page.evaluate(() => window.__game.textfx.mode + '/' + window.__game.ctrl.tfx);
@@ -24686,6 +24866,7 @@ const STEPS = [
   ['testCamOcclusion', (c) => testCamOcclusion(c.browser, c.base)],
   ['testChase', (c) => testChase(c.browser, c.base)],
   ['testPadUi', (c) => testPadUi(c.browser, c.base)],
+  ['testSettingsUi', (c) => testSettingsUi(c.browser, c.base)],
   ['testBoundary', (c) => testBoundary(c.browser, c.base)],
   ['testAir', (c) => testAir(c.browser, c.base)],
   ['testCampaign', (c) => testCampaign(c.browser, c.base)],

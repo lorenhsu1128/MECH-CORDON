@@ -699,13 +699,7 @@ Object.assign(Game.prototype, {
     };
     document.getElementById('btnSettingsP').onclick = () => this.openSettings('pause');
     document.getElementById('btnSettingsBack').onclick = () => this.closeSettings();
-    document.getElementById('btnKeysReset').onclick = () => {
-      this.keymap = this.defaultKeys();
-      this.padmap = this.defaultPad();
-      this.ctrl = { aim: 'mouse', moveRel: 'screen', holdFire: true, rumble: true, touch: 'auto' };
-      this.saveKeys();
-      this.renderSettings();
-    };
+    // 「恢復這一頁的預設」在 settings.js 的 settingsReset（只重設目前的分頁）
     document.getElementById('ctrlAim').onchange = (e) => {
       this.ctrl.aim = e.target.value;
       this.saveKeys();

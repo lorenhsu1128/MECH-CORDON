@@ -55,6 +55,7 @@ const DEFAULT_TIMES = {
   testCamOcclusion: 3736,
   testChase: 12166,
   testPadUi: 5609,
+  testSettingsUi: 15000,
   testBoundary: 1548,
   testCampaign: 47376,
   testCampaign2: 17321,

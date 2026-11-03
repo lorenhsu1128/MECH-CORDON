@@ -106,6 +106,7 @@ Object.assign(Game.prototype, {
     this.puEl = el;
     if (!el) return;
     el.classList.add('padFocus');
+    if (this.state === 'settings' && this.setDescFor) this.setDescFor(el); // 設定畫面的說明欄
     try {
       el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     } catch (e) {}

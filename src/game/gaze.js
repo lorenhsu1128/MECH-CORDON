@@ -429,7 +429,7 @@ Object.assign(Game.prototype, {
     const ok = this.gazeSecure() || !!window.__gazeSim;
     const https = this.gazeHttpsUrl();
     const sel = (k, list) =>
-      `<select data-gz="${k}" ${C.on ? '' : 'disabled'}>${list
+      `<select data-gz="${k}" data-def="${DEF[k]}" ${C.on ? '' : 'disabled'}>${list
         .map(([v, l]) => `<option value="${v}" ${+C[k] === v ? 'selected' : ''}>${l}</option>`)
         .join('')}</select>`;
     box.innerHTML =
@@ -440,9 +440,9 @@ Object.assign(Game.prototype, {
               ? `請改用伺服器的安全連線：<a href="${escHtml(https)}" style="color:#5cc8ff">${escHtml(https)}</a>（第一次會出現憑證警告，按「進階 → 繼續前往」）`
               : ''
           }</p>`) +
-      `<div class="krow"><span>啟用</span><label><input type="checkbox" data-gz="on" ${C.on ? 'checked' : ''} ${ok ? '' : 'disabled'} /> 用攝影機追蹤眼睛與頭部（影像只在這台電腦處理，不會上傳）</label></div>` +
+      `<div class="krow"><span>啟用</span><label><input type="checkbox" data-gz="on" data-def="${DEF.on ? 1 : 0}" ${C.on ? 'checked' : ''} ${ok ? '' : 'disabled'} /> 用攝影機追蹤眼睛與頭部（影像只在這台電腦處理，不會上傳）</label></div>` +
       `<div class="krow"><span>狀態</span><span id="gazeStatus" class="dim" style="font-size:12px"></span></div>` +
-      `<div class="krow"><span>看哪鎖哪</span><span style="display:flex;gap:8px;align-items:center"><label><input type="checkbox" data-gz="lock" ${C.lock ? 'checked' : ''} ${C.on ? '' : 'disabled'} /> 看著敵人一下就鎖定</label>${sel(
+      `<div class="krow"><span>看哪鎖哪</span><span style="display:flex;gap:8px;align-items:center"><label><input type="checkbox" data-gz="lock" data-def="${DEF.lock ? 1 : 0}" ${C.lock ? 'checked' : ''} ${C.on ? '' : 'disabled'} /> 看著敵人一下就鎖定</label>${sel(
         'dwell',
         [
           [0.15, '快（0.15 秒）'],
@@ -450,7 +450,7 @@ Object.assign(Game.prototype, {
           [0.4, '慢（0.4 秒）'],
         ],
       )}</span></div>` +
-      `<div class="krow"><span>頭部延伸視角</span><span style="display:flex;gap:8px;align-items:center"><label title="追尾視角與第一人稱：頭往左右（上下）轉超過一點，鏡頭就往那邊轉；頭擺正就停"><input type="checkbox" data-gz="head" ${C.head ? 'checked' : ''} ${C.on ? '' : 'disabled'} /> 轉頭＝鏡頭跟著轉（追尾／第一人稱）</label>${sel(
+      `<div class="krow"><span>頭部延伸視角</span><span style="display:flex;gap:8px;align-items:center"><label title="追尾視角與第一人稱：頭往左右（上下）轉超過一點，鏡頭就往那邊轉；頭擺正就停"><input type="checkbox" data-gz="head" data-def="${DEF.head ? 1 : 0}" ${C.head ? 'checked' : ''} ${C.on ? '' : 'disabled'} /> 轉頭＝鏡頭跟著轉（追尾／第一人稱）</label>${sel(
         'headK',
         [
           [0.6, '慢'],
@@ -458,7 +458,7 @@ Object.assign(Game.prototype, {
           [1.5, '快'],
         ],
       )}</span></div>` +
-      `<div class="krow"><span>顯示注視點</span><label><input type="checkbox" data-gz="dot" ${C.dot ? 'checked' : ''} ${C.on ? '' : 'disabled'} /> 任務中畫出眼睛看的位置（調整用）</label></div>` +
+      `<div class="krow"><span>顯示注視點</span><label><input type="checkbox" data-gz="dot" data-def="${DEF.dot ? 1 : 0}" ${C.dot ? 'checked' : ''} ${C.on ? '' : 'disabled'} /> 任務中畫出眼睛看的位置（調整用）</label></div>` +
       `<div class="krow"><span>校準</span><button id="gazeCalBtn" ${C.on && ok ? '' : 'disabled'}>開始校準…</button></div>` +
       `<p class="dim" style="font-size:11px">看哪鎖哪要先校準（看著畫面上的 9 個點，約 20 秒）；換位置坐、光線變了或覺得不準時再校準一次。頭部延伸視角不用校準。坐在離螢幕 50～70 cm、臉的光線充足時最準。</p>`;
     box.onchange = (e) => {

@@ -169,7 +169,7 @@
             >
               自訂關卡
             </button>
-            <button id="btnSettings">按鍵與操作設定</button>
+            <button id="btnSettings">設定</button>
             <button id="btnFullscreen" title="切換全螢幕（平板請用這個按鈕離開；鍵盤長按 Esc 也可離開）">
               全螢幕
             </button>
@@ -198,7 +198,7 @@
             </button>
             <button
               id="btnLmReload"
-              title="單人模式使用模型庫存在這個瀏覽器的 GLB 與關節設定（在按鍵與操作設定開啟）"
+              title="單人模式使用模型庫存在這個瀏覽器的 GLB 與關節設定（在設定的「遊戲與進階」開啟）"
             >
               重新載入本地模型
             </button>
@@ -747,370 +747,451 @@
       </div>
       <!-- Settings -->
       <div id="settings" class="screen center">
-        <div class="panel" style="min-width: min(560px, 92vw); max-height: 90vh; overflow: auto">
-          <h2>按鍵與操作設定</h2>
-          <p class="dim" style="font-size: 12px">
-            點選右側按鈕後按下想指定的鍵或滑鼠鍵；按 Esc 取消。設定會記在瀏覽器裡。
-          </p>
-          <div id="keyRows"></div>
-          <h3 style="margin: 14px 0 6px; font-size: 15px">控制方式</h3>
-          <div class="krow">
-            <span>瞄準</span
-            ><select id="ctrlAim">
-              <option value="mouse">滑鼠瞄準（預設）</option>
-              <option value="auto">自動瞄準鎖定目標（無鎖定時朝機體前方）</option>
-            </select>
+        <div class="panel setPanel">
+          <h2>設定</h2>
+          <div id="setTabs" data-padtabs="button">
+            <button data-st="quick">快速設定</button>
+            <button data-st="ctrl">操作</button>
+            <button data-st="keys">按鍵</button>
+            <button data-st="cam">鏡頭</button>
+            <button data-st="gfx">畫面</button>
+            <button data-st="ui">介面與演出</button>
+            <button data-st="snd">聲音</button>
+            <button data-st="adv">遊戲與進階</button>
           </div>
-          <div class="krow">
-            <span>移動方向基準</span
-            ><select id="ctrlMove">
-              <option value="screen">螢幕方向（預設）</option>
-              <option value="mech">機體面向（前進＝機體前方）</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>射擊方式</span
-            ><label><input type="checkbox" id="ctrlHold" /> 按住連射（取消則每按一次射一發）</label>
-          </div>
-          <div class="krow">
-            <span>蓄力射擊</span
-            ><select
-              id="ctrlCharge"
-              title="步槍、手槍、霰彈、火箭筒、榴彈的強力彈：連射累積＝打中累積充能，充滿後下一發自動變強力彈；按住蓄力＝按一下開一槍，按住開始蓄力、放開打出（不再按住連射）。機槍類兩種都是持續射擊後放開打出收尾連射"
+          <div id="setBody">
+            <section
+              class="setPage"
+              data-st="quick"
+              data-intro="最常改的設定與一鍵套用的組合；其他設定在上方的分頁"
             >
-              <option value="auto">連射累積充能（預設）</option>
-              <option value="hold">按住蓄力</option>
-            </select>
+              <div id="setQuick"></div>
+            </section>
+            <section class="setPage" data-st="ctrl" data-intro="射擊、移動、近戰的操作方式">
+              <h4>射擊</h4>
+              <div
+                class="krow"
+                data-desc="滑鼠瞄準＝準星跟著滑鼠；自動瞄準＝一律朝鎖定的目標開火，沒有鎖定時朝機體前方"
+              >
+                <span>瞄準</span
+                ><select id="ctrlAim">
+                  <option value="mouse">滑鼠瞄準（預設）</option>
+                  <option value="auto">自動瞄準鎖定目標（無鎖定時朝機體前方）</option>
+                </select>
+              </div>
+              <div class="krow" data-desc="開啟＝按住開火鍵一直連射；關閉＝每按一次射一發">
+                <span>射擊方式</span
+                ><label
+                  ><input type="checkbox" id="ctrlHold" data-def="1" />
+                  按住連射（取消則每按一次射一發）</label
+                >
+              </div>
+              <div class="krow">
+                <span>蓄力射擊</span
+                ><select
+                  id="ctrlCharge"
+                  title="步槍、手槍、霰彈、火箭筒、榴彈的強力彈：連射累積＝打中累積充能，充滿後下一發自動變強力彈；按住蓄力＝按一下開一槍，按住開始蓄力、放開打出（不再按住連射）。機槍類兩種都是持續射擊後放開打出收尾連射"
+                >
+                  <option value="auto">連射累積充能（預設）</option>
+                  <option value="hold">按住蓄力</option>
+                </select>
+              </div>
+              <div class="krow">
+                <span>主動裝填</span
+                ><select
+                  id="ctrlAR"
+                  title="換彈時武器欄下方出現亮區，在亮區按那把武器的開火鍵＝瞬間裝填＋下一個彈匣傷害 +15%；按錯會卡彈"
+                >
+                  <option value="on">開啟（預設）</option>
+                  <option value="off">關閉</option>
+                </select>
+              </div>
+              <div
+                class="krow"
+                data-desc="有鎖定目標且在射程內時手部武器自動連射（攻擊鍵只用於近戰；追尾、第一人稱、空域時目標要在鎖定框內）"
+              >
+                <span>自動攻擊（觸控／手把）</span
+                ><label
+                  ><input type="checkbox" id="ctrlAuto" data-def="0" />
+                  有鎖定目標且在射程內時手部武器自動連射（攻擊鍵只用於近戰；追尾、第一人稱、空域時目標要在鎖定框內）</label
+                >
+              </div>
+              <h4>移動與近戰</h4>
+              <div
+                class="krow"
+                data-desc="螢幕方向＝按「上」往畫面上方走；機體面向＝按「上」往機體的前方走（俯視視角）"
+              >
+                <span>移動方向基準</span
+                ><select id="ctrlMove">
+                  <option value="screen">螢幕方向（預設）</option>
+                  <option value="mech">機體面向（前進＝機體前方）</option>
+                </select>
+              </div>
+              <div class="krow">
+                <span>近戰輸入輔助</span
+                ><select
+                  id="ctrlMeleeAssist"
+                  title="寬鬆：連段的下一下早按會先記住、收招後稍晚按也接得上、方向和攻擊鍵差不多同時按就算派生；標準：時機與方向要抓得比較準"
+                >
+                  <option value="easy">寬鬆（預設）</option>
+                  <option value="std">標準</option>
+                </select>
+              </div>
+              <div class="krow">
+                <span>處決（長按近戰鍵）</span
+                ><select
+                  id="ctrlExec"
+                  title="失衡中的敵人在近戰距離內時，按住近戰鍵發動處決；關閉時長按＝一般近戰"
+                >
+                  <option value="on">開啟（預設）</option>
+                  <option value="off">關閉</option>
+                </select>
+              </div>
+              <h4>遊戲</h4>
+              <div
+                class="krow"
+                data-desc="整個任務的時間流速；慢一點比較容易看清楚敵人的動作（多人時以房主的設定為準）"
+              >
+                <span>遊戲節奏</span
+                ><select id="ctrlPace">
+                  <option value="0.7">慢（70%）</option>
+                  <option value="0.85">標準（85%，預設）</option>
+                  <option value="1">快（100%，原速）</option>
+                </select>
+              </div>
+            </section>
+            <section class="setPage" data-st="keys" data-intro="鍵盤、滑鼠與手把的按鍵，觸控按鈕與震動">
+              <p class="dim" style="font-size: 12px">
+                點選按鈕後按下想指定的鍵、滑鼠鍵或手把按鈕；按 Esc 取消。設定會記在瀏覽器裡。
+              </p>
+              <div id="keyRows"></div>
+              <h4>觸控與震動</h4>
+              <div class="krow" data-desc="平板與手機的螢幕按鈕；自動＝偵測到觸控就顯示">
+                <span>虛擬手把（觸控）</span
+                ><select id="ctrlTouch" data-def="auto">
+                  <option value="auto">自動（偵測到觸控就顯示）</option>
+                  <option value="on">永遠顯示</option>
+                  <option value="off">關閉</option>
+                </select>
+              </div>
+              <div class="krow" data-desc="手把依射擊、命中、被擊、爆炸的強度震動">
+                <span>手把震動</span
+                ><label
+                  ><input type="checkbox" id="ctrlRumble" data-def="1" />
+                  開啟（射擊、命中、被擊、爆炸依強度不同回饋）</label
+                >
+              </div>
+              <div class="krow" data-desc="手機或平板沒有震動時，用這顆按鈕檢查瀏覽器支不支援">
+                <span>震動測試</span
+                ><span
+                  ><button id="btnVibTest">測試手機震動</button>
+                  <span id="vibMsg" class="dim" style="font-size: 11px"></span
+                ></span>
+              </div>
+            </section>
+            <section class="setPage" data-st="cam" data-intro="視角、鏡頭距離與轉動">
+              <h4>共通</h4>
+              <div
+                class="krow"
+                data-desc="出擊時一開始用的視角；任務中按 V（觸控：「視角」）依序切換"
+                data-next="1"
+              >
+                <span>預設視角</span
+                ><select id="ctrlView">
+                  <option value="tps">第三人稱俯視（預設）</option>
+                  <option value="chase">追尾視角（機戰傭兵6 式，鏡頭在機體後方）</option>
+                  <option value="fps">第一人稱</option>
+                </select>
+                <span class="dim" style="font-size: 11px">任務中按 V（觸控：「視角」）依序切換</span>
+              </div>
+              <div class="krow" data-desc="追尾與第一人稱轉鏡頭的速度（0.2～4，1＝標準）">
+                <span>滑鼠靈敏度（追尾／第一人稱）</span
+                ><input
+                  id="ctrlSens"
+                  data-def="1"
+                  type="number"
+                  step="0.1"
+                  min="0.2"
+                  max="4"
+                  style="width: 80px"
+                />
+              </div>
+              <div class="krow" data-desc="追尾與第一人稱：滑鼠或右搖桿往上推時鏡頭往下看">
+                <span>視角上下反轉</span
+                ><label
+                  ><input type="checkbox" id="ctrlInvY" data-def="0" /> 追尾與第一人稱的鏡頭上下反轉</label
+                >
+              </div>
+              <h4>第三人稱俯視</h4>
+              <div class="krow">
+                <span>鏡頭距離（第三人稱）</span
+                ><select id="ctrlCamDist" title="平時的鏡頭距離；近戰時會再拉近、鎖定遠方敵人時拉遠">
+                  <option value="near">近</option>
+                  <option value="std">標準（預設）</option>
+                  <option value="far">遠</option>
+                </select>
+              </div>
+              <div class="krow">
+                <span>鏡頭最遠距離（第三人稱）</span
+                ><select id="ctrlCamMax" title="鎖定遠方敵人或滾輪拉遠時的上限；太遠會被霧蓋住">
+                  <option value="1.4">近（1.4 倍）</option>
+                  <option value="1.8">標準（1.8 倍，預設）</option>
+                  <option value="2.4">遠（2.4 倍）</option>
+                </select>
+              </div>
+              <div class="krow">
+                <span>近戰特寫鏡頭</span
+                ><select
+                  id="ctrlCamCU"
+                  title="處決、彈刀、終結技、打出失衡時短暫切到低角度的側面特寫（第三人稱）"
+                >
+                  <option value="on">開啟（預設）</option>
+                  <option value="off">關閉</option>
+                </select>
+              </div>
+              <h4>追尾視角</h4>
+              <div class="krow">
+                <span>追尾視角的鏡頭距離</span
+                ><select id="ctrlChaseDist" title="任務中也可以用滾輪調整">
+                  <option value="0.8">近</option>
+                  <option value="1">標準（預設）</option>
+                  <option value="1.25">遠</option>
+                </select>
+              </div>
+              <div class="krow" data-desc="追尾視角看得到的範圍；越寬越容易看到周圍，機體看起來越小">
+                <span>追尾視角的視野</span
+                ><select id="ctrlChaseFov">
+                  <option value="55">窄（55°）</option>
+                  <option value="62">標準（62°，預設）</option>
+                  <option value="70">寬（70°）</option>
+                </select>
+              </div>
+              <div class="krow">
+                <span>追尾視角的速度偏移</span
+                ><select id="ctrlSway" title="鏡頭落後機體：移動、QB、跳躍時機體在畫面上往移動方向偏移">
+                  <option value="0">關閉</option>
+                  <option value="0.6">小</option>
+                  <option value="1">標準（預設）</option>
+                  <option value="1.5">大</option>
+                </select>
+              </div>
+            </section>
+            <section class="setPage" data-st="gfx" data-intro="畫面風格、解析度、特效與機甲動作的 IK 修正">
+              <h4>渲染風格</h4>
+              <div
+                class="krow"
+                data-desc="整個畫面的風格（光影、描線、調色）；可以在渲染風格實驗室調整並存成自己的"
+              >
+                <span>畫面風格</span
+                ><select id="styleSel" data-def="builtin:real" style="max-width: 300px"></select>
+              </div>
+              <div class="krow" data-desc="機甲、武器、載具的材質改成金屬反光（和風格分開）">
+                <span>機體金屬</span
+                ><label
+                  ><input type="checkbox" id="styleMetal" data-def="0" /> 機甲、武器、載具改成金屬</label
+                >
+              </div>
+              <div class="krow" data-desc="畫面算繪的解析度；調低可以讓比較慢的電腦或平板順一點">
+                <span>渲染解析度</span
+                ><select id="styleRes">
+                  <option value="1">100%（預設）</option>
+                  <option value="0.85">85%</option>
+                  <option value="0.7">70%</option>
+                  <option value="0.6">60%</option>
+                  <option value="0.5">50%（最快）</option>
+                </select>
+              </div>
+              <div class="krow">
+                <span id="styleNote" class="dim" style="font-size: 11px"></span
+                ><button id="btnStyleLab2">開啟渲染風格實驗室</button>
+              </div>
+              <h4>效果</h4>
+              <div class="krow">
+                <span>水面品質</span
+                ><select
+                  id="ctrlWater"
+                  title="低＝水面只有細碎波紋與天空的反射；中＝機體與爆炸推出水波、水底的焦散、畫面裡的倒影；高＝更細的水波、完整的倒影（較吃效能）"
+                >
+                  <option value="">自動（預設：電腦中、手機與平板低）</option>
+                  <option value="low">低</option>
+                  <option value="mid">中</option>
+                  <option value="high">高</option>
+                </select>
+              </div>
+              <div class="krow">
+                <span>機甲特效</span
+                ><select
+                  id="ctrlMechFx"
+                  title="腳的噴口、地面互動、槍管發熱、近戰的噴發、受損與失衡的效果；簡化＝只留推進器與狀態"
+                >
+                  <option value="full">完整（預設）</option>
+                  <option value="simple">簡化</option>
+                </select>
+              </div>
+              <div class="krow">
+                <span>殘影（自己的機體）</span
+                ><select id="ctrlGhost" title="QB、突擊推進、衝刺斬、完美迴避時留下淡藍的殘影">
+                  <option value="on">開啟（預設）</option>
+                  <option value="off">關閉</option>
+                </select>
+              </div>
+              <h4>動作 IK</h4>
+              <div id="ikBox"></div>
+            </section>
+            <section class="setPage" data-st="ui" data-intro="傷害數字、狀態字、文字演出、劇情動畫與整備演出">
+              <h4>戰鬥中的文字</h4>
+              <div class="krow">
+                <span>傷害數字</span
+                ><select
+                  id="ctrlDmgNum"
+                  title="命中時的傷害數字（畫在機體輪廓外）；關閉時 BREAK、連攜等狀態字照樣顯示"
+                >
+                  <option value="full">完整（預設）</option>
+                  <option value="compact">精簡（字小、連續命中合併成一個數字）</option>
+                  <option value="off">關閉</option>
+                </select>
+              </div>
+              <div class="krow">
+                <span>狀態字</span
+                ><select
+                  id="ctrlPopTag"
+                  title="打中時冒在機體上的狀態字；重要的＝CRITICAL、邊閃邊打、強力彈改成傷害數字後面的記號（✦ » ◆），每一場第一次才冒字"
+                >
+                  <option value="imp">重要的（預設）</option>
+                  <option value="all">全部</option>
+                  <option value="off">關閉（只留 BREAK 與 Boss 的事件）</option>
+                </select>
+              </div>
+              <div class="krow">
+                <span>自己受傷的數字</span
+                ><select id="ctrlDmgSelf" title="自己的機體受傷時的紅色數字">
+                  <option value="on">顯示（預設）</option>
+                  <option value="off">不顯示</option>
+                </select>
+              </div>
+              <h4>演出</h4>
+              <div class="krow">
+                <span>文字演出</span
+                ><select id="ctrlTfx" title="橫幅、訊息、簡報與結局的文字動畫（文字動畫 APNG 產生器的模板）">
+                  <option value="full">完整（預設）</option>
+                  <option value="simple">簡化（較低解析度、沒有光暈與模糊）</option>
+                  <option value="off">關閉</option>
+                </select>
+              </div>
+              <div class="krow">
+                <span>劇情動畫</span
+                ><select id="ctrlCine" title="主線的開場與各章開場／章末的過場動畫；關閉時改用文字畫面">
+                  <option value="on">播放（預設）</option>
+                  <option value="off">關閉（改用文字畫面）</option>
+                </select>
+              </div>
+              <div class="krow">
+                <span>整備演出</span
+                ><select id="ctrlHangar" title="機甲庫換零件、維修、出擊時的格納庫演出">
+                  <option value="full">完整（預設）</option>
+                  <option value="short">簡短</option>
+                  <option value="off">關閉</option>
+                </select>
+              </div>
+              <div class="krow">
+                <span>血跡</span
+                ><select id="ctrlBlood" title="地圖上的小人被踩死或炸死時留下的血跡">
+                  <option value="red">紅褐色（預設）</option>
+                  <option value="oil">深色油污</option>
+                  <option value="off">關閉</option>
+                </select>
+              </div>
+            </section>
+            <section class="setPage" data-st="snd" data-intro="音量、語音、字幕與配樂">
+              <h4>音量</h4>
+              <div id="volBox"></div>
+              <h4>語音與字幕</h4>
+              <div class="krow">
+                <span>ECHO 的聲音</span
+                ><select
+                  id="ctrlVoice"
+                  title="通訊、劇情畫面、過場動畫與駕駛艙的系統提示由 ECHO 唸出（VoxCPM2 產生）；關閉時只有文字"
+                >
+                  <option value="gentle">溫柔知性（預設）</option>
+                  <option value="ai">AI 系統感</option>
+                  <option value="off">關閉</option>
+                </select>
+              </div>
+              <div class="krow">
+                <span>語音的語言</span
+                ><select
+                  id="ctrlVoiceLang"
+                  title="所有角色的語音用中文或日文唸（字幕照舊是中文）；日文是另外設計的日系聲音"
+                >
+                  <option value="zh">中文（預設）</option>
+                  <option value="ja">日本語</option>
+                </select>
+              </div>
+              <div class="krow">
+                <span>字幕</span
+                ><select
+                  id="ctrlSub"
+                  title="通訊、過場動畫、系統提示、敵兵喊話的字幕跟著語音顯示；不顯示＝通訊框只留說話者（沒有語音的台詞照樣顯示文字）"
+                >
+                  <option value="zh">繁體中文（預設）</option>
+                  <option value="ja">日本語</option>
+                  <option value="off">不顯示</option>
+                </select>
+              </div>
+              <div class="krow" data-desc="字幕與通訊框文字的大小">
+                <span>字幕大小</span
+                ><select id="ctrlSubSize">
+                  <option value="s">小</option>
+                  <option value="m">中（預設）</option>
+                  <option value="l">大</option>
+                </select>
+              </div>
+              <div class="krow">
+                <span>其他角色的語音</span
+                ><select id="ctrlVoiceCast" title="委託方、宿敵、教官、軌道站的台詞也唸出來；關閉時只有文字">
+                  <option value="on">開啟（預設）</option>
+                  <option value="off">關閉</option>
+                </select>
+              </div>
+              <div class="krow">
+                <span>敵兵的無線電喊話</span
+                ><select id="ctrlBarks" title="附近的敵兵察覺、搜索、進攻、受傷、同伴被擊毀時的喊話">
+                  <option value="on">開啟（預設）</option>
+                  <option value="off">關閉</option>
+                </select>
+              </div>
+              <h4>配樂</h4>
+              <div class="krow">
+                <span>戰鬥配樂</span
+                ><select id="ctrlBgm" title="任務中的配樂，依戰況（探索、警戒、交戰、Boss）切換">
+                  <option value="on">開啟（預設）</option>
+                  <option value="off">關閉</option>
+                </select>
+              </div>
+            </section>
+            <section class="setPage" data-st="adv" data-intro="地圖物件的破壞、眼動追蹤、本地模型庫">
+              <h4>遊戲</h4>
+              <div class="krow">
+                <span>地圖物件的破壞</span
+                ><select
+                  id="ctrlDestruct"
+                  title="地圖上的物件被打壞的難易度；多人時以房主的設定為準。易破壞＝傷害 ×4、高 4 m 以下的踩得平、承重柱壞一半就倒；不可破壞＝只有路燈、油桶、小岩石這類小物件打得壞（和改版前一樣）"
+                >
+                  <option value="easy">易破壞</option>
+                  <option value="normal">可破壞（預設）</option>
+                  <option value="off">不可破壞（只有小物件）</option>
+                </select>
+              </div>
+              <h4>眼動追蹤（攝影機）</h4>
+              <div id="gazeBox"></div>
+              <h4>本地模型庫與伺服器模型組</h4>
+              <div id="lmBox"></div>
+            </section>
           </div>
-          <div class="krow">
-            <span>主動裝填</span
-            ><select
-              id="ctrlAR"
-              title="換彈時武器欄下方出現亮區，在亮區按那把武器的開火鍵＝瞬間裝填＋下一個彈匣傷害 +15%；按錯會卡彈"
-            >
-              <option value="on">開啟（預設）</option>
-              <option value="off">關閉</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>遊戲節奏</span
-            ><select id="ctrlPace">
-              <option value="0.7">慢（70%）</option>
-              <option value="0.85">標準（85%，預設）</option>
-              <option value="1">快（100%，原速）</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>預設視角</span
-            ><select id="ctrlView">
-              <option value="tps">第三人稱俯視（預設）</option>
-              <option value="chase">追尾視角（機戰傭兵6 式，鏡頭在機體後方）</option>
-              <option value="fps">第一人稱</option>
-            </select>
-            <span class="dim" style="font-size: 11px">任務中按 V（觸控：「視角」）依序切換</span>
-          </div>
-          <div class="krow">
-            <span>追尾視角的速度偏移</span
-            ><select id="ctrlSway" title="鏡頭落後機體：移動、QB、跳躍時機體在畫面上往移動方向偏移">
-              <option value="0">關閉</option>
-              <option value="0.6">小</option>
-              <option value="1">標準（預設）</option>
-              <option value="1.5">大</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>追尾視角的鏡頭距離</span
-            ><select id="ctrlChaseDist" title="任務中也可以用滾輪調整">
-              <option value="0.8">近</option>
-              <option value="1">標準（預設）</option>
-              <option value="1.25">遠</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>追尾視角的視野</span
-            ><select id="ctrlChaseFov">
-              <option value="55">窄（55°）</option>
-              <option value="62">標準（62°，預設）</option>
-              <option value="70">寬（70°）</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>視角上下反轉</span
-            ><label><input type="checkbox" id="ctrlInvY" /> 追尾與第一人稱的鏡頭上下反轉</label>
-          </div>
-          <div class="krow">
-            <span>鏡頭距離（第三人稱）</span
-            ><select id="ctrlCamDist" title="平時的鏡頭距離；近戰時會再拉近、鎖定遠方敵人時拉遠">
-              <option value="near">近</option>
-              <option value="std">標準（預設）</option>
-              <option value="far">遠</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>近戰特寫鏡頭</span
-            ><select
-              id="ctrlCamCU"
-              title="處決、彈刀、終結技、打出失衡時短暫切到低角度的側面特寫（第三人稱）"
-            >
-              <option value="on">開啟（預設）</option>
-              <option value="off">關閉</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>機甲特效</span
-            ><select
-              id="ctrlMechFx"
-              title="腳的噴口、地面互動、槍管發熱、近戰的噴發、受損與失衡的效果；簡化＝只留推進器與狀態"
-            >
-              <option value="full">完整（預設）</option>
-              <option value="simple">簡化</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>水面品質</span
-            ><select
-              id="ctrlWater"
-              title="低＝水面只有細碎波紋與天空的反射；中＝機體與爆炸推出水波、水底的焦散、畫面裡的倒影；高＝更細的水波、完整的倒影（較吃效能）"
-            >
-              <option value="">自動（預設：電腦中、手機與平板低）</option>
-              <option value="low">低</option>
-              <option value="mid">中</option>
-              <option value="high">高</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>殘影（自己的機體）</span
-            ><select id="ctrlGhost" title="QB、突擊推進、衝刺斬、完美迴避時留下淡藍的殘影">
-              <option value="on">開啟（預設）</option>
-              <option value="off">關閉</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>鏡頭最遠距離（第三人稱）</span
-            ><select id="ctrlCamMax" title="鎖定遠方敵人或滾輪拉遠時的上限；太遠會被霧蓋住">
-              <option value="1.4">近（1.4 倍）</option>
-              <option value="1.8">標準（1.8 倍，預設）</option>
-              <option value="2.4">遠（2.4 倍）</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>文字演出</span
-            ><select id="ctrlTfx" title="橫幅、訊息、簡報與結局的文字動畫（文字動畫 APNG 產生器的模板）">
-              <option value="full">完整（預設）</option>
-              <option value="simple">簡化（較低解析度、沒有光暈與模糊）</option>
-              <option value="off">關閉</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>傷害數字</span
-            ><select
-              id="ctrlDmgNum"
-              title="命中時的傷害數字（畫在機體輪廓外）；關閉時 BREAK、連攜等狀態字照樣顯示"
-            >
-              <option value="full">完整（預設）</option>
-              <option value="compact">精簡（字小、連續命中合併成一個數字）</option>
-              <option value="off">關閉</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>血跡</span
-            ><select id="ctrlBlood" title="地圖上的小人被踩死或炸死時留下的血跡">
-              <option value="red">紅褐色（預設）</option>
-              <option value="oil">深色油污</option>
-              <option value="off">關閉</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>地圖物件的破壞</span
-            ><select
-              id="ctrlDestruct"
-              title="地圖上的物件被打壞的難易度；多人時以房主的設定為準。易破壞＝傷害 ×4、高 4 m 以下的踩得平、承重柱壞一半就倒；不可破壞＝只有路燈、油桶、小岩石這類小物件打得壞（和改版前一樣）"
-            >
-              <option value="easy">易破壞</option>
-              <option value="normal">可破壞（預設）</option>
-              <option value="off">不可破壞（只有小物件）</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>狀態字</span
-            ><select
-              id="ctrlPopTag"
-              title="打中時冒在機體上的狀態字；重要的＝CRITICAL、邊閃邊打、強力彈改成傷害數字後面的記號（✦ » ◆），每一場第一次才冒字"
-            >
-              <option value="imp">重要的（預設）</option>
-              <option value="all">全部</option>
-              <option value="off">關閉（只留 BREAK 與 Boss 的事件）</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>自己受傷的數字</span
-            ><select id="ctrlDmgSelf" title="自己的機體受傷時的紅色數字">
-              <option value="on">顯示（預設）</option>
-              <option value="off">不顯示</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>整備演出</span
-            ><select id="ctrlHangar" title="機甲庫換零件、維修、出擊時的格納庫演出">
-              <option value="full">完整（預設）</option>
-              <option value="short">簡短</option>
-              <option value="off">關閉</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>近戰輸入輔助</span
-            ><select
-              id="ctrlMeleeAssist"
-              title="寬鬆：連段的下一下早按會先記住、收招後稍晚按也接得上、方向和攻擊鍵差不多同時按就算派生；標準：時機與方向要抓得比較準"
-            >
-              <option value="easy">寬鬆（預設）</option>
-              <option value="std">標準</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>處決（長按近戰鍵）</span
-            ><select
-              id="ctrlExec"
-              title="失衡中的敵人在近戰距離內時，按住近戰鍵發動處決；關閉時長按＝一般近戰"
-            >
-              <option value="on">開啟（預設）</option>
-              <option value="off">關閉</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>劇情動畫</span
-            ><select id="ctrlCine" title="主線的開場與各章開場／章末的過場動畫；關閉時改用文字畫面">
-              <option value="on">播放（預設）</option>
-              <option value="off">關閉（改用文字畫面）</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>滑鼠靈敏度（追尾／第一人稱）</span
-            ><input id="ctrlSens" type="number" step="0.1" min="0.2" max="4" style="width: 80px" />
-          </div>
-          <div class="krow">
-            <span>自動攻擊（觸控／手把）</span
-            ><label
-              ><input type="checkbox" id="ctrlAuto" />
-              有鎖定目標且在射程內時手部武器自動連射（攻擊鍵只用於近戰；追尾、第一人稱、空域時目標要在鎖定框內）</label
-            >
-          </div>
-          <div class="krow">
-            <span>虛擬手把（觸控）</span
-            ><select id="ctrlTouch">
-              <option value="auto">自動（偵測到觸控就顯示）</option>
-              <option value="on">永遠顯示</option>
-              <option value="off">關閉</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>手把震動</span
-            ><label
-              ><input type="checkbox" id="ctrlRumble" /> 開啟（射擊、命中、被擊、爆炸依強度不同回饋）</label
-            >
-          </div>
-          <div class="krow">
-            <span>震動測試</span
-            ><span
-              ><button id="btnVibTest">測試手機震動</button>
-              <span id="vibMsg" class="dim" style="font-size: 11px"></span
-            ></span>
-          </div>
-          <h3 style="margin: 14px 0 6px; font-size: 15px">聲音</h3>
-          <div id="volBox"></div>
-          <div class="krow">
-            <span>ECHO 的聲音</span
-            ><select
-              id="ctrlVoice"
-              title="通訊、劇情畫面、過場動畫與駕駛艙的系統提示由 ECHO 唸出（VoxCPM2 產生）；關閉時只有文字"
-            >
-              <option value="gentle">溫柔知性（預設）</option>
-              <option value="ai">AI 系統感</option>
-              <option value="off">關閉</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>語音的語言</span
-            ><select
-              id="ctrlVoiceLang"
-              title="所有角色的語音用中文或日文唸（字幕照舊是中文）；日文是另外設計的日系聲音"
-            >
-              <option value="zh">中文（預設）</option>
-              <option value="ja">日本語</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>字幕</span
-            ><select
-              id="ctrlSub"
-              title="通訊、過場動畫、系統提示、敵兵喊話的字幕跟著語音顯示；不顯示＝通訊框只留說話者（沒有語音的台詞照樣顯示文字）"
-            >
-              <option value="zh">繁體中文（預設）</option>
-              <option value="ja">日本語</option>
-              <option value="off">不顯示</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>字幕大小</span
-            ><select id="ctrlSubSize">
-              <option value="s">小</option>
-              <option value="m">中（預設）</option>
-              <option value="l">大</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>其他角色的語音</span
-            ><select id="ctrlVoiceCast" title="委託方、宿敵、教官、軌道站的台詞也唸出來；關閉時只有文字">
-              <option value="on">開啟（預設）</option>
-              <option value="off">關閉</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>敵兵的無線電喊話</span
-            ><select id="ctrlBarks" title="附近的敵兵察覺、搜索、進攻、受傷、同伴被擊毀時的喊話">
-              <option value="on">開啟（預設）</option>
-              <option value="off">關閉</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span>戰鬥配樂</span
-            ><select id="ctrlBgm" title="任務中的配樂，依戰況（探索、警戒、交戰、Boss）切換">
-              <option value="on">開啟（預設）</option>
-              <option value="off">關閉</option>
-            </select>
-          </div>
-          <h3 style="margin: 14px 0 6px; font-size: 15px">渲染風格</h3>
-          <div class="krow">
-            <span>畫面風格</span
-            ><select id="styleSel" style="max-width: 300px"></select>
-          </div>
-          <div class="krow">
-            <span>機體金屬</span
-            ><label><input type="checkbox" id="styleMetal" /> 機甲、武器、載具改成金屬</label>
-          </div>
-          <div class="krow">
-            <span>渲染解析度</span
-            ><select id="styleRes">
-              <option value="1">100%（預設）</option>
-              <option value="0.85">85%</option>
-              <option value="0.7">70%</option>
-              <option value="0.6">60%</option>
-              <option value="0.5">50%（最快）</option>
-            </select>
-          </div>
-          <div class="krow">
-            <span id="styleNote" class="dim" style="font-size: 11px"></span
-            ><button id="btnStyleLab2">開啟渲染風格實驗室</button>
-          </div>
-          <h3 style="margin: 14px 0 6px; font-size: 15px">動作 IK</h3>
-          <div id="ikBox"></div>
-          <h3 style="margin: 14px 0 6px; font-size: 15px">眼動追蹤（攝影機）</h3>
-          <div id="gazeBox"></div>
-          <h3 style="margin: 14px 0 6px; font-size: 15px">本地模型庫與伺服器模型組</h3>
-          <div id="lmBox"></div>
-          <div class="row" style="margin-top: 14px">
+          <div id="setDesc"></div>
+          <div class="row setFoot">
             <button class="primary" id="btnSettingsBack">返回</button
-            ><button id="btnKeysReset">恢復預設</button>
+            ><button id="btnKeysReset">恢復這一頁的預設</button>
           </div>
         </div>
       </div>
@@ -1174,7 +1255,7 @@
             ><button id="btnRangeCfgP" class="rangeOnly">靶場設定</button
             ><button id="btnTutDemoP" class="tutOnly">再看一次示範</button
             ><button id="btnTutSkipP" class="tutOnly">跳過這一步</button
-            ><button id="btnAbort">放棄任務</button><button id="btnSettingsP">按鍵設定</button
+            ><button id="btnAbort">放棄任務</button><button id="btnSettingsP">設定</button
             ><button id="btnFullscreenP">全螢幕</button>
           </div>
           <p style="margin-top: 14px">

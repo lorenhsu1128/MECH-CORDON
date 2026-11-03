@@ -194,7 +194,7 @@ Object.assign(Game.prototype, {
     if (txt === null)
       txt = onServer()
         ? '伺服器預設組：' + this.srvSummary() + '（本地模型庫沒有開啟）'
-        : '本地模型庫沒有開啟：請到「按鍵與操作設定」開啟';
+        : '本地模型庫沒有開啟：請到設定的「遊戲與進階」開啟';
     else if (txt === undefined)
       txt =
         st && !st.db
