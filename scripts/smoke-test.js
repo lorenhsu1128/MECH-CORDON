@@ -15487,6 +15487,22 @@ async function testFx(browser, base) {
       fx.clear();
       out.cols0 = fx.columns;
     }
+    // 第 8.5 期：天氣和地面的互動（雨的水花、風沙的沙帶、雪煙）；標準時沒有
+    {
+      const w0 = g.world.weather;
+      const wt = {};
+      for (const k of ['rain', 'sand', 'snow', 'std']) {
+        fx.clear();
+        g.world.weather = { kind: k === 'std' ? 'rain' : k, update() {}, dispose() {} };
+        if (k === 'std') g.ctrl.fxLv = 'std';
+        g.fxWeatherTick(0.2);
+        g.ctrl.fxLv = 'rich';
+        wt[k] = [G.rg.n, G.ln.n, G.sm.n];
+      }
+      g.world.weather = w0;
+      out.wt = wt;
+      fx.clear();
+    }
     // 第 8.3 期：熱扭曲（華麗才有熱源；有熱源時管線多畫強度圖與扭曲）
     {
       const sp = g.stylePipe;
@@ -15635,6 +15651,10 @@ async function testFx(browser, base) {
   );
   check(r.cel && r.noAO, '渲染風格的色階共用、寫實時為 0；不進 SSAO 與遮擋淡出');
   check(r.soft, '第 8.1 期：軟粒子可用、粒子網格在第二次算繪的圖層');
+  check(
+    r.wt.rain[0] >= 10 && r.wt.sand[1] >= 5 && r.wt.snow[2] >= 1 && r.wt.std.every((n) => n === 0),
+    `第 8.5 期：雨的水花、風沙的沙帶、雪煙；砲火特效標準時沒有（${JSON.stringify(r.wt)}）`,
+  );
   {
     const h = r.hit;
     check(

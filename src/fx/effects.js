@@ -6,7 +6,7 @@ import { frand, frnd as rnd } from './rand.js';
 import { mergeGeos } from '../render/geometry.js';
 import { FxBatch } from './batch.js';
 import { GpuFx } from './gpu.js';
-import { FXC, FXG, pickCell, SOFT, LINE, BEAM, CRATER, RIM } from './atlas.js';
+import { FXC, FXG, pickCell, SOFT, LINE, BEAM, CRATER, RIM, RING } from './atlas.js';
 import { emitPreset } from './presets.js';
 import { beamColor } from './palette.js';
 import { GhostFx } from '../render/ghost.js';
@@ -1202,6 +1202,73 @@ export class Effects {
         asp: 0.35,
       });
     }
+  }
+  // ---------- 天氣和地面的互動（第 8.5 期，game/fx-ambient.js 的 fxWeatherTick；只有外觀、各端自己算）----------
+  // 雨落地：水面上是一圈小波＋細的水花，地上是往上濺的兩三滴＋貼地的小環
+  rainSplash(x, y, z, wet) {
+    const K = this.k;
+    const p = new THREE.Vector3(x, y + 0.05 * K, z);
+    if (wet && this.water) this.water.drop(x, z, 0.5 * K, -0.03 * K);
+    for (let i = 0; i < (wet ? 2 : 3); i++)
+      this.g.ln.emit({
+        p,
+        v: new THREE.Vector3(rnd(-1, 1) * 0.8 * K, rnd(1.6, 2.6) * K, rnd(-1, 1) * 0.8 * K),
+        life: rnd(0.16, 0.26),
+        s0: 0.14 * K,
+        c0: 0xeef4f8,
+        a: 0.85,
+        occ: 0.5,
+        cell: LINE,
+        fade: 2,
+        g: 18 * K,
+        asp: 0.3,
+      });
+    this.g.rg.emit({
+      p,
+      life: 0.28,
+      s0: 0.15 * K,
+      s1: (wet ? 0.9 : 0.55) * K,
+      c0: 0xeef4f8,
+      a: 0.85,
+      cell: RING,
+      fade: 1,
+    });
+  }
+  // 風沙、塵埃：貼地流動的沙帶（沿風向拉長的淡色帶子）。w＝風（世界座標，m/s），c＝顏色，a＝透明度
+  sandBand(x, y, z, w, c, a = 0.22) {
+    const K = this.k;
+    const L = Math.hypot(w.x, w.z) || 1;
+    const ax = new THREE.Vector3(w.x / L, 0, w.z / L);
+    this.g.ln.emit({
+      p: new THREE.Vector3(x, y + rnd(0.2, 1.6) * K, z),
+      v: new THREE.Vector3(w.x * 2.5, 0, w.z * 2.5),
+      life: rnd(1.2, 2),
+      s0: rnd(1, 1.8) * K,
+      c0: c,
+      a,
+      occ: 0.7,
+      cell: SOFT,
+      fade: 3,
+      axis: ax,
+      asp: rnd(5, 10) * K,
+    });
+  }
+  // 雪：貼地吹過的雪煙（受光的煙塵，隨風）
+  snowDrift(x, y, z, w) {
+    const K = this.k;
+    this.g.sm.emit({
+      p: new THREE.Vector3(x, y + 0.3 * K, z),
+      v: new THREE.Vector3(w.x * 1.5, 0.15 * K, w.z * 1.5),
+      life: rnd(1.6, 2.6),
+      s0: 0.8 * K,
+      s1: 3 * K,
+      c0: 0xf4f8fc,
+      a: 0.45,
+      cell: pickCell(FXG.smoke),
+      fade: 3,
+      rot: frand() * 6.28,
+      rv: rnd(-0.5, 0.5),
+    });
   }
   // 地面的彈痕（第 8.4 期：焦痕系統，不再每個新建網格與材質）
   mark(x, gy, z, s, life = 5) {
