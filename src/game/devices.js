@@ -57,6 +57,7 @@ Object.assign(Game.prototype, {
         v: k === 'recharge' ? d.cap + d.capMp * (np - 1) : 0,
       });
     }
+    this.eventPlan(used); // 大型地形事件（devices-traps.js）
     this.trapPlan(used); // 環境陷阱（devices-traps.js）
     this.gunPlan(used); // 固定砲台（devices-guns.js）
   },
@@ -509,9 +510,7 @@ Object.assign(Game.prototype, {
                   ? `（冷卻 ${Math.ceil(d.prog * d.def.cd)} 秒）`
                   : d.st === ST_USED
                     ? '（已觸發）'
-                    : d.def.trig === 'shoot'
-                      ? '（打弱點）'
-                      : '（控制台）'
+                    : (d.def.ev ? '（大型事件：' : '（') + (d.def.trig === 'shoot' ? '打弱點）' : '控制台）')
               : d.kind === 'radar'
                 ? d.st === ST_ON
                   ? '（已佔領）'

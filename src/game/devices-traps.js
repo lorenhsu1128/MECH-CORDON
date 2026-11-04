@@ -5,6 +5,7 @@
 import { SFX } from '../audio/audio.js';
 import { clamp } from '../core/math.js';
 import { MS } from '../core/scale.js';
+import { EVENT_CHANCE } from '../data/devices.js';
 import { Game } from './game.js';
 
 const DEV_TGT = 960000; // 弱點代理目標的 id 基底（entById 用）
@@ -13,6 +14,16 @@ const ST_IDLE = 0,
   ST_USED = 2,
   ST_ACT = 3,
   ST_CD = 4;
+// 每個主題的大型地形事件（F）
+const THEME_EVENTS = {
+  industrial: 'gantry',
+  grid: 'reshape',
+  desert: 'tunnel',
+  snow: 'avalanche',
+  wasteland: 'chimney',
+  dunes: 'sinkhole',
+  flooded: 'pump',
+};
 // 每個主題的陷阱
 const THEME_TRAPS = {
   dam: ['sluice'],
@@ -53,6 +64,18 @@ Object.assign(Game.prototype, {
       }
       this.devAdd({ i: ++this.devSeq, k, x: pt.x, z: pt.z, y, v: 1 });
     }
+  },
+  // 大型地形事件（devPlan 呼叫）：一般戰鬥約一半的場次、一張地圖一個，放在中間那一群的附近（要大一點的空地）
+  eventPlan(used) {
+    const k = THEME_EVENTS[this.worldTheme];
+    if (!k || this.isBossLevel) return;
+    if (!(this.evForce || Math.random() < EVENT_CHANCE)) return;
+    const G = this.encGroups || [];
+    const at = G.length ? G[G.length >> 1].pos : null;
+    const pt = this.devSpot(at, used, 7, !!at) || this.devSpot(at, used, 4, !!at);
+    if (!pt) return;
+    used.push(pt);
+    this.devAdd({ i: ++this.devSeq, k, x: pt.x, z: pt.z, y: Math.floor(Math.random() * 4), v: 1 });
   },
   // 弱點的代理目標（devAdd 呼叫；房主與客機）
   trapInit(d) {
@@ -162,7 +185,7 @@ Object.assign(Game.prototype, {
     }
     d.prog = clamp(d.t / Math.max(0.01, (E.delay || 0) + dur), 0, 1);
     if (d.t >= (E.delay || 0) + dur + 0.05) {
-      if (def.trig === 'use') {
+      if (def.trig === 'use' && !def.once) {
         d.st = ST_CD;
         d.t = 0;
       } else d.st = ST_USED;
@@ -338,7 +361,28 @@ Object.assign(Game.prototype, {
       }
     }
     if (m.tower) m.tower.rotation.x = act ? Math.min(Math.PI / 2, 1.6 * d.vt * d.vt) : used ? Math.PI / 2 : 0;
-    if (m.hole) m.hole.visible = act || used;
+    // 大型事件：沉下去（牆、岩石）、往前滑下（冰崖）
+    if (m.sink) {
+      const k = act ? Math.min(1, d.vt / 1.6) : used ? 1 : 0;
+      m.sink.position.y = -9 * k * k;
+      m.sink.visible = k < 1;
+    }
+    if (m.slide) {
+      const k = act ? Math.min(1, d.vt / 1.2) : used ? 1 : 0;
+      m.slide.position.z = 16 * k;
+      m.slide.position.y = -6 * k * k;
+      m.slide.visible = k < 1;
+    }
+    // 觸發後拿掉的碰撞（房主與客機各自依狀態）
+    if (def.solidOff && d.st !== ST_IDLE && !d.solidGone && this.world) {
+      d.solidGone = true;
+      for (const i of def.solidOff) {
+        const ob = d.obs[i];
+        const j = ob ? this.world.obstacles.indexOf(ob) : -1;
+        if (j >= 0) this.world.obstacles.splice(j, 1);
+      }
+    }
+    if (m.hole) m.hole.visible = def.ev ? act : act || used;
     if (m.grid)
       for (const g of d.glow) g.emissiveIntensity = act ? 2 + Math.random() : d.st === ST_CD ? 0.1 : lit;
     // 區域效果的電光、火花（本地，不轉送）
@@ -365,6 +409,8 @@ Object.assign(Game.prototype, {
             } else if (Z.vis === 'fire' && i === 0) {
               const o = d.pos.clone().add(this.devRot(d, [0, 1.7, 1.2]));
               fx.flameCone(o, fw, Z.line[0] * MS * 0.5, 0.18, 8);
+            } else if (Z.vis === 'sand') {
+              fx.dust(p.setY(p.y + 0.2), 3, 3, 0xc0a070);
             } else if (Z.vis === 'coral') {
               fx.spark(p.setY(p.y + 0.5 * MS), 0xff5a6a);
               if (Math.random() < 0.4) fx.arc(p, 1.2, 0xff4a5a);

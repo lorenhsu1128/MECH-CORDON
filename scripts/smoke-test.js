@@ -6012,6 +6012,131 @@ async function testGuns(browser, base) {
   await thawLoop(page);
   await ctx.close();
 }
+// 大型地形事件（docs/map-devices-design.md 的 F）：每個主題強制出現（g.evForce）、觸發、範圍裡的敵人受損、
+// 拿掉自己的碰撞（開出路）、留下掩體、持續的區域（緩速）、截圖
+async function testEvents(browser, base) {
+  console.log('大型地形事件');
+  const { ctx, page } = await newPage(browser, 'events');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  const LIST = [
+    ['industrial', 'gantry'],
+    ['grid', 'reshape'],
+    ['desert', 'tunnel'],
+    ['snow', 'avalanche'],
+    ['wasteland', 'chimney'],
+    ['dunes', 'sinkhole'],
+    ['flooded', 'pump'],
+  ];
+  for (const [theme, kind] of LIST) {
+    await page.evaluate((t) => {
+      localStorage.setItem('rubicon_map', t);
+      localStorage.setItem('rubicon_variant', 'base');
+      const g = window.__game;
+      g.evForce = true;
+      if (g.state !== 'title') {
+        g.clearMission();
+        g.state = 'title';
+      }
+      g.startMission();
+    }, theme);
+    await page.waitForFunction(() => window.__game.state === 'play' && window.__game.player, null, {
+      timeout: 40000,
+    });
+    await freezeLoop(page);
+    const r = await page.evaluate((kind) => {
+      const g = window.__game;
+      g.waves = [];
+      g.wavePend = null;
+      for (const q of g.devs)
+        if (q.def.gun) {
+          const gn = q.st === 5 && g.entById(q.user);
+          if (gn) gn.hp = 0;
+          q.st = 2;
+        }
+      const d = g.devs.find((o) => o.kind === kind);
+      if (!d) return { n: 0 };
+      const MS = d.mesh.scale.x;
+      const E = d.def.fx;
+      const fwd = g.devRot(d, [0, 0, 1]).normalize();
+      for (const e of g.enemies) e.updateAI = () => {};
+      // 一台敵人放進打擊範圍
+      const at = E.line
+        ? d.pos.clone().addScaledVector(fwd, E.line[0] * 0.5 * MS)
+        : d.pos
+            .clone()
+            .add(g.devRot(d, E.at || [0, 0, 0]))
+            .addScaledVector(fwd, 1.5 * MS);
+      const e = g.enemies.find((o) => !o.dead && o.ai !== 'part' && !o.isBoss && !o.flying);
+      e.pos.set(at.x, g.world.groundAt(at.x, at.z, 999), at.z);
+      e.mesh.position.copy(e.pos);
+      e.hp = e.maxHp * 0.08;
+      e.iFrames = 0;
+      const hp0 = e.hp;
+      const p = g.player;
+      p.maxHp = p.hp = 1e6;
+      const back = d.def.use ? d.usePos.clone() : d.pos.clone().addScaledVector(fwd, -8 * MS);
+      p.pos.set(back.x, g.world.groundAt(back.x, back.z, 999), back.z);
+      p.vel.set(0, 0, 0);
+      g.camUser = 1.6;
+      window.__pump(0.3);
+      const obs0 = d.obs.filter((o) => g.world.obstacles.includes(o)).length;
+      const walls0 = (g.tWalls || []).length;
+      const env0 = g.envKills || 0;
+      if (d.def.trig === 'shoot') g.damageProp(d.tgt, d.def.hp + 10, 0, d.tgt.pos.clone(), p);
+      else {
+        g.down[g.keymap.interact] = true;
+        window.__pump(4, () => d.st === 3);
+        g.down[g.keymap.interact] = false;
+      }
+      const st1 = d.st;
+      window.__pump(1.3);
+      const out = {
+        n: 1,
+        st1,
+        hurt: e.dead || e.hp < hp0,
+        env: (g.envKills || 0) - env0,
+        obs: obs0 - d.obs.filter((o) => g.world.obstacles.includes(o)).length,
+        off: (d.def.solidOff || []).length,
+        walls: (g.tWalls || []).length - walls0,
+        cover: (E.cover || []).length,
+      };
+      // 持續的區域（緩速）：玩家站進去
+      if (E.zone && E.zone.slow) {
+        const z = E.zone.line
+          ? d.pos.clone().addScaledVector(fwd, E.zone.line[0] * 0.5 * MS)
+          : d.pos.clone().addScaledVector(fwd, 3 * MS);
+        p.pos.set(z.x, g.world.groundAt(z.x, z.z, 999), z.z);
+        p.vel.set(0, 0, 0);
+        window.__pump(0.8);
+        out.slow = !!(p.hasStatus && p.hasStatus('slow'));
+      }
+      // 截圖的位置：事件的斜後方
+      const v = d.pos
+        .clone()
+        .addScaledVector(fwd, -6 * MS)
+        .add(g.devRot(d, [8, 0, 0]));
+      p.pos.set(v.x, g.world.groundAt(v.x, v.z, 999), v.z);
+      window.__pump(0.3);
+      return out;
+    }, kind);
+    check(r.n > 0, `${theme}：強制出現大型事件「${kind}」`);
+    if (!r.n) {
+      await thawLoop(page);
+      continue;
+    }
+    check(r.st1 === 3, `${theme}：觸發大型事件`);
+    if (kind !== 'reshape' && kind !== 'pump')
+      check(r.hurt, `${theme}：範圍裡的敵人受損${r.env ? `（環境擊殺 ${r.env}）` : ''}`);
+    if (r.off) check(r.obs === r.off, `${theme}：拿掉擋路的碰撞（${r.obs}／${r.off}）`);
+    if (r.cover) check(r.walls === r.cover, `${theme}：留下掩體（${r.walls}／${r.cover}）`);
+    if (r.slow !== undefined) check(r.slow, `${theme}：持續的區域讓機體行動遲緩`);
+    await page.screenshot({ path: path.join(SHOT_DIR, `event-${theme}.png`) });
+    await thawLoop(page);
+  }
+  await page.evaluate(() => (window.__game.evForce = false));
+  await ctx.close();
+}
 // 多人的地圖互動裝置：客機按住互動鍵佔領雷達站（判定在房主）、狀態隨快照給客機
 async function testDevicesMp(browser, url) {
   console.log('多人：地圖互動裝置');
@@ -26527,6 +26652,7 @@ const STEPS = [
   ['testDevices', (c) => testDevices(c.browser, c.base)],
   ['testTraps', (c) => testTraps(c.browser, c.base)],
   ['testGuns', (c) => testGuns(c.browser, c.base)],
+  ['testEvents', (c) => testEvents(c.browser, c.base)],
   ['testBoundary', (c) => testBoundary(c.browser, c.base)],
   ['testAir', (c) => testAir(c.browser, c.base)],
   ['testCampaign', (c) => testCampaign(c.browser, c.base)],

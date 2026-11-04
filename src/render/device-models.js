@@ -5,6 +5,7 @@ import { CB, P, bakeAll, gBox, gCyl } from './geometry.js';
 import { providedModel } from './model-provider.js';
 import { tagStyle } from './style/shader.js';
 import { TRAP_BUILDERS } from './trap-models.js';
+import { EVENT_BUILDERS } from './event-models.js';
 import { buildGunTurret, buildHwPick } from './gun-models.js';
 import { HEAVY_WEAPONS } from '../data/devices.js';
 
@@ -111,6 +112,7 @@ export const DEVICE_BUILDERS = {
   radar: buildRadarStation,
   recharge: buildRechargeStation,
   ...TRAP_BUILDERS,
+  ...EVENT_BUILDERS,
   gun_hmg: (c) => buildGunTurret('hmg', c),
   gun_rail: (c) => buildGunTurret('rail', c),
   gun_msl: (c) => buildGunTurret('msl', c),
