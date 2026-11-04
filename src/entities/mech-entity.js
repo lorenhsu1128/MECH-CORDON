@@ -2659,6 +2659,7 @@ export class MechEntity {
       }
     }
     if (g.zones && g.zones.length) g.zonePull(this, target); // 吸引區域（game/hazards2.js）
+    if (g.devs && g.devs.length) g.devPush(this, target); // 地圖裝置的水流、減壓（game/devices-traps.js）
     let acc = this.qbT > 0 ? 60 : this.grounded || this.jumpT > 0 ? 18 : 9;
     if (g.bfs && g.bfs.length) acc = g.bfMove(this, target, acc); // Boss 改版的場地：流沙、冰面、坑洞（game/boss-field.js）
     if (!this.melee.active) {

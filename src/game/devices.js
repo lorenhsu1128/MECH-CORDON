@@ -81,7 +81,7 @@ Object.assign(Game.prototype, {
     );
   },
   // 在 at 附近（由近到遠的螺旋）找空地；at 為 null 時在玩家周圍 40～120 m×DS 隨機找
-  devSpot(at, used, pad = 5) {
+  devSpot(at, used, pad = 5, strict = false) {
     const far = (x, z) => !used.some((q) => Math.hypot(q.x - x, q.z - z) < 40 * DS);
     if (at) {
       for (let r = 0; r < 60 * DS; r += 3 * DS)
@@ -90,6 +90,7 @@ Object.assign(Game.prototype, {
             z = at.z + Math.sin((a / 12) * Math.PI * 2 + r) * r;
           if (this.devFree(x, z, pad) && far(x, z)) return { x, z };
         }
+      if (strict) return null; // 只要 at 附近（陷阱：離敵群太遠就沒有用）
     }
     const p = this.player.pos;
     for (let t = 0; t < 300; t++) {

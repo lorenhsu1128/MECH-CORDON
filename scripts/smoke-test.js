@@ -5631,7 +5631,7 @@ async function testDevices(browser, base) {
 // 環境陷阱（docs/map-devices-design.md 的 C）：每個主題出擊、陷阱放在敵群那裡、觸發（打弱點或控制台）、
 // 範圍裡的敵人受損與環境擊殺、玩家自己也會受傷、留下的掩體、截圖
 async function testTraps(browser, base) {
-  console.log('環境陷阱：7 個主題的陷阱');
+  console.log('環境陷阱：13 個主題的陷阱');
   const { ctx, page } = await newPage(browser, 'traps');
   await page.goto(base + '?test');
   await waitVisible(page, 'title');
@@ -5643,6 +5643,12 @@ async function testTraps(browser, base) {
     ['wasteland', 'pylon'],
     ['dunes', 'gas'],
     ['flooded', 'cable'],
+    ['dam', 'sluice'],
+    ['spaceport', 'testrig'],
+    ['grid086', 'scrap'],
+    ['xylem', 'valve'],
+    ['orbit', 'airlock'],
+    ['institute', 'coral'],
   ];
   for (const [theme, kind] of LIST) {
     await page.evaluate((t) => {
@@ -5696,11 +5702,15 @@ async function testTraps(browser, base) {
             }
           }
         }
-        const e = g.enemies.find((o) => !o.dead && o.ai !== 'part' && !o.isBoss && !o.flying);
+        const ok = (o) => !o.dead && o.ai !== 'part' && !o.isBoss && !o.flying;
+        const e =
+          g.enemies.find((o) => ok(o) && !o.hoverH && !['dome', 'shield'].includes(o.ai)) ||
+          g.enemies.find(ok);
+        for (const o of g.enemies) if (o.ai === 'dome') o.hp = 0; // 護盾產生器的護盾會擋住陷阱
         e.pos.set(at.x, g.world.groundAt(at.x, at.z, 999), at.z);
         e.vel.set(0, 0, 0);
         e.mesh.position.copy(e.pos);
-        e.hp = e.maxHp * 0.12;
+        e.hp = e.maxHp * 0.08;
         e.iFrames = 0;
         const p = g.player;
         p.maxHp = p.hp = 100000;
@@ -5752,12 +5762,12 @@ async function testTraps(browser, base) {
       `${theme}：觸發陷阱、範圍裡的敵人被擊破＝環境擊殺（${r.envK}）`,
     );
     if (r.lockable !== null) check(r.lockable, `${theme}：弱點可以鎖定（排在敵人後面）`);
-    if (kind === 'crane' || kind === 'mine')
+    if (kind === 'crane' || kind === 'mine' || kind === 'scrap')
       check(r.walls > 0, `${theme}：留下掩體（臨時障礙物 ${r.walls} 個）`);
-    if (kind !== 'shock' && kind !== 'cable')
+    if (['crane', 'mine', 'ice', 'pylon', 'gas', 'scrap', 'coral'].includes(kind))
       check(r.hurt > 0, `${theme}：玩家站在範圍裡也會受傷（AP −${r.hurt}%）`);
-    // 截圖：第二個陷阱，玩家站在旁邊、鏡頭拉遠，觸發後 0.9 秒（作用中）
-    await page.evaluate((kind) => {
+    // 截圖：第二個陷阱，玩家站在旁邊、鏡頭拉遠，觸發後 0.9 秒（作用中）；會推的陷阱：玩家站進範圍、量被推了多遠
+    const push = await page.evaluate((kind) => {
       const g = window.__game;
       const d = g.devs.filter((o) => o.kind === kind)[1] || g.devs.find((o) => o.kind === kind);
       const MS = d.mesh.scale.x;
@@ -5778,7 +5788,21 @@ async function testTraps(browser, base) {
         }
       }
       window.__pump(0.9);
+      const Z = d.def.fx.zone;
+      if (!Z || !Z.push || d.st !== 3) return null;
+      const fwd = g.devRot(d, [0, 0, 1]).normalize();
+      const at = d.pos.clone().addScaledVector(fwd, (Z.line ? 4 : 1) * MS);
+      p.pos.set(at.x, g.world.groundAt(at.x, at.z, 999), at.z);
+      p.vel.set(0, 0, 0);
+      const p0 = p.pos.clone();
+      window.__pump(0.6);
+      return +p.pos.clone().sub(p0).dot(fwd).toFixed(1);
     }, kind);
+    if (push !== null)
+      check(
+        Math.abs(push) > 3,
+        `${theme}：站在前方的機體被推走（${push} m；負的＝推下虛空後拉回最後站穩的位置）`,
+      );
     await page.screenshot({ path: path.join(SHOT_DIR, `trap-${theme}.png`) });
     await thawLoop(page);
   }

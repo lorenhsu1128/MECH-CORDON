@@ -8,12 +8,19 @@ import { MS } from '../core/scale.js';
 import { Game } from './game.js';
 
 const DEV_TGT = 960000; // 弱點代理目標的 id 基底（entById 用）
+const DEV_FACE_OUT = new Set(['valve', 'airlock']); // 前方朝作戰區域外側（data/devices.js 的 faceOut）
 const ST_IDLE = 0,
   ST_USED = 2,
   ST_ACT = 3,
   ST_CD = 4;
-// 每個主題的陷阱（第 2 期：前 7 個主題）
+// 每個主題的陷阱
 const THEME_TRAPS = {
+  dam: ['sluice'],
+  spaceport: ['testrig'],
+  grid086: ['scrap'],
+  xylem: ['valve'],
+  orbit: ['airlock'],
+  institute: ['coral'],
   industrial: ['crane'],
   grid: ['shock'],
   desert: ['mine'],
@@ -33,10 +40,18 @@ Object.assign(Game.prototype, {
     const gs = G.slice().sort(() => Math.random() - 0.5);
     for (let i = 0; i < n; i++) {
       const k = list[i % list.length];
-      const pt = this.devSpot(G.length ? gs[i].pos : null, used, 4);
+      const at = G.length ? gs[i].pos : null;
+      const pt = this.devSpot(at, used, 3, !!at) || (at && this.devSpot(at, used, 1.5, true));
       if (!pt) continue;
       used.push(pt);
-      this.devAdd({ i: ++this.devSeq, k, x: pt.x, z: pt.z, y: Math.floor(Math.random() * 4), v: 1 });
+      let y = Math.floor(Math.random() * 4);
+      if (DEV_FACE_OUT.has(k)) {
+        // 前方（+Z 轉 yaw）朝作戰區域的外側：yaw＝0 → +Z、1 → +X、2 → −Z、3 → −X
+        const Zn = this.world.zone;
+        const a = Math.atan2(pt.x - (Zn[0] + Zn[1]) / 2, pt.z - (Zn[2] + Zn[3]) / 2);
+        y = ((Math.round(a / (Math.PI / 2)) % 4) + 4) % 4;
+      }
+      this.devAdd({ i: ++this.devSeq, k, x: pt.x, z: pt.z, y, v: 1 });
     }
   },
   // 弱點的代理目標（devAdd 呼叫；房主與客機）
@@ -220,6 +235,18 @@ Object.assign(Game.prototype, {
       if (Z.slow && t.addStatus) t.addStatus('slow', 0.6, { k: Z.slow, qb: 1.6 });
     }
   },
+  // 推（MechEntity.move 呼叫；房主與客機的自身預測都算）：作用中的區域把機體往裝置的前方推
+  devPush(e, target) {
+    for (const d of this.devs) {
+      if (d.st !== ST_ACT || !d.def.fx || !d.def.fx.zone || !d.def.fx.zone.push) continue;
+      const Z = d.def.fx.zone;
+      if ((d.vt || d.t || 0) < (d.def.fx.delay || 0) || e.noPush || !this.devInZone(d, e)) continue;
+      if (e.pos.y - this.world.groundAt(e.pos.x, e.pos.z, e.pos.y + 1) > (Z.air || 1.6) * MS) continue;
+      const a = d.yaw || 0;
+      target.x += Math.sin(a) * Z.push * MS;
+      target.z += Math.cos(a) * Z.push * MS;
+    }
+  },
   devInZone(d, t) {
     const Z = d.def.fx.zone;
     const rx = t.pos.x - d.pos.x,
@@ -325,10 +352,22 @@ Object.assign(Game.prototype, {
         try {
           for (let i = 0; i < 2; i++) {
             const p = this.trapZonePoint(d);
+            const fw = this.devRot(d, [0, 0, 1]).normalize();
             if (Z.vis === 'elec') {
               fx.arc(p.setY(p.y + 0.4 * MS), 1.4, def.color);
               if (Math.random() < 0.3) fx.spark(p, 0xbfe8ff);
             } else if (Z.vis === 'ice') fx.dust(p.setY(p.y + 0.2), 2, 3, 0xd8f0ff);
+            else if (Z.vis === 'water' || Z.vis === 'wind') {
+              const col = Z.vis === 'water' ? 0xd8f0ff : 0xfff0c0;
+              if (Z.vis === 'water') fx.dust(p.clone().setY(p.y + 0.3), 2, 3, 0xb8dcf0);
+              fx.streaks(p.setY(p.y + 0.6 * MS), 2, col, 14, 0.35, 10, fw.clone().setY(0.25), 0.4);
+            } else if (Z.vis === 'fire' && i === 0) {
+              const o = d.pos.clone().add(this.devRot(d, [0, 1.7, 1.2]));
+              fx.flameCone(o, fw, Z.line[0] * MS * 0.5, 0.18, 8);
+            } else if (Z.vis === 'coral') {
+              fx.spark(p.setY(p.y + 0.5 * MS), 0xff5a6a);
+              if (Math.random() < 0.4) fx.arc(p, 1.2, 0xff4a5a);
+            }
           }
         } finally {
           fx._nested = nest;

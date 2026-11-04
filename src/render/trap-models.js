@@ -293,7 +293,182 @@ export function buildTrapCable(color = 0x8fd8ff) {
   return g;
 }
 
+// ---------- 第 3 期：後 6 個主題 ----------
+// 控制台（互動型共用）：在 (x, z)，螢幕朝 −X
+function consoleAt(b, dark, base, glow, x, z) {
+  CB(b, 0.9, 1.3, 0.7, dark, x, 0.65, z);
+  CB(b, 0.7, 0.12, 0.6, base, x, 1.35, z, 0, 0, 0.35);
+  P(b, gBox(0.08, 0.4, 0.5), glow, x - 0.46, 1.0, z);
+}
+
+// 多重水壩：放水的閘口（往 +Z 噴水）＋旁邊的控制台
+export function buildTrapSluice(color = 0x7fd0ff) {
+  const g = new THREE.Group();
+  if (glbOr('device/sluice', g)) return g;
+  const conc = std(0x8a8a84, { metalness: 0 }),
+    dark = std(0x2a2e33, { metalness: 0.6 }),
+    base = std(0x4a525a),
+    glow = glowMat(color);
+  const b = new THREE.Group();
+  g.add(b);
+  CB(b, 3.4, 2.6, 2.2, conc, 0, 1.3, -1.6, 0, 0, 0, 0.12);
+  CB(b, 2.2, 1.5, 0.3, dark, 0, 1.0, -0.45);
+  P(b, gBox(2.0, 0.12, 0.32), glow, 0, 1.85, -0.42);
+  for (const x of [-1.25, 1.25]) CB(b, 0.3, 2.2, 0.5, conc, x, 1.1, -0.35);
+  consoleAt(b, dark, base, glow, 3.4, -1.2);
+  bakeAll(b, { ...TINT, cache: 'trap_sluice' });
+  g.wp = null;
+  tagStyle(g);
+  return g;
+}
+
+// 舊宇宙港：推進器的試車台（噴口朝 +Z）＋控制台
+export function buildTrapTestRig(color = 0xff9a40) {
+  const g = new THREE.Group();
+  if (glbOr('device/testrig', g)) return g;
+  const steel = std(0x9aa0a6, { metalness: 0.6 }),
+    dark = std(0x2a2e33, { metalness: 0.6 }),
+    base = std(0x4a525a),
+    glow = glowMat(color);
+  const b = new THREE.Group();
+  g.add(b);
+  CB(b, 2.6, 0.4, 3.2, dark, 0, 0.2, -0.6);
+  for (const x of [-1, 1]) CB(b, 0.25, 1.8, 0.25, steel, x, 1.1, -1.2);
+  P(b, gCyl(0.9, 0.9, 2.2, 14), steel, 0, 1.7, -1.0, Math.PI / 2, 0, 0);
+  P(b, gCyl(0.7, 1.15, 1.2, 14), dark, 0, 1.7, 0.6, Math.PI / 2, 0, 0);
+  P(b, gCyl(0.62, 0.62, 0.05, 14), glow, 0, 1.7, 1.15, Math.PI / 2, 0, 0);
+  consoleAt(b, dark, base, glow, -3.2, -1.2);
+  bakeAll(b, { ...TINT, cache: 'trap_testrig' });
+  g.wp = null;
+  tagStyle(g);
+  return g;
+}
+
+// Grid 086：單柱懸臂吊著一捆廢料（弱點＝吊鉤）
+export function buildTrapScrap(color = 0xffa040) {
+  const g = new THREE.Group();
+  if (glbOr('device/scrap', g)) return g;
+  const steel = std(0x6a6258, { metalness: 0.55 }),
+    dark = std(0x2a2622, { metalness: 0.6 }),
+    rust = std(0x8a4a2a, { metalness: 0.3 }),
+    glow = glowMat(color);
+  const b = new THREE.Group();
+  g.add(b);
+  CB(b, 0.8, 9, 0.8, steel, -4.2, 4.5, 0);
+  CB(b, 1.8, 0.4, 1.8, dark, -4.2, 0.2, 0);
+  CB(b, 5.4, 0.6, 0.6, steel, -1.8, 8.8, 0);
+  P(b, gBox(0.1, 2.6, 0.1), steel, -3.4, 7.6, 0, 0, 0, 0.75);
+  bakeAll(b, { ...TINT, cache: 'trap_scrap' });
+  const wp = node(g, 'wp');
+  const w = new THREE.Group();
+  wp.add(w);
+  P(w, gCyl(0.05, 0.05, 3.3, 6), dark, 0, 6.8, 0);
+  P(w, gBox(0.5, 0.45, 0.5), glow, 0, 8.3, 0);
+  bakeAll(w, { ...TINT, cache: 'trap_scrap_wp' });
+  const load = node(g, 'load', 3.2);
+  const L = new THREE.Group();
+  load.add(L);
+  const parts = [
+    [0, 0.5, 0, 3.2, 1.0, 2.0, 0.1],
+    [-0.6, 1.3, 0.3, 1.8, 0.7, 1.4, -0.3],
+    [0.8, 1.2, -0.4, 1.4, 0.8, 1.2, 0.4],
+    [0.1, 1.9, 0, 1.2, 0.6, 1.0, 0.2],
+  ];
+  parts.forEach(([x, y, z, w0, h0, d0, r], i) =>
+    CB(L, w0, h0, d0, i % 2 ? rust : dark, x, y, z, r * 0.4, r, r * 0.5),
+  );
+  P(L, gBox(0.12, 0.12, 2.4), steel, 0, 2.3, 0);
+  bakeAll(L, { ...TINT, cache: 'trap_scrap_load' });
+  g.wp = wp;
+  g.load = load;
+  tagStyle(g);
+  return g;
+}
+
+// 洋上都市：海水的大閥門（噴口朝 +Z），閥門本身是控制台
+export function buildTrapValve(color = 0x6ad8ff) {
+  const g = new THREE.Group();
+  if (glbOr('device/valve', g)) return g;
+  const pipe = std(0x3a6a7a, { metalness: 0.55 }),
+    dark = std(0x24272b, { metalness: 0.6 }),
+    glow = glowMat(color);
+  const b = new THREE.Group();
+  g.add(b);
+  P(b, gCyl(0.9, 0.9, 3.2, 14), pipe, 0, 0.9, -1.4, Math.PI / 2, 0, 0);
+  P(b, gCyl(1.1, 1.1, 0.25, 14), dark, 0, 0.9, -0.2, Math.PI / 2, 0, 0);
+  P(b, gCyl(0.7, 0.9, 0.6, 14), pipe, 0, 0.9, 0.2, Math.PI / 2, 0, 0);
+  P(b, gCyl(0.6, 0.6, 0.05, 14), glow, 0, 0.9, 0.52, Math.PI / 2, 0, 0);
+  P(b, gCyl(0.15, 0.15, 1.2, 8), dark, 0, 2.1, -1.6);
+  P(b, gCyl(0.75, 0.75, 0.1, 16), glow, 0, 2.7, -1.6);
+  CB(b, 2.2, 0.3, 3.6, dark, 0, 0.15, -1.4);
+  bakeAll(b, { ...TINT, cache: 'trap_valve' });
+  g.wp = null;
+  tagStyle(g);
+  return g;
+}
+
+// 高空軌道：氣閘（門框朝 +Z）＋控制台
+export function buildTrapAirlock(color = 0xffd060) {
+  const g = new THREE.Group();
+  if (glbOr('device/airlock', g)) return g;
+  const hull = std(0xc8ccd0, { metalness: 0.4 }),
+    dark = std(0x2a2e33, { metalness: 0.6 }),
+    base = std(0x4a525a),
+    glow = glowMat(color);
+  const b = new THREE.Group();
+  g.add(b);
+  for (const x of [-2.4, 2.4]) CB(b, 0.6, 4.4, 1.2, hull, x, 2.2, 0);
+  CB(b, 5.4, 0.7, 1.2, hull, 0, 4.55, 0);
+  CB(b, 4.2, 3.9, 0.2, dark, 0, 2.0, -0.1);
+  for (let k = -1; k <= 1; k++) P(b, gBox(0.12, 3.6, 0.22), glow, k * 1.3, 2.0, 0.05);
+  P(b, gBox(5.0, 0.15, 0.22), glow, 0, 4.25, 0.5);
+  consoleAt(b, dark, base, glow, 3.6, -1.0);
+  bakeAll(b, { ...TINT, cache: 'trap_airlock' });
+  g.wp = null;
+  tagStyle(g);
+  return g;
+}
+
+// 地下技研都市：Coral 收容槽（玻璃筒裡紅色的 Coral，弱點＝筒身）
+export function buildTrapCoral(color = 0xff4a5a) {
+  const g = new THREE.Group();
+  if (glbOr('device/coral', g)) return g;
+  const steel = std(0x5a6068, { metalness: 0.6 }),
+    dark = std(0x24272b),
+    glow = glowMat(color);
+  const b = new THREE.Group();
+  g.add(b);
+  P(b, gCyl(1.3, 1.5, 0.6, 16), steel, 0, 0.3, 0);
+  P(b, gCyl(1.2, 1.2, 0.4, 16), dark, 0, 3.4, 0);
+  for (let k = 0; k < 4; k++) {
+    const a = (k / 4) * Math.PI * 2 + 0.4;
+    P(b, gBox(0.18, 2.8, 0.18), steel, Math.cos(a) * 1.15, 1.9, Math.sin(a) * 1.15);
+  }
+  P(b, gCyl(0.2, 0.2, 2.4, 8), dark, 1.9, 1.2, 0, 0, 0, Math.PI / 2);
+  bakeAll(b, { ...TINT, cache: 'trap_coral' });
+  const wp = node(g, 'wp');
+  const w = new THREE.Group();
+  wp.add(w);
+  P(w, gCyl(0.75, 0.75, 2.4, 12), glow, 0, 1.8, 0);
+  bakeAll(w, { ...TINT, cache: 'trap_coral_wp' });
+  const glass = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.05, 1.05, 2.7, 16, 1, true),
+    new THREE.MeshStandardMaterial({ color: 0xa8d8ff, transparent: true, opacity: 0.25, roughness: 0.05 }),
+  );
+  glass.position.y = 1.85;
+  wp.add(glass);
+  g.wp = wp;
+  tagStyle(g);
+  return g;
+}
+
 export const TRAP_BUILDERS = {
+  sluice: buildTrapSluice,
+  testrig: buildTrapTestRig,
+  scrap: buildTrapScrap,
+  valve: buildTrapValve,
+  airlock: buildTrapAirlock,
+  coral: buildTrapCoral,
   crane: buildTrapCrane,
   shock: buildTrapShock,
   mine: buildTrapMine,
