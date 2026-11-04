@@ -5,11 +5,11 @@
 import { SFX } from '../audio/audio.js';
 import { clamp } from '../core/math.js';
 import { MS } from '../core/scale.js';
-import { EVENT_CHANCE } from '../data/devices.js';
+import { DEVICES, EVENT_CHANCE } from '../data/devices.js';
+import { ENEMY_TYPES } from '../data/enemies.js';
 import { Game } from './game.js';
 
 const DEV_TGT = 960000; // 弱點代理目標的 id 基底（entById 用）
-const DEV_FACE_OUT = new Set(['valve', 'airlock']); // 前方朝作戰區域外側（data/devices.js 的 faceOut）
 const ST_IDLE = 0,
   ST_USED = 2,
   ST_ACT = 3,
@@ -23,6 +23,12 @@ const THEME_EVENTS = {
   wasteland: 'chimney',
   dunes: 'sinkhole',
   flooded: 'pump',
+  dam: 'spillway',
+  spaceport: 'launchtower',
+  grid086: 'drawbridge',
+  xylem: 'seawall',
+  orbit: 'dock',
+  institute: 'blastdoor',
 };
 // 每個主題的陷阱
 const THEME_TRAPS = {
@@ -55,14 +61,7 @@ Object.assign(Game.prototype, {
       const pt = this.devSpot(at, used, 3, !!at) || (at && this.devSpot(at, used, 1.5, true));
       if (!pt) continue;
       used.push(pt);
-      let y = Math.floor(Math.random() * 4);
-      if (DEV_FACE_OUT.has(k)) {
-        // 前方（+Z 轉 yaw）朝作戰區域的外側：yaw＝0 → +Z、1 → +X、2 → −Z、3 → −X
-        const Zn = this.world.zone;
-        const a = Math.atan2(pt.x - (Zn[0] + Zn[1]) / 2, pt.z - (Zn[2] + Zn[3]) / 2);
-        y = ((Math.round(a / (Math.PI / 2)) % 4) + 4) % 4;
-      }
-      this.devAdd({ i: ++this.devSeq, k, x: pt.x, z: pt.z, y, v: 1 });
+      this.devAdd({ i: ++this.devSeq, k, x: pt.x, z: pt.z, y: this.devYaw(k, pt), v: 1 });
     }
   },
   // 大型地形事件（devPlan 呼叫）：一般戰鬥約一半的場次、一張地圖一個，放在中間那一群的附近（要大一點的空地）
@@ -75,7 +74,14 @@ Object.assign(Game.prototype, {
     const pt = this.devSpot(at, used, 7, !!at) || this.devSpot(at, used, 4, !!at);
     if (!pt) return;
     used.push(pt);
-    this.devAdd({ i: ++this.devSeq, k, x: pt.x, z: pt.z, y: Math.floor(Math.random() * 4), v: 1 });
+    this.devAdd({ i: ++this.devSeq, k, x: pt.x, z: pt.z, y: this.devYaw(k, pt), v: 1 });
+  },
+  // 朝向（90° 的幾倍）：faceOut 的前方（+Z 轉 yaw）朝作戰區域的外側（yaw＝0 → +Z、1 → +X、2 → −Z、3 → −X），其他隨機
+  devYaw(k, pt) {
+    if (!DEVICES[k].faceOut) return Math.floor(Math.random() * 4);
+    const Zn = this.world.zone;
+    const a = Math.atan2(pt.x - (Zn[0] + Zn[1]) / 2, pt.z - (Zn[2] + Zn[3]) / 2);
+    return ((Math.round(a / (Math.PI / 2)) % 4) + 4) % 4;
   },
   // 弱點的代理目標（devAdd 呼叫；房主與客機）
   trapInit(d) {
@@ -239,6 +245,31 @@ Object.assign(Game.prototype, {
         hp: 0,
         life: 9999,
       });
+    }
+    // 門後的補給箱與一群敵人（防爆門）
+    if (E.cache) {
+      const c = d.pos.clone().add(this.devRot(d, E.cache));
+      const kinds = ['coam', 'repair', 'ammo', 'kit'];
+      this.cacheAdd({
+        i: 100 + d.id,
+        k: kinds[Math.floor(Math.random() * kinds.length)],
+        p: [+c.x.toFixed(1), +c.z.toFixed(1)],
+      });
+    }
+    if (E.squad) {
+      const c = d.pos.clone().add(this.devRot(d, E.squad.at));
+      const L = this.camp ? this.campLevel() : this.save.level || 1;
+      const isAce = (t) => t === 'ac' || !!(ENEMY_TYPES[t] || {}).roster;
+      const comp = this.rollComp(Math.max(1, L), 1)
+        .filter((t) => !isAce(t))
+        .slice(0, E.squad.n);
+      this.waveAt = { pos: c, drop: false };
+      try {
+        for (const t of comp) this.spawnType(t, this.scaleHp, this.scaleDmg);
+      } finally {
+        this.waveAt = null;
+      }
+      this.flashAlert('防爆門後的敵人出動');
     }
     if (E.pool) this.fx.firePool(d.pos.clone(), E.zone.R, E.zone.dur, 0);
     if (E.pillar) this.fx.pillarStrike(d.pos.clone(), E.pillar, def.color);

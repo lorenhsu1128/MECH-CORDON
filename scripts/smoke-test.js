@@ -6027,6 +6027,12 @@ async function testEvents(browser, base) {
     ['wasteland', 'chimney'],
     ['dunes', 'sinkhole'],
     ['flooded', 'pump'],
+    ['dam', 'spillway'],
+    ['spaceport', 'launchtower'],
+    ['grid086', 'drawbridge'],
+    ['xylem', 'seawall'],
+    ['orbit', 'dock'],
+    ['institute', 'blastdoor'],
   ];
   for (const [theme, kind] of LIST) {
     await page.evaluate((t) => {
@@ -6067,7 +6073,12 @@ async function testEvents(browser, base) {
             .clone()
             .add(g.devRot(d, E.at || [0, 0, 0]))
             .addScaledVector(fwd, 1.5 * MS);
-      const e = g.enemies.find((o) => !o.dead && o.ai !== 'part' && !o.isBoss && !o.flying);
+      // 測試用的 MT（不借用場上的敵人：可能是護盾產生器或懸浮的）
+      for (const o of g.enemies) if (o.ai === 'dome') o.takeDamage(1e9, 0, null, o.center());
+      g.waveAt = { pos: at.clone(), drop: false };
+      const e = g.spawnType('mt', g.scaleHp, g.scaleDmg);
+      g.waveAt = null;
+      e.updateAI = () => {};
       e.pos.set(at.x, g.world.groundAt(at.x, at.z, 999), at.z);
       e.mesh.position.copy(e.pos);
       e.hp = e.maxHp * 0.08;
@@ -6082,6 +6093,8 @@ async function testEvents(browser, base) {
       window.__pump(0.3);
       const obs0 = d.obs.filter((o) => g.world.obstacles.includes(o)).length;
       const walls0 = (g.tWalls || []).length;
+      const caches0 = g.cachesLeft();
+      const foes0 = g.enemies.filter((o) => !o.dead).length;
       const env0 = g.envKills || 0;
       if (d.def.trig === 'shoot') g.damageProp(d.tgt, d.def.hp + 10, 0, d.tgt.pos.clone(), p);
       else {
@@ -6095,11 +6108,14 @@ async function testEvents(browser, base) {
         n: 1,
         st1,
         hurt: e.dead || e.hp < hp0,
+        dbg: `${e.ai}/${e.etype}/if${(e.iFrames || 0).toFixed(1)}/hp${Math.round(e.hp)}of${Math.round(hp0)}/y${(e.pos.y - d.pos.y).toFixed(1)}/st${d.st}/done${d.done}`,
         env: (g.envKills || 0) - env0,
         obs: obs0 - d.obs.filter((o) => g.world.obstacles.includes(o)).length,
         off: (d.def.solidOff || []).length,
         walls: (g.tWalls || []).length - walls0,
         cover: (E.cover || []).length,
+        cache: g.cachesLeft() - caches0,
+        foes: g.enemies.filter((o) => !o.dead).length - foes0,
       };
       // 持續的區域（緩速）：玩家站進去
       if (E.zone && E.zone.slow) {
@@ -6126,8 +6142,13 @@ async function testEvents(browser, base) {
       continue;
     }
     check(r.st1 === 3, `${theme}：觸發大型事件`);
-    if (kind !== 'reshape' && kind !== 'pump')
-      check(r.hurt, `${theme}：範圍裡的敵人受損${r.env ? `（環境擊殺 ${r.env}）` : ''}`);
+    if (kind === 'blastdoor')
+      check(r.cache > 0 && r.foes > 0, `${theme}：門後出現補給箱（${r.cache}）與一群敵人（${r.foes}）`);
+    if (!['reshape', 'pump', 'spillway', 'seawall', 'blastdoor'].includes(kind))
+      check(
+        r.hurt,
+        `${theme}：範圍裡的敵人受損${r.env ? `（環境擊殺 ${r.env}）` : ''}${r.hurt ? '' : ' ' + r.dbg}`,
+      );
     if (r.off) check(r.obs === r.off, `${theme}：拿掉擋路的碰撞（${r.obs}／${r.off}）`);
     if (r.cover) check(r.walls === r.cover, `${theme}：留下掩體（${r.walls}／${r.cover}）`);
     if (r.slow !== undefined) check(r.slow, `${theme}：持續的區域讓機體行動遲緩`);

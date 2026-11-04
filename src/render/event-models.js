@@ -237,7 +237,181 @@ export function buildEvPump(color = 0x6ad8ff) {
   return g;
 }
 
+// ---------- 第 6 期：後 6 個主題 ----------
+const consoleBox = (b, dark, glow, x, z) => {
+  CB(b, 1.1, 1.5, 0.9, dark, x, 0.75, z);
+  P(b, gBox(0.08, 0.5, 0.7), glow, x - 0.56, 1.15, z);
+};
+
+// 多重水壩：洩洪閘（sink：閘門升起＝往下沉的反向，這裡用沉下去表示打開），控制台在旁邊
+export function buildEvSpillway(color = 0x7fd0ff) {
+  const g = new THREE.Group();
+  if (glbOr('device/spillway', g)) return g;
+  const conc = std(0x8a8a84, { metalness: 0 }),
+    dark = std(0x2a2e33, { metalness: 0.6 }),
+    glow = glowMat(color);
+  const b = new THREE.Group();
+  g.add(b);
+  for (const x of [-6, 6]) CB(b, 2, 7, 4, conc, x, 3.5, -1, 0, 0, 0, 0.15);
+  CB(b, 14, 1.2, 4, conc, 0, 7.4, -1);
+  consoleBox(b, dark, glow, 8.4, -2);
+  bakeAll(b, { ...TINT, cache: 'ev_spill' });
+  const sink = node(g, 'sink');
+  const s = new THREE.Group();
+  sink.add(s);
+  CB(s, 10, 6.4, 0.8, dark, 0, 3.4, -0.6);
+  for (let y = 1; y < 6.5; y += 1.4) P(s, gBox(10.1, 0.12, 0.85), glow, 0, y, -0.6);
+  bakeAll(s, { ...TINT, cache: 'ev_spill_gate' });
+  const hole = node(g, 'hole');
+  const water = new THREE.Mesh(
+    new THREE.PlaneGeometry(18, 28),
+    new THREE.MeshStandardMaterial({
+      color: 0x3a6a80,
+      roughness: 0.1,
+      metalness: 0.2,
+      transparent: true,
+      opacity: 0.65,
+    }),
+  );
+  water.rotation.x = -Math.PI / 2;
+  water.position.set(0, 0.3, 14);
+  hole.add(water);
+  hole.visible = false;
+  g.sink = sink;
+  g.hole = hole;
+  g.wp = null;
+  tagStyle(g);
+  return g;
+}
+
+// 舊宇宙港：火箭的發射架（高 18），弱點＝底座的固定夾，往 +Z 倒下
+export function buildEvLaunchTower(color = 0xff9a40) {
+  const g = new THREE.Group();
+  if (glbOr('device/launchtower', g)) return g;
+  const steel = std(0xa0a6ac, { metalness: 0.6 }),
+    red = std(0xa83a2a, { metalness: 0.4 }),
+    dark = std(0x2a2e33);
+  const tower = node(g, 'tower');
+  const t = new THREE.Group();
+  tower.add(t);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) P(t, gBox(0.3, 18, 0.3), red, sx * 1.4, 9, sz * 1.4);
+  for (let y = 2; y < 18; y += 2.2) {
+    P(t, gBox(3.1, 0.18, 0.18), red, 0, y, 1.4);
+    P(t, gBox(3.1, 0.18, 0.18), red, 0, y, -1.4);
+  }
+  CB(t, 4, 0.6, 4, steel, 0, 18.2, 0);
+  CB(t, 5, 0.4, 0.6, steel, 2.4, 14, 0);
+  bakeAll(t, { ...TINT, cache: 'ev_ltower' });
+  const b = new THREE.Group();
+  g.add(b);
+  CB(b, 5, 0.8, 5, dark, 0, 0.4, 0);
+  bakeAll(b, { ...TINT, cache: 'ev_ltower_b' });
+  wpNode(g, color, 0, 1.4, 2.6, 1.1);
+  g.tower = tower;
+  tagStyle(g);
+  return g;
+}
+
+// Grid 086：直立收起的吊橋（tower：放下時往 +Z 倒），控制台在後方
+export function buildEvDrawbridge(color = 0xffc060) {
+  const g = new THREE.Group();
+  if (glbOr('device/drawbridge', g)) return g;
+  const steel = std(0x6a6258, { metalness: 0.55 }),
+    dark = std(0x2a2622, { metalness: 0.6 }),
+    glow = glowMat(color);
+  const tower = node(g, 'tower');
+  const t = new THREE.Group();
+  tower.add(t);
+  CB(t, 8, 15, 1.0, steel, 0, 7.5, 0);
+  for (let y = 1.5; y < 15; y += 2.5) P(t, gBox(8.1, 0.2, 1.1), dark, 0, y, 0);
+  P(t, gBox(0.2, 14, 1.12), glow, -3.9, 7.5, 0);
+  P(t, gBox(0.2, 14, 1.12), glow, 3.9, 7.5, 0);
+  bakeAll(t, { ...TINT, cache: 'ev_dbridge' });
+  const b = new THREE.Group();
+  g.add(b);
+  for (const x of [-4.8, 4.8]) CB(b, 1.2, 3, 1.6, dark, x, 1.5, -0.6);
+  consoleBox(b, dark, glow, 6.6, -3);
+  bakeAll(b, { ...TINT, cache: 'ev_dbridge_b' });
+  g.tower = tower;
+  g.wp = null;
+  tagStyle(g);
+  return g;
+}
+
+// 洋上都市：防波閘（sink 反過來：觸發後升起，這裡由 cover 的臨時障礙物表現），控制台＋閘門的軌道
+export function buildEvSeawall(color = 0x6ad8ff) {
+  const g = new THREE.Group();
+  if (glbOr('device/seawall', g)) return g;
+  const conc = std(0x8a9090, { metalness: 0 }),
+    dark = std(0x24282d),
+    glow = glowMat(color);
+  const b = new THREE.Group();
+  g.add(b);
+  CB(b, 18, 0.4, 2.4, conc, 0, 0.2, 0);
+  P(b, gBox(17.6, 0.1, 0.3), glow, 0, 0.42, 0);
+  for (const x of [-9.4, 9.4]) CB(b, 0.8, 5, 1.6, dark, x, 2.5, 0);
+  consoleBox(b, dark, glow, 0, -3.2);
+  bakeAll(b, { ...TINT, cache: 'ev_seawall' });
+  g.wp = null;
+  tagStyle(g);
+  return g;
+}
+
+// 高空軌道：對接艙（slide：脫離後往 +Z 滑出並掉下去），弱點＝固定夾
+export function buildEvDock(color = 0xffd060) {
+  const g = new THREE.Group();
+  if (glbOr('device/dock', g)) return g;
+  const hull = std(0xc8ccd0, { metalness: 0.4 }),
+    dark = std(0x2a2e33, { metalness: 0.6 });
+  const slide = node(g, 'slide');
+  const s = new THREE.Group();
+  slide.add(s);
+  P(s, gCyl(3, 3, 9, 16), hull, 0, 3, 4, Math.PI / 2, 0, 0);
+  for (const z of [0.5, 4, 7.5]) P(s, gCyl(3.15, 3.15, 0.5, 16), dark, 0, 3, z, Math.PI / 2, 0, 0);
+  CB(s, 2, 2, 1, dark, 0, 3, 8.8);
+  bakeAll(s, { ...TINT, cache: 'ev_dock' });
+  const b = new THREE.Group();
+  g.add(b);
+  for (const x of [-3.4, 3.4]) CB(b, 0.8, 3, 1.2, dark, x, 1.5, -0.6);
+  bakeAll(b, { ...TINT, cache: 'ev_dock_b' });
+  wpNode(g, color, 3.4, 3.4, -0.4, 1.0);
+  g.slide = slide;
+  tagStyle(g);
+  return g;
+}
+
+// 地下技研都市：防爆門（sink：打開時沉下去），控制台在旁邊；門後有補給箱與一群敵人
+export function buildEvBlastDoor(color = 0xff6a6a) {
+  const g = new THREE.Group();
+  if (glbOr('device/blastdoor', g)) return g;
+  const wall = std(0x4a4e56, { metalness: 0.5 }),
+    dark = std(0x24272b, { metalness: 0.6 }),
+    glow = glowMat(color);
+  const b = new THREE.Group();
+  g.add(b);
+  for (const x of [-7.5, 7.5]) CB(b, 3, 9, 3, wall, x, 4.5, 0);
+  CB(b, 18, 2, 3, wall, 0, 9.4, 0);
+  consoleBox(b, dark, glow, 10.2, -2.4);
+  bakeAll(b, { ...TINT, cache: 'ev_bdoor' });
+  const sink = node(g, 'sink');
+  const s = new THREE.Group();
+  sink.add(s);
+  CB(s, 12, 8.4, 1.4, dark, 0, 4.2, 0);
+  for (let k = -2; k <= 2; k++) P(s, gBox(0.3, 8, 1.45), glow, k * 2.4, 4.2, 0);
+  bakeAll(s, { ...TINT, cache: 'ev_bdoor_d' });
+  g.sink = sink;
+  g.wp = null;
+  tagStyle(g);
+  return g;
+}
+
 export const EVENT_BUILDERS = {
+  spillway: buildEvSpillway,
+  launchtower: buildEvLaunchTower,
+  drawbridge: buildEvDrawbridge,
+  seawall: buildEvSeawall,
+  dock: buildEvDock,
+  blastdoor: buildEvBlastDoor,
   gantry: buildEvGantry,
   reshape: buildEvReshape,
   tunnel: buildEvTunnel,
