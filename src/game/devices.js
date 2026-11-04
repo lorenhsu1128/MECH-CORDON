@@ -12,7 +12,8 @@ const ST_IDLE = 0, // 雷達站：沒有人佔；回復站：可以用；陷阱�
   ST_ON = 1, // 雷達站：玩家佔領中
   ST_USED = 2, // 回復站：用完了；陷阱：用過了
   ST_ACT = 3, // 陷阱：作用中
-  ST_CD = 4; // 互動型陷阱：冷卻中
+  ST_CD = 4, // 互動型陷阱：冷卻中
+  ST_OFF = 6; // 自訂關卡的觸發器停用
 const hex = (c) => '#' + c.toString(16).padStart(6, '0');
 
 Object.assign(Game.prototype, {
@@ -233,6 +234,7 @@ Object.assign(Game.prototype, {
     if (!this.devs || !this.devs.length) return;
     const ps = this.playersAlive().filter((p) => !p.downed);
     for (const d of this.devs) {
+      if (d.st === ST_OFF) continue; // 自訂關卡的觸發器停用
       const inside = ps.filter((p) => this.devIn(d, p));
       const holder = inside.find((p) => p.itHeld && !(p.staggerT > 0) && !(p.qbT > 0));
       if (d.kind === 'radar') this.devRadarTick(d, dt, inside, holder);
@@ -274,6 +276,7 @@ Object.assign(Game.prototype, {
           d.t = 0;
           SFX.cue('cache');
           this.flashMsg(`${holder.name || ''} 佔領雷達站 — 敵人的位置已標示`, def.color, 2.4);
+          this.devLvEmit(d);
           // 最近的幾台還沒交戰的敵人被派來查看
           const list = this.enemies
             .filter((e) => !e.dead && e.sn && e.sn.st !== 2 && !e.guardOf)
@@ -437,6 +440,38 @@ Object.assign(Game.prototype, {
       if (md && md.st === ST_ON) this.gunPin(md, p);
     }
     this.hwVis(); // 手上的重武器（devices-guns.js）
+  },
+  // 過關條件卡片的一行（goals.js）：這張地圖有哪些可以利用的裝置
+  devGoalText() {
+    const ds = this.devs || [];
+    if (!ds.length) return '';
+    const has = (f) => ds.some(f);
+    const L = [];
+    if (has((d) => d.def.ev)) L.push('大型事件');
+    if (has((d) => d.def.trap && !d.def.ev)) L.push('陷阱');
+    if (has((d) => d.def.gun)) L.push('固定砲台');
+    if (has((d) => d.kind === 'radar')) L.push('雷達站');
+    if (has((d) => d.kind === 'recharge')) L.push('回復站');
+    return L.length ? `（可選）利用地圖上的${L.join('、')}（互動鍵 ${this.devKeyLabel()}）` : '';
+  },
+  // 自訂關卡的觸發器動作「地圖裝置」：mid＝標記 id（空白＝全部），op＝fire／off／on／reset（房主）
+  devLvOp(mid, op) {
+    for (const d of this.devs || []) {
+      if (mid && d.lvm !== mid) continue;
+      if (op === 'off' && d.st !== ST_OFF) {
+        d.stOff = d.st;
+        d.st = ST_OFF;
+      } else if (op === 'on' && d.st === ST_OFF) d.st = d.stOff || ST_IDLE;
+      else if (op === 'reset' && d.def.trap && !d.def.solidOff) {
+        d.st = ST_IDLE;
+        d.hp = d.def.hp || 1;
+        d.prog = d.t = d.done = 0;
+      } else if (op === 'fire' && d.def.trap && d.st === ST_IDLE) this.devTrigger(d, null);
+    }
+  },
+  // 自訂關卡的觸發器事件「地圖裝置被啟動」（陷阱觸發、雷達站佔領、上砲台）
+  devLvEmit(d) {
+    if (this.lv && d.lvm) this.lvEmit('dev', { m: d.lvm });
   },
   // 第一次看到某種裝置：說明（每場一次）
   devIntro(d, p) {

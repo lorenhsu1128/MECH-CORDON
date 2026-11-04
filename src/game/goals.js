@@ -113,6 +113,8 @@ Object.assign(Game.prototype, {
         this.goalT = null;
         return;
       }
+      const dv = this.devGoalText ? this.devGoalText() : ''; // 地圖互動裝置（devices.js）
+      if (dv) this.goalCur.opt = [this.goalCur.opt, dv].filter(Boolean).join('　');
       if (!el) {
         el = document.createElement('div');
         el.id = 'goalCard';

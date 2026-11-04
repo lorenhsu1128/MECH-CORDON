@@ -2,6 +2,8 @@
 // 欄位定義、上限、讀檔的驗證（sanitizeLevel：別人做的關卡一律先經過它）、高度圖編碼、
 // 觸發器的事件／條件／動作表（編輯器的表單與執行時共用）。純資料，不碰 THREE 與 DOM。
 
+import { DEVICES } from '../data/devices.js';
+
 export const LEVEL_FORMAT = 'rubicon-level';
 export const LEVEL_V = 2; // 2：三倍高改版（座標與高度乘 LEVEL_K，舊檔在 migrateLevel 轉換）
 export const LEVEL_K = 3; // 尺度的倍率（core/scale.js 的 WS；這裡是純資料，不 import）
@@ -33,7 +35,17 @@ export const MARK_KINDS = {
   target: { name: '目標設施（破壞）', color: 0xff5050 },
   defend: { name: '防衛目標', color: 0x7ee081 },
   spawnpt: { name: '增援地點', color: 0xff8040 },
+  dev: { name: '地圖裝置', color: 0x5cc8ff, max: 24 }, // docs/map-devices-design.md：dk＝種類、foe＝敵人操作（固定砲台）
 };
+// 編輯器可以放的地圖裝置（撿起的重武器是擊破時掉落的，不能放）
+export const DEV_KINDS = Object.fromEntries(
+  Object.entries(DEVICES)
+    .filter(([k]) => k !== 'hwpick')
+    .map(([k, d]) => [
+      k,
+      d.name + (d.ev ? '（大型事件）' : d.trap ? '（陷阱）' : d.gun ? '（固定砲台）' : ''),
+    ]),
+);
 export const CACHE_LV = { repair: '全員修理', ammo: '彈藥補給', kit: '修理套件補滿' }; // 自訂關卡沒有資金與模組
 export const BEHAVIORS = {
   attack: '進攻',
@@ -116,6 +128,10 @@ export const EVENTS = {
   target: { name: '目標設施被破壞', p: [{ k: 'm', type: 'mark', mk: 'target', name: '目標（空白＝任一）' }] },
   defend: { name: '防衛目標被毀', p: [{ k: 'm', type: 'mark', mk: 'defend', name: '目標（空白＝任一）' }] },
   cache: { name: '補給箱打開', p: [{ k: 'm', type: 'mark', mk: 'cache', name: '補給箱（空白＝任一）' }] },
+  dev: {
+    name: '地圖裝置被啟動',
+    p: [{ k: 'm', type: 'mark', mk: 'dev', name: '裝置（空白＝任一）' }],
+  },
   term: { name: '資料終端完成', p: [{ k: 'm', type: 'mark', mk: 'term', name: '終端（空白＝任一）' }] },
   exit: { name: '玩家走進出口', p: [{ k: 'm', type: 'mark', mk: 'exit', name: '出口（空白＝任一）' }] },
   counter: {
@@ -253,6 +269,19 @@ export const ACTIONS = {
     ],
   },
   hide: { name: '移除物件（開門）', p: [{ k: 'tag', type: 'tag', name: '物件標籤' }] },
+  dev: {
+    name: '地圖裝置',
+    p: [
+      { k: 'm', type: 'mark', mk: 'dev', name: '裝置（空白＝全部）' },
+      {
+        k: 'op',
+        type: 'sel',
+        name: '',
+        opts: { fire: '觸發（陷阱、大型事件）', off: '停用', on: '啟用', reset: '重設（陷阱可以再用一次）' },
+        def: 'fire',
+      },
+    ],
+  },
   show: { name: '顯示物件', p: [{ k: 'tag', type: 'tag', name: '物件標籤' }] },
   weather: {
     name: '改天候',
@@ -522,6 +551,8 @@ export function sanitizeLevel(raw, known, warn = []) {
       t: m.k === 'term' ? r2(clampN(m.t, 1, 60, 4)) : undefined,
       open: m.k === 'exit' ? bool(m.open) : undefined,
       once: m.k === 'supply' ? m.once !== false : undefined,
+      dk: m.k === 'dev' ? (m.dk in DEV_KINDS ? m.dk : 'radar') : undefined,
+      foe: m.k === 'dev' ? bool(m.foe) : undefined,
     });
   }
   uniq(out.marks, 'm');

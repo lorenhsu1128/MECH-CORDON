@@ -140,7 +140,7 @@ Object.assign(Game.prototype, {
   // damageProp 轉過來（房主／單機）
   trapDamage(t, dmg, at, from) {
     const d = t.dev;
-    if (d.def.gun) return this.gunDamage(d, dmg, at); // 敵方佔著的固定砲台（devices-guns.js）
+    if (d.def.gun) return this.gunDamage(d, dmg, at, from); // 敵方佔著的固定砲台（devices-guns.js）
     if (d.st !== ST_IDLE) return;
     d.hp -= Math.max(1, Math.round(dmg));
     this.popDamage(at || t.center(), Math.round(dmg), false, false, false, 0, t.id);
@@ -156,6 +156,7 @@ Object.assign(Game.prototype, {
     d.done = 0;
     d.by = by && by.team === 'player' ? by.id : 0;
     const def = d.def;
+    this.devLvEmit(d); // 自訂關卡的觸發器
     if (by && by.isPlayer) this.flashMsg(`${def.name} — ${def.act}`, def.color, 1.6);
     SFX.explode(false, d.tgt ? d.tgt.pos : d.pos);
   },

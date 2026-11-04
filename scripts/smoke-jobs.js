@@ -61,6 +61,7 @@ const DEFAULT_TIMES = {
   testTraps: 90000,
   testGuns: 30000,
   testEvents: 60000,
+  testLevelDevices: 15000,
   testDevicesMp: 60000,
   testBoundary: 1548,
   testCampaign: 47376,

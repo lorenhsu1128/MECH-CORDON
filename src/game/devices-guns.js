@@ -43,11 +43,14 @@ Object.assign(Game.prototype, {
     if (this.isBossLevel) want.push([list[0], null, false], [list[1], null, false]);
     else {
       // 一座敵人佔著（在某一群那裡）、一半的場次再多一座中立的（在路途中段）
-      if (G.length) want.push([list[0], G[Math.floor(Math.random() * G.length)].pos, true]);
+      if (G.length) {
+        const gi = Math.floor(Math.random() * G.length);
+        want.push([list[0], G[gi].pos, true, gi]);
+      }
       if (!G.length || Math.random() < 0.5)
         want.push([list[1], s && G.length ? this.devLerp(s, G[G.length >> 1].pos, 0.6) : null, false]);
     }
-    for (const [k, at, foe] of want) {
+    for (const [k, at, foe, gi] of want) {
       const pt = this.devSpot(at, used, 3, !!at && foe) || (at && foe ? null : this.devSpot(null, used, 3));
       if (!pt) continue;
       used.push(pt);
@@ -56,17 +59,26 @@ Object.assign(Game.prototype, {
       const a = Math.atan2((Zn[0] + Zn[1]) / 2 - pt.x, (Zn[2] + Zn[3]) / 2 - pt.z);
       const y = ((Math.round(a / (Math.PI / 2)) % 4) + 4) % 4;
       const d = this.devAdd({ i: ++this.devSeq, k, x: pt.x, z: pt.z, y, v: 1 });
-      if (d && foe) this.gunGunner(d);
+      if (d && foe) this.gunGunner(d, gi);
     }
   },
-  // 敵方的操作員：一台 MT 站在操作台上（edHold：不移動）
-  gunGunner(d) {
+  // 敵方的操作員：一台 MT 站在操作台上（edHold：不移動）；gi＝所在的敵群（算進那一群、和第一波一樣待機）
+  gunGunner(d, gi) {
     this.waveAt = { pos: d.usePos.clone(), drop: false };
+    const idle = gi !== undefined && gi !== null;
+    if (idle) {
+      this.spawnIdle = true;
+      this.encG = gi;
+    }
     let e = null;
     try {
       e = this.spawnType('mt', this.scaleHp, this.scaleDmg);
     } finally {
       this.waveAt = null;
+      if (idle) {
+        this.spawnIdle = false;
+        this.encG = null;
+      }
     }
     if (!e) return;
     e.pos.copy(d.usePos);
@@ -114,8 +126,11 @@ Object.assign(Game.prototype, {
     };
   },
   // 子彈打到敵方佔著的砲台（trapDamage 轉過來）
-  gunDamage(d, dmg, at) {
+  gunDamage(d, dmg, at, from) {
     if (d.st === ST_USED) return;
+    // 砲台被打：操作員發現攻擊者
+    const gn = d.st === ST_FOE ? this.entById(d.user) : null;
+    if (gn && gn.sn && gn.sn.st !== 2 && from && from.pos) gn.senseEngage(from, true);
     d.hp -= Math.max(1, Math.round(dmg));
     this.popDamage(at || d.tgt.center(), Math.round(dmg), false, false, false, 0, d.tgt.id);
     if (d.hp <= 0) this.gunDestroy(d);
@@ -156,6 +171,7 @@ Object.assign(Game.prototype, {
     d.itPrev = true;
     p.devMount = d.id;
     p.vel.set(0, 0, 0);
+    this.devLvEmit(d); // 自訂關卡的觸發器
     if (p.isPlayer) this.flashMsg(`上${d.def.name} — 射擊鍵開火，再按一次互動鍵離開`, d.def.color, 2);
     SFX.ui();
   },
@@ -197,7 +213,9 @@ Object.assign(Game.prototype, {
           best = p;
         }
       }
-      if (best) {
+      // 操作員還在待機（第一波）時不開火，除非玩家很近；發現玩家（交戰）才開火
+      const calm = e.sn && e.sn.on && e.sn.st !== 2 && !(best && bd < 25 * DS);
+      if (best && !calm) {
         d.aim = Math.atan2(best.pos.x - d.pos.x, best.pos.z - d.pos.z);
         if (d.cd <= 0 && d.ohT <= 0) this.gunFire(d, best.center(), e, 'enemy', best, true);
       }

@@ -6178,6 +6178,101 @@ async function testEvents(browser, base) {
   await page.evaluate(() => (window.__game.evForce = false));
   await ctx.close();
 }
+// 自訂關卡的地圖裝置（docs/map-devices-design.md 第 7 期）：標記「地圖裝置」（種類、敵人操作）、讀檔驗證、
+// 遊玩時生成、觸發器的事件「地圖裝置被啟動」與動作「地圖裝置」（停用、啟用、觸發）、過關條件卡片的說明
+async function testLevelDevices(browser, base) {
+  console.log('自訂關卡：地圖裝置與觸發器');
+  const { ctx, page } = await newPage(browser, 'lv-devices');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await freezeLoop(page);
+  const r = await page.evaluate(() => {
+    const g = window.__game;
+    const L0 = JSON.parse(JSON.stringify(g.lvSamples()[0]));
+    const sp = L0.marks.find((m) => m.k === 'spawn') || { x: 0, z: 0 };
+    const mk = (id, dk, dx, dz, o = {}) => ({
+      k: 'dev',
+      id,
+      name: id,
+      x: sp.x + dx,
+      y: 0,
+      z: sp.z + dz,
+      yaw: 0,
+      dk,
+      ...o,
+    });
+    L0.marks.push(
+      mk('dv1', 'radar', 40, 0),
+      mk('dv2', 'crane', -60, 40),
+      mk('dv3', 'gun_hmg', 60, 60, { foe: true }),
+      mk('dv4', 'nope', 0, 80),
+    );
+    L0.counters.push({ id: 'cd1', name: '陷阱', v: 0 });
+    L0.triggers.push(
+      {
+        id: 'td1',
+        name: 'td1',
+        on: true,
+        once: true,
+        any: false,
+        ev: { k: 'dev', m: 'dv2' },
+        cond: [],
+        act: [{ k: 'add', c: 'cd1', v: 1 }],
+      },
+      {
+        id: 'td2',
+        name: 'td2',
+        on: true,
+        once: true,
+        any: false,
+        ev: { k: 'start' },
+        cond: [],
+        act: [{ k: 'dev', m: 'dv1', op: 'off' }],
+      },
+    );
+    const L = window.__loadLevel(L0, []);
+    const m4 = L.marks.find((m) => m.id === 'dv4');
+    const out = {
+      marks: L.marks
+        .filter((m) => m.k === 'dev')
+        .map((m) => m.dk + (m.foe ? '!' : ''))
+        .join(','),
+      bad: m4 && m4.dk,
+      ev: L.triggers.some((t) => t.ev.k === 'dev' && t.ev.m === 'dv2'),
+      act: L.triggers.some((t) => t.act.some((a) => a.k === 'dev' && a.op === 'off')),
+    };
+    g.lvPlay(L, { src: 'sample' });
+    const D = (id) => g.devs.find((d) => d.lvm === id);
+    out.n = g.devs.length;
+    out.gunFoe = D('dv3') && D('dv3').st === 5;
+    // 開場的觸發器：雷達站停用
+    window.__pump(0.5);
+    out.radarOff = D('dv1') && D('dv1').st === 6;
+    // 打斷貨櫃的吊鉤 → 事件 → 計數器
+    const c = D('dv2');
+    g.damageProp(c.tgt, c.def.hp + 10, 0, c.tgt.pos.clone(), g.player);
+    window.__pump(0.5);
+    out.cnt = g.lv.st.cnt.cd1 || 0;
+    // 動作「地圖裝置」：啟用雷達站
+    g.devLvOp('dv1', 'on');
+    out.radarOn = D('dv1').st === 0;
+    out.goal = g.devGoalText();
+    g.clearMission();
+    g.state = 'title';
+    g.showScreen('title');
+    return out;
+  });
+  check(
+    r.marks === 'radar,crane,gun_hmg!,radar' && r.ev && r.act,
+    `標記「地圖裝置」讀檔保留種類與敵人操作、不認得的種類改成雷達站（${r.marks}）、觸發器的事件與動作`,
+  );
+  check(r.n === 4 && r.gunFoe, `遊玩時生成地圖裝置（${r.n} 個），固定砲台有敵人操作`);
+  check(r.radarOff && r.radarOn, '觸發器動作「地圖裝置」：停用與啟用雷達站');
+  check(r.cnt === 1, `觸發器事件「地圖裝置被啟動」：打斷吊鉤時執行（計數器 ${r.cnt}）`);
+  check(/雷達站/.test(r.goal) && /陷阱/.test(r.goal), `過關條件卡片列出可以利用的裝置（${r.goal}）`);
+  await thawLoop(page);
+  await ctx.close();
+}
 // 多人的地圖互動裝置：客機按住互動鍵佔領雷達站（判定在房主）、狀態隨快照給客機
 async function testDevicesMp(browser, url) {
   console.log('多人：地圖互動裝置');
@@ -26694,6 +26789,7 @@ const STEPS = [
   ['testTraps', (c) => testTraps(c.browser, c.base)],
   ['testGuns', (c) => testGuns(c.browser, c.base)],
   ['testEvents', (c) => testEvents(c.browser, c.base)],
+  ['testLevelDevices', (c) => testLevelDevices(c.browser, c.base)],
   ['testBoundary', (c) => testBoundary(c.browser, c.base)],
   ['testAir', (c) => testAir(c.browser, c.base)],
   ['testCampaign', (c) => testCampaign(c.browser, c.base)],

@@ -3,6 +3,7 @@
 // 目標設施、防衛目標）、觸發器（事件 → 條件 → 動作，計數器、倒數、等待）、勝敗、HUD、多段出擊。
 // 邏輯只在房主／單機；客機收到快照的 mis.lv（觸發器狀態：目標文字、倒數、區域圈、出口）與 'lvx' 事件只做顯示。
 // 自訂關卡不給 COAM、經驗與熟練度（擊破獎金也不入帳），只記通關紀錄。
+import { DEVICES } from '../data/devices.js';
 import { SFX } from '../audio/audio.js';
 import { escHtml } from '../core/html.js';
 import { clamp } from '../core/math.js';
@@ -257,6 +258,7 @@ Object.assign(Game.prototype, {
           group: this.campRing(pos, 0x7fc8ff, m.name || '資料終端', `站在裡面 ${m.t || 4} 秒`),
         };
       else if (m.k === 'exit') lv.vis[m.id] = { pos, m, t: 0, group: null };
+      else if (m.k === 'dev' && host) this.lvDevAdd(m); // 地圖裝置（devices.js）
     }
     this.lvSyncVis();
   },
@@ -869,6 +871,24 @@ Object.assign(Game.prototype, {
     }
     st.run = st.run.filter((r) => !r.done);
   },
+  // 自訂關卡的地圖裝置（房主；客機照快照的裝置表建立）
+  lvDevAdd(m) {
+    const D = DEVICES[m.dk];
+    if (!D) return;
+    const np = this.players && this.players.length ? this.players.length : 1;
+    const y = (((Math.round((m.yaw || 0) / (Math.PI / 2)) % 4) + 4) % 4) | 0;
+    const d = this.devAdd({
+      i: ++this.devSeq,
+      k: m.dk,
+      x: m.x,
+      z: m.z,
+      y,
+      v: m.dk === 'recharge' ? D.cap + D.capMp * (np - 1) : 1,
+    });
+    if (!d) return;
+    d.lvm = m.id;
+    if (D.gun && m.foe) this.gunGunner(d);
+  },
   lvAct(a) {
     const lv = this.lv,
       st = lv.st,
@@ -893,6 +913,9 @@ Object.assign(Game.prototype, {
       case 'obj':
         st.obj = a.text || '';
         if (a.text) SFX.ui();
+        break;
+      case 'dev':
+        this.devLvOp(a.m, a.op || 'fire');
         break;
       case 'open':
         for (const m of L.marks) if (m.k === 'exit' && (!a.m || m.id === a.m)) st.exits[m.id] = 1;

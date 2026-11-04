@@ -9,6 +9,7 @@ import {
   LEVEL_LV,
   LIMITS,
   MARK_KINDS,
+  DEV_KINDS,
   UNIT_KINDS,
 } from '../level/format.js';
 import { unitName, unitTypes } from '../level/known.js';
@@ -608,6 +609,12 @@ Object.assign(Game.prototype, {
       if (o.k === 'term') h += field('站幾秒', num('t', o.t, 1, 60, 1));
       if (o.k === 'exit') h += field('一開始就開啟', chk('open', o.open));
       if (o.k === 'supply') h += field('只能用一次', chk('once', o.once));
+      if (o.k === 'dev') {
+        // 地圖裝置（docs/map-devices-design.md）：種類、朝向（90° 的幾倍）、固定砲台可以由敵人操作
+        h += field('種類', sel('dk', o.dk, DEV_KINDS));
+        if (/^gun_/.test(o.dk)) h += field('敵人操作', chk('foe', o.foe));
+        h += field('朝向°', num('yawd', deg(o.yaw), -360, 360, 90));
+      }
       if (o.k === 'spawn') h += field('朝向°', num('yawd', deg(o.yaw), -360, 360, 1));
       h += pos + btns(o.k === 'spawn');
     } else if (s.t === 'path' || s.t === 'pathpt') {
