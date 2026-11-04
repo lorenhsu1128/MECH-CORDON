@@ -71,6 +71,17 @@ export class Game {
     // 砲火特效（設定 ctrl.fxLv：rich 華麗（預設）／std 標準＝改版前）與彈殼、焦痕用的地面高度（只看地形，便宜）
     this.fx.richOf = () => this.ctrl.fxLv !== 'std';
     this.fx.ground = (x, z) => (this.world ? this.world.terrainHeight(x, z) : null);
+    // 地面材質與顏色（第 8.4 期：子彈與爆炸依地面換效果）
+    this.fx.surfOf = (x, z, y) => (this.world ? this.surfAt(x, z, y) : 'conc');
+    this.fx.groundCol = () => {
+      const w = this.world;
+      if (!w) return 0x9a958a;
+      if (this._gcW !== w) {
+        this._gcW = w;
+        this._gc = new THREE.Color(w.theme.ground).getHex();
+      }
+      return this._gc;
+    };
     this.wrapFx();
     this.projSeq = 0;
     this.rangeRing = new THREE.Mesh(

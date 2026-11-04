@@ -8,6 +8,7 @@ import { OUTLINE_MAT, OUTLINE_SKIN, isOutline } from '../geometry.js';
 import { StyleAtmos } from './atmos.js';
 import { STYLE_DEFAULTS } from './params.js';
 import { setStyleUniforms } from './shader.js';
+import { FX_LAYER, FX_MESHES, FXU, fxLight } from '../../fx/gpu.js';
 
 // 著色器 uniform 與描邊材質是全域共用的：同一頁有其他畫面（模型庫）時，畫完風格預覽後恢復預設
 export function resetStyleGlobals() {
@@ -17,6 +18,34 @@ export function resetStyleGlobals() {
 }
 
 const VERT = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4( position.xy, 0.0, 1.0 ); }';
+
+// 熱扭曲（docs/vfx-design.md 第 8.3 期）：tHeat＝熱源的強度圖（半解析度，加色），依它把畫面往兩個正弦組合的方向偏移
+const HEAT_FRAG = /* glsl */ `
+uniform sampler2D tColor, tHeat;
+uniform vec2 px;
+uniform float time, amt;
+varying vec2 vUv;
+void main() {
+  float s = min(texture2D( tHeat, vUv ).r, 1.5);
+  vec2 o = vec2( 0.0 );
+  if ( s > 0.003 ) {
+    vec2 q = vUv / px / 38.0;
+    o = vec2( sin( q.y * 1.7 + time * 8.0 ) + 0.6 * sin( q.x * 1.1 - time * 5.3 ),
+              cos( q.x * 1.5 + time * 7.1 ) + 0.6 * sin( q.y * 0.9 + time * 9.7 ) ) * s * amt * px;
+  }
+  gl_FragColor = texture2D( tColor, vUv + o );
+}`;
+
+// 軟粒子用的深度（docs/vfx-design.md 第 8.1 期）：線性的視線深度÷far，RGBA 打包（RGBA8 的目標就夠）
+const DCOPY_FRAG = /* glsl */ `
+#include <packing>
+uniform sampler2D tDepth;
+uniform float cNear, cFar;
+varying vec2 vUv;
+void main() {
+  float z = - perspectiveDepthToViewZ( texture2D( tDepth, vUv ).x, cNear, cFar );
+  gl_FragColor = packDepthToRGBA( clamp( z / cFar, 0.0, 0.9999 ) );
+}`;
 
 const COMP_FRAG = /* glsl */ `
 #include <packing>
@@ -334,6 +363,31 @@ export class StylePipeline {
     this.fxaa = THREE.FXAAShader
       ? quad(THREE.FXAAShader.fragmentShader, THREE.UniformsUtils.clone(THREE.FXAAShader.uniforms))
       : null;
+    // 軟粒子：不透明場景的深度拷貝（粒子另外畫一次時讀它）
+    this.rtD = depthOk
+      ? new THREE.WebGLRenderTarget(4, 4, {
+          minFilter: THREE.NearestFilter,
+          magFilter: THREE.NearestFilter,
+          format: THREE.RGBAFormat,
+          depthBuffer: false,
+        })
+      : null;
+    this.rtH = depthOk
+      ? new THREE.WebGLRenderTarget(4, 4, {
+          minFilter: THREE.LinearFilter,
+          magFilter: THREE.LinearFilter,
+          format: THREE.RGBAFormat,
+          depthBuffer: false,
+        })
+      : null;
+    this.heatQ = quad(HEAT_FRAG, {
+      tColor: { value: null },
+      tHeat: { value: null },
+      px: { value: new THREE.Vector2() },
+      time: { value: 0 },
+      amt: { value: 6 },
+    });
+    this.dcopy = quad(DCOPY_FRAG, { tDepth: { value: null }, cNear: { value: 0.5 }, cFar: { value: 400 } });
     this.nrm = quad(NRM_FRAG, {
       tDepth: { value: null },
       px: { value: new THREE.Vector2() },
@@ -369,9 +423,10 @@ export class StylePipeline {
     if (W === this.w && H === this.h) return;
     this.w = W;
     this.h = H;
-    for (const t of [this.rtScene, this.rtPrev, this.rtA, this.rtB, this.rtL, this.rtR])
+    for (const t of [this.rtScene, this.rtPrev, this.rtA, this.rtB, this.rtL, this.rtR, this.rtD])
       if (t) t.setSize(W, H);
     this.prevOk = false;
+    if (this.rtH) this.rtH.setSize(Math.max(1, W >> 1), Math.max(1, H >> 1));
     this.sizeSSAO();
     if (this.bloom) this.bloom.setSize(W, H);
   }
@@ -460,6 +515,7 @@ export class StylePipeline {
     }
     OUTLINE_MAT.visible = OUTLINE_SKIN.visible = P.hull > 0 && !this.hullOff;
     OUTLINE_MAT.uniforms.th.value = 0.012 * P.hull;
+    fxLight(c.sunOff, c.sun, c.hemi); // 煙的受光（fx/gpu.js）
     if (!this.atmos) return;
     const fc = s.fog ? s.fog.color : B.fogColor;
     this.atmos.update(
@@ -509,9 +565,14 @@ export class StylePipeline {
       s = this.scene;
     const W = this.w,
       H = this.h;
-    // 1. 場景
+    // 1. 場景（軟粒子：先畫粒子以外的東西、拷貝深度、再只畫粒子）
     R.setRenderTarget(this.rtScene);
-    R.render(s, cam);
+    this.softUsed = false;
+    if (this.softOk()) this.renderSoft(s, cam);
+    else {
+      FXU.uSoftOn.value = 0;
+      R.render(s, cam);
+    }
     // 2. SSAO（只畫法線＋算 AO，不再重畫一次場景）
     const low = this.low;
     const ao = this.ssao && P.ssao > 0 && !(low && low.ssao === 'off');
@@ -565,6 +626,12 @@ export class StylePipeline {
     // 3.5 景深（過場動畫的 P.dof；rtA → rtB，之後改用 rtB）
     let src = this.rtA,
       tmp = this.rtB;
+    // 3.4 熱扭曲（第 8.3 期）：這一格有軟粒子的深度、有熱源時
+    if (this.softUsed && this.heatPass(src, tmp, time)) {
+      const t = src;
+      src = tmp;
+      tmp = t;
+    }
     if (depth && P.dof > 0) {
       const d = this.dof.m.uniforms;
       d.tColor.value = this.rtA.texture;
@@ -607,6 +674,97 @@ export class StylePipeline {
       f.resolution.value.set(1 / W, 1 / H);
       this.draw(this.fxaa, out);
     } else this.draw(this.grade, out);
+  }
+  // 熱扭曲：熱源的場景（ctx.heat() → { scene, on }）畫成半解析度的強度圖（用這一格的深度拷貝遮住牆後的熱源），
+  // 再把 src 扭曲到 dst。沒有熱源時回傳 false
+  heatPass(src, dst, time) {
+    const H = this.ctx.heat && this.ctx.heat();
+    if (!H || !H.on || !this.rtH || this.noHeat) return false;
+    const R = this.R,
+      cam = this.camera;
+    const oc = R.getClearColor(new THREE.Color()),
+      oa = R.getClearAlpha(),
+      ac = R.autoClear;
+    const res = FXU.uRes.value.clone();
+    FXU.uSoftOn.value = 1;
+    FXU.uRes.value.set(this.rtH.width, this.rtH.height);
+    try {
+      R.setClearColor(0x000000, 0);
+      R.autoClear = true;
+      R.setRenderTarget(this.rtH);
+      R.render(H.scene, cam);
+    } finally {
+      R.setClearColor(oc, oa);
+      R.autoClear = ac;
+      FXU.uSoftOn.value = 0;
+      FXU.uRes.value.copy(res);
+    }
+    const u = this.heatQ.m.uniforms;
+    u.tColor.value = src.texture;
+    u.tHeat.value = this.rtH.texture;
+    u.px.value.set(1 / this.w, 1 / this.h);
+    u.time.value = time;
+    u.amt.value = 6 * R.getPixelRatio();
+    this.draw(this.heatQ, dst);
+    this.heatN = (this.heatN || 0) + 1; // 冒煙測試數畫了幾次
+    return true;
+  }
+  // 軟粒子可以用的時候：有深度貼圖、透視鏡頭、不是低特效的場面
+  softOk() {
+    const dt = this.rtScene.depthTexture;
+    return !!(
+      this.rtD &&
+      dt &&
+      this.camera.isPerspectiveCamera &&
+      !this.low &&
+      !this.noSoft &&
+      FX_MESHES.size
+    );
+  }
+  // 粒子另外畫：第一次隱藏粒子，深度拷貝到 rtD，第二次鏡頭只看粒子的圖層（不清除、不畫背景、不更新陰影）
+  renderSoft(s, cam) {
+    const R = this.R,
+      hid = [];
+    for (const m of FX_MESHES)
+      if (m.visible) {
+        m.visible = false;
+        hid.push(m);
+      }
+    try {
+      R.render(s, cam);
+    } finally {
+      for (const m of hid) m.visible = true;
+    }
+    this.softUsed = false;
+    if (!hid.length) return;
+    this.softUsed = true;
+    const u = this.dcopy.m.uniforms;
+    u.tDepth.value = this.rtScene.depthTexture;
+    u.cNear.value = cam.near;
+    u.cFar.value = cam.far;
+    this.draw(this.dcopy, this.rtD);
+    FXU.uDepth.value = this.rtD.texture;
+    FXU.uSoftOn.value = 1;
+    FXU.uRes.value.set(this.w, this.h);
+    FXU.uFar.value = cam.far;
+    const mask = cam.layers.mask,
+      ac = R.autoClear,
+      bg = s.background,
+      sm = R.shadowMap.needsUpdate;
+    cam.layers.set(FX_LAYER);
+    R.autoClear = false;
+    s.background = null;
+    R.shadowMap.needsUpdate = false;
+    try {
+      R.setRenderTarget(this.rtScene);
+      R.render(s, cam);
+    } finally {
+      cam.layers.mask = mask;
+      R.autoClear = ac;
+      s.background = bg;
+      R.shadowMap.needsUpdate = sm;
+      FXU.uSoftOn.value = 0;
+    }
   }
   // SSAO 的法線（同 SSAOPass 的 overrideVisibility＋renderOverride＋restoreVisibility，但只走訪場景一次）：
   // 隱藏點、線（SSAOPass 原本就隱藏），以及描邊外殼（覆蓋材質下它和本體是同一份幾何、同樣的深度與法線，畫了結果相同，
@@ -704,6 +862,7 @@ export class StylePipeline {
   // 不做後處理時：直接畫到畫面（設定裡關掉後製特效）
   renderPlain(P, time) {
     this.prevOk = false;
+    FXU.uSoftOn.value = 0;
     this.applyScene(P, time);
     this.R.setRenderTarget(null);
     this.R.render(this.scene, this.camera);

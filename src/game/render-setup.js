@@ -37,6 +37,7 @@ Object.assign(Game.prototype, {
       chromaPush: () => (this.chromaK || 0) * 0.7, // 受到重擊時的色差（game/juice.js）
       wscale: () => DS, // 機甲三倍高改版
       sceneTweak: (s) => this.water && this.water.fogTweak(s), // 水面下的霧（fx/water/index.js）
+      heat: () => this.fx && { scene: this.fx.heatScene, on: this.fx.heatOn() }, // 熱扭曲（fx/effects.js，第 8.3 期）
     });
     this.stylePipe.applyStructural(this.styleP);
   },
@@ -79,6 +80,7 @@ Object.assign(Game.prototype, {
     this.fxAmbientTick(); // 地圖的持續特效（game/fx-ambient.js）
     this.propDmgTick(); // 地圖物件的受損效果（game/destruct.js）
     this.waterTick(); // 水面與雲海（game/water.js）：模擬、焦散、平面反射
+    if (this.fx) this.fx.lightTick(this.camera, this.camTarget); // 火光（fx/effects.js，第 8.2 期）
     if (this.post.enabled && this.post.ok) this.stylePipe.render(P, t, lab && lab.cmp ? lab.cmpArg() : null);
     else this.stylePipe.renderPlain(P, t);
     this.waterAfter();

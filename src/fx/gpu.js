@@ -11,24 +11,76 @@
 //  fade：0 線性、1 平方、2 結尾才淡（1−t²）、3 淡入淡出、4 閃爍、5 先維持再淡出（t＞0.7）、6 淡入（蓄力：越接近中心越亮）。
 //  混合一律是預乘透明度（ONE, ONE_MINUS_SRC_ALPHA）：輸出 (rgb·a, a·occ)，occ＝遮蔽度——0＝純加色（光、火花），
 //  1＝一般混合（煙），中間＝發光但也蓋住背景（火球、火焰：在明亮的地面上也看得到）。同一個系統裡可以混著用。
+//  第 8.1 期（docs/vfx-design.md）：
+//    軟粒子：StylePipeline 先畫不透明的場景、把深度拷貝成 FXU.uDepth（線性的視線深度÷far，RGBA 打包），再只畫粒子
+//      （FX_LAYER），粒子離後面的表面 soft×邊長 以內時淡掉（ground 平放的不做）。沒有管線（renderPlain、模型庫）時 uSoftOn＝0。
+//    lit：煙受光——面向鏡頭的四邊形當成一顆球算法線，依太陽方向的明暗（包覆的 Lambert）＋背光時邊緣透光，
+//      內部翻滾（同一格貼圖反向旋轉再取樣一次相乘）。只有煙塵系統開。
+//    wind：共用的風（FXU.uWind，Game 依地圖設定）×系統的倍率×年齡，煙柱往同一個方向斜。
 // ============================================================
 import { fxAtlasTex } from './atlas.js';
 
 const STRIDE = 28;
 const MODES = { bill: 0, stretch: 1, ground: 2 };
-// 所有粒子系統共用的 uniform：圖集與渲染風格的色階（render/style 設定 fxStyle）
-export const FXU = { uTex: { value: null }, uCel: { value: 0 } };
+// 粒子網格另外開的圖層：管線的第二次算繪只畫這一層（一般的鏡頭照常看得到，因為也在第 0 層）
+export const FX_LAYER = 30;
+// 所有粒子系統的網格（管線第一次算繪時暫時隱藏）
+export const FX_MESHES = new Set();
+// 所有粒子系統共用的 uniform：圖集與渲染風格的色階（render/style 設定 fxStyle）、軟粒子的深度、太陽、風
+export const FXU = {
+  uTex: { value: null },
+  uCel: { value: 0 },
+  uDepth: { value: null },
+  uSoftOn: { value: 0 },
+  uRes: { value: new THREE.Vector2(1, 1) },
+  uFar: { value: 1000 },
+  uSunDir: { value: new THREE.Vector3(0.4, 0.8, 0.3).normalize() },
+  uSunC: { value: new THREE.Color(0.75, 0.75, 0.75) },
+  uAmbC: { value: new THREE.Color(0.55, 0.55, 0.55) },
+  uWind: { value: new THREE.Vector3() },
+  uLitOn: { value: 1 }, // 受光與翻滾的開關（比較改版前後用）
+};
 export function fxStyle(cel) {
   FXU.uCel.value = cel || 0;
+}
+// 煙的受光（StylePipeline.applyScene 每格）：太陽的方向（往太陽）、顏色與強度、半球光。
+// 平均亮度維持和改版前差不多（受光面約 ×1.3、背光面約 ×0.55）
+const _sc = new THREE.Color(),
+  _w = new THREE.Color(1, 1, 1);
+export function fxLight(sunOff, sun, hemi) {
+  if (sunOff && sunOff.lengthSq() > 0) FXU.uSunDir.value.copy(sunOff).normalize();
+  const I = sun ? Math.min(1.3, Math.max(0.2, sun.intensity)) : 1;
+  const H = hemi ? Math.min(1.3, Math.max(0.25, hemi.intensity / 0.48)) : 1;
+  if (sun) {
+    _sc.copy(sun.color);
+    const m = Math.max(_sc.r, _sc.g, _sc.b, 1e-3);
+    _sc.multiplyScalar(1 / m).lerp(_w, 0.45);
+  } else _sc.setRGB(1, 1, 1);
+  FXU.uSunC.value.copy(_sc).multiplyScalar(0.8 * I);
+  const sky = hemi ? hemi.color : _sc;
+  const am = Math.max(sky.r, sky.g, sky.b, 1e-3);
+  FXU.uAmbC.value
+    .setRGB(sky.r / am, sky.g / am, sky.b / am)
+    .lerp(_w, 0.7)
+    .multiplyScalar(0.55 * H);
+}
+// 共用的風（m/s，世界座標）
+export function fxWind(x, y, z) {
+  FXU.uWind.value.set(x, y, z);
 }
 
 const VS = /* glsl */ `
 #define MODE ${'$'}{MODE}
-uniform float uTime, uSpd, uMaxL;
+${'$'}{DEFS}
+uniform float uTime, uSpd, uMaxL, uWindK;
+uniform vec3 uWind;
 attribute vec4 aP, aV, aC0, aC1, aS, aM, aD;
 varying vec2 vUv;
 varying vec4 vCol;
-varying float vT, vCell, vA0, vFogD, vOcc;
+varying float vT, vCell, vA0, vFogD, vOcc, vSz, vSeed;
+#ifdef LIT
+varying vec3 vRx, vUy, vEye;
+#endif
 void main() {
   float age = uTime - aP.w;
   float life = aV.w;
@@ -42,6 +94,7 @@ void main() {
   float ed = exp(-d * age);
   vec3 lp = aP.xyz + (d > 1e-3 ? aV.xyz * (1.0 - ed) / d : aV.xyz * age);
   lp.y -= 0.5 * aM.x * age * age;
+  lp += uWind * (uWindK * age);
   // 粒子的座標是系統所在群組的座標（遊戲裡掛在場景＝單位矩陣；格納庫掛在場景的群組裡）
   vec3 wp = (modelMatrix * vec4(lp, 1.0)).xyz;
   mat3 mm = mat3(modelMatrix);
@@ -55,6 +108,11 @@ void main() {
   vec3 off;
 #if MODE == 0
   off = camR * q.x + camU * q.y;
+#ifdef LIT
+  vRx = camR * ca + camU * sa;
+  vUy = camU * ca - camR * sa;
+  vEye = normalize(cameraPosition - wp);
+#endif
 #elif MODE == 1
   bool hasAx = dot(aD.xyz, aD.xyz) > 1e-8;
   vec3 ax = hasAx ? mm * aD.xyz : vel;
@@ -74,6 +132,8 @@ void main() {
   vec4 mv = viewMatrix * vec4(wp + off, 1.0);
   gl_Position = projectionMatrix * mv;
   vFogD = -mv.z;
+  vSz = sz;
+  vSeed = fract(aP.x * 0.371 + aP.z * 0.713 + aP.w * 1.37);
   float f = aM.w, fa;
   if (f < 0.5) fa = 1.0 - t;
   else if (f < 1.5) fa = (1.0 - t) * (1.0 - t);
@@ -91,11 +151,23 @@ void main() {
 }`;
 
 const FS = /* glsl */ `
-uniform sampler2D uTex;
-uniform float uCel;
+${'$'}{DEFS}
+#include <packing>
+uniform sampler2D uTex, uDepth;
+uniform float uCel, uSoftOn, uSoftK, uFar, uLitOn;
+uniform vec2 uRes;
+uniform vec3 uSunDir, uSunC, uAmbC;
 varying vec2 vUv;
 varying vec4 vCol;
-varying float vT, vCell, vA0, vFogD, vOcc;
+varying float vT, vCell, vA0, vFogD, vOcc, vSz, vSeed;
+#ifdef LIT
+varying vec3 vRx, vUy, vEye;
+#endif
+vec2 cellUv(float c, vec2 u) {
+  float col = mod(c, 8.0), row = floor(c / 8.0);
+  return vec2((col + u.x) / 8.0, 1.0 - (row + 1.0 - u.y) / 4.0);
+}
+float chan(vec3 tx, float ch) { return ch < 0.5 ? tx.r : (ch < 1.5 ? tx.g : tx.b); }
 #ifdef USE_FOG
 uniform vec3 fogColor;
 #ifdef FOG_EXP2
@@ -108,12 +180,35 @@ void main() {
   float cell = floor(vCell + 0.5);
   float ch = floor(cell / 32.0);
   float c = cell - ch * 32.0;
-  float col = mod(c, 8.0), row = floor(c / 8.0);
-  vec2 uv = vec2((col + vUv.x) / 8.0, 1.0 - (row + 1.0 - vUv.y) / 4.0);
-  vec3 tx = texture2D(uTex, uv).rgb;
-  float m = ch < 0.5 ? tx.r : (ch < 1.5 ? tx.g : tx.b);
+  float m = chan(texture2D(uTex, cellUv(c, vUv)).rgb, ch);
   vec3 rgb = vCol.rgb;
+#ifdef LIT
+  if (uLitOn > 0.5) {
+  // 內部翻滾：同一格貼圖反向旋轉（隨壽命）再取樣一次
+  float ra = (vSeed < 0.5 ? -1.0 : 1.0) * (0.6 + vT * 1.8) + vSeed * 6.28;
+  vec2 d0 = (vUv - 0.5) * 0.9;
+  vec2 u2 = vec2(cos(ra) * d0.x - sin(ra) * d0.y, sin(ra) * d0.x + cos(ra) * d0.y) + 0.5;
+  float m2 = chan(texture2D(uTex, cellUv(c, clamp(u2, 0.01, 0.99))).rgb, ch);
+  m = m * mix(1.0, 0.45 + m2 * 1.25, 0.65);
+  // 受光：四邊形當成一顆球（越接近邊緣法線越往外）
+  vec2 dd = (vUv - 0.5) * 2.0;
+  float r2 = min(dot(dd, dd), 1.0);
+  vec3 n = normalize(vRx * dd.x + vUy * dd.y + vEye * (sqrt(1.0 - r2) + 0.35));
+  float wrap = clamp(dot(n, uSunDir) * 0.55 + 0.5, 0.0, 1.0);
+  // 濃的地方背光面更暗（自我遮蔽），淡的邊緣在逆光時透亮
+  vec3 L = uAmbC * (1.0 - 0.25 * m) + uSunC * wrap;
+  float back = pow(max(dot(-vEye, uSunDir), 0.0), 4.0) * (1.0 - m) * 0.7;
+  rgb = rgb * L + vCol.rgb * uSunC * back;
+  }
+#endif
   float a = vCol.a * m;
+#ifdef SOFT
+  // 軟粒子：離後面的表面 uSoftK×邊長 以內時淡掉
+  if (uSoftOn > 0.5) {
+    float sd = unpackRGBAToDepth(texture2D(uDepth, gl_FragCoord.xy / uRes)) * uFar;
+    a *= clamp((sd - vFogD) / max(vSz * uSoftK, 0.05), 0.0, 1.0);
+  }
+#endif
   if (uCel > 0.0) {
     // 動畫的特效：透明度改成門檻（隨壽命升高＝溶解），顏色分 3 階、邊緣變硬
     float fade = vA0 > 0.0 ? vCol.a / vA0 : 0.0;
@@ -169,17 +264,33 @@ export class GpuFx {
     this.load = 0; // 最近產生的數量（指數衰減，約等於活著的粒子數；Effects 的減量用）
     if (!FXU.uTex.value) FXU.uTex.value = fxAtlasTex();
     const fogU = THREE.UniformsUtils.clone(THREE.UniformsLib.fog);
+    // lit：煙受光與內部翻滾（只有面向鏡頭的）；soft：軟粒子的距離（邊長的倍數，0＝不做；平放的一律不做）；
+    // wind：共用的風的倍率（0＝不受風）
+    const lit = !!o.lit && this.mode === 0;
+    const soft = this.mode !== 2 && o.soft !== 0;
+    const defs = (lit ? '#define LIT\n' : '') + (soft ? '#define SOFT\n' : '');
     this.mat = new THREE.ShaderMaterial({
       uniforms: {
         ...fogU,
         uTex: FXU.uTex,
         uCel: FXU.uCel,
+        uDepth: FXU.uDepth,
+        uSoftOn: FXU.uSoftOn,
+        uRes: FXU.uRes,
+        uFar: FXU.uFar,
+        uSunDir: FXU.uSunDir,
+        uSunC: FXU.uSunC,
+        uAmbC: FXU.uAmbC,
+        uWind: FXU.uWind,
+        uLitOn: FXU.uLitOn,
+        uWindK: { value: o.wind || 0 },
+        uSoftK: { value: o.soft != null ? o.soft : 0.4 },
         uTime: { value: 0 },
         uSpd: { value: o.spd || 0 },
         uMaxL: { value: o.maxL || 1e3 },
       },
-      vertexShader: VS.replace('${MODE}', String(this.mode)),
-      fragmentShader: FS,
+      vertexShader: VS.replace('${MODE}', String(this.mode)).replace('${DEFS}', defs),
+      fragmentShader: FS.replace('${DEFS}', defs),
       transparent: true,
       depthWrite: false,
       fog: true,
@@ -221,6 +332,8 @@ export class GpuFx {
       m.userData.noFade = true; // 鏡頭遮擋的淡出不處理
       m.userData.noAO = true; // 不進 SSAO 的法線圖
       m.userData.fxGpu = true;
+      m.layers.enable(FX_LAYER);
+      FX_MESHES.add(m);
       this.scene.add(m);
       this.mesh = m;
     }
@@ -329,8 +442,10 @@ export class GpuFx {
     this.mesh.visible = false;
   }
   dispose() {
+    FX_MESHES.delete(this.mesh);
     this.scene.remove(this.mesh);
     this.mesh.geometry.dispose();
     this.mat.dispose();
   }
 }
+if (typeof location !== 'undefined' && /[?&]test\b/.test(location.search)) window.__FXU = FXU; // 冒煙測試、特效截圖

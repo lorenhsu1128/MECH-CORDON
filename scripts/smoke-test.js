@@ -15418,6 +15418,92 @@ async function testFx(browser, base) {
     out.lowhp = G.gl.n + G.sm.n + G.ln.n - lo0;
     pl.hp = hp0;
     out.noAO = fx.gList.every((x) => x.mesh.userData.noAO && x.mesh.userData.noFade);
+    // 第 8.1 期：軟粒子（粒子在第二次算繪的圖層、深度拷貝）、煙受光、風
+    {
+      const sp = g.stylePipe;
+      out.soft = !!(sp.softOk && sp.softOk()) && fx.gList.every((x) => x.mesh.layers.test({ mask: 1 << 30 }));
+      out.lit = /#define LIT/.test(G.sm.mat.fragmentShader) && !/#define LIT/.test(G.gl.mat.fragmentShader);
+      const w = window.__FXU.uWind.value;
+      out.wind = Math.hypot(w.x, w.z);
+      out.windK = [G.sm.uniforms.uWindK.value, G.ln.uniforms.uWindK.value];
+    }
+    // 第 8.2 期：火舌、火光分給最近的火源、燃燒地面的焦黑底與餘燼、火炬
+    {
+      fx.clear();
+      const n0 = G.gl.n;
+      fx.fire(at(6, 6, 0), 1);
+      out.fire = G.gl.n - n0;
+      fx.glow('a', at(6, 6, 0), 1);
+      fx.glow('b', at(80, 80, 0), 1);
+      fx.glow('c', at(-7, 4, 0), 1);
+      fx.glow('d', at(5, -5, 0), 1);
+      fx.glow('e', at(90, -90, 0), 1);
+      fx.lightTick(g.camera, pl.pos);
+      out.fireL = fx.fireLights.map((L) =>
+        L.intensity > 0 ? Math.round(L.position.distanceTo(pl.pos)) : -1,
+      );
+      fx.update(0.3);
+      fx.lightTick(g.camera);
+      out.fireOff = fx.fireLights.every((L) => L.intensity === 0);
+      fx.firePool(at(0, 12, 0.1), 5, 3);
+      const pool = fx.list[fx.list.length - 1].mesh;
+      out.pool = pool.children.map((m) => !!m.material.map);
+      fx.update(0.05);
+      fx.lightTick(g.camera);
+      out.poolL = fx.fireLights.some((L) => L.intensity > 0);
+      const f0 = G.gl.n + G.sm.n;
+      for (let i = 0; i < 20; i++) fx.ambient('flare', at(0, -12, 10), 'flare');
+      out.flare = G.gl.n + G.sm.n - f0;
+      fx.clear();
+    }
+    // 第 8.4 期：子彈打在地形上依地面材質、貼地爆炸揚起地面、彈痕用焦痕系統、大型殘骸的長煙柱
+    {
+      fx.clear();
+      const so = fx.surfOf;
+      const gp = at(4, 4, 0);
+      const cnt = () => G.sm.n + G.ln.n + G.gl.n;
+      const hit = {};
+      for (const k of ['sand', 'snow', 'water', 'ice', 'conc', 'metal']) {
+        fx.clear();
+        fx.surfOf = () => k;
+        fx.spark(gp, 0xfff0d0, new THREE.Vector3(0, -1, 0.3).normalize(), 'g');
+        hit[k] = [G.sm.n, G.ln.n, G.gl.n];
+      }
+      out.hit = hit;
+      fx.clear();
+      fx.surfOf = () => 'sand';
+      fx.explosion(at(-4, 4, 0.5), 3, 0xffa040, false);
+      const lo = cnt();
+      fx.clear();
+      fx.explosion(at(-4, 4, 40), 3, 0xffa040, false);
+      out.blast = [lo, cnt()];
+      fx.surfOf = so;
+      fx.clear();
+      const L0 = fx.list.length;
+      g.bulletMark(at(2, 2, 0.2), 'rifle');
+      out.mark = [G.dc.n, fx.list.length - L0];
+      fx.killBurst(at(0, -6, 2), 1, true, at(0, -6, 0).y);
+      out.cols = fx.columns;
+      fx.clear();
+      out.cols0 = fx.columns;
+    }
+    // 第 8.3 期：熱扭曲（華麗才有熱源；有熱源時管線多畫強度圖與扭曲）
+    {
+      const sp = g.stylePipe;
+      fx.heat(at(0, 0, 3), 4, 0.6, 0.8);
+      out.heatN = fx.ht.n;
+      out.heatOn = fx.heatOn();
+      const h0 = sp.heatN || 0;
+      window.__pump(0.1);
+      out.heatPass = (sp.heatN || 0) - h0;
+      fx.clear();
+      out.heatOff = !fx.heatOn();
+      g.ctrl.fxLv = 'std';
+      fx.heat(at(0, 0, 3), 4, 0.6, 0.8);
+      out.heatStd = fx.ht.n;
+      g.ctrl.fxLv = 'rich';
+      fx.clear();
+    }
     // 第 7 期（參考 Oh! Robot）：砲火特效「華麗」比「標準」多、子彈依陣營＋屬性換色、彈殼落地、貼地爆炸留下焦痕
     const cnt = () => G.gl.n + G.sm.n + G.ln.n + G.rg.n + G.dc.n + fx.list.length;
     const boom = (lv) => {
@@ -15548,6 +15634,40 @@ async function testFx(browser, base) {
     `特效時鐘照遊戲時間前進、暫停時不動（${r.run.toFixed(2)}／${r.pause}）`,
   );
   check(r.cel && r.noAO, '渲染風格的色階共用、寫實時為 0；不進 SSAO 與遮擋淡出');
+  check(r.soft, '第 8.1 期：軟粒子可用、粒子網格在第二次算繪的圖層');
+  {
+    const h = r.hit;
+    check(
+      h.sand[0] >= 2 &&
+        h.snow[0] >= 2 &&
+        h.water[1] >= 5 &&
+        h.ice[2] >= 1 &&
+        h.conc[0] >= 1 &&
+        h.metal[0] <= 1,
+      `第 8.4 期：子彈打在地形上依地面材質（${JSON.stringify(h)}）`,
+    );
+  }
+  check(
+    r.blast[0] > r.blast[1] + 10 && r.mark[0] === 1 && r.mark[1] === 0 && r.cols === 1 && r.cols0 === 0,
+    `第 8.4 期：貼地爆炸揚起地面（${r.blast}）、彈痕用焦痕系統（${r.mark}）、大型殘骸的長煙柱（${r.cols}）`,
+  );
+  check(
+    r.heatN === 1 && r.heatOn && r.heatPass > 0 && r.heatOff && r.heatStd === 0,
+    `第 8.3 期：熱扭曲的熱源與畫面扭曲（畫了 ${r.heatPass} 格）、清除後停止、砲火特效標準時沒有`,
+  );
+  check(
+    r.fire >= 2 && r.fireL.every((d) => d >= 0 && d < 40) && r.fireOff,
+    `第 8.2 期：火舌（${r.fire} 顆）、火光分給最近的 3 個火源（${r.fireL}）、沒有再登記就熄滅`,
+  );
+  check(
+    r.pool.length === 3 && r.pool.every(Boolean) && r.poolL && r.flare > 20,
+    `第 8.2 期：燃燒地面＝焦黑底＋兩層餘燼（${r.pool}）並照亮周圍、火炬的火焰與煙（${r.flare}）`,
+  );
+  check(r.lit, '第 8.1 期：只有煙塵系統受光');
+  check(
+    r.wind > 0.1 && r.windK[0] === 1 && r.windK[1] === 0,
+    `第 8.1 期：共用的風（${r.wind.toFixed(2)} m/s）`,
+  );
   check(r.qb >= 14, `QB 的一次噴發：從噴口噴出一團（${r.qb} 顆）`);
   check(r.jets >= 4, `機甲特效：懸浮時背包與腳的噴口都有細長的噴流（${r.jets} 條）`);
   check(
@@ -24847,13 +24967,12 @@ async function testDestruct(browser, base) {
       if (ca) for (let i = 0; i < Math.min(ca.count, 50); i++) dark += ca.getX(i);
     });
     out.dark = dark;
-    // 起火：金屬重損不起火、車輛重損起火（數火的顏色的閃光）
-    const FIRE = new Set([0xd8480a, 0xff7018]);
+    // 起火：金屬重損不起火、車輛重損起火（數火舌 fx.fire，docs/vfx-design.md 第 8.2 期）
     let fires = 0;
-    const of = g.fx.flash;
-    g.fx.flash = function (p, r, c, l) {
-      if (FIRE.has(c)) fires++;
-      return of.call(this, p, r, c, l);
+    const of = g.fx.fire;
+    g.fx.fire = function (...a) {
+      fires++;
+      return of.apply(this, a);
     };
     g.propActive = [met];
     pl.pos.copy(met.pos).add(new THREE.Vector3(0, 0, 25));
@@ -24864,7 +24983,7 @@ async function testDestruct(browser, base) {
     fires = 0;
     window.__pump(2);
     out.vehFire = fires;
-    g.fx.flash = of;
+    g.fx.fire = of;
     // 第 2 期：零件分批脫落（標出的：路燈的燈第 1 階段掉）、高的物件第 3 階段切掉上段、碰撞跟著降低
     const tris = (p) => {
       let n = 0;
@@ -24974,7 +25093,8 @@ async function testDestruct(browser, base) {
         h.z = (sh.z0 + sh.z1) / 2;
         h.y = sh.y1;
         g.damageProp(pc, 1e7, 0, null, pl, 'none');
-        out.crowd = !h.alive || h.y < sh.y1 - 0.3; // 落在殘骸上（殘骸比原本矮）
+        // 落在殘骸上（殘骸比原本矮；殘骸的高度是隨機的，貨櫃的殘骸有時只矮一點，所以只要求往下掉）
+        out.crowd = !h.alive || h.y < sh.y1 - 0.05;
       }
     }
     // 設定「地圖物件的破壞」：易破壞＝×4、材質倍率最低 0.8；不可破壞＝只有改版前的物件打得壞、沒有受損階段

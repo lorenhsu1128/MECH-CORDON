@@ -1383,6 +1383,17 @@ export class World {
     ))
       o.struct = 'lm';
     this.landmark = { key, name: L.name, x: spot.x, z: spot.z };
+    // 地標的特效點（建造函式的 userData.fxSpots：[{ k 特效預設, p [x, y, z] 地標座標, rate 每秒幾次 }]）→ 世界座標，
+    // 地圖的持續特效（game/fx-ambient.js）照它產生；只有外觀，不影響亂數
+    const inner = g.children[0];
+    if (inner && inner.userData.fxSpots) {
+      g.updateMatrixWorld(true);
+      this.landmark.fx = inner.userData.fxSpots.map((f) => ({
+        k: f.k,
+        rate: f.rate,
+        p: inner.localToWorld(new THREE.Vector3(...f.p)),
+      }));
+    }
     return this.landmark;
   }
   // 主線的入口結構（出生點）：lift 升降梯平台、lz 降落區標示；不碰撞

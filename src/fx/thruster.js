@@ -107,6 +107,12 @@ export class ThrusterFx {
         i * 1.7 + (model._jSeed || (model._jSeed = frand() * 10)),
       );
     }
+    // 熱扭曲（第 8.3 期）：推力大時噴口後方
+    if (this.onHeat && thrust > 0.4 && frand() < thrust * 0.6) {
+      nozzleWorld(nzs0[0], jp, jd, model.nzFresh);
+      jp.addScaledVector(jd, (0.5 + 2.6 * thrust) * scale * 0.8);
+      this.onHeat(jp.clone(), (0.6 + 0.9 * thrust) * scale, 0.25 * thrust);
+    }
     const rate = (4 + 40 * thrust) * dt;
     model._thrAcc = (model._thrAcc || 0) + rate;
     let n = Math.floor(model._thrAcc);

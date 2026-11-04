@@ -467,12 +467,17 @@ Object.assign(Game.prototype, {
       } else if (M.fx === 'dust' && st >= 2)
         fx.dust(q, Math.min(2.2, S), 4, M.col !== undefined ? M.col : 0x9a958a);
     }
+    if (burning)
+      fx.glow(
+        p,
+        new THREE.Vector3((sh.x0 + sh.x1) / 2, top, (sh.z0 + sh.z1) / 2),
+        Math.min(1.6, 0.6 + S * 0.4),
+      );
     while (S2.fi >= 1) {
       S2.fi -= 1;
       if (!burning) continue;
-      const q = pt().add(new THREE.Vector3(0, Math.random() * 0.8, 0));
-      fx.flash(q, 0.3 * S * (0.6 + Math.random() * 0.5), Math.random() < 0.6 ? 0xd8480a : 0xff7018, 0.18);
-      if (Math.random() < 0.3) fx.streaks(q, 2, 0xff9a30, 4, 0.5, -6);
+      // 火舌往上竄（第 8.2 期，docs/vfx-design.md；以前是圓形的光點）
+      fx.fire(pt(), Math.min(1.6, 0.45 + S * 0.35), 0.12);
     }
   },
   // ---------- 承重柱與倒塌（docs/destruction-design.md 第 4 期）----------

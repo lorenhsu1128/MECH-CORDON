@@ -97,7 +97,7 @@ export class VfxEditor {
     this.controls = new THREE.OrbitControls(this.camera, this.canvas);
     this.controls.enableDamping = true;
     this.sys = {
-      sm: new GpuFx(this.scene, { add: false }),
+      sm: new GpuFx(this.scene, { add: false, lit: true, wind: 1, soft: 0.25 }),
       gl: new GpuFx(this.scene),
       ln: new GpuFx(this.scene, { mode: 'stretch', spd: 0.035, maxL: 4.8 }),
       rg: new GpuFx(this.scene, { mode: 'ground' }),

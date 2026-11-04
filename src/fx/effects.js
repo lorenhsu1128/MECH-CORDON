@@ -24,6 +24,86 @@ const _skS = new THREE.Sphere(),
   _skV = new THREE.Vector3(),
   _Z = new THREE.Vector3(0, 0, 1);
 
+// 燃燒地面的底圈（docs/vfx-design.md 第 8.2 期）：焦黑（一般混合，邊緣柔和、斑駁）與發光的餘燼（加色的灰階、裂紋狀的亮點），
+// 程式產生的 Canvas 貼圖，所有燃燒地面共用
+const POOL_TEX = {};
+function poolTex(kind) {
+  if (POOL_TEX[kind]) return POOL_TEX[kind];
+  const N = 256,
+    cv = document.createElement('canvas');
+  cv.width = cv.height = N;
+  const c = cv.getContext('2d');
+  const C = N / 2;
+  if (kind === 'scorch') {
+    const gr = c.createRadialGradient(C, C, N * 0.05, C, C, N * 0.5);
+    gr.addColorStop(0, 'rgba(255,255,255,0.95)');
+    gr.addColorStop(0.6, 'rgba(255,255,255,0.75)');
+    gr.addColorStop(1, 'rgba(255,255,255,0)');
+    c.fillStyle = gr;
+    c.fillRect(0, 0, N, N);
+    // 斑駁：邊緣一圈不規則的缺口
+    c.globalCompositeOperation = 'destination-out';
+    for (let i = 0; i < 70; i++) {
+      const a = frand() * 6.283,
+        r = N * (0.3 + frand() * 0.22),
+        rr = N * (0.02 + frand() * 0.06);
+      c.fillStyle = `rgba(0,0,0,${0.25 + frand() * 0.5})`;
+      c.beginPath();
+      c.arc(C + Math.cos(a) * r, C + Math.sin(a) * r, rr, 0, 6.283);
+      c.fill();
+    }
+  } else {
+    // 餘燼：柔和的底光＋裂紋狀的亮線與亮點
+    c.fillStyle = '#000';
+    c.fillRect(0, 0, N, N);
+    const gr = c.createRadialGradient(C, C, 0, C, C, N * 0.5);
+    gr.addColorStop(0, 'rgba(150,150,150,1)');
+    gr.addColorStop(0.55, 'rgba(70,70,70,1)');
+    gr.addColorStop(1, 'rgba(0,0,0,1)');
+    c.fillStyle = gr;
+    c.fillRect(0, 0, N, N);
+    c.globalCompositeOperation = 'lighter';
+    c.lineCap = 'round';
+    for (let i = 0; i < 26; i++) {
+      let x = C + (frand() - 0.5) * N * 0.7,
+        y = C + (frand() - 0.5) * N * 0.7,
+        a = frand() * 6.283;
+      if (Math.hypot(x - C, y - C) > N * 0.42) continue;
+      c.strokeStyle = `rgba(255,255,255,${0.35 + frand() * 0.4})`;
+      c.lineWidth = 1 + frand() * 2.5;
+      c.beginPath();
+      c.moveTo(x, y);
+      for (let k = 0; k < 5; k++) {
+        a += (frand() - 0.5) * 1.6;
+        x += Math.cos(a) * N * 0.04;
+        y += Math.sin(a) * N * 0.04;
+        c.lineTo(x, y);
+      }
+      c.stroke();
+    }
+    for (let i = 0; i < 60; i++) {
+      const r = Math.sqrt(frand()) * N * 0.42,
+        a = frand() * 6.283;
+      c.fillStyle = `rgba(255,255,255,${0.3 + frand() * 0.6})`;
+      c.beginPath();
+      c.arc(C + Math.cos(a) * r, C + Math.sin(a) * r, 1 + frand() * 3, 0, 6.283);
+      c.fill();
+    }
+  }
+  const t = new THREE.CanvasTexture(cv);
+  POOL_TEX[kind] = t;
+  return t;
+}
+
+const FIRE_LIGHTS = 3;
+const COLUMNS_MAX = 4;
+// 地面材質的顏色（第 8.4 期）：沙與混凝土用主題的地面色（往亮一點混），其他固定
+const SURF_COL = { snow: 0xf2f6fa, ice: 0xdcecf6, water: 0xe8f2f8 };
+const _gc = new THREE.Color();
+function mixHex(a, b, t) {
+  _gc.setHex(a).lerp(new THREE.Color(b), t);
+  return _gc.getHex();
+}
 export class Effects {
   constructor(scene) {
     this.scene = scene;
@@ -39,9 +119,18 @@ export class Effects {
     this.light = new THREE.PointLight(0xffc070, 0, 26, 2);
     scene.add(this.light);
     this.lightT = 0;
+    // 火光（第 8.2 期）：固定 FIRE_LIGHTS 盞點光源（數量固定，不會讓材質重新編譯），每格分給離鏡頭最近的火源（glow 登記）
+    this.fireLights = [];
+    for (let i = 0; i < FIRE_LIGHTS; i++) {
+      const L = new THREE.PointLight(0xff7a2a, 0, 12, 2);
+      scene.add(L);
+      this.fireLights.push(L);
+    }
+    this.glows = new Map();
     this.hitStop = 0;
     this.thruster = new ThrusterFx(scene); // 機甲推進器噴焰粒子
     this.thruster.cull = (p) => this.skip(p, 4);
+    this.thruster.onHeat = (p, s, a) => this.heat(p, s, 0.25, a, 2.5); // 推進器噴口後方的熱扭曲
     this.ribbons = new RibbonFx(scene); // 帶狀軌跡：刀光、地面的推進氣流帶（fx/trail.js）
     this.ghosts = new GhostFx(scene); // 殘影（render/ghost.js，只給玩家自己）
     this.view = null; // 粒子的距離分級（skip／far）：上一格鏡頭的視錐與位置
@@ -50,13 +139,17 @@ export class Effects {
     // 時鐘 fx.time 只在 update 前進（暫停時粒子停住），clear 歸零
     this.time = 0;
     this.g = {
-      sm: new GpuFx(scene, { add: false }), // 煙、塵土（一般混合，先畫）
-      gl: new GpuFx(scene), // 閃光、火球、火焰
+      sm: new GpuFx(scene, { add: false, lit: true, wind: 1, soft: 0.25 }), // 煙、塵土（一般混合，先畫；受光、隨風）
+      gl: new GpuFx(scene, { wind: 0.3, soft: 0.35 }), // 閃光、火球、火焰（火舌與火星稍微隨風）
       ln: new GpuFx(scene, { mode: 'stretch', spd: 0.035, maxL: 1.6 }), // 火花、光束、槍口火焰、刀痕
       rg: new GpuFx(scene, { mode: 'ground' }), // 衝擊環
       dc: new GpuFx(scene, { mode: 'ground', add: false, cap: 64 }), // 焦痕
     };
-    this.gList = Object.values(this.g);
+    // 熱扭曲（第 8.3 期）：熱源畫在自己的場景（不在主場景裡），管線把它畫成強度圖、依它扭曲畫面；只有砲火特效「華麗」
+    this.heatScene = new THREE.Scene();
+    this.ht = new GpuFx(this.heatScene, { soft: 0.3, cap: 256 });
+    this.heatT = -1; // 最後一個熱源結束的時間（特效時鐘）
+    this.gList = [...Object.values(this.g), this.ht];
     // CPU 的粒子批次（fx/batch.js）：受光的碎片與彈殼、跟著實體的光暈與子彈、突進箭頭
     this.batches = {
       ca: new FxBatch(scene, this.chevGeo), // 突進箭頭
@@ -70,6 +163,11 @@ export class Effects {
     this.richOf = null;
     // 地面高度（彈殼落地、爆炸的焦痕）：Game 設定 (x, z) → 高度；沒有時不做落地
     this.ground = null;
+    // 地面材質（第 8.4 期）：Game 設定 (x, z, y) → water／metal／ice／snow／sand／conc（腳步聲的 surfAt），
+    // 與地面的顏色 () → 0xRRGGBB（主題的 ground）；沒有時命中與爆炸照舊
+    this.surfOf = null;
+    this.groundCol = null;
+    this.columns = 0; // 大型殘骸的長煙柱（同時最多 COLUMNS_MAX 條）
   }
   // 華麗＝參考 Oh! Robot 的加強版砲火；標準＝改版前的樣子
   get rich() {
@@ -150,6 +248,109 @@ export class Effects {
     this.light.color.set(color);
     this.light.intensity = intensity;
     this.lightT = 0.08;
+  }
+  // 火源（第 8.2 期）：每格（或每次產生火焰時）登記一次；0.15 秒（特效時鐘）沒有再登記就移除。
+  // key：同一個火源的鍵（物件、實體…）；I：亮度（1＝一般的燃燒）；r：照亮的距離（公尺，舊尺度，乘 k）
+  glow(key, p, I = 1, color = 0xff7a2a, r = 9) {
+    let s = this.glows.get(key);
+    if (!s) this.glows.set(key, (s = { p: new THREE.Vector3() }));
+    s.p.copy(p);
+    s.I = I;
+    s.c = color;
+    s.r = r;
+    s.t = this.time;
+  }
+  // 每格算繪前（Game.renderMain）：火光分給離鏡頭注視點（focus，沒有時用鏡頭位置）最近的火源、閃爍；砲火特效「標準」時不開
+  lightTick(cam, focus) {
+    const F = focus || (cam && cam.position);
+    const now = this.time,
+      list = this._gl || (this._gl = []);
+    list.length = 0;
+    for (const [k, s] of this.glows) {
+      if (now - s.t > 0.15 || now < s.t) {
+        this.glows.delete(k);
+        continue;
+      }
+      s.d = F ? s.p.distanceToSquared(F) : 0;
+      list.push(s);
+    }
+    const on = this.rich;
+    if (on) list.sort((a, b) => a.d - b.d);
+    const K = this.k;
+    for (let i = 0; i < this.fireLights.length; i++) {
+      const L = this.fireLights[i],
+        s = on && list[i];
+      if (!s) {
+        L.intensity = 0;
+        continue;
+      }
+      L.position.copy(s.p);
+      L.position.y += 1.2 * K;
+      L.color.setHex(s.c);
+      L.distance = s.r * K;
+      const fl = 0.82 + 0.12 * Math.sin(now * 17 + i * 2.1) + 0.08 * Math.sin(now * 41 + i * 5.3);
+      L.intensity = s.I * 3.2 * fl;
+    }
+  }
+  // 一團火（第 8.2 期）：往上竄的火舌（直立的火焰貼圖，由白熱轉成橘紅）＋底部的光暈，偶爾火星與黑煙。
+  // s：大小（1＝一般物件的火）；smoke：冒黑煙的機率。呼叫端決定頻率（約每秒 6～10 次）
+  fire(p, s = 1, smoke = 0.25) {
+    if (this.skip(p, s * 3)) return;
+    const K = this.k * s;
+    const n = this.far(p) ? 1 : 2;
+    for (let i = 0; i < n; i++)
+      this.g.gl.emit({
+        p: new THREE.Vector3(p.x + rnd(-0.4, 0.4) * K, p.y, p.z + rnd(-0.4, 0.4) * K),
+        v: new THREE.Vector3(rnd(-0.3, 0.3) * K, rnd(2.2, 3.8) * K, rnd(-0.3, 0.3) * K),
+        life: rnd(0.45, 0.75),
+        s0: rnd(1.6, 2.4) * K,
+        s1: 0.5 * K,
+        c0: 0xffe8b0,
+        c1: frand() < 0.5 ? 0xff6a18 : 0xd83a0a,
+        a: 0.9,
+        occ: 0.4,
+        cell: pickCell(FXG.tongue),
+        rot: rnd(-0.25, 0.25),
+        fade: 3,
+      });
+    this.g.gl.emit({ p, life: 0.3, s0: 2.4 * K, s1: 3 * K, c0: 0xff8a30, a: 0.3, cell: SOFT, fade: 3 });
+    if (frand() < 0.35)
+      this.g.gl.emit({
+        p: new THREE.Vector3(p.x, p.y + 0.8 * K, p.z),
+        v: new THREE.Vector3(rnd(-1, 1) * K, rnd(2.5, 5) * K, rnd(-1, 1) * K),
+        life: rnd(0.8, 1.5),
+        s0: 0.22 * K,
+        s1: 0.08 * K,
+        c0: 0xffd080,
+        c1: 0xff4010,
+        k: 1.5,
+        cell: SOFT,
+        fade: 4,
+        drag: 0.8,
+      });
+    if (frand() < smoke) this.smoke(new THREE.Vector3(p.x, p.y + 1.6 * K, p.z), 0.9 * s, 0x252527, 1.8, 3);
+    if (frand() < 0.5) this.heat(new THREE.Vector3(p.x, p.y + 2.2 * K, p.z), 3.2 * s, 0.7, 0.35);
+  }
+  // 熱扭曲的熱源（第 8.3 期）：p 位置、s 大小（舊尺度，乘 k）、life 秒、a 強度、up 往上飄的速度
+  heat(p, s, life = 0.6, a = 0.4, up = 1.5) {
+    if (!this.rich || this.skip(p, s)) return;
+    const K = this.k;
+    this.ht.emit({
+      p,
+      v: new THREE.Vector3(0, up * K, 0),
+      life,
+      s0: s * K,
+      s1: s * 1.4 * K,
+      c0: 0xffffff,
+      a,
+      cell: SOFT,
+      fade: 3,
+    });
+    if (this.time + life > this.heatT) this.heatT = this.time + life;
+  }
+  // 管線（StylePipeline 的 ctx.heat）：有熱源時才多畫一張強度圖與扭曲
+  heatOn() {
+    return this.rich && this.time < this.heatT;
   }
   // bright sphere flash
   flash(p, r, color, life = 0.12) {
@@ -312,6 +513,24 @@ export class Effects {
       rot: frand() * 6.28,
     });
     if (this.rich) this.crater(p.x, gy, p.z, 2.6 * sc * K * (big ? 1.5 : 1)); // 坑洞與裂痕
+    // 大型殘骸的長煙柱（第 8.4 期，華麗）：細的黑煙柱留 25 秒、慢慢變淡，遠處也看得到；同時最多 COLUMNS_MAX 條
+    if (this.rich && big && this.columns < COLUMNS_MAX) {
+      this.columns++;
+      let ac2 = 0;
+      const base = new THREE.Vector3(p.x, gy + 0.8 * K, p.z);
+      this.task(
+        25,
+        (e, t, dt) => {
+          if ((ac2 += dt) < 0.3) return;
+          ac2 = 0;
+          if (t < 0.15) return; // 剛擊破時是上面的煙
+          const q = base.clone().add(new THREE.Vector3(rnd(-0.4, 0.4) * K, 0, rnd(-0.4, 0.4) * K));
+          this.smoke(q, 1.1 * sc * (1 - t * 0.5), t < 0.5 ? 0x26272a : 0x3a3b3e, 5, 4);
+          if (t < 0.6 && frand() < 0.25) this.fire(q, 0.6 * sc, 0);
+        },
+        () => this.columns--,
+      );
+    }
   }
   // 蓄力（倒著播）：粒子從半徑 r（舊尺度）的球面往 p 吸進去，在 dur 秒內陸續出發（每次呼叫一小段，跟著槍口移動）；
   // 中心的光核同時變亮。蓄力射擊、雷射蓄力、電磁砲台、Boss 的大招（會轉送給客機）
@@ -455,9 +674,14 @@ export class Effects {
     emitPreset(this.g, 'star', p, { S: r * this.k, color });
   }
   // 地圖的持續特效（game/fx-ambient.js）：burn 燃燒的殘骸（黑煙＋火星）、steam 管線的蒸氣、dust 料斗落下的粉塵
-  ambient(kind, p) {
-    if (this.skip(p, 6)) return;
+  ambient(kind, p, key) {
+    if (kind === 'burn' || kind === 'flare')
+      this.glow(key || p, p, kind === 'flare' ? 2 : 1, 0xff7a2a, kind === 'flare' ? 16 : 9);
+    if (this.skip(p, kind === 'flare' ? 20 : 6)) return;
     emitPreset(this.g, kind, p, { S: this.k });
+    if (kind === 'flare') this.heat(new THREE.Vector3(p.x, p.y + 4 * this.k, p.z), 7, 0.9, 0.45, 4);
+    else if (kind === 'burn' && frand() < 0.4)
+      this.heat(new THREE.Vector3(p.x, p.y + 1.5 * this.k, p.z), 3.5, 0.8, 0.3);
   }
   // 旋翼的下洗氣流：地面上 (x, gy, z) 往外貼地吹開的沙塵（sc＝機體的縮放、k＝貼近地面的程度 0～1）；只有外觀、不轉送
   downwash(x, gy, z, sc, k) {
@@ -504,7 +728,15 @@ export class Effects {
       32,
     );
     this.streaks(p, big ? 10 : 5, 0xffe0a0, rnd(24, 34), 0.25, 10);
-    if (R) this.blastExtra(p, r, big);
+    if (R) {
+      this.blastExtra(p, r, big);
+      if (this.ground && this.surfOf) {
+        const gy = this.ground(p.x, p.z);
+        if (gy != null && p.y - gy < (2 + 0.6 * r) * this.k)
+          this.groundBlast(new THREE.Vector3(p.x, gy, p.z), r, big);
+      }
+      this.heat(p, r * (big ? 3.4 : 2.6), big ? 0.7 : 0.5, 0.9, 3);
+    }
     for (let i = 0; i < (big ? 14 : 6) * (R ? 1.6 : 1); i++) {
       const s = this.P('dk', 0x2a2a2a);
       s.position.copy(p);
@@ -798,8 +1030,10 @@ export class Effects {
     }
     if (frand() < 0.15) this.smoke(c.clone(), r * 0.12, 0x141218, 1.4, 1.2);
   }
-  spark(p, color = 0xffe080, dir = null) {
+  // kind（第 4 個參數，隨轉送帶給客機）：'g'＝打在地形上——華麗時依地面材質換成沙塵、雪煙、水花、冰屑、灰塵（第 8.4 期）
+  spark(p, color = 0xffe080, dir = null, kind) {
     const R = this.rich;
+    if (kind === 'g' && R && this.surfOf && this.groundHit(p, dir)) return;
     this.flash(p, R ? 0.45 : 0.3, 0xffffff, R ? 0.07 : 0.06);
     this.flash(p, R ? 0.5 : 0.28, color, R ? 0.15 : 0.12);
     const back = dir ? dir.clone().negate() : null;
@@ -820,6 +1054,167 @@ export class Effects {
       });
     }
     this.smoke(p, R ? 0.5 : 0.35, 0x6a6e75, 0.45, 1.5);
+  }
+  // 子彈打在地形上（第 8.4 期）：依地面材質；金屬照舊是火花（回傳 false）
+  groundHit(p, dir) {
+    const s = this.surfOf(p.x, p.z, p.y);
+    if (s === 'metal' || this.skip(p, 2)) return s !== 'metal';
+    const K = this.k;
+    const up = dir
+      ? new THREE.Vector3(-dir.x, Math.abs(dir.y) + 0.8, -dir.z).normalize()
+      : new THREE.Vector3(0, 1, 0);
+    const gc = this.groundCol ? this.groundCol() : 0x9a958a;
+    const col = SURF_COL[s] || mixHex(gc, 0xffffff, s === 'sand' ? 0.25 : 0.35);
+    const far = this.far(p);
+    // 噴起來的顆粒（拉長、有重力）
+    const grit = (n, c, sp, life, g) => {
+      for (let i = 0; i < (far ? Math.ceil(n / 2) : n); i++) {
+        const v = up
+          .clone()
+          .multiplyScalar(1.4)
+          .add(new THREE.Vector3(rnd(-1, 1), rnd(0, 0.6), rnd(-1, 1)))
+          .normalize()
+          .multiplyScalar(sp * rnd(0.5, 1.2) * K);
+        this.g.ln.emit({
+          p,
+          v,
+          life: life * rnd(0.6, 1.2),
+          s0: 0.22 * K,
+          c0: c,
+          a: 0.9,
+          occ: 0.85,
+          cell: LINE,
+          fade: 2,
+          g: g * K,
+          asp: 0.3,
+        });
+      }
+    };
+    // 一小團粉塵（受光的煙塵系統）
+    const puff = (sc, c, life, rise, n = 1) => {
+      for (let i = 0; i < n; i++)
+        this.g.sm.emit({
+          p: p.clone().add(new THREE.Vector3(rnd(-0.3, 0.3), 0.2, rnd(-0.3, 0.3)).multiplyScalar(K)),
+          v: up.clone().multiplyScalar(rise * rnd(0.6, 1.2) * K),
+          life: life * rnd(0.8, 1.2),
+          s0: sc * 0.6 * K,
+          s1: sc * 2.4 * K,
+          c0: c,
+          a: 0.75,
+          cell: pickCell(FXG.smoke),
+          fade: 1,
+          drag: 2.5,
+          rot: frand() * 6.28,
+          rv: rnd(-1, 1),
+        });
+    };
+    if (s === 'water') {
+      if (this.water && this.water.wet(p.x, p.z)) this.water.drop(p.x, p.z, 0.8 * K, -0.08);
+      grit(9, 0xeef6fa, 9, 0.5, 26);
+      puff(0.7, 0xe8f0f4, 0.5, 1.5);
+    } else if (s === 'snow') {
+      grit(5, 0xffffff, 6, 0.45, 20);
+      puff(0.9, col, 0.9, 1.2, 2);
+    } else if (s === 'ice') {
+      grit(8, 0xe6f4ff, 11, 0.35, 26);
+      this.g.gl.emit({
+        p,
+        life: 0.08,
+        s0: 1.2 * K,
+        s1: 0.4 * K,
+        c0: 0xffffff,
+        c1: 0xbfe8ff,
+        k: 1.3,
+        cell: pickCell(FXG.star),
+        rot: frand() * 6.28,
+      });
+      puff(0.5, col, 0.5, 0.8);
+    } else if (s === 'sand') {
+      grit(6, mixHex(gc, 0x000000, 0.25), 8, 0.5, 24);
+      puff(0.9, col, 0.9, 1.4, 2);
+    } else {
+      // 混凝土、土：灰塵＋少量火花與碎石
+      this.streaks(p, 3, 0xffe0a0, 14, 0.18, 20, dir ? dir.clone().negate() : null, 1.2);
+      grit(5, mixHex(gc, 0x202020, 0.4), 9, 0.45, 26);
+      puff(0.7, col, 0.7, 1.2);
+    }
+    return true;
+  }
+  // 貼地爆炸揚起的東西（第 8.4 期，華麗）：沙柱、雪煙、水柱、土塊；p 是地面上的點
+  groundBlast(p, r, big) {
+    const s = this.surfOf(p.x, p.z, p.y + 0.5);
+    if (s === 'metal' || this.skip(p, r * 3)) return;
+    const K = this.k,
+      R = r * K;
+    const gc = this.groundCol ? this.groundCol() : 0x9a958a;
+    const col = SURF_COL[s] || mixHex(gc, 0xffffff, 0.2);
+    const water = s === 'water';
+    // 水面的波：explosion 開頭已經推過（water.blast），這裡不再推
+    const n = Math.round((big ? 8 : 6) * (this.far(p) ? 0.5 : 1));
+    // 往上衝的柱子（受光的煙塵，重力讓它落回去）
+    for (let i = 0; i < n; i++) {
+      const a = frand() * 6.283,
+        h = rnd(0.2, 1);
+      this.g.sm.emit({
+        p: p.clone().add(new THREE.Vector3(Math.cos(a) * R * 0.25, 0.3 * K, Math.sin(a) * R * 0.25)),
+        v: new THREE.Vector3(
+          Math.cos(a) * R * 0.6 * rnd(0.3, 1),
+          R * (water ? 5 : 3.6) * h,
+          Math.sin(a) * R * 0.6 * rnd(0.3, 1),
+        ),
+        life: rnd(1.1, 1.8) * (big ? 1.3 : 1),
+        s0: R * 0.35,
+        s1: R * (water ? 0.8 : 1.0),
+        c0: col,
+        c1: water ? 0xf4f8fa : mixHex(col, 0x6a6660, 0.35),
+        a: water ? 0.7 : 0.85,
+        cell: pickCell(FXG.smoke),
+        fade: 3,
+        g: R * 2.2,
+        drag: 0.8,
+        rot: frand() * 6.28,
+        rv: rnd(-0.6, 0.6),
+      });
+    }
+    // 噴出去的土塊、雪塊、水滴（拉長、重力）
+    const gc2 = water
+      ? 0xf0f8ff
+      : s === 'snow'
+        ? 0xffffff
+        : s === 'ice'
+          ? 0xe0f2ff
+          : mixHex(gc, 0x1a1612, 0.45);
+    for (let i = 0; i < n * 2; i++) {
+      const v = new THREE.Vector3(rnd(-1, 1), rnd(0.8, 2.2), rnd(-1, 1))
+        .normalize()
+        .multiplyScalar(R * rnd(4, 8));
+      this.g.ln.emit({
+        p: p.clone().setY(p.y + 0.3 * K),
+        v,
+        life: rnd(0.7, 1.3),
+        s0: (water ? 0.3 : 0.45) * K,
+        c0: gc2,
+        a: 0.95,
+        occ: 0.9,
+        cell: LINE,
+        fade: 2,
+        g: 30 * K,
+        asp: 0.35,
+      });
+    }
+  }
+  // 地面的彈痕（第 8.4 期：焦痕系統，不再每個新建網格與材質）
+  mark(x, gy, z, s, life = 5) {
+    this.g.dc.emit({
+      p: new THREE.Vector3(x, gy + 0.05, z),
+      life,
+      s0: s * 3,
+      c0: 0x14110e,
+      a: 0.55,
+      cell: pickCell(FXG.scorch),
+      fade: 5,
+      rot: frand() * 6.28,
+    });
   }
   // kind（第 5 個參數，隨轉送帶給客機；docs/vfx-design.md 第 6 期）：'sg' 霰彈槍＝前方扇形的煙、
   // 'bz' 火箭筒與榴彈＝筒子後方的後焰、'ms' 導彈莢艙＝發射口的小閃光與往後的煙（沒有槍口火焰）
@@ -1191,19 +1586,44 @@ export class Effects {
         : [0xff5a10, 0xffc040, 0xff7a20, 0xffb040, 0x3a3430];
     const grp = new THREE.Group();
     grp.position.copy(p).setY(p.y + 0.1);
-    const disc = new THREE.Mesh(this.discGeo, this.addM(C[0], 0.55));
-    disc.rotation.x = -Math.PI / 2;
-    disc.scale.setScalar(R);
-    const core = new THREE.Mesh(this.discGeo, this.addM(C[1], 0.5));
-    core.rotation.x = -Math.PI / 2;
-    core.position.y = 0.02;
-    core.scale.setScalar(R * 0.55);
-    grp.add(disc, core);
+    // 第 8.2 期：焦黑的底（一般混合、邊緣斑駁）＋兩層發光的餘燼（裂紋狀、反向慢慢轉）
+    const flat = (m, s, y) => {
+      const o = new THREE.Mesh(this.discGeo, m);
+      o.rotation.x = -Math.PI / 2;
+      o.position.y = y;
+      o.scale.setScalar(s);
+      o.userData.noFade = true;
+      grp.add(o);
+      return o;
+    };
+    const base = new THREE.MeshBasicMaterial({
+      map: poolTex('scorch'),
+      color: kind === 1 ? 0x1c2a10 : 0x120c08,
+      transparent: true,
+      opacity: 0.8,
+      depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+    });
+    const em = (c) => {
+      const m = this.addM(c, 0.6);
+      m.map = poolTex('ember');
+      return m;
+    };
+    const scorch = flat(base, R * 1.12, 0);
+    const disc = flat(em(C[0]), R, 0.03);
+    const core = flat(em(C[1]), R * 0.62, 0.05);
+    core.rotation.z = 1.7;
     let acc = 0;
     this.add(grp, life, (e, t, dt) => {
       const fade = t < 0.85 ? 1 : (1 - t) / 0.15;
-      disc.material.opacity = (0.4 + 0.15 * Math.sin(t * life * 9)) * fade;
-      core.material.opacity = (0.35 + 0.2 * Math.sin(t * life * 13 + 1)) * fade;
+      const T = t * life;
+      scorch.material.opacity = 0.8 * Math.min(1, t * life * 4) * (t < 0.9 ? 1 : (1 - t) / 0.1);
+      disc.material.opacity = (0.55 + 0.2 * Math.sin(T * 9) + 0.1 * Math.sin(T * 23)) * fade;
+      core.material.opacity = (0.5 + 0.25 * Math.sin(T * 13 + 1)) * fade;
+      disc.rotation.z += dt * 0.08;
+      core.rotation.z -= dt * 0.12;
+      if (fade > 0.3) this.glow(grp, grp.position, (kind === 1 ? 0.6 : 1.2) * fade, C[2], (R * 1.6) / this.k);
       acc += dt;
       if (acc > 0.06 && fade > 0.3) {
         acc = 0;
@@ -1225,12 +1645,17 @@ export class Effects {
           cell: pickCell(FXG.tongue),
         });
         if (frand() < 0.15) this.smoke(q.clone().setY(q.y + K), 0.9, C[4], 1.2, 3);
+        if (kind !== 1 && frand() < 0.3) this.heat(q.clone().setY(q.y + 1.5 * K), (R * 0.5) / K, 0.7, 0.35);
       }
     });
   }
   // 火焰噴射：從 p 沿 dir 噴出 len 公尺（世界尺寸）、半角 ang 的火焰粒子
   flameCone(p, dir, len, ang, n = 10) {
     const K = this.k;
+    // 火光（第 8.2 期）：照亮火焰中段，同一個地方（4 m 的格子）算同一個火源
+    const q = p.clone().addScaledVector(dir, len * 0.4);
+    this.glow('fc' + Math.round(q.x / 4) + ',' + Math.round(q.z / 4), q, 1.6, 0xff8a30, (len * 0.7) / K);
+    if (frand() < 0.5) this.heat(q, (len * 0.45) / K, 0.45, 0.5, 2);
     for (let i = 0; i < n; i++) {
       const v = dir
         .clone()
@@ -1560,6 +1985,7 @@ export class Effects {
       // float 精度：時鐘與所有粒子的產生時間一起往回平移
       for (const g of this.gList) g.rebase(1900);
       this.time -= 1900;
+      this.heatT -= 1900;
     }
     for (const g of this.gList) g.update(this.time, dt);
     this.thruster.update(dt);
@@ -1612,6 +2038,10 @@ export class Effects {
     for (const g of this.gList) g.clear();
     this.time = 0;
     this.light.intensity = 0;
+    this.glows.clear();
+    for (const L of this.fireLights) L.intensity = 0;
+    this.heatT = -1;
+    this.columns = 0;
     this.thruster.clear();
     this.ribbons.clear();
     this.ghosts.clear();

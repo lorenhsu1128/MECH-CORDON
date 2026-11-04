@@ -338,7 +338,14 @@ export class Projectile {
       SFX.hit(direct.isPlayer ? null : this.pos, direct);
       if (this.owner && this.owner.isPlayer && !direct.isPlayer) g.rumble(0.05, 0.25, 40);
     } else {
-      g.fx.spark(this.pos, 0xfff0d0, this.vel.clone().normalize());
+      // 打在地形上（不是物件）：spark 的第 4 個參數 'g'＝依地面材質（第 8.4 期，docs/vfx-design.md）
+      const gy = g.world ? g.world.terrainHeight(this.pos.x, this.pos.z) : -1e9;
+      g.fx.spark(
+        this.pos,
+        0xfff0d0,
+        this.vel.clone().normalize(),
+        Math.abs(this.pos.y - gy) < 1.2 * g.fx.k ? 'g' : undefined,
+      );
       SFX.hitWorld(this.pos);
       if (this.wty && this.kind === 'bullet' && g.bulletMark) g.bulletMark(this.pos, this.wty); // 地面的彈痕（game/feel.js）
     }

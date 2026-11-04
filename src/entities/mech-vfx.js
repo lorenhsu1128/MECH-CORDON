@@ -339,6 +339,9 @@ Object.assign(MechEntity.prototype, {
       emitPreset(G, 'dmgSpark', p, { S: k });
       if (Math.random() < 0.5) emitPreset(G, 'zapSmall', p, { S: k * 0.7 });
     }
-    if (hr < 0.15 && Math.random() < dt * 14) emitPreset(G, 'dmgFire', body(), { S: k });
+    if (hr < 0.15) {
+      if (Math.random() < dt * 14) emitPreset(G, 'dmgFire', body(), { S: k });
+      g.fx.glow(this, this.center(), 0.7, 0xff6a20, 7); // 火光（第 8.2 期）
+    }
   },
 });

@@ -75,6 +75,7 @@ export class Weather {
     const K = KINDS[kind];
     this.scene = scene;
     this.kind = kind; // 水面的雨滴（game/water.js）
+    this.wind = K ? K.wind : null; // 粒子特效的風（game/fx-ambient.js 的 fxWindSet）
     if (!K) return;
     const g = new THREE.BufferGeometry();
     const pos = new Float32Array(K.n * 3),

@@ -43,24 +43,9 @@ Object.assign(Game.prototype, {
     const t = this.time || 0;
     if (t - (this.bmT || -9) < 0.06) return;
     this.bmT = t;
-    const m = new THREE.Mesh(
-      this.fx.discGeo,
-      new THREE.MeshBasicMaterial({
-        color: 0x14110e,
-        transparent: true,
-        opacity: 0.5,
-        depthWrite: false,
-        polygonOffset: true,
-        polygonOffsetFactor: -2,
-      }),
-    );
-    m.position.set(p.x, gy + 0.05, p.z);
-    m.rotation.x = -Math.PI / 2;
-    m.scale.setScalar((type === 'shotgun' ? 0.22 : 0.3) * this.fx.k);
-    m.userData.noFade = true;
-    this.fx.add(m, 5, (e, k) => {
-      e.mesh.material.opacity = 0.5 * (k < 0.7 ? 1 : (1 - k) / 0.3);
-    });
+    // 水面上沒有彈痕；焦痕系統的貼圖（第 8.4 期：以前每個都新建網格與材質）
+    if (this.world.waterDepth(p.x, p.z) > 0.2) return;
+    this.fx.mark(p.x, gy, p.z, (type === 'shotgun' ? 0.22 : 0.3) * this.fx.k);
   },
   // HUD：命中標記（準星的位置；俯視時畫在滑鼠準星，追尾／第一人稱畫在畫面中央）
   hitMarkHud(c, W, H, dt) {

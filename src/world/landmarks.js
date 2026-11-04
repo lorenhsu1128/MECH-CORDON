@@ -334,6 +334,8 @@ function burningWell() {
   const fire = cyl(0.2, 2.2, 7, M.glow, 0, 25, 0, 12);
   fire.castShadow = false;
   g.add(fire);
+  // 火炬的粒子火焰與煙柱（第 8.2 期：地圖的持續特效依 fxSpots 產生）
+  g.userData.fxSpots = [{ k: 'flare', p: [0, 23.5, 0], rate: 12 }];
   g.add(
     mesh(
       D.lathe(
