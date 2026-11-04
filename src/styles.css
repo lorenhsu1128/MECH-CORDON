@@ -1005,6 +1005,12 @@ body.vpad #vpad .top {
   color: var(--dim);
   font-size: 11px;
 }
+/* 多人的客機：以房主的設定為準的項目停用 */
+#settings.mpClient #setBody .krow[data-host] > span:first-child::after {
+  content: '（以房主為準）';
+  color: var(--dim);
+  font-size: 11px;
+}
 #setDesc {
   flex-shrink: 0;
   min-height: 3.4em;

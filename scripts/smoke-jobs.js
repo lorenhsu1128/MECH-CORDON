@@ -56,6 +56,7 @@ const DEFAULT_TIMES = {
   testChase: 12166,
   testPadUi: 5609,
   testSettingsUi: 15000,
+  testSettingsLive: 25000,
   testBoundary: 1548,
   testCampaign: 47376,
   testCampaign2: 17321,

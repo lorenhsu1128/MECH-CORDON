@@ -850,10 +850,7 @@
                 </select>
               </div>
               <h4>遊戲</h4>
-              <div
-                class="krow"
-                data-desc="整個任務的時間流速；慢一點比較容易看清楚敵人的動作（多人時以房主的設定為準）"
-              >
+              <div class="krow" data-desc="整個任務的時間流速；慢一點比較容易看清楚敵人的動作" data-host="1">
                 <span>遊戲節奏</span
                 ><select id="ctrlPace">
                   <option value="0.7">慢（70%）</option>
@@ -895,8 +892,7 @@
               <h4>共通</h4>
               <div
                 class="krow"
-                data-desc="出擊時一開始用的視角；任務中按 V（觸控：「視角」）依序切換"
-                data-next="1"
+                data-desc="出擊時一開始用的視角；任務中改的話回到遊戲時直接換成這個視角，任務中也可以按 V（觸控：「視角」）依序切換"
               >
                 <span>預設視角</span
                 ><select id="ctrlView">
@@ -1030,7 +1026,7 @@
                   <option value="high">高</option>
                 </select>
               </div>
-              <div class="krow">
+              <div class="krow" data-lazy="1">
                 <span>機甲特效</span
                 ><select
                   id="ctrlMechFx"
@@ -1040,7 +1036,7 @@
                   <option value="simple">簡化</option>
                 </select>
               </div>
-              <div class="krow">
+              <div class="krow" data-lazy="1">
                 <span>砲火特效</span
                 ><select
                   id="ctrlFxLv"
@@ -1193,7 +1189,7 @@
             </section>
             <section class="setPage" data-st="adv" data-intro="地圖物件的破壞、眼動追蹤、本地模型庫">
               <h4>遊戲</h4>
-              <div class="krow">
+              <div class="krow" data-host="1">
                 <span>地圖物件的破壞</span
                 ><select
                   id="ctrlDestruct"

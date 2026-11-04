@@ -899,6 +899,8 @@ Object.assign(Game.prototype, {
   },
   clearMission() {
     this.airEnd(); // 空域（game/air.js）
+    this.setChanged = null; // 任務中改的設定（settings.js 的 settingsApplyMission）
+    this.setPendView = this.setPendLm = false;
     // 機甲庫的維修演出（hangar.js）：記下這次出擊的損傷
     const pl = this.player;
     if (pl && pl.maxHp) this.hgLastDmg = Math.min(1, Math.max(0, 1 - pl.hp / pl.maxHp));

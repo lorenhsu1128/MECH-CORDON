@@ -123,7 +123,8 @@ Object.assign(Game.prototype, {
     this.setUiDone = true;
     const root = $('settings');
     for (const b of $('setTabs').querySelectorAll('button')) b.onclick = () => this.settingsTab(b.dataset.st);
-    root.addEventListener('change', () => {
+    root.addEventListener('change', (e) => {
+      this.setTrack(e.target);
       this.setMarks();
       if (lastTab === 'quick') this.renderQuick();
     });
@@ -164,6 +165,8 @@ Object.assign(Game.prototype, {
       }
       if (txt && row && row.dataset.next && this.settingsFrom === 'pause')
         txt += '（任務中改的話，下次出擊生效）';
+      if (txt && row && row.dataset.host) txt += '（多人連線時以房主的設定為準）';
+      if (txt && row && row.dataset.lazy) txt += '（改了立即生效：下一顆子彈、下一個爆炸就換）';
     }
     if (!txt) {
       const pg = this.setPageEl();
@@ -202,10 +205,9 @@ Object.assign(Game.prototype, {
     const note = {
       quick: '（畫面品質回到平衡、操作輔助回到標準）',
       adv: '（眼動追蹤的校準結果與本地模型庫保留）',
-      gfx: '（任務中不能換的渲染風格保留）',
     };
     this.uiConfirm(
-      `把「${SET_TABS[k]}」這一頁恢復成預設值？${note[k] && (k !== 'gfx' || this.settingsFrom === 'pause') ? note[k] : ''}`,
+      `把「${SET_TABS[k]}」這一頁恢復成預設值？${note[k] || ''}`,
       () => {
         if (k === 'keys') {
           this.keymap = this.defaultKeys();
@@ -376,6 +378,11 @@ Object.assign(Game.prototype, {
     this.renderIkSettings();
     this.renderGazeSettings();
     $('settings').classList.toggle('inMission', this.settingsFrom === 'pause');
+    // 多人的客機：遊戲節奏、地圖物件的破壞以房主的為準（改了也沒有作用）
+    const cli = !!(this.net && this.net.role === 'client');
+    $('settings').classList.toggle('mpClient', cli);
+    $('ctrlPace').disabled = cli;
+    $('ctrlDestruct').disabled = cli;
     this.setMarks();
   },
   // 聲音的音量（ctrl.vol：m 主音量、s 音效、b 配樂、v 語音、u 介面；docs/audio-design.md）：下拉選單，手把左右就能改
@@ -442,12 +449,12 @@ Object.assign(Game.prototype, {
       .join('');
     sel.value = d.sel.k + ':' + d.sel.id;
     const inMission = this.settingsFrom === 'pause';
-    sel.disabled = inMission;
     $('styleMetal').checked = d.metal;
-    $('styleMetal').disabled = inMission;
     $('styleRes').value = String(d.res);
     $('btnStyleLab2').disabled = inMission || !!(this.net && this.net.role);
-    $('styleNote').textContent = inMission ? '任務中不能切換風格（回機甲庫或標題再改）' : '';
+    $('styleNote').textContent = inMission
+      ? '任務中也能切換（色調或陰影種類不同的風格要重新編譯材質，回到遊戲時可能會頓一下）'
+      : '';
     if (StyleStore.serverOn && !this.styleFetched) {
       this.styleFetched = true;
       StyleStore.fetchServer()
@@ -465,10 +472,56 @@ Object.assign(Game.prototype, {
     const map = code.startsWith('Pad') ? this.padmap : this.keymap;
     for (const k in map) if (map[k] === code && k !== this.rebinding) map[k] = '';
     map[this.rebinding] = code;
+    if (this.settingsFrom === 'pause') (this.setChanged = this.setChanged || new Set()).add('按鍵');
     this.rebinding = null;
     this.saveKeys();
     this.renderSettings();
     return true;
+  },
+  // 任務中（從暫停選單）改的設定：記下名稱（回到遊戲時提示），需要回到遊戲才套用的另外記
+  setTrack(t) {
+    if (this.settingsFrom !== 'pause' || !t || !t.closest || (t.dataset && t.dataset.mirror)) return;
+    if (t.id === 'ctrlView') this.setPendView = true;
+    if (t.closest('#lmBox')) this.setPendLm = true;
+    const row = t.closest('.krow, label');
+    if (!row) return;
+    const sp = row.querySelector(':scope > span');
+    let name = (t.closest('#ikBox') ? '動作 IK' : (sp || row).textContent || '').trim();
+    if (t.closest('#lmBox')) name = '本地模型庫';
+    if (t.closest('#gazeBox')) name = '眼動追蹤';
+    if (!name) return;
+    if (name.length > 14) name = name.slice(0, 13) + '…';
+    (this.setChanged = this.setChanged || new Set()).add(name);
+  },
+  // 回到遊戲（resume）時：套用要在遊戲畫面上做的（視角、自己的機體換模型、武器欄的按鍵），並提示改了哪些
+  settingsApplyMission() {
+    const ch = this.setChanged,
+      pv = this.setPendView,
+      pl = this.setPendLm;
+    this.setChanged = null;
+    this.setPendView = this.setPendLm = false;
+    if (!this.player || this.state !== 'play') return;
+    if (!ch && !pv && !pl) return;
+    this.renderWeaponHud(true);
+    if (pv && !this.airMode && !this.tut && !this.spectator && !this.lab) {
+      const v = { fps: 'fp', chase: 'chase' }[this.ctrl.view] || 'top';
+      this.setView(v, true);
+    }
+    if (pl && !(this.net && this.net.role))
+      this.lmRefresh()
+        .then(() => {
+          const p = this.player;
+          if (p && !p.dead && this.state === 'play') p.swapModel();
+        })
+        .catch(() => {});
+    if (ch && ch.size) {
+      const L = [...ch];
+      this.flashMsg(
+        '已套用設定 — ' + L.slice(0, 4).join('、') + (L.length > 4 ? ` 等 ${L.length} 項` : ''),
+        0x7fc8ff,
+        2.2,
+      );
+    }
   },
   closeSettings() {
     this.rebinding = null;

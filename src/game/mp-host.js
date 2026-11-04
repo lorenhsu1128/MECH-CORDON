@@ -263,6 +263,7 @@ Object.assign(Game.prototype, {
           scaleDmg: this.scaleDmg,
           waveList: this.waves,
           dm: this.destructMode(), // 地圖物件的破壞設定（房主的）
+          pc: this.ctrl.pace || 1, // 遊戲節奏（房主任務中改了，客機跟著換）
           lvState: this.lvSnap(), // 自訂關卡的觸發器狀態（有變動時才帶）
         },
         ev: this.netEvents,

@@ -926,6 +926,8 @@ Object.assign(Game.prototype, {
     };
     document.getElementById('ctrlCharge').onchange = (e) => {
       this.ctrl.chargeMode = e.target.value; // 蓄力射擊的方式（data/charge.js）
+      // 遠程訓練課程這一步暫時換了方式：課程結束時換回剛選的（不是進課前的）
+      if (this.tutChargePrev !== undefined) this.tutChargePrev = e.target.value;
       this.saveKeys();
     };
     document.getElementById('ctrlAR').onchange = (e) => {
@@ -1291,6 +1293,7 @@ Object.assign(Game.prototype, {
       if (this.net && this.net.role && this.state === 'play') {
         this.menuOpen = false;
         document.getElementById('pause').classList.remove('on');
+        this.settingsApplyMission();
       } else this.resume();
     };
     $('optPost').checked = this.post.enabled;
@@ -1356,5 +1359,6 @@ Object.assign(Game.prototype, {
     this.state = 'play';
     this.showScreen('');
     this.lastT = performance.now();
+    this.settingsApplyMission(); // 任務中改的設定（game/settings.js）
   },
 });

@@ -5488,6 +5488,184 @@ async function testChase(browser, base) {
 // 手把操作選單：模擬手把（navigator.getGamepads），十字鍵移動焦點、A 決定、B 返回、LB／RB 分頁、左右改下拉選單、
 // 模組三選一、確認視窗、暫停；各選單畫面都有可以操作的元素
 // 設定畫面（docs/settings-ui.md）：分頁、說明欄、改過的標記、快速設定的組合與常用項目、恢復這一頁的預設、任務中的提示、三種大小
+// 任務中改設定（docs/settings-ui.md 的「任務中改設定」）：暫停 → 設定 → 改 → 返回 → 繼續，回到遊戲後要真的套用
+async function testSettingsLive(browser, base) {
+  console.log('任務中改設定：暫停選單改的設定回到遊戲就生效');
+  const { ctx, page } = await newPage(browser, 'setlive');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await page.evaluate(() => window.__game.startMission());
+  await wait(1500);
+  await freezeLoop(page);
+  const probe = () =>
+    page.evaluate(() => {
+      const g = window.__game;
+      return {
+        state: g.state,
+        dist: g.camera.position.distanceTo(g.player.pos),
+        base: g.camBase(),
+        zoom: g.camZoom,
+        fov: g.camera.fov,
+        pr: g.renderer.getPixelRatio(),
+        water: g.water && g.water.q,
+        rich: g.fx.rich,
+        tfx: g.textfx && g.textfx.mode,
+        dt: g.lastDt,
+        vol: window.__sfx && window.__sfx.vol && window.__sfx.vol.m,
+        style: JSON.stringify(g.styleP || {}),
+        chase: !!g.chase,
+        key: (document.querySelector('#ws_rarm .k') || {}).textContent,
+        msgs: (g.__msgs || []).slice(),
+      };
+    });
+  await page.evaluate(() => {
+    const g = window.__game;
+    g.__msgs = [];
+    const fm = g.flashMsg.bind(g);
+    g.flashMsg = (t, ...a) => (g.__msgs.push(String(t)), fm(t, ...a));
+    window.__pump(2);
+  });
+  const b = await probe();
+  const pauseSet = async () => {
+    await page.evaluate(() => {
+      const g = window.__game;
+      g.state = 'pause';
+      g.showScreen('pause');
+    });
+    // 暫停選單有進場動畫：直接呼叫按鈕的 click（同一個處理函式）
+    await page.evaluate(() => document.getElementById('btnSettingsP').click());
+    await waitVisible(page, 'settings');
+  };
+  const sel = (id, v) =>
+    page.evaluate(
+      ([id, v]) => {
+        const el = document.querySelector(id);
+        el.value = v;
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      },
+      [id, v],
+    );
+  const resume = async () => {
+    await page.click('#btnSettingsBack');
+    await waitVisible(page, 'pause');
+    await page.evaluate(() => document.getElementById('btnResume').click());
+    await page.evaluate(() => window.__pump(2));
+  };
+  // 第一輪：鏡頭距離、遊戲節奏、水面、砲火特效、文字演出、解析度、主音量、渲染風格、改鍵
+  await pauseSet();
+  const disabled = await page.evaluate(() =>
+    ['#styleSel', '#styleMetal', '#ctrlPace', '#ctrlDestruct'].filter(
+      (s) => document.querySelector(s).disabled,
+    ),
+  );
+  check(
+    !disabled.length,
+    `任務中（單人）：渲染風格、遊戲節奏、地圖物件的破壞都可以改（停用：${disabled.join('、') || '無'}）`,
+  );
+  await sel('#ctrlCamDist', 'far');
+  await sel('#ctrlPace', '1');
+  await sel('#ctrlWater', 'high');
+  await sel('#ctrlFxLv', 'std');
+  await sel('#ctrlTfx', 'simple');
+  await sel('#styleRes', '0.7');
+  await sel('#volBox [data-vol="m"]', '0.3');
+  const gundam = await page.evaluate(() => {
+    const o = [...document.getElementById('styleSel').options].find((o) => /gundam/i.test(o.value));
+    return o && o.value;
+  });
+  if (gundam) await sel('#styleSel', gundam);
+  await page.evaluate(() => window.__game.settingsTab('keys'));
+  await page.click('#keyRows button[data-k="fireR"]');
+  await page.keyboard.press('KeyG');
+  await resume();
+  const a = await probe();
+  const msg = a.msgs.find((t) => t.startsWith('已套用設定'));
+  check(a.state === 'play', `繼續之後回到遊戲（${a.state}）`);
+  check(
+    Math.abs(a.base / b.base - 0.85 / 0.65) < 0.01 && a.zoom >= a.base * 0.95,
+    `鏡頭距離「遠」回到遊戲就拉遠（倍率 ${b.base.toFixed(2)} → ${a.base.toFixed(2)}，鏡頭 ${a.zoom.toFixed(2)}）`,
+  );
+  check(
+    Math.abs(a.dt - 1 / 60) < 1e-4 && Math.abs(b.dt - 0.85 / 60) < 1e-4,
+    `遊戲節奏 85% → 100% 立即生效（每格 ${(b.dt * 60).toFixed(2)} → ${(a.dt * 60).toFixed(2)}）`,
+  );
+  check(
+    a.water === 'high' && a.rich === false && a.tfx === 'simple' && Math.abs(a.pr / b.pr - 0.7) < 0.02,
+    `水面高、砲火特效標準、文字演出簡化、解析度 0.7 立即生效（${a.water}／${a.rich}／${a.tfx}／${b.pr}→${a.pr}）`,
+  );
+  check(a.vol === 0.3, `主音量立即生效（${a.vol}）`);
+  check(!gundam || a.style !== b.style, `任務中換渲染風格（${gundam}）`);
+  check(a.key === 'G', `改鍵之後武器欄的按鍵標示更新（${b.key} → ${a.key}）`);
+  check(
+    !!msg && msg.includes('鏡頭距離') && msg.includes(`等 ${gundam ? 9 : 8} 項`),
+    `回到遊戲時提示改了哪些（${msg || '沒有提示'}）`,
+  );
+  // 第二輪：預設視角改成追尾＝回到遊戲時直接換成追尾視角
+  await pauseSet();
+  await page.evaluate(() => window.__game.settingsTab('cam'));
+  await sel('#ctrlView', 'chase');
+  // 本地模型庫改了（這裡直接設旗標）：回到遊戲時自己的機體換一次模型
+  const mesh0 = await page.evaluate(() => {
+    const g = window.__game;
+    g.setPendLm = true;
+    return (window.__mesh0 = g.player.mesh).uuid;
+  });
+  await resume();
+  await page
+    .waitForFunction(() => window.__game.player.mesh !== window.__mesh0, null, { timeout: 15000 })
+    .catch(() => {});
+  await page.evaluate(() => window.__pump(1));
+  const c = await probe();
+  check(
+    c.chase && Math.abs(c.fov - 62) < 3,
+    `預設視角改成追尾，回到遊戲就換成追尾視角（視角 ${c.fov.toFixed(0)}°）`,
+  );
+  const sw = await page.evaluate(() => {
+    const g = window.__game;
+    const p = g.player;
+    return {
+      changed: p.mesh !== window.__mesh0,
+      inScene: p.mesh.parent === g.scene,
+      old: !!window.__mesh0.parent,
+    };
+  });
+  check(
+    sw.changed && sw.inScene && !sw.old,
+    `本地模型庫改了，回到遊戲時自己的機體換模型（${mesh0.slice(0, 6)}…，新的在場景：${sw.inScene}）`,
+  );
+  // 沒改任何設定時不提示
+  const n0 = c.msgs.length;
+  await pauseSet();
+  await resume();
+  const d = await probe();
+  check(d.msgs.slice(n0).filter((t) => t.startsWith('已套用設定')).length === 0, '沒有改設定時，繼續不提示');
+  await page.screenshot({ path: path.join(SHOT_DIR, 'settings-live.png') });
+  // 多人的客機：遊戲節奏、地圖物件的破壞以房主為準（停用、標示）
+  const cl = await page.evaluate(() => {
+    const g = window.__game;
+    const net0 = g.net;
+    g.net = Object.assign({}, net0 || {}, { role: 'client' });
+    g.openSettings('pause', 'ctrl');
+    const r = {
+      pace: document.getElementById('ctrlPace').disabled,
+      dm: document.getElementById('ctrlDestruct').disabled,
+      after: getComputedStyle(
+        document.querySelector('#ctrlPace').closest('.krow').querySelector('span'),
+        '::after',
+      ).content,
+    };
+    g.net = net0;
+    g.renderSettings();
+    return r;
+  });
+  check(
+    cl.pace && cl.dm && cl.after.includes('房主'),
+    `多人的客機：遊戲節奏、地圖物件的破壞停用並標「以房主為準」（${cl.after}）`,
+  );
+  await page.evaluate(() => window.__game.closeSettings());
+  await thawLoop(page);
+  await ctx.close();
+}
 async function testSettingsUi(browser, base) {
   console.log('設定畫面：分頁、說明欄、改過的標記、快速設定、恢復這一頁的預設');
   const { ctx, page } = await newPage(browser, 'setui');
@@ -5612,7 +5790,7 @@ async function testSettingsUi(browser, base) {
   check(k1 && k2[0] === k2[1], '按鍵頁：改過的鍵標記、恢復預設改回原本的鍵');
   await page.click('#btnSettingsBack');
   await waitVisible(page, 'title');
-  // 任務中（從暫停選單開）：預設視角標「下次出擊生效」、渲染風格停用；暫停選單的按鈕叫「設定」
+  // 任務中（從暫停選單開）：預設視角不再標「下次出擊生效」（回到遊戲時直接換）、渲染風格可以換；暫停選單的按鈕叫「設定」
   check((await page.textContent('#btnSettingsP')).trim() === '設定', '暫停選單的按鈕叫「設定」');
   await page.evaluate(() => window.__game.openSettings('pause', 'cam'));
   const m = await page.evaluate(() => ({
@@ -5623,8 +5801,8 @@ async function testSettingsUi(browser, base) {
     style: document.getElementById('styleSel').disabled,
   }));
   check(
-    m.after.includes('下次出擊生效') && m.style,
-    `任務中：預設視角標「下次出擊生效」、渲染風格停用（${m.after}）`,
+    !m.after.includes('下次出擊生效') && !m.style,
+    `任務中：預設視角沒有標「下次出擊生效」、渲染風格可以換（${m.after}）`,
   );
   await page.evaluate(() => {
     const g = window.__game;
@@ -23384,6 +23562,17 @@ async function testMpStatus(browser, url) {
     }
   };
   await pump(20);
+  // 房主在任務中改遊戲節奏：快照帶過去，客機跟著換（game/mp-host.js 的 mis.pc）
+  const pc0 = await cli.evaluate(() => window.__game.hostPace);
+  await host.evaluate(() => (window.__game.ctrl.pace = window.__game.ctrl.pace === 1 ? 0.7 : 1));
+  await pump(10);
+  const pc = await Promise.all([
+    host.evaluate(() => window.__game.ctrl.pace),
+    cli.evaluate(() => window.__game.hostPace),
+  ]);
+  check(pc[0] === pc[1] && pc[1] !== pc0, `房主任務中改遊戲節奏，客機跟著換（${pc0} → ${pc[1]}）`);
+  await host.evaluate(() => (window.__game.ctrl.pace = 0.85));
+  await pump(5);
   // 房主：敵人停住、放在客機旁邊，把客機的機體鉤住
   await host.evaluate(() => {
     const g = window.__game;
@@ -25643,6 +25832,7 @@ const STEPS = [
   ['testChase', (c) => testChase(c.browser, c.base)],
   ['testPadUi', (c) => testPadUi(c.browser, c.base)],
   ['testSettingsUi', (c) => testSettingsUi(c.browser, c.base)],
+  ['testSettingsLive', (c) => testSettingsLive(c.browser, c.base)],
   ['testBoundary', (c) => testBoundary(c.browser, c.base)],
   ['testAir', (c) => testAir(c.browser, c.base)],
   ['testCampaign', (c) => testCampaign(c.browser, c.base)],
