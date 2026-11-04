@@ -5846,8 +5846,17 @@ async function testGuns(browser, base) {
     if (!foe) return out;
     // 其他敵人停住；玩家站在砲台前方 40 m
     for (const e of g.enemies) if (e !== gunner) e.updateAI = () => {};
-    const fwd = g.devRot(foe, [0, 0, 1]).normalize();
-    const at = foe.pos.clone().addScaledVector(fwd, 40);
+    // 砲台看得到的位置（8 個方向找視線沒被擋住的）
+    const eye = foe.pos.clone().setY(foe.pos.y + 2.8 * foe.mesh.scale.x);
+    let at = null;
+    for (let k = 0; k < 16 && !at; k++) {
+      const a = (k / 8) * Math.PI * 2,
+        r = k < 8 ? 40 : 25;
+      const q = foe.pos.clone().add(new THREE.Vector3(Math.sin(a) * r, 0, Math.cos(a) * r));
+      q.y = g.world.groundAt(q.x, q.z, 999);
+      if (!g.world.losBlocked(eye, q.clone().setY(q.y + 5))) at = q;
+    }
+    at = at || foe.pos.clone().add(new THREE.Vector3(0, 0, 40));
     p.pos.set(at.x, g.world.groundAt(at.x, at.z, 999), at.z);
     p.vel.set(0, 0, 0);
     const s0 = foe.shots || 0;
@@ -5873,8 +5882,11 @@ async function testGuns(browser, base) {
     for (const e of g.enemies) e.updateAI = () => {};
     p.pos.set(d.usePos.x, g.world.groundAt(d.usePos.x, d.usePos.z, 999), d.usePos.z);
     p.vel.set(0, 0, 0);
+    p.staggerT = 0; // 剛才被敵人的砲台打到失衡：失衡中不能互動
+    p.acs = 0;
     window.__pump(0.2);
     const near = g.devNear === d;
+    const dbg = `${d.kind} near=${g.devNear && g.devNear.kind} dxz=${Math.hypot(p.pos.x - d.usePos.x, p.pos.z - d.usePos.z).toFixed(1)} dy=${(p.pos.y - d.pos.y).toFixed(1)} devs=${g.devs.map((o) => o.kind + o.st).join(',')}`;
     g.down[g.keymap.interact] = true;
     window.__pump(1.5, () => d.st === 1);
     g.down[g.keymap.interact] = false;
@@ -5904,17 +5916,24 @@ async function testGuns(browser, base) {
     p.takeDamage(2000, 0, null, p.center(), undefined, undefined, undefined, 'none');
     const took = hp0 - p.hp,
       share = dh0 - d.hp;
-    // 對 Boss ×0.5：同一台敵人先當 Boss 被砲台上的玩家打，再當一般的
-    const e = g.enemies.find((o) => !o.dead && o.ai !== 'part');
-    e.isBoss = true;
-    e.hp = e.maxHp = 1e9;
-    e.iFrames = 0;
-    e.takeDamage(10000, 0, p, e.center(), undefined, undefined, undefined, 'none');
-    const bossDmg = 1e9 - e.hp;
-    e.isBoss = false;
-    e.hp = 1e9;
-    e.takeDamage(10000, 0, p, e.center(), undefined, undefined, undefined, 'none');
-    const normDmg = 1e9 - e.hp;
+    // 對 Boss ×0.5：兩台剛生成的 MT（狀態一樣），一台當 Boss，被砲台上的玩家各打一次
+    const mk = (boss) => {
+      g.waveAt = { pos: p.pos.clone().add(new THREE.Vector3(30, 0, 0)), drop: false };
+      const m = g.spawnType('mt', g.scaleHp, g.scaleDmg);
+      g.waveAt = null;
+      m.updateAI = () => {};
+      m.isBoss = boss;
+      m.yaw = m.aimYaw = Math.atan2(-(p.pos.x - m.pos.x), -(p.pos.z - m.pos.z)); // 面向玩家（背後有 CRITICAL，Boss 沒有）
+      m.hp = m.maxHp = 1e9;
+      m.iFrames = 0;
+      m.takeDamage(10000, 0, p, m.center(), undefined, undefined, undefined, 'none');
+      const dd = 1e9 - m.hp;
+      m.isBoss = false;
+      m.hp = 0;
+      return dd;
+    };
+    const bossDmg = mk(true);
+    const normDmg = mk(false);
     // 離開：放開後再按一次
     window.__pump(0.3);
     g.down[g.keymap.interact] = true;
@@ -5922,6 +5941,7 @@ async function testGuns(browser, base) {
     g.down[g.keymap.interact] = false;
     window.__pump(0.2);
     return {
+      dbg,
       near,
       mounted,
       moved,
@@ -5935,7 +5955,7 @@ async function testGuns(browser, base) {
       off: d.st === 0 && !p.devMount,
     };
   });
-  check(r2.near && r2.mounted, '站在操作台旁按住 X：上砲台');
+  check(r2.near && r2.mounted, '站在操作台旁按住 X：上砲台' + (r2.mounted ? '' : '　' + r2.dbg));
   check(r2.moved < 0.5 && r2.own === false, `上砲台時不能移動（${r2.moved.toFixed(2)} m）、自己的武器不能用`);
   check(
     r2.shots > 0 && r2.heat > 0 && r2.oh,
