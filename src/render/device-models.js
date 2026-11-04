@@ -5,6 +5,8 @@ import { CB, P, bakeAll, gBox, gCyl } from './geometry.js';
 import { providedModel } from './model-provider.js';
 import { tagStyle } from './style/shader.js';
 import { TRAP_BUILDERS } from './trap-models.js';
+import { buildGunTurret, buildHwPick } from './gun-models.js';
+import { HEAVY_WEAPONS } from '../data/devices.js';
 
 const mats = (color) => ({
   body: new THREE.MeshStandardMaterial({
@@ -104,4 +106,18 @@ export function buildRechargeStation(color = 0x7ee081) {
   return g;
 }
 
-export const DEVICE_BUILDERS = { radar: buildRadarStation, recharge: buildRechargeStation, ...TRAP_BUILDERS };
+const HW_KEYS = Object.keys(HEAVY_WEAPONS);
+export const DEVICE_BUILDERS = {
+  radar: buildRadarStation,
+  recharge: buildRechargeStation,
+  ...TRAP_BUILDERS,
+  gun_hmg: (c) => buildGunTurret('hmg', c),
+  gun_rail: (c) => buildGunTurret('rail', c),
+  gun_msl: (c) => buildGunTurret('msl', c),
+  gun_flak: (c) => buildGunTurret('flak', c),
+  // 撿起的重武器：spec.v＝重武器的索引
+  hwpick: (c, spec) => {
+    const k = HW_KEYS[Math.round((spec && spec.v) || 0) % HW_KEYS.length];
+    return buildHwPick(k, HEAVY_WEAPONS[k].color);
+  },
+};

@@ -558,6 +558,7 @@ export class MechEntity {
       d = w.def,
       g = this.game;
     if (d.type === 'none' || d.type === 'shield') return false;
+    if (this.devMount) return false; // 在固定砲台上：自己的武器不能用（game/devices-guns.js）
     if (w.tierOff) return false; // Boss 改版：負責這把武器的部位被打壞了
     if (!this.canAct()) return false;
     if (this.rxJamT > 0) return false; // 屬性反應的 EMP 干擾：不能開火（mech-react.js）
@@ -1960,6 +1961,9 @@ export class MechEntity {
       return;
     }
     if (this.sn) this.senseHit(from, dmg); // 仇恨與交戰（mech-sense.js）
+    // 固定砲台（game/devices-guns.js）：上砲台時砲台分擔一半；砲台打 Boss（本體與部位）×0.5
+    if (this.devMount) dmg = this.game.gunAbsorb(this, dmg);
+    if (from && from.devMount && (this.isBoss || this.ai === 'part')) dmg *= this.game.gunBossK();
     this.tutE('hurt', { melee: !!melee, shield: this.shield > 0 }); // 近戰訓練（game/tutorial.js）
     // DUELIST 格擋：未在連段中、未硬直、面向攻擊者時 55% 擋下近戰第 1 段並反擊
     if (
@@ -2387,6 +2391,11 @@ export class MechEntity {
       this.aiLast = { wish: wish.clone(), hover: wantHover, ab: wantAB, tgt: targetEnt };
     }
     if (this.wpOff && this.wpOff.thr) wantQB = wantAB = false; // 推進器被打壞（mech-weak.js）
+    // 在固定砲台上（game/devices-guns.js）：不能移動、跳躍、QB
+    if (this.devMount) {
+      wish = new THREE.Vector3();
+      wantHover = wantQB = wantAB = false;
+    }
     if (this.rxHotT > 0 || this.rxJamT > 0) this.rxTick(dt); // 屬性反應的效果（mech-react.js）
     if (this.rxJamT > 0) wantQB = wantAB = false; // EMP 干擾
     if (this.flinchT > 0) {

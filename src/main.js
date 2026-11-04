@@ -114,5 +114,6 @@ import './game/gaze-tune.js';
 import './game/encounters.js';
 import './game/devices.js';
 import './game/devices-traps.js';
+import './game/devices-guns.js';
 
 new Game();

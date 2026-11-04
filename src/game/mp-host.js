@@ -145,6 +145,8 @@ Object.assign(Game.prototype, {
         };
       }
       e.itHeld = !!(b & 128); // 互動鍵（地圖互動裝置，devices.js）
+      e.devTrig = !!e.devMount && !!(b & 15); // 砲台的射擊鍵（devices-guns.js）
+      e.hwTrig = !!e.hw && !!(b & 15); // 重武器：沒有鎖定時按射擊鍵往準星
       const qb = !!(b & 32) && !e._qbHeld;
       e._qbHeld = !!(b & 32);
       // 跳躍的按下以次數判斷（客機每次按下加 1），不從按住狀態推算
@@ -268,6 +270,7 @@ Object.assign(Game.prototype, {
           pc: this.ctrl.pace || 1, // 遊戲節奏（房主任務中改了，客機跟著換）
           lvState: this.lvSnap(), // 自訂關卡的觸發器狀態（有變動時才帶）
           dv: this.devSnap(), // 地圖互動裝置（devices.js）
+          hw: this.hwSnap(), // 玩家手上的重武器（devices-guns.js）
         },
         ev: this.netEvents,
         prs: this.propNetTable(), // 受損物件的血量表（每 2 秒）

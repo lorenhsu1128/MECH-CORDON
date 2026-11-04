@@ -293,6 +293,7 @@ Object.assign(Game.prototype, {
     if (m.camp && this.campC) this.campClientView(m.camp);
     if (m.lvState) this.lvClientState(m.lvState);
     this.devApply(m.dv || []); // 地圖互動裝置（devices.js）
+    this.hwApply(m.hw || []); // 玩家手上的重武器（devices-guns.js）
     for (const ev of s.ev) this.clientEvent(ev);
     if (s.prs) this.propApplyTable(s.prs); // 受損物件的血量表（game/destruct.js）
   },

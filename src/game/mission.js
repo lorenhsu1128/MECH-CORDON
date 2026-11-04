@@ -859,6 +859,7 @@ Object.assign(Game.prototype, {
     this.netEv({ t: 'bounty', v: bounty });
     this.bountyPops.push({ txt: '+' + bounty.toLocaleString() + ' COAM', life: 2.2, y: 0 });
     if (this.devEnvNow) this.devEnvKill(e, from, bounty); // 環境陷阱擊破：環境擊殺（devices-traps.js）
+    this.hwDrop(e); // 重型敵人掉落重武器（devices-guns.js）
   },
   // 拾荒 MT：附近的同伴被擊破時撿零件強化（最多 3 次）
   foeScavenge(dead) {

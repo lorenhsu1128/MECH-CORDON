@@ -293,6 +293,169 @@ Object.assign(DEVICES, {
     },
   },
 });
+// ---------- G1 固定砲台（game/devices-guns.js） ----------
+// 武器的數值是舊尺度（距離、彈速、爆炸半徑 × DS／MS）。heat＝每發的熱量（滿 1 過熱，OVERHEAT_T 秒不能開火）。
+const GUN_TIP = '按住互動鍵上砲台（機體不能移動、敵人會集火），射擊鍵開火、會過熱，再按一次互動鍵離開。';
+const gun = (name, color, w, extra = '') => ({
+  name,
+  color,
+  gun: true,
+  trig: 'use',
+  r: 4,
+  use: [0, 0, -3.2],
+  hold: 1,
+  hp: 9000,
+  solid: [[0, 0, 2.6, 2.6, 2.2]],
+  verb: '上',
+  tip: name + '：' + GUN_TIP + extra,
+  w,
+});
+Object.assign(DEVICES, {
+  gun_hmg: gun('重機砲台', 0xffc060, {
+    kind: 'bullet',
+    dmg: 95,
+    imp: 90,
+    rof: 0.07,
+    speed: 150,
+    spread: 0.022,
+    range: 110,
+    heat: 0.012,
+    attr: 'kin',
+  }),
+  gun_rail: gun(
+    '電磁砲台',
+    0x8fd8ff,
+    {
+      kind: 'shell',
+      dmg: 2600,
+      imp: 1600,
+      rof: 1.6,
+      speed: 420,
+      spread: 0.002,
+      range: 160,
+      heat: 0.24,
+      splash: 2,
+      attr: 'kin',
+    },
+    '一發很痛，間隔長。',
+  ),
+  gun_msl: gun(
+    '導彈陣列',
+    0xff8a5a,
+    {
+      kind: 'missile',
+      dmg: 380,
+      imp: 300,
+      rof: 2.6,
+      speed: 70,
+      range: 130,
+      heat: 0.28,
+      splash: 3,
+      n: 6,
+      turn: 2.6,
+      attr: 'exp',
+    },
+    '一次 6 發，會追鎖定的目標。',
+  ),
+  gun_flak: gun(
+    '防空砲台',
+    0xb0ff8a,
+    {
+      kind: 'shell',
+      dmg: 260,
+      imp: 220,
+      rof: 0.32,
+      speed: 140,
+      spread: 0.01,
+      range: 120,
+      heat: 0.06,
+      splash: 3.2,
+      turn: 0.8,
+      attr: 'exp',
+    },
+    '砲彈會往鎖定的目標偏，打空中的特別好用。',
+  ),
+});
+export const OVERHEAT_T = 3; // 過熱後不能開火的秒數
+export const GUN_COOL = 0.32; // 每秒散熱
+export const GUN_BOSS_K = 0.5; // 固定砲台對 Boss（本體與部位）的傷害
+export const GUN_MOUNT_ABSORB = 0.5; // 上砲台時受到的傷害由砲台分擔的比例
+export const GUN_NPC = { rof: 1.7, dmg: 0.55 }; // 敵人操作砲台時：射速變慢、傷害變低
+// 依主題的砲台（每場 1～2 座：一座敵人佔著、一座中立）
+export const GUNS_BY_THEME = {
+  industrial: ['gun_hmg', 'gun_msl'],
+  grid: ['gun_hmg', 'gun_rail'],
+  desert: ['gun_hmg', 'gun_msl'],
+  snow: ['gun_rail', 'gun_hmg'],
+  wasteland: ['gun_msl', 'gun_hmg'],
+  dunes: ['gun_rail', 'gun_msl'],
+  flooded: ['gun_hmg', 'gun_flak'],
+  dam: ['gun_rail', 'gun_hmg'],
+  spaceport: ['gun_flak', 'gun_msl'],
+  grid086: ['gun_rail', 'gun_flak'],
+  xylem: ['gun_flak', 'gun_hmg'],
+  orbit: ['gun_flak', 'gun_rail'],
+  institute: ['gun_rail', 'gun_msl'],
+};
+// ---------- G2 撿重武器 ----------
+// 掛在右手、自動對鎖定目標發射（沒有鎖定時按射擊鍵才往準星發射），彈藥打完就丟掉
+export const HEAVY_WEAPONS = {
+  hw_cannon: {
+    name: '巨型加農砲',
+    color: 0xffb040,
+    kind: 'shell',
+    dmg: 1500,
+    imp: 1600,
+    rof: 1.8,
+    speed: 160,
+    range: 120,
+    splash: 4,
+    ammo: 10,
+    attr: 'exp',
+  },
+  hw_flame: {
+    name: '火焰放射器',
+    color: 0xff7a20,
+    flame: true,
+    dmg: 70,
+    imp: 20,
+    rof: 0.1,
+    range: 15, // 舊尺度 × MS
+    ang: 0.35,
+    ammo: 160,
+    attr: 'exp',
+  },
+  hw_pod: {
+    name: '導彈莢艙',
+    color: 0xff6a8a,
+    kind: 'missile',
+    dmg: 360,
+    imp: 280,
+    rof: 3,
+    speed: 75,
+    range: 140,
+    splash: 3,
+    n: 4,
+    turn: 2.6,
+    ammo: 8,
+    attr: 'exp',
+  },
+};
+// 重武器的掉落：會掉的敵人與機率（ENEMY_TYPES 的鍵；具名 AC 與 Boss 的部位另外算）
+export const HW_DROP = { mth: 0.3, tank: 0.3, strider: 0.35, mt_stomp: 0.35, mt_shield: 0.25, mt_cmd: 0.3 };
+export const HW_DROP_ACE = 0.5;
+export const HW_DROP_PART = 0.3;
+Object.assign(DEVICES, {
+  hwpick: {
+    name: '重武器',
+    color: 0xffd060,
+    trig: 'use',
+    r: 3.5,
+    hold: 0.6,
+    verb: '撿起',
+    tip: '重武器：按住互動鍵撿起，掛在右手、自動攻擊鎖定的目標，彈藥打完就丟掉。',
+  },
+});
 // 互動中斷時進度退回的速度（相對於按住的速度）
 export const DEV_DECAY = 0.6;
 // HUD：畫面外的箭頭只畫這個距離以內的（× DS）

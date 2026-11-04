@@ -6,7 +6,8 @@
 //   { obj 加進場景的根物件（單位矩陣）, scaleNode 承載遊戲縮放的節點, scale 遊戲縮放（Vector3）, rig 可給 animateMech 驅動的機體,
 //     piece 區塊資訊（機甲區塊才有） }
 import { withRng } from '../core/math.js';
-import { DEVICES } from '../data/devices.js';
+import { DEVICES, HEAVY_WEAPONS } from '../data/devices.js';
+import { buildHwMesh } from './gun-models.js';
 import { DEVICE_BUILDERS } from './device-models.js';
 import { WS } from '../core/scale.js';
 import { AC_ROSTER, BOSS_DEFS, DUO_BOSS, ENEMY_TYPES, PART_DEFS } from '../data/enemies.js';
@@ -841,15 +842,23 @@ for (const [k, d] of Object.entries(DEVICES))
     'device',
     k,
     d.name,
-    d.trap
-      ? '環境陷阱（' +
-          (d.trig === 'shoot' ? '打弱點' : '控制台') +
-          '）；原點＝效果範圍的中心（地面）；命名為 glow 的材質依狀態發光；' +
-          '名為 wp（弱點）、load（吊掛物）、tower（會倒下的塔，繞原點轉）、hole（破洞）、grid（通電地板）的節點有動作'
-      : '原點在底面中心（約 3.6～5 m 寬）；命名為 glow 的材質依狀態發光，' +
-          (k === 'radar' ? '名為 dish 的節點會轉動' : '名為 core 的節點會轉動與上下浮動') +
-          '；地面的互動範圍光環是程式特效',
+    d.gun
+      ? '固定砲台；原點在基座中心；名為 head 的節點是砲塔（繞 Y 轉、砲口朝 +Z），操作台在後方（−Z）；命名為 glow 的材質依狀態變色'
+      : k === 'hwpick'
+        ? '撿起的重武器（台座＋浮在上面的武器，武器的模型另外在 device/hw_*）'
+        : d.trap
+          ? '環境陷阱（' +
+            (d.trig === 'shoot' ? '打弱點' : '控制台') +
+            '）；原點＝效果範圍的中心（地面）；命名為 glow 的材質依狀態發光；' +
+            '名為 wp（弱點）、load（吊掛物）、tower（會倒下的塔，繞原點轉）、hole（破洞）、grid（通電地板）的節點有動作'
+          : '原點在底面中心（約 3.6～5 m 寬）；命名為 glow 的材質依狀態發光，' +
+            (k === 'radar' ? '名為 dish 的節點會轉動' : '名為 core 的節點會轉動與上下浮動') +
+            '；地面的互動範圍光環是程式特效',
     () => DEVICE_BUILDERS[k](d.color),
+  );
+for (const [k, h] of Object.entries(HEAVY_WEAPONS))
+  addPlain('device', k, '重武器：' + h.name, '掛在玩家的右肩外側、沿 +Z 朝瞄準方向（約 2～3 m 長）', () =>
+    buildHwMesh(k, h.color),
   );
 const proj = (kind) => {
   const m = buildProjectileMesh(kind, 0xffd080, 95);

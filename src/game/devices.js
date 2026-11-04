@@ -58,6 +58,7 @@ Object.assign(Game.prototype, {
       });
     }
     this.trapPlan(used); // 環境陷阱（devices-traps.js）
+    this.gunPlan(used); // 固定砲台（devices-guns.js）
   },
   devLerp(s, q, t) {
     return { x: s.x + (q.x - s.x) * t, z: s.z + (q.z - s.z) * t };
@@ -108,7 +109,7 @@ Object.assign(Game.prototype, {
     if (!def) return null;
     const W = this.world;
     const pos = new THREE.Vector3(spec.x, W.groundAt(spec.x, spec.z, 999), spec.z);
-    const mesh = DEVICE_BUILDERS[spec.k](def.color);
+    const mesh = DEVICE_BUILDERS[spec.k](def.color, spec);
     const yq = (spec.y || 0) & 3,
       yaw = (yq * Math.PI) / 2;
     mesh.position.copy(pos);
@@ -179,6 +180,7 @@ Object.assign(Game.prototype, {
       d.obs.push(ob);
     }
     if (def.trap) this.trapInit(d); // 弱點（devices-traps.js）
+    if (def.gun) this.gunInit(d); // 固定砲台（devices-guns.js）
     (this.devs || (this.devs = [])).push(d);
     return d;
   },
@@ -197,6 +199,7 @@ Object.assign(Game.prototype, {
     this.devSeq = 0;
     this.devNear = null;
     this.devIntroSeen = null;
+    if (this.hwClear) this.hwClear();
     document.body.classList.remove('devNear');
   },
   // 雷達站佔領中（HUD 顯示全部的敵群、據點、裝置）
@@ -217,6 +220,10 @@ Object.assign(Game.prototype, {
   devUsable(d) {
     if (d.kind === 'radar') return d.st === ST_IDLE;
     if (d.kind === 'recharge') return d.st === ST_IDLE;
+    if (d.def.gun) {
+      const p = this.player;
+      return (d.st === ST_IDLE && !(p && p.devMount)) || (d.st === ST_ON && !!p && d.user === p.id);
+    }
     if (d.def.trig === 'use') return d.st === ST_IDLE;
     return false;
   },
@@ -239,8 +246,16 @@ Object.assign(Game.prototype, {
           } else d.prog = Math.max(0, d.prog - (dt / d.def.hold) * DEV_DECAY);
         }
         this.trapActTick(d, dt);
-      }
+      } else if (d.def.gun) this.gunTick(d, dt, holder);
+      else if (d.kind === 'hwpick') this.hwPickTick(d, dt, holder);
     }
+    // 撿走的重武器：拿掉（客機照快照的表拿掉）
+    for (let j = this.devs.length - 1; j >= 0; j--)
+      if (this.devs[j].gone) {
+        this.devRemove(this.devs[j]);
+        this.devs.splice(j, 1);
+      }
+    this.hwTick(dt); // 帶著重武器的玩家自動開火（devices-guns.js）
   },
   devRadarTick(d, dt, inside, holder) {
     const def = d.def;
@@ -329,24 +344,38 @@ Object.assign(Game.prototype, {
       +d.pos.z.toFixed(1),
       d.st,
       Math.round(d.prog * 100),
-      Math.round((d.def.trap ? Math.max(0, d.hp) / (d.def.hp || 1) : d.val) * 1000),
+      Math.round((d.def.trap || d.def.gun ? Math.max(0, d.hp) / (d.def.hp || 1) : d.val) * 1000),
       d.user || 0,
       d.yq,
+      d.def.gun ? Math.round((d.aim || 0) * 100) : 0,
+      d.def.gun ? Math.round(d.heat * 100) + (d.ohT > 0 ? 1000 : 0) : 0,
     ]);
   },
   devApply(arr) {
     if (!this.world) return;
     const ids = new Set();
-    for (const [i, k, x, z, st, p, v, u, y] of arr || []) {
+    for (const [i, k, x, z, st, p, v, u, y, aim, ht] of arr || []) {
       ids.add(i);
       let d = (this.devs || []).find((o) => o.id === i);
-      if (!d) d = this.devAdd({ i, k, x, z, y });
+      if (!d) d = this.devAdd({ i, k, x, z, y, v: v / 1000 });
       if (!d) continue;
       d.st = st;
       d.prog = p / 100;
       d.val = v / 1000;
-      if (d.def.trap) d.hp = d.val * (d.def.hp || 1);
+      if (d.def.trap || d.def.gun) d.hp = d.val * (d.def.hp || 1);
       d.user = u;
+      if (d.def.gun) {
+        d.aim = (aim || 0) / 100;
+        d.heat = (ht % 1000) / 100;
+        d.ohT = ht >= 1000 ? 1 : 0;
+      }
+    }
+    // 砲台上的機體（自己與隊友）：devMount
+    const ps = this.players && this.players.length ? this.players : [this.player];
+    for (const q of ps) {
+      if (!q) continue;
+      const d = (this.devs || []).find((o) => o.def.gun && o.st === ST_ON && o.user === q.id);
+      q.devMount = d ? d.id : 0;
     }
     if (this.devs)
       for (let j = this.devs.length - 1; j >= 0; j--)
@@ -361,6 +390,12 @@ Object.assign(Game.prototype, {
     let near = null;
     for (const d of this.devs || []) {
       const m = d.mesh;
+      if (d.def.gun || d.kind === 'hwpick') {
+        this.gunVis(d, dt); // 固定砲台、重武器（devices-guns.js）
+        if (p && !p.dead && this.devUsable(d) && this.devIn(d, p)) near = d;
+        this.devIntro(d, p);
+        continue;
+      }
       if (d.def.trap) {
         this.trapVis(d, dt); // 環境陷阱（devices-traps.js）
         if (p && !p.dead && this.devUsable(d) && this.devIn(d, p)) near = d;
@@ -391,7 +426,16 @@ Object.assign(Game.prototype, {
     }
     this.devNear = near;
     document.body.classList.toggle('devNear', !!near);
-    if (p) p.itHeld = !!near && this.act('interact'); // 單機／房主自己的機體（客機另外送輸入）
+    if (p) {
+      p.itHeld = !!near && this.act('interact'); // 單機／房主自己的機體（客機另外送輸入）
+      const fire = this.act('fireR') || this.act('fireL') || this.act('backL') || this.act('backR');
+      p.devTrig = !!p.devMount && fire; // 砲台的射擊鍵（devices-guns.js）
+      p.hwTrig = !!p.hw && fire; // 重武器：沒有鎖定時按射擊鍵往準星
+      // 自己在砲台上：固定在操作台（客機的自身預測；房主在 gunTick 也固定）
+      const md = p.devMount ? (this.devs || []).find((o) => o.id === p.devMount) : null;
+      if (md && md.st === ST_ON) this.gunPin(md, p);
+    }
+    this.hwVis(); // 手上的重武器（devices-guns.js）
   },
   // 第一次看到某種裝置：說明（每場一次）
   devIntro(d, p) {
@@ -448,23 +492,33 @@ Object.assign(Game.prototype, {
         c.closePath();
         c.stroke();
         c.fill();
-        const tag = d.def.trap
-          ? d.st === ST_ACT
-            ? '（作用中）'
-            : d.st === ST_CD
-              ? `（冷卻 ${Math.ceil(d.prog * d.def.cd)} 秒）`
+        const tag = d.def.gun
+          ? d.st === 5
+            ? '（敵人操作中）'
+            : d.st === ST_ON
+              ? '（使用中）'
               : d.st === ST_USED
-                ? '（已觸發）'
-                : d.def.trig === 'shoot'
-                  ? '（打弱點）'
-                  : '（控制台）'
-          : d.kind === 'radar'
-            ? d.st === ST_ON
-              ? '（已佔領）'
-              : ''
-            : d.st === ST_USED
-              ? '（用完）'
-              : `（剩 ${Math.round(d.val * 100)}%）`;
+                ? '（已摧毀）'
+                : '（可以搶）'
+          : d.kind === 'hwpick'
+            ? '：' + this.hwName(d)
+            : d.def.trap
+              ? d.st === ST_ACT
+                ? '（作用中）'
+                : d.st === ST_CD
+                  ? `（冷卻 ${Math.ceil(d.prog * d.def.cd)} 秒）`
+                  : d.st === ST_USED
+                    ? '（已觸發）'
+                    : d.def.trig === 'shoot'
+                      ? '（打弱點）'
+                      : '（控制台）'
+              : d.kind === 'radar'
+                ? d.st === ST_ON
+                  ? '（已佔領）'
+                  : ''
+                : d.st === ST_USED
+                  ? '（用完）'
+                  : `（剩 ${Math.round(d.val * 100)}%）`;
         const label = `${d.def.name}${tag} ${dist}m`;
         c.strokeText(label, s.x, s.y - 14);
         c.fillText(label, s.x, s.y - 14);
@@ -497,11 +551,12 @@ Object.assign(Game.prototype, {
       }
     }
     // 互動提示與進度環（靠近可以用的裝置；或自己正在佔領的）
+    this.gunHud(c, W, H, p); // 砲台上與重武器（devices-guns.js）
     const d = this.devNear;
-    if (d) {
+    if (d && !(d.def.gun && d.st === ST_ON)) {
       const key = this.devKeyLabel();
       const txt = d.def.hold
-        ? `${key} 按住 ${d.def.verb}${d.def.name}`
+        ? `${key} 按住 ${d.def.verb}${d.kind === 'hwpick' ? this.hwName(d) : d.def.name}`
         : `${key} 按住 ${d.def.verb}（剩 ${Math.round(d.val * 100)}%）`;
       const y = H * 0.72;
       c.font = 'bold 15px Chakra Petch';

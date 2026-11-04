@@ -100,17 +100,18 @@ Object.assign(Game.prototype, {
   // 子彈、爆炸打得到的弱點（destructibles 與 lockPool 用）
   trapTargets() {
     const out = [];
-    for (const d of this.devs || []) if (d.tgt && d.st === ST_IDLE) out.push(d.tgt);
+    for (const d of this.devs || []) if (d.tgt && !d.tgt.dead) out.push(d.tgt); // 陷阱：待命；砲台：敵人操作中
     return out;
   },
   trapById(id) {
     if (!(id >= DEV_TGT && id < DEV_TGT + 100000)) return null;
     const d = (this.devs || []).find((o) => o.id === id - DEV_TGT);
-    return d && d.tgt && d.st === ST_IDLE ? d.tgt : null;
+    return d && d.tgt && !d.tgt.dead ? d.tgt : null;
   },
   // damageProp 轉過來（房主／單機）
   trapDamage(t, dmg, at, from) {
     const d = t.dev;
+    if (d.def.gun) return this.gunDamage(d, dmg, at); // 敵方佔著的固定砲台（devices-guns.js）
     if (d.st !== ST_IDLE) return;
     d.hp -= Math.max(1, Math.round(dmg));
     this.popDamage(at || t.center(), Math.round(dmg), false, false, false, 0, t.id);

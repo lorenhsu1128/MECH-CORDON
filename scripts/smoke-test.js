@@ -5670,6 +5670,13 @@ async function testTraps(browser, base) {
         const g = window.__game;
         g.waves = [];
         g.wavePend = null;
+        // 固定砲台關掉（敵人操作的砲台會打到陷阱的弱點，提早觸發）
+        for (const q of g.devs)
+          if (q.def.gun) {
+            const gn = q.st === 5 && g.entById(q.user);
+            if (gn) gn.hp = 0;
+            q.st = 2;
+          }
         const traps = g.devs.filter((d) => d.kind === kind);
         const d = traps[0];
         if (!d) return { n: 0 };
@@ -5808,6 +5815,203 @@ async function testTraps(browser, base) {
   }
   await ctx.close();
 }
+// 固定砲台與重武器（docs/map-devices-design.md 的 G）：敵方佔著的砲台會開火、打掉操作員就能搶、上砲台（不能移動、
+// 自己的武器不能用）、開火與過熱、傷害由砲台分擔、對 Boss ×0.5、離開、砲台被打壞就下來；重武器的掉落、撿起、
+// 自動攻擊鎖定的目標、彈藥打完就丟掉、火焰放射器
+async function testGuns(browser, base) {
+  console.log('固定砲台與重武器');
+  const { ctx, page } = await newPage(browser, 'guns');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await page.evaluate(() => window.__game.startMission());
+  await page.waitForFunction(() => window.__game.state === 'play' && window.__game.player, null, {
+    timeout: 30000,
+  });
+  await freezeLoop(page);
+  const r1 = await page.evaluate(() => {
+    const g = window.__game;
+    g.waves = [];
+    g.wavePend = null;
+    const p = g.player;
+    p.maxHp = p.hp = 1e6;
+    const guns = g.devs.filter((d) => d.def.gun);
+    const foe = guns.find((d) => d.st === 5);
+    const gunner = foe && g.entById(foe.user);
+    const out = {
+      n: guns.length,
+      kinds: guns.map((d) => d.kind).join('、'),
+      foe: !!foe,
+      hold: !!(gunner && gunner.edHold),
+    };
+    if (!foe) return out;
+    // 其他敵人停住；玩家站在砲台前方 40 m
+    for (const e of g.enemies) if (e !== gunner) e.updateAI = () => {};
+    const fwd = g.devRot(foe, [0, 0, 1]).normalize();
+    const at = foe.pos.clone().addScaledVector(fwd, 40);
+    p.pos.set(at.x, g.world.groundAt(at.x, at.z, 999), at.z);
+    p.vel.set(0, 0, 0);
+    const s0 = foe.shots || 0;
+    window.__pump(4);
+    out.shots = (foe.shots || 0) - s0;
+    // 打掉操作員 → 中立
+    gunner.takeDamage(1e9, 0, p, gunner.center());
+    window.__pump(0.2);
+    out.free = foe.st;
+    return out;
+  });
+  check(
+    r1.n > 0 && r1.foe && r1.hold,
+    `一般戰鬥放了固定砲台（${r1.kinds}），一座由敵人操作（MT 站在操作台上不移動）`,
+  );
+  check(r1.shots > 0, `敵人操作的砲台對射程內的玩家開火（${r1.shots} 發）`);
+  check(r1.free === 0, '打掉操作員：砲台變成中立、可以搶');
+  // 上砲台：按住 X 1 秒
+  const r2 = await page.evaluate(() => {
+    const g = window.__game;
+    const p = g.player;
+    const d = g.devs.find((o) => o.def.gun && o.st === 0);
+    for (const e of g.enemies) e.updateAI = () => {};
+    p.pos.set(d.usePos.x, g.world.groundAt(d.usePos.x, d.usePos.z, 999), d.usePos.z);
+    p.vel.set(0, 0, 0);
+    window.__pump(0.2);
+    const near = g.devNear === d;
+    g.down[g.keymap.interact] = true;
+    window.__pump(1.5, () => d.st === 1);
+    g.down[g.keymap.interact] = false;
+    window.__pump(0.2);
+    const mounted = d.st === 1 && p.devMount === d.id;
+    // 不能移動
+    const p0 = p.pos.clone();
+    g.down[g.keymap.up] = true;
+    window.__pump(0.8);
+    g.down[g.keymap.up] = false;
+    const moved = Math.hypot(p.pos.x - p0.x, p.pos.z - p0.z);
+    // 自己的武器不能用
+    const own = p.fire('rarm', p.aimPoint(), null);
+    // 開火（射擊鍵）與過熱
+    const s0 = d.shots || 0;
+    g.down[g.keymap.fireR] = true;
+    window.__pump(0.6);
+    const shots = (d.shots || 0) - s0;
+    const heat = d.heat;
+    window.__pump(12, () => d.ohT > 0);
+    const oh = d.ohT > 0;
+    g.down[g.keymap.fireR] = false;
+    // 傷害由砲台分擔
+    const hp0 = p.hp,
+      dh0 = d.hp;
+    p.iFrames = 0;
+    p.takeDamage(2000, 0, null, p.center(), undefined, undefined, undefined, 'none');
+    const took = hp0 - p.hp,
+      share = dh0 - d.hp;
+    // 對 Boss ×0.5：同一台敵人先當 Boss 被砲台上的玩家打，再當一般的
+    const e = g.enemies.find((o) => !o.dead && o.ai !== 'part');
+    e.isBoss = true;
+    e.hp = e.maxHp = 1e9;
+    e.iFrames = 0;
+    e.takeDamage(10000, 0, p, e.center(), undefined, undefined, undefined, 'none');
+    const bossDmg = 1e9 - e.hp;
+    e.isBoss = false;
+    e.hp = 1e9;
+    e.takeDamage(10000, 0, p, e.center(), undefined, undefined, undefined, 'none');
+    const normDmg = 1e9 - e.hp;
+    // 離開：放開後再按一次
+    window.__pump(0.3);
+    g.down[g.keymap.interact] = true;
+    window.__pump(0.2);
+    g.down[g.keymap.interact] = false;
+    window.__pump(0.2);
+    return {
+      near,
+      mounted,
+      moved,
+      own,
+      shots,
+      heat,
+      oh,
+      took,
+      share,
+      ratio: bossDmg / normDmg,
+      off: d.st === 0 && !p.devMount,
+    };
+  });
+  check(r2.near && r2.mounted, '站在操作台旁按住 X：上砲台');
+  check(r2.moved < 0.5 && r2.own === false, `上砲台時不能移動（${r2.moved.toFixed(2)} m）、自己的武器不能用`);
+  check(
+    r2.shots > 0 && r2.heat > 0 && r2.oh,
+    `射擊鍵開火（0.6 秒 ${r2.shots} 發、熱量 ${Math.round(r2.heat * 100)}%），連續開火會過熱`,
+  );
+  check(
+    Math.abs(r2.took - 1000) < 5 && Math.abs(r2.share - 1000) < 5,
+    `上砲台時受到的傷害一半由砲台承受（自己 −${Math.round(r2.took)}、砲台 −${Math.round(r2.share)}）`,
+  );
+  check(Math.abs(r2.ratio - 0.5) < 0.02, `砲台打 Boss 的傷害 ×${r2.ratio.toFixed(2)}`);
+  check(r2.off, '再按一次 X：離開砲台');
+  await page.screenshot({ path: path.join(SHOT_DIR, 'guns-turret.png') });
+  // 砲台被打壞就下來
+  const r3 = await page.evaluate(() => {
+    const g = window.__game;
+    const p = g.player;
+    const d = g.devs.find((o) => o.def.gun && o.st === 0);
+    g.gunMount(d, p);
+    d.hp = 100;
+    p.iFrames = 0;
+    p.takeDamage(1000, 0, null, p.center(), undefined, undefined, undefined, 'none');
+    return { st: d.st, mount: p.devMount };
+  });
+  check(r3.st === 2 && !r3.mount, '砲台被打壞：機體自動下來');
+  // 重武器：重型敵人擊破時掉落 → 撿起 → 自動攻擊鎖定的目標 → 打完就丟掉
+  const r4 = await page.evaluate(() => {
+    const g = window.__game;
+    const p = g.player;
+    const e = g.enemies.find((o) => !o.dead && o.ai !== 'part');
+    e.etype = 'mth';
+    const rnd = Math.random;
+    Math.random = () => 0;
+    const n0 = g.devs.length;
+    g.hwDrop(e);
+    Math.random = rnd;
+    const d = g.devs.find((o) => o.kind === 'hwpick');
+    if (!d) return { drop: g.devs.length - n0 };
+    p.pos.set(d.pos.x + 2, g.world.groundAt(d.pos.x + 2, d.pos.z, 999), d.pos.z);
+    p.vel.set(0, 0, 0);
+    window.__pump(0.2);
+    g.down[g.keymap.interact] = true;
+    window.__pump(1.2, () => !!p.hw);
+    g.down[g.keymap.interact] = false;
+    window.__pump(0.2);
+    const picked = !!p.hw && !g.devs.includes(d);
+    // 換成加農砲、鎖定一台敵人
+    p.hw = { k: 'hw_cannon', ammo: 2, cd: 0 };
+    const t = g.enemies.find((o) => !o.dead && o.ai !== 'part');
+    t.hp = t.maxHp = 1e9;
+    t.pos.set(p.pos.x, g.world.groundAt(p.pos.x, p.pos.z - 50, 999), p.pos.z - 50);
+    t.mesh.position.copy(t.pos);
+    p.lock = t;
+    window.__pump(0.3);
+    const fired = p.hw ? 2 - p.hw.ammo : 2;
+    window.__pump(4, () => !p.hw);
+    const gone = !p.hw;
+    // 火焰放射器：前方 20 m 的敵人受傷
+    p.hw = { k: 'hw_flame', ammo: 50, cd: 0 };
+    t.pos.set(p.pos.x, g.world.groundAt(p.pos.x, p.pos.z - 20, 999), p.pos.z - 20);
+    t.mesh.position.copy(t.pos);
+    t.hp = 1e9;
+    t.iFrames = 0;
+    p.lock = t;
+    p.aimYaw = 0;
+    window.__pump(1);
+    const burn = 1e9 - t.hp;
+    const mesh = !!p.hwMesh;
+    return { drop: 1, picked, fired, gone, burn, mesh };
+  });
+  check(r4.drop > 0 && r4.picked, '重型敵人擊破時掉落重武器，按住 X 撿起');
+  check(r4.fired > 0 && r4.gone, `重武器自動攻擊鎖定的目標（${r4.fired} 發），彈藥打完就丟掉`);
+  check(r4.burn > 0 && r4.mesh, `火焰放射器燒到前方的敵人（${Math.round(r4.burn)}），手上看得到重武器`);
+  await page.screenshot({ path: path.join(SHOT_DIR, 'guns-heavy.png') });
+  await thawLoop(page);
+  await ctx.close();
+}
 // 多人的地圖互動裝置：客機按住互動鍵佔領雷達站（判定在房主）、狀態隨快照給客機
 async function testDevicesMp(browser, url) {
   console.log('多人：地圖互動裝置');
@@ -5899,6 +6103,27 @@ async function testDevicesMp(browser, url) {
     return d ? d.st : -1;
   }, tid);
   check(!tid || tst === 3 || tst === 2, `客機看到房主那邊觸發的陷阱（狀態 ${tst}）`);
+  // 固定砲台與重武器：房主讓客機的機體上砲台、拿重武器 → 客機的 devMount、hw 與手上的模型
+  await host.evaluate(() => {
+    const g = window.__game;
+    const c = g.players.find((p) => !p.isPlayer);
+    const d = g.devs.find((o) => o.def.gun && o.st !== 2);
+    if (d) {
+      if (d.st === 5) {
+        const e = g.entById(d.user);
+        if (e) e.takeDamage(1e9, 0, g.player, e.center());
+        d.st = 0;
+      }
+      g.gunMount(d, c);
+    }
+    c.hw = { k: 'hw_pod', ammo: 8, cd: 9 };
+  });
+  await pump(15);
+  const gm = await cli.evaluate(() => {
+    const g = window.__game;
+    return { mount: !!g.player.devMount, hw: g.player.hw && g.player.hw.k, mesh: !!g.player.hwMesh };
+  });
+  check(gm.mount && gm.hw === 'hw_pod' && gm.mesh, `客機的機體上砲台、拿到重武器（${gm.hw}）並顯示`);
   await ctx.close();
 }
 // 任務中改設定（docs/settings-ui.md 的「任務中改設定」）：暫停 → 設定 → 改 → 返回 → 繼續，回到遊戲後要真的套用
@@ -26301,6 +26526,7 @@ const STEPS = [
   ['testSettingsLive', (c) => testSettingsLive(c.browser, c.base)],
   ['testDevices', (c) => testDevices(c.browser, c.base)],
   ['testTraps', (c) => testTraps(c.browser, c.base)],
+  ['testGuns', (c) => testGuns(c.browser, c.base)],
   ['testBoundary', (c) => testBoundary(c.browser, c.base)],
   ['testAir', (c) => testAir(c.browser, c.base)],
   ['testCampaign', (c) => testCampaign(c.browser, c.base)],
