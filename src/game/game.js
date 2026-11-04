@@ -398,7 +398,13 @@ export class Game {
     // 自訂關卡的試玩：暫停選單的「放棄任務」＝回編輯器
     if (id === 'pause' && !this.lab)
       document.getElementById('btnAbort').textContent =
-        this.lv && this.lv.test ? '回編輯器' : this.tut ? '離開訓練（回模擬器）' : '放棄任務';
+        this.lv && this.lv.test
+          ? '回編輯器'
+          : this.tut
+            ? '離開訓練（回模擬器）'
+            : this.camp && !this.campMp()
+              ? '撤退到紀錄點'
+              : '放棄任務';
   }
   // ---------- loop ----------
   loop() {

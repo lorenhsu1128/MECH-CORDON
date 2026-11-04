@@ -1239,7 +1239,8 @@ Object.assign(Game.prototype, {
     });
     $('btnCampRetry').onclick = () => this.campRetry(false);
     $('btnCampFailGarage').onclick = () => this.campRetry(true);
-    $('btnCampQuit').onclick = () => this.campEnd(false, true);
+    $('btnCampHubKeep').onclick = () => this.campHubKeep();
+    $('btnCampQuit').onclick = () => this.campQuitAsk();
     // 靶場（range.js）
     $('btnRange').onclick = () => this.openRangeMenu();
     $('btnRangeGo').onclick = () => this.rangeMenuGo();
@@ -1317,6 +1318,7 @@ Object.assign(Game.prototype, {
       if (this.range) return this.rangeExit();
       if (this.tut) return this.tutExit(); // 近戰訓練：回模擬器
       if (this.lab) return this.exitLab();
+      if (this.camp && !this.campMp()) return this.campRetreat(); // 單人：撤退到紀錄點（不刪紀錄點）
       if (this.camp) return this.campEnd(false, true); // 多人時 campEnd 會通知客機
       if (this.sim) return this.simEnd(false);
       if (this.net && this.net.role === 'client') {

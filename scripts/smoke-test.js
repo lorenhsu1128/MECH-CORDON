@@ -7777,6 +7777,59 @@ async function testCampaign(browser, base) {
     return { st: g.state, seg: g.camp.seg, fails: g.camp.fails, alive: !g.player.dead };
   });
   check(s3.st === 'play' && s3.seg === 1 && s3.fails === 1 && s3.alive, '從紀錄點繼續：回到區段 2 的起點');
+  // 暫停選單的「撤退到紀錄點」（單人）：不刪紀錄點、不算失敗 → 回作戰室保留紀錄點 → 「繼續出擊」接回區段 2
+  await page.evaluate(() => {
+    const g = window.__game;
+    g.state = 'pause';
+    g.showScreen('pause');
+  });
+  const abTxt = await page.textContent('#btnAbort');
+  await page.evaluate(() => document.getElementById('btnAbort').click());
+  const rt = await page.evaluate(() => {
+    const g = window.__game;
+    return {
+      st: g.state,
+      title: document.getElementById('cfTitle').textContent,
+      ck: g.save.story.sortie && g.save.story.sortie.seg,
+      fails: g.camp && g.camp.fails,
+      keep: getComputedStyle(document.getElementById('btnCampHubKeep')).display !== 'none',
+    };
+  });
+  check(
+    abTxt.includes('撤退到紀錄點') &&
+      rt.st === 'campfail' &&
+      rt.title.includes('撤退') &&
+      rt.ck === 1 &&
+      rt.fails === 1 &&
+      rt.keep,
+    `暫停選單「${abTxt}」：紀錄點保留在區段 ${rt.ck + 1}、失敗次數不變（${rt.fails}）`,
+  );
+  // 放棄出擊要先確認（取消＝不動）
+  await page.click('#btnCampQuit');
+  const ask = await page.evaluate(() => {
+    const m = document.getElementById('uiModal');
+    const on = !!(m && m.classList.contains('on'));
+    window.__game.uiModalClose(false);
+    return { on, ck: !!window.__game.save.story.sortie };
+  });
+  check(ask.on && ask.ck, '放棄出擊先確認，取消時紀錄點還在');
+  await page.click('#btnCampHubKeep');
+  check(await waitVisible(page, 'hub', 10000), '回作戰室（保留紀錄點）');
+  const hk = await page.evaluate(() => ({
+    camp: !!window.__game.camp,
+    ck: window.__game.save.story.sortie && window.__game.save.story.sortie.seg,
+  }));
+  check(!hk.camp && hk.ck === 1, `回作戰室後紀錄點還在（區段 ${hk.ck + 1}）`);
+  await page.evaluate(() => window.__game.campResume());
+  await page.waitForFunction(() => document.getElementById('ctBtns').style.visibility === 'visible', null, {
+    timeout: 8000,
+  });
+  await page.click('#btnCampGo');
+  const s4 = await page.evaluate(() => {
+    const g = window.__game;
+    return { st: g.state, seg: g.camp && g.camp.seg };
+  });
+  check(s4.st === 'play' && s4.seg === 1, '作戰室「繼續出擊」：從區段 2 的起點接回');
   // 「保存並回作戰室」已經拿掉（2026-11-02）：暫停選單、轉場、失敗畫面都沒有這顆按鈕
   check(
     await page.evaluate(

@@ -683,7 +683,10 @@ Object.assign(Game.prototype, {
     const s = w.start,
       adv = kind !== 'near' && s && ADVANCE.includes((this.camp && this.camp.ss && this.camp.ss.type) || '');
     const D = adv ? (s.fx ? (s.fx > 0 ? Z[1] - s.x : s.x - Z[0]) : s.fz > 0 ? Z[3] - s.z : s.z - Z[2]) : 0;
-    for (let t = 0; t < 600 && out.length < n; t++) {
+    // 找不到時分段放寬：450 次之後間距減半、離玩家的距離不限；推進型區段 700 次之後邊緣與間距不限，
+    // 但一直要求在前方（深度 55% 以後），不退回 spawnPoint（那會把出口放在起點附近）
+    const T = adv ? 1100 : 600;
+    for (let t = 0; t < T && out.length < n; t++) {
       let x, z;
       if (kind === 'near') {
         const a = Math.random() * Math.PI * 2,
@@ -695,14 +698,18 @@ Object.assign(Game.prototype, {
         z = rnd(Z[2] + 6 * MS, Z[3] - 6 * MS);
       }
       if (!w.inZone(x, z, 5 * MS) && !w.zoneGoal) continue;
-      if (kind === 'edge') {
+      if (kind === 'edge' && !(adv && t >= 700)) {
         const de = Math.min(x - Z[0], Z[1] - x, z - Z[2], Z[3] - z);
-        if (de > ex * 0.2) continue;
+        if (de > ex * (t < 450 ? 0.2 : 0.3)) continue;
       }
-      if (adv && t < 450 && (x - s.x) * s.fx + (z - s.z) * s.fz < D * 0.6) continue;
+      if (adv && (x - s.x) * s.fx + (z - s.z) * s.fz < D * (t < 450 ? 0.6 : 0.55)) continue;
       if (!free(x, z)) continue;
       if (kind !== 'near' && t < 450 && Math.hypot(x - p.x, z - p.z) < ex * 0.3) continue;
-      if (out.some((q) => Math.hypot(q.x - x, q.z - z) < Math.max(gap, 10 * DS) * (t < 450 ? 1 : 0.5)))
+      if (
+        out.some(
+          (q) => Math.hypot(q.x - x, q.z - z) < Math.max(gap, 10 * DS) * (t < 450 ? 1 : t < 700 ? 0.5 : 0.25),
+        )
+      )
         continue;
       out.push(new THREE.Vector3(x, w.terrainHeight(x, z), z));
     }
@@ -1308,9 +1315,11 @@ Object.assign(Game.prototype, {
     this.showScreen('campFail');
     const so = this.campSortie(),
       ck = this.campStory().sortie;
+    document.getElementById('cfTitle').textContent = 'AC 已被擊破';
     document.getElementById('cfInfo').textContent =
       `${so.name}　紀錄點：區段 ${ck.seg + 1}／${so.segs.length} 的轉場起點（失敗 ${c.fails} 次）`;
     document.getElementById('ctBtns2').style.display = '';
+    document.getElementById('btnCampHubKeep').style.display = this.campMp() ? 'none' : '';
     // 失敗的通訊（依擊破你的敵人、失敗次數）直接顯示在失敗畫面
     this.commClear();
     const e = this.campComm('fail', this.campCtx({ killedBy: this.campKilledBy }), false);
@@ -1330,6 +1339,47 @@ Object.assign(Game.prototype, {
       };
       this.net.tr.broadcast(c.lastFail);
     }
+  },
+  // 暫停選單的「撤退到紀錄點」（單人）：這一段的進度不算、紀錄點保留，不算失敗次數；
+  // 之後和失敗畫面一樣可以從紀錄點繼續、整備後繼續、回作戰室（作戰室的「繼續出擊」接回）或放棄出擊
+  campRetreat() {
+    const c = this.camp,
+      ck = this.campStory().sortie;
+    if (!c || !ck) return this.campEnd(false, true);
+    SFX.ui();
+    this.clearMission();
+    this.campClearExits();
+    this.commClear();
+    this.state = 'campfail';
+    this.showScreen('campFail');
+    const so = this.campSortie();
+    document.getElementById('cfTitle').textContent = '撤退到紀錄點';
+    document.getElementById('cfInfo').textContent =
+      `${so.name}　紀錄點：區段 ${ck.seg + 1}／${so.segs.length} 的轉場起點（這一段的進度不保留）`;
+    document.getElementById('cfComm').innerHTML = '';
+    document.getElementById('ctBtns2').style.display = '';
+    document.getElementById('btnCampHubKeep').style.display = '';
+  },
+  // 回作戰室、保留紀錄點（作戰室的「繼續出擊」從那一段的開頭接回）
+  campHubKeep() {
+    const ck = this.campStory().sortie;
+    SFX.ui();
+    if (ck && ck.mods) this.campSetMods(ck.mods); // 紀錄點之後拿到的模組不算（接回時同樣以紀錄點為準）
+    this.clearMission();
+    this.campClearExits();
+    this.camp = null;
+    this.writeSave();
+    this.openHub();
+  },
+  // 失敗／撤退畫面的「放棄出擊」：紀錄點會被刪除，先確認（多人照舊直接放棄）
+  campQuitAsk() {
+    if (this.campMp()) return this.campEnd(false, true);
+    this.uiConfirm(
+      '放棄這次出擊？紀錄點會被刪除，下次要從第一段重新開始。',
+      () => this.campEnd(false, true),
+      '放棄出擊',
+      '取消',
+    );
   },
   campRetry(toGarage) {
     SFX.ui();
