@@ -150,3 +150,52 @@ export function piston(n, mA, mB, a, b, r = 0.06) {
     10,
   );
 }
+
+export const loop = (r, t, n = 20) =>
+  D.sweep(
+    D.ring(r, n).map(([p, q]) => [p, 0, q]),
+    D.ring(t, 6),
+    true,
+  );
+// 一般的金屬材質組
+export const metalSet = (body, o = {}) => ({
+  body: mStd(body, { metalness: 0.5, ...o }),
+  sub: mStd(o.sub || 0x8a929a, { metalness: 0.5 }),
+  dark: mStd(0x24282d, { metalness: 0.6 }),
+  steel: mStd(0x8a9096, { roughness: 0.3, metalness: 0.9 }),
+  yel: mStd(0xd8a628, { roughness: 0.6, metalness: 0.2 }),
+  con: mStd(0x8a8a84, { roughness: 0.95, metalness: 0.02 }),
+});
+
+// 控制台（互動型共用）：在 (x, z)，操作面朝 −X（ry 轉向）；底座、斜面的操作板、螢幕、按鈕、把手、纜線
+export function consoleAt(b, M, glow, x, z, ry = 0) {
+  const c = Math.cos(ry),
+    s = Math.sin(ry);
+  const L = (u, y, w) => [x + u * c + w * s, y, z - u * s + w * c];
+  const at = (u, y, w) => L(u, y, w);
+  let p = at(0, 0.06, 0);
+  bx(b, M.dark, 1.0, 0.12, 0.8, p[0], p[1], p[2], 0, ry, 0);
+  p = at(0.05, 0.62, 0);
+  bx(b, M.body, 0.75, 1.0, 0.62, p[0], p[1], p[2], 0, ry, 0);
+  p = at(-0.08, 1.2, 0);
+  bx(b, M.sub, 0.72, 0.14, 0.66, p[0], p[1], p[2], 0, ry, 0.38);
+  p = at(-0.14, 1.27, 0);
+  P(b, D.box(0.42, 0.02, 0.46, 0.005), glow, p[0], p[1], p[2], 0, ry, 0.38);
+  p = at(0.32, 1.45, 0);
+  bx(b, M.dark, 0.12, 0.5, 0.6, p[0], p[1], p[2], 0, ry, 0);
+  p = at(0.25, 1.48, 0);
+  P(b, D.box(0.02, 0.36, 0.48, 0.005), glow, p[0], p[1], p[2], 0, ry, 0);
+  fine(() => {
+    for (let i = 0; i < 4; i++) {
+      p = at(-0.3, 1.18, -0.2 + i * 0.13);
+      cy(b, i % 2 ? M.yel : mLamp(0xff4030, 0.8), 0.035, 0.05, p[0], p[1], p[2], 8, 0, undefined, 0, 0, 0.38);
+    }
+    p = at(-0.33, 0.7, 0);
+    vents(b, M.dark, M.sub, 0.4, 0.3, p[0], p[1], p[2], ry - HP, 4);
+    p = at(-0.1, 1.0, 0.33);
+    handle(b, M.steel, 0.3, p[0], p[1], p[2], ry, 0.06, 0.018);
+    const a = at(0.3, 0.12, 0.25),
+      e = at(0.8, 0.02, 0.6);
+    cable(b, M.dark, a, e, 0.035, 0.03);
+  });
+}
