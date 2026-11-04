@@ -93,6 +93,7 @@ Object.assign(Game.prototype, {
       this.enemies.find((e) => e.id === id) ||
       this.allies.find((e) => e.id === id) ||
       this.shotById(id) || // 鎖定中的可以打掉的投射物（hazards2.js）
+      this.trapById(id) || // 鎖定中的陷阱弱點（devices-traps.js）
       null
     );
   },

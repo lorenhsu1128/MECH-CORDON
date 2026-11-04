@@ -28,6 +28,7 @@ Object.assign(Game.prototype, {
     if (this.world && this.world.props) for (const p of this.world.props) if (this.propLive(p)) out.push(p); // 不可破壞時改版後的物件不算
     for (const v of this.vehicles) if (!v.dead) for (const pt of v.parts) out.push(pt);
     if (team) out.push(...this.shotTargets(team));
+    if (team !== 'prop' && this.devs && this.devs.length) out.push(...this.trapTargets()); // 環境陷阱的弱點（敵人的流彈也算）
     return out;
   },
   // 地圖物件受傷（房主／單機）：attr＝屬性、wid＝武器 id（依材質的倍率，game/destruct.js）

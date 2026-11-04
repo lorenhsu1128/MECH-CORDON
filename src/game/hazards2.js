@@ -203,6 +203,7 @@ Object.assign(Game.prototype, {
     let L = this.hostilesOfEnt(p);
     if ((this.zones && this.zones.length) || this.airMode) L = L.filter((e) => !this.smokeHides(p, e));
     const S = this.shotTargets(p.team);
+    if (p.team === 'player' && this.devs && this.devs.length) S.push(...this.trapTargets()); // 環境陷阱的弱點（devices-traps.js）
     return S.length ? L.concat(S) : L;
   },
   // 吸引（MechEntity.move）：往中心加速度；房主與客機的自身預測都算

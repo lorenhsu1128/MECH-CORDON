@@ -365,8 +365,9 @@ Object.assign(Game.prototype, {
   // 追尾的自動鎖定：框裡沒有鎖定中的目標一段時間就換（目標輔助中保持）
   chaseAutoLock(p) {
     const now = performance.now();
-    const c = this.lockCands(p);
-    if (p.lock && !c.includes(p.lock) && !this.assistOn() && !this.gazeHolds(p)) {
+    const all = this.lockCands(p);
+    const c = all.filter((e) => !e.isTrap); // 陷阱的弱點只用切換鎖定或點選（devices-traps.js）
+    if (p.lock && !all.includes(p.lock) && !this.assistOn() && !this.gazeHolds(p)) {
       if (!this.lockLostT) this.lockLostT = now;
       if (now - this.lockLostT > LOST_T * 1000) {
         p.lock = c[0] || null;

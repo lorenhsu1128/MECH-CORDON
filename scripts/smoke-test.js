@@ -5507,7 +5507,7 @@ async function testDevices(browser, base) {
     const W = g.world;
     return g.devs.map((d) => {
       const ob = W.obstacles;
-      W.obstacles = ob.filter((o) => o !== d.ob); // 自己的碰撞不算
+      W.obstacles = ob.filter((o) => !d.obs.includes(o)); // 自己的碰撞不算
       const free = g.devFree(d.pos.x, d.pos.z, 1);
       W.obstacles = ob;
       return { k: d.kind, free };
@@ -5516,7 +5516,7 @@ async function testDevices(browser, base) {
   const kinds = info.map((d) => d.k).sort();
   check(
     kinds.includes('radar') && kinds.includes('recharge') && info.every((d) => d.free),
-    `一般戰鬥放了雷達站與回復站，都在空地上（${kinds.join('、')}）`,
+    `一般戰鬥放了雷達站與回復站，都在空地上（${info.map((d) => d.k + (d.free ? '' : '✗')).join('、')}）`,
   );
   // 雷達站：站上去 → 提示 → 按住互動鍵（鍵盤 X）4 秒佔領
   const r1 = await page.evaluate(() => {
@@ -5628,6 +5628,162 @@ async function testDevices(browser, base) {
   await thawLoop(page);
   await ctx.close();
 }
+// 環境陷阱（docs/map-devices-design.md 的 C）：每個主題出擊、陷阱放在敵群那裡、觸發（打弱點或控制台）、
+// 範圍裡的敵人受損與環境擊殺、玩家自己也會受傷、留下的掩體、截圖
+async function testTraps(browser, base) {
+  console.log('環境陷阱：7 個主題的陷阱');
+  const { ctx, page } = await newPage(browser, 'traps');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  const LIST = [
+    ['industrial', 'crane'],
+    ['grid', 'shock'],
+    ['desert', 'mine'],
+    ['snow', 'ice'],
+    ['wasteland', 'pylon'],
+    ['dunes', 'gas'],
+    ['flooded', 'cable'],
+  ];
+  for (const [theme, kind] of LIST) {
+    await page.evaluate((t) => {
+      localStorage.setItem('rubicon_map', t);
+      localStorage.setItem('rubicon_variant', 'base');
+      const g = window.__game;
+      if (g.state !== 'title') {
+        g.clearMission();
+        g.state = 'title';
+      }
+      g.startMission();
+    }, theme);
+    await page.waitForFunction(() => window.__game.state === 'play' && window.__game.player, null, {
+      timeout: 40000,
+    });
+    await freezeLoop(page);
+    const r = await page.evaluate(
+      ([kind]) => {
+        const g = window.__game;
+        g.waves = [];
+        g.wavePend = null;
+        const traps = g.devs.filter((d) => d.kind === kind);
+        const d = traps[0];
+        if (!d) return { n: 0 };
+        const MS = d.mesh.scale.x;
+        // 離最近的敵群多遠
+        const gd = Math.min(
+          ...(g.encGroups || []).map((q) => Math.hypot(q.pos.x - d.pos.x, q.pos.z - d.pos.z)),
+          1e9,
+        );
+        for (const e of g.enemies) e.updateAI = () => {};
+        // 一台敵人放進效果範圍（AP 很少：一定擊破）、另一台放遠一點（只受傷不算）
+        const Z = d.def.fx.zone || {};
+        const fwd = g.devRot(d, [0, 0, 1]).normalize();
+        const at = d.def.fx.line
+          ? d.pos.clone().addScaledVector(fwd, 6 * MS)
+          : d.pos
+              .clone()
+              .add(g.devRot(d, d.def.fx.at || [0, 0, 0]))
+              .addScaledVector(fwd, 0.6 * MS);
+        if (Z.water) {
+          // 水面通電：找範圍內有水的點（沒有水就照樣放）
+          for (let k = 0; k < 60; k++) {
+            const a = k * 0.7,
+              rr = (k / 60) * Z.R * MS * 0.9;
+            const x = d.pos.x + Math.cos(a) * rr,
+              z = d.pos.z + Math.sin(a) * rr;
+            if (g.world.waterDepth(x, z) > 0.1) {
+              at.set(x, 0, z);
+              break;
+            }
+          }
+        }
+        const e = g.enemies.find((o) => !o.dead && o.ai !== 'part' && !o.isBoss && !o.flying);
+        e.pos.set(at.x, g.world.groundAt(at.x, at.z, 999), at.z);
+        e.vel.set(0, 0, 0);
+        e.mesh.position.copy(e.pos);
+        e.hp = e.maxHp * 0.12;
+        e.iFrames = 0;
+        const p = g.player;
+        p.maxHp = p.hp = 100000;
+        const hp0 = p.hp;
+        // 玩家：打弱點型站在範圍邊上（一起受傷）；互動型站在控制台
+        if (d.def.trig === 'use') {
+          p.pos.set(d.usePos.x, g.world.groundAt(d.usePos.x, d.usePos.z, 999), d.usePos.z);
+        } else {
+          const q = at.clone().addScaledVector(fwd.clone().set(fwd.z, 0, -fwd.x), 1.2 * MS);
+          p.pos.set(q.x, g.world.groundAt(q.x, q.z, 999), q.z);
+        }
+        p.vel.set(0, 0, 0);
+        p.iFrames = 0;
+        window.__pump(0.3);
+        const env0 = g.envKills || 0;
+        const walls0 = (g.tWalls || []).length;
+        const lockable = d.tgt ? g.lockPool(p).includes(d.tgt) : null;
+        if (d.def.trig === 'shoot') g.damageProp(d.tgt, d.def.hp + 10, 0, d.tgt.pos.clone(), p);
+        else {
+          g.down[g.keymap.interact] = true;
+          window.__pump(3, () => d.st === 3);
+          g.down[g.keymap.interact] = false;
+        }
+        const st1 = d.st;
+        window.__pump(1.4);
+        const shotAt = { x: d.pos.x, z: d.pos.z };
+        window.__pump(14, () => d.st !== 3 || e.dead);
+        return {
+          n: traps.length,
+          gd: Math.round(gd),
+          st1,
+          dead: e.dead,
+          envK: (g.envKills || 0) - env0,
+          walls: (g.tWalls || []).length - walls0,
+          hurt: Math.round(((hp0 - p.hp) / hp0) * 100),
+          lockable,
+          shotAt,
+        };
+      },
+      [kind],
+    );
+    check(r.n > 0 && r.gd < 200, `${theme}：放了「${kind}」陷阱 ${r.n} 個（離最近的敵群 ${r.gd} m）`);
+    if (!r.n) {
+      await thawLoop(page);
+      continue;
+    }
+    check(
+      r.st1 === 3 && r.dead && r.envK > 0,
+      `${theme}：觸發陷阱、範圍裡的敵人被擊破＝環境擊殺（${r.envK}）`,
+    );
+    if (r.lockable !== null) check(r.lockable, `${theme}：弱點可以鎖定（排在敵人後面）`);
+    if (kind === 'crane' || kind === 'mine')
+      check(r.walls > 0, `${theme}：留下掩體（臨時障礙物 ${r.walls} 個）`);
+    if (kind !== 'shock' && kind !== 'cable')
+      check(r.hurt > 0, `${theme}：玩家站在範圍裡也會受傷（AP −${r.hurt}%）`);
+    // 截圖：第二個陷阱，玩家站在旁邊、鏡頭拉遠，觸發後 0.9 秒（作用中）
+    await page.evaluate((kind) => {
+      const g = window.__game;
+      const d = g.devs.filter((o) => o.kind === kind)[1] || g.devs.find((o) => o.kind === kind);
+      const MS = d.mesh.scale.x;
+      const back = g.devRot(d, [0, 0, -1]).normalize();
+      const q = (d.def.trig === 'use' ? d.usePos : d.pos).clone().addScaledVector(back, 9 * MS);
+      const p = g.player;
+      p.pos.set(q.x, g.world.groundAt(q.x, q.z, 999), q.z);
+      p.vel.set(0, 0, 0);
+      p.hp = p.maxHp;
+      g.camUser = 1.6;
+      g.tfxClear && g.tfxClear();
+      window.__pump(1.2);
+      if (d.st === 0) {
+        if (d.def.trig === 'shoot') g.damageProp(d.tgt, d.def.hp + 10, 0, d.tgt.pos.clone(), p);
+        else {
+          d.prog = 0.99;
+          g.devTrigger(d, p);
+        }
+      }
+      window.__pump(0.9);
+    }, kind);
+    await page.screenshot({ path: path.join(SHOT_DIR, `trap-${theme}.png`) });
+    await thawLoop(page);
+  }
+  await ctx.close();
+}
 // 多人的地圖互動裝置：客機按住互動鍵佔領雷達站（判定在房主）、狀態隨快照給客機
 async function testDevicesMp(browser, url) {
   console.log('多人：地圖互動裝置');
@@ -5705,6 +5861,20 @@ async function testDevicesMp(browser, url) {
   ]);
   check(r[0] && r[1], `客機按住互動鍵佔領雷達站（房主 ${r[0]}、客機 ${r[1]}）`);
   await cli.screenshot({ path: path.join(SHOT_DIR, 'devices-mp-client.png') });
+  // 環境陷阱：房主那邊打壞弱點 → 客機看到觸發（快照的狀態）
+  const tid = await host.evaluate(() => {
+    const g = window.__game;
+    const d = g.devs.find((o) => o.def.trap && o.def.trig === 'shoot' && o.st === 0);
+    if (!d) return 0;
+    g.damageProp(d.tgt, d.def.hp + 10, 0, d.tgt.pos.clone(), g.player);
+    return d.id;
+  });
+  await pump(15);
+  const tst = await cli.evaluate((id) => {
+    const d = (window.__game.devs || []).find((o) => o.id === id);
+    return d ? d.st : -1;
+  }, tid);
+  check(!tid || tst === 3 || tst === 2, `客機看到房主那邊觸發的陷阱（狀態 ${tst}）`);
   await ctx.close();
 }
 // 任務中改設定（docs/settings-ui.md 的「任務中改設定」）：暫停 → 設定 → 改 → 返回 → 繼續，回到遊戲後要真的套用
@@ -26106,6 +26276,7 @@ const STEPS = [
   ['testSettingsUi', (c) => testSettingsUi(c.browser, c.base)],
   ['testSettingsLive', (c) => testSettingsLive(c.browser, c.base)],
   ['testDevices', (c) => testDevices(c.browser, c.base)],
+  ['testTraps', (c) => testTraps(c.browser, c.base)],
   ['testBoundary', (c) => testBoundary(c.browser, c.base)],
   ['testAir', (c) => testAir(c.browser, c.base)],
   ['testCampaign', (c) => testCampaign(c.browser, c.base)],

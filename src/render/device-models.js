@@ -4,6 +4,7 @@
 import { CB, P, bakeAll, gBox, gCyl } from './geometry.js';
 import { providedModel } from './model-provider.js';
 import { tagStyle } from './style/shader.js';
+import { TRAP_BUILDERS } from './trap-models.js';
 
 const mats = (color) => ({
   body: new THREE.MeshStandardMaterial({
@@ -103,4 +104,4 @@ export function buildRechargeStation(color = 0x7ee081) {
   return g;
 }
 
-export const DEVICE_BUILDERS = { radar: buildRadarStation, recharge: buildRechargeStation };
+export const DEVICE_BUILDERS = { radar: buildRadarStation, recharge: buildRechargeStation, ...TRAP_BUILDERS };

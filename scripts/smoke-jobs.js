@@ -58,6 +58,7 @@ const DEFAULT_TIMES = {
   testSettingsUi: 15000,
   testSettingsLive: 25000,
   testDevices: 30000,
+  testTraps: 90000,
   testDevicesMp: 60000,
   testBoundary: 1548,
   testCampaign: 47376,

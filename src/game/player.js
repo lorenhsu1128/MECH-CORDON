@@ -56,7 +56,7 @@ Object.assign(Game.prototype, {
       }
     }
     // 可以打掉的投射物排在敵人後面（hazards2.js 的 lockPool）
-    return out.sort((a, b) => (a.e.isShot ? 1 : 0) - (b.e.isShot ? 1 : 0) || a.k - b.k).map((c) => c.e);
+    return out.sort((a, b) => (a.e.isProp ? 1 : 0) - (b.e.isProp ? 1 : 0) || a.k - b.k).map((c) => c.e); // 投射物與陷阱的弱點排在敵人後面
   },
   // 每格：目標被擊破、不能鎖定（含被煙霧擋住）或移到攻擊距離外就解除，沒有目標時鎖定第一順位
   autoLock(p) {
@@ -70,7 +70,7 @@ Object.assign(Game.prototype, {
       p.lock = null;
     this.gazeLockTick(p); // 看哪鎖哪（game/gaze.js）
     if (this.chase) return this.chaseAutoLock(p);
-    if (!p.lock) p.lock = this.lockCands(p)[0] || null;
+    if (!p.lock) p.lock = this.lockCands(p).find((e) => !e.isTrap) || null; // 陷阱的弱點只用切換鎖定或點選
   },
   // 切換鍵：依 lockCands 的順序換下一個
   cycleLock() {

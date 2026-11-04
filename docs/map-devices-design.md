@@ -115,7 +115,7 @@
 | 期 | 內容 | 狀態 |
 |---|---|---|
 | 1 | 框架：互動鍵（鍵盤、手把、觸控）、裝置系統、HUD、多人同步、模型庫登記；H 雷達站、回復站 | ✅ |
-| 2 | C 陷阱：前 7 個主題＋環境擊殺、風格評價、獎金 | |
+| 2 | C 陷阱：前 7 個主題＋環境擊殺、風格評價、獎金 | ✅ |
 | 3 | C 陷阱：後 6 個主題 | |
 | 4 | G1 固定砲台＋G2 撿重武器 | |
 | 5 | F 地形事件：前 7 個主題 | |
@@ -136,3 +136,14 @@
   - 雷達站的基座有碰撞（`d.ob`，`devRemove` 時拿掉），測試站在旁邊（4.5×MS）；檢查空地時要排除自己的碰撞。
   - 裝置的地面光環是群組的子網格（舊尺度，跟著乘 MS），`userData.helper`。
 - **測試**：`testDevices`（擺放、提示與 `body.devNear`、鍵盤／觸控／手把三種互動鍵、雷達站佔領與派人查看、被搶回、回復站的回復與總量與用完、設定的按鍵頁、Boss 關只放回復站）、`testDevicesMp`（客機照快照建立裝置、客機按住互動鍵佔領雷達站）。
+
+### 第 2 期
+
+- **程式**：`game/devices-traps.js`（`trapPlan` 規畫、`trapInit` 弱點的代理目標、`trapDamage`／`devTrigger` 觸發、`trapActTick` 效果（一次性的 `trapHit`：爆炸 `blast`、倒下的直線 `line`、留下的掩體 `cover`（`addTempWall`，同步給客機）、火海 `pool`、光柱 `pillar`；持續的區域 `trapZoneTick`）、`devHurt` 依目標最大 AP 的比例（玩家與友軍 ×0.5、Boss ×0.08）、`devEnvKill` 環境擊殺、`trapVis` 顯示）、`render/trap-models.js`（7 個模型，會動的節點 wp／load／tower／hole／grid）、`data/devices.js` 的陷阱定義（`trig`、`hp`、`wp`、`fx`、`solid` 碰撞）。
+- **弱點**：代理目標 `isProp`＋`isTrap`（id＝960000＋裝置 id，`trapById`），加進 `destructibles`（所有隊伍：敵人的流彈、爆炸也會打到）與玩家的 `lockPool`；`lockCands` 把 isProp 的排在敵人後面，自動鎖定（俯視、追尾）與眼動追蹤不選它，只能切換鎖定或點選。`propDamage` 看到 `isTrap` 轉給 `trapDamage`。
+- **環境擊殺**：`devHurt` 執行中 `devEnvNow`＝true，`onEnemyKilled` 看到就呼叫 `devEnvKill`：風格評價的 `env`（45 分）、額外獎金＝擊破獎金 ×0.5、`envKills` 計數。觸發者是敵人時擊破不算任何人的。
+- **同步**：快照的裝置表多一欄朝向（90° 的幾倍），陷阱的數值欄是弱點的血量比例；客機依狀態與本地計時演出（貨櫃 0.55 秒落地、鐵塔 1 秒倒下、冰洞、通電的電光（`fx._nested` 不轉送））。
+- **坑**：
+  - 地圖物件（`world.props`）以陣列索引同步，執行中才加的東西不能登記進去（房主與客機的順序會不同），所以弱點用代理目標。
+  - 互動型陷阱的光環畫在控制台旁（`def.use`），`devIn` 用 `usePos`。
+- **測試**：`testTraps`（7 個主題：放在敵群那裡、觸發、範圍裡的敵人擊破＝環境擊殺、弱點可以鎖定、留下掩體、玩家自己也受傷、作用中的截圖 `trap-<主題>.png`），`testDevicesMp` 加客機看到房主觸發的陷阱。

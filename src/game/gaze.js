@@ -425,7 +425,7 @@ Object.assign(Game.prototype, {
     let best = null,
       bd = 1e9;
     for (const e of this.lockPool(p)) {
-      if (e.dead || e.noLock || e.isShot || e.pos.distanceTo(p.pos) > reach) continue;
+      if (e.dead || e.noLock || e.isShot || e.isTrap || e.pos.distanceTo(p.pos) > reach) continue;
       if (this.smokeHides && this.smokeHides(p, e)) continue;
       const c = e.center();
       const s = this.proj(c);

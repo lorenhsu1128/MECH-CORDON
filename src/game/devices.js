@@ -8,9 +8,11 @@ import { DEVICES, DEV_DECAY, DEV_MARK_R } from '../data/devices.js';
 import { DEVICE_BUILDERS } from '../render/device-models.js';
 import { Game } from './game.js';
 
-const ST_IDLE = 0, // 雷達站：沒有人佔；回復站：可以用
+const ST_IDLE = 0, // 雷達站：沒有人佔；回復站：可以用；陷阱：待命
   ST_ON = 1, // 雷達站：玩家佔領中
-  ST_USED = 2; // 回復站：用完了
+  ST_USED = 2, // 回復站：用完了；陷阱：用過了
+  ST_ACT = 3, // 陷阱：作用中
+  ST_CD = 4; // 互動型陷阱：冷卻中
 const hex = (c) => '#' + c.toString(16).padStart(6, '0');
 
 Object.assign(Game.prototype, {
@@ -55,6 +57,7 @@ Object.assign(Game.prototype, {
         v: k === 'recharge' ? d.cap + d.capMp * (np - 1) : 0,
       });
     }
+    this.trapPlan(used); // 環境陷阱（devices-traps.js）
   },
   devLerp(s, q, t) {
     return { x: s.x + (q.x - s.x) * t, z: s.z + (q.z - s.z) * t };
@@ -78,14 +81,14 @@ Object.assign(Game.prototype, {
     );
   },
   // 在 at 附近（由近到遠的螺旋）找空地；at 為 null 時在玩家周圍 40～120 m×DS 隨機找
-  devSpot(at, used) {
+  devSpot(at, used, pad = 5) {
     const far = (x, z) => !used.some((q) => Math.hypot(q.x - x, q.z - z) < 40 * DS);
     if (at) {
       for (let r = 0; r < 60 * DS; r += 3 * DS)
         for (let a = 0; a < 12; a++) {
           const x = at.x + Math.cos((a / 12) * Math.PI * 2 + r) * r,
             z = at.z + Math.sin((a / 12) * Math.PI * 2 + r) * r;
-          if (this.devFree(x, z) && far(x, z)) return { x, z };
+          if (this.devFree(x, z, pad) && far(x, z)) return { x, z };
         }
     }
     const p = this.player.pos;
@@ -94,22 +97,25 @@ Object.assign(Game.prototype, {
         r = (40 + Math.random() * 80) * DS;
       const x = p.x + Math.cos(a) * r,
         z = p.z + Math.sin(a) * r;
-      if (this.devFree(x, z) && far(x, z)) return { x, z };
+      if (this.devFree(x, z, pad) && far(x, z)) return { x, z };
     }
     return null;
   },
-  // 建立裝置（房主與客機共用）：spec＝{ i, k, x, z, st?, p?, v?, u? }
+  // 建立裝置（房主與客機共用）：spec＝{ i, k, x, z, y?（朝向：90° 的幾倍）, st?, p?, v?, u? }
   devAdd(spec) {
     const def = DEVICES[spec.k];
     if (!def) return null;
     const W = this.world;
     const pos = new THREE.Vector3(spec.x, W.groundAt(spec.x, spec.z, 999), spec.z);
     const mesh = DEVICE_BUILDERS[spec.k](def.color);
+    const yq = (spec.y || 0) & 3,
+      yaw = (yq * Math.PI) / 2;
     mesh.position.copy(pos);
+    mesh.rotation.y = yaw;
     mesh.scale.setScalar(MS);
-    // 互動範圍的地面光環（舊尺度：整個群組乘 MS）
+    // 互動範圍的地面光環（舊尺度：整個群組乘 MS；互動型陷阱在控制台旁）
     const ring = new THREE.Mesh(
-      new THREE.RingGeometry(def.r - 0.25, def.r, 48),
+      new THREE.RingGeometry((def.r || 1) - 0.25, def.r || 1, 48),
       new THREE.MeshBasicMaterial({
         color: def.color,
         transparent: true,
@@ -119,45 +125,26 @@ Object.assign(Game.prototype, {
       }),
     );
     ring.rotation.x = -Math.PI / 2;
-    ring.position.y = 0.12;
+    ring.position.set(def.use ? def.use[0] : 0, 0.12, def.use ? def.use[2] : 0);
     ring.userData.helper = true;
+    ring.visible = !!def.r;
     mesh.add(ring);
-    mesh.ring = ring;
+    mesh.ring = def.r ? ring : null;
     this.scene.add(mesh);
     if (W.protect) W.protect.push(pos.clone());
-    // 碰撞：雷達站的基座（回復站是踩上去的平台，不擋）
-    let ob = null;
-    if (spec.k === 'radar') {
-      const h = 1.4 * MS,
-        w = 2.6 * MS;
-      ob = {
-        kind: 'box',
-        x: pos.x,
-        z: pos.z,
-        w,
-        d: w,
-        y: pos.y - 0.5,
-        top: pos.y + h,
-        group: mesh,
-        mats: [],
-        box: new THREE.Box3(
-          new THREE.Vector3(pos.x - w / 2, pos.y, pos.z - w / 2),
-          new THREE.Vector3(pos.x + w / 2, pos.y + h, pos.z + w / 2),
-        ),
-      };
-      W.obstacles.push(ob);
-    }
     const d = {
       id: spec.i,
       kind: spec.k,
       def,
       pos,
+      yaw,
+      yq,
       mesh,
       st: spec.st || ST_IDLE,
       prog: spec.p || 0,
       val: spec.v || 0,
       user: spec.u || 0,
-      ob,
+      obs: [],
       t: 0,
       noiseT: 0,
       glow: [],
@@ -165,18 +152,43 @@ Object.assign(Game.prototype, {
     mesh.traverse((o) => {
       if (o.isMesh && o.material && o.material.name === 'glow') d.glow.push(o.material);
     });
+    d.usePos = def.use ? pos.clone().add(this.devRot(d, def.use)) : pos;
+    // 碰撞（def.solid：舊尺度的 [x, z, 寬, 深, 高]，轉 90° 的幾倍；回復站與冰面是踩上去的，不擋）
+    for (const [x, z, w0, d0, h0] of def.solid || []) {
+      const c = pos.clone().add(this.devRot(d, [x, 0, z]));
+      const w = (yq & 1 ? d0 : w0) * MS,
+        dd = (yq & 1 ? w0 : d0) * MS,
+        h = h0 * MS;
+      const ob = {
+        kind: 'box',
+        x: c.x,
+        z: c.z,
+        w,
+        d: dd,
+        y: pos.y - 0.5,
+        top: pos.y + h,
+        group: mesh,
+        mats: [],
+        box: new THREE.Box3(
+          new THREE.Vector3(c.x - w / 2, pos.y, c.z - dd / 2),
+          new THREE.Vector3(c.x + w / 2, pos.y + h, c.z + dd / 2),
+        ),
+      };
+      W.obstacles.push(ob);
+      d.obs.push(ob);
+    }
+    if (def.trap) this.trapInit(d); // 弱點（devices-traps.js）
     (this.devs || (this.devs = [])).push(d);
     return d;
   },
   devRemove(d) {
     this.scene.remove(d.mesh);
-    if (d.ob && this.world) {
-      const i = this.world.obstacles.indexOf(d.ob);
-      if (i >= 0) this.world.obstacles.splice(i, 1);
-    }
-    d.mesh.traverse((o) => {
-      if (o === d.mesh.ring) o.geometry.dispose();
-    });
+    if (this.world)
+      for (const ob of d.obs) {
+        const i = this.world.obstacles.indexOf(ob);
+        if (i >= 0) this.world.obstacles.splice(i, 1);
+      }
+    if (d.mesh.ring) d.mesh.ring.geometry.dispose();
   },
   devClear() {
     for (const d of this.devs || []) this.devRemove(d);
@@ -196,13 +208,15 @@ Object.assign(Game.prototype, {
       p &&
       !p.dead &&
       !p.downed &&
-      Math.hypot(p.pos.x - d.pos.x, p.pos.z - d.pos.z) < d.def.r * MS &&
+      !!d.def.r &&
+      Math.hypot(p.pos.x - d.usePos.x, p.pos.z - d.usePos.z) < d.def.r * MS &&
       Math.abs(p.pos.y - d.pos.y) < 5 * MS
     );
   },
   devUsable(d) {
     if (d.kind === 'radar') return d.st === ST_IDLE;
     if (d.kind === 'recharge') return d.st === ST_IDLE;
+    if (d.def.trig === 'use') return d.st === ST_IDLE;
     return false;
   },
   // ---------- 判定（房主／單機） ----------
@@ -214,6 +228,17 @@ Object.assign(Game.prototype, {
       const holder = inside.find((p) => p.itHeld && !(p.staggerT > 0) && !(p.qbT > 0));
       if (d.kind === 'radar') this.devRadarTick(d, dt, inside, holder);
       else if (d.kind === 'recharge') this.devRechargeTick(d, dt, holder);
+      else if (d.def.trap) {
+        // 互動型陷阱：按住 hold 秒觸發
+        if (d.def.trig === 'use' && d.st === ST_IDLE) {
+          if (holder) {
+            d.prog = Math.min(1, d.prog + dt / d.def.hold);
+            d.user = holder.id;
+            if (d.prog >= 1) this.devTrigger(d, holder);
+          } else d.prog = Math.max(0, d.prog - (dt / d.def.hold) * DEV_DECAY);
+        }
+        this.trapActTick(d, dt);
+      }
     }
   },
   devRadarTick(d, dt, inside, holder) {
@@ -303,21 +328,23 @@ Object.assign(Game.prototype, {
       +d.pos.z.toFixed(1),
       d.st,
       Math.round(d.prog * 100),
-      Math.round(d.val * 1000),
+      Math.round((d.def.trap ? Math.max(0, d.hp) / (d.def.hp || 1) : d.val) * 1000),
       d.user || 0,
+      d.yq,
     ]);
   },
   devApply(arr) {
     if (!this.world) return;
     const ids = new Set();
-    for (const [i, k, x, z, st, p, v, u] of arr || []) {
+    for (const [i, k, x, z, st, p, v, u, y] of arr || []) {
       ids.add(i);
       let d = (this.devs || []).find((o) => o.id === i);
-      if (!d) d = this.devAdd({ i, k, x, z });
+      if (!d) d = this.devAdd({ i, k, x, z, y });
       if (!d) continue;
       d.st = st;
       d.prog = p / 100;
       d.val = v / 1000;
+      if (d.def.trap) d.hp = d.val * (d.def.hp || 1);
       d.user = u;
     }
     if (this.devs)
@@ -333,6 +360,12 @@ Object.assign(Game.prototype, {
     let near = null;
     for (const d of this.devs || []) {
       const m = d.mesh;
+      if (d.def.trap) {
+        this.trapVis(d, dt); // 環境陷阱（devices-traps.js）
+        if (p && !p.dead && this.devUsable(d) && this.devIn(d, p)) near = d;
+        this.devIntro(d, p);
+        continue;
+      }
       if (d.kind === 'radar' && m.dish)
         m.dish.rotation.y += dt * (d.st === ST_ON ? 1.6 : d.prog > 0 ? 4 : 0.3);
       if (d.kind === 'recharge' && m.core) {
@@ -353,18 +386,19 @@ Object.assign(Game.prototype, {
       for (const g of d.glow) g.emissiveIntensity = lit;
       if (m.ring) m.ring.material.opacity = d.st === ST_USED ? 0.12 : 0.3 + 0.2 * Math.sin(this.time * 3);
       if (p && !p.dead && this.devUsable(d) && this.devIn(d, p)) near = d;
-      // 第一次看到某種裝置：說明（每場一次）
-      if (p && p.pos.distanceTo(d.pos) < 55 * DS) {
-        const seen = this.devIntroSeen || (this.devIntroSeen = new Set());
-        if (!seen.has(d.kind)) {
-          seen.add(d.kind);
-          this.flashAlert(d.def.tip);
-        }
-      }
+      this.devIntro(d, p);
     }
     this.devNear = near;
     document.body.classList.toggle('devNear', !!near);
     if (p) p.itHeld = !!near && this.act('interact'); // 單機／房主自己的機體（客機另外送輸入）
+  },
+  // 第一次看到某種裝置：說明（每場一次）
+  devIntro(d, p) {
+    if (!p || p.pos.distanceTo(d.pos) > 55 * DS) return;
+    const seen = this.devIntroSeen || (this.devIntroSeen = new Set());
+    if (seen.has(d.kind)) return;
+    seen.add(d.kind);
+    this.flashAlert(d.def.tip);
   },
   // ---------- HUD ----------
   drawDevMarks(c, W, H, p) {
@@ -396,7 +430,10 @@ Object.assign(Game.prototype, {
       }
     c.globalAlpha = 1;
     for (const d of devs) {
-      const col = d.st === ST_USED ? '#6a7480' : hex(d.def.color);
+      const used = d.st === ST_USED || (d.def.trap && d.st !== ST_IDLE);
+      const col = used ? '#6a7480' : hex(d.def.color);
+      const dist0 = d.pos.distanceTo(p.pos);
+      if (d.def.trap && d.st === ST_USED && dist0 > 40 * DS) continue; // 用過的陷阱只在附近標示
       const s = this.proj(d.pos.clone().setY(d.pos.y + 6.5 * MS));
       const dist = Math.round(d.pos.distanceTo(p.pos));
       c.fillStyle = col;
@@ -410,8 +447,17 @@ Object.assign(Game.prototype, {
         c.closePath();
         c.stroke();
         c.fill();
-        const tag =
-          d.kind === 'radar'
+        const tag = d.def.trap
+          ? d.st === ST_ACT
+            ? '（作用中）'
+            : d.st === ST_CD
+              ? `（冷卻 ${Math.ceil(d.prog * d.def.cd)} 秒）`
+              : d.st === ST_USED
+                ? '（已觸發）'
+                : d.def.trig === 'shoot'
+                  ? '（打弱點）'
+                  : '（控制台）'
+          : d.kind === 'radar'
             ? d.st === ST_ON
               ? '（已佔領）'
               : ''
@@ -421,7 +467,7 @@ Object.assign(Game.prototype, {
         const label = `${d.def.name}${tag} ${dist}m`;
         c.strokeText(label, s.x, s.y - 14);
         c.fillText(label, s.x, s.y - 14);
-      } else if (dist < DEV_MARK_R * DS || radar) {
+      } else if (!used && (dist < DEV_MARK_R * DS || radar)) {
         const cx = W / 2,
           cy = H / 2;
         let dx = s.x - cx,

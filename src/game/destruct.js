@@ -80,6 +80,7 @@ Object.assign(Game.prototype, {
   propDamage(p, dmg, impact, at, from, attr, wid) {
     if (p.dead) return;
     if (p.isShot) return this.shotDamage(p, dmg, at, from); // 可以打掉的投射物（hazards2.js）
+    if (p.isTrap) return this.trapDamage(p, dmg, at, from); // 環境陷阱的弱點（devices-traps.js）
     const mode = this.destructMode();
     if (mode === 'off' && !p.legacy) return;
     const a = attr || (wid ? weaponAttr(weaponById(wid)) : 'kin');

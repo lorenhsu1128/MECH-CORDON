@@ -45,6 +45,7 @@ export const SY_EV = {
   exec: [40, '處決'],
   kill: [40, '擊破'],
   shotDown: [15, '擊落'],
+  env: [45, '環境擊殺'], // 地圖的環境陷阱（docs/map-devices-design.md）
 };
 export const SY_HIT_MAX = 25;
 
