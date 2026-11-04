@@ -21,7 +21,7 @@ export const LM_GROUPS = [
   },
   { id: 'weapon', name: '武器', note: '手持武器、背部武器', cats: ['weapon', 'back'] },
   { id: 'vehicle', name: '載具', note: '戰車、直升機、無人機、運輸車輛、轟炸機', cats: ['vehicle'] },
-  { id: 'prop', name: '地圖物件', note: '只換外觀，碰撞不變', cats: ['prop'] },
+  { id: 'prop', name: '地圖物件', note: '只換外觀，碰撞不變（含地圖裝置）', cats: ['prop', 'device'] },
   { id: 'small', name: '小物件', note: '掉落物、彈體', cats: ['small'] },
 ];
 export const groupOf = (id) => {

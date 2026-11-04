@@ -292,6 +292,7 @@ Object.assign(Game.prototype, {
     if (m.pc) this.hostPace = m.pc; // 遊戲節奏（房主的，任務中改了也跟著換）
     if (m.camp && this.campC) this.campClientView(m.camp);
     if (m.lvState) this.lvClientState(m.lvState);
+    this.devApply(m.dv || []); // 地圖互動裝置（devices.js）
     for (const ev of s.ev) this.clientEvent(ev);
     if (s.prs) this.propApplyTable(s.prs); // 受損物件的血量表（game/destruct.js）
   },
@@ -676,6 +677,7 @@ Object.assign(Game.prototype, {
     this._jPrev = jHeld;
     if (qbHeld) b |= 32;
     if (this.act('ab')) b |= 64;
+    if (this.devNear && this.act('interact')) b |= 128; // 互動鍵（地圖互動裝置，devices.js）
     const cs = [this.save.asm.c1, this.save.asm.c2].map((id) => ((this.save.items[id] || 0) > 0 ? id : null));
     return {
       t: 'in',

@@ -112,5 +112,6 @@ import './game/bgm.js';
 import './game/gaze.js';
 import './game/gaze-tune.js';
 import './game/encounters.js';
+import './game/devices.js';
 
 new Game();

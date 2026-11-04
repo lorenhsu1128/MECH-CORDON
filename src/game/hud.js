@@ -591,6 +591,7 @@ Object.assign(Game.prototype, {
       c.fillText(txt, W / 2, H * 0.68);
     }
     this.drawCacheMarks(c, W, H, p);
+    this.drawDevMarks(c, W, H, p); // 地圖互動裝置與互動提示（devices.js）
     this.gazeHud(c, W, H, p); // 眼動追蹤：停留中的目標、注視點、狀態（game/gaze.js）
     this.drawWaveMarks(c, W, H, p, dt);
     this.drawEncMarks(c, W, H, p, dt); // 遠處的敵群（encounters.js）

@@ -31,6 +31,7 @@ Object.assign(Game.prototype, {
       cs1: 'Digit1',
       cs2: 'Digit2',
       aam: 'KeyC',
+      interact: 'KeyX',
       pause: 'Escape',
       gzCenter: 'KeyG',
       gzPause: '',
@@ -97,6 +98,7 @@ Object.assign(Game.prototype, {
       cs1: 'Pad12',
       cs2: 'Pad13',
       aam: 'Pad8',
+      interact: 'Pad15',
       pause: 'Pad9',
       gzCenter: '',
       gzPause: '',
@@ -361,6 +363,7 @@ Object.assign(Game.prototype, {
       backR: 'Touch_backR',
       backL: 'Touch_backL',
       aam: 'Touch_aam',
+      interact: 'Touch_use',
     };
     const tapLock = (e) => {
       if (!this.vpadWanted() || this.state !== 'play') return;
@@ -651,7 +654,7 @@ Object.assign(Game.prototype, {
       if (pressed) this.padActive = true;
       if (edge && this.net && this.net.role && this.state === 'play') {
         if (code === 'Pad14') this.net.signal(0);
-        if (code === 'Pad15') this.net.signal(1);
+        if (code === 'Pad15' && !this.devNear) this.net.signal(1); // 靠近裝置時十字鍵右是互動鍵
       }
       if (edge) {
         for (const nm of one) {

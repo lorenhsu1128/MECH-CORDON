@@ -411,6 +411,7 @@ Object.assign(Game.prototype, {
     this.scaleDmg = scaleDmg;
     if (boss && air) this.airBossSetup(); // 空中要塞移到空中、島上的防空砲
     if (!boss && !air) this.outpostsPlan(L); // 據點與補給箱
+    this.devPlan(); // 地圖互動裝置（devices.js）
     this.hkReset(); // 人員擊殺數（crowd.js）
     if (!air) this.crowdPlan(); // 地圖上的小人
     this.waveAlerted = false;
@@ -954,6 +955,7 @@ Object.assign(Game.prototype, {
     this.encCaches = null;
     this.encMarks = null;
     this.clearCaches();
+    this.devClear(); // 地圖互動裝置（devices.js）
     this.waveN = 0;
     this.introSeen = null;
     this.fx.clear();

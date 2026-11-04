@@ -143,6 +143,7 @@ Object.assign(Game.prototype, {
           sw: mk[1] === '!',
         };
       }
+      e.itHeld = !!(b & 128); // 互動鍵（地圖互動裝置，devices.js）
       const qb = !!(b & 32) && !e._qbHeld;
       e._qbHeld = !!(b & 32);
       // 跳躍的按下以次數判斷（客機每次按下加 1），不從按住狀態推算
@@ -265,6 +266,7 @@ Object.assign(Game.prototype, {
           dm: this.destructMode(), // 地圖物件的破壞設定（房主的）
           pc: this.ctrl.pace || 1, // 遊戲節奏（房主任務中改了，客機跟著換）
           lvState: this.lvSnap(), // 自訂關卡的觸發器狀態（有變動時才帶）
+          dv: this.devSnap(), // 地圖互動裝置（devices.js）
         },
         ev: this.netEvents,
         prs: this.propNetTable(), // 受損物件的血量表（每 2 秒）

@@ -6,6 +6,8 @@
 //   { obj 加進場景的根物件（單位矩陣）, scaleNode 承載遊戲縮放的節點, scale 遊戲縮放（Vector3）, rig 可給 animateMech 驅動的機體,
 //     piece 區塊資訊（機甲區塊才有） }
 import { withRng } from '../core/math.js';
+import { DEVICES } from '../data/devices.js';
+import { DEVICE_BUILDERS } from './device-models.js';
 import { WS } from '../core/scale.js';
 import { AC_ROSTER, BOSS_DEFS, DUO_BOSS, ENEMY_TYPES, PART_DEFS } from '../data/enemies.js';
 import { buildBossModel, BP_CATALOG } from './boss-models.js';
@@ -102,6 +104,7 @@ export const CATEGORIES = [
   { id: 'mech', name: '完整機甲' },
   { id: 'vehicle', name: '非機甲／載具' },
   { id: 'prop', name: '地圖物件' },
+  { id: 'device', name: '地圖裝置' },
   { id: 'small', name: '小物件' },
 ];
 
@@ -832,6 +835,17 @@ addPlain(
   '寬 1.8 m；命名為 glow 的材質改成獎勵種類的顏色，光柱與光環是程式特效',
   () => buildCacheMesh(0xffd060, false),
 );
+// ---------- 地圖互動裝置（game/devices.js、docs/map-devices-design.md） ----------
+for (const [k, d] of Object.entries(DEVICES))
+  addPlain(
+    'device',
+    k,
+    d.name,
+    '原點在底面中心（約 3.6～5 m 寬）；命名為 glow 的材質依狀態發光，' +
+      (k === 'radar' ? '名為 dish 的節點會轉動' : '名為 core 的節點會轉動與上下浮動') +
+      '；地面的互動範圍光環是程式特效',
+    () => DEVICE_BUILDERS[k](d.color),
+  );
 const proj = (kind) => {
   const m = buildProjectileMesh(kind, 0xffd080, 95);
   if (kind === 'missile') m.rotation.x = -Math.PI / 2; // 彈頭朝 −Z

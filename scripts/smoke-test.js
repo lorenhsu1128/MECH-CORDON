@@ -5488,6 +5488,225 @@ async function testChase(browser, base) {
 // 手把操作選單：模擬手把（navigator.getGamepads），十字鍵移動焦點、A 決定、B 返回、LB／RB 分頁、左右改下拉選單、
 // 模組三選一、確認視窗、暫停；各選單畫面都有可以操作的元素
 // 設定畫面（docs/settings-ui.md）：分頁、說明欄、改過的標記、快速設定的組合與常用項目、恢復這一頁的預設、任務中的提示、三種大小
+// 地圖互動裝置（docs/map-devices-design.md）：互動鍵、雷達站（佔領、標示敵人、派人查看、被搶回）、回復站（回復、總量、用完）
+async function testDevices(browser, base) {
+  console.log('地圖互動裝置：互動鍵、雷達站、回復站');
+  const { ctx, page } = await newPage(browser, 'devices');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await page.evaluate(() => window.__game.startMission());
+  await page.waitForFunction(() => window.__game.state === 'play' && window.__game.player, null, {
+    timeout: 30000,
+  });
+  await freezeLoop(page);
+  const info = await page.evaluate(() => {
+    const g = window.__game;
+    g.waves = [];
+    g.wavePend = null;
+    g.player.hp = g.player.maxHp = 1e7;
+    const W = g.world;
+    return g.devs.map((d) => {
+      const ob = W.obstacles;
+      W.obstacles = ob.filter((o) => o !== d.ob); // 自己的碰撞不算
+      const free = g.devFree(d.pos.x, d.pos.z, 1);
+      W.obstacles = ob;
+      return { k: d.kind, free };
+    });
+  });
+  const kinds = info.map((d) => d.k).sort();
+  check(
+    kinds.includes('radar') && kinds.includes('recharge') && info.every((d) => d.free),
+    `一般戰鬥放了雷達站與回復站，都在空地上（${kinds.join('、')}）`,
+  );
+  // 雷達站：站上去 → 提示 → 按住互動鍵（鍵盤 X）4 秒佔領
+  const r1 = await page.evaluate(() => {
+    const g = window.__game;
+    const d = g.devs.find((o) => o.kind === 'radar');
+    const p = g.player;
+    for (const e of g.enemies) e.updateAI = () => {}; // 敵人停住（不靠近干擾）
+    const ox = 4.5 * d.mesh.scale.x; // 基座有碰撞：站在旁邊
+    p.pos.set(d.pos.x + ox, g.world.groundAt(d.pos.x + ox, d.pos.z, 999), d.pos.z);
+    p.vel.set(0, 0, 0);
+    window.__pump(0.3);
+    const near = g.devNear === d && document.body.classList.contains('devNear');
+    const msgs = [];
+    const fm = g.flashMsg.bind(g);
+    g.flashMsg = (t, ...a) => (msgs.push(String(t)), fm(t, ...a));
+    g.down[g.keymap.interact] = true;
+    window.__pump(2);
+    const mid = d.prog;
+    window.__pump(5, () => d.st === 1); // 遊戲節奏 85%：實際約 4.7 秒
+    g.down[g.keymap.interact] = false;
+    window.__pump(0.2);
+    const heard = g.enemies.filter(
+      (e) => e.sn && e.sn.st === 1 && e.sn.heard && e.sn.heard.distanceTo(d.pos) < 1,
+    ).length;
+    return {
+      near,
+      mid,
+      st: d.st,
+      on: g.devRadarOn(),
+      msg: msgs.find((m) => m.includes('雷達站')) || '',
+      heard,
+      key: g.keymap.interact,
+    };
+  });
+  check(r1.near, '靠近雷達站：提示互動、觸控的互動鍵出現（body.devNear）');
+  check(
+    r1.key === 'KeyX' && r1.mid > 0.3 && r1.mid < 0.6 && r1.st === 1 && r1.on && !!r1.msg,
+    `按住 X 4 秒佔領雷達站（2 秒時 ${Math.round(r1.mid * 100)}%）：「${r1.msg}」`,
+  );
+  check(r1.heard > 0, `佔領後派附近的敵人來查看（${r1.heard} 台）`);
+  await page.evaluate(() => window.__pump(0.1));
+  await page.screenshot({ path: path.join(SHOT_DIR, 'devices-radar.png') });
+  // 被搶回：玩家離開、敵人站在雷達站旁 6 秒
+  const r2 = await page.evaluate(() => {
+    const g = window.__game;
+    const d = g.devs.find((o) => o.kind === 'radar');
+    const p = g.player;
+    p.pos.set(d.pos.x + 60, g.world.groundAt(d.pos.x + 60, d.pos.z, 999), d.pos.z);
+    const e = g.enemies.find((o) => !o.dead && o.ai !== 'part');
+    e.pos.set(d.pos.x - 3, g.world.groundAt(d.pos.x - 3, d.pos.z, 999), d.pos.z);
+    e.mesh.position.copy(e.pos);
+    window.__pump(3);
+    const half = d.st;
+    window.__pump(6, () => d.st === 0); // 6 秒（遊戲節奏 85%）
+    return { half, st: d.st, on: g.devRadarOn() };
+  });
+  check(r2.half === 1 && r2.st === 0 && !r2.on, '玩家離開、敵人站在雷達站旁 6 秒：被搶回');
+  // 回復站：按住回復 AP 與 EN，總量有上限、用完停用
+  const r3 = await page.evaluate(() => {
+    const g = window.__game;
+    const d = g.devs.find((o) => o.kind === 'recharge');
+    const p = g.player;
+    p.maxHp = 10000;
+    p.hp = 4000;
+    p.en = 0;
+    p.pos.set(d.pos.x + 1, g.world.groundAt(d.pos.x + 1, d.pos.z, 999), d.pos.z);
+    p.vel.set(0, 0, 0);
+    const v0 = d.val;
+    window.__pump(0.2);
+    g.down['Touch_use'] = true; // 觸控的互動鍵
+    window.__pump(2);
+    const hp1 = p.hp,
+      en1 = p.en,
+      v1 = d.val;
+    g.down['Touch_use'] = false;
+    window.__pump(1);
+    const hp2 = p.hp;
+    g.down['Pad15'] = true; // 手把的十字鍵右：一直按住、一直扣血，直到用完
+    for (let i = 0; i < 40 && d.st === 0; i++) {
+      p.hp = 1000;
+      window.__pump(0.5);
+    }
+    g.down['Pad15'] = false;
+    return { v0, v1, hp1, en1, hp2, st: d.st, enMax: p.enMax };
+  });
+  check(
+    r3.hp1 > 5300 && r3.hp1 < 5900 && r3.en1 > r3.enMax * 0.3 && Math.abs(r3.v0 - r3.v1 - 0.16) < 0.03,
+    `回復站：觸控的互動鍵按住 2 秒回復 AP（4000 → ${Math.round(r3.hp1)}）與 EN，總量 ${Math.round(r3.v0 * 100)}% → ${Math.round(r3.v1 * 100)}%`,
+  );
+  check(r3.hp2 <= r3.hp1 + 1, '放開互動鍵就停止回復');
+  check(r3.st === 2, '回復站的總量用完就停用（手把十字鍵右也能互動）');
+  await page.screenshot({ path: path.join(SHOT_DIR, 'devices-recharge.png') });
+  // 設定的「按鍵」頁有「互動」
+  const row = await page.evaluate(() => {
+    window.__game.renderSettings();
+    return !!document.querySelector('#keyRows button[data-k="interact"]');
+  });
+  check(row, '設定的按鍵頁有「互動」，可以改鍵');
+  // Boss 關：只有回復站
+  const boss = await page.evaluate(() => {
+    const g = window.__game;
+    g.isBossLevel = true;
+    g.devPlan();
+    const k = g.devs.map((d) => d.kind);
+    g.isBossLevel = false;
+    return k;
+  });
+  check(!boss.includes('radar') && boss.includes('recharge'), `Boss 關只放回復站（${boss.join('、')}）`);
+  await thawLoop(page);
+  await ctx.close();
+}
+// 多人的地圖互動裝置：客機按住互動鍵佔領雷達站（判定在房主）、狀態隨快照給客機
+async function testDevicesMp(browser, url) {
+  console.log('多人：地圖互動裝置');
+  const ctx = await browser.newContext({ viewport: { width: 1100, height: 680 } });
+  const host = await ctx.newPage();
+  const cli = await ctx.newPage();
+  watch(host, 'devmp:host');
+  watch(cli, 'devmp:client');
+  await host.goto(url, { timeout: 90000 });
+  await cli.goto(url, { timeout: 90000 });
+  await host.$eval('#btnMP', (b) => b.click());
+  await setNick(host, 'HOST');
+  await host.$eval('#btnMPHost', (b) => b.click());
+  await waitVisible(host, 'lobby');
+  await cli.$eval('#btnMP', (b) => b.click());
+  await setNick(cli, 'CLIENT');
+  await wait(1000);
+  await cli.$eval('#btnMPList', (b) => b.click());
+  await cli.waitForSelector('#mpRooms .part', { timeout: 15000 });
+  await cli.$eval('#mpRooms .part', (b) => b.click());
+  await waitVisible(cli, 'lobby', 15000);
+  await cli.evaluate(() => (window.__game.hostLostMs = 60000));
+  await cli.$eval('#btnLobbyReady', (b) => b.click());
+  await wait(500);
+  await host.$eval('#btnLobbyReady', (b) => b.click());
+  await wait(500);
+  await host.$eval('#btnLobbySortie', (b) => b.click());
+  await cli.bringToFront();
+  const ok = (await waitVisible(host, 'hudWrap', 30000)) && (await waitVisible(cli, 'hudWrap', 30000));
+  await cli.bringToFront();
+  await host.evaluate(() => (window.requestAnimationFrame = () => 0));
+  const pump = async (n) => {
+    for (let i = 0; i < n; i++) {
+      await host.evaluate(() => window.__game.loop()).catch(() => {});
+      await wait(20);
+    }
+  };
+  await pump(20);
+  const n = await Promise.all([
+    host.evaluate(() => window.__game.devs.map((d) => d.kind).join(',')),
+    cli.evaluate(() => (window.__game.devs || []).map((d) => d.kind).join(',')),
+  ]);
+  check(ok && !!n[0] && n[0] === n[1], `客機照快照建立同樣的裝置（${n[1]}）`);
+  // 客機的機體放到雷達站上（房主與客機兩邊都放），客機按住 X
+  const at = await host.evaluate(() => {
+    const g = window.__game;
+    g.waves = [];
+    g.wavePend = null;
+    for (const e of g.enemies) e.updateAI = () => {};
+    for (const p of g.players) p.hp = p.maxHp = 1e7;
+    const d = g.devs.find((o) => o.kind === 'radar');
+    const c = g.players.find((p) => !p.isPlayer);
+    const ox = 4.5 * d.mesh.scale.x;
+    c.pos.set(d.pos.x + ox, g.world.groundAt(d.pos.x + ox, d.pos.z, 999), d.pos.z);
+    return [c.pos.x, c.pos.y, c.pos.z];
+  });
+  await cli.evaluate((a) => {
+    const g = window.__game;
+    g.player.pos.set(a[0], a[1], a[2]);
+    g.player.vel.set(0, 0, 0);
+  }, at);
+  await pump(5);
+  await cli.keyboard.down('KeyX');
+  for (let i = 0; i < 40; i++) {
+    await cli.evaluate((a) => window.__game.player.pos.set(a[0], a[1], a[2]), at);
+    await host.evaluate((a) => window.__game.players.find((p) => !p.isPlayer).pos.set(a[0], a[1], a[2]), at);
+    await pump(6);
+    if (await host.evaluate(() => window.__game.devRadarOn())) break;
+  }
+  await cli.keyboard.up('KeyX');
+  await pump(10);
+  const r = await Promise.all([
+    host.evaluate(() => window.__game.devRadarOn()),
+    cli.evaluate(() => window.__game.devRadarOn()),
+  ]);
+  check(r[0] && r[1], `客機按住互動鍵佔領雷達站（房主 ${r[0]}、客機 ${r[1]}）`);
+  await cli.screenshot({ path: path.join(SHOT_DIR, 'devices-mp-client.png') });
+  await ctx.close();
+}
 // 任務中改設定（docs/settings-ui.md 的「任務中改設定」）：暫停 → 設定 → 改 → 返回 → 繼續，回到遊戲後要真的套用
 async function testSettingsLive(browser, base) {
   console.log('任務中改設定：暫停選單改的設定回到遊戲就生效');
@@ -25886,6 +26105,7 @@ const STEPS = [
   ['testPadUi', (c) => testPadUi(c.browser, c.base)],
   ['testSettingsUi', (c) => testSettingsUi(c.browser, c.base)],
   ['testSettingsLive', (c) => testSettingsLive(c.browser, c.base)],
+  ['testDevices', (c) => testDevices(c.browser, c.base)],
   ['testBoundary', (c) => testBoundary(c.browser, c.base)],
   ['testAir', (c) => testAir(c.browser, c.base)],
   ['testCampaign', (c) => testCampaign(c.browser, c.base)],
@@ -26032,6 +26252,7 @@ const STEPS = [
   ['testMpStatus', (c) => testMpStatus(c.browser, c.base + '?lan=local&test')],
   ['testMpCrowd', (c) => testMpCrowd(c.browser, c.base + '?lan=local&test')],
   ['testMpCampaign', (c) => testMpCampaign(c.browser, c.base + '?lan=local&test')],
+  ['testDevicesMp', (c) => testDevicesMp(c.browser, c.base + '?lan=local&test')],
   ['testMpLevels', (c) => testMpLevels(c.browser, c.base + '?lan=local&test')],
   ['testServerSeed', () => testServerSeed()],
   ['server', (c) => testServerBasics(c.browser, c.game), { server: true }],

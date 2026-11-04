@@ -325,6 +325,7 @@ Object.assign(Game.prototype, {
     this.campSpawnType(type, L, bd);
     c.ss.n0 = this.enemies.length;
     if (['battle', 'destroy', 'intel', 'breakthrough'].includes(c.ss.type || type)) this.outpostsPlan(L); // 據點與補給箱
+    if (c.ss.type !== 'supply') this.devPlan(); // 地圖互動裝置（devices.js）
     this.crowdPlan(); // 地圖上的小人（crowd.js；人員擊殺數整次出擊累計，campBegin 歸零）
     this.waveAlerted = false;
     this.planVehicles();

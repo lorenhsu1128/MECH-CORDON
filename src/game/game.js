@@ -530,6 +530,7 @@ export class Game {
       this.missionT += dt;
       this.lodTick(); // 距離分級：遠處與畫面外的 IK、陰影、粒子
       this.clientTick(dt);
+      this.devVisTick(dt); // 地圖互動裝置（devices.js）：客機只做顯示
       this.updateMapExtras(dt);
       this.updateSupport(dt);
       if (this.crowd) this.crowdTick(dt); // 地圖上的小人：照房主送來的顯示（crowd.js）
@@ -599,6 +600,8 @@ export class Game {
     // waves
     const alive = this.enemies.filter((e) => !e.dead && !e.guardOf && !e.decoy).length; // 據點的守衛、全像的假敵人不算
     this.cacheTick(dt);
+    this.devVisTick(dt); // 地圖互動裝置：顯示與互動鍵（devices.js）
+    this.devTick(dt);
     if (this.lv) {
       this.lvTick(dt); // 自訂關卡：觸發器、機能物件、勝敗（game/level-play.js）
     } else if (!this.isBossLevel && (this.waves.length || this.wavePend)) {

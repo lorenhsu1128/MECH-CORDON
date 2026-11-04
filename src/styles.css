@@ -597,6 +597,21 @@ body.airMode #vbAam {
 body.airMode .vbtn[data-a='jump'] {
   display: none !important;
 }
+/* 地圖互動裝置（game/devices.js）：靠近可以互動的裝置時才出現，在右手按鈕群的上方 */
+#vbUse {
+  display: none;
+  right: calc(30px + env(safe-area-inset-right, 0px));
+  bottom: calc(300px + env(safe-area-inset-bottom, 0px));
+  border-color: #7fc8ff;
+  background: rgba(92, 200, 255, 0.25);
+}
+body.devNear #vbUse {
+  display: flex;
+}
+body.rstick #vbUse {
+  right: calc(16px + env(safe-area-inset-right, 0px));
+  bottom: calc(290px + env(safe-area-inset-bottom, 0px));
+}
 .vbtn {
   position: absolute;
   width: 64px;
@@ -821,6 +836,11 @@ body.vpad #vpad .top {
   body.rstick #vbQB {
     right: calc(114px + env(safe-area-inset-right, 0px)) !important;
     bottom: calc(14px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  #vbUse,
+  body.rstick #vbUse {
+    right: calc(16px + env(safe-area-inset-right, 0px));
+    bottom: calc(205px + env(safe-area-inset-bottom, 0px));
   }
   body.vpad #vpad .top {
     top: calc(6px + env(safe-area-inset-top, 0px)) !important;
