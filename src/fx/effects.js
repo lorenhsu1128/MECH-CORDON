@@ -673,11 +673,18 @@ export class Effects {
   star(p, r, color = 0xfff0c0) {
     emitPreset(this.g, 'star', p, { S: r * this.k, color });
   }
-  // 地圖的持續特效（game/fx-ambient.js）：burn 燃燒的殘骸（黑煙＋火星）、steam 管線的蒸氣、dust 料斗落下的粉塵
+  // 地圖的持續特效（game/fx-ambient.js）：burn 燃燒的殘骸（黑煙＋火星）、steam 管線的蒸氣、dust 料斗落下的粉塵；
+  // 第 8.6 期：flare 火炬、zap 漏電、coral Coral 的光點、vent 冷凝蒸氣（往下沉）、chimney 煙囪的煙
   ambient(kind, p, key) {
     if (kind === 'burn' || kind === 'flare')
       this.glow(key || p, p, kind === 'flare' ? 2 : 1, 0xff7a2a, kind === 'flare' ? 16 : 9);
     if (this.skip(p, kind === 'flare' ? 20 : 6)) return;
+    if (kind === 'zap') {
+      // 漏電（第 8.6 期）：偶爾一下電擊與往下掉的火花
+      if (frand() < 0.5) this.arc(p, 0.8, 0x9fd8ff);
+      this.streaks(p, 3, 0xffe8a0, 6, 0.45, 26);
+      return;
+    }
     emitPreset(this.g, kind, p, { S: this.k });
     if (kind === 'flare') this.heat(new THREE.Vector3(p.x, p.y + 4 * this.k, p.z), 7, 0.9, 0.45, 4);
     else if (kind === 'burn' && frand() < 0.4)

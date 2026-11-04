@@ -38,6 +38,8 @@ Object.assign(Game.prototype, {
       wscale: () => DS, // 機甲三倍高改版
       sceneTweak: (s) => this.water && this.water.fogTweak(s), // 水面下的霧（fx/water/index.js）
       heat: () => this.fx && { scene: this.fx.heatScene, on: this.fx.heatOn() }, // 熱扭曲（fx/effects.js，第 8.3 期）
+      // 光束與鏡頭光斑（第 8.6 期）：砲火特效「華麗」、地上（有岩頂的地下沒有天空）
+      rays: () => !!(this.fx && this.fx.rich && this.world && !this.world.theme.roof),
     });
     this.stylePipe.applyStructural(this.styleP);
   },

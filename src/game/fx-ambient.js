@@ -10,8 +10,22 @@ const SPOTS = {
   pipestack: { k: 'steam', rate: 3 },
   piperun: { k: 'steam', rate: 2 },
   hopper: { k: 'dust', rate: 3 },
+  // 第 8.6 期：各主題的物件
+  tank: { k: 'steam', rate: 1 }, // 儲槽的洩壓
+  derrick: { k: 'dust', rate: 1.5 }, // 鑽井架
+  quonset: { k: 'chimney', rate: 2 }, // 冰原的拱屋：煙囪的煙
+  transformer: { k: 'zap', rate: 1.2 }, // 水壩的變壓器：漏電
+  pylon: { k: 'zap', rate: 0.5 }, // 輸電鐵塔
+  control: { k: 'chimney', rate: 1.2 }, // 機房的排氣
+  streetlamp: { k: 'zap', rate: 0.4 }, // 水沒市街：壞掉的路燈
+  scrapheap: { k: 'dust', rate: 1 }, // Grid 086 的廢料堆
+  coraltank: { k: 'coral', rate: 4 }, // 技研都市：Coral 收容槽的光點
+  crystal: { k: 'coral', rate: 2 },
+  fuelsphere: { k: 'vent', rate: 3.5 }, // 宇宙港的燃料槽：低溫燃料的冷凝蒸氣
+  radiator: { k: 'vent', rate: 2 }, // 高空軌道的散熱板
+  dock: { k: 'vent', rate: 1.2 },
 };
-const MAX_SPOTS = 10;
+const MAX_SPOTS = 16;
 // 天氣和地面的互動（第 8.5 期）：每秒幾次、離注視點多遠以內（公尺 × 尺度）
 const WEATHER_FX = {
   rain: { kind: 'rain', rate: 200, r: 26 },

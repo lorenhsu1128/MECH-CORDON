@@ -15503,9 +15503,36 @@ async function testFx(browser, base) {
       out.wt = wt;
       fx.clear();
     }
+    // 第 8.6 期：各主題物件的持續特效、光束與鏡頭光斑（追尾視角轉向太陽）
+    {
+      fx.clear();
+      const amb = {};
+      for (const k of ['zap', 'coral', 'vent', 'chimney']) {
+        const n0 = G.sm.n + G.gl.n + G.ln.n;
+        for (let i = 0; i < 6; i++) fx.ambient(k, at(0, -8, 4), k);
+        amb[k] = G.sm.n + G.gl.n + G.ln.n - n0;
+      }
+      out.amb6 = amb;
+      fx.clear();
+      const sp = g.stylePipe;
+      g.setView('chase');
+      const d = g.sunOff.clone().normalize();
+      g.fpYaw = Math.atan2(-d.x, -d.z);
+      g.fpPitch = Math.min(0.5, Math.asin(d.y) * 0.8);
+      const r0 = sp.raysN || 0;
+      window.__pump(0.1);
+      out.rays = (sp.raysN || 0) - r0;
+      g.fpYaw += Math.PI; // 背對太陽
+      g.fpPitch = -0.2;
+      const r1 = sp.raysN || 0;
+      window.__pump(0.1);
+      out.raysBack = (sp.raysN || 0) - r1;
+      g.setView('tps');
+    }
     // 第 8.3 期：熱扭曲（華麗才有熱源；有熱源時管線多畫強度圖與扭曲）
     {
       const sp = g.stylePipe;
+      fx.clear(); // 前面推進時間時推進器可能已經產生熱源
       fx.heat(at(0, 0, 3), 4, 0.6, 0.8);
       out.heatN = fx.ht.n;
       out.heatOn = fx.heatOn();
@@ -15651,6 +15678,10 @@ async function testFx(browser, base) {
   );
   check(r.cel && r.noAO, '渲染風格的色階共用、寫實時為 0；不進 SSAO 與遮擋淡出');
   check(r.soft, '第 8.1 期：軟粒子可用、粒子網格在第二次算繪的圖層');
+  check(
+    Object.values(r.amb6).every((n) => n > 0) && r.rays > 0 && r.raysBack === 0,
+    `第 8.6 期：物件的持續特效（${JSON.stringify(r.amb6)}）、面向太陽時有光束與鏡頭光斑（${r.rays}）、背對時沒有（${r.raysBack}）`,
+  );
   check(
     r.wt.rain[0] >= 10 && r.wt.sand[1] >= 5 && r.wt.snow[2] >= 1 && r.wt.std.every((n) => n === 0),
     `第 8.5 期：雨的水花、風沙的沙帶、雪煙；砲火特效標準時沒有（${JSON.stringify(r.wt)}）`,

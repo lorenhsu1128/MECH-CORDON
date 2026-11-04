@@ -36,6 +36,57 @@ void main() {
   gl_FragColor = texture2D( tColor, vUv + o );
 }`;
 
+// 光束（docs/vfx-design.md 第 8.6 期）：半解析度，從每個像素往太陽在畫面上的位置走 24 步，累計天空（深度＝1）的比例
+const RAYS_FRAG = /* glsl */ `
+uniform sampler2D tDepth;
+uniform vec2 sun;
+uniform float aspect;
+varying vec2 vUv;
+void main() {
+  vec2 d = ( sun - vUv ) / 24.0;
+  vec2 uv = vUv;
+  float acc = 0.0, w = 1.0;
+  for ( int i = 0; i < 24; i ++ ) {
+    uv += d;
+    vec2 c = clamp( uv, 0.0, 1.0 );
+    acc += step( 0.99999, texture2D( tDepth, c ).x ) * w;
+    w *= 0.94;
+  }
+  float fall = 1.0 - smoothstep( 0.0, 0.6, length( ( vUv - sun ) * vec2( aspect, 1.0 ) ) );
+  gl_FragColor = vec4( vec3( acc / 13.0 * fall ), 1.0 );
+}`;
+// 光束疊回畫面＋鏡頭光斑（太陽附近的天空比例 vis 決定光斑的亮度：被建築擋住就消失）
+const FLARE_FRAG = /* glsl */ `
+uniform sampler2D tColor, tRays, tDepth;
+uniform vec2 sun;
+uniform vec3 sunC;
+uniform float amt, aspect, edge;
+varying vec2 vUv;
+float sky( vec2 p ) { return step( 0.99999, texture2D( tDepth, clamp( p, 0.0, 1.0 ) ).x ); }
+vec3 ghost( vec2 gp, float r, vec3 col ) {
+  float d = length( ( vUv - gp ) * vec2( aspect, 1.0 ) ) / r;
+  return col * ( smoothstep( 1.0, 0.55, d ) * 0.55 + smoothstep( 1.05, 0.95, d ) * smoothstep( 0.85, 0.95, d ) * 0.6 );
+}
+void main() {
+  vec3 c = texture2D( tColor, vUv ).rgb;
+  // 光束主要疊在太陽前面被擋住的地方（越過建築與地形邊緣的光芒），天空本身只留一點
+  c += texture2D( tRays, vUv ).r * sunC * amt * mix( 1.0, 0.12, sky( vUv ) );
+  float o = 0.012;
+  float vis = ( sky( sun ) + sky( sun + vec2( o, 0.0 ) ) + sky( sun - vec2( o, 0.0 ) ) + sky( sun + vec2( 0.0, o ) ) + sky( sun - vec2( 0.0, o ) ) ) * 0.2;
+  vis *= edge;
+  if ( vis > 0.01 ) {
+    vec2 ax = vec2( 0.5 ) - sun;
+    vec3 f = ghost( sun + ax * 0.55, 0.035, vec3( 1.0, 0.75, 0.45 ) )
+      + ghost( sun + ax * 1.15, 0.075, vec3( 0.45, 0.65, 1.0 ) )
+      + ghost( sun + ax * 1.5, 0.02, vec3( 1.0 ) )
+      + ghost( sun + ax * 1.9, 0.12, vec3( 0.5, 1.0, 0.65 ) ) * 0.6;
+    float hd = length( ( vUv - sun ) * vec2( aspect, 1.0 ) );
+    float halo = exp( - pow( ( hd - 0.24 ) * 22.0, 2.0 ) ) * 0.35 + exp( - hd * 9.0 ) * 0.6;
+    c += ( f * 0.16 + halo * 0.18 ) * sunC * vis;
+  }
+  gl_FragColor = vec4( c, 1.0 );
+}`;
+
 // 軟粒子用的深度（docs/vfx-design.md 第 8.1 期）：線性的視線深度÷far，RGBA 打包（RGBA8 的目標就夠）
 const DCOPY_FRAG = /* glsl */ `
 #include <packing>
@@ -387,6 +438,29 @@ export class StylePipeline {
       time: { value: 0 },
       amt: { value: 6 },
     });
+    this.rtRay = depthOk
+      ? new THREE.WebGLRenderTarget(4, 4, {
+          minFilter: THREE.LinearFilter,
+          magFilter: THREE.LinearFilter,
+          format: THREE.RGBAFormat,
+          depthBuffer: false,
+        })
+      : null;
+    this.raysQ = quad(RAYS_FRAG, {
+      tDepth: { value: null },
+      sun: { value: new THREE.Vector2() },
+      aspect: { value: 1 },
+    });
+    this.flareQ = quad(FLARE_FRAG, {
+      tColor: { value: null },
+      tRays: { value: null },
+      tDepth: { value: null },
+      sun: { value: new THREE.Vector2() },
+      sunC: { value: new THREE.Color() },
+      amt: { value: 0.35 },
+      aspect: { value: 1 },
+      edge: { value: 1 },
+    });
     this.dcopy = quad(DCOPY_FRAG, { tDepth: { value: null }, cNear: { value: 0.5 }, cFar: { value: 400 } });
     this.nrm = quad(NRM_FRAG, {
       tDepth: { value: null },
@@ -427,6 +501,7 @@ export class StylePipeline {
       if (t) t.setSize(W, H);
     this.prevOk = false;
     if (this.rtH) this.rtH.setSize(Math.max(1, W >> 1), Math.max(1, H >> 1));
+    if (this.rtRay) this.rtRay.setSize(Math.max(1, W >> 1), Math.max(1, H >> 1));
     this.sizeSSAO();
     if (this.bloom) this.bloom.setSize(W, H);
   }
@@ -632,6 +707,12 @@ export class StylePipeline {
       src = tmp;
       tmp = t;
     }
+    // 3.45 光束與鏡頭光斑（第 8.6 期）：太陽在畫面上（或剛出畫面）時
+    if (depth && this.raysPass(src, tmp)) {
+      const t = src;
+      src = tmp;
+      tmp = t;
+    }
     if (depth && P.dof > 0) {
       const d = this.dof.m.uniforms;
       d.tColor.value = this.rtA.texture;
@@ -674,6 +755,44 @@ export class StylePipeline {
       f.resolution.value.set(1 / W, 1 / H);
       this.draw(this.fxaa, out);
     } else this.draw(this.grade, out);
+  }
+  // 光束與鏡頭光斑（ctx.rays() 為 true 時；砲火特效「華麗」、不在地下）：太陽方向投影到畫面，在鏡頭後面或離畫面太遠時不做
+  raysPass(src, dst) {
+    const c = this.ctx;
+    if (!this.rtRay || this.noRays || !c.rays || !c.rays() || !c.sunOff || !this.camera.isPerspectiveCamera)
+      return false;
+    const cam = this.camera;
+    const dir = (this._sd || (this._sd = new THREE.Vector3())).copy(c.sunOff).normalize();
+    const fw = this._fw || (this._fw = new THREE.Vector3());
+    cam.getWorldDirection(fw);
+    if (dir.dot(fw) < 0.05) return false;
+    const sp = (this._sp || (this._sp = new THREE.Vector3()))
+      .copy(cam.position)
+      .addScaledVector(dir, cam.far * 0.5);
+    sp.project(cam);
+    const sx = sp.x * 0.5 + 0.5,
+      sy = sp.y * 0.5 + 0.5;
+    const out = Math.max(0, -sx, sx - 1, -sy, sy - 1);
+    if (out > 0.35) return false;
+    const edge = 1 - Math.min(1, out / 0.35);
+    const aspect = this.w / this.h;
+    const r = this.raysQ.m.uniforms;
+    r.tDepth.value = this.rtScene.depthTexture;
+    r.sun.value.set(sx, sy);
+    r.aspect.value = aspect;
+    this.draw(this.raysQ, this.rtRay);
+    const f = this.flareQ.m.uniforms;
+    f.tColor.value = src.texture;
+    f.tRays.value = this.rtRay.texture;
+    f.tDepth.value = this.rtScene.depthTexture;
+    f.sun.value.set(sx, sy);
+    f.aspect.value = aspect;
+    f.edge.value = edge;
+    f.amt.value = 0.3 * edge;
+    if (c.sun) f.sunC.value.copy(c.sun.color).multiplyScalar(Math.min(1.2, c.sun.intensity));
+    this.draw(this.flareQ, dst);
+    this.raysN = (this.raysN || 0) + 1; // 冒煙測試數畫了幾次
+    return true;
   }
   // 熱扭曲：熱源的場景（ctx.heat() → { scene, on }）畫成半解析度的強度圖（用這一格的深度拷貝遮住牆後的熱源），
   // 再把 src 扭曲到 dst。沒有熱源時回傳 false
