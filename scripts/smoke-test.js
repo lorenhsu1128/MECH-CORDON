@@ -1820,8 +1820,9 @@ async function mapMechanics(page, key) {
       const g = window.__game,
         w = g.world,
         p = g.player;
-      for (let x = -80; x <= 80; x += 4)
-        for (let z = -80; z <= 80; z += 4)
+      // 玩家附近（邊緣進場：起點不在中央，docs/map-pacing-design.md）
+      for (let x = Math.round(p.pos.x) - 80; x <= p.pos.x + 80; x += 4)
+        for (let z = Math.round(p.pos.z) - 80; z <= p.pos.z + 80; z += 4)
           if (
             Math.hypot(x - p.pos.x, z - p.pos.z) < 60 &&
             // 周圍 8 m 都是虛空（貼著街區邊緣或高樓時會被推回街區上）
@@ -1929,7 +1930,8 @@ async function testMaps(browser, base) {
       };
     });
     check(
-      info.theme === key && info.size === 230 * SC && info.lim > 62 * SC && info.weather,
+      // 一般戰鬥是大地圖（320 m × 倍率，docs/map-pacing-design.md）
+      info.theme === key && info.size === 320 * SC && info.lim > 62 * SC && info.weather,
       `${key}：場地 ${info.size} m（活動範圍 ±${info.lim.toFixed(0)}）、天氣粒子`,
     );
     await mapMechanics(page, key);
@@ -7485,6 +7487,25 @@ async function testCampaign(browser, base) {
       ex.every((e) => e.mode === 'relay' && Math.max(Math.abs(e.x), Math.abs(e.z)) < e.lim),
     `區段清除後出現 ${ex.length} 個出口（獎勵各不同：${ex.map((e) => e.r).join('、')}，接力型、在作戰區域內）`,
   );
+  // 推進路線（docs/map-pacing-design.md）：一般戰鬥的區段從作戰區域的一側進場，出口在另一側
+  const adv = await page.evaluate(() => {
+    const g = window.__game,
+      w = g.world,
+      s = w.start,
+      Z = w.zone;
+    if (!s) return { type: g.camp.ss.type, start: false };
+    const D = s.fx ? (s.fx > 0 ? Z[1] - s.x : s.x - Z[0]) : s.fz > 0 ? Z[3] - s.z : s.z - Z[2];
+    return {
+      type: g.camp.ss.type,
+      start: true,
+      size: w.size,
+      prog: g.camp.exits.map((e) => +(((e.pos.x - s.x) * s.fx + (e.pos.z - s.z) * s.fz) / D).toFixed(2)),
+    };
+  });
+  check(
+    adv.type !== 'battle' || (adv.start && adv.size === 320 * SC && adv.prog.every((q) => q >= 0.55)),
+    `推進路線：${adv.type} 區段是大地圖、邊緣進場，出口在前方深度 ${(adv.prog || []).join('／')}`,
+  );
   // 截圖：玩家走到兩個出口之間、面向第一個出口
   await page.evaluate(() => {
     const g = window.__game,
@@ -11147,9 +11168,30 @@ async function testWaves(browser, base) {
     g.player.hp = g.player.maxHp = 1e7;
     const dt = 1 / 60;
     const live = () => g.enemies.filter((e) => !e.dead);
+    // 分群（docs/map-pacing-design.md）：各群離起點與彼此的距離、開場的敵人都在某一群
+    const P0 = g.player.pos.clone();
+    const G = (g.encGroups || []).map((q) => q.pos);
     const out = {
       N: g.waveN,
       first: live().length,
+      start: !!g.world.start && Math.hypot(P0.x - g.world.start.x, P0.z - g.world.start.z) < 1,
+      groups: G.length,
+      gStart: Math.round(Math.min(...G.map((q) => Math.hypot(q.x - P0.x, q.z - P0.z)))),
+      gGap: Math.round(
+        Math.min(...G.flatMap((a, i) => G.slice(i + 1).map((b) => Math.hypot(a.x - b.x, a.z - b.z)))),
+      ),
+      inG: live()
+        .filter((e) => !e.guardOf)
+        .every((e) => e.encG !== undefined && e.encG !== null),
+      gate: (() => {
+        // 一群都還沒清掉時，就算場上的交戰中敵人很少也不派下一波
+        let t = 0;
+        while (!g.wavePend && t < 6) {
+          g.waveTick(1 / 60);
+          t += 1 / 60;
+        }
+        return !g.wavePend;
+      })(),
       lastAce: g.waves[g.waves.length - 1].some((t) => t === 'ac' || /^ac_/.test(t)),
       waves: [],
     };
@@ -11187,7 +11229,11 @@ async function testWaves(browser, base) {
     return out;
   });
   const W = r.waves;
-  check(r.N >= 3 && r.N <= 5 && r.first >= 2, `編成分成 ${r.N} 波、第一波 ${r.first} 台`);
+  check(r.N >= 2 && r.N <= 5 && r.first >= 2, `編成分成 ${r.N} 波、開場 ${r.first} 台`);
+  check(
+    r.start && r.groups >= 2 && r.gStart > 55 * 3 && r.gGap > 40 * 3 && r.inG && r.gate,
+    `邊緣進場與分群：${r.groups} 群、最近的離起點 ${r.gStart} m、群與群至少 ${r.gGap} m、開場的敵人都在群裡、沒清掉一群前不派增援`,
+  );
   check(
     W.length === r.N - 1 &&
       W.every((w) => /點鐘方向/.test(w.say) && /第 \d\/\d 波/.test(w.say) && w.marks > 0) &&

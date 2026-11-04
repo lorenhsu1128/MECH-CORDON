@@ -32,6 +32,8 @@ const TRANS_T = 2.4; // 轉場演出秒數
 const EXIT_R = 4 * MS; // 出口的觸發半徑
 const EXIT_HOLD = 0.8; // 站進出口多久才出發
 const PAD_R = 3.5 * MS; // 補給台、資料終端的半徑
+// 推進型的區段（docs/map-pacing-design.md）：大地圖、從作戰區域一側進場、敵人分成幾群、出口在另一側
+const ADVANCE = ['battle', 'destroy', 'intel', 'breakthrough'];
 const WSLOTS = ['rarm', 'larm', 'rback', 'lback'];
 const clone = (o) => JSON.parse(JSON.stringify(o));
 // 紀錄點保存的欄位（this.camp 裡其餘的是執行中的狀態）
@@ -168,6 +170,9 @@ Object.assign(Game.prototype, {
       zoneAxis: p.zoneAxis,
       entry: (tr || {}).entry,
       open: type === 'boss' ? 1 : undefined, // Boss 區段：地圖物件少一點（World.openArena）
+      // 大地圖與邊緣進場（docs/map-pacing-design.md）：一般戰鬥、摧毀、情報、突破
+      big: ADVANCE.includes(type) ? 1 : undefined,
+      edge: ADVANCE.includes(type) ? 1 : undefined,
     };
   },
   // 預排的出擊（docs/hub-ui.md）：可以接的委託先排好種子、排程與第一段的類型，作戰室的全像戰略桌顯示的就是
@@ -290,7 +295,7 @@ Object.assign(Game.prototype, {
         slot: 0,
         pilot: this.campPilotPm(), // 駕駛員（PvE）＋戰術模組
       });
-      this.player.pos.set(0, this.world.terrainHeight(0, 0), 0);
+      this.placeStart(this.player); // 邊緣進場時在作戰區域的一側（mission.js）
       this.players = [this.player];
       this.campApplyCarry(this.player);
     }
@@ -334,7 +339,7 @@ Object.assign(Game.prototype, {
     this.lastT = performance.now();
     this.camZoom = this.camBase();
     this.camCU = null;
-    this.camera.position.set(0, 40, 24);
+    this.camSnap(); // 鏡頭直接到起點
     this.renderWeaponHud(true);
     this.viewReset();
     const segTxt = `區段 ${c.seg + 1}／${so.segs.length}【${SEG_TYPES[type].name}】`;
@@ -418,8 +423,9 @@ Object.assign(Game.prototype, {
       this.flashAlert(r.intro || `敵對 AC「${r.name}」`);
     } else if (type === 'destroy') {
       const n = 3 + (L >= 4 ? 1 : 0);
-      ss.targets = this.campSpots(n, 'inner').map((pos) => this.campObjective(pos, 'enemy'));
       this.spawnComp(comp(L - 1), 1, sh, sd);
+      // 推進型（docs/map-pacing-design.md）：目標設施放在各敵群那裡，由敵群守著
+      ss.targets = this.campAtGroups(n).map((pos) => this.campObjective(pos, 'enemy'));
     } else if (type === 'defend') {
       const pos = this.campSpots(1, 'near')[0];
       ss.defend = this.campObjective(pos, 'ally');
@@ -438,9 +444,10 @@ Object.assign(Game.prototype, {
       const pos = this.campSpots(1, 'near')[0];
       ss.pad = { pos, t: 0, used: false, group: this.campRing(pos, 0x7ee081, '補給') };
     } else if (type === 'intel') {
-      const pos = this.campSpots(1, 'inner')[0];
-      ss.intel = { pos, t: 0, done: false, group: this.campRing(pos, 0x7fc8ff, '資料終端') };
       this.spawnComp(comp(L - 1), 1, sh, sd);
+      // 推進型：資料終端在最深的敵群那裡
+      const pos = this.campAtGroups(1, true)[0];
+      ss.intel = { pos, t: 0, done: false, group: this.campRing(pos, 0x7fc8ff, '資料終端') };
     } else {
       ss.type = 'battle';
       this.spawnComp(comp(L), 1, sh, sd);
@@ -639,6 +646,20 @@ Object.assign(Game.prototype, {
   },
 
   // ---------- 位置 ----------
+  // 推進型區段的機能物件：放在敵群旁邊的空地（deep＝從最深的開始）；沒有分群或不夠時用 campSpots 補
+  campAtGroups(n, deep = false) {
+    const w = this.world,
+      out = [];
+    const gs = (this.encGroups || []).map((g) => g.pos);
+    if (deep) gs.reverse();
+    for (const a of gs) {
+      if (out.length >= n) break;
+      const sp = w.spawnPoint(this.player.pos, this.enemies.map((e) => e.pos).concat(out), a, 20 * DS);
+      out.push(new THREE.Vector3(sp.x, w.terrainHeight(sp.x, sp.z), sp.z));
+    }
+    if (out.length < n) out.push(...this.campSpots(n - out.length, 'inner'));
+    return out;
+  },
   // 在作戰區域裡找 n 個空地：edge＝靠近作戰區域邊緣（接力型出口）、inner＝場內、near＝出生點附近（12～22 m）
   campSpots(n, kind) {
     const w = this.world,
@@ -658,6 +679,10 @@ Object.assign(Game.prototype, {
           : Math.hypot(x - o.x, z - o.z) < o.r + 4 * MS,
       );
     const gap = kind === 'near' ? 0 : ex * 0.35;
+    // 推進型區段（邊緣進場）：出口在起點的另一側（往前的深度 60% 以後）
+    const s = w.start,
+      adv = kind !== 'near' && s && ADVANCE.includes((this.camp && this.camp.ss && this.camp.ss.type) || '');
+    const D = adv ? (s.fx ? (s.fx > 0 ? Z[1] - s.x : s.x - Z[0]) : s.fz > 0 ? Z[3] - s.z : s.z - Z[2]) : 0;
     for (let t = 0; t < 600 && out.length < n; t++) {
       let x, z;
       if (kind === 'near') {
@@ -674,6 +699,7 @@ Object.assign(Game.prototype, {
         const de = Math.min(x - Z[0], Z[1] - x, z - Z[2], Z[3] - z);
         if (de > ex * 0.2) continue;
       }
+      if (adv && t < 450 && (x - s.x) * s.fx + (z - s.z) * s.fz < D * 0.6) continue;
       if (!free(x, z)) continue;
       if (kind !== 'near' && t < 450 && Math.hypot(x - p.x, z - p.z) < ex * 0.3) continue;
       if (out.some((q) => Math.hypot(q.x - x, q.z - z) < Math.max(gap, 10 * DS) * (t < 450 ? 1 : 0.5)))

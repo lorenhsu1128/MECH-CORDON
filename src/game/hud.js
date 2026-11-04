@@ -9,6 +9,7 @@ import { meleeChainPos, meleeMove } from '../data/melee.js';
 import { PW, PW_FX } from '../data/charge.js';
 import { FEEL } from '../data/feel.js';
 import { PICKUP_DEFS } from '../world/map-extras.js';
+import { ENC_MARK_MIN } from './constants.js';
 import { Game } from './game.js';
 
 const ZONE_WARN = 14; // ×DS：離作戰區域的邊界這麼近時畫面邊緣發光（hud.js 的 zoneEdgeHud）
@@ -592,6 +593,7 @@ Object.assign(Game.prototype, {
     this.drawCacheMarks(c, W, H, p);
     this.gazeHud(c, W, H, p); // 眼動追蹤：停留中的目標、注視點、狀態（game/gaze.js）
     this.drawWaveMarks(c, W, H, p, dt);
+    this.drawEncMarks(c, W, H, p, dt); // 遠處的敵群（encounters.js）
     // reticle at mouse
     if (this.pvp) this.drawPvpHud(c, W, H, p);
     if (this.chase) {
@@ -671,6 +673,15 @@ Object.assign(Game.prototype, {
         const ax = cx + Math.cos(ang) * Math.abs(k),
           ay = cy + Math.sin(ang) * Math.abs(k);
         const main = (e.sn ? e.senseAw() : e.aw || 0) & 8; // 主攻（攻擊權杖，ai-director.js）
+        // 邊緣進場的地圖：遠處的敵人由敵群的標示代表（encounters.js），只留鎖定的、Boss、主攻
+        if (
+          this.encMarks &&
+          !isLock &&
+          !e.isBoss &&
+          !main &&
+          Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z) >= ENC_MARK_MIN
+        )
+          continue;
         const col = isLock ? '#ffb020' : e.isBoss || main ? '#ff4d4d' : '#ffffff';
         const sz = isLock ? 18 : 12;
         c.save();

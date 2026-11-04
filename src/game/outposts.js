@@ -36,12 +36,14 @@ Object.assign(Game.prototype, {
     const mp = !!(this.net && this.net.role);
     const kinds = ['coam', 'repair', 'ammo', 'kit'];
     if (this.camp && !mp && !this.camp.replay) kinds.push('mod');
-    const n = Math.random() < 0.5 ? 3 : 2;
+    // 分群的地圖（encounters.js）：據點放在規畫好的位置（和敵群分開）
+    const pre = this.encCaches && this.encCaches.length ? this.encCaches.slice() : null;
+    const n = pre ? pre.length : Math.random() < 0.5 ? 3 : 2;
     const pts = [];
     // 彼此至少 90 m（離太近就重找，最多試 n×6 次；空間不夠時距離條件慢慢放寬）
     for (let t = 0; t < n * 6 && pts.length < n && kinds.length; t++) {
-      const sp = W.spawnPoint(this.player.pos, pts, null, 45 * DS);
-      if (pts.some((q) => Math.hypot(q.x - sp.x, q.z - sp.z) < (30 - t) * DS)) continue;
+      const sp = pre ? pre.shift() : W.spawnPoint(this.player.pos, pts, null, 45 * DS);
+      if (!pre && pts.some((q) => Math.hypot(q.x - sp.x, q.z - sp.z) < (30 - t) * DS)) continue;
       pts.push(sp);
       const kind = kinds.splice(Math.floor(Math.random() * kinds.length), 1)[0];
       const id = pts.length;

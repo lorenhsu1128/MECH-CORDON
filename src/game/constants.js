@@ -17,3 +17,5 @@ export const AI_DIFF = {
 // ---------- 據點（outposts.js） ----------
 export const GUARD_ALERT_R = 38 * DS; // 守衛發現玩家的距離
 export const GUARD_MIN_D = GUARD_ALERT_R + 6 * DS; // 守衛生成時離玩家至少這麼遠（否則一開場就出動）
+// 地圖節奏改版（game/encounters.js）：這麼遠以上的敵人改用敵群的標示，不畫各自的畫面外箭頭
+export const ENC_MARK_MIN = 38 * DS;

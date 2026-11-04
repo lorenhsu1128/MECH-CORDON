@@ -20,17 +20,21 @@ export const SENSE = {
   swarm: { sight: 60 * DS, fov: 360 },
   minelayer: { sight: 55 * DS, fov: 360 },
 };
+// 地圖節奏改版（docs/map-pacing-design.md）：視覺與聲音的距離縮短，敵人一群一群地察覺，不會一槍把整張地圖引過來
+export const SIGHT_K = 0.72;
+export const NOISE_K = 0.7;
+for (const k in SENSE) SENSE[k].sight *= SIGHT_K;
 export const SENSE_NEAR = 9 * DS; // 這個距離內不看視角（聽得到腳步）
 export const SENSE_INSTANT = 6 * DS; // 這個距離內看得到就立刻交戰
 export const SENSE_DECAY = 0.45; // 看不到時察覺量表每秒下降
 export const SUSPECT_AT = 0.25; // 察覺量表到這裡就起疑（停下來轉向）
 export const LOS_DT = 0.25; // 每台敵人多久檢查一次視線
-export const SHARE_R = 60 * DS; // 交戰中的友軍在這個距離內看得到目標時，共享目標位置
+export const SHARE_R = 40 * DS; // 交戰中的友軍在這個距離內看得到目標時，共享目標位置
 export const LOST_T = 8; // 整個小隊都看不到目標這麼久就轉成搜索
 export const SEARCH_T = 14; // 搜索這麼久找不到就回到待機
-export const RADIO_R = 35 * DS; // 發現目標後通知附近友軍的距離（指揮官 MT 在場時 ×2）
+export const RADIO_R = 22 * DS; // 發現目標後通知附近友軍的距離（指揮官 MT 在場時 ×2）
 export const RADIO_DL = 0.8; // 通知的延遲
-export const STALL_T = 15; // 場上沒有交戰中的敵人這麼久，最近的待機小隊開始搜索玩家
+export const STALL_T = 30; // 場上沒有交戰中的敵人這麼久，最近的待機小隊開始搜索玩家
 // 聲音：開火的武器類型 → 聽得到的距離
 export const NOISE = {
   bullet: 45 * DS,
@@ -43,7 +47,8 @@ export const NOISE = {
   melee: 14 * DS,
   emp: 30 * DS,
 };
-export const NOISE_QB = 18 * DS;
+for (const k in NOISE) NOISE[k] *= NOISE_K;
+export const NOISE_QB = 18 * DS * NOISE_K;
 
 // 仇恨：每受到 1% AP 的傷害 +1，每秒衰減；目前的目標要被超過 STICKY 倍才換
 export const THREAT_DECAY = 0.15;

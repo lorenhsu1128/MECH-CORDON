@@ -16,9 +16,6 @@ Object.assign(Game.prototype, {
     this.players = [];
     const online = n.players.filter((p) => p.online);
     online.forEach((pl, i) => {
-      const a = (Math.PI * 2 * i) / Math.max(1, online.length);
-      const x = Math.cos(a) * 4,
-        z = Math.sin(a) * 4;
       const e = new MechEntity(this, pl.asm || START_ASM, PALETTES[PLAYER_PALS[pl.color]], {
         team: 'player',
         name: pl.nick,
@@ -29,7 +26,7 @@ Object.assign(Game.prototype, {
       });
       e.slot = pl.slot;
       e.isPlayer = pl.slot === n.me;
-      e.pos.set(x, this.world.terrainHeight(x, z), z);
+      this.placeStart(e, i, online.length, true); // 起點（mission.js）
       e.mesh.position.copy(e.pos);
       this.players.push(e);
       this.registerSpawn(e);

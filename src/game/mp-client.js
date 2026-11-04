@@ -86,7 +86,7 @@ Object.assign(Game.prototype, {
     this.lastT = performance.now();
     this.camZoom = this.camBase();
     this.camCU = null;
-    this.camera.position.set(0, 40, 24);
+    this.camSnap(); // 鏡頭直接到起點
     this.renderWeaponHud(true);
     this.viewReset();
     this.flashMsg(

@@ -176,6 +176,9 @@ function fadeMatsOf(g) {
 const G = WS;
 const ARENA = 150,
   MAP_SIZE = 230 * G,
+  // 大地圖（docs/map-pacing-design.md）：自由出擊與主線的一般戰鬥區段（opt.big）；Boss、精英、護送、防衛、
+  // 自訂關卡、模擬器等照舊用 MAP_SIZE
+  MAP_BIG = 320 * G,
   CELL = 5; // 地形格子：舊尺度 2.5 m（機甲 3.2 m）；地形照舊的形狀放大，5 m 相對機甲反而更細
 // 冰原的冰湖：冰面高度
 const ICE_Y = -0.7 * G;
@@ -342,7 +345,7 @@ export class World {
     this.tod = opt.tod || ''; // 時間（主線）：'' 或 day／dusk／night／dawn
     this.depth = opt.depth || 0; // 垂直下降的深度（主線）：越深越暗
     this.themeKey = theme;
-    this.size = this.theme.size || MAP_SIZE;
+    this.size = this.theme.size || (opt.big && !LV ? MAP_BIG : MAP_SIZE);
     this.k = this.size / ARENA;
     this.cell = this.theme.cell || CELL; // 空域的格子比較粗（themes/airspace.js）
     this.cells = Math.round(this.size / this.cell);
@@ -427,6 +430,8 @@ export class World {
       // 以下只在主線（或選了變體）時有：接在原本的亂數呼叫之後，不影響一般地圖
       if (this.variant && this.variant.build) this.variant.build(this);
       if (opt.landmark) this.addLandmark(opt.landmark);
+      // 邊緣進場（opt.edge）：玩家從作戰區域的一側出發（planStart 用自己的亂數串，不影響生成）
+      if (opt.edge && !LV) this.start = this.planStart();
       if (opt.entry) this.addEntry(opt.entry);
       if (LV) this.levelGenItems(ob0, me0);
       else mergeStatic(this.decorG, new Set(), true);
@@ -1165,6 +1170,8 @@ export class World {
       'zoneAxis',
       'entry',
       'open',
+      'big',
+      'edge',
     ])
       if (o[k] !== undefined && o[k] !== null && o[k] !== '') out[k] = o[k];
     return out;
@@ -1400,9 +1407,61 @@ export class World {
   addEntry(kind) {
     const g = kind === 'lift' ? buildLiftPad() : kind === 'lz' ? buildLandingZone() : null;
     if (!g) return;
-    g.position.set(0, this.terrainHeight(0, 0), 0);
+    const s = this.start || { x: 0, z: 0 };
+    g.position.set(s.x, this.terrainHeight(s.x, s.z), s.z);
     this.scene.add(g);
     this.meshes.push(g);
+  }
+  // 邊緣進場的起點（docs/map-pacing-design.md）：作戰區域一側的空地，往前＝(fx, fz) 朝向另一側。
+  // 狹長地帶從長軸的一端、分段開放從先開的那一半的外側、全區隨機一側。以種子決定（自己的亂數串），各端一樣
+  planStart() {
+    const r = makeRng(this.seed * 71 + 5);
+    const Z = this.zone,
+      sh = this.zoneShape,
+      ax0 = this.opt.zoneAxis;
+    let ax, sg;
+    if (sh === 'long') {
+      ax = ax0 ? 0 : 1;
+      sg = r() < 0.5 ? 1 : -1;
+    } else if (sh === 'staged') {
+      ax = ax0 ? 1 : 0;
+      sg = 1;
+    } else {
+      ax = r() < 0.5 ? 0 : 1;
+      sg = r() < 0.5 ? 1 : -1;
+    }
+    const lo = ax ? Z[2] : Z[0],
+      hi = ax ? Z[3] : Z[1],
+      plo = ax ? Z[0] : Z[2],
+      phi = ax ? Z[1] : Z[3];
+    const span = hi - lo,
+      pc = (plo + phi) / 2,
+      ph = (phi - plo) / 2;
+    // 前 80 次要求周圍 8 台身寬沒有障礙物，之後放寬到 3（洋上都市這類密集的街區）
+    const ok = (x, z, mg) =>
+      this.inZone(x, z, 8 * MS) &&
+      !this.isVoid(x, z) &&
+      this.slopeOK(x, z) &&
+      !this.isReserved(x, z, 3 * MS) &&
+      !this.offLimits(x, z) &&
+      !this.onCorridor(x, z, 4 * MS) &&
+      !this.obstacles.some((o) =>
+        o.kind === 'box'
+          ? Math.abs(x - o.x) < o.w / 2 + mg && Math.abs(z - o.z) < o.d / 2 + mg
+          : Math.hypot(x - o.x, z - o.z) < o.r + mg,
+      );
+    const lat0 = pc + (r() - 0.5) * ph * 0.5;
+    for (let t = 0; t < 320; t++) {
+      // 從外側往內、從中線往兩旁慢慢放寬
+      const d = (0.1 + Math.min(0.4, t * 0.003) * r()) * span;
+      const a = sg > 0 ? lo + d : hi - d;
+      const b = clamp(lat0 + (r() - 0.5) * ph * Math.min(1.6, 0.3 + t * 0.02), plo + 10 * MS, phi - 10 * MS);
+      const x = ax ? b : a,
+        z = ax ? a : b;
+      if (ok(x, z, (t < 80 ? 8 : 3) * MS)) return { x, z, fx: ax ? 0 : sg, fz: ax ? sg : 0 };
+    }
+    const p = this.safePoint();
+    return { x: p.x, z: p.z, fx: ax ? 0 : sg, fz: ax ? sg : 0 };
   }
 
   // ---------- 新主題的物件 ----------

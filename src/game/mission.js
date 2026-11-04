@@ -305,7 +305,8 @@ Object.assign(Game.prototype, {
     if (mp0 && this.net.pvpSet && this.net.pvpSet.mode === 'level') return this.lvBeginMp();
     // 空域（空戰，game/air.js）：只有單人；Boss 關只排空中要塞
     const air0 = !mp0 && this.mapPref() === 'airspace';
-    const boss = isBossLevel(L) && !(mp0 && this.net.pvpSet && this.net.pvpSet.mode === 'pvp');
+    const pvp0 = !!(mp0 && this.net.pvpSet && this.net.pvpSet.mode === 'pvp');
+    const boss = isBossLevel(L) && !pvp0;
     const bd0 = boss ? (air0 ? this.airBossDef() : bossForLevel(L)) : null;
     this.clearMission();
     // 地圖：單人用車庫選的，多人用房主在大廳選的；沒選（隨機）或不認得時隨機
@@ -339,6 +340,9 @@ Object.assign(Game.prototype, {
       rail: !!(bd0 && bd0.rail),
       variant,
       open: bd0 ? 1 : undefined, // Boss 關：地圖物件少一點，不會一直擋住 Boss 的攻擊（World.openArena）
+      // 大地圖與邊緣進場（docs/map-pacing-design.md）：一般戰鬥才有，Boss 關、PvP、空域照舊
+      big: !bd0 && !pvp0 && !air0 ? 1 : undefined,
+      edge: !bd0 && !pvp0 && !air0 ? 1 : undefined,
     });
     this.isClient = false;
     const mp = !!(this.net && this.net.role === 'host');
@@ -375,7 +379,7 @@ Object.assign(Game.prototype, {
         slot: 0,
         pilot: this.pilotLocalMods('pve'),
       });
-      this.player.pos.set(0, this.world.terrainHeight(0, 0), 0);
+      this.placeStart(this.player);
       this.players = [this.player];
       this.mpStats[0] = { kills: 0, dmg: 0, rev: 0, taken: 0, xp: 0, pf: {} };
     }
@@ -420,6 +424,7 @@ Object.assign(Game.prototype, {
         seed,
         theme,
         variant: this.world.variantKey,
+        wopt: this.world.netOpt(), // 大地圖、邊緣進場、Boss 關的開闊地圖（客機以同樣的參數生成）
         feat: this.world.features.map((f) => ({
           k: f.k,
           kind: f.kind,
@@ -436,6 +441,7 @@ Object.assign(Game.prototype, {
           deckH: f.deckH,
           count: f.count,
           len: f.len,
+          bend: f.bend,
         })),
         level: L,
         players: this.net.players.map((p) => ({ slot: p.slot, nick: p.nick, color: p.color })),
@@ -449,7 +455,7 @@ Object.assign(Game.prototype, {
     this.lastT = performance.now();
     this.camZoom = this.camBase();
     this.camCU = null;
-    this.camera.position.set(0, 40, 24);
+    this.camSnap(); // 鏡頭直接到起點（邊緣進場時不從地圖中央滑過去）
     this.renderWeaponHud(true);
     this.viewReset();
     const misTxt = (boss ? '決戰任務 ' : '任務 ') + String(L).padStart(2, '0') + ' — ' + T.name;
@@ -549,6 +555,22 @@ Object.assign(Game.prototype, {
   },
   // 一般關卡的敵人編成（依等級的點數與人數）：雜兵數量多；等級 2 起最後加一台敵對 AC 當小頭目
   // （排在陣列最後，spawnComp 把它放進最後一波；取前幾個當增援的地方不會拿到它）。分波見 game/waves.js
+  // 玩家的起點（docs/map-pacing-design.md）：有邊緣進場（World.start）時在那裡、面向作戰區域的另一側；
+  // 沒有時照舊在中央（多人圍一圈）。i／n＝第幾位玩家／幾位，mp＝多人（沒有起點時沿用原本的 4 m 圓圈）
+  placeStart(e, i = 0, n = 1, mp = false) {
+    const s = this.world.start;
+    const a = (Math.PI * 2 * i) / Math.max(1, n);
+    const r = s ? (n > 1 ? 5 * MS : 0) : mp ? 4 : 0;
+    const x = (s ? s.x : 0) + Math.cos(a) * r,
+      z = (s ? s.z : 0) + Math.sin(a) * r;
+    e.pos.set(x, this.world.terrainHeight(x, z), z);
+    if (s) e.yaw = Math.atan2(-s.fx, -s.fz);
+  },
+  camSnap() {
+    const p = this.player ? this.player.pos : new THREE.Vector3();
+    this.camera.position.set(p.x, p.y + 40, p.z + 24);
+    this.camTarget.copy(p);
+  },
   rollComp(L, np) {
     let pts = (6 + L * 2.2) * np;
     const comp = [];
@@ -675,7 +697,8 @@ Object.assign(Game.prototype, {
         at: at ? at.clone().add(new THREE.Vector3(i * 1.5, 0, 0)) : null,
       });
     }
-    if (n > 1 && !at && !this.guardAt) this.flashAlert(`${d.name} ×${n} 編隊`);
+    if (n > 1 && !at && !this.guardAt && (this.encG === null || this.encG === undefined))
+      this.flashAlert(`${d.name} ×${n} 編隊`);
     return last;
   },
   spawnEnemy(o) {
@@ -763,6 +786,7 @@ Object.assign(Game.prototype, {
     if (this.guardAt) e.guardOf = o.guardOf = this.guardAt;
     // 第一波：在原地待機，發現玩家才交戰（偷襲先手的小優勢；mech-sense.js）
     if (this.spawnIdle && !e.guardOf && e.senseOn()) e.senseInit(true);
+    if (this.encG !== null && this.encG !== undefined) e.encG = this.encG; // 分群（encounters.js）
     this.registerSpawn(e);
     e.yaw = e.aimYaw = Math.atan2(-(0 - sp.x), -(0 - sp.z));
     e.mesh.position.copy(e.pos);
@@ -924,6 +948,9 @@ Object.assign(Game.prototype, {
     if (this.bfClear) this.bfClear(); // Boss 改版的場地效果
     this.wavePend = null;
     this.waveMarks = [];
+    this.encGroups = null; // 分群（encounters.js）
+    this.encCaches = null;
+    this.encMarks = null;
     this.clearCaches();
     this.waveN = 0;
     this.introSeen = null;

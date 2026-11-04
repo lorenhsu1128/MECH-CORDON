@@ -16,6 +16,10 @@ Object.assign(Game.prototype, {
   // 編成分成 3～5 波：第一波直接生成，其餘由 waveTick 依序派出；敵對 AC（小頭目）在最後一波
   // idle：第一波在原地待機（發現玩家才交戰；突破區段、模擬器一開始就交戰）
   spawnComp(comp, np, scaleHp, scaleDmg, idle = true) {
+    // 邊緣進場的地圖：開場的敵人分成幾群放在地圖各處（game/encounters.js）
+    this.encGroups = null;
+    this.encCaches = null;
+    if (idle && this.world && this.world.start && this.encSpawn(comp, np, scaleHp, scaleDmg)) return;
     const aces = comp.filter(isAce);
     const body = comp.filter((t) => !isAce(t));
     const per = 3 + (np - 1) * 2;
@@ -48,9 +52,15 @@ Object.assign(Game.prototype, {
       return;
     }
     if (!this.waves.length) return;
-    const fighters = this.enemies.filter(
-      (e) => !e.dead && e.ai !== 'objective' && e.ai !== 'part' && !e.guardOf && !e.decoy,
-    ).length;
+    // 分群（encounters.js）：清掉對應數量的群才派下一波，戰力只算交戰中的
+    const gate = this.encWaveGate();
+    if (gate === -1) return;
+    const fighters =
+      gate !== null
+        ? gate
+        : this.enemies.filter(
+            (e) => !e.dead && e.ai !== 'objective' && e.ai !== 'part' && !e.guardOf && !e.decoy,
+          ).length;
     const thr = Math.max(1, Math.round((this.waveSize || 3) * 0.34));
     if (fighters > thr) {
       this.waveGap = WAVE_GAP;
