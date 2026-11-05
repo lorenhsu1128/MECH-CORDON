@@ -13,6 +13,9 @@ import {
   hazard,
   railing,
   ladder,
+  K,
+  D,
+  markText,
 } from './kit.js';
 
 // 巨型構造體本來就是機甲的尺寸：格子、平台高度、板厚跟著放大 G 倍（機甲三倍高改版）；
@@ -49,6 +52,27 @@ export function buildShack(color) {
   k.cyl(dk, 0.28, 0.28, 0.12, 1.8, 4.72, -1.2, 0, 0, 0, 6);
   k.cb(m, 0.3, 1.0, 0.8, 2.64, 1.6, -0.8, 0, 0, 0, 0.04);
   k.pipe(dk, [2.6, 2.1, -0.8], [2.6, 3.0, -0.8], 0.05);
+  // 小細節：鐵皮的波紋與鉚釘、補丁的螺栓、屋頂上壓的輪胎與石塊、垂下的電線、門前的木棧板、窗（塑膠布）、噴漆
+  k.fine(() => {
+    for (const sz of [-1, 1])
+      for (let x = -2.3; x <= 2.3; x += 0.25) k.box(m, 0.05, 2.8, 0.04, x, 1.5, sz * 2.01);
+    for (const [x, y] of [
+      [1.1, 1.3],
+      [2.1, 1.3],
+      [1.1, 0.3],
+      [2.1, 0.3],
+    ])
+      k.box(DETAIL.steel, 0.06, 0.06, 0.03, x, y, -2.05);
+    k.at(0, 3.3, 0, 0, 0, 0.12, () => {
+      k.geo(DETAIL.rubber, D.tire(0.4, 0.22, 10, 0.03), -1.2, 0.3, 1, 0, 0, Math.PI / 2);
+      k.geo(dk, D.rock(4, 1, 0.3, 0.6, 0.1), 1.5, 0.3, -1.2, 0, 0, 0, 0.35, 0.25, 0.3);
+    });
+    K.cable(k, DETAIL.black, [-2.4, 3.1, 2.0], [-3.4, 1.6, 2.6], 0.02, 0.3);
+    for (let i = 0; i < 4; i++)
+      k.box(mat(0x6b5a44, { roughness: 1 }), 1.6, 0.06, 0.18, -1, 0.04, 2.4 + i * 0.24);
+    k.box(fadeMat(0x8aa0a8, { roughness: 0.4 }), 0.9, 0.6, 0.04, -1.8, 2.0, -2.03);
+    markText(k, mat(0xd04030, { roughness: 0.7 }), 0.4, 2.4, 2.04, 0.3, 1.4, 0, 3);
+  });
   return k.build();
 }
 // 廢料堆：半徑約 2.5，原點在底面中心
@@ -87,6 +111,28 @@ export function buildScrapHeap(s) {
   // 插在堆裡的鋼樑與管子
   k.box(ms[2], s * 3.2, s * 0.2, s * 0.3, 0, s * 1.2, 0, 0.2, 0.6, 0.35);
   k.cyl(ms[3], s * 0.18, s * 0.18, s * 2.4, s * 0.6, s * 1.0, -s * 0.5, 0.9, 0.3, 0, 6);
+  // 小細節：散落的齒輪、輪胎、油桶、彎曲的鋼板、電纜與細碎的雜物
+  k.fine(() => {
+    k.geo(ms[2], D.gear(s * 0.45, 14, s * 0.12), -s * 0.9, s * 1.5, s * 0.6, 0.4, 0.2, 0.3);
+    k.geo(DETAIL.rubber, D.tire(s * 0.5, s * 0.28, 12, 0.04 * s), s * 1.1, s * 0.4, s * 0.9, 0.5, 0.3, 0.2);
+    K.cy(k, ms[1], s * 0.3, s * 0.85, -s * 1.4, s * 0.45, -s * 0.8, 10, 0.02, undefined, 0.3, 0, 1.2);
+    for (let i = 0; i < 8; i++)
+      K.bx(
+        k,
+        ms[(i + 1) % 4],
+        s * (0.2 + (i % 3) * 0.12),
+        s * 0.05,
+        s * (0.25 + (i % 2) * 0.2),
+        (((i * 5) % 7) - 3) * s * 0.45,
+        s * (0.1 + (i % 3) * 0.5),
+        (((i * 3) % 7) - 3) * s * 0.4,
+        i * 0.7,
+        i * 1.3,
+        i * 0.5,
+        0.01,
+      );
+    K.cable(k, DETAIL.black, [-s * 1.2, s * 1.4, 0], [s * 1.5, s * 0.1, -s * 1.2], 0.03 * s, 0.4 * s);
+  });
   return k.build();
 }
 // 油桶群（3 個）：原點在底面中心；桶箍與桶蓋
@@ -105,7 +151,26 @@ export function buildBarrels() {
     for (const y of [0.4, 0.9]) k.cyl(m, 0.47, 0.47, 0.06, x, y, z, 0, 0, 0, 10);
     k.cyl(m, 0.4, 0.4, 0.03, x, 1.31, z, 0, 0, 0, 10);
     k.cyl(DETAIL.dark, 0.06, 0.06, 0.04, x + 0.22, 1.33, z, 0, 0, 0, 6);
+    // 小細節：桶身的波紋、上緣的捲邊、凹痕、漏出的油漬、警示標籤
+    k.fine(() => {
+      for (const y of [0.2, 1.1]) K.cy(k, m, 0.462, 0.03, x, y, z, 16);
+      K.cy(k, m, 0.46, 0.04, x, 1.29, z, 16);
+      K.cy(k, DETAIL.dark, 0.04, 0.03, x - 0.15, 1.33, z + 0.1, 6);
+      k.box(
+        i === 1 ? DETAIL.yellow : DETAIL.white,
+        0.3,
+        0.3,
+        0.02,
+        x + Math.cos(i * 2.1) * 0.455,
+        0.7,
+        z + Math.sin(i * 2.1) * 0.455,
+        0,
+        -i * 2.1 + Math.PI / 2,
+        0,
+      );
+    });
   }
+  k.fine(() => k.geo(fadeMat(0x1a1816, { roughness: 0.2 }), D.cyl(0.9, 0.9, 0.01, 14), 0.4, 0.005, 0.6));
   return k.build();
 }
 // 排氣煙囪：半徑 r、高 h，原點在底面中心；GLB 以半徑 1.5、高 30 m 製作
@@ -126,6 +191,49 @@ export function buildChimney(r, h) {
   k.geo(DETAIL.dark, new THREE.TorusGeometry(rr(py) + 0.75, 0.04, 3, 16), 0, py + 0.9, 0, Math.PI / 2, 0, 0);
   k.cyl(m, r * 0.85, r * 0.82, 0.5, 0, h + 0.25, 0, 0, 0, 0, 12);
   k.box(DETAIL.red, 0.25, 0.25, 0.25, r * 0.6, h + 0.6, 0);
+  // 小細節：煙囪的分段接縫與補強環、爬梯的護籠、平台的欄杆柱、頂部的煙燻黑、拉線、基座的檢修口與錨栓
+  k.fine(() => {
+    for (let y = 3; y < h - 2; y += 3)
+      k.cyl(DETAIL.dark, rr(y) + 0.03, rr(y) + 0.03, 0.12, 0, y, 0, 0, 0, 0, 16);
+    for (let y = 3.6; y < h - 2; y += 1.2)
+      k.geo(
+        DETAIL.dark,
+        new THREE.TorusGeometry(0.4, 0.025, 3, 8, Math.PI),
+        0,
+        y,
+        rr(y) + 0.15,
+        Math.PI / 2,
+        0,
+        0,
+      );
+    for (let i = 0; i < 16; i++) {
+      const q = (i / 16) * Math.PI * 2;
+      k.box(
+        DETAIL.dark,
+        0.04,
+        0.9,
+        0.04,
+        Math.cos(q) * (rr(py) + 0.75),
+        py + 0.45,
+        Math.sin(q) * (rr(py) + 0.75),
+      );
+    }
+    k.cyl(fadeMat(0x1c1a18, { roughness: 1 }), r * 0.83, r * 0.84, 3, 0, h - 1.5, 0, 0, 0, 0, 16);
+    for (let i = 0; i < 3; i++) {
+      const q = (i / 3) * Math.PI * 2 + 0.5;
+      K.cable(
+        k,
+        DETAIL.dark,
+        [Math.cos(q) * rr(h * 0.8), h * 0.8, Math.sin(q) * rr(h * 0.8)],
+        [Math.cos(q) * h * 0.45, 0.2, Math.sin(q) * h * 0.45],
+        0.04,
+        0.3,
+      );
+      K.bx(k, DETAIL.dark, 0.6, 0.4, 0.6, Math.cos(q) * h * 0.45, 0.2, Math.sin(q) * h * 0.45, 0, q, 0, 0.05);
+    }
+    K.bx(k, DETAIL.dark, 1.0, 1.4, 0.1, 0, 0.9, -r - 0.02, 0, 0, 0, 0.02);
+    K.boltRing(k, DETAIL.steel, r * 0.99, 1.22, 12, 0.05);
+  });
   return k.build();
 }
 // 垂直的管線束：原點在底面中心，高 h
@@ -147,6 +255,42 @@ export function buildPipeStack(h) {
     k.box(fm, 3.2, 0.3, 1, 0, y, 0);
     for (let i = 0; i < 4; i++) k.box(fm, 0.08, 0.6, 0.75, -1.1 + i * 0.75 - 0.38, y, 0);
   }
+  // 小細節：法蘭的螺栓、閥門的手輪、管箍、保溫外皮的接縫、標示帶與流向箭頭、頂端的彎頭
+  k.fine(() => {
+    for (let i = 0; i < 4; i++) {
+      const x = -1.1 + i * 0.75;
+      for (const y of [h * 0.25 + i * 0.4, h * 0.75 - i * 0.3])
+        K.boltRing(k, DETAIL.steel, 0.36, y + 0.09, 8, 0.025, x, 0);
+      for (let y = 2.5; y < h - 1.5; y += 1.8) k.cyl(fm, 0.33, 0.33, 0.03, x, y, 0, 0, 0, 0, 10);
+      k.cyl(DETAIL.yellow, 0.335, 0.335, 0.25, x, h * 0.6, 0, 0, 0, 0, 12);
+      if (i % 2 === 0) {
+        k.geo(DETAIL.red, new THREE.TorusGeometry(0.2, 0.03, 4, 12), x, h * 0.4, 0.5);
+        K.cz(k, DETAIL.steel, 0.03, 0.15, x, h * 0.4, 0.44, 6);
+      }
+      K.pipe(
+        k,
+        fadeMat(cols[i % 3], { roughness: 0.6, metalness: 0.5 }),
+        [
+          [x, h - 0.2, 0],
+          [x, h + 0.25, 0],
+          [x, h + 0.4, -0.5],
+        ],
+        0.3,
+        10,
+      );
+      for (const y of [1.5, h * 0.5, h - 1])
+        k.geo(
+          DETAIL.steel,
+          new THREE.TorusGeometry(0.34, 0.025, 3, 12, Math.PI),
+          x,
+          y + 0.2,
+          0,
+          Math.PI / 2,
+          0,
+          0,
+        );
+    }
+  });
   return k.build();
 }
 

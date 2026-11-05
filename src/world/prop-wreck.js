@@ -5,6 +5,8 @@
 //   碰撞：比原本矮的方塊（雜物 ≤ 0.5 m、一般 ≤ 跨越的高度、全身掩體以上 ≤ 5 m 的半身掩體），機甲跨得過去的就只擋子彈。
 import { PMAT, propDebrisCol } from '../data/destruct.js';
 import { PK, mat } from './prop-models.js';
+import { D as DG } from '../render/detail.js';
+import * as K from '../render/dev-kit.js';
 import { providedModel } from '../render/model-provider.js';
 
 export const WRECK = {}; // 種類 → (k: PK, o) => void（專屬的殘骸造型；o 見 buildWreck）
@@ -63,6 +65,7 @@ export function buildWreck(p, seed, step, prog) {
   const o = { W, D, H: p.crushed ? Math.min(H, 2) : H, hw, col, base, M, r };
   if (WRECK[p.kind]) WRECK[p.kind](k, o);
   else wreckGeneric(k, o);
+  wreckDetail(k, o, p.kind);
   // 地上的焦痕（可燃的比較黑、比較大）
   const sR = Math.max(W, D) * (M.fire ? 0.5 : 0.42);
   const sR2 = Math.min(sR, M.fire ? 7 : 5);
@@ -182,6 +185,165 @@ export function wreckGeneric(k, o) {
   }
 }
 const R2 = (r) => r() < 0.5;
+
+// 殘骸的小細節（docs/model-detail.md 第二輪第 3 期；接在造型之後，用同一串雜湊亂數，遠了隱藏）：
+// 周圍散落的碎片、依種類的零件（車輛的輪框與擋風框、燈桿的燈頭與電線、儲槽的鉚釘環與爬梯、牆的碎石與鋼筋、樹的枝條與根）
+function wreckDetail(k, o, kind) {
+  const r = o.r,
+    a = longAxis(o);
+  const chip = mat(SOOTY(o.col, 0.5), { roughness: 0.9, metalness: 0.3 }),
+    dark = mat(0x26282a, { roughness: 0.8, metalness: 0.5 });
+  k.fine(() => {
+    for (let i = 0; i < 7; i++) {
+      const q = r(0, Math.PI * 2),
+        d = r(0.4, 0.75) * Math.max(o.W, o.D) + r(0.3, 1.2),
+        s = r(0.15, 0.45);
+      K.bx(
+        k,
+        chip,
+        s * r(1, 2.2),
+        s * 0.25,
+        s,
+        Math.cos(q) * d * 0.6,
+        s * 0.12,
+        Math.sin(q) * d * 0.6,
+        r(-0.3, 0.3),
+        q,
+        r(-0.3, 0.3),
+        0.01,
+      );
+    }
+    if (WRECK[kind] === wreckVehicle) {
+      for (let i = 0; i < 2; i++) {
+        const u = r(-a.L / 3, a.L / 3),
+          v = r(-1, 1) * (a.S / 2 + 1.2);
+        k.geo(
+          dark,
+          DG.rim(0.38, 0.22, 5, 5),
+          a.ax === 'x' ? u : v,
+          0.12,
+          a.ax === 'x' ? v : u,
+          0,
+          r(0, 3),
+          Math.PI / 2,
+        );
+      }
+      along(
+        k,
+        a,
+        dark,
+        0.08,
+        0.6,
+        a.S * 0.8,
+        a.L * 0.25,
+        Math.min(Math.max(0.6, o.H * 0.35), 1.4) + 0.5,
+        0,
+        0,
+        0,
+        0.8,
+      );
+      K.cable(k, dark, [0, 0.6, 0], [r(-2, 2), 0.02, r(-2, 2)], 0.04, 0.2);
+    } else if (WRECK[kind] === wreckPole) {
+      K.bx(k, dark, 0.6, 0.15, 0.3, r(-3, 3), 0.08, r(-3, 3), 0, r(0, 3), 0.2, 0.02);
+      K.cable(k, dark, [0, 1.3, 0], [r(-4, 4), 0.02, r(-4, 4)], 0.03, 0.4);
+      K.boltRing(k, dark, Math.max(0.2, Math.min(o.W, o.D) * 0.32), 0.05, 6, 0.04);
+    } else if (WRECK[kind] === wreckTank) {
+      const R = Math.min(o.W, o.D) * 0.45;
+      for (let i = 0; i < 4; i++) {
+        const t = r(0, Math.PI * 2);
+        K.bx(
+          k,
+          chip,
+          1.4,
+          0.06,
+          1.0,
+          Math.sin(t) * R * 1.4,
+          0.05,
+          Math.cos(t) * R * 1.4,
+          r(-0.2, 0.2),
+          t,
+          r(-0.2, 0.2),
+          0.01,
+        );
+      }
+      K.pipe(
+        k,
+        dark,
+        [
+          [R * 0.9, 0.1, 0],
+          [R * 1.3, 0.6, 0.4],
+          [R * 1.6, 0.05, 1.2],
+        ],
+        0.15,
+        8,
+      );
+      for (let i = 0; i < 5; i++) k.box(dark, 0.5, 0.03, 0.03, R * 0.6 + i * 0.35, 0.05, -R * 0.9, 0, 0.4, 0);
+    } else if (WRECK[kind] === wreckWall) {
+      for (let i = 0; i < 6; i++) {
+        const u = r(-a.L / 2, a.L / 2),
+          v = r(-1.5, 1.5),
+          s = r(0.25, 0.6);
+        k.geo(
+          chip,
+          DG.rock(i + 3, 1, 0.3, 0.6, 0.2),
+          a.ax === 'x' ? u : v,
+          s * 0.4,
+          a.ax === 'x' ? v : u,
+          0,
+          r(0, 3),
+          0,
+          s,
+          s * 0.7,
+          s,
+        );
+      }
+      for (let i = 0; i < 4; i++) {
+        const u = r(-a.L / 2, a.L / 2);
+        const p0 = a.ax === 'x' ? [u, 0.2, 0] : [0, 0.2, u];
+        K.pipe(
+          k,
+          dark,
+          [p0, [p0[0] + r(-0.6, 0.6), 1.0, p0[2] + r(-0.6, 0.6)], [p0[0] + r(-1, 1), 1.3, p0[2] + r(-1, 1)]],
+          0.025,
+          4,
+        );
+      }
+    } else if (kind === 'pine') {
+      const bark = mat(0x3a2a1c, { roughness: 1 });
+      for (let i = 0; i < 5; i++) {
+        const q = r(0, Math.PI * 2);
+        K.pipe(
+          k,
+          bark,
+          [
+            [0, 0.2, 0],
+            [Math.cos(q) * 0.8, 0.05, Math.sin(q) * 0.8],
+          ],
+          0.08,
+          5,
+        );
+      }
+      for (let i = 0; i < 6; i++)
+        k.box(bark, r(1, 2.2), 0.08, 0.08, r(-3, 3), 0.1, r(-3, 3), 0, r(0, 3), 0.2);
+    } else if (WRECK[kind] === wreckContainer) {
+      for (let i = 0; i < 3; i++)
+        along(
+          k,
+          a,
+          dark,
+          a.L * r(0.2, 0.35),
+          0.12,
+          0.12,
+          r(-a.L / 2, a.L / 2),
+          0.1,
+          r(-1, 1) * (a.S / 2 + 0.8),
+          0,
+          r(-0.4, 0.4),
+          0,
+        );
+    }
+  });
+}
 
 // ---------- 專屬的殘骸造型（docs/destruction-design.md 第 7 期）----------
 // o＝{ W, D, H（外框）, hw（殘骸高度）, col（顏色）, M（材質）, r（雜湊亂數 r()）}；原點在地面中心。長邊依外框

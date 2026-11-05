@@ -17,6 +17,8 @@ import {
   railing,
   grille,
   door,
+  K,
+  markText,
 } from './kit.js';
 
 // ---------- 物件 ----------
@@ -119,6 +121,48 @@ function towerKit(k, steel, white, dk, pad) {
     );
   }
   k.cyl(dk, R.r * 0.6, R.r * 0.8, 1.0, 0, 0.9, 0, 0, 0, 0, 12);
+  // 小細節（舊尺寸）：塔的節點板、電纜槽、塔頂的障礙燈；火箭的面板線、旗標與字、隔熱瓦的格線、整流罩的分離線、
+  // 發射台的排氣口格柵與標線、固定臂的液壓缸
+  k.fine(() => {
+    for (let y = 3; y < T.h; y += 3.5)
+      for (const sx of [-1, 1])
+        for (const sz of [-1, 1])
+          K.bx(k, steel, 0.6, 0.6, 0.08, T.x + sx * a, y, sz * (a + 0.24), 0, 0, 0, 0.02);
+    k.box(dk, 0.4, T.h - 2, 0.3, T.x - a - 0.3, T.h / 2, 0);
+    K.cy(k, DETAIL.red, 0.25, 0.3, T.x, T.h + 0.2, 0, 10);
+    for (let j = 0; j < 8; j++) {
+      const q = (j / 8) * Math.PI * 2;
+      k.box(
+        dk,
+        0.04,
+        R.h * 0.78,
+        0.04,
+        Math.cos(q) * (R.r + 0.02),
+        R.h * 0.4 + 1,
+        Math.sin(q) * (R.r + 0.02),
+        0,
+        -q,
+        0,
+      );
+    }
+    for (let y = 3; y < R.h * 0.8; y += 2.2) k.cyl(dk, R.r + 0.015, R.r + 0.015, 0.04, 0, y, 0, 0, 0, 0, 24);
+    k.box(DETAIL.red, 0.05, 1.2, 1.8, -R.r - 0.02, R.h * 0.62, 0);
+    k.box(DETAIL.white, 0.05, 1.0, 0.8, -R.r - 0.03, R.h * 0.62, 0.45);
+    markText(k, dk, -R.r - 0.03, R.h * 0.5, 0, 0.9, 7, -Math.PI / 2, 2);
+    for (let x = -3.2; x <= 3.2; x += 0.8) k.box(DETAIL.steel, 0.12, 0.06, 8, x, 0.44, 0);
+    for (let i = 0; i < 4; i++) {
+      const q = (i * Math.PI) / 2 + Math.PI / 4;
+      K.piston(
+        k,
+        dk,
+        DETAIL.steel,
+        [Math.cos(q) * 5.6, 0.8, Math.sin(q) * 5.6],
+        [Math.cos(q) * 4.2, 3.6, Math.sin(q) * 4.2],
+        0.12,
+      );
+      k.box(DETAIL.yellow, 1.3, 0.04, 0.3, Math.cos(q) * 7.5, 0.41, Math.sin(q) * 7.5, 0, -q, 0);
+    }
+  });
 }
 // 機庫：寬 HANGAR.w（X）× 深 HANGAR.d（Z）× 高 HANGAR.h，開口朝 −Z；原點在地面中心
 // 現實尺寸：舊模型放大 HANGAR_S 倍（52 × 44 × 24 m，機甲走得進去）
@@ -164,6 +208,37 @@ function hangarKit(k, m, dk, lamp) {
   k.box(DETAIL.steel, H.w + 0.6, 0.15, 0.3, 0, H.h - 2.1, -H.d / 2 - 0.3);
   for (let x = -H.w / 2 + 4; x < H.w / 2 - 2; x += 6) k.box(lamp, 2.4, 0.2, 0.8, x, H.h - 1.2, 0);
   k.box(fadeMat(0xd8a020), H.w - 2, 0.05, 0.4, 0, 0.03, -H.d / 2 + 1);
+  // 小細節：屋頂的桁架樑（從內部看得到）、屋頂板接縫、門楣上的編號、側牆的通風百葉與落水管、內部的天車軌道、地面的停機標線
+  k.fine(() => {
+    for (let z = -H.d / 2 + 2; z < H.d / 2 - 1; z += 4) {
+      k.box(dk, H.w - 2, 0.3, 0.3, 0, H.h - 1.25, z);
+      k.box(dk, H.w - 2, 0.2, 0.2, 0, H.h - 2.6, z);
+      for (let x = -H.w / 2 + 2; x < H.w / 2 - 2; x += 2.4)
+        k.bar(dk, [x, H.h - 2.6, z], [x + 1.2, H.h - 1.25, z], 0.1);
+    }
+    for (let x = -H.w / 2; x <= H.w / 2; x += 1.6) k.box(m, 0.08, 0.06, H.d + 0.5, x, H.h + 0.03, 0);
+    k.box(DETAIL.white, 3.4, 1.0, 0.05, -H.w / 4, H.h - 1.2, -H.d / 2 - 0.45);
+    markText(k, DETAIL.black, -H.w / 4 - 1.4, H.h - 1.2, -H.d / 2 - 0.5, 0.6, 2.8, 0, 3);
+    for (const s of [-1, 1]) {
+      for (let z = -H.d / 2 + 4; z < H.d / 2 - 1; z += 8)
+        K.vents(k, dk, m, 1.6, 1.0, s * (H.w / 2 + 0.06), H.h - 4, z, (s * Math.PI) / 2, 5);
+      K.pipe(
+        k,
+        dk,
+        [
+          [s * (H.w / 2 + 0.2), H.h - 0.4, H.d / 2 - 0.6],
+          [s * (H.w / 2 + 0.2), 0.2, H.d / 2 - 0.6],
+        ],
+        0.12,
+        6,
+      );
+      k.box(DETAIL.steel, 0.3, 0.4, H.d - 2, s * (H.w / 2 - 2), H.h - 3.4, 0);
+    }
+    for (let x = -6; x <= 6; x += 12) {
+      k.box(DETAIL.white, 0.25, 0.04, H.d - 6, x, 0.03, 1);
+      k.box(DETAIL.yellow, 4, 0.04, 0.25, x, 0.03, H.d / 2 - 3);
+    }
+  });
 }
 // 管制塔：圓柱塔身＋頂部玻璃艙；原點在地面中心；CTRL_TOWER＝塔身半徑、高
 // 現實尺寸：舊模型放大 PORT_S 倍（高約 85 m）；底部的人用門照人的尺寸
@@ -211,6 +286,62 @@ function ctrlKit(k, m, glass, dk) {
   k.cyl(dk, 0.15, 0.15, 5, 0, T.h + 6, 0, 0, 0, 0, 6);
   k.box(m, 3, 0.4, 0.6, 1.8, T.h + 4.4, 0);
   k.box(DETAIL.red, 0.3, 0.3, 0.3, 0, T.h + 8.6, 0);
+  // 小細節：塔身的窗、外牆的電纜管、管制艙的遮陽板與走道欄杆、屋頂的碟形天線與風向儀、基座的入口雨棚
+  k.fine(() => {
+    for (let y = 7; y < T.h - 2; y += 5)
+      for (const q of [0.8, 2.4, 4.0, 5.5]) {
+        const rr = T.r * (1.2 - (0.2 * y) / T.h) + 0.03;
+        k.box(glass, 0.6, 0.9, 0.05, Math.cos(q) * rr, y, Math.sin(q) * rr, 0, -q + Math.PI / 2, 0);
+      }
+    K.pipe(
+      k,
+      dk,
+      [
+        [-T.r * 1.15, 1, 0.6],
+        [-T.r * 0.95, T.h - 1, 0.6],
+      ],
+      0.12,
+      6,
+    );
+    for (let i = 0; i < 24; i++) {
+      const q = (i / 24) * Math.PI * 2;
+      k.box(dk, 0.04, 0.9, 0.04, Math.cos(q) * T.r * 1.95, T.h + 4.1, Math.sin(q) * T.r * 1.95);
+    }
+    k.geo(dk, new THREE.TorusGeometry(T.r * 1.95, 0.04, 3, 32), 0, T.h + 4.55, 0, Math.PI / 2, 0, 0);
+    k.cyl(dk, T.r * 1.95, T.r * 1.92, 0.15, 0, T.h + 3.2, 0, 0, 0, 0, 24);
+    K.lathe(
+      k,
+      m,
+      [
+        [0, 0],
+        [0.9, 0.15],
+        [1.1, 0.5],
+        [0, 0.55],
+      ],
+      -1.6,
+      T.h + 4.2,
+      1.2,
+      'y',
+      12,
+      0.6,
+      0,
+      0,
+    );
+    K.cy(k, dk, 0.05, 1.4, 1.2, T.h + 4.4, -1.4, 6);
+    k.prism(
+      dk,
+      [
+        [0, 0],
+        [0.6, 0.1],
+        [0, 0.2],
+      ],
+      0.02,
+      1.2,
+      T.h + 5.1,
+      -1.4,
+    );
+    k.box(dk, 3, 0.15, 1.6, 0, 2.6, T.r * 1.4 + 0.6);
+  });
 }
 // 球形燃料槽（四腳）：半徑 r，原點在地面中心
 export function buildFuelSphere(r) {
@@ -248,6 +379,55 @@ export function buildFuelSphere(r) {
   k.cyl(fadeMat(0xb04a2a), r * 1.02, r * 1.02, 0.3, 0, r * 1.4, 0, 0, 0, 0, 16);
   k.cyl(leg, r * 0.3, r * 0.3, 0.2, 0, r * 2.37, 0, 0, 0, 0, 10);
   k.pipe(leg, [r * 0.85, 0.4, r * 0.15], [r * 0.85, r * 0.9, r * 0.15], 0.15);
+  // 小細節：球殼的鋼板焊縫（經線＋緯線）、頂部的平台與欄杆、從頂部繞下來的樓梯、安全閥、液位計、腳的錨栓與耐火被覆
+  k.fine(() => {
+    for (const t of [-0.55, -0.25, 0.25, 0.55]) {
+      const rr = r * Math.cos(Math.asin(t)) + 0.02;
+      k.geo(leg, new THREE.TorusGeometry(rr, 0.04, 3, 28), 0, r * 1.4 + r * t, 0, Math.PI / 2, 0, 0);
+    }
+    for (let i = 0; i < 8; i++)
+      k.geo(
+        leg,
+        new THREE.TorusGeometry(r + 0.02, 0.035, 3, 20, Math.PI),
+        0,
+        r * 1.4,
+        0,
+        0,
+        (i / 8) * Math.PI,
+        Math.PI / 2,
+      );
+    for (let i = 0; i < 12; i++) {
+      const q = (i / 12) * Math.PI * 2;
+      k.box(leg, 0.04, 1.0, 0.04, Math.cos(q) * r * 0.32, r * 2.37 + 0.5, Math.sin(q) * r * 0.32);
+    }
+    for (const q of [0.4, 2.6]) {
+      K.cy(k, leg, 0.12, 0.6, Math.cos(q) * r * 0.2, r * 2.6, Math.sin(q) * r * 0.2, 8);
+      K.cy(k, DETAIL.red, 0.16, 0.12, Math.cos(q) * r * 0.2, r * 2.95, Math.sin(q) * r * 0.2, 8);
+    }
+    const st = [];
+    for (let i = 0; i <= 10; i++) {
+      const q = -0.4 + i * 0.16,
+        y = r * 2.3 - (i / 10) * r * 1.6,
+        rr = r * Math.cos(Math.asin(Math.min(0.99, (y - r * 1.4) / r))) + 0.6;
+      st.push([Math.cos(q) * rr, y, Math.sin(q) * rr]);
+    }
+    K.pipe(k, leg, st, 0.05, 4);
+    K.cy(k, DETAIL.steel, 0.06, r * 1.4, -r * 1.05, r * 1.4, 0, 6);
+    for (let i = 0; i < 6; i++) {
+      const q = (i / 6) * Math.PI * 2,
+        lt = Math.max(0.35, r * 0.06);
+      k.box(
+        fadeMat(0x8a8c8e, { roughness: 1 }),
+        lt * 1.3,
+        2.4,
+        lt * 1.3,
+        Math.cos(q) * r * 0.85,
+        1.2,
+        Math.sin(q) * r * 0.85,
+      );
+    }
+    markText(k, DETAIL.black, -r * 0.5, r * 1.15, r * 0.82, r * 0.12, r, 0, 4);
+  });
   return k.build();
 }
 // 燃料車：2.6 × 3 × 8（長沿 Z），原點在底面中心
@@ -356,6 +536,17 @@ export function buildBlastWall() {
     k.box(DETAIL.dark, 0.06, 3, 0.04, x + 1.25, 2.4, 0.33);
   }
   for (const s of [-1, 1]) hazard(k, yel, blk, 8, 0.45, 0, 0.28, s * 0.61, s > 0 ? 0 : Math.PI, 1);
+  // 小細節：吊環的鋼筋、模板接縫、焦痕與噴漆的編號、底部的叉車槽、缺角
+  k.fine(() => {
+    for (const x of [-2.5, 2.5])
+      k.geo(DETAIL.steel, new THREE.TorusGeometry(0.1, 0.025, 4, 8, Math.PI), x, 4.22, 0, 0, Math.PI / 2, 0);
+    for (const s of [-1, 1]) {
+      for (const x of [-1.33, 1.33]) k.box(blk, 0.03, 3.0, 0.02, x, 2.4, s * 0.32);
+      markText(k, DETAIL.white, -1.8, 2.6, s * 0.335, 0.3, 1.6, s > 0 ? 0 : Math.PI, 2);
+      k.box(fadeMat(0x2a2a28, { roughness: 1 }), 2.2, 1.6, 0.012, 1.8, 2.0, s * 0.33);
+      for (const x of [-2.6, 2.6]) k.box(blk, 0.5, 0.15, 0.02, x, 0.12, s * 0.605);
+    }
+  });
   return k.build();
 }
 // 貨物艙（橫放的膠囊）：2.6 × 2.6 × 6（長沿 Z），原點在底面中心
@@ -385,6 +576,32 @@ export function buildCargoPod(color) {
   k.box(dk, 2.8, 0.4, 3.6, 0, 0.2, 0);
   for (const z of [-1.4, 1.4]) k.box(dk, 2.4, 0.5, 0.3, 0, 0.55, z);
   k.cb(dk, 0.4, 0.3, 0.4, 0, 2.7, 0, 0, 0, 0, 0.05);
+  // 小細節：艙門的鉸鏈與把手、面板線、吊點的吊環、封頭的閥與噴口、托架的綁帶、警告標示與編號
+  k.fine(() => {
+    for (const y of [1.0, 2.0]) K.cy(k, DETAIL.steel, 0.05, 0.2, 1.31, y, -0.82, 8);
+    K.handle(k, DETAIL.steel, 0.3, 1.33, 1.5, 0.3, Math.PI / 2, 0.06, 0.02);
+    for (let q = 0.5; q < 6.2; q += 0.9)
+      k.box(dk, 0.03, 0.03, 4.3, Math.cos(q) * 1.31, 1.35 + Math.sin(q) * 1.31, 0);
+    k.geo(DETAIL.steel, new THREE.TorusGeometry(0.12, 0.03, 4, 10, Math.PI), 0, 2.85, 0, 0, Math.PI / 2, 0);
+    for (const s of [-1, 1]) {
+      K.cy(k, dk, 0.18, 0.2, 0, 1.35, s * 3.45, 10, 0, undefined, Math.PI / 2, 0, 0);
+      k.box(DETAIL.red, 0.3, 0.05, 0.05, 0, 1.6, s * 3.4);
+      for (const z of [-1.4, 1.4]) k.box(dk, 0.06, 0.06, 0.12, s * 1.15, 1.2, z);
+    }
+    for (const z of [-1.4, 1.4])
+      k.geo(
+        DETAIL.yellow,
+        new THREE.TorusGeometry(1.36, 0.03, 3, 20, Math.PI * 0.7),
+        0,
+        1.35,
+        z + 0.25,
+        0,
+        0,
+        Math.PI * 0.15,
+      );
+    k.box(DETAIL.yellow, 0.03, 0.4, 0.4, -1.31, 1.9, 0.9);
+    markText(k, DETAIL.black, -1.32, 1.4, 1.0, 0.18, 1.8, -Math.PI / 2, 3);
+  });
   return k.build();
 }
 // 天線桿：原點在底面中心，高 h
@@ -401,6 +618,41 @@ export function buildAntennaMast(h) {
   }
   k.cb(m, 0.4, 1.0, 0.16, 0, h * 0.4, 0.2, 0, 0, 0, 0.04);
   k.box(DETAIL.red, 0.5, 0.5, 0.5, 0, h + 0.2, 0);
+  // 小細節：底座的螺栓、爬釘、天線的同軸纜線、碟形天線、中段的接線箱百葉
+  k.fine(() => {
+    K.boltRing(k, DETAIL.steel, 0.24, 0.42, 6, 0.025);
+    for (let y = 1.2; y < h - 1; y += 0.5)
+      K.cx(k, DETAIL.steel, 0.02, 0.3, (y * 10) % 2 > 1 ? 0.2 : -0.2, y, 0.2, 6);
+    K.pipe(
+      k,
+      DETAIL.dark,
+      [
+        [0.1, h * 0.4, 0.3],
+        [0.1, h * 0.8 - 0.1, 0.2],
+      ],
+      0.025,
+      4,
+    );
+    K.lathe(
+      k,
+      m,
+      [
+        [0, 0],
+        [0.45, 0.08],
+        [0.55, 0.25],
+        [0, 0.28],
+      ],
+      0.2,
+      h * 0.7,
+      0.35,
+      'y',
+      12,
+      Math.PI / 2 - 0.2,
+      0,
+      0,
+    );
+    K.vents(k, DETAIL.dark, m, 0.26, 0.4, 0, h * 0.4, 0.29, 0, 4);
+  });
   return k.build();
 }
 

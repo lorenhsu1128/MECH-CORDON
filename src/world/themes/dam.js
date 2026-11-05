@@ -14,6 +14,9 @@ import {
   railing,
   ladder,
   grille,
+  K,
+  D,
+  markText,
 } from './kit.js';
 import { overlaps } from './flooded.js';
 import { WS } from '../../core/scale.js';
@@ -92,6 +95,32 @@ function damSegKit(k, len, y0, dn, m, dk) {
   for (const s of [-1, 1]) k.box(m, len, 0.3, 0.5, 0, 0.15, s * (THICK / 2 - 0.25));
   // 上游面的水漬線
   k.box(fadeMat(0x4a5048, { roughness: 1 }), len, 1.5, 0.1, 0, WATER - TOP + 0.5, -dn * (THICK / 2 + 0.02));
+  // 小細節（舊尺寸，放大 G 倍）：壩頂的照明柱與排水口、路面標線、下游面的施工縫與水漬、排水廊道口的格柵、
+  // 上游面的水位標尺、纜線槽
+  k.fine(() => {
+    const lamp = DETAIL.lamp;
+    for (let x = -len / 2 + 6; x < len / 2 - 2; x += 12) {
+      for (const s of [-1, 1]) {
+        K.cy(k, dk, 0.06, 2.4, x, 1.2, s * (THICK / 2 - 0.6), 8);
+        K.bx(k, dk, 0.5, 0.12, 0.2, x, 2.4, s * (THICK / 2 - 0.8), 0, 0, 0, 0.02);
+        k.box(lamp, 0.4, 0.03, 0.15, x, 2.33, s * (THICK / 2 - 0.8));
+      }
+      k.box(DETAIL.black, 0.4, 0.05, 0.3, x + 3, 0.005, dn * (THICK / 2 - 0.7));
+    }
+    for (let x = -len / 2 + 1; x < len / 2 - 1; x += 3)
+      k.box(DETAIL.white, 1.6, 0.01, 0.1, x + 0.8, 0.005, 0);
+    for (let y = -2; y > -H + 0.5; y -= 2.5) k.box(dk, len, 0.06, 0.06, 0, y, fz + dn * 0.04);
+    for (let x = -len / 2 + 1; x < len / 2; x += 7)
+      k.box(fadeMat(0x5a5850, { roughness: 1 }), 0.8, H * 0.6, 0.03, x, -H * 0.35, fz + dn * 0.06);
+    for (let x = -len / 2 + 10; x < len / 2 - 2; x += 12)
+      for (let i = 0; i < 4; i++)
+        k.box(DETAIL.steel, 0.06, 1.5, 0.06, x - 0.45 + i * 0.3, -H + 2.2, fz + dn * 0.1);
+    // 水位標尺（上游面）
+    const zu = -dn * (THICK / 2 + 0.03);
+    k.box(DETAIL.white, 0.5, 8, 0.03, len * 0.3, WATER - TOP + 2, zu);
+    for (let y = -2; y < 6; y += 1) k.box(DETAIL.red, 0.5, 0.12, 0.04, len * 0.3, WATER - TOP + y, zu);
+    k.box(dk, len, 0.25, 0.35, 0, -0.75, -dn * (THICK / 2 - 0.2));
+  });
 }
 // 閘門：寬 gw 的開口上方的閘門結構（門楣＋捲揚機），原點在壩頂中心
 export function buildDamGate(gw) {
@@ -126,6 +155,46 @@ function damGateKit(k, gw, m, steel, yel) {
   }
   k.cb(steel, gw - 1.2, 1.4, 2.2, 0, 5.2, 0, 0, 0, 0, 0.12);
   for (let i = 0; i < 4; i++) k.box(DETAIL.dark, 0.08, 1.2, 2.25, -gw / 2 + 2 + ((gw - 4) / 3) * i, 5.2, 0);
+  // 小細節：門扇的縱肋與螺栓、捲筒上的鋼索圈、馬達的散熱鰭片、機房的百葉與門、維修走道與欄杆、閘門號碼、警示燈罩
+  k.fine(() => {
+    for (const s of [-1, 1]) {
+      for (let x = -gw / 2 + 1.5; x < gw / 2 - 1; x += 1.5)
+        k.box(steel, 0.12, 1.1, 0.12, x, -B - 0.6, s * 0.36);
+      for (let x = -gw / 2 + 1; x < gw / 2 - 0.5; x += 0.6)
+        K.cy(k, DETAIL.steel, 0.04, 0.05, x, -B - 0.15, s * 0.31, 6, 0, undefined, Math.PI / 2, 0, 0);
+      const xd = s * (gw / 2 - 2.4);
+      for (let i = -3; i <= 3; i++)
+        K.cy(k, DETAIL.black, 0.62, 0.06, xd + i * 0.18, 3.6, 0, 14, 0, undefined, 0, 0, Math.PI / 2);
+      K.fins(k, steel, 5, 0.6, 0.6, 0.04, s * (gw / 2 - 3.5), 3.5, 0.47, 0, 0.03);
+      K.vents(k, DETAIL.dark, steel, 1.0, 0.5, s * (gw / 4), 5.2, 1.11, 0, 4);
+      k.box(DETAIL.dark, 0.6, 1.0, 0.04, s * (gw / 4) + s * 1.4, 5.0, 1.12);
+      K.bx(k, steel, gw * 0.4, 0.08, 0.9, 0, 4.5, s * 1.6, 0, 0, 0, 0.02);
+      K.railing(
+        k,
+        DETAIL.steel,
+        [
+          [-gw * 0.2, s * 2.0],
+          [gw * 0.2, s * 2.0],
+        ],
+        4.5,
+        0.4,
+        0.02,
+      );
+      K.cy(
+        k,
+        mat(0xff4030, { emissive: 0x801810, roughness: 0.3 }),
+        0.12,
+        0.2,
+        s * (gw / 2 - 1.2),
+        5.4,
+        0,
+        10,
+        0.03,
+      );
+      k.box(DETAIL.white, 1.6, 0.9, 0.04, 0, -B / 2, s * (THICK / 2 + 0.03));
+      markText(k, DETAIL.black, -0.5, -B / 2, s * (THICK / 2 + 0.06), 0.55, 1.0, s > 0 ? 0 : Math.PI, 4);
+    }
+  });
 }
 // 輸電鐵塔：高 h 的格子塔＋三層橫擔；原點在底面中心；GLB 以高 22 m 製作
 // 現實高 30–50 m：舊的 22 m 造型依高度等比例放大（沒有人會用到的細節）
@@ -187,6 +256,41 @@ function pylonKit(k, h, m) {
   }
   for (const sx of [-1, 1])
     for (const sz of [-1, 1]) k.cb(DETAIL.dark, 0.7, 0.4, 0.7, sx * b0, 0.2, sz * b0, 0, 0, 0, 0.06);
+  // 小細節：節點板、防爬的刺網與警告牌、礙子串的傘片、垂下的電線、頂部的避雷線架、鐵塔編號
+  k.fine(() => {
+    let y = 2,
+      j = 0;
+    for (; y < h - 1; y += 2.6, j++) {
+      const a = lerp(b0, b1, y / h);
+      for (const sx of [-1, 1])
+        for (const sz of [-1, 1]) K.bx(k, m, 0.28, 0.28, 0.04, sx * a, y, sz * (a + 0.06), 0, 0, 0, 0.01);
+    }
+    const a3 = lerp(b0, b1, 3 / h);
+    for (const s of [-1, 1]) {
+      k.box(m, a3 * 2.4, 0.04, 0.04, 0, 3, s * (a3 + 0.15));
+      for (let x = -a3; x <= a3; x += 0.15) k.box(m, 0.02, 0.18, 0.02, x, 3.08, s * (a3 + 0.15));
+    }
+    k.box(DETAIL.red, 0.5, 0.5, 0.02, 0, 2.2, lerp(b0, b1, 2.2 / h) + 0.05);
+    k.box(DETAIL.white, 0.32, 0.12, 0.02, 0, 2.05, lerp(b0, b1, 2.2 / h) + 0.06);
+    for (const [yy, wd] of [
+      [h * 0.72, 7],
+      [h * 0.84, 5.4],
+      [h * 0.96, 3.6],
+    ])
+      for (const s of [-1, 1]) {
+        for (let q = 0; q < 6; q++) K.cy(k, ins, 0.13, 0.03, (s * wd) / 2, yy - 0.15 - q * 0.13, 0, 10);
+        K.cable(
+          k,
+          DETAIL.dark,
+          [(s * wd) / 2, yy - 0.9, 0],
+          [(s * wd) / 2 + s * 0.6, yy - 2.6, 1.2],
+          0.025,
+          0.4,
+        );
+      }
+    K.cy(k, m, 0.05, 1.2, 0, h + 0.6, 0, 6);
+    k.box(m, 1.4, 0.08, 0.08, 0, h + 1.2, 0);
+  });
 }
 // 機房：6 × 4.2 × 5，原點在底面中心
 export const CONTROL = [6, 4.2, 5];
@@ -211,6 +315,28 @@ export function buildControlHouse(color) {
   k.pipe(dk, [3.06, 0.2, 1.8], [3.06, 3.7, 1.8], 0.08);
   k.cyl(dk, 0.12, 0.12, 2.4, 2.4, 5.2, -1.8, 0, 0, 0, 6);
   for (const y of [5.4, 6.0]) k.box(dk, 0.6, 0.05, 0.05, 2.4, y, -1.8);
+  // 小細節：空調室外機的風扇與鰭片、門把與門牌、外牆的配電盤、屋頂女兒牆的排水口、窗台、混凝土底座的污漬
+  k.fine(() => {
+    K.cy(k, DETAIL.dark, 0.3, 0.04, 1.4, 4.95, -0.8, 12);
+    K.fins(k, dk, 7, 1.0, 0.5, 0.02, 1.4, 4.55, -1.41, 0, 0.02);
+    K.handle(k, DETAIL.steel, 0.14, -1.6, 1.15, 2.6, 0, 0.04, 0.012);
+    k.box(DETAIL.white, 0.5, 0.25, 0.02, -2, 2.25, 2.58);
+    K.bx(k, mat(0x8a9096), 0.7, 0.9, 0.2, -3.08, 1.6, 0.6, 0, Math.PI / 2, 0, 0.03);
+    K.pipe(
+      k,
+      dk,
+      [
+        [-3.1, 2.05, 0.6],
+        [-3.1, 3.7, 0.6],
+      ],
+      0.05,
+      6,
+    );
+    k.box(DETAIL.yellow, 0.3, 0.3, 0.02, -3.2, 1.7, 0.6, 0, Math.PI / 2, 0);
+    for (const x of [-2.4, 2.4]) k.box(DETAIL.black, 0.25, 0.12, 0.1, x, 4.0, 2.72);
+    k.box(dk, 3.8, 0.06, 0.25, 0, 2.06, 2.62);
+    k.box(fadeMat(0x6a665e, { roughness: 1 }), 6.02, 0.5, 5.02, 0, 0.25, 0);
+  });
   return k.build();
 }
 // 變壓器：3 × 3.6 × 4，原點在底面中心
@@ -232,6 +358,38 @@ export function buildTransformer() {
   }
   k.cyl(m, 0.3, 0.3, 1.6, 0, 3.0, -1.2, 0, 0, Math.PI / 2, 8);
   hazard(k, DETAIL.yellow, DETAIL.black, 0.8, 0.5, 0, 1.6, 1.71);
+  // 小細節：儲油桶的支架與油位計、連接管、套管頂的端子、銘牌、接地線、底座的錨栓、吊耳
+  k.fine(() => {
+    for (const x of [-0.6, 0.6]) k.box(m, 0.08, 0.4, 0.08, x, 2.75, -1.2);
+    K.cy(k, DETAIL.glass, 0.08, 0.02, 0.81, 3.0, -1.2, 10, 0, undefined, 0, 0, Math.PI / 2);
+    K.pipe(
+      k,
+      m,
+      [
+        [0, 2.7, -1.2],
+        [0, 2.62, -0.6],
+      ],
+      0.05,
+      6,
+    );
+    for (const x of [-0.7, 0, 0.7]) K.cy(k, DETAIL.steel, 0.05, 0.15, x, 3.67, 0, 6);
+    k.box(DETAIL.steel, 0.5, 0.3, 0.02, 0.8, 1.2, 1.71);
+    K.pipe(
+      k,
+      DETAIL.dark,
+      [
+        [1.2, 0.3, 1.71],
+        [1.4, 0.05, 1.9],
+      ],
+      0.02,
+      4,
+    );
+    for (const sx of [-1, 1])
+      for (const sz of [-1, 1]) {
+        K.cy(k, DETAIL.steel, 0.04, 0.08, sx * 1.25, 0.22, sz * 1.75, 6);
+        k.geo(m, new THREE.TorusGeometry(0.1, 0.03, 4, 8, Math.PI), sx * 1.05, 2.62, sz * 1.5);
+      }
+  });
   return k.build();
 }
 // 消波塊（四腳）：原點在底面中心，半徑約 1.6
@@ -270,6 +428,18 @@ export function buildBuoy() {
   for (const a of [0, 2.1, 4.2]) k.bar(d, [Math.cos(a) * 0.4, 0.6, Math.sin(a) * 0.4], [0, 1.4, 0], 0.05);
   k.cyl(DETAIL.lamp, 0.1, 0.1, 0.2, 0, 1.78, 0, 0, 0, 0, 6);
   k.box(o, 0.4, 0.08, 0.4, 0, 1.6, 0, 0, Math.PI / 4, 0);
+  // 小細節：浮體的反光帶與編號、燈籠的護框、底部的錨鏈環、太陽能板
+  k.fine(() => {
+    K.cy(k, DETAIL.white, 0.555, 0.1, 0, 0.45, 0, 14);
+    markText(k, DETAIL.white, -0.2, 0.25, 0.56, 0.12, 0.4, 0, 1);
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2;
+      k.box(d, 0.02, 0.3, 0.02, Math.cos(a) * 0.14, 1.8, Math.sin(a) * 0.14);
+    }
+    K.cy(k, d, 0.16, 0.03, 0, 1.96, 0, 8);
+    k.geo(d, new THREE.TorusGeometry(0.08, 0.025, 4, 8), 0, -0.25, 0, 0, Math.PI / 2, 0);
+    k.box(mat(0x1a2a44, { roughness: 0.2, metalness: 0.6 }), 0.3, 0.02, 0.25, 0, 1.45, 0.2, 0.5, 0, 0);
+  });
   return k.build();
 }
 

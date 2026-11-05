@@ -1,7 +1,20 @@
 // 主題：汙染水沒市街（AC6 貝利烏斯南部的水沒市街）——街道泡在汙水裡、街區高出水面，大樓廢墟可站上屋頂
 import { RNG, clamp, lerp, pick, rnd } from '../../core/math.js';
 import { WS } from '../../core/scale.js';
-import { fadeMat, hashRng, mat, propGlb, registerFeatureStyle, windowMat, PK, DETAIL, HOLE } from './kit.js';
+import {
+  fadeMat,
+  hashRng,
+  mat,
+  propGlb,
+  registerFeatureStyle,
+  windowMat,
+  PK,
+  DETAIL,
+  HOLE,
+  K,
+  D,
+  markText,
+} from './kit.js';
 
 // 現實的城市比例（機甲三倍高改版）：街區＋街道 90 m、街道 27 m；地形高低差與水面跟著地形放大 G 倍
 const G = WS;
@@ -51,8 +64,55 @@ export function buildRuinTower(w, h, d, broken, seed) {
   }
   // 水線的汙漬
   k.box(fadeMat(0x3e4a3e, { roughness: 1 }), w + 0.05, 1.2, d + 0.05, 0, 0.9, 0);
+  // 小細節：外牆的雨水管與空調架、陽台的欄杆、屋頂的避雷針與天線、招牌、往下流的水漬、一樓的鐵捲門
+  k.fine(() => {
+    const D2 = DETAIL,
+      dk = mat(0x3a3e40, { roughness: 0.8 });
+    for (const sz of [-1, 1]) {
+      const z = sz * (d / 2 + 0.12);
+      for (const x of [-w * 0.42, w * 0.42]) K.cy(k, dk, 0.1, h - 0.6, x, h / 2, z, 6);
+      for (let y = 7; y < h - 3; y += 7)
+        for (let x = -w / 2 + 3; x < w / 2 - 2; x += 6.5) {
+          K.bx(k, mat(0xb8bcbc, { roughness: 0.6 }), 0.9, 0.6, 0.4, x, y + 0.6, z + sz * 0.2, 0, 0, 0, 0.03);
+          K.cy(k, dk, 0.22, 0.04, x, y + 0.6, z + sz * 0.42, 8, 0, undefined, Math.PI / 2, 0, 0);
+        }
+      for (let y = 3.5; y < h - 4; y += 10.5)
+        for (const x of [-w * 0.2, w * 0.2])
+          K.railing(
+            k,
+            dk,
+            [
+              [x - 1.5, z + sz * 0.9],
+              [x + 1.5, z + sz * 0.9],
+            ],
+            y,
+            HUMAN_RAIL,
+            0.03,
+          );
+      for (let i = 0; i < 4; i++)
+        k.box(
+          fadeMat(0x4a5048, { roughness: 1 }),
+          0.5,
+          h * (0.3 + (i % 3) * 0.15),
+          0.02,
+          -w * 0.3 + i * w * 0.2,
+          h * (0.7 - (i % 3) * 0.08),
+          z - sz * 0.1,
+        );
+      k.box(D2.steel, w * 0.3, 2.8, 0.06, -w * 0.15, 1.4, z - sz * 0.08);
+      for (let y = 0.2; y < 2.8; y += 0.25) k.box(dk, w * 0.3, 0.03, 0.03, -w * 0.15, y, z - sz * 0.04);
+    }
+    K.bx(k, mat(0xc84030, { roughness: 0.5 }), w * 0.5, 2.2, 0.15, 0, h - 4, d / 2 + 0.35, 0, 0, 0, 0.04);
+    markText(k, D2.white, -w * 0.22, h - 4, d / 2 + 0.44, 1.0, w * 0.44, 0, seed);
+    if (!broken) {
+      K.cy(k, D2.steel, 0.04, 4, -w * 0.35, h + 2, -d * 0.35, 6);
+      K.cy(k, D2.steel, 0.05, 6, w * 0.38, h + 3, d * 0.38, 6);
+      for (const y of [h + 3, h + 4.5]) k.box(D2.steel, 1.2, 0.05, 0.05, w * 0.38, y, d * 0.38);
+    }
+  });
   return k.build();
 }
+const HUMAN_RAIL = 1.1;
 // 外露的鋼筋（PK）：n 根、長 len，從 at 往上斜斜伸出；ob＝原本就有的鋼筋（算進外框）
 function rebarK(k, n, len, at, ob = true) {
   const m = mat(0x5a3a2a, { roughness: 0.7, metalness: 0.6 });
@@ -113,6 +173,25 @@ export function buildWreckCar(color) {
         k.cyl(dk, 0.35, 0.35, 0.3, sx, 0.3, sz, 0, 0, Math.PI / 2, 10);
         k.cyl(DETAIL.steel, 0.18, 0.18, 0.32, sx, 0.3, sz, 0, 0, Math.PI / 2, 6);
       }
+    // 小細節：門縫與把手、後照鏡、雨刷、車牌、鏽斑與凹痕、破掉的擋風玻璃、輪胎的胎紋（輪胎換成剖面旋轉）
+    k.fine(() => {
+      const rust = mat(0x6a3a22, { roughness: 1 });
+      for (const s of [-1, 1]) {
+        for (const z of [-0.85, 0.45]) k.box(dk, 0.02, 0.6, 0.02, s * 0.96, 0.85, z);
+        K.handle(k, DETAIL.steel, 0.14, s * 0.97, 1.0, -0.2, (s * Math.PI) / 2, 0.025, 0.01);
+        K.bx(k, m, 0.12, 0.1, 0.18, s * 1.02, 1.15, -0.95, 0, 0, 0, 0.02);
+        k.box(rust, 0.02, 0.35, 0.8, s * 0.955, 0.55, s * 0.6);
+      }
+      for (const x of [-0.35, 0.35]) k.box(DETAIL.dark, 0.5, 0.02, 0.03, x, 1.06, -1.38, 0.95, 0, 0.1);
+      for (const z of [-2.25, 2.25]) {
+        k.box(DETAIL.white, 0.45, 0.14, 0.02, 0, 0.55, z);
+        markText(k, DETAIL.black, -0.17, 0.55, z + Math.sign(z) * 0.012, 0.08, 0.34, z > 0 ? 0 : Math.PI, 1);
+      }
+      k.box(rust, 0.8, 0.02, 0.9, 0.3, 1.556, 0.1);
+      k.box(DETAIL.white, 0.5, 0.02, 0.3, -0.3, 1.31, -1.05, 0.95, 0, 0.4);
+      for (const sx of [-0.85, 0.85])
+        for (const sz of [-1.4, 1.4]) k.geo(dk, D.tire(0.36, 0.3, 16, 0.03), sx, 0.3, sz);
+    });
   });
   return k.build();
 }
@@ -138,6 +217,38 @@ export function buildSunkBus(color) {
     k.cb(m, 1.6, 0.35, 2.4, 0, 2.75, 0.5, 0, 0, 0, 0.08);
     k.box(DETAIL.lamp, 1.6, 0.25, 0.05, 0, 2.48, -5.02);
     for (const z of [-5.05, 5.05]) k.box(DETAIL.dark, 2.5, 0.3, 0.1, 0, 0.1, z);
+    // 小細節：行先牌的字、車身的腰線與廣告板、後照鏡、雨刷、車頂的通風蓋、水草與鏽流、破窗
+    k.fine(() => {
+      markText(k, DETAIL.white, -0.7, 2.48, -5.05, 0.14, 1.4, Math.PI, 2);
+      for (const s of [-1, 1]) {
+        k.box(DETAIL.white, 0.03, 0.18, 9.4, s * 1.315, 1.45, 0);
+        K.bx(k, fadeMat(0x2a6aa0, { roughness: 0.6 }), 0.04, 0.6, 2.4, s * 1.32, 0.85, 1.6, 0, 0, 0, 0.01);
+        K.pipe(
+          k,
+          DETAIL.dark,
+          [
+            [s * 1.3, 2.3, -4.9],
+            [s * 1.6, 2.4, -5.0],
+            [s * 1.6, 1.9, -5.15],
+          ],
+          0.03,
+          6,
+        );
+        for (let i = 0; i < 6; i++)
+          k.box(
+            fadeMat(0x3a4a2a, { roughness: 1 }),
+            0.02,
+            0.4 + (i % 3) * 0.25,
+            0.15,
+            s * 1.33,
+            0.5,
+            -4 + i * 1.6,
+          );
+      }
+      for (const x of [-0.5, 0.5]) k.box(DETAIL.dark, 0.6, 0.03, 0.03, x, 1.45, -5.04, 0, 0, 0.2);
+      for (const z of [-2.5, 2.5]) K.bx(k, m, 0.7, 0.12, 0.7, 0, 2.62, z, 0, 0, 0, 0.03);
+      k.box(DETAIL.white, 0.05, 0.5, 0.9, 1.33, 2.0, -1.2, 0.3, 0, 0);
+    });
   });
   return k.build();
 }
@@ -158,6 +269,32 @@ export function buildRuinWall(w, h, color) {
   // 樓板的殘邊與窗洞
   k.box(m, w, 0.3, 0.9, 0, h * 0.55, 0);
   k.box(DETAIL.black, w * 0.18, h * 0.25, 0.84, -w * 0.12, h * 0.3, 0);
+  // 小細節：磚縫（水平線）、窗框的殘骸、剝落的灰泥、水漬、牆腳的碎磚
+  k.fine(() => {
+    const plaster = fadeMat(0xb8b0a0, { roughness: 1 });
+    for (const sz of [-1, 1]) {
+      for (let y = 0.5; y < h * 0.5; y += 0.5) k.box(DETAIL.dark, w * 0.95, 0.02, 0.02, 0, y, sz * 0.41);
+      K.bx(k, plaster, w * 0.3, h * 0.2, 0.04, w * 0.25, h * 0.35, sz * 0.42, 0, 0, 0, 0.01);
+      k.box(fadeMat(0x3e4a3e, { roughness: 1 }), w, 0.9, 0.02, 0, 0.45, sz * 0.415);
+    }
+    for (const s of [-1, 1]) k.box(DETAIL.dark, 0.08, h * 0.25, 0.1, -w * 0.12 + s * w * 0.09, h * 0.3, 0.42);
+    k.box(DETAIL.dark, w * 0.18, 0.08, 0.1, -w * 0.12, h * 0.42, 0.42);
+    for (let i = 0; i < 6; i++)
+      K.bx(
+        k,
+        m,
+        0.3 + (i % 3) * 0.12,
+        0.15,
+        0.2,
+        -w / 2 + i * w * 0.18,
+        0.07,
+        0.6 + (i % 2) * 0.3,
+        0,
+        i * 0.8,
+        0.2,
+        0.01,
+      );
+  });
   return k.build();
 }
 // 彎折的路燈：原點在底面中心
@@ -181,7 +318,16 @@ export function buildBentLamp(h) {
     k.inPart(2, () => {
       k.cb(mat(0x9aa0a0), 0.8, 0.22, 0.4, 0.3, h * 0.4, 0, 0, 0, 0, 0.05);
       k.box(DETAIL.glass, 0.6, 0.04, 0.28, 0.3, h * 0.4 - 0.12, 0);
+      K.fins(k, mat(0x9aa0a0), 5, 0.5, 0.06, 0.3, 0.3, h * 0.4 + 0.13, 0, 0, 0.02);
     });
+  });
+  // 小細節：底座的螺栓、檢修門、折彎處的皺褶、垂下的電線、貼在桿上的告示
+  k.fine(() => {
+    K.boltRing(k, DETAIL.steel, 0.1, 0.31, 4, 0.02);
+    k.box(m, 0.1, 0.3, 0.02, 0, 0.7, 0.1);
+    K.cy(k, m, 0.13, 0.15, 0, h * 0.6, 0, 8, 0.03);
+    K.cable(k, DETAIL.black, [0.05, h * 0.62, 0.05], [0.4, h * 0.25, 0.3], 0.015, 0.4);
+    k.box(DETAIL.white, 0.15, 0.22, 0.01, 0, 2.0, 0.105);
   });
   return k.build();
 }
@@ -207,6 +353,53 @@ export function buildRubble(s) {
     k.ob(...a); // 外框同原本
   }
   rebarK(k, 2, s * 0.8, [0, s * 0.2, 0], false);
+  // 小細節：碎磚、一截管子、混凝土碎塊（雜訊岩石）
+  k.fine(() => {
+    for (let i = 0; i < 5; i++)
+      k.geo(
+        m,
+        D.rock(i + 2, 1, 0.3, 0.6, 0.2),
+        (i - 2) * s * 0.4,
+        s * 0.5,
+        (i % 2 ? 0.4 : -0.4) * s,
+        0,
+        i,
+        0,
+        s * 0.22,
+        s * 0.16,
+        s * 0.2,
+      );
+    K.cy(
+      k,
+      DETAIL.dark,
+      s * 0.08,
+      s * 1.1,
+      s * 0.3,
+      s * 0.45,
+      s * 0.2,
+      8,
+      0,
+      undefined,
+      0.3,
+      0.8,
+      Math.PI / 2 - 0.2,
+    );
+    for (let i = 0; i < 4; i++)
+      K.bx(
+        k,
+        mat(0x8a4a32, { roughness: 1 }),
+        s * 0.22,
+        s * 0.07,
+        s * 0.11,
+        -s + i * s * 0.6,
+        s * 0.03,
+        s * (0.9 - (i % 2) * 1.8),
+        0,
+        i * 1.1,
+        0,
+        0.01,
+      );
+  });
   return k.build();
 }
 // 漂浮雜物（純裝飾，浮在水面）：木板＋油桶（桶箍）
@@ -220,6 +413,28 @@ export function buildFloatJunk() {
   k.box(wood, 0.15, 0.08, 0.9, -0.4, 0.1, 0);
   k.cyl(drum, 0.35, 0.35, 0.9, 0.9, 0.1, 0.3, 0, 0, Math.PI / 2, 8);
   for (const x of [0.62, 1.18]) k.cyl(DETAIL.dark, 0.37, 0.37, 0.05, x, 0.1, 0.3, 0, 0, Math.PI / 2, 8);
+  // 小細節：木板的釘子、塑膠瓶、輪胎、繩子
+  k.fine(() => {
+    for (const z of [-0.3, 0, 0.3])
+      for (const x of [-0.6, 0.6]) k.box(DETAIL.steel, 0.03, 0.02, 0.03, x, 0.08, z);
+    K.cy(
+      k,
+      mat(0x3a7ab8, { roughness: 0.4 }),
+      0.06,
+      0.25,
+      -0.2,
+      0.15,
+      0.45,
+      8,
+      0.02,
+      undefined,
+      Math.PI / 2,
+      0.4,
+      0,
+    );
+    k.geo(DETAIL.rubber, D.tire(0.3, 0.18, 12, 0.03), -0.5, 0.05, -0.2, 0, 0, Math.PI / 2);
+    K.cable(k, mat(0xb8a070, { roughness: 1 }), [-0.6, 0.1, 0.3], [0.65, 0.2, 0.3], 0.02, 0.05);
+  });
   return k.build();
 }
 

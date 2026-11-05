@@ -2,7 +2,20 @@
 // 昏暗的紅色光、研究設施廢墟、Coral 收容槽與結晶、頂天立地的岩柱
 import { RNG, rnd } from '../../core/math.js';
 import { WS } from '../../core/scale.js';
-import { fadeMat, mat, propGlb, registerFeatureStyle, windowMat, PK, DETAIL, HOLE, ladder } from './kit.js';
+import {
+  fadeMat,
+  mat,
+  propGlb,
+  registerFeatureStyle,
+  windowMat,
+  PK,
+  DETAIL,
+  HOLE,
+  ladder,
+  K,
+  D,
+  markText,
+} from './kit.js';
 
 // 岩頂高度（舊尺度；World 的主題設定把 roof.y 乘上 G，這裡的結構用 ROOF * G）
 const ROOF = 38;
@@ -44,6 +57,42 @@ export function buildLab(w, h, d, seed) {
   k.box(coralMat(0.6), 2.6, 0.1, 0.12, 0, 3.15, d / 2 + 0.06);
   for (const x of [-w / 2 + 1.2, w / 2 - 1.2])
     k.cyl(trim, 0.09, 0.09, h - 0.8, x, h / 2, d / 2 + 0.1, 0, 0, 0, 6);
+  // 小細節：外牆的面板接縫、門禁讀卡機與警示燈、排氣扇的葉片與護網、屋頂的管線與天線、
+  // 生物危害的標示、外牆管線的管箍、入口兩側的監視器
+  k.fine(() => {
+    for (const sz of [-1, 1])
+      for (let y = 4; y < h - 1; y += 4) k.box(trim, w - 1, 0.06, 0.04, 0, y, sz * (d / 2 + 0.02));
+    K.bx(k, trim, 0.2, 0.3, 0.08, 1.6, 1.4, d / 2 + 0.08, 0, 0, 0, 0.02);
+    k.box(coralMat(0.9), 0.1, 0.06, 0.02, 1.6, 1.5, d / 2 + 0.13);
+    K.cy(k, mat(0xff4030, { emissive: 0xa01810 }), 0.12, 0.15, 0, 3.65, d / 2 + 0.15, 10, 0.03);
+    for (const x of [-w * 0.15, -w * 0.32]) {
+      for (let i = 0; i < 4; i++)
+        k.box(DETAIL.dark, 1.1, 0.03, 0.18, x, h + 0.84, -d * 0.2, 0, (i * Math.PI) / 4, 0.25);
+      k.geo(DETAIL.steel, K.loop(0.8, 0.03, 16), x, h + 0.86, -d * 0.2, 0, 0, 0);
+    }
+    K.pipe(
+      k,
+      DETAIL.dark,
+      [
+        [w * 0.2 - w * 0.15, h + 1.6, d * 0.15],
+        [-w * 0.1, h + 1.6, d * 0.15],
+        [-w * 0.1, h + 0.35, d * 0.15],
+        [-w * 0.35, h + 0.35, d * 0.15],
+      ],
+      0.15,
+      8,
+    );
+    K.cy(k, DETAIL.dark, 0.05, 3, w * 0.3, h + 3.4, d * 0.05, 6);
+    k.box(DETAIL.yellow, 1.0, 1.0, 0.03, -1.8, 2.2, d / 2 + 0.05);
+    K.cy(k, DETAIL.black, 0.3, 0.02, -1.8, 2.2, d / 2 + 0.07, 3, 0, undefined, Math.PI / 2, 0, 0);
+    for (const x of [-w / 2 + 1.2, w / 2 - 1.2])
+      for (let y = 2; y < h - 1; y += 3) K.bx(k, trim, 0.25, 0.08, 0.15, x, y, d / 2 + 0.12, 0, 0, 0, 0.01);
+    for (const s of [-1, 1]) {
+      K.bx(k, DETAIL.dark, 0.25, 0.2, 0.35, s * 2.2, 3.6, d / 2 + 0.25, 0.3, 0, 0, 0.02);
+      k.box(DETAIL.glass, 0.12, 0.1, 0.02, s * 2.2, 3.55, d / 2 + 0.43);
+    }
+    markText(k, coralMat(0.5), -w * 0.3, h - 1.5, d / 2 + 0.06, 0.8, w * 0.6, 0, seed);
+  });
   return k.build();
 }
 // Coral 收容槽：玻璃圓筒＋發光核心；原點在底面中心，半徑約 1.8
@@ -76,6 +125,44 @@ export function buildCoralTank() {
     k.box(steel, 0.2, 4.4, 0.2, Math.cos(a) * 1.7, 2.9, Math.sin(a) * 1.7, 0, -a, 0);
     k.box(steel, 0.32, 0.25, 0.32, Math.cos(a) * 1.7, 2.9, Math.sin(a) * 1.7, 0, -a, 0);
   }
+  // 小細節：玻璃的上下壓環與螺栓、核心的節點（結晶的稜）、頂蓋的管線彎頭與閥、底座的儀表與檢修面板的把手、警示標示
+  k.fine(() => {
+    for (const y of [0.98, 4.98]) {
+      k.cyl(steel, 1.68, 1.68, 0.12, 0, y, 0, 0, 0, 0, 20);
+      K.boltRing(k, DETAIL.steel, 1.62, y + 0.07, 16, 0.03);
+    }
+    for (let i = 0; i < 5; i++) {
+      const a = i * 1.26;
+      k.geo(
+        coralMat(1),
+        new THREE.ConeGeometry(0.22, 0.9, 5),
+        Math.cos(a) * 0.75,
+        1.8 + i * 0.5,
+        Math.sin(a) * 0.75,
+        Math.sin(a) * 0.9,
+        0,
+        -Math.cos(a) * 0.9,
+      );
+    }
+    for (const a of [0.4, 2.5, 4.4]) {
+      K.pipe(
+        k,
+        DETAIL.dark,
+        [
+          [Math.cos(a) * 0.8, 6.1, Math.sin(a) * 0.8],
+          [Math.cos(a) * 0.8, 6.4, Math.sin(a) * 0.8],
+          [Math.cos(a) * 2.3, 6.4, Math.sin(a) * 2.3],
+        ],
+        0.12,
+        8,
+      );
+      K.cy(k, DETAIL.red, 0.2, 0.04, Math.cos(a) * 1.4, 6.55, Math.sin(a) * 1.4, 10);
+    }
+    for (const x of [-0.3, 0.3])
+      K.cy(k, DETAIL.glass, 0.12, 0.03, x, 0.5, 2.02, 10, 0, undefined, Math.PI / 2, 0, 0);
+    K.handle(k, DETAIL.steel, 0.4, 0, 0.25, 2.02, 0, 0.04, 0.015);
+    K.hazard(k, DETAIL.yellow, DETAIL.black, 3.2, 0.12, 0.02, 0, 0.7, 1.98);
+  });
   return k.build();
 }
 // Coral 結晶簇：數根發光的尖柱；原點在底面中心，s＝大小倍率
@@ -121,6 +208,70 @@ export function buildCavePillar(r, h) {
       h * (0.2 + i * 0.12),
       Math.sin(i * 2.1) * r * 0.62,
     );
+  // 小細節：凸出的岩塊與腳邊的落石、岩縫裡的小結晶、固定在柱上的照明與纜線
+  k.fine(() => {
+    for (let i = 0; i < 6; i++) {
+      const a = i * 1.1,
+        y = h * (0.12 + i * 0.13),
+        rr =
+          y < h * 0.55 ? r * (1 - (0.45 * y) / (h * 0.55)) : r * (0.55 + (0.55 * (y - h * 0.5)) / (h * 0.5));
+      k.geo(
+        m,
+        D.rock(i + 21, 1, 0.35, 0.6, 0.4),
+        Math.cos(a) * rr,
+        y,
+        Math.sin(a) * rr,
+        0,
+        a,
+        0,
+        r * 0.3,
+        r * 0.25,
+        r * 0.3,
+      );
+    }
+    for (let i = 0; i < 5; i++) {
+      const a = i * 1.3 + 0.4;
+      k.geo(
+        m,
+        D.rock(i + 31, 1, 0.3, 0.5, 0.2),
+        Math.cos(a) * r * 1.1,
+        r * 0.1,
+        Math.sin(a) * r * 1.1,
+        0,
+        a,
+        0,
+        r * 0.18,
+        r * 0.12,
+        r * 0.18,
+      );
+    }
+    for (let i = 0; i < 4; i++) {
+      const a = i * 2.1 + 0.3;
+      k.geo(
+        v,
+        new THREE.ConeGeometry(0.2, 0.9, 5),
+        Math.cos(a) * r * 0.62,
+        h * (0.25 + i * 0.1),
+        Math.sin(a) * r * 0.62,
+        0.4,
+        a,
+        0.3,
+      );
+    }
+    K.bx(k, DETAIL.dark, 0.5, 0.3, 0.3, 0, 6, r * 0.78, 0, 0, 0, 0.03);
+    k.box(DETAIL.lamp, 0.4, 0.05, 0.2, 0, 5.83, r * 0.78);
+    K.pipe(
+      k,
+      DETAIL.black,
+      [
+        [0, 6, r * 0.75],
+        [r * 0.2, 3, r * 0.85],
+        [r * 0.4, 0.2, r * 1.0],
+      ],
+      0.04,
+      4,
+    );
+  });
   return k.build();
 }
 // 管線（橫躺的一束，矮掩體）：6 × 1.6 × 2（沿 X），原點在底面中心
@@ -147,6 +298,25 @@ export function buildPipeRun() {
   k.cyl(DETAIL.red, 0.3, 0.3, 0.06, 0, 1.75, 0, 0, 0, 0, 8);
   k.cyl(st, 0.06, 0.06, 0.4, 0, 1.55, 0, 0, 0, 0, 4);
   k.box(coralMat(0.6), 0.08, 0.08, 1.9, 2.62, 1.5, 0);
+  // 小細節：法蘭的螺栓、管箍、標示帶與流向箭頭、支架的錨栓、壓力錶
+  k.fine(() => {
+    for (let i = 0; i < 3; i++) {
+      const y = 0.45 + (i === 1 ? 0.8 : 0),
+        z = -0.6 + i * 0.6;
+      for (const x of [-1.2, 1.2])
+        for (let j = 0; j < 8; j++) {
+          const a = (j / 8) * Math.PI * 2;
+          K.cx(k, DETAIL.steel, 0.025, 0.24, x, y + Math.cos(a) * 0.46, z + Math.sin(a) * 0.46, 6);
+        }
+      for (const x of [-2.4, 2.4])
+        k.geo(DETAIL.steel, K.loop(0.44, 0.025, 12), x - 0.25, y, z, 0, 0, Math.PI / 2);
+      k.cyl(DETAIL.yellow, 0.425, 0.425, 0.2, 0.4, y, z, 0, 0, Math.PI / 2, 12);
+    }
+    for (const x of [-2.4, 2.4])
+      for (const s of [-1, 1]) K.cy(k, DETAIL.steel, 0.03, 0.06, x + s * 0.25, 0.1, 0.9, 6);
+    K.cy(k, DETAIL.dark, 0.03, 0.25, 0.8, 1.38, 0.45, 6);
+    K.cy(k, DETAIL.white, 0.1, 0.05, 0.8, 1.52, 0.45, 10, 0, undefined, Math.PI / 2, 0, 0);
+  });
   return k.build();
 }
 // 地上的 Coral 脈（裝飾，發光的細帶）

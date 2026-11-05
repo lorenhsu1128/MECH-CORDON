@@ -21,7 +21,11 @@ export {
   stairs,
   humanLadder,
   windowRows,
+  markText,
 } from '../prop-models.js';
+// 精細化的建模工具（docs/model-detail.md）：dev-kit 的零件（PK 也能用）與 detail.js 的精細幾何
+export * as K from '../../render/dev-kit.js';
+export { D } from '../../render/detail.js';
 
 // 簡單的 32 位元雜湊亂數（給貼圖用：同一個 seed 每次畫出一樣的圖）
 export function hashRng(seed) {

@@ -2249,7 +2249,7 @@ export function buildStorageTank(r, h, color) {
   return k.build();
 }
 // 幾塊雜訊岩石合併成一個網格（保留頂點色）：list＝[[幾何, x, y, z, sx, sy, sz, ry]…]
-function rockPile(list, m) {
+export function rockPile(list, m) {
   let n = 0;
   const gs = list.map(([g0]) => {
     const g = g0.index ? g0.toNonIndexed() : g0;
@@ -3068,7 +3068,7 @@ const FEATURE_COLORS = {
   snow: { deck: 0x6a7078, trim: 0xe9eef2, pillar: 0x7a828c, wall: 0xd8dde2, plat: 0xa9cbe0, rock: 0x2c3238 },
 };
 // 高架板：原點在板頂面（同 buildDeck）；rotY 時長邊沿 Z（護欄沿 Z）
-export function buildThemeDeck(style, w, d, thick, rotY) {
+function themeDeck0(style, w, d, thick, rotY) {
   const C = FEATURE_COLORS[style];
   const glb = propGlb(style + '_deck', {
     color: C.deck,
@@ -3170,7 +3170,7 @@ export function buildThemeDeck(style, w, d, thick, rotY) {
   return k.build();
 }
 // 支柱：原點在中心（呼叫端把位置設在支柱中心；GLB 原點在底面，以半徑 0.6、高 6 m 製作）
-export function buildThemePillar(style, r, h) {
+function themePillar0(style, r, h) {
   const C = FEATURE_COLORS[style];
   const glb = propGlb(style + '_pillar', {
     color: C.pillar,
@@ -3233,7 +3233,7 @@ export function buildThemePillar(style, r, h) {
   return k.build();
 }
 // 掩體的側牆：w × h × d（中心在原點）
-export function buildThemeWall(style, w, h, d) {
+function themeWall0(style, w, h, d) {
   const C = FEATURE_COLORS[style];
   const glb = propGlb(style + '_wall', {
     color: C.wall,
@@ -3304,7 +3304,7 @@ export function buildThemeWall(style, w, h, d) {
   return k.build();
 }
 // 高台：w × h × d，原點在底面中心（呼叫端放在 y0 − 0.5）
-export function buildThemePlatform(style, w, h, d) {
+function themePlatform0(style, w, h, d) {
   const C = FEATURE_COLORS[style];
   const glb = propGlb(style + '_platform', {
     color: C.plat,
@@ -3371,6 +3371,177 @@ export function buildThemePlatform(style, w, h, d) {
     for (const sx of [-1, 1]) k.cb(snow, 0.1, 0.6, d * 0.6, sx * (w / 2), h - 0.5, d * 0.1, 0, 0, 0, 0.03);
   }
   return k.build();
+}
+
+// ---------- 地形特徵的裝飾層（docs/model-detail.md 第二輪第 3 期）----------
+// 各主題的橋面、支柱、牆、高台建好之後，依量到的外框再加一層小細節（螺栓列、排水口、接縫、編號牌、爬梯…）。
+// 碰撞與遮擋由呼叫端以 Box3.setFromObject 量外框，所以裝飾層的網格外框登記成原本的外框（不會變大）；全部是小細節（遠了隱藏）。
+const _fb = new THREE.Box3(),
+  _fm = new THREE.Matrix4();
+function featureDecor(g, fn) {
+  if (!g || propMats(g)) return g; // GLB 不加
+  g.updateMatrixWorld(true);
+  _fb.setFromObject(g).applyMatrix4(_fm.copy(g.matrixWorld).invert());
+  if (_fb.isEmpty()) return g;
+  const b = _fb.clone();
+  const k = new PK().bounds(b.min.x, b.min.y, b.min.z, b.max.x, b.max.y, b.max.z);
+  k.fine(() => fn(k, b));
+  const tmp = k.build(new THREE.Group());
+  for (const c of [...tmp.children]) g.add(c);
+  return g;
+}
+const decorMats = (C) => ({
+  trim: mat(C.trim, { roughness: 0.7, metalness: 0.3 }),
+  deck: mat(C.deck, { roughness: 0.85, metalness: 0.2 }),
+  pil: mat(C.pillar, { roughness: 0.85, metalness: 0.2 }),
+  wall: mat(C.wall, { roughness: 0.9, metalness: 0.05 }),
+  grime: mat(0x3a3632, { roughness: 1, metalness: 0 }),
+});
+// 橋面板（原點在板頂面；長邊沿 X，rotY 時沿 Z）：側面的螺栓列、排水口與往下的短管、兩端的伸縮縫鋼板、邊線、反光鈕
+function deckDecor(k, b, C, w, d, thick, rotY) {
+  const M2 = decorMats(C),
+    Dt = DETAIL;
+  const L = rotY ? d : w,
+    W = rotY ? w : d;
+  k.at(0, 0, 0, 0, rotY ? Math.PI / 2 : 0, 0, () => {
+    for (const s of [-1, 1]) {
+      const z = s * (W / 2 + 0.01);
+      for (let x = -L / 2 + 0.4; x < L / 2 - 0.2; x += 0.7)
+        k.box(Dt.steel, 0.07, 0.07, 0.04, x, -thick * 0.5, z);
+      k.box(M2.grime, L, thick * 0.35, 0.02, 0, -thick * 0.78, z);
+      for (let x = -L / 2 + 2; x < L / 2 - 1; x += 4)
+        K.pipe(
+          k,
+          Dt.dark,
+          [
+            [x, -thick * 0.6, z],
+            [x, -thick * 0.6, z + s * 0.25],
+            [x, -thick - 0.45, z + s * 0.25],
+          ],
+          0.06,
+          6,
+        );
+      k.box(M2.trim, L - 0.8, 0.012, 0.12, 0, 0.007, s * (W / 2 - 0.9));
+      for (let x = -L / 2 + 1; x < L / 2; x += 3)
+        K.cy(k, Dt.lamp, 0.05, 0.02, x, 0.012, s * (W / 2 - 1.05), 6);
+    }
+    for (const sx of [-1, 1]) {
+      k.box(Dt.steel, 0.3, 0.02, W - 0.6, sx * (L / 2 - 0.25), 0.01, 0);
+      for (let z = -W / 2 + 0.6; z < W / 2 - 0.4; z += 0.5)
+        k.box(Dt.dark, 0.05, 0.025, 0.05, sx * (L / 2 - 0.25), 0.02, z);
+    }
+  });
+}
+// 支柱（原點在中心，半徑 r、高 h）：底座的承板與錨栓圈、頂部的支承墊、中段的接縫環、沿柱的電纜管、編號牌
+function pillarDecor(k, b, C, r, h) {
+  const M2 = decorMats(C),
+    Dt = DETAIL;
+  const R = Math.max(b.max.x - b.min.x, b.max.z - b.min.z) / 2,
+    y0 = b.min.y,
+    y1 = b.max.y;
+  K.bx(k, Dt.dark, R * 2.1, 0.08, R * 2.1, 0, y0 + 0.04, 0, 0, 0, 0, 0.02);
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+    K.cy(k, Dt.steel, 0.05, 0.14, Math.cos(a) * R * 0.98, y0 + 0.12, Math.sin(a) * R * 0.98, 6);
+  }
+  for (const s of [-1, 1])
+    K.bx(k, Dt.rubber, R * 0.7, 0.08, R * 0.9, s * R * 0.45, y1 + 0.03, 0, 0, 0, 0, 0.01);
+  K.pipe(
+    k,
+    Dt.dark,
+    [
+      [R * 0.75, y1 - 0.4, R * 0.75],
+      [R * 0.75, y0 + 0.3, R * 0.75],
+    ],
+    0.05,
+    6,
+  );
+  for (let y = y0 + 1.2; y < y1 - 0.6; y += 1.8)
+    K.bx(k, Dt.steel, 0.12, 0.1, 0.12, R * 0.75, y, R * 0.75, 0, 0, 0, 0.01);
+  k.box(Dt.white, 0.35, 0.45, 0.02, 0, y0 + 1.6, R + 0.02);
+  k.box(Dt.black, 0.22, 0.1, 0.02, 0, y0 + 1.65, R + 0.03);
+  k.box(M2.grime, R * 1.6, 0.5, 0.02, 0, y0 + 0.3, R + 0.015);
+}
+// 掩體牆（原點在中心，w × h × d）：大面的模板對拉螺栓孔、直向的接縫、壓頂的接縫、牆腳的排水孔與髒污
+function wallDecor(k, b, C, w, h, d) {
+  const M2 = decorMats(C),
+    Dt = DETAIL;
+  const alongX = w >= d,
+    L = alongX ? w : d,
+    T = alongX ? d : w;
+  h = b.max.y - b.min.y;
+  k.at(0, (b.min.y + b.max.y) / 2, 0, 0, alongX ? 0 : Math.PI / 2, 0, () => {
+    for (const s of [-1, 1]) {
+      const z = s * (T / 2 + 0.012);
+      for (let x = -L / 2 + 0.6; x < L / 2 - 0.3; x += 1.2)
+        for (let y = -h / 2 + 0.6; y < h / 2 - 0.3; y += 1.0) K.cz(k, Dt.dark, 0.03, 0.02, x, y, z, 6);
+      for (let x = -L / 2 + 3; x < L / 2 - 0.5; x += 3) k.box(Dt.dark, 0.04, h * 0.98, 0.02, x, 0, z);
+      for (let x = -L / 2 + 1.5; x < L / 2; x += 3) k.box(Dt.black, 0.18, 0.12, 0.02, x, -h / 2 + 0.25, z);
+      k.box(M2.grime, L * 0.98, h * 0.12, 0.012, 0, -h / 2 + h * 0.06, z);
+    }
+  });
+}
+// 高台（w × h × d，原點在底面中心）：上緣的螺栓列、四角的護角、每邊中段的排水口、側面的接縫、一側的人用爬梯與護籠
+function platformDecor(k, b, C, w, h, d) {
+  const M2 = decorMats(C),
+    Dt = DETAIL;
+  const y0 = b.min.y,
+    top = b.max.y - y0;
+  k.at(0, y0, 0, 0, 0, 0, () => platformDecor0(k, M2, Dt, w, d, top));
+}
+function platformDecor0(k, M2, Dt, w, d, top) {
+  for (const s of [-1, 1]) {
+    for (let x = -w / 2 + 0.5; x < w / 2; x += 0.8)
+      k.box(Dt.steel, 0.07, 0.07, 0.04, x, top - 0.25, s * (d / 2 + 0.01));
+    for (let z = -d / 2 + 0.5; z < d / 2; z += 0.8)
+      k.box(Dt.steel, 0.04, 0.07, 0.07, s * (w / 2 + 0.01), top - 0.25, z);
+    K.pipe(
+      k,
+      Dt.dark,
+      [
+        [0, top - 0.4, s * (d / 2)],
+        [0, top - 0.4, s * (d / 2 + 0.3)],
+        [0, top - 0.9, s * (d / 2 + 0.3)],
+      ],
+      0.07,
+      6,
+    );
+    for (let x = -w / 2 + 3; x < w / 2 - 0.5; x += 3)
+      k.box(Dt.dark, 0.04, top * 0.9, 0.02, x, top * 0.47, s * (d / 2 + 0.012));
+    k.box(
+      M2.grime,
+      w * 0.98,
+      Math.min(1, top * 0.15),
+      0.012,
+      0,
+      Math.min(0.5, top * 0.075),
+      s * (d / 2 + 0.013),
+    );
+  }
+  for (const sx of [-1, 1])
+    for (const sz of [-1, 1]) {
+      k.box(M2.trim, 0.08, top * 0.96, 0.4, sx * (w / 2 + 0.02), top * 0.48, sz * (d / 2 - 0.2));
+      k.box(M2.trim, 0.4, top * 0.96, 0.08, sx * (w / 2 - 0.2), top * 0.48, sz * (d / 2 + 0.02));
+    }
+  humanLadder(k, Dt.steel, top, w / 2 + 0.08, 0, d * 0.25, Math.PI / 2, top > 3);
+}
+
+// 主題版的地形特徵：原本的造型＋裝飾層（featureDecor）
+export function buildThemeDeck(style, w, d, thick, rotY) {
+  const g = themeDeck0(style, w, d, thick, rotY);
+  return featureDecor(g, (k, b) => deckDecor(k, b, FEATURE_COLORS[style], w, d, thick, rotY));
+}
+export function buildThemePillar(style, r, h) {
+  const g = themePillar0(style, r, h);
+  return featureDecor(g, (k, b) => pillarDecor(k, b, FEATURE_COLORS[style], r, h));
+}
+export function buildThemeWall(style, w, h, d) {
+  const g = themeWall0(style, w, h, d);
+  return featureDecor(g, (k, b) => wallDecor(k, b, FEATURE_COLORS[style], w, h, d));
+}
+export function buildThemePlatform(style, w, h, d) {
+  const g = themePlatform0(style, w, h, d);
+  return featureDecor(g, (k, b) => platformDecor(k, b, FEATURE_COLORS[style], w, h, d));
 }
 // 坡道板：rw × 0.4 × rd，原點在中心；護欄沿長邊；GLB 以 12 × 0.4 × 6 m（長邊沿 X）製作
 export function buildThemeRamp(style, rw, rd) {

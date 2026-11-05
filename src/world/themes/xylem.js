@@ -12,6 +12,9 @@ import {
   DETAIL,
   HOLE,
   grille,
+  K,
+  D,
+  markText,
 } from './kit.js';
 
 // ---------- 海上（雲海上）的街區＋橋：洋上都市與高空軌道共用 ----------
@@ -132,6 +135,80 @@ export function buildGlassTower(w, h, d, seed) {
   );
   k.cyl(fadeMat(0x3d4044), 0.12, 0.12, 6, w * 0.1, h + 6, 0, 0, 0, 0, 6);
   k.box(DETAIL.red, 0.25, 0.25, 0.25, w * 0.1, h + 9.1, 0);
+  // 小細節：帷幕牆的豎框（每 3 m）、大廳的入口雨棚與玻璃門、屋頂的女兒牆欄杆、直升機坪的 H 字與邊燈、
+  // 擦窗機的軌道與吊臂、空調機組
+  k.fine(() => {
+    const dk = fadeMat(0x3d4044, { roughness: 0.6, metalness: 0.5 });
+    for (const sz of [-1, 1]) {
+      for (let x = -w / 2 + 3; x < w / 2 - 1; x += 3)
+        k.box(trim, 0.12, h - 1.6, 0.1, x, h / 2 + 0.4, sz * (d / 2 + 0.03));
+      K.bx(k, trim, w * 0.5, 0.3, 3, 0, 4.2, sz * (d / 2 + 1.5), 0, 0, 0, 0.06);
+      for (const x of [-w * 0.2, w * 0.2]) K.cy(k, trim, 0.15, 4, x, 2.1, sz * (d / 2 + 2.8), 10);
+      k.box(
+        fadeMat(0x24384a, { roughness: 0.1, metalness: 0.5 }),
+        w * 0.3,
+        3,
+        0.06,
+        0,
+        2.3,
+        sz * (d / 2 + 0.05),
+      );
+    }
+    for (const sx of [-1, 1])
+      for (let z = -d / 2 + 3; z < d / 2 - 1; z += 3)
+        k.box(trim, 0.1, h - 1.6, 0.12, sx * (w / 2 + 0.03), h / 2 + 0.4, z);
+    K.railing(
+      k,
+      trim,
+      [
+        [-w / 2, -d / 2],
+        [w / 2, -d / 2],
+        [w / 2, d / 2],
+        [-w / 2, d / 2],
+        [-w / 2, -d / 2],
+      ],
+      h + 0.4,
+      1.1,
+      0.04,
+    );
+    const hr = Math.min(w, d) * 0.22;
+    for (const s of [-1, 1])
+      k.box(DETAIL.white, hr * 0.12, 0.02, hr * 0.9, -w * 0.25 + s * hr * 0.3, h + 0.45, -d * 0.25);
+    k.box(DETAIL.white, hr * 0.6, 0.02, hr * 0.12, -w * 0.25, h + 0.45, -d * 0.25);
+    for (let i = 0; i < 8; i++) {
+      const q = (i / 8) * Math.PI * 2;
+      K.cy(
+        k,
+        mat(0x60c0ff, { emissive: 0x2a6080 }),
+        0.08,
+        0.1,
+        -w * 0.25 + Math.cos(q) * hr,
+        h + 0.46,
+        -d * 0.25 + Math.sin(q) * hr,
+        6,
+      );
+    }
+    k.box(dk, w * 0.8, 0.15, 0.3, 0, h + 0.5, d * 0.42);
+    K.bx(k, dk, 1.0, 1.2, 1.0, w * 0.3, h + 1.0, d * 0.42, 0, 0, 0, 0.05);
+    k.box(dk, 0.2, 0.2, 3.5, w * 0.3, h + 1.6, d * 0.42 + 1.6);
+    for (let i = 0; i < 3; i++) {
+      K.bx(
+        k,
+        mat(0xb8bcc0, { roughness: 0.5 }),
+        2,
+        1.2,
+        1.4,
+        w * 0.3,
+        h + 1.0,
+        -d * 0.1 - i * 1.8,
+        0,
+        0,
+        0,
+        0.05,
+      );
+      K.cy(k, dk, 0.45, 0.05, w * 0.3, h + 1.63, -d * 0.1 - i * 1.8, 14);
+    }
+  });
   return k.build();
 }
 // 防空砲塔：原點在底面中心，半徑約 1.8
@@ -160,6 +237,48 @@ export function buildAATurret() {
       k.cyl(dk, 0.2, 0.2, 0.3, 0, 1.6, 0, 0, 0, 0, 6);
     });
   for (const s of [-1, 1]) k.cb(dk, 0.4, 0.8, 1.2, s * 1.4, 1.9, 0.2, 0, 0, 0, 0.05);
+  // 小細節：砲管的散熱孔與制退器的開口、彈鏈、砲塔的檢修艙蓋與把手、旋轉座的齒環、警示斜紋、雷達
+  k.fine(() => {
+    for (const s of [-0.5, 0.5])
+      k.at(s, 3, -1.2, 1.0, 0, 0, () => {
+        for (let y = 0.2; y < 1.2; y += 0.25) K.cy(k, m, 0.17, 0.06, 0, y, 0, 10);
+        for (const a of [0, Math.PI / 2]) k.box(DETAIL.black, 0.42, 0.08, 0.05, 0, 1.6, 0, 0, a, 0);
+      });
+    for (const s of [-1, 1])
+      K.pipe(
+        k,
+        DETAIL.steel,
+        [
+          [s * 1.4, 2.2, -0.2],
+          [s * 0.9, 2.6, -0.9],
+          [s * 0.5, 2.7, -1.3],
+        ],
+        0.06,
+        6,
+      );
+    K.cy(k, m, 0.35, 0.06, -0.4, 2.62, 0.5, 12);
+    K.handle(k, DETAIL.steel, 0.25, -0.4, 2.66, 0.5, 0, 0.05, 0.015);
+    k.geo(dk, D.gear(1.55, 40, 0.12), 0, 1.15, 0, 0, 0, Math.PI / 2);
+    K.hazard(k, DETAIL.yellow, DETAIL.black, 2.2, 0.15, 0.02, 0, 1.25, 1.21);
+    K.lathe(
+      k,
+      dk,
+      [
+        [0, 0],
+        [0.35, 0.05],
+        [0.42, 0.18],
+        [0, 0.2],
+      ],
+      0.8,
+      3.15,
+      0.4,
+      'y',
+      10,
+      -0.4,
+      0,
+      0,
+    );
+  });
   return k.build();
 }
 // 流線型路燈：原點在底面中心，高 h
@@ -179,6 +298,32 @@ export function buildSleekLamp(h) {
   });
   k.inPart(1, () => k.cb(m, 1.6, 0.18, 0.4, 0.6, h, 0, 0, 0, 0, 0.06));
   k.inPart(2, () => k.box(mat(0xdff4ff, { emissive: 0x5a7a8a }), 0.8, 0.12, 0.35, 1.1, h - 0.12, 0));
+  // 小細節（桿上）：底座的螺栓、桿身的接縫與感測器、標示燈條、監視器
+  k.inPart(0, () =>
+    k.fine(() => {
+      K.boltRing(k, DETAIL.steel, 0.17, 0.31, 6, 0.02);
+      for (const y of [1.2, h * 0.5]) K.cy(k, m, 0.17, 0.04, 0, y, 0, 10);
+      K.bx(k, m, 0.2, 0.3, 0.12, 0, 3.2, 0.16, 0, 0, 0, 0.03);
+      K.lathe(
+        k,
+        DETAIL.dark,
+        [
+          [0, 0],
+          [0.08, 0],
+          [0.1, 0.15],
+          [0, 0.2],
+        ],
+        0,
+        h * 0.75,
+        0.15,
+        'y',
+        10,
+        Math.PI / 2 + 0.3,
+        0,
+        0,
+      );
+    }),
+  );
   return k.build();
 }
 // 花台（矮掩體）：4 × 1.2 × 1.6（沿 X），原點在底面中心
@@ -196,6 +341,36 @@ export function buildPlanter() {
   k.box(fadeMat(0x4a3a2e, { roughness: 1 }), 3.7, 0.05, 1.3, 0, 0.88, 0);
   for (let i = -1; i <= 1; i++)
     k.geo(leaf, new THREE.IcosahedronGeometry(0.6, 0), i * 1.2, 1.1, 0, i * 0.5, i, 0);
+  // 小細節：灌木的細枝葉（小的雜訊塊）、花、壓頂的接縫、排水孔
+  k.fine(() => {
+    for (let i = 0; i < 7; i++)
+      k.geo(
+        leaf,
+        D.rock(i + 9, 1, 0.4, 0.3, 0),
+        -1.6 + i * 0.53,
+        1.2 + (i % 2) * 0.15,
+        ((i % 3) - 1) * 0.3,
+        0,
+        i,
+        0,
+        0.3,
+        0.28,
+        0.3,
+      );
+    for (let i = 0; i < 6; i++)
+      K.cy(
+        k,
+        mat([0xe05080, 0xf0d040, 0xffffff][i % 3], { roughness: 0.7 }),
+        0.06,
+        0.05,
+        -1.5 + i * 0.6,
+        1.45,
+        i % 2 ? 0.3 : -0.25,
+        6,
+      );
+    for (const x of [-1, 0, 1]) k.box(DETAIL.dark, 0.02, 0.13, 1.72, x, 0.92, 0);
+    for (const s of [-1, 1]) k.box(DETAIL.dark, 0.1, 0.06, 0.02, 1.6, 0.05, s * 0.81);
+  });
   return k.build();
 }
 

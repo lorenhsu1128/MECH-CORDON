@@ -12,6 +12,8 @@ import {
   hazard,
   railing,
   ladder,
+  K,
+  markText,
 } from './kit.js';
 import { buildBridges, planIslands } from './xylem.js';
 
@@ -37,6 +39,20 @@ export function buildSolarArray() {
     for (let i = -2; i <= 2; i++) k.box(frame, 0.06, 0.18, 3.02, i * 1.3, 0, 0);
     for (const z of [-1.51, 0, 1.51]) k.box(frame, 6.42, 0.18, 0.06, 0, 0, z);
   });
+  // 小細節：太陽電池的細格線、背面的接線盒與纜線、轉軸的馬達與齒輪、底板的錨栓
+  k.fine(() => {
+    k.at(0, 3, 0, -0.6, 0, 0, () => {
+      for (let x = -3.1; x <= 3.1; x += 0.325) k.box(frame, 0.015, 0.16, 2.98, x, 0.004, 0);
+      for (let z = -1.35; z <= 1.35; z += 0.3) k.box(frame, 6.38, 0.16, 0.015, 0, 0.004, z);
+      for (const x of [-1.95, 0.65]) K.bx(k, DETAIL.dark, 0.4, 0.12, 0.3, x, -0.13, 0.5, 0, 0, 0, 0.02);
+    });
+    K.bx(k, DETAIL.dark, 0.5, 0.5, 0.4, 3.0, 2.55, 0, 0, 0, 0, 0.04);
+    k.geo(DETAIL.steel, K.loop(0.28, 0.04, 16), 2.75, 2.55, 0, 0, 0, Math.PI / 2);
+    for (const x of [-2.6, 0, 2.6])
+      for (const sx of [-1, 1])
+        for (const sz of [-1, 1]) K.cy(k, DETAIL.steel, 0.03, 0.06, x + sx * 0.25, 0.12, sz * 0.32, 6);
+    K.cable(k, DETAIL.black, [3.0, 2.3, 0], [3.0, 0.1, 0.6], 0.03, 0.2);
+  });
   return k.build();
 }
 // 散熱板：高而薄的鰭片列，1.2 × h × 6（沿 Z），原點在底面中心
@@ -54,6 +70,21 @@ export function buildRadiator(h) {
     k.box(dk, 0.16, h - 1.2, 0.08, 0, (h + 0.8) / 2, z);
   }
   k.cyl(dk, 0.12, 0.12, 5.4, 0, h - 0.1, 0, Math.PI / 2, 0, 0, 6);
+  // 小細節：鰭片的面板線與加強肋、集管的接頭與閥、基座的檢修蓋與螺栓、警示標示
+  k.fine(() => {
+    for (let z = -2.5; z <= 2.5; z += 1) {
+      for (let y = 2; y < h - 0.5; y += 1.5) k.box(dk, 0.12, 0.04, 0.88, 0, y, z);
+      K.cy(k, dk, 0.16, 0.12, 0, h - 0.1, z, 8, 0, undefined, Math.PI / 2, 0, 0);
+    }
+    for (const z of [-2.7, 2.7])
+      K.cy(k, DETAIL.red, 0.14, 0.04, 0.7, 0.5, z, 10, 0, undefined, 0, 0, Math.PI / 2);
+    for (const s of [-1, 1]) {
+      K.bx(k, dk, 0.04, 0.4, 1.2, s * 0.61, 0.4, 0, 0, 0, 0, 0.01);
+      for (let z = -2.5; z <= 2.5; z += 0.5)
+        K.cy(k, DETAIL.steel, 0.03, 0.03, s * 0.61, 0.72, z, 6, 0, undefined, 0, 0, Math.PI / 2);
+      k.box(DETAIL.yellow, 0.02, 0.2, 0.8, s * 0.62, 0.4, 1.6);
+    }
+  });
   return k.build();
 }
 // 對接艙（直立的圓筒）：半徑 2、高 5，原點在底面中心
@@ -79,6 +110,39 @@ export function buildDockModule(color) {
   k.cb(dk, 1.3, 2.0, 0.3, 0, 1.4, 1.92, 0, 0, 0, 0.06);
   k.box(DETAIL.lamp, 0.2, 0.2, 0.08, 0.85, 2.3, 1.95);
   k.cyl(DETAIL.glass, 0.3, 0.3, 0.1, 0, 2.4, -1.97, Math.PI / 2, 0, 0, 8);
+  // 小細節：對接環的導引片與門閂、艙門的把手與鉸鏈、舷窗框、外殼的扶手、RCS 噴嘴、天線、編號
+  k.fine(() => {
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      k.box(dk, 0.3, 0.35, 0.08, Math.sin(a) * 1.0, 5.55, Math.cos(a) * 1.0, 0, a, 0);
+      K.cy(k, DETAIL.steel, 0.06, 0.08, Math.sin(a + 0.5) * 1.15, 5.45, Math.cos(a + 0.5) * 1.15, 8);
+    }
+    K.handle(k, DETAIL.steel, 0.4, 0, 1.4, 2.08, 0, 0.06, 0.02);
+    for (const y of [0.7, 2.1]) K.cy(k, DETAIL.steel, 0.05, 0.2, -0.68, y, 2.05, 8);
+    k.geo(dk, K.loop(0.33, 0.04, 14), 0, 2.4, -2.01, Math.PI / 2, 0, 0);
+    for (const a of [0.9, 2.2, 4.0, 5.3]) {
+      K.handle(k, DETAIL.yellow, 0.5, Math.sin(a) * 2.02, 3.8, Math.cos(a) * 2.02, a, 0.08, 0.02);
+      K.bx(k, dk, 0.2, 0.2, 0.15, Math.sin(a + 0.4) * 2.05, 4.2, Math.cos(a + 0.4) * 2.05, 0, a, 0, 0.02);
+      for (const s of [-1, 1])
+        K.cy(
+          k,
+          dk,
+          0.04,
+          0.1,
+          Math.sin(a + 0.4) * 2.05 + Math.cos(a) * s * 0.12,
+          4.2,
+          Math.cos(a + 0.4) * 2.05 - Math.sin(a) * s * 0.12,
+          6,
+          0,
+          undefined,
+          0,
+          0,
+          Math.PI / 2,
+        );
+    }
+    K.cy(k, DETAIL.dark, 0.03, 1.4, 1.5, 5.4, 0, 6);
+    markText(k, dk, -0.8, 3.7, 2.06, 0.3, 1.6, 0, 1);
+  });
   return k.build();
 }
 // 推進器噴口（裝飾，掛在平台邊緣朝下）：原點在噴口頂
@@ -115,6 +179,41 @@ export function buildThruster() {
     0,
     0,
   );
+  // 小細節：噴管的冷卻管（縱向）、萬向架的液壓缸、燃料管線、燃燒室的螺栓圈
+  k.fine(() => {
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2;
+      k.bar(
+        m,
+        [Math.cos(a) * 1.24, -0.05, Math.sin(a) * 1.24],
+        [Math.cos(a) * 2.6, -3.95, Math.sin(a) * 2.6],
+        0.05,
+      );
+    }
+    for (let i = 0; i < 2; i++) {
+      const a = i * Math.PI;
+      K.piston(
+        k,
+        DETAIL.dark,
+        DETAIL.steel,
+        [Math.cos(a) * 1.8, 1.4, Math.sin(a) * 1.8],
+        [Math.cos(a) * 1.4, -0.6, Math.sin(a) * 1.4],
+        0.08,
+      );
+    }
+    K.pipe(
+      k,
+      DETAIL.dark,
+      [
+        [0.9, 0.8, 0.9],
+        [1.2, 0.3, 1.2],
+        [1.25, -0.5, 1.0],
+      ],
+      0.08,
+      6,
+    );
+    K.boltRing(k, DETAIL.steel, 1.25, 0.82, 12, 0.04);
+  });
   return k.build();
 }
 // 通信桅杆：格子桿＋碟形天線，原點在底面中心，高 h
@@ -143,6 +242,41 @@ export function buildCommMast(h) {
   k.bar(DETAIL.dark, [0, h - 1.3, 0.1], [0, h - 0.6, 1.25], 0.06);
   k.cyl(DETAIL.dark, 0.03, 0.03, 1.5, 0.4, h + 0.75, -0.4, 0, 0, 0, 4);
   k.box(DETAIL.red, 0.2, 0.2, 0.2, -0.4, h + 0.1, -0.4);
+  // 小細節：碟面的肋、饋源喇叭、沿柱的電纜、爬梯、底座的機箱
+  k.fine(() => {
+    K.lathe(
+      k,
+      DETAIL.dark,
+      [
+        [0.05, 0],
+        [0.1, 0.05],
+        [0.18, 0.3],
+        [0, 0.3],
+      ],
+      0,
+      h - 0.6,
+      1.25,
+      'y',
+      10,
+      -1.9 + Math.PI,
+      0,
+      0,
+    );
+    K.pipe(
+      k,
+      DETAIL.dark,
+      [
+        [0.55, 0.4, 0.55],
+        [0.55, h - 1.2, 0.55],
+        [0.1, h - 1.2, 0.3],
+      ],
+      0.04,
+      4,
+    );
+    for (let y = 0.6; y < h - 1; y += 0.4) k.box(DETAIL.steel, 0.35, 0.025, 0.025, 0, y, -0.56);
+    K.bx(k, mat(0x8a9096), 0.8, 0.9, 0.5, 0.9, 0.85, 0, 0, 0, 0, 0.04);
+    K.vents(k, DETAIL.dark, m, 0.5, 0.3, 0.9, 0.85, 0.26, 0, 3);
+  });
   return k.build();
 }
 // 星空（裝飾；跟著場景原點，不受霧影響）
