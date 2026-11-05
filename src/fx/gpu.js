@@ -232,7 +232,7 @@ void main() {
 #endif
   gl_FragColor = vec4(rgb * a, a * vOcc);
   #include <tonemapping_fragment>
-  #include <encodings_fragment>
+  #include <colorspace_fragment>
 }`;
 
 const _col = new THREE.Color();
@@ -410,8 +410,8 @@ export class GpuFx {
     if (dt) this.load *= Math.exp(-dt / 0.6);
     if (this.hi >= this.lo) {
       const b = this.buf;
-      b.updateRange.offset = this.lo * STRIDE;
-      b.updateRange.count = (this.hi - this.lo + 1) * STRIDE;
+      b.clearUpdateRanges();
+      b.addUpdateRange(this.lo * STRIDE, (this.hi - this.lo + 1) * STRIDE);
       b.needsUpdate = true;
       this.mesh.geometry.instanceCount = this.n;
       this.lo = Infinity;
@@ -436,8 +436,7 @@ export class GpuFx {
     this.lo = Infinity;
     this.hi = -1;
     this.buf.needsUpdate = true;
-    this.buf.updateRange.offset = 0;
-    this.buf.updateRange.count = -1;
+    this.buf.clearUpdateRanges(); // 沒有範圍＝整個上傳
     this.mesh.geometry.instanceCount = 0;
     this.mesh.visible = false;
   }

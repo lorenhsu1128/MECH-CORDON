@@ -59,8 +59,11 @@ export function registerOriginals(gltf, buf) {
     return;
   }
   for (const [obj, ref] of assoc) {
-    if (!obj || !obj.isTexture || !ref || ref.type !== 'textures') continue;
-    const td = (json.textures || [])[ref.index];
+    // three r1xx 的格式：{ textures: 索引 }（r128 是 { type: 'textures', index }）
+    const ti =
+      ref && (ref.textures !== undefined ? ref.textures : ref.type === 'textures' ? ref.index : undefined);
+    if (!obj || !obj.isTexture || ti === undefined) continue;
+    const td = (json.textures || [])[ti];
     if (!td) continue;
     const ext = td.extensions || {};
     const si = ext.EXT_texture_webp ? ext.EXT_texture_webp.source : td.source;
@@ -127,7 +130,7 @@ async function readImage(file) {
 function makeTex(img, like, key, name) {
   const t = new THREE.CanvasTexture(img);
   if (like) {
-    for (const p of ['flipY', 'encoding', 'wrapS', 'wrapT', 'magFilter', 'minFilter', 'anisotropy'])
+    for (const p of ['flipY', 'colorSpace', 'wrapS', 'wrapT', 'magFilter', 'minFilter', 'anisotropy'])
       t[p] = like[p];
     t.offset.copy(like.offset);
     t.repeat.copy(like.repeat);
@@ -135,7 +138,7 @@ function makeTex(img, like, key, name) {
     t.rotation = like.rotation;
   } else {
     t.flipY = false;
-    t.encoding = SRGB.has(key) ? THREE.sRGBEncoding : THREE.LinearEncoding;
+    t.colorSpace = SRGB.has(key) ? THREE.SRGBColorSpace : THREE.NoColorSpace;
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     t.minFilter = THREE.LinearMipmapLinearFilter;
   }
@@ -165,18 +168,6 @@ function packChannel(base, src, ch, fill) {
   }
   g.putImageData(d, 0, 0);
   return c;
-}
-// 共用頂點屬性、加上 uv2（three r128 的 AO 貼圖用第二組貼圖座標）的新幾何
-function withUv2(g) {
-  const out = new THREE.BufferGeometry();
-  for (const [k, a] of Object.entries(g.attributes)) out.setAttribute(k, a);
-  out.setAttribute('uv2', g.attributes.uv);
-  out.morphAttributes = g.morphAttributes;
-  out.setIndex(g.index);
-  for (const gr of g.groups) out.addGroup(gr.start, gr.count, gr.materialIndex);
-  out.boundingBox = g.boundingBox;
-  out.boundingSphere = g.boundingSphere;
-  return out;
 }
 
 export class TextureTool {
@@ -661,8 +652,7 @@ export class TextureTool {
         if (!m.emissiveIntensity) m.emissiveIntensity = 1;
         notes.push('發光顏色改成白色');
       }
-      if (kind === 'aoMap')
-        for (const o of meshes) if (!o.geometry.attributes.uv2) o.geometry = withUv2(o.geometry);
+      // AO 貼圖：three r151 起每張貼圖以 channel 指定貼圖座標（預設 0＝uv），不用像 r128 補一組 uv2
       if (kind === 'map' && slotOfName(m.name) && chroma(src.bmp) > 0.12)
         warns.push('色槽材質會乘上陣營色，彩色貼圖會變混濁');
     }

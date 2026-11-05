@@ -133,23 +133,25 @@ float stBand( float x ) {
 	}
 	return s / n;
 }
-void RE_Direct_Style( const in IncidentLight directLight, const in GeometricContext geometry, const in PhysicalMaterial material, inout ReflectedLight reflectedLight ) {
+void RE_Direct_Style( const in IncidentLight directLight, const in vec3 geometryPosition, const in vec3 geometryNormal, const in vec3 geometryViewDir, const in vec3 geometryClearcoatNormal, const in PhysicalMaterial material, inout ReflectedLight reflectedLight ) {
 	if ( stA.x < 0.5 ) {
-		RE_Direct_Physical( directLight, geometry, material, reflectedLight );
+		RE_Direct_Physical( directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );
 		stSh = 1.0;
 		return;
 	}
-	float ndl = dot( geometry.normal, directLight.direction );
+	// three.js r187 的光色多乘了 π（render/three-compat：照 r128 的舊單位補回），色階的光色照 r128 不含 π
+	vec3 stLc = directLight.color * RECIPROCAL_PI;
+	float ndl = dot( geometryNormal, directLight.direction );
 	float w = max( stA.w, 0.001 );
 	float sh = mix( 1.0, smoothstep( 0.5 - w, 0.5 + w, stSh ), stN.w );
 	float b = min( stBand( ndl * 0.5 + 0.5 ), sh );
-	stLit += directLight.color * mix( stB.rgb, vec3( stN.z ), b );
-	vec3 h = normalize( directLight.direction + geometry.viewDir );
+	stLit += stLc * mix( stB.rgb, vec3( stN.z ), b );
+	vec3 h = normalize( directLight.direction + geometryViewDir );
 	float e = mix( 400.0, 6.0, stC.x );
-	float sp = pow( saturate( dot( geometry.normal, h ) ), e );
+	float sp = pow( saturate( dot( geometryNormal, h ) ), e );
 	float sw = max( stC.y, 0.002 );
-	stSpec += directLight.color * smoothstep( 0.5 - sw, 0.5 + sw, sp ) * b * saturate( 1.25 - material.specularRoughness );
-	stKey += dot( directLight.color, vec3( 0.299, 0.587, 0.114 ) );
+	stSpec += stLc * smoothstep( 0.5 - sw, 0.5 + sw, sp ) * b * saturate( 1.25 - material.roughness );
+	stKey += dot( stLc, vec3( 0.299, 0.587, 0.114 ) );
 	stSh = 1.0;
 }
 #undef RE_Direct
@@ -164,16 +166,15 @@ float stNoise( vec2 p ) {
 
 const MAP = /* glsl */ `
 #ifdef USE_MAP
-	vec4 texelColor = texture2D( map, vUv );
+	vec4 texelColor = texture2D( map, vMapUv );
 	float stDet = max( mix( stE.y, stE.x, stCat ), stAuth );
-	if ( stDet < 0.999 ) texelColor = mix( texture2D( map, vUv, 10.0 ), texelColor, stDet );
-	texelColor = mapTexelToLinear( texelColor );
+	if ( stDet < 0.999 ) texelColor = mix( texture2D( map, vMapUv, 10.0 ), texelColor, stDet );
 	diffuseColor *= texelColor;
 	#ifdef ST_DECAL
-	vec4 stDc = texture2D( stDecT, vUv );
+	vec4 stDc = texture2D( stDecT, vMapUv );
 	if ( stDc.a > 0.002 ) {
-		vec4 stDw = texture2D( stDecW, vUv );
-		vec3 stDcol = sRGBToLinear( vec4( stDc.rgb / stDc.a, 1.0 ) ).rgb;
+		vec4 stDw = texture2D( stDecW, vMapUv );
+		vec3 stDcol = sRGBTransferEOTF( vec4( stDc.rgb / stDc.a, 1.0 ) ).rgb;
 		float stFx = max( 0.0, stDc.a - stDw.r - stDw.g - stDw.b - stDw.a );
 		vec3 stTint = ( stSlot[ 0 ] * stDw.r + stSlot[ 1 ] * stDw.g + stSlot[ 2 ] * stDw.b + stSlot[ 3 ] * stDw.a + stFx ) / stDc.a;
 		diffuseColor.rgb = mix( diffuseColor.rgb, stDcol * stTint, min( stDc.a, 1.0 ) );
@@ -265,25 +266,24 @@ if ( stCa > 0.0 ) outgoingLight += stAlb * stCa * ( stA.x > 0.5 ? step( 0.35, st
 const FOG = /* glsl */ `
 #ifdef USE_FOG
 	#ifdef FOG_EXP2
-		float fogFactor = 1.0 - exp( - fogDensity * fogDensity * fogDepth * fogDepth );
+		float fogFactor = 1.0 - exp( - fogDensity * fogDensity * vFogDepth * vFogDepth );
 	#else
-		float fogFactor = smoothstep( fogNear, fogFar, fogDepth );
+		float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );
 	#endif
 	if ( stF.x > 0.0 ) {
 		float stHd = stF.x * exp( - max( vStW.y - stF.y, 0.0 ) / max( stF.z, 0.1 ) );
-		float stHf = 1.0 - exp( - stHd * fogDepth * 0.03 );
+		float stHf = 1.0 - exp( - stHd * vFogDepth * 0.03 );
 		fogFactor = 1.0 - ( 1.0 - fogFactor ) * ( 1.0 - stHf );
 	}
 	gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );
 #endif
 `;
 
-const OUTGOING =
-  'vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + reflectedLight.directSpecular + reflectedLight.indirectSpecular + totalEmissiveRadiance;';
+const OUTGOING = 'vec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance;';
 
 function rep(src, find, by) {
   if (!src.includes(find)) {
-    console.warn('style shader: 找不到', find);
+    console.error('style shader: 找不到', find); // three.js 的 chunk 改了（升級時要跟著改）
     return src;
   }
   return src.replace(find, by);
@@ -296,7 +296,7 @@ export function installStyleShader() {
   installed = true;
   const C = THREE.ShaderChunk;
   const begin = C.lights_fragment_begin.replace(
-    /directLight\.color \*= (all\( bvec2\( directLight\.visible, receiveShadow \) \) \? get\w+\([^;]*\) : 1\.0);/g,
+    /directLight\.color \*= (\( directLight\.visible && receiveShadow \) \? get\w+\([^;]*\) : 1\.0);/g,
     'stSh = ( $1 ); directLight.color *= mix( mix( 1.0, stSh, stN.w ), 1.0, stA.x );',
   );
   // 特效的點光：只算漫射（照 three.js r128 非物理單位的點光：衰減＝(1－距離／範圍)^decay，漫射＝N·L×顏色×反照率），
@@ -305,17 +305,26 @@ export function installStyleShader() {
 for ( int i = 0; i < 4; i ++ ) {
 	vec4 stFc = stFxC[ i ];
 	if ( stFc.r + stFc.g + stFc.b > 0.0 ) {
-		vec3 stLv = ( viewMatrix * vec4( stFxP[ i ].xyz, 1.0 ) ).xyz - geometry.position;
+		vec3 stLv = ( viewMatrix * vec4( stFxP[ i ].xyz, 1.0 ) ).xyz - geometryPosition;
 		float stLd = length( stLv );
 		float stAt = pow( saturate( 1.0 - stLd / stFxP[ i ].w ), stFc.w );
 		if ( stAt > 0.0 ) {
-			float stNl = dot( geometry.normal, stLv / max( stLd, 0.001 ) );
+			float stNl = dot( geometryNormal, stLv / max( stLd, 0.001 ) );
 			if ( stA.x < 0.5 ) reflectedLight.directDiffuse += saturate( stNl ) * stFc.rgb * stAt * material.diffuseColor;
 			else stLit += stFc.rgb * stAt * mix( stB.rgb, vec3( stN.z ), stBand( stNl * 0.5 + 0.5 ) );
 		}
 	}
 }
 `;
+  const nb0 = C.normal_fragment_begin;
+  const NB_AT = nb0.indexOf('#if defined( USE_NORMALMAP_TANGENTSPACE )');
+  if (NB_AT < 0) console.error('style shader: normal_fragment_begin 的寫法改了');
+  const nbegin =
+    NB_AT < 0
+      ? nb0
+      : nb0.slice(0, NB_AT) +
+        'if ( stFlat > 0.5 ) normal = normalize( cross( dFdx( vViewPosition ), dFdy( vViewPosition ) ) );\n' +
+        nb0.slice(NB_AT);
   const nmaps = C.normal_fragment_maps.replace('mapN.xy *= normalScale;', 'mapN.xy *= normalScale * stE.z;');
   const proto = THREE.MeshStandardMaterial.prototype;
   // 平面著色改成每個材質的 uniform（stFlat），不再是編譯時的 FLAT_SHADED：平面與平滑共用同一個程式，
@@ -405,18 +414,8 @@ for ( int i = 0; i < 4; i ++ ) {
     f = rep(f, '#include <map_fragment>', MAP);
     f = rep(f, '#include <color_fragment>', '#include <color_fragment>\n' + AFTER_COLOR);
     f = rep(f, '#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\n' + AFTER_METAL);
-    // 平面著色（stFlat）：同 three.js 的 FLAT_SHADED，以畫面上的導數算面法線
-    f = rep(
-      f,
-      '#include <normal_fragment_begin>',
-      `#include <normal_fragment_begin>
-if ( stFlat > 0.5 ) {
-	vec3 stFx = vec3( dFdx( vViewPosition.x ), dFdx( vViewPosition.y ), dFdx( vViewPosition.z ) );
-	vec3 stFy = vec3( dFdy( vViewPosition.x ), dFdy( vViewPosition.y ), dFdy( vViewPosition.z ) );
-	normal = normalize( cross( stFx, stFy ) );
-	geometryNormal = normal;
-}`,
-    );
+    // 平面著色（stFlat）：同 three.js 的 FLAT_SHADED，以畫面上的導數算面法線（在算切線空間之前，法線貼圖照面法線擾動）
+    f = rep(f, '#include <normal_fragment_begin>', nbegin);
     f = rep(f, '#include <normal_fragment_maps>', nmaps);
     f = rep(f, '#include <lights_fragment_begin>', begin + fxl);
     f = rep(f, '#include <lights_fragment_maps>', '#include <lights_fragment_maps>\n' + AFTER_MAPS);

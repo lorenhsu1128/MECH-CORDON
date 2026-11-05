@@ -128,7 +128,7 @@ function texOf(key, srgb) {
   const t = new THREE.Texture(img);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.anisotropy = 8;
-  if (srgb) t.encoding = THREE.sRGBEncoding;
+  if (srgb) t.colorSpace = THREE.SRGBColorSpace;
   t.haShared = true; // 共用的貼圖：disposeHangar 不釋放
   t.needsUpdate = true;
   return (TEXC[key] = t);

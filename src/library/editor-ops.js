@@ -187,7 +187,7 @@ export function exportGlb(root, maxTex = 0) {
   return new Promise((resolve, reject) => {
     if (!THREE.GLTFExporter) return reject(new Error('GLTFExporter 未載入'));
     try {
-      new THREE.GLTFExporter().parse(root, resolve, {
+      new THREE.GLTFExporter().parse(root, resolve, reject, {
         binary: true,
         onlyVisible: true,
         maxTextureSize: maxTex > 0 ? maxTex : Infinity,

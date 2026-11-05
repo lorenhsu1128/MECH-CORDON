@@ -444,7 +444,7 @@ async function sampling(ctx, page) {
     const LEARN = path.join(OUT, 'perf-warm.json');
     if (args.learn && fs.existsSync(LEARN))
       await page.addInitScript(
-        (s) => localStorage.setItem('rubicon_shader_warm', s),
+        (s) => localStorage.setItem('rubicon_shader_warm2', s),
         fs.readFileSync(LEARN, 'utf8'),
       );
     await page.goto(require('url').pathToFileURL(path.join(DIST, 'rubicon-protocol.html')).href + '?test');
@@ -483,7 +483,7 @@ async function sampling(ctx, page) {
       });
     }
     const out = await page.evaluate(summarize);
-    const learned = await page.evaluate(() => localStorage.getItem('rubicon_shader_warm'));
+    const learned = await page.evaluate(() => localStorage.getItem('rubicon_shader_warm2'));
     if (learned) fs.writeFileSync(LEARN, learned);
     out.map = MAP;
     out.load = load;

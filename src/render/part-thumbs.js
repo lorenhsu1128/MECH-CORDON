@@ -1,5 +1,6 @@
 // 機甲庫的零件縮圖（docs/garage-ui.md 第二期）：離屏的小場景，buildMech 換上那個零件、只留那個零件的區塊，
 // 拍成 128×128 的透明 PNG（data URL）。依「部位＋零件＋模型來源＋配色」快取；發電機、火控、消耗品、空的武器槽沒有外觀
+import { legacyTarget } from './legacy-rt.js';
 import { START_ASM } from '../data/parts.js';
 import { isOutline } from './geometry.js';
 import { buildMech } from './mech-model.js';
@@ -49,8 +50,9 @@ function setup(env) {
   scene.add(r);
   if (env) scene.environment = env;
   const cam = new THREE.PerspectiveCamera(28, 1, 0.01, 100);
-  const rt = new THREE.WebGLRenderTarget(RS, RS);
-  rt.texture.encoding = THREE.sRGBEncoding; // 輸出 sRGB（直接當圖片用）
+  // 照 r128 的畫面：色調映射照做、輸出線性（legacyTarget），讀回時轉成 sRGB（直接當圖片用）。
+  // 不把貼圖設成 sRGB：r187 會用 SRGB8 格式，著色器與硬體各編碼一次
+  const rt = legacyTarget(new THREE.WebGLRenderTarget(RS, RS));
   const big = document.createElement('canvas');
   big.width = big.height = RS;
   const cv = document.createElement('canvas');
@@ -58,6 +60,11 @@ function setup(env) {
   return { scene, cam, rt, big, cv, buf: new Uint8Array(RS * RS * 4) };
 }
 // 拍一張：asm＝目前的組裝（只換這個部位），回傳 data URL（沒有外觀時 ''）
+// 線性 → sRGB 的查表（8 位元）
+const SRGB = new Uint8Array(256).map((_, i) => {
+  const c = i / 255;
+  return Math.round(255 * (c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055));
+});
 export function renderThumb(renderer, { slot, pid, asm, pal, palKey, source, env }) {
   const key = thumbKey(slot, pid, palKey, source);
   if (cache.has(key)) return cache.get(key);
@@ -126,6 +133,12 @@ export function renderThumb(renderer, { slot, pid, asm, pal, palKey, source, env
   const img = bx.createImageData(RS, RS);
   for (let y = 0; y < RS; y++)
     img.data.set(S.buf.subarray((RS - 1 - y) * RS * 4, (RS - y) * RS * 4), y * RS * 4);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    d[i] = SRGB[d[i]];
+    d[i + 1] = SRGB[d[i + 1]];
+    d[i + 2] = SRGB[d[i + 2]];
+  }
   bx.putImageData(img, 0, 0);
   const ctx = S.cv.getContext('2d');
   ctx.clearRect(0, 0, SIZE, SIZE);

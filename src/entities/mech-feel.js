@@ -2,7 +2,6 @@
 // feelHit（投射物、雷射打中時，攻擊者是玩家操作的機體）：依武器的受擊反應（霰彈推退、火箭筒與榴彈把小型敵人打飛、
 // 機槍讓目標持續抖動變慢、重的單發讓目標頓格）＋命中標記與確認音；arInput（每格的開火輸入）：主動裝填。
 // 判定只在房主／單機；客機的命中標記與裝填結果由 fb 事件 'hm'／'ar' 給本人。
-import * as THREE from 'three';
 import { SFX } from '../audio/audio.js';
 import { FEEL } from '../data/feel.js';
 import { MechEntity } from './mech-entity.js';

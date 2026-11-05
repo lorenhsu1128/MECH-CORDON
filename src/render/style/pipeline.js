@@ -8,6 +8,7 @@ import { OUTLINE_MAT, OUTLINE_SKIN, isOutline } from '../geometry.js';
 import { StyleAtmos } from './atmos.js';
 import { STYLE_DEFAULTS } from './params.js';
 import { setStyleUniforms } from './shader.js';
+import { legacyTarget } from '../legacy-rt.js';
 import { FX_LAYER, FX_MESHES, FXU, fxLight } from '../../fx/gpu.js';
 
 // 著色器 uniform 與描邊材質是全域共用的：同一頁有其他畫面（模型庫）時，畫完風格預覽後恢復預設
@@ -172,7 +173,7 @@ void main() {
 		vec2 d = ( vUv - 0.5 ) * gB.y * 0.012;
 		c = vec3( texture2D( tDiffuse, vUv + d ).r, texture2D( tDiffuse, vUv ).g, texture2D( tDiffuse, vUv - d ).b );
 	} else c = texture2D( tDiffuse, vUv ).rgb;
-	c = LinearTosRGB( vec4( c, 1.0 ) ).rgb;
+	c = sRGBTransferOETF( vec4( c, 1.0 ) ).rgb;
 	c *= vec3( 1.0 + 0.1 * gA.w, 1.0 + 0.015 * gA.w, 1.0 - 0.12 * gA.w );
 	c += gA.z;
 	c = ( c - 0.5 ) * gA.y + 0.5;
@@ -287,12 +288,12 @@ const warm = (k) =>
 // 所以場景裡有 SkinnedMesh（render/foe-merge.js 合併的專屬敵人）時改成逐個網格換材質：蒙皮網格用蒙皮版的法線材質。
 // 沒有蒙皮網格時照原本的覆蓋材質畫（結果相同）。
 export function skinAwareSSAO(pass) {
-  const orig = pass.renderOverride;
+  const orig = pass._renderOverride;
   const skinN = pass.normalMaterial.clone();
   skinN.skinning = true;
   const list = [],
     mats = [];
-  pass.renderOverride = function (renderer, mat, rt, cc, ca) {
+  pass._renderOverride = function (renderer, mat, rt, cc, ca) {
     if (mat !== this.normalMaterial) return orig.call(this, renderer, mat, rt, cc, ca);
     let any = false;
     list.length = mats.length = 0;
@@ -352,6 +353,7 @@ export class StylePipeline {
         magFilter: THREE.LinearFilter,
         format: THREE.RGBAFormat,
       });
+      legacyTarget(t);
       if (depth && depthOk) {
         t.depthTexture = new THREE.DepthTexture(4, 4);
         t.depthTexture.type = renderer.capabilities.isWebGL2
@@ -424,12 +426,14 @@ export class StylePipeline {
         })
       : null;
     this.rtH = depthOk
-      ? new THREE.WebGLRenderTarget(4, 4, {
-          minFilter: THREE.LinearFilter,
-          magFilter: THREE.LinearFilter,
-          format: THREE.RGBAFormat,
-          depthBuffer: false,
-        })
+      ? legacyTarget(
+          new THREE.WebGLRenderTarget(4, 4, {
+            minFilter: THREE.LinearFilter,
+            magFilter: THREE.LinearFilter,
+            format: THREE.RGBAFormat,
+            depthBuffer: false,
+          }),
+        )
       : null;
     this.heatQ = quad(HEAT_FRAG, {
       tColor: { value: null },
@@ -609,7 +613,8 @@ export class StylePipeline {
   applyStructural(P) {
     const R = this.R;
     const tm = TM()[P.toneMap] || THREE.ACESFilmicToneMapping;
-    const st = P.shadowType === 'hard' ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
+    // r182 起 PCFSoftShadowMap 移除、PCFShadowMap 本身就是柔邊：「硬」與「柔」都用它（docs/perf-threejs-upgrade.md 第 1 期）
+    const st = THREE.PCFShadowMap;
     let ch = false;
     if (R.toneMapping !== tm) {
       R.toneMapping = tm;
@@ -623,17 +628,17 @@ export class StylePipeline {
     return ch;
   }
   // 整條管線；out 為 null 時畫到畫面。
-  // 場景的世界矩陣只在這裡算一次：之後這條管線裡的算繪（場景、陰影、SSAO 法線）都關掉 scene.autoUpdate
+  // 場景的世界矩陣只在這裡算一次：之後這條管線裡的算繪（場景、陰影、SSAO 法線）都關掉 scene.matrixWorldAutoUpdate
   run(P, out, time) {
     const s = this.scene;
     this.applyScene(P, time);
     s.updateMatrixWorld();
-    const au = s.autoUpdate;
-    s.autoUpdate = false;
+    const au = s.matrixWorldAutoUpdate;
+    s.matrixWorldAutoUpdate = false;
     try {
       this.runInner(P, out, time);
     } finally {
-      s.autoUpdate = au;
+      s.matrixWorldAutoUpdate = au;
     }
   }
   runInner(P, out, time) {
@@ -674,8 +679,8 @@ export class StylePipeline {
       S.ssaoMaterial.uniforms.kernelRadius.value = S.kernelRadius;
       S.ssaoMaterial.uniforms.minDistance.value = S.minDistance;
       S.ssaoMaterial.uniforms.maxDistance.value = S.maxDistance;
-      S.renderPass(R, S.ssaoMaterial, S.ssaoRenderTarget);
-      S.renderPass(R, S.blurMaterial, S.blurRenderTarget);
+      S._renderPass(R, S.ssaoMaterial, S.ssaoRenderTarget);
+      S._renderPass(R, S.blurMaterial, S.blurRenderTarget);
     }
     // 3. 合成：AO、動態模糊、描線
     const u = this.comp.m.uniforms;
@@ -991,7 +996,7 @@ export class StylePipeline {
       // 上一格的場景留著（水面的螢幕空間反射）：兩張輪流用
       if (this.keepPrev && this.depthOk) {
         if (!this.rtPrev) {
-          this.rtPrev = this.rtScene.clone();
+          this.rtPrev = legacyTarget(this.rtScene.clone());
           this.rtPrev.depthTexture = new THREE.DepthTexture(this.w || 4, this.h || 4);
           this.rtPrev.depthTexture.type = this.rtScene.depthTexture.type;
           this.rtPrev.setSize(this.w || 4, this.h || 4);

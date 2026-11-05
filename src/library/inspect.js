@@ -224,7 +224,7 @@ export class Inspector {
     else {
       R.toneMapping = THREE.ACESFilmicToneMapping;
       R.toneMappingExposure = 0.68;
-      R.shadowMap.type = THREE.PCFSoftShadowMap;
+      R.shadowMap.type = THREE.PCFShadowMap;
       applyLight(this.scene, this.lights, THEMES[$('insLight').value] || null);
       if (this.stylePipe) this.stylePipe.rebase();
     }

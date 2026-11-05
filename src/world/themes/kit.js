@@ -68,7 +68,7 @@ export function windowTexture({
   for (let i = 0; i < 6; i++) c.fillRect(r() * 128, 0, 2 + r() * 5, 128);
   c.globalAlpha = 1;
   const t = new THREE.CanvasTexture(cv);
-  t.encoding = THREE.sRGBEncoding;
+  t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   TEX.set(key, t);
   return t;

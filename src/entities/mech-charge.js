@@ -2,7 +2,6 @@
 // pwInput（每格的開火輸入：單機 player.js、房主替客機 mp-host.js）處理按住蓄力與機槍的收尾，
 // pwShot（fire 開火時）決定這一發是不是強力彈，pwGain（投射物打中時）累積充能，pwTick（move）送出連發。
 // 判定只在房主／單機；客機收到 fb 事件 'pwr'（充能完成）只顯示。
-import * as THREE from 'three';
 import { SFX } from '../audio/audio.js';
 import { PW, PW_FX, PW_HITS, PW_KIND } from '../data/charge.js';
 import { MechEntity } from './mech-entity.js';

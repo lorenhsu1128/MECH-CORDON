@@ -80,7 +80,7 @@ function canvasTex(w, h, draw, rep) {
   cv.height = h;
   draw(cv.getContext('2d'), w, h);
   const t = new THREE.CanvasTexture(cv);
-  t.encoding = THREE.sRGBEncoding;
+  t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;
   if (rep) {
     t.wrapS = t.wrapT = THREE.RepeatWrapping;

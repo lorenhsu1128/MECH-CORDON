@@ -188,12 +188,12 @@ export class FxBatch {
     n = m.count = w;
     m.visible = w > 0;
     if (!n) return;
-    m.instanceMatrix.updateRange.offset = 0;
-    m.instanceMatrix.updateRange.count = n * 16;
+    m.instanceMatrix.clearUpdateRanges();
+    m.instanceMatrix.addUpdateRange(0, n * 16);
     m.instanceMatrix.needsUpdate = true;
     if (!this.std) {
-      this.iCol.updateRange.offset = 0;
-      this.iCol.updateRange.count = n * 4;
+      this.iCol.clearUpdateRanges();
+      this.iCol.addUpdateRange(0, n * 4);
       this.iCol.needsUpdate = true;
     }
   }

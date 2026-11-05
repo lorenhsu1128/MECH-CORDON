@@ -5,29 +5,31 @@
 // 那些跟著場景），存在 localStorage；下次載入地圖時以假網格把記下的變體也編好。
 // 只記風格著色器（MeshStandardMaterial／MeshPhysicalMaterial，onBeforeCompile 呼叫 noteStyleVariant）。
 
-const KEY = 'rubicon_shader_warm';
+const KEY = 'rubicon_shader_warm2'; // r187 的參數名稱（r128 時的紀錄 rubicon_shader_warm 不再用）
 const MAX = 48;
-// 變體的欄位（three.js r128 WebGLPrograms.getParameters 的名稱）
+// 變體的欄位（three.js r187 WebGLPrograms.getParameters 的名稱）
 const FIELDS = [
   'instancing',
   'instancingColor',
+  'batching',
   'skinning',
   'map',
-  'mapEncoding',
   'normalMap',
-  'objectSpaceNormalMap',
+  'normalMapObjectSpace',
   'emissiveMap',
-  'emissiveMapEncoding',
   'roughnessMap',
   'metalnessMap',
   'alphaMap',
   'aoMap',
   'vertexColors',
   'vertexAlphas',
+  'vertexTangents',
   'doubleSided',
   'flipSided',
   'alphaTest',
+  'alphaToCoverage',
   'premultipliedAlpha',
+  'decodeVideoTexture',
 ];
 
 export const WARM = {
@@ -76,12 +78,11 @@ export function saveWarm() {
 }
 
 const TEX = new Map();
-function dummyTex(enc) {
-  const k = enc || THREE.LinearEncoding;
+function dummyTex() {
+  const k = 0;
   let t = TEX.get(k);
   if (!t) {
     t = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1, THREE.RGBAFormat);
-    t.encoding = k;
     t.needsUpdate = true;
     TEX.set(k, t);
   }
@@ -112,12 +113,12 @@ function dummy(d) {
     }
   }
   const m = new THREE.MeshStandardMaterial({ color: 0xffffff });
-  if (d.map) m.map = dummyTex(d.mapEncoding);
+  if (d.map) m.map = dummyTex();
   if (d.normalMap) {
     m.normalMap = dummyTex();
-    if (d.objectSpaceNormalMap) m.normalMapType = THREE.ObjectSpaceNormalMap;
+    if (d.normalMapObjectSpace) m.normalMapType = THREE.ObjectSpaceNormalMap;
   }
-  if (d.emissiveMap) m.emissiveMap = dummyTex(d.emissiveMapEncoding);
+  if (d.emissiveMap) m.emissiveMap = dummyTex();
   if (d.roughnessMap) m.roughnessMap = dummyTex();
   if (d.metalnessMap) m.metalnessMap = dummyTex();
   if (d.alphaMap) m.alphaMap = dummyTex();

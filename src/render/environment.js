@@ -81,7 +81,7 @@ export function makeStudioEnv() {
   }
   const cube = new THREE.CubeTexture(faces);
   cube.needsUpdate = true;
-  cube.encoding = THREE.sRGBEncoding;
+  cube.colorSpace = THREE.SRGBColorSpace;
   cube.mapping = THREE.CubeReflectionMapping;
   cube.generateMipmaps = true;
   cube.minFilter = THREE.LinearMipmapLinearFilter;

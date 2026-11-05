@@ -2059,7 +2059,7 @@ export function buildIceSheet(rx, rz, rng) {
     c.stroke();
   }
   const tex = new THREE.CanvasTexture(cv);
-  tex.encoding = THREE.sRGBEncoding;
+  tex.colorSpace = THREE.SRGBColorSpace;
   const geo = new THREE.CircleGeometry(1, 48);
   geo.rotateX(-Math.PI / 2);
   const m = new THREE.Mesh(

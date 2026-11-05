@@ -2,7 +2,6 @@
 // 被打的一方記下玩家上一次打中的屬性（rxPrev），RX.WIN 秒內換另一個屬性打中就觸發反應：
 // 過熱裝甲（rxHotT：受到的傷害變重）、破甲爆裂（額外一次爆炸）、EMP 干擾（rxJamT：不能開火、QB、突擊推進）。
 // 判定只在房主／單機（takeDamage 裡），提示文字以 popDamage 轉送；客機的機體移動預測不知道干擾（只在房主擋下）。
-import * as THREE from 'three';
 import { SFX } from '../audio/audio.js';
 import { RX, reactionOf } from '../data/react.js';
 import { MechEntity } from './mech-entity.js';

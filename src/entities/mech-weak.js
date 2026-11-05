@@ -2,7 +2,6 @@
 // 一般敵人的方向型弱點（依子彈打進來的方向）、時機型弱點（預警招式的準備期間）、打壞弱點的效果、
 // 用 QB 甩掉追蹤的導彈。判定只在房主／單機（takeDamage 裡）；客機由生成紀錄的 wpk、事件 'wpb'、
 // 快照的 aw（32＝準備中）顯示。
-import * as THREE from 'three';
 import { SFX } from '../audio/audio.js';
 import { WP, WP_KINDS, WEAK_OF, weakList } from '../data/weak.js';
 import { MechEntity } from './mech-entity.js';

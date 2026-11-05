@@ -2452,14 +2452,35 @@ async function testLibraryGlb(browser, base) {
 // 模型庫關節設定：修改連接點 → 瀏覽器保存 → 匯出 joints.json → 組合預覽 → 重設
 // Draco 壓縮的 GLB（例如 glb-shrink 的輸出）：封鎖 CDN，確認解碼器從頁面旁的 lib/ 載入
 async function makeDracoGlb(page) {
-  const ex = path.join(ROOT, 'node_modules/three/examples/js');
-  await page.addScriptTag({ path: path.join(ex, 'libs/draco/draco_encoder.js') });
-  await page.addScriptTag({ path: path.join(ex, 'exporters/DRACOExporter.js') });
-  return page.evaluate(() => {
+  // three.js r1xx 沒有 examples/js：編碼器用專案收的那一份，DRACOExporter（jsm）現場打包成 IIFE，'three' 對應到頁面的全域 THREE
+  await page.addScriptTag({ path: path.join(ROOT, 'scripts/vendor/draco_encoder.js') });
+  const r = await require('esbuild').build({
+    stdin: {
+      contents:
+        "import { DRACOExporter } from 'three/examples/jsm/exporters/DRACOExporter.js';\n" +
+        'window.THREE.DRACOExporter = DRACOExporter;\n',
+      resolveDir: ROOT,
+    },
+    bundle: true,
+    format: 'iife',
+    write: false,
+    logLevel: 'warning',
+    plugins: [
+      {
+        name: 'three-global',
+        setup(b) {
+          b.onResolve({ filter: /^three$/ }, () => ({ path: 'three', namespace: 'g' }));
+          b.onLoad({ filter: /.*/, namespace: 'g' }, () => ({ contents: 'module.exports = window.THREE;' }));
+        },
+      },
+    ],
+  });
+  await page.addScriptTag({ content: r.outputFiles[0].text });
+  return page.evaluate(async () => {
     // 手的大小的方塊，只壓縮位置；再包成含 KHR_draco_mesh_compression 的 GLB
     const geo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
     geo.translate(0, -0.15, 0);
-    const draco = new THREE.DRACOExporter().parse(new THREE.Mesh(geo), {
+    const draco = await new THREE.DRACOExporter().parseAsync(new THREE.Mesh(geo), {
       exportNormals: false,
       exportUvs: false,
       exportColor: false,
@@ -3283,7 +3304,9 @@ async function testEditorMaterials(browser, base) {
     }
     geo.translate(0, 0.25, 0);
     const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: tex, name: 'Material_0' }));
-    const res = await new Promise((r) => new THREE.GLTFExporter().parse(mesh, r, { binary: true }));
+    const res = await new Promise((r) =>
+      new THREE.GLTFExporter().parse(mesh, r, (e) => console.error(e), { binary: true }),
+    );
     return [...new Uint8Array(res)];
   });
   const fp = path.join(SHOT_DIR, 'editor-ai.glb');
@@ -3394,7 +3417,9 @@ async function testEditorTextures(browser, base) {
     );
     mk(new THREE.MeshStandardMaterial({ name: 'Material_1', map: col }), 0);
     mk(new THREE.MeshStandardMaterial({ name: 'plain', color: 0xff0000 }), 0.4);
-    const res = await new Promise((r) => new THREE.GLTFExporter().parse(root, r, { binary: true }));
+    const res = await new Promise((r) =>
+      new THREE.GLTFExporter().parse(root, r, (e) => console.error(e), { binary: true }),
+    );
     return [...new Uint8Array(res)];
   });
   const fp = path.join(SHOT_DIR, 'editor-tex.glb');
@@ -3545,13 +3570,8 @@ async function testEditorTextures(browser, base) {
   await choose(await plain.$('select[data-ta="add"]'), 'map', blue);
   await choose(await (await matEl('plain')).$('select[data-ta="add"]'), 'aoMap', gray);
   const p1 = await of('plain');
-  const uv2 = await page.evaluate(() =>
-    window.__glbEditor.mat.meshes().some((o) => o.material.name === 'plain' && !!o.geometry.attributes.uv2),
-  );
-  check(
-    p1.map === 32 && p1.color === 'ffffff' && p1.ao && uv2,
-    '加入顏色（材質顏色改白）與 AO 貼圖（補 uv2）',
-  );
+  // three.js r151 起 AO 貼圖以 channel 指定貼圖座標（預設 uv），不用像 r128 補一組 uv2
+  check(p1.map === 32 && p1.color === 'ffffff' && p1.ao, '加入顏色（材質顏色改白）與 AO 貼圖');
   await page.screenshot({ path: path.join(SHOT_DIR, 'editor-tex.png') });
 
   // 存到槽位後讀回：換過的貼圖、加入的貼圖都在
@@ -3589,7 +3609,9 @@ async function testEditorFaces(browser, base) {
     add('junk', new THREE.BoxGeometry(0.05, 0.05, 0.05), 0.45, 1.0, 0);
     add('earL', new THREE.BoxGeometry(0.06, 0.1, 0.06), -0.27, 0.6, 0);
     add('earR', new THREE.BoxGeometry(0.06, 0.1, 0.06), 0.27, 0.6, 0);
-    const res = await new Promise((r) => new THREE.GLTFExporter().parse(root, r, { binary: true }));
+    const res = await new Promise((r) =>
+      new THREE.GLTFExporter().parse(root, r, (e) => console.error(e), { binary: true }),
+    );
     return [...new Uint8Array(res)];
   });
   const fp = path.join(SHOT_DIR, 'editor-del.glb');
@@ -3808,7 +3830,9 @@ async function testEditorOptimize(browser, base) {
     );
     box.position.y = 0.9;
     root.add(sphere, box);
-    const res = await new Promise((r) => new THREE.GLTFExporter().parse(root, r, { binary: true }));
+    const res = await new Promise((r) =>
+      new THREE.GLTFExporter().parse(root, r, (e) => console.error(e), { binary: true }),
+    );
     return [...new Uint8Array(res)];
   });
   const fp = path.join(SHOT_DIR, 'editor-hi.glb');
@@ -3974,7 +3998,12 @@ async function testLocalModels(browser, base) {
           new THREE.MeshStandardMaterial({ name: 'acc', color: 0xffffff }),
         );
         m.position.y = -0.2;
-        new THREE.GLTFExporter().parse(m, (b) => res([...new Uint8Array(b)]), { binary: true });
+        new THREE.GLTFExporter().parse(
+          m,
+          (b) => res([...new Uint8Array(b)]),
+          (e) => console.error(e),
+          { binary: true },
+        );
       }),
   );
   // 地圖物件：和代表尺寸一樣大的方塊（原點在底面中心、材質 main 換成物件顏色），遊戲依隨機尺寸縮放
@@ -3987,7 +4016,12 @@ async function testLocalModels(browser, base) {
             new THREE.MeshStandardMaterial({ name: 'main', color: 0xff00ff }),
           );
           m.position.y = h / 2;
-          new THREE.GLTFExporter().parse(m, (b) => res([...new Uint8Array(b)]), { binary: true });
+          new THREE.GLTFExporter().parse(
+            m,
+            (b) => res([...new Uint8Array(b)]),
+            (e) => console.error(e),
+            { binary: true },
+          );
         }),
       [w, h, d],
     );
@@ -4644,7 +4678,12 @@ async function testServerModels(browser, url) {
             new THREE.MeshStandardMaterial({ name, color: 0xff00ff }),
           );
           m.position.y = h / 2;
-          new THREE.GLTFExporter().parse(m, (b) => res([...new Uint8Array(b)]), { binary: true });
+          new THREE.GLTFExporter().parse(
+            m,
+            (b) => res([...new Uint8Array(b)]),
+            (e) => console.error(e),
+            { binary: true },
+          );
         }),
       [w, h, d, name],
     );
@@ -5218,8 +5257,10 @@ async function testLockOn(browser, base) {
     pl.pos.set(0, y0, 0); // 地面上（中央可能有高架橋）
     pl.yaw = pl.aimYaw = 0; // 面向 −Z
     const reach = g.lockReach(pl);
-    // 五台：前方近、前方遠、前方偏右、背後最近、正側面（畫面外）；其他敵人移走
+    // 五台：前方近、前方遠、前方偏右、背後最近、正側面（畫面外）；其他敵人移走。
+    // 地圖裝置（環境陷阱的弱點也能切換鎖定）拿掉：亂數的取用次數一變（例如升級 three.js），陷阱就可能落在攻擊距離內
     for (const e of g.enemies) e.pos.set(200 * SC, -50, 200 * SC);
+    g.devClear();
     const es = g.enemies.slice(0, 5);
     while (es.length < 5) es.push(g.spawnEnemy({ name: 'T', asm: pl.asm, pal: 'enemy', ai: 'mt' }));
     // 和玩家同一高度（地形起伏、貨櫃與掩體頂都不影響距離的順序與是否在畫面內；同 testChase）

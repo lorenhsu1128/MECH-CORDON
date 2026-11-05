@@ -140,7 +140,7 @@ export class GlbEditor {
         'objectChange',
         () => !this.split.cutting && !this.originMode && this.writeDetail(),
       );
-      this.scene.add(tc);
+      this.scene.add(tc.getHelper()); // r169 起 TransformControls 不是 Object3D，場景裡放它的 helper
       this.tc = tc;
     }
     // 拖曳原點的把手（glTF 座標，放在 frame 裡）

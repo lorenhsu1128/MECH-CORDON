@@ -1,6 +1,7 @@
 // 水面的平面反射（品質「高」，docs/water-design.md）：鏡頭對水面做鏡像（照 three.js 的 Reflector：鏡像的位置、
 // 注視點與上方向，近平面換成水面的斜投影），把場景畫到半解析度的貼圖；水面的著色器以 uRM（世界 → 貼圖）取樣。
 // 不經過後處理（只是反射），陰影沿用這一格的（不重畫）。
+import { legacyTarget } from '../../render/legacy-rt.js';
 const _n = new THREE.Vector3(0, 1, 0),
   _p = new THREE.Vector3(),
   _cw = new THREE.Vector3(),
@@ -14,11 +15,14 @@ const _n = new THREE.Vector3(0, 1, 0),
 
 export class PlanarRefl {
   constructor() {
-    this.rt = new THREE.WebGLRenderTarget(4, 4, {
-      minFilter: THREE.LinearFilter,
-      magFilter: THREE.LinearFilter,
-      format: THREE.RGBAFormat,
-    });
+    // 畫的是場景：照 r128 每個材質做色調映射（render/style/pipeline.js 的 legacyTarget）
+    this.rt = legacyTarget(
+      new THREE.WebGLRenderTarget(4, 4, {
+        minFilter: THREE.LinearFilter,
+        magFilter: THREE.LinearFilter,
+        format: THREE.RGBAFormat,
+      }),
+    );
     this.cam = new THREE.PerspectiveCamera();
     this.M = new THREE.Matrix4(); // 世界 → 反射貼圖
   }

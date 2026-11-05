@@ -194,3 +194,31 @@
 - 不會動的地圖物件 `matrixAutoUpdate = false`（破壞、倒塌時要重新打開，牽涉的程式多）。
 - 文字演出 `tfxTick` 偶爾一格 15～30 ms。
 - 出擊的預熱時間：風格著色器的編譯本身（原生標準材質的 3 倍）；r128 只能同步編譯，平行要等第 2 期的 `compileAsync`。
+
+### 第 1 期（2026-11-05，完成）：升級到 three.js r187，維持 r128 的畫面
+
+**載入方式**：`scripts/three-bundle.js` 以 esbuild 打包成 IIFE 的 `dist/lib/three/three.js`（核心＋addons，掛在 `window.THREE`，addon 用舊名稱），頁面只載入這一個檔案；`DRACOLoader` 的 `import.meta.url` 以 `define` 給假的基底（`render/glb.js` 覆寫 `_loadLibrary`）；Draco 編碼器改用 `scripts/vendor/draco_encoder.js`（r128 附的那一份）。原本 6 個檔案 `import * as THREE from 'three'`，遊戲的 HTML 裡其實多打包了一份 three.js（類別也不是同一份），一併拿掉（HTML 少約 500 KB）。
+
+**相容設定**（維持 r128 的畫面）：
+- `ColorManagement.enabled = false`（`Color.set(hex)` 不轉換）。
+- 光照 chunk（`lights_pars_begin`）：方向光、點光、聚光、半球光、環境光 ×π，點光與聚光的距離衰減用舊公式 (1－d／範圍)^decay。
+- 一般 CubeTexture 環境貼圖的漫射 IBL 拿掉（`lights_fragment_maps`；r128 只有 PMREM 的環境貼圖才有漫射，r187 自動轉 PMREM，畫面整個變亮）。
+- 畫場景的 render target 以 `render/legacy-rt.js` 的 `legacyTarget` 標成 `isXRRenderTarget`：r187 只在畫到畫面時做色調映射，這樣才會照 r128 每個材質自己做（`rtScene`／`rtPrev`／比較用的兩張、熱扭曲、水面反射、過場第 5 章、零件縮圖（縮圖讀回時在 JS 轉 sRGB））。
+- 受控實驗（同一個場景，r128 與 r187 讀像素）：方向光、半球光、環境光、點光、陰影、環境貼圖都只差 1～5 階；`testStyleThemes` 72 張的平均亮度差 0.6。
+
+**改寫**：風格著色器（`RE_Direct` 的新參數、`vMapUv`、`sRGBTransferEOTF`、`vFogDepth`、`totalDiffuse + totalSpecular`、陰影的 regex、平面著色插在算切線空間之前、色階路徑的光色 ÷π）；`encoding`→`colorSpace`、`Scene.autoUpdate`→`matrixWorldAutoUpdate`、`updateRange`→`addUpdateRange`、`encodings_fragment`→`colorspace_fragment`、`LinearTosRGB`→`sRGBTransferOETF`、`PCFSoftShadowMap`→`PCFShadowMap`（r182 起本身就是柔邊；風格的「硬／柔」陰影因此沒有差別）、`SSAOPass` 的 `_renderPass`／`_renderOverride`、`TransformControls` 加 `getHelper()`、`GLTFExporter.parse` 的錯誤回呼、GLTFLoader 的 `associations` 格式、AO 不再補 `uv2`；學習式預熱的參數名稱改 r187 的（localStorage 換成 `rubicon_shader_warm2`）；`NET_VERSION` 11.26。冒煙測試：`GLTFExporter`／`DRACOExporter` 的新寫法、AO 不檢查 `uv2`、鎖定測試拿掉地圖裝置（亂數取用次數一變陷阱就落在距離內）。完整 `npm test` 跑過，失敗的 21 項修正後重跑通過。
+
+**效能（第 0 期的 r128 與 r187 交替量測兩次，貨運集散場 40 秒）**：
+
+| | 第 0 期（r128） | r187 |
+| --- | --- | --- |
+| 出擊時最長的一格（預熱） | 3.3 s、2.5 s | 1.2 s、1.2 s |
+| 出擊載入（按下出擊到可以操作） | 5.7 s、3.3 s | 3.4 s、3.0 s |
+| 任務中超過 100 ms 的格（量測每次是新的瀏覽器，學習式預熱是空的） | 104、217 ms；360 ms | 127 ms；130、177、169 ms |
+| GC 回收 | 2334、1899 MB | 1756、1407 MB |
+| 每格 CPU p50 | 9.8、13.3 ms | 14.1、9.0 ms（機器狀態的差異比版本大，不能比） |
+
+- 出擊的預熱快了一半以上：r187 送出編譯後不會每個程式都停下來等，驅動程式在背景平行編譯（`renderer.compile` 本身 0.26～0.31 s，第一格畫面等剩下的約 0.9 s）。第 2 期改用 `compileAsync` 可以讓這段也不卡畫面。
+- GC 少了約 25%（r187 內部的配置較少）。
+- 任務中偶發的單一程式編譯（沒學過的變體）兩版差不多，r187 的峰值略低。
+- 每格的平均負擔看不出差別：量測時機器本身的快慢差到 1.5 倍，要比要用更穩的量測（之後再做）。

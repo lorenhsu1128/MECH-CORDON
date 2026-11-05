@@ -1,7 +1,6 @@
 // MechEntity 擴充：遠程射擊改版第 1 期「邊閃邊打」（docs/ranged-design.md、data/ranged.js）。
 // rbTick（move 每格）記下落地、最高點與繞射；rbShot（fire 開火時）算這一發的加成；
 // rbHit（投射物／雷射打中時）顯示提示與命中音。判定在房主／單機，客機的自身預測也跑 rbTick（HUD 的繞射）。
-import * as THREE from 'three';
 import { SFX } from '../audio/audio.js';
 import { clamp } from '../core/math.js';
 import { GRAVITY } from '../data/parts.js';

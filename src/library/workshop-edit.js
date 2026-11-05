@@ -134,7 +134,7 @@ export class WsEditor {
         if (!e.value) this.commitDrag();
       });
       tc.addEventListener('objectChange', () => this.fromProxy());
-      ws.scene.add(tc);
+      ws.scene.add(tc.getHelper()); // r169 起 TransformControls 不是 Object3D
       this.tc = tc;
     }
     let down = null;

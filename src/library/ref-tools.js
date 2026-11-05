@@ -428,7 +428,7 @@ export class RefTools {
     const iv = this.rec.views[v];
     const url = URL.createObjectURL(new Blob([iv.buf], { type: iv.type }));
     const t = new THREE.TextureLoader().load(url, () => URL.revokeObjectURL(url));
-    t.encoding = THREE.sRGBEncoding;
+    t.colorSpace = THREE.SRGBColorSpace;
     this.tex[v] = t;
     return t;
   }

@@ -14,6 +14,7 @@
 // 其他：c5sea（洋上都市的佈景：軌道電纜、探照燈、AEGIS 的護盾，放進 set.extra，換場景時由引擎移除；
 //   演員的顯示 c5hide／c5gone／surf 依這一鏡的時間決定，所以劇場跳鏡頭也一致）、c5heli（直升機轉播的晃動）、
 //   c5stage（章末的會議桌舞台）、疊加的頻道畫面、新聞頭條、倒數、ECHO 沒有雜訊的聲紋。
+import { legacyTarget } from '../render/legacy-rt.js';
 import { SFX } from '../audio/audio.js';
 import { clamp, lerp } from '../core/math.js';
 import { escHtml } from '../core/html.js';
@@ -492,11 +493,13 @@ Object.assign(Game.prototype, {
   },
   c5RT(pool, i, w, h) {
     const mk = () =>
-      new THREE.WebGLRenderTarget(4, 4, {
-        minFilter: THREE.LinearFilter,
-        magFilter: THREE.LinearFilter,
-        format: THREE.RGBAFormat,
-      });
+      legacyTarget(
+        new THREE.WebGLRenderTarget(4, 4, {
+          minFilter: THREE.LinearFilter,
+          magFilter: THREE.LinearFilter,
+          format: THREE.RGBAFormat,
+        }),
+      );
     const rt = i < 0 ? pool.big || (pool.big = mk()) : pool.rt[i] || (pool.rt[i] = mk());
     w = Math.max(16, Math.round(w));
     h = Math.max(16, Math.round(h));

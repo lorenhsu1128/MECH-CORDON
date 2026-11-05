@@ -3,11 +3,16 @@ const js = require('@eslint/js');
 const globals = require('globals');
 
 module.exports = [
-  { ignores: ['node_modules/**', 'dist/**', 'test-results/**'] },
+  { ignores: ['node_modules/**', 'dist/**', 'test-results/**', 'scripts/vendor/**'] },
   js.configs.recommended,
   {
     files: ['server.js', 'eslint.config.js', 'scripts/**/*.js'],
     languageOptions: { ecmaVersion: 2022, sourceType: 'commonjs', globals: { ...globals.node } },
+  },
+  {
+    // three.js 的打包進入點（scripts/build.js 以 esbuild 打包成 lib/three/three.js）：ES module、在瀏覽器執行
+    files: ['scripts/three-bundle.js'],
+    languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.browser } },
   },
   {
     // 遊戲原始碼：ES modules，由 esbuild 打包；THREE／Peer 等函式庫從 CDN 以全域變數載入

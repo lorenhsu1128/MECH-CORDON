@@ -79,7 +79,7 @@ void main() {
   // 加色為主、帶一點遮蔽（明亮的地面上也看得到）
   gl_FragColor = vec4(rgb * a, a * 0.25);
   #include <tonemapping_fragment>
-  #include <encodings_fragment>
+  #include <colorspace_fragment>
 }`;
 
 const _c = new THREE.Color();
@@ -159,8 +159,8 @@ export class JetFx {
     g.instanceCount = this.n;
     this.mesh.visible = this.n > 0;
     if (!this.n) return;
-    this.buf.updateRange.offset = 0;
-    this.buf.updateRange.count = this.n * STRIDE;
+    this.buf.clearUpdateRanges();
+    this.buf.addUpdateRange(0, this.n * STRIDE);
     this.buf.needsUpdate = true;
   }
   clear() {

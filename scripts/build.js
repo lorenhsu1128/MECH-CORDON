@@ -1,8 +1,9 @@
 // 建置：每個頁面打包成 dist/ 下的單一 HTML（CSS／JS／音效／模型全部內嵌，可直接開啟或由伺服器提供）
 //   src/index.html          → dist/rubicon-protocol.html（遊戲）
 //   src/library/index.html  → dist/model-library.html（模型庫）
-// 外部程式庫（three.js r128、PeerJS）不內嵌：頁面模板裡的 <script src="lib/<套件>/<路徑>"> 由 node_modules
-// 複製到 dist/lib/ 同樣的路徑；另外產生 dist/lib/draco/draco-decoder.js（Draco 解碼器，見 render/glb.js）
+// 外部程式庫（three.js、PeerJS）不內嵌：頁面模板裡的 <script src="lib/<套件>/<路徑>"> 由 node_modules
+// 複製到 dist/lib/ 同樣的路徑；three.js 例外：lib/three/three.js 由 scripts/three-bundle.js 打包（核心＋用到的 addons，
+// IIFE、掛在 window.THREE）。另外產生 dist/lib/draco/draco-decoder.js（Draco 解碼器，見 render/glb.js）
 // 與 draco-encoder.js（Draco 編碼器，見 library/editor-opt.js）
 // 用法：node scripts/build.js [--dev] [--watch]
 //   --dev    不壓縮、附 inline source map，方便在瀏覽器除錯
@@ -22,8 +23,32 @@ const LIB = path.join(DIST, 'lib');
 const NODE_MODULES = path.join(ROOT, 'node_modules');
 // 頁面引用的程式庫：lib/<套件>/<路徑> → node_modules/<套件>/<路徑>
 const LIB_TAG = /<script src="lib\/([^"]+)"><\/script>/g;
+// three.js：r160 起沒有 UMD 的建置、r148 起沒有 examples/js，以 esbuild 把 scripts/three-bundle.js 打包成 IIFE（每次建置一次）
+const THREE_LIB = 'three/three.js';
+let threeBuilt = false;
+function buildThree() {
+  if (threeBuilt) return;
+  threeBuilt = true;
+  esbuild.buildSync({
+    entryPoints: [path.join(__dirname, 'three-bundle.js')],
+    bundle: true,
+    format: 'iife',
+    target: 'es2020',
+    minify: true,
+    legalComments: 'none',
+    // DRACOLoader 以 import.meta.url 組出解碼器的預設網址：IIFE 裡沒有 import.meta，給一個假的基底
+    // （render/glb.js 覆寫 _loadLibrary，解碼器由 lib/draco/draco-decoder.js 的內容提供，不會真的去讀這些網址）
+    define: { 'import.meta.url': '"https://rubicon.local/three/"' },
+    outfile: path.join(LIB, THREE_LIB),
+    logLevel: 'warning',
+  });
+}
 function copyLibs(html) {
   for (const m of html.matchAll(LIB_TAG)) {
+    if (m[1] === THREE_LIB) {
+      buildThree();
+      continue;
+    }
     const from = path.join(NODE_MODULES, m[1]);
     if (!fs.existsSync(from)) throw new Error(`找不到 ${path.relative(ROOT, from)}（請先執行 npm install）`);
     const to = path.join(LIB, m[1]);
@@ -34,7 +59,7 @@ function copyLibs(html) {
 // Draco 解碼器：直接開檔（file://）時瀏覽器不讓網頁用 fetch 讀本地的 wasm，所以把 wasm 包裝程式與 wasm（base64）
 // 寫成一般的 JS 檔，用 <script> 載入（第一次遇到 Draco 壓縮的 GLB 才載入）
 function writeDraco() {
-  const dir = path.join(NODE_MODULES, 'three/examples/js/libs/draco/gltf');
+  const dir = path.join(NODE_MODULES, 'three/examples/jsm/libs/draco/gltf');
   const wrapper = fs.readFileSync(path.join(dir, 'draco_wasm_wrapper.js'), 'utf8');
   const wasm = fs.readFileSync(path.join(dir, 'draco_decoder.wasm')).toString('base64');
   const out = path.join(LIB, 'draco', 'draco-decoder.js');
@@ -44,8 +69,12 @@ function writeDraco() {
     '// three.js r128 的 Draco 解碼器（examples/js/libs/draco/gltf），由 scripts/build.js 產生\n' +
       `window.RUBICON_DRACO = { wrapper: ${JSON.stringify(wrapper)}, wasm: ${JSON.stringify(wasm)} };\n`,
   );
-  // Draco 編碼器（純 JS，定義全域 DracoEncoderModule）：模型庫的 GLB 編輯器輸出 Draco 壓縮時才以 <script> 載入
-  fs.copyFileSync(path.join(dir, 'draco_encoder.js'), path.join(LIB, 'draco', 'draco-encoder.js'));
+  // Draco 編碼器（純 JS，定義全域 DracoEncoderModule）：模型庫的 GLB 編輯器輸出 Draco 壓縮時才以 <script> 載入。
+  // three.js r1xx 不再附編碼器：用 r128 附的那一份（scripts/vendor/draco_encoder.js，和 three.js 的版本無關）
+  fs.copyFileSync(
+    path.join(__dirname, 'vendor/draco_encoder.js'),
+    path.join(LIB, 'draco', 'draco-encoder.js'),
+  );
 }
 
 // 過場動畫的配樂：src/assets/music/*.mp3 → dist/lib/cine-music.js（window.RUBICON_MUSIC＝{ 曲名: base64 }）。
@@ -268,6 +297,17 @@ function readTemplate(page) {
   return { html, css: path.join(page.dir, css[1]), entry: path.join(page.dir, js[1]) };
 }
 
+// 寫檔偶爾被別的程式（防毒、編輯器的索引）短暫鎖住（Windows 的 EBUSY／UNKNOWN）：等一下再試
+function writeRetry(file, data) {
+  for (let i = 0; ; i++) {
+    try {
+      return fs.writeFileSync(file, data);
+    } catch (e) {
+      if (i >= 20 || !['EBUSY', 'UNKNOWN', 'EPERM'].includes(e.code)) throw e;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 250);
+    }
+  }
+}
 async function writeHtml(page, js) {
   const t = readTemplate(page);
   const css = await esbuild.transform(fs.readFileSync(t.css, 'utf8'), {
@@ -280,7 +320,7 @@ async function writeHtml(page, js) {
   fs.mkdirSync(DIST, { recursive: true });
   copyLibs(t.html);
   const out = path.join(DIST, page.out);
-  fs.writeFileSync(out, html);
+  writeRetry(out, html);
   console.log(
     `[build] ${path.relative(ROOT, out)}  ${(html.length / 1024).toFixed(0)} KB${dev ? '（dev）' : ''}`,
   );

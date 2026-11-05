@@ -15,12 +15,12 @@ export const studioEnv = () => ENV || (ENV = makeStudioEnv());
 export function makeRenderer(canvas, shadows) {
   const r = new THREE.WebGLRenderer({ canvas, antialias: true });
   r.setPixelRatio(Math.min(devicePixelRatio, 1.75));
-  r.outputEncoding = THREE.sRGBEncoding;
+  r.outputColorSpace = THREE.SRGBColorSpace;
   r.toneMapping = THREE.ACESFilmicToneMapping;
   r.toneMappingExposure = 0.68;
   if (shadows) {
     r.shadowMap.enabled = true;
-    r.shadowMap.type = THREE.PCFSoftShadowMap;
+    r.shadowMap.type = THREE.PCFShadowMap;
   }
   return r;
 }

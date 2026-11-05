@@ -1,6 +1,5 @@
 // Game 的 mixin：遠程射擊改版第 5 期「手感與回饋」的畫面（判定在 entities/mech-feel.js）：
 // 命中標記（準星上的 ×，依武器的顏色、重擊放大）、命中確認音、主動裝填的提示
-import * as THREE from 'three';
 import { Game } from './game.js';
 import { SFX } from '../audio/audio.js';
 import { clamp } from '../core/math.js';

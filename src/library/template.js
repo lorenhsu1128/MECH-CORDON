@@ -25,6 +25,6 @@ export function exportTemplate(entry, palKey) {
     root.name = entry.id.replace(/\//g, '_');
     root.add(b.obj);
     flipToGame(root);
-    new THREE.GLTFExporter().parse(root, (res) => resolve(res), { binary: true, onlyVisible: true });
+    new THREE.GLTFExporter().parse(root, (res) => resolve(res), reject, { binary: true, onlyVisible: true });
   });
 }

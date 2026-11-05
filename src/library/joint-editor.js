@@ -42,7 +42,7 @@ export class JointEditor {
         this.dragging = e.value;
       });
       tc.addEventListener('objectChange', () => this.fromProxy());
-      scene.add(tc);
+      scene.add(tc.getHelper()); // r169 起 TransformControls 不是 Object3D
       this.tc = tc;
     }
     // 點選連接點標記（滑鼠按下與放開位置相近才算點擊，避免和旋轉視角衝突）
