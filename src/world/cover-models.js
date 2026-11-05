@@ -10,12 +10,14 @@ import {
   fadeMat,
   hazard,
   humanLadder,
+  markText,
   mat,
   propGlb,
   railing,
   windowRows,
 } from './prop-models.js';
 import { D } from '../render/detail.js';
+import * as K from '../render/dev-kit.js';
 import { vCab, vExhaust, vLamp, vMirror, vWheel } from '../render/vehicle-kit.js';
 
 // ---------- 防爆 T 型牆（低掩體，成排）：每片寬 1.52、高 3.66 m，底座深 1.2 m；n 片沿 X 排成一列 ----------
@@ -52,6 +54,29 @@ export function buildTWall(n, color = 0x8c8a84) {
       0,
     );
     for (const s of [-0.35, 0.35]) k.box(DETAIL.steel, 0.04, 0.12, 0.12, x + s, TWALL.h + 0.05, 0);
+    // 小細節：吊環（彎的鋼筋）、底座的叉車槽、模板的接縫、噴漆的編號與反光條、缺角
+    k.fine(() => {
+      for (const s of [-0.35, 0.35])
+        k.geo(
+          DETAIL.steel,
+          new THREE.TorusGeometry(0.07, 0.018, 4, 8, Math.PI),
+          x + s,
+          TWALL.h + 0.02,
+          0,
+          0,
+          Math.PI / 2,
+          0,
+        );
+      for (const sx of [-0.4, 0.4])
+        for (const sz of [-1, 1])
+          k.box(DETAIL.black, 0.22, 0.1, 0.02, x + sx, 0.12, sz * (TWALL.d / 2 + 0.005));
+      for (const sz of [-1, 1]) {
+        const zf = sz * 0.145;
+        k.box(DETAIL.black, TWALL.w - 0.06, 0.02, 0.02, x, 1.4, zf);
+        k.box(mat(0xd8a020, { roughness: 0.6 }), TWALL.w - 0.06, 0.12, 0.012, x, 0.6, sz * 0.158);
+        markText(k, DETAIL.white, x - 0.45, 2.2, sz * 0.13 + sz * 0.012, 0.16, 0.9, sz > 0 ? 0 : Math.PI, i);
+      }
+    });
   }
   return k.build();
 }
@@ -89,6 +114,30 @@ export function buildJersey(n, color = 0xc8c4bc) {
       Math.PI / 2,
       0,
     );
+  // 小細節：底部的排水／叉車槽、兩端的連結環與插銷、反光片、上緣的缺角與車輛擦痕
+  k.fine(() => {
+    for (let i = 0; i < n; i++) {
+      const x = -len / 2 + JERSEY.l * (i + 0.5);
+      for (const sz of [-1, 1]) {
+        for (const ox of [-0.8, 0.8]) k.box(DETAIL.black, 0.5, 0.09, 0.02, x + ox, 0.045, sz * 0.302);
+        k.box(DETAIL.lamp, 0.08, 0.08, 0.02, x, 0.62, sz * 0.105 + sz * 0.02, sz * 0.25, 0, 0);
+        k.box(DETAIL.dark, 0.9, 0.05, 0.01, x - 0.3 + (i % 2) * 0.5, 0.25, sz * 0.25, 0, 0, 0.05);
+      }
+      for (const ex of [-1, 1]) {
+        k.geo(
+          DETAIL.steel,
+          new THREE.TorusGeometry(0.06, 0.016, 4, 8),
+          x + ex * (JERSEY.l / 2 - 0.02),
+          0.55,
+          0,
+          0,
+          Math.PI / 2,
+          0,
+        );
+        K.cy(k, DETAIL.steel, 0.018, 0.5, x + ex * (JERSEY.l / 2), 0.6, 0, 6);
+      }
+    }
+  });
   return k.build();
 }
 
@@ -183,6 +232,119 @@ export function buildWarehouse(w, d, h, color = 0x8a9096, opts = {}) {
   // 一端（+X）的外爬梯上屋頂
   humanLadder(k, D.steel, h, w / 2 + 0.02, 0, d / 2 - 2, Math.PI / 2, true, 'ladder_roof');
   if (opts.sign !== false) k.box(D.yellow, Math.min(8, w * 0.3), 1.2, 0.08, -w * 0.25, h - 1.4, d / 2 + 0.08);
+  // 小細節：招牌的字、簷溝與落水管的彎頭、外牆的燈與配電箱、空調室外機、屋頂的採光板與渦輪通風球、
+  // 屋頂板的接縫、門前的防撞柱、基礎牆的污漬
+  k.fine(() => {
+    if (opts.sign !== false) {
+      const sw = Math.min(8, w * 0.3);
+      markText(k, D.black, -w * 0.25 - sw / 2 + 0.4, h - 1.4, d / 2 + 0.13, 0.6, sw - 0.8, 0, 2);
+    }
+    for (const s of [-1, 1]) {
+      k.box(trim, w + 0.6, 0.22, 0.3, 0, h + 0.05, s * (d / 2 + 0.5));
+      for (const x of [-w / 2 + 0.6, w / 2 - 0.6]) {
+        K.pipe(
+          k,
+          trim,
+          [
+            [x, h, s * (d / 2 + 0.5)],
+            [x, h - 0.4, s * (d / 2 + 0.12)],
+          ],
+          0.08,
+          6,
+        );
+        K.pipe(
+          k,
+          trim,
+          [
+            [x, 0.3, s * (d / 2 + 0.12)],
+            [x, 0.05, s * (d / 2 + 0.4)],
+          ],
+          0.08,
+          6,
+        );
+      }
+      for (let x = -w / 2 + 3; x < w / 2 - 2; x += 9) {
+        K.bx(k, trim, 0.5, 0.3, 0.4, x, h - 0.7, s * (d / 2 + 0.2), 0, 0, 0, 0.03);
+        k.box(D.lamp, 0.4, 0.04, 0.3, x, h - 0.86, s * (d / 2 + 0.24));
+      }
+      // 屋頂板的接縫（沿坡度方向的肋）
+      for (let x = -w / 2; x <= w / 2; x += 1.2)
+        k.box(roof, 0.06, 0.06, sl * 0.98, x, (h + rh) / 2 + 0.14, (s * d) / 4 + s * 0.1, s * a, 0, 0);
+      // 採光板
+      for (let x = -w / 2 + 4; x < w / 2 - 4; x += 8)
+        k.box(
+          mat(0xc8d8e0, { roughness: 0.3, metalness: 0.1 }),
+          1.2,
+          0.05,
+          sl * 0.5,
+          x,
+          (h + rh) / 2 + 0.15,
+          (s * d) / 4 + s * 0.1,
+          s * a,
+          0,
+          0,
+        );
+    }
+    for (let x = -w / 2 + 6; x < w / 2 - 4; x += 8)
+      K.lathe(
+        k,
+        D.steel,
+        [
+          [0, 0],
+          [0.5, 0.05],
+          [0.6, 0.3],
+          [0.45, 0.6],
+          [0.12, 0.7],
+          [0, 0.7],
+        ],
+        x,
+        rh + 0.85,
+        0,
+        'y',
+        12,
+      );
+    // 側面（−X）的配電箱、空調室外機與管線
+    k.at(-w / 2 - 0.02, 0, 0, 0, -Math.PI / 2, 0, () => {
+      for (const zz of [-d * 0.2, d * 0.15]) {
+        K.bx(k, mat(0xb8bcc0, { roughness: 0.6 }), 1.0, 0.8, 0.45, zz, 0.4, 0.25, 0, 0, 0, 0.04);
+        K.cy(k, D.dark, 0.3, 0.05, zz, 0.45, 0.48, 12, 0, undefined, Math.PI / 2, 0, 0);
+        K.pipe(
+          k,
+          D.dark,
+          [
+            [zz - 0.4, 0.7, 0.1],
+            [zz - 0.4, 2.5, 0.08],
+          ],
+          0.03,
+          6,
+        );
+      }
+      K.bx(k, mat(0x6a7078), 1.2, 1.6, 0.35, 0, 2.2, 0.18, 0, 0, 0, 0.03);
+      K.vents(k, D.dark, D.steel, 0.8, 0.3, 0, 1.7, 0.36, 0, 4);
+      k.box(D.yellow, 0.35, 0.3, 0.02, -0.3, 2.6, 0.36);
+      K.pipe(
+        k,
+        D.dark,
+        [
+          [0.4, 3.0, 0.1],
+          [0.4, h - 0.4, 0.1],
+        ],
+        0.06,
+        6,
+      );
+    });
+    // 捲門前的防撞柱
+    for (const sz of [-1, 1])
+      for (let i = 0; i < nd; i++) {
+        const x = -w / 2 + (w / nd) * (i + 0.5);
+        for (const sx of [-1, 1]) {
+          K.cy(k, D.yellow, 0.14, 1.1, x + sx * 2.9, 0.55, sz * (d / 2 + 0.6), 12, 0.03);
+          K.cy(k, D.black, 0.145, 0.08, x + sx * 2.9, 0.8, sz * (d / 2 + 0.6), 12);
+        }
+      }
+    for (const sz of [-1, 1])
+      for (let x = -w / 2 + 2; x < w / 2; x += 7) k.box(D.dark, 0.6, 1.0, 0.02, x, 0.6, sz * (d / 2 + 0.005));
+  });
   return k.build();
 }
 
@@ -215,6 +377,18 @@ export function buildRetainWall(len, h, color = 0x8a8880) {
   for (let x = -len / 2 + 2.5; x < len / 2; x += 5)
     k.cyl(DETAIL.dark, 0.06, 0.06, 0.1, x, 0.6, 0.47, Math.PI / 2, 0, 0, 6);
   railing(k, DETAIL.steel, len - 0.4, HUMAN.rail, 0, h + 0.25, 0.4, 0, 1.5, 0.05);
+  // 小細節：模板的對拉螺栓孔（格子）、水平施工縫、壓頂的伸縮縫、排水孔下的水漬、底部的排水溝、扶壁的倒角
+  k.fine(() => {
+    for (let x = -len / 2 + 0.6; x < len / 2; x += 1.2)
+      for (let y = 0.6; y < h - 0.2; y += 1.0)
+        K.cy(k, DETAIL.dark, 0.03, 0.02, x, y, 0.455, 6, 0, undefined, Math.PI / 2, 0, 0);
+    for (let y = 1.5; y < h; y += 1.5) k.box(DETAIL.dark, len, 0.03, 0.02, 0, y, 0.456);
+    for (let x = -len / 2 + 5; x < len / 2; x += 5) k.box(DETAIL.dark, 0.03, 0.26, 0.72, x, h + 0.12, 0.2);
+    for (let x = -len / 2 + 2.5; x < len / 2; x += 5)
+      k.box(mat(0x5a5850, { roughness: 1 }), 0.25, 0.55, 0.012, x, 0.3, 0.455);
+    k.box(DETAIL.dark, len, 0.06, 0.3, 0, 0.03, 0.6);
+    for (let x = -len / 2 + 0.5; x < len / 2; x += 0.5) k.box(DETAIL.steel, 0.04, 0.07, 0.3, x, 0.035, 0.6);
+  });
   return k.build();
 }
 

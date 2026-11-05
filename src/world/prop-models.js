@@ -6,6 +6,7 @@ import { materialSlot } from '../render/glb.js';
 import { providedModel } from '../render/model-provider.js';
 import { D, classMat, fineReg, matClass, tintCtx, tintMerge, upgradeGeo, vcMat } from '../render/detail.js';
 import { setDmgInfo } from './prop-split.js';
+import * as K from '../render/dev-kit.js';
 // 岩石的形狀：依尺寸決定 24 種之一（不用亂數；同一種共用幾何）
 const rockSeed = (v) => (Math.floor(Math.abs(v) * 977) % 24) + 1;
 
@@ -395,7 +396,9 @@ export class PK {
       const skip = m.transparent && m.opacity < 1;
       const c = matClass(m);
       const fade = !!m.transparent;
-      const gk = c === null ? m : `${isFine ? 'f' : c}|${pi}|${fade ? 1 : 0}`;
+      // 不能歸類的材質（雙面、發光、有貼圖）：每個（材質, 零件, 小細節）一組——只用材質當鍵時，不同零件的同一個材質
+      // 會併到第一個零件上（例如雷達的碟面跑到底座的位置）
+      const gk = c === null ? key : `${isFine ? 'f' : c}|${pi}|${fade ? 1 : 0}`;
       let G = groups.get(gk);
       if (!G) groups.set(gk, (G = { m, c: isFine && c !== null ? 4 : c, pi, isFine, fade, items: [] }));
       const part = pi >= 0 ? parts[pi] : null;
@@ -673,6 +676,21 @@ export function windowRows(k, glass, frame, len, floors, fh, x, y0, z, ry = 0, g
   return k;
 }
 
+// 像文字的標示：一排長短不一的字塊（沿 X 從 x0 開始、總長約 len、字高 hh），面朝 +Z（ry 轉向）
+const GLYPH = [0.55, 0.3, 0.7, 0.42, 0.25, 0.62, 0.38, 0.5, 0.3, 0.66];
+export function markText(k, m, x0, y, z, hh, len, ry = 0, seed = 0) {
+  k.at(x0, y, z, 0, ry, 0, () => {
+    let x = 0,
+      i = seed;
+    while (x < len) {
+      const w = hh * GLYPH[i++ % GLYPH.length] * 1.6;
+      if (x + w > len) break;
+      k.box(m, w, hh, 0.02, x + w / 2, 0, 0);
+      x += w + hh * (i % 4 ? 0.25 : 0.9);
+    }
+  });
+  return k;
+}
 // 共用的細節材質（不透明、各地圖共用一份；不會隨遮擋半透明，所以只用在小零件）
 export const DETAIL = {
   get yellow() {
@@ -870,6 +888,40 @@ function containerKit(k, L, h, D, cm, fm) {
     }
     // 前端（−X）的橫向加強板
     for (const y of [h * 0.35, h * 0.65]) k.box(fm, 0.04, 0.08, D - 0.4, -xd, y, 0);
+    // 小細節（遠了隱藏）：ISO 角件與吊孔、門鉸鏈、門閂的上下鎖座與把手、門封條、前端波紋、叉車孔、標示牌與編號
+    const Dt = DETAIL;
+    k.fine(() => {
+      for (const sx of [-1, 1])
+        for (const sz of [-1, 1])
+          for (const y of [0.09, h - 0.09]) {
+            K.bx(k, fm, 0.2, 0.2, 0.2, sx * (L / 2 - 0.1), y, sz * (D / 2 - 0.1), 0, 0, 0, 0.02);
+            k.box(Dt.black, 0.1, 0.06, 0.02, sx * (L / 2 - 0.1), y, sz * (D / 2 + 0.005));
+            k.box(Dt.black, 0.02, 0.06, 0.08, sx * (L / 2 + 0.005), y, sz * (D / 2 - 0.1));
+          }
+      for (const sz of [-1, 1]) {
+        // 門鉸鏈（每扇 4 個）
+        for (const y of [0.35, h * 0.38, h * 0.62, h - 0.35])
+          K.cy(k, Dt.steel, 0.035, 0.18, xd + 0.03, y, sz * (D / 2 - 0.2), 8);
+        // 門封條
+        k.box(Dt.rubber, 0.03, h - 0.42, 0.04, xd + 0.01, h / 2, sz * 0.03);
+      }
+      for (const z of [-D * 0.36, -D * 0.12, D * 0.12, D * 0.36]) {
+        for (const y of [0.24, h - 0.24]) K.bx(k, Dt.steel, 0.07, 0.1, 0.1, xd + 0.03, y, z, 0, 0, 0, 0.015);
+        K.handle(k, Dt.steel, 0.16, xd + 0.04, h * 0.45 - 0.12, z + 0.1, Math.PI / 2, 0.05, 0.015);
+      }
+      // 前端（−X）的波紋
+      for (let i = 0; i < 5; i++)
+        k.box(cm, 0.05, h - 0.42, D * 0.1, -xd - 0.02, h / 2, -D * 0.4 + i * D * 0.2);
+      // 叉車孔（20 呎才有，這裡兩側各兩個）、底部橫樑
+      for (const sz of [-1, 1])
+        for (const x of [-L * 0.13, L * 0.13]) k.box(Dt.black, 0.36, 0.1, 0.02, x, 0.1, sz * (D / 2 + 0.005));
+      // 標示：門上的編號帶、CSC 銘牌、側面的大字帶
+      k.box(Dt.white, 0.02, 0.18, D * 0.42, xd + 0.05, h * 0.82, -D * 0.24);
+      k.box(Dt.white, 0.02, 0.1, D * 0.26, xd + 0.05, h * 0.75, -D * 0.24);
+      k.box(Dt.steel, 0.02, 0.16, 0.24, xd + 0.05, h * 0.62, -D * 0.36 - 0.18);
+      for (const sz of [-1, 1])
+        markText(k, Dt.white, -L * 0.32, h * 0.8, sz * (bz + 0.075), 0.26, L * 0.36, 0);
+    });
   }
 }
 
@@ -897,22 +949,94 @@ export function buildRock(r, m) {
 export function buildLampPost(h, m) {
   const glb = propGlb('lamp_post', { color: m.color.getHex(), ref: [1, 7, 1], size: [1, h, 1], y: -h / 2 });
   if (glb) return glb;
-  // 底座（螺栓）＋八角桿＋配電箱＋頂部懸臂燈
+  // 混凝土基礎＋法蘭底座（螺栓圈）＋錐形的分節桿身＋檢修門＋配電箱（百葉、纜線管）＋頂部的彎臂與 LED 燈頭
   const k = new PK(),
-    b = -h / 2;
+    b = -h / 2,
+    Dt = DETAIL;
   k.ob(0.6, h, 0.6); // 外框同原本（0.6 見方的柱）；頂部的懸臂在外框之外
-  k.cb(m, 0.6, 0.35, 0.6, 0, b + 0.175, 0, 0, 0, 0, 0.06);
-  for (const sx of [-1, 1])
-    for (const sz of [-1, 1]) k.box(DETAIL.steel, 0.07, 0.08, 0.07, sx * 0.22, b + 0.38, sz * 0.22);
-  k.cyl(m, 0.2, 0.28, h - 0.6, 0, b + 0.35 + (h - 0.6) / 2, 0);
-  k.cb(m, 0.36, 0.5, 0.1, 0, b + 1.6, 0.25, 0, 0, 0, 0.03);
-  k.box(DETAIL.yellow, 0.37, 0.06, 0.11, 0, b + 1.75, 0.25);
+  const con = mat(0x8c8b85, { roughness: 0.95, metalness: 0.02 });
+  K.bx(k, con, 0.6, 0.22, 0.6, 0, b + 0.11, 0, 0, 0, 0, 0.05);
+  K.lathe(
+    k,
+    m,
+    [
+      [0, 0],
+      [0.29, 0],
+      [0.29, 0.05],
+      [0.26, 0.07],
+      [0.22, 0.34],
+      [0, 0.34],
+    ],
+    0,
+    b + 0.22,
+    0,
+    'y',
+    16,
+  );
+  K.lathe(
+    k,
+    m,
+    [
+      [0, 0],
+      [0.2, 0],
+      [0.13, h - 1.0],
+      [0, h - 1.0],
+    ],
+    0,
+    b + 0.5,
+    0,
+    'y',
+    12,
+  );
+  for (const y of [b + 2.6, b + h * 0.55]) K.cy(k, m, 0.185, 0.06, 0, y, 0, 12);
+  k.fine(() => {
+    K.boltRing(k, Dt.steel, 0.24, b + 0.28, 6, 0.03);
+    // 檢修門
+    k.box(m, 0.16, 0.42, 0.04, 0, b + 1.05, 0.19, -0.04, 0, 0);
+    for (const y of [b + 0.86, b + 1.24]) k.box(Dt.dark, 0.03, 0.03, 0.02, 0.06, y, 0.21);
+    // 配電箱＋百葉＋把手＋接地線＋纜線管
+    K.bx(k, m, 0.36, 0.5, 0.16, 0, b + 1.6, 0.27, 0, 0, 0, 0.02);
+    K.vents(k, Dt.dark, m, 0.24, 0.16, 0, b + 1.48, 0.36, 0, 3);
+    K.handle(k, Dt.steel, 0.1, 0.12, b + 1.72, 0.35, 0, 0.03, 0.01);
+    k.box(Dt.yellow, 0.37, 0.05, 0.17, 0, b + 1.83, 0.27);
+    K.pipe(
+      k,
+      Dt.dark,
+      [
+        [0, b + 1.35, 0.3],
+        [0, b + 0.5, 0.3],
+        [0, b + 0.32, 0.36],
+      ],
+      0.03,
+      6,
+    );
+    // 標示牌與反光帶
+    k.box(Dt.white, 0.14, 0.2, 0.02, 0, b + 2.4, 0.18);
+    k.box(Dt.red, 0.02, 0.05, 0.05, 0, b + 2.4, 0.19);
+  });
   // 受損：懸臂燈先掉（第 1 階段）、第 3 階段桿子上半段折斷
   k.dmgTier(1, () => {
-    k.cyl(m, 0.24, 0.24, 0.25, 0, h / 2 - 0.4, 0);
-    k.bar(m, [0, h / 2 - 0.35, 0], [0.75, h / 2 - 0.15, 0], 0.1);
-    k.cb(m, 0.6, 0.16, 0.34, 0.85, h / 2 - 0.12, 0, 0, 0, 0.1, 0.04);
-    k.box(DETAIL.lamp, 0.46, 0.04, 0.24, 0.86, h / 2 - 0.21, 0, 0, 0, 0.1);
+    K.cy(k, m, 0.15, 0.3, 0, h / 2 - 0.35, 0, 12, 0.03);
+    K.pipe(
+      k,
+      m,
+      [
+        [0, h / 2 - 0.3, 0],
+        [0.12, h / 2 - 0.05, 0],
+        [0.45, h / 2 + 0.06, 0],
+        [0.85, h / 2 + 0.02, 0],
+      ],
+      0.07,
+      8,
+    );
+    K.bx(k, m, 0.62, 0.12, 0.32, 0.92, h / 2 - 0.02, 0, 0, 0, 0.06, 0.04);
+    K.bx(k, Dt.dark, 0.56, 0.05, 0.28, 0.92, h / 2 - 0.1, 0, 0, 0, 0.06, 0.01);
+    k.box(DETAIL.lamp, 0.46, 0.03, 0.22, 0.92, h / 2 - 0.13, 0, 0, 0, 0.06);
+    k.fine(() => {
+      K.fins(k, Dt.dark, 6, 0.48, 0.06, 0.26, 0.92, h / 2 + 0.07, 0, 0, 0.02);
+      K.cy(k, Dt.dark, 0.05, 0.12, 0, h / 2 - 0.12, 0.17, 8);
+      K.cy(k, Dt.steel, 0.02, 0.4, 0, h / 2 - 0.05, -0.05, 6);
+    });
   });
   k.dmgCut(b + h * 0.45);
   return k.build();
@@ -930,6 +1054,41 @@ export function buildDebris(w, h, d, m) {
   k.cb(m, w * 0.8, h * 0.55, d * 0.85, -w * 0.08, -h * 0.2, 0, 0, 0.3, 0.06, Math.min(w, d) * 0.08);
   k.box(m, w * 0.55, h * 0.22, h * 0.22, w * 0.18, h * 0.3, -d * 0.1, 0, -0.5, 0.25);
   k.box(m, w * 0.3, h * 0.35, d * 0.3, w * 0.3, -h * 0.25, d * 0.3, 0.2, 0.7, 0);
+  // 小細節：露出的鋼筋、碎屑
+  k.fine(() => {
+    const Dt = DETAIL;
+    for (let i = 0; i < 3; i++)
+      K.cy(
+        k,
+        Dt.dark,
+        Math.min(w, d) * 0.025,
+        w * 0.55,
+        -w * 0.2 + i * w * 0.12,
+        -h * 0.05,
+        -d * 0.05 + i * d * 0.1,
+        5,
+        0,
+        undefined,
+        0.2 + i * 0.3,
+        0.4,
+        1.1 + i * 0.2,
+      );
+    for (let i = 0; i < 4; i++)
+      K.bx(
+        k,
+        m,
+        w * 0.12,
+        h * 0.12,
+        d * 0.1,
+        -w * 0.4 + i * w * 0.25,
+        -h * 0.42,
+        d * (i % 2 ? 0.38 : -0.35),
+        i,
+        i * 0.7,
+        0.3,
+        0.01,
+      );
+  });
   return k.mesh();
 }
 
@@ -1029,6 +1188,55 @@ function deckKit(k, dm, rm, L, D, thick, rotY) {
       railing(k, rm, L - 0.2, 0.41, 0, 0.45, s * (D / 2 - 0.12), 0, 2.2, 0.08);
     }
     for (const sx of [-1, 1]) k.box(rm, 0.25, 0.03, D - 0.8, sx * (L / 2 - 0.5), 0.012, 0);
+    // 小細節：路面標線、伸縮縫的齒、排水口與排水管、反光鈕、樑下的橫向斜撐與支承板
+    k.fine(() => {
+      const Dt = DETAIL;
+      for (const s of [-1, 1]) k.box(Dt.white, L - 0.6, 0.012, 0.15, 0, 0.006, s * (D / 2 - 0.65));
+      for (let x = -L / 2 + 1; x < L / 2 - 1.5; x += 3)
+        k.box(Dt.yellow, 1.5, 0.012, 0.12, x + 0.75, 0.006, 0);
+      for (const sx of [-1, 1])
+        for (let z = -D / 2 + 0.8; z < D / 2 - 0.6; z += 0.4)
+          k.box(Dt.steel, 0.12, 0.02, 0.14, sx * (L / 2 - 0.5), 0.03, z);
+      for (const s of [-1, 1])
+        for (let x = -L / 2 + 2; x < L / 2 - 1; x += 4) {
+          k.box(Dt.black, 0.3, 0.02, 0.18, x, 0.008, s * (D / 2 - 0.45));
+          K.pipe(
+            k,
+            Dt.dark,
+            [
+              [x, -tp, s * (D / 2 - 0.45)],
+              [x, -tp - gh * 0.9, s * (D / 2 - 0.45)],
+            ],
+            0.06,
+            6,
+          );
+          K.cy(k, Dt.lamp, 0.04, 0.02, x + 1, 0.3, s * (D / 2 - 0.37), 6, 0, undefined, Math.PI / 2, 0, 0);
+        }
+      for (let i = 0; i < ng - 1; i++) {
+        const z0 = -D / 2 + 0.5 + ((D - 1) / (ng - 1)) * i,
+          z1 = z0 + (D - 1) / (ng - 1);
+        for (let x = -L / 2 + 2; x < L / 2 - 1; x += 5) {
+          k.bar(Dt.dark, [x, -tp - 0.05, z0], [x, -tp - gh + 0.05, z1], 0.06);
+          k.bar(Dt.dark, [x, -tp - gh + 0.05, z0], [x, -tp - 0.05, z1], 0.06);
+        }
+      }
+      for (let i = 0; i < ng; i++)
+        for (const sx of [-1, 1])
+          K.bx(
+            k,
+            Dt.steel,
+            0.5,
+            0.06,
+            0.6,
+            sx * (L / 2 - 0.45),
+            -thick - 0.01,
+            -D / 2 + 0.5 + ((D - 1) / (ng - 1)) * i,
+            0,
+            0,
+            0,
+            0.01,
+          );
+    });
   });
 }
 export const deckMats = () => ({
@@ -1049,6 +1257,46 @@ export function buildPillar(r, h, m) {
   k.cyl(m, r, r * 1.12, h - fb - cp, 0, (fb - cp) / 2, 0, 0, Math.PI / 8, 0, 8);
   k.cb(m, r * 2, cp, r * 2, 0, h / 2 - cp / 2, 0, 0, 0, 0, 0.08);
   k.cyl(DETAIL.dark, r * 1.03, r * 1.03, 0.12, 0, h / 2 - cp - 0.3, 0, 0, Math.PI / 8, 0, 8);
+  // 小細節：模板的接縫環、支承墊與錨栓、排水管、編號牌
+  k.fine(() => {
+    const Dt = DETAIL;
+    for (let y = -h / 2 + fb + 1.6; y < h / 2 - cp - 0.6; y += 1.6)
+      k.cyl(Dt.dark, r * 1.005 + 0.01, r * 1.005 + 0.01, 0.03, 0, y, 0, 0, Math.PI / 8, 0, 8);
+    for (const sx of [-1, 1]) {
+      K.bx(k, Dt.rubber, r * 0.7, 0.08, r * 0.9, sx * r * 0.5, h / 2 + 0.04, 0, 0, 0, 0, 0.01);
+      for (const sz of [-1, 1]) K.cy(k, Dt.steel, 0.04, 0.1, sx * r * 0.85, h / 2 + 0.02, sz * r * 0.6, 6);
+    }
+    K.pipe(
+      k,
+      Dt.dark,
+      [
+        [r * 0.9, h / 2 - cp, r * 0.3],
+        [r * 1.06, h / 2 - cp - 0.3, r * 0.3],
+        [r * 1.06, -h / 2 + fb + 0.1, r * 0.3],
+        [r * 1.25, -h / 2 + 0.1, r * 0.3],
+      ],
+      0.05,
+      6,
+    );
+    for (let i = 0; i < 4; i++)
+      K.cy(
+        k,
+        Dt.steel,
+        0.07,
+        0.04,
+        r * 1.07,
+        -h / 2 + fb + 0.8 + i * ((h - fb - cp - 1.4) / 3),
+        r * 0.3,
+        6,
+        0,
+        undefined,
+        0,
+        0,
+        Math.PI / 2,
+      );
+    k.box(Dt.white, 0.3, 0.4, 0.02, 0, -h / 2 + fb + 1.2, r * 1.01);
+    k.box(Dt.black, 0.18, 0.08, 0.02, 0, -h / 2 + fb + 1.25, r * 1.02);
+  });
   const g = k.build();
   g.position.y = h / 2;
   return g;
@@ -1097,6 +1345,34 @@ function portalKit(k, wall, frame, lintel) {
   k.cb(lintel, 10, 0.9, 2.7, 0, 7.45, 0, 0, 0, 0, 0.08);
   hazard(k, D.yellow, D.black, 9.4, 0.5, 0, 7.45, 1.36);
   k.box(D.dark, 3.2, 0.7, 0.08, 0, 8.4, 1.29);
+  // 小細節：頭牆的模板接縫、隧道名牌的字、限高標示、緊急電話箱、電纜管、洞口內側的燈列、排水溝的格柵
+  k.fine(() => {
+    for (const x of [-5.5, -2.8, 2.8, 5.5]) k.box(D.dark, 0.04, 8.6, 0.02, x, 4.5, 1.26);
+    for (const y of [3, 6]) k.box(D.dark, 14, 0.04, 0.02, 0, y, 1.26);
+    markText(k, D.white, -1.4, 8.45, 1.34, 0.28, 2.8, 0, 3);
+    K.bx(k, D.white, 1.4, 0.5, 0.05, 0, 6.95, 1.42, 0, 0, 0, 0.02);
+    markText(k, D.black, -0.55, 6.95, 1.45, 0.22, 1.1, 0, 1);
+    for (const sx of [-1, 1]) {
+      K.bx(k, mat(0xd86a20), 0.5, 0.8, 0.25, sx * 5.75, 1.5, 1.5, 0, 0, 0, 0.03);
+      k.box(D.white, 0.3, 0.2, 0.02, sx * 5.75, 1.72, 1.63);
+      K.handle(k, D.steel, 0.2, sx * 5.75, 1.25, 1.63, 0, 0.04, 0.012);
+      K.pipe(
+        k,
+        D.dark,
+        [
+          [sx * 4.1, 0.3, 1.0],
+          [sx * 4.1, 6.4, 1.0],
+          [sx * 3.2, 6.6, 1.0],
+        ],
+        0.06,
+        6,
+      );
+      k.box(D.dark, 0.5, 0.25, 0.6, sx * 3.7, 0.12, 0.5);
+      for (let z = -0.8; z <= 0.9; z += 0.85) k.box(D.lamp, 0.3, 0.1, 0.25, sx * 3.85, 5.6, z);
+    }
+    k.box(D.black, 8, 0.06, 0.5, 0, 0.03, 1.4);
+    for (let x = -3.6; x <= 3.6; x += 0.6) k.box(D.steel, 0.05, 0.065, 0.5, x, 0.035, 1.4);
+  });
 }
 
 // ---------- 公路／鐵路 ----------
@@ -1267,6 +1543,44 @@ function rigKit(k, main, dark, rust) {
     k.cb(dark, 4, 3, 3, 0, -0.6, 8.2, 0, 0, 0, 0.3);
     k.box(rust, 4.06, 0.3, 3.06, 0, 0.4, 8.2);
   });
+  // 小細節（舊尺寸，整體放大 RIG_S 倍）：履帶板的齒與負重輪、機身的面板與鉚釘、機房窗框、斗輪臂的輸送帶與托輥、
+  // 吊臂的鋼索、配重的吊耳、燈、鏽流、斷掉的纜線
+  k.fine(() => {
+    for (const sx of [-1, 1]) {
+      for (let i = 0; i < 6; i++) K.cx(k, rust, 0.42, 2.0, sx * 2.8, 0.55, -3.6 + i * 1.45, 12);
+      for (let i = 0; i < 26; i++) k.box(dark, 2.62, 0.18, 0.12, sx * 2.8, 0.02, -5.2 + i * 0.41);
+    }
+    k.at(0, 3.2, 0.5, 0, 0, 0.05, () => {
+      for (const sx of [-1, 1]) {
+        for (let z = -4; z <= 4; z += 1) k.box(dark, 0.04, 3.9, 0.06, sx * 4.02, 2.0, z);
+        for (const y of [0.6, 1.8, 3.0])
+          for (let z = -4; z <= 4; z += 1) k.box(D.steel, 0.06, 0.06, 0.06, sx * 4.03, y, z + 0.5);
+      }
+      for (const x of [-1.4, 0, 1.4]) k.box(dark, 0.08, 0.76, 0.1, x, 5.6, -0.05);
+      K.bx(k, rust, 0.8, 0.5, 0.6, -3, 4.5, -4.2, 0, 0, 0, 0.05);
+      k.box(D.lamp, 0.6, 0.35, 0.05, -3, 4.5, -4.52);
+      K.vents(k, dark, rust, 2.0, 1.0, 1.6, 6.0, 4.02, 0, 5);
+      for (let i = 0; i < 5; i++) k.box(dark, 0.18, 1.6 + (i % 2) * 0.9, 0.02, -3 + i * 1.4, 1.8, -4.51);
+    });
+    k.at(0, 6.4, -3.5, 0.18, 0, 0, () => {
+      k.box(dark, 1.4, 0.1, 12, 0, 0.86, -6.25);
+      for (let z = -0.8; z > -12; z -= 0.9) K.cx(k, D.steel, 0.12, 1.3, 0, 0.78, z, 8);
+      K.cable(k, D.black, [0, 2.6, -11.5], [0, 2.4, -0.5], 0.06, 0.25);
+    });
+    for (const s of [-1, 1])
+      K.pipe(
+        k,
+        D.dark,
+        [
+          [s * 0.6, 10.4, 2.5],
+          [s * 0.4, 7.4, -9.5],
+        ],
+        0.05,
+        4,
+      );
+    K.cy(k, D.dark, 0.08, 6.5, 0, 9.3, 2.6, 6);
+    K.cable(k, D.black, [-3.2, 5.4, -3.2], [-4.1, 0.2, -6.5], 0.08, 0.6);
+  });
 }
 
 // 輸送管線一段（沿 Z，長 PIPE.seg）：原點在管子中心
@@ -1289,7 +1603,47 @@ export function buildPipeSegment(color) {
   }
   // 上方的電纜槽
   k.box(fl, 0.3, 0.08, PIPE.seg - 1.6, 0, R + 0.09, 0);
+  pipeDetail(k, fl, -PIPE.seg / 2, 1);
   return k.build();
+}
+// 管線的小細節（z0 起 n 段）：保溫外皮的接縫、法蘭螺栓、標示帶與流向箭頭、檢修閥、電纜槽的支架
+function pipeDetail(k, fl, z0, n) {
+  const R = PIPE.r,
+    X = Math.PI / 2,
+    Dt = DETAIL;
+  k.fine(() => {
+    for (let i = 0; i < n; i++) {
+      const zs = z0 + PIPE.seg * i;
+      for (let t = 1.5; t < PIPE.seg - 1; t += 1.2)
+        k.cyl(fl, R + 0.012, R + 0.012, 0.04, 0, 0, zs + t, X, 0, 0, 12);
+      for (let j = 0; j < 10; j++) {
+        const a = (j / 10) * Math.PI * 2;
+        K.cz(k, Dt.steel, 0.04, 0.42, Math.cos(a) * (R + 0.08), Math.sin(a) * (R + 0.08), zs + 0.2, 6);
+      }
+      k.cyl(Dt.yellow, R + 0.02, R + 0.02, 0.3, 0, 0, zs + PIPE.seg * 0.5, X, 0, 0, 12);
+      k.prism(
+        Dt.white,
+        [
+          [-0.12, 0],
+          [0.12, 0],
+          [0, 0.35],
+        ],
+        0.02,
+        R * 0.72,
+        R * 0.72,
+        zs + PIPE.seg * 0.5 + 0.45,
+        X,
+        0,
+        -X / 2,
+      );
+      if (i % 3 === 0) {
+        K.cy(k, fl, 0.12, 0.35, 0, R + 0.15, zs + PIPE.seg * 0.3, 10);
+        K.cy(k, fl, 0.2, 0.06, 0, R + 0.34, zs + PIPE.seg * 0.3, 10);
+        K.cy(k, mat(0xb02820), 0.18, 0.03, 0, R + 0.42, zs + PIPE.seg * 0.3, 10);
+      }
+      for (const t of [2.2, 6.6]) k.box(fl, 0.06, 0.12, 0.06, 0, R + 0.03, zs + t);
+    }
+  });
 }
 // 整條輸送管線（沿 Z、長 len，置中）：合併成一個網格（每段一個 GLB 時改成逐段排列）；每 PIPE.seg 一組法蘭、上方電纜槽
 export function buildPipeline(len, color) {
@@ -1315,6 +1669,7 @@ export function buildPipeline(len, color) {
     k.cyl(fl, R + 0.06, R + 0.06, 0.5, 0, 0, z + (i < n ? 0.4 : -0.4), X, 0, 0, 12);
   }
   k.box(fl, 0.3, 0.08, len - 1, 0, R + 0.09, 0);
+  pipeDetail(k, fl, -len / 2, n);
   return k.build();
 }
 // 管線支架（A 字形）：原點在底面中心，高 h（到管子底部）；GLB 以高 6 m 製作，依高度縮放
@@ -1340,6 +1695,36 @@ export function buildPipeSupport(h, color) {
   k.bar(m, [1.2, 0.6, 0], [-0.62, h * 0.82, 0], 0.12);
   k.box(m, 1.6, 0.25, 0.4, 0, h * 0.45, 0);
   k.cb(m, 2.4, 0.35, 0.5, 0, h - 0.2, 0, 0, 0, 0, 0.05);
+  // 小細節：基礎墩與錨栓、腳的節點板、頂部的管鞍與管箍、編號牌
+  k.fine(() => {
+    const Dt = DETAIL,
+      con = mat(0x8c8b85, { roughness: 0.95, metalness: 0.02 });
+    for (const s of [-1, 1]) {
+      K.bx(k, con, 0.8, 0.3, 0.8, s * 1.3, -0.05, 0, 0, 0, 0, 0.04);
+      for (const sx of [-1, 1])
+        for (const sz of [-1, 1]) K.cy(k, Dt.steel, 0.035, 0.1, s * 1.3 + sx * 0.18, 0.13, sz * 0.18, 6);
+      k.prism(
+        m,
+        [
+          [0, 0],
+          [0.4, 0],
+          [0, 0.4],
+        ],
+        0.04,
+        s * 1.12,
+        0.12,
+        0,
+        0,
+        s > 0 ? Math.PI : 0,
+        0,
+      );
+    }
+    K.bx(k, m, 1.0, 0.12, 0.46, 0, h + 0.03, 0, 0, 0, 0, 0.02);
+    for (const z of [-0.15, 0.15])
+      k.geo(Dt.steel, new THREE.TorusGeometry(PIPE.r + 0.04, 0.03, 4, 14, Math.PI), 0, h + PIPE.r, z);
+    k.box(Dt.white, 0.3, 0.2, 0.02, 0, h * 0.45, 0.21);
+    k.box(Dt.black, 0.18, 0.06, 0.02, 0, h * 0.45, 0.22);
+  });
   // 高的支架（管底離地 12 m 以上）腳要張開一點，不然太細長
   const g = k.build();
   g.scale.x = Math.max(1, h / 7);
@@ -1404,6 +1789,93 @@ export function buildDerrick(h, color) {
   k.cb(dk, b0 * 2.18, 1.4, b0 * 2.18, 0, 0.7, 0, 0, 0, 0, 0.12);
   k.box(DETAIL.yellow, b0 * 2.2, 0.15, b0 * 2.2, 0, 1.25, 0);
   door(k, dk, DETAIL.steel, 0, 0, b0 * 1.09 + 0.02, 0, HUMAN.door[0], 1.2, 'door_cellar');
+  // 小細節：腳的節點板與螺栓、天車的大鉤與游動滑車、絞車與纜盤、防噴器、作業平台的工具與油桶、頂部的航空障礙燈
+  k.fine(() => {
+    const Dt = DETAIL;
+    for (let y = 2.5; y < h - 1; y += 3) {
+      const a = half(y);
+      for (const sx of [-1, 1])
+        for (const sz of [-1, 1]) K.bx(k, m, 0.36, 0.36, 0.06, sx * a, y, sz * (a + 0.12), 0, 0, 0, 0.01);
+    }
+    const ty = h * 0.6;
+    K.lathe(
+      k,
+      Dt.yellow,
+      [
+        [0, 0],
+        [0.45, 0.1],
+        [0.5, 0.9],
+        [0.3, 1.2],
+        [0, 1.25],
+      ],
+      0,
+      ty,
+      0,
+      'y',
+      12,
+    );
+    K.cy(k, Dt.dark, 0.08, 0.5, 0, ty - 0.2, 0, 8);
+    k.geo(
+      Dt.dark,
+      new THREE.TorusGeometry(0.22, 0.07, 5, 10, Math.PI * 1.4),
+      0,
+      ty - 0.55,
+      0,
+      0,
+      0,
+      Math.PI * 0.8,
+    );
+    for (const x of [-0.12, 0.12])
+      K.pipe(
+        k,
+        Dt.dark,
+        [
+          [x, h, 0.7],
+          [x, ty + 1.2, 0],
+        ],
+        0.03,
+        4,
+      );
+    K.cy(k, Dt.red, 0.18, 0.2, 0, h + 1.25, 0, 10);
+    K.cy(k, dk, 0.08, 0.3, 0, h + 1.05, 0, 8);
+    // 地面：防噴器、絞車
+    K.lathe(
+      k,
+      mat(0xb02820),
+      [
+        [0, 0],
+        [0.6, 0],
+        [0.6, 0.5],
+        [0.45, 0.6],
+        [0.45, 1.0],
+        [0.6, 1.1],
+        [0.6, 1.6],
+        [0, 1.6],
+      ],
+      0,
+      1.4,
+      0,
+      'y',
+      12,
+    );
+    K.cx(k, mat(0xb02820), 0.12, 1.8, 0, 2.2, 0, 8);
+    K.cz(k, mat(0xb02820), 0.12, 1.8, 0, 2.2, 0, 8);
+    K.bx(k, dk, 2.2, 1.4, 1.6, b0 * 0.4, 2.1, -b0 * 0.6, 0, 0, 0, 0.08);
+    K.cx(k, Dt.steel, 0.55, 1.4, b0 * 0.4, 2.3, -b0 * 0.6 + 0.9, 14);
+    for (let i = 0; i < 3; i++)
+      K.cy(
+        k,
+        mat([0x2a5a8a, 0xb84a20, 0x2a5a8a][i]),
+        0.3,
+        0.9,
+        -b0 * 0.6 + i * 0.65,
+        py + 0.6,
+        b0 * 0.25,
+        12,
+        0.04,
+      );
+    K.bx(k, Dt.steel, 1.4, 0.6, 0.6, b0 * 0.3, py + 0.45, -b0 * 0.3, 0, 0, 0, 0.04);
+  });
   return k.build();
 }
 
@@ -1476,6 +1948,27 @@ function hullKit(k, color) {
     k.box(rust, 3, 0.4, 5, 0.4, 9.5, 6.4);
     k.cyl(dk, 0.18, 0.22, 4, 0.9, 11, 7.2, 0.5, 0, 0.2, 6);
     for (let i = 0; i < 4; i++) k.box(dk, 0.3, 4.5, 0.4, -3.6, 3.5, -4 + i * 4);
+    // 小細節：外板的鉚釘列與肋材的形狀、吃水標記、舷窗、甲板的欄杆與絞盤、鏽流、錨鏈孔
+    k.fine(() => {
+      const Dt = DETAIL;
+      for (let z = -7.5; z < 12; z += 1.25)
+        for (const s of [-1, 1]) k.box(dk, 0.04, 4.8, 0.08, s * 3.53, 3.6, z);
+      for (const s of [-1, 1]) {
+        for (let y = 1.2; y < 5; y += 0.6) k.box(Dt.white, 0.02, 0.06, 0.3, s * 3.55, y, -7);
+        for (let z = 3; z < 9; z += 1.2)
+          K.cy(k, Dt.glass, 0.18, 0.06, s * 3.55, 5.3, z, 10, 0, undefined, 0, 0, Math.PI / 2);
+        for (let z = -7; z < 11; z += 1.8) k.box(rust, 0.04, 0.9, 0.04, s * 3.3, 6.7, z);
+        k.box(rust, 0.04, 0.04, 18, s * 3.3, 7.15, 2);
+        K.cy(k, Dt.black, 0.35, 0.1, s * 1.8, 5.2, -6.5, 10, 0, undefined, 0, 0, Math.PI / 2 + s * 0.7);
+      }
+      for (const z of [-5.5, 8.5]) {
+        K.cx(k, dk, 0.35, 1.4, 0, 6.6, z, 12);
+        for (const s of [-1, 1])
+          K.cy(k, dk, 0.45, 0.12, s * 0.75, 6.6, z, 12, 0, undefined, 0, 0, Math.PI / 2);
+      }
+      for (let i = 0; i < 8; i++)
+        k.box(rust, 0.6, 2.5 + (i % 3) * 0.8, 0.02, 3.56, 4.2, -6 + i * 2.2, 0, Math.PI / 2, 0);
+    });
   });
 }
 // 拱形殘骸（半埋的巨大環狀構造）：跨距 18 m，沿 X；原點在地面中心；feet＝兩腳的 x 與碰撞半徑
@@ -1516,8 +2009,26 @@ function archKit(k, R, m, rib) {
       k.cb(rib, 0.5, 3.4, 3.2, 0, 0, 0, 0, 0, 0, 0.1);
       k.box(rib, 0.9, 0.2, 3.3, 0, 1.6, 0);
       k.box(rib, 0.9, 0.2, 3.3, 0, -1.6, 0);
+      // 肋板的減重孔、鉚釘、斷掉的纜線（肋板各自是零件：不分級，免得每片多一個網格）
+      (() => {
+        for (const z of [-0.9, 0.9]) K.cy(k, rib, 0.3, 0.52, 0, 0, z, 10, 0, undefined, 0, 0, Math.PI / 2);
+        for (let t = -1.3; t <= 1.3; t += 0.45)
+          for (const z of [-1.5, 1.5]) k.box(rib, 0.56, 0.06, 0.06, 0, t, z);
+        if (i % 3 === 1) K.cable(k, rib, [0, -1.6, 0.6], [0.2, -3.5, 0.9], 0.06, 0.3);
+      })();
     });
   }
+  k.cur = 0;
+  // 小細節：主環的外板接縫與鉚釘環、表面的面板、懸垂的破片
+  k.fine(() => {
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI + 0.1;
+      k.at(Math.cos(a) * R, Math.sin(a) * R - 0.8, 0, 0, 0, a - Math.PI / 2, () => {
+        k.box(rib, 0.12, 2.9, 0.06, 1.28, 0, 0, 0, 0, Math.PI / 2);
+        K.bx(k, m, 0.06, 0.9, 1.4, 1.3, 0, i % 2 ? 0.6 : -0.6, 0, 0, 0, 0.01);
+      });
+    }
+  });
 }
 
 // ---------- 冰湖：橢圓冰面＋裂紋貼圖；rng 決定裂紋（各端相同）；原點在冰面中心，單位圓再以 rx、rz 縮放 ----------
@@ -1613,6 +2124,35 @@ function hopperKit(k, m, dk, ore) {
   });
   k.cb(m, 1.0, 0.5, 0.9, 0, 1.6, 0, 0, 0, 0, 0.06);
   hazard(k, DETAIL.yellow, DETAIL.black, 1.0, 0.24, 0, 1.6, 0.46);
+  // 小細節：閘門的液壓缸、料倉的震動器與檢修口、腳底的錨栓、上緣的欄杆柱、礦石堆的起伏、外板的鏽痕
+  k.fine(() => {
+    const Dt = DETAIL;
+    for (const s of [-1, 1]) K.piston(k, dk, Dt.steel, [s * 0.55, 2.3, 0.2], [s * 0.45, 1.75, 0.35], 0.04);
+    for (const s of [-1, 1]) {
+      K.bx(k, dk, 0.4, 0.35, 0.25, s * 1.2, 4.3, 2.55, 0, 0, 0, 0.03);
+      K.cy(k, Dt.steel, 0.1, 0.12, s * 1.2, 4.3, 2.7, 8, 0, undefined, Math.PI / 2, 0, 0);
+    }
+    K.bx(k, dk, 0.9, 0.7, 0.05, 2.0 * -1 + 1.0, 5.1, -2.47, 0, 0, 0, 0.01);
+    K.handle(k, Dt.steel, 0.3, -1, 5.0, -2.5, Math.PI, 0.05, 0.015);
+    for (const sx of [-1, 1])
+      for (const sz of [-1, 1])
+        for (const ox of [-0.22, 0.22]) K.cy(k, Dt.steel, 0.025, 0.08, sx * 2.2 + ox, 0.1, sz * 2.2, 6);
+    for (let i = 0; i < 4; i++)
+      k.geo(
+        ore,
+        D.rock(i + 3, 1, 0.3, 0.6, 0),
+        -1.4 + i * 0.95,
+        6.65,
+        i % 2 ? 0.5 : -0.6,
+        0,
+        i,
+        0,
+        0.9,
+        0.35,
+        0.8,
+      );
+    for (const x of [-1.8, 0.4, 1.5]) k.box(mat(0x7a3f22, { roughness: 1 }), 0.3, 1.4, 0.02, x, 4.6, 2.46);
+  });
 }
 // 鏽蝕儲槽：圓槽＋頂蓋＋箍＋爬梯；原點在底面中心；GLB 以半徑 3、高 6 m 製作，依尺寸縮放
 export function buildStorageTank(r, h, color) {
@@ -1631,7 +2171,126 @@ export function buildStorageTank(r, h, color) {
     k.geo(rust, new THREE.TorusGeometry(0.4, 0.03, 3, 8, Math.PI), 0, y, r + 0.12, Math.PI / 2, 0, 0);
   k.cyl(rust, 0.18, 0.18, 0.6, r * 0.3, h + 0.95, -r * 0.2, 0, 0, 0, 6);
   k.cyl(rust, 0.45, 0.45, 0.12, -r - 0.02, 0.9, 0, 0, 0, Math.PI / 2, 10);
+  // 小細節：鋼板的焊縫（水平環＋錯開的直縫）、鏽流痕、頂部的欄杆與通氣帽、液位計、進出口管嘴與法蘭、接地線、標示
+  k.fine(() => {
+    const Dt = DETAIL;
+    const ring = Math.max(1.2, h / 6);
+    for (let y = ring, i = 0; y < h - 0.2; y += ring, i++) {
+      k.cyl(m, r + 0.015, r + 0.015, 0.04, 0, y, 0, 0, 0, 0, 24);
+      for (let j = 0; j < 8; j++) {
+        const a = (j / 8) * Math.PI * 2 + (i % 2) * 0.39;
+        k.box(
+          m,
+          0.03,
+          ring - 0.05,
+          0.03,
+          Math.cos(a) * (r + 0.01),
+          y - ring / 2,
+          Math.sin(a) * (r + 0.01),
+          0,
+          -a,
+          0,
+        );
+      }
+    }
+    for (let j = 0; j < 5; j++) {
+      const a = 0.6 + j * 1.1,
+        L = h * (0.25 + (j % 3) * 0.12);
+      k.box(
+        rust,
+        0.25,
+        L,
+        0.02,
+        Math.cos(a) * (r + 0.02),
+        h - L / 2 - 0.2,
+        Math.sin(a) * (r + 0.02),
+        0,
+        -a + Math.PI / 2,
+        0,
+      );
+    }
+    for (let j = 0; j < 16; j++) {
+      const a = (j / 16) * Math.PI * 2;
+      k.box(rust, 0.05, 0.9, 0.05, Math.cos(a) * r * 0.92, h + 0.2 + 0.45, Math.sin(a) * r * 0.92);
+    }
+    k.geo(rust, new THREE.TorusGeometry(r * 0.92, 0.04, 3, 24), 0, h + 1.1, 0, Math.PI / 2, 0, 0);
+    K.lathe(
+      k,
+      rust,
+      [
+        [0, 0],
+        [0.3, 0],
+        [0.3, 0.1],
+        [0.45, 0.15],
+        [0.2, 0.35],
+        [0, 0.35],
+      ],
+      r * 0.3,
+      h + 1.25,
+      -r * 0.2,
+      'y',
+      10,
+    );
+    K.cy(k, Dt.steel, 0.06, h * 0.7, r + 0.18, h * 0.42, -0.6, 8);
+    for (const y of [h * 0.08, h * 0.77])
+      K.bx(k, Dt.steel, 0.2, 0.12, 0.12, r + 0.12, y, -0.6, 0, 0, 0, 0.02);
+    k.box(Dt.yellow, 0.12, 0.05, 0.05, r + 0.26, h * 0.5, -0.6);
+    for (const a of [2.2, 4.0]) {
+      const c = Math.cos(a),
+        sn = Math.sin(a);
+      k.at(c * r, 0.9, sn * r, 0, -a, 0, () => {
+        K.cy(k, rust, 0.22, 0.7, 0.35, 0, 0, 10, 0, undefined, 0, 0, Math.PI / 2);
+        K.cy(k, rust, 0.36, 0.08, 0.72, 0, 0, 12, 0, undefined, 0, 0, Math.PI / 2);
+        K.boltRing(k, Dt.steel, 0.3, 0, 8, 0.025, 0.74, 0);
+      });
+    }
+    markText(k, Dt.white, -r * 0.5, h * 0.62, 0, 0.6, r, 0, 2);
+  });
   return k.build();
+}
+// 幾塊雜訊岩石合併成一個網格（保留頂點色）：list＝[[幾何, x, y, z, sx, sy, sz, ry]…]
+function rockPile(list, m) {
+  let n = 0;
+  const gs = list.map(([g0]) => {
+    const g = g0.index ? g0.toNonIndexed() : g0;
+    n += g.attributes.position.count;
+    return g;
+  });
+  const pos = new Float32Array(n * 3),
+    nor = new Float32Array(n * 3),
+    col = new Float32Array(n * 3).fill(1);
+  const M = new THREE.Matrix4(),
+    N = new THREE.Matrix3(),
+    v = new THREE.Vector3();
+  let o = 0;
+  gs.forEach((g, j) => {
+    const [, x, y, z, sx, sy, sz, ry] = list[j];
+    M.compose(
+      v.set(x, y, z),
+      new THREE.Quaternion().setFromEuler(new THREE.Euler(0, ry, 0)),
+      new THREE.Vector3(sx, sy, sz),
+    );
+    N.getNormalMatrix(M);
+    const P = g.attributes.position,
+      NN = g.attributes.normal,
+      C = g.attributes.color;
+    for (let i = 0; i < P.count; i++, o++) {
+      v.fromBufferAttribute(P, i).applyMatrix4(M);
+      pos.set([v.x, v.y, v.z], o * 3);
+      if (NN) {
+        v.fromBufferAttribute(NN, i).applyMatrix3(N).normalize();
+        nor.set([v.x, v.y, v.z], o * 3);
+      }
+      if (C) col.set([C.getX(i), C.getY(i), C.getZ(i)], o * 3);
+    }
+  });
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const mesh = new THREE.Mesh(geo, m);
+  mesh.castShadow = mesh.receiveShadow = true;
+  return mesh;
 }
 // 岩柱（荒野的岩石）：下粗上細的六角柱＋頂部岩塊；原點在底面中心；GLB 以半徑 2、高 7 m 製作
 export function buildRockSpire(r, h, color) {
@@ -1641,17 +2300,27 @@ export function buildRockSpire(r, h, color) {
   const m = fadeMat(color, { roughness: 1 });
   m.vertexColors = true;
   const sd = rockSeed(r + h);
-  // 柱身：拉長的雜訊岩石（層理明顯）＋頂上一塊
-  const p = new THREE.Mesh(D.rock(sd, 6, 0.28, 0.95, 0.65), m);
-  p.scale.set(r * 0.85, h * 0.48, r * 0.85);
-  p.position.y = h * 0.44;
-  p.castShadow = p.receiveShadow = true;
-  g.add(p);
-  const top = new THREE.Mesh(D.rock(sd + 7, 4, 0.4, 0.5, 0.4), m);
-  top.position.y = h * 0.86;
-  top.scale.set(r * 0.65, r * 0.42, r * 0.65);
-  top.castShadow = true;
-  g.add(top);
+  // 柱身：拉長的雜訊岩石（層理明顯）＋頂上一塊＋腳邊崩落的碎石，合併成一個網格
+  const rk = [
+    [D.rock(sd, 6, 0.28, 0.95, 0.65), 0, h * 0.44, 0, r * 0.85, h * 0.48, r * 0.85, 0],
+    [D.rock(sd + 7, 4, 0.4, 0.5, 0.4), 0, h * 0.86, 0, r * 0.65, r * 0.42, r * 0.65, 0],
+  ];
+  for (let i = 0; i < 5; i++) {
+    const a = i * 1.37 + sd,
+      s = r * (0.16 + (i % 3) * 0.07),
+      q = r * (0.95 + (i % 2) * 0.3);
+    rk.push([
+      D.rock(sd + 13 + i, 1, 0.35, 0.55, 0.3),
+      Math.cos(a) * q,
+      s * 0.35,
+      Math.sin(a) * q,
+      s,
+      s * 0.7,
+      s,
+      a,
+    ]);
+  }
+  g.add(rockPile(rk, m));
   return g;
 }
 // 照明塔（現實高 20–35 m）：格子桿（寬度依高度）＋燈架（頂部的燈數依高度）＋人用爬梯與燈架平台；
@@ -1675,6 +2344,30 @@ export function buildFloodlight(h, color) {
   k.cur = 2;
   k.cb(m, W * 2.6, 0.6, W * 2.6, 0, 0.3, 0, 0, 0, 0, 0.08);
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) k.box(DETAIL.dark, 0.1, 0.1, 0.1, sx * W, 0.62, sz * W);
+  // 小細節：底座旁的控制箱（百葉、把手、警告牌）、沿桿的電纜管
+  k.fine(() => {
+    const Dt = DETAIL;
+    K.bx(k, mat(0x6a7078), 0.7, 1.2, 0.4, W * 1.3 + 0.4, 0.6, 0, 0, 0, 0, 0.03);
+    K.vents(k, Dt.dark, Dt.steel, 0.5, 0.3, W * 1.3 + 0.4, 0.4, 0.21, 0, 4);
+    K.handle(k, Dt.steel, 0.14, W * 1.3 + 0.62, 0.8, 0.21, 0, 0.03, 0.012);
+    k.box(Dt.yellow, 0.3, 0.26, 0.02, W * 1.3 + 0.3, 0.92, 0.21);
+    K.pipe(
+      k,
+      Dt.dark,
+      [
+        [W * 1.3 + 0.2, 1.1, 0],
+        [W * 0.5 + 0.06, 1.4, 0],
+        [W * 0.5 + 0.06, h - 1.6, 0],
+      ],
+      0.05,
+      6,
+    );
+  });
+  k.cur = 0;
+  k.fine(() => {
+    K.cy(k, DETAIL.red, 0.12, 0.2, 0, h + 0.1, 0, 10);
+    K.cy(k, DETAIL.dark, 0.05, 0.4, 0, h - 0.1, 0, 6);
+  });
   // 格子桿：四角材＋每 1.4 m 的橫材＋斜撐
   k.cur = 0;
   const c = W / 2 - 0.05;
@@ -1704,6 +2397,13 @@ export function buildFloodlight(h, color) {
         k.dmgTier(1 + (j % 2), () => {
           k.cb(m, 0.8, 0.6, 0.45, 0, 0, -0.05, 0, 0, 0, 0.05);
           k.box(lm, 0.72, 0.52, 0.05, 0, 0, 0.19);
+          // 燈頭各自是可以脫落的零件：細節不分級（分級會讓每盞燈多一個網格）
+          (() => {
+            K.fins(k, m, 6, 0.64, 0.5, 0.18, 0, 0, -0.34, 0, 0.025);
+            for (const s of [-1, 1]) k.box(m, 0.04, 0.62, 0.2, s * 0.42, 0, 0.24, 0, s * 0.3, 0);
+            k.box(m, 0.82, 0.04, 0.24, 0, 0.32, 0.24, -0.3, 0, 0);
+            K.cy(k, m, 0.05, 0.4, 0, -0.42, -0.05, 6);
+          })();
         }),
       ),
     );
@@ -1726,6 +2426,26 @@ export function buildScrap(w, h, d, color) {
   k.at(-w * 0.25, h * 0.15, -d * 0.3, 0, 0.8, 0.15, () => {
     k.box(m, w * 0.7, 0.05, 0.16, 0, 0, 0);
     k.box(m, w * 0.7, 0.16, 0.05, 0, 0.08, -0.08);
+  });
+  // 小細節：鐵板上的螺栓孔與鏽斑、一截管子、彎曲的鋼筋
+  k.fine(() => {
+    const Dt = DETAIL;
+    k.at(0, h * 0.4, 0, 0, 0, 0.5, () => {
+      for (const x of [-0.4, -0.13, 0.13, 0.4]) k.box(Dt.black, 0.06, 0.02, 0.06, x * w, 0.05, d * 0.3);
+      k.box(mat(0x7a3f22, { roughness: 1 }), w * 0.35, 0.02, d * 0.25, w * 0.15, 0.045, -d * 0.1);
+    });
+    K.cy(k, Dt.dark, 0.08 * w, w * 0.5, w * 0.3, 0.07, -d * 0.35, 8, 0, undefined, 0, 0.6, Math.PI / 2);
+    K.pipe(
+      k,
+      Dt.dark,
+      [
+        [-w * 0.45, 0.02, d * 0.3],
+        [-w * 0.2, 0.15, d * 0.35],
+        [0, 0.08, d * 0.45],
+      ],
+      0.015,
+      4,
+    );
   });
   return k.build();
 }
@@ -1773,6 +2493,54 @@ function mtWreckKit(k, m, dk) {
     });
     k.pipe(dk, [-1.4, 2.3, 1.2], [-0.6, 2.4, 1.9], 0.08);
   });
+  // 小細節：裝甲的焊縫與彈孔、斷掉的液壓管與電纜、肩上的燈、腳邊的碎片、燒焦痕
+  k.fine(() => {
+    const Dt = DETAIL;
+    k.at(0, 0, 0, 0.15, 0.3, -0.25, () => {
+      for (const [x, y] of [
+        [0.6, 1.8],
+        [-0.4, 1.2],
+        [1.1, 0.9],
+        [-1.0, 2.0],
+      ])
+        K.cy(k, Dt.black, 0.07, 0.04, x, y, -1.71, 8, 0, undefined, Math.PI / 2, 0, 0);
+      for (const y of [0.6, 1.9]) k.box(dk, 3.62, 0.04, 0.02, 0, y, -1.7);
+      for (const s of [-1, 1]) {
+        K.pipe(
+          k,
+          dk,
+          [
+            [s * 1.5, 0.5, 1.6],
+            [s * 1.9, 0.2, 2.0],
+            [s * 1.7, -0.1, 2.4],
+          ],
+          0.06,
+          6,
+        );
+        K.cable(k, Dt.black, [s * 1.2, 0.4, 1.65], [s * 1.6, -0.2, 2.3], 0.04, 0.2);
+      }
+      K.bx(k, dk, 0.3, 0.25, 0.3, -1.4, 2.4, -0.5, 0, 0, 0, 0.03);
+      k.box(Dt.lamp, 0.22, 0.15, 0.02, -1.4, 2.4, -0.66);
+      K.vents(k, dk, m, 0.8, 0.4, -0.5, 1.1, 1.72, 0, 4);
+      k.box(Dt.yellow, 0.6, 0.3, 0.02, 0.9, 1.9, 1.71);
+      markText(k, Dt.black, 0.7, 1.9, 1.73, 0.12, 0.45, 0, 2);
+    });
+    for (let i = 0; i < 5; i++)
+      K.bx(
+        k,
+        m,
+        0.4 + (i % 3) * 0.2,
+        0.08,
+        0.3 + (i % 2) * 0.25,
+        -2 + i * 1.0,
+        0.02,
+        2.0 - (i % 3) * 1.6,
+        0,
+        i * 0.9,
+        0.1,
+        0.01,
+      );
+  });
   // 折斷的腳：大腿＋膝關節＋小腿殘段
   k.at(-1.6, 0.6, 1.6, 0, 0, 1.1, () => {
     k.cb(dk, 0.7, 1.5, 0.7, 0, 0.5, 0, 0, 0, 0, 0.1);
@@ -1788,17 +2556,26 @@ export function buildSandstone(r, h, color) {
   const m = fadeMat(color, { roughness: 1 });
   m.vertexColors = true;
   const sd = rockSeed(r * 3 + h);
-  // 風蝕的柱身（細腰、層理）＋寬的岩帽
-  const st = new THREE.Mesh(D.rock(sd, 6, 0.3, 0.95, 0.8), m);
-  st.scale.set(r * 0.5, h * 0.4, r * 0.5);
-  st.position.y = h * 0.37;
-  st.castShadow = st.receiveShadow = true;
-  g.add(st);
-  const cap = new THREE.Mesh(D.rock(sd + 11, 5, 0.3, 0.6, 0.7), m);
-  cap.scale.set(r, r * 0.38, r * 0.85);
-  cap.position.y = h * 0.78;
-  cap.castShadow = true;
-  g.add(cap);
+  // 風蝕的柱身（細腰、層理）＋寬的岩帽＋柱腳的碎塊，合併成一個網格
+  const rk = [
+    [D.rock(sd, 6, 0.3, 0.95, 0.8), 0, h * 0.37, 0, r * 0.5, h * 0.4, r * 0.5, 0],
+    [D.rock(sd + 11, 5, 0.3, 0.6, 0.7), 0, h * 0.78, 0, r, r * 0.38, r * 0.85, 0],
+  ];
+  for (let i = 0; i < 4; i++) {
+    const a = i * 1.71 + sd,
+      s = r * (0.14 + (i % 3) * 0.06);
+    rk.push([
+      D.rock(sd + 17 + i, 1, 0.3, 0.6, 0.6),
+      Math.cos(a) * r * 0.75,
+      s * 0.3,
+      Math.sin(a) * r * 0.75,
+      s,
+      s * 0.6,
+      s,
+      a,
+    ]);
+  }
+  g.add(rockPile(rk, m));
   return g;
 }
 // 防風牆（沙丘的掩體）：一排波浪板＋支柱，長 len、高 3 m，沿 X；原點在底面中心；GLB 以長 8 m 製作，依長度縮放
@@ -1824,6 +2601,39 @@ export function buildSandFence(len, color) {
     k.box(dk, 0.25, SAND_FENCE_H + 0.2, 0.08, x, (SAND_FENCE_H + 0.2) / 2, -0.11);
     k.box(dk, 0.06, SAND_FENCE_H + 0.2, 0.22, x, (SAND_FENCE_H + 0.2) / 2, 0);
   }
+  // 小細節：支柱的底板與錨栓、背面的斜撐腳、板上的螺栓列、堆在迎風面的沙、柱頂的蓋
+  k.fine(() => {
+    const Dt = DETAIL,
+      sand = mat(0xc8a878, { roughness: 1, metalness: 0 });
+    for (let x = -len / 2; x <= len / 2 + 1e-6; x += step) {
+      K.bx(k, dk, 0.5, 0.06, 0.5, x, 0.03, 0, 0, 0, 0, 0.01);
+      for (const sx of [-1, 1]) K.cy(k, Dt.steel, 0.025, 0.08, x + sx * 0.18, 0.08, 0.18, 6);
+      k.bar(dk, [x, SAND_FENCE_H * 0.65, -0.15], [x, 0.05, -1.3], 0.08);
+      k.box(dk, 0.3, 0.06, 0.3, x, 0.03, -1.3);
+      k.box(dk, 0.3, 0.05, 0.3, x, SAND_FENCE_H + 0.22, 0);
+    }
+    for (let i = 0; i < n; i++) {
+      const x = -len / 2 + (len / n) * (i + 0.5),
+        z = i % 2 ? 0.06 : -0.06;
+      for (const y of [0.4, SAND_FENCE_H - 0.3]) k.box(Dt.steel, len / n - 0.3, 0.03, 0.03, x, y, z + 0.08);
+    }
+    K.lathe(
+      k,
+      sand,
+      [
+        [0, 0],
+        [1, 0],
+        [0.9, 0.35],
+        [0, 0.6],
+      ],
+      0,
+      0,
+      0.9,
+      'y',
+      10,
+    );
+    k.geo(sand, D.rock(5, 1, 0.15, 0.85, 0), 0, 0.05, 0.6, 0, 0, 0, len * 0.48, 0.45, 0.7);
+  });
   return k.build();
 }
 
@@ -1858,17 +2668,18 @@ function quonsetKit(k, m, snow, dk) {
   const X = Math.PI / 2;
   k.bounds(-2.8, -2.8, -4.75, 3.388, 3.2, 4.6); // 外框同原本
   // 半圓外殼＋拱肋＋屋頂積雪＋兩側基礎＋端牆（門、窗、通風口、燈）
-  k.geo(m, new THREE.CylinderGeometry(3, 3, 9, 14, 1, false, -X, Math.PI), 0, 0.2, 0, X, X, 0, 1, 1, 1.1);
+  // 外殼：半圓柱（軸沿 Z、只有地面以上的半圈；以前的角度讓它一半埋進地下）
+  k.geo(m, new THREE.CylinderGeometry(3, 3, 9, 20, 1, true, X, Math.PI), 0, 0.2, 0, X, 0, 0, 1, 1, 1.1);
   for (const z of [-3.3, -1.1, 1.1, 3.3])
     k.geo(dk, new THREE.TorusGeometry(3.02, 0.08, 3, 12, Math.PI), 0, 0.2, z, 0, 0, 0, 1, 1.1, 1);
   k.geo(
     snow,
-    new THREE.CylinderGeometry(3.08, 3.08, 8.6, 14, 1, false, -0.9, 1.8),
+    new THREE.CylinderGeometry(3.08, 3.08, 8.6, 20, 1, true, Math.PI - 0.9, 1.8),
     0,
     0.2,
     0,
     X,
-    X,
+    0,
     0,
     1,
     1,
@@ -1883,6 +2694,50 @@ function quonsetKit(k, m, snow, dk) {
   grille(k, dk, m, 1.0, 0.5, 3, 0, 2.75, -4.62);
   k.box(DETAIL.lamp, 0.4, 0.14, 0.18, 0, 2.35, -4.68);
   grille(k, dk, m, 1.2, 0.8, 4, 1.4, 1.6, 4.62);
+  // 小細節：外殼的波紋（沿弧的肋）、窗框、屋頂的排氣管與天線、端牆的配電箱與纜線、大門的鉸鏈與導軌、門前的積雪
+  k.fine(() => {
+    const Dt = DETAIL;
+    for (let z = -4.3; z <= 4.3; z += 0.55)
+      k.geo(m, new THREE.TorusGeometry(3.03, 0.03, 3, 14, Math.PI * 0.86), 0, 0.2, z, 0, 0, Math.PI * 0.07);
+    for (const s of [-1, 1]) {
+      K.bx(k, dk, 1.0, 0.65, 0.05, s * 1.8, 1.9, -4.6, 0, 0, 0, 0.01);
+      k.box(dk, 0.04, 0.55, 0.07, s * 1.8, 1.9, -4.63);
+    }
+    K.cy(k, dk, 0.12, 1.2, 1.2, 3.3, 1.5, 8);
+    K.lathe(
+      k,
+      dk,
+      [
+        [0, 0],
+        [0.22, 0],
+        [0.22, 0.05],
+        [0.12, 0.22],
+        [0, 0.22],
+      ],
+      1.2,
+      3.9,
+      1.5,
+      'y',
+      8,
+    );
+    K.cy(k, Dt.steel, 0.025, 1.6, -0.8, 3.8, -2.5, 6);
+    for (const s of [-1, 1]) for (const y of [0.4, 1.8]) K.cy(k, Dt.steel, 0.05, 0.2, s * 0.82, y, -4.78, 8);
+    k.box(Dt.steel, 1.9, 0.06, 0.08, 0, 2.27, -4.8);
+    K.bx(k, mat(0x6a7078), 0.5, 0.6, 0.18, -2.1, 1.0, -4.72, 0, 0, 0, 0.02);
+    K.pipe(
+      k,
+      Dt.dark,
+      [
+        [-2.1, 1.3, -4.7],
+        [-2.1, 2.6, -4.7],
+        [-2.6, 2.9, -4.7],
+      ],
+      0.03,
+      6,
+    );
+    k.box(Dt.yellow, 0.25, 0.25, 0.02, -2.1, 1.05, -4.82);
+    k.geo(snow, D.rock(9, 1, 0.12, 0.85, 0), 0, 0.02, -5.0, 0, 0, 0, 1.4, 0.25, 0.5);
+  });
 }
 // 冰塊（冰原的岩石）：幾塊稜角分明的半透明冰；原點在底面中心；GLB 以半徑 2.5 製作
 export function buildIceChunk(r) {
@@ -1930,6 +2785,32 @@ export function buildBeacon(h) {
     k.box(base, 0.05, 0.36, 0.05, Math.cos(a) * 0.3, h + 0.26, Math.sin(a) * 0.3);
   }
   k.cyl(base, 0.3, 0.36, 0.08, 0, h + 0.46, 0, 0, 0, 0, 8);
+  // 小細節：底座的螺栓圈、接線盒的百葉與把手、太陽能板與電池箱、避雷針、反光環、編號牌
+  k.fine(() => {
+    const Dt = DETAIL;
+    K.boltRing(k, Dt.steel, 0.32, 0.52, 8, 0.03);
+    K.vents(k, Dt.dark, base, 0.26, 0.18, 0, 1.5, 0.41, 0, 3);
+    K.handle(k, Dt.steel, 0.1, 0, 1.78, 0.41, 0, 0.03, 0.01);
+    k.at(0, h * 0.72, 0, 0, 0, 0, () => {
+      K.pipe(
+        k,
+        base,
+        [
+          [0.2, 0, 0],
+          [0.55, 0, 0],
+        ],
+        0.04,
+        6,
+      );
+      K.bx(k, base, 0.05, 0.7, 0.55, 0.62, 0.15, 0, 0, 0, -0.6, 0.01);
+      k.box(mat(0x1a2a44, { roughness: 0.2, metalness: 0.6 }), 0.02, 0.64, 0.5, 0.66, 0.17, 0, 0, 0, -0.6);
+      K.bx(k, base, 0.3, 0.4, 0.25, -0.33, -0.3, 0, 0, 0, 0, 0.03);
+    });
+    K.cy(k, Dt.steel, 0.02, 0.6, 0, h + 0.8, 0, 6);
+    for (let i = 1; i < 6; i += 2) K.cy(k, Dt.white, 0.225, 0.05, 0, (h / 6) * i, 0, 8);
+    k.box(Dt.white, 0.18, 0.24, 0.02, 0, 2.4, 0.23);
+    k.box(Dt.black, 0.12, 0.06, 0.02, 0, 2.42, 0.24);
+  });
   return k.build();
 }
 // 雷達天線：支架＋傾斜的碟形天線；原點在底面中心；GLB 以高約 15 m 製作（現實尺寸，照原樣使用）
@@ -1987,7 +2868,53 @@ function radarKit(k, m, dk) {
     k.bar(dk, [rc[0] + c, rc[1] + v[1] * s, rc[2] + v[2] * s], f, 0.07);
   }
   k.pipe(dk, f, at(1.1), 0.18, 6);
+  // 小細節：碟面的徑向肋與背後的桁架、饋源的喇叭口、旋轉座的齒環與馬達、機房的空調與纜線
+  k.fine(() => {
+    for (let i = 0; i < 8; i++) {
+      const p = (i / 8) * Math.PI * 2,
+        c = Math.cos(p) * rr,
+        s = Math.sin(p) * rr;
+      k.bar(dk, [rc[0] + c, rc[1] + v[1] * s, rc[2] + v[2] * s], hub, 0.06);
+    }
+    K.lathe(
+      k,
+      dk,
+      [
+        [0.1, 0],
+        [0.18, 0.05],
+        [0.32, 0.4],
+        [0.3, 0.42],
+        [0, 0.42],
+      ],
+      f[0],
+      f[1],
+      f[2],
+      'y',
+      10,
+      -0.63 + Math.PI / 2,
+      0,
+      0,
+    );
+  });
   k.tierN = 0;
+  k.cur = 0;
+  k.fine(() => {
+    k.geo(dk, D.gear(0.82, 36, 0.12), 0, 1.0, 0, 0, 0, Math.PI / 2);
+    K.bx(k, dk, 0.3, 0.35, 0.3, 0.65, 1.2, 0.3, 0, 0, 0, 0.03);
+    K.bx(k, m, 0.6, 0.5, 0.4, -0.7, 0.75, 1.32, 0, 0, 0, 0.04);
+    K.fins(k, dk, 5, 0.4, 0.4, 0.02, -0.7, 0.75, 1.53, 0, 0.02);
+    K.pipe(
+      k,
+      dk,
+      [
+        [0.5, 0.2, 1.2],
+        [0.5, 0.05, 1.5],
+        [0.9, 0.03, 1.9],
+      ],
+      0.04,
+      6,
+    );
+  });
 }
 // 舊時代觀測圓頂（大型，不可破壞）：圓形基座＋半球＋觀測縫＋天線；原點在地面中心；DOME_R＝基座半徑
 // 現實尺寸：舊模型放大 DOME_S 倍（基座直徑約 37 m 的雷達罩）；入口的人用門與走道欄杆照人的尺寸；GLB 以這個大小製作
@@ -2050,16 +2977,69 @@ function domeKit(k, color) {
   k.box(snow, 2.5, 0.2, 1.3, 0, 2.68, DOME_R + 0.2);
   k.cyl(dk, 0.12, 0.12, 6, DOME_R * 0.6, 3.5 + 6, 0, 0, 0, 0, 6);
   for (const y of [7.5, 10.5]) k.box(dk, 1.4, 0.06, 0.06, DOME_R * 0.6, y, 0);
+  // 小細節：圓頂的面板（緯線環）、基座壁柱之間的通風口與管線、入口的雨棚與燈、天線的饋源與避雷針、外牆的維修爬梯痕
+  k.fine(() => {
+    for (const t of [0.25, 0.5, 0.72, 0.9]) {
+      const a = t * (Math.PI / 2);
+      k.geo(
+        dk,
+        new THREE.TorusGeometry(R * Math.cos(a) + 0.03, 0.05, 3, 32),
+        0,
+        3.5 + R * Math.sin(a),
+        0,
+        Math.PI / 2,
+        0,
+        0,
+      );
+    }
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2 + 0.13 + Math.PI / 12;
+      k.at(Math.sin(a) * (DOME_R + 0.62), 0, Math.cos(a) * (DOME_R + 0.62), 0, a, 0, () => {
+        if (i % 3 === 0) K.vents(k, dk, base, 1.2, 0.8, 0, 2.2, 0, 0, 5);
+        if (i % 4 === 1)
+          K.pipe(
+            k,
+            dk,
+            [
+              [-0.4, 0.2, 0.05],
+              [-0.4, 3.2, 0.05],
+            ],
+            0.08,
+            6,
+          );
+      });
+    }
+    k.box(dk, 3.0, 0.12, 1.8, 0, 2.8, DOME_R + 0.6, -0.1, 0, 0);
+    K.lathe(
+      k,
+      dk,
+      [
+        [0.05, 0],
+        [0.18, 0.05],
+        [0.35, 0.35],
+        [0.33, 0.37],
+        [0, 0.37],
+      ],
+      DOME_R * 0.6,
+      12.6,
+      0,
+      'y',
+      10,
+    );
+    K.cy(k, DETAIL.red, 0.08, 0.15, DOME_R * 0.6, 13.1, 0, 8);
+    for (const y of [5.5, 8.5]) K.bx(k, dk, 0.3, 0.6, 0.15, DOME_R * 0.6 + 0.2, y, 0, 0, 0, 0, 0.02);
+  });
 }
 // 碎冰（純裝飾）：扁平的冰片；原點在地面中心；GLB 以 1.2 × 0.4 × 1 m 製作
 export function buildIceShard(w, h, d) {
   const glb = propGlb('ice_shard', { ref: [1.2, 0.4, 1], size: [w, h, d] });
   if (glb) return glb;
+  // 稜角分明的冰片（雜訊岩石的低細分：形狀依尺寸取 24 種之一）
   const m = new THREE.Mesh(
-    new THREE.OctahedronGeometry(0.5, 0),
-    mat(0xd6ecf6, { roughness: 0.2, metalness: 0.1 }),
+    D.rock(rockSeed(w * 3 + d), 1, 0.25, 0.75, 0),
+    vcMat(mat(0xd6ecf6, { roughness: 0.2, metalness: 0.1 })),
   );
-  m.scale.set(w, h, d);
+  m.scale.set(w * 0.5, h * 0.5, d * 0.5);
   m.position.y = h * 0.2;
   return m;
 }
