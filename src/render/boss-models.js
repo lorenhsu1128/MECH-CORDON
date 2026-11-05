@@ -19,6 +19,7 @@ import {
   mergeGeos,
   sideProfile,
 } from './geometry.js';
+import { greeble } from './greeble.js';
 import { mechMats } from './materials.js';
 import { tagStyle } from './style/shader.js';
 import { FOE_BUILDERS } from './foe-models.js';
@@ -200,6 +201,8 @@ function rigOf(root, torso, M, o) {
 let CUR_KEY = '';
 const BOSS_TINT = { ao: 0.8, grime: 0.25 };
 function finish(root, scale) {
+  // 表面細節（面板分割線、螺栓、補強環；docs/model-detail.md 第二輪第 5 期）：Boss 的預算 5 萬三角形
+  greeble(root, { k: scale, maxTris: 50000, maxFaces: 48 });
   bakeAll(root, { tint: BOSS_TINT, cache: CUR_KEY ? 'boss:' + CUR_KEY : null, k: scale });
   root.scale.setScalar(scale);
   root.traverse((o) => {

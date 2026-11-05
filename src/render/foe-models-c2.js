@@ -3,6 +3,7 @@
 // 會動的節點放在 extra（entities/mech-foe-c2.js 的 foeFx_c2 依 bossVis 驅動：待機／預警／攻擊），
 // dmg＝受損狀態（冒煙點、AP 低時脫落的裝甲板（獨立網格）、擊破時飛散的區塊群組）。
 import { P, bakeAll, decal, gBox, gCyl, gPod, gSph, kitCable } from './geometry.js';
+import { greeble } from './greeble.js';
 import { mechMats } from './materials.js';
 import { tagStyle } from './style/shader.js';
 import { PB, beam, crect, eye, front, piston, rod, side, slats, top, wheel } from './foe-models.js';
@@ -93,6 +94,7 @@ function rig(root, torso, M, o) {
 }
 const FOE_TINT = { ao: 0.8, grime: 0.28 };
 function finish(root, scale) {
+  greeble(root, { k: scale, maxTris: 8000, maxFaces: 28 }); // 表面細節（docs/model-detail.md 第二輪；冒煙測試的上限 1 萬）
   bakeAll(root, { tint: FOE_TINT, cache: true, k: scale }); // 精細版（docs/model-detail.md）
   root.scale.setScalar(scale);
   root.traverse((o) => {

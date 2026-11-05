@@ -4,6 +4,7 @@
 // rig.dmg＝受損與擊破的共用執行（冒煙點、AP 低時脫落的裝甲板（不合併的獨立網格）、擊破時拆開的區塊）。
 // 注意：foe-models.js 也 import 這個檔案（循環相依），所以這裡只能在函式裡用它的工具，不能在模組頂層呼叫。
 import { CB as CB0, P, bakeAll, decal, gBox, gCyl, gPlate, gPod, gSph, kitCable } from './geometry.js';
+import { greeble } from './greeble.js';
 import { beam, crect, eye, front, hazard, piston, rod, side, slats, track } from './foe-models.js';
 import { mechMats } from './materials.js';
 import { tagStyle } from './style/shader.js';
@@ -57,6 +58,7 @@ function base(pal) {
 }
 const FOE_TINT = { ao: 0.8, grime: 0.28 };
 function finish(root, scale) {
+  greeble(root, { k: scale, maxTris: 8000, maxFaces: 28 }); // 表面細節（docs/model-detail.md 第二輪；冒煙測試的上限 1 萬）
   bakeAll(root, { tint: FOE_TINT, cache: true, k: scale }); // 精細版（docs/model-detail.md）
   root.scale.setScalar(scale);
   root.traverse((o) => {

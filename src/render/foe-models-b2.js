@@ -16,6 +16,7 @@ import {
   kitBolts,
   kitCable,
 } from './geometry.js';
+import { greeble } from './greeble.js';
 import { mechMats } from './materials.js';
 import { tagStyle } from './style/shader.js';
 import { beam, crect, eye, hazard, piston, rod, side, slats, wheel } from './foe-models.js';
@@ -54,6 +55,7 @@ function base(pal) {
 }
 const FOE_TINT = { ao: 0.8, grime: 0.28 };
 function finish(root, scale) {
+  greeble(root, { k: scale, maxTris: 8000, maxFaces: 28 }); // 表面細節（docs/model-detail.md 第二輪；冒煙測試的上限 1 萬）
   bakeAll(root, { tint: FOE_TINT, cache: true, k: scale }); // 精細版（docs/model-detail.md）
   root.scale.setScalar(scale);
   root.traverse((o) => {

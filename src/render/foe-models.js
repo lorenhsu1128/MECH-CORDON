@@ -15,6 +15,7 @@ import {
   kitCable,
   sideProfile,
 } from './geometry.js';
+import { greeble } from './greeble.js';
 import { FOE_BUILDERS_b1, FOE_CATALOG_b1 } from './foe-models-b1.js';
 import { FOE_BUILDERS_C1, FOE_CATALOG_C1 } from './foe-models-c1.js';
 import { FOE_BUILDERS_C2, FOE_CATALOG_C2 } from './foe-models-c2.js';
@@ -193,6 +194,7 @@ function rig(root, torso, M, o) {
 }
 const FOE_TINT = { ao: 0.8, grime: 0.28 };
 function finish(root, scale) {
+  greeble(root, { k: scale, maxTris: 8000, maxFaces: 28 }); // 表面細節（docs/model-detail.md 第二輪；冒煙測試的上限 1 萬）
   bakeAll(root, { tint: FOE_TINT, cache: true, k: scale }); // 精細版（docs/model-detail.md）
   root.scale.setScalar(scale);
   root.traverse((o) => {

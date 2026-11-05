@@ -4,6 +4,7 @@
 // foeFx_b1 依 bossVis／bx 驅動（房主與客機都跑）。預警發光的材質（xWarn）每台各自一份，emissive 依招式漸強。
 // rig.dmg：冒煙點、AP 低時脫落的裝甲板（獨立網格，不被 bakeAll 合併）、擊破時拆開的區塊（chunks）。
 import { CB as CB0, P, bakeAll, decal, gBox, gCyl, gPod, gSph, kitCable } from './geometry.js';
+import { greeble } from './greeble.js';
 import {
   beam,
   crect,
@@ -68,6 +69,7 @@ function base(pal) {
 }
 const FOE_TINT = { ao: 0.8, grime: 0.28 };
 function finish(root, scale) {
+  greeble(root, { k: scale, maxTris: 8000, maxFaces: 28 }); // 表面細節（docs/model-detail.md 第二輪；冒煙測試的上限 1 萬）
   bakeAll(root, { tint: FOE_TINT, cache: true, k: scale }); // 精細版（docs/model-detail.md）
   root.scale.setScalar(scale);
   root.traverse((o) => {
