@@ -3221,7 +3221,7 @@ export const VARIANT_CATALOG = [
     () => buildFacilityGate(),
   ],
   [
-    'snow_wall',
+    'snow_blast_wall',
     '防爆牆',
     '冰原「前線基地」；現實的防爆牆，每段 19.6 m、高 4.8 m（半身掩體），可破壞',
     () => buildSnowWall(9.6),

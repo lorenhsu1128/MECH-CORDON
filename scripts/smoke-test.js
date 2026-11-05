@@ -1994,6 +1994,17 @@ async function testLibrary(browser, base) {
   await page.waitForSelector('.cell');
   const total = await page.$$eval('.cell', (x) => x.length);
   check(total >= 150, `列出所有模型槽（${total} 格）`);
+  // 槽位編號不能重複（重複時模型庫只看得到其中一個、GLB 會套到兩個物件上）
+  const dupIds = await page.evaluate(() => {
+    const seen = new Set(),
+      dup = [];
+    for (const e of window.__catalog || []) {
+      if (seen.has(e.id)) dup.push(e.id);
+      seen.add(e.id);
+    }
+    return dup;
+  });
+  check(dupIds.length === 0, `模型槽的編號不重複（${dupIds.join('、') || '無'}）`);
   const cols = await page.$eval('#grid', (g) => getComputedStyle(g).gridTemplateColumns.split(' ').length);
   check(cols === 3, `電腦版一行三格（${cols}）`);
   // 捲動到底讓每一格都建立模型

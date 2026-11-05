@@ -136,7 +136,7 @@ function rebarK(k, n, len, at, ob = true) {
 // 廢棄車輛：2 × 1.4 × 4.4（長沿 Z），原點在底面中心
 export const CAR = [2, 1.5, 4.4];
 export function buildWreckCar(color) {
-  const glb = propGlb('wreck_car', { color, fade: true });
+  const glb = propGlb('abandoned_car', { color, fade: true });
   if (glb) return glb;
   const m = fadeMat(color, { roughness: 0.8, metalness: 0.4 }),
     dk = fadeMat(0x22262a, { roughness: 0.9 });
@@ -773,7 +773,7 @@ export const FLOODED = {
       () => buildRuinTower(16, 24, 16, true, 7),
     ],
     [
-      'wreck_car',
+      'abandoned_car',
       '廢棄車輛',
       '汙染水沒市街的雜物；現實尺寸 2 × 1.5 × 4.4 m（長沿 Z），可破壞',
       () => buildWreckCar(0x7a3a2a),
