@@ -11,6 +11,7 @@ import { mechMats } from './materials.js';
 import { providedModel } from './model-provider.js';
 import { tagStyle } from './style/shader.js';
 import { vAntenna, vExhaust, vHatch, vJerry, vLamp, vLight, vRotorDisc, vTrack } from './vehicle-kit.js';
+import * as K from './dev-kit.js';
 
 const HP2 = Math.PI / 2;
 // 載具的頂點色烘焙（render/detail.js）：遮蔽與貼地的髒污比預設強一點
@@ -575,6 +576,7 @@ export function buildDrone(pal, scale = 1, key = 'swarm') {
     for (const s of [-1, 1]) P(torso, gCyl(0.025, 0.025, 0.4, 5), M.sub, s * 0.06, -0.26, -0.55, Math.PI / 2);
   }
   droneDetail(torso, M);
+  droneKind(torso, M, key, red);
   const hand = new THREE.Group();
   hand.position.set(0, 0, -0.8);
   torso.add(hand);
@@ -836,6 +838,180 @@ function heliFine(tor, rotor, M, red) {
   P(tor, D.cable([0, 1.85, 0.2], [0, 1.25, 4.6], 0.008, 0.05, 6), M.joint);
 }
 // 無人機：背上的面板與 GPS 天線罩、兩側的進氣口、感測器的萬向環、機腹的天線
+// 三種無人機各自的造型（docs/model-detail.md 第二輪第 4 期）：導彈無人機＝兩側的導彈掛架與機鼻下的感測器球塔；
+// 布雷無人機＝腹部的旋轉佈雷筒（六個雷槽）與兩側的貨艙；修理無人機＝有關節的機械臂（焊槍與夾爪）、背上的工具箱與綠色十字
+function droneKind(tor, M, key, red) {
+  const nav = (c) => K.mLamp(c, 1.4);
+  // 共用：兩側的進氣口格柵、尾翼端的航行燈（左紅右綠）、機腹的 RCS 噴嘴
+  for (const s of [-1, 1]) {
+    K.vents(tor, M.joint, M.sub, 0.18, 0.12, s * 0.27, 0.12, 0.05, s * HP2, 3);
+    K.cy(tor, nav(s < 0 ? 0xff3020 : 0x30ff60), 0.025, 0.03, s * 0.255, 0.1, 0.3, 6, 0, undefined, 0, 0, HP2);
+  }
+  fine(() => {
+    for (const [x, y] of [
+      [0.2, -0.18],
+      [-0.2, -0.18],
+    ])
+      K.cy(tor, M.joint, 0.03, 0.06, x, y, 0.42, 6, 0, undefined, HP2, 0, 0);
+    for (const z of [-0.3, 0.15])
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * Math.PI * 2;
+        K.cz(tor, M.gun, 0.012, 0.02, Math.cos(a) * 0.262, Math.sin(a) * 0.262, z, 4);
+      }
+  });
+  if (key === 'minelayer') {
+    // 佈雷筒：剖面旋轉的筒身＋六個雷槽（裡面的地雷）＋兩端的軸承＋警示斜紋；兩側的貨艙
+    K.lathe(
+      tor,
+      M.acc,
+      [
+        [0, -0.36],
+        [0.2, -0.36],
+        [0.22, -0.3],
+        [0.22, 0.3],
+        [0.2, 0.36],
+        [0, 0.36],
+      ],
+      0,
+      -0.36,
+      0.05,
+      'z',
+      12,
+    );
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      K.cz(tor, M.joint, 0.06, 0.62, Math.cos(a) * 0.17, -0.36 + Math.sin(a) * 0.17, 0.05, 8);
+      K.cy(
+        tor,
+        red,
+        0.035,
+        0.02,
+        Math.cos(a) * 0.17,
+        -0.36 + Math.sin(a) * 0.17,
+        -0.28,
+        6,
+        0,
+        undefined,
+        HP2,
+        0,
+        0,
+      );
+    }
+    for (const z of [-0.33, 0.43]) K.cz(tor, M.sub, 0.1, 0.06, 0, -0.36, z, 10);
+    K.hazard(tor, M.acc, M.joint, 0.4, 0.05, 0.02, 0, -0.14, -0.31, 0, 6);
+    for (const s of [-1, 1]) {
+      K.bx(tor, M.main2, 0.14, 0.18, 0.5, s * 0.36, -0.12, 0.05, 0, 0, 0, 0.02);
+      K.handle(tor, M.gun, 0.12, s * 0.44, -0.12, 0.05, s * HP2, 0.03, 0.008);
+    }
+  } else if (key === 'repair') {
+    // 機械臂：肩（球）→ 上臂 → 肘 → 前臂 → 工具（左＝焊槍、右＝三爪夾），液壓缸；背上的工具箱、綠色十字、天線碟
+    const green = K.mLamp(0x40ff80, 1.2);
+    for (const s of [-1, 1]) {
+      const sh = [s * 0.22, -0.18, -0.2],
+        el = [s * 0.3, -0.3, -0.55],
+        wr = [s * 0.18, -0.32, -0.72];
+      P(tor, gSph(0.06, 10), M.joint, ...sh);
+      P(tor, gSph(0.045, 10), M.joint, ...el);
+      K.piston(tor, M.sub, M.gun, [s * 0.18, -0.12, -0.25], [s * 0.28, -0.26, -0.5], 0.015);
+      if (s < 0) {
+        K.cz(tor, M.joint, 0.035, 0.14, wr[0], wr[1], wr[2] - 0.05, 8, 0, 0.025);
+        K.cz(tor, M.gun, 0.012, 0.08, wr[0], wr[1], wr[2] - 0.16, 6);
+        K.cy(tor, K.mLamp(0x80d0ff, 2), 0.02, 0.03, wr[0], wr[1], wr[2] - 0.21, 6, 0, undefined, HP2, 0, 0);
+      } else
+        for (let i = 0; i < 3; i++) {
+          const a = (i / 3) * Math.PI * 2;
+          K.rod(
+            tor,
+            M.gun,
+            wr,
+            [wr[0] + Math.cos(a) * 0.04, wr[1] + Math.sin(a) * 0.04, wr[2] - 0.12],
+            0.01,
+            5,
+          );
+        }
+    }
+    K.bx(tor, M.acc, 0.22, 0.1, 0.18, 0, 0.3, 0.12, 0, 0, 0, 0.015);
+    K.handle(tor, M.gun, 0.12, 0, 0.36, 0.12, HP2, 0.03, 0.008);
+    for (const [w, d] of [
+      [0.12, 0.035],
+      [0.035, 0.12],
+    ])
+      P(tor, D.box(w, 0.012, d, 0.003), green, 0, 0.275, -0.22);
+    K.lathe(
+      tor,
+      M.sub,
+      [
+        [0, 0],
+        [0.07, 0.01],
+        [0.08, 0.04],
+        [0, 0.045],
+      ],
+      0.12,
+      0.3,
+      -0.05,
+      'y',
+      10,
+      -0.5,
+      0,
+      0,
+    );
+  } else {
+    // 兩側的導彈掛架（各兩枚：剖面旋轉的彈體＋尾翼）、機鼻下的感測器球塔、雙管機槍的彈鏈
+    for (const s of [-1, 1]) {
+      K.bx(tor, M.joint, 0.06, 0.04, 0.4, s * 0.38, -0.05, -0.05, 0, 0, 0, 0.01);
+      for (const dy of [-0.06, 0.06]) {
+        K.lathe(
+          tor,
+          M.sub,
+          [
+            [0, -0.2],
+            [0.025, -0.19],
+            [0.03, -0.12],
+            [0.03, 0.14],
+            [0.015, 0.2],
+            [0, 0.21],
+          ],
+          s * 0.43,
+          -0.05 + dy,
+          -0.05,
+          'z',
+          8,
+          Math.PI,
+          0,
+          0,
+        );
+        K.cy(tor, red, 0.02, 0.005, s * 0.43, -0.05 + dy, -0.26, 6, 0, undefined, HP2, 0, 0);
+        for (let i = 0; i < 4; i++) {
+          const a = (i / 4) * Math.PI * 2;
+          P(
+            tor,
+            D.box(0.004, 0.035, 0.05, 0.001),
+            M.joint,
+            s * 0.43 + Math.cos(a) * 0.035,
+            -0.05 + dy + Math.sin(a) * 0.035,
+            0.1,
+            0,
+            0,
+            a,
+          );
+        }
+      }
+    }
+    P(tor, gSph(0.07, 12), M.joint, 0, -0.18, -0.55);
+    P(tor, D.box(0.05, 0.03, 0.02, 0.005), K.mLamp(0x60d0ff, 1.5), 0, -0.18, -0.62);
+    K.pipe(
+      tor,
+      M.gun,
+      [
+        [0.1, -0.22, -0.15],
+        [0.14, -0.2, -0.02],
+        [0.18, -0.12, 0.05],
+      ],
+      0.012,
+      4,
+    );
+  }
+}
 function droneDetail(tor, M) {
   // 機身的面板縫、尾部噴口的導流片、感測器的護框
   fine(() => {

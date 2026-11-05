@@ -1,11 +1,12 @@
 // 非機甲的小型模型（純函式，不使用亂數、不加入場景）：運輸貨車／列車、掉落物、轟炸機、彈體
 // 遊戲的本地模型庫可以用 GLB 取代（model-provider.js）：每節車廂、掉落物本體、轟炸機、彈體各自一個槽位
-import { CB, P, bakeAll, fine, gBox, gCyl, gPod, mergeGeos } from './geometry.js';
+import { CB, P, bakeAll, fine, gBox, gCyl, gPod, gSph, mergeGeos } from './geometry.js';
 import { D } from './detail.js';
 import { vExhaust, vLamp, vLight, vMirror, vRailWheel, vWheel } from './vehicle-kit.js';
 import { rod, side, slats, top } from './foe-models.js';
 import { providedModel } from './model-provider.js';
 import { tagStyle } from './style/shader.js';
+import * as K from './dev-kit.js';
 
 const HP = Math.PI / 2;
 // 運輸車輛的材質：每次建立各自一份（受擊閃光只改這一台）；燈的自發光記在 emis0，閃光後還原
@@ -796,6 +797,50 @@ export function buildBomberMesh() {
       for (const x of [2.0, 5.5, 9.0]) P(b, gBox(0.03, 0.02, 1.6), dk, s * x, 0.22, 1.2 + x * 0.12);
     P(b, D.box(0.06, 0.5, 0.4, 0.01), dk, 0, 1.45, -1.5);
     P(b, D.cyl(0.01, 0.01, 1.2, 4), dk, 0, -1.3, -2.0, 0.6);
+  });
+  // 第二輪精細化（docs/model-detail.md）：機鼻的空速管、座艙框、翼尖的航行燈（左紅右綠）與尾燈、副翼與襟翼的分割線、
+  // 進氣口裡的風扇葉片、尾部的機槍塔、起落架艙門、機背的天線與防撞燈、機身的編號
+  K.cz(b, dk, 0.03, 1.2, 0, 0.5, -7.5, 6);
+  for (const s of [-1, 1]) {
+    K.cy(
+      b,
+      K.mLamp(s < 0 ? 0xff3020 : 0x30ff60, 1.6),
+      0.08,
+      0.12,
+      s * 12,
+      0.06,
+      2.2,
+      8,
+      0,
+      undefined,
+      0,
+      0,
+      HP,
+    );
+    for (const x of [3.5, 7]) {
+      const z = (x - 3.5) * 0.25;
+      for (let i = 0; i < 10; i++)
+        P(b, D.box(0.04, 0.5, 0.12, 0.005), dk, s * x, -0.6, -0.85 + z, 0, 0, (i / 10) * Math.PI * 2 + 0.3);
+      K.cz(b, mm, 0.15, 0.3, s * x, -0.6, -0.8 + z, 10);
+    }
+  }
+  K.cy(b, K.mLamp(0xffffff, 1.4), 0.07, 0.1, 0, 0.9, 7.2, 8, 0, undefined, HP, 0, 0);
+  // 尾部的雙管機槍塔
+  P(b, gSph(0.4, 14), dk, 0, 0.3, 6.6);
+  for (const s of [-1, 1]) K.cz(b, dk, 0.04, 1.0, s * 0.1, 0.3, 7.3, 6);
+  fine(() => {
+    for (const s of [-1, 1]) {
+      for (const x of [4.5, 8.5])
+        P(b, D.box(3.0, 0.02, 0.03, 0.005), dk, s * x, 0.24, 2.3 + x * 0.06, 0, s * 0.18, 0);
+      for (const x of [2.5, 4.5, 6.5, 8.5, 10.5])
+        P(b, D.box(0.03, 0.02, 0.5, 0.005), dk, s * x, 0.24, 2.4 + x * 0.12);
+      for (let z = -4; z < 6; z += 1.4) P(b, D.box(0.02, 0.6, 0.02, 0.005), dk, s * 0.78, 0, z);
+      P(b, D.box(0.04, 0.5, 1.2, 0.01), dk, s * 0.55, -0.72, -1.8, 0, 0, s * 0.4);
+    }
+    for (const z of [-5.6, -5.2, -4.7]) K.cy(b, dk, 0.012, 0.6, 0, 1.2, z, 4, 0, undefined, 0.5, 0, 0);
+    K.cy(b, K.mLamp(0xff3020, 1.6), 0.06, 0.08, 0, 1.15, 1.0, 8);
+    K.cy(b, dk, 0.015, 0.8, 0.2, 1.4, 2.0, 4, 0, undefined, -0.4, 0, 0);
+    P(b, D.box(0.02, 0.4, 1.4, 0.005), K.mLamp(0xd8dce0, 0.1), 0.8, 0.2, 1.5);
   });
   bakeAll(b, { tint: { ao: 0.7, grime: 0, gh: 1 }, cache: 'bomber' });
   return tagStyle(bm);
