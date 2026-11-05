@@ -4,6 +4,7 @@
 // 材質分類（機甲／武器／載具＝1、其他＝0）用 WeakMap 記，不寫 userData（GLTFExporter 會把 userData 寫進 GLB）。
 
 import { fxStyle } from '../../fx/gpu.js';
+import { noteStyleVariant } from '../shader-warm.js';
 
 const CAT = new WeakMap();
 // 把 root 底下所有材質標成機體類（金屬只套用在這一類；描線的「地形描線」也以此分辨）
@@ -62,7 +63,27 @@ export const SU = {
   stCau: { value: null }, // 焦散貼圖（fx/water/caustics.js）
   stCauT: { value: null }, // 細的焦散花紋（可拼接，fx/water/caustics.js 的 causTex）
   stWd: V4(0, 0.05, 0, 0), // 焦散花紋：時間、每公尺幾張、強度
+  // 特效的點光（火光、閃光，fx/effects.js 的 lightTick 每格設定）：位置（世界座標）＋照亮的距離、顏色×亮度＋衰減。
+  // 不用 three.js 的 PointLight：每盞點光會讓風格著色器多展開一次完整的光照，編譯時間加倍（docs/perf-threejs-upgrade.md）
+  stFxP: { value: [0, 1, 2, 3].map(() => new THREE.Vector4(0, 0, 0, 1)) },
+  stFxC: { value: [0, 1, 2, 3].map(() => new THREE.Vector4(0, 0, 0, 2)) },
 };
+export const FX_LIGHTS = 4;
+// lights：最多 4 個 { position, color, intensity, distance, decay }（PointLight 或同樣欄位的物件）
+export function setFxLights(lights) {
+  for (let i = 0; i < FX_LIGHTS; i++) {
+    const L = lights && lights[i],
+      P = SU.stFxP.value[i],
+      C = SU.stFxC.value[i];
+    if (!L || !(L.intensity > 0) || !(L.distance > 0)) {
+      C.set(0, 0, 0, 2);
+      continue;
+    }
+    P.set(L.position.x, L.position.y, L.position.z, L.distance);
+    C.set(L.color.r * L.intensity, L.color.g * L.intensity, L.color.b * L.intensity, L.decay);
+  }
+}
+export const clearFxLights = () => setFxLights(null);
 SU.stCau.value = SU.stCauT.value = (() => {
   const t = new THREE.DataTexture(new Uint8Array(4), 1, 1, THREE.RGBAFormat);
   t.needsUpdate = true;
@@ -89,7 +110,8 @@ export function setStyleUniforms(P, k = 1) {
 const PARS = /* glsl */ `
 uniform vec4 stA, stB, stC, stD, stE, stM, stN, stF, stW, stWa, stWb, stWc, stWd;
 uniform sampler2D stCau, stCauT;
-uniform float stCat, stOpq, stAuth;
+uniform float stCat, stOpq, stAuth, stFlat;
+uniform vec4 stFxP[ 4 ], stFxC[ 4 ];
 #ifdef ST_DECAL
 uniform sampler2D stDecT, stDecW;
 uniform vec3 stSlot[ 4 ];
@@ -277,10 +299,47 @@ export function installStyleShader() {
     /directLight\.color \*= (all\( bvec2\( directLight\.visible, receiveShadow \) \) \? get\w+\([^;]*\) : 1\.0);/g,
     'stSh = ( $1 ); directLight.color *= mix( mix( 1.0, stSh, stN.w ), 1.0, stA.x );',
   );
+  // 特效的點光：只算漫射（照 three.js r128 非物理單位的點光：衰減＝(1－距離／範圍)^decay，漫射＝N·L×顏色×反照率），
+  // 色階風格時照一般光源的色階加進 stLit；沒有高光
+  const fxl = `
+for ( int i = 0; i < 4; i ++ ) {
+	vec4 stFc = stFxC[ i ];
+	if ( stFc.r + stFc.g + stFc.b > 0.0 ) {
+		vec3 stLv = ( viewMatrix * vec4( stFxP[ i ].xyz, 1.0 ) ).xyz - geometry.position;
+		float stLd = length( stLv );
+		float stAt = pow( saturate( 1.0 - stLd / stFxP[ i ].w ), stFc.w );
+		if ( stAt > 0.0 ) {
+			float stNl = dot( geometry.normal, stLv / max( stLd, 0.001 ) );
+			if ( stA.x < 0.5 ) reflectedLight.directDiffuse += saturate( stNl ) * stFc.rgb * stAt * material.diffuseColor;
+			else stLit += stFc.rgb * stAt * mix( stB.rgb, vec3( stN.z ), stBand( stNl * 0.5 + 0.5 ) );
+		}
+	}
+}
+`;
   const nmaps = C.normal_fragment_maps.replace('mapN.xy *= normalScale;', 'mapN.xy *= normalScale * stE.z;');
   const proto = THREE.MeshStandardMaterial.prototype;
+  // 平面著色改成每個材質的 uniform（stFlat），不再是編譯時的 FLAT_SHADED：平面與平滑共用同一個程式，
+  // 著色器的變體約少一半（每個變體在 Windows 上要編譯 0.2～0.4 秒，docs/perf-threejs-upgrade.md）。
+  // three.js 讀到的 flatShading 一律是 false，實際的值記在 _stFlat；畫面和原本的 FLAT_SHADED 相同（以導數算面法線）。
+  // 這裡之前就建好的材質（自己的 flatShading 欄位）照舊走 FLAT_SHADED
+  Object.defineProperty(proto, 'flatShading', {
+    configurable: true,
+    get() {
+      return false;
+    },
+    set(v) {
+      this._stFlat = !!v;
+    },
+  });
+  const copy0 = proto.copy;
+  proto.copy = function (src) {
+    copy0.call(this, src);
+    this._stFlat = src._stFlat !== undefined ? src._stFlat : !!src.flatShading;
+    return this;
+  };
   proto.onBeforeCompile = function (shader) {
     const mat = this;
+    noteStyleVariant(shader, mat); // 記下任務中第一次出現的變體，下次載入地圖時先編好（render/shader-warm.js）
     Object.assign(shader.uniforms, SU, {
       stCat: {
         get value() {
@@ -290,6 +349,11 @@ export function installStyleShader() {
       stAuth: {
         get value() {
           return mat.map && AUTH.has(mat.map) ? 1 : 0;
+        },
+      },
+      stFlat: {
+        get value() {
+          return mat._stFlat ? 1 : 0;
         },
       },
       stOpq: {
@@ -341,8 +405,20 @@ export function installStyleShader() {
     f = rep(f, '#include <map_fragment>', MAP);
     f = rep(f, '#include <color_fragment>', '#include <color_fragment>\n' + AFTER_COLOR);
     f = rep(f, '#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\n' + AFTER_METAL);
+    // 平面著色（stFlat）：同 three.js 的 FLAT_SHADED，以畫面上的導數算面法線
+    f = rep(
+      f,
+      '#include <normal_fragment_begin>',
+      `#include <normal_fragment_begin>
+if ( stFlat > 0.5 ) {
+	vec3 stFx = vec3( dFdx( vViewPosition.x ), dFdx( vViewPosition.y ), dFdx( vViewPosition.z ) );
+	vec3 stFy = vec3( dFdy( vViewPosition.x ), dFdy( vViewPosition.y ), dFdy( vViewPosition.z ) );
+	normal = normalize( cross( stFx, stFy ) );
+	geometryNormal = normal;
+}`,
+    );
     f = rep(f, '#include <normal_fragment_maps>', nmaps);
-    f = rep(f, '#include <lights_fragment_begin>', begin);
+    f = rep(f, '#include <lights_fragment_begin>', begin + fxl);
     f = rep(f, '#include <lights_fragment_maps>', '#include <lights_fragment_maps>\n' + AFTER_MAPS);
     f = rep(f, OUTGOING, OUTGOING + '\n' + TOON);
     f = rep(f, '#include <fog_fragment>', FOG);
@@ -355,6 +431,6 @@ export function installStyleShader() {
     shader.fragmentShader = f;
   };
   proto.customProgramCacheKey = function () {
-    return hasDecal(this) ? 'rubicon-style-1d' : 'rubicon-style-1';
+    return hasDecal(this) ? 'rubicon-style-2d' : 'rubicon-style-2';
   };
 }

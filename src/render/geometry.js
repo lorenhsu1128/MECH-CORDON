@@ -367,6 +367,8 @@ export const OUTLINE_SKIN = OUTLINE_MAT.clone();
 OUTLINE_SKIN.uniforms = OUTLINE_MAT.uniforms;
 OUTLINE_SKIN.skinning = true;
 export const isOutline = (m) => m === OUTLINE_MAT || m === OUTLINE_SKIN;
+// 共用的幾何（render/mech-model.js 的區塊快取等）：擊破碎片等用完時不要釋放（fx/effects.js 的 dispose）
+export const SHARED_GEO = new WeakSet();
 function bake(node, outline = true) {
   const prims = node.userData.prims;
   if (!prims) return;

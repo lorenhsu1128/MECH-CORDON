@@ -172,4 +172,25 @@
 
 ## 七、進度
 
-- 第 0 期：進行中。
+### 第 0 期（2026-11-05，完成）
+
+量測工具 `scripts/perf-probe.js`（說明在檔頭；`--learn` 帶入上一次記下的變體、`--gp` 記錄 getProgram 的原因、`--cpu` 取樣、`--compare` 比較）。做了：
+
+1. **光源版本抖動**（`render/style/pipeline.js` 的 `fxLights`）：軟粒子那一次算繪前，場景裡的光源也加進 `FX_LAYER`（每 60 格掃一次場景）。每格約 80 次的 `getProgram` 歸零。SSAO 的法線一律逐個網格換材質，`InstancedMesh` 另用 `instN`，蒙皮用 `skinN`。
+2. **火光與閃光不再是 three.js 的 PointLight**：`fx/effects.js` 的 4 盞（閃光 1＋火光 3）不加進場景，`lightTick` 以 `setFxLights` 寫進風格著色器的 `stFxP`／`stFxC`，著色器在 `lights_fragment_begin` 之後只算漫射（照 r128 非物理單位的衰減；色階風格照一般光源的色階加進 `stLit`；沒有高光）。實驗：風格材質一個變體的編譯 約 360 ms → 約 180 ms（每盞點光會讓風格光照多展開一次）。機甲庫與作戰室的畫面呼叫 `clearFxLights`。
+3. **平面著色改成 uniform**：`MeshStandardMaterial.prototype.flatShading` 改成存取子，three.js 讀到的一律是 false，實際的值在 `_stFlat`，著色器以 `stFlat` 在 `normal_fragment_begin` 之後用導數算面法線（和 `FLAT_SHADED` 相同）；`copy` 一併複製。任務中的風格程式約 20 種 → 約 16 種。
+4. **著色器預熱**（`game/render-setup.js` 的 `shaderWarm`）：新地圖第一次算繪前（出擊、主線換區段、自訂關卡、客機開局；關卡編輯器除外）以 `renderer.compile` 編好整個場景（含畫面外的）、後處理的各段與熱扭曲的場景（`StylePipeline.warm`）、SSAO 法線的兩個版本；render target 設成實際算繪的（程式的鍵含輸出編碼）；`material` 不是材質的物件（粒子批次的代理）略過。前一格先顯示「戰場準備中…」（`warmMsg`）。
+5. **學習式預熱**（`render/shader-warm.js`）：任務中第一次出現的風格著色器變體（程式參數：貼圖、頂點色、雙面、蒙皮、instancing…，不含光源與霧）記在 localStorage `rubicon_shader_warm`（最多 48 筆），下次預熱時以假網格一起編好。碎片、殘骸等用完就移除的東西，遇過一次之後就不會在戰鬥中卡住。
+6. **程式模型區塊的快取**（`render/mech-model.js` 的 `makeProcPiece`，只在遊戲裡開 `setPieceCache(true)`）：同一個區塊（零件＋配色＋重型核心）第一次建好後留作範本，之後複製；幾何共用並記在 `SHARED_GEO`（`fx.dispose`、`groundRef`、格納庫的掃描帶不釋放它），材質換成這台機甲自己的（mechMats 的對應、`red`），區塊自己建的材質每台複製一份，描邊共用。MT 的生成 約 50 ms → 約 11 ms。
+7. **運輸車輛先建模**（`game/map-extras.js` 的 `vehPrebuild`／`vehClear`、`Vehicle.model`）：預熱時先建好（隱藏、在場景裡，一起預熱），車輛開出時取用；先建好的列車固定 5 節（不動亂數）。
+8. **GC**：`World.collide` 回傳共用的陣列（呼叫端都立刻解構）；`updateOcclusion` 的射線重複使用、材質的目標不透明度記在材質上（`_occS`／`_occTo`，不再每格重建 Map），群組表只在遮擋物數量改變（或每 120 次）時重建；SSAO 法線的走訪回呼只建一次。
+
+**結果**（貨運集散場，修改前／後交替各量兩次）：任務中最長的卡頓 1.7 s、1.5 s、0.84 s 與多次 0.3 s → 約 0.10～0.15 s；超過 100 ms 的影格 7、10 → 2、4（含出擊第一格）；GC 回收 1750／2124 MB → 1544／1157 MB；軟粒子那一段佔主要算繪的比例 約 69% → 約 47%（每格的絕對時間受機器狀態影響太大，同一版兩次 p50 可差到 12～20 ms，不拿來比）。出擊時集中預熱 4～6 秒（修改前出擊也要 5～8 秒，之後戰鬥中再卡）。
+
+**還沒做、之後處理**：
+
+- 擊破時一格新增上百到上千個碎片幾何（上傳顯示卡，0.1～0.15 s）：碎片改用 instancing 或共用幾何。
+- 戰車、無人機、直升機、Boss 的模型（`buildVehicle`／`buildDrone`／`buildHeli`／`buildBossModel`）沒有快取，生成一台 30～100 ms。
+- 不會動的地圖物件 `matrixAutoUpdate = false`（破壞、倒塌時要重新打開，牽涉的程式多）。
+- 文字演出 `tfxTick` 偶爾一格 15～30 ms。
+- 出擊的預熱時間：風格著色器的編譯本身（原生標準材質的 3 倍）；r128 只能同步編譯，平行要等第 2 期的 `compileAsync`。

@@ -39,7 +39,7 @@ export class Vehicle {
     this.hitCd = {};
     this.flashT = 0;
     this.cars = kind === 'train' ? rndi(3, 5) + 1 : 1;
-    this.carLen = kind === 'train' ? 7.5 : 8;
+    this.carLen = Vehicle.carLenOf(kind);
     this.build();
     this.parts = [];
     for (let i = 0; i < this.cars; i++) {
@@ -64,19 +64,37 @@ export class Vehicle {
     }
   }
   build() {
-    const g = buildTransport(this.kind, this.cars, this.carLen);
-    this.mesh = g;
-    this.game.scene.add(g);
-    this.mats = [];
-    // 會受擊閃光的材質（GLB 可能有多重材質與描邊）
+    // 出擊時先建好的模型（Game.vehPrebuild）：建一台車要 0.1 秒左右，不在戰鬥中建（docs/perf-threejs-upgrade.md）
+    const pool = this.game.vehPool;
+    const i = pool ? pool.findIndex((p) => p.kind === this.kind) : -1;
+    let M;
+    if (i >= 0) {
+      M = pool.splice(i, 1)[0];
+      this.cars = M.cars;
+      M.g.visible = true;
+    } else {
+      M = Vehicle.model(this.kind, this.cars, this.carLen);
+      this.game.scene.add(M.g);
+    }
+    this.mesh = M.g;
+    this.mats = M.mats;
+    this.update(0);
+  }
+  // 車輛的模型與會受擊閃光的材質（GLB 可能有多重材質與描邊）；不加進場景
+  static model(kind, cars, carLen) {
+    const g = buildTransport(kind, cars, carLen);
+    const mats = [];
     g.traverse((o) => {
       if (!o.isMesh) return;
       for (const m of Array.isArray(o.material) ? o.material : [o.material])
-        if (m.emissive && !this.mats.includes(m)) this.mats.push(m);
+        if (m.emissive && !mats.includes(m)) mats.push(m);
     });
     // 依材質合併（車輪是骨頭，照樣轉動；render/mesh-merge.js），閃光改的是原本的材質（合併的複本每格同步）
     mergeRig({ group: g, wheels: g.wheels });
-    this.update(0);
+    return { kind, cars, g, mats };
+  }
+  static carLenOf(kind) {
+    return kind === 'train' ? 7.5 : 8;
   }
   carPos(i) {
     const w = this.game.world;

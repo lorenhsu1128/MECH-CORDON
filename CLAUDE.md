@@ -346,6 +346,9 @@ library/             模型庫：library.js（入口）、grid.js（共用畫布
 
 ## 架構陷阱
 
+- **著色器的編譯與預熱**（`docs/perf-threejs-upgrade.md`）：風格著色器在 Windows（ANGLE D3D11）上一個變體要 0.1～0.3 秒、整個畫面停住，所以新地圖第一次算繪前 `Game.shaderWarm` 以 `renderer.compile` 編好整個場景（前一格顯示「戰場準備中…」），任務中第一次出現的變體記在 localStorage `rubicon_shader_warm`（`render/shader-warm.js`），下次一起預熱。**不要在場景裡加 three.js 的點光源**（每盞讓風格光照多展開一次，編譯時間加倍）：短暫的補光用 `fx/effects.js` 的特效點光（`setFxLights`，風格著色器只算漫射）。`MeshStandardMaterial` 的 `flatShading` 是存取子（three.js 讀到的一律是 false、實際值在 `_stFlat`，著色器的 `stFlat` 算面法線），不要直接讀它判斷。軟粒子那一次算繪的光源也在 `FX_LAYER`（`pipeline.js` 的 `fxLights`），否則光源的版本每格改變、每個材質每格重新找程式。新增會在戰鬥中才出現的模型時，盡量在出擊時先建好（像 `vehPrebuild`）。量測用 `node scripts/perf-probe.js`。
+- **共用的幾何**：遊戲裡程式模型的機甲區塊有快取（`render/mech-model.js` 的 `makeProcPiece`，`setPieceCache(true)`，模型庫不開），幾何在各機甲之間共用並記在 `render/geometry.js` 的 `SHARED_GEO`；釋放幾何的地方（`fx.dispose` 等）要略過它，也不要直接改機甲區塊的幾何（會改到所有同零件的機甲）。`World.collide` 回傳共用的陣列，呼叫端要立刻解構、不要留著。
+
 - 多人連線是房主權威：邏輯只在房主執行，客機送輸入、收 30 Hz 快照。新增遊戲狀態時要同時處理 `net/snapshot.js` 的 `serEnt`／`applyEnt`、快照欄位（`game/mp-host.js` 的 `hostTick`、`game/mp-client.js` 的 `clientApplySnapshot`）、事件 `netEv`／`clientEvent`，以及房主遷移（`game/mp-host.js` 的 `promoteToHost`）。
 - 客機在任務中 3 秒沒收到房主訊息就判定房主失聯並遷移（`clientTick`）；本機卡住超過 1 秒（開局建地圖與模型、編譯著色器）或開局後第一次更新時重新起算，否則慢的電腦會誤判。
 - **過場動畫**（`game/cine.js`，設計 `docs/cinematics.md`）：`state` 'cine'，主迴圈在選單狀態之前呼叫 `cineTick`。演員是真正的 `MechEntity`（`e.cine`），所以和實驗室一樣要在會寫存檔的地方擋掉（`onEnemyKilled`／`onPlayerDead`／`senseOn`／`dropAmmo` 都看 `this.cine`）。渲染時 `renderMain` 用 `this.cine.P`（玩家的風格＋過場的調色＋景深 `dof`）。故事畫面有對應的過場時先播動畫，略過時改顯示文字畫面（`storyText`）；設定 `ctrl.cine`（'off' 改用文字畫面）。改 `CHAPTER_TEXT` 的台詞會一起改過場動畫的字幕。

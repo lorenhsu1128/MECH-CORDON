@@ -3111,7 +3111,11 @@ export class World {
       b = soft ? OOB_BUF : 0;
     x = clamp(x, Math.max(Z[0] - b, -this.limOut), Math.min(Z[1] + b, this.limOut));
     z = clamp(z, Math.max(Z[2] - b, -this.limOut), Math.min(Z[3] + b, this.limOut));
-    return [x, z];
+    // 回傳共用的陣列（每格呼叫很多次，不要每次配置；呼叫端一律立刻解構，不要留著它）
+    const out = this._col || (this._col = [0, 0]);
+    out[0] = x;
+    out[1] = z;
+    return out;
   }
   // 線段 a → b 碰到還在的可破壞物件（命中形狀加寬 pad）：點取樣的視線（rayClear／losClear）補上細的柱子與薄牆
   propBlocks(a, b, pad = 0) {
@@ -3338,27 +3342,41 @@ export class World {
   // 回傳有沒有物件擋住（給機體的透視輪廓用）
   updateOcclusion(camPos, playerPos, dt, pts) {
     this.updateBoundary(playerPos);
-    const rays = (pts || [playerPos]).map((p) => ({
-      ray: new THREE.Ray(camPos.clone(), p.clone().sub(camPos).normalize()),
-      dist: camPos.distanceTo(p),
-    }));
-    const tmp = new THREE.Vector3();
+    // 每格呼叫：射線物件、材質表重複使用，不每格配置（GC，docs/perf-threejs-upgrade.md）
+    const P = pts || [playerPos];
+    const rays = this._occR || (this._occR = []);
+    while (rays.length < P.length) rays.push({ ray: new THREE.Ray(), dist: 0 });
+    for (let i = 0; i < P.length; i++) {
+      const R = rays[i];
+      R.ray.origin.copy(camPos);
+      R.ray.direction.copy(P[i]).sub(camPos).normalize();
+      R.dist = camPos.distanceTo(P[i]);
+    }
+    const nR = P.length;
+    const tmp = this._occV || (this._occV = new THREE.Vector3());
     let any = false;
-    // 由這裡管理淡出的群組與材質（fadeMeshes 略過這些；其他半透明的由 fadeMeshes 處理）
+    // 由這裡管理淡出的群組與材質（fadeMeshes 略過這些；其他半透明的由 fadeMeshes 處理）：遮擋物的數量改變時才重建
     const og = this._occG || (this._occG = new Map());
-    og.clear();
-    const mt = this._occT || (this._occT = new Map());
-    mt.clear();
+    this._occK = (this._occK || 0) + 1;
+    if (this._occGN !== this.occluders.length || this._occK % 120 === 0) {
+      this._occGN = this.occluders.length;
+      og.clear();
+      for (const o of this.occluders) if (o.box && o.group && o.mats.length) og.set(o.group, o.mats);
+    }
+    // 每個材質的目標不透明度：記在材質上（這一格的戳記＋目標），同一個材質被好幾個物件共用時取最透明的
+    const stamp = (this._occS = (this._occS || 0) + 1);
+    const mats = this._occM || (this._occM = []);
+    mats.length = 0;
     for (const o of this.occluders) {
       if (!o.box) continue;
-      if (o.group && o.mats.length) og.set(o.group, o.mats);
       // 判定框：碰撞的方塊＋模型實際的外框（橋面上的結構、高出碰撞的部分擋住時也要淡出；fadeMeshes 不管這些群組）
       if (!o.fbox) {
         o.fbox = o.box.clone();
         if (o.group && o.group.parent) o.fbox.union(new THREE.Box3().setFromObject(o.group));
       }
       let hit = false;
-      for (const R of rays) {
+      for (let i = 0; i < nR; i++) {
+        const R = rays[i];
         const r = R.ray.intersectBox(o.fbox, tmp);
         if (r && r.distanceTo(camPos) < R.dist - MS) {
           hit = true;
@@ -3366,12 +3384,17 @@ export class World {
         }
       }
       if (hit) any = true;
-      // 同一個材質可能好幾個物件共用：取最透明的目標（擋住的那個優先）
+      // 擋住的那個優先
       const target = hit ? fadeTo(o.fbox) : 1;
-      for (const m of o.mats) if (!(mt.get(m) <= target)) mt.set(m, target);
+      for (const m of o.mats)
+        if (m._occS !== stamp) {
+          m._occS = stamp;
+          m._occTo = target;
+          mats.push(m);
+        } else if (target < m._occTo) m._occTo = target;
     }
-    for (const [m, target] of mt) {
-      m.opacity = lerp(m.opacity, target, Math.min(1, dt * 10));
+    for (const m of mats) {
+      m.opacity = lerp(m.opacity, m._occTo, Math.min(1, dt * 10));
       m.depthWrite = m.opacity > 0.9;
     }
     return any;

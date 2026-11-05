@@ -3,9 +3,10 @@
 // ============================================================
 import { SFX } from '../audio/audio.js';
 import { frand, frnd as rnd } from './rand.js';
-import { mergeGeos } from '../render/geometry.js';
+import { SHARED_GEO, mergeGeos } from '../render/geometry.js';
 import { FxBatch } from './batch.js';
 import { GpuFx } from './gpu.js';
+import { setFxLights, clearFxLights } from '../render/style/shader.js';
 import { FXC, FXG, pickCell, SOFT, LINE, BEAM, CRATER, RIM, RING } from './atlas.js';
 import { emitPreset } from './presets.js';
 import { beamColor } from './palette.js';
@@ -116,16 +117,14 @@ export class Effects {
     // k：裝飾性的大小與速度（閃光、火花、煙、衝擊環、光束寬、碎片）的倍率；參數照舊尺度傳，這裡乘上。
     // 和判定一致的範圍（預警圈、地面衝擊波、燃燒地面、能量環、斬擊半徑）是世界尺寸，不乘。Game 設定（setK）
     this.k = 1;
+    // 閃光與火光：不加進場景，由 lightTick 寫進風格著色器的特效點光（render/style/shader.js 的 setFxLights：
+    // 只算漫射，編譯與算繪都比 three.js 的點光源便宜，docs/perf-threejs-upgrade.md）
     this.light = new THREE.PointLight(0xffc070, 0, 26, 2);
-    scene.add(this.light);
     this.lightT = 0;
-    // 火光（第 8.2 期）：固定 FIRE_LIGHTS 盞點光源（數量固定，不會讓材質重新編譯），每格分給離鏡頭最近的火源（glow 登記）
+    // 火光（第 8.2 期）：固定 FIRE_LIGHTS 盞，每格分給離鏡頭最近的火源（glow 登記）
     this.fireLights = [];
-    for (let i = 0; i < FIRE_LIGHTS; i++) {
-      const L = new THREE.PointLight(0xff7a2a, 0, 12, 2);
-      scene.add(L);
-      this.fireLights.push(L);
-    }
+    for (let i = 0; i < FIRE_LIGHTS; i++) this.fireLights.push(new THREE.PointLight(0xff7a2a, 0, 12, 2));
+    this.fxLightList = [this.light, ...this.fireLights];
     this.glows = new Map();
     this.hitStop = 0;
     this.thruster = new ThrusterFx(scene); // 機甲推進器噴焰粒子
@@ -291,6 +290,7 @@ export class Effects {
       const fl = 0.82 + 0.12 * Math.sin(now * 17 + i * 2.1) + 0.08 * Math.sin(now * 41 + i * 5.3);
       L.intensity = s.I * 3.2 * fl;
     }
+    setFxLights(this.fxLightList);
   }
   // 一團火（第 8.2 期）：往上竄的火舌（直立的火焰貼圖，由白熱轉成橘紅）＋底部的光暈，偶爾火星與黑煙。
   // s：大小（1＝一般物件的火）；smoke：冒黑煙的機率。呼叫端決定頻率（約每秒 6～10 次）
@@ -2102,7 +2102,7 @@ export class Effects {
       (this.keepGeos = new Set([this.sphereGeo, this.boxGeo, this.chevGeo, this.ringGeo, this.discGeo]));
     mesh.traverse((o) => {
       if (o.material) o.material.dispose();
-      if (o.geometry && !keep.has(o.geometry)) o.geometry.dispose();
+      if (o.geometry && !keep.has(o.geometry) && !SHARED_GEO.has(o.geometry)) o.geometry.dispose();
     });
   }
   clear() {
@@ -2114,6 +2114,7 @@ export class Effects {
     this.light.intensity = 0;
     this.glows.clear();
     for (const L of this.fireLights) L.intensity = 0;
+    clearFxLights();
     this.heatT = -1;
     this.columns = 0;
     this.thruster.clear();

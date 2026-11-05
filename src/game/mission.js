@@ -922,6 +922,7 @@ Object.assign(Game.prototype, {
     this.fpShow();
     for (const v of this.vehicles || []) v.cleanup();
     this.vehicles = [];
+    this.vehClear(); // 先建好但還沒用到的車輛模型（map-extras.js）
     for (const p of this.pickups || []) p.remove();
     this.pickups = [];
     this.vehPlan = [];

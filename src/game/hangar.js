@@ -19,7 +19,7 @@ import {
 import { HA, loadHangarAssets } from '../render/hangar-assets.js';
 import { START_ASM } from '../data/parts.js';
 import { PLAYER_PALS } from '../net/transports.js';
-import { gBox, gCyl, isOutline } from '../render/geometry.js';
+import { SHARED_GEO, gBox, gCyl, isOutline } from '../render/geometry.js';
 import { PALETTES } from '../render/materials.js';
 import { animateMech, buildMech } from '../render/mech-model.js';
 import { Game } from './game.js';
@@ -724,7 +724,7 @@ Object.assign(Game.prototype, {
     this.garageScene.remove(S.old.group);
     this.garageScene.remove(S.band);
     S.band.traverse((o) => {
-      if (o.geometry) o.geometry.dispose();
+      if (o.geometry && !SHARED_GEO.has(o.geometry)) o.geometry.dispose();
       if (o.material) o.material.dispose();
     });
     SFX.noise(0.12, 900, 0.05, 'bandpass', 'ui', 2);

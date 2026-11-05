@@ -475,6 +475,8 @@ export class StylePipeline {
       // 蒙皮網格（render/foe-merge.js、mesh-merge.js）的法線也照動作：用蒙皮版的法線材質（renderNormals）
       this.skinN = this.ssao.normalMaterial.clone();
       this.skinN.skinning = true;
+      // InstancedMesh 另用一份（同一個材質在 InstancedMesh／一般網格之間切換時，three.js 每次都要重找程式）
+      this.instN = this.ssao.normalMaterial.clone();
       this.nHide = [];
       this.nList = [];
       this.nMats = [];
@@ -840,6 +842,17 @@ export class StylePipeline {
       FX_MESHES.size
     );
   }
+  // 第二次只看粒子圖層時，three.js 只收集圖層看得到的光源：光源不在粒子圖層上的話，這一次「沒有光源」，
+  // 光源的版本每格改兩次，每個受光的材質每格都要重新找程式（每格約 80 次、大量的記憶體配置，
+  // docs/perf-threejs-upgrade.md）。所以把場景裡的光源也加進粒子圖層（光源本身不畫東西，不影響畫面）；
+  // 每 60 格重新掃一次場景，新加的光源最多晚 60 格
+  fxLights(s) {
+    if (this.lightScene === s && this.lightN++ % 60) return;
+    this.lightScene = s;
+    this.lightN = 1;
+    if (!this.lightVisit) this.lightVisit = (o) => o.isLight && o.layers.enable(FX_LAYER);
+    s.traverse(this.lightVisit);
+  }
   // 粒子另外畫：第一次隱藏粒子，深度拷貝到 rtD，第二次鏡頭只看粒子的圖層（不清除、不畫背景、不更新陰影）
   renderSoft(s, cam) {
     const R = this.R,
@@ -866,6 +879,7 @@ export class StylePipeline {
     FXU.uSoftOn.value = 1;
     FXU.uRes.value.set(this.w, this.h);
     FXU.uFar.value = cam.far;
+    this.fxLights(s);
     const mask = cam.layers.mask,
       ac = R.autoClear,
       bg = s.background,
@@ -896,45 +910,62 @@ export class StylePipeline {
     const hide = this.nHide,
       list = this.nList,
       mats = this.nMats;
-    let skin = false;
-    s.traverseVisible((o) => {
-      if (o.isPoints || o.isLine || o.userData.noAO)
-        hide.push(o); // noAO：貼地的半透明標示（作戰區域的邊界線）
-      else if (o.material && (o.isMesh || o.isSprite)) {
-        if (o.isMesh && isOutline(o.material)) hide.push(o);
-        else {
-          list.push(o);
-          if (o.isSkinnedMesh) skin = true;
+    // 走訪的回呼只建一次（每格新建閉包是 GC 的來源之一，docs/perf-threejs-upgrade.md）
+    if (!this.nVisit)
+      this.nVisit = (o) => {
+        if (o.isPoints || o.isLine || o.userData.noAO)
+          this.nHide.push(o); // noAO：貼地的半透明標示（作戰區域的邊界線）
+        else if (o.material && (o.isMesh || o.isSprite)) {
+          if (o.isMesh && isOutline(o.material)) this.nHide.push(o);
+          else this.nList.push(o);
         }
-      }
-    });
+      };
+    s.traverseVisible(this.nVisit);
     for (const o of hide) o.visible = false;
-    if (skin)
-      for (const o of list) {
-        mats.push(o.material);
-        o.material = o.isSkinnedMesh ? this.skinN : mat;
-      }
+    // 一律逐個網格換材質（蒙皮、InstancedMesh、一般各一份）：用同一個覆蓋材質畫的話，
+    // InstancedMesh 與一般網格交替時 three.js 每次都重新找程式
+    const skinN = this.skinN,
+      instN = this.instN;
+    for (const o of list) {
+      mats.push(o.material);
+      o.material = o.isSkinnedMesh ? skinN : o.isInstancedMesh ? instN : mat;
+    }
     const oc = R.getClearColor(this.tmpC || (this.tmpC = new THREE.Color())),
       oa = R.getClearAlpha(),
-      ac = R.autoClear,
-      ov = s.overrideMaterial;
+      ac = R.autoClear;
     try {
       R.setRenderTarget(S.normalRenderTarget);
       R.autoClear = false;
       R.setClearColor(0x7777ff);
       R.setClearAlpha(1);
       R.clear();
-      if (!skin) s.overrideMaterial = mat;
       R.render(s, this.camera);
     } finally {
-      s.overrideMaterial = ov;
       R.autoClear = ac;
       R.setClearColor(oc);
       R.setClearAlpha(oa);
       for (const o of hide) o.visible = true;
-      if (skin) for (let i = 0; i < list.length; i++) list[i].material = mats[i];
+      for (let i = 0; i < list.length; i++) list[i].material = mats[i];
       hide.length = list.length = mats.length = 0;
     }
+  }
+  // 著色器預熱（Game.shaderWarm）：後處理的各段（熱扭曲、光束、景深…只在需要時才畫，第一次畫時才編譯）與熱扭曲的場景
+  warm() {
+    const R = this.R;
+    const s = new THREE.Scene();
+    const qs = [];
+    for (const k in this) {
+      const q = this[k];
+      if (q && q.mesh && q.m && q.m.isShaderMaterial && q.mesh.isMesh) qs.push(q.mesh);
+    }
+    for (const m of qs) s.children.push(m); // 只走訪，不改它們的 parent（draw 會放進 qScene）
+    try {
+      R.compile(s, this.cam2);
+    } finally {
+      s.children.length = 0;
+    }
+    const H = this.ctx.heat && this.ctx.heat();
+    if (H && H.scene) R.compile(H.scene, this.camera);
   }
   draw(q, target) {
     this.qScene.children.length = 0;

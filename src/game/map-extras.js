@@ -22,6 +22,27 @@ Object.assign(Game.prototype, {
       t += rnd(35, 70);
     }
   },
+  // 運輸車輛的模型先建好（隱藏、在場景裡，讓著色器預熱也編到它們；Vehicle.build 取用）：
+  // 新地圖第一次算繪前（Game.shaderWarm）呼叫。客機照房主的事件建車輛，也先建好
+  vehPrebuild() {
+    this.vehClear();
+    const c = this.world && this.world.corridor;
+    if (!c) return;
+    const client = this.net && this.net.role === 'client';
+    const n = client ? 2 : Math.min(2, this.vehPlan.length);
+    const kind = c.kind === 'rail' ? 'train' : 'truck';
+    for (let i = 0; i < n; i++) {
+      // 列車的節數（Vehicle 的 rndi(3, 5)+1）：先建好的固定 5 節，不動亂數
+      const M = Vehicle.model(kind, kind === 'train' ? 5 : 1, Vehicle.carLenOf(kind));
+      M.g.visible = false;
+      this.scene.add(M.g);
+      this.vehPool.push(M);
+    }
+  },
+  vehClear() {
+    for (const M of this.vehPool || []) this.scene.remove(M.g);
+    this.vehPool = [];
+  },
   // team：攻擊者的隊伍（有給時另外加上它打得到的投射物，game/hazards2.js）
   destructibles(team) {
     const out = [];

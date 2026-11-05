@@ -6,6 +6,8 @@ import {
   CB,
   OUTLINE_MAT,
   P,
+  SHARED_GEO,
+  isOutline,
   bakeAll,
   decal,
   gBox,
@@ -997,6 +999,7 @@ function coreClass(p) {
 function pieceCtx(pal, asm) {
   const p = asmParts(asm || START_ASM);
   return {
+    pal: pal && typeof pal === 'object' ? pal : null, // 區塊快取的鍵（makeProcPiece）
     M: mechMats(pal),
     red: new THREE.MeshStandardMaterial({
       color: 0xff3a2a,
@@ -2016,7 +2019,51 @@ function waistPost(g, M, y0, y1) {
   P(g, gPlate(trap(0.6, 0.5, 0.6), 0.08, 0.02), M.sub, 0, y1 - 0.08, 0, Math.PI / 2);
 }
 
+// 程式模型區塊的快取（docs/perf-threejs-upgrade.md）：建一個區塊要合併、變形、烘焙頂點色，一台機甲約 20～30 ms，
+// 增援出現時整台建一次就會卡一下。同樣的區塊（零件＋配色＋重型核心）第一次建好後留作範本，之後複製：
+// 幾何共用（記在 SHARED_GEO，擊破碎片不釋放），材質換成這台機甲自己的（受擊閃光各自改），
+// 不是 mechMats 的材質（區塊自己建的）每台複製一份，描邊外殼照舊共用
+const PIECE_TPL = new WeakMap(); // pal → Map(鍵 → { g, ctx })
+// 只在遊戲裡開（Game 建立時呼叫）；模型庫、GLB 編輯器會改程式模型的幾何，照舊每次重建
+let PIECE_CACHE = false;
+export const setPieceCache = (on) => (PIECE_CACHE = !!on);
+function pieceKey(info, ctx) {
+  return JSON.stringify(info, (k, v) => (k === 'part' && v ? v.id : v)) + (ctx.heavy ? '|h' : '');
+}
+function clonePiece(tpl, ctx) {
+  const g = tpl.g.clone();
+  const map = new Map();
+  for (const k in tpl.ctx.M) map.set(tpl.ctx.M[k], ctx.M[k]);
+  map.set(tpl.ctx.red, ctx.red);
+  const one = (m) => {
+    if (!m || isOutline(m)) return m;
+    let r = map.get(m);
+    if (!r) map.set(m, (r = m.clone()));
+    return r;
+  };
+  g.traverse((o) => {
+    if (o.material) o.material = Array.isArray(o.material) ? o.material.map(one) : one(o.material);
+  });
+  return g;
+}
 function makeProcPiece(info, ctx) {
+  const pal = PIECE_CACHE ? ctx.pal : null;
+  let byPal = pal && PIECE_TPL.get(pal);
+  const key = pal ? pieceKey(info, ctx) : null;
+  const tpl = byPal && byPal.get(key);
+  if (tpl) return clonePiece(tpl, ctx);
+  const g = makeProcPiece0(info, ctx);
+  if (key) {
+    if (!byPal) PIECE_TPL.set(pal, (byPal = new Map()));
+    g.traverse((o) => {
+      if (o.geometry) SHARED_GEO.add(o.geometry);
+    });
+    byPal.set(key, { g, ctx });
+    return clonePiece(byPal.get(key), ctx);
+  }
+  return g;
+}
+function makeProcPiece0(info, ctx) {
   const g = new THREE.Group();
   (BUILD[info.kind] || (() => {}))(g, info, ctx);
   // 變形到內建預設機甲的外框（先合併成網格；區塊本身維持單位變換，換成 GLB、拖曳原點等都以區塊本身為準）
@@ -2359,7 +2406,7 @@ function groundRef(legs, pal) {
     const g = ref.ground;
     GROUND_REF.set(legs, lowestY(g.infos.map((i) => ref.pieces[i.slot]).filter(Boolean), ref.lift));
     ref.group.traverse((o) => {
-      if (o.geometry) o.geometry.dispose();
+      if (o.geometry && !SHARED_GEO.has(o.geometry)) o.geometry.dispose(); // 區塊快取的幾何是共用的
     });
   }
   return GROUND_REF.get(legs);

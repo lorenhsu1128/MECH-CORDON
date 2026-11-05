@@ -9,6 +9,8 @@ import { FOE_HR, MELEE_HR } from '../data/hit-react.js';
 import { FOES } from '../data/foes.js';
 import { REACT_T, meleeAll, meleeReactOf } from '../data/melee.js';
 import { Effects } from '../fx/effects.js';
+import { clearFxLights } from '../render/style/shader.js';
+import { setPieceCache } from '../render/mech-model.js';
 import { targetDist } from '../world/prop-hit.js';
 import { loadLevel } from '../level/known.js';
 
@@ -66,6 +68,7 @@ export class Game {
     this.scene.add(this.sun.target);
     this.setupEnvironment();
     this.setupPost();
+    setPieceCache(true); // 程式模型區塊的快取（render/mech-model.js）：增援生成時不用每台重建
     this.fx = new Effects(this.scene);
     this.fx.setK(DS); // 特效的大小倍率
     // 砲火特效（設定 ctrl.fxLv：rich 華麗（預設）／std 標準＝改版前）與彈殼、焦痕用的地面高度（只看地形，便宜）
@@ -453,6 +456,7 @@ export class Game {
       return;
     }
     if (this.state === 'garage') {
+      clearFxLights(); // 特效的點光是全域的 uniform：任務場景以外的場景不要照到（render/style/shader.js）
       this.hangarTick(dt, now / 1000); // 格納庫：機體、場景、鏡頭、換裝（game/hangar.js）
       const w = innerWidth,
         h = innerHeight;
@@ -465,6 +469,7 @@ export class Game {
     }
     // 作戰室與簡報：指揮室場景與全像戰略桌（game/hub-holo.js，docs/hub-ui.md）
     if (this.state === 'hub' || this.state === 'brief') {
+      clearFxLights();
       this.hubTick(dt, now / 1000);
       this.hctx.clearRect(0, 0, innerWidth, innerHeight);
       return;

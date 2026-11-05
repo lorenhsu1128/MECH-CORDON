@@ -6,6 +6,7 @@ import { installStyleShader } from '../render/style/shader.js';
 import { StyleStore } from '../render/style/store.js';
 import { DS } from '../core/scale.js';
 import { Game } from './game.js';
+import { WARM, saveWarm, warmGroup } from '../render/shader-warm.js';
 
 installStyleShader(); // 越早越好：之後建立的標準材質都會用風格著色器
 
@@ -74,6 +75,26 @@ Object.assign(Game.prototype, {
     const lab = this.lab;
     const P = lab ? lab.P : this.cine ? this.cine.P : this.styleP; // 過場動畫：風格＋過場的調色（game/cine.js）
     const t = performance.now() / 1000;
+    // 新地圖：整個場景的著色器先編好（要好幾秒）。第一格只顯示「準備中」並讓瀏覽器畫出來，下一格才預熱
+    // 關卡編輯器（挑底圖時一直重建地圖）不預熱，照 three.js 原本的第一次畫到才編譯
+    if (this.world && this.warmWorld !== this.world && this.state !== 'editor') {
+      if (this.warmNote !== this.world) {
+        this.warmNote = this.world;
+        this.warmMsg(true);
+        return;
+      }
+      this.shaderWarm();
+      this.warmMsg(false);
+    }
+    if ((this.frames & 511) === 0) saveWarm();
+    WARM.rec = !!this.world; // 這段期間新編的風格著色器變體記下來（render/shader-warm.js）
+    try {
+      this.renderMainInner(lab, P, t);
+    } finally {
+      WARM.rec = false;
+    }
+  },
+  renderMainInner(lab, P, t) {
     if (this.fx) this.fx.flush(); // 粒子批次：fx.update 之後才產生的粒子也寫進去（fx/batch.js）
     if (this.bfVis) this.bfVis(this.lastDt || 0.016); // Boss 改版的場地效果（boss-field.js）
     fineTick(this.camera, 1); // 小細節的距離分級（render/detail.js）
@@ -86,6 +107,56 @@ Object.assign(Game.prototype, {
     if (this.post.enabled && this.post.ok) this.stylePipe.render(P, t, lab && lab.cmp ? lab.cmpArg() : null);
     else this.stylePipe.renderPlain(P, t);
     this.waterAfter();
+  },
+  // 著色器預熱（docs/perf-threejs-upgrade.md）：three.js 要等網格第一次畫到才編譯它的著色器（一個 0.1～0.4 秒、畫面停住），
+  // 畫面外的敵人、地圖物件會在戰鬥中第一次轉過去時才編。新地圖第一次算繪前（出擊、主線換區段、自訂關卡、客機開局）
+  // 以 renderer.compile 把整個場景（含畫面外的）一次編好。render target 要和實際算繪的相同（程式的鍵含輸出的編碼）
+  shaderWarm(root) {
+    this.warmWorld = this.world;
+    if (!root && this.vehPrebuild) this.vehPrebuild(); // 運輸車輛的模型先建好（也一起預熱）
+    const R = this.renderer,
+      cam = this.camera;
+    if (!R || !cam) return;
+    const pipe = this.post.enabled && this.post.ok && this.stylePipe;
+    const rt0 = R.getRenderTarget();
+    try {
+      R.setRenderTarget(pipe ? pipe.rtScene : null);
+      // 光源、霧、環境貼圖照主場景（程式的鍵含光源的數量），材質只走訪 root（沒給時整個場景）；
+      // 略過 material 不是材質的物件（粒子批次的代理 fx/batch.js 也有 material 欄位）
+      // 沒給 root 時：整個場景＋以前在任務中遇過的變體（假網格）＋SSAO 法線的蒙皮版與 InstancedMesh 版
+      const extra = root ? null : warmGroup(pipe && pipe.ssao ? [pipe.skinN, pipe.instN] : []);
+      if (extra) this.scene.add(extra);
+      const r = root || this.scene;
+      const ok = (m) => (Array.isArray(m) ? m.every((x) => x && x.isMaterial) : m.isMaterial);
+      const fake = Object.create(this.scene);
+      fake.traverse = (cb) =>
+        r.traverse((o) => {
+          if (!o.material || ((o.isMesh || o.isPoints || o.isLine || o.isSprite) && ok(o.material))) cb(o);
+        });
+      try {
+        R.compile(fake, cam);
+        if (!root && pipe) pipe.warm(); // 後處理的各段與熱扭曲的場景
+      } finally {
+        if (extra) this.scene.remove(extra);
+      }
+    } finally {
+      R.setRenderTarget(rt0);
+    }
+  },
+  // 預熱時的提示（畫面中央）；自動化測試照樣顯示，不影響判定
+  warmMsg(on) {
+    let el = document.getElementById('warmMsg');
+    if (!el && on) {
+      el = document.createElement('div');
+      el.id = 'warmMsg';
+      el.textContent = '戰場準備中…';
+      el.style.cssText =
+        'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:60;pointer-events:none;' +
+        'padding:10px 22px;background:rgba(8,12,18,0.82);border:1px solid rgba(126,224,129,0.5);color:#bfe9c0;' +
+        'font:15px/1.4 sans-serif;letter-spacing:0.15em';
+      document.body.appendChild(el);
+    }
+    if (el) el.style.display = on ? '' : 'none';
   },
   // 低特效（大量單位的場面用）：o＝{ ssao: 'off'｜'half'｜'full', mblur: 布林 }，null＝恢復
   setLowFx(o) {
