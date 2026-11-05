@@ -5590,6 +5590,7 @@ async function testDevices(browser, base) {
     const g = window.__game;
     const d = g.devs.find((o) => o.kind === 'recharge');
     const p = g.player;
+    g.ctrl.pace = 0.85; // 回復量的範圍以 85% 的遊戲節奏算（預設改成 75% 之前的值）
     p.maxHp = 10000;
     p.hp = 4000;
     p.en = 0;
@@ -6496,8 +6497,8 @@ async function testSettingsLive(browser, base) {
     `鏡頭距離「遠」回到遊戲就拉遠（倍率 ${b.base.toFixed(2)} → ${a.base.toFixed(2)}，鏡頭 ${a.zoom.toFixed(2)}）`,
   );
   check(
-    Math.abs(a.dt - 1 / 60) < 1e-4 && Math.abs(b.dt - 0.85 / 60) < 1e-4,
-    `遊戲節奏 85% → 100% 立即生效（每格 ${(b.dt * 60).toFixed(2)} → ${(a.dt * 60).toFixed(2)}）`,
+    Math.abs(a.dt - 1 / 60) < 1e-4 && Math.abs(b.dt - 0.75 / 60) < 1e-4,
+    `遊戲節奏 75% → 100% 立即生效（每格 ${(b.dt * 60).toFixed(2)} → ${(a.dt * 60).toFixed(2)}）`,
   );
   check(
     a.water === 'high' && a.rich === false && a.tfx === 'simple' && Math.abs(a.pr / b.pr - 0.7) < 0.02,
@@ -24534,7 +24535,7 @@ async function testMpStatus(browser, url) {
     cli.evaluate(() => window.__game.hostPace),
   ]);
   check(pc[0] === pc[1] && pc[1] !== pc0, `房主任務中改遊戲節奏，客機跟著換（${pc0} → ${pc[1]}）`);
-  await host.evaluate(() => (window.__game.ctrl.pace = 0.85));
+  await host.evaluate(() => (window.__game.ctrl.pace = 0.75));
   await pump(5);
   // 房主：敵人停住、放在客機旁邊，把客機的機體鉤住
   await host.evaluate(() => {
@@ -26157,6 +26158,7 @@ async function testDestruct(browser, base) {
     G.save.level = 1;
     localStorage.setItem('rubicon_map', 'industrial');
     localStorage.setItem('rubicon_variant', 'base');
+    G.ctrl.destruct = 'normal'; // 檢查可破壞模式的數值（預設是易破壞）
     G.startMission();
   });
   check(await waitVisible(page, 'hudWrap', 20000), '破壞：出擊');
@@ -26464,6 +26466,7 @@ async function testDestructCollapse(browser, base) {
       G.save.level = 1;
       localStorage.setItem('rubicon_map', map);
       localStorage.setItem('rubicon_variant', 'base');
+      G.ctrl.destruct = 'normal'; // 檢查可破壞模式的數值（預設是易破壞）
       G.startMission();
     }, map);
     check(await waitVisible(page, 'hudWrap', 20000), `倒塌（${map}）：出擊`);
@@ -26611,6 +26614,7 @@ async function testDestructSegs(browser, base) {
       G.save.level = 1;
       localStorage.setItem('rubicon_map', map);
       localStorage.setItem('rubicon_variant', 'base');
+      G.ctrl.destruct = 'normal'; // 檢查可破壞模式的數值（預設是易破壞）
       G.startMission();
     }, map);
     check(await waitVisible(page, 'hudWrap', 20000), `局部打穿（${map}）：出擊`);
@@ -26671,7 +26675,7 @@ async function testDestructSegs(browser, base) {
         const shared = t.sup.filter((q) => q.ofs.length > 1).length;
         out.shared = shared;
         kill(t);
-        window.__pump(3);
+        window.__pump(8, () => t.collapsed && t.landed); // 推進到落地（遊戲節奏小於 1 時要比較久）
         out.drop = t.collapsed && t.landed && !w.obstacles.includes(t.ob) && t.wreck.top < top - 3;
         out.pillars = t.sup.filter((q) => q.ofs.length > 1).every((q) => !q.dead); // 旁邊的格子的支柱還在
       } else if (map === 'institute') {

@@ -152,7 +152,7 @@ export function propCrushable(p, easy) {
   if (CRUSH.has(p.kind)) return true;
   return sh.y1 - sh.y0 <= (easy ? 4 : 2.6) && Math.max(sh.x1 - sh.x0, sh.z1 - sh.z0) <= 14;
 }
-// 設定「地圖物件的破壞」（ctrl.destruct；多人時以房主的為準）：easy 易破壞、normal 可破壞（預設）、off 不可破壞
+// 設定「地圖物件的破壞」（ctrl.destruct；多人時以房主的為準）：easy 易破壞（預設）、normal 可破壞、off 不可破壞
 //   easy：傷害 ×4、材質倍率最低 0.8、高 4 m 以下的踩得平、承重的壞一半就倒
 //   off：只有改版前就打得壞的物件（p.legacy）可以打壞，沒有受損階段與殘骸；不踩平、不倒塌、岩頂不開洞
 export const DESTRUCT = {

@@ -52,10 +52,16 @@ Object.assign(Game.prototype, {
           autoFire: false,
           view: 'tps',
           sens: 1,
-          pace: 0.85,
+          pace: 0.75,
         },
         o || {},
       );
+      // 遊戲節奏改成四段（2026-11-05：慢 65／標準 75／快 85／超快 100%）：舊的預設 85% 換成新的預設、舊的慢 70% 換成 65%
+      if (!this.ctrl.paceV) {
+        if (this.ctrl.pace === 0.85) this.ctrl.pace = 0.75;
+        else if (this.ctrl.pace === 0.7) this.ctrl.pace = 0.65;
+        this.ctrl.paceV = 2;
+      }
       const pm = JSON.parse(localStorage.getItem('rubicon_pad') || 'null');
       this.padmap = Object.assign(this.defaultPad(), pm || {});
       SFX.setVol(this.ctrl.vol); // 音量（設定的「聲音」）
@@ -947,7 +953,7 @@ Object.assign(Game.prototype, {
     for (const ev of ['pointerup', 'pointercancel', 'pointerleave'])
       cs.addEventListener(ev, () => this.cinePointer(false));
     document.getElementById('ctrlPace').onchange = (e) => {
-      this.ctrl.pace = parseFloat(e.target.value) || 0.85;
+      this.ctrl.pace = parseFloat(e.target.value) || 0.75;
       this.saveKeys();
     };
     addEventListener('keydown', (e) => {

@@ -64,8 +64,8 @@ const PRESETS = {
     name: '操作輔助',
     tip: '新手＝自動瞄準鎖定的目標、自動攻擊、遊戲節奏慢；老手＝近戰的時機要抓準、原速',
     list: [
-      ['新手', { ctrlAim: 'auto', ctrlAuto: true, ctrlMeleeAssist: 'easy', ctrlPace: '0.7' }],
-      ['標準', { ctrlAim: 'mouse', ctrlAuto: false, ctrlMeleeAssist: 'easy', ctrlPace: '0.85' }],
+      ['新手', { ctrlAim: 'auto', ctrlAuto: true, ctrlMeleeAssist: 'easy', ctrlPace: '0.65' }],
+      ['標準', { ctrlAim: 'mouse', ctrlAuto: false, ctrlMeleeAssist: 'easy', ctrlPace: '0.75' }],
       ['老手', { ctrlAim: 'mouse', ctrlAuto: false, ctrlMeleeAssist: 'std', ctrlPace: '1' }],
     ],
     def: 1,
@@ -345,7 +345,7 @@ Object.assign(Game.prototype, {
     $('ctrlChaseDist').value = String(this.ctrl.chaseDist || 1);
     $('ctrlChaseFov').value = String(this.ctrl.chaseFov || 62);
     $('ctrlInvY').checked = !!this.ctrl.invY;
-    $('ctrlPace').value = String(this.ctrl.pace || 0.85);
+    $('ctrlPace').value = String(this.ctrl.pace || 0.75);
     $('ctrlCamMax').value = String(this.ctrl.camMax || 1.8);
     $('ctrlCamDist').value = this.ctrl.camDist || 'std';
     $('ctrlCamAngle').value = this.ctrl.camAngle === 'wide' ? 'wide' : 'std';
@@ -370,7 +370,7 @@ Object.assign(Game.prototype, {
     $('ctrlAR').value = this.ctrl.activeReload || 'on';
     $('ctrlDmgNum').value = this.ctrl.dmgNum || 'full';
     $('ctrlPopTag').value = this.ctrl.popTag || 'imp';
-    $('ctrlDestruct').value = this.ctrl.destruct || 'normal';
+    $('ctrlDestruct').value = this.ctrl.destruct || 'easy';
     $('ctrlBlood').value = this.ctrl.blood || 'red';
     $('ctrlDmgSelf').value = this.ctrl.dmgSelf === false ? 'off' : 'on';
     $('ctrlHangar').value = this.hangarFx();

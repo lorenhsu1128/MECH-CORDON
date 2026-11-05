@@ -70,7 +70,7 @@ Object.assign(Game.prototype, {
   // 設定「地圖物件的破壞」：easy／normal／off（客機用房主送來的）
   destructMode() {
     const m = this.net && this.net.role === 'client' ? this.destructNet : this.ctrl && this.ctrl.destruct;
-    return m === 'easy' || m === 'off' ? m : 'normal';
+    return m === 'normal' || m === 'off' ? m : 'easy'; // 預設＝易破壞（2026-11-05 使用者定案）
   },
   // 這個物件現在打得壞嗎（設定「不可破壞」時只有改版前就打得壞的）
   propLive(p) {
