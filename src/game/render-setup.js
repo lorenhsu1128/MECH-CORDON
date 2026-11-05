@@ -144,6 +144,9 @@ Object.assign(Game.prototype, {
       // three.js 只處理 Mesh／Points／Line／Sprite（粒子批次的代理 fx/batch.js 不是網格，不會走到）。
       // 沒給 root 時另外加：以前在任務中遇過的變體（假網格）＋SSAO 法線的蒙皮版與 InstancedMesh 版
       const extra = root ? null : warmGroup(pipe && pipe.ssao ? [pipe.skinN, pipe.instN] : []);
+      // 增援會出現的程式模型（載具、無人機…）先建一次（mission.js 的 typePrewarm）：只在房主／單機
+      if (extra && this.typePrewarm && !(this.net && this.net.role === 'client'))
+        extra.add(this.typePrewarm());
       if (extra) this.scene.add(extra);
       try {
         const r = root || this.scene;

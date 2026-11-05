@@ -21,6 +21,9 @@ import { bossDefIndex, freeTier } from '../data/boss-tier.js';
 import { MechEntity } from '../entities/mech-entity.js';
 import { Projectile } from '../entities/projectile.js';
 import { buildBomberMesh } from '../render/extra-models.js';
+import { buildDrone, buildHeli, buildVehicle } from '../render/vehicle-models.js';
+import { buildBossModel } from '../render/boss-models.js';
+import { mergeRig } from '../render/mesh-merge.js';
 import { PALETTES } from '../render/materials.js';
 import { FOES, themeFoes } from '../data/foes.js';
 import { VARIANTS, variantKeys } from '../world/variants.js';
@@ -701,6 +704,38 @@ Object.assign(Game.prototype, {
     if (n > 1 && !at && !this.guardAt && (this.encG === null || this.encG === undefined))
       this.flashAlert(`${d.name} ×${n} 編隊`);
     return last;
+  },
+  // 增援預先建模（docs/perf-threejs-upgrade.md）：後續波次會出現、用程式模型的類型（載具、直升機、無人機、Boss 的部位）
+  // 各建一次並合併（同 MechEntity 的 modelKind 分支），建模與合併的快取先填好，第一台出現時不再停 30～70 ms；
+  // 回傳的群組交給著色器預熱（Game.shaderWarm）一起編譯，之後丟掉（幾何在快取裡，不釋放）。
+  // 機甲類型的組裝每次隨機（d.gen），而且第一波通常就有，不處理；建模函式不用亂數
+  typePrewarm() {
+    const g = new THREE.Group();
+    const seen = new Set();
+    for (const w of this.waves || [])
+      for (const t of Array.isArray(w) ? w : w.list || []) {
+        if (seen.has(t)) continue;
+        seen.add(t);
+        const d = ENEMY_TYPES[t] || FOES[t];
+        if (!d || !d.modelKind) continue;
+        try {
+          const pal = PALETTES[d.pal],
+            sc = (d.scale || 1) * MS;
+          const rig =
+            d.modelKind === 'vehicle'
+              ? buildVehicle(pal, sc)
+              : d.modelKind === 'heli'
+                ? buildHeli(pal, sc, d.vehKey || 'heli')
+                : d.modelKind === 'drone'
+                  ? buildDrone(pal, sc, d.vehKey || 'swarm')
+                  : buildBossModel(d.vehKey, pal, sc);
+          mergeRig(rig);
+          g.add(rig.group);
+        } catch (e) {
+          console.warn('typePrewarm', t, e);
+        }
+      }
+    return g;
   },
   spawnEnemy(o) {
     o.palKey = o.pal;
