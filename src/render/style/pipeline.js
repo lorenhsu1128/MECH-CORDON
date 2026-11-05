@@ -4,11 +4,12 @@
 // 原本的組合是 RenderPass＋SSAOPass（SSAOPass 自己又畫一次場景），這裡只畫一次場景＋SSAO 的法線。
 // 陰影貼圖每格只畫一次：renderer.shadowMap.autoUpdate 關掉，由使用的地方每格設一次 needsUpdate（shadowFrame），
 // 第一次畫有光源的場景時更新，之後同一格的 SSAO 法線、分割畫面的另一半都沿用。
+import { linColor, rawColor, srgbColor } from '../color-cm.js';
 import { OUTLINE_MAT, OUTLINE_SKIN, isOutline } from '../geometry.js';
 import { StyleAtmos } from './atmos.js';
 import { STYLE_DEFAULTS } from './params.js';
 import { setStyleUniforms } from './shader.js';
-import { legacyTarget } from '../legacy-rt.js';
+import { HDR, legacyTarget } from '../legacy-rt.js';
 import { FX_LAYER, FX_MESHES, FXU, fxLight } from '../../fx/gpu.js';
 
 // 著色器 uniform 與描邊材質是全域共用的：同一頁有其他畫面（模型庫）時，畫完風格預覽後恢復預設
@@ -155,6 +156,32 @@ void main() {
 }
 `;
 
+// 畫面模式 HDR（render/legacy-rt.js）：場景是半浮點、沒做色調映射，在 Bloom 之前以這一段做一次
+// （Bloom 照經典的方式作用在色調映射後的值；粒子的加色混合照樣在 HDR 裡疊加）
+const TONEMAP_FRAG = /* glsl */ `
+uniform sampler2D tDiffuse, tDepth;
+uniform int tmMode, useDepth;
+varying vec2 vUv;
+#ifndef saturate
+#define saturate( a ) clamp( a, 0.0, 1.0 )
+#endif
+${THREE.ShaderChunk.tonemapping_pars_fragment}
+void main() {
+	vec3 c = texture2D( tDiffuse, vUv ).rgb;
+	// 沒有東西擋住的像素（天空的球、背景色：不寫深度）照經典不做色調映射與曝光（r128 的天空著色器沒有色調映射）
+	if ( useDepth == 1 && texture2D( tDepth, vUv ).x >= 0.99999 ) {
+		gl_FragColor = vec4( c, 1.0 );
+		return;
+	}
+	if ( tmMode == 1 ) c = LinearToneMapping( c );
+	else if ( tmMode == 2 ) c = ReinhardToneMapping( c );
+	else if ( tmMode == 3 ) c = CineonToneMapping( c );
+	else if ( tmMode == 6 ) c = AgXToneMapping( c );
+	else if ( tmMode == 7 ) c = NeutralToneMapping( c );
+	else c = ACESFilmicToneMapping( c );
+	gl_FragColor = vec4( c, 1.0 );
+}
+`;
 const GRADE_FRAG = /* glsl */ `
 uniform sampler2D tDiffuse;
 uniform vec2 px;
@@ -259,6 +286,8 @@ void main() {
 }
 `;
 
+// HDR 模式的色調映射（調色著色器的 tmMode，同 three.js 的常數值）
+const TM_ID = { linear: 1, reinhard: 2, cineon: 3, aces: 4, agx: 6, neutral: 7 };
 const TM = () => ({
   aces: THREE.ACESFilmicToneMapping,
   linear: THREE.LinearToneMapping,
@@ -274,13 +303,14 @@ function quad(frag, uniforms) {
     depthTest: false,
     depthWrite: false,
   });
+  m.toneMapped = false; // 畫到畫面時 three.js 不另外加色調映射（調色自己做，docs/perf-threejs-upgrade.md 第 4 期）
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), m);
   mesh.frustumCulled = false;
   return { m, mesh };
 }
 
-const lin = (hex) => new THREE.Color(hex).convertSRGBToLinear();
-const srgb = (hex) => new THREE.Color(hex);
+const lin = linColor;
+const srgb = srgbColor;
 const warm = (k) =>
   k >= 0 ? new THREE.Color(1, 1 - 0.18 * k, 1 - 0.42 * k) : new THREE.Color(1 + 0.25 * k, 1 + 0.08 * k, 1);
 
@@ -396,6 +426,13 @@ export class StylePipeline {
       gL: { value: new THREE.Vector4() },
       gH: { value: new THREE.Vector4() },
       gB: { value: new THREE.Vector4() },
+    });
+    this.tonemap = quad(TONEMAP_FRAG, {
+      tDiffuse: { value: null },
+      tDepth: { value: null },
+      useDepth: { value: 0 },
+      tmMode: { value: 4 },
+      toneMappingExposure: { value: 1 },
     });
     this.dof = quad(DOF_FRAG, {
       tColor: { value: null },
@@ -568,7 +605,10 @@ export class StylePipeline {
       s = this.scene,
       c = this.ctx;
     // 線性色調映射不壓高光：依場景補正曝光（白色場景調暗、暗的場景調亮；World 主題的 linExp）
-    R.toneMappingExposure = P.exposure * (P.toneMap === 'linear' && c.sceneExp ? c.sceneExp() : 1);
+    R.toneMappingExposure =
+      P.exposure *
+      (P.toneMap === 'linear' && c.sceneExp ? c.sceneExp() : 1) *
+      (THREE.ColorManagement.enabled ? (P.cmExp || 1) * (c.cmExp ? c.cmExp(P.toneMap === 'linear') : 1) : 1); // 色彩管理：配色變深，依風格與主題補回亮度
     const B = this.captureBase();
     const out = !c.indoor;
     if (out && s.fog && B.fog) {
@@ -579,8 +619,9 @@ export class StylePipeline {
       s.fog.color.copy(B.fogColor).lerp(lin(P.fogColor), P.fogColorK);
     }
     if (out && B.bg && s.background && s.background.isColor) {
-      if (P.sky === 'theme') s.background.copy(B.bg).lerp(lin(P.fogColor), P.fogColorK * 0.6);
-      else s.background.copy(s.fog ? s.fog.color : B.bg);
+      // 背景色不經過色調映射與曝光：色彩管理時（色碼變深）換回原本的值（rawColor）
+      if (P.sky === 'theme') s.background.copy(rawColor(B.bg)).lerp(lin(P.fogColor), P.fogColorK * 0.6);
+      else s.background.copy(rawColor(s.fog ? s.fog.color : B.bg));
     }
     if (c.sun && B.sunColor) {
       c.sun.color.copy(B.sunColor).multiply(warm(P.sunWarm));
@@ -734,6 +775,19 @@ export class StylePipeline {
       src = this.rtB;
       tmp = this.rtA;
     }
+    // 3.9 HDR：色調映射（之後的 Bloom、調色照經典處理色調映射後的值）
+    if (HDR) {
+      const t = this.tonemap.m.uniforms;
+      t.tDiffuse.value = src.texture;
+      t.tDepth.value = this.rtScene.depthTexture || null;
+      t.useDepth.value = this.rtScene.depthTexture ? 1 : 0;
+      t.tmMode.value = TM_ID[P.toneMap] || 4;
+      t.toneMappingExposure.value = R.toneMappingExposure;
+      this.draw(this.tonemap, tmp);
+      const x = src;
+      src = tmp;
+      tmp = x;
+    }
     // 4. Bloom（疊加回 src）
     if (this.bloom && P.bloom > 0) {
       const b = this.bloom;
@@ -748,13 +802,14 @@ export class StylePipeline {
     g.px.value.set(1 / W, 1 / H);
     g.time.value = time;
     g.aspect.value = W / H;
-    g.gA.value.set(P.sat, P.contrast, P.bright, P.temp);
+    g.gA.value.set(P.sat * (THREE.ColorManagement.enabled ? P.cmSat || 1 : 1), P.contrast, P.bright, P.temp);
     const tl = srgb(P.tintLo),
       th = srgb(P.tintHi);
     g.gL.value.set(tl.r, tl.g, tl.b, P.tintLoK);
     g.gH.value.set(th.r, th.g, th.b, P.tintHiK);
     const cp = this.ctx && this.ctx.chromaPush ? this.ctx.chromaPush() : 0; // 受到重擊時的色差
     g.gB.value.set(P.vignette, Math.min(1, P.chroma + cp), P.grain, P.paper);
+
     if (this.fxaa && P.fxaa) {
       this.draw(this.grade, tmp);
       const f = this.fxaa.m.uniforms;

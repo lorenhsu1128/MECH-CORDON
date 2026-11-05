@@ -3,6 +3,7 @@
 // 參數全是 0 的「寫實」走原本的物理渲染路徑，畫面與修改前相同。
 // 材質分類（機甲／武器／載具＝1、其他＝0）用 WeakMap 記，不寫 userData（GLTFExporter 會把 userData 寫進 GLB）。
 
+import { linColor } from '../color-cm.js';
 import { fxStyle } from '../../fx/gpu.js';
 import { noteStyleVariant } from '../shader-warm.js';
 
@@ -90,7 +91,7 @@ SU.stCau.value = SU.stCauT.value = (() => {
   return t;
 })();
 
-const lin = (hex) => new THREE.Color(hex).convertSRGBToLinear();
+const lin = linColor;
 // k：場景的尺度（遊戲＝core/scale.js 的 DS，機甲庫與模型庫 1）：高度霧與水彩筆觸的公尺數乘上它
 export function setStyleUniforms(P, k = 1) {
   const sh = lin(P.shade).multiplyScalar(P.shadeK);

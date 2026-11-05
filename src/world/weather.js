@@ -1,5 +1,6 @@
 // 天氣粒子（雪、風沙、塵埃、雨、灰燼、Coral 光點）：只有外觀，不影響任何判定。粒子放在跟著鏡頭的方盒裡循環，
 // 位置由著色器以時間推算（每格只更新 uniform）；初始位置用 Math.random，各端不必一致。
+import { toLinear } from '../render/color-cm.js';
 const VERT = /* glsl */ `
 uniform vec3 cam, wind;
 uniform float box, size, time, pr, fall, sway, streak;
@@ -104,7 +105,7 @@ export class Weather {
         pr: { value: 1 },
         fall: { value: K.fall },
         sway: { value: K.sway },
-        color: { value: col.convertSRGBToLinear() },
+        color: { value: toLinear(col) },
         opacity: { value: K.opacity },
         streak: { value: K.streak || 0 },
       },

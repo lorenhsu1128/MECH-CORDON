@@ -847,6 +847,26 @@ Object.assign(Game.prototype, {
       this.ctrl.fxLv = e.target.value; // 砲火特效（fx.rich，下一顆子彈、下一個爆炸就生效）
       this.saveKeys();
     };
+    // 畫面模式與色彩管理（docs/perf-threejs-upgrade.md 第 4 期）：存在 rubicon_render，頁面載入時由 lib/three/three.js 讀取
+    const renderOpt = (k, v) => {
+      let o = {};
+      try {
+        o = JSON.parse(localStorage.getItem('rubicon_render') || '{}') || {};
+      } catch (err) {}
+      o[k] = v;
+      try {
+        localStorage.setItem('rubicon_render', JSON.stringify(o));
+      } catch (err) {}
+      if (navigator.webdriver) return; // 自動化測試不重新整理
+      this.uiConfirm(
+        '畫面模式與色彩管理要重新整理頁面才會生效（進行中的任務不會保留）。現在重新整理嗎？',
+        () => location.reload(),
+        '重新整理',
+        '稍後',
+      );
+    };
+    document.getElementById('ctrlRenderMode').onchange = (e) => renderOpt('mode', e.target.value);
+    document.getElementById('ctrlColorMgmt').onchange = (e) => renderOpt('cm', e.target.value === '1');
     document.getElementById('ctrlWater').onchange = (e) => {
       this.ctrl.water = e.target.value; // 水面品質（game/water.js 每格套用）
       this.saveKeys();

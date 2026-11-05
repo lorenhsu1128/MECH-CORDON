@@ -1017,6 +1017,26 @@
                 <span id="styleNote" class="dim" style="font-size: 11px"></span
                 ><button id="btnStyleLab2">開啟渲染風格實驗室</button>
               </div>
+              <div class="krow">
+                <span>畫面模式</span
+                ><select
+                  id="ctrlRenderMode"
+                  title="HDR＝亮部保留到最後才壓縮（爆炸、火光的亮部更白熱鮮豔）；經典＝升級前的畫面。重新整理後生效"
+                >
+                  <option value="hdr">HDR（預設）</option>
+                  <option value="classic">經典（升級前的畫面）</option>
+                </select>
+              </div>
+              <div class="krow">
+                <span>色彩管理</span
+                ><select
+                  id="ctrlColorMgmt"
+                  title="開＝配色的色碼照 sRGB 解讀（色調較深、較飽和，亮度依主題與渲染風格補回）；關＝升級前的解讀。重新整理後生效"
+                >
+                  <option value="1">開（預設）</option>
+                  <option value="">關（升級前的配色解讀）</option>
+                </select>
+              </div>
               <h4>效果</h4>
               <div class="krow">
                 <span>水面品質</span

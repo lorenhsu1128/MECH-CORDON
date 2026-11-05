@@ -27118,6 +27118,20 @@ async function launchBrowser() {
       '--use-fake-ui-for-media-stream',
     ],
   });
+  // SMOKE_RENDER＝畫面模式（localStorage rubicon_render 的 JSON，例如 {"mode":"hdr"}）：每個新的瀏覽器環境都先寫入，
+  // 整套測試以那個模式跑（docs/perf-threejs-upgrade.md 第 4 期）
+  if (process.env.SMOKE_RENDER) {
+    const nc = browser.newContext.bind(browser);
+    browser.newContext = async (o) => {
+      const c = await nc(o);
+      await c.addInitScript((v) => {
+        try {
+          if (!localStorage.getItem('rubicon_render')) localStorage.setItem('rubicon_render', v);
+        } catch (e) {}
+      }, process.env.SMOKE_RENDER);
+      return c;
+    };
+  }
   // 印出實際的 WebGL 算繪器（要求 GPU 卻拿到 SwiftShader 時提示）
   const pg = await browser.newPage();
   const renderer = await pg

@@ -2,6 +2,7 @@
 //   材質決定：對三種屬性的傷害倍率 k＝[實彈, 爆發, 能量]、第 2 階段起的持續效果 fx、會不會起火 fire、
 //   損毀時的演出 boom（'fire' 火球、'arc' 電弧、'coral' Coral 光）、碎片的形狀 deb、碎片的顏色 col（沒有時用物件的顏色）。
 //   只有 fuel、vehicle、wood 會起火（2026-11-02 使用者定案：不是所有物件都會起火）。
+import { hexForSet } from '../render/color-cm.js';
 
 // 倍率最低 0.6（2026-11-03 使用者定案：能量打岩石 ×0.4 太懲罰）
 export const PMAT = {
@@ -22,7 +23,7 @@ export const PMAT = {
 const LIN = new Map();
 export function linHex(hex) {
   let v = LIN.get(hex);
-  if (v === undefined) LIN.set(hex, (v = new THREE.Color(hex).convertSRGBToLinear().getHex()));
+  if (v === undefined) LIN.set(hex, (v = hexForSet(hex)));
   return v;
 }
 // 碎片、殘骸的顏色：材質有固定顏色的（混凝土、岩石、冰…）用它，其他用物件自己的顏色（p.col，線性值）

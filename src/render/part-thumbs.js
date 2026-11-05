@@ -52,7 +52,7 @@ function setup(env) {
   const cam = new THREE.PerspectiveCamera(28, 1, 0.01, 100);
   // 照 r128 的畫面：色調映射照做、輸出線性（legacyTarget），讀回時轉成 sRGB（直接當圖片用）。
   // 不把貼圖設成 sRGB：r187 會用 SRGB8 格式，著色器與硬體各編碼一次
-  const rt = legacyTarget(new THREE.WebGLRenderTarget(RS, RS));
+  const rt = legacyTarget(new THREE.WebGLRenderTarget(RS, RS), true);
   const big = document.createElement('canvas');
   big.width = big.height = RS;
   const cv = document.createElement('canvas');

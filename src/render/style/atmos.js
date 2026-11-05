@@ -1,4 +1,5 @@
 // 渲染風格：天空（漸層／積雲）與空氣塵埃。掛在場景裡跟著鏡頭，參數由 applySceneStyle 每格更新。
+import { rawColor, toLinear } from '../color-cm.js';
 const NOISE = /* glsl */ `
 float h21( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) * 43758.5453 ); }
 float vn( vec2 p ) {
@@ -130,8 +131,8 @@ export class StyleAtmos {
     if (sky) {
       this.sky.position.copy(camera.position);
       const u = this.skyMat.uniforms;
-      u.horizon.value.copy(fogColor);
-      u.top.value.set(P.skyTop).convertSRGBToLinear();
+      u.horizon.value.copy(rawColor(fogColor)); // 天空不經過色調映射：色彩管理時換回原本的值（render/color-cm.js）
+      toLinear(u.top.value.set(P.skyTop));
       u.cloud.value = P.sky === 'cloud' ? P.cloud : 0;
       u.toon.value = P.skyToon;
       u.time.value = time;

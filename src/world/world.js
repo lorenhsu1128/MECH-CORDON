@@ -1,6 +1,7 @@
 // ============================================================
 //  WORLD — 隨機關卡生成
 // ============================================================
+import { rawColor } from '../render/color-cm.js';
 import { RNG, clamp, lerp, makeNoise, makeRng, pick, rnd, rndi, withRng } from '../core/math.js';
 import { DS, MS, WS } from '../core/scale.js';
 import {
@@ -319,9 +320,32 @@ const LIN_EXP = {
   institute: 1.15,
 };
 for (const k in LIN_EXP) THEMES[k].linExp = LIN_EXP[k];
+// 設定「色彩管理」打開時的曝光補正（docs/perf-threejs-upgrade.md 第 4 期）：配色照 sRGB 解讀後顏色變深（越暗的顏色變得越多），
+// 以各主題在 5 個內建渲染風格的畫面亮度比（之前的畫面／色彩管理）補回整體亮度；色調變得較深、較飽和（新的色調）。
+// 變體可以用 theme.cmExp 覆寫（render/style/pipeline.js 的 applyScene）
+const CM_EXP = {
+  dam: 2.41,
+  desert: 2.14,
+  dunes: 2.01,
+  flooded: 1.96,
+  grid: 1.9,
+  grid086: 2.58,
+  industrial: 2.73,
+  institute: 2.03,
+  orbit: 1.98,
+  snow: 1.62,
+  spaceport: 2.18,
+  wasteland: 2.39,
+  xylem: 1.93,
+};
+for (const k in CM_EXP) THEMES[k].cmExp = CM_EXP[k];
+// 色彩管理＋線性色調映射（賽璐璐類風格）時再乘上：線性不壓暗部，暗色的主題地面會接近全黑
+const CM_LIN_EXP = { institute: 1.5, grid086: 1.15 };
+for (const k in CM_LIN_EXP) THEMES[k].cmLinExp = CM_LIN_EXP[k];
 // 空域（空戰，docs/air-combat-design.md）：不可列舉——THEMES.airspace 照樣讀得到，但隨機選圖、編輯器、實驗室、
 // 多人、各種「全部主題」的清單都不會列出（只在自由出擊的單人選得到，mapOptionsHtml）
 Object.defineProperty(THEMES, 'airspace', { value: AIRSPACE, enumerable: false });
+AIRSPACE.cmExp = 1.78; // 色彩管理的曝光補正（同高空軌道：天空占大部分畫面）
 
 export class World {
   constructor(scene, theme, seed, level, feat, opt = {}) {
@@ -1150,7 +1174,7 @@ export class World {
       g.scene.background = sky;
       g.scene.fog = new THREE.Fog(fog, Math.min(T.fogNear || 60 * DS, ff * 0.4), ff);
       g.sun.intensity = si;
-      g.hemi.color.copy(sky);
+      g.hemi.color.copy(rawColor(sky)); // 光色照舊不轉換（色彩管理時換回原本的值，render/color-cm.js）
       g.hemi.intensity = hi;
     }
   }

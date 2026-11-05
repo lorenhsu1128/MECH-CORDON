@@ -35,6 +35,12 @@ Object.assign(Game.prototype, {
       hemi: this.hemi,
       sunOff: this.sunOff,
       sceneExp: () => (this.world && this.world.theme && this.world.theme.linExp) || 1, // 依場景的曝光補正
+      // 色彩管理打開時（world.js 的 CM_EXP；linear＝線性色調映射時再乘 CM_LIN_EXP）
+      cmExp: (linear) => {
+        const T = this.world && this.world.theme;
+        if (!T) return this.cine ? 1.4 : 1; // 過場動畫自己的場景（太空、軌道站…）：量測的平均
+        return (T.cmExp || 1) * (linear ? T.cmLinExp || 1 : 1);
+      },
       fogPush: () => this.camExtra || 0, // 鏡頭拉遠時霧往外推，機體附近保持清楚
       chromaPush: () => (this.chromaK || 0) * 0.7, // 受到重擊時的色差（game/juice.js）
       wscale: () => DS, // 機甲三倍高改版

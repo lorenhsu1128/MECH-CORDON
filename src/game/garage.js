@@ -44,6 +44,7 @@ Object.assign(Game.prototype, {
         sun: d,
         hemi: this.garageHemi,
         indoor: true,
+        cmExp: () => 1.69, // 色彩管理打開時補回的亮度（docs/perf-threejs-upgrade.md 第 4 期，量測值）
         ssaoBase: { kernelRadius: 0.5, minDistance: 0.001, maxDistance: 0.03 },
       });
       this.garagePipe.setSize(innerWidth, innerHeight);

@@ -354,6 +354,14 @@ Object.assign(Game.prototype, {
     $('ctrlFxLv').value = this.ctrl.fxLv || 'rich';
     $('ctrlGhost').value = this.ctrl.ghost || 'on';
     $('ctrlWater').value = this.ctrl.water || '';
+    {
+      let ro = {};
+      try {
+        ro = JSON.parse(localStorage.getItem('rubicon_render') || '{}') || {};
+      } catch (e) {}
+      $('ctrlRenderMode').value = ro.mode === 'classic' ? 'classic' : 'hdr';
+      $('ctrlColorMgmt').value = ro.cm === false ? '' : '1';
+    }
     $('ctrlTfx').value = this.ctrl.tfx || 'full';
     $('ctrlCine').value = this.ctrl.cine || 'on';
     $('ctrlVoice').value = this.voiceId() || 'off';

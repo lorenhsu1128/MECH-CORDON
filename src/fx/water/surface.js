@@ -10,6 +10,7 @@
 //   - 從水面下往上看（背面）：水色＋全反射
 //  做法參考 jeantimex/threejs-water（MIT）的菲涅耳與水色，見 src/assets/fx/CREDITS.txt。
 // ============================================================
+import { linColor } from '../../render/color-cm.js';
 import { TER_GLSL } from './glsl.js';
 
 // ---------- 地形高度貼圖：整張地圖＋外面一圈遠景（地圖外用 farHeight；再外面沿用邊上的值），Float、最近取樣 ----------
@@ -254,7 +255,7 @@ void main() {
 }
 `;
 
-const lin = (hex) => new THREE.Color(hex).convertSRGBToLinear();
+const lin = linColor;
 // 沒有內容時綁的 1×1 貼圖（fx/water/index.js 不用螢幕空間反射時也換回它，見 noPrev）
 export const NIL = (() => {
   const t = new THREE.DataTexture(new Uint8Array(4), 1, 1, THREE.RGBAFormat);
