@@ -5732,6 +5732,7 @@ async function testDevices(browser, base) {
 async function testTraps(browser, base) {
   console.log('環境陷阱：13 個主題的陷阱');
   const { ctx, page } = await newPage(browser, 'traps');
+  await seededRandom(page);
   await page.goto(base + '?test');
   await waitVisible(page, 'title');
   const LIST = [
@@ -5749,23 +5750,29 @@ async function testTraps(browser, base) {
     ['orbit', 'airlock'],
     ['institute', 'coral'],
   ];
-  for (const [theme, kind] of LIST) {
-    await page.evaluate((t) => {
-      localStorage.setItem('rubicon_map', t);
-      localStorage.setItem('rubicon_variant', 'base');
-      const g = window.__game;
-      if (g.state !== 'title') {
-        g.clearMission();
-        g.state = 'title';
-      }
-      g.startMission();
-    }, theme);
+  for (const [ti, [theme, kind]] of LIST.entries()) {
+    // 固定亂數（地圖、陷阱的擺放、敵人的編成）：不固定時偶爾放不下陷阱、挑到擋得住陷阱的敵人
+    await page.evaluate(
+      ([t, seed]) => {
+        window.__reseed(seed);
+        localStorage.setItem('rubicon_map', t);
+        localStorage.setItem('rubicon_variant', 'base');
+        const g = window.__game;
+        if (g.state !== 'title') {
+          g.clearMission();
+          g.state = 'title';
+        }
+        g.startMission();
+      },
+      [theme, 1009 + ti * 7919],
+    );
     await page.waitForFunction(() => window.__game.state === 'play' && window.__game.player, null, {
       timeout: 40000,
     });
     await freezeLoop(page);
     const r = await page.evaluate(
-      ([kind]) => {
+      ([kind, seed]) => {
+        window.__reseed(seed);
         const g = window.__game;
         g.waves = [];
         g.wavePend = null;
@@ -5808,11 +5815,10 @@ async function testTraps(browser, base) {
             }
           }
         }
-        const ok = (o) => !o.dead && o.ai !== 'part' && !o.isBoss && !o.flying;
-        const e =
-          g.enemies.find((o) => ok(o) && !o.hoverH && !['dome', 'shield'].includes(o.ai)) ||
-          g.enemies.find(ok);
+        // 目標：另外生成一台普通的 MT（場上的敵人可能是盾牌 MT、懸浮的、護盾產生器，會擋掉或躲掉陷阱）
         for (const o of g.enemies) if (o.ai === 'dome') o.hp = 0; // 護盾產生器的護盾會擋住陷阱
+        const e = g.spawnType('mt', 1, 1);
+        e.updateAI = () => {};
         e.pos.set(at.x, g.world.groundAt(at.x, at.z, 999), at.z);
         e.vel.set(0, 0, 0);
         e.mesh.position.copy(e.pos);
@@ -5830,7 +5836,12 @@ async function testTraps(browser, base) {
         }
         p.vel.set(0, 0, 0);
         p.iFrames = 0;
+        // 還在飛的子彈與地雷：打中玩家會失衡（失衡中按住互動鍵不算）
+        for (const q of g.projectiles) q.dead = true;
+        g.mines = [];
         window.__pump(0.3);
+        p.staggerT = 0;
+        p.acs = 0;
         const env0 = g.envKills || 0;
         const walls0 = (g.tWalls || []).length;
         const lockable = d.tgt ? g.lockPool(p).includes(d.tgt) : null;
@@ -5856,7 +5867,7 @@ async function testTraps(browser, base) {
           shotAt,
         };
       },
-      [kind],
+      [kind, 77 + ti],
     );
     check(r.n > 0 && r.gd < 200, `${theme}：放了「${kind}」陷阱 ${r.n} 個（離最近的敵群 ${r.gd} m）`);
     if (!r.n) {
@@ -21915,6 +21926,9 @@ async function testRangedFeel(browser, base) {
     tg.ai = 'none';
     tg.pos.set(pl.pos.x, pl.pos.y, pl.pos.z - 30 * pl.dk);
     pl.lock = tg;
+    // 還沒跑過一格：機體的網格還在原點（move 才把 pos 同步過去），槍口會從原點射出、方向不定
+    pl.mesh.position.copy(pl.pos);
+    pl.mesh.updateMatrixWorld(true);
     const fresh = () => {
       tg.hp = tg.maxHp = 1e9;
       tg.vel.set(0, 0, 0);
