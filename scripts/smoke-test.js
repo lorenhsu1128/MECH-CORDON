@@ -276,8 +276,8 @@ async function setNick(page, nick) {
   await page.dispatchEvent('#mpNick', 'change');
 }
 
-const newPage = async (browser, name) => {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+const newPage = async (browser, name, o = {}) => {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 }, ...o });
   const page = await ctx.newPage();
   watch(page, name);
   return { ctx, page };
@@ -6402,7 +6402,7 @@ async function testDevicesMp(browser, url) {
 // 任務中改設定（docs/settings-ui.md 的「任務中改設定」）：暫停 → 設定 → 改 → 返回 → 繼續，回到遊戲後要真的套用
 async function testSettingsLive(browser, base) {
   console.log('任務中改設定：暫停選單改的設定回到遊戲就生效');
-  const { ctx, page } = await newPage(browser, 'setlive');
+  const { ctx, page } = await newPage(browser, 'setlive', { realDefaults: true });
   await page.goto(base + '?test');
   await waitVisible(page, 'title');
   await page.evaluate(() => window.__game.startMission());
@@ -6579,7 +6579,7 @@ async function testSettingsLive(browser, base) {
 }
 async function testSettingsUi(browser, base) {
   console.log('設定畫面：分頁、說明欄、改過的標記、快速設定、恢復這一頁的預設');
-  const { ctx, page } = await newPage(browser, 'setui');
+  const { ctx, page } = await newPage(browser, 'setui', { realDefaults: true });
   await page.goto(base + '?test');
   await waitVisible(page, 'title');
   check((await page.textContent('#btnSettings')).trim() === '設定', '標題的按鈕叫「設定」');
@@ -22123,7 +22123,17 @@ async function testMeleeCombo(browser, base) {
     pl.asm.rarm = 'w_blade';
     pl.asm.larm = 'w_sg';
     pl.initWeapons();
-    g.world.obstacles = g.world.obstacles.filter((o) => Math.hypot(o.x - pl.pos.x, o.z - pl.pos.z) > 60 * 3);
+    // 附近的障礙物拿掉；橋面板一律拿掉（長的橋中心在遠處、板子可能橫跨到這裡的上方，起跳會被擋住）
+    g.world.obstacles = g.world.obstacles.filter(
+      (o) => !o.deck && Math.hypot(o.x - pl.pos.x, o.z - pl.pos.z) > 60 * 3,
+    );
+    // 判定用的地形設成平地、拿掉坡道：固定種子的地圖會隨程式改變，測試地點可能剛好有坑（機體掉進坑裡一直算貼地）
+    {
+      const W = g.world,
+        h0 = W.terrainHeight(pl.pos.x, pl.pos.z);
+      W.terrainHeight = () => h0;
+      W.ramps = [];
+    }
     for (const e of g.enemies) e.pos.set(900, -80, 900);
     // 目標固定是一般的二足 MT（隨機編成裡的履帶、無人機不能被上挑）
     const t = g.spawnType('mt', 1, 1);
@@ -22708,7 +22718,10 @@ async function testMeleeCombo(browser, base) {
   check(r.qF && r.f1, '連段中途按「前＋近戰」派生成突刺連打');
   check(r.up, '起手按「後＋近戰」＝上挑');
   check(r.lifted, `上挑把目標打上去（${r.liftInfo}）`);
-  check(r.jumpCancel && r.air && r.airStart, '上挑打中後按跳躍取消、空中按近戰出空中連段');
+  check(
+    r.jumpCancel && r.air && r.airStart,
+    `上挑打中後按跳躍取消、空中按近戰出空中連段（${r.jumpCancel},${r.air},${r.airStart}）`,
+  );
   check(r.qbCancel && r.resume, 'QB 取消後再按近戰從下一招接回');
   check(r.shot, '近戰打中後按另一隻手的射擊武器：中斷近戰立刻開火');
   check(r.dash, '突擊推進中按近戰＝衝刺斬');
@@ -27031,9 +27044,24 @@ async function launchBrowser() {
   if (gpu && /SwiftShader/i.test(renderer)) console.log('  （要求顯示卡算繪，但瀏覽器改用了 SwiftShader）');
   // 地圖預設固定為貨運集散場（平坦、沒有虛空與多層），Boss、鎖定、多人等測試的結果才穩定；
   // 各地圖本身由 testMaps 逐一出擊檢查。測試自己選了地圖（包含選回「隨機」）時不覆蓋
+  // 遊戲節奏與地圖物件的破壞：測試的時間與數值照 85%／可破壞調的（2026-11-05 預設改成 75%／易破壞），
+  // 沒有存過設定的環境先寫這兩項；realDefaults（設定畫面的測試）用遊戲真正的預設
   const newCtx = browser.newContext.bind(browser);
-  browser.newContext = async (o) => {
-    const c = await newCtx(o);
+  browser.newContext = async (o = {}) => {
+    const { realDefaults, ...opt } = o;
+    const c = await newCtx(opt);
+    if (!realDefaults)
+      await c.addInitScript(() => {
+        try {
+          if (localStorage.getItem('rubicon_ctrl') === null)
+            localStorage.setItem(
+              'rubicon_ctrl',
+              JSON.stringify({ pace: 0.85, paceV: 2, destruct: 'normal' }),
+            );
+        } catch (e) {
+          /* 沒有 localStorage 的頁面 */
+        }
+      });
     await c.addInitScript(() => {
       try {
         if (localStorage.getItem('rubicon_map') === null) localStorage.setItem('rubicon_map', 'industrial');
