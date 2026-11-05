@@ -1762,7 +1762,8 @@ async function testSolo(browser, base) {
   await wait(1500);
   await page.screenshot({ path: path.join(SHOT_DIR, 'garage.png') });
   await page.click('#btnSortie');
-  check(await waitVisible(page, 'hudWrap', 15000), '出擊後 HUD 顯示');
+  // 沒帶 ?test：出擊演出＋建地圖＋著色器預熱（docs/perf-threejs-upgrade.md）之後才顯示，負載高時超過 15 秒
+  check(await waitVisible(page, 'hudWrap', 30000), '出擊後 HUD 顯示');
   await playFor(page, 6000);
   const hp = await page.textContent('#hpTxt');
   check(/\d/.test(hp || ''), `HP 顯示數值（${(hp || '').trim()}）`);
@@ -1776,6 +1777,48 @@ async function testSolo(browser, base) {
     const rp = (await page.textContent('#rPilot')) || '';
     check(rp.includes('駕駛員經驗'), `結果畫面顯示駕駛員經驗（${rp.trim().slice(0, 30)}…）`);
   }
+  await ctx.close();
+}
+
+// 著色器的非同步預熱（docs/perf-threejs-upgrade.md 第 2 期）：自動化測試預設同步，這裡以 window.__warmAsync 走非同步：
+// 出擊時背景編譯、完成後「戰場準備中」消失、任務照常進行，之後幾乎不再新編著色器
+async function testWarmAsync(browser, base) {
+  console.log('著色器的非同步預熱：出擊 → 背景編譯 → 任務照常');
+  const { ctx, page } = await newPage(browser, 'warm-async');
+  await page.addInitScript(() => (window.__warmAsync = true));
+  await page.goto(base + '?test');
+  check(await waitVisible(page, 'title'), '標題畫面顯示');
+  await newCareer(page);
+  check(await waitVisible(page, 'garage'), '機甲庫顯示');
+  await page.click('#btnSortie');
+  check(await waitVisible(page, 'hudWrap', 30000), '出擊後 HUD 顯示');
+  const done = await page
+    .waitForFunction(
+      () => {
+        const g = window.__game;
+        return g.warmAsyncN > 0 && !g.warmBusy && g.missionT > 1;
+      },
+      null,
+      { timeout: 30000 },
+    )
+    .then(() => true)
+    .catch(() => false);
+  const r = await page.evaluate(() => {
+    const g = window.__game;
+    const el = document.getElementById('warmMsg');
+    return {
+      n: g.warmAsyncN || 0,
+      msg: !!(el && el.style.display !== 'none'),
+      progs: g.renderer.info.programs.length,
+    };
+  });
+  check(done && r.n >= 1 && !r.msg, `出擊時走非同步預熱（${r.n} 次）、完成後提示消失、任務時間前進`);
+  await playFor(page, 3000);
+  const p2 = await page.evaluate(() => window.__game.renderer.info.programs.length);
+  check(
+    r.progs > 30 && p2 - r.progs <= 6,
+    `預熱編好 ${r.progs} 個程式，之後 3 秒的戰鬥只新增 ${p2 - r.progs} 個`,
+  );
   await ctx.close();
 }
 
@@ -1820,24 +1863,27 @@ async function mapMechanics(page, key) {
       const g = window.__game,
         w = g.world,
         p = g.player;
-      // 玩家附近（邊緣進場：起點不在中央，docs/map-pacing-design.md）
-      for (let x = Math.round(p.pos.x) - 80; x <= p.pos.x + 80; x += 4)
-        for (let z = Math.round(p.pos.z) - 80; z <= p.pos.z + 80; z += 4)
-          if (
-            Math.hypot(x - p.pos.x, z - p.pos.z) < 60 &&
-            // 周圍 8 m 都是虛空（貼著街區邊緣或高樓時會被推回街區上）
-            [
-              [0, 0],
-              [8, 0],
-              [-8, 0],
-              [0, 8],
-              [0, -8],
-            ].every(([dx, dz]) => w.isVoid(x + dx, z + dz))
-          ) {
-            p.pos.set(x, 0.6, z);
-            p.vel.set(0, 0, 0);
-            return { hp0: p.hp };
-          }
+      // 玩家附近（邊緣進場：起點不在中央，docs/map-pacing-design.md）；附近剛好沒有時改找整個作戰區域（地圖是隨機的）
+      const R = [60, w.lim * 1.5];
+      for (const rr of R)
+        for (let x = Math.round(p.pos.x) - rr; x <= p.pos.x + rr; x += 4)
+          for (let z = Math.round(p.pos.z) - rr; z <= p.pos.z + rr; z += 4)
+            if (
+              Math.hypot(x - p.pos.x, z - p.pos.z) < rr &&
+              w.inZone(x, z, 4) &&
+              // 周圍 8 m 都是虛空（貼著街區邊緣或高樓時會被推回街區上）
+              [
+                [0, 0],
+                [8, 0],
+                [-8, 0],
+                [0, 8],
+                [0, -8],
+              ].every(([dx, dz]) => w.isVoid(x + dx, z + dz))
+            ) {
+              p.pos.set(x, 0.6, z);
+              p.vel.set(0, 0, 0);
+              return { hp0: p.hp };
+            }
       return null;
     });
     // headless 的幀率低（遊戲時間比真實時間慢）：等到被拉回（扣 AP）為止，最多 10 秒
@@ -18648,8 +18694,9 @@ async function testMultiplayer(browser, url, tag, migrate) {
   await host.click('#btnLobbyReady');
   await wait(500);
   await host.click('#btnLobbySortie');
-  check(await waitVisible(host, 'hudWrap', 15000), '房主出擊');
-  check(await waitVisible(cli, 'hudWrap', 15000), '客機出擊');
+  // 兩個分頁在同一個瀏覽器環境（共用執行緒）：房主建地圖與著色器預熱時客機也停住，負載高時超過 15 秒
+  check(await waitVisible(host, 'hudWrap', 30000), '房主出擊');
+  check(await waitVisible(cli, 'hudWrap', 30000), '客機出擊');
   await Promise.all([playFor(host, 5000), playFor(cli, 5000)]);
   const [hHp, cHp] = [await host.textContent('#hpTxt'), await cli.textContent('#hpTxt')];
   check(
@@ -24432,7 +24479,10 @@ async function testMpCrowd(browser, url) {
   await host.$eval('#btnLobbySortie', (b) => b.click());
   await cli.bringToFront(); // 客機在背景太久會被當成斷線
   await cli.evaluate(() => (window.__game.hostLostMs = 60000));
-  const ok = (await waitVisible(host, 'hudWrap', 20000)) && (await waitVisible(cli, 'hudWrap', 20000));
+  // 兩個分頁共用執行緒：房主建地圖與著色器預熱時客機也停住，平行跑測試時要 20 秒以上
+  const ok = (await waitVisible(host, 'hudWrap', 40000)) && (await waitVisible(cli, 'hudWrap', 40000));
+  check(ok, '房主與客機都出擊');
+  if (!ok) return ctx.close();
   await cli.bringToFront();
   await host.evaluate(() => (window.requestAnimationFrame = () => 0));
   const pump = async (n) => {
@@ -26810,6 +26860,7 @@ async function testDestructSegs(browser, base) {
 const STEPS = [
   ['testFile', (c) => testFile(c.browser)],
   ['testSolo', (c) => testSolo(c.browser, c.base)],
+  ['testWarmAsync', (c) => testWarmAsync(c.browser, c.base)], // 著色器的非同步預熱（docs/perf-threejs-upgrade.md）
   ['testMaps', (c) => testMaps(c.browser, c.base + '?test')],
   ['testDestruct', (c) => testDestruct(c.browser, c.base + '?test')],
   ['testDestructCollapse', (c) => testDestructCollapse(c.browser, c.base + '?test')],

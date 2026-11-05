@@ -11,6 +11,7 @@
 //       --cpu＝另外做一段 CPU 與記憶體配置取樣（暖機 12 秒後取樣 15 秒，印出前幾名）、
 //       --gp＝把 three.js 換成未壓縮版並記錄每次 getProgram 的原因（複製一份 dist 到系統暫存）、
 //       --learn＝帶入上一次記下的著色器變體（render/shader-warm.js 的學習式預熱，test-results/perf-warm.json），
+//       --sync＝著色器預熱照自動化測試的同步方式（預設和玩家的瀏覽器一樣走非同步），
 //       --long=25＝列出 CPU 超過幾 ms 的影格、--tag、--compare、--dist＝別的建置資料夾。
 //       頁面的亂數固定種子。需要先 npm run build。
 /* global THREE, window, localStorage, requestAnimationFrame, WebGLRenderingContext, WebGL2RenderingContext */
@@ -439,6 +440,8 @@ async function sampling(ctx, page) {
     const page = await ctx.newPage();
     page.on('pageerror', (e) => console.log('pageerror', e.message));
     await page.addInitScript(initScript);
+    // 著色器預熱：預設走非同步（compileAsync，和玩家的瀏覽器相同）；--sync 改回同步
+    if (!args.sync) await page.addInitScript(() => (window.__warmAsync = true));
     await page.addInitScript((map) => localStorage.setItem('rubicon_map', map), MAP);
     // --learn：帶入上一次量測記下的著色器變體（render/shader-warm.js；玩家的瀏覽器會一直留著）
     const LEARN = path.join(OUT, 'perf-warm.json');

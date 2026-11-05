@@ -447,6 +447,8 @@ export class Game {
       this.fpsT = 0;
     }
     this.fpMenuUnlock(); // 選單打開時放開滑鼠鎖定（first-person.js）
+    // 非同步的著色器預熱中（render-setup.js 的 shaderWarm）：遊戲邏輯與畫面都停住，只顯示「戰場準備中…」
+    if (this.warmBusy) return;
     if (this.state === 'cine') {
       this.cineTick(dt); // 過場動畫（game/cine.js）
       return;

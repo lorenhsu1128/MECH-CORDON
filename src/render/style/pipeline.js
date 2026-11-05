@@ -954,23 +954,28 @@ export class StylePipeline {
       hide.length = list.length = mats.length = 0;
     }
   }
-  // 著色器預熱（Game.shaderWarm）：後處理的各段（熱扭曲、光束、景深…只在需要時才畫，第一次畫時才編譯）與熱扭曲的場景
-  warm() {
+  // 著色器預熱（Game.shaderWarm）：後處理的各段（熱扭曲、光束、景深…只在需要時才畫，第一次畫時才編譯）與熱扭曲的場景。
+  // async 時回傳 compileAsync 的 Promise 陣列
+  warm(async = false) {
     const R = this.R;
+    const out = [];
+    const go = (scene, cam) => {
+      if (async) out.push(R.compileAsync(scene, cam));
+      else R.compile(scene, cam);
+    };
     const s = new THREE.Scene();
-    const qs = [];
     for (const k in this) {
       const q = this[k];
-      if (q && q.mesh && q.m && q.m.isShaderMaterial && q.mesh.isMesh) qs.push(q.mesh);
+      if (q && q.mesh && q.m && q.m.isShaderMaterial && q.mesh.isMesh) s.children.push(q.mesh);
     }
-    for (const m of qs) s.children.push(m); // 只走訪，不改它們的 parent（draw 會放進 qScene）
     try {
-      R.compile(s, this.cam2);
+      go(s, this.cam2); // 只走訪，不改它們的 parent（draw 會放進 qScene）
     } finally {
       s.children.length = 0;
     }
     const H = this.ctx.heat && this.ctx.heat();
-    if (H && H.scene) R.compile(H.scene, this.camera);
+    if (H && H.scene) go(H.scene, this.camera);
+    return out;
   }
   draw(q, target) {
     this.qScene.children.length = 0;

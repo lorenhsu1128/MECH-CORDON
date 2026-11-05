@@ -7,6 +7,7 @@ import { StyleStore } from '../render/style/store.js';
 import { DS } from '../core/scale.js';
 import { Game } from './game.js';
 import { WARM, saveWarm, warmGroup } from '../render/shader-warm.js';
+import { legacyTarget } from '../render/legacy-rt.js';
 
 installStyleShader(); // 越早越好：之後建立的標準材質都會用風格著色器
 
@@ -75,12 +76,27 @@ Object.assign(Game.prototype, {
     const lab = this.lab;
     const P = lab ? lab.P : this.cine ? this.cine.P : this.styleP; // 過場動畫：風格＋過場的調色（game/cine.js）
     const t = performance.now() / 1000;
-    // 新地圖：整個場景的著色器先編好（要好幾秒）。第一格只顯示「準備中」並讓瀏覽器畫出來，下一格才預熱
+    // 新地圖：整個場景的著色器先編好。第一格只顯示「準備中」並讓瀏覽器畫出來，下一格才預熱；
+    // 非同步（warmAsyncOk）時背景編譯，完成前不畫場景、主迴圈也停住（loop 開頭看 warmBusy）。
     // 關卡編輯器（挑底圖時一直重建地圖）不預熱，照 three.js 原本的第一次畫到才編譯
+    if (this.warmBusy) return;
     if (this.world && this.warmWorld !== this.world && this.state !== 'editor') {
       if (this.warmNote !== this.world) {
         this.warmNote = this.world;
         this.warmMsg(true);
+        return;
+      }
+      if (this.warmAsyncOk()) {
+        this.warmAsyncN = (this.warmAsyncN || 0) + 1; // 冒煙測試看有沒有走非同步
+        const busy = (this.warmBusy = this.shaderWarm(null, true));
+        const done = () => {
+          if (this.warmBusy !== busy) return;
+          this.warmPrime();
+          this.warmBusy = null;
+          this.warmMsg(false);
+        };
+        // 保險：驅動程式一直沒回報完成時（裝置遺失等）最多等 20 秒
+        Promise.race([busy, new Promise((r) => setTimeout(r, 20000))]).then(done, done);
         return;
       }
       this.shaderWarm();
@@ -110,38 +126,70 @@ Object.assign(Game.prototype, {
   },
   // 著色器預熱（docs/perf-threejs-upgrade.md）：three.js 要等網格第一次畫到才編譯它的著色器（一個 0.1～0.4 秒、畫面停住），
   // 畫面外的敵人、地圖物件會在戰鬥中第一次轉過去時才編。新地圖第一次算繪前（出擊、主線換區段、自訂關卡、客機開局）
-  // 以 renderer.compile 把整個場景（含畫面外的）一次編好。render target 要和實際算繪的相同（程式的鍵含輸出的編碼）
-  shaderWarm(root) {
-    this.warmWorld = this.world;
+  // 把整個場景（含畫面外的）一次編好。render target 要和實際算繪的相同（程式的鍵含輸出的編碼與色調映射）。
+  // async：renderer.compileAsync（KHR_parallel_shader_compile，驅動程式在背景平行編譯），回傳全部完成的 Promise；
+  // 否則 renderer.compile（r187 也不會每個程式停下來等，但第一次畫的時候會等它編完）
+  shaderWarm(root, async = false) {
+    if (!root) this.warmWorld = this.world;
     if (!root && this.vehPrebuild) this.vehPrebuild(); // 運輸車輛的模型先建好（也一起預熱）
     const R = this.renderer,
       cam = this.camera;
-    if (!R || !cam) return;
+    if (!R || !cam) return async ? Promise.resolve() : undefined;
     const pipe = this.post.enabled && this.post.ok && this.stylePipe;
     const rt0 = R.getRenderTarget();
+    const ps = [];
     try {
       R.setRenderTarget(pipe ? pipe.rtScene : null);
-      // 光源、霧、環境貼圖照主場景（程式的鍵含光源的數量），材質只走訪 root（沒給時整個場景）；
-      // 略過 material 不是材質的物件（粒子批次的代理 fx/batch.js 也有 material 欄位）
-      // 沒給 root 時：整個場景＋以前在任務中遇過的變體（假網格）＋SSAO 法線的蒙皮版與 InstancedMesh 版
+      // 光源、霧、環境貼圖照主場景（targetScene；程式的鍵含光源的數量），材質只走訪 root（沒給時整個場景）。
+      // three.js 只處理 Mesh／Points／Line／Sprite（粒子批次的代理 fx/batch.js 不是網格，不會走到）。
+      // 沒給 root 時另外加：以前在任務中遇過的變體（假網格）＋SSAO 法線的蒙皮版與 InstancedMesh 版
       const extra = root ? null : warmGroup(pipe && pipe.ssao ? [pipe.skinN, pipe.instN] : []);
       if (extra) this.scene.add(extra);
-      const r = root || this.scene;
-      const ok = (m) => (Array.isArray(m) ? m.every((x) => x && x.isMaterial) : m.isMaterial);
-      const fake = Object.create(this.scene);
-      fake.traverse = (cb) =>
-        r.traverse((o) => {
-          if (!o.material || ((o.isMesh || o.isPoints || o.isLine || o.isSprite) && ok(o.material))) cb(o);
-        });
       try {
-        R.compile(fake, cam);
-        if (!root && pipe) pipe.warm(); // 後處理的各段與熱扭曲的場景
+        const r = root || this.scene;
+        if (async) ps.push(R.compileAsync(r, cam, this.scene));
+        else R.compile(r, cam, this.scene);
+        if (!root && pipe) ps.push(...pipe.warm(async)); // 後處理的各段與熱扭曲的場景
       } finally {
-        if (extra) this.scene.remove(extra);
+        if (extra) this.scene.remove(extra); // 編譯已經送出（compileAsync 等的是材質的程式，網格拿掉也沒關係）
       }
     } finally {
       R.setRenderTarget(rt0);
     }
+    return async ? Promise.all(ps) : undefined;
+  },
+  // 預熱完成、開始遊戲前（「戰場準備中」還蓋著）：整個場景不做視錐剔除、連陰影畫一次到很小的 render target，
+  // 幾何與貼圖上傳到顯示卡、陰影的深度材質（compile 不會編到）在這時完成，第一個真正的畫面不再停住
+  warmPrime() {
+    const R = this.renderer,
+      s = this.scene,
+      cam = this.camera;
+    if (!R || !s || !cam) return;
+    const rt = this.primeRT || (this.primeRT = legacyTarget(new THREE.WebGLRenderTarget(4, 4)));
+    const off = [];
+    s.traverse((o) => {
+      if ((o.isMesh || o.isPoints || o.isLine || o.isSprite) && o.frustumCulled) {
+        o.frustumCulled = false;
+        off.push(o);
+      }
+    });
+    const rt0 = R.getRenderTarget();
+    try {
+      R.shadowMap.needsUpdate = true;
+      R.setRenderTarget(rt);
+      R.render(s, cam);
+    } finally {
+      for (const o of off) o.frustumCulled = true;
+      R.setRenderTarget(rt0);
+      R.shadowMap.needsUpdate = true;
+    }
+  },
+  // 非同步預熱：單人才用（多人時房主停住會讓客機以為房主失聯）；自動化測試照舊同步（__pump 一次推進好幾格時
+  // Promise 不會完成），要測非同步時設 window.__warmAsync
+  warmAsyncOk() {
+    if ((this.net && this.net.role) || this.pumpDt) return false; // net 物件單人時也在（role 是 null）
+    if (typeof this.renderer.compileAsync !== 'function') return false;
+    return !navigator.webdriver || !!window.__warmAsync;
   },
   // 預熱時的提示（畫面中央）；自動化測試照樣顯示，不影響判定
   warmMsg(on) {
