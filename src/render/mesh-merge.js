@@ -354,6 +354,9 @@ export function makeSkeleton(root, bones, syncs) {
 // opts.names：有名稱的網格也合併（機甲與載具：GLB 的網格都有名稱，遊戲端不靠名稱找網格）。
 // opts.only：只合併這些網格（Set；再合併時只動建模時就有的網格，之後掛上去的特效、盾牌等不動）。
 // opts.skinCache：材質複本的快取（Map），再合併時沿用同一個複本（迷彩、適應裝甲記下的材質照樣有效）。
+// opts.cell：三角形超過 opts.cellTris（預設 5 萬）的合併再依世界座標的 XZ 方格（邊長 cell）分開（地圖的小物件：
+// 合併成橫跨整張地圖的網格時視錐剔除永遠剔不掉、陰影也要整張畫；小的照舊一個，不增加繪製次數；
+// docs/perf-threejs-upgrade.md 第 7 期）。
 // 回傳 restore（沒有記下的合併時為 null）。
 export function mergeStatic(root, moving, detach = new Set(), opts = {}) {
   const all = detach === true;
@@ -384,6 +387,26 @@ export function mergeStatic(root, moving, detach = new Set(), opts = {}) {
     if (!l) byA.set(a, (l = []));
     l.push(o);
   });
+  if (opts.cell) {
+    const lim = opts.cellTris || 50000;
+    const triN = (g) => (g.index ? g.index.count : g.attributes.position.count) / 3;
+    for (const [key, byA] of [...buckets]) {
+      let n = 0;
+      for (const l of byA.values()) for (const o of l) n += triN(o.geometry);
+      if (n <= lim) continue;
+      buckets.delete(key);
+      for (const [a, l] of byA)
+        for (const o of l) {
+          const e = o.matrixWorld.elements;
+          const k2 = key + '|' + Math.floor(e[12] / opts.cell) + ',' + Math.floor(e[14] / opts.cell);
+          let b2 = buckets.get(k2);
+          if (!b2) buckets.set(k2, (b2 = new Map()));
+          let l2 = b2.get(a);
+          if (!l2) b2.set(a, (l2 = []));
+          l2.push(o);
+        }
+    }
+  }
   const undo = [];
   const bones = [];
   const boneIdx = new Map();
