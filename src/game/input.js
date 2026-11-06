@@ -46,7 +46,7 @@ Object.assign(Game.prototype, {
         {
           aim: 'mouse',
           moveRel: 'screen',
-          topCtl: 'aim', // 俯視的操作：aim 面向游標（預設）／classic 傳統（top-aim.js）
+          topCtl: 'classic', // 俯視的操作：classic 傳統（預設）／aim 面向游標（top-aim.js）
           topSnap: true, // 游標吸附
           holdFire: true,
           rumble: true,
@@ -63,6 +63,11 @@ Object.assign(Game.prototype, {
         if (this.ctrl.pace === 0.85) this.ctrl.pace = 0.75;
         else if (this.ctrl.pace === 0.7) this.ctrl.pace = 0.65;
         this.ctrl.paceV = 2;
+      }
+      // 俯視的操作的預設改回傳統（2026-11-06：面向游標當過幾小時的預設，存下來的 aim 不是使用者自己選的）
+      if (!this.ctrl.topV) {
+        this.ctrl.topCtl = 'classic';
+        this.ctrl.topV = 1;
       }
       const pm = JSON.parse(localStorage.getItem('rubicon_pad') || 'null');
       this.padmap = Object.assign(this.defaultPad(), pm || {});

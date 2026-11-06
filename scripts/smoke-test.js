@@ -5545,7 +5545,7 @@ async function testTopAim(browser, base) {
     return out;
   }, SC);
   console.log('  ', JSON.stringify(r));
-  check(r.topAim, '預設是面向游標');
+  check(r.topAim, '設定成面向游標時啟用');
   check(
     Math.abs(Math.abs(r.yaw) - Math.PI) < 0.05 && r.noLockBack,
     `游標在後方：移動的基準朝後（${r.yaw && r.yaw.toFixed(2)}），框裡沒有敵人不鎖定`,
@@ -27403,7 +27403,7 @@ async function launchBrowser() {
   // 地圖預設固定為貨運集散場（平坦、沒有虛空與多層），Boss、鎖定、多人等測試的結果才穩定；
   // 各地圖本身由 testMaps 逐一出擊檢查。測試自己選了地圖（包含選回「隨機」）時不覆蓋
   // 遊戲節奏與地圖物件的破壞：測試的時間與數值照 85%／可破壞調的（2026-11-05 預設改成 75%／易破壞），
-  // 俯視的操作：舊的測試照傳統操作寫的（2026-11-06 預設改成面向游標，testTopAim 另外測），
+  // 俯視的操作：舊的測試照傳統操作寫的（2026-11-06 遊戲的預設也改回傳統；面向游標由 testTopAim 另外測），
   // 沒有存過設定的環境先寫這兩項；realDefaults（設定畫面的測試）用遊戲真正的預設
   const newCtx = browser.newContext.bind(browser);
   browser.newContext = async (o = {}) => {

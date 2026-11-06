@@ -235,7 +235,7 @@ Object.assign(Game.prototype, {
   },
   // 「瞄準」「移動方向基準」只在俯視的傳統操作時顯示；游標吸附只在面向游標時顯示
   setTopRows() {
-    const classic = this.ctrl.topCtl === 'classic';
+    const classic = this.ctrl.topCtl !== 'aim';
     for (const id of ['ctrlAim', 'ctrlMove']) {
       const r = $(id) && $(id).closest('.krow');
       if (r) r.style.display = classic ? '' : 'none';
@@ -345,7 +345,7 @@ Object.assign(Game.prototype, {
       };
     $('ctrlAim').value = this.ctrl.aim;
     $('ctrlMove').value = this.ctrl.moveRel;
-    $('ctrlTopCtl').value = this.ctrl.topCtl === 'classic' ? 'classic' : 'aim';
+    $('ctrlTopCtl').value = this.ctrl.topCtl === 'aim' ? 'aim' : 'classic';
     $('ctrlTopSnap').checked = this.ctrl.topSnap !== false;
     this.setTopRows();
     $('ctrlHold').checked = this.ctrl.holdFire;

@@ -1,5 +1,5 @@
 // ============================================================
-//  俯視的「面向游標」操作（設定 ctrl.topCtl：aim 預設／classic 傳統；docs/topdown-control-design.md）
+//  俯視的「面向游標」操作（設定 ctrl.topCtl：classic 傳統（預設）／aim 面向游標；docs/topdown-control-design.md）
 //  機體一直面向游標（手把與觸控＝右搖桿推的方向），W／S＝往游標前進／後退、A／D＝側移；
 //  自動鎖定用跟著游標的鎖定框（chase.js 的 chaseLockCands／chaseAutoLock，框的中心＝topRet）；
 //  游標吸附（ctrl.topSnap）：游標靠近敵人時準星黏過去並立刻鎖定，拉開才放開
@@ -26,7 +26,7 @@ Object.assign(Game.prototype, {
       !this.airMode &&
       !this.spectator &&
       this.ctrl &&
-      this.ctrl.topCtl !== 'classic'
+      this.ctrl.topCtl === 'aim'
     );
   },
   // 移動輸入要不要換成相對方向（前進＝moveYaw 的方向）
