@@ -1,14 +1,23 @@
-Music: Kevin MacLeod (incompetech.com)
-License: Licensed under Creative Commons: By Attribution 4.0 (https://creativecommons.org/licenses/by/4.0/)
-Source: https://incompetech.com/music/royalty-free/
-Changes: a section of each track was cut into a seamless loop (3 s equal-power crossfade), normalized and re-encoded to 80 kbps MP3 by scripts/bgm-prep.py for the in-mission dynamic music (docs/audio-design.md).
-explore1.mp3 = "Lightless Dawn"
-explore2.mp3 = "Hiding Your Reality"
-alert1.mp3 = "Crypto"
-alert2.mp3 = "Interloper"
-combat1.mp3 = "Cyborg Ninja"
-combat2.mp3 = "Volatile Reaction"
-combat3.mp3 = "Movement Proposition"
-boss1.mp3 = "Clash Defiant"
-boss2.mp3 = "Five Armies"
-air1.mp3 = "Heroic Age"
+Music for the in-mission dynamic BGM (docs/audio-design.md). Licenses: CC-BY 4.0 (https://creativecommons.org/licenses/by/4.0/), CC-BY 3.0 (https://creativecommons.org/licenses/by/3.0/), CC0 (https://creativecommons.org/publicdomain/zero/1.0/).
+Changes: a section of each track was cut into a seamless loop (3 s equal-power crossfade; tracks marked "loop" were released as loops and used whole), normalized and re-encoded to 80 kbps MP3 by scripts/bgm-prep.py.
+explore1.mp3 = "Signal To Noise" by Scott Buckley - CC-BY 4.0 - https://www.scottbuckley.com.au/library/
+explore2.mp3 = "Penumbra" by Scott Buckley - CC-BY 4.0 - https://www.scottbuckley.com.au/library/
+explore3.mp3 = "The Long Dark" by Scott Buckley - CC-BY 4.0 - https://www.scottbuckley.com.au/library/
+alert1.mp3 = "Eyes In The Void" by Scott Buckley - CC-BY 4.0 - https://www.scottbuckley.com.au/library/
+alert2.mp3 = "Electrorchestra" by Alexander Nakarada - CC-BY 4.0 - https://www.serpentsoundstudios.com/ (via free-stock-music.com)
+alert3.mp3 = "Escape Velocity" by Scott Buckley - CC-BY 4.0 - https://www.scottbuckley.com.au/library/
+alert4.mp3 = "Hidden (Aggressive Electro Cyberpunk)" by Alex-Productions - CC-BY 3.0 - https://www.free-stock-music.com/artist.alex-productions.html
+combat1.mp3 = "Simulacra" by Scott Buckley - CC-BY 4.0 - https://www.scottbuckley.com.au/library/
+combat2.mp3 = "Terminus" by Scott Buckley - CC-BY 4.0 - https://www.scottbuckley.com.au/library/
+combat3.mp3 = "Chase" by Alexander Nakarada - CC-BY 4.0 - https://www.serpentsoundstudios.com/ (via free-stock-music.com)
+combat4.mp3 = "Epic Cyberpunk" by Alex-Productions - CC-BY 3.0 - https://www.free-stock-music.com/artist.alex-productions.html
+combat5.mp3 = "Determined Pursuit (Epic Orchestra Loop)" by Emma_MA - CC0 - https://opengameart.org/content/determined-pursuit-epic-orchestra-loop (loop)
+combat6.mp3 = "QaziJamJam (Orchestral Battle Theme)" by Emma_MA - CC0 - https://opengameart.org/content/qazijamjam-orchestral-battle-theme
+boss1.mp3 = "Goliath" by Scott Buckley - CC-BY 4.0 - https://www.scottbuckley.com.au/library/
+boss2.mp3 = "Vanguard" by Scott Buckley - CC-BY 4.0 - https://www.scottbuckley.com.au/library/
+boss3.mp3 = "Hellfire" by Alexander Nakarada - CC-BY 4.0 - https://www.serpentsoundstudios.com/ (via free-stock-music.com)
+boss4.mp3 = "The Great Battle" by Alexander Nakarada - CC-BY 4.0 - https://www.serpentsoundstudios.com/ (via free-stock-music.com)
+boss5.mp3 = "Boss Battle #2 [Symphonic Metal]" by nene - CC0 - https://opengameart.org/content/boss-battle-2-symphonic-metal (loop)
+air1.mp3 = "Sentinel" by Scott Buckley - CC-BY 4.0 - https://www.scottbuckley.com.au/library/
+air2.mp3 = "Born Of The Sky" by Scott Buckley - CC-BY 4.0 - https://www.scottbuckley.com.au/library/
+air3.mp3 = "Starfire" by Scott Buckley - CC-BY 4.0 - https://www.scottbuckley.com.au/library/

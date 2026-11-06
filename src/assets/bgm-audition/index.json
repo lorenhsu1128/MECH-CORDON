@@ -1,0 +1,492 @@
+[
+ {
+  "id": "sb_simulacra",
+  "title": "Simulacra",
+  "artist": "Scott Buckley",
+  "lic": "CC-BY 4.0",
+  "url": "https://www.scottbuckley.com.au/library/",
+  "use": [
+   "combat",
+   "boss"
+  ],
+  "desc": "混合交響動作曲：琶音合成器、電吉他悶音、節奏弦樂、混亂的銅管，作者寫明適合追逐與 Boss 戰",
+  "dur": 234,
+  "at": 97
+ },
+ {
+  "id": "sb_goliath",
+  "title": "Goliath",
+  "artist": "Scott Buckley",
+  "lic": "CC-BY 4.0",
+  "url": "https://www.scottbuckley.com.au/library/",
+  "use": [
+   "boss"
+  ],
+  "desc": "史詩戰鬥曲：打擊感的合成器、厚重銅管、合唱、高昂弦樂，約 6 分鐘，作者寫明為 Boss 戰而寫",
+  "dur": 382,
+  "at": 298
+ },
+ {
+  "id": "sb_vanguard",
+  "title": "Vanguard",
+  "artist": "Scott Buckley",
+  "lic": "CC-BY 4.0",
+  "url": "https://www.scottbuckley.com.au/library/",
+  "use": [
+   "boss",
+   "combat"
+  ],
+  "desc": "電影預告片風格的混合交響：重低音打擊、銅管、合成器脈衝",
+  "dur": 235,
+  "at": 158
+ },
+ {
+  "id": "sb_terminus",
+  "title": "Terminus",
+  "artist": "Scott Buckley",
+  "lic": "CC-BY 4.0",
+  "url": "https://www.scottbuckley.com.au/library/",
+  "use": [
+   "combat",
+   "air"
+  ],
+  "desc": "推進感的英雄動作冒險曲：完整管弦、鼓組、合成器、合唱",
+  "dur": 263,
+  "at": 189
+ },
+ {
+  "id": "sb_escape",
+  "title": "Escape Velocity",
+  "artist": "Scott Buckley",
+  "lic": "CC-BY 4.0",
+  "url": "https://www.scottbuckley.com.au/library/",
+  "use": [
+   "alert",
+   "combat"
+  ],
+  "desc": "高能量：大量合成器、史詩打擊與管弦，中間有懸疑段落（間諜驚悚感）",
+  "dur": 271,
+  "at": 152
+ },
+ {
+  "id": "sb_aphelion",
+  "title": "Aphelion",
+  "artist": "Scott Buckley",
+  "lic": "CC-BY 4.0",
+  "url": "https://www.scottbuckley.com.au/library/",
+  "use": [
+   "boss",
+   "explore"
+  ],
+  "desc": "電影感混合曲：慢慢堆疊到合成器＋完整管弦的史詩高潮",
+  "dur": 422,
+  "at": 226
+ },
+ {
+  "id": "sb_hyperion",
+  "title": "Hyperion",
+  "artist": "Scott Buckley",
+  "lic": "CC-BY 4.0",
+  "url": "https://www.scottbuckley.com.au/library/",
+  "use": [
+   "air",
+   "boss"
+  ],
+  "desc": "史詩、昂揚的混合交響：銅管與人聲",
+  "dur": 252,
+  "at": 161
+ },
+ {
+  "id": "sb_sentinel",
+  "title": "Sentinel",
+  "artist": "Scott Buckley",
+  "lic": "CC-BY 4.0",
+  "url": "https://www.scottbuckley.com.au/library/",
+  "use": [
+   "air",
+   "combat"
+  ],
+  "desc": "英雄冒險的混合交響：史詩人聲、大膽的銅管、翱翔的弦樂",
+  "dur": 203,
+  "at": 128
+ },
+ {
+  "id": "sb_starfire",
+  "title": "Starfire",
+  "artist": "Scott Buckley",
+  "lic": "CC-BY 4.0",
+  "url": "https://www.scottbuckley.com.au/library/",
+  "use": [
+   "air"
+  ],
+  "desc": "充滿希望的史詩科幻管弦",
+  "dur": 341,
+  "at": 228
+ },
+ {
+  "id": "sb_born",
+  "title": "Born Of The Sky",
+  "artist": "Scott Buckley",
+  "lic": "CC-BY 4.0",
+  "url": "https://www.scottbuckley.com.au/library/",
+  "use": [
+   "air"
+  ],
+  "desc": "短而昂揚的英雄曲，後段加入有力的鼓與吉他",
+  "dur": 188,
+  "at": 105
+ },
+ {
+  "id": "sb_chasing",
+  "title": "Chasing Daylight",
+  "artist": "Scott Buckley",
+  "lic": "CC-BY 4.0",
+  "url": "https://www.scottbuckley.com.au/library/",
+  "use": [
+   "alert",
+   "combat"
+  ],
+  "desc": "戲劇性、緊張的管弦（free-stock-music 標為 dramatic／suspenseful）",
+  "dur": 274,
+  "at": 104
+ },
+ {
+  "id": "sb_eyes",
+  "title": "Eyes In The Void",
+  "artist": "Scott Buckley",
+  "lic": "CC-BY 4.0",
+  "url": "https://www.scottbuckley.com.au/library/",
+  "use": [
+   "alert",
+   "explore"
+  ],
+  "desc": "黑暗、混亂的管弦：帶故障感的高度懸疑，之後轉成哥德式進行曲（宇宙恐怖）",
+  "dur": 264,
+  "at": 160
+ },
+ {
+  "id": "sb_signal",
+  "title": "Signal To Noise",
+  "artist": "Scott Buckley",
+  "lic": "CC-BY 4.0",
+  "url": "https://www.scottbuckley.com.au/library/",
+  "use": [
+   "explore"
+  ],
+  "desc": "神祕、黑暗的氛圍曲（合成器＋弦樂）",
+  "dur": 353,
+  "at": 64
+ },
+ {
+  "id": "sb_longdark",
+  "title": "The Long Dark",
+  "artist": "Scott Buckley",
+  "lic": "CC-BY 4.0",
+  "url": "https://www.scottbuckley.com.au/library/",
+  "use": [
+   "explore"
+  ],
+  "desc": "神祕、低沉的氛圍曲",
+  "dur": 440,
+  "at": 101
+ },
+ {
+  "id": "sb_penumbra",
+  "title": "Penumbra",
+  "artist": "Scott Buckley",
+  "lic": "CC-BY 4.0",
+  "url": "https://www.scottbuckley.com.au/library/",
+  "use": [
+   "explore"
+  ],
+  "desc": "冰冷、空曠的弦樂＋合成器氛圍曲",
+  "dur": 450,
+  "at": 92
+ },
+ {
+  "id": "an_electro",
+  "title": "Electrorchestra",
+  "artist": "Alexander Nakarada",
+  "lic": "CC-BY 4.0",
+  "url": "https://www.serpentsoundstudios.com/",
+  "use": [
+   "alert",
+   "combat"
+  ],
+  "desc": "電子＋管弦：酷、黑暗、帶威脅感",
+  "dur": 273,
+  "at": 69
+ },
+ {
+  "id": "an_chase",
+  "title": "Chase",
+  "artist": "Alexander Nakarada",
+  "lic": "CC-BY 4.0",
+  "url": "https://www.serpentsoundstudios.com/",
+  "use": [
+   "combat"
+  ],
+  "desc": "史詩追逐動作曲：緊張、有攻擊性（管弦＋鼓組）",
+  "dur": 129,
+  "at": 37
+ },
+ {
+  "id": "an_hellfire",
+  "title": "Hellfire",
+  "artist": "Alexander Nakarada",
+  "lic": "CC-BY 4.0",
+  "url": "https://www.serpentsoundstudios.com/",
+  "use": [
+   "boss"
+  ],
+  "desc": "史詩金屬：重吉他、鼓組與管弦，強烈有攻擊性",
+  "dur": 288,
+  "at": 176
+ },
+ {
+  "id": "an_offtowar",
+  "title": "Off To War",
+  "artist": "Alexander Nakarada",
+  "lic": "CC-BY 4.0",
+  "url": "https://www.serpentsoundstudios.com/",
+  "use": [
+   "combat",
+   "boss"
+  ],
+  "desc": "史詩、激烈的戰爭曲（金屬＋管弦）",
+  "dur": 209,
+  "at": 66
+ },
+ {
+  "id": "an_battle",
+  "title": "The Great Battle",
+  "artist": "Alexander Nakarada",
+  "lic": "CC-BY 4.0",
+  "url": "https://www.serpentsoundstudios.com/",
+  "use": [
+   "boss"
+  ],
+  "desc": "史詩戰鬥管弦：戲劇性、黑暗、有力",
+  "dur": 198,
+  "at": 132
+ },
+ {
+  "id": "an_shadow",
+  "title": "Shadowreign",
+  "artist": "Alexander Nakarada",
+  "lic": "CC-BY 4.0",
+  "url": "https://www.serpentsoundstudios.com/",
+  "use": [
+   "boss",
+   "combat"
+  ],
+  "desc": "旋律性的奇幻金屬：粗獷、有力",
+  "dur": 211,
+  "at": 83
+ },
+ {
+  "id": "an_curiosity",
+  "title": "Curiosity",
+  "artist": "Alexander Nakarada",
+  "lic": "CC-BY 4.0",
+  "url": "https://www.serpentsoundstudios.com/",
+  "use": [
+   "explore",
+   "alert"
+  ],
+  "desc": "神祕、懸疑的電影感氛圍曲",
+  "dur": 360,
+  "at": 23
+ },
+ {
+  "id": "ap_cyber",
+  "title": "Epic Cyberpunk",
+  "artist": "Alex-Productions",
+  "lic": "CC-BY 3.0",
+  "url": "https://www.free-stock-music.com/artist.alex-productions.html",
+  "use": [
+   "combat"
+  ],
+  "desc": "黑暗、有力的賽博龐克：電子節拍＋失真合成器＋電影打擊",
+  "dur": 164,
+  "at": 100
+ },
+ {
+  "id": "ap_hidden",
+  "title": "Hidden（Aggressive Electro Cyberpunk）",
+  "artist": "Alex-Productions",
+  "lic": "CC-BY 3.0",
+  "url": "https://www.free-stock-music.com/artist.alex-productions.html",
+  "use": [
+   "alert",
+   "combat"
+  ],
+  "desc": "中板、有攻擊性的電子賽博龐克（驅動感）",
+  "dur": 202,
+  "at": 115
+ },
+ {
+  "id": "ap_reset",
+  "title": "Reset（Epic Cinematic Gaming Cyberpunk）",
+  "artist": "Alex-Productions",
+  "lic": "CC-BY 3.0",
+  "url": "https://www.free-stock-music.com/artist.alex-productions.html",
+  "use": [
+   "combat",
+   "boss"
+  ],
+  "desc": "史詩電影感遊戲配樂：賽博龐克電子＋管弦",
+  "dur": 190,
+  "at": 128
+ },
+ {
+  "id": "ap_steel",
+  "title": "Hard As Steel",
+  "artist": "Alex-Productions",
+  "lic": "CC-BY 3.0",
+  "url": "https://www.free-stock-music.com/artist.alex-productions.html",
+  "use": [
+   "combat"
+  ],
+  "desc": "有力的動作搖滾：吉他、鼓組",
+  "dur": 128,
+  "at": 43
+ },
+ {
+  "id": "ap_titan",
+  "title": "Titan",
+  "artist": "Alex-Productions",
+  "lic": "CC-BY 3.0",
+  "url": "https://www.free-stock-music.com/artist.alex-productions.html",
+  "use": [
+   "air",
+   "boss"
+  ],
+  "desc": "史詩、昂揚、有驅動感的電影曲",
+  "dur": 134,
+  "at": 49
+ },
+ {
+  "id": "ap_enemy",
+  "title": "Enemy",
+  "artist": "Alex-Productions",
+  "lic": "CC-BY 3.0",
+  "url": "https://www.free-stock-music.com/artist.alex-productions.html",
+  "use": [
+   "alert",
+   "combat"
+  ],
+  "desc": "史詩、戲劇性、帶黑暗感的電影曲",
+  "dur": 153,
+  "at": 45
+ },
+ {
+  "id": "ap_iron",
+  "title": "Hearts Of Iron",
+  "artist": "Alex-Productions",
+  "lic": "CC-BY 3.0",
+  "url": "https://www.free-stock-music.com/artist.alex-productions.html",
+  "use": [
+   "alert",
+   "boss"
+  ],
+  "desc": "激烈、戲劇性的電影管弦",
+  "dur": 184,
+  "at": 30
+ },
+ {
+  "id": "ap_ascend",
+  "title": "Ascend",
+  "artist": "Alex-Productions",
+  "lic": "CC-BY 3.0",
+  "url": "https://www.free-stock-music.com/artist.alex-productions.html",
+  "use": [
+   "air",
+   "combat"
+  ],
+  "desc": "酷、有力的動作電子（帶神祕感）",
+  "dur": 151,
+  "at": 84
+ },
+ {
+  "id": "ap_voyager",
+  "title": "Voyager",
+  "artist": "Alex-Productions",
+  "lic": "CC-BY 3.0",
+  "url": "https://www.free-stock-music.com/artist.alex-productions.html",
+  "use": [
+   "air"
+  ],
+  "desc": "史詩、昂揚、有冒險感的電影曲",
+  "dur": 144,
+  "at": 41
+ },
+ {
+  "id": "pd_100",
+  "title": "100 Seconds",
+  "artist": "Punch Deck",
+  "lic": "CC-BY 3.0",
+  "url": "https://www.free-stock-music.com/artist.punch-deck.html",
+  "use": [
+   "alert",
+   "combat"
+  ],
+  "desc": "黑暗、帶威脅感的史詩動作電子",
+  "dur": 102,
+  "at": 37
+ },
+ {
+  "id": "oga_metal",
+  "title": "Boss Battle #2 [Symphonic Metal]",
+  "artist": "nene",
+  "lic": "CC0",
+  "url": "https://opengameart.org/content/boss-battle-2-symphonic-metal",
+  "use": [
+   "boss"
+  ],
+  "desc": "交響金屬（沒有人聲），原本就做成循環段（可以直接無縫循環）",
+  "dur": 40,
+  "at": 0
+ },
+ {
+  "id": "oga_pursuit",
+  "title": "Determined Pursuit（Epic Orchestra Loop）",
+  "artist": "Emma_MA",
+  "lic": "CC0",
+  "url": "https://opengameart.org/content/determined-pursuit-epic-orchestra-loop",
+  "use": [
+   "combat"
+  ],
+  "desc": "狂亂的弦樂、堅定的法國號、忙碌的鼓，作者建議用在戰鬥或 Boss，原本就是循環",
+  "dur": 108,
+  "at": 41
+ },
+ {
+  "id": "oga_qazi",
+  "title": "QaziJamJam（Orchestral Battle Theme）",
+  "artist": "Emma_MA",
+  "lic": "CC0",
+  "url": "https://opengameart.org/content/qazijamjam-orchestral-battle-theme",
+  "use": [
+   "combat",
+   "boss"
+  ],
+  "desc": "4 分鐘的管弦戰鬥曲：弦樂、銅管、吉他、木管、史詩鼓，循環時旋律與配器有變化",
+  "dur": 234,
+  "at": 52
+ },
+ {
+  "id": "oga_warmachine",
+  "title": "War Machine",
+  "artist": "Fato_Shadow_Music",
+  "lic": "CC-BY 4.0",
+  "url": "https://opengameart.org/content/war-machine-soundtrack",
+  "use": [
+   "combat",
+   "boss"
+  ],
+  "desc": "科幻戰爭曲（作者標了 sci-fi）",
+  "dur": 262,
+  "at": 8
+ }
+]

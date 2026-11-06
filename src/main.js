@@ -50,6 +50,7 @@ import './game/story.js';
 import './game/cine.js';
 import './game/cine-lib.js';
 import './game/voice-lab.js';
+import './game/bgm-lab.js';
 import './game/cine-people.js';
 import './game/cine-c1.js';
 import './game/cine-c2.js';

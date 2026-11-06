@@ -27,7 +27,7 @@
 
 - `src/assets/sfx/*.mp3`：原本的 83 個，照舊內嵌在 HTML（介面音、載入前就要有的聲音）。
 - `src/assets/sfx2/*.mp3`：新增的分層素材（單聲道、44.1 kHz、依用途 64～96 kbps），建置成 `dist/lib/sfx-assets.js`（`window.RUBICON_SFX2`），遊戲啟動後載入（`SFX.loadPack`）；**載到之前所有配方都退回原本的樣本**（配方的每一層找不到檔案就略過，主層有 `fb` 後備）。
-- `src/assets/bgm/*.mp3`：任務中的配樂（立體聲 96 kbps），建置成 `dist/lib/bgm-assets.js`（`window.RUBICON_BGM`），第一次進任務才載入。
+- `src/assets/bgm/*.mp3`：任務中的配樂（立體聲 80 kbps，21 首、約 20 MB），建置成 `dist/lib/bgm-assets.js`（`window.RUBICON_BGM`），第一次進任務才載入。
 - `src/assets/voice/echo/*.mp3`＋`index.json`：ECHO 的語音（單聲道 24 kHz、32 kbps），建置成 `dist/lib/voice-assets.js`（`window.RUBICON_VOICE`＝{ 雜湊: base64 }），第一次播通訊時載入。
 - 各資料夾的 `CREDITS.txt` 照 `src/assets/music/` 的格式寫來源與授權，建置時寫進產生的 js 檔頭。
 
@@ -82,27 +82,27 @@
 ## 第 5 期：動態戰鬥配樂、空域、程式合成
 
 - **配樂的強度**（`game/bgm.js`）：0 探索（沒有交戰中的敵人）、1 警戒（有起疑／搜索中的敵人、增援預告）、2 交戰、3 Boss；依 `ai-director` 的狀態與 Boss 關決定，往上切換快（1 秒）、往下慢（交戰結束 8 秒後才降），每一級一首循環曲，交叉淡化 2～4 秒；探索時低通＋小聲，警戒時打開。Boss 換型態時插重音並換成更激烈的曲子；空域有自己的曲子。
-- 曲目：Kevin MacLeod（CC-BY 4.0）的曲子，剪成可以循環的段落（`scripts/bgm-prep.py`）；各主題可以指定不同的探索曲。
+- 曲目：2026-11-06 起是多種樂器合奏的混合交響／交響金屬／電子（Scott Buckley、Alexander Nakarada、Alex-Productions、OpenGameArt 的 Emma_MA 與 nene，CC-BY／CC0，見 `src/assets/bgm/CREDITS.txt`；以前是 Kevin MacLeod，使用者覺得太像 MIDI），剪成可以循環的段落（`scripts/bgm-prep.py`）；探索 3、警戒 4、交戰 6、Boss 5、空域 3 首。
 - 設定「戰鬥配樂」關閉時照舊沒有配樂；暫停時壓低，結果畫面淡出。
 - **空域**：擦身飛過的 Doppler（自己依徑向速度算 playbackRate，c＝343 m/s、夾在 0.7～1.4）＋blacklodge 的飛掠素材；超過音速的敵機音爆；導彈警報分三級（被鎖定＝慢的嗶、導彈發射＝快的嗶、接近＝連續音）。
 - **程式合成**（`audio/synth.js`）：雷射（鋸齒波＋快速往下掃頻＋短雜訊）、EMP（低頻嗡聲＋電弧的雜訊）、能量環、蓄力（往上掃的和聲，依蓄力進度）、警報嗶聲；可以無限變化、不增加檔案大小。合成好的短音先算成 AudioBuffer 快取（`OfflineAudioContext`），之後和一般樣本一樣播放。
 
 ## 素材與授權（2026-11-01 查核；只收 CC0／CC-BY）
 
-| 素材                                                                                   | 授權       | 用途                           |
-| -------------------------------------------------------------------------------------- | ---------- | ------------------------------ |
-| Still North Media「The Free Firearm Sound Library」（OpenGameArt）                     | CC0        | 槍聲的近距離／中距離錄音       |
-| Still North Media「Medieval sound effects - Weapon impacts」                           | CC0        | 近戰的刀刃交擊                 |
-| blacklodgegames「50 Free SciFi SFX」「27 Metal Audio Samples」                         | CC0        | 飛掠、機械、能量場、警報、金屬 |
-| rubberduck「50 CC0 sci-fi SFX」「25 CC0 bang SFX」                                     | CC0        | 雷射、砲聲                     |
-| Kenney「63 Digital SFX」                                                               | CC0        | 雷射、介面                     |
-| qubodup「Mech stomp step」「Impact」                                                   | CC0        | 機甲腳步、撞擊                 |
-| bart「33 metal clang sounds from cast iron pans」、「Metal Impact Sounds」             | CC0        | 彈殼、金屬撞擊                 |
-| Michel Baradari「Chaingun, pistol, rifle, shotgun shots」「2 High Quality Explosions」 | CC-BY 3.0  | 槍聲、爆炸                     |
-| Lee Barkovich「Robotic/mechanic step sounds」                                          | CC-BY 3.0  | 機甲腳步、伺服                 |
-| Blender Foundation「Big Explosion」（DeathFlash）                                      | CC-BY 3.0  | 大爆炸                         |
-| Kevin MacLeod（incompetech.com）                                                       | CC-BY 4.0  | 任務中的配樂                   |
-| Kokoro-82M v1.1-zh（hexgrad）                                                          | Apache-2.0 | ECHO 的語音（產生的音檔）      |
+| 素材                                                                                     | 授權       | 用途                           |
+| ---------------------------------------------------------------------------------------- | ---------- | ------------------------------ |
+| Still North Media「The Free Firearm Sound Library」（OpenGameArt）                       | CC0        | 槍聲的近距離／中距離錄音       |
+| Still North Media「Medieval sound effects - Weapon impacts」                             | CC0        | 近戰的刀刃交擊                 |
+| blacklodgegames「50 Free SciFi SFX」「27 Metal Audio Samples」                           | CC0        | 飛掠、機械、能量場、警報、金屬 |
+| rubberduck「50 CC0 sci-fi SFX」「25 CC0 bang SFX」                                       | CC0        | 雷射、砲聲                     |
+| Kenney「63 Digital SFX」                                                                 | CC0        | 雷射、介面                     |
+| qubodup「Mech stomp step」「Impact」                                                     | CC0        | 機甲腳步、撞擊                 |
+| bart「33 metal clang sounds from cast iron pans」、「Metal Impact Sounds」               | CC0        | 彈殼、金屬撞擊                 |
+| Michel Baradari「Chaingun, pistol, rifle, shotgun shots」「2 High Quality Explosions」   | CC-BY 3.0  | 槍聲、爆炸                     |
+| Lee Barkovich「Robotic/mechanic step sounds」                                            | CC-BY 3.0  | 機甲腳步、伺服                 |
+| Blender Foundation「Big Explosion」（DeathFlash）                                        | CC-BY 3.0  | 大爆炸                         |
+| Scott Buckley、Alexander Nakarada、Alex-Productions、Emma_MA、nene（見 bgm/CREDITS.txt） | CC-BY／CC0 | 任務中的配樂                   |
+| Kokoro-82M v1.1-zh（hexgrad）                                                            | Apache-2.0 | ECHO 的語音（產生的音檔）      |
 
 **不能用的**：Sonniss GDC 包、Pixabay、Mixkit、ZapSplat、99Sounds、Voxengo 的脈衝響應（自訂授權，禁止散布原檔——我們的 HTML 以 base64 內嵌，解得回原檔）；BBC 音效庫（非商用）；Freesound 上 CC-BY-NC 的檔案；OpenGameArt 上 CC-BY-SA、GPL 的包；授權沒寫的 TTS 模型（MediaTek Breeze2-VITS）。
 
@@ -176,6 +176,15 @@
 - **不顯示**：通訊框只留說話者（頭像與名字，`#comm.subOff`）；這句唸不出來（語音關閉、沒有語音檔）時照樣顯示文字。過場動畫的角色台詞同樣只有唸不出來時才顯示，旁白照常。
 - **字幕條** `#subBar`（`subBar(文字, 說話者, 秒)`，最多兩行、各自顯示到唸完）：系統提示（`voiceCue`，語音開始播時）與敵兵的喊話（`barkPlay`，40 m 內，標「敵兵」）。位置：電腦在畫面下方中央、邊緣的敵人指示之上；觸控在通訊框的上面。
 - 冒煙測試 `testAudio2` 的字幕檢查；同時修正它兩個不穩定的檢查（敵兵喊話的對象要符合 `barkSay` 的條件、動態配樂要先清掉「最近被打」）。
+
+### 配樂重選：候選曲的試聽（2026-11-06）
+
+- 使用者回報目前的任務配樂（Kevin MacLeod）聽起來很 MIDI、單調，要多種樂器合奏的曲子。候選只收 CC0／CC-BY（不收 SA／ND／NC，也不收 Pixabay 授權）：
+  Scott Buckley（CC-BY 4.0，混合交響，scottbuckley.com.au）15 首、Alexander Nakarada（CC-BY 4.0，交響＋金屬／電子）7 首、Alex-Productions（CC-BY 3.0，賽博龐克電子＋電影感）9 首、Punch Deck（CC-BY 3.0）1 首、OpenGameArt 的 nene「Boss Battle #2 [Symphonic Metal]」、Emma_MA「Determined Pursuit」「QaziJamJam」（CC0）、Fato_Shadow_Music「War Machine」（CC-BY 4.0），共 36 首；Nakarada、Alex-Productions、Punch Deck 從 free-stock-music.com 下載（每首的頁面都確認過授權）。
+- `scripts/bgm-audition.py <資料夾>` 依建議用途挑 60 秒片段 → `src/assets/bgm-audition/`（`index.json` 曲名、作者、授權、來源、說明；`CREDITS.txt`）→ 建置成 `dist/lib/bgm-audition.js`（`window.RUBICON_BGM_AUD`，約 28 MB，打開試聽頁才載入）。
+- 標題的「配樂試聽」（`game/bgm-lab.js`，`state` 'bgmlab'）：播放／停止、進度條點一下跳轉、依建議用途篩選、每首勾選用在探索／警戒／交戰／Boss／空域、評分、備註（localStorage `rubicon_bgm_aud`），「複製勾選結果」依用途整理成文字；最下面可以播目前的配樂比較。冒煙測試 `testBgmLab`。
+- 使用者請開發者直接選：探索＝Signal To Noise／Penumbra／The Long Dark；警戒＝Eyes In The Void／Electrorchestra／Escape Velocity／Hidden；交戰＝Simulacra／Terminus／Chase／Epic Cyberpunk／Determined Pursuit／QaziJamJam；Boss＝Goliath／Vanguard／Hellfire／The Great Battle／Boss Battle #2；空域＝Sentinel／Born Of The Sky／Starfire。`scripts/bgm-prep.py` 的 `TRACKS` 記來源檔與授權，`raw` 是原本就做成循環的（整首照用），執行時重寫 `src/assets/bgm/CREDITS.txt`；`game/bgm.js` 的 `SETS`／`AIR_SET`。nene 的 zip 裡檔名是反的（`*_opening.wav` 才能無縫循環，量過接縫）。
+- 之後要換曲：在試聽頁聽、改 `TRACKS` 與 `SETS`，重跑 `bgm-prep.py`。
 
 ### 之後可以再做
 

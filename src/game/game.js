@@ -494,6 +494,7 @@ export class Game {
       this.state === 'story' ||
       this.state === 'cinelib' ||
       this.state === 'voicelab' ||
+      this.state === 'bgmlab' ||
       this.state === 'campfail' ||
       this.state === 'rangemenu' ||
       this.state === 'levels' ||

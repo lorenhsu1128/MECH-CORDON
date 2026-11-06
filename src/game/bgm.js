@@ -12,13 +12,14 @@ import { makeRng } from '../core/math.js';
 // 選曲用自己的亂數（不動 Math.random：冒煙測試固定種子時，遊戲邏輯拿到的亂數不受配樂影響）
 const brnd = makeRng(0x6b6d);
 
+// 2026-11-06 配樂重選：多種樂器合奏的混合交響／交響金屬／電子（src/assets/bgm/CREDITS.txt）
 const SETS = [
-  ['explore1', 'explore2'],
-  ['alert1', 'alert2'],
-  ['combat1', 'combat2', 'combat3'],
-  ['boss1', 'boss2'],
+  ['explore1', 'explore2', 'explore3'],
+  ['alert1', 'alert2', 'alert3', 'alert4'],
+  ['combat1', 'combat2', 'combat3', 'combat4', 'combat5', 'combat6'],
+  ['boss1', 'boss2', 'boss3', 'boss4', 'boss5'],
 ];
-const AIR_SET = ['air1'];
+const AIR_SET = ['air1', 'air2', 'air3'];
 const LV_VOL = [0.55, 0.72, 0.95, 1.0]; // 各級的音量
 const LV_LP = [2200, 7000, 20000, 20000]; // 各級的低通（探索時悶一點）
 const UP_T = 0.8; // 往上切換：目標維持幾秒
@@ -26,7 +27,7 @@ const DOWN_T = 8; // 往下切換：目標維持幾秒
 const PAUSE_STATES = { pause: 1, modpick: 1, rangecfg: 1 };
 
 Object.assign(Game.prototype, {
-  // 第一次進任務時以 <script> 載入 lib/bgm-assets.js（約 10 MB，不內嵌）
+  // 第一次進任務時以 <script> 載入 lib/bgm-assets.js（約 27 MB，不內嵌）
   bgmLoad() {
     if (window.RUBICON_BGM) return Promise.resolve(true);
     if (this.bgmLoading) return this.bgmLoading;

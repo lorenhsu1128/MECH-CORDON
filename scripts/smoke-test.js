@@ -14204,6 +14204,66 @@ async function testVoiceLab(browser, base) {
   await ctx.close();
 }
 
+// 任務配樂的試聽（game/bgm-lab.js）：標題按鈕、載入候選曲、播放與進度、勾選用途、複製結果、目前的配樂
+async function testBgmLab(browser, base) {
+  console.log('配樂試聽：標題按鈕、載入候選曲、播放、勾選用途與評分保留、複製結果、目前的配樂');
+  const { ctx, page } = await newPage(browser, 'bgmlab');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await page.click('#btnBgmLab');
+  await waitVisible(page, 'bgmLab');
+  await page.waitForFunction(() => document.querySelectorAll('.blRow').length > 0, null, { timeout: 60000 });
+  const r = await page.evaluate(async () => {
+    const A = window.RUBICON_BGM_AUD,
+      I = A['@index'];
+    const wait = async (f, ms = 8000) => {
+      const t0 = performance.now();
+      while (!f() && performance.now() - t0 < ms) await new Promise((r) => setTimeout(r, 100));
+      return f();
+    };
+    const out = { rows: document.querySelectorAll('.blRow').length, n: I.length };
+    out.missing = I.filter((c) => !A[c.id]).length;
+    out.lic = I.filter((c) => !/^(CC0|CC-BY [34]\.0)$/.test(c.lic)).map((c) => c.id);
+    document.querySelector('.blPlay').click();
+    out.playing = await wait(() => document.querySelector('.blPlay.on'));
+    await new Promise((r) => setTimeout(r, 600));
+    out.fill = parseFloat(document.getElementById('blFill').style.width) || 0;
+    document.getElementById('blStop').click();
+    out.stopped = !document.querySelector('.blPlay.on');
+    const id = I[0].id;
+    for (const v of ['combat', 'boss']) {
+      const x = document.querySelector(`input[data-u="${id}"][value="${v}"]`);
+      x.checked = true;
+      x.onchange();
+    }
+    const sel = document.querySelector(`select[data-r="${id}"]`);
+    sel.value = '5';
+    sel.onchange();
+    out.saved = (JSON.parse(localStorage.getItem('rubicon_bgm_aud')) || {})[id];
+    document.getElementById('blCopy').click();
+    out.copy = document.getElementById('blOut').textContent;
+    document.querySelector('button[data-cur]').click();
+    out.cur = await wait(() => document.querySelector('button[data-cur].on'), 30000);
+    document.getElementById('blStop').click();
+    return out;
+  });
+  await page.screenshot({ path: path.join(SHOT_DIR, 'bgm-lab.png') });
+  check(r.rows === r.n && r.n >= 20, `候選曲 ${r.rows}／${r.n}`);
+  check(r.missing === 0, `每首都有試聽片段（缺 ${r.missing}）`);
+  check(r.lic.length === 0, `授權都是 CC0／CC-BY（${r.lic.join('、')}）`);
+  check(r.playing && r.fill > 0, `點一下播放、進度條前進（${r.fill.toFixed(1)}%）`);
+  check(r.stopped, '停止');
+  check(
+    r.saved && r.saved.u.join() === 'combat,boss' && r.saved.r === '5',
+    '勾選用途與評分存進 localStorage',
+  );
+  check(/【交戰】\n.*（/.test(r.copy) && /【Boss】\n.*5 星/.test(r.copy), '複製結果依用途整理');
+  check(r.cur, '目前的配樂可以播放比較');
+  await page.click('#btnBlBack');
+  await waitVisible(page, 'title');
+  await ctx.close();
+}
+
 // 音效改版（docs/audio-design.md）：分層的槍聲、發聲上限、反射、掠過聲、彈殼、多人的轉送、音量、ECHO 的語音、動態配樂
 async function testAudio2(browser, base) {
   console.log('音效改版：分層的槍聲、發聲上限、反射、掠過、多人轉送、音量、ECHO 語音、動態配樂');
@@ -27219,6 +27279,7 @@ const STEPS = [
   ['testAudio', (c) => testAudio(c.browser, c.base)],
   ['testAudio2', (c) => testAudio2(c.browser, c.base)],
   ['testVoiceLab', (c) => testVoiceLab(c.browser, c.base)],
+  ['testBgmLab', (c) => testBgmLab(c.browser, c.base)],
   ['testJuice', (c) => testJuice(c.browser, c.base)],
   ['testFoesB1', (c) => testFoesB1(c.browser, c.base)],
   ['testBossPower', (c) => testBossPower(c.browser, c.base)],

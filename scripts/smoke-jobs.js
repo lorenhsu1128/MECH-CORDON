@@ -97,6 +97,7 @@ const DEFAULT_TIMES = {
   testAudio: 1848,
   testAudio2: 9000,
   testVoiceLab: 4000,
+  testBgmLab: 8000,
   testJuice: 2421,
   testFoesB1: 29235,
   testBossPower: 1775,

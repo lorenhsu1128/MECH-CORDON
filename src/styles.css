@@ -6631,3 +6631,93 @@ body.vpad #subBar {
     font-size: 11px;
   }
 }
+/* 任務配樂的試聽（game/bgm-lab.js） */
+#bgmLab {
+  overflow-y: auto;
+}
+#bgmLab .brBox {
+  width: min(1100px, 100%);
+}
+#blOpts {
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+}
+#blBar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 8px;
+  margin: 6px 0 8px;
+  background: rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+}
+#blFill {
+  width: 0;
+  height: 100%;
+  background: #ffb070;
+}
+.blRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: center;
+  padding: 6px 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.blRow.on {
+  background: rgba(255, 176, 112, 0.08);
+}
+.blPlay {
+  width: 40px;
+  padding: 6px 0;
+}
+.blPlay.on {
+  color: #ffb070;
+}
+.blInfo {
+  flex: 1 1 380px;
+  font-size: 13px;
+}
+.blDesc {
+  font-size: 12px;
+  opacity: 0.85;
+  margin-top: 2px;
+}
+.blSug {
+  margin-left: 8px;
+  color: #ffb070;
+}
+.blPick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+  font-size: 12px;
+}
+.blPick label {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0.75;
+}
+.blPick label.sug {
+  opacity: 1;
+  color: #ffd0a8;
+}
+.blPick input[data-n] {
+  width: 140px;
+}
+#blList h3 {
+  margin: 16px 0 6px;
+  font-size: 15px;
+  color: #ffb070;
+}
+.blCur {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.blCur button.on {
+  color: #ffb070;
+}

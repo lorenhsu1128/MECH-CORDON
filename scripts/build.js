@@ -186,6 +186,12 @@ function writeSounds() {
     'RUBICON_VOICE_AUD',
     'ECHO 的語音試聽（src/assets/voice-audition/，scripts/voice-audition.py）',
   );
+  writeAudio(
+    path.join(SRC, 'assets', 'bgm-audition'),
+    'bgm-audition.js',
+    'RUBICON_BGM_AUD',
+    '任務配樂的候選試聽（src/assets/bgm-audition/，scripts/bgm-audition.py）',
+  );
   // ECHO 的語音：每個聲音一個檔案（src/assets/voice/<聲音>/ → lib/voice-<聲音>.js），只載入設定選的那個
   const vdir = path.join(SRC, 'assets', 'voice');
   if (fs.existsSync(vdir))
