@@ -601,7 +601,11 @@ export function c6Pre(ctx) {
       ),
       3,
     );
-  return { title: '最後的抉擇', dur: T.at + 0.3, lb: 2.39, music: [], shots: T.shots };
+  // 配樂：低沉的懸疑（和其他抉擇的選前演出相同的做法）
+  const music = [
+    { at: 0, track: 'cine_tension', off: 20, vol: 0.8, fadeIn: 0.8, fadeOut: [T.at - 1.2, 1.2] },
+  ];
+  return { title: '最後的抉擇', dur: T.at + 0.3, lb: 2.39, music, shots: T.shots };
 }
 
 // ---------- 選後 ----------
@@ -734,7 +738,8 @@ export function c6Open() {
     },
     3.2,
   );
-  return { title: '軌道站：交出', dur: T.at + 0.3, lb: 2.39, music: [], shots: T.shots };
+  const music = [{ at: 0, track: 'cine_c6', off: 120, vol: 0.75, fadeIn: 1.5, fadeOut: [T.at - 2, 2] }];
+  return { title: '軌道站：交出', dur: T.at + 0.3, lb: 2.39, music, shots: T.shots };
 }
 
 // 墜落：駕駛艙看著軌道站拖著火光落進雲海 → 故障保險的紅字
@@ -836,7 +841,8 @@ export function c6Seal() {
     3.6,
   );
   T.add(card('天空，安靜了。', 'SILENT SKY', 3), 3);
-  return { title: '軌道站：墜落', dur: T.at + 0.3, lb: 2.39, music: [], shots: T.shots };
+  const music = [{ at: 0, track: 'cine_c6', off: 170, vol: 0.75, fadeIn: 1.5, fadeOut: [T.at - 2, 2] }];
+  return { title: '軌道站：墜落', dur: T.at + 0.3, lb: 2.39, music, shots: T.shots };
 }
 
 // 彼岸：頻道徽章一個個熄滅 → ECHO「我們走吧。」→ 推進器一排排亮起、星球在背後變小

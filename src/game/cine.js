@@ -42,7 +42,7 @@ Object.assign(Game.prototype, {
   cineFor(key) {
     return CINES[key] ? key : null;
   },
-  // 配樂：第一次播放時以 <script> 載入 lib/cine-music.js（約 4 MB，不內嵌在遊戲的 HTML 裡）
+  // 配樂：第一次播放時以 <script> 載入 lib/cine-music.js（約 19 MB，不內嵌在遊戲的 HTML 裡）
   cineMusicLoad() {
     if (window.RUBICON_MUSIC) return Promise.resolve(true);
     if (this.cineMusicP) return this.cineMusicP;

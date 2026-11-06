@@ -14,7 +14,7 @@
 - `state 'cine'`，主迴圈呼叫 `cineTick`。長按 Esc／Enter／空白鍵／手把 A、B、Start（觸控長按畫面）0.8 秒略過。
 - 時間以配樂的 AudioContext 時間為準（換場景建地圖卡住時畫面直接跳過去，聲音不斷）；沒有配樂時用實際經過的時間。晚了 0.6 秒以上的音效與特效事件不補播。
 - **過場動畫劇場**（`game/cine-lib.js`，標題的「過場動畫」，`state 'cinelib'`）：依周目與三個抉擇的選擇列出全部過場動畫（序章、各章開場／章末、抉擇的選前與選後），不寫存檔、不看「劇情動畫」設定。播放時（`cine.lib`）上方有控制列：暫停（空白鍵／P；暫停時時間與模擬都不動、配樂停止，繼續時從那一秒重新排配樂）、±5 秒（←／→）、上一鏡／下一鏡（Shift＋←／→、[ ]）、時間軸拖曳、H 隱藏、「返回清單」或長按 Esc；勾「連續播放」時播完接下一段。抉擇的選前演出原本在目前的戰場上播（`k: 'live'`），劇場改在那個抉擇的地圖（c2 水壩、c4 宇宙港、c6 荒野）上由 `cineStandIn` 擺主角與出口（`set.exits`，`cinePt` 的 `ex` 先看它）。
-- 配樂不內嵌在遊戲的 HTML：建置產生 `dist/lib/cine-music.js`（`window.RUBICON_MUSIC`，約 4 MB），第一次播過場動畫時以 `<script>` 載入（`cineMusicLoad`），最多等 6 秒，載不到也照樣播。
+- 配樂不內嵌在遊戲的 HTML：建置產生 `dist/lib/cine-music.js`（`window.RUBICON_MUSIC`，約 19 MB），第一次播過場動畫時以 `<script>` 載入（`cineMusicLoad`），最多等 6 秒，載不到也照樣播。
 
 ## 劇本格式（`data/cine/*.js`）
 
@@ -54,7 +54,7 @@
 
 ## 各章開場／章末與抉擇演出（`data/cine/ch1.js`～`ch6.js`、`kit.js`）
 
-- **第二版（每章一種導演風格，`docs/cinematics-storyboard.md`）**：第 1 章西部對決、第 2 章分割畫面、第 3 章恐怖片（監視器、熱感應）、第 4 章垂直一鏡到底＋倒數、第 5 章電視牆與新聞轉播、第 6 章寂靜與駕駛艙視角；各章配樂 `cine_c1`～`cine_c6`（Kevin MacLeod，CC-BY）。各章專用的效果在 `game/cine-c<章>.js`（Game 的 mixin，名稱以 `c<章>` 開頭）：鏡頭的 `hook`（`cineHook_<名稱>(S, phase, lt, dt)`，phase＝enter／tick／exit；換鏡、`cineSeek` 與結束時呼叫 exit，掛勾建的東西放進 `set.extra` 或在 exit 清掉）、`ov`（字串或陣列，`cineOv_<名稱>(x, W, H, lt, S)` 畫在疊加畫布）、`render`（`cineRender_<名稱>(S, lt, dt)` 取代這一格的 renderMain：第 2 章的分割畫面 `c2split` 以 scissor 畫兩次、第 5 章的電視牆以多個 RenderTarget 合成）。演員的蹲低／站起（`crouch`、`rise`）每格先拿掉上一格加的量，所以暫停時不會累加。
+- **第二版（每章一種導演風格，`docs/cinematics-storyboard.md`）**：第 1 章西部對決、第 2 章分割畫面、第 3 章恐怖片（監視器、熱感應）、第 4 章垂直一鏡到底＋倒數、第 5 章電視牆與新聞轉播、第 6 章寂靜與駕駛艙視角；各章配樂 `cine_c1`～`cine_c6`（2026-11-06 起是多種樂器合奏的曲子：Alex-Productions「Hearts Of Iron」「Reset」、Alexander Nakarada「Curiosity」、Punch Deck「100 Seconds」、Scott Buckley「Hyperion」「Aphelion」，CC-BY；以前的 Kevin MacLeod 使用者覺得像 MIDI。`scripts/cine-music-prep.py` 從原曲剪一段，劇本的 `off` 從那一段的開頭算；第 6 章的最後的抉擇（`cine_tension`）、交出、墜落（`cine_c6` 的後段）也補上配樂，所有過場動畫都有配樂）。各章專用的效果在 `game/cine-c<章>.js`（Game 的 mixin，名稱以 `c<章>` 開頭）：鏡頭的 `hook`（`cineHook_<名稱>(S, phase, lt, dt)`，phase＝enter／tick／exit；換鏡、`cineSeek` 與結束時呼叫 exit，掛勾建的東西放進 `set.extra` 或在 exit 清掉）、`ov`（字串或陣列，`cineOv_<名稱>(x, W, H, lt, S)` 畫在疊加畫布）、`render`（`cineRender_<名稱>(S, lt, dt)` 取代這一格的 renderMain：第 2 章的分割畫面 `c2split` 以 scissor 畫兩次、第 5 章的電視牆以多個 RenderTarget 合成）。演員的蹲低／站起（`crouch`、`rise`）每格先拿掉上一格加的量，所以暫停時不會累加。
 - 每章的專屬分鏡在 `ch<章>.js`（`chapters.js` 的 `BESPOKE`；沒有專屬分鏡的才用下面的模板）。鏡頭組件 `kit.js`：`timeline`（同一張地圖連續的鏡頭自動移除上一鏡的演員，`keep` 保留）、`black` 黑底字卡／機器文字、`vista` 空景（crane／pan／push／fly／low）、`comm` 通訊分割（`ov: 'comm'`：左側徽章、名字、聲紋；`badge` 讓旁白也掛委託方）、`rival` 宿敵登場、`boss` Boss 登場、`hero` 主角（walk／boost／hover／kneel）、`shootout` 追尾視角對射兩鏡（`ov: 'lock'`）、`chapterCard`、`cut` 代價快切、`choicePre`／`choicePost` 抉擇演出。
 - 抉擇演出：鍵 `x_<抉擇>_pre`（選前，`cinePlay(..., { live: true })`：場景 `{ k: 'live' }`＝目前的戰場，原點與演員 `player`＝玩家，`{ ex: i }`＝第 i 個出口，`ov: 'choice'` 畫倒數條與出口名牌；模擬暫停，播完回到原本的 state）、`x_<抉擇>_<選項>`（選後的代價蒙太奇，播完到轉場畫面）。接在 `campaign.js` 的 `campChoiceCine`（抉擇出口出現時、`campLeave`）；多人、劇情動畫關閉時不播。
 
