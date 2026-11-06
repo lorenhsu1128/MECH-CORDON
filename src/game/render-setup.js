@@ -1,4 +1,5 @@
 // Game：場景環境、後處理與渲染風格、主渲染
+import { energyWarm } from '../fx/energy.js';
 import { makeStudioEnv } from '../render/environment.js';
 import { fineTick } from '../render/detail.js';
 import { StylePipeline, manualShadows } from '../render/style/pipeline.js';
@@ -153,6 +154,7 @@ Object.assign(Game.prototype, {
       // 增援會出現的程式模型（載具、無人機…）先建一次（mission.js 的 typePrewarm）：只在房主／單機
       if (extra && this.typePrewarm && !(this.net && this.net.role === 'client'))
         extra.add(this.typePrewarm());
+      if (extra && this.fx.rich) extra.add(energyWarm(this.fx.k)); // 第 9 期的護罩、光柱、預警（fx/energy.js）
       if (extra) this.scene.add(extra);
       try {
         const r = root || this.scene;
@@ -269,6 +271,7 @@ Object.assign(Game.prototype, {
       'arc',
       'star',
       'bolt', // 鋸齒電弧（第 7.3 期，NET_VERSION 11.21）
+      'shieldFlare', // 屏障的閃光（第 9.2 期，NET_VERSION 11.28）
     ];
     const fx = this.fx;
     const g = this;

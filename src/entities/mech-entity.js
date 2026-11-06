@@ -1888,6 +1888,7 @@ export class MechEntity {
     this.vel.set(0, 0, 0);
     this.iFrames = Math.max(this.iFrames, 1.5);
     const g = this.game;
+    if (!g.isClient) g.invShow(this, 1.5); // 無敵時間的能量層（第 9.2 期）
     if (!g.isClient && !this.dead) this.hp = Math.max(1, this.hp - this.maxHp * 0.1);
     if (this.isPlayer) g.flashAlert('墜落 — AP −10%，返回平台');
     g.fx.ring(this.pos.clone().setY(this.pos.y + 0.1), 4, 0x80c8ff);
@@ -2119,6 +2120,7 @@ export class MechEntity {
       mul *= 1 - this.shield;
       if (from && from.team !== this.team) {
         this.shieldHitT = SHIELD_BASH_T; // 盾擊的時機（meleeStartIdx）
+        if (from.pos) this.shieldFlareAt(from.pos.clone().sub(this.pos)); // 脈衝盾擋下的閃光（第 9.2 期）
         this.tutE('shieldHit', {});
       }
     }
@@ -2167,6 +2169,7 @@ export class MechEntity {
       this.iFrames = Math.max(this.iFrames, 3);
       this.lastStandT = 60 / ls;
       g.fx.shockwave(this.center(), 6, 0x7ee081, 0.5);
+      g.invShow(this, 3); // 無敵時間的能量層（第 9.2 期）
       if (this.isPlayer) g.flashMsg('緊急障壁展開', 0x7ee081, 1.6);
     }
     this.dmgTaken += real;

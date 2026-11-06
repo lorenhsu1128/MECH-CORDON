@@ -3,6 +3,7 @@
 // ============================================================
 import { SFX } from '../audio/audio.js';
 import { frand, frnd as rnd } from './rand.js';
+import { barrierHit, barrierMat, capGeo, energyCol } from './energy.js';
 import { SHARED_GEO, mergeGeos } from '../render/geometry.js';
 import { FxBatch } from './batch.js';
 import { GpuFx } from './gpu.js';
@@ -422,6 +423,46 @@ export class Effects {
       rot: frand() * 6.28,
       rv: rnd(-0.25, 0.25),
     });
+  }
+  // 屏障的閃光（docs/vfx-design.md 第 9.2 期：脈衝盾、Boss 的正面護盾擋下攻擊）：c＝機體中心、dir＝往攻擊來的方向、
+  // r＝弧面的半徑（世界尺寸）、team＝擋下的一方的陣營（顏色）。會轉送給客機；「標準」時不畫。
+  // 材質與網格是一個小池子（不 dispose：著色器的程式不會被刪掉再編譯）
+  shieldFlare(c, dir, r, team) {
+    if (!this.rich || this.skip(c, r / this.k)) return;
+    const P = (this.flarePool = this.flarePool || []);
+    let m = P.find((x) => !x.visible);
+    if (!m) {
+      if (P.length >= 8) return;
+      m = new THREE.Mesh(capGeo(1.6, 1.3), barrierMat(0xffffff, 10));
+      m.renderOrder = 5;
+      m.frustumCulled = false;
+      m.visible = false;
+      this.scene.add(m);
+      P.push(m);
+    }
+    if (m.parent !== this.scene) this.scene.add(m);
+    const U = m.material.uniforms;
+    U.uColor.value.set(energyCol(team));
+    const d = dir
+      .clone()
+      .setY(dir.y * 0.4)
+      .normalize();
+    m.position.copy(c);
+    m.lookAt(c.clone().sub(d)); // 弧面的正面（−Z）朝攻擊來的方向
+    m.scale.setScalar(r);
+    m.visible = true;
+    U.uTime.value = 0;
+    barrierHit(m.material, new THREE.Vector3(0, 0, -1));
+    const life = 0.45;
+    this.task(
+      life,
+      (e, t) => {
+        U.uTime.value = t * life;
+        U.uOp.value = t < 0.15 ? 1 : 1 - (t - 0.15) / 0.85;
+      },
+      () => (m.visible = false),
+    );
+    this.flash(c.clone().addScaledVector(d, r), 1.2, energyCol(team), 0.08);
   }
   // 一條火舌（燃燒帶、燃燒地面；不轉送）：p 是根部、s＝起始邊長（世界尺寸）
   tongue(p, s, c0 = 0xffc040, c1 = 0xff7a20) {
@@ -2174,6 +2215,7 @@ export class Effects {
     this.thruster.clear();
     this.ribbons.clear();
     this.ghosts.clear();
+    for (const m of this.flarePool || []) m.visible = false;
   }
 }
 

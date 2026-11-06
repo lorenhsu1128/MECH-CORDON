@@ -16886,7 +16886,7 @@ async function testVfxEditor(browser, base) {
 // 粒子特效（docs/vfx-design.md）：顯示卡粒子（fx/gpu.js）與 Kenney 的圖集
 // 第 9 期的特效（docs/vfx-design.md）：煙霧與場地效果、護罩、Boss 的大招、預警與範圍標示，砲火特效「華麗」才換，「標準」照舊
 async function testVfx9(browser, base) {
-  console.log('第 9 期特效：煙幕與 Boss 場地的顯示卡粒子（華麗）、標準照舊');
+  console.log('第 9 期特效：煙幕與 Boss 場地的顯示卡粒子、護罩（華麗）、標準照舊');
   const { ctx, page } = await newPage(browser, 'vfx9');
   await seededRandom(page);
   await page.goto(base + '?test');
@@ -16904,7 +16904,7 @@ async function testVfx9(browser, base) {
       pl.hp = pl.maxHp = 1e9;
       pl.iFrames = 1e9;
       for (const e of g.enemies) {
-        e.updateAI = () => {};
+        e.updateAI = (dt) => g.energyTick(e, dt); // AI 停住、外觀照常更新
         e.pos.x += 400 * g.fx.k;
       }
       g.waves = [];
@@ -16950,6 +16950,39 @@ async function testVfx9(browser, base) {
     `華麗：煙幕與場地的煙霧、火焰改用顯示卡粒子（舊網格隱藏、產生 ${rich1.sm} 顆煙）`,
   );
   check(std1.balls > 0 && std1.sprites > 0 && std1.cones > 0, '標準：煙幕與場地效果照舊');
+  // ---- 第 2 期：護罩 ----
+  const p2 = async (lv) => {
+    await setup(lv);
+    return page.evaluate(() => {
+      const g = window.__game,
+        pl = g.player,
+        b = g.boss,
+        K = g.fx.k;
+      b.pos.copy(pl.pos).add(new THREE.Vector3(0, 0, -7 * K));
+      b.mesh.position.copy(b.pos);
+      g.invShow(pl, 2);
+      b.tierArmor(0.3, 20);
+      pl.sfT = 0;
+      pl.shieldFlareAt(new THREE.Vector3(0, 0, -1));
+      window.__pump(0.3);
+      const vis = (e, k) => !!(e.enL && e.enL[k] && e.enL[k].mat.visible && e.enL[k].list.length > 0);
+      const st = b.serTier();
+      return {
+        inv: vis(pl, 1),
+        armor: vis(b, 0),
+        flag: !!(st && st[3] & 8),
+        flare: (g.fx.flarePool || []).some((m) => m.visible),
+      };
+    });
+  };
+  const rich2 = await p2('rich');
+  await page.screenshot({ path: path.join(SHOT_DIR, 'vfx9-shield.png') });
+  const std2 = await p2('std');
+  check(
+    rich2.inv && rich2.armor && rich2.flag && rich2.flare,
+    `華麗：無敵時間與脈衝裝甲的能量層、脈衝盾的屏障閃光、脈衝裝甲同步旗標（${JSON.stringify(rich2)}）`,
+  );
+  check(!std2.inv && !std2.armor && !std2.flare, '標準：沒有能量層與屏障閃光');
   await page.evaluate(() => {
     const g = window.__game;
     g.ctrl.fxLv = 'rich';

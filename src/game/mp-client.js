@@ -454,6 +454,12 @@ Object.assign(Game.prototype, {
           if (t && t.wpBreakC) t.wpBreakC(e.k); // 弱點被打壞（mech-weak.js）
         }
         break;
+      case 'inv': {
+        // 無敵時間的能量層（game/energy.js）
+        const t = this.entById(e.i);
+        if (t) t.invT = Math.max(t.invT || 0, e.s || 1);
+        break;
+      }
       case 'stag':
         {
           const t = this.entById(e.i);

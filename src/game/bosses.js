@@ -215,6 +215,7 @@ Object.assign(Game.prototype, {
     b.tierPhaseReset(); // Boss 改版：失衡的次數重置、蓄力取消（mech-boss-tier.js）
     this.tierFieldShift(b, ph); // Boss 改版的 E：型態改變場地（boss-tier.js）
     b.iFrames = Math.max(b.iFrames || 0, 1.5);
+    this.invShow(b, 1.5); // 無敵時間的能量層（第 9.2 期）
     b.staggerT = 0;
     b.acs = 0;
     b.stagGuardT = BOSS_STAG_GUARD;

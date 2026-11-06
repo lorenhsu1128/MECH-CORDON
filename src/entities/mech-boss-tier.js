@@ -384,6 +384,7 @@ Object.assign(MechEntity.prototype, {
     if (to.lengthSq() < 0.01) return 1;
     if (to.normalize().dot(s.ch.face) < 0.5) return 1;
     if (at && Math.random() < 0.4) this.game.fx.spark(at, 0x80c8ff);
+    this.shieldFlareAt(to); // 正面護盾的閃光（第 9.2 期，轉送給客機）
     return 0.25;
   },
   // 脈衝裝甲（BALTEUS 的大招）：frac＝裝甲量（最大 AP 比例），sec 秒；打破之前傷害只有 30% 打得進去
@@ -398,6 +399,7 @@ Object.assign(MechEntity.prototype, {
     if (!s || !s.pa) return 1;
     s.pa.hp -= dmg * 0.7;
     if (at && Math.random() < 0.4) this.game.fx.spark(at, 0x60e0ff);
+    this.game.energyHit(this, 0); // 脈衝裝甲的能量層閃一下（第 9.2 期）
     if (s.pa.hp > 0) return 0.3;
     // 打破：破綻
     s.pa = null;
@@ -488,19 +490,19 @@ Object.assign(MechEntity.prototype, {
     if (!b) return this.bkC || 0;
     return b.full ? 1 : b.n / tierRow(tier).kNeed;
   },
-  // ---------- 同步（serEnt 的 bt）：[蓄力 % (-1 沒有), 量表 %, 破綻 ×10, 旗標（1 假收招 2 護盾 4 第二次）] ----------
+  // ---------- 同步（serEnt 的 bt）：[蓄力 % (-1 沒有), 量表 %, 破綻 ×10, 旗標（1 假收招 2 護盾 4 第二次 8 脈衝裝甲）] ----------
   serTier() {
     const s = this.bt;
     if (!s || !this.isBoss) return null;
     const ch = s.ch;
     const hb = this.tierHabitBits();
-    if (!ch && !(s.openT > 0) && !s.cp && !hb) return null;
+    if (!ch && !(s.openT > 0) && !s.cp && !hb && !s.pa) return null;
     const T = tierRow(this.bossTier());
     return [
       ch ? Math.round((ch.t / ch.T) * 100) : -1,
       ch ? Math.round(Math.min(1, ch.dealt / ch.need) * 100) : 0,
       Math.round(Math.max(0, s.openT) * 10),
-      (s.fake > 0 ? 1 : 0) | (ch && T.iTrick === 'guard' ? 2 : 0) | (ch && ch.k > 1 ? 4 : 0),
+      (s.fake > 0 ? 1 : 0) | (ch && T.iTrick === 'guard' ? 2 : 0) | (ch && ch.k > 1 ? 4 : 0) | (s.pa ? 8 : 0), // 8＝脈衝裝甲（第 9.2 期的外觀）
       s.cp ? Math.round(s.cp.t * 10) : 0, // 反擊點的剩餘秒數 ×10
       s.cp ? s.cp.by : -1, // 誰的反擊點
       hb, // 正在應對的習慣（1 空中 2 貼身 4 遠距 8 掩體）
@@ -520,6 +522,7 @@ Object.assign(MechEntity.prototype, {
         fake: !!(v[3] & 1),
         guard: !!(v[3] & 2),
         second: !!(v[3] & 4),
+        pa: !!(v[3] & 8),
         name: mv ? mv[0] : '',
         cp: (v[4] || 0) / 10,
         cpBy: v[5] === undefined ? -1 : v[5],
@@ -536,6 +539,7 @@ Object.assign(MechEntity.prototype, {
       fake: s.fake > 0,
       guard: !!(ch && tierRow(this.bossTier()).iTrick === 'guard'),
       second: !!(ch && ch.k > 1),
+      pa: !!s.pa,
       name: ch ? ch.name : '',
       cp: s.cp ? s.cp.t : 0,
       cpBy: s.cp ? s.cp.by : -1,

@@ -8,6 +8,7 @@ import { clamp, rnd } from '../core/math.js';
 import { DS, MS } from '../core/scale.js';
 import { foeDamageTick } from '../render/foe-damage.js';
 import { hexShieldMat, hexShieldHit } from '../render/hex-shield.js';
+import { energyCol } from '../fx/energy.js';
 import { MechEntity } from './mech-entity.js';
 
 const DOME_R = 9 * MS; // 護盾半徑（以產生器腳底為中心的球）
@@ -251,8 +252,17 @@ Object.assign(MechEntity.prototype, {
     this.specialCleanup();
   },
   // 顯示：護盾、修理光束、強化／混亂標記（房主與客機每格呼叫）
+  // 屏障的閃光（脈衝盾、Boss 的正面護盾擋下攻擊；房主／單機呼叫，fx.shieldFlare 轉送給客機）：dir＝往攻擊來的方向
+  shieldFlareAt(dir) {
+    const g = this.game;
+    if (!dir || dir.lengthSq() < 1e-6 || (this.sfT || 0) > g.fx.time) return;
+    this.sfT = g.fx.time + 0.12; // 機槍連射時不要每一發都閃
+    const r = Math.max(this.radius * 1.6, this.model.height * 0.75);
+    g.fx.shieldFlare(this.center(), dir, r, this.team);
+  },
   specialFx(dt) {
     const g = this.game;
+    g.energyTick(this, dt); // 護罩：脈衝裝甲、無敵時間、正面護盾（game/energy.js，第 9.2 期）
     // 主題專屬敵人的顯示（房主與客機都跑）：
     const m = this.model;
     if (m) foeDamageTick(this, dt); // 受損狀態與擊破碎片（render/foe-damage.js：所有敵人＋有 rig.dmg 的模型）
@@ -307,7 +317,7 @@ Object.assign(MechEntity.prototype, {
       // 砲火特效「華麗」：六角格的著色器取代半透明球＋線框（設定改了下一格就換）
       const rich = g.fx.rich;
       if (rich && !sx.hex) {
-        sx.hex = new THREE.Mesh(HEX_GEO, hexShieldMat(0x50d0ff));
+        sx.hex = new THREE.Mesh(HEX_GEO, hexShieldMat(energyCol(this.team))); // 顏色照陣營（第 9.2 期）
         sx.hex.renderOrder = 4;
         sx.hex.userData.noFade = true;
         sx.dome.add(sx.hex);
