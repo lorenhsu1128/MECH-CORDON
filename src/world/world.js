@@ -106,6 +106,11 @@ import { AIRSPACE } from './themes/airspace.js';
 const _seg = new THREE.Vector3(); // propBlocks 的暫存
 const _fdir = new THREE.Vector3(), // fadeRay 的暫存
   _fpt = new THREE.Vector3();
+// 障礙物的空間格子（obsAt；docs/perf-threejs-upgrade.md 第 8 期）：格子邊長、每個障礙物外框往外加寬的距離
+// （查詢的半徑在這之內時只看所在的那一格；collide 的機體半徑最大約 5 MS）
+const OG_C = 8 * WS,
+  OG_PAD = 6 * MS;
+const OG_EMPTY = [];
 // 網格建造在 prop-models.js（純函式）；這裡只用亂數決定參數與位置，亂數呼叫順序不可改變
 // 主題的公路／鐵路設定：{ p 出現機率, kinds 可出現的種類 }（noCorridor 時沒有）
 export function corridorSpec(T) {
@@ -3087,9 +3092,45 @@ export class World {
     return c;
   }
   // ground height incl. box tops for an entity at (x,z) currently at height y
+  // 障礙物的空間格子：每個障礙物登記到它的外框（加寬 OG_PAD）碰到的格子，格子裡照陣列的順序。
+  // 障礙物陣列換掉、數量或最後一個改變時重建（增減障礙物的地方很多，不一一通知；原地改位置的沒有）
+  obsGrid() {
+    const L = this.obstacles,
+      last = L[L.length - 1];
+    const G = this._og;
+    if (G && G.ref === L && G.n === L.length && G.last === last) return G;
+    const m = new Map();
+    let bad = false;
+    for (const o of L) {
+      const hw = o.kind === 'box' ? o.w / 2 : o.r,
+        hd = o.kind === 'box' ? o.d / 2 : o.r;
+      if (!(hw >= 0 && hd >= 0) || !isFinite(o.x) || !isFinite(o.z)) {
+        bad = true; // 認不得的形狀：查詢一律退回整個陣列
+        continue;
+      }
+      const x0 = Math.floor((o.x - hw - OG_PAD) / OG_C),
+        x1 = Math.floor((o.x + hw + OG_PAD) / OG_C),
+        z0 = Math.floor((o.z - hd - OG_PAD) / OG_C),
+        z1 = Math.floor((o.z + hd + OG_PAD) / OG_C);
+      for (let i = x0; i <= x1; i++)
+        for (let j = z0; j <= z1; j++) {
+          const k = i * 65536 + j;
+          let c = m.get(k);
+          if (!c) m.set(k, (c = []));
+          c.push(o);
+        }
+    }
+    return (this._og = { ref: L, n: L.length, last, m, bad });
+  }
+  // 點 (x, z) 半徑 r 以內可能碰到的障礙物（照陣列的順序）；r 超過 OG_PAD 時是整個陣列
+  obsAt(x, z, r = 0) {
+    const G = this.obsGrid();
+    if (G.bad || r > OG_PAD) return this.obstacles;
+    return G.m.get(Math.floor(x / OG_C) * 65536 + Math.floor(z / OG_C)) || OG_EMPTY;
+  }
   groundAt(x, z, y) {
     let g = Math.max(this.terrainHeight(x, z), this.rampHeight(x, z, y));
-    for (const o of this.obstacles) {
+    for (const o of this.obsAt(x, z, 0.3 * MS)) {
       if (o.kind !== 'box') continue;
       if (
         Math.abs(x - o.x) < o.w / 2 + 0.3 * MS &&
@@ -3104,31 +3145,44 @@ export class World {
   // horizontal collision push-out; returns [x,z]
   // soft：玩家機體可以超出作戰區域到 limOut（MechEntity.oobPush 推回）
   collide(x, z, y, r, soft = false) {
-    for (const o of this.obstacles) {
-      if (o.kind === 'box') {
-        if (y >= o.top - STEP_H) continue;
-        if (o.deck && y + 3.2 * MS < o.y) continue; // 從甲板底下通過（舊尺度的機甲身高 3.2 m）
-        if (o.deck && y < o.y - 0.2 * MS) continue;
-        const hw = o.w / 2 + r,
-          hd = o.d / 2 + r;
-        const dx = x - o.x,
-          dz = z - o.z;
-        if (Math.abs(dx) < hw && Math.abs(dz) < hd) {
-          const px = hw - Math.abs(dx),
-            pz = hd - Math.abs(dz);
-          if (px < pz) x = o.x + Math.sign(dx || 1) * hw;
-          else z = o.z + Math.sign(dz || 1) * hd;
-        }
-      } else {
-        if (o.top !== undefined && y >= o.top - STEP_H) continue;
-        const dx = x - o.x,
-          dz = z - o.z;
-        const d = Math.hypot(dx, dz);
-        const rr = o.r + r;
-        if (d < rr) {
-          const k = d < 1e-3 ? 1 : rr / d;
-          x = o.x + dx * k;
-          z = o.z + dz * k;
+    // 只看所在那一格的障礙物；被推出那一格時再用新的那一格檢查一次（推出去之後碰到的鄰居）
+    const x0 = x,
+      z0 = z;
+    const L0 = this.obsAt(x, z, r);
+    for (let pass = 0; pass < 2; pass++) {
+      const L = pass ? this.obsAt(x, z, r) : L0;
+      if (
+        pass &&
+        (L === L0 ||
+          (Math.floor(x / OG_C) === Math.floor(x0 / OG_C) && Math.floor(z / OG_C) === Math.floor(z0 / OG_C)))
+      )
+        break;
+      for (const o of L) {
+        if (o.kind === 'box') {
+          if (y >= o.top - STEP_H) continue;
+          if (o.deck && y + 3.2 * MS < o.y) continue; // 從甲板底下通過（舊尺度的機甲身高 3.2 m）
+          if (o.deck && y < o.y - 0.2 * MS) continue;
+          const hw = o.w / 2 + r,
+            hd = o.d / 2 + r;
+          const dx = x - o.x,
+            dz = z - o.z;
+          if (Math.abs(dx) < hw && Math.abs(dz) < hd) {
+            const px = hw - Math.abs(dx),
+              pz = hd - Math.abs(dz);
+            if (px < pz) x = o.x + Math.sign(dx || 1) * hw;
+            else z = o.z + Math.sign(dz || 1) * hd;
+          }
+        } else {
+          if (o.top !== undefined && y >= o.top - STEP_H) continue;
+          const dx = x - o.x,
+            dz = z - o.z;
+          const d = Math.hypot(dx, dz);
+          const rr = o.r + r;
+          if (d < rr) {
+            const k = d < 1e-3 ? 1 : rr / d;
+            x = o.x + dx * k;
+            z = o.z + dz * k;
+          }
         }
       }
     }
@@ -3169,7 +3223,7 @@ export class World {
     const th =
       Math.abs(p.x) > S || Math.abs(p.z) > S ? this.farHeight(p.x, p.z) : this.terrainHeight(p.x, p.z);
     if (p.y < th || p.y < this.rampHeight(p.x, p.z, p.y)) return true;
-    for (const o of this.obstacles) {
+    for (const o of this.obsAt(p.x, p.z)) {
       if (o.prop && o.prop.shape && !o.prop.dead) {
         // 可破壞物件：和子彈、光束相同的命中形狀（world/prop-hit.js；細的柱子也算）
         if (shapeContains(o.prop.shape, p)) return true;
