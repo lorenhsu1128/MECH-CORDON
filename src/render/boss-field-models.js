@@ -210,6 +210,10 @@ export function buildField(kind, r, o = {}) {
   const group = new THREE.Group();
   const K = o.k || 1; // 舊尺度 → 世界的倍率（元件高度用）
   let update = () => {};
+  // 砲火特效「華麗」時由 game/boss-field.js 的 bfFx 改用顯示卡粒子畫的部分（這裡的網格隱藏）：
+  // hide＝要隱藏的物件、pts＝粒子的來源（火焰、閃燈、蒸氣柱的位置；group 的座標）
+  const hide = [],
+    pts = [];
   switch (kind) {
     case 'quicksand': {
       // 流沙：漩渦的沙面（貼圖本身轉動）＋揚起的沙
@@ -259,6 +263,7 @@ export function buildField(kind, r, o = {}) {
       group.add(glow);
       const arcs = new THREE.Group();
       group.add(arcs);
+      hide.push(arcs);
       const arcMat = new THREE.LineBasicMaterial({ color: 0xdff6ff, transparent: true, opacity: 0.9 });
       let lastZap = -1;
       update = (t, dt, st) => {
@@ -319,6 +324,7 @@ export function buildField(kind, r, o = {}) {
       const glow = disc(r * 0.8, glowM(0xff5a10, { opacity: 0.2 }), 0.13);
       group.add(glow);
       const emb = puffs(group, r * 0.7, 0xff8a30, 5, 1.5 * K, 0.35);
+      hide.push(...emb.list);
       update = (t) => {
         glow.material.opacity = 0.12 + 0.14 * (0.5 + 0.5 * Math.sin(t * 3.1));
         for (const s of emb.list) s.position.y = ((t * 0.6 + s.userData.a) % 1) * 3 * K;
@@ -341,6 +347,8 @@ export function buildField(kind, r, o = {}) {
         c.position.set(-L / 2 + ((i + 0.5) * L) / n, 1.2 * K, 0);
         group.add(c);
         flames.push(c);
+        hide.push(c);
+        pts.push(new THREE.Vector3(c.position.x, 0.2 * K, 0));
       }
       update = (t) => {
         flames.forEach((c, i) => {
@@ -375,6 +383,8 @@ export function buildField(kind, r, o = {}) {
         l.userData.ph = R() * 6;
         group.add(l);
         lights.push(l);
+        hide.push(l);
+        pts.push(l); // 閃燈（userData.ph＝閃爍的相位）
       }
       update = (t) => {
         for (const l of lights) l.material.opacity = Math.sin(t * 5 + l.userData.ph) > 0.4 ? 1 : 0.15;
@@ -394,6 +404,7 @@ export function buildField(kind, r, o = {}) {
         (kind === 'steam' ? 4 : 3) * K,
         kind === 'steam' ? 0.5 : 0.62,
       );
+      hide.push(...p.list);
       let cols = [];
       if (kind === 'steam') {
         const cm = glowM(0xffffff, { opacity: 0.14 });
@@ -403,6 +414,8 @@ export function buildField(kind, r, o = {}) {
           c.position.set(Math.cos(a) * r * 0.45, 4.5 * K, Math.sin(a) * r * 0.45);
           group.add(c);
           cols.push(c);
+          hide.push(c);
+          pts.push(new THREE.Vector3(c.position.x, 0, c.position.z));
         }
         group.add(disc(r, glowM(0x9fe8ff, { opacity: 0.12 }), 0.1)); // 安全區的地面
       }
@@ -417,7 +430,7 @@ export function buildField(kind, r, o = {}) {
       break;
     }
   }
-  return { group, update };
+  return { group, update, hide, pts };
 }
 
 // ---------- 掩體（臨時障礙物的新種類）----------

@@ -404,6 +404,60 @@ export class Effects {
       rv: rnd(-0.8, 0.8),
     });
   }
+  // 持續的霧團（煙幕、Boss 場地的煙霧／沙塵／暴風雪／蒸氣，docs/vfx-design.md 第 9 期）：受光、翻滾、軟粒子的一大團煙，
+  // 淡入淡出、慢慢飄；size＝邊長（世界尺寸）、v＝速度（世界尺寸）、a＝不透明度（半透明：疊起來才變濃）。
+  // 各端依場上的區域自己呼叫（不轉送）；不看 skip 的數量上限（區域的煙是判定的一部分，要看得出範圍）
+  haze(p, size, color, life, a = 0.4, v = null, grow = 1.35) {
+    if (this.far(p) && frand() < 0.5) return;
+    this.g.sm.emit({
+      p,
+      v: v || new THREE.Vector3(rnd(-0.3, 0.3), rnd(0.1, 0.5), rnd(-0.3, 0.3)).multiplyScalar(this.k),
+      life: life * rnd(0.85, 1.15),
+      s0: size * 0.75,
+      s1: size * grow,
+      c0: color,
+      a,
+      cell: pickCell(FXG.smoke),
+      fade: 3,
+      rot: frand() * 6.28,
+      rv: rnd(-0.25, 0.25),
+    });
+  }
+  // 一條火舌（燃燒帶、燃燒地面；不轉送）：p 是根部、s＝起始邊長（世界尺寸）
+  tongue(p, s, c0 = 0xffc040, c1 = 0xff7a20) {
+    if (this.skip(p, s)) return;
+    this.g.gl.emit({
+      p,
+      v: new THREE.Vector3(0, rnd(2.5, 4.5) * this.k, 0),
+      life: rnd(0.5, 0.8),
+      s0: s,
+      s1: s * 0.2,
+      c0,
+      c1: frand() < 0.5 ? c1 : 0xffb040,
+      a: 0.85,
+      occ: 0.4,
+      cell: pickCell(FXG.tongue),
+    });
+  }
+  // 一顆發光的粒子（火星、閃燈、匯聚的光點；不轉送）：s＝邊長（世界尺寸）、v＝速度（世界尺寸）、fade 見 fx/gpu.js
+  ember(p, s, color, life = 0.8, v = null, o = {}) {
+    if (this.far(p) && s < this.k) return;
+    this.g.gl.emit({
+      p,
+      v: v || new THREE.Vector3(),
+      life,
+      s0: s,
+      s1: o.s1 !== undefined ? o.s1 : s * 0.4,
+      c0: o.c0 !== undefined ? o.c0 : 0xffffff,
+      c1: color,
+      a: o.a || 0.95,
+      occ: o.occ || 0,
+      g: o.g || 0,
+      drag: o.drag || 0,
+      cell: o.cell !== undefined ? o.cell : SOFT,
+      fade: o.fade !== undefined ? o.fade : 0,
+    });
+  }
   // 沒有網格的計時工作（延遲爆炸、持續冒煙）：fn(e, t, dt) 每格呼叫
   // end：時間到時呼叫一次（clear 清掉時不呼叫）
   task(life, fn, end) {

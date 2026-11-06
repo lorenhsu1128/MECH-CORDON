@@ -19,6 +19,7 @@ import { SFX } from '../audio/audio.js';
 import { COVER_KINDS, buildCover } from '../render/boss-field-models.js';
 import { clamp, lerp, rnd } from '../core/math.js';
 import { flingDebris } from '../render/foe-damage.js';
+import { frand, frnd } from '../fx/rand.js';
 import { Game } from './game.js';
 
 const SHOT_BASE = 900000; // 可以打掉的投射物的代理 id（地圖物件是 800000+）
@@ -512,6 +513,40 @@ Object.assign(Game.prototype, {
     this.scene.add(g);
     if (z.k === 'smoke') this.zoneLosHook();
   },
+  // 煙幕的顯示卡煙（華麗）：半透明的煙團填滿圓柱，外圈多一圈貼地的薄霧（看得出範圍：在裡面不能鎖定）
+  zoneSmokeFx(z, c, f, dt) {
+    if (f < 0.05 || (this.state !== 'play' && this.state !== 'ending')) return;
+    const K = this.fx.k,
+      H = smokeH(z.r, K);
+    const F = z.fx;
+    if (!F.pre) {
+      F.pre = true;
+      F.acc += 40; // 一落地就有一團
+    }
+    F.acc += dt * (14 + (2 * z.r) / K) * Math.min(1, f * 1.5);
+    while (F.acc > 1) {
+      F.acc -= 1;
+      const a = frand() * Math.PI * 2;
+      const edge = frand() < 0.4;
+      const rr = edge ? z.r * frnd(0.82, 1.02) : Math.sqrt(frand()) * z.r * 0.8;
+      const p = new THREE.Vector3(
+        c.x + Math.cos(a) * rr,
+        c.y + (edge ? frnd(0.3, 1.6) * K : frnd(0.8 * K, H * 0.85)),
+        c.z + Math.sin(a) * rr,
+      );
+      const v = new THREE.Vector3(-Math.sin(a), 0, Math.cos(a)).multiplyScalar(frnd(0.2, 0.6) * K);
+      v.y = edge ? frnd(0, 0.15) * K : frnd(0.1, 0.45) * K;
+      const col = frand() < 0.6 ? 0x9a9ea4 : 0x7c8086;
+      this.fx.haze(
+        p,
+        edge ? z.r * frnd(0.35, 0.5) : z.r * frnd(0.55, 0.8),
+        col,
+        frnd(3.5, 5),
+        edge ? 0.38 : 0.5,
+        v,
+      );
+    }
+  },
   zoneAnim(z, dt, w) {
     const F = z.fx,
       g = z.mesh;
@@ -528,6 +563,13 @@ Object.assign(Game.prototype, {
     switch (z.k) {
       case 'smoke':
         g.position.set(z.p.x, w.groundAt(z.p.x, z.p.z, z.p.y + 2), z.p.z);
+        // 砲火特效「華麗」（docs/vfx-design.md 第 9 期）：顯示卡的煙（受光、翻滾、跟風飄、軟粒子）取代實心的灰球
+        F.rich = this.fx.rich;
+        for (const m of F.parts) m.visible = !F.rich;
+        if (F.rich) {
+          this.zoneSmokeFx(z, g.position, f, dt);
+          break;
+        }
         for (const m of F.parts) {
           const u = m.userData;
           const s = u.s * (0.85 + 0.15 * Math.sin(T * 0.8 + u.ph)) * (0.4 + 0.6 * f);

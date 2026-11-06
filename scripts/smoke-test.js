@@ -16884,6 +16884,81 @@ async function testVfxEditor(browser, base) {
 }
 
 // 粒子特效（docs/vfx-design.md）：顯示卡粒子（fx/gpu.js）與 Kenney 的圖集
+// 第 9 期的特效（docs/vfx-design.md）：煙霧與場地效果、護罩、Boss 的大招、預警與範圍標示，砲火特效「華麗」才換，「標準」照舊
+async function testVfx9(browser, base) {
+  console.log('第 9 期特效：煙幕與 Boss 場地的顯示卡粒子（華麗）、標準照舊');
+  const { ctx, page } = await newPage(browser, 'vfx9');
+  await seededRandom(page);
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await freezeLoop(page);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const setup = (lv) =>
+    page.evaluate((lv) => {
+      const g = window.__game;
+      g.ctrl.fxLv = lv;
+      g.save.level = 3;
+      g.startMission();
+      g.state = 'play';
+      const pl = g.player;
+      pl.hp = pl.maxHp = 1e9;
+      pl.iFrames = 1e9;
+      for (const e of g.enemies) {
+        e.updateAI = () => {};
+        e.pos.x += 400 * g.fx.k;
+      }
+      g.waves = [];
+      g.wavePend = null;
+      window.__pump(0.2);
+    }, lv);
+  // ---- 第 1 期：煙霧與場地效果 ----
+  const p1 = async (lv) => {
+    await setup(lv);
+    return page.evaluate(() => {
+      const g = window.__game,
+        pl = g.player,
+        K = g.fx.k;
+      const P = pl.pos.clone().add(new THREE.Vector3(0, 0, -7 * K));
+      let n = 0;
+      const h0 = g.fx.haze;
+      g.fx.haze = function (...a) {
+        n++;
+        return h0.apply(this, a);
+      };
+      g.addZone('smoke', P, 8 * K, 30);
+      const fid = g.bfAdd('haze', P, 14 * K, 30, { color: 0xc8a070 });
+      g.bfAdd('steam', P.clone().add(new THREE.Vector3(30 * K, 0, 0)), 12 * K, 30, {});
+      g.bfBelt(pl, 30);
+      window.__pump(1.5);
+      const z = g.zones.find((q) => q.k === 'smoke');
+      const f = g.bfs.find((q) => q.i === fid);
+      const belt = g.bfs.find((q) => q.k === 'belt');
+      g.fx.haze = h0;
+      return {
+        balls: z.fx.parts.filter((m) => m.visible).length,
+        sprites: f.vis.hide.filter((o) => o.visible).length,
+        cones: belt.vis.hide.filter((o) => o.visible).length,
+        sm: n,
+      };
+    });
+  };
+  const rich1 = await p1('rich');
+  await page.screenshot({ path: path.join(SHOT_DIR, 'vfx9-smoke.png') });
+  const std1 = await p1('std');
+  check(
+    rich1.balls === 0 && rich1.sprites === 0 && rich1.cones === 0 && rich1.sm > 60,
+    `華麗：煙幕與場地的煙霧、火焰改用顯示卡粒子（舊網格隱藏、產生 ${rich1.sm} 顆煙）`,
+  );
+  check(std1.balls > 0 && std1.sprites > 0 && std1.cones > 0, '標準：煙幕與場地效果照舊');
+  await page.evaluate(() => {
+    const g = window.__game;
+    g.ctrl.fxLv = 'rich';
+    g.clearMission();
+    g.state = 'title';
+  });
+  await ctx.close();
+}
+
 async function testFx(browser, base) {
   console.log('粒子特效：圖集載入、各特效產生顯示卡粒子、暫停時不動、清除、渲染風格的色階、截圖');
   const { ctx, page } = await newPage(browser, 'fx');
@@ -27257,6 +27332,7 @@ const STEPS = [
   ['testCine', (c) => testCine(c.browser, c.base)],
   ['testCinePeople', (c) => testCinePeople(c.browser, c.base)],
   ['testFx', (c) => testFx(c.browser, c.base)],
+  ['testVfx9', (c) => testVfx9(c.browser, c.base)],
   ['testWater', (c) => testWater(c.browser, c.base)],
   ['testVfxEditor', (c) => testVfxEditor(c.browser, c.base)],
   ['testTextFx', (c) => testTextFx(c.browser, c.base)],
