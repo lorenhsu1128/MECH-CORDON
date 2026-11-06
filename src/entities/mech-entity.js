@@ -18,6 +18,8 @@ import {
   FOE_STAG_T,
   asmStats,
   jumpSpec,
+  airRise,
+  RISE_P,
   partById,
   usesAmmo,
 } from '../data/parts.js';
@@ -2638,8 +2640,8 @@ export class MechEntity {
       }
       this.boost = true;
     } else {
-      // 起跳後一小段時間維持地面的速度與轉向（跳躍要輕快）
-      target.copy(wish).multiplyScalar(spd * (this.grounded || this.jumpT > 0 ? 1 : 0.85));
+      // 起跳後一小段時間與上升中維持地面的速度與轉向（跳躍要輕快）；下落與懸浮 0.95
+      target.copy(wish).multiplyScalar(spd * (this.grounded || this.jumpT > 0 || this.vel.y > 0 ? 1 : 0.95));
       this.boost = false;
     }
     // 電磁牽引：往牽引源拉（48 m/s；自己往反方向移動或 QB 可以抵銷）
@@ -2669,7 +2671,7 @@ export class MechEntity {
     }
     if (g.zones && g.zones.length) g.zonePull(this, target); // 吸引區域（game/hazards2.js）
     if (g.devs && g.devs.length) g.devPush(this, target); // 地圖裝置的水流、減壓（game/devices-traps.js）
-    let acc = this.qbT > 0 ? 60 : this.grounded || this.jumpT > 0 ? 18 : 9;
+    let acc = this.qbT > 0 ? 60 : this.grounded || this.jumpT > 0 || this.vel.y > 0 ? 18 : 13;
     if (g.bfs && g.bfs.length) acc = g.bfMove(this, target, acc); // Boss 改版的場地：流沙、冰面、坑洞（game/boss-field.js）
     if (!this.melee.active) {
       this.vel.x = lerp(this.vel.x, target.x, Math.min(1, acc * dt));
@@ -2703,8 +2705,9 @@ export class MechEntity {
     } else {
       this.jumpMove(dt, wish, wantHover, spd, altCap);
       if (!this.hoverMode) {
-        // 跳躍上升中用該腳部自己的重力（決定到頂時間），過了最高點一律用 GRAVITY
-        this.vel.y -= (this.vel.y > 0 && this.riseG ? this.riseG : (GRAVITY * this.dk) / DS) * dt;
+        // 跳躍上升中照「先快後慢」的曲線（riseTick），過了最高點一律用 GRAVITY
+        if (this.vel.y > 0 && this.riseDur) this.riseTick(dt);
+        else this.vel.y -= ((GRAVITY * this.dk) / DS) * dt;
         if (this.vel.y < -36 * this.dk) this.vel.y = -36 * this.dk;
       }
     }
@@ -2922,6 +2925,29 @@ export class MechEntity {
   // 按住到最高點接懸浮（定高）；懸浮中放開後馬上再按住＝爬升（耗能加倍）。沒有空中跳時空中按住直接懸浮。
   // 戰車能跳不能懸浮。
   // want：按住（AI 傳 2 表示要爬升）。jumpExt（房主處理客機輸入）時按下由 jumpPressQ 給，不從按住推算
+  // 上升的曲線（data/parts.js 的 RISE_P）：v(t)＝v0·(1 −(t/T)^p)，前段幾乎全速、接近最高點才急停
+  riseStart(v0, T) {
+    this.vel.y = v0;
+    this.riseV0 = v0;
+    this.riseDur = T;
+    this.riseT = 0;
+  }
+  riseTick(dt) {
+    const T = this.riseDur,
+      t0 = this.riseT,
+      t1 = t0 + dt;
+    this.riseT = t1;
+    const f = (t) => this.riseV0 * (1 - Math.pow(Math.min(t, T) / T, RISE_P));
+    // 這一格的減速＝曲線的差；到頂之後（t ≥ T）還有往上的速度（外力）時照 GRAVITY 減
+    if (t0 < T) this.vel.y -= f(t0) - f(t1) + (t1 > T ? ((GRAVITY * this.dk) / DS) * (t1 - T) : 0);
+    else this.vel.y -= ((GRAVITY * this.dk) / DS) * dt;
+  }
+  // 到頂還要幾秒（遠程射擊的最高點加成，mech-ranged.js）
+  riseLeft() {
+    if (this.vel.y <= 0) return 0;
+    if (this.riseDur) return Math.max(0, this.riseDur - (this.riseT || 0));
+    return this.vel.y / ((GRAVITY * this.dk) / DS);
+  }
   jumpMove(dt, wish, want, spd, altCap) {
     const g = this.game,
       P = this.stats.parts,
@@ -2933,7 +2959,7 @@ export class MechEntity {
     if (this.jumpT > 0) this.jumpT -= dt;
     if (this.hoverEndT > 0) this.hoverEndT -= dt;
     if (!held) this.jumpHold = false;
-    if (this.grounded || this.vel.y <= 0) this.riseG = 0;
+    if (this.grounded || this.vel.y <= 0) this.riseDur = 0;
     if (this.grounded) {
       this.airJumps = J.air;
       this.hoverMode = 0;
@@ -2943,13 +2969,25 @@ export class MechEntity {
         const k = this.en >= JUMP_EN ? 1 : 0.7; // 能量不足時跳得比較低
         this.en = Math.max(0, this.en - JUMP_EN);
         this.enDelay = Math.max(this.enDelay, 0.25);
-        this.vel.y = J.v * k;
-        this.riseG = J.g;
+        this.riseStart(J.v * k, J.T);
         this.grounded = false;
         this.jumpT = 0.6;
         this.jumpHold = true;
+        // 按著方向起跳：水平速度至少到地面速度的 1.1 倍（從站著起跳也有往前蹬出去的感覺）
+        if (wish.lengthSq() > 0.1 && Math.hypot(this.vel.x, this.vel.z) < spd * 1.1) {
+          const h = wish
+            .clone()
+            .setY(0)
+            .normalize()
+            .multiplyScalar(spd * 1.1);
+          this.vel.x = h.x;
+          this.vel.z = h.z;
+        }
         g.fx.dust(this.pos.clone(), (2.4 * this.scale) / g.fx.k, 8);
+        // 起跳的回饋：往下的箭頭、震動（推進器的噴發在 thrusterFx，各端自己產生）
+        g.fx.chevrons(this.pos.clone(), new THREE.Vector3(0, -1, 0), 0xffffff);
         SFX.jump(this.isPlayer ? null : this.center());
+        if (this.isPlayer) g.rumble(0.12, 0.3, 70);
       } else if (J.canHover && (this.hoverMode || this.hoverEndT > 0)) {
         this.hoverMode = 2;
       } else if (this.airJumps > 0 && this.en >= P.booster.qbCost * 0.7) {
@@ -2957,11 +2995,8 @@ export class MechEntity {
         this.enDelay = P.generator.delay;
         const f = AIR_DECAY[Math.min(J.air - this.airJumps, AIR_DECAY.length - 1)];
         this.airJumps--;
-        const v = Math.sqrt(2 * J.airG * J.airH * f);
-        if (this.vel.y < v) {
-          this.vel.y = v;
-          this.riseG = J.airG;
-        }
+        const R = airRise(J, f);
+        if (this.vel.y < R.v) this.riseStart(R.v, R.T);
         if (wish.lengthSq() > 0.1) {
           const h = wish
             .clone()
@@ -2990,9 +3025,10 @@ export class MechEntity {
     if (this.hoverMode === 2 && (altCap || this.en <= 2)) this.hoverMode = 1;
     if (this.hoverMode === 1 && this.en <= 2 && !J.freeHover) this.hoverMode = 0;
     if (this.hoverMode) {
-      this.riseG = 0;
+      this.riseDur = 0;
       const climb = this.hoverMode === 2;
-      this.vel.y = lerp(this.vel.y, (climb ? 7 : -0.5) * this.dk, Math.min(1, dt * (climb ? 5 : 6)));
+      // 爬升 45 m/s、約 0.08 秒到速（2026-11-06：以前 21 m/s、約 0.2 秒）
+      this.vel.y = lerp(this.vel.y, (climb ? 15 : -0.5) * this.dk, Math.min(1, dt * (climb ? 12 : 6)));
       this.en = Math.max(0, this.en - (climb ? J.climb : J.hover) * (1 - this.pmv('hover')) * dt);
       this.enDelay = 0.5;
     }
@@ -3029,6 +3065,17 @@ export class MechEntity {
       // QB 的一次噴發（boost 由假變真；客機看別人的機體用快照的 boost，所以各端自己產生、不轉送）
       if (this.boost && !this.thrB) g.fx.thruster.burst(this.model, flameCol, this.scale, this.vel);
       this.thrB = this.boost;
+      // 起跳與空中跳的一次噴發（離地且往上衝、或往上的速度突然增加；客機看別人也一樣，各端自己產生）
+      const vy0 = this.thrVy === undefined ? this.vel.y : this.thrVy;
+      if (
+        !this.grounded &&
+        this.vel.y > 4 * this.dk &&
+        (this.thrGr || this.vel.y - vy0 > 8 * this.dk) &&
+        !this.air
+      )
+        g.fx.thruster.burst(this.model, flameCol, this.scale, this.vel);
+      this.thrGr = this.grounded;
+      this.thrVy = this.vel.y;
       this.model.nzFresh = true; // 噴口的世界矩陣剛算過（fx/thruster.js 的 nozzleWorld 不用再往上更新）
       g.fx.thruster.stream(this.model, this.thrS, flameCol, this.scale, dt, this.vel);
       this.model.nzFresh = false;

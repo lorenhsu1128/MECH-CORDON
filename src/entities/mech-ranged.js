@@ -3,7 +3,6 @@
 // rbHit（投射物／雷射打中時）顯示提示與命中音。判定在房主／單機，客機的自身預測也跑 rbTick（HUD 的繞射）。
 import { SFX } from '../audio/audio.js';
 import { clamp } from '../core/math.js';
-import { GRAVITY } from '../data/parts.js';
 import { RB, RB_APEX, RB_CTR, RB_LAND, RB_ORBIT, RB_QB, rbLabel } from '../data/ranged.js';
 import { MechEntity } from './mech-entity.js';
 
@@ -49,7 +48,7 @@ Object.assign(MechEntity.prototype, {
   // 最高點的前後 APEX_T 秒（上升中以剩下的速度推算到頂的時間；爬升懸浮不算）
   rbApex() {
     if (this.grounded || this.hoverMode === 2) return false;
-    if (this.vel.y > 0) return this.vel.y / (this.riseG || GRAVITY) <= RB.APEX_T;
+    if (this.vel.y > 0) return this.riseLeft() <= RB.APEX_T;
     return this.rbApexT !== undefined && this.t - this.rbApexT <= RB.APEX_T;
   },
   // 這一發的加成：{ dmg, imp, spread, bend, hitR, tags }

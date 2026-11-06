@@ -1980,8 +1980,13 @@ export function asmStats(asm) {
 
 // ---- 跳躍與懸浮（MechEntity.jumpMove、車庫顯示）----
 // 腳部的 jumpH／jumpT：地面跳的高度（m）與到頂時間（s）；airH／airT：空中跳（第 1 次）；airN：空中跳次數。
-// 上升時用各自的重力（2h/t²），過了最高點一律用 GRAVITY 下落；連續的空中跳高度依 AIR_DECAY 遞減
+// 上升是「先快後慢」的曲線 v(t)＝v0·(1 −(t/T)^RISE_P)（MechEntity.riseStart：前段幾乎全速、接近最高點才急停），
+// 過了最高點一律用 GRAVITY 下落；連續的空中跳高度依 AIR_DECAY 遞減。
+// 2026-11-06 跳躍手感改版（docs/mech-animation.md 的「跳躍的手感」）：到頂時間一律 ×JUMP_T_K（高度不變）
 export const GRAVITY = 42 * DS;
+export const JUMP_T_K = 0.65;
+export const RISE_P = 2;
+const RISE_V = (RISE_P + 1) / RISE_P; // 初速＝RISE_V × 高度 ÷ 到頂時間（曲線下的面積＝高度）
 export const JUMP_EN = 40; // 地面跳躍的耗能
 export const AIR_DECAY = [1, 0.75, 0.55];
 // 失衡後保護（只給玩家，MechEntity.pilotEnt）：硬直結束後這段時間內 ACS 只累積 STAG_GUARD_K 倍、最多到 STAG_GUARD_CAP，近戰連段與 EMP 也不會再讓它失衡
@@ -1994,16 +1999,22 @@ export const PVE_ACS_DELAY = 0.6;
 // 一般敵人（不是 Boss）：失衡門檻倍率、硬直時間
 export const FOE_STAB_K = 0.75;
 export const FOE_STAG_T = 2.6;
+// 空中跳（第 n 次的高度倍率 f）：到頂時間 airT×√f、初速 RISE_V×高度÷時間
+export function airRise(J, f) {
+  const T = J.airT * Math.sqrt(f);
+  return { v: (RISE_V * J.airH * f) / T, T };
+}
 export function jumpSpec(legs) {
   const t = legs.type;
   let maxH = legs.jumpH;
   for (let i = 0; i < legs.airN; i++) maxH += legs.airH * AIR_DECAY[Math.min(i, AIR_DECAY.length - 1)];
+  const T = legs.jumpT * JUMP_T_K;
   return {
-    v: (2 * legs.jumpH) / legs.jumpT,
-    g: (2 * legs.jumpH) / (legs.jumpT * legs.jumpT),
+    v: (RISE_V * legs.jumpH) / T,
+    T,
     height: legs.jumpH,
     airH: legs.airH,
-    airG: (2 * legs.airH) / (legs.airT * legs.airT),
+    airT: legs.airT * JUMP_T_K,
     air: legs.airN,
     maxH,
     canHover: t !== 'tank',

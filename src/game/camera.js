@@ -15,7 +15,8 @@ const WIDE_FOV = 62,
   WIDE_DIST = 0.72;
 // 鏡頭的位移（機甲三倍高改版：跟著機體放大 DS 倍）
 const CAM_OFF = new THREE.Vector3(0, 30, 17.5).multiplyScalar(DS);
-const CAM_PITCH_MAX = 1.31; // 地形擋住時最多轉到約 75°，還是擋住就把鏡頭拉近
+const CAM_PITCH_MAX = 1.31;
+const CAM_AIR_K = 0.5; // 跳躍時鏡頭少跟的離地高度比例 // 地形擋住時最多轉到約 75°，還是擋住就把鏡頭拉近
 // 鏡頭拉遠的上限（倍率）：設定的「鏡頭最遠距離」，預設 1.8（約 55 m 高，一定在霧的範圍內）
 const CAM_MAX_DEF = 1.8;
 // 平時的鏡頭距離（倍率，設定的「鏡頭距離」ctrl.camDist）：標準 0.65＝機體約佔畫面高度的 18%
@@ -369,6 +370,16 @@ Object.assign(Game.prototype, {
     );
     const tgt = focus;
     tgt.y = p.pos.y + p.model.height * 0.35; // 以機體中段為中心
+    // 跳躍時鏡頭只跟一半的離地高度（2026-11-06：以前整個跟著，機體停在畫面中央，看不出往上跳）；
+    // 站上高台這種貼地的高度差照舊全跟，落地後平滑回到原位
+    {
+      const air =
+        !p.grounded && !this.spectator && !p.air
+          ? Math.max(0, p.pos.y - this.world.groundAt(p.pos.x, p.pos.z, p.pos.y))
+          : 0;
+      this.camAirOff = lerp(this.camAirOff || 0, air * CAM_AIR_K, Math.min(1, dt * (air > 0 ? 14 : 6)));
+      tgt.y -= this.camAirOff;
+    }
     this.camTarget.lerp(tgt, Math.min(1, dt * 12));
     // 地形（山脊、峽谷壁、台地）擋在鏡頭和機體之間時，鏡頭往正上方轉到看得到為止；之後慢慢轉回來
     const L0 = this.camOff().length() * this.camZoom;

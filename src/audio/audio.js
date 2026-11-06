@@ -1157,10 +1157,13 @@ export const SFX = {
     this.play('~thB', pos ? 0.35 : 0.55, 1.2, 0.05, 0.05, pos, null, 0.04);
     this.play('~jetTail', 0.35, 1, 0.08, 0.05, pos, null, 0.18);
   },
+  // 起跳：推進器往下蹬（2026-11-06 跳躍手感改版：加重，疊一層 QB 的推力低音與尾音）
   jump(pos) {
-    this.play('boostUp', 0.55, 0.9, 0.08, 0.2, pos);
-    this.play('thrBurst', 0.3, 0.85, 0.08, 0.2, pos);
+    this.play('boostUp', 0.75, 0.95, 0.08, 0.1, pos);
+    this.play('thrBurst', 0.5, 0.9, 0.08, 0.1, pos);
+    this.play('~thB', pos ? 0.25 : 0.4, 1.05, 0.05, 0.05, pos, null, 0.02);
     this.play('~hiss', 0.25, 0.8, 0.08, 0.2, pos);
+    this.play('~jetTail', 0.25, 0.95, 0.08, 0.05, pos, null, 0.12);
   },
   // 落地：依落下速度決定重量（v 0～1）
   land(pos, v = 0.5) {

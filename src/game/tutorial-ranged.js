@@ -423,7 +423,7 @@ Object.assign(Game.prototype, {
       if (!p.grounded) {
         const x =
           p.vel.y > 0
-            ? 0.5 - p.vel.y / (p.riseG || 30) / APEX_SPAN
+            ? 0.5 - p.riseLeft() / APEX_SPAN
             : 0.5 + (t - (p.rbApexT === undefined ? t : p.rbApexT)) / APEX_SPAN;
         const h = RB.APEX_T / APEX_SPAN;
         Object.assign(o, { show: true, z0: 0.5 - h, z1: 0.5 + h, x: clamp(x, 0, 1) });
