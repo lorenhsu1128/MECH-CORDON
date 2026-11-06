@@ -671,6 +671,19 @@ body.rstick #vbUse {
 #vpad .top .vbtn {
   position: static;
 }
+/* 修復、道具1、道具2：沿左搖桿（圓心 105, 135、半徑 75）的外圈，從正上方往右排成弧形 */
+#vbKit {
+  left: calc(54px + env(safe-area-inset-left, 0px));
+  bottom: calc(222px + env(safe-area-inset-bottom, 0px));
+}
+#vbCs1 {
+  left: calc(141px + env(safe-area-inset-left, 0px));
+  bottom: calc(198px + env(safe-area-inset-bottom, 0px));
+}
+#vbCs2 {
+  left: calc(190px + env(safe-area-inset-left, 0px));
+  bottom: calc(128px + env(safe-area-inset-bottom, 0px));
+}
 
 body.vpad #hudTop {
   top: calc(8px + env(safe-area-inset-top, 0px));
@@ -786,6 +799,20 @@ body.vpad #vpad .top {
   }
   body.vpad .vbtn .k {
     font-size: 7px;
+  }
+  /* 左搖桿縮成 104 px（圓心 68, 68）：修復、道具1、道具2 在搖桿右側排成三角形，
+     不往上排（近戰／遠程訓練的面板在左側，下緣約離底 119 px） */
+  body.vpad #vbKit {
+    left: calc(123px + env(safe-area-inset-left, 0px));
+    bottom: calc(73px + env(safe-area-inset-bottom, 0px));
+  }
+  body.vpad #vbCs1 {
+    left: calc(173px + env(safe-area-inset-left, 0px));
+    bottom: calc(47px + env(safe-area-inset-bottom, 0px));
+  }
+  body.vpad #vbCs2 {
+    left: calc(121px + env(safe-area-inset-left, 0px));
+    bottom: calc(21px + env(safe-area-inset-bottom, 0px));
   }
   body.vpad #vbAttack {
     right: calc(84px + env(safe-area-inset-right, 0px)) !important;
