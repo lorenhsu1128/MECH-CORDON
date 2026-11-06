@@ -233,6 +233,16 @@ Object.assign(Game.prototype, {
       '取消',
     );
   },
+  // 「瞄準」「移動方向基準」只在俯視的傳統操作時顯示；游標吸附只在面向游標時顯示
+  setTopRows() {
+    const classic = this.ctrl.topCtl === 'classic';
+    for (const id of ['ctrlAim', 'ctrlMove']) {
+      const r = $(id) && $(id).closest('.krow');
+      if (r) r.style.display = classic ? '' : 'none';
+    }
+    const r = $('ctrlTopSnap') && $('ctrlTopSnap').closest('.krow');
+    if (r) r.style.display = classic ? 'none' : '';
+  },
   applyPreset(map) {
     for (const id in map) {
       const el = $(id);
@@ -326,7 +336,7 @@ Object.assign(Game.prototype, {
             `<div class="krow ${chg(k) ? 'chg' : ''}"><span>${l}</span><span style="display:flex;gap:8px"><button data-k="${k}" class="kbtn ${this.rebinding === k ? 'wait' : ''}">${this.rebinding === k ? '請按鍵…' : this.keyLabel(this.keymap[k])}</button><span class="kbtn dim" style="display:inline-block;text-align:center;padding:8px 6px;border:1px solid var(--line)">${padOnly[k] || this.padLabel(this.padmap[k])}</span></span></div>`,
         )
         .join('') +
-      `<p class="dim" style="font-size:11px">手把：左搖桿移動、右搖桿瞄準（放開時自動瞄準鎖定目標）；選單畫面：十字鍵／左搖桿移動、A 決定、B 返回、LB／RB 切換分頁、左右改選項、右搖桿捲動；改鍵時直接按手把按鈕即可指定給手把。${this.padConnected ? '　✔ 已連接' : '　（尚未偵測到手把，按任一鍵喚醒）'}</p>`;
+      `<p class="dim" style="font-size:11px">手把：左搖桿移動、右搖桿瞄準（俯視的面向游標＝機體面向推的方向；傳統操作放開時自動瞄準鎖定目標）；選單畫面：十字鍵／左搖桿移動、A 決定、B 返回、LB／RB 切換分頁、左右改選項、右搖桿捲動；改鍵時直接按手把按鈕即可指定給手把。${this.padConnected ? '　✔ 已連接' : '　（尚未偵測到手把，按任一鍵喚醒）'}</p>`;
     for (const b of $('keyRows').querySelectorAll('.kbtn'))
       b.onclick = (ev) => {
         ev.stopPropagation();
@@ -335,6 +345,9 @@ Object.assign(Game.prototype, {
       };
     $('ctrlAim').value = this.ctrl.aim;
     $('ctrlMove').value = this.ctrl.moveRel;
+    $('ctrlTopCtl').value = this.ctrl.topCtl === 'classic' ? 'classic' : 'aim';
+    $('ctrlTopSnap').checked = this.ctrl.topSnap !== false;
+    this.setTopRows();
     $('ctrlHold').checked = this.ctrl.holdFire;
     $('ctrlRumble').checked = this.ctrl.rumble;
     $('ctrlTouch').value = this.ctrl.touch || 'auto';

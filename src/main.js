@@ -115,5 +115,6 @@ import './game/encounters.js';
 import './game/devices.js';
 import './game/devices-traps.js';
 import './game/devices-guns.js';
+import './game/top-aim.js';
 
 new Game();

@@ -5362,6 +5362,243 @@ async function testLockOn(browser, base) {
   await ctx.close();
 }
 
+// 俯視的「面向游標」操作（game/top-aim.js，docs/topdown-control-design.md）：機體面向游標、上／下＝往游標前進／後退、
+// 左右＝側移，鎖定框跟著游標，游標吸附（靠近就鎖定、遲滯、最近的、切換鎖定後放開、設定關閉）、手把右搖桿的角度吸附
+async function testTopAim(browser, base) {
+  console.log('俯視的面向游標：面向游標與相對移動、跟著游標的鎖定框、游標吸附、手把的角度吸附');
+  const { ctx, page } = await newPage(browser, 'topaim');
+  await seededRandom(page);
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  const r = await page.evaluate((SC) => {
+    const g = window.__game;
+    window.__reseed(4270);
+    g.ctrl.topCtl = 'aim';
+    g.ctrl.topSnap = true;
+    g.save.level = 1;
+    g.startMission();
+    g.state = 'lock-test';
+    g.waves = [];
+    g.wavePend = null;
+    const pl = g.player;
+    pl.hp = pl.maxHp = 1e7;
+    const y0 = g.world.terrainHeight(0, 0);
+    pl.pos.set(0, y0, 0);
+    pl.vel.set(0, 0, 0);
+    pl.yaw = pl.aimYaw = 0;
+    for (const e of g.enemies) e.pos.set(200 * SC, -50, 200 * SC);
+    g.devClear();
+    const es = g.enemies.slice(0, 3);
+    while (es.length < 3) es.push(g.spawnEnemy({ name: 'T', asm: pl.asm, pal: 'enemy', ai: 'mt' }));
+    for (const e of es) {
+      e.hp = e.maxHp = 1e7;
+      e.updateAI = () => {};
+    }
+    const put = (e, x, z) => {
+      e.pos.set(x, y0, z);
+      e.vel.set(0, 0, 0);
+      e.mesh.position.copy(e.pos);
+    };
+    put(es[0], -8 * SC, -6 * SC);
+    put(es[1], 8 * SC, -6 * SC);
+    put(es[2], 200 * SC, -50); // 之後放到 es[1] 旁邊
+    const cam = () => {
+      for (let i = 0; i < 40; i++) g.updateCamera(1 / 60);
+      g.camera.updateMatrixWorld(true);
+    };
+    cam();
+    const out = { topAim: g.topAim() };
+    const setMouse = (x, y) => {
+      g.mouse.x = x;
+      g.mouse.y = y;
+    };
+    const tick = (n = 1) => {
+      for (let i = 0; i < n; i++) g.topAimInput(pl, 1 / 60);
+    };
+    const hw = g.lockBox(pl).hw;
+    const P = (e) => g.proj(e.center());
+    const radius = (e) => {
+      const h = e.model.height || 4;
+      const size = Math.abs(g.proj(e.pos.clone().setY(e.pos.y + h)).y - g.proj(e.pos).y) * 0.5;
+      return hw * 0.35 + Math.min(size, hw * 0.4);
+    };
+    g.padActive = g.touchActive = false;
+    // 1) 游標在機體後方（沒有敵人）：面向後方，上＝往後方走、右＝往畫面左邊（面向南方時的右手邊）
+    pl.lock = null;
+    g.topAimReset();
+    const back = g.proj(pl.center().add(new THREE.Vector3(0, 0, 10 * SC)));
+    setMouse(back.x, back.y);
+    tick(3);
+    out.yaw = g.moveYaw(pl);
+    out.noLockBack = !pl.lock;
+    const K = g.keymap;
+    const run = (key, n) => {
+      const p0 = pl.pos.clone();
+      g.down[K[key]] = true;
+      for (let i = 0; i < n; i++) {
+        g.updatePlayer(1 / 60);
+        g.updateCamera(1 / 60);
+        setMouse(back.x, back.y);
+      }
+      g.down[K[key]] = false;
+      for (let i = 0; i < 30; i++) {
+        pl.vel.multiplyScalar(0);
+        g.updatePlayer(1 / 60);
+      }
+      return pl.pos.clone().sub(p0);
+    };
+    const dUp = run('up', 40);
+    out.up = [+dUp.x.toFixed(2), +dUp.z.toFixed(2)];
+    out.face = Math.abs(Math.abs(pl.yaw) - Math.PI) < 0.35;
+    const dRight = run('right', 40);
+    out.right = [+dRight.x.toFixed(2), +dRight.z.toFixed(2)];
+    // 回到原點、面向前方
+    pl.pos.set(0, y0, 0);
+    pl.vel.set(0, 0, 0);
+    pl.yaw = pl.aimYaw = 0;
+    cam();
+    // 2) 鎖定框跟著游標：游標在 es[1] 旁邊 0.9 個半寬（框內、吸附範圍外）→ 鎖 es[1]，沒有吸附
+    pl.lock = null;
+    g.topAimReset();
+    const s1 = P(es[1]),
+      s0 = P(es[0]);
+    out.sep = Math.round((Math.abs(s1.x - s0.x) / hw) * 100) / 100;
+    setMouse(s1.x + 0.9 * hw, s1.y);
+    tick(3);
+    out.boxLock = pl.lock === es[1] && !g.topSnap;
+    // 移到 es[0] 附近（框外的 es[1] 0.35 秒後換；不靠吸附）
+    // 3) 吸附：游標在 0.2 個半寬內 → 吸住並鎖定，準星滑到目標上
+    g.topAimReset();
+    pl.lock = null;
+    setMouse(s1.x + 0.2 * hw, s1.y);
+    tick(1);
+    out.snap = g.topSnap === es[1] && pl.lock === es[1];
+    tick(20);
+    out.retOn = Math.hypot(g.topRet.x - s1.x, g.topRet.y - s1.y) < 3;
+    out.aimAt = g.mouseWorld.distanceTo(es[1].center()) < 0.01;
+    // 4) 遲滯：吸附範圍的 1.3 倍——剛移過去的不吸，已經吸住的不放；1.8 倍才放開
+    const R1 = radius(es[1]);
+    setMouse(s1.x + 1.3 * R1, s1.y);
+    tick(2);
+    out.hold = g.topSnap === es[1];
+    setMouse(s1.x + 1.8 * R1, s1.y);
+    tick(2);
+    out.release = !g.topSnap;
+    g.topAimReset();
+    setMouse(s1.x + 1.3 * R1, s1.y);
+    tick(2);
+    out.noFresh = !g.topSnap;
+    // 5) 兩台都在吸附範圍內：吸最近的
+    put(es[2], es[1].pos.x + 2.2 * SC, es[1].pos.z);
+    cam();
+    const a1 = P(es[1]),
+      a2 = P(es[2]);
+    g.topAimReset();
+    setMouse(a1.x + (a2.x - a1.x) * 0.7, a1.y + (a2.y - a1.y) * 0.7);
+    tick(2);
+    out.nearest = g.topSnap === es[2];
+    // 6) 切換鎖定：放開吸附，游標沒移開之前不再吸附
+    const before = pl.lock;
+    g.cycleLock();
+    tick(3);
+    out.cycle = !g.topSnap && pl.lock && pl.lock !== before;
+    setMouse(a1.x + 3 * hw, a1.y);
+    tick(2);
+    setMouse(a1.x, a1.y);
+    tick(2);
+    out.resnap = g.topSnap === es[1];
+    // 7) 設定關閉：不吸附
+    g.ctrl.topSnap = false;
+    g.topAimReset();
+    setMouse(a1.x, a1.y);
+    tick(2);
+    out.off = !g.topSnap;
+    g.ctrl.topSnap = true;
+    put(es[2], 200 * SC, -50);
+    // 8) 手把：右搖桿的方向和目標相差 8° 吸附、16° 不放、25° 放開
+    g.padActive = true;
+    const ang0 = Math.atan2(es[0].pos.x - pl.pos.x, es[0].pos.z - pl.pos.z);
+    const stick = (deg) => {
+      const a = ang0 + (deg * Math.PI) / 180;
+      g.padAim = new THREE.Vector3(Math.sin(a), 0, Math.cos(a));
+    };
+    g.topAimReset();
+    stick(8);
+    tick(2);
+    out.pad8 = g.topSnap === es[0] && pl.lock === es[0];
+    stick(16);
+    tick(2);
+    out.pad16 = g.topSnap === es[0];
+    stick(25);
+    tick(2);
+    out.pad25 = !g.topSnap;
+    g.padAim = new THREE.Vector3();
+    tick(2);
+    out.padKeep = Math.abs(Math.atan2(g.topDir.x, g.topDir.z) - (ang0 + (25 * Math.PI) / 180)) < 0.01;
+    g.padActive = false;
+    // 9) 傳統操作：不是面向游標
+    g.ctrl.topCtl = 'classic';
+    out.classic = !g.topAim();
+    g.ctrl.topCtl = 'aim';
+    g.clearMission();
+    g.state = 'title';
+    return out;
+  }, SC);
+  console.log('  ', JSON.stringify(r));
+  check(r.topAim, '預設是面向游標');
+  check(
+    Math.abs(Math.abs(r.yaw) - Math.PI) < 0.05 && r.noLockBack,
+    `游標在後方：移動的基準朝後（${r.yaw && r.yaw.toFixed(2)}），框裡沒有敵人不鎖定`,
+  );
+  check(
+    r.up[1] > 3 && Math.abs(r.up[0]) < r.up[1] * 0.3 && r.face,
+    `上＝往游標前進（${r.up}），機體面向游標`,
+  );
+  check(r.right[0] < -3 && Math.abs(r.right[1]) < -r.right[0] * 0.3, `右＝側移到機體的右手邊（${r.right}）`);
+  check(r.sep > 2, `兩台敵人在畫面上分開（${r.sep} 個半寬）`);
+  check(r.boxLock, '鎖定框跟著游標：框裡離游標最近的、沒有吸附');
+  check(r.snap && r.retOn && r.aimAt, '游標靠近敵人：吸附並鎖定，準星滑到目標上');
+  check(r.hold && r.release && r.noFresh, '吸附的遲滯：1.3 倍不放開（新的不吸）、1.8 倍放開');
+  check(r.nearest, '兩台都在範圍內時吸最近的');
+  check(r.cycle && r.resnap, '切換鎖定時放開吸附，游標移開再靠近才重新吸附');
+  check(r.off, '游標吸附關閉時不吸附');
+  check(
+    r.pad8 && r.pad16 && r.pad25 && r.padKeep,
+    '手把右搖桿：8° 吸附、16° 不放、25° 放開，放開搖桿保持方向',
+  );
+  check(r.classic, '傳統操作不是面向游標');
+  // 截圖：游標靠近敵人時準星吸到敵人身上、鎖定框跟著準星
+  const sp = await page.evaluate((SC) => {
+    const g = window.__game;
+    g.save.level = 1;
+    g.startMission();
+    g.waves = [];
+    g.wavePend = null;
+    const pl = g.player;
+    pl.hp = pl.maxHp = 1e7;
+    const y0 = g.world.terrainHeight(0, 0);
+    pl.pos.set(0, y0, 0);
+    for (const e of g.enemies) e.pos.set(200 * SC, -50, 200 * SC);
+    const e = g.enemies[0];
+    e.hp = e.maxHp = 1e7;
+    e.updateAI = () => {};
+    e.pos.set(6 * SC, y0, -6 * SC);
+    e.mesh.position.copy(e.pos);
+    for (let i = 0; i < 40; i++) g.updateCamera(1 / 60);
+    const s = g.proj(e.center());
+    return { x: s.x + 30, y: s.y + 10 };
+  }, SC);
+  await page.mouse.move(sp.x, sp.y);
+  await page.waitForTimeout(700);
+  const snapOk = await page.evaluate(() => {
+    const g = window.__game;
+    return !!g.topSnap && g.player.lock === g.topSnap;
+  });
+  check(snapOk, '實際的滑鼠：游標靠近敵人時吸附並鎖定');
+  await page.screenshot({ path: path.join(SHOT_DIR, 'topaim-snap.png') });
+  await ctx.close();
+}
+
 // 追尾視角（機戰傭兵6）：鏡頭在機體後方、速度偏移、鎖定框、目標輔助與甩動換目標、撞牆拉近、三段切換、觸控
 async function testChase(browser, base) {
   console.log('追尾視角：鏡頭在後方、速度偏移、鎖定框、目標輔助、撞牆拉近、V 三段切換、平板與手機');
@@ -26914,6 +27151,7 @@ const STEPS = [
   ['testBosses', (c) => testBosses(c.browser, c.base)],
   ['testBosses2', (c) => testBosses2(c.browser, c.base)],
   ['testLockOn', (c) => testLockOn(c.browser, c.base)],
+  ['testTopAim', (c) => testTopAim(c.browser, c.base)],
   ['testCamOcclusion', (c) => testCamOcclusion(c.browser, c.base)],
   ['testChase', (c) => testChase(c.browser, c.base)],
   ['testPadUi', (c) => testPadUi(c.browser, c.base)],
@@ -27165,6 +27403,7 @@ async function launchBrowser() {
   // 地圖預設固定為貨運集散場（平坦、沒有虛空與多層），Boss、鎖定、多人等測試的結果才穩定；
   // 各地圖本身由 testMaps 逐一出擊檢查。測試自己選了地圖（包含選回「隨機」）時不覆蓋
   // 遊戲節奏與地圖物件的破壞：測試的時間與數值照 85%／可破壞調的（2026-11-05 預設改成 75%／易破壞），
+  // 俯視的操作：舊的測試照傳統操作寫的（2026-11-06 預設改成面向游標，testTopAim 另外測），
   // 沒有存過設定的環境先寫這兩項；realDefaults（設定畫面的測試）用遊戲真正的預設
   const newCtx = browser.newContext.bind(browser);
   browser.newContext = async (o = {}) => {
@@ -27176,7 +27415,7 @@ async function launchBrowser() {
           if (localStorage.getItem('rubicon_ctrl') === null)
             localStorage.setItem(
               'rubicon_ctrl',
-              JSON.stringify({ pace: 0.85, paceV: 2, destruct: 'normal' }),
+              JSON.stringify({ pace: 0.85, paceV: 2, destruct: 'normal', topCtl: 'classic' }),
             );
         } catch (e) {
           /* 沒有 localStorage 的頁面 */

@@ -47,6 +47,7 @@ Object.assign(Game.prototype, {
     if (!this.fp) this.fpShow();
     this.chLag = null;
     this.chDist = null;
+    this.topAimReset(); // 俯視的面向游標（top-aim.js）
     this.lockLostT = 0;
     if (v !== 'chase') this.assist = false;
     document.body.classList.toggle('chaseView', this.chase);
@@ -74,6 +75,7 @@ Object.assign(Game.prototype, {
   // 出擊時：回到設定的預設視角
   viewReset() {
     this.gazeHeadReset();
+    this.topAimReset();
     this.fp = false;
     this.chase = false;
     this.assist = false;
@@ -336,7 +338,11 @@ Object.assign(Game.prototype, {
     const v = e.center().project(this.camera);
     if (v.z > 1) return false;
     const b = this.lockBox(p);
-    return Math.abs(v.x * innerWidth * 0.5) < b.hw && Math.abs(v.y * innerHeight * 0.5) < b.hh;
+    const o = this.lockBoxCenter();
+    return (
+      Math.abs(v.x * innerWidth * 0.5 - (o.x - innerWidth / 2)) < b.hw &&
+      Math.abs(v.y * innerHeight * 0.5 - (innerHeight / 2 - o.y)) < b.hh
+    );
   },
   // 鎖定框（畫面中央；火控的中距離輔助越高框越大）：回傳像素的半寬、半高
   lockBox(p) {
@@ -346,17 +352,20 @@ Object.assign(Game.prototype, {
     const hw = H * (0.17 + 0.1 * a);
     return { hw, hh: hw * 0.78 };
   },
-  // 鎖定框裡的敵人，依離準星的遠近
+  // 鎖定框裡的敵人，依離準星的遠近（框的中心：追尾＝畫面中央，俯視的面向游標＝準星，lockBoxCenter）
   chaseLockCands(p, reach) {
     const bx = this.lockBox(p);
+    const o = this.lockBoxCenter(),
+      ox = o.x - innerWidth / 2,
+      oy = innerHeight / 2 - o.y;
     const out = [];
     for (const e of this.lockPool(p)) {
       if (e.dead || e.noLock) continue;
       if (e.pos.distanceTo(p.pos) > reach) continue;
       const v = e.center().project(this.camera);
       if (v.z <= -1 || v.z >= 1) continue;
-      const dx = (v.x * innerWidth) / 2 / bx.hw,
-        dy = (v.y * innerHeight) / 2 / bx.hh;
+      const dx = ((v.x * innerWidth) / 2 - ox) / bx.hw,
+        dy = ((v.y * innerHeight) / 2 - oy) / bx.hh;
       if (Math.abs(dx) > 1 || Math.abs(dy) > 1) continue;
       out.push({ e, k: Math.hypot(dx, dy) });
     }

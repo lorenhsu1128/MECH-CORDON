@@ -46,6 +46,8 @@ Object.assign(Game.prototype, {
         {
           aim: 'mouse',
           moveRel: 'screen',
+          topCtl: 'aim', // 俯視的操作：aim 面向游標（預設）／classic 傳統（top-aim.js）
+          topSnap: true, // 游標吸附
           holdFire: true,
           rumble: true,
           touch: 'auto',
@@ -557,7 +559,7 @@ Object.assign(Game.prototype, {
     const inRange =
       lock &&
       ranged.some((s) => dist <= p.weapons[s].def.range + 4) &&
-      (!this.camAim() || this.inLockBox(p, lock));
+      (!(this.camAim() || this.topAim()) || this.inLockBox(p, lock));
     d['Touch_fireR'] = d['Touch_fireL'] = false;
     d['Touch_meleeR'] = d['Touch_meleeL'] = false;
     if (meleeSlot) {
@@ -615,7 +617,8 @@ Object.assign(Game.prototype, {
     document.body.classList.toggle('touchDev', this.touchAvailable());
     if (this.vpadEl) this.vpadEl.classList.toggle('on', on);
     document.body.classList.toggle('vpad', on);
-    document.body.classList.toggle('rstick', on && this.camAim() && !this.spectator); // 右搖桿（setupRStick）
+    // 右搖桿（setupRStick）：追尾、第一人稱轉鏡頭，俯視的面向游標＝游標的方向（top-aim.js）
+    document.body.classList.toggle('rstick', on && (this.camAim() || this.topAim()) && !this.spectator);
     // 地面的追尾視角：右搖桿兼攻擊鍵（第一人稱、空域照舊有射擊鍵）
     document.body.classList.toggle('rsfire', on && this.chase && !this.airMode && !this.spectator);
   },
@@ -762,6 +765,18 @@ Object.assign(Game.prototype, {
     document.getElementById('ctrlMove').onchange = (e) => {
       this.ctrl.moveRel = e.target.value;
       this.saveKeys();
+    };
+    document.getElementById('ctrlTopCtl').onchange = (e) => {
+      this.ctrl.topCtl = e.target.value;
+      this.saveKeys();
+      this.topAimReset();
+      this.setTopRows();
+      this.updateVpad();
+    };
+    document.getElementById('ctrlTopSnap').onchange = (e) => {
+      this.ctrl.topSnap = e.target.checked;
+      this.saveKeys();
+      if (!e.target.checked) this.topSnap = null;
     };
     document.getElementById('ctrlHold').onchange = (e) => {
       this.ctrl.holdFire = e.target.checked;

@@ -743,10 +743,11 @@ Object.assign(Game.prototype, {
   tutKeyVec(dir) {
     const x = dir === 's' ? 1 : 0,
       z = dir === 'f' ? -1 : dir === 'b' ? 1 : 0;
-    if (this.ctrl.moveRel === 'mech' || this.camAim()) {
-      const yy = this.camAim() ? this.fpYaw : this.player.yaw;
+    if (this.moveRelOn()) {
+      const yy = this.moveYaw(this.player);
       const fwd = new THREE.Vector3(-Math.sin(yy), 0, -Math.cos(yy));
-      return fwd.multiplyScalar(-z).add(new THREE.Vector3(-fwd.z * x, 0, fwd.x * x));
+      const right = new THREE.Vector3(-fwd.z * x, 0, fwd.x * x); // 先算右方（multiplyScalar 會改掉 fwd）
+      return fwd.multiplyScalar(-z).add(right);
     }
     return new THREE.Vector3(x, 0, z);
   },
@@ -1255,8 +1256,8 @@ Object.assign(Game.prototype, {
   // 世界座標的方向 → 畫面（或機體）的軸 [右, 下]（player.js 的移動換算反過來）
   tutAxes(w) {
     const p = this.player;
-    if (this.ctrl.moveRel === 'mech' || this.camAim()) {
-      const yy = this.camAim() ? this.fpYaw : p.yaw;
+    if (this.moveRelOn()) {
+      const yy = this.moveYaw(p);
       const fwd = new THREE.Vector3(-Math.sin(yy), 0, -Math.cos(yy));
       return [w.dot(new THREE.Vector3(-fwd.z, 0, fwd.x)), -w.dot(fwd)];
     }

@@ -276,7 +276,10 @@ export class Game {
       const ray = new THREE.Raycaster();
       let mx = this.mouse.x,
         my = this.mouse.y;
-      if (this.padActive || this.touchActive) {
+      if (this.topAim() && this.topRet) {
+        mx = this.topRet.x; // 俯視的面向游標：準星（吸附時在目標上，top-aim.js）
+        my = this.topRet.y;
+      } else if (this.padActive || this.touchActive) {
         const s = this.proj(this.mouseWorld);
         mx = s.x;
         my = s.y;

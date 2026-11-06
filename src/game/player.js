@@ -42,8 +42,8 @@ Object.assign(Game.prototype, {
         if (dist > reach || dist < 0.5 * p.dk || !this.onScreen(e)) continue;
         out.push({ e, k: Math.acos(clamp(d.normalize().dot(look), -1, 1)) });
       }
-    } else if (this.chase) {
-      out.push(...this.chaseLockCands(p, reach));
+    } else if (this.chase || this.topAim()) {
+      out.push(...this.chaseLockCands(p, reach)); // 俯視的面向游標：框跟著準星（top-aim.js）
     } else {
       const fwd = new THREE.Vector3(-Math.sin(p.yaw), 0, -Math.cos(p.yaw));
       for (const e of this.lockPool(p)) {
@@ -69,7 +69,7 @@ Object.assign(Game.prototype, {
     )
       p.lock = null;
     this.gazeLockTick(p); // 看哪鎖哪（game/gaze.js）
-    if (this.chase) return this.chaseAutoLock(p);
+    if (this.chase || this.topAim()) return this.chaseAutoLock(p);
     if (!p.lock) p.lock = this.lockCands(p).find((e) => !e.isTrap) || null; // 陷阱的弱點只用切換鎖定或點選
   },
   // 切換鍵：依 lockCands 的順序換下一個
@@ -85,7 +85,14 @@ Object.assign(Game.prototype, {
     }
     const p = this.player;
     if (!p || p.dead) return;
-    const list = this.lockCands(p);
+    if (this.topAim()) this.topSnapRelease(); // 切換鎖定時放開游標吸附
+    let list = this.lockCands(p);
+    // 面向游標：框裡的候選依離游標排序，而游標跟著目標走——照這個順序換只會在最近的兩台之間來回，改成依離機體的遠近
+    if (this.topAim())
+      list = list
+        .map((e) => [e, (e.isProp ? 1e9 : 0) + e.pos.distanceTo(p.pos)])
+        .sort((a, b) => a[1] - b[1])
+        .map((a) => a[0]);
     if (!list.length) {
       p.lock = null;
       return;
@@ -107,8 +114,11 @@ Object.assign(Game.prototype, {
       return;
     }
     // mouse → world at player's height
+    const byCam = this.camAim() || this.topAim(); // 瞄準點由鏡頭或俯視的游標決定（不做舊的自動瞄準）
     if (this.camAim()) {
       this.camAimInput(p, dt);
+    } else if (this.topAim()) {
+      this.topAimInput(p, dt); // 俯視的面向游標：游標、吸附、面向、鎖定（top-aim.js）
     } else {
       const ray = new THREE.Raycaster();
       ray.setFromCamera(
@@ -120,7 +130,7 @@ Object.assign(Game.prototype, {
       // lock-on
       this.autoLock(p);
     }
-    if (this.touchActive && this.camAim()) this.padActive = true;
+    if (this.touchActive && byCam) this.padActive = true;
     else if (this.touchActive) {
       this.padActive = true;
       if (!p.lock) {
@@ -131,8 +141,8 @@ Object.assign(Game.prototype, {
         this.mouseWorld.copy(p.center()).addScaledVector(dir, 20);
       }
     } // 觸控：全自動瞄準（鎖定目標，否則移動方向）
-    else if (this.camAim()) {
-      // 第一人稱／追尾：右搖桿轉鏡頭（camAimInput），瞄準點就是準星
+    else if (byCam) {
+      // 第一人稱／追尾：右搖桿轉鏡頭（camAimInput），瞄準點就是準星；俯視的面向游標：右搖桿＝游標（topAimInput）
     } else if (this.padAim && this.padAim.lengthSq() > 0.09) {
       this.mouseWorld.copy(p.center()).addScaledVector(this.padAim.clone().normalize(), 24);
       this.padAimT = 0.4;
@@ -143,7 +153,7 @@ Object.assign(Game.prototype, {
       const fwd = new THREE.Vector3(-Math.sin(p.yaw), 0, -Math.cos(p.yaw));
       this.mouseWorld.copy(p.center()).addScaledVector(fwd, 20);
     }
-    if (this.ctrl.aim === 'auto' && !p.lock && !this.camAim()) {
+    if (this.ctrl.aim === 'auto' && !p.lock && !byCam) {
       const fwd = new THREE.Vector3(-Math.sin(p.yaw), 0, -Math.cos(p.yaw));
       this.mouseWorld.copy(p.center()).addScaledVector(fwd, 20);
     } // 自動瞄準：無鎖定時朝機體前方
@@ -181,8 +191,8 @@ Object.assign(Game.prototype, {
       p.inKey = this.meleeInKey(ax, az);
     } else p.inKey = this.meleeInKey(wish.x, wish.z);
     if (p.air) this.airInput(p, wish); // 空域：推力與橫移照按鍵本身（game/air.js）
-    if ((this.ctrl.moveRel === 'mech' || this.camAim()) && wish.lengthSq() > 0) {
-      const yy = this.camAim() ? this.fpYaw : p.yaw;
+    if (this.moveRelOn() && wish.lengthSq() > 0) {
+      const yy = this.moveYaw(p); // 追尾＝鏡頭、俯視的面向游標＝往游標（top-aim.js）
       const fwd = new THREE.Vector3(-Math.sin(yy), 0, -Math.cos(yy)),
         right = new THREE.Vector3(-fwd.z, 0, fwd.x);
       wish = fwd.multiplyScalar(-wish.z).add(right.multiplyScalar(wish.x)).normalize();
@@ -196,7 +206,7 @@ Object.assign(Game.prototype, {
       p.fpFace = true;
       p.aimYaw = this.fpYaw;
       p.aimPitch = this.fpPitch;
-    } else p.fpFace = this.chase || !!p.air; // 追尾：機體面向準星（瞄準方向由 setAim 決定）
+    } else p.fpFace = this.chase || this.topAim() || !!p.air; // 追尾、俯視的面向游標：機體面向準星（瞄準方向由 setAim 決定）
     // 空域：右搖桿推到底＝急轉彎（game/air.js 的 airStickTurn）
     p.move(dt, wish, this.act('jump') || !!(p.air && this.airStickG), qb, this.act('ab'), p.lock);
     // weapons

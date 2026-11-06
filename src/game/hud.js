@@ -602,6 +602,8 @@ Object.assign(Game.prototype, {
       if (this.airMode) this.drawAirHud(c, W, H, p); // 空域的飛行 HUD（game/air.js）
     } else if (this.fp) {
       this.drawFpHud(c, W, H, p);
+    } else if (this.topAim() && !p.dead) {
+      this.drawTopAimHud(c, W, H, p); // 俯視的面向游標：跟著準星的鎖定框（top-aim.js）
     } else {
       let rx = this.mouse.x,
         ry = this.mouse.y;

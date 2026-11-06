@@ -569,8 +569,12 @@ Object.assign(Game.prototype, {
     const p = this.player;
     if (!p) return { t: 'in', mv: [0, 0], aim: [0, 0, 0], b: 0, lock: -1 };
     this.applySmartAttack(p, dt); // 與 updatePlayer 相同的瞄準／移動計算，但不開火、不判定，只送輸入並做本地預測
+    const byCam = this.camAim() || this.topAim();
     if (this.camAim()) {
       this.camAimInput(p, dt);
+      p.fpFace = true;
+    } else if (this.topAim()) {
+      this.topAimInput(p, dt); // 俯視的面向游標（top-aim.js）
       p.fpFace = true;
     } else {
       p.fpFace = false;
@@ -583,7 +587,7 @@ Object.assign(Game.prototype, {
       ray.ray.intersectPlane(plane, this.mouseWorld) || this.mouseWorld.set(p.pos.x, p.pos.y, p.pos.z - 10);
       this.autoLock(p);
     }
-    if (this.touchActive && this.camAim()) this.padActive = true;
+    if (this.touchActive && byCam) this.padActive = true;
     else if (this.touchActive) {
       this.padActive = true;
       if (!p.lock) {
@@ -593,8 +597,8 @@ Object.assign(Game.prototype, {
             : new THREE.Vector3(-Math.sin(p.yaw), 0, -Math.cos(p.yaw));
         this.mouseWorld.copy(p.center()).addScaledVector(dir, 20);
       }
-    } else if (this.camAim()) {
-      // 第一人稱／追尾：瞄準點就是準星
+    } else if (byCam) {
+      // 第一人稱／追尾：瞄準點就是準星；俯視的面向游標：topAimInput
     } else if (this.padAim && this.padAim.lengthSq() > 0.09) {
       this.mouseWorld.copy(p.center()).addScaledVector(this.padAim.clone().normalize(), 24);
       this.padAimT = 0.4;
@@ -604,7 +608,7 @@ Object.assign(Game.prototype, {
       const fwd = new THREE.Vector3(-Math.sin(p.yaw), 0, -Math.cos(p.yaw));
       this.mouseWorld.copy(p.center()).addScaledVector(fwd, 20);
     }
-    if (this.ctrl.aim === 'auto' && !p.lock && !this.camAim()) {
+    if (this.ctrl.aim === 'auto' && !p.lock && !byCam) {
       const fwd = new THREE.Vector3(-Math.sin(p.yaw), 0, -Math.cos(p.yaw));
       this.mouseWorld.copy(p.center()).addScaledVector(fwd, 20);
     }
@@ -633,8 +637,8 @@ Object.assign(Game.prototype, {
       if (wish.length() > 1) wish.normalize();
     }
     const mk = this.meleeInKey(wish.x, wish.z); // 方向派生的按鍵方向（送給房主）
-    if ((this.ctrl.moveRel === 'mech' || this.camAim()) && wish.lengthSq() > 0) {
-      const yy = this.camAim() ? this.fpYaw : p.yaw;
+    if (this.moveRelOn() && wish.lengthSq() > 0) {
+      const yy = this.moveYaw(p);
       const fwd = new THREE.Vector3(-Math.sin(yy), 0, -Math.cos(yy)),
         right = new THREE.Vector3(-fwd.z, 0, fwd.x);
       wish = fwd.multiplyScalar(-wish.z).add(right.multiplyScalar(wish.x)).normalize();
@@ -682,7 +686,8 @@ Object.assign(Game.prototype, {
     const cs = [this.save.asm.c1, this.save.asm.c2].map((id) => ((this.save.items[id] || 0) > 0 ? id : null));
     return {
       t: 'in',
-      fp: this.fp ? 1 : this.chase ? 2 : 0, // 2＝追尾（機體面向準星；有鎖定時光束對準目標）
+      // 2＝追尾（機體面向準星；有鎖定時光束對準目標）、3＝俯視的面向游標（機體面向準星；光束照俯視）
+      fp: this.fp ? 1 : this.chase ? 2 : this.topAim() ? 3 : 0,
       mv: [+wish.x.toFixed(3), +wish.z.toFixed(3)],
       aim: [+aimPos.x.toFixed(2), +aimPos.y.toFixed(2), +aimPos.z.toFixed(2)],
       aimR: [+aimR.x.toFixed(2), +aimR.y.toFixed(2), +aimR.z.toFixed(2)],
