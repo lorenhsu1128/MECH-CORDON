@@ -168,11 +168,228 @@ export function capGeo(w, h) {
   return (CAPS[key] = g);
 }
 
+// ---------- 光柱（衛星砲的追蹤光柱、格子砲擊）：開口圓柱，uv.x＝圓周、uv.y＝高度 ----------
+const COL_VS = /* glsl */ `
+varying vec2 vUv;
+varying vec3 vN;
+varying vec3 vV;
+void main() {
+  vUv = uv;
+  vec4 wp = modelMatrix * vec4(position, 1.0);
+  vN = normalize(mat3(modelMatrix) * normal);
+  vV = normalize(cameraPosition - wp.xyz);
+  gl_Position = projectionMatrix * viewMatrix * wp;
+}`;
+const PILLAR_FS = /* glsl */ `
+uniform vec3 uColor;
+uniform float uOp, uTime, uLen;
+varying vec2 vUv;
+varying vec3 vN;
+varying vec3 vV;
+${NOISE}
+void main() {
+  // 面向鏡頭的中間最亮、兩側淡掉＝看起來是有體積的光
+  float face = abs(dot(normalize(vN), normalize(vV)));
+  float body = pow(face, 1.6);
+  float core = pow(face, 9.0);
+  // 往下流的能量（沿高度的條紋＋雜訊）
+  float n = fbm(vec2(vUv.x * 7.0, vUv.y * uLen * 0.12 + uTime * 5.0));
+  float streak = smoothstep(0.45, 0.9, fbm(vec2(vUv.x * 18.0, vUv.y * uLen * 0.03 + uTime * 9.0)));
+  float top = smoothstep(1.0, 0.55, vUv.y);
+  float a = (body * (0.35 + 0.55 * n) + streak * body * 0.6 + core * 0.9) * top;
+  vec3 c = mix(uColor, vec3(1.0), clamp(core * 0.9 + n * 0.15, 0.0, 1.0));
+  gl_FragColor = vec4(c * a * uOp, 1.0);
+}`;
+export function pillarMat(color) {
+  return new THREE.ShaderMaterial({
+    vertexShader: COL_VS,
+    fragmentShader: PILLAR_FS,
+    uniforms: {
+      uColor: { value: new THREE.Color(color) },
+      uOp: { value: 1 },
+      uTime: { value: 0 },
+      uLen: { value: 80 },
+    },
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+  });
+}
+
+// ---------- 地面衝擊波的光牆（沿地形的帶狀網格，uv.x＝圓周、uv.y＝0 地面～1 頂端）----------
+const WAVE_FS = /* glsl */ `
+uniform vec3 uColor;
+uniform float uOp, uTime;
+varying vec2 vUv;
+${NOISE}
+void main() {
+  float v = vUv.y;
+  float n = fbm(vec2(vUv.x * 60.0, v * 2.5 - uTime * 3.0));
+  float body = pow(1.0 - v, 1.4) * (0.45 + 0.75 * n);
+  float crest = exp(-pow((v - (0.55 + 0.25 * n)) * 9.0, 2.0)) * 0.5;
+  float base = exp(-pow(v * 10.0, 2.0)) * 1.2;
+  float a = body + crest + base;
+  vec3 c = mix(uColor, vec3(1.0), clamp(base * 0.5 + (1.0 - v) * 0.25, 0.0, 0.8));
+  gl_FragColor = vec4(c * a * uOp, 1.0);
+}`;
+export function waveMat(color) {
+  return new THREE.ShaderMaterial({
+    vertexShader: COL_VS,
+    fragmentShader: WAVE_FS,
+    uniforms: { uColor: { value: new THREE.Color(color) }, uOp: { value: 1 }, uTime: { value: 0 } },
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+  });
+}
+
+// ---------- 擴散的能量殼（能量環、光柱落地的衝擊）：球面，只有邊緣與波面的雜訊亮 ----------
+const SHELL_VS = /* glsl */ `
+varying vec3 vN;
+varying vec3 vV;
+varying vec3 vP;
+void main() {
+  vP = position;
+  vec4 wp = modelMatrix * vec4(position, 1.0);
+  vN = normalize(mat3(modelMatrix) * normal);
+  vV = normalize(cameraPosition - wp.xyz);
+  gl_Position = projectionMatrix * viewMatrix * wp;
+}`;
+const SHELL_FS = /* glsl */ `
+uniform vec3 uColor;
+uniform float uOp, uTime;
+varying vec3 vN;
+varying vec3 vV;
+varying vec3 vP;
+${NOISE}
+void main() {
+  float fres = 1.0 - abs(dot(normalize(vN), normalize(vV)));
+  float rim = pow(fres, 3.0);
+  float n = fbm(vec2(atan(vP.z, vP.x) * 4.0 + uTime * 1.5, vP.y * 5.0 - uTime * 4.0));
+  float vein = smoothstep(0.62, 0.8, n) * pow(fres, 1.2);
+  // 貼近地面的一圈最亮（能量環的波面掃過地面）
+  float ground = smoothstep(0.3, 0.0, abs(vP.y)) * 0.6;
+  float a = rim * (0.5 + 0.5 * n) + vein * 0.6 + ground * (0.45 + n);
+  vec3 c = mix(uColor, vec3(1.0), clamp(rim * 0.4 + ground * 0.3, 0.0, 0.8));
+  gl_FragColor = vec4(c * a * uOp, 1.0);
+}`;
+export function shellMat(color) {
+  return new THREE.ShaderMaterial({
+    vertexShader: SHELL_VS,
+    fragmentShader: SHELL_FS,
+    uniforms: { uColor: { value: new THREE.Color(color) }, uOp: { value: 1 }, uTime: { value: 0 } },
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+  });
+}
+
+// ---------- 光束帶（瞄準線、連線光束、預警線）：A → B 的面向鏡頭的帶子 ----------
+// geometry 是 ribbonGeo()（x −0.5～0.5、y 0～1），網格的位置一律在原點（頂點著色器直接算世界座標，frustumCulled＝false）
+// kind 0＝往前流動的箭頭紋（預警線）、1＝流動的能量（瞄準線、連線光束）
+const RIB_VS = /* glsl */ `
+uniform vec3 uA, uB;
+uniform float uW;
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  vec3 ax = uB - uA;
+  vec3 p = uA + ax * position.y;
+  vec3 eye = normalize(cameraPosition - p);
+  vec3 side = cross(normalize(ax), eye);
+  side = length(side) > 1e-4 ? normalize(side) : vec3(1.0, 0.0, 0.0);
+  p += side * position.x * uW;
+  gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0);
+}`;
+const RIB_FS = /* glsl */ `
+uniform vec3 uColor;
+uniform float uOp, uTime, uLen, uKind, uFill;
+varying vec2 vUv;
+${NOISE}
+void main() {
+  float x = abs(vUv.x - 0.5) * 2.0;
+  float y = vUv.y * uLen;
+  float a;
+  vec3 c = uColor;
+  if (uKind < 0.5) {
+    // 預警線：細的中線＋往前流動的箭頭（V 字），uFill＝充能（從起點亮到終點）
+    float line = exp(-x * x * 40.0);
+    float chev = fract(y * 0.35 - x * 0.6 - uTime * 2.2);
+    float ch = smoothstep(0.0, 0.08, chev) * (1.0 - smoothstep(0.18, 0.3, chev)) * (1.0 - x);
+    float filled = step(vUv.y, uFill);
+    a = line * 0.9 + ch * (0.5 + 0.5 * filled) + filled * 0.12 * (1.0 - x);
+    c = mix(uColor, vec3(1.0), line * 0.4);
+  } else {
+    // 能量：中間的亮芯＋兩側流動的雜訊
+    float core = exp(-x * x * 30.0);
+    float glow = exp(-x * x * 4.0);
+    float n = fbm(vec2(y * 0.25 - uTime * 6.0, vUv.x * 3.0));
+    a = core * 1.1 + glow * (0.25 + 0.5 * n);
+    c = mix(uColor, vec3(1.0), core * 0.7);
+  }
+  float ends = smoothstep(0.0, 0.03, vUv.y) * smoothstep(1.0, 0.97, vUv.y);
+  gl_FragColor = vec4(c * a * ends * uOp, 1.0);
+}`;
+let RIB_GEO = null;
+export function ribbonGeo() {
+  if (RIB_GEO) return RIB_GEO;
+  RIB_GEO = new THREE.PlaneGeometry(1, 1, 1, 1);
+  RIB_GEO.translate(0, 0.5, 0);
+  RIB_GEO.userData.shared = true;
+  return RIB_GEO;
+}
+export function ribbonMat(color, kind = 1) {
+  return new THREE.ShaderMaterial({
+    vertexShader: RIB_VS,
+    fragmentShader: RIB_FS,
+    uniforms: {
+      uColor: { value: new THREE.Color(color) },
+      uOp: { value: 1 },
+      uTime: { value: 0 },
+      uLen: { value: 10 },
+      uKind: { value: kind },
+      uFill: { value: 0 },
+      uA: { value: new THREE.Vector3() },
+      uB: { value: new THREE.Vector3(0, 0, -1) },
+      uW: { value: 0.5 },
+    },
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+  });
+}
+// 光束帶的網格：set(a, b, 寬)
+export function ribbonMesh(color, kind = 1) {
+  const m = new THREE.Mesh(ribbonGeo(), ribbonMat(color, kind));
+  m.frustumCulled = false;
+  m.renderOrder = 4;
+  m.userData.helper = true;
+  m.setAB = (a, b, w) => {
+    const U = m.material.uniforms;
+    U.uA.value.copy(a);
+    U.uB.value.copy(b);
+    U.uW.value = w;
+    U.uLen.value = a.distanceTo(b);
+  };
+  return m;
+}
+
 // 著色器預熱（game/render-setup.js 的 shaderWarm）：每種材質一個假網格，新地圖第一次算繪前一起編好
 export function energyWarm(k) {
   const g = new THREE.Group();
   const box = new THREE.BoxGeometry(0.01, 0.01, 0.01);
-  for (const m of [armorMat(0xffffff, 0, k), barrierMat(0xffffff)]) {
+  for (const m of [
+    armorMat(0xffffff, 0, k),
+    barrierMat(0xffffff),
+    pillarMat(0xffffff),
+    waveMat(0xffffff),
+    shellMat(0xffffff),
+    ribbonMat(0xffffff),
+  ]) {
     const o = new THREE.Mesh(box, m);
     o.frustumCulled = false;
     g.add(o);

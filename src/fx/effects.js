@@ -3,7 +3,7 @@
 // ============================================================
 import { SFX } from '../audio/audio.js';
 import { frand, frnd as rnd } from './rand.js';
-import { barrierHit, barrierMat, capGeo, energyCol } from './energy.js';
+import { barrierHit, barrierMat, capGeo, energyCol, pillarMat, shellMat, waveMat } from './energy.js';
 import { SHARED_GEO, mergeGeos } from '../render/geometry.js';
 import { FxBatch } from './batch.js';
 import { GpuFx } from './gpu.js';
@@ -1639,7 +1639,15 @@ export class Effects {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     geo.setIndex(idx);
-    const mat = this.addM(color, 0.85);
+    // 華麗（第 9.3 期）：由下往上的漸層＋往上捲的雜訊＋頂端的浪峰（fx/energy.js 的 waveMat），前緣掀起塵土與火花
+    const rich = this.rich;
+    if (rich) {
+      const uv = new Float32Array((N + 1) * 4);
+      for (let i = 0; i <= N; i++) uv.set([i / N, 0, i / N, 1], i * 4);
+      geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+      geo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array((N + 1) * 6), 3));
+    }
+    const mat = rich ? waveMat(color) : this.addM(color, 0.85);
     mat.side = THREE.DoubleSide;
     const m = new THREE.Mesh(geo, mat);
     m.frustumCulled = false;
@@ -1665,6 +1673,48 @@ export class Effects {
       }
       geo.attributes.position.needsUpdate = true;
       mat.opacity = 0.85 * (1 - r / R);
+      if (rich) {
+        mat.uniforms.uTime.value = this.time;
+        mat.uniforms.uOp.value = 0.9 * (1 - r / R);
+        // 前緣掀起的塵土與往上噴的火花（依自己的鏡頭減量）
+        if (!this.skip(p, r / K)) {
+          for (let i = 0; i < 4; i++) {
+            const a = frand() * Math.PI * 2;
+            const x = p.x + Math.cos(a) * r,
+              z = p.z + Math.sin(a) * r;
+            const q = new THREE.Vector3(x, ground(x, z) + 0.3 * K, z);
+            const out = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
+            this.g.sm.emit({
+              p: q,
+              v: out
+                .clone()
+                .multiplyScalar(rnd(3, 7) * K)
+                .setY(rnd(1.5, 3.5) * K),
+              drag: 1.5,
+              life: rnd(0.6, 1.0),
+              s0: 1.4 * K,
+              s1: 4 * K,
+              c0: this.groundCol ? this.groundCol() : 0x8a7e70,
+              a: 0.55,
+              cell: pickCell(FXG.smoke),
+              fade: 1,
+              rot: frand() * 6.28,
+            });
+            if (frand() < 0.5)
+              this.ember(
+                q,
+                0.5 * K,
+                color,
+                rnd(0.4, 0.7),
+                out.multiplyScalar(rnd(4, 9) * K).setY(rnd(6, 11) * K),
+                {
+                  g: 18 * K,
+                  c0: 0xfff0d0,
+                },
+              );
+          }
+        }
+      }
     });
   }
   // 落點預警（迫擊砲）：紅色外圈＋由內往外填滿的圓，dl 秒後填滿，接近落地時閃得更快；R 是世界尺寸（和判定一致）
@@ -1729,6 +1779,7 @@ export class Effects {
   // 擴散的能量球殼（脈衝刃翼）：以 sp m/s 擴散到半徑 R（世界尺寸）
   pulseShell(c, R, sp, color = 0xff5070) {
     const life = R / sp;
+    if (this.rich) return this.pulseShellRich(c, R, sp, color, life);
     const m = new THREE.Mesh(this.sphereGeo, this.addM(color, 0.35));
     m.material.side = THREE.DoubleSide;
     m.position.copy(c);
@@ -1745,6 +1796,77 @@ export class Effects {
       e.mesh.material.opacity = 0.9 * (1 - t * 0.6);
     });
     this.flash(c, 3, color, 0.2);
+  }
+  // 華麗的能量環（第 9.3 期）：球面只有邊緣、能量的脈絡與貼地的波面亮（shellMat），波面掃過地面時掀起塵土、火花與電弧
+  pulseShellRich(c, R, sp, color, life) {
+    const K = this.k;
+    const m = new THREE.Mesh(this.geo48(), shellMat(color));
+    m.position.copy(c);
+    m.renderOrder = 4;
+    const U = m.material.uniforms;
+    let zapT = 0;
+    const gy = (x, z) => {
+      const y = this.ground ? this.ground(x, z) : null;
+      return y == null ? c.y : y;
+    };
+    this.add(m, life, (e, t, dt) => {
+      const r = Math.max(0.3, R * t);
+      m.scale.setScalar(r);
+      U.uTime.value = this.time;
+      U.uOp.value = t < 0.08 ? t / 0.08 : 1 - t * 0.75;
+      if (this.skip(c, r / K)) return;
+      for (let i = 0; i < 5; i++) {
+        const a = frand() * Math.PI * 2;
+        const x = c.x + Math.cos(a) * r,
+          z = c.z + Math.sin(a) * r;
+        const y = gy(x, z);
+        if (Math.abs(y - c.y) > r) continue; // 波面沒碰到地面
+        const q = new THREE.Vector3(x, y + 0.4 * K, z);
+        const out = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
+        if (frand() < 0.6)
+          this.g.sm.emit({
+            p: q,
+            v: out
+              .clone()
+              .multiplyScalar(sp * 0.35)
+              .setY(rnd(1, 2.5) * K),
+            drag: 2,
+            life: rnd(0.5, 0.8),
+            s0: 1.2 * K,
+            s1: 3.4 * K,
+            c0: this.groundCol ? this.groundCol() : 0x8a7e70,
+            a: 0.45,
+            cell: pickCell(FXG.smoke),
+            fade: 1,
+            rot: frand() * 6.28,
+          });
+        this.ember(q, 0.6 * K, color, rnd(0.25, 0.45), out.multiplyScalar(sp * 0.5).setY(rnd(3, 7) * K), {
+          c0: 0xffffff,
+          drag: 1,
+        });
+      }
+      zapT -= dt;
+      if (zapT <= 0 && r > 3 * K) {
+        zapT = 0.08;
+        const a = frand() * Math.PI * 2,
+          b = a + rnd(0.15, 0.4);
+        const P = (ang) => {
+          const x = c.x + Math.cos(ang) * r,
+            z = c.z + Math.sin(ang) * r;
+          return new THREE.Vector3(x, gy(x, z) + rnd(0.3, 1.5) * K, z);
+        };
+        this.zap(P(a), P(b), color, 0.12);
+      }
+    });
+    this.flash(c, 3, color, 0.2);
+  }
+  // 細一點的球（能量殼用，共用、不 dispose）
+  geo48() {
+    if (!this.sphereGeo48) {
+      this.sphereGeo48 = new THREE.SphereGeometry(1, 48, 24);
+      if (this.keepGeos) this.keepGeos.add(this.sphereGeo48);
+    }
+    return this.sphereGeo48;
   }
   // 燃燒的地面（熔渣）：半徑 R（世界尺寸）、持續 life 秒，火苗與煙
   // kind：0 燃燒地面、1 腐蝕區（綠色）
@@ -1850,6 +1972,7 @@ export class Effects {
   // 天上落下的光柱（衛星砲的格子砲擊）：p 是地面點、R 世界尺寸
   pillarStrike(p, R, color = 0x9fe8ff) {
     const K = this.k;
+    if (this.rich) return this.pillarStrikeRich(p, R, color);
     const m = new THREE.Mesh(new THREE.CylinderGeometry(R, R, 80 * K, 14, 1, true), this.addM(color, 0.8));
     m.material.side = THREE.DoubleSide;
     m.position.copy(p).setY(p.y + 40 * K);
@@ -1869,6 +1992,34 @@ export class Effects {
     this.flashLight(p.clone().setY(p.y + 3 * K), color, 30);
     if (this.rich) this.pillarExtra(p, R, color);
   }
+  // 華麗的光柱（第 9.3 期）：有體積的光柱（pillarMat：面向鏡頭的中間最亮、往下流的能量），先細後粗再收掉，加上 pillarExtra
+  pillarStrikeRich(p, R, color) {
+    const K = this.k,
+      H = 90 * K;
+    const mk = (r, c, life, fn) => {
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 20, 1, true), pillarMat(c));
+      m.position.copy(p).setY(p.y + H / 2);
+      m.scale.set(r, H, r);
+      m.renderOrder = 4;
+      m.material.uniforms.uLen.value = H;
+      this.add(m, life, (e, t) => {
+        m.material.uniforms.uTime.value = this.time;
+        fn(m, t);
+      });
+    };
+    mk(R * 1.15, color, 0.6, (m, t) => {
+      const s = t < 0.12 ? 0.3 + (t / 0.12) * 0.9 : 1.2 - (t - 0.12) * 1.1;
+      m.scale.x = m.scale.z = R * 1.15 * Math.max(0.05, s);
+      m.material.uniforms.uOp.value = t < 0.12 ? 1 : Math.pow(1 - (t - 0.12) / 0.88, 1.5);
+    });
+    mk(R * 0.4, 0xffffff, 0.35, (m, t) => {
+      m.material.uniforms.uOp.value = 1 - t;
+    });
+    this.shockwave(p.clone().setY(p.y + 0.2), (R * 2.2) / K, color, 0.4);
+    this.flashLight(p.clone().setY(p.y + 3 * K), color, 30);
+    this.heat(p.clone().setY(p.y + 4 * K), (R * 1.4) / K, 0.7, 0.45);
+    this.pillarExtra(p, R, color);
+  }
   // 華麗的光柱（不轉送，pillarStrike 已經轉送過）：落地的大白光、往外撐開的半透明衝擊波球、地面鋪開的火、往上噴的火花、坑洞
   pillarExtra(p, R, color) {
     const K = this.k;
@@ -1883,13 +2034,13 @@ export class Effects {
       a: 0.7,
       cell: pickCell(FXG.star),
     });
-    const m = new THREE.Mesh(this.sphereGeo, this.addM(color, 0.35));
-    m.material.side = THREE.DoubleSide;
+    const m = new THREE.Mesh(this.geo48(), shellMat(color));
     m.position.copy(p);
     m.renderOrder = 4;
     this.add(m, 0.4, (e, t) => {
       e.mesh.scale.setScalar(Math.max(0.2, R * 1.7 * Math.sqrt(t)));
-      e.mesh.material.opacity = 0.35 * (1 - t);
+      m.material.uniforms.uTime.value = this.time;
+      m.material.uniforms.uOp.value = 1 - t;
     });
     // 地面鋪開的火：貼地往外推、很快慢下來
     for (let i = 0; i < 18; i++) {
@@ -2194,7 +2345,14 @@ export class Effects {
     if (mesh.parent) mesh.parent.remove(mesh);
     const keep =
       this.keepGeos ||
-      (this.keepGeos = new Set([this.sphereGeo, this.boxGeo, this.chevGeo, this.ringGeo, this.discGeo]));
+      (this.keepGeos = new Set([
+        this.sphereGeo,
+        this.boxGeo,
+        this.chevGeo,
+        this.ringGeo,
+        this.discGeo,
+        this.sphereGeo48,
+      ]));
     mesh.traverse((o) => {
       if (o.material) o.material.dispose();
       if (o.geometry && !keep.has(o.geometry) && !SHARED_GEO.has(o.geometry)) o.geometry.dispose();

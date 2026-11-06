@@ -16886,7 +16886,7 @@ async function testVfxEditor(browser, base) {
 // 粒子特效（docs/vfx-design.md）：顯示卡粒子（fx/gpu.js）與 Kenney 的圖集
 // 第 9 期的特效（docs/vfx-design.md）：煙霧與場地效果、護罩、Boss 的大招、預警與範圍標示，砲火特效「華麗」才換，「標準」照舊
 async function testVfx9(browser, base) {
-  console.log('第 9 期特效：煙幕與 Boss 場地的顯示卡粒子、護罩（華麗）、標準照舊');
+  console.log('第 9 期特效：煙幕與 Boss 場地的顯示卡粒子、護罩、Boss 的大招（華麗）、標準照舊');
   const { ctx, page } = await newPage(browser, 'vfx9');
   await seededRandom(page);
   await page.goto(base + '?test');
@@ -16983,6 +16983,44 @@ async function testVfx9(browser, base) {
     `華麗：無敵時間與脈衝裝甲的能量層、脈衝盾的屏障閃光、脈衝裝甲同步旗標（${JSON.stringify(rich2)}）`,
   );
   check(!std2.inv && !std2.armor && !std2.flare, '標準：沒有能量層與屏障閃光');
+  // ---- 第 3 期：Boss 的大招 ----
+  const p3 = async (lv) => {
+    await setup(lv);
+    return page.evaluate(() => {
+      const g = window.__game,
+        pl = g.player,
+        b = g.boss,
+        K = g.fx.k;
+      const P = pl.pos.clone().add(new THREE.Vector3(0, 0, -8 * K));
+      P.y = g.world.groundAt(P.x, P.z, P.y + 5);
+      g.fx.pillarStrike(P, 3.4 * K, 0x9fe8ff);
+      g.fx.pulseShell(pl.center(), 20 * K, 22 * K, 0xff5070);
+      g.fx.groundWave(P, 22 * K, 18 * K, 0.05, (x, z) => g.world.groundAt(x, z, P.y + 5), 0xff8a3a);
+      // 電磁砲台的瞄準線（第三批 Boss 的外觀，boss2Fx）
+      b.pos.copy(pl.pos).add(new THREE.Vector3(-8 * K, 0, -8 * K));
+      b.mesh.position.copy(b.pos);
+      b.ai = 'railgun';
+      const T = pl.center();
+      b.bx = [1, T.x, T.y, T.z, 0.6];
+      b.updateAI = (dt) => b.boss2Fx(dt);
+      window.__pump(0.3);
+      const sh = g.fx.list.filter(
+        (e) => e.mesh && e.mesh.material && e.mesh.material.isShaderMaterial,
+      ).length;
+      const rib = !!(b.sx && b.sx.aimRib && b.sx.aimRib.visible);
+      b.bx = null;
+      b.boss2Fx(0.016);
+      return { sh, rib };
+    });
+  };
+  const rich3 = await p3('rich');
+  await page.screenshot({ path: path.join(SHOT_DIR, 'vfx9-boss.png') });
+  const std3 = await p3('std');
+  check(
+    rich3.sh >= 3 && rich3.rib,
+    `華麗：光柱、能量環、衝擊波的光牆、瞄準線改用新的著色器（${JSON.stringify(rich3)}）`,
+  );
+  check(std3.sh === 0 && !std3.rib, '標準：光柱、能量環、衝擊波、瞄準線照舊');
   await page.evaluate(() => {
     const g = window.__game;
     g.ctrl.fxLv = 'rich';
@@ -18778,7 +18816,8 @@ async function testMpBosses(browser, url, only = null) {
         const b = g && g.boss;
         if (!b || b.dead) return;
         if (b.bx && b.bx.length === 5) seen.aim++;
-        if (b.sx && b.sx.aimLine && b.sx.aimLine.visible) seen.line++;
+        if (b.sx && ((b.sx.aimLine && b.sx.aimLine.visible) || (b.sx.aimRib && b.sx.aimRib.visible)))
+          seen.line++; // 華麗＝光束帶（第 9.3 期）
         if (b.bossVis & 1 && !b.mesh.visible) seen.hidden++;
         if (!(b.bossVis & 1) && b.mesh.visible) seen.shown++;
         seen.cars = Math.max(seen.cars, g.enemies.filter((e) => /^car_/.test(e.opts.partKind || '')).length);

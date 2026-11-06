@@ -8,7 +8,7 @@ import { clamp, rnd } from '../core/math.js';
 import { DS, MS } from '../core/scale.js';
 import { foeDamageTick } from '../render/foe-damage.js';
 import { hexShieldMat, hexShieldHit } from '../render/hex-shield.js';
-import { energyCol } from '../fx/energy.js';
+import { energyCol, ribbonMesh } from '../fx/energy.js';
 import { MechEntity } from './mech-entity.js';
 
 const DOME_R = 9 * MS; // 護盾半徑（以產生器腳底為中心的球）
@@ -234,8 +234,9 @@ Object.assign(MechEntity.prototype, {
   },
   specialCleanup() {
     const g = this.game;
+    g.energyDrop(this); // 護罩的屏障（game/energy.js）
     if (!this.sx) return;
-    for (const k of ['dome', 'beam', 'marker']) {
+    for (const k of ['dome', 'beam', 'beamRib', 'marker']) {
       const m = this.sx[k];
       if (m) {
         g.scene.remove(m);
@@ -363,13 +364,27 @@ Object.assign(MechEntity.prototype, {
         tgt.pullT = 0.2;
         tgt.pullSrc = this;
       }
-      sx.beam.visible = true;
+      sx.beam.visible = !g.fx.rich;
       sx.beam.position.copy(a).lerp(b, 0.5);
       sx.beam.scale.set(1 + 0.4 * Math.sin(this.t * 18), a.distanceTo(b), 1 + 0.4 * Math.sin(this.t * 18));
       sx.beam.lookAt(b);
       sx.beam.rotateX(Math.PI / 2);
+      // 砲火特效「華麗」（docs/vfx-design.md 第 9.3 期）：流動的能量光束帶（從來源流向目標）
+      if (g.fx.rich) {
+        if (!sx.beamRib) sx.beamRib = ribbonMesh(0xffffff, 1);
+        const R = sx.beamRib;
+        if (R.parent !== g.scene) g.scene.add(R);
+        R.visible = true;
+        R.material.uniforms.uColor.value.set(LINK_COL[this.linkKind] || LINK_COL[0]);
+        R.material.uniforms.uTime.value = g.fx.time;
+        R.material.uniforms.uOp.value = 0.8 + 0.2 * Math.sin(this.t * 18);
+        R.setAB(a, b, 0.7 * MS);
+      } else if (sx.beamRib) sx.beamRib.visible = false;
       if (Math.random() < dt * 8) g.fx.streaks(b, 1, LINK_COL[this.linkKind] || 0x7dffb0, 3, 0.4, -4);
-    } else if (sx.beam) sx.beam.visible = false;
+    } else {
+      if (sx.beam) sx.beam.visible = false;
+      if (sx.beamRib) sx.beamRib.visible = false;
+    }
     // 強化（橘色菱形）／混亂（黃色，晃動）標記
     const fl = (host ? (this.buffT > 0 ? 1 : 0) | (this.confuseT > 0 ? 2 : 0) : this.sxFlags) & 3;
     if (fl && !this.dead) {

@@ -11,6 +11,8 @@ import { partById } from '../data/parts.js';
 import { OUTLINE_MAT, isOutline } from '../render/geometry.js';
 import { firePoint, losTol, measureLocal } from './fire-point.js';
 import { MechEntity } from './mech-entity.js';
+import { pillarMat, ribbonMesh } from '../fx/energy.js';
+import { frand, frnd } from '../fx/rand.js';
 
 // 場地依主題縮放（World.k、World.lim）；鐵路兩端隧道口的位置（World.trackS）
 // Boss 改版：原本有「平時倍率＋弱點時機」的 Boss（換成刁鑽度的平時減傷＋破綻）
@@ -1734,7 +1736,38 @@ Object.assign(MechEntity.prototype, {
       L.material.color.set(frac > 0.8 ? 0xffffff : this.ai === 'railgun' ? 0xff2020 : 0xffd070);
       L.material.opacity = frac > 0.8 ? 0.5 + 0.5 * Math.abs(Math.sin(this.t * 30)) : 0.6;
       if (this.ai === 'railgun' && Math.random() < dt * 20) g.fx.streaks(a, 1, 0x9fe8ff, 4, 0.2, 0);
-    } else if (this.sx && this.sx.aimLine) this.sx.aimLine.visible = false;
+      // 砲火特效「華麗」（docs/vfx-design.md 第 9.3 期）：流動的能量光束帶；電磁砲充能時光點沿線往砲口匯聚、快發射時線上出現電弧
+      const rich = g.fx.rich;
+      L.visible = !rich;
+      if (rich) {
+        if (!sx.aimRib) sx.aimRib = ribbonMesh(0xffffff, 1);
+        const R = sx.aimRib;
+        if (R.parent !== g.scene) g.scene.add(R);
+        R.visible = true;
+        R.material.uniforms.uColor.value.set(
+          frac > 0.8 ? 0xffffff : this.ai === 'railgun' ? 0xff2a40 : 0xffd070,
+        );
+        R.material.uniforms.uTime.value = g.fx.time;
+        R.material.uniforms.uOp.value = frac > 0.8 ? 0.6 + 0.4 * Math.abs(Math.sin(this.t * 30)) : 0.75;
+        R.setAB(a, b, wdt * 3.5);
+        if (this.ai === 'railgun') {
+          const n = Math.floor(dt * (20 + frac * 60) + frand());
+          for (let i = 0; i < n; i++) {
+            const u = frnd(0.05, 0.6);
+            const q = a.clone().lerp(b, u);
+            const v = a.clone().sub(q).multiplyScalar(frnd(1.2, 2));
+            g.fx.ember(q, 0.35 * MS, 0x9fe8ff, 0.45, v, { c0: 0xffffff, fade: 6 });
+          }
+          if (frac > 0.8 && frand() < dt * 14) {
+            const u = frnd(0, 0.7);
+            g.fx.zap(a.clone().lerp(b, u), a.clone().lerp(b, u + frnd(0.05, 0.15)), 0xbfeaff, 0.1);
+          }
+        }
+      } else if (sx.aimRib) sx.aimRib.visible = false;
+    } else if (this.sx) {
+      if (this.sx.aimLine) this.sx.aimLine.visible = false;
+      if (this.sx.aimRib) this.sx.aimRib.visible = false;
+    }
     if (this.ai === 'orbital') {
       const sx = this.sx || (this.sx = {});
       const on = bx && bx[0] === 1;
@@ -1773,6 +1806,7 @@ Object.assign(MechEntity.prototype, {
         g.scene.add(grp);
         sx.pillar = grp;
         sx.pillarOuter = outer;
+        sx.pillarInner = inner;
       }
       if (sx.pillar) {
         sx.pillar.visible = !!on;
@@ -1781,6 +1815,39 @@ Object.assign(MechEntity.prototype, {
             z = bx[2];
           sx.pillar.position.set(x, g.world.terrainHeight(x, z), z);
           sx.pillarOuter.scale.x = sx.pillarOuter.scale.z = 1 + 0.08 * Math.sin(this.t * 25);
+          // 砲火特效「華麗」（第 9.3 期）：有體積的光柱（fx/energy.js 的 pillarMat）、往上飄的火花、熱扭曲
+          const rich = g.fx.rich;
+          sx.pillarOuter.visible = sx.pillarInner.visible = !rich;
+          if (rich) {
+            if (!sx.pillarRich) {
+              const H = 90 * DS;
+              const mk = (r, c) => {
+                const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, H, 20, 1, true), pillarMat(c));
+                m.position.y = H / 2;
+                m.material.uniforms.uLen.value = H;
+                m.renderOrder = 4;
+                return m;
+              };
+              sx.pillarRich = [mk(PILLAR_R * 1.1, 0x60c8ff), mk(PILLAR_R * 0.3, 0xffffff)];
+              for (const m of sx.pillarRich) sx.pillar.add(m);
+            }
+            for (const m of sx.pillarRich) {
+              m.visible = true;
+              m.material.uniforms.uTime.value = g.fx.time;
+              m.material.uniforms.uOp.value = 0.85 + 0.15 * Math.sin(this.t * 25);
+            }
+            const base = sx.pillar.position;
+            if (frand() < dt * 30)
+              g.fx.ember(
+                base.clone().add(new THREE.Vector3(frnd(-1, 1) * PILLAR_R, 0.3 * MS, frnd(-1, 1) * PILLAR_R)),
+                0.4 * MS,
+                0x9fe8ff,
+                frnd(0.6, 1.1),
+                new THREE.Vector3(frnd(-1, 1), frnd(6, 12), frnd(-1, 1)).multiplyScalar(DS),
+                { c0: 0xffffff, fade: 3 },
+              );
+            if (frand() < dt * 3) g.fx.heat(base.clone().setY(base.y + 3 * MS), PILLAR_R / g.fx.k, 0.6, 0.4);
+          } else if (sx.pillarRich) for (const m of sx.pillarRich) m.visible = false;
           if (Math.random() < dt * 25)
             g.fx.streaks(
               sx.pillar.position.clone().setY(sx.pillar.position.y + 0.3),
@@ -1870,11 +1937,12 @@ Object.assign(MechEntity.prototype, {
   boss2Cleanup() {
     const g = this.game;
     if (!this.sx) return;
-    for (const k of ['aimLine', 'pillar']) {
+    for (const k of ['aimLine', 'aimRib', 'pillar']) {
       if (this.sx[k]) {
         g.scene.remove(this.sx[k]);
         this.sx[k] = null;
       }
     }
+    this.sx.pillarRich = null; // 掛在 pillar 底下，一起拿掉了
   },
 });
