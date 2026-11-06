@@ -104,6 +104,8 @@ import { XYLEM } from './themes/xylem.js';
 import { AIRSPACE } from './themes/airspace.js';
 
 const _seg = new THREE.Vector3(); // propBlocks 的暫存
+const _fdir = new THREE.Vector3(), // fadeRay 的暫存
+  _fpt = new THREE.Vector3();
 // 網格建造在 prop-models.js（純函式）；這裡只用亂數決定參數與位置，亂數呼叫順序不可改變
 // 主題的公路／鐵路設定：{ p 出現機率, kinds 可出現的種類 }（noCorridor 時沒有）
 export function corridorSpec(T) {
@@ -3438,34 +3440,21 @@ export class World {
         (m) => m !== this.terrainMesh && m !== this.waterMesh && !m.userData.noFade,
       );
     }
+    // 每格只打一條射線（輪流檢查 pts 的各點），結果記在各點自己的集合、合併成 _fadeHit；以前每 3 格一次打全部，
+    // 打的那一格在平台很多的地圖（grid086）要 5～20 ms，畫面一格順一格卡（docs/perf-threejs-upgrade.md 第 6 期）
+    const n = pts.length;
+    const hp =
+      this._fadeHitP && this._fadeHitP.length === n
+        ? this._fadeHitP
+        : (this._fadeHitP = pts.map(() => new Set()));
     this._fadeN = (this._fadeN || 0) + 1;
-    if (!this._fadeHit || this._fadeN % 3 === 0) {
-      const hit = new Set();
-      const dir = new THREE.Vector3();
-      const floor = Math.min(...pts.map((p) => p.y)) - 0.1 * MS; // 比腳底低的命中是地面上的東西（道路、貼花），不淡出
-      for (const p of pts) {
-        dir.copy(p).sub(camPos);
-        const dist = dir.length();
-        rc.set(camPos, dir.normalize());
-        rc.far = dist - 0.8 * MS;
-        for (const h of rc.intersectObjects(this._occCands, true)) {
-          const o = h.object;
-          if (!o.isMesh || o.isInstancedMesh || !o.visible || h.point.y < floor) continue;
-          const f = this._fading && this._fading.get(o);
-          const m = o.material;
-          if (
-            !f &&
-            (!m ||
-              Array.isArray(m) ||
-              (m.transparent &&
-                (m.opacity < 0.5 || m.blending !== THREE.NormalBlending || this.occOwned(o, m))))
-          )
-            continue;
-          hit.add(o);
-        }
-      }
-      this._fadeHit = hit;
-    }
+    const first = !this._fadeHit;
+    const floor = Math.min(...pts.map((p) => p.y)) - 0.1 * MS; // 比腳底低的命中是地面上的東西（道路、貼花），不淡出
+    for (let k = 0; k < n; k++)
+      if (first || k === this._fadeN % n) this.fadeRay(rc, camPos, pts[k], floor, hp[k]);
+    const hit = this._fadeHit || (this._fadeHit = new Set());
+    hit.clear();
+    for (const h of hp) for (const o of h) hit.add(o);
     const act = this._fading || (this._fading = new Map());
     for (const o of this._fadeHit)
       if (!act.has(o)) {
@@ -3495,6 +3484,62 @@ export class World {
       }
     }
     return this._fadeHit.size > 0;
+  }
+  // 鏡頭 → 點 p 的一條射線：擋住的網格放進 hit（先清空）。候選的群組先用快取的外框篩選（射線沒穿過外框的不逐一
+  // 檢查三角形），命中結果用同一個陣列（不每次配置）
+  fadeRay(rc, camPos, p, floor, hit) {
+    hit.clear();
+    const dir = _fdir.copy(p).sub(camPos);
+    const dist = dir.length();
+    rc.set(camPos, dir.normalize());
+    rc.far = dist - 0.8 * MS;
+    if (rc.far <= 0) return;
+    const out = this._fadeOut || (this._fadeOut = []);
+    const cands = this._occCands;
+    // 外框每格輪流更新一部分（倒下、被推動的結構）；群組移動了（根的矩陣改變）時立刻重算
+    const nb = cands.length;
+    for (let k = 0; k < 12 && nb; k++)
+      this.occBox(cands[(this._occBi = ((this._occBi || 0) + 1) % nb)], true);
+    for (const root of cands) {
+      if (!root.visible || !root.parent) continue;
+      const b = this.occBox(root);
+      if (!b || !rc.ray.intersectBox(b, _fpt) || _fpt.distanceTo(camPos) > rc.far) continue;
+      out.length = 0;
+      rc.intersectObject(root, true, out);
+      for (const h of out) {
+        const o = h.object;
+        if (!o.isMesh || o.isInstancedMesh || !o.visible || h.point.y < floor) continue;
+        const f = this._fading && this._fading.get(o);
+        const m = o.material;
+        if (
+          !f &&
+          (!m ||
+            Array.isArray(m) ||
+            (m.transparent &&
+              (m.opacity < 0.5 || m.blending !== THREE.NormalBlending || this.occOwned(o, m))))
+        )
+          continue;
+        hit.add(o);
+      }
+    }
+    out.length = 0;
+  }
+  // 候選群組的世界外框（快取；根的矩陣改變或 force 時重算，稍微加寬）
+  occBox(root, force = false) {
+    const C = this._occBoxes || (this._occBoxes = new WeakMap());
+    let c = C.get(root);
+    const e = root.matrixWorld.elements;
+    if (!c) C.set(root, (c = { b: new THREE.Box3(), k: NaN, k2: 0, k3: 0, k4: 0 }));
+    else if (!force && c.k === e[0] && c.k2 === e[12] && c.k3 === e[13] && c.k4 === e[14])
+      return c.empty ? null : c.b;
+    c.k = e[0];
+    c.k2 = e[12];
+    c.k3 = e[13];
+    c.k4 = e[14];
+    c.b.setFromObject(root);
+    c.empty = c.b.isEmpty();
+    if (!c.empty) c.b.expandByScalar(0.2 * MS);
+    return c.empty ? null : c.b;
   }
   // 網格 o 的材質 m 由 updateOcclusion 淡出（屬於 occluders 的群組，而且在它登記的材質清單裡）
   occOwned(o, m) {
