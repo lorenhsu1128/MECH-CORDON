@@ -90,7 +90,29 @@ Object.assign(Game.prototype, {
     if (p.noDie && p.hp - d <= 0) p.hp = Math.min(p.hp, 1);
     else p.hp -= d;
     this.propFlash(p);
-    this.popDamage(at || p.center(), d, false, false, false, 0, -1, impact);
+    if (!this.propXfer) this.popDamage(at || p.center(), d, false, false, false, 0, -1, impact);
+    // 打在大型結構本體或甲板上：同時算給離命中點最近、還沒壞的承重柱（所以打哪裡都倒得了；2026-11-06）
+    if (p.noDie && p.sup && p.sup.length && DM.sup > 0 && !this.propXfer) {
+      const c = at || p.center();
+      let best = null,
+        bd = Infinity;
+      for (const q of p.sup) {
+        if (q.dead) continue;
+        const dq = q.center().distanceToSquared(c);
+        if (dq < bd) {
+          bd = dq;
+          best = q;
+        }
+      }
+      if (best) {
+        this.propXfer = true;
+        try {
+          this.propDamage(best, dmg * DM.sup, 0, best.center(), from, attr, wid);
+        } finally {
+          this.propXfer = false;
+        }
+      }
+    }
     (this.propDirty || (this.propDirty = new Set())).add(p);
     if (p.hp <= 0 && (p.seg || p.grid) && this.segProtected(p)) p.hp = 1; // 出生點、出口、目標附近只受損
     if (p.hp <= 0) {

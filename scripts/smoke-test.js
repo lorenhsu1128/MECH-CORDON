@@ -26703,14 +26703,14 @@ async function testDestruct(browser, base) {
         out.crowd = !h.alive || h.y < sh.y1 - 0.05;
       }
     }
-    // 設定「地圖物件的破壞」：易破壞＝×4、材質倍率最低 0.8；不可破壞＝只有改版前的物件打得壞、沒有受損階段
+    // 設定「地圖物件的破壞」：易破壞＝×6、材質倍率最低 1；不可破壞＝只有改版前的物件打得壞、沒有受損階段
     const m0 = g.ctrl.destruct;
     g.ctrl.destruct = 'easy';
     const ez = near((p) => p.mat === 'metal' && p.maxHp >= 1000 && !p.st);
     if (ez) {
       const h0 = ez.hp;
       g.damageProp(ez, 100, 0, null, pl, 'en');
-      out.easy = h0 - ez.hp; // 100 × max(0.8, 0.7) × 4
+      out.easy = h0 - ez.hp; // 100 × max(1, 0.7) × 6
     }
     g.ctrl.destruct = 'off';
     const nw = w.props.find((p) => !p.dead && !p.legacy && !p.body && !p.support);
@@ -26791,7 +26791,7 @@ async function testDestruct(browser, base) {
   );
   check(r.tw, 'Boss 場地的臨時掩體：同一套的焦黑與碎板（第 3 階段）');
   check(r.crowd !== false, '站在物件上的小人：物件壞了掉下來');
-  check(r.easy === 320, `易破壞：傷害 ×4、材質倍率最低 0.8（金屬被能量打 100 → ${r.easy}）`);
+  check(r.easy === 600, `易破壞：傷害 ×6、材質倍率最低 1（金屬被能量打 100 → ${r.easy}）`);
   check(
     r.offNew && r.offLegacy && r.ui,
     '不可破壞：改版後登記的物件打不壞、不算目標；改版前的小物件照舊打得壞（沒有受損階段與殘骸）',
@@ -26862,9 +26862,19 @@ async function testDestructCollapse(browser, base) {
       if (!B) return out;
       out.sup = B.sup.length;
       out.supNames = B.sup.every((s) => s.name.endsWith('的支柱'));
-      // 打本體不會倒（只會受損）
-      g.damageProp(B, 1e7, 0, null, pl, 'none');
-      out.bodyAlive = !B.dead && B.hp >= 1 && B.st === 3;
+      // 打本體：本體受損，傷害的一半（可破壞模式）同時算給離命中點最近的承重柱，其他承重柱不變、還沒倒
+      const s0 = B.sup[0];
+      const hb = B.hp,
+        hs = B.sup.map((s) => s.hp);
+      const dmgB = Math.min(2000, s0.hp * 0.8);
+      g.damageProp(B, dmgB, 0, s0.center(), pl, 'none');
+      out.bodyAlive =
+        !B.dead &&
+        !B.collapsed &&
+        Math.abs(hb - B.hp - dmgB) < 2 &&
+        Math.abs(hs[0] - s0.hp - dmgB * 0.5) < 2 &&
+        B.sup.every((s, i) => i === 0 || s.hp === hs[i]);
+      out.bodyXfer = [Math.round(hb - B.hp), Math.round(hs[0] - s0.hp)].join('/');
       const bb = B.base;
       // 玩家站在倒下的範圍裡（往下塌：外框外 2 m；倒下：倒的方向上）
       const sent = [];
@@ -26938,7 +26948,10 @@ async function testDestructCollapse(browser, base) {
       r.n > 0 && r.sup >= 1 && (r.supNames || mode === 'drop'),
       `${map}：結構本體＋${r.sup} 根承重柱（${r.n} 個）`,
     );
-    check(r.bodyAlive, `${map}：只打本體不會倒（只會受損到第 3 階段）`);
+    check(
+      r.bodyAlive,
+      `${map}：打本體時一半的傷害算給最近的承重柱（本體／承重柱 ${r.bodyXfer}），其他承重柱不變、還沒倒`,
+    );
     check(r.notYet && r.ev, `${map}：承重柱全壞才倒、送出 pcol（方向 ${r.dir}）`);
     check(
       r.landed && r.wreck && r.gone && r.low && (mode === 'sink') === r.sank && r.supWreck,

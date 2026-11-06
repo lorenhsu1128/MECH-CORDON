@@ -113,11 +113,12 @@ export function propAttrK(mat, attr) {
   return i === undefined ? 1 : M.k[i];
 }
 
-// 受損的階段：0 完好、1 ≤ 75%、2 ≤ 50%、3 ≤ 25%、4 殘骸（0）
+// 受損的階段：0 完好、1 ≤ 85%、2 ≤ 55%、3 ≤ 25%、4 殘骸（0）
+// （2026-11-06：以前 75／50／25%，打到一半才看得出變化；提早讓前半段就開始掉碎片、冒煙）
 export function propStage(hp, maxHp) {
   if (hp <= 0) return 4;
   const f = hp / maxHp;
-  return f <= 0.25 ? 3 : f <= 0.5 ? 2 : f <= 0.75 ? 1 : 0;
+  return f <= 0.25 ? 3 : f <= 0.55 ? 2 : f <= 0.85 ? 1 : 0;
 }
 // 各階段的焦黑程度（顏色 ×(1−值)）
 export const PROP_CHAR = [0, 0.16, 0.3, 0.44, 0.55];
@@ -151,13 +152,15 @@ export const CRUSH = new Set([
 export function propCrushable(p, easy) {
   const sh = p.shape0 || p.shape;
   if (CRUSH.has(p.kind)) return true;
-  return sh.y1 - sh.y0 <= (easy ? 4 : 2.6) && Math.max(sh.x1 - sh.x0, sh.z1 - sh.z0) <= 14;
+  return sh.y1 - sh.y0 <= (easy ? 5 : 2.6) && Math.max(sh.x1 - sh.x0, sh.z1 - sh.z0) <= 14;
 }
 // 設定「地圖物件的破壞」（ctrl.destruct；多人時以房主的為準）：easy 易破壞（預設）、normal 可破壞、off 不可破壞
-//   easy：傷害 ×4、材質倍率最低 0.8、高 4 m 以下的踩得平、承重的壞一半就倒
+//   easy：傷害 ×6、材質倍率最低 1（沒有材質懲罰，爆發打混凝土的加成照舊）、高 5 m 以下的踩得平、承重的壞一半就倒
+//   （2026-11-06 使用者試玩還是不太好打：以前 ×4、最低 0.8、4 m）
 //   off：只有改版前就打得壞的物件（p.legacy）可以打壞，沒有受損階段與殘骸；不踩平、不倒塌、岩頂不開洞
+//   sup：打在大型結構本體或甲板上的傷害，同時算給離命中點最近、還沒壞的承重柱的比例（game/destruct.js 的 propDamage）
 export const DESTRUCT = {
-  easy: { k: 4, floor: 0.8 },
-  normal: { k: 1, floor: 0 },
-  off: { k: 1, floor: 0 },
+  easy: { k: 6, floor: 1, sup: 1 },
+  normal: { k: 1, floor: 0, sup: 0.5 },
+  off: { k: 1, floor: 0, sup: 0 },
 };
