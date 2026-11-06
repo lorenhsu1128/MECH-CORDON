@@ -3,7 +3,18 @@
 // ============================================================
 import { SFX } from '../audio/audio.js';
 import { frand, frnd as rnd } from './rand.js';
-import { barrierHit, barrierMat, capGeo, energyCol, pillarMat, shellMat, waveMat } from './energy.js';
+import {
+  barrierHit,
+  barrierMat,
+  capGeo,
+  energyCol,
+  pillarMat,
+  ribbonMesh,
+  shellMat,
+  warnDiscMat,
+  warnRectMat,
+  waveMat,
+} from './energy.js';
 import { SHARED_GEO, mergeGeos } from '../render/geometry.js';
 import { FxBatch } from './batch.js';
 import { GpuFx } from './gpu.js';
@@ -1719,6 +1730,7 @@ export class Effects {
   }
   // 落點預警（迫擊砲）：紅色外圈＋由內往外填滿的圓，dl 秒後填滿，接近落地時閃得更快；R 是世界尺寸（和判定一致）
   warnCircle(p, R, dl, color = 0xff3020) {
+    if (this.rich) return this.warnCircleRich(p, R, dl, color);
     const grp = new THREE.Group();
     grp.position.copy(p).setY(p.y + 0.12);
     const ring = new THREE.Mesh(this.ringGeo, this.addM(color, 0.8));
@@ -1735,10 +1747,41 @@ export class Effects {
       fill.material.opacity = 0.18 + 0.2 * t;
     });
   }
+  // 華麗的落點圈（第 9.4 期，fx/energy.js 的 warnDiscMat）：外圈＋轉動的刻度＋往中心收的掃描環，從中心往外填滿（前緣最亮），
+  // 快落地時閃得越來越快
+  warnCircleRich(p, R, dl, color) {
+    const m = new THREE.Mesh(this.discGeo, warnDiscMat(color, 0));
+    m.rotation.x = -Math.PI / 2;
+    m.position.copy(p).setY(p.y + 0.12);
+    m.scale.setScalar(R);
+    m.renderOrder = 3;
+    const U = m.material.uniforms;
+    this.add(m, dl, (e, t) => {
+      U.uTime.value = this.time;
+      U.uP.value = t;
+      const f = 4 + t * 14;
+      U.uFlash.value = t > 0.6 ? 0.55 + 0.45 * Math.abs(Math.sin(t * dl * f)) : 1;
+      U.uOp.value = Math.min(1, t * dl * 8);
+    });
+  }
   // 瞄準／路徑預警線：a→b 的細光束閃爍 dl 秒（雷射扇形、衝刺路線）
   warnLine(a, b, dl, color = 0xff2020, width = 0.06) {
     const d = a.distanceTo(b);
     if (d < 0.01) return;
+    if (this.rich) {
+      // 華麗（第 9.4 期）：往前流動的箭頭紋光束帶，從起點往終點充滿（快發射時整條閃）
+      const m = ribbonMesh(color, 0);
+      SHARED_GEO.add(m.geometry);
+      m.setAB(a, b, Math.max(width * 14, 0.8) * this.k);
+      const U = m.material.uniforms;
+      this.add(m, dl, (e, t) => {
+        U.uTime.value = this.time;
+        U.uFill.value = t;
+        U.uOp.value =
+          (t > 0.75 ? 0.55 + 0.45 * Math.abs(Math.sin(t * dl * 22)) : 0.9) * Math.min(1, t * dl * 10);
+      });
+      return;
+    }
     const m = new THREE.Mesh(
       new THREE.CylinderGeometry(width * this.k, width * this.k, d, 5),
       this.addM(color, 0.7),
@@ -1754,6 +1797,26 @@ export class Effects {
   }
   // 地面的長方形預警（衝撞路線、進場路線、格子砲擊）：中心 c、朝向 yaw（長邊沿 −Z）、寬 w、長 l（世界尺寸）
   warnRect(c, yaw, w, l, dl, color = 0xff3020) {
+    if (this.rich) {
+      // 華麗（第 9.4 期，warnRectMat）：往前流動的斜紋、從後端往前填滿、兩側與兩端的亮邊
+      const m = new THREE.Mesh(
+        this.planeGeo || this.sharedGeo('planeGeo', () => new THREE.PlaneGeometry(1, 1)),
+        warnRectMat(color, w, l, this.k),
+      );
+      m.rotation.order = 'YXZ';
+      m.rotation.set(-Math.PI / 2, yaw, 0);
+      m.position.copy(c).setY(c.y + 0.14);
+      m.scale.set(w, l, 1);
+      m.renderOrder = 3;
+      const U = m.material.uniforms;
+      this.add(m, dl, (e, t) => {
+        U.uTime.value = this.time;
+        U.uP.value = t;
+        U.uFlash.value = t > 0.7 ? 0.55 + 0.45 * Math.abs(Math.sin(t * dl * (5 + t * 12))) : 1;
+        U.uOp.value = Math.min(1, t * dl * 8);
+      });
+      return;
+    }
     const grp = new THREE.Group();
     grp.position.copy(c).setY(c.y + 0.14);
     grp.rotation.y = yaw;
@@ -1862,11 +1925,15 @@ export class Effects {
   }
   // 細一點的球（能量殼用，共用、不 dispose）
   geo48() {
-    if (!this.sphereGeo48) {
-      this.sphereGeo48 = new THREE.SphereGeometry(1, 48, 24);
-      if (this.keepGeos) this.keepGeos.add(this.sphereGeo48);
+    return this.sharedGeo('sphereGeo48', () => new THREE.SphereGeometry(1, 48, 24));
+  }
+  // 共用的幾何（第 9 期的著色器特效）：建一次、記在 SHARED_GEO（dispose 時略過）
+  sharedGeo(key, make) {
+    if (!this[key]) {
+      this[key] = make();
+      SHARED_GEO.add(this[key]);
     }
-    return this.sphereGeo48;
+    return this[key];
   }
   // 燃燒的地面（熔渣）：半徑 R（世界尺寸）、持續 life 秒，火苗與煙
   // kind：0 燃燒地面、1 腐蝕區（綠色）

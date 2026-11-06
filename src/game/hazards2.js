@@ -20,6 +20,8 @@ import { COVER_KINDS, buildCover } from '../render/boss-field-models.js';
 import { clamp, lerp, rnd } from '../core/math.js';
 import { flingDebris } from '../render/foe-damage.js';
 import { frand, frnd } from '../fx/rand.js';
+import { curtainMat, ribbonMesh } from '../fx/energy.js';
+import { LINE } from '../fx/atlas.js';
 import { Game } from './game.js';
 
 const SHOT_BASE = 900000; // 可以打掉的投射物的代理 id（地圖物件是 800000+）
@@ -513,6 +515,62 @@ Object.assign(Game.prototype, {
     this.scene.add(g);
     if (z.k === 'smoke') this.zoneLosHook();
   },
+  // 範圍的光幕（重力場，第 9.4 期）：開口圓柱的 curtainMat，掛在區域的群組底下
+  zoneCurtain(z, g, color, h, f) {
+    const F = z.fx;
+    if (!F.curt) {
+      F.curt = new THREE.Mesh(new THREE.CylinderGeometry(z.r, z.r, h, 48, 1, true), curtainMat(color, 0, 32));
+      F.curt.position.y = h / 2;
+      F.curt.renderOrder = 3;
+      g.add(F.curt);
+    }
+    F.curt.visible = true;
+    F.curt.material.uniforms.uTime.value = this.fx.time;
+    F.curt.material.uniforms.uOp.value = 0.8 * f;
+  },
+  // 重力場往下墜的光條（kind 0）、吸入區往中心捲的氣流（kind 1）：顯示卡的拉長粒子
+  zoneStreaks(z, c, f, dt, kind) {
+    if (f < 0.1 || (this.state !== 'play' && this.state !== 'ending')) return;
+    const F = z.fx,
+      K = this.fx.k;
+    F.acc = (F.acc || 0) + dt * (kind ? 40 : 30) * f;
+    while (F.acc > 1) {
+      F.acc -= 1;
+      const a = frand() * Math.PI * 2;
+      if (kind === 0) {
+        const rr = Math.sqrt(frand()) * z.r;
+        const p = new THREE.Vector3(c.x + Math.cos(a) * rr, c.y + frnd(4, 10) * K, c.z + Math.sin(a) * rr);
+        this.fx.g.ln.emit({
+          p,
+          v: new THREE.Vector3(0, -frnd(10, 18) * K, 0),
+          life: frnd(0.4, 0.7),
+          s0: 0.18 * K,
+          c0: frand() < 0.5 ? 0xc89aff : 0x9a60ff,
+          cell: LINE,
+          fade: 2,
+          asp: 0.5,
+        });
+      } else {
+        const rr = z.r * frnd(0.6, 1);
+        const p = new THREE.Vector3(c.x + Math.cos(a) * rr, c.y + frnd(0.3, 2.5) * K, c.z + Math.sin(a) * rr);
+        // 切線＋往內：越靠近中心越快
+        const tan = new THREE.Vector3(-Math.sin(a), 0, Math.cos(a));
+        const inw = new THREE.Vector3(-Math.cos(a), -0.05, -Math.sin(a));
+        const v = tan.multiplyScalar(frnd(8, 12) * K).addScaledVector(inw, frnd(6, 10) * K);
+        this.fx.g.ln.emit({
+          p,
+          v,
+          drag: 0.4,
+          life: frnd(0.5, 0.8),
+          s0: 0.16 * K,
+          c0: frand() < 0.5 ? 0xbfeaff : 0x6ac0ff,
+          cell: LINE,
+          fade: 3,
+          asp: 0.4,
+        });
+      }
+    }
+  },
   // 煙幕的顯示卡煙（華麗）：半透明的煙團填滿圓柱，外圈多一圈貼地的薄霧（看得出範圍：在裡面不能鎖定）
   zoneSmokeFx(z, c, f, dt) {
     if (f < 0.05 || (this.state !== 'play' && this.state !== 'ending')) return;
@@ -582,7 +640,18 @@ Object.assign(Game.prototype, {
         F.ring.material.opacity = (0.55 + 0.3 * Math.sin(T * 5)) * f;
         F.disc.material.opacity = 0.16 * f;
         F.col.material.opacity = 0.07 * f;
+        // 砲火特效「華麗」（第 9.4 期）：光幕（往下壓的掃描線）＋往下墜的光條粒子
+        if (this.fx.rich) {
+          this.zoneCurtain(z, g, 0xb070ff, 10 * this.fx.k, f);
+          F.col.visible = false;
+          for (const m of F.parts) m.visible = false;
+          this.zoneStreaks(z, g.position, f, dt, 0);
+          break;
+        }
+        F.col.visible = true;
+        if (F.curt) F.curt.visible = false;
         for (const m of F.parts) {
+          m.visible = true;
           m.position.y -= m.userData.v * dt;
           if (m.position.y < 0) m.position.y += 10 * this.fx.k;
           m.material.opacity = 0.85 * f;
@@ -592,7 +661,14 @@ Object.assign(Game.prototype, {
         F.ring.rotation.z += dt * 2;
         F.ring.material.opacity = 0.6 * f;
         F.disc.material.opacity = 0.14 * f;
+        // 華麗（第 9.4 期）：往中心捲進去的氣流光條（顯示卡粒子）
+        if (this.fx.rich) {
+          for (const m of F.parts) m.visible = false;
+          this.zoneStreaks(z, g.position, f, dt, 1);
+          break;
+        }
         for (const m of F.parts) {
+          m.visible = true;
           const u = m.userData;
           u.rr -= dt * (2 * this.fx.k + (z.r - u.rr) * 0.4);
           u.a += dt * (1.5 + 6 / Math.max(1, u.rr));
@@ -676,6 +752,21 @@ Object.assign(Game.prototype, {
           F.spot.scale.setScalar(Math.max(this.fx.k, hit.distanceTo(z.p) * Math.tan(z.ang)));
         }
         const lit = z.lit ? 1.6 : 1;
+        // 華麗（第 9.4 期）：光錐裡飄的塵埃
+        if (this.fx.rich && frand() < dt * 14 * f) {
+          const s = frnd(0.15, 0.85) * z.len;
+          const side = new THREE.Vector3(frnd(-1, 1), frnd(-1, 1), frnd(-1, 1)).multiplyScalar(
+            s * Math.tan(z.ang) * 0.7,
+          );
+          this.fx.ember(
+            z.p.clone().addScaledVector(z.dir, s).add(side),
+            0.18 * this.fx.k,
+            0xfff0c0,
+            frnd(1.2, 2),
+            new THREE.Vector3(frnd(-0.3, 0.3), frnd(-0.1, 0.3), frnd(-0.3, 0.3)).multiplyScalar(this.fx.k),
+            { c0: 0xffffff, fade: 3, a: 0.6 * lit },
+          );
+        }
         F.cone.material.opacity = 0.1 * f * lit;
         F.core.material.opacity = 0.05 * f * lit;
         F.spot.material.opacity = 0.28 * f * lit;
@@ -707,6 +798,31 @@ Object.assign(Game.prototype, {
         F.outer.material.color.copy(col);
         F.outer.material.opacity = 0.4 * f;
         F.core.material.opacity = 0.95 * f;
+        // 華麗（第 9.4 期）：流動的能量光束帶＋打中處的火花
+        const rich = this.fx.rich;
+        F.core.visible = F.outer.visible = !rich;
+        if (rich) {
+          if (!F.rib) {
+            F.rib = ribbonMesh(0xffffff, 1);
+            g.add(F.rib); // 頂點著色器直接算世界座標；掛在區域的群組底下，移除時一起拿掉
+          }
+          const endP = from.clone().addScaledVector(dir, L);
+          F.rib.visible = true;
+          F.rib.setAB(from, endP, wd * 5);
+          const U = F.rib.material.uniforms;
+          U.uColor.value.copy(col);
+          U.uTime.value = this.fx.time;
+          U.uOp.value = f;
+          if (frand() < dt * 25)
+            this.fx.ember(
+              endP,
+              0.4 * this.fx.k,
+              col.getHex(),
+              frnd(0.3, 0.5),
+              new THREE.Vector3(frnd(-1, 1), frnd(1, 3), frnd(-1, 1)).multiplyScalar(4 * this.fx.k),
+              { g: 15 * this.fx.k, c0: 0xffffff },
+            );
+        } else if (F.rib) F.rib.visible = false;
         F.hit.position.copy(from).addScaledVector(dir, L);
         F.hit.scale.setScalar((0.5 + 0.6 * (z.frac || 0) + 0.15 * Math.sin(T * 30)) * this.fx.k);
         F.hit.material.color.copy(col);

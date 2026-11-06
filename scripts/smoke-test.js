@@ -16886,7 +16886,9 @@ async function testVfxEditor(browser, base) {
 // 粒子特效（docs/vfx-design.md）：顯示卡粒子（fx/gpu.js）與 Kenney 的圖集
 // 第 9 期的特效（docs/vfx-design.md）：煙霧與場地效果、護罩、Boss 的大招、預警與範圍標示，砲火特效「華麗」才換，「標準」照舊
 async function testVfx9(browser, base) {
-  console.log('第 9 期特效：煙幕與 Boss 場地的顯示卡粒子、護罩、Boss 的大招（華麗）、標準照舊');
+  console.log(
+    '第 9 期特效：煙幕與 Boss 場地的顯示卡粒子、護罩、Boss 的大招、預警與範圍標示（華麗）、標準照舊',
+  );
   const { ctx, page } = await newPage(browser, 'vfx9');
   await seededRandom(page);
   await page.goto(base + '?test');
@@ -17021,6 +17023,46 @@ async function testVfx9(browser, base) {
     `華麗：光柱、能量環、衝擊波的光牆、瞄準線改用新的著色器（${JSON.stringify(rich3)}）`,
   );
   check(std3.sh === 0 && !std3.rib, '標準：光柱、能量環、衝擊波、瞄準線照舊');
+  // ---- 第 4 期：預警與範圍標示 ----
+  const p4 = async (lv) => {
+    await setup(lv);
+    return page.evaluate(() => {
+      const g = window.__game,
+        pl = g.player,
+        K = g.fx.k;
+      const P = pl.pos.clone().add(new THREE.Vector3(0, 0, -7 * K));
+      P.y = g.world.groundAt(P.x, P.z, P.y + 5);
+      g.fx.warnCircle(P, 5 * K, 2);
+      g.fx.warnRect(P.clone().add(new THREE.Vector3(-8 * K, 0, 0)), 0.4, 5 * K, 18 * K, 2);
+      g.fx.warnLine(pl.center(), pl.center().add(new THREE.Vector3(-14 * K, 0, -12 * K)), 2, 0xff3050, 0.1);
+      g.addZone('gravity', P.clone().add(new THREE.Vector3(10 * K, 0, 0)), 6 * K, 30);
+      g.layMine(g.boss, P.clone().add(new THREE.Vector3(6 * K, 0, 6 * K)), {
+        dmg: 1,
+        im: 1,
+        R: 4 * K,
+        life: 30,
+      });
+      window.__pump(0.5);
+      const sh = g.fx.list.filter(
+        (e) => e.mesh && e.mesh.material && e.mesh.material.isShaderMaterial,
+      ).length;
+      const z = g.zones.find((q) => q.k === 'gravity');
+      const mine = g.mines[g.mines.length - 1];
+      return {
+        sh,
+        curtain: !!(z.fx.curt && z.fx.curt.visible),
+        mine: !!mine.mesh.userData.halo.material.isShaderMaterial,
+      };
+    });
+  };
+  const rich4 = await p4('rich');
+  await page.screenshot({ path: path.join(SHOT_DIR, 'vfx9-warn.png') });
+  const std4 = await p4('std');
+  check(
+    rich4.sh >= 3 && rich4.curtain && rich4.mine,
+    `華麗：落點圈、長方形預警、預警線、重力場的光幕、地雷的感應圈改用新的著色器（${JSON.stringify(rich4)}）`,
+  );
+  check(std4.sh === 0 && !std4.curtain && !std4.mine, '標準：預警與範圍標示照舊');
   await page.evaluate(() => {
     const g = window.__game;
     g.ctrl.fxLv = 'rich';

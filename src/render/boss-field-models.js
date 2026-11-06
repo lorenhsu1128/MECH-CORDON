@@ -368,6 +368,8 @@ export function buildField(kind, r, o = {}) {
       ring.rotation.x = -Math.PI / 2;
       ring.position.y = 0.1;
       group.add(ring);
+      hide.push(ring);
+      pts.ring = r; // 華麗時 game/boss-field.js 的 bfFx 改畫掃描圈
       const R = prng(Math.round(r * 7));
       const body = new THREE.MeshStandardMaterial({ color: 0x3a3c40, roughness: 0.6, metalness: 0.5 });
       const lights = [];

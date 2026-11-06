@@ -317,7 +317,7 @@ void main() {
   if (uKind < 0.5) {
     // 預警線：細的中線＋往前流動的箭頭（V 字），uFill＝充能（從起點亮到終點）
     float line = exp(-x * x * 40.0);
-    float chev = fract(y * 0.35 - x * 0.6 - uTime * 2.2);
+    float chev = fract(y * 0.35 + x * 0.6 - uTime * 2.2);
     float ch = smoothstep(0.0, 0.08, chev) * (1.0 - smoothstep(0.18, 0.3, chev)) * (1.0 - x);
     float filled = step(vUv.y, uFill);
     a = line * 0.9 + ch * (0.5 + 0.5 * filled) + filled * 0.12 * (1.0 - x);
@@ -378,6 +378,137 @@ export function ribbonMesh(color, kind = 1) {
   return m;
 }
 
+// ---------- 地面的預警與範圍：圓（落點圈、地雷區、範圍圈）----------
+// CircleGeometry(1)（平放：呼叫端轉 −90°），vP.xy 是 −1～1；uP＝填滿的進度（0～1，負的＝不填）、uFlash＝閃爍、uMode 0 預警／1 範圍（安靜一點）
+const FLAT_VS = /* glsl */ `
+varying vec2 vQ;
+varying vec2 vUv;
+void main() {
+  vQ = position.xy;
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}`;
+const DISC_FS = /* glsl */ `
+uniform vec3 uColor;
+uniform float uOp, uTime, uP, uFlash, uMode;
+varying vec2 vQ;
+void main() {
+  float r = length(vQ);
+  if (r > 1.0) discard;
+  float ang = atan(vQ.y, vQ.x) / 6.2831853 + 0.5;
+  float rim = smoothstep(0.9, 0.955, r) * (1.0 - smoothstep(0.985, 1.0, r));
+  // 外圈內側一圈轉動的刻度
+  float tk = step(0.5, fract(ang * (uMode > 0.5 ? 90.0 : 36.0) + uTime * (uMode > 0.5 ? 0.15 : 0.6))) * smoothstep(0.8, 0.83, r) * (1.0 - smoothstep(0.87, 0.89, r));
+  // 往中心收的掃描環
+  float sc = fract(r * 2.2 + uTime * (uMode > 0.5 ? 0.5 : 1.6));
+  float scan = smoothstep(0.0, 0.03, sc) * (1.0 - smoothstep(0.05, 0.12, sc)) * (1.0 - r * 0.4);
+  float fill = 0.0, front = 0.0;
+  if (uP >= 0.0) {
+    fill = step(r, uP) * 0.22;
+    front = exp(-pow((r - uP) * 30.0, 2.0)) * 0.9;
+  }
+  float a = rim * 0.95 + tk * 0.55 + scan * (uMode > 0.5 ? 0.15 : 0.35) + fill + front + (uMode > 0.5 ? 0.04 : 0.06);
+  a *= uFlash;
+  vec3 c = mix(uColor, vec3(1.0), clamp(front * 0.5 + rim * 0.2, 0.0, 0.7));
+  gl_FragColor = vec4(c * a * uOp, 1.0);
+}`;
+export function warnDiscMat(color, mode = 0) {
+  return new THREE.ShaderMaterial({
+    vertexShader: FLAT_VS,
+    fragmentShader: DISC_FS,
+    uniforms: {
+      uColor: { value: new THREE.Color(color) },
+      uOp: { value: 1 },
+      uTime: { value: 0 },
+      uP: { value: -1 },
+      uFlash: { value: 1 },
+      uMode: { value: mode },
+    },
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+  });
+}
+
+// ---------- 地面的預警：長方形（衝撞路線、進場路線、格子砲擊）----------
+// PlaneGeometry(1, 1)，uv.y＝0 後端 → 1 前端；uSize＝(寬, 長)（公尺）；往前流動的斜紋、從後往前的填滿、兩側的邊
+const RECT_FS = /* glsl */ `
+uniform vec3 uColor;
+uniform float uOp, uTime, uP, uFlash, uK;
+uniform vec2 uSize;
+varying vec2 vUv;
+void main() {
+  vec2 m = vUv * uSize / uK;
+  float side = min(vUv.x, 1.0 - vUv.x) * uSize.x / uK;
+  float endD = min(vUv.y, 1.0 - vUv.y) * uSize.y / uK;
+  float edge = 1.0 - smoothstep(0.15, 0.6, min(side, endD));
+  float s = fract((m.y + abs(m.x - uSize.x / uK * 0.5) * 0.8) * 0.28 - uTime * 1.6);
+  float chev = smoothstep(0.0, 0.06, s) * (1.0 - smoothstep(0.22, 0.32, s));
+  float filled = step(vUv.y, uP);
+  float front = exp(-pow((vUv.y - uP) * uSize.y / uK * 1.5, 2.0));
+  float a = edge * 0.9 + chev * (0.22 + 0.25 * filled) + filled * 0.12 + front * 0.6 * step(0.0, uP);
+  a *= uFlash;
+  vec3 c = mix(uColor, vec3(1.0), clamp(edge * 0.2 + front * 0.4, 0.0, 0.7));
+  gl_FragColor = vec4(c * a * uOp, 1.0);
+}`;
+export function warnRectMat(color, w, l, k) {
+  return new THREE.ShaderMaterial({
+    vertexShader: FLAT_VS,
+    fragmentShader: RECT_FS,
+    uniforms: {
+      uColor: { value: new THREE.Color(color) },
+      uOp: { value: 1 },
+      uTime: { value: 0 },
+      uP: { value: 0 },
+      uFlash: { value: 1 },
+      uK: { value: k || 1 },
+      uSize: { value: new THREE.Vector2(w, l) },
+    },
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+  });
+}
+
+// ---------- 範圍的光幕（重力場、空域的補給區、防空區）：開口圓柱或半球，uv.y＝高度 ----------
+// 往上流動的細掃描線、底部最亮、頂端淡出，經線的格子（uMode 1＝半球：格子密一點、沒有往上流）
+const CURTAIN_FS = /* glsl */ `
+uniform vec3 uColor;
+uniform float uOp, uTime, uMode, uCols;
+varying vec2 vUv;
+varying vec3 vN;
+varying vec3 vV;
+void main() {
+  float fres = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 1.5);
+  float h = vUv.y;
+  float lines = smoothstep(0.85, 1.0, fract(h * 14.0 - uTime * (uMode > 0.5 ? 0.2 : 0.8)));
+  float cols = smoothstep(0.9, 1.0, abs(fract(vUv.x * uCols) - 0.5) * 2.0);
+  float sweep = exp(-pow((fract(h * 0.6 - uTime * 0.25) - 0.5) * 7.0, 2.0));
+  float base = exp(-h * 5.0);
+  float top = uMode > 0.5 ? 1.0 : smoothstep(1.0, 0.6, h);
+  float a = (0.05 + 0.3 * lines + 0.25 * cols + 0.35 * sweep + 0.6 * base) * (0.5 + 0.8 * fres) * top;
+  gl_FragColor = vec4(uColor * a * uOp, 1.0);
+}`;
+export function curtainMat(color, mode = 0, cols = 24) {
+  return new THREE.ShaderMaterial({
+    vertexShader: COL_VS,
+    fragmentShader: CURTAIN_FS,
+    uniforms: {
+      uColor: { value: new THREE.Color(color) },
+      uOp: { value: 1 },
+      uTime: { value: 0 },
+      uMode: { value: mode },
+      uCols: { value: cols },
+    },
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+  });
+}
+
 // 著色器預熱（game/render-setup.js 的 shaderWarm）：每種材質一個假網格，新地圖第一次算繪前一起編好
 export function energyWarm(k) {
   const g = new THREE.Group();
@@ -389,6 +520,9 @@ export function energyWarm(k) {
     waveMat(0xffffff),
     shellMat(0xffffff),
     ribbonMat(0xffffff),
+    warnDiscMat(0xffffff),
+    warnRectMat(0xffffff, 1, 1, k),
+    curtainMat(0xffffff),
   ]) {
     const o = new THREE.Mesh(box, m);
     o.frustumCulled = false;

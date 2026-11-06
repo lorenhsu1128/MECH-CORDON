@@ -3,6 +3,7 @@
 //   鏡頭 airCamera（追尾視角的空中版：可以往上下看到底、跟著速度拉開、橫滾時鏡頭微微傾斜）、準星 airReticle；
 //   輸入 airInput（W／S＝推力、A／D＝橫移、滑鼠＝方向；手把與觸控照同一套：左搖桿＝推力與橫移、右搖桿／拖曳＝方向）；
 //   飛行的 HUD（速度、高度、機首標記、俯仰刻度、低空警告）；第 1 期的敵人：空中的無人機、直升機、蜂群（airSpawn）。
+import { curtainMat } from '../fx/energy.js';
 import { clamp, lerp, makeRng, rnd } from '../core/math.js';
 import { GpuFx } from '../fx/gpu.js';
 import { FXG, pickCell } from '../fx/atlas.js';
@@ -296,17 +297,21 @@ Object.assign(Game.prototype, {
     const b = this.campObjective(at, 'ally');
     b.name = '友軍雷達站';
     this.airBase = b;
-    // 補給區（C4）：雷達站上空的青色網格圓柱
+    // 補給區（C4）：雷達站上空的青色網格圓柱（砲火特效「華麗」＝光幕 curtainMat，第 9.4 期）
     const z = new THREE.Mesh(
-      new THREE.CylinderGeometry(AIR.BASE_R, AIR.BASE_R, AIR.BASE_H, 32, 4, true),
-      new THREE.MeshBasicMaterial({
-        color: 0x60d8ff,
-        wireframe: true,
-        transparent: true,
-        opacity: 0.14,
-        depthWrite: false,
-      }),
+      new THREE.CylinderGeometry(AIR.BASE_R, AIR.BASE_R, AIR.BASE_H, 48, 4, true),
+      this.fx.rich
+        ? curtainMat(0x60d8ff, 0, 40)
+        : new THREE.MeshBasicMaterial({
+            color: 0x60d8ff,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.14,
+            depthWrite: false,
+          }),
     );
+    if (z.material.uniforms) z.material.uniforms.uOp.value = 0.5;
+    if (z.material.uniforms) z.onBeforeRender = () => (z.material.uniforms.uTime.value = this.fx.time);
     this.airHelper(z, b, AIR.BASE_H / 2);
     b.airZone = z;
   },
@@ -323,15 +328,19 @@ Object.assign(Game.prototype, {
   // 防空砲的防空區（A3）：紅色的網格圓頂（低空飛進去才會被發射空戰導彈，mech-air.js 的 airFlakIn）
   airFlakDome(e) {
     const m = new THREE.Mesh(
-      new THREE.SphereGeometry(AIR.FLAK_SAM_R, 20, 6, 0, Math.PI * 2, 0, Math.PI / 2),
-      new THREE.MeshBasicMaterial({
-        color: 0xff5040,
-        wireframe: true,
-        transparent: true,
-        opacity: 0.16,
-        depthWrite: false,
-      }),
+      new THREE.SphereGeometry(AIR.FLAK_SAM_R, 40, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+      this.fx.rich
+        ? curtainMat(0xff5040, 1, 36) // 華麗：光幕（第 9.4 期）
+        : new THREE.MeshBasicMaterial({
+            color: 0xff5040,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.16,
+            depthWrite: false,
+          }),
     );
+    if (m.material.uniforms) m.material.uniforms.uOp.value = 0.45;
+    if (m.material.uniforms) m.onBeforeRender = () => (m.material.uniforms.uTime.value = this.fx.time);
     m.scale.set(1, AIR.FLAK_SAM_H / AIR.FLAK_SAM_R, 1);
     this.airHelper(m, e, 0);
     e.airDome = m;

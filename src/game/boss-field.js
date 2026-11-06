@@ -9,6 +9,7 @@ import { Game } from './game.js';
 import { SFX } from '../audio/audio.js';
 import { buildField, conformField } from '../render/boss-field-models.js';
 import { MS } from '../core/scale.js';
+import { warnDiscMat } from '../fx/energy.js';
 import { frand, frnd } from '../fx/rand.js';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -311,6 +312,7 @@ Object.assign(Game.prototype, {
       if (!rich && f.vis.richOn) {
         f.vis.richOn = false;
         for (const o of f.vis.hide) o.visible = true;
+        if (f.fx && f.fx.disc) f.fx.disc.visible = false;
       }
       if (rich && (this.state === 'play' || this.state === 'ending')) this.bfFx(f, t, dt);
     }
@@ -423,7 +425,19 @@ Object.assign(Game.prototype, {
         break;
       }
       case 'minefield': {
-        // 地雷區：閃燈改成發光的粒子（亮起的那一刻放一顆）
+        // 地雷區：外圈改成掃描圈（fx/energy.js 的 warnDiscMat，第 9.4 期）
+        if (!fx0.disc) {
+          fx0.disc = new THREE.Mesh(new THREE.CircleGeometry(1, 48), warnDiscMat(0xff3020, 1));
+          fx0.disc.rotation.x = -Math.PI / 2;
+          fx0.disc.position.y = 0.12;
+          fx0.disc.scale.setScalar(r);
+          fx0.disc.userData.helper = true;
+          G.add(fx0.disc);
+        }
+        fx0.disc.visible = true;
+        fx0.disc.material.uniforms.uTime.value = fx.time;
+        fx0.disc.material.uniforms.uOp.value = 0.8;
+        // 閃燈改成發光的粒子（亮起的那一刻放一顆）
         for (const l of f.vis.pts) {
           const on = Math.sin(t * 5 + l.userData.ph) > 0.4;
           if (on && !fx0.on[l.id])

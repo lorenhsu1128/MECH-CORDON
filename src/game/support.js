@@ -1,6 +1,7 @@
 // Game：特殊一般敵人的場上物件與判定（實體行為在 entities/mech-special.js）
 // 迫擊砲彈（落點預警圈）、地雷、護盾產生器與盾牌 MT 擋子彈／雷射、運輸機投放。
 // 傷害只在房主／單機計算；客機收到 'warn'（預警圈）、'mine'／'mineX'（地雷出現／消失）事件只做顯示。
+import { warnDiscMat } from '../fx/energy.js';
 import { SFX } from '../audio/audio.js';
 import { clamp } from '../core/math.js';
 import { DS, MS } from '../core/scale.js';
@@ -370,17 +371,20 @@ Object.assign(Game.prototype, {
       new THREE.MeshBasicMaterial({ color: 0xff2a20, transparent: true, blending: THREE.AdditiveBlending }),
     );
     light.position.y = 0.26;
-    const halo = new THREE.Mesh(
-      new THREE.RingGeometry(MINE_TRIG / MS - 0.1, MINE_TRIG / MS, 28),
-      new THREE.MeshBasicMaterial({
-        color: 0xff3020,
-        transparent: true,
-        opacity: 0.25,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-      }),
-    );
+    // 感應圈：華麗時是掃描圈（fx/energy.js 的 warnDiscMat，第 9.4 期）
+    const halo = this.fx.rich
+      ? new THREE.Mesh(new THREE.CircleGeometry(MINE_TRIG / MS, 40), warnDiscMat(0xff3020, 1))
+      : new THREE.Mesh(
+          new THREE.RingGeometry(MINE_TRIG / MS - 0.1, MINE_TRIG / MS, 28),
+          new THREE.MeshBasicMaterial({
+            color: 0xff3020,
+            transparent: true,
+            opacity: 0.25,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            side: THREE.DoubleSide,
+          }),
+        );
     halo.rotation.x = -Math.PI / 2;
     halo.position.y = 0.06;
     grp.add(body, light, halo);
@@ -458,7 +462,12 @@ Object.assign(Game.prototype, {
       const L = m.mesh.userData.light;
       const fast = m.trig >= 0;
       L.material.opacity = Math.sin(m.t * (fast ? 40 : 6)) > 0 ? 1 : 0.15;
-      m.mesh.userData.halo.material.opacity = fast ? 0.6 : 0.18 + 0.08 * Math.sin(m.t * 3);
+      const hm = m.mesh.userData.halo.material;
+      if (hm.uniforms) {
+        hm.uniforms.uTime.value = this.fx.time;
+        hm.uniforms.uOp.value = fast ? 1 : 0.55;
+        hm.uniforms.uFlash.value = fast ? (Math.sin(m.t * 40) > 0 ? 1 : 0.4) : 1;
+      } else hm.opacity = fast ? 0.6 : 0.18 + 0.08 * Math.sin(m.t * 3);
       if (!host || m.vis) continue;
       m.life -= dt;
       m.arm -= dt;
