@@ -7,7 +7,7 @@ import { installStyleShader } from '../render/style/shader.js';
 import { StyleStore } from '../render/style/store.js';
 import { DS } from '../core/scale.js';
 import { Game } from './game.js';
-import { WARM, saveWarm, warmGroup } from '../render/shader-warm.js';
+import { WARM, saveWarm, transpWarm, warmGroup } from '../render/shader-warm.js';
 import { legacyTarget } from '../render/legacy-rt.js';
 
 installStyleShader(); // 越早越好：之後建立的標準材質都會用風格著色器
@@ -155,6 +155,12 @@ Object.assign(Game.prototype, {
       if (extra && this.typePrewarm && !(this.net && this.net.role === 'client'))
         extra.add(this.typePrewarm());
       if (extra && this.fx.rich) extra.add(energyWarm(this.fx.k)); // 第 9 期的護罩、光柱、預警（fx/energy.js）
+      // 場景與上面那些的半透明版（淡出、碎塊、掉板；render/shader-warm.js 的 transpWarm）
+      if (extra) {
+        const tw = transpWarm(this.scene);
+        for (const d of [...transpWarm(extra).children]) tw.add(d);
+        extra.add(tw);
+      }
       if (extra) this.scene.add(extra);
       try {
         const r = root || this.scene;

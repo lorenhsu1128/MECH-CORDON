@@ -3469,7 +3469,13 @@ export class World {
     const act = this._fading || (this._fading = new Map());
     for (const o of this._fadeHit)
       if (!act.has(o)) {
-        const m = o.material.clone();
+        // 淡出用的半透明複本：每個網格一份、留著重複使用（不釋放）。釋放的話 three.js 會連同半透明的著色器程式
+        // 一起刪掉，下次再擋住又要現場編譯（約 0.15 秒的停頓；docs/perf-threejs-upgrade.md 第 5 期）
+        const fc = this._fadeCopy || (this._fadeCopy = new WeakMap());
+        let c = fc.get(o);
+        if (!c || c.src !== o.material) fc.set(o, (c = { src: o.material, m: o.material.clone() }));
+        else c.m.copy(o.material); // 原本的材質之後可能改過顏色
+        const m = c.m;
         m.transparent = true;
         act.set(o, {
           orig: o.material,
@@ -3485,7 +3491,6 @@ export class World {
       f.m.depthWrite = f.m.opacity > 0.9 * f.op0;
       if (!on && f.m.opacity > f.op0 - 0.02) {
         o.material = f.orig;
-        f.m.dispose();
         act.delete(o);
       }
     }

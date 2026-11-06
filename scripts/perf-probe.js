@@ -12,6 +12,7 @@
 //       --gp＝把 three.js 換成未壓縮版並記錄每次 getProgram 的原因（複製一份 dist 到系統暫存）、
 //       --learn＝帶入上一次記下的著色器變體（render/shader-warm.js 的學習式預熱，test-results/perf-warm.json），
 //       --sync＝著色器預熱照自動化測試的同步方式（預設和玩家的瀏覽器一樣走非同步），
+//       --variant＝主題變體、--full＝畫面設定全開（品質）、
 //       --long=25＝列出 CPU 超過幾 ms 的影格、--tag、--compare、--dist＝別的建置資料夾。
 //       頁面的亂數固定種子。需要先 npm run build。
 /* global THREE, window, localStorage, requestAnimationFrame, WebGLRenderingContext, WebGL2RenderingContext */
@@ -443,6 +444,15 @@ async function sampling(ctx, page) {
     // 著色器預熱：預設走非同步（compileAsync，和玩家的瀏覽器相同）；--sync 改回同步
     if (!args.sync) await page.addInitScript(() => (window.__warmAsync = true));
     await page.addInitScript((map) => localStorage.setItem('rubicon_map', map), MAP);
+    // --variant＝主題變體（'base'＝標準）；--full＝畫面設定全開（快速設定的「品質」：水面高、砲火華麗、機甲特效完整、殘影）
+    if (args.variant)
+      await page.addInitScript((v) => localStorage.setItem('rubicon_variant', v), args.variant);
+    if (args.full)
+      await page.addInitScript(() => {
+        const c = JSON.parse(localStorage.getItem('rubicon_ctrl') || '{}');
+        Object.assign(c, { water: 'high', fxLv: 'rich', mechFx: 'full', ghost: 'on', tfx: 'full' });
+        localStorage.setItem('rubicon_ctrl', JSON.stringify(c));
+      });
     // --learn：帶入上一次量測記下的著色器變體（render/shader-warm.js；玩家的瀏覽器會一直留著）
     const LEARN = path.join(OUT, 'perf-warm.json');
     if (args.learn && fs.existsSync(LEARN))
