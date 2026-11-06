@@ -171,6 +171,11 @@ Object.assign(MechEntity.prototype, {
   mv_volley(mv, dt, d, dir, pl, wish, r) {
     if (mv.ph === 'wind') {
       this.mvLine(mv, mv.slot, pl.center(), 0xffa020, 0.3, 0.03);
+      // 鎖定的是本機的玩家：ECHO 提醒「被鎖定了」（客機的玩家只看得到鎖定線）
+      if (!mv.vc && this.game && pl === this.game.player) {
+        mv.vc = true;
+        this.game.voiceCue('lock');
+      }
       if (mv.t > 0.9) {
         this.lkT0 = this.t - 10; // 準備期間就是鎖定時間：一次射滿
         this.fire(mv.slot, pl.center(), pl);

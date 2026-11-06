@@ -964,7 +964,7 @@ Object.assign(Game.prototype, {
     if (stars > 0) {
       T.prog[0] = n;
       this.tutPass();
-      this.commSay('instructor', ['及格。', '不錯，很全面。', '漂亮。挑不出毛病。'][stars - 1]);
+      this.commSay('instructor', this.poolLine('pass' + stars));
     } else {
       T.msg = `<b class="ng">時間到：${n} 種技巧，還差 ${EXAM_STARS[0] - n} 種。</b>　再來一次`;
       T.msgT = 4;

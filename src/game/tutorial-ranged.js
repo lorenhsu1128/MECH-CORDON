@@ -190,7 +190,7 @@ Object.assign(Game.prototype, {
     if (stars > 0) {
       T.prog[0] = 1;
       this.tutPass();
-      this.commSay('instructor', ['及格。', '漂亮。看得出你在動腦。', '……完美。挑不出毛病。'][stars - 1]);
+      this.commSay('instructor', this.poolLine('pass' + stars));
     } else {
       T.msg = `<b class="ng">時間到：最高 ${nm}，及格是 A。</b>　換著用不同的招式，再來一次`;
       T.msgT = 4;

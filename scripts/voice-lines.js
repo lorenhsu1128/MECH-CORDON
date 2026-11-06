@@ -5,7 +5,8 @@
 //   1. data/story-comms.js 的通訊（[說話者, 台詞]）
 //   2. src/ 裡寫死的 commSay('<說話者>', …) 的字串（單引號的字面字串；教官的第幾課另外展開）
 //   3. data/story.js 的序章、章節開場／章末、結局、回收程序、記憶片段裡「名字：「……」」的句子（data/voice.js 的 storyQuote）
-//   4. data/voice.js 的系統提示（ECHO，鍵＝s_<id>）與敵兵的喊話（grunt，鍵＝b_<事件><編號>）
+//   4. data/voice.js 的系統提示（ECHO，每種 10 句，鍵＝cueKey：s_<id>、s_<id>_<n>）、輪流的台詞（LINE_POOLS，鍵＝vkey）
+//      與敵兵的喊話（grunt，鍵＝b_<事件><編號>）
 //   5. data/cine/ 的過場動畫的字幕（每個周目 × 抉擇的組合都產生一次）
 //   6. data/tutorial.js、tutorial-ranged.js 的教官提示（say）
 // 只收 echo 與 data/voice.js 的 CAST_IDS（有語音的角色）；鍵＝data/voice.js 的 vkey(台詞)，遊戲播放時用同一個函式找語音。
@@ -65,7 +66,7 @@ function strLits(s) {
 }
 
 async function main() {
-  const { vkey, storyQuote, VOICE_CUES, CAST_IDS, BARKS } = await imp('data/voice.js');
+  const { vkey, storyQuote, VOICE_CUES, cueKey, LINE_POOLS, CAST_IDS, BARKS } = await imp('data/voice.js');
   const SPK = new Set(['echo', ...CAST_IDS]);
   const lines = {};
   const n = {};
@@ -125,7 +126,12 @@ async function main() {
   // 4. 系統提示（優先度 3＝緊急）與敵兵的喊話
   lines.echo = lines.echo || {};
   for (const id in VOICE_CUES)
-    lines.echo['s_' + id] = { t: VOICE_CUES[id].t, k: VOICE_CUES[id].p >= 3 ? 'alarm' : 'sys' };
+    VOICE_CUES[id].t.forEach(
+      (t, i) => (lines.echo[cueKey(id, i)] = { t, k: VOICE_CUES[id].p >= 3 ? 'alarm' : 'sys' }),
+    );
+  // 程式裡輪流挑的台詞（LINE_POOLS，鍵＝vkey）
+  for (const id in LINE_POOLS)
+    for (const t of LINE_POOLS[id].t) add(LINE_POOLS[id].sp, t, 'comm', '輪流的台詞');
   lines.grunt = {};
   for (const ev in BARKS)
     BARKS[ev].forEach((t, i) => (lines.grunt[`b_${ev}${i}`] = { t, k: ev === 'search' ? 'low' : 'shout' }));

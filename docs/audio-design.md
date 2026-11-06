@@ -186,6 +186,20 @@
 - 使用者請開發者直接選：探索＝Signal To Noise／Penumbra／The Long Dark；警戒＝Eyes In The Void／Electrorchestra／Escape Velocity／Hidden；交戰＝Simulacra／Terminus／Chase／Epic Cyberpunk／Determined Pursuit／QaziJamJam；Boss＝Goliath／Vanguard／Hellfire／The Great Battle／Boss Battle #2；空域＝Sentinel／Born Of The Sky／Starfire。`scripts/bgm-prep.py` 的 `TRACKS` 記來源檔與授權，`raw` 是原本就做成循環的（整首照用），執行時重寫 `src/assets/bgm/CREDITS.txt`；`game/bgm.js` 的 `SETS`／`AIR_SET`。nene 的 zip 裡檔名是反的（`*_opening.wav` 才能無縫循環，量過接縫）。
 - 之後要換曲：在試聽頁聽、改 `TRACKS` 與 `SETS`，重跑 `bgm-prep.py`。
 
+### 重複台詞的變體（2026-11-06）
+
+使用者要求：常聽到的重複語音不能只有一種台詞，每種 10 句、台灣口語（「喔」「囉」「欸」、飛彈，不用中國用語）。聲音照舊（VoxCPM2 的兩個 ECHO 聲音與其他角色，`voice-gen.py`），日文也有。
+
+- **台灣口音的試驗（否決）**：同一天試過 BlueMagpie-TTS（OpenFormosa，臺灣口音模型）以現在的參考音檔克隆／語者向量、VoxCPM2 不轉簡體、BlueMagpie 唸的段落當 VoxCPM2 的參考、Common Voice 台灣中文（CC0）的真人女聲當參考，做成標題的比較頁讓使用者試聽。使用者：「全都不好，不用再試，暫時維持現狀」，程式全部還原、環境與模型刪除。之後再提台灣口音時先問方向（付費服務或真人配音），不要重跑這些。
+- **輪流**：`game/voice.js` 的 `bagPick`（洗牌：整輪播完才重複，新的一輪第一句不會和上一句相同）。
+- **系統提示** `VOICE_CUES` 的 `t` 是 10 句的陣列，語音鍵 `cueKey(id, n)`（第 0 句 `s_<id>`、之後 `s_<id>_<n>`）；`cueSay` 遇到沒有語音檔的說法改唸第 0 句。增援預告 12 個方向 × 10 種說法全部事先產生（`WAVE_IN`／`WAVE_DROP` 的樣板；接起來的語調會斷），敵對 AC、最後一波各 10 句。
+- **敵兵的喊話** `BARKS` 每個事件 10 句（鍵 `b_<事件><0～9>`）；修正喊話的字幕從來沒顯示過（`barkPlay` 的正規表示式少了 `\d` 的反斜線）。
+- **程式裡重複的台詞** `LINE_POOLS`（訓練課程依星等的評語、空域的轟炸機提示）：`poolLine(id)` 挑一句交給 `commSay`，`voice-lines.js` 另外收集。
+- **主線的通用通訊**（各區段類型的開場、陣亡的通用台詞）：`story-comms.js` 的 `variants` 寫 10 則同條件的，`commPick` 在同分的候選裡隨機挑。
+- **接上原本有語音、沒播的三種**：被鎖定 `lock`（一般敵人的導彈齊射預警瞄準本機的玩家，`mv_volley`）、出口開啟 `exits`（主線的區段清除、沒有專屬的通訊時）、區域清除 `clear`（自訂關卡的多段出擊）。
+- 台詞從 766 句變成 1301 句（ECHO 363 → 822），日文翻譯同步補進 `lines-ja.json`（寫法照「翻譯的寫法」）。
+- **產生**：`voice-gen.py` 照舊每句 2 次挑最準的；新句子裡相似度偏低的（中文 21、日文 71）再 `--only <鍵> --more` 多 2 次重挑。日文剩下的低分大多是同音字（降下／効果、二時の方向／虹の咆哮）與數字寫法，不是唸錯；「上！○時の方向に降下！」的「上」被唸成じょう，`@yomi` 加「上！→うえ！」重做。
+
 ### 之後可以再做
 
 - 依武器的「近距離」再多錄幾種（目前霰彈、步槍各 3～4 個素材，機槍 3 個）；同一台的多把相同武器只播一把（War Robots 的作法）。

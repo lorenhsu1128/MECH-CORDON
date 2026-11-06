@@ -381,7 +381,7 @@ Object.assign(Game.prototype, {
     };
     this.waveShow(ev);
     if (list.includes('bomber') && this.airBase && !this.airBase.dead)
-      this.commSay('echo', '轟炸機編隊在裡面，目標是我們的雷達站。先打轟炸機！');
+      this.commSay('echo', this.poolLine('airBomber'));
   },
   airWaveSpawn(w) {
     for (const t of w.list)

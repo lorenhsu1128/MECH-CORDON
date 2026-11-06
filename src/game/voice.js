@@ -14,6 +14,8 @@ import {
   vkey,
   storyQuote,
   VOICE_CUES,
+  cueKey,
+  LINE_POOLS,
   VOICE_IDS,
   CAST_IDS,
   BARKS,
@@ -231,7 +233,42 @@ Object.assign(Game.prototype, {
     const f = this.voiceFolder(sp);
     return f ? this.voicePlay(vkey(text), 2, 'comm', f) : Promise.resolve(0);
   },
-  // 系統提示（data/voice.js 的 VOICE_CUES）：每種有冷卻
+  // 洗牌輪流：同一組的 n 句整輪播完才重複，新的一輪第一句不會和上一句相同
+  bagPick(name, n) {
+    if (n <= 1) return 0;
+    const B = (this.voiceBags = this.voiceBags || {});
+    let b = B[name];
+    if (!b || !b.q.length || b.n !== n) {
+      const q = [...Array(n).keys()];
+      for (let i = n - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [q[i], q[j]] = [q[j], q[i]];
+      }
+      // pop 從尾端拿：新的一輪第一句（尾端）和上一句相同時跟開頭交換
+      if (b && q[q.length - 1] === b.last) [q[0], q[q.length - 1]] = [q[q.length - 1], q[0]];
+      b = B[name] = { q, n, last: b && b.last };
+    }
+    return (b.last = b.q.pop());
+  },
+  // 程式裡重複的台詞（data/voice.js 的 LINE_POOLS）：輪流挑一句（交給 commSay，語音以台詞的 vkey 找）
+  poolLine(id) {
+    const P = LINE_POOLS[id];
+    return P ? P.t[this.bagPick('pool:' + id, P.t.length)] : '';
+  },
+  // 系統提示的一句：{ key 語音鍵, t 台詞 }（輪流換說法）
+  cuePick(id) {
+    const C = VOICE_CUES[id];
+    const n = this.bagPick('cue:' + id, C.t.length);
+    return { key: cueKey(id, n), t: C.t[n] };
+  },
+  // 播系統提示的一句；這個說法沒有語音檔時改唸第 0 句 → [秒數, 實際的鍵]
+  async cueSay(id, key, prio) {
+    const d = await this.voicePlay(key, prio, 'sys');
+    const k0 = cueKey(id, 0);
+    if (d || key === k0 || !this.voiceFolder() || (await this.voiceBuf(key))) return [d, key];
+    return [await this.voicePlay(k0, prio, 'sys'), k0];
+  },
+  // 系統提示（data/voice.js 的 VOICE_CUES）：每種有冷卻、10 種說法輪流
   voiceCue(id) {
     const C = VOICE_CUES[id];
     if (!C || !this.voiceOn('sys') || this.cine) return;
@@ -239,8 +276,9 @@ Object.assign(Game.prototype, {
     this.voiceCd = this.voiceCd || {};
     if (C.cd && now - (this.voiceCd[id] || -999) < C.cd) return;
     this.voiceCd[id] = now;
-    this.voicePlay('s_' + id, C.p, 'sys').then(
-      (d) => d && this.subBar(this.subText(C.t, 'echo', 's_' + id), 'echo', d),
+    const { key, t } = this.cuePick(id);
+    this.cueSay(id, key, C.p).then(
+      ([d, k]) => d && this.subBar(this.subText(k === key ? t : C.t[0], 'echo', k), 'echo', d),
     );
   },
   // 依序播幾句（增援預告：方向＋敵對 AC＋最後一波）
@@ -248,7 +286,8 @@ Object.assign(Game.prototype, {
     const sq = this.voiceSeqN;
     for (const id of ids) {
       if (sq !== this.voiceSeqN) return;
-      const d = await this.voicePlay('s_' + id, prio, 'sys');
+      if (!VOICE_CUES[id]) continue;
+      const [d] = await this.cueSay(id, this.cuePick(id).key, prio);
       if (!d) return;
       this.voiceSeqTo = this.voiceSeqTo || [];
       await new Promise((r) => this.voiceSeqTo.push(setTimeout(r, d * 1000 + 120)));
@@ -315,7 +354,7 @@ Object.assign(Game.prototype, {
     if (now - cd.all < (big ? 1.2 : 3.5) || now - (cd[ev] || -99) < BARK_CD[ev]) return;
     if (now - (e.barkT || -99) < 6) return;
     cd.all = cd[ev] = e.barkT = now;
-    const n = Math.floor(Math.random() * BARKS[ev].length);
+    const n = this.bagPick('bark:' + ev, BARKS[ev].length);
     SFX.bark(`${GRUNTS[e.id % GRUNTS.length]}/b_${ev}${n}`, e.center ? e.center() : e.pos);
   },
   // 同伴被擊毀：附近 40 m 內最近的敵兵喊
@@ -341,7 +380,7 @@ Object.assign(Game.prototype, {
     SFX.barkPlay(b, pos);
     // 字幕：40 m 內的敵兵才顯示（遠的只聽得到聲音）
     const me = this.player;
-    const m = /^b_([a-zA-Z]+)(d+)$/.exec(k);
+    const m = /^b_([a-zA-Z]+)(\d+)$/.exec(k);
     if (m && me && !me.dead && pos && me.pos.distanceTo(pos) < 40 * (me.dk || 1) && BARKS[m[1]])
       this.subBar(this.subText(BARKS[m[1]][+m[2]], 'grunt', k), 'grunt', b.duration);
   },

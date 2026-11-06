@@ -1016,6 +1016,7 @@ Object.assign(Game.prototype, {
     lv.ending = true;
     this.state = 'ending';
     this.flashMsg('區段清除', 0x7ee081, 2, { k: 'clear', m: '區段清除', s: `前往第 ${n + 1} 段` });
+    this.voiceCue('clear');
     const carry = {};
     for (const p of this.players || []) carry[p.slot || 0] = this.campCaptureEnt(p, null);
     const t0 = this.missionT;

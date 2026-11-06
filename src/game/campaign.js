@@ -608,7 +608,8 @@ Object.assign(Game.prototype, {
       s: 'AREA CLEAR — 選擇出口前往下一區',
     });
     SFX.ui();
-    this.campComm('exitsOpen', this.campCtx());
+    // 這一段沒有專屬的通訊時，ECHO 以系統提示說出口開了（輪流換說法）
+    if (!this.campComm('exitsOpen', this.campCtx())) this.voiceCue('exits');
   },
   campGrant(k) {
     const p = this.player,
