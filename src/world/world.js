@@ -203,7 +203,14 @@ function scaleTheme(T) {
   const o = { ...T };
   if (T.water) o.water = { ...T.water, level: T.water.level * G };
   if (T.roof) o.roof = { ...T.roof, y: T.roof.y * G, bump: (T.roof.bump || 8) * G };
-  if (T.void) o.void = { ...T.void, y: T.void.y * G, fall: T.void.fall * G, ref: T.void.ref * G };
+  if (T.void)
+    o.void = {
+      ...T.void,
+      y: T.void.y * G,
+      fall: T.void.fall * G,
+      fallP: (T.void.fallP ?? T.void.fall) * G,
+      ref: T.void.ref * G,
+    };
   o.fogNear = (T.fogNear || 60) * DS;
   o.fogFar = (T.fogFar || 190) * DS;
   return o;
@@ -1045,10 +1052,19 @@ export class World {
   get voidY() {
     return this.theme.void ? this.theme.void.fall : undefined;
   }
-  // 地形低於 void.y 且上方沒有橋面（平台）的地方
+  // 地形低於 void.y 且上方沒有橋面（平台）的地方；接住墜落的下層平台（ledge，themes/xylem.js 的 buildLedges）照樣算虛空
   isVoid(x, z) {
     if (!this.theme.void || this.terrainHeight(x, z) >= this.theme.void.y) return false;
-    return !this.obstacles.some((o) => o.deck && Math.abs(x - o.x) < o.w / 2 && Math.abs(z - o.z) < o.d / 2);
+    return !this.obstacles.some(
+      (o) => o.deck && !o.ledge && Math.abs(x - o.x) < o.w / 2 && Math.abs(z - o.z) < o.d / 2,
+    );
+  }
+  // 站在下層平台上（虛空地圖）
+  onLedge(x, z, y) {
+    return this.obstacles.some(
+      (o) =>
+        o.ledge && Math.abs(x - o.x) < o.w / 2 && Math.abs(z - o.z) < o.d / 2 && Math.abs(y - o.top) < 1.5,
+    );
   }
   // 高度上限、飛行高度用的地面：虛空上方以 void.ref 為準
   groundRef(x, z, y) {
@@ -1072,14 +1088,23 @@ export class World {
     return new THREE.Vector3(0, this.terrainHeight(0, 0), 0);
   }
   // 從 (x, z) 往外找最近不是虛空的位置（不是虛空地圖時原樣回傳）
-  nearSolid(x, z) {
-    if (!this.isVoid(x, z)) return [x, z];
+  // firm：周圍 2G 也都不是虛空（街區邊緣的斜坡上放不住機體：玩家墜落後放回去的位置）
+  nearSolid(x, z, firm) {
+    const ok = (px, pz) =>
+      !this.isVoid(px, pz) &&
+      (!firm ||
+        [
+          [2, 0],
+          [-2, 0],
+          [0, 2],
+          [0, -2],
+        ].every(([dx, dz]) => !this.isVoid(px + dx * G, pz + dz * G)));
+    if (ok(x, z)) return [x, z];
     for (let r = 3 * G; r < 80 * this.k; r += 3 * G)
       for (let a = 0; a < 16; a++) {
         const px = x + Math.cos(a * 0.3927) * r,
           pz = z + Math.sin(a * 0.3927) * r;
-        if (Math.abs(px) < this.lim - 2 * G && Math.abs(pz) < this.lim - 2 * G && !this.isVoid(px, pz))
-          return [px, pz];
+        if (Math.abs(px) < this.lim - 2 * G && Math.abs(pz) < this.lim - 2 * G && ok(px, pz)) return [px, pz];
       }
     const p = this.safePoint();
     return [p.x, p.z];

@@ -15,7 +15,7 @@ import {
   K,
   markText,
 } from './kit.js';
-import { buildBridges, planIslands } from './xylem.js';
+import { buildBridges, buildLedges, planIslands } from './xylem.js';
 
 // ---------- 物件 ----------
 // 太陽能板陣列：傾斜的板＋支柱，6 × 4 × 3（沿 X），原點在底面中心
@@ -437,7 +437,8 @@ function planTerrain(w) {
   return planIslands(w, { h: H, deep: -40, central: 40, n: [7, 10], size: [24, 40], span: 40, gap: 14 });
 }
 function buildStructures(w) {
-  buildBridges(w, 8);
+  buildBridges(w, 11); // 2026-11-07：橋加寬（8 → 11）
+  buildLedges(w, 6, 3); // 下層的桁架（比街區低 9 m）
   stars(w);
   // 平台邊緣朝下的推進器
   for (const b of w.islands.blocks) {
@@ -541,7 +542,7 @@ export const ORBIT = {
   hasRocks: false,
   props: 'orbit',
   water: { level: -16, color: 0xeef2f8, opacity: 0.97, rough: 1, wide: true, cloud: true }, // 雲海（粒子的煙霧，fx/cloudsea.js）
-  void: { y: -4, fall: -7, ref: H },
+  void: { y: -4, fall: -7, fallP: -14, ref: H }, // fallP：玩家操作的機體掉到這裡才拉回（雲海之上）
   sunI: 1.15,
   fogNear: 90,
   fogFar: 280,

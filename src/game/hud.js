@@ -335,6 +335,64 @@ Object.assign(Game.prototype, {
     }
     this.zoneNear = near; // 冒煙測試看它
   },
+  // 虛空地圖（洋上都市、高空軌道）：掉出平台（虛空上方、比街區低）或站在下層平台上時，
+  // 畫面中央上方顯示提示、機體旁的箭頭指向最近的平台（2026-11-07）
+  voidHud(c, p, W, H, dt) {
+    const w = this.world;
+    this.voidWarn = 0; // 冒煙測試看它：1＝墜落中、2＝在下層平台
+    if (!w || !w.theme.void || !w.islands || p.dead || this.spectator || this.cine || p.flying) return;
+    const top = w.islands.h;
+    const ledge = p.grounded && w.onLedge(p.pos.x, p.pos.z, p.pos.y);
+    const fall = !p.grounded && p.pos.y < top - 1 && w.isVoid(p.pos.x, p.pos.z);
+    if (!ledge && !fall) {
+      this.voidTo = null;
+      return;
+    }
+    this.voidWarn = fall ? 1 : 2;
+    this.voidToT = (this.voidToT || 0) - dt;
+    if (!this.voidTo || this.voidToT <= 0) {
+      const [x, z] = w.nearSolid(p.pos.x, p.pos.z, true);
+      this.voidTo = new THREE.Vector3(x, top, z);
+      this.voidToT = 0.25;
+    }
+    const a = p.pos.clone().project(this.camera),
+      b = this.voidTo.clone().project(this.camera);
+    const ax = ((a.x + 1) / 2) * W,
+      ay = ((1 - a.y) / 2) * H;
+    let dx = (b.x - a.x) * W,
+      dy = -(b.y - a.y) * H;
+    const L = Math.hypot(dx, dy);
+    const blink = 0.65 + 0.35 * Math.sin(performance.now() / 120);
+    c.save();
+    c.textAlign = 'center';
+    c.shadowColor = 'rgba(0,0,0,0.75)';
+    c.shadowBlur = 5;
+    c.font = '700 17px sans-serif';
+    c.fillStyle = fall ? `rgba(255,120,90,${blink.toFixed(2)})` : 'rgba(160,220,255,0.95)';
+    c.fillText(fall ? '下方是虛空 — 空中跳／懸浮返回平台' : '下層平台 — 跳躍返回上層', W / 2, H * 0.22);
+    if (L > 1e-3 && Number.isFinite(L)) {
+      dx /= L;
+      dy /= L;
+      const r = Math.min(W, H) * 0.12,
+        ex = ax + dx * r,
+        ey = ay + dy * r;
+      c.translate(ex, ey);
+      c.rotate(Math.atan2(dy, dx));
+      c.fillStyle = fall ? 'rgba(255,140,90,0.95)' : 'rgba(160,220,255,0.95)';
+      c.beginPath();
+      c.moveTo(18, 0);
+      c.lineTo(-10, -12);
+      c.lineTo(-4, 0);
+      c.lineTo(-10, 12);
+      c.closePath();
+      c.fill();
+      c.rotate(-Math.atan2(dy, dx));
+      c.font = '700 13px sans-serif';
+      const d = Math.hypot(this.voidTo.x - p.pos.x, this.voidTo.z - p.pos.z);
+      c.fillText(`平台 ${d.toFixed(0)} m`, dx * 34, dy * 34 + 5);
+    }
+    c.restore();
+  },
   drawHud(dt) {
     const p = this.player,
       c = this.hctx,
@@ -353,6 +411,7 @@ Object.assign(Game.prototype, {
     const ob = document.getElementById('oob');
     if (ob) ob.classList.toggle('on', oob > 0 && !p.dead);
     if (!oob) this.zoneEdgeHud(c, p, W, H, dt); // 靠近邊界：朝邊界那一側的畫面邊緣發光
+    this.voidHud(c, p, W, H, dt); // 虛空地圖：掉出平台時指向最近的平台
     this.rbHud(c, p, W, H, dt); // 邊閃邊打：反擊時間、繞射（game/ranged.js）
     this.wpHud(c, p, W, H); // 鎖定目標的弱點、追尾／第一人稱的改瞄（game/weak.js）
     this.rxHud(c, p, W, H); // 鎖定目標的屬性反應（game/ranged.js）

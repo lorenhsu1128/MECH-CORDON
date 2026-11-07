@@ -17,6 +17,11 @@ const WIDE_FOV = 62,
 const CAM_OFF = new THREE.Vector3(0, 30, 17.5).multiplyScalar(DS);
 const CAM_PITCH_MAX = 1.31;
 const CAM_AIR_K = 0.5; // 跳躍時鏡頭少跟的離地高度比例 // 地形擋住時最多轉到約 75°，還是擋住就把鏡頭拉近
+// 跳躍的安全框（2026-11-07）：機體頭頂在畫面上最高到這個位置（NDC，1＝上緣），超過時鏡頭多跟一些
+const CAM_AIR_TOP = 0.6;
+// 高空時鏡頭拉遠：離地 CAM_AIR_FAR（×DS）時拉遠到 1＋CAM_AIR_ZOOM 倍
+const CAM_AIR_FAR = 20,
+  CAM_AIR_ZOOM = 0.2;
 // 鏡頭拉遠的上限（倍率）：設定的「鏡頭最遠距離」，預設 1.8（約 55 m 高，一定在霧的範圍內）
 const CAM_MAX_DEF = 1.8;
 // 平時的鏡頭距離（倍率，設定的「鏡頭距離」ctrl.camDist）：標準 0.65＝機體約佔畫面高度的 18%
@@ -353,6 +358,12 @@ Object.assign(Game.prototype, {
     }
     if (this.spectator) zoomT *= this.specZoom || 1;
     else zoomT = clamp(zoomT * (this.camUser || 1), Math.min(ZMELEE, B * 0.6), ZMAX); // 滾輪手動調整的距離
+    // 離地越高鏡頭越遠（2026-11-07：高空時同時看得到自己與地面）
+    const air =
+      !p.grounded && !this.spectator && !p.air
+        ? Math.max(0, p.pos.y - this.world.groundAt(p.pos.x, p.pos.z, p.pos.y))
+        : 0;
+    if (!this.spectator) zoomT *= 1 + CAM_AIR_ZOOM * clamp(air / (CAM_AIR_FAR * DS), 0, 1);
     // 處決中：鏡頭拉近（docs/melee-combo-design.md）
     const mst =
       p.melee.active && p.weapons[p.melee.slot] && meleeMove(p.weapons[p.melee.slot].def, p.melee.stage);
@@ -371,13 +382,20 @@ Object.assign(Game.prototype, {
     const tgt = focus;
     tgt.y = p.pos.y + p.model.height * 0.35; // 以機體中段為中心
     // 跳躍時鏡頭只跟一半的離地高度（2026-11-06：以前整個跟著，機體停在畫面中央，看不出往上跳）；
-    // 站上高台這種貼地的高度差照舊全跟，落地後平滑回到原位
+    // 站上高台這種貼地的高度差照舊全跟，落地後平滑回到原位。
+    // 安全框（2026-11-07）：跳得高時頭頂會超出畫面上緣，所以少跟的量最多讓頭頂停在 CAM_AIR_TOP——
+    // 以注視點為原點、目前的俯角 a 與距離 L，比注視點高 y 的點在畫面上的 NDC＝y·cos a／((L − y·sin a)·tan(fov/2))
     {
-      const air =
-        !p.grounded && !this.spectator && !p.air
-          ? Math.max(0, p.pos.y - this.world.groundAt(p.pos.x, p.pos.z, p.pos.y))
-          : 0;
-      this.camAirOff = lerp(this.camAirOff || 0, air * CAM_AIR_K, Math.min(1, dt * (air > 0 ? 14 : 6)));
+      let want = air * CAM_AIR_K;
+      if (air > 0) {
+        const a = this.camPitch || this.camPitch0,
+          L = this.camOff().length() * this.camZoom * (this.camDistK || 1),
+          T = Math.tan(((this.camera.fov || TP_FOV) * Math.PI) / 360) * CAM_AIR_TOP;
+        const yMax = (T * L) / (Math.cos(a) + T * Math.sin(a));
+        // 頭頂比注視點高 0.65 身高＋少跟的量
+        want = Math.min(want, Math.max(0, yMax - p.model.height * 0.65));
+      }
+      this.camAirOff = lerp(this.camAirOff || 0, want, Math.min(1, dt * (air > 0 ? 14 : 6)));
       tgt.y -= this.camAirOff;
     }
     this.camTarget.lerp(tgt, Math.min(1, dt * 12));

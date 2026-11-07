@@ -1865,7 +1865,9 @@ export class MechEntity {
       }
     }
   }
-  // 虛空（洋上都市、高空）：AI 不走進虛空；掉下去扣 10% AP（只在房主／單機）、1.5 秒無敵，拉回最後站穩的位置
+  // 虛空（洋上都市、高空）：AI 不走進虛空；掉下去扣 10% AP（只在房主／單機）、1.5 秒無敵，拉回最後站穩的位置。
+  // 2026-11-07：玩家操作的機體掉到 void.fallP（比較深）才拉回，之前可以用空中跳／懸浮飛回去或落在下層平台再跳上來，
+  // 拉回時扣 5%、放在掉下去的地方附近的實地；電腦落到下層平台（World.onLedge）就照墜落拉回
   voidCheck(w, px, pz) {
     if (
       this.ai &&
@@ -1883,20 +1885,23 @@ export class MechEntity {
       if (!this.safePos) this.safePos = new THREE.Vector3();
       this.safePos.copy(this.pos);
     }
-    if (this.flying || this.pos.y >= w.voidY) return;
+    if (this.flying) return;
+    const pilot = this.pilotEnt();
+    const ledge = !pilot && this.grounded && w.onLedge(this.pos.x, this.pos.z, this.pos.y);
+    if (!ledge && this.pos.y >= (pilot ? w.theme.void.fallP : w.voidY)) return;
     // 還沒站穩過（例：運輸機投放在海上）：移到最近的實地，不拉回地圖中心
     let p = this.safePos;
-    if (!p) {
-      const [x, z] = w.nearSolid(this.pos.x, this.pos.z);
-      p = new THREE.Vector3(x, w.terrainHeight(x, z), z);
+    if (pilot || !p) {
+      const [x, z] = w.nearSolid(this.pos.x, this.pos.z, pilot);
+      if (!p || w.inZone(x, z)) p = new THREE.Vector3(x, w.terrainHeight(x, z), z);
     }
     this.pos.set(p.x, w.groundAt(p.x, p.z, p.y + 1), p.z);
     this.vel.set(0, 0, 0);
     this.iFrames = Math.max(this.iFrames, 1.5);
     const g = this.game;
     if (!g.isClient) g.invShow(this, 1.5); // 無敵時間的能量層（第 9.2 期）
-    if (!g.isClient && !this.dead) this.hp = Math.max(1, this.hp - this.maxHp * 0.1);
-    if (this.isPlayer) g.flashAlert('墜落 — AP −10%，返回平台');
+    if (!g.isClient && !this.dead) this.hp = Math.max(1, this.hp - this.maxHp * (pilot ? 0.05 : 0.1));
+    if (this.isPlayer) g.flashAlert(pilot ? '墜落 — AP −5%，返回平台' : '墜落 — AP −10%，返回平台');
     g.fx.ring(this.pos.clone().setY(this.pos.y + 0.1), 4, 0x80c8ff);
   }
   // attr＝攻擊屬性（data/attrs.js：kin／exp／en／none）；沒給時依 wid（武器 id）推算，都沒有時算實彈
@@ -2758,7 +2763,14 @@ export class MechEntity {
     this.pos.x = nx;
     this.pos.z = nz;
     // slope climb: if terrain rises steeply push up
-    const tg = w.terrainHeight(this.pos.x, this.pos.z);
+    let tg = w.terrainHeight(this.pos.x, this.pos.z);
+    // 虛空地圖：在街區下方（下層平台、往下掉）時街區的側面是牆，不直接彈上去（2026-11-07）
+    if (w.voidY !== undefined && tg - this.pos.y > 2 * this.dk && !this.flying) {
+      this.pos.x = px0;
+      this.pos.z = pz0;
+      this.vel.x = this.vel.z = 0;
+      tg = w.terrainHeight(px0, pz0);
+    }
     if (this.pos.y < tg) {
       this.pos.y = tg;
     }

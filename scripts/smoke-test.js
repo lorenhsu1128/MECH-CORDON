@@ -14917,6 +14917,152 @@ async function testBossZone(browser, base) {
   await ctx.close();
 }
 
+// 2026-11-07：虛空地圖（洋上都市、高空軌道）的下層平台、玩家比較深才拉回、電腦落到下層就拉回、HUD 的提示
+async function testVoidMaps(browser, base) {
+  console.log('虛空地圖：下層平台、玩家飛回去的時間、電腦落到下層拉回、指向平台的提示');
+  for (const map of ['xylem', 'orbit']) {
+    const { ctx, page } = await newPage(browser, 'void-' + map);
+    await seededRandom(page);
+    await page.addInitScript((m) => localStorage.setItem('rubicon_map', m), map);
+    await page.goto(base + '?test');
+    await waitVisible(page, 'title');
+    await freezeLoop(page);
+    const r = await page.evaluate(() => {
+      const g = window.__game;
+      g.save.level = 1;
+      g.startMission();
+      g.state = 'void-test';
+      const w = g.world,
+        pl = g.player;
+      pl.iFrames = 0;
+      const out = { theme: w.theme.name, blocks: w.islands.blocks.length };
+      const L = w.obstacles.filter((o) => o.ledge);
+      out.ledges = L.length;
+      // 在作戰區域內、離橋與其他平台遠的下層平台中央
+      const lg = L.find((o) => w.inZone(o.x, o.z, 10) && w.isVoid(o.x, o.z));
+      out.lg = !!lg;
+      if (!lg) return out;
+      out.ledgeVoid = w.isVoid(lg.x, lg.z) && w.onLedge(lg.x, lg.z, lg.top);
+      out.drop = +(w.islands.h - lg.top).toFixed(1);
+      // 玩家掉到下層平台：站在上面、不拉回、提示＝2
+      pl.pos.set(lg.x, lg.top + 6, lg.z);
+      pl.vel.set(0, 0, 0);
+      const hp0 = pl.hp;
+      window.__pump(3, () => pl.grounded && g.voidWarn === 2);
+      out.onLedge = pl.grounded && Math.abs(pl.pos.y - lg.top) < 0.5 && pl.hp === hp0;
+      out.warn2 = g.voidWarn;
+      // 純虛空（沒有下層平台）：先顯示墜落提示、低於 void.fall 還沒拉回，到 fallP 才拉回、扣 5%
+      let sp = null;
+      for (let t = 0; t < 6000 && !sp; t++) {
+        const x = (Math.random() * 2 - 1) * w.lim * 0.9,
+          z = (Math.random() * 2 - 1) * w.lim * 0.9;
+        if (w.isVoid(x, z) && w.inZone(x, z, 10) && w.groundAt(x, z, w.islands.h) < w.theme.void.fallP)
+          sp = { x, z };
+      }
+      out.sp = !!sp;
+      if (!sp) return out;
+      pl.pos.set(sp.x, w.islands.h, sp.z);
+      pl.vel.set(0, 0, 0);
+      pl.grounded = false;
+      pl.safePos = null;
+      const hp1 = pl.hp;
+      let warn1 = false,
+        passedFall = false;
+      window.__pump(
+        6,
+        () => {
+          if (g.voidWarn === 1) warn1 = true;
+          if (pl.pos.y < w.voidY - 1) passedFall = true;
+          return !w.isVoid(pl.pos.x, pl.pos.z);
+        },
+        1 / 60,
+      );
+      out.warn1 = warn1;
+      out.passedFall = passedFall;
+      out.back = !w.isVoid(pl.pos.x, pl.pos.z);
+      out.lost = +((hp1 - pl.hp) / pl.maxHp).toFixed(3);
+      // 電腦落到下層平台：拉回站穩的位置
+      const e = g.enemies.find((x) => !x.dead && !x.flying && !x.isBoss);
+      out.e = !!e;
+      if (e) {
+        const safe = pl.pos.clone();
+        e.safePos = safe.clone();
+        e.pos.set(lg.x, lg.top + 2, lg.z);
+        e.vel.set(0, 0, 0);
+        window.__pump(2, () => !w.isVoid(e.pos.x, e.pos.z));
+        out.eBack = !w.isVoid(e.pos.x, e.pos.z);
+      }
+      return out;
+    });
+    check(
+      r.ledges > 0 && r.lg && r.ledgeVoid,
+      `${r.theme}：${r.blocks} 個街區、${r.ledges} 塊下層平台（低 ${r.drop} m，仍算虛空）`,
+    );
+    check(r.onLedge && r.warn2 === 2, `${r.theme}：玩家落在下層平台上、不拉回，提示「跳躍返回上層」`);
+    check(
+      r.sp && r.warn1 && r.passedFall && r.back && Math.abs(r.lost - 0.05) < 0.01,
+      `${r.theme}：掉進虛空先顯示提示、掉到比較深才拉回到實地（AP −${(r.lost * 100).toFixed(1)}%）`,
+    );
+    check(r.e && r.eBack, `${r.theme}：敵人落到下層平台就拉回站穩的位置`);
+    await page.screenshot({ path: path.join(SHOT_DIR, `void-${map}.png`) });
+    await ctx.close();
+  }
+}
+
+// 2026-11-07：跳得很高時機體不跑出畫面（安全框）、鏡頭拉遠
+async function testJumpCam(browser, base) {
+  console.log('跳躍的鏡頭：高空時機體留在畫面裡、鏡頭拉遠');
+  const { ctx, page } = await newPage(browser, 'jumpcam');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await freezeLoop(page);
+  const r = await page.evaluate(() => {
+    const g = window.__game;
+    g.save.level = 1;
+    g.startMission();
+    g.state = 'jc-test';
+    const pl = g.player,
+      w = g.world;
+    const out = {};
+    const shot = (alt, dist) => {
+      g.ctrl.camDist = dist;
+      g.camUser = 1;
+      const gy = w.groundAt(pl.pos.x, pl.pos.z, 999);
+      for (let i = 0; i < 240; i++) {
+        pl.pos.y = gy + alt;
+        pl.vel.set(0, 0, 0);
+        pl.grounded = alt <= 0;
+        g.updateCamera(1 / 60);
+      }
+      g.camera.updateMatrixWorld();
+      const top = pl.pos
+        .clone()
+        .setY(pl.pos.y + pl.model.height)
+        .project(g.camera);
+      const foot = pl.pos.clone().project(g.camera);
+      return { top: +top.y.toFixed(2), foot: +foot.y.toFixed(2), zoom: +g.camZoom.toFixed(3) };
+    };
+    for (const d of ['near', 'std']) {
+      const g0 = shot(0, d);
+      const hi = shot(60, d);
+      const mid = shot(12, d);
+      out[d] = { g0, hi, mid };
+    }
+    g.ctrl.camDist = 'std';
+    return out;
+  });
+  for (const d of ['near', 'std']) {
+    const o = r[d];
+    check(
+      o.hi.top <= 0.68 && o.hi.top > o.g0.top,
+      `${d}：離地 60 m 時頭頂在畫面內（NDC ${o.hi.top}，地面 ${o.g0.top}）`,
+    );
+    check(o.mid.foot > o.g0.foot + 0.05, `${d}：低跳時機體在畫面上往上移（腳 ${o.g0.foot} → ${o.mid.foot}）`);
+    check(o.hi.zoom > o.g0.zoom * 1.12, `${d}：高空時鏡頭拉遠（${o.g0.zoom} → ${o.hi.zoom}）`);
+  }
+  await ctx.close();
+}
+
 async function testBossTier(browser, base) {
   console.log('Boss 改版第 1 期：刁鑽度、失衡遞增、破綻、打斷大招、破甲充能、風格加成、擊破評價');
   const { ctx, page } = await newPage(browser, 'bosstier');
@@ -27691,6 +27837,8 @@ const STEPS = [
   ['testBossPower', (c) => testBossPower(c.browser, c.base)],
   ['testBossTier', (c) => testBossTier(c.browser, c.base)],
   ['testBossZone', (c) => testBossZone(c.browser, c.base)],
+  ['testVoidMaps', (c) => testVoidMaps(c.browser, c.base)],
+  ['testJumpCam', (c) => testJumpCam(c.browser, c.base)],
   ['testBossTier2', (c) => testBossTier2(c.browser, c.base)],
   ['testBossField', (c) => testBossField(c.browser, c.base)],
   [

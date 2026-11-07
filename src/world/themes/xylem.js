@@ -21,15 +21,19 @@ import {
 // o：{ h 街區高度, deep 海底高度, central 中央街區邊長, n [最少, 最多] 街區數, size [最小, 最大] 邊長, span 最長的橋 }
 // （o 的公尺數是舊尺度：機甲三倍高改版的街區、橋、高度在這裡乘上 G）
 const G = WS;
+// 2026-11-07（虛空地圖太容易掉下去）：街區加大、間距縮短（各變體的參數一起乘，保留彼此的差異）
+const ISLE_SIZE_K = 1.15,
+  ISLE_CENTRAL_K = 1.1,
+  ISLE_GAP_K = 0.7;
 export function planIslands(w, o0) {
   const o = {
     ...o0,
     h: o0.h * G,
     deep: o0.deep * G,
-    central: o0.central * G,
-    size: o0.size.map((v) => v * G),
+    central: o0.central * G * ISLE_CENTRAL_K,
+    size: o0.size.map((v) => v * G * ISLE_SIZE_K),
     span: o0.span * G,
-    gap: (o0.gap || 12) * G,
+    gap: (o0.gap || 12) * G * ISLE_GAP_K,
   };
   const lim = w.lim - 6 * G;
   const c = o.central / 2;
@@ -93,6 +97,7 @@ export function planIslands(w, o0) {
 export function buildBridges(w, bw0) {
   const I = w.islands,
     bw = bw0 * G;
+  I.bw = bw;
   for (const e of I.bridges) {
     const len = e.s1 - e.s0 + 3 * G,
       mid = (e.s0 + e.s1) / 2;
@@ -100,6 +105,84 @@ export function buildBridges(w, bw0) {
       z = e.axis === 'z' ? mid : e.at;
     w.addDeck(x, z, e.axis === 'z' ? bw : len, e.axis === 'z' ? len : bw, I.h, G, e.axis === 'z', null);
     if (len > 24 * G) w.addPillar(x, z, 1.2 * G, I.h - 40 * G, I.h - G, null);
+  }
+}
+// 接住墜落的下層平台（2026-11-07）：沿每個街區的外緣、比街區低 drop 的一圈平台（洋上都市＝海面的浮台，
+// 高空軌道＝下層的桁架），寬 width（舊尺度）；碰到別的街區時只伸到兩者中間，橋接上街區的地方留空（橋比較厚）。
+// 標成 ledge：isVoid 照樣當虛空（AI 不走下去、不生成東西、不記成站穩的位置），玩家掉下去後跳回上層
+export function buildLedges(w, width, drop) {
+  const I = w.islands,
+    W = width * G,
+    y = I.h - drop * G,
+    T = 0.8 * G;
+  const B = I.blocks;
+  const lim = w.lim + 6 * G;
+  // 從街區 b 的某一側往外，到別的街區（橫向有重疊的）的距離
+  const room = (b, side) => {
+    let d = 1e9;
+    for (const a of B) {
+      if (a === b) continue;
+      if (side === 'x0' || side === 'x1') {
+        if (a.z1 < b.z0 - W || a.z0 > b.z1 + W) continue;
+        if (side === 'x0' && a.x1 <= b.x0) d = Math.min(d, b.x0 - a.x1);
+        if (side === 'x1' && a.x0 >= b.x1) d = Math.min(d, a.x0 - b.x1);
+      } else {
+        if (a.x1 < b.x0 - W || a.x0 > b.x1 + W) continue;
+        if (side === 'z0' && a.z1 <= b.z0) d = Math.min(d, b.z0 - a.z1);
+        if (side === 'z1' && a.z0 >= b.z1) d = Math.min(d, a.z0 - b.z1);
+      }
+    }
+    return Math.min(W, d / 2 - 0.5);
+  };
+  // 橋在這一側接上街區的範圍（沿邊的座標，留 1 m）
+  const cuts = (b, side) => {
+    const out = [];
+    for (const e of I.bridges) {
+      const bw = (I.bw || 9 * G) / 2 + G;
+      if ((side === 'z0' || side === 'z1') && e.axis === 'z') {
+        const zEdge = side === 'z0' ? b.z0 : b.z1;
+        if (Math.abs(e.s0 - zEdge) < 1 || Math.abs(e.s1 - zEdge) < 1)
+          if (e.at > b.x0 - bw && e.at < b.x1 + bw) out.push([e.at - bw, e.at + bw]);
+      }
+      if ((side === 'x0' || side === 'x1') && e.axis === 'x') {
+        const xEdge = side === 'x0' ? b.x0 : b.x1;
+        if (Math.abs(e.s0 - xEdge) < 1 || Math.abs(e.s1 - xEdge) < 1)
+          if (e.at > b.z0 - bw && e.at < b.z1 + bw) out.push([e.at - bw, e.at + bw]);
+      }
+    }
+    return out.sort((p, q) => p[0] - q[0]);
+  };
+  const seg = (a0, a1, cs) => {
+    const out = [];
+    let s = a0;
+    for (const [c0, c1] of cs) {
+      if (c1 <= s || c0 >= a1) continue;
+      if (c0 > s) out.push([s, c0]);
+      s = Math.max(s, c1);
+    }
+    if (s < a1) out.push([s, a1]);
+    return out.filter(([p, q]) => q - p > 4 * G);
+  };
+  for (const b of B) {
+    // 沿 X 的兩側（z0、z1）跨過角落，沿 Z 的兩側不跨（角落不重疊）
+    for (const side of ['z0', 'z1', 'x0', 'x1']) {
+      const r = room(b, side);
+      if (r < 3 * G) continue;
+      // 街區的地形在邊緣內外各 G 之間往下斜，所以平台從邊緣往內 G 開始（看不到縫）
+      if (side === 'z0' || side === 'z1') {
+        const z = side === 'z0' ? b.z0 + (G - r) / 2 : b.z1 - (G - r) / 2;
+        if (Math.abs(z) > lim) continue;
+        const ex0 = room(b, 'x0') >= 3 * G ? room(b, 'x0') : 0,
+          ex1 = room(b, 'x1') >= 3 * G ? room(b, 'x1') : 0;
+        for (const [p, q] of seg(Math.max(-lim, b.x0 - ex0), Math.min(lim, b.x1 + ex1), cuts(b, side)))
+          w.addDeck((p + q) / 2, z, q - p, r + G, y, T, false, null).ledge = true;
+      } else {
+        const x = side === 'x0' ? b.x0 + (G - r) / 2 : b.x1 - (G - r) / 2;
+        if (Math.abs(x) > lim) continue;
+        for (const [p, q] of seg(b.z0 + G, b.z1 - G, cuts(b, side)))
+          w.addDeck(x, (p + q) / 2, r + G, q - p, y, T, true, null).ledge = true;
+      }
+    }
   }
 }
 
@@ -481,7 +564,8 @@ function planTerrain(w) {
   return planIslands(w, { h: H, deep: -30, central: 46, n: [5, 8], size: [30, 56], span: 44, gap: 12 });
 }
 function buildStructures(w) {
-  buildBridges(w, 9);
+  buildBridges(w, 12); // 2026-11-07：橋加寬（9 → 12）
+  buildLedges(w, 6, 2.3); // 海面的浮台（比街區低約 7 m）
   // 街區邊緣的護欄（裝飾，不擋）
   const rm = mat(0xe6eaee, { roughness: 0.4, metalness: 0.4 });
   for (const b of w.islands.blocks) {
@@ -562,7 +646,7 @@ export const XYLEM = {
   hasRocks: false,
   props: 'xylem',
   water: { level: -2.2, color: 0x1f4a66, opacity: 0.93, wide: true },
-  void: { y: -4, fall: -6, ref: H },
+  void: { y: -4, fall: -6, fallP: -10, ref: H }, // fallP：玩家操作的機體掉到這裡才拉回（有時間飛回來）
   fogFar: 220,
   featureKinds: [],
   corridor: { p: 0.5, kinds: ['rail'] },
