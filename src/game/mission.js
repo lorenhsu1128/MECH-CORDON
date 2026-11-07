@@ -720,6 +720,10 @@ Object.assign(Game.prototype, {
       ...(this.encGroups || []).map((q) => q.pend || []),
       ...(this.guardPend || []).map((q) => q.list.map((x) => x[0])),
     ];
+    // 戰鬥中由別的敵人變出來的（增援清單裡沒有）：實驗體融合成的大型個體（entities/mech-foe.js 的 chimera）。
+    // 第一次建要 40～50 ms（docs/perf-campaign-plan.md 第 5 期）
+    const here = new Set([...lists.flat(), ...(this.enemies || []).map((e) => e.etype)]);
+    if (here.has('blob')) lists.push(['chimera']);
     for (const L of lists)
       for (const t of L) {
         if (seen.has(t)) continue;
