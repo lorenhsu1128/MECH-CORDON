@@ -211,7 +211,7 @@ Object.assign(MechEntity.prototype, {
         return false;
       return !g
         .destructibles()
-        .some((q) => q.center && Math.hypot(q.pos.x - x, q.pos.z - z) < (q.radius || 1) + 4.5 * MS);
+        .some((q) => q.center && q.pos && Math.hypot(q.pos.x - x, q.pos.z - z) < (q.radius || 1) + 4.5 * MS);
     };
     if (clear(this.pos.x, this.pos.z)) return;
     for (let r = 4 * DS; r <= 16 * DS; r += 3 * DS)

@@ -712,6 +712,8 @@ Object.assign(MechEntity.prototype, {
         );
         ring.rotation.x = -HP2;
         ring.rotation.z = i * 2;
+        // userData 不是空的：裝甲板脫落後 rig.dmg.remerge() 不會把環紋（加色、不寫深度）併進機體
+        ring.userData.helper = true;
         vx.add(ring);
       }
       vx.userData.helper = true;

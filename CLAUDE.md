@@ -69,6 +69,7 @@ npm run publish:server  # 伺服器預設組的來源發佈到執行中的伺服
 ```
 
 - 每次修改後執行 `npm run lint`、`npm run format:check`，以及 `npm test`。
+- **新增關卡（主線的出擊或區段、地圖主題、主題變體、地標）之後，一定要跑卡頓檢查** `node scripts/perf-campaign.js`（`--only=<出擊 id>`、`--ch=<章>`、`--all` 連第 2、3 周目的委託、`--segsecs`、`--hitch`、`--tag`、`--resume`）：自動操作的玩家依序打完每個出擊的每一段，報告 `test-results/perf-campaign/<tag>.md` 列出每一段的卡頓（兩格間隔 ≥ 50 ms）與原因（著色器編譯、GC、事件、主迴圈的哪一段、迴圈外的長任務）；有新的卡點先處理。量測時電腦不要做其他重的事。共用的量測部分在 `scripts/perf-lib.js`（`perf-probe.js` 也用它）。
 - port 80 被佔用時在控制台改 port，設定寫入 `rubicon-server.json`（已 gitignore）。
 - 伺服器會在 `<head>` 注入 `window.RUBICON_SERVER`，遊戲據此改用 WebSocket 中繼模式；直接開 HTML 檔則走 PeerJS 模式。同一瀏覽器多分頁測試多人可加 `?lan=local`，觀戰用 `?spectate=<peerId>`。
 - 模型庫：`dist/model-library.html` 直接開啟，或伺服器上的 `/models`；網址 `#槽位 id`（例如 `#mech/player`）直接開啟該模型的檢視窗。頂端的「← 回遊戲」：從遊戲開的分頁切回遊戲並關閉自己，否則在同一分頁開遊戲（遊戲分頁重新取得焦點時，停在標題或車庫就自動重新讀取本地模型）。格狀檢視每行 3／5／7 格與「全部旋轉」記在 localStorage `rubicon_lib_grid`（5、7 格預設只轉游標停留的格子；沒有捲動、旋轉或內容變化時 `grid.js` 不重畫）。
