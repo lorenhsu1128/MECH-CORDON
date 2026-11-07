@@ -33,15 +33,22 @@ class BuiltinMechLib {
   async _load() {
     const set = new ModelSet(BUILTIN_MECH_SET, '內建預設機甲');
     set.joints = PLAYER_MECH.joints || {};
-    for (const [slot, bytes] of Object.entries(PLAYER_MECH.models)) {
-      try {
-        const { root } = await parseTemplate(bytes);
-        set.tpls.set(slot, { tpl: root, err: null, name: slot.split('/').pop() + '.glb' });
-      } catch (e) {
-        set.tpls.set(slot, { tpl: null, err: e.message || String(e), name: slot });
-        console.warn('內建預設機甲：' + slot, e);
+    // 同時解析 4 個（等貼圖在背景解碼的空檔讓別的檔案用；net-models.js 的 PARSE_N 同理）
+    const list = Object.entries(PLAYER_MECH.models);
+    let i = 0;
+    const worker = async () => {
+      while (i < list.length) {
+        const [slot, bytes] = list[i++];
+        try {
+          const { root } = await parseTemplate(bytes);
+          set.tpls.set(slot, { tpl: root, err: null, name: slot.split('/').pop() + '.glb' });
+        } catch (e) {
+          set.tpls.set(slot, { tpl: null, err: e.message || String(e), name: slot });
+          console.warn('內建預設機甲：' + slot, e);
+        }
       }
-    }
+    };
+    await Promise.all(Array.from({ length: Math.min(4, list.length) }, worker));
     this.set = set;
     return set;
   }

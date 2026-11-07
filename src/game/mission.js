@@ -298,6 +298,7 @@ Object.assign(Game.prototype, {
 
   // ---------- mission ----------
   startMission() {
+    if (this.srvGate(() => this.startMission())) return; // 伺服器預設組還在讀：讀完再進來（local-lib.js）
     const S = this.save;
     const L = S.level;
     const mp0 = !!(this.net && this.net.role === 'host');

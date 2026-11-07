@@ -95,6 +95,20 @@ function writeAtomic(file, data) {
 function saveManifest() {
   manifest.rev = (manifest.rev || 0) + 1;
   writeAtomic(path.join(DEF_DIR, 'manifest.json'), JSON.stringify(manifest, null, 2));
+  revChanged();
+}
+// 伺服器預設組改變時通知開著的遊戲（WebSocket /ws-models）：整組發佈會連續寫很多次，停手 1 秒才送
+const revWatchers = new Set();
+let revTimer = null;
+function revChanged() {
+  clearTimeout(revTimer);
+  revTimer = setTimeout(() => {
+    const msg = JSON.stringify({ t: 'rev', rev: manifest.rev });
+    for (const ws of revWatchers)
+      try {
+        ws.send(msg);
+      } catch (e) {}
+  }, 1000);
 }
 const STYLES_PATH = path.join(MODELS_DIR, 'styles.json');
 let styles = null;
@@ -763,8 +777,21 @@ function startGame(port) {
     const server = http.createServer(handler);
     // WebSocket 中繼：http 與 https 共用（noServer，兩個伺服器的 upgrade 都交給同一個 wss）
     const wss = new WebSocketServer({ noServer: true });
+    // /ws-models：只送伺服器預設組的 rev（連上時送一次目前的，之後改變時送）
+    const wssRev = new WebSocketServer({ noServer: true });
+    wssRev.on('connection', (ws) => {
+      revWatchers.add(ws);
+      ws.on('close', () => revWatchers.delete(ws));
+      ws.on('error', () => {});
+      try {
+        ws.send(JSON.stringify({ t: 'rev', rev: loadManifest().rev }));
+      } catch (e) {}
+    });
     const upgrade = (req, sock, head) => {
-      if (req.url.split('?')[0] !== '/ws') return sock.destroy();
+      const p = req.url.split('?')[0];
+      if (p === '/ws-models')
+        return wssRev.handleUpgrade(req, sock, head, (ws) => wssRev.emit('connection', ws, req));
+      if (p !== '/ws') return sock.destroy();
       wss.handleUpgrade(req, sock, head, (ws) => wss.emit('connection', ws, req));
     };
     server.on('upgrade', upgrade);

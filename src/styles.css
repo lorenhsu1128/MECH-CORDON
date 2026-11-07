@@ -1975,6 +1975,20 @@ select {
   min-height: 1.4em;
   word-break: break-all;
 }
+/* 標題列下方：背景讀取伺服器預設組的小進度條（local-lib.js 的 srvTitleProg） */
+#srvLoad {
+  display: none;
+  margin: 0 0 12px;
+  max-width: 360px;
+  font-size: 12px;
+}
+#srvLoad.on {
+  display: block;
+}
+#srvLoad .lmBar {
+  height: 4px;
+  margin: 0 0 4px;
+}
 .lmBar {
   height: 8px;
   margin: 10px 0 6px;

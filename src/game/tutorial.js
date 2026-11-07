@@ -146,6 +146,7 @@ Object.assign(Game.prototype, {
   },
   // ---------- 開始／結束 ----------
   tutStart(lid, wid) {
+    if (this.srvGate(() => this.tutStart(lid, wid))) return; // 伺服器預設組還在讀：讀完再進來（local-lib.js）
     const L = lessonById(lid);
     if (!L) return;
     SFX.ui();

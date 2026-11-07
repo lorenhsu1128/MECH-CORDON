@@ -192,6 +192,7 @@ Object.assign(Game.prototype, {
   },
   // ---------- 開始／離開 ----------
   rangeStart() {
+    if (this.srvGate(() => this.rangeStart())) return; // 伺服器預設組還在讀：讀完再進來（local-lib.js）
     const cfg = this.rangeCfgGet();
     const camp = this.range ? this.range.camp : this.camp; // 轉場整備：主線的狀態先收起來
     this.camp = null;

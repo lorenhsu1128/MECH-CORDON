@@ -111,6 +111,7 @@ Object.assign(Game.prototype, {
   },
   // ---------- 模擬戰 ----------
   simStart(kind, key) {
+    if (this.srvGate(() => this.simStart(kind, key))) return; // 伺服器預設組還在讀：讀完再進來（local-lib.js）
     SFX.ui();
     this.clearMission();
     this.camp = null;

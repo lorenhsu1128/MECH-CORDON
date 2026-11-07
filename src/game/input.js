@@ -1183,8 +1183,8 @@ Object.assign(Game.prototype, {
     const $ = (id) => document.getElementById(id);
     this.bindSaves();
     $('btnSortie').onclick = () => {
-      // 單機出擊前重新讀取本地模型庫
-      if (this.lmBusy) return;
+      // 單機出擊前重新讀取本地模型庫（伺服器預設組還在讀時先顯示進度、讀完再按一次）
+      if (this.lmBusy || this.srvGate(() => $('btnSortie').onclick())) return;
       this.lmBusy = true;
       this.lmRefresh()
         .catch((e) => console.warn('本地模型庫讀取失敗', e))

@@ -110,6 +110,7 @@ Object.assign(Game.prototype, {
   },
   // ---------- 開啟／離開 ----------
   edOpen(L, o = {}) {
+    if (this.srvGate(() => this.edOpen(L, o))) return; // 伺服器預設組還在讀：讀完再進來（local-lib.js）
     if (this.net && this.net.role) return;
     if (this.edPhone()) return this.flashMsg('請用電腦或平板編輯關卡', 0xff8a8a, 2);
     SFX.init();

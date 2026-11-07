@@ -62,6 +62,7 @@ Object.assign(Game.prototype, {
   // ---------- 播放 ----------
   // key：CINES 的鍵；done：播完或略過後呼叫；opt.ctx：給劇本產生器的資料（周目、抉擇）；opt.at：從第幾秒開始（測試）
   async cinePlay(key, done, opt = {}) {
+    if (this.srvGate(() => this.cinePlay(key, done, opt))) return; // 伺服器預設組還在讀：讀完再進來（local-lib.js）
     const make = CINES[key];
     if (!make) return done && done();
     SFX.init();

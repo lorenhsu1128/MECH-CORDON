@@ -1,5 +1,6 @@
 // Game：本地模型庫（單人模式套用模型庫存在瀏覽器裡的 GLB 與關節設定）
 // 讀取時機：進車庫、單機出擊前（沒有變動的檔案沿用快取），以及標題畫面的「重新載入本地模型」
+// 伺服器網址：伺服器預設組在開遊戲時就背景讀（lmInit），出擊入口以 srvGate 等它，伺服器改變時由 /ws-models 通知
 import { Game } from './game.js';
 import { escHtml } from '../core/html.js';
 import { LM_GROUPS, LocalModels, SERVER_SET, groupOf, setScoped } from '../render/local-models.js';
@@ -16,6 +17,25 @@ import { SFX } from '../audio/audio.js';
 import { partById } from '../data/parts.js';
 
 const $ = (id) => document.getElementById(id);
+// 伺服器預設組改變（/ws-models 通知）時可以馬上在背景重新讀取的畫面（任務中不讀，回到這些畫面才讀）
+const SRV_IDLE = new Set([
+  'title',
+  'garage',
+  'hub',
+  'brief',
+  'mp',
+  'lobby',
+  'saves',
+  'levels',
+  'result',
+  'pilot',
+  'sim',
+  'record',
+  'rangemenu',
+  'epilogue',
+  'cinelib',
+  'voicelab',
+]);
 const CATALOG = new Map(MODEL_CATALOG.map((e) => [e.id, e]));
 // 機甲清單換上的部位（組裝鍵、零件分類）；發電機、火控與消耗品保留目前的
 const MECH_KEYS = [
@@ -83,6 +103,49 @@ Object.assign(Game.prototype, {
     });
     // 內建的玩家預設機甲：開啟遊戲就開始解析，讀完時停在機甲庫就重建預覽
     BuiltinMech.load().then((set) => set && this.state === 'garage' && this.renderGarage());
+    // 伺服器網址：開遊戲就在背景讀伺服器預設組（解析要幾秒，出擊入口以 srvGate 等它），
+    // 之後伺服器的 rev 改變時主動通知、在選單畫面背景重新讀取
+    if (onServer()) {
+      this.srvRefresh();
+      ServerModels.watch(() => {
+        this.srvPending = true;
+        this.srvIdleRefresh();
+      });
+      setInterval(() => this.srvPending && this.srvIdleRefresh(), 2000);
+    }
+  },
+  // 伺服器通知改變過：停在選單畫面時背景重新讀取，讀完重建機甲庫的預覽（作戰室窗外的機體由 hubMechSync 換上）
+  srvIdleRefresh() {
+    if (!this.srvPending || ServerModels.busy() || !SRV_IDLE.has(this.state)) return;
+    this.srvPending = false;
+    const rev = ServerModels.rev;
+    this.srvRefresh().then(() => {
+      if (ServerModels.rev !== rev && this.state === 'garage') this.renderGarage();
+    });
+  },
+  // 出擊入口：伺服器預設組還在讀時顯示進度、讀完再呼叫 retry，回傳 true（呼叫端直接 return）；
+  // 沒在讀（或不是伺服器網址）時回傳 false、照常同步執行
+  srvGate(retry) {
+    if (!ServerModels.busy()) return false;
+    if (this.srvGating) return true;
+    this.srvGating = true;
+    const p = this.lmProgress('讀取伺服器模型組…', true);
+    ServerModels.refresh(p.step).finally(() => {
+      $('lmLoad').classList.remove('on');
+      this.srvGating = false;
+      retry();
+    });
+    return true;
+  },
+  // 標題列下方的小進度條（背景讀取伺服器預設組時；只有要下載或解析檔案才顯示）
+  srvTitleProg(done, total) {
+    const el = $('srvLoad');
+    if (!el) return;
+    const on = total > 0 && done < total;
+    el.classList.toggle('on', on);
+    if (!on) return;
+    $('srvLoadBar').style.width = (done / total) * 100 + '%';
+    $('srvLoadTxt').textContent = `讀取伺服器模型組… ${done}／${total}`;
   },
   // 機甲用哪一個模型組（buildMech 的 opts.source；null＝全域來源）。o 是 MechEntity 的 opts
   // 伺服器網址：玩家機甲（單人）本地模型庫選的模型組，沒有就用伺服器預設組；玩家機甲（多人）用該玩家上傳的模型組
@@ -136,12 +199,17 @@ Object.assign(Game.prototype, {
       },
     };
   },
-  // 伺服器網址：重新讀取伺服器預設組（沒變動就沿用）
-  async srvRefresh() {
+  // 伺服器網址：重新讀取伺服器預設組（只抓清單比對，沒變動就沿用）。平常在背景讀（標題列下方的小進度條）；
+  // manual（設定的「重新讀取」）時顯示讀取視窗
+  async srvRefresh(manual = false) {
     if (!onServer()) return null;
-    const p = this.lmProgress('讀取伺服器模型組…', false);
-    const set = await ServerModels.refresh(p.step);
-    p.end();
+    const p = manual ? this.lmProgress('讀取伺服器模型組…', true) : null;
+    const set = await ServerModels.refresh((d, t, id) => {
+      this.srvTitleProg(d, t);
+      if (p) p.step(d, t, id);
+    });
+    this.srvTitleProg(0, 0);
+    if (p) $('lmLoad').classList.remove('on');
     return set;
   },
   // 重新讀取本地模型庫（伺服器網址時也讀伺服器預設組）；manual：標題畫面的按鈕（一律顯示進度與結果）
@@ -361,7 +429,8 @@ Object.assign(Game.prototype, {
         this.renderLocalModels();
       };
     $('lmReload').onclick = () => this.lmRefresh();
-    if ($('srvReload')) $('srvReload').onclick = () => this.srvRefresh().then(() => this.renderLocalModels());
+    if ($('srvReload'))
+      $('srvReload').onclick = () => this.srvRefresh(true).then(() => this.renderLocalModels());
     $('lmSet').onchange = (e) => {
       S.set = e.target.value;
       LocalModels.saveSettings();

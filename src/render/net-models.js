@@ -53,6 +53,10 @@ async function parseEntry(buf, name) {
 }
 
 // ---------- 伺服器預設組 ----------
+// 比對：清單的 rev 沒變就整份沿用；rev 變了只下載、解析雜湊不同的 GLB（網址帶雜湊，伺服器標成 immutable，
+// 重開網頁也是從瀏覽器快取拿）。解析結果只在這一頁的記憶體裡，所以每次開網頁都要解析一次：遊戲啟動就在背景讀
+// （game/local-lib.js 的 lmInit），出擊入口以 srvGate 等它讀完。watch：伺服器的 rev 改變時主動通知（/ws-models）
+const PARSE_N = 4; // 同時解析幾個（等貼圖在背景解碼的空檔讓別的檔案用）
 class ServerModelLib {
   constructor() {
     this.set = null;
@@ -60,21 +64,40 @@ class ServerModelLib {
     this.byHash = new Map(); // GLB 雜湊 → 解析結果（重新讀取時沒變的檔案沿用）
     this.loading = null;
     this.error = null;
+    this.prog = null; // 讀取中：{ done, total, id }（只有要下載或解析檔案時才有 total）
+    this.progress = new Set(); // (done, total, id) → void：讀取進度
+    this.ws = null;
   }
-  // 重新讀取（manifest 的 rev 沒變就沿用）；onProgress(完成數, 總數, 槽位)
+  // 讀取中（還沒讀完）
+  busy() {
+    return !!this.loading;
+  }
+  // 重新讀取（manifest 的 rev 沒變就沿用）；onProgress(完成數, 總數, 槽位)：這一次讀取的進度
   refresh(onProgress) {
     if (!onServer()) return Promise.resolve(null);
-    if (this.loading) return this.loading;
-    this.loading = this._refresh(onProgress)
+    if (onProgress) {
+      this.progress.add(onProgress);
+      if (this.prog) onProgress(this.prog.done, this.prog.total, this.prog.id);
+    }
+    if (this.loading) return this.loading.finally(() => this.progress.delete(onProgress));
+    this.loading = this._refresh()
       .catch((e) => {
         this.error = e.message || String(e);
         console.warn('伺服器模型組讀取失敗', e);
         return null;
       })
-      .finally(() => (this.loading = null));
+      .finally(() => {
+        this.loading = null;
+        this.prog = null;
+        this.progress.clear();
+      });
     return this.loading;
   }
-  async _refresh(onProgress) {
+  _step(done, total, id) {
+    this.prog = { done, total, id };
+    for (const f of this.progress) f(done, total, id);
+  }
+  async _refresh() {
     const r = await fetch('/api/models/default', { cache: 'no-store' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const m = await r.json();
@@ -85,26 +108,74 @@ class ServerModelLib {
     set.asm = m.asm || null;
     const list = Object.entries(m.models || {});
     const keep = new Map();
+    const pend = new Map(); // 雜湊 → 解析中的 Promise（兩個槽位同一個檔案只解析一次）
+    const todo = list.filter(([, info]) => !this.byHash.has(info.h)).length;
     let done = 0;
-    for (const [slot, info] of list) {
+    if (todo) this._step(0, todo, '');
+    const one = async (slot, info) => {
       let e = this.byHash.get(info.h);
       if (!e) {
-        if (onProgress) onProgress(done, list.length, slot);
-        await tick();
-        const res = await fetch(`/api/models/default/glb/${slotUrl(slot)}?h=${info.h}`);
-        e = res.ok
-          ? await parseEntry(await res.arrayBuffer(), info.name)
-          : { tpl: null, err: 'HTTP ' + res.status, name: info.name };
+        if (!pend.has(info.h))
+          pend.set(
+            info.h,
+            (async () => {
+              await tick();
+              const res = await fetch(`/api/models/default/glb/${slotUrl(slot)}?h=${info.h}`);
+              return res.ok
+                ? await parseEntry(await res.arrayBuffer(), info.name)
+                : { tpl: null, err: 'HTTP ' + res.status, name: info.name };
+            })(),
+          );
+        e = await pend.get(info.h);
+        done++;
+        this._step(done, todo, slot);
       }
       keep.set(info.h, e);
       set.tpls.set(slot, { ...e, name: info.name });
-      done++;
-      if (onProgress) onProgress(done, list.length, slot);
-    }
+    };
+    let i = 0;
+    const worker = async () => {
+      while (i < list.length) {
+        const [slot, info] = list[i++];
+        await one(slot, info);
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(PARSE_N, list.length) }, worker));
     this.byHash = keep;
     this.set = set;
     this.rev = m.rev;
     return set;
+  }
+  // 伺服器的 rev 改變時通知（WebSocket /ws-models；斷線後重連）；onRev(rev)：和目前讀到的不同時呼叫
+  watch(onRev) {
+    if (!onServer() || this.ws || typeof WebSocket === 'undefined') return;
+    let wait = 2000;
+    const open = () => {
+      let ws;
+      try {
+        ws = new WebSocket(
+          (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws-models',
+        );
+      } catch (e) {
+        return;
+      }
+      this.ws = ws;
+      ws.onopen = () => (wait = 2000);
+      ws.onmessage = (ev) => {
+        let o;
+        try {
+          o = JSON.parse(ev.data);
+        } catch (e) {
+          return;
+        }
+        if (o && o.t === 'rev' && o.rev !== this.rev) onRev(o.rev);
+      };
+      ws.onclose = () => {
+        setTimeout(open, wait);
+        wait = Math.min(wait * 2, 60000);
+      };
+    };
+    open();
   }
   source() {
     return this.set;

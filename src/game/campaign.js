@@ -204,6 +204,7 @@ Object.assign(Game.prototype, {
   // ---------- 出擊開始／紀錄點 ----------
   // o.replay＝從作戰紀錄重打（模組從零開始、不影響這一章持有的）、o.heat＝危險條款
   campBegin(sid = SORTIE_DEFAULT, o = {}) {
+    if (this.srvGate(() => this.campBegin(sid, o))) return; // 伺服器預設組還在讀：讀完再進來（local-lib.js）
     const so = SORTIES[sid],
       st = this.campStory();
     this.bossRank = null; // Boss 擊破評價（boss-tier.js）
@@ -1391,6 +1392,7 @@ Object.assign(Game.prototype, {
   },
   // 機庫的「繼續出擊」：從存檔的紀錄點接回
   campResume() {
+    if (this.srvGate(() => this.campResume())) return; // 伺服器預設組還在讀：讀完再進來（local-lib.js）
     SFX.ui();
     if (this.campStory().sortie && this.campRestore())
       this.campShowTrans(this.camp.trans[this.camp.seg] || TRANSITIONS.drop, 'resume');

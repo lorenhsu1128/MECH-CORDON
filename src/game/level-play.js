@@ -65,6 +65,7 @@ Object.assign(Game.prototype, {
   // ---------- 開始 ----------
   // full＝整份關卡（已經過 loadLevel）；o：{ test 編輯器試玩, at 從這裡試玩的位置, src 'local'／'server' }
   lvPlay(full, o = {}) {
+    if (this.srvGate(() => this.lvPlay(full, o))) return; // 伺服器預設組還在讀：讀完再進來（local-lib.js）
     SFX.init();
     this.hkReset(); // 人員擊殺數（crowd.js）
     this.lvFull = full;
