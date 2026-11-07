@@ -27166,24 +27166,34 @@ async function testDestructCollapse(browser, base) {
       pl.vel.set(0, 0, 0);
       const hp0 = pl.hp,
         y0 = pl.pos.y;
-      window.__pump(5);
+      // 甲板：掉下來（2.5 秒）、碎裂淡出（4 秒）之後消失
+      window.__pump(mode === 'drop' ? 8 : 5);
       out.fell = pl.pos.y < y0 - 1;
       out.dy =
         +(pl.pos.y - y0).toFixed(1) +
         '/' +
         +(bb.min.y - w.groundAt((bb.min.x + bb.max.x) / 2, (bb.min.z + bb.max.z) / 2, bb.min.y)).toFixed(1);
       out.landed = !!B.landed;
-      out.wreck = !!B.wreck && w.obstacles.includes(B.wreck);
+      out.wreck =
+        mode === 'drop'
+          ? !B.wreck && B.gone && !B.piv.parent && !w.meshes.includes(B.ob.group)
+          : !!B.wreck && w.obstacles.includes(B.wreck);
       out.gone = !B.obs.some((o) => w.obstacles.includes(o));
       out.hurt = pl.hp < hp0;
-      out.low = B.wreck ? B.wreck.top - (mode === 'drop' ? B.wreck.y + 0.5 : bb.min.y) <= 7.01 : false;
+      out.low =
+        mode === 'drop'
+          ? true
+          : B.wreck
+            ? B.wreck.top - (mode === 'drop' ? B.wreck.y + 0.5 : bb.min.y) <= 7.01
+            : false;
       out.supWreck = mode !== 'drop' || B.sup.every((q) => q.dead && q.wreck);
       out.wreck0 = !!W === false;
       // 客機：血量表帶方向時直接躺好
       const C = w.props.find((p) => p.body && !p.collapsed);
       if (C) {
         g.propApplyTable([[C.idx, 0, 2]]);
-        out.cli = C.collapsed && C.landed && w.obstacles.includes(C.wreck);
+        out.cli =
+          C.collapsed && C.landed && (C.mode === 'drop' ? C.gone && !C.wreck : w.obstacles.includes(C.wreck)); // 甲板：直接消失
       }
       return out;
     }, mode);
@@ -27204,7 +27214,7 @@ async function testDestructCollapse(browser, base) {
     check(r.notYet && r.ev, `${map}：承重柱全壞才倒、送出 pcol（方向 ${r.dir}）`);
     check(
       r.landed && r.wreck && r.gone && r.low && (mode === 'sink') === r.sank && r.supWreck,
-      `${map}：${{ sink: '往下塌成瓦礫堆', fall: '整個倒下', drop: '甲板掉到地上（橋墩換成殘骸）' }[mode]}，換成矮的碰撞`,
+      `${map}：${{ sink: '往下塌成瓦礫堆', fall: '整個倒下', drop: '甲板掉到地上碎裂、淡出消失（橋墩換成殘骸）' }[mode]}，${mode === 'drop' ? '不留碰撞' : '換成矮的碰撞'}`,
     );
     check(
       r.hurt && (mode !== 'drop' || r.fell),
@@ -27287,13 +27297,34 @@ async function testDestructSegs(browser, base) {
       } else if (map === 'grid086') {
         const T = w.props.filter((p) => p.grid && !p.collapsed && far(p) && p.sup.length);
         out.n = T.length;
-        const t = T[0];
+        // 有第二層的第一層格子：第二層的支柱站在它上面，跟著倒
+        const up = (q) =>
+          w.props.find(
+            (u) =>
+              u.grid &&
+              u !== q &&
+              !u.collapsed &&
+              Math.abs(u.base.min.y - q.ob.top) > 10 &&
+              u.base.min.y > q.ob.top &&
+              Math.abs(u.ob.x - q.ob.x) < 1 &&
+              Math.abs(u.ob.z - q.ob.z) < 1,
+          );
+        const t = T.find((q) => !up(q)) || T[0];
         const top = t.ob.top;
         const shared = t.sup.filter((q) => q.ofs.length > 1).length;
         out.shared = shared;
+        const t2 = T.find((q) => up(q)) || null;
+        const u2 = t2 && up(t2);
         kill(t);
-        window.__pump(8, () => t.collapsed && t.landed); // 推進到落地（遊戲節奏小於 1 時要比較久）
-        out.drop = t.collapsed && t.landed && !w.obstacles.includes(t.ob) && t.wreck.top < top - 3;
+        window.__pump(12, () => t.collapsed && t.gone); // 推進到消失（遊戲節奏小於 1 時要比較久）
+        out.drop =
+          t.collapsed && t.landed && t.gone && !t.wreck && !w.obstacles.includes(t.ob) && !t.piv.parent;
+        out.dropY = +(t.shape.y1 - top).toFixed(1);
+        if (t2 && t2 !== t) {
+          kill(t2);
+          window.__pump(14, () => t2.gone && u2.gone);
+          out.cascade = t2.gone && u2.collapsed && u2.gone && u2.sup.every((q) => q.dead);
+        }
         out.pillars = t.sup.filter((q) => q.ofs.length > 1).every((q) => !q.dead); // 旁邊的格子的支柱還在
       } else if (map === 'institute') {
         out.roof = !!w.roofMesh;
@@ -27352,7 +27383,14 @@ async function testDestructSegs(browser, base) {
       check(r.flow, '壩體的缺口：上游的水從缺口噴出（水流）');
       check(r.prot !== false, '出生點附近的壩體只受損');
     } else if (map === 'grid086') {
-      check(r.n > 0 && r.drop, `Grid 086 的甲板格子（${r.n} 格）：整格掉下去、碰撞換到下面`);
+      check(
+        r.n > 0 && r.drop,
+        `Grid 086 的甲板格子（${r.n} 格）：整格掉下去、碎裂淡出消失、不留碰撞（${r.dropY}）`,
+      );
+      check(
+        r.cascade !== false,
+        `第一層掉下去時，站在上面的第二層支柱與格子跟著倒、一起消失（${r.cascade}）`,
+      );
       check(r.pillars, `共用的支柱留著（${r.shared} 根撐著旁邊的格子）`);
     } else if (map === 'institute') {
       check(
