@@ -227,7 +227,16 @@ function instrument() {
   const SP = THREE.MeshStandardMaterial.prototype,
     obc = SP.onBeforeCompile;
   SP.onBeforeCompile = function (sh, r) {
-    if (W.on) W.nb.push({ f: W.frames.length, m: this, st: g.state });
+    if (W.on) {
+      // 編譯當下就找它屬於哪個物件（之後碎片、特效可能已經不在場景裡）
+      const m = this;
+      let at = null;
+      g.scene.traverse((o) => {
+        if (!at && o.material && (o.material === m || (Array.isArray(o.material) && o.material.includes(m))))
+          at = o;
+      });
+      W.nb.push({ f: W.frames.length, m, st: g.state, at });
+    }
     return obc.call(this, sh, r);
   };
   const loop = P.loop;
@@ -338,7 +347,7 @@ function summarize() {
   };
   const nb = W.nb.map((x) => {
     const m = x.m,
-      o = owner.get(m);
+      o = x.at || owner.get(m);
     return {
       f: x.f,
       st: x.st,

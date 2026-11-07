@@ -269,7 +269,19 @@ export class TextFx {
       s.endDelay = 0;
     }
     const it = { cue, s, t: 0, scene: null, ready: false, wait: 0, slot: CUES[cue].slot, opt, key: '' };
-    fontsFor(s).then(() => (it.ready = true));
+    fontsFor(s).then(() => {
+      it.ready = true;
+      // 疊加畫布的項目：字型好了就先建好場景（以前等到第一次畫才建，一段開場的第一個橫幅會卡 20～160 ms；
+      // 出擊時主迴圈在預熱、停著，這時建正好）。之後畫的時候大小不同才重建
+      if (!opt.host && it.slot && !it.scene) {
+        try {
+          const r = slotRect(it.slot, innerWidth, innerHeight, false);
+          this.build(it, r.w, r.h);
+        } catch (e) {
+          /* 照原本第一次畫的時候建 */
+        }
+      }
+    });
     return it;
   }
   show(cue, main, sub, opt = {}) {
@@ -291,7 +303,7 @@ export class TextFx {
     if (!el) return null;
     this.unhost(el);
     if (!this.on) return null;
-    const it = this.make(cue, main, sub, { noExit: true, ...opt });
+    const it = this.make(cue, main, sub, { noExit: true, ...opt, host: true });
     let cv = el.querySelector(':scope > canvas.tfxC');
     if (!cv) {
       cv = document.createElement('canvas');
@@ -418,7 +430,7 @@ export class TextFx {
       return !st || st.includes(state) || (it.opt.freeze && it.opt.freeze.includes(state));
     });
     // 全螢幕的疊加畫布：上一格沒畫、這一格也沒有項目時不清（以前每格清整張畫布，任務中約 1 ms；2026-11-07）
-    if (!this.items.length && !this.dirty) return this.hostTick(dt);
+    if (!this.items.length && !this.dirty) return this.hostTick(dt, state);
     this.dirty = this.items.length > 0;
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.clearRect(0, 0, this.cv.width, this.cv.height);
@@ -444,10 +456,12 @@ export class TextFx {
       if (it.slot !== 'full') this.backdrop(it, r, dpr);
       c.drawImage(R.canvas, r.x * dpr, r.y * dpr, r.w * dpr, r.h * dpr);
     }
-    this.hostTick(dt);
+    this.hostTick(dt, state);
   }
-  // DOM 裡的標題
-  hostTick(dt) {
+  // DOM 裡的標題（轉場、結果、結局畫面）：任務中不檢查——讀 offsetParent／clientWidth 會讓瀏覽器每格重新排版
+  // （任務中每格約 0.5～1 ms；2026-11-07）
+  hostTick(dt, state) {
+    if (state === 'play' || !this.hosts.size) return;
     for (const [el, it] of this.hosts) {
       if (!el.isConnected) {
         this.hosts.delete(el);

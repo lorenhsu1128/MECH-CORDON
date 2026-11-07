@@ -829,11 +829,16 @@ Object.assign(Game.prototype, {
       }
     }
   },
-  crowdBlood(x, y, z, mode) {
-    const C = this.crowd;
-    const G = bloodGeos();
-    const v = C.blood.length % G.length;
-    const mat = new THREE.MeshStandardMaterial({
+  // 出擊的著色器預熱（render-setup.js 的 shaderWarm）：降落傘與血跡的材質第一次出現時才編譯，
+  // 擊破時乘員跳傘、小人被踩死那一格會卡 150 ms 左右（2026-11-07）
+  crowdWarm() {
+    const g = new THREE.Group();
+    g.add(chuteMesh());
+    g.add(new THREE.Mesh(bloodGeos()[0], this.crowdBloodMat('red')));
+    return g;
+  },
+  crowdBloodMat(mode) {
+    return new THREE.MeshStandardMaterial({
       color: BLOOD_COL[mode] || BLOOD_COL.red,
       roughness: 0.35,
       metalness: 0,
@@ -844,6 +849,12 @@ Object.assign(Game.prototype, {
       polygonOffsetFactor: -2,
       polygonOffsetUnits: -2,
     });
+  },
+  crowdBlood(x, y, z, mode) {
+    const C = this.crowd;
+    const G = bloodGeos();
+    const v = C.blood.length % G.length;
+    const mat = this.crowdBloodMat(mode);
     const m = new THREE.Mesh(G[v], mat);
     const s = 0.7 + C.rng() * 0.6;
     m.scale.set(s * 0.1, 1, s * 0.1); // 一小攤：從小慢慢擴大

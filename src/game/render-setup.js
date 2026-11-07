@@ -154,6 +154,7 @@ Object.assign(Game.prototype, {
       // 增援會出現的程式模型（載具、無人機…）先建一次（mission.js 的 typePrewarm）：只在房主／單機
       if (extra && this.typePrewarm && !(this.net && this.net.role === 'client'))
         extra.add(this.typePrewarm());
+      if (extra && this.crowdWarm) extra.add(this.crowdWarm()); // 降落傘、血跡（crowd.js）
       if (extra && this.fx.rich) extra.add(energyWarm(this.fx.k)); // 第 9 期的護罩、光柱、預警（fx/energy.js）
       // 場景與上面那些的半透明版（淡出、碎塊、掉板；render/shader-warm.js 的 transpWarm）
       if (extra) {
@@ -177,11 +178,30 @@ Object.assign(Game.prototype, {
   },
   // 任務中才加進場景的模型（增援、隨機組裝的敵對 AC）：它的材質與半透明版在背景編譯（compileAsync）。
   // 半透明版在擊破時的碎片、掉板才用到（以前那時候才現場編譯，一次 150～290 ms；2026-11-07）
+  // 生成那一格不做（建立程式本身也要 JS 的時間）：排隊，瀏覽器有空檔時（requestIdleCallback）一台一台做
   warmLate(root) {
+    const R = this.renderer;
+    if (!R || !root || typeof R.compileAsync !== 'function') return;
+    if (this.warmWorld !== this.world || this.warmBusy) return; // 地圖的預熱還沒做：到時一起
+    const q = this.warmQ || (this.warmQ = []);
+    q.push({ root, world: this.world });
+    if (q.length > 1) return;
+    const idle = window.requestIdleCallback || ((f) => setTimeout(f, 50));
+    const next = () =>
+      idle(
+        () => {
+          const it = q.shift();
+          if (it && it.world === this.world && it.root.parent) this.warmLateNow(it.root);
+          if (q.length) next();
+        },
+        { timeout: 1500 },
+      );
+    next();
+  },
+  warmLateNow(root) {
     const R = this.renderer,
       cam = this.camera;
-    if (!R || !cam || !root || typeof R.compileAsync !== 'function') return;
-    if (this.warmWorld !== this.world || this.warmBusy) return; // 地圖的預熱還沒做：到時一起
+    if (!R || !cam) return;
     const pipe = this.post.enabled && this.post.ok && this.stylePipe;
     const rt0 = R.getRenderTarget();
     const tw = transpWarm(root);

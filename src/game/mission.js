@@ -2,7 +2,7 @@
 import { SFX } from '../audio/audio.js';
 import { escHtml } from '../core/html.js';
 import { clamp, pick, rnd } from '../core/math.js';
-import { DS, MS } from '../core/scale.js';
+import { DS, MB, MS } from '../core/scale.js';
 import {
   AC_NAMES,
   AC_ROSTER,
@@ -24,6 +24,7 @@ import { buildBomberMesh } from '../render/extra-models.js';
 import { buildDrone, buildHeli, buildVehicle } from '../render/vehicle-models.js';
 import { buildBossModel } from '../render/boss-models.js';
 import { mergeRig } from '../render/mesh-merge.js';
+import { buildMech } from '../render/mech-model.js';
 import { PALETTES } from '../render/materials.js';
 import { FOES, themeFoes } from '../data/foes.js';
 import { VARIANTS, variantKeys } from '../world/variants.js';
@@ -718,6 +719,19 @@ Object.assign(Game.prototype, {
         if (seen.has(t)) continue;
         seen.add(t);
         const d = ENEMY_TYPES[t] || FOES[t];
+        // 增援裡的敵對 AC：先建一次（零件的 GLB 範本、合併的快取，第一次建要 40～60 ms；材質也一起預熱）
+        if (d && d.roster && AC_ROSTER[d.roster]) {
+          try {
+            const r = AC_ROSTER[d.roster];
+            const src = this.mechSource ? this.mechSource({ ace: true }) : null;
+            const rig = buildMech(r.asm, PALETTES[r.pal], ((d.scale || 1) * MS) / MB, { source: src });
+            mergeRig(rig);
+            g.add(rig.group);
+          } catch (e) {
+            console.warn('typePrewarm', t, e);
+          }
+          continue;
+        }
         if (!d || !d.modelKind) continue;
         try {
           const pal = PALETTES[d.pal],
