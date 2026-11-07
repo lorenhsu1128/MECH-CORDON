@@ -15,6 +15,9 @@ import {
   warehouseRidge,
 } from './cover-models.js';
 import { attrSig, mergeList, mergeStatic } from '../render/mesh-merge.js';
+import { isFine } from '../render/detail.js';
+import { isOutline } from '../render/geometry.js';
+import { styleCat, tagStyle } from '../render/style/shader.js';
 import { propHpFor, propMatOf } from '../data/destruct.js';
 import { buildWreck } from './prop-wreck.js';
 import { tessellate } from './prop-split.js';
@@ -475,7 +478,11 @@ export class World {
     this.regDecks();
     this.regSegs();
     this.regNew = false;
-    if (!LV) this.mergeGridPillars(); // 自訂關卡與編輯器不合併（產生器物件的移除與還原直接切換顯示）
+    if (!LV) {
+      // 自訂關卡與編輯器不合併（產生器物件的移除與還原直接切換顯示）
+      this.mergeGridPillars();
+      this.mergeProps();
+    }
     // 邊界外的遠景地形與剪影物件（edges.js，獨立的亂數串，不影響上面的生成）
     withRng(seed * 97 + 41, () => {
       for (const o of buildBackdrop(this) || []) {
@@ -2559,7 +2566,9 @@ export class World {
   // 依區域（4×4 格）與材質合併成少數幾個網格，原本的網格隱藏、不在 meshes 裡（不做鏡頭遮擋的淡出）。
   // 某一根損毀時 propUnmerge 把它在合併網格裡的頂點縮成一點（不畫），原本的網格顯示回來，之後照原本的做法切開、隱藏
   mergeGridPillars() {
-    const P = this.props.filter((p) => p.ob && p.ob.seg === 'grid' && p.ob.kind === 'circle' && p.ob.group);
+    const P = (this.props || []).filter(
+      (p) => p.ob && p.ob.seg === 'grid' && p.ob.kind === 'circle' && p.ob.group,
+    );
     if (P.length < 8) return;
     const cell = this.limOut / 2;
     const buckets = new Map();
@@ -2618,7 +2627,180 @@ export class World {
       this.pillarHide.push(g);
     }
   }
+  // ---------- 地圖物件的合併池（2026-11-07）----------
+  // 地圖物件（甲板、棚屋、油桶、貨櫃…）各有自己的材質（鏡頭遮擋時單獨淡出、受擊閃光、焦黑），一個物件幾個網格，
+  // 大地圖每格上千次繪製。依區域（4×4 格）與材質的外觀（顏色、粗糙度、貼圖…，不看是不是同一個材質物件）合併成
+  // 少數幾個網格，原本的網格隱藏（群組照常顯示：依距離切換的小細節 fineReg 不合併）。要動到某一個物件的外觀時
+  // 「拿出來」（poolOut：它在合併網格裡的頂點縮成一點、原本的網格顯示），之後照原本的做法淡出、閃光、受損：
+  // 鏡頭遮擋淡回不透明、沒有受損時放回去（poolIn）；受損、損毀、倒塌之後一直在外面（propUnmerge）
+  mergeProps() {
+    const cell = this.limOut / 2;
+    const buckets = new Map();
+    const sig = (m) =>
+      isOutline(m)
+        ? 'outline:' + m.uuid
+        : [
+            m.type,
+            m.color ? m.color.getHexString() : '',
+            m.emissive ? m.emissive.getHexString() : '',
+            m.emissiveIntensity,
+            m.roughness,
+            m.metalness,
+            m.map ? m.map.uuid : '',
+            m.normalMap ? m.normalMap.uuid : '',
+            m.roughnessMap ? m.roughnessMap.uuid : '',
+            m.metalnessMap ? m.metalnessMap.uuid : '',
+            m.emissiveMap ? m.emissiveMap.uuid : '',
+            m.aoMap ? m.aoMap.uuid : '',
+            m.alphaMap ? m.alphaMap.uuid : '',
+            m.envMap ? m.envMap.uuid : '',
+            m.envMapIntensity,
+            m.vertexColors,
+            m.side,
+            m._stFlat,
+            m.transparent,
+            m.opacity,
+            m.alphaTest,
+            m.depthWrite,
+            m.polygonOffset,
+            m.polygonOffsetFactor,
+            m.visible,
+            styleCat(m),
+            m.customProgramCacheKey ? m.customProgramCacheKey() : '',
+          ].join(',');
+    const byG = new Map();
+    for (const p of this.props || []) {
+      const g = p.ob && p.ob.group;
+      if (!g || p.dead || p.pillarMerge || p.support || (p.body && p.mode !== 'drop') || (p.seg && !p.grid))
+        continue;
+      if (!g.parent || !g.visible || g === this.decorG || g === this.pillarG) continue;
+      let L = byG.get(g);
+      if (!L) byG.set(g, (L = []));
+      L.push(p);
+    }
+    for (const [g, props] of byG) {
+      g.updateMatrixWorld(true);
+      const ms = [];
+      let ok = true;
+      g.traverse((o) => {
+        if (!ok || !o.isMesh) return;
+        if (o.isSkinnedMesh || o.isInstancedMesh || Array.isArray(o.material) || o.children.length)
+          ok = false;
+        if (!ok || isFine(o)) return;
+        for (let q = o; q && q !== g.parent; q = q.parent) if (!q.visible) return;
+        const m = o.material,
+          geo = o.geometry;
+        if (!m || !geo || !geo.attributes.position || geo.groups.length) return void (ok = false);
+        if (geo.morphAttributes && Object.keys(geo.morphAttributes).length) return void (ok = false);
+        if (m.transparent && m.depthWrite && m.opacity < 1) return; // 真的半透明的（玻璃）照舊
+        ms.push(o);
+      });
+      if (!ok || !ms.length) continue;
+      const e = g.matrixWorld.elements;
+      const ck = Math.floor(e[12] / cell) + ',' + Math.floor(e[14] / cell);
+      for (const o of ms) {
+        const key = [sig(o.material), attrSig(o.geometry), +o.castShadow, +o.receiveShadow, ck].join('|');
+        let b = buckets.get(key);
+        if (!b) buckets.set(key, (b = []));
+        b.push({ g, o });
+      }
+    }
+    const root = (this.poolG = new THREE.Group());
+    root.userData.noFade = true;
+    this.scene.add(root);
+    this.meshes.push(root);
+    this.pool = new Map(); // 群組 → { items, props, in, no }
+    this.poolOf = new WeakMap(); // 原本的網格 → 群組
+    for (const list of buckets.values()) {
+      if (list.length < 2) continue;
+      const geo = mergeList(list.map(({ o }) => ({ geo: o.geometry, mm: o.matrixWorld.clone() })));
+      const o0 = list[0].o;
+      const mat = isOutline(o0.material) ? o0.material : o0.material.clone();
+      if (mat !== o0.material) {
+        mat.opacity = o0.material.opacity;
+        tagStyle(new THREE.Mesh(undefined, mat), styleCat(o0.material));
+      }
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.castShadow = o0.castShadow;
+      mesh.receiveShadow = o0.receiveShadow;
+      root.add(mesh);
+      const pos = geo.attributes.position;
+      let v = 0;
+      for (const { g, o } of list) {
+        const n = o.geometry.attributes.position.count;
+        let P = this.pool.get(g);
+        if (!P) this.pool.set(g, (P = { items: [], in: true, no: false, t: 0 }));
+        P.items.push({ mesh, v, n, src: o, save: pos.array.slice(v * 3, (v + n) * 3) });
+        this.poolOf.set(o, g);
+        o.visible = false;
+        v += n;
+      }
+    }
+    this.poolOutSet = new Set();
+  }
+  // 拿出來：合併網格裡縮成一點、原本的網格顯示
+  poolOut(g, no) {
+    const P = this.pool && this.pool.get(g);
+    if (!P) return;
+    if (no) P.no = true;
+    if (!P.in) return;
+    P.in = false;
+    P.t = performance.now();
+    for (const it of P.items) {
+      const a = it.mesh.geometry.attributes.position;
+      const arr = a.array,
+        b = it.v * 3;
+      for (let i = 0; i < it.n; i++) {
+        arr[b + i * 3] = it.save[0];
+        arr[b + i * 3 + 1] = it.save[1];
+        arr[b + i * 3 + 2] = it.save[2];
+      }
+      a.addUpdateRange(b, it.n * 3);
+      a.needsUpdate = true;
+      it.src.visible = true;
+    }
+    if (!P.no) this.poolOutSet.add(g);
+  }
+  // 放回去
+  poolIn(g) {
+    const P = this.pool && this.pool.get(g);
+    if (!P || P.in || P.no) return;
+    P.in = true;
+    this.poolOutSet.delete(g);
+    for (const it of P.items) {
+      const a = it.mesh.geometry.attributes.position;
+      a.array.set(it.save, it.v * 3);
+      a.addUpdateRange(it.v * 3, it.n * 3);
+      a.needsUpdate = true;
+      it.src.visible = false;
+    }
+  }
+  // 每格（updateOcclusion 之後）：拿出來淡出的，淡回不透明、不再被擋住 1 秒後放回去
+  poolTick() {
+    if (!this.poolOutSet || !this.poolOutSet.size) return;
+    const now = performance.now();
+    const fading = this._fading;
+    for (const g of this.poolOutSet) {
+      const P = this.pool.get(g);
+      if (!P || P.no) {
+        this.poolOutSet.delete(g);
+        continue;
+      }
+      if (now - P.t < 1000) continue;
+      let busy = false;
+      for (const it of P.items) {
+        const m = it.src.material;
+        if (m.opacity < 0.999 || (fading && fading.has(it.src))) {
+          busy = true;
+          break;
+        }
+      }
+      if (busy) P.t = now;
+      else this.poolIn(g);
+    }
+  }
   propUnmerge(p) {
+    if (this.pool && p.ob && p.ob.group) this.poolOut(p.ob.group, true);
     const L = p.pillarMerge;
     if (!L) return;
     p.pillarMerge = null;
@@ -3582,6 +3764,7 @@ export class World {
         }
       }
       if (hit) any = true;
+      if (hit && this.pool && o.group) this.poolOut(o.group); // 合併池裡的：拿出來才淡得了
       // 擋住的那個優先
       const target = hit ? fadeTo(o.fbox) : 1;
       for (const m of o.mats)
@@ -3595,6 +3778,7 @@ export class World {
       m.opacity = lerp(m.opacity, m._occTo, Math.min(1, dt * 10));
       m.depthWrite = m.opacity > 0.9;
     }
+    this.poolTick();
     return any;
   }
   // 沒有登記成 occluders 的網格（大型結構、地標、起重機、支柱、殘骸、倒下的結構…）擋住機體時，各自換成可以淡出的材質副本，
@@ -3627,6 +3811,12 @@ export class World {
     const hit = this._fadeHit || (this._fadeHit = new Set());
     hit.clear();
     for (const h of hp) for (const o of h) hit.add(o);
+    // 合併池裡的（原本的網格隱藏著）：拿出來才淡得了
+    if (this.poolOf)
+      for (const o of hit) {
+        const g = this.poolOf.get(o);
+        if (g) this.poolOut(g);
+      }
     const act = this._fading || (this._fading = new Map());
     for (const o of this._fadeHit)
       if (!act.has(o)) {

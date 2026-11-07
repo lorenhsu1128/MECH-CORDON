@@ -365,7 +365,7 @@ Object.assign(Game.prototype, {
       `修復套件 <b>${'▮'.repeat(p.kits)}${'▯'.repeat(Math.max(0, (p.kitsMax || 3) - p.kits))}</b>　<span class="dim">[R]</span>`;
     const alive = this.isClient
       ? this.clientAlive || 0
-      : this.enemies.filter((e) => !e.dead && !e.guardOf && !e.decoy).length;
+      : this.enemies.filter((e) => !e.dead && !e.guardOf && !e.decoy).length + this.encPendN(); // 還沒生成的遠處敵群也算
     const wavesLeft = this.isClient ? this.clientWaves || 0 : this.waves.length;
     document.getElementById('hudTop').innerHTML = this.camp
       ? this.campHudTop(alive, wavesLeft)

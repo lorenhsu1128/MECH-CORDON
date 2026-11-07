@@ -141,22 +141,43 @@ Object.assign(Game.prototype, {
   // （每台建模 30～70 ms，同一格全部生成會卡 100～200 ms；2026-11-07）。at＝spawnType 的位置，
   // 排進去時的 waveAt（空降地點）一起記下；佇列還有東西時不算清除（game.js）
   // n＝spawnType 的數量（沒給時照編隊）、fn＝生成之後對那一台做的事
-  spawnLater(list, at, n, fn) {
+  // o＝{ encG 分群的編號, idle 生成後待機 }（encounters.js 的遠處敵群）
+  spawnLater(list, at, n, fn, o = {}) {
     const q = this.spawnQ || (this.spawnQ = []);
     for (const t of list)
-      q.push({ t, at: at || null, wa: this.waveAt, sh: this.scaleHp, sd: this.scaleDmg, n, fn });
+      q.push({
+        t,
+        at: at || null,
+        wa: this.waveAt,
+        sh: this.scaleHp,
+        sd: this.scaleDmg,
+        n,
+        fn,
+        encG: o.encG,
+        idle: o.idle,
+        guard: o.guard,
+      });
   },
   spawnQTick() {
     const q = this.spawnQ;
     if (!q || !q.length) return;
     const it = q.shift();
-    const wa = this.waveAt;
+    const wa = this.waveAt,
+      eg = this.encG,
+      id = this.spawnIdle,
+      ga = this.guardAt;
     this.waveAt = it.wa;
+    if (it.encG !== undefined) this.encG = it.encG;
+    if (it.idle) this.spawnIdle = true;
+    if (it.guard) this.guardAt = it.guard;
     try {
       const e = this.spawnType(it.t, it.sh, it.sd, it.at || undefined, it.n);
       if (e && it.fn) it.fn(e);
     } finally {
       this.waveAt = wa;
+      this.encG = eg;
+      this.spawnIdle = id;
+      this.guardAt = ga;
     }
   },
   // k＝只生成第 k 台（沒給時全部）；空降的衝擊波在第一台

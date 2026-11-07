@@ -12,6 +12,10 @@ const GROUP_SHARE = 0.7; // 開場放在各群的比例（其餘是之後的增�
 const MARK_LINK = 30 * DS; // HUD 的分群：彼此這麼近的敵人算同一群
 const MARK_MIN = ENC_MARK_MIN; // 這麼遠以上的敵群才標示（近的有名牌與畫面外箭頭）
 const MARK_MAX = 6;
+// 遠處的敵群先不生成（2026-11-07：主線的大地圖開場就 20 幾台敵人在場，畫面與 AI 都吃重）：離每個玩家都超過
+// 霧的距離 × WAKE_FOG（至少 WAKE_MIN）的群，等有玩家靠近、或場上已經沒有其他敵人時才生成（一格一台，waves.js）
+const WAKE_FOG = 0.6;
+const WAKE_MIN = 110 * DS;
 
 Object.assign(Game.prototype, {
   // 規畫 nG 個敵群與 nC 個據點的位置：作戰區域裡離起點夠遠的空地，以最遠點取樣讓彼此分散；
@@ -106,8 +110,15 @@ Object.assign(Game.prototype, {
     this.encGroups = plan.groups.map((pos) => ({ pos }));
     this.encCaches = plan.caches;
     this.spawnIdle = true;
+    const wake = this.encWakeR();
+    const s = this.world.start;
     try {
       grp.forEach((list, gi) => {
+        const q = plan.groups[gi];
+        if (this.encLazy !== false && s && list.length && Math.hypot(q.x - s.x, q.z - s.z) > wake) {
+          this.encGroups[gi].pend = list; // 先不生成（encWakeTick）
+          return;
+        }
         this.waveAt = { pos: plan.groups[gi], drop: false };
         this.encG = gi;
         for (const t of list) this.spawnType(t, scaleHp, scaleDmg);
@@ -119,11 +130,79 @@ Object.assign(Game.prototype, {
     }
     return true;
   },
-  // 清掉了幾群（那一群的敵人全部擊破或離場）
+  encWakeR() {
+    const T = this.world && this.world.theme;
+    return Math.max(WAKE_MIN, ((T && T.fogFar) || 190 * DS) * WAKE_FOG); // theme.fogFar 已經乘過 DS（World）
+  },
+  // 還沒生成的敵群有幾台
+  encPendN() {
+    let n = 0;
+    for (const g of this.encGroups || []) if (g.pend) n += g.pend.length;
+    return n;
+  },
+  // 每格（房主／單機）：有玩家靠近（或場上已經沒有其他敵人）的群生成出來
+  encWakeTick() {
+    const G = this.encGroups;
+    const GP = this.guardPend;
+    if ((!G || !G.some((g) => g.pend)) && !(GP && GP.length)) return;
+    const pl = this.playersAlive ? this.playersAlive() : [this.player].filter(Boolean);
+    if (!pl.length) return;
+    const R = this.encWakeR();
+    const dmin = (q) => {
+      let d = Infinity;
+      for (const p of pl) d = Math.min(d, Math.hypot(p.pos.x - q.x, p.pos.z - q.z));
+      return d;
+    };
+    // 據點的守衛（outposts.js）：玩家靠近才生成
+    if (GP)
+      for (let i = GP.length - 1; i >= 0; i--)
+        if (dmin(GP[i].pos) < R) {
+          const q = GP.splice(i, 1)[0];
+          const wa = this.waveAt;
+          this.waveAt = { pos: q.pos, drop: false };
+          try {
+            for (const [t, n] of q.list) this.spawnLater([t], null, n, null, { guard: q.id });
+          } finally {
+            this.waveAt = wa;
+          }
+        }
+    if (!G || !G.some((g) => g.pend)) return;
+    const others = this.enemies.some((e) => !e.dead && !e.guardOf && !e.decoy && e.ai !== 'objective');
+    let near = null,
+      nd = Infinity;
+    for (let gi = 0; gi < G.length; gi++) {
+      const g = G[gi];
+      if (!g.pend) continue;
+      let d = Infinity;
+      for (const p of pl) d = Math.min(d, Math.hypot(p.pos.x - g.pos.x, p.pos.z - g.pos.z));
+      if (d < R) this.encWake(gi);
+      else if (d < nd) {
+        nd = d;
+        near = gi;
+      }
+    }
+    // 場上已經沒有別的敵人（也沒有在排隊的）：最近的那一群出來，不會讓玩家走過整張空地圖
+    if (!others && near !== null && !(this.spawnQ && this.spawnQ.length) && G[near].pend) this.encWake(near);
+  },
+  encWake(gi) {
+    const g = this.encGroups[gi];
+    const list = g.pend;
+    g.pend = null;
+    const wa = this.waveAt;
+    this.waveAt = { pos: g.pos, drop: false };
+    try {
+      this.spawnLater(list, null, undefined, null, { encG: gi, idle: true });
+    } finally {
+      this.waveAt = wa;
+    }
+  },
+  // 清掉了幾群（那一群的敵人全部擊破或離場；還沒生成的不算清掉）
   encCleared() {
     if (!this.encGroups) return 0;
     const alive = new Set();
     for (const e of this.enemies) if (!e.dead && e.encG !== undefined && e.encG !== null) alive.add(e.encG);
+    this.encGroups.forEach((g, i) => g.pend && alive.add(i));
+    for (const it of this.spawnQ || []) if (it.encG !== undefined) alive.add(it.encG);
     return this.encGroups.length - alive.size;
   },
   // waveTick 用：分群時下一波要等清掉對應數量的群；場上的戰力只算交戰中的群裡的敵人與其他敵人
@@ -174,6 +253,13 @@ Object.assign(Game.prototype, {
       if (d < MARK_MIN) continue;
       c.y += 6 * MS;
       out.push({ pos: c, n: g.length, d });
+    }
+    // 還沒生成的群（房主／單機）也標出來
+    for (const g of this.encGroups || []) {
+      if (!g.pend) continue;
+      const d = Math.hypot(g.pos.x - p.pos.x, g.pos.z - p.pos.z);
+      if (d < MARK_MIN) continue;
+      out.push({ pos: g.pos.clone().setY(g.pos.y + 6 * MS), n: g.pend.length, d });
     }
     out.sort((a, b) => a.d - b.d);
     this.encMarks = out.slice(0, MARK_MAX);

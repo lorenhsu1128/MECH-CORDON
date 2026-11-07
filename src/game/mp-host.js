@@ -224,7 +224,7 @@ Object.assign(Game.prototype, {
         ents,
         veh: this.serVehicles(),
         mis: {
-          alive: this.enemies.filter((e) => !e.dead && !e.guardOf && !e.decoy).length,
+          alive: this.enemies.filter((e) => !e.dead && !e.guardOf && !e.decoy).length + this.encPendN(),
           waves: this.waves.length,
           mt: +this.missionT.toFixed(1),
           level: this.save.level,

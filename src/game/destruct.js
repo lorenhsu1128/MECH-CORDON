@@ -164,6 +164,7 @@ Object.assign(Game.prototype, {
   },
   // 受擊閃光（只對可淡出的材質有效；propDmgTick 還原）
   propFlash(p) {
+    this.world.propUnmerge(p); // 合併池裡的：拿出來（之後一直在外面；world.js 的 mergeProps）
     if (!p.ob.mats || !p.ob.mats.length) return;
     for (const m of p.ob.mats) if (m.emissive) m.emissive.setRGB(0.6, 0.6, 0.6);
     p.flashUntil = performance.now() + FLASH_MS;
@@ -171,6 +172,7 @@ Object.assign(Game.prototype, {
   },
   // 血量變了：進入新的階段時套外觀（quiet＝不拋碎片，重連時直接套用）
   propStageCheck(p, quiet) {
+    this.world.propUnmerge(p);
     if (p.dead || this.destructMode() === 'off') return; // 不可破壞：和改版前一樣沒有受損階段
     const st = Math.min(3, propStage(p.hp, p.maxHp));
     const st0 = p.st || 0;
@@ -582,6 +584,7 @@ Object.assign(Game.prototype, {
     if (b.collapsed) return;
     const w = this.world,
       fx = this.fx;
+    w.propUnmerge(b);
     b.collapsed = true;
     b.dead = true;
     b.hp = 0;
@@ -856,7 +859,10 @@ Object.assign(Game.prototype, {
     for (const q of w.props || []) {
       if (q.dead || q.of === b || q === b || !q.ob.group || q.ob.group === g || !onTop(q.shape)) continue;
       if (q.support || q.body) falls.push(q);
-      else piv.attach(q.ob.group);
+      else {
+        w.propUnmerge(q);
+        piv.attach(q.ob.group);
+      }
     }
     if (host)
       for (const q of falls) {
@@ -947,8 +953,8 @@ Object.assign(Game.prototype, {
       this.propWreckFx(b);
       const R = Math.max(W, D);
       // 碎裂：依大小分成幾區各自碎開（碎片、揚塵）
-      const nx = Math.max(1, Math.min(3, Math.round(W / 25))),
-        nz = Math.max(1, Math.min(3, Math.round(D / 25)));
+      const nx = Math.max(1, Math.min(2, Math.round(W / 30))),
+        nz = Math.max(1, Math.min(2, Math.round(D / 30)));
       local(fx, () => {
         for (let i = 0; i < nx; i++)
           for (let j = 0; j < nz; j++) {

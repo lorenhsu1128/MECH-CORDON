@@ -134,6 +134,7 @@ export class Game {
     // 冒煙測試用：網址帶 ?test 時把遊戲實例放在 window.__game（檢查各機甲用的模型組）
     if (/[?&]test\b/.test(location.search)) {
       window.__game = this;
+      this.encLazy = false; // 冒煙測試：遠處的敵群與據點守衛照舊一開場就生成（延後生成由 testEncLazy 另外測）
       window.__sfx = SFX; // 冒煙測試檢查混音與回饋音
       window.__PARTS = PARTS; // 冒煙測試列出零件（受擊反應的武器清單）
       window.__MELEE = { FIST_DEF, MELEE_HR, REACT_T, meleeAll, meleeReactOf }; // 近戰每一招的受擊變化
@@ -609,6 +610,7 @@ export class Game {
     this.fx.update(dt);
     this.tickPopups(dt);
     // waves
+    this.encWakeTick(); // 遠處的敵群：玩家靠近才生成（encounters.js）
     this.spawnQTick(); // 生成佇列：一格一台（waves.js）
     const alive = this.enemies.filter((e) => !e.dead && !e.guardOf && !e.decoy).length; // 據點的守衛、全像的假敵人不算
     this.cacheTick(dt);
@@ -631,6 +633,7 @@ export class Game {
       alive === 0 &&
       !this.waves.length &&
       !(this.spawnQ && this.spawnQ.length) &&
+      !this.encPendN() &&
       this.playersAlive().length &&
       this.state === 'play'
     ) {

@@ -13,6 +13,8 @@
 //       --learn＝帶入上一次記下的著色器變體（render/shader-warm.js 的學習式預熱，test-results/perf-warm.json），
 //       --sync＝著色器預熱照自動化測試的同步方式（預設和玩家的瀏覽器一樣走非同步），
 //       --variant＝主題變體、--full＝畫面設定全開（品質）、
+//       --owner＝新編譯的著色器在編譯當下記下所屬的物件（走訪場景，會拖慢那一格）、
+//       --sortie＝主線的出擊（--seg＝從第幾段開始）、
 //       --long=25＝列出 CPU 超過幾 ms 的影格、--tag、--compare、--dist＝別的建置資料夾。
 //       頁面的亂數固定種子。需要先 npm run build。
 /* global THREE, window, localStorage, requestAnimationFrame, WebGLRenderingContext, WebGL2RenderingContext */
@@ -228,13 +230,18 @@ function instrument() {
     obc = SP.onBeforeCompile;
   SP.onBeforeCompile = function (sh, r) {
     if (W.on) {
-      // 編譯當下就找它屬於哪個物件（之後碎片、特效可能已經不在場景裡）
+      // --owner：編譯當下就找它屬於哪個物件（之後碎片、特效可能已經不在場景裡；走訪整個場景，會拖慢那一格）
       const m = this;
       let at = null;
-      g.scene.traverse((o) => {
-        if (!at && o.material && (o.material === m || (Array.isArray(o.material) && o.material.includes(m))))
-          at = o;
-      });
+      if (window.__probeOwner)
+        g.scene.traverse((o) => {
+          if (
+            !at &&
+            o.material &&
+            (o.material === m || (Array.isArray(o.material) && o.material.includes(m)))
+          )
+            at = o;
+        });
       W.nb.push({ f: W.frames.length, m, st: g.state, at });
     }
     return obc.call(this, sh, r);
@@ -476,6 +483,7 @@ async function sampling(ctx, page) {
     await page.click('#saveSlots [data-slot="1"] [data-act="new"]');
     await page.waitForFunction(() => window.__game.state === 'garage', null, { timeout: 30000 });
     await sleep(2500);
+    if (args.owner) await page.evaluate(() => (window.__probeOwner = true));
     await page.evaluate(instrument);
     await page.evaluate(() => {
       window.__reseed(7777); // 每個版本的地圖與敵人相同
@@ -487,13 +495,17 @@ async function sampling(ctx, page) {
       await page.evaluate(
         ([sid, seg]) => {
           const g = window.__game;
+          g.encLazy = true; // 和玩家的瀏覽器相同（?test 時預設關掉）
           g.campBegin(sid);
           g.camp.seg = seg;
           g.campGo();
         },
         [args.sortie, +(args.seg || 0)],
       );
-    } else await page.click('#btnSortie');
+    } else {
+      await page.evaluate(() => (window.__game.encLazy = true));
+      await page.click('#btnSortie');
+    }
     await page.waitForFunction(() => window.__game.state === 'play' && window.__game.player, null, {
       timeout: 90000,
     });

@@ -31,6 +31,8 @@ Object.assign(Game.prototype, {
   outpostsPlan(L) {
     this.caches = [];
     this.extract = 0;
+    this.guardPend = []; // 還沒生成的守衛（encounters.js 的 encWakeTick：玩家靠近才生成）
+    const wake = this.encLazy !== false && this.world && this.world.start ? this.encWakeR() : Infinity;
     if (this.pvp || this.sim || this.lab || this.isBossLevel || !this.world) return;
     const W = this.world;
     const mp = !!(this.net && this.net.role);
@@ -55,6 +57,15 @@ Object.assign(Game.prototype, {
         this.camp ? (this.camp.plan[this.camp.seg] || {}).depth || 0 : 0,
         !this.camp,
       ).slice(0, L >= 8 ? 3 : 2);
+      // 離玩家遠的據點：守衛等玩家靠近才生成（守衛本來就在 38 m 內才出動）
+      if (Math.hypot(sp.x - this.player.pos.x, sp.z - this.player.pos.z) > wake) {
+        this.guardPend.push({
+          pos: sp,
+          id,
+          list: comp.map((t) => [t, Math.min(2, (ENEMY_TYPES[t] || FOES[t] || {}).group || 1)]),
+        });
+        continue;
+      }
       this.waveAt = { pos: sp, drop: false };
       this.guardAt = id;
       try {

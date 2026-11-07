@@ -714,8 +714,14 @@ Object.assign(Game.prototype, {
   typePrewarm() {
     const g = new THREE.Group();
     const seen = new Set();
-    for (const w of this.waves || [])
-      for (const t of Array.isArray(w) ? w : w.list || []) {
+    // 增援的波次、還沒生成的遠處敵群與據點守衛（encounters.js、outposts.js：玩家靠近時才生成，第一次建的成本留在出擊的讀取）
+    const lists = [
+      ...(this.waves || []).map((w) => (Array.isArray(w) ? w : w.list || [])),
+      ...(this.encGroups || []).map((q) => q.pend || []),
+      ...(this.guardPend || []).map((q) => q.list.map((x) => x[0])),
+    ];
+    for (const L of lists)
+      for (const t of L) {
         if (seen.has(t)) continue;
         seen.add(t);
         const d = ENEMY_TYPES[t] || FOES[t];
@@ -725,6 +731,18 @@ Object.assign(Game.prototype, {
             const r = AC_ROSTER[d.roster];
             const src = this.mechSource ? this.mechSource({ ace: true }) : null;
             const rig = buildMech(r.asm, PALETTES[r.pal], ((d.scale || 1) * MS) / MB, { source: src });
+            mergeRig(rig);
+            g.add(rig.group);
+          } catch (e) {
+            console.warn('typePrewarm', t, e);
+          }
+          continue;
+        }
+        // 機甲型的雜兵（MT…）：建一次（零件的程式模型快取、合併）
+        if (d && !d.modelKind && d.gen && (this.encLazy !== false || (this.waves || []).length)) {
+          try {
+            const src = this.mechSource ? this.mechSource({ grunt: true }) : null;
+            const rig = buildMech(d.gen(), PALETTES[d.pal], ((d.scale || 1) * MS) / MB, { source: src });
             mergeRig(rig);
             g.add(rig.group);
           } catch (e) {
@@ -1008,6 +1026,7 @@ Object.assign(Game.prototype, {
     if (this.bfClear) this.bfClear(); // Boss 改版的場地效果
     this.wavePend = null;
     this.spawnQ = null; // 生成佇列（waves.js）
+    this.guardPend = null; // 還沒生成的據點守衛（outposts.js）
     this.waveMarks = [];
     this.encGroups = null; // 分群（encounters.js）
     this.encCaches = null;

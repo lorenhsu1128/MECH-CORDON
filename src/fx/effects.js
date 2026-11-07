@@ -117,6 +117,21 @@ function mixHex(a, b, t) {
   _gc.setHex(a).lerp(new THREE.Color(b), t);
   return _gc.getHex();
 }
+// 地圖物件碎片的共用單位幾何（propDebris 以縮放決定大小）
+const DEB_GEO = {};
+function debGeo(k) {
+  if (!DEB_GEO[k])
+    DEB_GEO[k] =
+      k === 'rock'
+        ? new THREE.DodecahedronGeometry(0.6, 0)
+        : k === 'plank'
+          ? new THREE.BoxGeometry(0.2, 0.16, 1.5)
+          : k === 'crystal'
+            ? new THREE.ConeGeometry(0.3, 1.1, 5)
+            : new THREE.BoxGeometry(1, 0.1, 0.75);
+  return DEB_GEO[k];
+}
+
 export class Effects {
   constructor(scene) {
     this.scene = scene;
@@ -2452,6 +2467,7 @@ Object.assign(Effects.prototype, {
     const pieces = [];
     for (const d of list) {
       const m = new THREE.Mesh(d.geo, mat);
+      if (d.q) m.scale.setScalar(d.q);
       m.position.copy(d.pos);
       m.rotation.set(rnd(0, 3), rnd(0, 3), rnd(0, 3));
       m.castShadow = true;
@@ -2533,7 +2549,14 @@ Object.assign(Effects.prototype, {
       if (dir) v.addScaledVector(dir, rnd(2, 6) * d.sp);
       v.y = rnd(4, 10) * d.sp;
       v.multiplyScalar(K);
-      return { m, v, av: new THREE.Vector3(rnd(-6, 6), rnd(-6, 6), rnd(-6, 6)), rest: false, s: 1 };
+      return {
+        m,
+        v,
+        av: new THREE.Vector3(rnd(-6, 6), rnd(-6, 6), rnd(-6, 6)),
+        rest: false,
+        s: d.q || 1,
+        own: !d.q,
+      };
     });
     const life = 6;
     this.list.push({
@@ -2561,11 +2584,14 @@ Object.assign(Effects.prototype, {
               }
             }
           }
-          if (left < 1.5) p.m.scale.setScalar(Math.max(0.001, left / 1.5));
+          if (left < 1.5) p.m.scale.setScalar(Math.max(0.001, left / 1.5) * p.s);
         }
       },
       end: () => {
-        for (const p of pieces) scene.remove(p.m);
+        for (const p of pieces) {
+          scene.remove(p.m);
+          if (p.own) p.m.geometry.dispose(); // 呼叫端自己建的幾何（共用的單位幾何不釋放）
+        }
         mat.dispose();
       },
     });
@@ -2600,15 +2626,12 @@ Object.assign(Effects.prototype, {
     const s = Math.max(0.3, Math.min(2.8, size * 0.17));
     const list = [];
     for (let i = 0; i < n; i++) {
-      let geo;
+      // 共用的單位幾何、以縮放決定大小（以前每片新建一個幾何、用完不釋放：大的倒塌一次上千個；2026-11-07）
       const q = s * rnd(0.6, 1.3);
-      if (M.deb === 'rock' || M.deb === 'chunk' || M.deb === 'ice')
-        geo = new THREE.DodecahedronGeometry(q * 0.6, 0);
-      else if (M.deb === 'plank') geo = new THREE.BoxGeometry(q * 0.2, q * 0.16, q * 1.5);
-      else if (M.deb === 'crystal') geo = new THREE.ConeGeometry(q * 0.3, q * 1.1, 5);
-      else geo = new THREE.BoxGeometry(q, q * 0.1, q * 0.75);
+      const geo = debGeo(M.deb === 'rock' || M.deb === 'chunk' || M.deb === 'ice' ? 'rock' : M.deb);
       list.push({
         geo,
+        q,
         pos: new THREE.Vector3(sh.x0 + rnd(0, 1) * W, sh.y0 + rnd(0.2, 0.95) * H, sh.z0 + rnd(0, 1) * D),
         origin: c,
         sp: o.cr ? 0.5 : 1,

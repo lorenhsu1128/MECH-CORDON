@@ -12741,6 +12741,110 @@ async function testWaves(browser, base) {
   await ctx.close();
 }
 
+// 遠處的敵群與據點守衛延後生成、地圖物件的合併池（2026-11-07；encounters.js、outposts.js、world.js 的 mergeProps）
+async function testEncLazy(browser, base) {
+  console.log('遠處的敵群延後生成、地圖物件的合併池');
+  const { ctx, page } = await newPage(browser, 'enc-lazy');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  // 主線的大地圖（grid086，邊緣進場）找一個有遠處敵群的種子
+  const r = await page.evaluate(async () => {
+    const g = window.__game;
+    g.encLazy = true;
+    g.save.level = 12;
+    let tries = 0;
+    for (; tries < 6; tries++) {
+      g.clearMission();
+      g.state = 'play';
+      g.campBegin('c4s3b');
+      g.camp.types[0] = 'battle';
+      g.campEnterSeg();
+      if ((g.encGroups || []).some((x) => x.pend)) break;
+      g.campEnd(false, true);
+    }
+    const out = { tries };
+    const w = g.world,
+      pl = g.player;
+    pl.hp = pl.maxHp = 1e9;
+    out.wake = Math.round(g.encWakeR());
+    const G = g.encGroups || [];
+    const gi = G.findIndex((x) => x.pend);
+    out.gi = gi;
+    out.pendN = g.encPendN();
+    out.alive0 = g.enemies.filter((e) => !e.dead && !e.guardOf).length;
+    // 還沒生成的不算清掉；HUD 也算進殘存敵軍
+    out.notCleared = gi >= 0 && g.encCleared() < G.length;
+    if (gi < 0) return out;
+    const q = G[gi];
+    const n = q.pend.length;
+    // 走過去：一格生成一台
+    pl.pos.set(q.pos.x + 20, w.groundAt(q.pos.x + 20, q.pos.z, 999), q.pos.z);
+    g.encWakeTick();
+    out.queued = (g.spawnQ || []).length;
+    out.pendGone = !q.pend;
+    while (g.spawnQ && g.spawnQ.length) g.spawnQTick();
+    out.spawned = g.enemies.filter((e) => !e.dead && e.encG === gi).length;
+    out.n = n;
+    // 場上沒有別的敵人時，最近的一群出來（不會讓玩家走過整張空地圖）
+    for (const e of g.enemies) if (!e.dead && !e.guardOf) e.takeDamage(1e12, 0, pl, e.center());
+    for (const e of g.enemies) if (!e.dead && !e.guardOf) e.dead = true;
+    const left = g.encPendN();
+    g.encWakeTick();
+    out.wakeEmpty = left === 0 || g.encPendN() < left;
+    // 據點的守衛：遠的等玩家靠近才生成
+    out.guardPend = (g.guardPend || []).length;
+    if (g.guardPend && g.guardPend.length) {
+      const gp = g.guardPend[0];
+      pl.pos.set(gp.pos.x + 10, w.groundAt(gp.pos.x + 10, gp.pos.z, 999), gp.pos.z);
+      g.encWakeTick();
+      while (g.spawnQ && g.spawnQ.length) g.spawnQTick();
+      out.guardSpawned = g.enemies.filter((e) => !e.dead && e.guardOf === gp.id).length;
+    }
+    // 合併池：物件合併成少數網格，原本的網格隱藏；拿出來後原本的顯示，淡回不透明 1 秒後放回去；受損的一直在外面
+    out.pool = w.pool ? w.pool.size : 0;
+    out.poolMeshes = w.poolG ? w.poolG.children.length : 0;
+    const entries = [...(w.pool || new Map()).entries()];
+    const [grp, P] = entries.find(([, P]) => P.in && !P.no) || [];
+    if (grp) {
+      out.hidden = P.items.every((it) => !it.src.visible);
+      w.poolOut(grp);
+      out.outVis = P.items.every((it) => it.src.visible) && !P.in;
+      P.t -= 2000;
+      w.poolTick();
+      out.backIn = P.in && P.items.every((it) => !it.src.visible);
+      const p = w.props.find((x) => x.ob && x.ob.group === grp);
+      g.damageProp(p, 1, 0, null, pl, 'none');
+      P.t -= 2000;
+      w.poolTick();
+      out.stayOut = !P.in && P.no;
+    }
+    g.campEnd(false, true);
+    return out;
+  });
+  check(
+    r.gi >= 0 && r.pendN > 0 && r.notCleared,
+    `遠處的敵群先不生成（${r.pendN} 台、喚醒距離 ${r.wake} m、試了 ${r.tries + 1} 個種子），也不算清掉`,
+  );
+  check(
+    r.pendGone && r.queued >= r.n && r.spawned >= r.n,
+    `玩家靠近時那一群排進生成佇列、一格一台（這一群 ${r.n} 項、佇列 ${r.queued}、生成 ${r.spawned} 台）`,
+  );
+  check(r.wakeEmpty, '場上沒有別的敵人時，最近的一群出來');
+  check(
+    r.guardPend === 0 || r.guardSpawned > 0,
+    `遠的據點守衛等玩家靠近才生成（${r.guardPend} 個據點、生成 ${r.guardSpawned || 0} 台）`,
+  );
+  check(
+    r.pool > 50 && r.poolMeshes > 0 && r.poolMeshes < r.pool,
+    `地圖物件的合併池（${r.pool} 個物件 → ${r.poolMeshes} 個網格）`,
+  );
+  check(
+    r.hidden && r.outVis && r.backIn && r.stayOut,
+    '合併池：拿出來原本的網格顯示、淡回後放回去、受損之後一直在外面',
+  );
+  await ctx.close();
+}
+
 // 據點：補給箱與守衛（守在原地、靠近才出動、不算主要戰力）、開箱獎勵、自由出擊的撤離時間、主線區段也有
 async function testOutposts(browser, base) {
   console.log('據點：補給箱、守衛、撤離');
@@ -26854,6 +26958,7 @@ async function testDestruct(browser, base) {
     const lamp = near((p) => p.kind === 'pillar');
     out.lamp = !!lamp;
     if (lamp) {
+      w.propUnmerge(lamp); // 合併池裡的先拿出來（原本的網格才顯示；world.js 的 mergeProps）
       const t0 = tris(lamp);
       g.damageProp(lamp, lamp.hp - lamp.maxHp * 0.7, 0, null, pl, 'none');
       out.lampT1 = tris(lamp) < t0;
@@ -26866,6 +26971,7 @@ async function testDestruct(browser, base) {
     const tall = misc.filter((p) => !p.dead && p.shape.y1 - p.shape.y0 > 6)[0];
     out.tall = !!tall;
     if (tall) {
+      w.propUnmerge(tall);
       const H = tall.shape.y1 - tall.shape.y0,
         t0 = tris(tall);
       g.damageProp(tall, tall.hp - tall.maxHp * 0.2, 0, null, pl, 'none');
@@ -27498,6 +27604,7 @@ const STEPS = [
   ['testGoals', (c) => testGoals(c.browser, c.base)],
   ['testGaze', (c) => testGaze(c.browser, c.base)],
   ['testOutposts', (c) => testOutposts(c.browser, c.base)],
+  ['testEncLazy', (c) => testEncLazy(c.browser, c.base)],
   ['testModFx', (c) => testModFx(c.browser, c.base)],
   ['testSupply', (c) => testSupply(c.browser, c.base)],
   ['testGuide', (c) => testGuide(c.browser, c.base)],
