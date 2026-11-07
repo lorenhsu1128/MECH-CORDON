@@ -12,6 +12,57 @@ import { legacyTarget } from '../render/legacy-rt.js';
 
 installStyleShader(); // 越早越好：之後建立的標準材質都會用風格著色器
 
+// 陰影的深度材質（docs/perf-campaign-plan.md 第 3 期）：three.js 對一般網格共用一個 MeshDepthMaterial，蒙皮網格
+// （合併過的專屬敵人）、InstancedMesh 和一般網格交替畫的時候，這個材質的 skinning／instancing 旗標一直切換，
+// 每切一次就重算一次程式參數與快取鍵（Grid 086 每格約 30 次，是戰鬥中 GC 的大宗）。蒙皮與 InstancedMesh
+// 改用各自的深度材質（原型上的 customDepthMaterial；物件自己設的照舊優先），產生的程式和原本相同。
+// 需要 three.js 另外處理的（alphaTest 貼圖、置換、剪裁、alphaToCoverage、morph）照原本的路徑。
+{
+  const D = {
+    skin: new THREE.MeshDepthMaterial(),
+    inst: new THREE.MeshDepthMaterial(),
+    instC: new THREE.MeshDepthMaterial(),
+  };
+  const shared = (o) => {
+    const m = o.material;
+    if (!m || Array.isArray(m) || m.alphaTest > 0 || m.alphaToCoverage) return undefined;
+    if ((m.displacementMap && m.displacementScale !== 0) || (m.clippingPlanes && m.clippingPlanes.length))
+      return undefined;
+    if (o.isSkinnedMesh) return o.morphTargetInfluences ? undefined : D.skin;
+    if (o.morphTexture) return undefined;
+    return o.instanceColor ? D.instC : D.inst;
+  };
+  // 半透明的雙面材質：three.js 每次畫都分成背面、正面兩次，各設一次 needsUpdate（每格重算程式參數）。
+  // 不寫深度、而且兩層的顏色一定相同（加色；或不受光、沒有貼圖與頂點色的 MeshBasicMaterial）時，
+  // 同色同透明度疊兩層和先畫哪一層無關，所以改成畫一次（forceSinglePass），結果完全相同。物件自己設的照舊
+  const single = (m) =>
+    m.transparent === true &&
+    m.side === THREE.DoubleSide &&
+    m.depthWrite === false &&
+    (m.blending === THREE.AdditiveBlending ||
+      (m.isMeshBasicMaterial === true && !m.map && !m.alphaMap && !m.vertexColors));
+  Object.defineProperty(THREE.Material.prototype, 'forceSinglePass', {
+    get() {
+      return this._fsp === true || single(this);
+    },
+    // copy()／clone() 會把讀到的值寫回來：符合條件時不記（之後改了深度寫入等設定照樣重新判斷）
+    set(v) {
+      this._fsp = v === true && !single(this);
+    },
+    configurable: true,
+  });
+  for (const C of [THREE.SkinnedMesh, THREE.InstancedMesh])
+    Object.defineProperty(C.prototype, 'customDepthMaterial', {
+      get() {
+        return this._cdm !== undefined ? this._cdm : shared(this);
+      },
+      set(v) {
+        this._cdm = v;
+      },
+      configurable: true,
+    });
+}
+
 Object.assign(Game.prototype, {
   // ---------- environment map (procedural studio: sky gradient + light panels) ----------
   setupEnvironment() {

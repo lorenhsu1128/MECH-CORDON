@@ -13,6 +13,9 @@ import { targetDist, targetSegT } from '../world/prop-hit.js';
 const AAM_LOSE = 1.3; // 空戰導彈失去追蹤的夾角（data/air.js 的 AAM_LOSE）
 const BEND_CONE = 0.25; // 彈道修正只修正這個角度（弧度）以內的偏差：差一點擦過的會修正，大幅閃避照樣打不中
 
+// 每格的暫存（子彈很多，docs/perf-campaign-plan.md 第 3 期）
+const _pjSeg = new THREE.Vector3(),
+  _pjMid = new THREE.Vector3();
 export class Projectile {
   constructor(game, o) {
     Object.assign(this, { life: 3, splash: 0, gravity: 0, target: null, turn: 0, dead: false, trailT: 0 }, o);
@@ -173,19 +176,23 @@ export class Projectile {
     // 護盾產生器的護盾、盾牌 MT 的盾（game/support.js）；路徑經過地雷時引爆
     if (g.projBlock(this, prev)) return;
     // swept hits: closest point on segment prev→pos to target sphere
-    const targets = (this.allTeams ? g.everyone(this.owner) : g.hostilesOf(this.team, this.owner)).concat(
-      g.destructibles(this.team),
-    );
-    const seg = this.pos.clone().sub(prev);
+    // 目標：敵對的機體＋同一格共用的可破壞物件清單（不再每顆子彈串一個新陣列，第 3 期）
+    const hs = this.allTeams ? g.everyone(this.owner) : g.hostilesOf(this.team, this.owner);
+    const ds = g.destructiblesF(this.team);
+    const seg = _pjSeg.copy(this.pos).sub(prev);
     let best = null,
       bestT = 2;
     const pad = 0.4 + (this.hitR || 0); // hitR：玩家實彈加大的判定（對物件不加：物件用命中形狀，world/prop-hit.js）
-    for (const t of targets) {
-      if (t.dead) continue;
-      const tt = targetSegT(t, prev, seg, pad);
-      if (tt >= 0 && tt < bestT) {
-        best = t;
-        bestT = tt;
+    for (let li = 0; li < 2; li++) {
+      const L = li ? ds : hs;
+      for (let i = 0; i < L.length; i++) {
+        const t = L[i];
+        if (t.dead) continue;
+        const tt = targetSegT(t, prev, seg, pad);
+        if (tt >= 0 && tt < bestT) {
+          best = t;
+          bestT = tt;
+        }
       }
     }
     if (best) {
@@ -193,7 +200,7 @@ export class Projectile {
       this.impact(best);
       return;
     }
-    const mid = prev.clone().addScaledVector(seg, 0.5);
+    const mid = _pjMid.copy(prev).addScaledVector(seg, 0.5);
     // 打到地下的岩頂（docs/destruction-design.md 第 6 期）
     // （拋物線的砲彈不算：照舊越過岩頂打到目標）
     if (

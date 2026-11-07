@@ -52,6 +52,19 @@ Object.assign(Game.prototype, {
     if (team !== 'prop' && this.devs && this.devs.length) out.push(...this.trapTargets()); // 環境陷阱的弱點（敵人的流彈也算）
     return out;
   },
+  // 同一格裡共用的 destructibles（docs/perf-campaign-plan.md 第 3 期：每顆子彈每格都要找一次目標，以前每次新建
+  // 幾百個元素的陣列，是戰鬥中 GC 的大宗）。主迴圈每格開頭換一次（loopN）；同一格中途被打壞的照舊由呼叫端的
+  // t.dead 略過，中途新增的（可以打掉的投射物）下一格才加入。回傳的陣列不能改
+  destructiblesF(team) {
+    const c = this.dCache || (this.dCache = { n: -1, m: new Map() });
+    if (c.n !== this.loopN) {
+      c.n = this.loopN;
+      c.m.clear();
+    }
+    let a = c.m.get(team);
+    if (!a) c.m.set(team, (a = this.destructibles(team)));
+    return a;
+  },
   // 地圖物件受傷（房主／單機）：attr＝屬性、wid＝武器 id（依材質的倍率，game/destruct.js）
   damageProp(p, dmg, impact, at, from, attr, wid) {
     this.propDamage(p, dmg, impact, at, from, attr, wid);

@@ -120,6 +120,9 @@ function meleeSwingOf(st) {
   if (st.thrust || st.dashSlash) return 't';
   return st.mirror ? 'hm' : 'h';
 }
+const _ptA = new THREE.Vector3(),
+  _ptF = new THREE.Vector3(),
+  _ptR = new THREE.Vector3();
 export class MechEntity {
   constructor(game, asm, pal, opts = {}) {
     this.game = game;
@@ -2767,16 +2770,17 @@ export class MechEntity {
     const g = this.game;
     // ---- 機體動態：依加速度前傾／後仰／側傾（機體座標系） ----
     if (!this.prevVel) this.prevVel = this.vel.clone();
-    const accW = this.vel
-      .clone()
+    // 暫存向量共用（每台機甲每格都跑，docs/perf-campaign-plan.md 第 3 期）
+    const accW = _ptA
+      .copy(this.vel)
       .sub(this.prevVel)
       .multiplyScalar(1 / Math.max(dt, 1e-3));
     this.prevVel.copy(this.vel);
     if (!this.accS) this.accS = new THREE.Vector3();
     this.accS.lerp(accW, Math.min(1, dt * 6));
     {
-      const fwd = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw)),
-        right = new THREE.Vector3(fwd.z, 0, -fwd.x);
+      const fwd = _ptF.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw)),
+        right = _ptR.set(fwd.z, 0, -fwd.x);
       const af = this.accS.dot(fwd),
         ar = this.accS.dot(right);
       const vf = this.vel.dot(fwd);
@@ -2843,8 +2847,8 @@ export class MechEntity {
     this.recoil.bl = Math.max(0, (this.recoil.bl || 0) - dt * 8);
     this.recoil.br = Math.max(0, (this.recoil.br || 0) - dt * 8);
     {
-      const fwd = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw)),
-        right = new THREE.Vector3(fwd.z, 0, -fwd.x);
+      const fwd = _ptF.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw)),
+        right = _ptR.set(fwd.z, 0, -fwd.x);
       const spd = Math.max(1, this.stats.speed);
       const strafe = clamp(this.vel.dot(right) / spd, -1, 1);
       const turn = clamp(

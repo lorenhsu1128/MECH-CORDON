@@ -416,6 +416,7 @@ export class Game {
   // ---------- loop ----------
   loop() {
     requestAnimationFrame(() => this.loop());
+    this.loopN = (this.loopN || 0) + 1; // 每格的編號（同一格共用的清單：map-extras.js 的 destructiblesF）
     this.renderer.shadowMap.needsUpdate = true; // 陰影貼圖每格只畫一次（render/style/pipeline.js 的 manualShadows）
     this.fx.view = null; // 粒子的畫面外判斷只在任務中（lodTick 設定）
     const now = performance.now();

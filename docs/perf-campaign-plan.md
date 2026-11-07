@@ -141,6 +141,18 @@
 - 之前已經做過的 GC 熱點，見 `docs/perf-threejs-upgrade.md`。
 - **目標**：戰鬥中的 GC 卡頓減半。
 
+### 實作紀錄（2026-11-07 完成）
+
+用 CDP 的 `HeapProfiler.startSampling`（含已回收的物件）在 c4s1 段 1 錄 30 秒，配置合計 1,611 MB（每秒約 54 MB）；改完 1,183 MB（−27%）。
+
+- **陰影的深度材質**（`game/render-setup.js`）：three.js 對一般網格共用一個 `MeshDepthMaterial`，蒙皮網格（合併過的專屬敵人）、InstancedMesh 和一般網格交替畫時，這個材質的 skinning／instancing 旗標一直切換，每切一次 `getParameters`＋快取鍵字串（每格約 31 次）。蒙皮與 InstancedMesh（有沒有 instanceColor 各一個）改用自己的深度材質：原型上的 `customDepthMaterial` getter，物件自己設的照舊優先，需要 three.js 另外處理的（alphaTest 貼圖、置換、剪裁、morph）照原本的路徑。降到每格 0 次。
+- **半透明的雙面材質**：three.js 每次畫都分成背面、正面兩次，各設一次 `needsUpdate`（預警線、狀態效果的 MeshBasicMaterial，每格各 2 次重算）。不寫深度、而且兩層顏色一定相同（加色；或不受光、沒有貼圖與頂點色的 MeshBasicMaterial）時，同色同透明度疊兩層和順序無關，所以原型上的 `forceSinglePass` getter 讓它們只畫一次，結果完全相同。
+- **子彈找目標**（`entities/projectile.js`、`game/map-extras.js` 的 `destructiblesF`）：每顆子彈每格都把敵人清單和全部可破壞物件串成新陣列。改成同一格共用一份可破壞物件清單（主迴圈開頭的 `loopN` 換格），兩份清單依序走訪（順序同原本）；`seg`、`mid` 改用暫存向量。
+- **小細節的距離分級**（`render/detail.js` 的 `fineTick`）：`for…of` 走訪 Map 每個項目都新建 `[鍵, 值]`，改成 `forEach`＋只建一次的回呼。
+- **機甲的傾斜**（`poseTail`）：每台每格 5 個 Vector3 改成共用的暫存向量。
+- **結果**（c3s3＋c6s2 共 13 段，和第 2 期的兩次量測比較）：戰鬥中的 GC 卡頓每分鐘 1.96／2.25 → 1.02 次（減半），平均 76～86 → 103 ms；全部卡頓每分鐘 3.07／3.26 → 2.54 次。
+- **剩下的**：最大的是 three.js 上傳矩陣 uniform（WebGL 呼叫本身的配置，`ab`／`ob`，30 秒約 220 MB），要靠第 4 期減少繪製次數；其他是 `crowdTick`、`animateMech`、`move`、淡出材質的 getter（`classMat` 的 `get: () => fade[p]`，數字裝箱）、戰鬥中新建材質的 `onBeforeCompile`，各 25～50 MB。
+
 ## 六、第 4 期：Grid 086 與技研都市的平時負擔
 
 - **Grid 086**：繪製次數 2,000～3,000（其他主題約 1,000），主迴圈 p50 20～24 ms，其中 `renderMain` 15～18 ms、`pipe.renderSoft` 10～12 ms、`pipe.renderNormals`（SSAO 的法線）2.5～3 ms。

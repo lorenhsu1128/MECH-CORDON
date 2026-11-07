@@ -1066,24 +1066,29 @@ export function classMat(c, fade) {
   return m;
 }
 const _fp = new THREE.Vector3();
+// 每格走訪用的狀態與回呼（只建一次：for…of 走訪 Map 每個項目都會新建 [鍵, 值] 陣列，小細節的網格有幾千個，
+// docs/perf-campaign-plan.md 第 3 期）
+const FT = { prune: false, cp: null, k: 1 };
+function fineOne(d, m) {
+  if (FT.prune) {
+    let r = m;
+    while (r.parent) r = r.parent;
+    if (!r.isScene) {
+      // 不在場景裡（模型拿掉了）：不再管它（之後再加進場景也只是一直顯示）
+      FINE.delete(m);
+      m.visible = true;
+      return;
+    }
+  }
+  _fp.setFromMatrixPosition(m.matrixWorld);
+  m.visible = _fp.distanceToSquared(FT.cp) < (d * FT.k) ** 2;
+}
 // 每格（renderMain）：用上一格算好的 matrixWorld（不往上更新），k＝距離倍率
 export function fineTick(cam, k = 1) {
   if (!FINE.size) return;
-  const prune = ++fineN % 120 === 0;
-  const cp = cam.position;
-  for (const [m, d] of FINE) {
-    if (prune) {
-      let r = m;
-      while (r.parent) r = r.parent;
-      if (!r.isScene) {
-        // 不在場景裡（模型拿掉了）：不再管它（之後再加進場景也只是一直顯示）
-        FINE.delete(m);
-        m.visible = true;
-        continue;
-      }
-    }
-    _fp.setFromMatrixPosition(m.matrixWorld);
-    m.visible = _fp.distanceToSquared(cp) < (d * k) ** 2;
-  }
+  FT.prune = ++fineN % 120 === 0;
+  FT.cp = cam.position;
+  FT.k = k;
+  FINE.forEach(fineOne);
 }
 export const fineCount = () => FINE.size;
