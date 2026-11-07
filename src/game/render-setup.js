@@ -206,6 +206,22 @@ Object.assign(Game.prototype, {
       if (extra && this.typePrewarm && !(this.net && this.net.role === 'client'))
         extra.add(this.typePrewarm());
       if (extra && this.crowdWarm) extra.add(this.crowdWarm()); // 降落傘、血跡（crowd.js）
+      // 地圖物件碎片的批次（fx/effects.js 的 debBatch：InstancedMesh＋每個實例的顏色＋投影），第一次打壞東西時才建
+      if (extra) {
+        const dm = new THREE.InstancedMesh(
+          new THREE.BoxGeometry(1, 1, 1),
+          new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            roughness: 0.85,
+            metalness: 0.2,
+            flatShading: true,
+          }),
+          1,
+        );
+        dm.setColorAt(0, new THREE.Color(1, 1, 1));
+        dm.castShadow = true;
+        extra.add(dm);
+      }
       if (extra && this.fx.rich) extra.add(energyWarm(this.fx.k)); // 第 9 期的護罩、光柱、預警（fx/energy.js）
       // 場景與上面那些的半透明版（淡出、碎塊、掉板；render/shader-warm.js 的 transpWarm）
       if (extra) {

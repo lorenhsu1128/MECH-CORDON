@@ -119,8 +119,9 @@ function mixHex(a, b, t) {
 }
 // 地圖物件碎片的共用單位幾何（propDebris 以縮放決定大小）
 const DEB_GEO = {};
+const DEB_KIND = new WeakSet(); // 共用的單位幾何（effects.debBatch 只收這些）
 function debGeo(k) {
-  if (!DEB_GEO[k])
+  if (!DEB_GEO[k]) {
     DEB_GEO[k] =
       k === 'rock'
         ? new THREE.DodecahedronGeometry(0.6, 0)
@@ -129,6 +130,8 @@ function debGeo(k) {
           : k === 'crystal'
             ? new THREE.ConeGeometry(0.3, 1.1, 5)
             : new THREE.BoxGeometry(1, 0.1, 0.75);
+    DEB_KIND.add(DEB_GEO[k]);
+  }
   return DEB_GEO[k];
 }
 
@@ -226,6 +229,22 @@ export class Effects {
       this.batchList.push(b);
     }
     return b.get(color, opacity, parent);
+  }
+  // 地圖物件碎片的批次（依共用的單位幾何各一個；不是 debGeo 的幾何回傳 null）
+  debBatch(geo) {
+    if (!DEB_KIND.has(geo)) return null;
+    const M = this.debB || (this.debB = new Map());
+    let b = M.get(geo);
+    if (!b) {
+      b = new FxBatch(this.scene, geo, {
+        std: { color: 0xffffff, roughness: 0.85, metalness: 0.2, flatShading: true },
+        instColor: true,
+        shadow: true,
+      });
+      M.set(geo, b);
+      this.batchList.push(b);
+    }
+    return b;
   }
   // 把批次的代理寫進 InstancedMesh（update 結尾與渲染前各一次，update 之後才產生的粒子也畫得到）
   flush() {
@@ -2535,14 +2554,24 @@ Object.assign(Effects.prototype, {
   // 碎片落地後縮小消失（地圖物件的碎裂；殘骸本身另外留在原地，world/prop-wreck.js）
   propDebris(list, color, world, dir) {
     const scene = this.scene;
-    const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0.2, flatShading: true });
+    let mat = null; // 只有呼叫端自己給幾何的碎片才建（共用的單位幾何走粒子批次）
     const K = this.k;
     const pieces = list.map((d) => {
-      const m = new THREE.Mesh(d.geo, mat);
+      // 共用的單位幾何（debGeo）：同一種形狀的碎片合成一個 InstancedMesh（一片一個網格時，連鎖破壞一次
+      // 上百片、每片在陰影／主場景／SSAO 法線各畫一次；docs/perf-campaign-plan.md 第 4 期）。顏色、陰影、動作同原本
+      const B = d.q && this.debBatch(d.geo);
+      let m;
+      if (B) m = B.get(color, 1);
+      else {
+        mat =
+          mat ||
+          new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0.2, flatShading: true });
+        m = new THREE.Mesh(d.geo, mat);
+        m.castShadow = true;
+        scene.add(m);
+      }
       m.position.copy(d.pos);
       m.rotation.set(rnd(0, 3), rnd(0, 3), rnd(0, 3));
-      m.castShadow = true;
-      scene.add(m);
       const v = d.pos.clone().sub(d.origin).setY(0);
       if (v.lengthSq() < 1e-4) v.set(rnd(-1, 1), 0, rnd(-1, 1));
       v.normalize().multiplyScalar(rnd(3, 8) * d.sp);
@@ -2589,10 +2618,14 @@ Object.assign(Effects.prototype, {
       },
       end: () => {
         for (const p of pieces) {
+          if (p.m.isFxProxy) {
+            if (p.m.fxBatch) p.m.fxBatch.release(p.m);
+            continue;
+          }
           scene.remove(p.m);
           if (p.own) p.m.geometry.dispose(); // 呼叫端自己建的幾何（共用的單位幾何不釋放）
         }
-        mat.dispose();
+        if (mat) mat.dispose();
       },
     });
   },

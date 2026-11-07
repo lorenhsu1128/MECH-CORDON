@@ -30,10 +30,13 @@ function patchBasic(mat) {
 }
 
 export class FxBatch {
-  // o：{ blending, side, renderOrder, attached, std: { color, roughness, metalness }（不透明的標準材質）}
+  // o：{ blending, side, renderOrder, attached, std: { color, roughness, metalness }（不透明的標準材質），
+  //      instColor（不透明的也每個實例一個顏色：three.js 的 instanceColor，乘在材質的顏色上），shadow（投影）}
   constructor(scene, geo, o = {}) {
     this.scene = scene;
     this.std = !!o.std;
+    this.instColor = !!(o.std && o.instColor);
+    this.shadow = !!o.shadow;
     this.attached = !!o.attached;
     this.renderOrder = o.renderOrder || 0;
     this.geo = geo.clone(); // iCol 屬性掛在自己的幾何上（原本的幾何別處還在用）
@@ -64,6 +67,11 @@ export class FxBatch {
     this.iCol = ic;
     const m = new THREE.InstancedMesh(this.geo, this.mat, cap);
     m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    if (this.instColor) {
+      this.ic3 = new Float32Array(cap * 3);
+      m.instanceColor = new THREE.InstancedBufferAttribute(this.ic3, 3).setUsage(THREE.DynamicDrawUsage);
+    }
+    m.castShadow = this.shadow;
     m.frustumCulled = false; // 實例散在整個場地，幾何的外接球沒有意義
     m.count = 0;
     m.visible = false;
@@ -182,6 +190,12 @@ export class FxBatch {
         C[q + 1] = c.g;
         C[q + 2] = c.b;
         C[q + 3] = p.material.opacity;
+      } else if (this.instColor) {
+        const c = p.material.color,
+          q = w * 3;
+        this.ic3[q] = c.r;
+        this.ic3[q + 1] = c.g;
+        this.ic3[q + 2] = c.b;
       }
       w++;
     }
@@ -195,6 +209,11 @@ export class FxBatch {
       this.iCol.clearUpdateRanges();
       this.iCol.addUpdateRange(0, n * 4);
       this.iCol.needsUpdate = true;
+    } else if (this.instColor) {
+      const a = m.instanceColor;
+      a.clearUpdateRanges();
+      a.addUpdateRange(0, n * 3);
+      a.needsUpdate = true;
     }
   }
 }
