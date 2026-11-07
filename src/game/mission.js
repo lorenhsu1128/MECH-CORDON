@@ -993,6 +993,7 @@ Object.assign(Game.prototype, {
     this.clearHazards();
     if (this.bfClear) this.bfClear(); // Boss 改版的場地效果
     this.wavePend = null;
+    this.spawnQ = null; // 生成佇列（waves.js）
     this.waveMarks = [];
     this.encGroups = null; // 分群（encounters.js）
     this.encCaches = null;

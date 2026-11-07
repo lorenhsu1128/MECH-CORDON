@@ -242,7 +242,7 @@ Object.assign(Game.prototype, {
     const np = this.playersAlive ? this.playersAlive().length : 1;
     for (let i = 1; i < np; i++) list.push('mt');
     this.waveAt = { pos: b.pos.clone(), drop: true };
-    for (const t of list) this.spawnType(t, this.scaleHp, this.scaleDmg);
+    this.spawnLater(list); // 一格一台（waves.js）
     this.waveAt = null;
     this.flashAlert(`第 ${ph} 型態 — 敵方增援空降`);
   },

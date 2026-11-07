@@ -412,13 +412,16 @@ export class TextFx {
       this.cv.height = Math.round(H * dpr);
     }
     const c = this.ctx;
-    c.setTransform(1, 0, 0, 1, 0, 0);
-    c.clearRect(0, 0, this.cv.width, this.cv.height);
     // 不在指定狀態：任務中的凍結，其他的移除
     this.items = this.items.filter((it) => {
       const st = it.opt.states;
       return !st || st.includes(state) || (it.opt.freeze && it.opt.freeze.includes(state));
     });
+    // 全螢幕的疊加畫布：上一格沒畫、這一格也沒有項目時不清（以前每格清整張畫布，任務中約 1 ms；2026-11-07）
+    if (!this.items.length && !this.dirty) return this.hostTick(dt);
+    this.dirty = this.items.length > 0;
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.clearRect(0, 0, this.cv.width, this.cv.height);
     const busy = {};
     const banner = this.items.some(
       (x) => x.slot === 'banner' && x.scene && (!x.opt.states || x.opt.states.includes(state)),
@@ -441,7 +444,10 @@ export class TextFx {
       if (it.slot !== 'full') this.backdrop(it, r, dpr);
       c.drawImage(R.canvas, r.x * dpr, r.y * dpr, r.w * dpr, r.h * dpr);
     }
-    // DOM 裡的標題
+    this.hostTick(dt);
+  }
+  // DOM 裡的標題
+  hostTick(dt) {
     for (const [el, it] of this.hosts) {
       if (!el.isConnected) {
         this.hosts.delete(el);

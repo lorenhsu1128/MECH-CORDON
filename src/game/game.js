@@ -609,6 +609,7 @@ export class Game {
     this.fx.update(dt);
     this.tickPopups(dt);
     // waves
+    this.spawnQTick(); // 生成佇列：一格一台（waves.js）
     const alive = this.enemies.filter((e) => !e.dead && !e.guardOf && !e.decoy).length; // 據點的守衛、全像的假敵人不算
     this.cacheTick(dt);
     this.devVisTick(dt); // 地圖互動裝置：顯示與互動鍵（devices.js）
@@ -620,7 +621,7 @@ export class Game {
     } else if (alive === 0 && this.waves.length) {
       const w = this.waves.shift();
       this.flashAlert('敵方增援抵達');
-      for (const t of w) this.spawnType(t, this.scaleHp, this.scaleDmg);
+      this.spawnLater(w); // 一格一台（waves.js）
     } else if (this.isBossLevel && this.bosses && this.bosses.some((b) => !b.dead)) {
       this.bossPhaseTick(dt); // Boss 的三個型態、換型態的增援、狂暴（bosses.js）
     } else if (
@@ -629,6 +630,7 @@ export class Game {
       !this.tut &&
       alive === 0 &&
       !this.waves.length &&
+      !(this.spawnQ && this.spawnQ.length) &&
       this.playersAlive().length &&
       this.state === 'play'
     ) {

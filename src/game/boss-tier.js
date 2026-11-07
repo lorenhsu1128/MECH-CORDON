@@ -79,7 +79,9 @@ Object.assign(Game.prototype, {
   // 大招「投放空降兵」：Boss 附近空降 n 台雜兵
   tierDrop(b, n) {
     this.waveAt = { pos: b.pos.clone(), drop: true };
-    for (let i = 0; i < n; i++) this.spawnType(i ? 'mt' : 'mt_shot', this.scaleHp, this.scaleDmg, null, 1);
+    const list = [];
+    for (let i = 0; i < n; i++) list.push(i ? 'mt' : 'mt_shot');
+    this.spawnLater(list, null, 1); // 一格一台（waves.js）
     this.waveAt = null;
   },
   // bossPhaseTick 每格（房主／單機）：雜兵小隊、破甲充能的減少
@@ -99,12 +101,10 @@ Object.assign(Game.prototype, {
     if (!tgt || !this.waveEdgePoint) return;
     const T = tierRow(t);
     this.waveAt = { pos: this.waveEdgePoint(tgt.pos), drop: false };
-    let last = null;
-    for (const k of kSquad(t)) {
-      last = this.spawnType(k, this.scaleHp, this.scaleDmg, null, 1); // 一台一台（不照編隊數量）
-      // 刁鑽度 7～8：會閃避與躲掩體（技巧較高、會找射線）
-      if (last && T.kSmart) last.aiSkill = Math.max(last.aiSkill || 1, 1.25);
-    }
+    // 一台一台（不照編隊數量），一格一台（waves.js）；刁鑽度 7～8：會閃避與躲掩體（技巧較高、會找射線）
+    this.spawnLater(kSquad(t), null, 1, (e) => {
+      if (T.kSmart) e.aiSkill = Math.max(e.aiSkill || 1, 1.25);
+    });
     this.waveAt = null;
     this.flashAlert('敵方小隊進入戰區 — 擊破累積破甲充能');
   },

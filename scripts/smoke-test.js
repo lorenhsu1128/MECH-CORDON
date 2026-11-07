@@ -14700,6 +14700,7 @@ async function testBossPower(browser, base) {
     g.bossPhaseTick(0.016);
     out.ph2 = b.bossPhase();
     out.iF = b.iFrames;
+    while (g.spawnQ && g.spawnQ.length) g.spawnQTick(); // 生成佇列：一格一台（waves.js）
     const adds = g.enemies.filter((e) => !e.dead && e !== b);
     out.adds = adds.length - (n0 - 1);
     out.addAc = adds.some((e) => e.ai === 'ac' || e.isBoss);
@@ -14890,9 +14891,11 @@ async function testBossTier(browser, base) {
     pl.bkTick(11, 3);
     out.bkDecay = pl.bk.n < 3;
     // 雜兵小隊：每 25 秒從邊緣進來 3～4 台
+    while (g.spawnQ && g.spawnQ.length) g.spawnQTick(); // 之前排進生成佇列的（換型態的增援）先生成
     const e0 = g.enemies.filter((e) => !e.dead).length;
     g.kSquadT = 0;
     g.bossTierTick(0.016);
+    while (g.spawnQ && g.spawnQ.length) g.spawnQTick(); // 生成佇列：一格一台（waves.js）
     out.squad = g.enemies.filter((e) => !e.dead).length - e0;
     // L：風格評價 S 以上對 Boss 的傷害加成；Boss 戰中被打中掉級
     pl.sy = null;

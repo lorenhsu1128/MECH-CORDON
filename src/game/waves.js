@@ -137,6 +137,28 @@ Object.assign(Game.prototype, {
       18 * DS,
     );
   },
+  // 生成佇列（任務中一次要生成好幾台時：Boss 換型態的增援、突破區段、護送的襲擊）：一格生成一台
+  // （每台建模 30～70 ms，同一格全部生成會卡 100～200 ms；2026-11-07）。at＝spawnType 的位置，
+  // 排進去時的 waveAt（空降地點）一起記下；佇列還有東西時不算清除（game.js）
+  // n＝spawnType 的數量（沒給時照編隊）、fn＝生成之後對那一台做的事
+  spawnLater(list, at, n, fn) {
+    const q = this.spawnQ || (this.spawnQ = []);
+    for (const t of list)
+      q.push({ t, at: at || null, wa: this.waveAt, sh: this.scaleHp, sd: this.scaleDmg, n, fn });
+  },
+  spawnQTick() {
+    const q = this.spawnQ;
+    if (!q || !q.length) return;
+    const it = q.shift();
+    const wa = this.waveAt;
+    this.waveAt = it.wa;
+    try {
+      const e = this.spawnType(it.t, it.sh, it.sd, it.at || undefined, it.n);
+      if (e && it.fn) it.fn(e);
+    } finally {
+      this.waveAt = wa;
+    }
+  },
   // k＝只生成第 k 台（沒給時全部）；空降的衝擊波在第一台
   waveSpawn(w, k) {
     if (w.air) return this.airWaveSpawn(w);

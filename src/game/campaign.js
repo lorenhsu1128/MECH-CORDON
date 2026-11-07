@@ -1003,8 +1003,7 @@ Object.assign(Game.prototype, {
       ss.brk.waveT -= dt;
       if (ss.brk.waveT <= 0) {
         ss.brk.waveT = ss.brk.t > 0 ? 14 : 7;
-        for (const t of this.rollComp(Math.max(1, this.campLevel() - 1), ss.np || 1).slice(0, 3))
-          this.spawnType(t, this.scaleHp, this.scaleDmg);
+        this.spawnLater(this.rollComp(Math.max(1, this.campLevel() - 1), ss.np || 1).slice(0, 3)); // 一格一台
         this.flashAlert(ss.brk.t > 0 ? '敵方增援抵達' : '時間超過 — 增援加劇');
       }
     }
@@ -1054,8 +1053,7 @@ Object.assign(Game.prototype, {
       const at = new THREE.Vector3(q.x + side * rnd(12, 20), 0, q.z + side * rnd(-6, 6));
       const [x, z] = w.nearSolid(clamp(at.x, -w.lim + 4, w.lim - 4), clamp(at.z, -w.lim + 4, w.lim - 4));
       at.set(x, w.terrainHeight(x, z), z);
-      for (const t of this.rollComp(Math.max(1, this.campLevel() - 1), 1).slice(0, 3))
-        this.spawnType(t, this.scaleHp, this.scaleDmg, at);
+      this.spawnLater(this.rollComp(Math.max(1, this.campLevel() - 1), 1).slice(0, 3), at); // 一格一台
       this.flashAlert('敵軍襲擊車隊');
     }
   },

@@ -14,7 +14,7 @@ import {
   buildWarehouse,
   warehouseRidge,
 } from './cover-models.js';
-import { mergeStatic } from '../render/mesh-merge.js';
+import { attrSig, mergeList, mergeStatic } from '../render/mesh-merge.js';
 import { propHpFor, propMatOf } from '../data/destruct.js';
 import { buildWreck } from './prop-wreck.js';
 import { tessellate } from './prop-split.js';
@@ -475,6 +475,7 @@ export class World {
     this.regDecks();
     this.regSegs();
     this.regNew = false;
+    if (!LV) this.mergeGridPillars(); // 自訂關卡與編輯器不合併（產生器物件的移除與還原直接切換顯示）
     // 邊界外的遠景地形與剪影物件（edges.js，獨立的亂數串，不影響上面的生成）
     withRng(seed * 97 + 41, () => {
       for (const o of buildBackdrop(this) || []) {
@@ -2554,6 +2555,85 @@ export class World {
       body.hp = body.maxHp = Math.round(hpSum * 1.5);
     }
   }
+  // Grid 086 的甲板格子的支柱（一張大地圖幾百根、一根一個網格，主線的大地圖每格多幾百次繪製；2026-11-07）：
+  // 依區域（4×4 格）與材質合併成少數幾個網格，原本的網格隱藏、不在 meshes 裡（不做鏡頭遮擋的淡出）。
+  // 某一根損毀時 propUnmerge 把它在合併網格裡的頂點縮成一點（不畫），原本的網格顯示回來，之後照原本的做法切開、隱藏
+  mergeGridPillars() {
+    const P = this.props.filter((p) => p.ob && p.ob.seg === 'grid' && p.ob.kind === 'circle' && p.ob.group);
+    if (P.length < 8) return;
+    const cell = this.limOut / 2;
+    const buckets = new Map();
+    for (const p of P) {
+      const g = p.ob.group;
+      if (!g.parent || !g.visible) continue;
+      g.updateMatrixWorld(true);
+      const ms = [];
+      let ok = true;
+      g.traverse((o) => {
+        if (!o.isMesh) return;
+        const m = o.material,
+          geo = o.geometry;
+        if (o.isSkinnedMesh || o.isInstancedMesh || Array.isArray(m) || !o.visible || geo.groups.length)
+          ok = false;
+        else if (m.transparent && m.depthWrite) ok = false;
+        else ms.push(o);
+      });
+      if (!ok || !ms.length) continue;
+      const cx = Math.floor(p.ob.x / cell),
+        cz = Math.floor(p.ob.z / cell);
+      for (const o of ms) {
+        const key = [o.material.uuid, attrSig(o.geometry), +o.castShadow, +o.receiveShadow, cx, cz].join('|');
+        let b = buckets.get(key);
+        if (!b) buckets.set(key, (b = []));
+        b.push({ p, o });
+      }
+      p.pillarMerge = [];
+    }
+    if (!buckets.size) return;
+    const root = (this.pillarG = new THREE.Group());
+    root.userData.noFade = true;
+    this.scene.add(root);
+    this.meshes.push(root); // dispose 時一起拿掉（noFade：不做遮擋的淡出）
+    this.pillarHide = [];
+    for (const list of buckets.values()) {
+      const geo = mergeList(list.map(({ o }) => ({ geo: o.geometry, mm: o.matrixWorld.clone() })));
+      const o0 = list[0].o;
+      const mesh = new THREE.Mesh(geo, o0.material);
+      mesh.castShadow = o0.castShadow;
+      mesh.receiveShadow = o0.receiveShadow;
+      root.add(mesh);
+      let v = 0;
+      for (const { p, o } of list) {
+        const n = o.geometry.attributes.position.count;
+        p.pillarMerge.push({ mesh, v, n });
+        v += n;
+      }
+    }
+    for (const p of P) {
+      if (!p.pillarMerge) continue;
+      const g = p.ob.group;
+      g.visible = false;
+      const k = this.meshes.indexOf(g);
+      if (k >= 0) this.meshes.splice(k, 1);
+      this.pillarHide.push(g);
+    }
+  }
+  propUnmerge(p) {
+    const L = p.pillarMerge;
+    if (!L) return;
+    p.pillarMerge = null;
+    for (const { mesh, v, n } of L) {
+      const a = mesh.geometry.attributes.position;
+      const x = a.getX(v),
+        y = a.getY(v),
+        z = a.getZ(v);
+      for (let i = v; i < v + n; i++) a.setXYZ(i, x, y, z);
+      a.needsUpdate = true;
+    }
+    const g = p.ob.group;
+    g.visible = true;
+    if (!this.meshes.includes(g)) this.meshes.push(g);
+  }
   // 跟地形連在一起的巨型結構的局部打穿（docs/destruction-design.md 第 6 期）：每一段各自是一個物件（沒有自己的碰撞，
   // p.seg）——壩體每 12～16 m 一段、隧道口、洋上都市與高空軌道的平台外緣每 ~30 m 一段。岩頂不在這裡（Game 的 roofDamage
   // 依格子記血量，不進 props，不拖慢投射物的判定）。不用亂數
@@ -2735,6 +2815,7 @@ export class World {
   // 完全損毀：拿掉碰撞與原本的模型，換成殘骸（prop-wreck.js）與殘骸的碰撞；o.quiet＝不播碎裂（重連時直接套用）
   destroyProp(p, fx, o = {}) {
     if (p.dead) return;
+    this.propUnmerge(p); // 合併過的支柱：先還原成原本的網格（切開、隱藏照原本的做法）
     p.dead = true;
     p.hp = Math.min(p.hp, 0);
     if (p.seg && !p.grid) return; // 巨型結構的一段（壩體、隧道口、平台外緣）：Game 的 propSegDown 演出
@@ -3326,7 +3407,7 @@ export class World {
     if (this.weather) this.weather.dispose();
     disposeWater(this.waterMesh);
     if (this._fading) for (const f of this._fading.values()) f.m.dispose();
-    for (const m of this.meshes) {
+    for (const m of [...this.meshes, ...(this.pillarHide || [])]) {
       this.scene.remove(m);
       m.traverse((o) => {
         if (o.geometry) o.geometry.dispose();
