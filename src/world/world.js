@@ -1261,6 +1261,7 @@ export class World {
     this.zoneShape = shape || 'full';
     this.zone = z;
     this.zoneGoal = null;
+    this.zoneBase = null; // Boss 改版的作戰區域縮小前的範圍（game/boss-tier.js 的 tierShrinkZone）
   }
   expandZone() {
     const L = this.lim;

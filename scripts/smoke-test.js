@@ -14849,6 +14849,74 @@ async function testBossPower(browser, base) {
   await ctx.close();
 }
 
+// Boss 改版的作戰區域縮小（2026-11-07 使用者回報：洋上都市的雙 AC Boss 關作戰區域超小、敵人在區域外打不到）：
+// 雙 AC 兩台各換到第三型態只縮一次（0.7，不疊成 0.49）、中心在戰鬥的位置、卡在區域外的 Boss 移回區域內的實地
+async function testBossZone(browser, base) {
+  console.log('Boss 的作戰區域縮小：雙 AC 不疊加、卡在區域外的敵人移回來（洋上都市）');
+  const { ctx, page } = await newPage(browser, 'bosszone');
+  await seededRandom(page);
+  await page.addInitScript(() => localStorage.setItem('rubicon_map', 'xylem'));
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await freezeLoop(page);
+  const r = await page.evaluate(() => {
+    const g = window.__game;
+    g.save.level = 21;
+    g.startMission();
+    g.state = 'bz-test';
+    const w = g.world,
+      pl = g.player;
+    pl.hp = pl.maxHp = 1e8;
+    pl.iFrames = 1e9;
+    const bs = g.bosses.filter((b) => !b.dead);
+    const out = {
+      theme: w.themeKey || w.theme.key || '',
+      n: bs.length,
+      names: bs.map((b) => b.name).join('、'),
+    };
+    for (const b of bs) b.opts.tier = 6;
+    const Z0 = w.zone.slice();
+    const half = (Z) => [(Z[1] - Z[0]) / 2, (Z[3] - Z[2]) / 2];
+    for (const b of bs) g.bossPhaseShift(b, 3);
+    const k = half(w.zoneGoal || w.zone).map((h, i) => +(h / half(Z0)[i]).toFixed(2));
+    out.k = k;
+    for (let i = 0; i < 60 && w.zoneGoal; i++) w.tickZone(1);
+    out.done = !w.zoneGoal;
+    // 有活著的 Boss 與玩家的中間在區域內
+    const cx = (bs.reduce((a, b) => a + b.pos.x, 0) + pl.pos.x) / (bs.length + 1),
+      cz = (bs.reduce((a, b) => a + b.pos.z, 0) + pl.pos.z) / (bs.length + 1);
+    out.centerIn = w.inZone(cx, cz);
+    // 把一台放到區域外的實地（虛空地圖：夾進區域會掉到海面、又被拉回平台）
+    const Z = w.zone;
+    let spot = null;
+    for (let t = 0; t < 4000 && !spot; t++) {
+      const x = (Math.random() * 2 - 1) * w.lim,
+        z = (Math.random() * 2 - 1) * w.lim;
+      if (!w.inZone(x, z, -12) && !w.isVoid(x, z)) spot = { x, z };
+    }
+    out.spot = !!spot;
+    const b = bs[bs.length - 1];
+    if (spot) {
+      b.pos.set(spot.x, w.groundAt(spot.x, spot.z, 999), spot.z);
+      b.safePos = b.pos.clone();
+      out.outBefore = !w.inZone(b.pos.x, b.pos.z, -3);
+      for (let i = 0; i < 30; i++) g.tierZoneRescue(0.1);
+      out.inAfter = w.inZone(b.pos.x, b.pos.z);
+      out.voidAfter = w.isVoid(b.pos.x, b.pos.z);
+    }
+    out.zone = Z.map((v) => Math.round(v));
+    return out;
+  });
+  check(r.n === 2, `雙 AC 的 Boss 關（${r.names}，${r.theme}）`);
+  check(
+    Math.abs(r.k[0] - 0.7) < 0.02 && Math.abs(r.k[1] - 0.7) < 0.02 && r.done,
+    `兩台各換到第三型態，作戰區域只縮一次（${r.k.join('／')} 倍，不是 0.49）`,
+  );
+  check(r.centerIn, '縮小後的區域包含 Boss 與玩家的中間');
+  check(r.spot && r.outBefore && r.inAfter && !r.voidAfter, '卡在區域外 2 秒的 Boss 移回區域內的實地');
+  await ctx.close();
+}
+
 async function testBossTier(browser, base) {
   console.log('Boss 改版第 1 期：刁鑽度、失衡遞增、破綻、打斷大招、破甲充能、風格加成、擊破評價');
   const { ctx, page } = await newPage(browser, 'bosstier');
@@ -27622,6 +27690,7 @@ const STEPS = [
   ['testFoesB1', (c) => testFoesB1(c.browser, c.base)],
   ['testBossPower', (c) => testBossPower(c.browser, c.base)],
   ['testBossTier', (c) => testBossTier(c.browser, c.base)],
+  ['testBossZone', (c) => testBossZone(c.browser, c.base)],
   ['testBossTier2', (c) => testBossTier2(c.browser, c.base)],
   ['testBossField', (c) => testBossField(c.browser, c.base)],
   [

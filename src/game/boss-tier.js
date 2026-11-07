@@ -273,24 +273,57 @@ Object.assign(Game.prototype, {
     if (ph >= 3 || T.eMove) this.bfHaze(b, 0x8a8e96, 16, T.eMove);
     this.flashAlert(T.eMove ? '戰場改變 — 煙霧跟著 Boss 移動' : '戰場改變 — 熔岩裂地與煙霧');
   },
-  // 作戰區域縮小到比例 k（以目前作戰區域的中心）
+  // 作戰區域縮小到比例 k：一律以縮小前的作戰區域（w.zoneBase）計算，同一場只縮到最小的那一次
+  // （雙 AC 兩台各換一次型態時不會疊成 0.7×0.7）；中心＝at，沒給時＝還活著的 Boss 與玩家的中間
+  // （以前是地圖中心：洋上都市這類虛空地圖上，Boss 被夾進區域會掉到海面、又被拉回區域外的平台，卡住打不到）
   tierShrinkZone(k, at) {
     const w = this.world;
     if (!w || !w.zone) return;
-    const Z = w.zone;
-    const cx = (Z[0] + Z[1]) / 2,
-      cz = (Z[2] + Z[3]) / 2,
-      hx = ((Z[1] - Z[0]) / 2) * k,
-      hz = ((Z[3] - Z[2]) / 2) * k;
-    w.zoneGoal = [cx - hx, cx + hx, cz - hz, cz + hz];
-    if (at) {
-      // 以某個位置為中心（例如陣地周圍），超出原本的作戰區域的部分夾回去
-      const ax = clamp(at.x, Z[0] + hx, Z[1] - hx),
-        az = clamp(at.z, Z[2] + hz, Z[3] - hz);
-      w.zoneGoal = [ax - hx, ax + hx, az - hz, az + hz];
+    const B = (w.zoneBase = w.zoneBase || w.zone.slice());
+    const G = w.zoneGoal || w.zone;
+    const hx = ((B[1] - B[0]) / 2) * k,
+      hz = ((B[3] - B[2]) / 2) * k;
+    if (hx >= (G[1] - G[0]) / 2 - 0.5 && hz >= (G[3] - G[2]) / 2 - 0.5) return; // 已經縮過一樣小（或更小）
+    if (!at) {
+      const pts = [...(this.bosses || []), ...this.playersAlive()].filter((e) => e && !e.dead);
+      if (pts.length)
+        at = {
+          x: pts.reduce((a, e) => a + e.pos.x, 0) / pts.length,
+          z: pts.reduce((a, e) => a + e.pos.z, 0) / pts.length,
+        };
+      else at = { x: (B[0] + B[1]) / 2, z: (B[2] + B[3]) / 2 };
     }
+    // 超出原本的作戰區域的部分夾回去
+    const ax = clamp(at.x, B[0] + hx, B[1] - hx),
+      az = clamp(at.z, B[2] + hz, B[3] - hz);
+    w.zoneGoal = [ax - hx, ax + hx, az - hz, az + hz];
     this.netEv({ t: 'tzone', z: w.zoneGoal.map((v) => +v.toFixed(1)) });
     this.flashAlert('作戰區域縮小');
+  },
+  // 作戰區域縮小之後，在區域外卡住 2 秒以上的敵人移到區域內最近的實地（房主／單機；bossTierTick 每格）
+  tierZoneRescue(dt) {
+    const w = this.world;
+    if (!w || !w.zoneBase) return;
+    const Z = w.zone,
+      pl = this.playersAlive()[0];
+    for (const e of this.enemies || []) {
+      if (e.dead || e.ai === 'part' || e.isObjective || e.noLock) continue;
+      const out = !w.inZone(e.pos.x, e.pos.z, -3 * DS);
+      e.zoneOutT = out ? (e.zoneOutT || 0) + dt : 0;
+      if (e.zoneOutT < 2) continue;
+      e.zoneOutT = 0;
+      const near = { x: clamp(e.pos.x, Z[0], Z[1]), z: clamp(e.pos.z, Z[2], Z[3]) };
+      const p = w.spawnPoint(pl ? pl.pos : near, [], near, 0);
+      if (!w.inZone(p.x, p.z) || w.isVoid(p.x, p.z)) continue;
+      e.pos.set(
+        p.x,
+        w.groundAt(p.x, p.z, 999) + (e.flying ? e.pos.y - w.groundAt(e.pos.x, e.pos.z, 999) : 0),
+        p.z,
+      );
+      e.vel.set(0, 0, 0);
+      if (e.safePos) e.safePos.copy(e.pos);
+      this.fx.ring(e.pos.clone().setY(e.pos.y + 0.1), 4, 0xff9040);
+    }
   },
   // bossTierTick 每格：部位重建、跟著 Boss 的區域、作戰區域縮小
   tierFieldTick(dt) {
@@ -303,6 +336,7 @@ Object.assign(Game.prototype, {
       } else this.moveZone(fz, b.pos.clone());
     }
     if (this.world && this.world.zoneGoal && !this.camp) this.world.tickZone(dt);
+    this.tierZoneRescue(dt);
     if (!this.tierReb) return;
     for (const r of this.tierReb) {
       r.t -= dt;
