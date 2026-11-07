@@ -28,6 +28,8 @@ const WRECK_BURN = 22; // 可燃物的殘骸繼續燒幾秒
 const WRECK_SMOKE = 7; // 其他殘骸冒煙／揚塵幾秒
 const FLASH_MS = 70;
 const CRUSH_SLOW = 0.85; // 踩平時機甲的速度倍率
+const COL_MAX = 2; // 每格最多開始倒幾個結構（連鎖倒塌排到之後幾格：propLater）
+const WORK_MS = 4; // 排隊的工作（壓壞底下的物件、碎裂特效）每格最多做幾毫秒
 // 受損姿勢（propPose）：往一邊歪的、第 3 階段傾斜的
 const POSE_LEAN = new Set([
   'lamppost',
@@ -75,6 +77,41 @@ Object.assign(Game.prototype, {
     return m === 'normal' || m === 'off' ? m : 'easy'; // 預設＝易破壞（2026-11-05 使用者定案）
   },
   // 這個物件現在打得壞嗎（設定「不可破壞」時只有改版前就打得壞的）
+  // 排隊的工作（每格 renderMain 的 propDmgTick 開頭做）：col＝開始倒塌（每格合計最多 COL_MAX 個，含這一格直接開始的），
+  // 其他的（壓壞底下的物件、碎裂特效）每格最多 WORK_MS 毫秒、至少一件。換了地圖就整個丟掉
+  propLater(fn, col) {
+    if (!this.propQ || this.propQ.w !== this.world) this.propQ = { w: this.world, list: [] };
+    this.propQ.list.push({ fn, col: !!col });
+  },
+  propQTick() {
+    const q = this.propQ;
+    if (!q || q.w !== this.world) {
+      this.propQ = null;
+      this.colN = 0;
+      return;
+    }
+    if (q.list.length) {
+      const list = q.list,
+        keep = [],
+        t0 = performance.now();
+      q.list = [];
+      let ran = 0;
+      for (const it of list) {
+        if (it.col ? (this.colN || 0) >= COL_MAX : ran > 0 && performance.now() - t0 > WORK_MS) {
+          keep.push(it);
+          continue;
+        }
+        if (!it.col) ran++;
+        try {
+          it.fn();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      q.list = keep.concat(q.list);
+    }
+    this.colN = 0;
+  },
   propLive(p) {
     return !p.dead && (p.legacy || this.destructMode() !== 'off');
   },
@@ -151,6 +188,7 @@ Object.assign(Game.prototype, {
         if (
           b.sup.filter((q) => q.dead).length >= (easy ? Math.ceil(b.sup.length / 2) : b.sup.length) &&
           !b.collapsed &&
+          !b.colQ &&
           !b.noCollapse &&
           !(b.seg && this.segProtected(b))
         ) {
@@ -393,6 +431,7 @@ Object.assign(Game.prototype, {
   propDmgTick() {
     const fx = this.fx,
       w = this.world;
+    this.propQTick();
     if (!fx || !w) return;
     if (this.propFlashing && this.propFlashing.size) {
       const now = performance.now();
@@ -581,7 +620,20 @@ Object.assign(Game.prototype, {
   // 結構倒下：預警帶 1.5 秒、晃動 → 以底邊為軸倒下（真的模型轉將近 90°）→ 落地時預警帶裡的機體受到爆發傷害、
   // 地圖物件受傷、小人死亡 → 換成橫躺的碰撞（矮的方塊）。quiet＝直接躺好（重連、血量表）
   propCollapse(b, di, quiet) {
-    if (b.collapsed) return;
+    if (b.collapsed || b.colQ) return;
+    // 連鎖倒塌（Grid 086 的多層平台）：同一格開始倒的超過 COL_MAX 個就排到下一格（quiet＝重連、血量表，照舊直接）
+    if (!quiet) {
+      if ((this.colN || 0) >= COL_MAX) {
+        b.colQ = true;
+        b.colQd = di;
+        this.propLater(() => {
+          b.colQ = false;
+          this.propCollapse(b, di, false);
+        }, true);
+        return;
+      }
+      this.colN = (this.colN || 0) + 1;
+    }
     const w = this.world,
       fx = this.fx;
     w.propUnmerge(b);
@@ -654,38 +706,40 @@ Object.assign(Game.prototype, {
       if (!loud || !fx) return this.propGone(b);
       this.propFadeOut(b, 1.2, 0, Math.min(half * 2, 6));
       this.propWreckFx(b);
-      local(fx, () => {
-        // 沿著倒下的範圍碎開
-        const ns = Math.max(1, Math.min(4, Math.round(H / 25)));
-        for (let i = 0; i < ns; i++) {
-          const u0 = i / ns,
-            u1 = (i + 1) / ns;
-          fx.shatterProp(
-            {
-              ...b,
-              crushed: false,
-              shape: dx
-                ? { x0: X0 + (X1 - X0) * u0, x1: X0 + (X1 - X0) * u1, z0: Z0, z1: Z1, y0, y1: fall.y1 }
-                : { x0: X0, x1: X1, z0: Z0 + (Z1 - Z0) * u0, z1: Z0 + (Z1 - Z0) * u1, y0, y1: fall.y1 },
-            },
-            w,
-            {},
-          );
-        }
-        const n = Math.max(3, Math.min(8, Math.round(H / 8)));
-        for (let i = 0; i <= n; i++) {
-          const t = i / n;
-          const x = px + dx * H * t,
-            z = pz + dz * H * t;
-          fx.dust(
-            new THREE.Vector3(x, w.groundAt(x, z, top + 2) + 0.2, z),
-            Math.max(3, Math.min(9, (X1 - X0 + Z1 - Z0) * 0.12)),
-            12,
-            0xa09a90,
-          );
-        }
-        fx.shockwave(mid.clone().setY(y0 + 0.2), Math.min(30, H * 0.6), 0xd8c8a8, 0.6);
-      });
+      this.propLater(() =>
+        local(fx, () => {
+          // 沿著倒下的範圍碎開
+          const ns = Math.max(1, Math.min(4, Math.round(H / 25)));
+          for (let i = 0; i < ns; i++) {
+            const u0 = i / ns,
+              u1 = (i + 1) / ns;
+            fx.shatterProp(
+              {
+                ...b,
+                crushed: false,
+                shape: dx
+                  ? { x0: X0 + (X1 - X0) * u0, x1: X0 + (X1 - X0) * u1, z0: Z0, z1: Z1, y0, y1: fall.y1 }
+                  : { x0: X0, x1: X1, z0: Z0 + (Z1 - Z0) * u0, z1: Z0 + (Z1 - Z0) * u1, y0, y1: fall.y1 },
+              },
+              w,
+              {},
+            );
+          }
+          const n = Math.max(3, Math.min(8, Math.round(H / 8)));
+          for (let i = 0; i <= n; i++) {
+            const t = i / n;
+            const x = px + dx * H * t,
+              z = pz + dz * H * t;
+            fx.dust(
+              new THREE.Vector3(x, w.groundAt(x, z, top + 2) + 0.2, z),
+              Math.max(3, Math.min(9, (X1 - X0 + Z1 - Z0) * 0.12)),
+              12,
+              0xa09a90,
+            );
+          }
+          fx.shockwave(mid.clone().setY(y0 + 0.2), Math.min(30, H * 0.6), 0xd8c8a8, 0.6);
+        }),
+      );
       SFX.netDepth++;
       try {
         SFX.explode(true, mid);
@@ -866,7 +920,7 @@ Object.assign(Game.prototype, {
     }
     if (host)
       for (const q of falls) {
-        if (q.dead || q.collapsed) continue;
+        if (q.dead || q.collapsed || q.colQ) continue;
         if (q.support) this.propKill(q, null);
         else if (!q.noCollapse) {
           const di = this.propFallDir(q, null);
@@ -955,28 +1009,30 @@ Object.assign(Game.prototype, {
       // 碎裂：依大小分成幾區各自碎開（碎片、揚塵）
       const nx = Math.max(1, Math.min(2, Math.round(W / 30))),
         nz = Math.max(1, Math.min(2, Math.round(D / 30)));
-      local(fx, () => {
-        for (let i = 0; i < nx; i++)
-          for (let j = 0; j < nz; j++) {
-            const x0 = bb.min.x + (W * i) / nx,
-              z0 = bb.min.z + (D * j) / nz;
-            fx.shatterProp(
-              {
-                ...b,
-                crushed: false,
-                shape: { x0, x1: x0 + W / nx, z0, z1: z0 + D / nz, y0: gy, y1: gy + Math.min(thick, 3) },
-              },
-              w,
-              {},
-            );
-            fx.dust(
-              new THREE.Vector3(x0 + W / nx / 2, gy + 0.3, z0 + D / nz / 2),
-              Math.max(3, Math.min(9, R * 0.14)),
-              14,
-              0xa09a90,
-            );
-          }
-      });
+      this.propLater(() =>
+        local(fx, () => {
+          for (let i = 0; i < nx; i++)
+            for (let j = 0; j < nz; j++) {
+              const x0 = bb.min.x + (W * i) / nx,
+                z0 = bb.min.z + (D * j) / nz;
+              fx.shatterProp(
+                {
+                  ...b,
+                  crushed: false,
+                  shape: { x0, x1: x0 + W / nx, z0, z1: z0 + D / nz, y0: gy, y1: gy + Math.min(thick, 3) },
+                },
+                w,
+                {},
+              );
+              fx.dust(
+                new THREE.Vector3(x0 + W / nx / 2, gy + 0.3, z0 + D / nz / 2),
+                Math.max(3, Math.min(9, R * 0.14)),
+                14,
+                0xa09a90,
+              );
+            }
+        }),
+      );
       SFX.netDepth++;
       try {
         SFX.explode(true, new THREE.Vector3(cx, gy, cz));
@@ -1035,9 +1091,13 @@ Object.assign(Game.prototype, {
         qz > crush.z0 &&
         qz < crush.z1 &&
         sh.y0 < crush.y1;
-      if (under || (b.base && sh.y0 > b.base.max.y - 2.5))
-        this.propDamage(q, 1e7, 0, q.center(), null, 'none');
-      else this.propDamage(q, dmg * 2, 0, q.center(), null, 'exp');
+      // 壓壞的物件各自要建殘骸、拋碎片（一個 5～10 ms）：排隊分到之後幾格（propLater）
+      const crushIt = under || (b.base && sh.y0 > b.base.max.y - 2.5);
+      this.propLater(() => {
+        if (q.dead) return;
+        if (crushIt) this.propDamage(q, 1e7, 0, q.center(), null, 'none');
+        else this.propDamage(q, dmg * 2, 0, q.center(), null, 'exp');
+      });
     }
     if (this.crowd && this.crowdBlast) {
       const n = Math.max(2, Math.round(H / 10));
@@ -1438,7 +1498,7 @@ Object.assign(Game.prototype, {
     this.propTblT = now;
     const out = [];
     for (const p of (this.world && this.world.props) || [])
-      if (p.collapsed) out.push([p.idx, 0, p.colDir]);
+      if (p.collapsed || p.colQ) out.push([p.idx, 0, p.colQ ? p.colQd : p.colDir]);
       else if (p.hp < p.maxHp && !p.genGone) out.push([p.idx, Math.round(p.hp)]);
     for (const k of this.roofGone || []) out.push(['r', k]); // 岩頂的洞
     return out;
