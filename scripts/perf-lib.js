@@ -253,6 +253,8 @@ function instrument() {
       for (const e of this.enemies || []) if (!e.dead) en++;
       rec.en = en;
       if (window.__botFlag) rec.bot = window.__botFlag;
+      // 「戰場準備中」還蓋著（預熱的編譯、warmPrime）：畫面本來就停著，卡頓另外算
+      if (this.warmBusy || (this.world && this.warmWorld !== this.world)) rec.prep = 1;
       const hp = performance.memory ? performance.memory.usedJSHeapSize : 0;
       rec.gc = lastHeap && hp < lastHeap - 2e6 ? +((lastHeap - hp) / 1e6).toFixed(1) : 0;
       lastHeap = hp;

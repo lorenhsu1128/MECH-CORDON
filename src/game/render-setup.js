@@ -170,6 +170,9 @@ Object.assign(Game.prototype, {
         if (!root && pipe) ps.push(...pipe.warm(async)); // 後處理的各段與熱扭曲的場景
       } finally {
         if (extra) this.scene.remove(extra); // 編譯已經送出（compileAsync 等的是材質的程式，網格拿掉也沒關係）
+        // warmPrime 再放回去畫一次：陰影的深度材質與 SSAO 法線的變體（compile 編不到）也要涵蓋這些模型
+        // （docs/perf-campaign-plan.md 第 2 期：以前開打後 1～2 秒才編這些，一次 400～600 ms）
+        if (!root) this.warmExtra = extra;
       }
     } finally {
       R.setRenderTarget(rt0);
@@ -225,6 +228,9 @@ Object.assign(Game.prototype, {
       cam = this.camera;
     if (!R || !s || !cam) return;
     const rt = this.primeRT || (this.primeRT = legacyTarget(new THREE.WebGLRenderTarget(4, 4)));
+    const extra = this.warmExtra;
+    this.warmExtra = null;
+    if (extra) s.add(extra);
     const off = [];
     s.traverse((o) => {
       if ((o.isMesh || o.isPoints || o.isLine || o.isSprite) && o.frustumCulled) {
@@ -237,8 +243,12 @@ Object.assign(Game.prototype, {
       R.shadowMap.needsUpdate = true;
       R.setRenderTarget(rt);
       R.render(s, cam);
+      // SSAO 的法線那一次（蒙皮、InstancedMesh、一般網格各一個材質，依網格的旗標各有變體）
+      const pipe = this.post.enabled && this.post.ok && this.stylePipe;
+      if (pipe && pipe.ssao && pipe.renderNormals) pipe.renderNormals(pipe.ssao);
     } finally {
       for (const o of off) o.frustumCulled = true;
+      if (extra) s.remove(extra);
       R.setRenderTarget(rt0);
       R.shadowMap.needsUpdate = true;
     }

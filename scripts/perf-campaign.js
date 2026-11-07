@@ -397,9 +397,13 @@ function segSum(o) {
   const sh = window.__sh.filter((x) => x.t >= t00);
   const lt = window.__lt.filter((x) => x.t >= t00);
   const q = (a, p) => (a.length ? +a[Math.min(a.length - 1, Math.floor(a.length * p))].toFixed(1) : 0);
-  const play = fr.filter((r) => r.st === 'play' && !r.bot);
-  const open = play.filter((r) => r.t0 - o.tPlay < 3000);
-  const steady = play.filter((r) => r.t0 - o.tPlay >= 3000);
+  // 「戰場準備中」結束的那一格（之後才是玩家看得到的遊戲；進場的 3 秒從這裡算）
+  let pi = -1;
+  for (let i = 0; i < fr.length; i++) if (fr[i].prep) pi = i;
+  const tGo = pi >= 0 && fr[pi + 1] ? fr[pi + 1].t0 : o.tPlay;
+  const prepMs = Math.round(tGo - o.tPlay);
+  const play = fr.filter((r) => r.st === 'play' && !r.bot && !r.prep);
+  const steady = play.filter((r) => r.t0 - tGo >= 3000);
   const ms = steady.map((r) => r.ms).sort((a, b) => a - b);
   const gaps = steady.map((r) => r.gap).sort((a, b) => a - b);
   const avg = (a, k) => (a.length ? +(a.reduce((s, r) => s + (r[k] || 0), 0) / a.length).toFixed(1) : 0);
@@ -410,7 +414,7 @@ function segSum(o) {
   const hitches = [];
   for (let i = 1; i < fr.length; i++) {
     const r = fr[i];
-    if (r.st !== 'play' || r.gap < o.hitch || r.bot || fr[i - 1].bot) continue;
+    if (r.st !== 'play' || r.gap < o.hitch || r.bot || fr[i - 1].bot || r.prep || fr[i - 1].prep) continue;
     const prev = fr[i - 1];
     const w0 = prev.t0,
       w1 = r.t0 + r.ms;
@@ -440,7 +444,7 @@ function segSum(o) {
     else if (outside >= o.hitch * 0.6) cause = lts.length ? '迴圈外的長任務' : '迴圈外（顯示卡／瀏覽器）';
     else cause = '混合';
     hitches.push({
-      t: +((r.t0 - o.tPlay) / 1000).toFixed(1),
+      t: +((r.t0 - tGo) / 1000).toFixed(1),
       gap: +r.gap.toFixed(0),
       loop: +prev.ms.toFixed(0),
       out: +outside.toFixed(0),
@@ -457,13 +461,14 @@ function segSum(o) {
       gc: prev.gc || r.gc,
       en: r.en,
       calls: r.calls,
-      open: r.t0 - o.tPlay < 3000,
+      open: r.t0 - tGo < 3000,
     });
   }
   const cam = g.camp || {};
   const ss = cam.ss || {};
   const W2 = g.world || {};
   const out = {
+    prep: prepMs,
     frames: play.length,
     secs: +((fr.length ? fr[fr.length - 1].t0 - o.tPlay : 0) / 1000).toFixed(1),
     cpu: { p50: q(ms, 0.5), p90: q(ms, 0.9), p99: q(ms, 0.99), max: q(ms, 1) },
@@ -615,7 +620,7 @@ async function runSortie(browser, sid, done, seen) {
       res.segs.push(row);
       console.log(
         `  ${sid} 段 ${seg + 1}/${nSeg} ${meta.theme} ${row.variant || ''} ${meta.type}${meta.boss ? '(Boss)' : ''}：` +
-          `進場 ${row.sync}+${row.warm - row.sync} ms、${row.secs} 秒、主迴圈 p50 ${row.cpu.p50} p99 ${row.cpu.p99}、` +
+          `進場 ${row.sync}+${row.prep} ms、${row.secs} 秒、主迴圈 p50 ${row.cpu.p50} p99 ${row.cpu.p99}、` +
           `間隔 p99 ${row.gap.p99} 最長 ${row.gap.max}、卡頓 ${row.hitch}（進場 ${row.hitchOpen}）、繪製 ${row.calls}、敵 ${row.en}/${row.enMax}` +
           (row.bot.forced ? '、逾時強制清除' : '') +
           (row.bot.tp ? `、脫困瞬移 ${row.bot.tp}` : ''),
@@ -644,7 +649,7 @@ function report(all) {
   const segs = Object.values(all).flatMap((r) => r.segs.map((s) => ({ sid: r.sid, ...s })));
   L.push(`# 主線各區段的卡頓量測（${TAG}）`, '');
   L.push(
-    `門檻：兩格間隔 ≥ ${HITCH} ms 算一次卡頓；「進場」＝區段開始 3 秒內。自動操作的傷害 ×${DMG}、一段最多 ${SEG_SECS} 秒。`,
+    `門檻：兩格間隔 ≥ ${HITCH} ms 算一次卡頓；「進場」＝「戰場準備中」結束後 3 秒內（準備畫面中的停頓不算卡頓，另記在「進場」欄的預熱）。自動操作的傷害 ×${DMG}、一段最多 ${SEG_SECS} 秒。`,
     '',
   );
   // 原因的總計
@@ -719,7 +724,7 @@ function report(all) {
     '',
     '## 每一段',
     '',
-    '| 出擊 | 段 | 主題／變體 | 類型 | 進場（同步＋預熱） | 秒 | 主迴圈 p50／p99 | 間隔 p99／最長 | 卡頓（進場） | 繪製 | 敵（最多） | 各段平均前三 | 備註 |',
+    '| 出擊 | 段 | 主題／變體 | 類型 | 進場（同步＋準備畫面） | 秒 | 主迴圈 p50／p99 | 間隔 p99／最長 | 卡頓（進場） | 繪製 | 敵（最多） | 各段平均前三 | 備註 |',
     '|---|---|---|---|---|---|---|---|---|---|---|---|---|',
   );
   for (const s of segs) {
@@ -732,7 +737,7 @@ function report(all) {
       .filter(Boolean)
       .join('、');
     L.push(
-      `| ${s.sid} | ${s.seg + 1} | ${s.theme} ${s.variant || ''} | ${s.type}${s.boss ? '(Boss)' : ''} | ${s.sync}＋${s.warm - s.sync} ms | ${s.secs} | ${s.cpu.p50}／${s.cpu.p99} | ${s.gap.p99}／${s.gap.max} | ${s.hitch}（${s.hitchOpen}） | ${s.calls} | ${s.en}（${s.enMax}） | ${top} | ${note} |`,
+      `| ${s.sid} | ${s.seg + 1} | ${s.theme} ${s.variant || ''} | ${s.type}${s.boss ? '(Boss)' : ''} | ${s.sync}＋${s.prep !== undefined ? s.prep : s.warm - s.sync} ms | ${s.secs} | ${s.cpu.p50}／${s.cpu.p99} | ${s.gap.p99}／${s.gap.max} | ${s.hitch}（${s.hitchOpen}） | ${s.calls} | ${s.en}（${s.enMax}） | ${top} | ${note} |`,
     );
   }
   // 最長的卡頓
