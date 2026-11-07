@@ -71,7 +71,14 @@ export function buildWreck(p, seed, step, prog) {
   const sR2 = Math.min(sR, M.fire ? 7 : 5);
   k.cyl(mat(M.fire ? SOOT : darken(col, 0.35)), sR2, sR2, 0.06, 0, 0.03, 0, 0, 0, 0, 12);
   const group = k.build(new THREE.Group(), true);
-  return { group, w: W * 0.9, d: D * 0.9, h: hw };
+  // 專屬造型（壓扁的貨櫃、儲槽、斷牆…）：碰撞的高度照模型主體（以前模型比碰撞高 1～3.5 m，機甲陷進去；2026-11-07）
+  let h = hw;
+  if (WRECK[p.kind] && !p.crushed) {
+    const bx = new THREE.Box3().setFromObject(group);
+    if (!bx.isEmpty()) h = Math.max(hw, Math.min(H, (bx.max.y - Math.max(0, bx.min.y)) * 0.85));
+  }
+  // stub＝高出殘骸的斷口（World.addWreck 另外給它碰撞）
+  return { group, w: W * 0.9, d: D * 0.9, h, stub: o.stub || null };
 }
 
 function fitWreckGlb(obj, W, D, hw) {
@@ -125,7 +132,13 @@ export function wreckGeneric(k, o) {
     const sx = (W / 2 - sw / 2) * (R2(r) ? 1 : -1) * 0.8,
       sz = (D / 2 - sd / 2) * (R2(r) ? 1 : -1) * 0.8;
     const stub = Math.min(H * 0.45, hw * r(1.8, 2.6));
-    k.box(mDark, sw, stub, sd, sx, stub / 2, sz, r(-0.12, 0.12), r(-0.3, 0.3), r(-0.12, 0.12));
+    const rx = r(-0.12, 0.12),
+      ry = r(-0.3, 0.3);
+    k.box(mDark, sw, stub, sd, sx, stub / 2, sz, rx, ry, r(-0.12, 0.12));
+    // 轉過之後的外框（稍微傾斜，放寬一點）
+    const c = Math.abs(Math.cos(ry)),
+      sn = Math.abs(Math.sin(ry));
+    o.stub = { x: sx, z: sz, w: (sw * c + sd * sn) * 1.05, d: (sw * sn + sd * c) * 1.05, h: stub };
   }
   // 碎塊堆
   const n = Math.max(4, Math.min(16, Math.round(Math.sqrt(W * D) / 1.6) + 3));

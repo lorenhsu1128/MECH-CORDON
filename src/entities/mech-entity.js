@@ -154,6 +154,8 @@ export class MechEntity {
     if (opts.modelKind) this.mergeModel(this.model);
     this.mesh = this.model.group;
     game.scene.add(this.mesh);
+    // 任務中才建立的機體（增援、友軍 AC、Boss 的部位、換模型）：材質與半透明版在背景編譯（render-setup.js）
+    if (game.warmLate) game.warmLate(this.mesh);
     this.pos = new THREE.Vector3();
     this.vel = new THREE.Vector3();
     this.yaw = 0;
@@ -469,6 +471,7 @@ export class MechEntity {
     }
     this.mergeModel(this.model); // 拿掉丟出的武器之後才合併
     g.scene.add(this.mesh);
+    if (g.warmLate) g.warmLate(this.mesh);
   }
   // 駕駛員加成值（沒有時為 0）
   pmv(k) {
@@ -2338,6 +2341,7 @@ export class MechEntity {
     this.model = this.buildRig();
     this.mesh = this.model.group;
     g.scene.add(this.mesh);
+    if (g.warmLate) g.warmLate(this.mesh);
     this.dead = false;
     this.downed = false;
     this.hp = this.maxHp;

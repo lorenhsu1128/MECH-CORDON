@@ -44,11 +44,16 @@ Object.assign(Game.prototype, {
   // 每格（房主／單機，非 Boss 關）：等待中的波次倒數；場上的敵人降到門檻就派出下一波
   waveTick(dt) {
     if (this.wavePend) {
-      if ((this.wavePend.t -= dt) <= 0) {
-        const w = this.wavePend;
+      const w = this.wavePend;
+      if ((w.t -= dt) > 0) return;
+      if (w.air) {
         this.wavePend = null;
         this.waveSpawn(w);
+        return;
       }
+      // 一格生成一台（每台建模 30～70 ms，一次全部生成會卡 100 ms 以上；2026-11-07）。生成完之前 wavePend 還在，不算清除
+      this.waveSpawn(w, (w.k = (w.k || 0) + 1) - 1);
+      if (w.k >= w.list.length) this.wavePend = null;
       return;
     }
     if (!this.waves.length) return;
@@ -132,15 +137,17 @@ Object.assign(Game.prototype, {
       18 * DS,
     );
   },
-  waveSpawn(w) {
+  // k＝只生成第 k 台（沒給時全部）；空降的衝擊波在第一台
+  waveSpawn(w, k) {
     if (w.air) return this.airWaveSpawn(w);
     this.waveAt = w;
     try {
-      for (const t of w.list) this.spawnType(t, this.scaleHp, this.scaleDmg);
+      for (const t of k === undefined ? w.list : [w.list[k]])
+        if (t) this.spawnType(t, this.scaleHp, this.scaleDmg);
     } finally {
       this.waveAt = null;
     }
-    if (w.drop)
+    if (w.drop && !k)
       this.fx.shockwave(
         new THREE.Vector3(w.pos.x, this.world.groundAt(w.pos.x, w.pos.z, 999), w.pos.z),
         8,

@@ -2771,28 +2771,65 @@ export class World {
     const sh = p.shape0 || p.shape; // 損毀前的外形（切掉上段、結構本體的命中形狀從承重柱以上開始）
     const cx = (sh.x0 + sh.x1) / 2,
       cz = (sh.z0 + sh.z1) / 2;
-    const gy = Math.max(this.groundAt(cx, cz, sh.y0 + STEP_H), sh.y0);
+    // 壓在倒塌的瓦礫堆底下的（客機比較晚收到 propDie）：不放殘骸
+    if (!p.body)
+      for (const o of this.obstacles)
+        if (
+          o.rubble &&
+          cx > o.box.min.x &&
+          cx < o.box.max.x &&
+          cz > o.box.min.z &&
+          cz < o.box.max.z &&
+          sh.y0 < o.top - 0.5
+        ) {
+          p.wreck = null;
+          return null;
+        }
     const wr = buildWreck(p, this.seed, STEP_H);
+    // 放的高度：中央的地面（原本撐著它的東西不在了也一樣往下掉）；斜坡上往低的那一側放（不浮起來），
+    // 但不掉下平台、甲板的邊緣（結構的瓦礫堆可以一路到最低的角）
+    const gC = this.groundAt(cx, cz, sh.y0 + STEP_H);
+    const lim = p.body ? Infinity : Math.max(1.2, wr.h * 0.8);
+    let gy = gC;
+    for (const [u, v] of [
+      [-0.4, -0.4],
+      [0.4, -0.4],
+      [-0.4, 0.4],
+      [0.4, 0.4],
+    ]) {
+      const g = this.groundAt(cx + (sh.x1 - sh.x0) * u, cz + (sh.z1 - sh.z0) * v, sh.y0 + STEP_H);
+      if (g < gy && g >= gC - lim) gy = g;
+    }
     wr.group.position.set(cx, gy, cz);
     this.scene.add(wr.group);
     this.meshes.push(wr.group); // 擋住鏡頭時淡出（fadeMeshes；殘骸不再受傷，但不能一直擋住視野）
-    const ob = {
+    const box = (x, z, w, d, h) => ({
       kind: 'box',
-      x: cx,
-      z: cz,
-      w: wr.w,
-      d: wr.d,
+      x,
+      z,
+      w,
+      d,
       y: gy - 0.5,
-      top: gy + wr.h,
+      top: gy + h,
       group: wr.group,
       mats: [],
       box: new THREE.Box3(
-        new THREE.Vector3(cx - wr.w / 2, gy - 0.5, cz - wr.d / 2),
-        new THREE.Vector3(cx + wr.w / 2, gy + wr.h, cz + wr.d / 2),
+        new THREE.Vector3(x - w / 2, gy - 0.5, z - d / 2),
+        new THREE.Vector3(x + w / 2, gy + h, z + d / 2),
       ),
       wreck: p,
-    };
+    });
+    const ob = box(cx, cz, wr.w, wr.d, wr.h);
+    if (p.body) ob.rubble = true; // 結構倒塌的瓦礫堆
     this.obstacles.push(ob);
+    // 高出殘骸的斷口另外給碰撞（以前機甲會穿過去）
+    const st = wr.stub;
+    if (st && st.h > wr.h + 0.3) {
+      const so = box(cx + st.x, cz + st.z, st.w, st.d, st.h);
+      so.stub = true;
+      this.obstacles.push(so);
+      p.wreckStub = so;
+    } else p.wreckStub = null;
     p.wreck = ob;
     return ob;
   }

@@ -4,6 +4,7 @@
 // 特效）在任務中第一次出現時記下它的變體（程式的參數：貼圖、頂點色、雙面、蒙皮、instancing…，不含光源與霧，
 // 那些跟著場景），存在 localStorage；下次載入地圖時以假網格把記下的變體也編好。
 // 只記風格著色器（MeshStandardMaterial／MeshPhysicalMaterial，onBeforeCompile 呼叫 noteStyleVariant）。
+import { RIG_SRC } from './mesh-merge.js';
 
 const KEY = 'rubicon_shader_warm2'; // r187 的參數名稱（r128 時的紀錄 rubicon_shader_warm 不再用）
 const MAX = 96;
@@ -189,8 +190,7 @@ const TW = new Map(); // 變體 → 留著的半透明材質（不釋放）
 export function transpWarm(root) {
   const g = new THREE.Group();
   const seen = new Set();
-  root.traverse((o) => {
-    if (!o.isMesh || o.isSkinnedMesh || o.isInstancedMesh || o.userData.helper) return;
+  const add = (o, opaque) => {
     const ms = Array.isArray(o.material) ? o.material : [o.material];
     for (const m of ms) {
       if (!m || !m.isMeshStandardMaterial || m.isMeshPhysicalMaterial || m.transparent) continue;
@@ -200,18 +200,36 @@ export function transpWarm(root) {
       } catch (e) {
         continue;
       }
-      if (seen.has(k)) continue;
-      seen.add(k);
-      let t = TW.get(k);
-      if (!t) {
-        t = m.clone();
-        t.transparent = true;
-        TW.set(k, t);
+      for (const tr of opaque ? [false, true] : [true]) {
+        if (seen.has(k + tr)) continue;
+        seen.add(k + tr);
+        let t = m;
+        if (tr) {
+          t = TW.get(k);
+          if (!t) {
+            t = m.clone();
+            t.transparent = true;
+            TW.set(k, t);
+          }
+        }
+        let d;
+        if (o.isSkinnedMesh) {
+          d = new THREE.SkinnedMesh(o.geometry, t);
+          d.bind(o.skeleton, o.bindMatrix);
+        } else d = new THREE.Mesh(o.geometry, t);
+        d.frustumCulled = false;
+        g.add(d);
       }
-      const d = new THREE.Mesh(o.geometry, t);
-      d.frustumCulled = false;
-      g.add(d);
     }
+  };
+  root.traverse((o) => {
+    // 合併過的機甲：擊破時 unmerge 拿回來的原本網格（不在場景裡，不透明版也沒編過；render/mesh-merge.js）
+    const src = RIG_SRC.get(o);
+    if (src) for (const s of src) if (s.isMesh) add(s, true);
+    // 蒙皮網格（合併過的機甲、專屬敵人）也要：擊破時碎片與掉板的半透明版（2026-11-07：以前略過，擊破時現場編譯 150～300 ms）
+    if (!o.isMesh || o.isInstancedMesh || o.userData.helper) return;
+    if (o.isSkinnedMesh && !o.skeleton) return;
+    add(o, false);
   });
   return g;
 }

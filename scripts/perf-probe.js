@@ -473,7 +473,18 @@ async function sampling(ctx, page) {
       window.__prof.on = true;
     });
     const tS = Date.now();
-    await page.click('#btnSortie');
+    if (args.sortie) {
+      // --sortie＝主線的出擊（--seg＝從第幾段開始，0 起算）：轉場畫面直接出擊
+      await page.evaluate(
+        ([sid, seg]) => {
+          const g = window.__game;
+          g.campBegin(sid);
+          g.camp.seg = seg;
+          g.campGo();
+        },
+        [args.sortie, +(args.seg || 0)],
+      );
+    } else await page.click('#btnSortie');
     await page.waitForFunction(() => window.__game.state === 'play' && window.__game.player, null, {
       timeout: 90000,
     });

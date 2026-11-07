@@ -490,6 +490,8 @@ export function mergeStatic(root, moving, detach = new Set(), opts = {}) {
 // （boss-models.js）。錨點＝rig 參照到的節點（關節群組、連接點、區塊的根、武器、噴口、mounts、extra…）。
 // 已經合併過的（地圖專屬敵人的 foeMerged）略過。之後要把零件從模型拆下（丟出武器、擊破時支離破碎）時，
 // 先呼叫 rig.unmerge() 還原成原本的網格；rig.remerge() 再合併一次（拆下的零件已不在模型裡）。
+// 合併前的原本網格（rig.group → 網格陣列）：擊破時 unmerge 拿回來的就是它們，著色器預熱也要涵蓋（render/shader-warm.js）
+export const RIG_SRC = new WeakMap();
 export function mergeRig(rig, opts = {}) {
   const root = rig && rig.group;
   if (!root || rig.merged || OFF) return rig;
@@ -500,6 +502,7 @@ export function mergeRig(rig, opts = {}) {
     if (o.isMesh) only.add(o);
   });
   shareDecals(root, rigMats(rig));
+  RIG_SRC.set(root, [...only]);
   const build = () => {
     const moving = rigRefs(rig, rig.dmg);
     moving.delete(root);

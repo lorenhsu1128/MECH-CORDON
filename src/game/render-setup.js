@@ -175,6 +175,28 @@ Object.assign(Game.prototype, {
     }
     return async ? Promise.all(ps) : undefined;
   },
+  // 任務中才加進場景的模型（增援、隨機組裝的敵對 AC）：它的材質與半透明版在背景編譯（compileAsync）。
+  // 半透明版在擊破時的碎片、掉板才用到（以前那時候才現場編譯，一次 150～290 ms；2026-11-07）
+  warmLate(root) {
+    const R = this.renderer,
+      cam = this.camera;
+    if (!R || !cam || !root || typeof R.compileAsync !== 'function') return;
+    if (this.warmWorld !== this.world || this.warmBusy) return; // 地圖的預熱還沒做：到時一起
+    const pipe = this.post.enabled && this.post.ok && this.stylePipe;
+    const rt0 = R.getRenderTarget();
+    const tw = transpWarm(root);
+    try {
+      R.setRenderTarget(pipe ? pipe.rtScene : null);
+      this.scene.add(tw);
+      R.compileAsync(tw, cam, this.scene).catch(() => {});
+      if (root.parent) R.compileAsync(root, cam, this.scene).catch(() => {});
+    } catch (e) {
+      /* 預熱失敗：照原本第一次畫到才編譯 */
+    } finally {
+      this.scene.remove(tw);
+      R.setRenderTarget(rt0);
+    }
+  },
   // 預熱完成、開始遊戲前（「戰場準備中」還蓋著）：整個場景不做視錐剔除、連陰影畫一次到很小的 render target，
   // 幾何與貼圖上傳到顯示卡、陰影的深度材質（compile 不會編到）在這時完成，第一個真正的畫面不再停住
   warmPrime() {

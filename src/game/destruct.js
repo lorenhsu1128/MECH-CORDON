@@ -553,6 +553,22 @@ Object.assign(Game.prototype, {
         tz = cz + dz * (half + H);
       let sc = dir ? dir.x * dx + dir.z * dz : -i * 0.01;
       if (Math.abs(tx) > w.limOut - 2 || Math.abs(tz) > w.limOut - 2) sc -= 10;
+      // 倒下的範圍裡還站著的結構（建築、甲板、橋墩、地形特徵）：避開（以前會直接穿過去）
+      const a0 = dx ? cx + dx * half : cz + dz * half,
+        a1 = a0 + (dx || dz) * H;
+      const r = dx
+        ? { x0: Math.min(a0, a1), x1: Math.max(a0, a1), z0: bb.min.z, z1: bb.max.z }
+        : { x0: bb.min.x, x1: bb.max.x, z0: Math.min(a0, a1), z1: Math.max(a0, a1) };
+      for (const o of w.obstacles) {
+        if (b.obs.includes(o) || o.wreck) continue;
+        const q = o.prop;
+        if (q && !q.body && !q.support) continue; // 一般物件：壓壞
+        const ob = w.obBox(o);
+        if (ob.max.y < bb.min.y + 4) continue;
+        const ox = Math.min(ob.max.x, r.x1) - Math.max(ob.min.x, r.x0),
+          oz = Math.min(ob.max.z, r.z1) - Math.max(ob.min.z, r.z0);
+        if (ox > 1 && oz > 1) sc -= 3;
+      }
       if (sc > bs) {
         bs = sc;
         best = i;
@@ -604,7 +620,7 @@ Object.assign(Game.prototype, {
     b.piv = piv;
     const axis = new THREE.Vector3(0, 1, 0).cross(new THREE.Vector3(dx, 0, dz)).normalize();
     const A = (Math.PI / 2) * 0.94;
-    // 橫躺的範圍：沿倒下的方向長 H、寬＝原本另一個方向的寬，高＝原本沿倒下方向的厚度（最多 7 m）
+    // 橫躺的範圍：沿倒下的方向長 H、寬＝原本另一個方向的寬（落地後換成這個範圍的瓦礫堆）
     const a0 = dx ? px : pz,
       a1 = a0 + (dx || dz) * H;
     const [p0, p1] = dx ? [bb.min.z, bb.max.z] : [bb.min.x, bb.max.x];
@@ -614,26 +630,45 @@ Object.assign(Game.prototype, {
       Z1 = dx ? p1 : Math.max(a0, a1);
     const top = y0 + Math.max(1, Math.min(half * 2 * 0.9, 7));
     const lie = {
-      kind: 'box',
       x: (X0 + X1) / 2,
       z: (Z0 + Z1) / 2,
       w: X1 - X0,
       d: Z1 - Z0,
-      y: y0 - 0.5,
-      top,
-      group: piv,
-      mats: [],
       box: new THREE.Box3(new THREE.Vector3(X0, y0 - 0.5, Z0), new THREE.Vector3(X1, top, Z1)),
-      wreck: b,
     };
     const mid = new THREE.Vector3(lie.x, y0, lie.z);
+    // 落地：倒下的模型碎掉（淡出），換成沿倒下範圍的一長條瓦礫堆（模型與碰撞一致；2026-11-07：以前躺著的模型
+    // 比碰撞高出幾十公尺、機甲走進模型裡）。範圍裡的小物件壓壞、原本的殘骸埋掉
     const land = (loud) => {
       piv.quaternion.setFromAxisAngle(axis, A);
-      w.obstacles.push(lie);
-      b.wreck = lie;
       b.landed = true;
-      if (!loud || !fx) return;
+      const fall = { x0: X0, x1: X1, z0: Z0, z1: Z1, y0, y1: y0 + Math.max(5, Math.min(half * 2, 25)) };
+      this.propBury(fall, b);
+      b.shape0 = fall;
+      b.shape = fall;
+      w.addWreck(b);
+      if (!(this.net && this.net.role === 'client')) this.propFallHit(b, lie, H, dx, dz, fall);
+      if (!loud || !fx) return this.propGone(b);
+      this.propFadeOut(b, 1.2, 0, Math.min(half * 2, 6));
+      this.propWreckFx(b);
       local(fx, () => {
+        // 沿著倒下的範圍碎開
+        const ns = Math.max(1, Math.min(4, Math.round(H / 25)));
+        for (let i = 0; i < ns; i++) {
+          const u0 = i / ns,
+            u1 = (i + 1) / ns;
+          fx.shatterProp(
+            {
+              ...b,
+              crushed: false,
+              shape: dx
+                ? { x0: X0 + (X1 - X0) * u0, x1: X0 + (X1 - X0) * u1, z0: Z0, z1: Z1, y0, y1: fall.y1 }
+                : { x0: X0, x1: X1, z0: Z0 + (Z1 - Z0) * u0, z1: Z0 + (Z1 - Z0) * u1, y0, y1: fall.y1 },
+            },
+            w,
+            {},
+          );
+        }
         const n = Math.max(3, Math.min(8, Math.round(H / 8)));
         for (let i = 0; i <= n; i++) {
           const t = i / n;
@@ -656,9 +691,7 @@ Object.assign(Game.prototype, {
         SFX.netDepth--;
       }
       this.rumbleAt(mid, 0.9, 0.7, 380, H + 40);
-      if (!(this.net && this.net.role === 'client')) this.propFallHit(b, lie, H, dx, dz);
     };
-    this.propWreckFx(b);
     if (quiet || !fx) return land(false);
     // 預警：倒下的範圍
     local(fx, () => fx.warnRect(mid.clone().setY(y0 + 0.05), 0, X1 - X0, Z1 - Z0, WARN_T + FALL_T, 0xff3020));
@@ -700,6 +733,7 @@ Object.assign(Game.prototype, {
     b.sank = true;
     const land = (loud) => {
       piv.visible = false;
+      this.propBury(b.shape0, b);
       const ob = w.addWreck(b);
       b.landed = true;
       if (!loud || !fx) return;
@@ -730,7 +764,7 @@ Object.assign(Game.prototype, {
           new THREE.Vector3(bb.max.x + 4, bb.max.y + 6, bb.max.z + 4),
         );
         const lie = { box, x: cx, z: cz, w: box.max.x - box.min.x, d: box.max.z - box.min.z };
-        this.propFallHit(b, lie, H, 0, 0);
+        this.propFallHit(b, lie, H, 0, 0, b.shape0);
       }
     };
     this.propWreckFx(b);
@@ -836,13 +870,18 @@ Object.assign(Game.prototype, {
       }
     // 上面的殘骸：跟著掉，落地後放到地上
     const riders = [];
+    const rg = new Map();
     for (const o of [...w.obstacles]) {
-      if (!o.wreck || !o.group || !o.box || o.wreck === b || o.group.parent !== this.scene) continue;
+      if (!o.wreck || !o.group || !o.box || o.wreck === b || o.stub) continue;
       const s = { x0: o.box.min.x, x1: o.box.max.x, z0: o.box.min.z, z1: o.box.max.z, y0: o.box.min.y + 0.5 };
-      if (!onTop(s)) continue;
-      w.obstacles.splice(w.obstacles.indexOf(o), 1);
-      riders.push({ o, p0: o.group.position.clone(), q0: o.group.quaternion.clone() });
-      piv.attach(o.group);
+      if (!onTop(s) || o.group.parent !== this.scene) continue;
+      rg.set(o.group, { o, obs: [o], p0: o.group.position.clone(), q0: o.group.quaternion.clone() });
+    }
+    for (const o of [...w.obstacles]) if (o.stub && rg.has(o.group)) rg.get(o.group).obs.push(o);
+    for (const [grp, r] of rg) {
+      for (const o of r.obs) w.obstacles.splice(w.obstacles.indexOf(o), 1);
+      piv.attach(grp);
+      riders.push(r);
     }
     const tilt = (b.idx % 2 ? 1 : -1) * Math.min(0.05, 1.2 / Math.max(1, W, D));
     const place = (f) => {
@@ -852,7 +891,7 @@ Object.assign(Game.prototype, {
     };
     // 跟著掉的殘骸放回地上（甲板就要消失了）
     const settle = () => {
-      for (const { o, p0, q0 } of riders) {
+      for (const { o, obs, p0, q0 } of riders) {
         this.scene.attach(o.group);
         const x = (o.box.min.x + o.box.max.x) / 2,
           z = (o.box.min.z + o.box.max.z) / 2;
@@ -860,21 +899,20 @@ Object.assign(Game.prototype, {
         o.group.position.copy(p0);
         o.group.position.y += dy;
         o.group.quaternion.copy(q0);
-        o.box.min.y += dy;
-        o.box.max.y += dy;
-        if (o.y !== undefined) o.y += dy;
-        if (o.top !== undefined) o.top += dy;
-        w.obstacles.push(o);
+        for (const q of obs) {
+          q.box.min.y += dy;
+          q.box.max.y += dy;
+          q.y += dy;
+          q.top += dy;
+          w.obstacles.push(q);
+        }
       }
       riders.length = 0;
     };
-    // 拿掉甲板（淡出結束、或 quiet 時直接）
+    // 拿掉甲板（quiet 時直接）
     const gone = () => {
       settle();
-      this.scene.remove(piv);
-      const k = w.meshes.indexOf(g);
-      if (k >= 0) w.meshes.splice(k, 1);
-      b.gone = true;
+      this.propGone(b);
     };
     const land = (loud) => {
       place(1);
@@ -902,6 +940,7 @@ Object.assign(Game.prototype, {
           Math.max(8, drop + 8),
           0,
           0,
+          { x0: bb.min.x, x1: bb.max.x, z0: bb.min.z, z1: bb.max.z, y0: gy, y1: bb.min.y },
         );
       }
       if (!loud || !fx) return gone();
@@ -940,35 +979,8 @@ Object.assign(Game.prototype, {
         SFX.netDepth--;
       }
       this.rumbleAt(new THREE.Vector3(cx, gy, cz), 0.9, 0.6, 360, R + 40);
-      // 淡出：材質換成透明的複本（共用的材質不動），往下沉一點
-      const fade = [];
-      const one = (mt) => {
-        const c = mt.clone();
-        c.transparent = true;
-        c.depthWrite = false;
-        c.userData.op0 = mt.opacity;
-        fade.push(c);
-        return c;
-      };
-      piv.traverse((m) => {
-        if (!m.isMesh || !m.material) return;
-        m.castShadow = false;
-        m.material = Array.isArray(m.material) ? m.material.map(one) : one(m.material);
-      });
-      const y1 = piv.position.y;
-      fx.task(
-        DROP_FADE_T,
-        (e, t) => {
-          if (t < DROP_HOLD) return;
-          const f = (t - DROP_HOLD) / (1 - DROP_HOLD);
-          for (const c of fade) c.opacity = c.userData.op0 * (1 - f);
-          piv.position.y = y1 - Math.min(thick, 2) * f;
-        },
-        () => {
-          for (const c of fade) c.dispose();
-          gone();
-        },
-      );
+      // 停一下（揚塵蓋住）再淡出、往下沉
+      this.propFadeOut(b, DROP_FADE_T * (1 - DROP_HOLD), DROP_FADE_T * DROP_HOLD, Math.min(thick, 2), settle);
     };
     if (quiet || !fx || drop < 0.3) return land(!quiet && !!fx);
     local(fx, () =>
@@ -990,7 +1002,8 @@ Object.assign(Game.prototype, {
     );
   },
   // 倒下壓到的：機體受到爆發傷害（衝擊大、會失衡）、地圖物件受傷、小人死亡（房主／單機）
-  propFallHit(b, lie, H, dx, dz) {
+  // crush＝壓在底下的範圍（{ x0, x1, z0, z1, y0, y1 }）：中心在裡面、底在 y1 以下的一般物件直接壓壞（不是結構與承重柱）
+  propFallHit(b, lie, H, dx, dz, crush) {
     const dmg = Math.max(2000, Math.min(6000, H * 160));
     const dir = new THREE.Vector3(dx, 0, dz);
     const box = lie.box.clone().expandByScalar(1.5);
@@ -1005,7 +1018,19 @@ Object.assign(Game.prototype, {
       if (sh.x1 < box.min.x || sh.x0 > box.max.x || sh.z1 < box.min.z || sh.z0 > box.max.z) continue;
       if (sh.y0 > box.max.y) continue;
       // 放在上面的（甲板、屋頂上）跟著掉下來摔壞
-      if (b.base && sh.y0 > b.base.max.y - 2.5) this.propDamage(q, 1e7, 0, q.center(), null, 'none');
+      const qx = (sh.x0 + sh.x1) / 2,
+        qz = (sh.z0 + sh.z1) / 2;
+      const under =
+        crush &&
+        !q.body &&
+        !q.support &&
+        qx > crush.x0 &&
+        qx < crush.x1 &&
+        qz > crush.z0 &&
+        qz < crush.z1 &&
+        sh.y0 < crush.y1;
+      if (under || (b.base && sh.y0 > b.base.max.y - 2.5))
+        this.propDamage(q, 1e7, 0, q.center(), null, 'none');
       else this.propDamage(q, dmg * 2, 0, q.center(), null, 'exp');
     }
     if (this.crowd && this.crowdBlast) {
@@ -1020,6 +1045,70 @@ Object.assign(Game.prototype, {
         this.crowdBlast(c, Math.max(lie.w, lie.d) / n + 3, null);
       }
     }
+  },
+  // 倒塌的範圍（{ x0, x1, z0, z1, y0, y1 }）裡原本的殘骸：壓在底下，拿掉（模型與碰撞）
+  propBury(r, b) {
+    const w = this.world;
+    const gone = new Set();
+    for (let i = w.obstacles.length - 1; i >= 0; i--) {
+      const o = w.obstacles[i];
+      if (!o.wreck || o.wreck === b || o.rubble || !o.box) continue;
+      const x = (o.box.min.x + o.box.max.x) / 2,
+        z = (o.box.min.z + o.box.max.z) / 2;
+      if (x < r.x0 || x > r.x1 || z < r.z0 || z > r.z1 || o.box.min.y > r.y1) continue;
+      w.obstacles.splice(i, 1);
+      if (o.group) gone.add(o.group);
+      if (o.wreck.wreck === o) o.wreck.wreck = null;
+    }
+    for (const g of gone) {
+      if (g.parent) g.parent.remove(g);
+      const k = w.meshes.indexOf(g);
+      if (k >= 0) w.meshes.splice(k, 1);
+    }
+  },
+  // 倒塌的結構的模型（樞軸）拿掉
+  propGone(b) {
+    const w = this.world;
+    if (b.piv && b.piv.parent) b.piv.parent.remove(b.piv);
+    const k = w.meshes.indexOf(b.ob.group);
+    if (k >= 0) w.meshes.splice(k, 1);
+    b.gone = true;
+  },
+  // 淡出（材質換成透明的複本，共用的不動）：先停 hold 秒、再 sec 秒淡掉並往下沉 sink 公尺，最後 propGone；done＝之前先呼叫
+  propFadeOut(b, sec, hold, sink, done) {
+    const piv = b.piv;
+    if (!piv) return this.propGone(b);
+    const fade = [];
+    const one = (mt) => {
+      const c = mt.clone();
+      c.transparent = true;
+      c.depthWrite = false;
+      c.userData.op0 = mt.opacity;
+      fade.push(c);
+      return c;
+    };
+    piv.traverse((m) => {
+      if (!m.isMesh || !m.material) return;
+      m.castShadow = false;
+      m.material = Array.isArray(m.material) ? m.material.map(one) : one(m.material);
+    });
+    const y1 = piv.position.y,
+      T = hold + sec;
+    this.fx.task(
+      T,
+      (e, t) => {
+        const tt = t * T;
+        if (tt < hold) return;
+        const f = (tt - hold) / sec;
+        for (const c of fade) c.opacity = c.userData.op0 * (1 - f);
+        piv.position.y = y1 - sink * f;
+      },
+      () => {
+        for (const c of fade) c.dispose();
+        if (done) done();
+        this.propGone(b);
+      },
+    );
   },
   // 切出來的塊拋出去（第 2 期的 propTier 與承重柱共用）
   propFling(p, pieces) {
