@@ -146,6 +146,48 @@ export function mergeList(list) {
       const n = a.count;
       const flip = !indexed && flips[k];
       const nm = name === 'normal' ? _m3.getNormalMatrix(mm) : null;
+      // 快速路徑（docs/perf-campaign-plan.md 第 1 期：地圖裝飾的合併一次幾十萬個頂點）：一般的屬性直接讀陣列、
+      // 矩陣直接相乘；交錯緩衝、正規化的整數照下面原本的寫法
+      const A = a.array;
+      if (
+        !a.isInterleavedBufferAttribute &&
+        A instanceof Float32Array &&
+        a.itemSize === sz &&
+        ((sz === 3 && (name === 'position' || name === 'normal')) ||
+          (name !== 'position' && name !== 'normal' && name !== 'onormal' && !den))
+      ) {
+        const e = name === 'position' ? mm.elements : name === 'normal' ? nm.elements : null;
+        for (let i = 0; i < n; i++) {
+          const j = flip ? (i % 3 === 1 ? i + 1 : i % 3 === 2 ? i - 1 : i) : i;
+          const o = (off + j) * sz,
+            s = i * sz;
+          if (!e) {
+            for (let c = 0; c < sz; c++) arr[o + c] = A[s + c];
+            continue;
+          }
+          const x = A[s],
+            y = A[s + 1],
+            z = A[s + 2];
+          if (name === 'position') {
+            // Vector3.applyMatrix4（含 w 的除法）
+            const w = 1 / (e[3] * x + e[7] * y + e[11] * z + e[15]);
+            arr[o] = (e[0] * x + e[4] * y + e[8] * z + e[12]) * w;
+            arr[o + 1] = (e[1] * x + e[5] * y + e[9] * z + e[13]) * w;
+            arr[o + 2] = (e[2] * x + e[6] * y + e[10] * z + e[14]) * w;
+          } else {
+            // Vector3.applyMatrix3＋normalize
+            const nx = e[0] * x + e[3] * y + e[6] * z,
+              ny = e[1] * x + e[4] * y + e[7] * z,
+              nz = e[2] * x + e[5] * y + e[8] * z;
+            const L = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
+            arr[o] = nx / L;
+            arr[o + 1] = ny / L;
+            arr[o + 2] = nz / L;
+          }
+        }
+        off += n;
+        continue;
+      }
       for (let i = 0; i < n; i++) {
         // 沒有索引、行列式為負（鏡像）時把每個三角形的第 2、3 個頂點對調，維持正面朝外
         const j = flip ? (i % 3 === 1 ? i + 1 : i % 3 === 2 ? i - 1 : i) : i;

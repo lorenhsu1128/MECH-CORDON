@@ -752,31 +752,103 @@ export function tintCtx(all, opts = {}) {
   ctx.index = new Map(all.map((it, i) => [it, i]));
   return ctx;
 }
-const _cp = new THREE.Vector3();
+// 進場建地圖時每個頂點都要呼叫（docs/perf-campaign-plan.md 第 1 期）：外框攤成數字陣列、不經過 Vector3／Box3
 function occlusion(ctx, self, p, n) {
   const a = ctx.grid.get(
     cellKey(Math.floor(p.x / ctx.cell), Math.floor(p.y / ctx.cell), Math.floor(p.z / ctx.cell)),
   );
   if (!a) return 0;
+  const B = ctx.flat || (ctx.flat = flatBoxes(ctx.boxes));
+  const px = p.x,
+    py = p.y,
+    pz = p.z;
   let occ = 0;
-  for (const i of a) {
+  for (let q = 0; q < a.length; q++) {
+    const i = a[q];
     if (i === self) continue;
-    const b = ctx.boxes[i],
-      r = ctx.rad[i];
-    b.clampPoint(p, _cp);
-    _cp.sub(p);
-    const d = _cp.length();
-    if (d >= r) continue;
+    const r = ctx.rad[i],
+      o = i * 6;
+    // 到外框最近點的向量（Box3.clampPoint − p）
+    const cx = (px < B[o] ? B[o] : px > B[o + 3] ? B[o + 3] : px) - px,
+      cy = (py < B[o + 1] ? B[o + 1] : py > B[o + 4] ? B[o + 4] : py) - py,
+      cz = (pz < B[o + 2] ? B[o + 2] : pz > B[o + 5] ? B[o + 5] : pz) - pz;
+    const d2 = cx * cx + cy * cy + cz * cz;
+    if (d2 >= r * r) continue;
+    const d = Math.sqrt(d2);
     let nd;
     if (d < 1e-4) {
       // 在外框上或裡面（插進別的零件）：縫隙
       nd = 0.7;
-    } else nd = n.dot(_cp) / d;
+    } else nd = (n.x * cx + n.y * cy + n.z * cz) / d;
     if (nd <= -0.2) continue;
     const f = 1 - d / r;
     occ += f * f * (0.35 + 0.65 * Math.max(0, nd));
   }
   return occ;
+}
+function flatBoxes(boxes) {
+  const B = new Float64Array(boxes.length * 6);
+  boxes.forEach((b, i) => {
+    B[i * 6] = b.min.x;
+    B[i * 6 + 1] = b.min.y;
+    B[i * 6 + 2] = b.min.z;
+    B[i * 6 + 3] = b.max.x;
+    B[i * 6 + 4] = b.max.y;
+    B[i * 6 + 5] = b.max.z;
+  });
+  return B;
+}
+// 同一個幾何（非索引）裡位置與法線完全相同的頂點（相鄰三角形共用的角）：dup[i]＝第一次出現的編號。
+// 零件的矩陣對每個頂點一樣，所以這些頂點的遮蔽結果相同，只算一次（第 1 期）。依幾何快取
+const DUP = new WeakMap();
+function dupOf(g) {
+  let d = DUP.get(g);
+  if (d) return d;
+  const p = g.attributes.position.array,
+    nn = g.attributes.normal ? g.attributes.normal.array : null,
+    n = g.attributes.position.count;
+  d = new Int32Array(n);
+  const seen = new Map();
+  for (let i = 0; i < n; i++) {
+    const k = nn
+      ? `${p[i * 3]},${p[i * 3 + 1]},${p[i * 3 + 2]},${nn[i * 3]},${nn[i * 3 + 1]},${nn[i * 3 + 2]}`
+      : `${p[i * 3]},${p[i * 3 + 1]},${p[i * 3 + 2]}`;
+    const f = seen.get(k);
+    if (f === undefined) {
+      seen.set(k, i);
+      d[i] = i;
+    } else d[i] = f;
+  }
+  DUP.set(g, d);
+  return d;
+}
+// 凸邊的快取（第 1 期）：凸邊只和零件自己的形狀有關，旋轉、平移之後不變，所以依「原始幾何＋縮放＋是否鏡像」記住。
+// 矩陣有切變（不能拆成 平移·旋轉·縮放）時不快取。地圖物件大多是同一份共用的幾何（倒角方塊、圓柱）放在不同位置
+const WEAR = new WeakMap();
+const _wq = new THREE.Quaternion(),
+  _wt = new THREE.Vector3(),
+  _ws = new THREE.Vector3(),
+  _wm = new THREE.Matrix4();
+function wearKey(mm) {
+  mm.decompose(_wt, _wq, _ws);
+  _wm.compose(_wt, _wq, _ws);
+  const a = mm.elements,
+    b = _wm.elements;
+  for (let i = 0; i < 16; i++) if (Math.abs(a[i] - b[i]) > 1e-5 * (1 + Math.abs(a[i]))) return null;
+  const q = (v) => Math.round(Math.abs(v) * 1e4);
+  return `${q(_ws.x)},${q(_ws.y)},${q(_ws.z)},${mm.determinant() < 0 ? 1 : 0}`;
+}
+function edgeWearCached(geo, mm, pos, nor, n) {
+  const k = wearKey(mm);
+  if (k === null) return edgeWear(pos, nor, n);
+  let m = WEAR.get(geo);
+  if (!m) WEAR.set(geo, (m = new Map()));
+  let w = m.get(k);
+  if (!w || w.length !== n) {
+    w = edgeWear(pos, nor, n);
+    if (m.size < 64) m.set(k, w);
+  }
+  return w;
 }
 // 一個零件的凸邊（磨損）：同一個零件裡位置相同、法線差超過 25° 的面，對面在自己的平面後方＝凸邊
 function edgeWear(pos, nor, n) {
@@ -847,13 +919,18 @@ export function tintMerge(list, ctx, outline = false) {
     // 遮蔽、髒污、凸邊
     const cnt = p.count;
     const wear =
-      ctx.wear > 0 && cnt < 6000 ? edgeWear(pos.subarray(c0 * 3), nor.subarray(c0 * 3), cnt) : null;
+      ctx.wear > 0 && cnt < 6000
+        ? edgeWearCached(g, it.mm, pos.subarray(c0 * 3), nor.subarray(c0 * 3), cnt)
+        : null;
     // wm：零件到遮蔽資料（ctx）座標的矩陣（合併的網格在子群組裡時和 mm 不同）
     const W =
       it.wm && it.wm !== it.mm
         ? new THREE.Matrix4().multiplyMatrices(it.wm, new THREE.Matrix4().copy(it.mm).invert())
         : null;
     const WN = W ? new THREE.Matrix3().getNormalMatrix(W) : null;
+    // 輸出的第 i 個頂點＝原始幾何的第 src(i) 個（鏡像時三角形的第 2、3 個頂點互換）
+    const dup = ctx.ao > 0 ? dupOf(g) : null;
+    const occS = dup ? new Float32Array(cnt).fill(NaN) : null;
     for (let i = 0; i < cnt; i++) {
       const j = c0 + i;
       _v.set(pos[j * 3], pos[j * 3 + 1], pos[j * 3 + 2]);
@@ -862,7 +939,13 @@ export function tintMerge(list, ctx, outline = false) {
         _v.applyMatrix4(W);
         _n.applyMatrix3(WN).normalize();
       }
-      const occ = ctx.ao > 0 ? occlusion(ctx, self, _v, _n) : 0;
+      let occ = 0;
+      if (dup) {
+        const src = flip ? (i % 3 === 1 ? i + 1 : i % 3 === 2 ? i - 1 : i) : i;
+        const f = dup[src];
+        occ = occS[f];
+        if (occ !== occ) occS[f] = occ = occlusion(ctx, self, _v, _n);
+      }
       let k = 1 - Math.min(0.7, occ * ctx.ao);
       if (ctx.grime > 0) {
         const t = Math.max(0, Math.min(1, (_v.y - ctx.y0) / ctx.gh));

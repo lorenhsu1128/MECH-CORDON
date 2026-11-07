@@ -165,6 +165,103 @@ function chamferGeo(w, h, d, c) {
 }
 // 精細版的預設選項（docs/model-detail.md）：地圖物件一律打開；建好之後還會改材質顏色的模型（過場）用 new PK(false)
 const PK_TINT = { ao: 0.75, grime: 0.22, lite: true };
+// 烘焙結果的快取（docs/perf-campaign-plan.md 第 1 期）：地圖上很多物件的參數完全相同（同尺寸的沙袋牆、鐵軌的每一節、
+// 同色的貨櫃），頂點色烘焙（遮蔽、凸邊）是進場最花時間的部分。鍵＝所有零件的材質（id、顏色）、幾何 id、矩陣、
+// 外框零件與選項的雜湊；命中時複製幾何（各物件之後各自受損、拆合併池，不共用幾何）。整頁共用、換區段保留，
+// 頂點數超過上限就整個清掉。只影響建模時間，外觀與碰撞完全相同，也不呼叫亂數。
+const TINT_CACHE = new Map();
+const TINT_MIN = 600; // 頂點數少於這個的物件烘焙很快，不佔快取
+const TINT_MAX = 1500000; // 快取的頂點數上限（每個頂點 11 個 float，約 66 MB）
+let tintVerts = 0;
+function tintSig(by, parts, opts) {
+  let h1 = 0x811c9dc5,
+    h2 = 0x9e3779b9,
+    n = 0,
+    nv = 0;
+  const mix = (v) => {
+    const x = Math.round(v * 1e5) | 0;
+    h1 = Math.imul(h1 ^ x, 0x01000193);
+    h2 = Math.imul(h2 ^ (x + 0x7f4a7c15), 0x85ebca6b) ^ (h2 >>> 13);
+    n++;
+  };
+  for (const [key, list] of by) {
+    const m = key[0];
+    mix(matHash(m));
+    mix(key[1]);
+    mix(key[2] ? 1 : 0);
+    for (const [g, mm] of list) {
+      mix(geoHash(g));
+      nv += g.attributes.position.count;
+      const e = mm.elements;
+      for (let i = 0; i < 16; i++) if (i !== 3 && i !== 7 && i !== 11 && i !== 15) mix(e[i]);
+    }
+  }
+  if (nv < TINT_MIN) return null;
+  for (const p of parts) {
+    for (const v of [p.box.min, p.box.max]) (mix(v.x), mix(v.y), mix(v.z));
+    for (let i = 0; i < 16; i++) mix(p.mm.elements[i]);
+  }
+  const os = JSON.stringify(opts);
+  for (let i = 0; i < os.length; i++) mix(os.charCodeAt(i));
+  return `${h1 >>> 0}:${h2 >>> 0}:${n}:${nv}`;
+}
+// 材質與幾何以內容比對（鐵軌、貨櫃這類每次都新建材質或擠出幾何的物件也打得中）
+// 幾何的內容建好之後不會再改（共用的幾何不能改，CLAUDE.md），所以依物件記住；材質之後可能被改（淡出、換色），每次重算
+const GEO_H = new WeakMap();
+function hashArr(h, a) {
+  const u = new Uint32Array(a.buffer, a.byteOffset, a.length);
+  for (let i = 0; i < u.length; i++) h = Math.imul(h ^ u[i], 0x01000193);
+  return h;
+}
+function geoHash(g) {
+  let h = GEO_H.get(g);
+  if (h !== undefined) return h;
+  h = 0x811c9dc5;
+  for (const k of ['position', 'normal', 'uv']) {
+    const a = g.attributes[k];
+    if (a && a.array instanceof Float32Array) h = hashArr(Math.imul(h ^ a.count, 0x01000193), a.array);
+    else h = Math.imul(h ^ (a ? a.id || 7 : 3), 0x01000193);
+  }
+  if (g.index) h = Math.imul(h ^ g.index.count, 0x01000193) ^ g.id;
+  GEO_H.set(g, (h = h >>> 0));
+  return h;
+}
+function matHash(m) {
+  const v = [
+    m.type,
+    m.color ? m.color.getHex() : -1,
+    m.emissive ? m.emissive.getHex() : -1,
+    m.emissiveIntensity,
+    m.roughness,
+    m.metalness,
+    m.opacity,
+    m.transparent,
+    m.side,
+    m.alphaTest,
+    m.depthWrite,
+    m.polygonOffset,
+    m.blending,
+    m.vertexColors,
+    m._stFlat,
+    m.map ? m.map.id : 0,
+    m.normalMap ? m.normalMap.id : 0,
+    m.emissiveMap ? m.emissiveMap.id : 0,
+  ].join('|');
+  let h = 0x811c9dc5;
+  for (let i = 0; i < v.length; i++) h = Math.imul(h ^ v.charCodeAt(i), 0x01000193);
+  return h >>> 0;
+}
+function tintPut(sig, out) {
+  let nv = 0;
+  for (const e of out) nv += e.geo.attributes.position.count;
+  if (tintVerts + nv > TINT_MAX) {
+    for (const es of TINT_CACHE.values()) for (const e of es) e.geo.dispose();
+    TINT_CACHE.clear();
+    tintVerts = 0;
+  }
+  TINT_CACHE.set(sig, out);
+  tintVerts += nv;
+}
 const _cv = new THREE.Vector3();
 export class PK {
   constructor(t) {
@@ -377,6 +474,29 @@ export class PK {
     return group;
   }
   buildTint(group, shadow, parts, union) {
+    // 內容完全相同（材質、幾何、矩陣、零件、選項）的物件已經烘焙過：複製上次的幾何（第 1 期，docs/perf-campaign-plan.md）
+    const sig = tintSig(this.by, parts, this.tintOpts);
+    const hit = sig && TINT_CACHE.get(sig);
+    if (hit) {
+      // 材質用這一次的（各物件自己的淡出材質；內容和快取的那一次相同）
+      const keys = [...this.by.keys()];
+      for (const e of hit) {
+        const part = e.pi >= 0 ? parts[e.pi] : null;
+        const m = keys[e.ki][0];
+        const mat = e.c !== null ? classMat(e.c, e.fade ? m : null) : m.isMeshStandardMaterial ? vcMat(m) : m;
+        const mesh = new PropMesh(e.geo.clone(), mat);
+        if (part) part.mm.decompose(mesh.position, mesh.quaternion, mesh.scale);
+        mesh.castShadow = shadow && !e.isFine;
+        mesh.receiveShadow = true;
+        if (e.isFine) fineReg(mesh, this.fineDist);
+        group.add(mesh);
+      }
+      this.by.clear();
+      this.keys.clear();
+      this.parts = null;
+      return group;
+    }
+    const out = sig ? [] : null;
     const all = [];
     for (const [key, list] of this.by) {
       const m = key[0];
@@ -390,8 +510,10 @@ export class PK {
     const ctx = tintCtx(all, this.tintOpts);
     // 同類的材質合併成一個網格（顏色烘進頂點色，減少繪製次數）；小細節（fine）全部併成一類
     const groups = new Map();
-    let ai = 0;
+    let ai = 0,
+      ki = -1;
     for (const [key, list] of this.by) {
+      ki++;
       const [m, pi, isFine] = key;
       const skip = m.transparent && m.opacity < 1;
       const c = matClass(m);
@@ -400,7 +522,7 @@ export class PK {
       // 會併到第一個零件上（例如雷達的碟面跑到底座的位置）
       const gk = c === null ? key : `${isFine ? 'f' : c}|${pi}|${fade ? 1 : 0}`;
       let G = groups.get(gk);
-      if (!G) groups.set(gk, (G = { m, c: isFine && c !== null ? 4 : c, pi, isFine, fade, items: [] }));
+      if (!G) groups.set(gk, (G = { m, ki, c: isFine && c !== null ? 4 : c, pi, isFine, fade, items: [] }));
       const part = pi >= 0 ? parts[pi] : null;
       const inv = part ? new THREE.Matrix4().copy(part.mm).invert() : null;
       for (const [g, mm] of list) {
@@ -425,7 +547,9 @@ export class PK {
       mesh.receiveShadow = true;
       if (G.isFine) fineReg(mesh, this.fineDist);
       group.add(mesh);
+      if (out) out.push({ geo: geo.clone(), ki: G.ki, c: G.c, fade: G.fade, pi: G.pi, isFine: G.isFine });
     }
+    if (out) tintPut(sig, out);
     this.by.clear();
     this.keys.clear();
     this.parts = null;
