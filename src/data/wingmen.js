@@ -28,7 +28,7 @@ export const WINGMEN = {
 };
 export const wingAsm = (k) => ({ ...AC_ROSTER[WINGMEN[k].roster].asm });
 // 有僚機同行的出擊（簡報寫「僚機同行」；每章一個，第 2 章起）
-export const WING_SORTIES = new Set(['c2s2', 'c3s1', 'c4s2', 'c5s1', 'c6s2']);
+export const WING_SORTIES = new Set(['c2s2', 'c3s1', 'c4s2', 'c5s1', 'c6s2', 'c7s1', 'c8s1']);
 // 依路線決定哪一位：最近的抉擇（castron／aetheric／veerwell／sancta）；還沒抉擇時是 BASALT
 export function wingFor(pick) {
   for (const k in WINGMEN) if (WINGMEN[k].routes.includes(pick)) return k;

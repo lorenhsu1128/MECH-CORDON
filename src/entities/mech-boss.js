@@ -705,6 +705,7 @@ Object.assign(MechEntity.prototype, {
   bossDie(from) {
     const g = this.game;
     this.boss2Die(from);
+    this.boss4Die(from);
     if (!this.isBoss) return;
     for (const p of this.partsOf()) p.partBreak();
     g.removeMinesOf(this);
@@ -722,6 +723,7 @@ Object.assign(MechEntity.prototype, {
     if (this.ai === 'worm') this.wormFx();
     if (this.model.legNodes && this.model.legNodes.length) this.spiderFx(dt);
     this.boss2Fx(dt);
+    this.boss4Fx(dt); // 主線擴充的新 Boss（mech-boss4.js）
     if (this.isBoss) this.tierFx(dt); // 破綻的金色光環（mech-boss-tier.js）
   },
   // 身體各節沿著頭部走過的軌跡排列（入地的部分被地形擋住）
@@ -807,6 +809,7 @@ Object.assign(MechEntity.prototype, {
   },
   bossCleanup() {
     this.boss2Cleanup();
+    this.boss4Cleanup();
     if (this.wormSegs) {
       for (const m of this.wormSegs) this.game.scene.remove(m);
       this.wormSegs = null;

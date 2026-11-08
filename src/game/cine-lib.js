@@ -9,7 +9,7 @@ import { FACTIONS } from '../data/story.js';
 import { Game } from './game.js';
 
 const $ = (id) => document.getElementById(id);
-const NUM = ['', '一', '二', '三', '四', '五', '六'];
+const NUM = ['', '一', '二', '三', '四', '五', '六', '七', '八'];
 // 選前演出代替戰場的地圖（抉擇區段的主題；高空軌道是懸空的平台，擺不好主角，改用荒野）
 const STAND = { c2: 'dam', c4: 'spaceport', c6: 'orbit' };
 const fmt = (t) => {
@@ -124,12 +124,13 @@ Object.assign(Game.prototype, {
           });
     };
     story('p' + cyc, '序章');
-    for (let ch = 1; ch <= 6; ch++) {
+    for (let ch = 1; ch <= 8; ch++) {
       const g = `第${NUM[ch]}章`;
       story(`i${cyc}_${ch}`, g);
-      if (ch === 2 || ch === 4 || ch === 6) {
+      // 最後的抉擇（c6）從主線擴充起在第 8 章
+      if (ch === 2 || ch === 4 || ch === 8) {
         const n = out.length;
-        choice('c' + ch);
+        choice('c' + (ch === 8 ? 6 : ch));
         for (let i = n; i < out.length; i++) out[i].group = g;
       }
       story(`o${cyc}_${ch}`, g);

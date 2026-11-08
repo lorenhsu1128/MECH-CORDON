@@ -104,10 +104,11 @@ export function campaignTier(chapter, cycle, echo) {
   return Math.max(1, Math.min(8, (chapter || 1) + Math.max(0, (cycle || 1) - 1)));
 }
 // 自由出擊：BOSS_DEFS 的索引 i → 1＋⌊i×6／22⌋；繞完一輪之後固定 6
+const FREE_N = 22;
 export function freeTier(i) {
   if (i < 0) return 3;
-  if (i >= BOSS_DEFS.length) return 6;
-  return 1 + Math.floor((i * 6) / BOSS_DEFS.length);
+  if (i >= FREE_N) return 6; // 第 23 隻起（主線擴充的新 Boss）固定 6
+  return 1 + Math.floor((i * 6) / FREE_N);
 }
 // 這個 Boss 定義在 BOSS_DEFS 的索引（自由出擊的第 n 場 Boss 關、自訂關卡用）
 export function bossDefIndex(bd) {

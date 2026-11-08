@@ -5,6 +5,7 @@
 // 這些模型目前不接受 GLB（模型庫只預覽）。
 // 造型：主體用 gPod／gPlate／gLoft 做出楔形、斜面與分層（深色骨架＋外裝甲板＋細節），
 // 會動的節點（mounts、hand、back、rotor、fins、jaws…）的名稱、位置與層級和遊戲端的判定一致，不可移動。
+import { BOSS4_BUILDERS } from './boss-models4.js';
 import {
   CB,
   P,
@@ -3486,6 +3487,7 @@ const BUILDERS = {
   jet: buildJet,
   dozer: buildDozer,
   ibis: buildIbis,
+  ...BOSS4_BUILDERS, // 主線擴充的新 Boss（boss-models4.js）
   ...FOE_BUILDERS, // 主題專屬敵人（foe-models.js）
 };
 export const BOSS_MODEL_KEYS = Object.keys(BUILDERS);

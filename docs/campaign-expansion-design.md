@@ -422,6 +422,17 @@ SEG_TYPES.stealth = {
 - **協定**：`NET_VERSION` 11.34。方舟主題的檔案（`world/themes/ark.js`）已經登記但不可列舉，第 13 期完成後再開放。
 - **測試**：`testVolcano`（7 種地形、熔岩不能放東西、主題物件、6 個地標、4 種專屬敵人的行為與面數、過熱倍率），`testMaps` 加上火山（主題物件、熔岩受傷）。
 
+### 第 13 期（2026-11-08）：方舟、第 8 章、最後的抉擇搬到 c8s3
+
+- **主題**（`world/themes/ark.js`）：虛空地圖（`planIslands` 的甲板分區、橋、下層平台；下方 70 m 是往後流動的熔岩大地 `addGroundBelow`），自己的物件（排氣煙囪、防空砲座、裝甲艙蓋、補給貨櫃）與艦橋塔、主砲塔、地形特徵的外觀 `registerFeatureStyle('ark')`。各表的登記同火山（`edges` 是 none、反射 open、固定砲台 flak／rail、陷阱 airlock、地形事件 dock、情報、總覽圖區域 ark）。`bossBan`：worm、rampart、train、artillery。
+- **變體與地標**：fore（大主甲板＋第二座主砲）／engine（排氣煙囪林立）／flank（細碎的分區、長橋）／hangar（貨櫃多）／storm（火山灰暴）／night（夜航）；地標 reactor／mast／catapult／turret／hatch／stacks。
+- **專屬敵人**（第 E2 組：`data/foes-e2.js`、`render/foe-models-e2.js`、`entities/mech-foe-e2.js`）：甲板升降砲塔 popturret（降下時不能鎖定、無敵，井框亮燈後升起射 6 發）、登艦突擊兵 boarder（預警圈 → 突擊推進撲擊、落點爆炸 → 落地的空檔受傷 ×1.3）、甲板軌道砲兵 railgunner（瞄準線跟著目標充能、最後停住 → 貫穿光束 → 散熱受傷 ×1.4）、艦橋觀測無人機 spotter（探照燈照 1.4 秒 → 標定 spotted＋3 發引導砲擊）。宿敵 KEEL（bastion：盾、雷射砲、地面衝擊波）。
+- **出擊**：c8s1（聖域，KEEL、ARACHNE）、c8s2（維爾威，依抉擇 2 的 UNDERTOW／MARSH、CERBERUS）、c8s3（卡斯特隆，**終章**：KEEL → ZENITH 的最後的抉擇 → LEVIATHAN）。c6s3 拿掉 `final` 與抉擇（ZENITH 只留伏筆，完成時機械語音「認證終端：不在此處。所在地：方舟。」），第 6 章多一個章末（轉折），第 7、8 章的開場、第 7 章的章末（第 8 章的章末＝結局）。第 7 章的簡報開放（拿掉 `cycle: 99`）。結局的舞台改到方舟的認證終端（交出／墜落各改一句、真結局多一句）。僚機同行多 c7s1、c8s1。
+- **周目**：c7x、c8x（第 2 周目，米拉；真結局的紫色委託變成 8 個）、c7y、c8y（第 3 周目，記憶片段 7「熔爐」、8「按鈕」；`MEMORIES` 8 片，`MEM_N` 取代寫死的 6）。
+- **協定**：`NET_VERSION` 11.35。
+- **沒有做的**：新台詞沒有語音（要用 VoxCPM2 重新產生，`scripts/voice-lines.js`＋`voice-gen.py`）；第 6 章的章末與第 7、8 章的開場／章末沒有過場動畫（改顯示文字畫面）；第 7、8 章的 Boss 沿用既有的種類。
+- **測試**：`testArk`（7 種地形、甲板與虛空、出生點在甲板、主題物件、6 個地標、4 種專屬敵人的行為與面數、降下無敵與散熱倍率），`testMaps`／`testTraps`／`testEvents` 加上火山與方舟，`testChapter6` 加上第 7、8 章的出擊與「抉擇搬到 c8s3」，`testCycle3`／`testStory`／`testTextFx`／`testMpCampaign` 改成 c8s3 與 8 片記憶。卡頓檢查 `perf-campaign.js --only=c7s1,…,c8y`。
+
 ## 10. 第 7、8 章的劇情大綱（第 12、13 期）
 
 原本的結局（交出軌道站／讓它墜落／彼岸）與「回收程序」的文字盡量不動，只把**最後的抉擇從第 6 章搬到第 8 章**。
@@ -439,3 +450,26 @@ SEG_TYPES.stealth = {
   - 第 2 周目 c8x、第 3 周目 c8y（記憶片段 8）。記憶片段改成 8 片、紫色委託 8 個（真結局的條件跟著）。
 - **僚機**：c7s1、c8s1 也有僚機同行（BASALT／WREN 依路線），好感度高時，結局前有一段僚機的台詞。
 - **語音與過場動畫**：新台詞先只有文字（語音要用 VoxCPM2 在有 CUDA 的電腦產生）；第 7、8 章的章節開場／章末先用全畫面文字，過場動畫之後再補。
+
+## 11. 第 7、8 章的新 Boss（第 14、15 期；2026-11-08 使用者追加）
+
+第 13 期的第 7、8 章先沿用舊 Boss；使用者要求換成全新的。六隻各對應一個主線出擊，規則照 `docs/boss-design.md`（刁鑽度、破綻、打斷大招、部位、打回去、應對、場地、擊破評價），程式放 `entities/mech-boss4.js`（行為）、`game/bosses4.js`（生成與場上判定）、`render/boss-models.js`（模型），`BOSS_KIT`／`C_STAR`／`SPECIALS` 各補一項。`BOSS_DEFS` 接在原本 22 隻的後面（自由出擊的輪替照舊從頭排，第 23 隻起才輪到）。周目的委託改成這六隻的殘響版或沿用舊的。
+
+| 出擊 | Boss | 一句話 | 招式 | 破綻 | 部位 | 打回去 |
+|---|---|---|---|---|---|---|
+| c7s1 熔爐工廠 | **ANVIL 鍛造巨人**（`forge`） | 拿著巨鎚的鍛造機，緩慢、一擊很重 | 鎚擊（預警圈 → 震波＋熔岩裂地）、投擲熔鐵塊（可打掉）、橫掃；第三型態連續鎚擊沿直線推進 | 鎚擊之後鎚子卡在地上 2.5 秒 | 冷卻槽（壞了不能「淬火」減傷）、背後的鼓風爐 | 熔鐵塊打回去 |
+| c7s2 地熱研究所 | **SALAMANDER 熔岩潛龍**（`salamander`） | 在熔岩河裡游的長條機械，從熔岩冒出來吐火 | 潛在熔岩裡移動（打不到）、浮出噴火弧、熔岩彈雨、甩尾 | 離開熔岩越久裝甲越冷（受傷倍率上升），被打出失衡時擱淺 | 頭部的噴火口、背鰭的散熱片 | 熔岩彈 |
+| c7s3 方舟船塢 | **GANTRY 船塢起重要塞**（`gantry`） | 橫跨戰場的門型起重機，沿軌道來回 | 吊下貨櫃（落點預警、留下掩體）、電磁吸引（把機體拉向吊鉤）、吊鉤砸地、掃射 | 貨櫃放下之後電磁鐵過熱外露 | 兩側的腳輪（壞一邊移動變慢）、電磁鐵 | 掉下來的貨櫃（打碎變碎片射回去） |
+| c8s1 方舟甲板 | **COLOSSUS 主砲塔**（`deckgun`） | 方舟的主砲塔，不會移動、只會轉 | 主砲齊射（長方形預警，正前方的扇形）、副砲掃射、升起升降砲塔支援、煙幕 | 主砲齊射後砲管散熱；砲塔轉向很慢，繞到背後打 | 彈藥升降機（背後）、副砲、測距儀 | 副砲的砲彈 |
+| c8s2 方舟機關區 | **HEARTH 機關心臟**（`reactor`） | 引擎室中央的反應爐，外面繞著旋轉的護盾板 | 脈衝環（QB 穿過）、蒸氣噴發（區域）、能量光束沿縫隙射出、過載時全場放電 | 護盾板的縫隙轉到面前時、過載之後核心外露 | 四根冷卻柱（壞了過載提早） | 護盾板反彈的光束（打中護盾板會反射） |
+| c8s3 方舟中樞（終章） | **SOVEREIGN 方舟的主權者**（`sovereign`，機甲型） | 簽署者記憶的守護者，方舟本身的駕駛機 | 第一型態像 AC 一樣近遠交替；第二型態呼叫甲板主砲的光柱與浮游刃；第三型態「認證」：全場的格子光束（每波一條安全線）＋召喚上一位鑰匙的殘影 | 召喚之後短暫停機、「認證」的每一波之間 | 兩翼的浮游刃發射器、背後的認證天線 | 浮游刃 |
+
+**分期**：第 14 期＝第 7 章三隻（ANVIL、SALAMANDER、GANTRY），第 15 期＝第 8 章三隻（COLOSSUS、HEARTH、SOVEREIGN）。每期：定義、模型、行為、`BOSS_KIT`、`SPECIALS`、刁鑽度、說明、冒煙測試 `testBossKit78`（部位、打斷、破綻、打回去、場地、截圖）、卡頓檢查。之後第 16 期補過場動畫（第 6 章章末的轉折、第 7 章開場與章末、第 8 章開場、最後的抉擇在方舟上的選前演出），第 17 期補語音（新台詞的中文與日文、新角色 KILN／KEEL／BASALT／WREN 的聲音）。
+
+### 第 14、15 期的實作紀錄（2026-11-08）
+
+- **程式**：行為 `entities/mech-boss4.js`（`boss4Move`／`boss4Fire`／`boss4Defense`／`boss4Open`／`boss4Fx`，由 mech-boss2.js 的掛勾不認得的 ai 轉過來）、Game 端 `game/bosses4.js`（SOVEREIGN 召喚殘影 `sovEcho4`）、模型 `render/boss-models4.js`（`BOSS4_BUILDERS` 併進 boss-models.js 的 `BUILDERS`；SOVEREIGN 是機甲型，`mech: true`）。定義接在 `BOSS_DEFS` 的 22 隻後面；自由出擊的刁鑽度換算固定以 22 隻計（`boss-tier.js` 的 `FREE_N`），所以原本 22 隻的刁鑽度不變。`BOSS_KIT`／`C_STAR`／`FIELD`／`SPECIALS` 各補六項。
+- **自己控制位置的 Boss**：GANTRY、COLOSSUS、HEARTH 回傳 `done` 並在自己的 AI 裡呼叫 `bossTick`；GANTRY 的橫梁依作戰區域拉長、對齊場地中心（`boss4Fx`，各端自己算），吊車與放下的程度隨 `bx` 同步；COLOSSUS 的砲塔方位、HEARTH 的護盾板角度也在 `bx`。HEARTH 的護盾板以攻擊者的方向判斷（`reactorBlocked_`，板的中心在 rot＋i×90°、半寬 0.5 弧度；板發生器壞了 0.36）。
+- **出擊**：c7s1 ANVIL、c7s2 SALAMANDER、c7s3 GANTRY、c8s1 COLOSSUS、c8s2 HEARTH、c8s3 SOVEREIGN（終章）；c7y 是 ECHO-ANVIL、c8y 是 ECHO-HEARTH；紫色的 c7x／c8x 沿用 MIRAGE／VIPER。簡報、通訊、`docs/story-script.md` 的 Boss 名稱一起改。
+- **測試**：`testBoss4`（六隻的行為：舉鎚 → 卡住、潛行不能鎖定 → 鑽出前的火光、吊下貨櫃留下掩體與電磁吸引、主砲齊射 → 散熱、護盾板擋住的方向與過載、召喚殘影 → 停機；截圖 `boss4-<種類>.png`）、`testBossKit7`／`testBossKit8`（共用的專屬內容測試）。
+- **過場動畫**（第 16 期）：見 `docs/cinematics.md` 的「主線擴充」。

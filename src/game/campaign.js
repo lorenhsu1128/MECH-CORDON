@@ -20,7 +20,7 @@ import { boardRegister } from '../data/board.js';
 import { AC_ROSTER, PART_DEFS, enemyScale } from '../data/enemies.js';
 import { campaignTier } from '../data/boss-tier.js';
 import { ACES, THEME_ACE } from '../data/foes.js';
-import { FACTIONS, MEMORIES, speakerBadge, SPEAKERS } from '../data/story.js';
+import { FACTIONS, MEM_N, MEMORIES, speakerBadge, SPEAKERS } from '../data/story.js';
 import { partById } from '../data/parts.js';
 import { MechEntity } from '../entities/mech-entity.js';
 import { PALETTES } from '../render/materials.js';
@@ -1446,11 +1446,11 @@ Object.assign(Game.prototype, {
         // 文字演出：回憶的樣式蓋在結果畫面上（關閉時是中央訊息）
         if (
           !st.memories[so.memory] &&
-          !this.tfx('memory', MEMORIES[so.memory].title, `MEMORY ${so.memory}／6`, {
+          !this.tfx('memory', MEMORIES[so.memory].title, `MEMORY ${so.memory}／${MEM_N}`, {
             states: ['play', 'result'],
           })
         )
-          this.flashMsg(`記憶片段 ${so.memory}／6「${MEMORIES[so.memory].title}」回收`, 0xffd060, 4);
+          this.flashMsg(`記憶片段 ${so.memory}／${MEM_N}「${MEMORIES[so.memory].title}」回收`, 0xffd060, 4);
         st.memories[so.memory] = 1;
       }
       // 終章：依最後的抉擇進入結局（結果畫面按確定之後；多人時隊友也看，見 clientEnd）

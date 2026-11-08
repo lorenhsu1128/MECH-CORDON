@@ -58,6 +58,8 @@
 - 每章的專屬分鏡在 `ch<章>.js`（`chapters.js` 的 `BESPOKE`；沒有專屬分鏡的才用下面的模板）。鏡頭組件 `kit.js`：`timeline`（同一張地圖連續的鏡頭自動移除上一鏡的演員，`keep` 保留）、`black` 黑底字卡／機器文字、`vista` 空景（crane／pan／push／fly／low）、`comm` 通訊分割（`ov: 'comm'`：左側徽章、名字、聲紋；`badge` 讓旁白也掛委託方）、`rival` 宿敵登場、`boss` Boss 登場、`hero` 主角（walk／boost／hover／kneel）、`shootout` 追尾視角對射兩鏡（`ov: 'lock'`）、`chapterCard`、`cut` 代價快切、`choicePre`／`choicePost` 抉擇演出。
 - 抉擇演出：鍵 `x_<抉擇>_pre`（選前，`cinePlay(..., { live: true })`：場景 `{ k: 'live' }`＝目前的戰場，原點與演員 `player`＝玩家，`{ ex: i }`＝第 i 個出口，`ov: 'choice'` 畫倒數條與出口名牌；模擬暫停，播完回到原本的 state）、`x_<抉擇>_<選項>`（選後的代價蒙太奇，播完到轉場畫面）。接在 `campaign.js` 的 `campChoiceCine`（抉擇出口出現時、`campLeave`）；多人、劇情動畫關閉時不播。
 
+- **主線擴充**（2026-11-08，`data/cine/ch7.js`，`docs/campaign-expansion-design.md`）：第 6 章的章末＝轉折（空的中樞 → 機械文字「認證終端：不在此處／所在地：方舟」→ 委託方的頻道沉默 → 最後一鏡切到夜裡發光的熔岩、「方舟 THE ARK」），第 7 章 熔爐 的開場（火與鐵的工業片：飛越熔岩河、ANVIL 登場、霍斯特的通訊、KILN 登場與追尾對射、章名卡）與章末（方舟起航、GANTRY、依抉擇 2 的派克／諾拉、突擊推進追上去、切到方舟），第 8 章 方舟 的開場（飛越甲板、COLOSSUS 仰拍、KEEL 登場與對射、章名卡；第 8 章沒有章末，接結局畫面）。都用 `kit.js` 的組件，沒有自己的 `game/cine-c<章>.js` 效果；配樂沿用 `cine_drive`／`cine_tension`。最後的抉擇的選前演出 `x_c6_pre` 照舊在目前的戰場（方舟）上播。過場動畫劇場的「最後的抉擇」改列在第 8 章。
+
 ### 舊的模板（`data/cine/chapters.js`）
 
 - 台詞就是 `CHAPTER_TEXT`（依抉擇 `pickLines`，所以第 2、4 章的章末依抉擇不同），一句一個鏡頭，長度依字數（3.4～7 秒）。

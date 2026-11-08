@@ -233,7 +233,7 @@ export const CHOICES = {
 // 出擊：level＝敵人強度的基準（每兩個區段 +1）；segs 依序進行：
 // pool＝這一段可能的區段類型（出口各自預告一種；只有一種時各出口類型相同、獎勵不同）、border＝主題交界的區段、
 // variants＝限定的主題變體（Boss 要開闊的場地）、choice＝陣營抉擇（見 CHOICES）、
-// final＝終章（完成時進入結局，CHOICES 的 c6 決定是哪一個）、ace＝精英區段的專屬 AC（不寫時用主題的；{ 選項: AC } 依這一章之前的抉擇；別的主題的 AC＝跨章節再登場，會強化）
+// final＝終章（c8s3；完成時進入結局，CHOICES 的 c6 決定是哪一個）、ace＝精英區段的專屬 AC（不寫時用主題的；{ 選項: AC } 依這一章之前的抉擇；別的主題的 AC＝跨章節再登場，會強化）
 export const SORTIES = {
   c1s1: {
     name: '南部荒野 — 礦坑突破',
@@ -638,7 +638,7 @@ SORTIES.c5s3 = {
     { theme: 'xylem', pool: ['boss'], boss: 'duo', variants: ['harbor', 'open'] },
   ],
 };
-// ---- 第 6 章：上空（宇宙港 → 高空軌道，上升；終局的抉擇決定結局）----
+// ---- 第 6 章：上空（宇宙港 → 高空軌道，上升；c6s3 的中樞是空的，接到第 7、8 章）----
 SORTIES.c6s1 = {
   name: '上空 — 最後的發射',
   chapter: 6,
@@ -707,11 +707,10 @@ SORTIES.c6s2 = {
   ],
 };
 SORTIES.c6s3 = {
-  name: '軌道站中樞 — 終局',
+  name: '軌道站中樞 — 空的王座',
   chapter: 6,
   level: 18,
   reward: 300000,
-  final: true,
   segs: [
     { theme: 'orbit', pool: ['battle'], variants: ['dock', 'cluster', 'sunlit'] },
     {
@@ -735,14 +734,8 @@ SORTIES.c6s3 = {
       pool: ['battle', 'destroy'],
       variants: ['nightside', 'cluster', 'debris'],
     },
-    // 最後的抉擇：上一位鑰匙 ZENITH 的警告
-    {
-      theme: 'orbit',
-      pool: ['elite'],
-      ace: 'zenith',
-      choice: 'c6',
-      variants: ['dock', 'span', 'sunlit'],
-    },
+    // 上一位鑰匙 ZENITH：這裡不是終點（最後的抉擇在第 8 章的 c8s3）
+    { theme: 'orbit', pool: ['elite'], ace: 'zenith', variants: ['dock', 'span', 'sunlit'] },
     { theme: 'orbit', pool: ['boss'], boss: 'BALTEUS', variants: ['dock'] },
   ],
 };
@@ -762,7 +755,7 @@ SORTIES.c7s1 = {
       pool: ['battle', 'destroy', 'extract', 'colossus'],
       variants: ['ashfall', 'obsidian'],
     },
-    { theme: 'volcano', pool: ['boss'], boss: 'artillery', variants: ['foundry'] },
+    { theme: 'volcano', pool: ['boss'], boss: 'anvil', variants: ['foundry'] },
   ],
 };
 SORTIES.c7s2 = {
@@ -784,7 +777,7 @@ SORTIES.c7s2 = {
       variants: ['night', 'foundry'],
     },
     { theme: 'volcano', pool: ['supply', 'battle', 'intel'], variants: ['flow', 'caldera'] },
-    { theme: 'volcano', pool: ['boss'], boss: 'furnace', variants: ['caldera'] },
+    { theme: 'volcano', pool: ['boss'], boss: 'salamander', variants: ['caldera'] },
   ],
 };
 SORTIES.c7s3 = {
@@ -811,7 +804,62 @@ SORTIES.c7s3 = {
       pool: ['battle', 'destroy', 'defend', 'extract', 'front'],
       variants: ['night', 'caldera'],
     },
-    { theme: 'volcano', pool: ['boss'], boss: 'rampart', variants: ['foundry'] },
+    { theme: 'volcano', pool: ['boss'], boss: 'gantry', variants: ['foundry'] },
+  ],
+};
+// ---- 第 8 章：方舟（移動要塞「方舟」；主線擴充）。最後的抉擇從 c6s3 搬到 c8s3 ----
+SORTIES.c8s1 = {
+  name: '方舟甲板 — 登艦',
+  chapter: 8,
+  level: 22,
+  reward: 360000,
+  segs: [
+    { theme: 'ark', pool: ['battle'], variants: ['fore', 'hangar'] },
+    { theme: 'ark', pool: ['battle', 'destroy', 'intel', 'stealth'], variants: ['flank', 'engine'] },
+    { theme: 'ark', pool: ['supply', 'escort', 'defend', 'chase', 'front'], variants: ['storm', 'hangar'] },
+    { theme: 'ark', pool: ['elite'], ace: 'keel', variants: ['fore', 'engine'] },
+    { theme: 'ark', pool: ['battle', 'destroy', 'extract', 'colossus'], variants: ['night', 'flank'] },
+    { theme: 'ark', pool: ['boss'], boss: 'deckgun', variants: ['fore'] },
+  ],
+};
+SORTIES.c8s2 = {
+  name: '方舟機關區 — 心臟的鼓動',
+  chapter: 8,
+  level: 23,
+  reward: 380000,
+  segs: [
+    { theme: 'ark', pool: ['battle'], variants: ['engine', 'night'] },
+    { theme: 'ark', pool: ['intel', 'battle', 'destroy', 'stealth'], variants: ['engine', 'flank'] },
+    { theme: 'ark', pool: ['supply', 'defend', 'breakthrough', 'front'], variants: ['storm', 'hangar'] },
+    {
+      theme: 'ark',
+      pool: ['elite'],
+      ace: { veerwell: 'undertow', sancta: 'marsh' },
+      variants: ['engine', 'fore'],
+    },
+    { theme: 'ark', pool: ['battle', 'destroy', 'extract', 'colossus'], variants: ['night', 'hangar'] },
+    { theme: 'ark', pool: ['boss'], boss: 'reactor', variants: ['fore'] },
+  ],
+};
+SORTIES.c8s3 = {
+  name: '方舟中樞 — 認證',
+  chapter: 8,
+  level: 24,
+  reward: 420000,
+  final: true,
+  segs: [
+    { theme: 'ark', pool: ['battle'], variants: ['fore', 'storm'] },
+    {
+      theme: 'ark',
+      pool: ['battle', 'elite', 'destroy', 'intel', 'stealth', 'colossus'],
+      variants: ['flank', 'engine'],
+    },
+    { theme: 'ark', pool: ['supply', 'defend', 'breakthrough', 'front'], variants: ['hangar', 'night'] },
+    { theme: 'ark', pool: ['elite'], ace: 'keel', variants: ['engine', 'fore'] },
+    { theme: 'ark', pool: ['battle', 'destroy'], variants: ['night', 'storm'] },
+    // 最後的抉擇：上一位鑰匙 ZENITH 的警告
+    { theme: 'ark', pool: ['elite'], ace: 'zenith', choice: 'c6', variants: ['fore', 'hangar'] },
+    { theme: 'ark', pool: ['boss'], boss: 'sovereign', variants: ['fore'] },
   ],
 };
 // ---- 第 2 周目以後的委託（每章一個，BRIEFINGS 的 cycle；不算進整章完成）----
@@ -939,6 +987,38 @@ SORTIES.c6x = {
     { theme: 'orbit', pool: ['boss'], boss: 'ibis', variants: ['dock', 'sunlit'] },
   ],
 };
+SORTIES.c7x = {
+  name: '火山熔爐帶 — 簽署者的名冊',
+  chapter: 7,
+  level: 20,
+  reward: 260000,
+  segs: [
+    { theme: 'volcano', pool: ['battle'], variants: ['obsidian', 'flow'] },
+    { theme: 'volcano', pool: ['intel', 'destroy', 'battle', 'stealth'], variants: ['foundry', 'night'] },
+    {
+      theme: 'volcano',
+      pool: ['supply', 'defend', 'breakthrough', 'front'],
+      variants: ['ashfall', 'caldera'],
+    },
+    { theme: 'volcano', pool: ['elite'], ace: 'kiln', variants: ['foundry', 'obsidian'] },
+    { theme: 'volcano', pool: ['battle', 'supply', 'intel'], variants: ['night', 'flow'] },
+    { theme: 'volcano', pool: ['boss'], boss: 'phantom', variants: ['caldera', 'foundry'] },
+  ],
+};
+SORTIES.c8x = {
+  name: '方舟 — 空的座位',
+  chapter: 8,
+  level: 23,
+  reward: 280000,
+  segs: [
+    { theme: 'ark', pool: ['battle'], variants: ['hangar', 'storm'] },
+    { theme: 'ark', pool: ['intel', 'destroy', 'battle', 'stealth'], variants: ['flank', 'night'] },
+    { theme: 'ark', pool: ['supply', 'defend', 'breakthrough', 'front'], variants: ['engine', 'fore'] },
+    { theme: 'ark', pool: ['elite'], ace: 'keel', variants: ['fore', 'hangar'] },
+    { theme: 'ark', pool: ['battle', 'supply', 'intel'], variants: ['storm', 'flank'] },
+    { theme: 'ark', pool: ['boss'], boss: 'interceptor', variants: ['fore'] },
+  ],
+};
 // ---- 第 3 周目：ECHO 的私人委託（每章一個；memory＝完成時回收的記憶片段，終點是殘響化的 Boss）----
 SORTIES.c1y = {
   name: '南部荒野 — 最初的訊號',
@@ -1041,6 +1121,32 @@ SORTIES.c6y = {
     },
     { theme: 'orbit', pool: ['elite'], ace: 'zenith', variants: ['sunlit', 'nightside'] },
     { theme: 'orbit', pool: ['boss'], boss: 'mirror', echo: true, variants: ['dock', 'nightside'] },
+  ],
+};
+SORTIES.c7y = {
+  name: '火山熔爐帶 — 上一個週期的你',
+  chapter: 7,
+  level: 22,
+  reward: 270000,
+  memory: 7,
+  segs: [
+    { theme: 'volcano', pool: ['battle'], variants: ['night', 'caldera'] },
+    { theme: 'volcano', pool: ['intel', 'destroy', 'battle', 'stealth'], variants: ['foundry', 'obsidian'] },
+    { theme: 'volcano', pool: ['elite'], ace: 'kiln', variants: ['flow', 'night'] },
+    { theme: 'volcano', pool: ['boss'], boss: 'anvil', echo: true, variants: ['caldera', 'foundry'] },
+  ],
+};
+SORTIES.c8y = {
+  name: '方舟 — 按鈕',
+  chapter: 8,
+  level: 24,
+  reward: 290000,
+  memory: 8,
+  segs: [
+    { theme: 'ark', pool: ['battle'], variants: ['night', 'fore'] },
+    { theme: 'ark', pool: ['intel', 'destroy', 'battle', 'stealth'], variants: ['engine', 'flank'] },
+    { theme: 'ark', pool: ['elite'], ace: 'zenith', variants: ['fore', 'hangar'] },
+    { theme: 'ark', pool: ['boss'], boss: 'reactor', echo: true, variants: ['fore'] },
   ],
 };
 export const SORTIE_DEFAULT = 'c1s1';

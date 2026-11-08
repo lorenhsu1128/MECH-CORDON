@@ -9,9 +9,10 @@ import { prologueCine } from './prologue.js';
 export const CINES = {};
 for (let cyc = 1; cyc <= 3; cyc++) {
   CINES['p' + cyc] = (ctx) => prologueCine({ ...ctx, cycle: cyc });
-  for (let ch = 1; ch <= 6; ch++) {
+  // 第 8 章沒有章末（接結局畫面）；第 6 章的章末是主線擴充的轉折
+  for (let ch = 1; ch <= 8; ch++) {
     CINES[`i${cyc}_${ch}`] = (ctx) => chapterCine(ch, 'intro', { ...ctx, cycle: cyc });
-    if (ch < 6) CINES[`o${cyc}_${ch}`] = (ctx) => chapterCine(ch, 'outro', { ...ctx, cycle: cyc });
+    if (ch < 8) CINES[`o${cyc}_${ch}`] = (ctx) => chapterCine(ch, 'outro', { ...ctx, cycle: cyc });
   }
 }
 

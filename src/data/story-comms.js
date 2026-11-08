@@ -1253,14 +1253,27 @@ export const COMMS = [
     lines: [
       ['zenith', '停下來，KEY-07。'],
       ['echo', '具名 AC「ZENITH」。……這個訊號，我認得。'],
-      ['zenith', '我是上一個。上一個被叫到這裡的人。我走到這裡，然後就醒在荒野了。我花了很久才想起來。'],
+      ['zenith', '我是上一個。上一個被叫到這裡的人。'],
+      ['zenith', '這裡不是終點。站只是一個發射器——按下按鈕的地方在地上。'],
+      ['zenith', '先打倒我吧。答案在熔岩的那一頭。'],
+    ],
+  },
+  {
+    event: 'segStart',
+    sid: 'c8s3',
+    type: 'elite',
+    ace: 'zenith',
+    lines: [
+      ['zenith', '停下來，KEY-07。'],
+      ['echo', '具名 AC「ZENITH」。……這個訊號，我認得。'],
+      ['zenith', '又見面了。我是上一個。我走到這裡，然後就醒在荒野了。我花了很久才想起來。'],
       ['zenith', '不要交出去。也不要讓它掉下去。不管你選哪一個，都一樣。'],
       ['zenith', '……可是你現在還看不到第三扇門吧。那就先打倒我。'],
     ],
   },
   {
     event: 'segStart',
-    sid: 'c6s3',
+    sid: 'c8s3',
     type: 'elite',
     ace: 'zenith',
     cycle: 3,
@@ -1274,22 +1287,22 @@ export const COMMS = [
     event: 'aceDown',
     ace: 'zenith',
     sid: 'c6s3',
-    lines: [['zenith', '……下次見。你會記得的，總有一天。']],
+    lines: [['zenith', '……熔岩的那一頭見。']],
   },
   {
     event: 'choice',
-    sid: 'c6s3',
+    sid: 'c8s3',
     lines: [
       ['castron', '把軌道站交給委託方。這是合約，四家都簽了字。'],
       ['aetheric', '交出去吧，R-07。這是你被造出來的……抱歉，這是你被雇用的目的。'],
       ['veerwell', '交給我們嘛！……呃，交給「我們大家」。他們說四家要分。'],
       ['sancta', '讓它墜落。我不知道他們瞞著什麼，但掉下來的東西不會再傷害人。'],
-      ['echo', '……兩個出口。選了之後，就只剩 BALTEUS 了。'],
+      ['echo', '……兩個出口。選了之後，就只剩 SOVEREIGN 了。'],
     ],
   },
   {
     event: 'choice',
-    sid: 'c6s3',
+    sid: 'c8s3',
     cycle: 3,
     truth: true,
     lines: [
@@ -1301,7 +1314,7 @@ export const COMMS = [
   },
   {
     event: 'choice',
-    sid: 'c6s3',
+    sid: 'c8s3',
     cycle: 3,
     truth: false,
     lines: [
@@ -1322,7 +1335,234 @@ export const COMMS = [
     ],
   },
   { event: 'bossHalf', sid: 'c6s3', lines: [['echo', '它的裝甲在崩落！再一下就好！']] },
-  { event: 'sortieEnd', sid: 'c6s3', lines: [['echo', 'BALTEUS 沉默了。……傭兵。']] },
+  {
+    event: 'sortieEnd',
+    sid: 'c6s3',
+    lines: [
+      ['echo', 'BALTEUS 沉默了。……傭兵，中樞的門開了。'],
+      ['station', '認證終端：不在此處。所在地：方舟。'],
+      ['castron', '……'],
+      ['echo', '方舟？……傭兵，先回來。我需要想一想。'],
+    ],
+  },
+  // ======== 第 7 章：熔爐（主線擴充）========
+  {
+    event: 'sortieStart',
+    sid: 'c7s1',
+    once: true,
+    lines: [
+      ['castron', '熔爐工廠的外圍。我們自己的保全系統把門鎖住了——它只聽我父親的。'],
+      ['echo', '熔岩的地方不要站。機體的腳會先熔。'],
+    ],
+  },
+  {
+    event: 'segStart',
+    sid: 'c7s1',
+    type: 'elite',
+    ace: 'kiln',
+    lines: [
+      ['kiln', '霍斯特少爺派你來的？……熔爐不歡迎客人。'],
+      ['echo', '具名 AC「KILN」。重裝甲、霰彈、榴彈，貼身壓制型。拉開距離。'],
+    ],
+  },
+  {
+    event: 'segStart',
+    type: 'elite',
+    ace: 'kiln',
+    lines: [
+      ['kiln', '熱嗎？這裡一直都這麼熱。'],
+      ['echo', 'KILN 衝過來的時候往側面閃。'],
+    ],
+  },
+  { event: 'aceDown', ace: 'kiln', lines: [['kiln', '……熔爐會一直燒下去。不管誰贏。']] },
+  {
+    event: 'segStart',
+    sid: 'c7s1',
+    type: 'boss',
+    lines: [
+      ['echo', '鍛造巨人 ANVIL。卡斯特隆的熔爐用它打造了好幾個週期的機體。'],
+      ['echo', '鎚子砸下前地上會有紅圈。砸完卡住的那一下就是機會。'],
+    ],
+  },
+  {
+    event: 'sortieEnd',
+    sid: 'c7s1',
+    lines: [
+      ['castron', '……我父親的記憶在船上。每個週期他都會醒來一次。我一直都知道，只是不敢說。'],
+      ['echo', '霍斯特，謝謝你說出來。'],
+    ],
+  },
+  {
+    event: 'sortieStart',
+    sid: 'c7s2',
+    once: true,
+    lines: [
+      ['aetheric', '研究所的紀錄庫在最底層。不要讓清掃機把它燒了——那是我的研究，也是你的過去。'],
+      ['echo', '……傭兵，裡面的東西，你可以不用看。'],
+    ],
+  },
+  {
+    event: 'segStart',
+    sid: 'c7s2',
+    type: 'boss',
+    lines: [
+      ['echo', '熔岩潛龍 SALAMANDER。它潛在地下時打不到，地面冒火光的地方會鑽出來。'],
+      ['echo', '浮出越久，它的裝甲越冷。打出失衡，它就會擱淺。'],
+    ],
+  },
+  {
+    event: 'sortieEnd',
+    sid: 'c7s2',
+    lines: [
+      ['aetheric', '拿到了。……上一個週期的你，在最後一段紀錄裡說了一句話。我先不告訴你。'],
+      ['echo', '……'],
+    ],
+  },
+  {
+    event: 'sortieStart',
+    sid: 'c7s3',
+    c4: 'veerwell',
+    once: true,
+    lines: [
+      ['veerwell', '方舟要開了！快快快！船塢的門一關，就再也進不去了！'],
+      ['echo', '船塢有一座起重要塞。放下貨櫃之後，它的電磁鐵會過熱。'],
+    ],
+  },
+  {
+    event: 'sortieStart',
+    sid: 'c7s3',
+    c4: 'sancta',
+    once: true,
+    lines: [
+      ['sancta', '起航之前，攔住它。……我知道我在說不可能的事。'],
+      ['echo', '船塢有一座起重要塞。放下貨櫃之後，它的電磁鐵會過熱。'],
+    ],
+  },
+  { event: 'sortieEnd', sid: 'c7s3', lines: [['echo', '方舟起航了。……我們追上去。']] },
+  // ======== 第 8 章：方舟（主線擴充）========
+  {
+    event: 'sortieStart',
+    sid: 'c8s1',
+    once: true,
+    lines: [
+      ['sancta', '你上船了嗎？……我聽得到引擎的聲音。好大聲。'],
+      ['echo', '甲板分區之間是空的。掉下去會被拉回來，但會受傷。'],
+    ],
+  },
+  {
+    event: 'segStart',
+    sid: 'c8s1',
+    type: 'elite',
+    ace: 'keel',
+    lines: [
+      ['keel', '登艦者。……不，是鑰匙。你終於來了。'],
+      ['echo', '具名 AC「KEEL」。盾與重裝甲、地面衝擊波。跳起來躲衝擊波，繞到盾的另一側。'],
+    ],
+  },
+  {
+    event: 'segStart',
+    type: 'elite',
+    ace: 'keel',
+    lines: [
+      ['keel', '方舟不會停。'],
+      ['echo', 'KEEL 舉盾的時候繞到側面打。'],
+    ],
+  },
+  { event: 'aceDown', ace: 'keel', lines: [['keel', '……中樞在等你。我守的從來都不是船，是那個按鈕。']] },
+  {
+    event: 'segStart',
+    sid: 'c8s1',
+    type: 'boss',
+    lines: [
+      ['echo', '主砲塔 COLOSSUS。正前方的長方形是齊射的範圍。'],
+      ['echo', '它轉得很慢。繞到背後，打彈藥升降機。'],
+    ],
+  },
+  {
+    event: 'sortieEnd',
+    sid: 'c8s1',
+    lines: [['sancta', '我都記下來了。……方舟的甲板上，沒有一個人。']],
+  },
+  {
+    event: 'sortieStart',
+    sid: 'c8s2',
+    once: true,
+    lines: [
+      ['veerwell', '機關區！別亂開槍，那些都是錢！……好啦，該開槍的時候還是要開。'],
+      ['echo', '引擎的聲音和站的倒數是同步的。'],
+    ],
+  },
+  {
+    event: 'segStart',
+    sid: 'c8s2',
+    type: 'boss',
+    lines: [
+      ['echo', '機關心臟 HEARTH。護盾板之間有縫隙，從縫隙打進去。'],
+      ['echo', '它過載的時候護盾板會收起來。那是機會。'],
+    ],
+  },
+  {
+    event: 'sortieEnd',
+    sid: 'c8s2',
+    lines: [
+      ['veerwell', '……我在名冊上看到我的名字了。你說得對，我不該問的。'],
+      ['echo', '只剩中樞了。'],
+    ],
+  },
+  {
+    event: 'sortieStart',
+    sid: 'c8s3',
+    once: true,
+    lines: [
+      ['castron', '中樞就在前面。所有委託方都在等你的結果。……這次是真的了。'],
+      ['echo', '一路往前。'],
+    ],
+  },
+  {
+    event: 'segStart',
+    sid: 'c8s3',
+    type: 'boss',
+    lines: [
+      ['echo', 'SOVEREIGN 確認。方舟的主權者——簽署者的記憶在駕駛它。'],
+      ['station', 'KEY-07 已抵達認證終端。協定準備執行。'],
+      ['castron', '……不要聽它的。打。'],
+    ],
+  },
+  { event: 'bossHalf', sid: 'c8s3', lines: [['echo', '它的裝甲在崩落！再一下就好！']] },
+  { event: 'sortieEnd', sid: 'c8s3', lines: [['echo', 'SOVEREIGN 沉默了。……傭兵。']] },
+  {
+    event: 'aceDown',
+    ace: 'zenith',
+    sid: 'c8s3',
+    lines: [['zenith', '……下次見。你會記得的，總有一天。']],
+  },
+  // 第 2、3 周目的委託
+  {
+    event: 'sortieStart',
+    sid: 'c7x',
+    lines: [
+      ['mira', '名冊在熔爐工廠的地下金庫。博士以為我不知道密碼。'],
+      ['echo', '……米拉，你很勇敢。'],
+    ],
+  },
+  {
+    event: 'sortieStart',
+    sid: 'c8x',
+    lines: [
+      ['mira', '空的座位上刻著你的名字。……旁邊還有一個座位，刻的是 ECHO。'],
+      ['echo', '……我不記得我坐過。'],
+    ],
+  },
+  {
+    event: 'sortieStart',
+    sid: 'c7y',
+    lines: [['echo', '私人頻道。……這是上一個週期的你最後說的話。我想讓你自己聽。']],
+  },
+  {
+    event: 'sortieStart',
+    sid: 'c8y',
+    lines: [['echo', '最後一個私人委託。按鈕就在前面。']],
+  },
   {
     event: 'segStart',
     type: 'elite',
@@ -1490,7 +1730,7 @@ export const COMMS = [
   },
   {
     event: 'choice',
-    sid: 'c6s3',
+    sid: 'c8s3',
     prevEnd: 'open',
     lines: [
       ['castron', '把軌道站交給委託方。這是合約。'],
@@ -1499,7 +1739,7 @@ export const COMMS = [
   },
   {
     event: 'choice',
-    sid: 'c6s3',
+    sid: 'c8s3',
     prevEnd: 'seal',
     lines: [
       ['sancta', '讓它墜落吧。……我不知道為什麼，我覺得這句話我說過。'],

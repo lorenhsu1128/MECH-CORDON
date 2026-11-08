@@ -21,6 +21,13 @@ const SPECIALS = {
   funnel: { cd: 12, name: '光束牢籠', fn: (b, pl) => b.b3Cage(pl, 6, 16) },
   heli: { cd: 11, name: '地毯轟炸', fn: (b, pl) => b.b3Line(pl, 9, 4, 0.1) },
   furnace: { cd: 12, name: '火海', fn: (b, pl) => (b.b3Pools(pl, 5, 9), b.b3Ring(36)) },
+  // 主線擴充（第 7 章）
+  anvil: { cd: 11, name: '鍛造連打', fn: (b, pl) => (b.b3Line(pl, 6, 5, 0.15), b.b3Shock(22)) },
+  salamander: { cd: 11, name: '熔岩奔流', fn: (b, pl) => (b.b3Erupt(pl, 4, 8), b.b3Pools(pl, 4, 8)) },
+  deckgun: { cd: 12, name: '全門齊射', fn: (b, pl) => (b.b3Line(pl, 10, 5, 0.08), b.b3Rain(pl, 6, 8, 0.2)) },
+  reactor: { cd: 11, name: '臨界放電', fn: (b, pl) => (b.b3Ring(46), b.b3Cross(pl)) },
+  sovereign: { cd: 12, name: '終端認證', fn: (b, pl) => (b.b3Pillars(pl, 8, 14), b.b3Cage(pl, 6, 14)) },
+  gantry: { cd: 12, name: '全面卸貨', fn: (b, pl) => (b.b3Rain(pl, 8, 10, 0.2), b.b3Ring(26)) },
   artillery: { cd: 10, name: '飽和砲擊', fn: (b, pl) => b.b3Rain(pl, 12, 18, 0.25) },
   rampart: { cd: 10, name: '碎石雨', fn: (b, pl) => (b.b3Shock(22), b.b3Rain(pl, 6, 12, 0.4)) },
   duo: { cd: 13, name: '連攜齊射', fn: (b, pl) => b.b3Volley(pl, 4, 0.3) },

@@ -102,7 +102,7 @@ Object.assign(MechEntity.prototype, {
         this.ibisAI(dt, d, dir, perp, wish, pl, r);
         return r;
     }
-    return null;
+    return this.boss4Move(dt, d, dir, perp, wish, pl, r); // 主線擴充的新 Boss（mech-boss4.js）
   },
   // 開火：自己處理時回傳 true（一般武器迴圈略過）
   boss2Fire(dt, d, aimPos, pl) {
@@ -149,7 +149,7 @@ Object.assign(MechEntity.prototype, {
       case 'trinity':
         return !!s.split;
     }
-    return false;
+    return this.boss4Fire(dt, d, aimPos, pl);
   },
   // ---------- 電磁砲台：瞄準線鎖定（擋住射線就中斷）→ 貫穿砲擊 → 散熱片打開（弱點）----------
   railgunAI(dt, d, wish, pl) {
@@ -1565,7 +1565,7 @@ Object.assign(MechEntity.prototype, {
       case 'ibis':
         return this.bossVis & 1 ? 1.6 : this.bossVis & 4 ? 0.6 : 0.9;
     }
-    return undefined;
+    return this.boss4Defense(dmg, impact, from, at);
   },
   // 原本就有的弱點時機＝破綻（Boss 改版，mech-boss-tier.js 的 tierTick 每格看）
   boss2Open() {
@@ -1583,7 +1583,7 @@ Object.assign(MechEntity.prototype, {
       case 'interceptor':
         return this.aiState.vm === 'stall' || this.aiState.vm === 'turn';
     }
-    return false;
+    return this.boss4Open();
   },
   // 武裝列車（機車頭／車廂）是否在隧道裡：房主用軌道參數判斷（剛生成、還沒更新時也正確），客機看 bossVis
   inTunnel() {

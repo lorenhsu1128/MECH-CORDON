@@ -35,6 +35,12 @@ export const C_STAR = {
   funnel: 'cover',
   mirror: 'close',
   BALTEUS: 'far',
+  anvil: 'close',
+  salamander: 'far',
+  gantry: 'cover',
+  deckgun: 'close',
+  reactor: 'far',
+  sovereign: 'air',
 };
 export const HABITS = ['air', 'close', 'far', 'cover'];
 export const HABIT_NAMES = { air: '空中', close: '貼身', far: '遠距', cover: '掩體' };
@@ -575,6 +581,122 @@ K3.BALTEUS = {
   },
 };
 Object.assign(BOSS_KIT, K3);
+// ---------- 主線擴充：第 7 章的新 Boss（docs/campaign-expansion-design.md 第 11 節；行為在 entities/mech-boss4.js）----------
+const K7 = {};
+// ANVIL 鍛造巨人：冷卻槽壞了不能淬火、鼓風爐壞了鎚子卡得更久
+K7.anvil = {
+  parts: [
+    { id: 'tank', name: '冷卻槽', model: 'valve', off: [-0.4, 0.75, 0.05], flag: 'quench' },
+    { id: 'bellows', name: '鼓風爐', model: 'vent', off: [0, 0.75, -0.35], flag: 'furnace', back: true },
+  ],
+  big: [
+    ['熔鐵雨', (b, pl) => b.b3Rain(pl, 6, 7, 0.22)],
+    ['連續鎚擊', (b, pl) => (b.b3Line(pl, 5, 4, 0.18), b.b3Shock(18))],
+  ],
+  reflect: ['mortar'],
+  reflectPool: true,
+  counter: {
+    air: (b) => b.b3Ring(22), // 鎚擊的熱浪往上
+    close: (b) => b.b3Shock(16), // 橫掃
+    far: (b, pl) => b.b3Rain(pl, 4, 5, 0.25), // 熔鐵塊
+    cover: (b, pl) => b.b3Pools(pl, 2, 6), // 熔岩裂地繞過掩體
+  },
+};
+// SALAMANDER 熔岩潛龍：噴火口壞了不噴火、散熱片壞了冷得更快
+K7.salamander = {
+  parts: [
+    { id: 'jaw', name: '噴火口', model: 'nozzle', off: [0, 0.55, 0.85], flag: 'jaw' },
+    { id: 'fin', name: '背鰭散熱片', model: 'fins', off: [0, 0.9, -0.4], flag: 'fin', back: true },
+  ],
+  big: [
+    ['熔岩噴發', (b, pl) => b.b3Erupt(pl, 3, 7)],
+    ['熔岩彈雨', (b, pl) => b.b3Pools(pl, 4, 9)],
+  ],
+  reflect: ['mortar'],
+  reflectPool: true,
+  counter: {
+    air: (b) => b.b3Ring(24), // 噴發的熱柱
+    close: (b) => b.b3Shock(12), // 甩尾
+    far: (b, pl) => b.b3Pools(pl, 3, 7), // 熔岩彈
+    cover: (b, pl) => b.b3Erupt(pl, 2, 3), // 從掩體底下鑽出
+  },
+};
+// GANTRY 船塢起重要塞：腳輪壞一邊移動變慢、電磁鐵壞了不能吸引
+K7.gantry = {
+  parts: [
+    { id: 'wheelL', name: '左腳輪', model: 'track', off: [-0.5, 0.1, 0], flag: 'wheelL' },
+    { id: 'wheelR', name: '右腳輪', model: 'track', off: [0.5, 0.1, 0], flag: 'wheelR' },
+    { id: 'magnet', name: '電磁鐵', model: 'coil', off: [0, 0.5, 0], flag: 'magnet', back: true },
+  ],
+  big: [
+    ['貨櫃雨', (b, pl) => b.b3Rain(pl, 5, 8, 0.3)],
+    ['電磁衝擊', (b) => b.b3Ring(30)],
+  ],
+  reflect: ['mortar'],
+  counter: {
+    air: (b, pl) => b.b3Fan(pl, 4, 0.18), // 橫梁上的機砲往上
+    close: (b) => b.b3Shock(14), // 吊鉤砸地
+    far: (b, pl) => b.b3Line(pl, 4, 4, 0.2), // 沿軌道掃射
+    cover: (b, pl) => b.b3Rain(pl, 4, 5, 0.25), // 從正上方放下
+  },
+};
+// ---------- 第 8 章 ----------
+// COLOSSUS 主砲塔：測距儀壞了轉得更慢、副砲壞了不掃射、彈藥升降機在背後
+K7.deckgun = {
+  parts: [
+    { id: 'range', name: '測距儀', model: 'dish', off: [-0.35, 0.95, 0.1], flag: 'range' },
+    { id: 'sec', name: '副砲', model: 'autocannon', off: [0.6, 0.55, -0.1], flag: 'sec' },
+    { id: 'hoist', name: '彈藥升降機', model: 'bay', off: [0, 0.5, -0.75], flag: 'hoist', back: true },
+  ],
+  big: [
+    ['全砲齊射', (b, pl) => b.b3Line(pl, 8, 5, 0.1)],
+    ['榴霰彈幕', (b, pl) => b.b3Rain(pl, 8, 9, 0.2)],
+  ],
+  reflect: ['shell', 'mortar'],
+  counter: {
+    air: (b, pl) => b.b3Fan(pl, 4, 0.16), // 防空砲
+    close: (b) => b.b3Shock(16), // 砲座周圍的衝擊
+    far: (b, pl) => b.b3Line(pl, 5, 5, 0.15), // 主砲
+    cover: (b, pl) => b.b3Rain(pl, 5, 5, 0.25), // 曲射
+  },
+};
+// HEARTH 機關心臟：冷卻柱壞了過載提早、護盾板發生器壞了縫隙變寬
+K7.reactor = {
+  parts: [
+    { id: 'cool', name: '冷卻柱', model: 'capacitor', off: [0.6, 0.4, 0.6], flag: 'cool' },
+    { id: 'plates', name: '護盾板發生器', model: 'ringgen', off: [0, 1.05, 0], flag: 'plates', back: true },
+  ],
+  big: [
+    ['脈衝連環', (b) => (b.b3Ring(30), b.b3Ring(44))],
+    ['十字放電', (b, pl) => b.b3Cross(pl)],
+  ],
+  reflect: ['mortar'],
+  counter: {
+    air: (b) => b.b3Ring(26), // 脈衝環往上擴散
+    close: (b) => b.b3Shock(14), // 放電
+    far: (b, pl) => b.b3Cross(pl), // 光束從縫隙射出
+    cover: (b, pl) => b.b3Rain(pl, 4, 5, 0.25), // 冷卻液彈
+  },
+};
+// SOVEREIGN 方舟的主權者：浮游刃發射器壞了不放浮游刃、認證天線壞了「認證」少一波
+K7.sovereign = {
+  parts: [
+    { id: 'blades', name: '浮游刃發射器', model: 'wingblade', off: [0.45, 0.75, -0.2], flag: 'blades' },
+    { id: 'auth', name: '認證天線', model: 'beacon', off: [0, 1.05, -0.3], flag: 'auth', back: true },
+  ],
+  big: [
+    ['主砲光柱', (b, pl) => b.b3Pillars(pl, 5, 12)],
+    ['浮游刃包圍', (b, pl) => b.b3Cage(pl, 5, 14)],
+  ],
+  reflect: ['missile'],
+  counter: {
+    air: (b, pl) => b.b3Volley(pl, 2, 0.25, ['rback', 'lback']), // 導彈追擊
+    close: (b) => b.b3Shock(16), // 推進器的衝擊
+    far: (b, pl) => b.b3Pillars(pl, 4, 8), // 光柱
+    cover: (b, pl) => b.b3Fan(pl, 5, 0.2), // 浮游刃繞過掩體
+  },
+};
+Object.assign(BOSS_KIT, K7);
 
 // ---------- 各 Boss 的場地變化（第二型態／第三型態；game/boss-field.js 的新效果）----------
 // (g＝Game, b＝Boss, T＝刁鑽度的參數)：T.eZone＜1 時作戰區域另外縮小，T.eMove 時不利的效果跟著 Boss
@@ -788,6 +910,57 @@ const FIELD = {
     3: (g, b, T) => {
       g.tierShrinkZone(Math.min(T.eZone, 0.75));
       g.bfBelt(b, 60);
+    },
+  },
+  // 主線擴充：ANVIL 二型 熔岩裂地、三型 蒸氣（安全區）＋燃燒帶
+  anvil: {
+    2: (g, b) => {
+      g.bfAround(b, 'magma', 'player', 4, 8, 40);
+      g.flashAlert('戰場改變 — 熔岩裂地擴大');
+    },
+    3: (g, b, T) => {
+      g.bfAround(b, 'steam', 'player', 2, 12, 40);
+      if (T.eMove) g.bfBelt(b, 50);
+    },
+  },
+  // SALAMANDER：二型 地面塌陷（熔岩湧出）、三型 煙霧
+  salamander: {
+    2: (g, b) => {
+      g.bfAround(b, 'collapse', 'player', 3, 7, 40);
+      g.flashAlert('戰場改變 — 地面塌陷');
+    },
+    3: (g, b, T) => g.bfHaze(b, SMOKE, 18, T.eMove),
+  },
+  // GANTRY：二型 落下的貨櫃當掩體、三型 作戰區域縮小
+  gantry: {
+    2: (g, b) => {
+      g.bfCover(b, 'crate', 4);
+      g.flashAlert('戰場改變 — 貨櫃落下');
+    },
+    3: (g, b, T) => g.tierShrinkZone(Math.min(T.eZone, 0.8)),
+  },
+  // 第 8 章：COLOSSUS 二型 煙霧、三型 甲板崩落（作戰區域縮小）
+  deckgun: {
+    2: (g, b, T) => g.bfHaze(b, SMOKE, 18, T.eMove),
+    3: (g, b, T) => g.tierShrinkZone(Math.min(T.eZone, 0.75)),
+  },
+  // HEARTH 二型 電擊地面、三型 全場變暗
+  reactor: {
+    2: (g, b) => {
+      g.bfAround(b, 'shock', 'player', 3, 8, 40);
+      g.flashAlert('戰場改變 — 地面帶電');
+    },
+    3: (g, b) => g.bfDarkness(30),
+  },
+  // SOVEREIGN 二型 新掩體（混凝土牆）、三型 作戰區域縮小＋燃燒帶
+  sovereign: {
+    2: (g, b) => {
+      g.bfCover(b, 'slab', 4);
+      g.flashAlert('戰場改變 — 甲板升起掩體');
+    },
+    3: (g, b, T) => {
+      g.tierShrinkZone(Math.min(T.eZone, 0.75));
+      g.bfBelt(b, 50);
     },
   },
 };

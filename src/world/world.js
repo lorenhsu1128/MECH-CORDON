@@ -324,11 +324,10 @@ export const THEMES = {
   orbit: ORBIT,
   institute: INSTITUTE,
   volcano: VOLCANO, // 主線第 7 章（docs/campaign-expansion-design.md）
+  ark: ARK, // 主線第 8 章
 };
 // 線性色調映射（賽璐璐類渲染風格）時的曝光補正：線性不壓高光，白色的場景容易爆白、暗的場景補亮一點
 // （render/style/pipeline.js 的 applyScene；ACES 等會壓高光的不套用）。變體可以用 theme.linExp 覆寫
-// 移動要塞「方舟」（主線第 8 章）：做完第 13 期之前先不可列舉（不出現在地圖選單）
-Object.defineProperty(THEMES, 'ark', { value: ARK, enumerable: false, configurable: true });
 const LIN_EXP = {
   snow: 0.7,
   grid: 0.86,

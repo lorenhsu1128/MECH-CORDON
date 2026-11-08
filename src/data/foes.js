@@ -11,6 +11,7 @@ import { FOES_b2 } from './foes-b2.js';
 import { FOES_C1 } from './foes-c1.js';
 import { FOES_C2 } from './foes-c2.js';
 import { FOES_E1 } from './foes-e1.js';
+import { FOES_E2 } from './foes-e2.js';
 
 const LIGHT = {
   head: 'h_lt',
@@ -626,6 +627,7 @@ export const FOES = {
   ...FOES_C1, // 擴充：冰原、技研都市、Grid 086（foes-c1.js）
   ...FOES_C2,
   ...FOES_E1,
+  ...FOES_E2,
 };
 
 export const ACES = {
@@ -856,6 +858,34 @@ export const ACES = {
     },
     intro: '洋上都市的擊退專家 UNDERTOW — 貼身把你往甲板邊緣推',
   },
+  // 第 8 章（主線擴充）：方舟的守衛，重裝甲、地面衝擊波與電磁砲
+  keel: {
+    theme: 'ark',
+    name: 'KEEL',
+    speaker: 'keel',
+    pal: 'keel',
+    ai: 'bastion',
+    wantDist: 30,
+    hpMul: 2.9,
+    dmgMul: 0.9,
+    stabMul: 2.4,
+    speedMul: 0.85,
+    turnRate: 2.5,
+    asm: {
+      head: 'h_hv',
+      core: 'c_hv',
+      arms: 'a_hv',
+      legs: 'l_hv',
+      booster: 'b_std',
+      generator: 'g_hi',
+      fcs: 'f_std',
+      rarm: 'w_lc',
+      larm: 'w_rifle',
+      rback: 'bw_ms',
+      lback: 'bw_sh',
+    },
+    intro: '方舟的守衛 KEEL — 盾與重裝甲，踏地的衝擊波與雷射砲；跳起來躲衝擊波、繞到盾的另一側',
+  },
   // 第 7 章（主線擴充，docs/campaign-expansion-design.md 第 10 節）：卡斯特隆熔爐的守衛，火焰與霰彈的近距離
   kiln: {
     theme: 'volcano',
@@ -979,6 +1009,7 @@ export const THEME_ACE = {
   xylem: 'undertow',
   orbit: 'zenith',
   volcano: 'kiln',
+  ark: 'keel',
 };
 // 主題的專屬敵人（depth：垂直主題的深度）
 export function themeFoes(theme, depth = 0) {

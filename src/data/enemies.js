@@ -661,6 +661,146 @@ const B_PULSAR = {
   intro:
     '脈衝刃翼 — 擴散的能量環跳不過去，用 QB 的無敵時間穿過（穿過一定給反擊點）；雷射扇形看紅線找空隙，過熱是破綻；左右翼刃與環發生器可以打壞',
 };
+// ---------- 主線擴充：第 7 章的新 Boss（docs/campaign-expansion-design.md 第 11 節；行為在 entities/mech-boss4.js）----------
+const B4_ASM = {
+  head: 'h_hv',
+  core: 'c_hv',
+  arms: 'a_hv',
+  legs: 'l_tk',
+  booster: 'b_std',
+  generator: 'g_hi',
+  fcs: 'f_std',
+  rarm: 'w_none',
+  larm: 'w_none',
+  rback: 'bw_none',
+  lback: 'bw_none',
+};
+const B_ANVIL = {
+  res: [0.2, 0, -0.25],
+  name: 'ANVIL 鍛造巨人',
+  kind: 'anvil',
+  ai: 'anvil',
+  modelKind: 'boss',
+  vehKey: 'anvil',
+  pal: 'anvil',
+  asm: { ...B4_ASM, rarm: 'w_mg' },
+  scale: 1,
+  radius: 4.2,
+  hpMul: 2.6,
+  stabMul: 5,
+  dmgMul: 0.55,
+  wantDist: 16,
+  speedMul: 0.55,
+  intro:
+    '鍛造巨人 — 巨鎚砸下前地面有紅圈，砸完鎚子卡在地上就是破綻；投出的熔鐵塊可以打回去；冷卻槽在時會「淬火」減傷，先打壞左肩的冷卻槽與背後的鼓風爐',
+};
+const B_SALAMANDER = {
+  res: [0, 0.2, -0.25],
+  name: 'SALAMANDER 熔岩潛龍',
+  kind: 'salamander',
+  ai: 'salamander',
+  modelKind: 'boss',
+  vehKey: 'salamander',
+  pal: 'salamander',
+  asm: { ...B4_ASM, rarm: 'w_none' },
+  scale: 1,
+  radius: 3.2,
+  hpMul: 2.3,
+  stabMul: 3.5,
+  dmgMul: 0.55,
+  wantDist: 18,
+  speedMul: 1.2,
+  intro:
+    '熔岩潛龍 — 潛在地下時打不到，地面冒火光的地方會鑽出來；浮出越久裝甲越冷越好打，打出失衡就擱淺（破綻）；熔岩彈可以打回去，頭部的噴火口與背鰭的散熱片可以打壞',
+};
+const B_GANTRY = {
+  res: [-0.25, 0.2, 0],
+  name: 'GANTRY 船塢起重要塞',
+  kind: 'gantry',
+  ai: 'gantry',
+  modelKind: 'boss',
+  vehKey: 'gantry',
+  pal: 'gantry',
+  asm: { ...B4_ASM, rarm: 'w_mg', larm: 'w_mg' },
+  scale: 1,
+  radius: 3.4,
+  hpMul: 2.5,
+  stabMul: 4.5,
+  dmgMul: 0.5,
+  wantDist: 0,
+  speedMul: 1,
+  intro:
+    '船塢起重要塞 — 橫跨戰場的門型起重機：吊下的貨櫃落點有紅圈、落地後當掩體；電磁鐵亮藍光會把你吸過去（QB 掙脫）；放下貨櫃後電磁鐵過熱是破綻；兩側的腳輪與電磁鐵可以打壞',
+};
+// ---------- 主線擴充：第 8 章的新 Boss ----------
+const B_COLOSSUS = {
+  res: [0.2, -0.25, 0],
+  name: 'COLOSSUS 主砲塔',
+  kind: 'deckgun',
+  ai: 'deckgun',
+  modelKind: 'boss',
+  vehKey: 'deckgun',
+  pal: 'deckgun',
+  asm: { ...B4_ASM, rarm: 'w_mg', larm: 'w_mg' },
+  scale: 1,
+  radius: 6.5,
+  hpMul: 2.7,
+  stabMul: 6,
+  dmgMul: 0.5,
+  wantDist: 0,
+  speedMul: 0,
+  intro:
+    '主砲塔 — 正前方的長方形是主砲齊射的範圍；砲塔轉得很慢，繞到背後的彈藥升降機最痛；齊射後砲管散熱是破綻；副砲的砲彈可以打回去；測距儀、副砲、彈藥升降機可以打壞',
+};
+const B_HEARTH = {
+  res: [0, 0.2, -0.25],
+  name: 'HEARTH 機關心臟',
+  kind: 'reactor',
+  ai: 'reactor',
+  modelKind: 'boss',
+  vehKey: 'reactor',
+  pal: 'reactor',
+  asm: { ...B4_ASM },
+  scale: 1,
+  radius: 5,
+  hpMul: 2.5,
+  stabMul: 5,
+  dmgMul: 0.5,
+  wantDist: 0,
+  speedMul: 0,
+  intro:
+    '機關心臟 — 繞著轉的護盾板擋住子彈，從板之間的縫隙打進去；脈衝環用 QB 穿過；過載時護盾板收起、核心外露是破綻；噴出的冷卻液彈可以打回去；冷卻柱與護盾板發生器可以打壞',
+};
+const B_SOVEREIGN = {
+  res: [0, 0, 0.2],
+  name: 'SOVEREIGN 方舟的主權者',
+  kind: 'sovereign',
+  ai: 'sovereign',
+  mech: true,
+  pal: 'sovereign',
+  asm: {
+    head: 'h_std',
+    core: 'c_std',
+    arms: 'a_std',
+    legs: 'l_bp2',
+    booster: 'b_hi',
+    generator: 'g_hi',
+    fcs: 'f_std',
+    rarm: 'w_lr',
+    larm: 'w_rifle',
+    rback: 'bw_ms',
+    lback: 'bw_lc',
+  },
+  scale: 1.6,
+  radius: 2.6,
+  hpMul: 3.2,
+  stabMul: 4,
+  dmgMul: 0.6,
+  wantDist: 24,
+  speedMul: 1.3,
+  intro:
+    '方舟的主權者 — 第三型態的「認證」只有一條光帶是安全的，每波之間停一下；召喚上一位鑰匙的殘影之後會停機，那是最大的破綻；浮游刃可以打回去；兩翼的浮游刃發射器與背後的認證天線可以打壞',
+};
 // Boss 的強度（第 14 期）：血量與火力在定義的倍率之外再乘這兩個；隨等級的成長和一般敵人相同（enemyScale）
 export const BOSS_HP_K = 1.8;
 export const BOSS_DMG_K = 1.4;
@@ -702,6 +842,13 @@ export const BOSS_DEFS = [
   B_CITADEL,
   B_LEVIATHAN,
   B_PULSAR,
+  // 主線擴充（第 7、8 章）：接在原本 22 隻後面
+  B_ANVIL,
+  B_SALAMANDER,
+  B_GANTRY,
+  B_COLOSSUS,
+  B_HEARTH,
+  B_SOVEREIGN,
 ];
 export function isBossLevel(L) {
   return L >= 3 && L % 3 !== 2;

@@ -66,8 +66,9 @@ function strLits(s) {
 }
 
 async function main() {
-  const { vkey, storyQuote, VOICE_CUES, cueKey, LINE_POOLS, CAST_IDS, BARKS } = await imp('data/voice.js');
-  const SPK = new Set(['echo', ...CAST_IDS]);
+  const { vkey, storyQuote, VOICE_CUES, cueKey, LINE_POOLS, CAST_IDS, CAST_NEW, BARKS } =
+    await imp('data/voice.js');
+  const SPK = new Set(['echo', ...CAST_IDS, ...(CAST_NEW || [])]);
   const lines = {};
   const n = {};
   const PRIV = /R-07|私人頻道/;

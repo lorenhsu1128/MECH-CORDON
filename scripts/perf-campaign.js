@@ -386,6 +386,16 @@ function botForce() {
     c.cleared = true;
     g.campSpawnExits();
   }
+  // 主線擴充的新區段類型（game/seg-ops.js、seg-colossus.js）：撤離直接裝載完成、戰線與大型兵器算完成
+  if (ss.ext && ss.ext.ph < 3) g.segExtractDone();
+  if (ss.front && !ss.front.done) {
+    ss.front.done = true;
+    g.campCleared();
+  }
+  if (ss.col && !ss.col.done) {
+    ss.col.done = true;
+    g.campCleared();
+  }
 }
 
 // 這一段的統計與卡頓（頁面裡算，只回傳摘要）

@@ -10,6 +10,7 @@ import {
   BRIEFINGS,
   CHAPTER_NAMES,
   ENDINGS,
+  MEM_N,
   MEMORIES,
   RECALL_C2,
   REGIONS,
@@ -223,7 +224,7 @@ Object.assign(Game.prototype, {
     const echoOn = cyc >= 3 || this.campMemN() > 0;
     this.hubEchoOff = !echoOn;
     $('btnHubEcho').style.display = echoOn ? '' : 'none';
-    $('btnHubEcho').querySelector('.hdT').textContent = `ECHO 的紀錄（${this.campMemN()}／6）`;
+    $('btnHubEcho').querySelector('.hdT').textContent = `ECHO 的紀錄（${this.campMemN()}／${MEM_N}）`;
     const newLog = Math.max(0, (st.log || []).length - (st.logSeen || 0));
     const P = this.save.pilot.pve;
     const pts = pointsAt(levelOf(P.xp)) - spentPoints(P.skills);
@@ -240,7 +241,7 @@ Object.assign(Game.prototype, {
     this.hubSpotsUi({
       pilot: pts > 0 ? { t: `技能點 ${pts}`, hot: true } : null,
       log: newLog > 0 ? { t: `新的通訊 ${newLog}`, hot: true } : null,
-      echo: echoOn ? { t: `記憶片段 ${this.campMemN()}／6` } : null,
+      echo: echoOn ? { t: `記憶片段 ${this.campMemN()}／${MEM_N}` } : null,
       record: { t: '重打完成過的委託' },
       sim: this.tutDone('L1') ? null : { t: '近戰訓練 第 1 課', hot: true },
       garage: { t: '組裝與整備' },
@@ -374,7 +375,7 @@ Object.assign(Game.prototype, {
     $('epCycle').textContent = `第 ${cyc} 周目　完成`;
     $('epTitle').textContent = E.title;
     // 真結局：6 片記憶片段全部回收時多一段
-    const coda = !!(E.full && this.campMemN() >= 6);
+    const coda = !!(E.full && this.campMemN() >= MEM_N);
     const ps = (a) => a.map((l) => `<p>${escHtml(l)}</p>`).join('');
     // 回收程序（循環的真相）：第 2 周目多兩句
     const recall = E.recall ? E.recall.concat(cyc === 2 ? RECALL_C2 : []) : null;
@@ -425,7 +426,7 @@ Object.assign(Game.prototype, {
     const st = this.campStory();
     const mem = st.memories || {};
     const T = this.campTruth();
-    let h = `<div class="echoNote">真結局的條件：第 3 周目，並完成全部紫色委託（目前 ${T.n}／${T.need}${T.ok ? '，已達成' : ''}）。記憶片段 ${this.campMemN()}／6${this.campMemN() >= 6 ? '：真結局多一段結尾' : '：全部回收時，真結局多一段結尾'}。</div>`;
+    let h = `<div class="echoNote">真結局的條件：第 3 周目，並完成全部紫色委託（目前 ${T.n}／${T.need}${T.ok ? '，已達成' : ''}）。記憶片段 ${this.campMemN()}／${MEM_N}${this.campMemN() >= MEM_N ? '：真結局多一段結尾' : '：全部回收時，真結局多一段結尾'}。</div>`;
     for (const k of Object.keys(MEMORIES)) {
       const M = MEMORIES[k];
       const sid = Object.keys(SORTIES).find((s) => SORTIES[s].memory === +k);

@@ -8,9 +8,10 @@ import { ch3Intro, ch3Outro } from './ch3.js';
 import { ch4Intro, ch4Outro } from './ch4.js';
 import { ch5Intro, ch5Outro } from './ch5.js';
 import { ch6Intro } from './ch6.js';
+import { ch6Outro, ch7Intro, ch7Outro, ch8Intro } from './ch7.js';
 
-const NUM = ['', '一', '二', '三', '四', '五', '六'];
-const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI'];
+const NUM = ['', '一', '二', '三', '四', '五', '六', '七', '八'];
+const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
 // 台詞的說話者（名字 → SPEAKERS 的鍵）
 const WHO = {
   ECHO: 'echo',
@@ -19,6 +20,9 @@ const WHO = {
   派克: 'veerwell',
   諾拉: 'sancta',
   米拉: 'mira',
+  KILN: 'kiln',
+  KEEL: 'keel',
+  ZENITH: 'zenith',
 };
 
 // ---------- 場景與調色 ----------
@@ -415,7 +419,7 @@ const BEATS = {
       comm(ORBIT, G.day, { yaw: 280 }),
       rival(ORBIT, G.day, 'zenith', 'ZENITH', '上一位鑰匙'),
     ],
-    outro: [],
+    outro: [], // 章末＝主線擴充的轉折（ch7.js 的 ch6Outro）
   },
 };
 
@@ -435,7 +439,9 @@ const BESPOKE = {
   3: { intro: ch3Intro, outro: ch3Outro },
   4: { intro: ch4Intro, outro: ch4Outro },
   5: { intro: ch5Intro, outro: ch5Outro },
-  6: { intro: ch6Intro },
+  6: { intro: ch6Intro, outro: ch6Outro }, // 章末＝主線擴充的轉折（ch7.js）
+  7: { intro: ch7Intro, outro: ch7Outro },
+  8: { intro: ch8Intro },
 };
 
 // kind：'intro'｜'outro'

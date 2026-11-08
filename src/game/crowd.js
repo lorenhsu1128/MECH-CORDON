@@ -188,7 +188,8 @@ Object.assign(Game.prototype, {
             r = 1 + rng() * (face === null ? 6 : 3.5);
           x = cx + Math.cos(a) * r;
           z = cz + Math.sin(a) * r;
-          if (this.crowdFree(x, z)) break;
+          // 散開之後也要離玩家 12 m 以上（群的中心最近 15 m）
+          if (this.crowdFree(x, z) && (!pl || Math.hypot(x - pl.pos.x, z - pl.pos.z) > 12)) break;
           x = cx;
           z = cz;
         }

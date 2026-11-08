@@ -1991,6 +1991,7 @@ async function testMaps(browser, base) {
     ['institute', ['coraltank', 'crystal']],
     ['snow', ['quonset', 'ice']],
     ['volcano', ['slagcart', 'oreheap']],
+    ['ark', ['hatch', 'arkcrate']],
   ]) {
     await gSetTab(page);
     await page.selectOption('#gMapSel', key);
@@ -2056,8 +2057,8 @@ async function testMaps(browser, base) {
     await waitVisible(page, 'garage');
   }
   check(
-    (await page.$eval('#gMapSel', (s) => s.value)) === 'volcano' &&
-      (await page.evaluate(() => localStorage.getItem('rubicon_map'))) === 'volcano',
+    (await page.$eval('#gMapSel', (s) => s.value)) === 'ark' &&
+      (await page.evaluate(() => localStorage.getItem('rubicon_map'))) === 'ark',
     '車庫記住選的地圖',
   );
   await gSetTab(page);
@@ -2088,7 +2089,7 @@ async function testLibrary(browser, base) {
   const cols = await page.$eval('#grid', (g) => getComputedStyle(g).gridTemplateColumns.split(' ').length);
   check(cols === 3, `電腦版一行三格（${cols}）`);
   // 捲動到底讓每一格都建立模型
-  for (let i = 0, still = 0; i < 120 && still < 3; i++) {
+  for (let i = 0, still = 0; i < 300 && still < 3; i++) {
     await page.mouse.wheel(0, 700);
     await wait(250);
     // 捲到底後再多停幾次（格數變多時不會漏掉最後幾格）
@@ -2097,10 +2098,28 @@ async function testLibrary(browser, base) {
     );
     still = atEnd ? still + 1 : 0;
   }
-  await wait(3000);
+  // 格子很多時最後幾格還在建：最多等 20 秒
+  await page
+    .waitForFunction(
+      () =>
+        [...document.querySelectorAll('.cell .sz')].every((e) =>
+          /\d+\.\d\d × \d+\.\d\d × \d+\.\d\d m/.test(e.textContent),
+        ),
+      null,
+      { timeout: 20000 },
+    )
+    .catch(() => {});
   const sizes = await page.$$eval('.cell .sz', (x) => x.map((e) => e.textContent));
   const bad = sizes.filter((t) => !/\d+\.\d\d × \d+\.\d\d × \d+\.\d\d m/.test(t)).length;
-  check(bad === 0, `每格都標示公尺尺寸（未完成 ${bad} 格）`);
+  const badNames = await page.$$eval('.cell', (cs) =>
+    cs
+      .filter(
+        (c) => !/\d+\.\d\d × \d+\.\d\d × \d+\.\d\d m/.test((c.querySelector('.sz') || {}).textContent || ''),
+      )
+      .map((c) => c.dataset.id || c.textContent.slice(0, 20))
+      .slice(0, 8),
+  );
+  check(bad === 0, `每格都標示公尺尺寸（未完成 ${bad} 格${bad ? '：' + badNames.join('、') : ''}）`);
   await page.evaluate(() => scrollTo(0, 0));
   await wait(1500);
   await page.screenshot({ path: path.join(SHOT_DIR, 'library.png') });
@@ -6001,7 +6020,7 @@ async function testDevices(browser, base) {
 // 環境陷阱（docs/map-devices-design.md 的 C）：每個主題出擊、陷阱放在敵群那裡、觸發（打弱點或控制台）、
 // 範圍裡的敵人受損與環境擊殺、玩家自己也會受傷、留下的掩體、截圖
 async function testTraps(browser, base) {
-  console.log('環境陷阱：13 個主題的陷阱');
+  console.log('環境陷阱：15 個主題的陷阱');
   const { ctx, page } = await newPage(browser, 'traps');
   await seededRandom(page);
   await page.goto(base + '?test');
@@ -6020,6 +6039,8 @@ async function testTraps(browser, base) {
     ['xylem', 'valve'],
     ['orbit', 'airlock'],
     ['institute', 'coral'],
+    ['volcano', 'testrig'],
+    ['ark', 'airlock'],
   ];
   for (const [ti, [theme, kind]] of LIST.entries()) {
     // 固定亂數（地圖、陷阱的擺放、敵人的編成）：不固定時偶爾放不下陷阱、挑到擋得住陷阱的敵人
@@ -6434,6 +6455,8 @@ async function testEvents(browser, base) {
     ['xylem', 'seawall'],
     ['orbit', 'dock'],
     ['institute', 'blastdoor'],
+    ['volcano', 'chimney'],
+    ['ark', 'dock'],
   ];
   for (const [theme, kind] of LIST) {
     await page.evaluate((t) => {
@@ -16022,12 +16045,18 @@ async function testLegend(browser, base) {
     for (const pr of g.projectiles) pr.dead = true;
     const e1 = foe(0, -20),
       e2 = foe(0, -32);
+    // 地圖是隨機的（礦坑的岩頂、地形、物件可能擋在兩台之間）：這一段暫時不判定地形
+    const W0 = { hw: W.hitsWorld, roof: W.roofMesh };
+    W.hitsWorld = () => false;
+    W.roofMesh = null;
+    const ds0 = g.destructiblesF;
+    g.destructiblesF = () => [];
     const c1 = e1.center();
     const from = c1.clone().add(new THREE.Vector3(0, 0, 25));
     const hp1 = e1.hp,
       hp2 = e2.hp;
     const pr = new Proj(g, {
-      pos: from,
+      pos: from.clone(),
       vel: new THREE.Vector3(0, 0, -300),
       kind: 'bullet',
       dmg: 500,
@@ -16041,6 +16070,9 @@ async function testLegend(browser, base) {
     g.projectiles.push(pr);
     for (let i = 0; i < 60 && !pr.dead; i++) pr.update(1 / 60);
     out.pierce = [hp1 - e1.hp > 0, hp2 - e2.hp > 0];
+    W.hitsWorld = W0.hw;
+    W.roofMesh = W0.roof;
+    g.destructiblesF = ds0;
     for (const e of [a, b, c, k, e1, e2]) e.dead = true;
     g.state = 'play';
     return out;
@@ -16379,6 +16411,170 @@ async function testBoard(browser, base) {
   check(r.salv === 12, `大宗物資：回收物資加倍（${r.salv} 箱）`);
   check(r.strict === 'ending' || r.strict === 'campfail', `絕對隱密：被發現就失敗（${r.strict}）`);
   check(r.mats > 0 && r.left === 3 && r.refill === 4, `完成：素材 +${r.mats}、換新的委託`);
+  await ctx.close();
+}
+
+// 主線擴充第 13 期：移動要塞「方舟」（6 種變體、6 個地標、虛空、4 種專屬敵人的行為與模型、宿敵 KEEL）
+async function testArk(browser, base) {
+  console.log('移動要塞「方舟」：變體、地標、虛空、專屬敵人');
+  const { ctx, page } = await newPage(browser, 'ark');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await freezeLoop(page);
+  const r = await page.evaluate(() => {
+    const g = window.__game;
+    g.state = 'play';
+    g.campBegin('c1s1');
+    g.camp.types[0] = 'supply';
+    g.campEnterSeg();
+    g.state = 'foe-test';
+    const W = g.world.constructor;
+    const out = { vars: {}, lms: {}, bad: [] };
+    let seed = 8100;
+    for (const v of ['', 'fore', 'engine', 'flank', 'hangar', 'storm', 'night']) {
+      g.world.dispose();
+      g.world = new W(g.scene, 'ark', seed++, 18, null, v ? { variant: v } : {});
+      const w = g.world;
+      const kinds = {};
+      for (const p of w.props || []) kinds[p.kind] = (kinds[p.kind] || 0) + 1;
+      let vd = 0,
+        solid = 0;
+      for (let i = 0; i < 400; i++) {
+        const x = (Math.random() * 2 - 1) * w.lim,
+          z = (Math.random() * 2 - 1) * w.lim;
+        if (w.isVoid(x, z)) vd++;
+        else solid++;
+      }
+      const sp = w.spawnPoint(new THREE.Vector3(), []);
+      out.vars[v || 'base'] = {
+        ok: Number.isFinite(w.terrainHeight(10, 10)),
+        vd,
+        solid,
+        spawnOk: !w.isVoid(sp.x, sp.z),
+        kinds,
+        key: w.variantKey || '',
+      };
+      if (v && w.variantKey !== v) out.bad.push(v);
+    }
+    for (const k of ['reactor', 'mast', 'catapult', 'turret', 'hatch', 'stacks']) {
+      g.world.dispose();
+      g.world = new W(g.scene, 'ark', seed++, 18, null, { landmark: k });
+      out.lms[k] = !!g.world.landmark;
+    }
+    // 專屬敵人：中央甲板上逐一生成、推進 AI
+    g.world.dispose();
+    g.world = new W(g.scene, 'ark', 8300, 18, null, { variant: 'fore' });
+    const w = g.world;
+    const p = g.player;
+    p.hp = p.maxHp = 1e7;
+    const spot = w.spawnPoint(new THREE.Vector3(), []);
+    p.pos.set(spot.x, w.groundAt(spot.x, spot.z, 50), spot.z);
+    p.vel.set(0, 0, 0);
+    const near = (dx) => {
+      const q = w.spawnPoint(p.pos, [], { x: p.pos.x + dx, z: p.pos.z }, 4);
+      return new THREE.Vector3(q.x, w.groundAt(q.x, q.z, 50), q.z);
+    };
+    out.foes = {};
+    for (const [k, dx] of [
+      ['popturret', 30],
+      ['boarder', 25],
+      ['railgunner', 40],
+      ['spotter', 25],
+    ]) {
+      const e = g.spawnType(k, 1, 1, near(dx), 1);
+      e.senseInit(false);
+      let tris = 0;
+      e.model.group.traverse((o) => {
+        if (o.isMesh && o.material && o.material.side === THREE.BackSide) return; // 描邊外殼
+        if (o.isMesh && o.geometry && o.geometry.index) tris += o.geometry.index.count / 3;
+        else if (o.isMesh && o.geometry) tris += o.geometry.attributes.position.count / 3;
+      });
+      const vis = new Set();
+      const h0 = p.hp;
+      let hid = 0,
+        spotted = 0;
+      for (let i = 0; i < 60 * 14; i++) {
+        g.time += 1 / 60;
+        p.pos.y = w.groundAt(p.pos.x, p.pos.z, p.pos.y + 3);
+        p.iFrames = 0;
+        e.updateAI(1 / 60);
+        e.specialFx(1 / 60);
+        g.updateHazards(1 / 60);
+        for (const pr of g.projectiles.slice()) {
+          pr.update(1 / 60);
+          if (pr.dead) g.projectiles.splice(g.projectiles.indexOf(pr), 1);
+        }
+        vis.add(e.bossVis & 3);
+        if (e.noLock) hid++;
+        if (p.hasStatus && p.hasStatus('spotted')) spotted++;
+        p.vel.set(0, 0, 0);
+      }
+      out.foes[k] = {
+        tris: Math.round(tris),
+        vis: [...vis].sort().join(''),
+        hurt: Math.round(h0 - p.hp),
+        hid,
+        spotted,
+        dmg: !!e.model.dmg,
+        mech: !e.model.vehicle,
+      };
+      e.dead = true;
+      e.mesh.visible = false;
+      if (p.clearStatus) p.clearStatus('spotted');
+    }
+    // 降下的砲塔無敵、散熱中的軌道砲兵受傷 ×1.4
+    const pt = g.spawnType('popturret', 1, 1, near(12), 1);
+    pt.aiState.e2 = { ph: 0, t: 1, under: true };
+    out.popUnder = pt.foeDefense_e2(100, 10)[0];
+    const rg = g.spawnType('railgunner', 1, 1, near(14), 1);
+    rg.bossVis = 2;
+    const a = rg.foeDefense_e2(100, 10);
+    rg.bossVis = 0;
+    const b = rg.foeDefense_e2(100, 10);
+    out.hot = a[0] / b[0];
+    g.state = 'play';
+    return out;
+  });
+  const V = r.vars;
+  check(
+    Object.values(V).every((v) => v.ok && v.vd > 0 && v.solid > 0 && v.spawnOk) && !r.bad.length,
+    `方舟的標準＋6 種變體都能生成、有甲板與虛空、出生點在甲板上（` +
+      Object.entries(V)
+        .map(([k, v]) => `${k} ${v.solid}/${v.vd}`)
+        .join('、') +
+      '）',
+  );
+  check(V.fore.solid > V.flank.solid, `前甲板的甲板比側舷大（${V.fore.solid} > ${V.flank.solid}）`);
+  check(
+    (V.base.kinds.hatch || 0) + (V.base.kinds.arkcrate || 0) > 0,
+    '主題自己的物件（' + JSON.stringify(V.base.kinds) + '）',
+  );
+  check((V.engine.kinds.exhaust || 0) > (V.base.kinds.exhaust || 0), '機關區：排氣煙囪比標準多');
+  check(Object.values(r.lms).every(Boolean), '6 個地標都能放（' + Object.keys(r.lms).join('、') + '）');
+  const F = r.foes;
+  for (const k in F)
+    check(
+      F[k].tris <= 10000 && (F[k].dmg || F[k].mech),
+      `${k}：模型 ${F[k].tris} 面、受損資料；狀態 ${F[k].vis}；傷害 ${F[k].hurt}`,
+    );
+  check(
+    F.popturret.hid > 60 && F.popturret.vis.includes('2') && F.popturret.hurt > 0,
+    `甲板升降砲塔：降下時不能鎖定（${F.popturret.hid} 格）、升起射擊`,
+  );
+  check(r.popUnder === 0, '甲板升降砲塔：降下時無敵');
+  check(
+    F.boarder.vis.includes('1') && F.boarder.vis.includes('3') && F.boarder.hurt > 0,
+    '登艦突擊兵：預警圈 → 撲擊 → 落地的空檔',
+  );
+  check(
+    F.railgunner.vis.includes('1') && F.railgunner.vis.includes('2') && F.railgunner.hurt > 0,
+    '甲板軌道砲兵：瞄準線充能 → 光束 → 散熱',
+  );
+  check(Math.abs(r.hot - 1.4) < 0.01, '甲板軌道砲兵散熱時受傷 ×1.4');
+  check(
+    F.spotter.spotted > 0 && F.spotter.hurt > 0,
+    `艦橋觀測無人機：標定（${F.spotter.spotted} 格）、引導砲擊`,
+  );
   await ctx.close();
 }
 
@@ -17115,6 +17311,141 @@ async function testBossTier2(browser, base) {
 }
 
 // Boss 改版第 3～5 期：每隻 Boss 的專屬內容（部位與機能、三個大招都打斷一次、打回去的彈、場地、四種反制），並截圖
+// 主線擴充的新 Boss（第 7 章）：行為（鎚擊後卡住、潛行與浮出、吊下貨櫃與電磁吸引）、模型、截圖
+async function testBoss4(browser, base) {
+  console.log('主線擴充的新 Boss：ANVIL、SALAMANDER、GANTRY 的行為');
+  const { ctx, page } = await newPage(browser, 'boss4');
+  await seededRandom(page);
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await freezeLoop(page);
+  for (const [L, key] of [
+    [36, 'anvil'],
+    [37, 'salamander'],
+    [39, 'gantry'],
+    [40, 'deckgun'],
+    [42, 'reactor'],
+    [43, 'sovereign'],
+  ]) {
+    const r = await page.evaluate(
+      ([L, key]) => {
+        const g = window.__game;
+        g.clearMission();
+        g.save.level = L;
+        g.tierTestOff = true;
+        g.startMission();
+        g.tierTestOff = false;
+        g.state = 'b4-test';
+        const pl = g.player,
+          b = g.boss;
+        pl.hp = pl.maxHp = 1e8;
+        const out = {
+          name: b.name,
+          kind: b.opts.bossKind,
+          vis: new Set(),
+          hurt: 0,
+          nolock: 0,
+          walls: 0,
+          hook: 0,
+        };
+        const W = g.world;
+        // 玩家放在 Boss 前方 20 m 的實地
+        const q = W.spawnPoint(b.pos, [], { x: b.pos.x, z: b.pos.z + 20 }, 4);
+        pl.pos.set(q.x, W.groundAt(q.x, q.z, 999), q.z);
+        if (key === 'sovereign') b.hp = b.maxHp * 0.3; // 第三型態：認證與殘影
+        const e0 = g.enemies.length;
+        const h0 = pl.hp;
+        let tris = 0;
+        b.model.group.traverse((o) => {
+          if (o.isMesh && o.material && o.material.side === THREE.BackSide) return;
+          if (o.isMesh && o.geometry)
+            tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3;
+        });
+        out.tris = Math.round(tris);
+        for (let i = 0; i < 60 * 25; i++) {
+          g.time += 1 / 60;
+          pl.iFrames = 0;
+          pl.vel.set(0, 0, 0);
+          b.updateAI(1 / 60);
+          g.updateHazards(1 / 60);
+          if (g.updateSupport) g.updateSupport(1 / 60);
+          for (const pr of g.projectiles.slice()) {
+            pr.update(1 / 60);
+            if (pr.dead) g.projectiles.splice(g.projectiles.indexOf(pr), 1);
+          }
+          out.vis.add(b.bossVis & 15);
+          if (b.noLock) out.nolock++;
+          if (pl.hasStatus && pl.hasStatus('hook')) out.hook++;
+          out.walls = Math.max(out.walls, (g.tWalls || []).length);
+          if (pl.hp < 1e7) pl.hp = 1e8;
+        }
+        out.hurt = Math.round(h0 - pl.hp) > 0 || out.vis.size > 0;
+        out.hp = pl.hp < 1e8;
+        out.vis = [...out.vis].sort((a, c) => a - c).join(',');
+        out.open = b.boss4Open !== undefined;
+        out.adds = g.enemies.length - e0;
+        if (key === 'reactor') {
+          b.bossVis &= ~2;
+          let n = 0;
+          for (let i = 0; i < 36; i++) {
+            const a = (i / 36) * Math.PI * 2;
+            if (
+              b.reactorBlocked_(b.pos.clone().add(new THREE.Vector3(Math.sin(a) * 20, 0, Math.cos(a) * 20)))
+            )
+              n++;
+          }
+          out.blocked = n;
+          b.bossVis |= 2;
+          out.blockedOver = b.reactorBlocked_(b.pos.clone().add(new THREE.Vector3(20, 0, 0)));
+        }
+        out.def = b.boss4Defense(100, 10, pl, pl.center());
+        return out;
+      },
+      [L, key],
+    );
+    check(r.kind === key && r.tris > 500 && r.tris < 60000, `${r.name}：生成、模型 ${r.tris} 面`);
+    if (key === 'anvil')
+      check(
+        /\b1\b/.test(r.vis) && /\b2\b/.test(r.vis),
+        `ANVIL：舉鎚預警 → 砸下卡住（破綻）（狀態 ${r.vis}）`,
+      );
+    if (key === 'salamander')
+      check(
+        r.nolock > 30 && /\b8\b/.test(r.vis),
+        `SALAMANDER：潛在地下不能鎖定（${r.nolock} 格）、鑽出前的火光（狀態 ${r.vis}）`,
+      );
+    if (key === 'gantry')
+      check(
+        r.walls > 0 && /\b2\b/.test(r.vis),
+        `GANTRY：吊下貨櫃留下掩體（${r.walls}）、電磁鐵過熱（狀態 ${r.vis}；吸引 ${r.hook} 格）`,
+      );
+    if (key === 'deckgun')
+      check(
+        /\b1\b/.test(r.vis) && /\b2\b/.test(r.vis),
+        `COLOSSUS：主砲齊射預警 → 散熱（狀態 ${r.vis}；升起的砲塔 ${r.adds}）`,
+      );
+    if (key === 'reactor')
+      check(
+        r.blocked > 12 && r.blocked < 32 && !r.blockedOver && /\b2\b/.test(r.vis),
+        `HEARTH：護盾板擋住 ${r.blocked}／36 個方向、過載時不擋、過載（狀態 ${r.vis}）`,
+      );
+    if (key === 'sovereign')
+      check(/\b2\b/.test(r.vis) && r.adds > 0, `SOVEREIGN：召喚殘影（${r.adds}）之後停機（狀態 ${r.vis}）`);
+    await page.evaluate(() => {
+      const g = window.__game;
+      const b = g.boss,
+        pl = g.player;
+      b.noLock = false;
+      b.mesh.visible = true;
+      b.bossVis &= ~1;
+      pl.pos.copy(b.pos).add(new THREE.Vector3(0, 0, 40));
+    });
+    await page.evaluate(() => window.__pump(0.6));
+    await page.screenshot({ path: path.join(SHOT_DIR, `boss4-${key}.png`) });
+  }
+  await ctx.close();
+}
+
 async function testBossKit(browser, base, list, label) {
   console.log(`Boss 改版：${label} 的專屬內容`);
   const { ctx, page } = await newPage(browser, 'bosskit-' + list[0][1]);
@@ -17811,7 +18142,7 @@ async function testTextFx(browser, base) {
     g.openBrief('c1s1');
     const el = document.getElementById('brLines');
     const n = el.querySelectorAll('.tqc').length;
-    g.campStory().memories = { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1 };
+    g.campStory().memories = { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1 };
     g.openEpilogue('beyond');
     const coda = document.querySelector('#epLines .epCoda .tqc');
     g.tfxSkip();
@@ -17981,7 +18312,7 @@ async function testCycle3(browser, base) {
   });
   await page.screenshot({ path: path.join(SHOT_DIR, 'cycle3-echo.png') });
   check(
-    mem.mem === '1' && mem.list.includes('訊號') && mem.list.includes('？？？') && mem.btn.includes('1／6'),
+    mem.mem === '1' && mem.list.includes('訊號') && mem.list.includes('？？？') && mem.btn.includes('1／8'),
     'ECHO 的委託完成：回收記憶片段 1，ECHO 的紀錄顯示（' + mem.btn + '）',
   );
   // 真結局的條件：紫色委託不夠時沒有第三個出口，通訊與說明卡說明；全部完成過才出現
@@ -17995,7 +18326,7 @@ async function testCycle3(browser, base) {
       st.cycle = 3;
       st.done = { c1x: 1, c2x: 1 };
       st.history = [{ cycle: 2, done: hist, choices: { c2: 'castron', c4: 'sancta', c6: 'seal' } }];
-      g.campBegin('c6s3');
+      g.campBegin('c8s3');
       g.camp.seg = 5;
       g.camp.types[5] = 'supply';
       g.campEnterSeg();
@@ -18026,25 +18357,25 @@ async function testCycle3(browser, base) {
     });
   };
   const ex1 = await exits({ c3x: 1 });
-  const ex2 = await exits({ c3x: 1, c4x: 1, c5x: 1, c6x: 1 });
+  const ex2 = await exits({ c3x: 1, c4x: 1, c5x: 1, c6x: 1, c7x: 1, c8x: 1 });
   check(
     ex1.ex === 'open,seal' &&
       ex1.n === 3 &&
       ex1.line.includes('全部的紀錄') &&
-      ex1.card.includes('3／6') &&
+      ex1.card.includes('3／8') &&
       ex2.ex === 'open,seal,beyond' &&
       ex2.line.includes('第三個出口'),
     '真結局的條件：紫色委託 ' +
       ex1.n +
-      '／6 時沒有第三個出口（說明卡與通訊說明），全部完成過才出現（' +
+      '／8 時沒有第三個出口（說明卡與通訊說明），全部完成過才出現（' +
       ex2.ex +
       '）',
   );
-  // 真結局＋6 片記憶片段：多一段結尾
+  // 真結局＋8 片記憶片段：多一段結尾
   const ep = await page.evaluate(() => {
     const g = window.__game;
     g.campEnd(false, true);
-    g.campStory().memories = { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1 };
+    g.campStory().memories = { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1 };
     g.openEpilogue('beyond');
     const full = document.getElementById('epLines').textContent;
     g.campStory().memories = { 1: 1 };
@@ -18053,7 +18384,7 @@ async function testCycle3(browser, base) {
   });
   check(
     ep.full.includes('循環沒有再開始') && !ep.part.includes('循環沒有再開始'),
-    '真結局：6 片記憶片段全部回收時多一段結尾',
+    '真結局：8 片記憶片段全部回收時多一段結尾',
   );
   // 第 2 周目：依上一周目的抉擇改變通訊與紫色委託的簡報
   const pv = await page.evaluate(() => {
@@ -18234,9 +18565,9 @@ async function testStory(browser, base) {
       c6s1a: segAce('c6s1', (s) => s.ace, { c2: 'aetheric' }),
       c6s3v: segAce('c6s3', (s) => s.ace && !s.choice, { c4: 'veerwell' }),
       c6s3s: segAce('c6s3', (s) => s.ace && !s.choice, { c4: 'sancta' }),
-      zen: segAce('c6s3', (s) => s.choice, {}),
+      zen: segAce('c8s3', (s) => s.choice, {}),
       down: pick('aceDown', { ace: 'rust' }),
-      zline: pick('segStart', { sid: 'c6s3', type: 'elite', ace: 'zenith', cycle: 1, truth: false }),
+      zline: pick('segStart', { sid: 'c8s3', type: 'elite', ace: 'zenith', cycle: 1, truth: false }),
       c2end: pick('sortieEnd', { sid: 'c2s2', c2: 'aetheric' }),
     };
   });
@@ -19530,7 +19861,7 @@ async function testCine(browser, base) {
   });
   const flat = defs.all.flat();
   check(
-    flat.length === 36 && flat.every((d) => d.n > 0 && d.dur > 8),
+    flat.length === 48 && flat.every((d) => d.n > 0 && d.dur > 8),
     `劇本：序章與各章開場／章末都有鏡頭（${flat.length} 段，最短 ${Math.min(...flat.map((d) => d.dur)).toFixed(0)} 秒）`,
   );
   const p1 = defs.all[0].find((d) => d.k === 'p1');
@@ -19798,7 +20129,7 @@ async function testCine(browser, base) {
     return { st: g.state, n: g.clibItems.length, ks: g.clibItems.map((i) => i.k) };
   });
   check(
-    lib.st === 'cinelib' && lib.n === 22 && lib.ks.includes('p1') && lib.ks.includes('x_c6_beyond'),
+    lib.st === 'cinelib' && lib.n === 26 && lib.ks.includes('p1') && lib.ks.includes('x_c6_beyond'),
     `過場動畫劇場：第 1 周目列出 ${lib.n} 段（序章、開場、章末、抉擇演出）`,
   );
   await page.evaluate(() => {
@@ -20116,6 +20447,39 @@ async function testChapter6(browser, base) {
     c6.join(',') === 'c6s1:7:SERAPHIM,c6s2:7:DOPPEL,c6s3:7:BALTEUS',
     '第 6 章的 3 個出擊（各 7 段）與終點 Boss（' + c6.join('、') + '）',
   );
+  // 主線擴充：c6s3 不再是終章、沒有抉擇；第 7、8 章的出擊與終點 Boss；c8s3 是終章、有最後的抉擇
+  const c78 = await page.evaluate(() => {
+    const g = window.__game;
+    const out = [];
+    for (const sid of ['c7s1', 'c7s2', 'c7s3', 'c8s1', 'c8s2', 'c8s3']) {
+      g.campBegin(sid);
+      const n = g.campSortie().segs.length;
+      g.camp.seg = n - 1;
+      g.camp.types[n - 1] = 'boss';
+      g.campEnterSeg();
+      out.push(sid + ':' + g.world.themeKey + ':' + ((g.bossDef && g.bossDef.name) || '').split(' ')[0]);
+      g.campEnd(false, true);
+    }
+    g.campBegin('c6s3');
+    const so6 = g.campSortie();
+    const r6 = { final: !!so6.final, choice: so6.segs.some((x) => x.choice) };
+    g.campEnd(false, true);
+    g.campBegin('c8s3');
+    const so8 = g.campSortie();
+    const r8 = { final: !!so8.final, choice: so8.segs.some((x) => x.choice === 'c6') };
+    g.campEnd(false, true);
+    return { out, r6, r8 };
+  });
+  check(
+    c78.out.every((x) => x.split(':')[2]) &&
+      c78.out.slice(0, 3).every((x) => x.includes(':volcano:')) &&
+      c78.out.slice(3).every((x) => x.includes(':ark:')),
+    '第 7 章（火山熔爐帶）與第 8 章（方舟）的出擊與終點 Boss（' + c78.out.join('、') + '）',
+  );
+  check(
+    !c78.r6.final && !c78.r6.choice && c78.r8.final && c78.r8.choice,
+    '最後的抉擇搬到 c8s3：c6s3 不是終章、沒有抉擇，c8s3 是終章（' + JSON.stringify(c78) + '）',
+  );
   // 最後的抉擇：第 1 周目兩個出口，第 3 周目多一個（真結局）
   const finalExits = async (cycle) => {
     await page.evaluate((cycle) => {
@@ -20126,9 +20490,15 @@ async function testChapter6(browser, base) {
       // 真結局的出口另外要完成全部紫色委託（哪一周目都算）
       g.save.story.history =
         cycle >= 3
-          ? [{ cycle: 2, done: { c1x: 1, c2x: 1, c3x: 1, c4x: 1, c5x: 1, c6x: 1 }, choices: {} }]
+          ? [
+              {
+                cycle: 2,
+                done: { c1x: 1, c2x: 1, c3x: 1, c4x: 1, c5x: 1, c6x: 1, c7x: 1, c8x: 1 },
+                choices: {},
+              },
+            ]
           : [];
-      g.campBegin('c6s3');
+      g.campBegin('c8s3');
       g.camp.seg = 5;
       g.camp.types[5] = 'supply';
       g.campEnterSeg();
@@ -21074,7 +21444,7 @@ async function testMpCampaign(browser, url) {
     }));
   await cli.evaluate(() => {
     const g = window.__game;
-    g.camp.sid = 'c6s3';
+    g.camp.sid = 'c8s3';
     g.camp.choice = { id: 'c6', key: 'seal' };
     g.campEnd(true);
   });
@@ -29478,7 +29848,37 @@ const STEPS = [
   ['testNemesis', (c) => testNemesis(c.browser, c.base)],
   ['testBoard', (c) => testBoard(c.browser, c.base)],
   ['testVolcano', (c) => testVolcano(c.browser, c.base)],
+  ['testArk', (c) => testArk(c.browser, c.base)],
   ['testBossTier2', (c) => testBossTier2(c.browser, c.base)],
+  ['testBoss4', (c) => testBoss4(c.browser, c.base)],
+  [
+    'testBossKit7',
+    (c) =>
+      testBossKit(
+        c.browser,
+        c.base,
+        [
+          [36, 'anvil'],
+          [37, 'salamander'],
+          [39, 'gantry'],
+        ],
+        '第 7 章（主線擴充）',
+      ),
+  ],
+  [
+    'testBossKit8',
+    (c) =>
+      testBossKit(
+        c.browser,
+        c.base,
+        [
+          [40, 'deckgun'],
+          [42, 'reactor'],
+          [43, 'sovereign'],
+        ],
+        '第 8 章（主線擴充）',
+      ),
+  ],
   ['testBossField', (c) => testBossField(c.browser, c.base)],
   [
     'testBossKit12',

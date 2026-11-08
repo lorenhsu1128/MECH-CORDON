@@ -4467,6 +4467,72 @@ export const LANDMARKS = {
       ],
     },
   },
+  // 移動要塞「方舟」（主線第 8 章，world/themes/ark.js）：舊尺度建模，addLandmark 整體放大 WS 倍
+  ark: {
+    reactor: {
+      name: '主反應爐的散熱塔',
+      build: aReactor,
+      bx: [-8, 8, -8, 8],
+      range: 2,
+      sink: 0.2,
+      shapes: [{ c: [0, 0], r: 6.5, h: 24 }],
+    },
+    mast: {
+      name: '艦橋的雷達桅杆',
+      build: aMast,
+      bx: [-5, 5, -5, 5],
+      range: 2,
+      sink: 0.2,
+      shapes: [
+        { box: [-4, 4, -4, 4], y: 0, top: 3 },
+        { c: [0, 0], r: 1.4, h: 32 },
+      ],
+    },
+    catapult: {
+      name: '電磁彈射軌道',
+      build: aCatapult,
+      bx: [-3, 3, -18, 18],
+      range: 1.5,
+      sink: 0.1,
+      shapes: [
+        { box: [-3, -1.6, -18, 18], y: 0, top: 1.6 },
+        { box: [1.6, 3, -18, 18], y: 0, top: 1.6 },
+      ],
+    },
+    turret: {
+      name: '副砲塔',
+      build: aTurret,
+      bx: [-7, 7, -16, 7],
+      range: 2,
+      sink: 0.2,
+      shapes: [{ c: [0, 0], r: 6, h: 8 }],
+    },
+    hatch: {
+      name: '對接艙門',
+      build: aDockHatch,
+      bx: [-11, 11, -11, 11],
+      range: 2,
+      sink: 0.2,
+      shapes: [
+        { box: [-11, -8, -11, 11], y: 0, top: 4 },
+        { box: [8, 11, -11, 11], y: 0, top: 4 },
+        { box: [-8, 8, -11, -8], y: 0, top: 4 },
+        { box: [-8, 8, 8, 11], y: 0, top: 4 },
+      ],
+    },
+    stacks: {
+      name: '主排氣口',
+      build: aStacks,
+      bx: [-10, 10, -6, 6],
+      range: 2,
+      sink: 0.2,
+      shapes: [
+        { box: [-10, 10, -5, 5], y: 0, top: 4 },
+        { c: [-5, 0], r: 3.2, h: 22 },
+        { c: [5, 0], r: 3.2, h: 22 },
+      ],
+    },
+  },
 };
 // 精細版（docs/model-detail.md）：box()／cyl() 拼的網格整個換成精細版（基本形體升級以放大 WS 倍之後的尺寸判斷）
 const LM_TINT = { ao: 0.75, grime: 0.2, k: WS };
@@ -4586,5 +4652,99 @@ function vGate() {
   }
   g.add(box(18, 4, 6, VM.iron, 0, 16, 0));
   g.add(box(18, 0.8, 0.4, VM.yellow, 0, 14.2, 3.1));
+  return g;
+}
+
+// ---------- 移動要塞「方舟」的地標（舊尺度：1＝3 m；原點在底面中心） ----------
+const AM = {
+  hull: mat(0x4a4e52, { roughness: 0.55, metalness: 0.6 }),
+  dark: mat(0x22262a, { roughness: 0.6, metalness: 0.6 }),
+  red: mat(0x8a2a22, { roughness: 0.6, metalness: 0.4 }),
+  yellow: mat(0xd8a020, { roughness: 0.6 }),
+  glow: new THREE.MeshStandardMaterial({ color: 0x80d0ff, emissive: 0x60c0ff, emissiveIntensity: 1.6 }),
+  hot: new THREE.MeshStandardMaterial({ color: 0xff7a30, emissive: 0xff6a20, emissiveIntensity: 1.8 }),
+};
+// 主反應爐的散熱塔：收腰的塔身、發光的散熱環、底座的管線
+function aReactor() {
+  const g = new THREE.Group();
+  g.add(cyl(7, 7.5, 3, AM.dark, 0, 1.5, 0, 24));
+  g.add(cyl(4.8, 6.5, 10, AM.hull, 0, 8, 0, 24));
+  g.add(cyl(5.4, 4.8, 10, AM.hull, 0, 18, 0, 24));
+  for (const [y, r] of [
+    [6, 6.1],
+    [11, 5.1],
+    [16, 5],
+    [21, 5.3],
+  ])
+    g.add(cyl(r, r, 0.5, AM.glow, 0, y, 0, 24));
+  g.add(cyl(5.5, 5.5, 0.6, AM.red, 0, 23.2, 0, 24));
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2;
+    const pipe = cyl(0.7, 0.7, 6, AM.dark, Math.cos(a) * 8, 1, Math.sin(a) * 8, 8);
+    pipe.rotation.set(Math.PI / 2, 0, a);
+    g.add(pipe);
+  }
+  return g;
+}
+// 艦橋的雷達桅杆：桅杆、橫桁、雷達盤、紅色的航行燈
+function aMast() {
+  const g = new THREE.Group();
+  g.add(box(8, 3, 8, AM.dark, 0, 1.5, 0));
+  g.add(cyl(1.2, 1.6, 26, AM.hull, 0, 16, 0, 10));
+  for (let y = 8; y < 28; y += 6) g.add(box(6 - y * 0.12, 0.4, 0.6, AM.hull, 0, y, 0));
+  const dish = box(9, 2, 0.8, AM.hull, 0, 29, 0);
+  dish.rotation.y = 0.6;
+  g.add(dish);
+  g.add(box(0.6, 6, 0.6, AM.hull, 0, 32, 0));
+  g.add(cyl(0.5, 0.5, 0.6, AM.hot, 0, 35.3, 0, 8));
+  return g;
+}
+// 電磁彈射軌道：兩條導軌、中央的滑車、發光的線圈
+function aCatapult() {
+  const g = new THREE.Group();
+  for (const s of [-1, 1]) {
+    g.add(box(1.4, 1.6, 36, AM.dark, s * 2.3, 0.8, 0));
+    g.add(box(0.3, 0.2, 36, AM.yellow, s * 1.55, 1.7, 0));
+  }
+  for (let z = -16; z <= 16; z += 4) g.add(box(3.4, 0.25, 0.5, AM.glow, 0, 0.15, z));
+  g.add(box(3, 1.2, 4, AM.red, 0, 1.2, -12));
+  return g;
+}
+// 副砲塔：圓形砲座、箱型砲塔、兩根往 −Z 的砲管
+function aTurret() {
+  const g = new THREE.Group();
+  g.add(cyl(6, 6.5, 3, AM.dark, 0, 1.5, 0, 20));
+  g.add(box(9, 4.5, 10, AM.hull, 0, 5.2, 0));
+  g.add(box(9.4, 0.4, 10.4, AM.red, 0, 7.6, 0));
+  for (const s of [-1, 1]) {
+    const b = cyl(0.8, 1, 14, AM.dark, s * 2.2, 5.6, -11, 12);
+    b.rotation.x = Math.PI / 2;
+    g.add(b);
+  }
+  return g;
+}
+// 對接艙門：四周的厚框、中央的黃色十字、角上的燈
+function aDockHatch() {
+  const g = new THREE.Group();
+  g.add(box(3, 4, 22, AM.hull, -9.5, 2, 0));
+  g.add(box(3, 4, 22, AM.hull, 9.5, 2, 0));
+  g.add(box(16, 4, 3, AM.hull, 0, 2, -9.5));
+  g.add(box(16, 4, 3, AM.hull, 0, 2, 9.5));
+  g.add(box(16, 0.3, 16, AM.dark, 0, 0.15, 0));
+  g.add(box(16, 0.2, 0.8, AM.yellow, 0, 0.35, 0));
+  g.add(box(0.8, 0.2, 16, AM.yellow, 0, 0.35, 0));
+  for (const sx of [-1, 1])
+    for (const sz of [-1, 1]) g.add(cyl(0.6, 0.6, 0.6, AM.hot, sx * 9.5, 4.3, sz * 9.5, 8));
+  return g;
+}
+// 主排氣口：底座與兩根巨大的煙囪、頂端的熱光
+function aStacks() {
+  const g = new THREE.Group();
+  g.add(box(20, 4, 10, AM.dark, 0, 2, 0));
+  for (const s of [-1, 1]) {
+    g.add(cyl(3, 3.4, 18, AM.hull, s * 5, 13, 0, 18));
+    g.add(cyl(3.1, 3.1, 1, AM.red, s * 5, 18, 0, 18));
+    g.add(cyl(2.6, 2.6, 0.3, AM.hot, s * 5, 22.1, 0, 18));
+  }
   return g;
 }
