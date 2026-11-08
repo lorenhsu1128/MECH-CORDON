@@ -15424,6 +15424,15 @@ async function testSegOps(browser, base) {
     ext.waveT = 0;
     g.campTick(1 / 60);
     out.wave = (g.spawnQ || []).length > q0;
+    // 增援真的生成出來（以前傳 waveEdgePoint 的 { x, z } 當位置，spawnType 的 at.clone 失敗、一台都沒出來）
+    const e0 = g.enemies.length;
+    out.waveErr = '';
+    try {
+      for (let i = 0; i < 20 && (g.spawnQ || []).length; i++) g.spawnQTick();
+    } catch (err) {
+      out.waveErr = String(err && err.message);
+    }
+    out.waveN = g.enemies.length - e0;
     ext.t = 0.01;
     g.campTick(1 / 30);
     out.ph2 = ext.ph;
@@ -15449,7 +15458,10 @@ async function testSegOps(browser, base) {
     '目標全毀：呼叫回收機、回收地點的光環、客機的顯示資料、還不算清除',
   );
   check(ex.client, '客機照 sv 建回收地點的光環');
-  check(ex.wave, '等待回收機時有增援');
+  check(
+    ex.wave && ex.waveN > 0 && !ex.waveErr,
+    `等待回收機時有增援、生成 ${ex.waveN} 台${ex.waveErr ? '：' + ex.waveErr : ''}`,
+  );
   check(ex.ph2 === 2 && ex.ph3 === 3, '回收機抵達 → 站進回收地點裝載完成');
   check(
     ex.gain === ex.loot && ex.cleared && ex.left === 0,
