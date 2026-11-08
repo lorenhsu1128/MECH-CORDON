@@ -1,1 +1,1 @@
-ECHO 的語音（溫柔知性）：VoxCPM2（OpenBMB，https://github.com/OpenBMB/VoxCPM，Apache-2.0）以 src/assets/voice/ref/gentle.flac 克隆，scripts/voice-gen.py 產生。AI 合成語音，不是任何配音員的聲音。
+ECHO（溫柔知性） 的語音：VoxCPM2（OpenBMB，https://github.com/OpenBMB/VoxCPM，Apache-2.0）以 src/assets/voice/ref/gentle.flac 克隆，scripts/voice-gen.py 產生。AI 合成語音，不是任何配音員的聲音。

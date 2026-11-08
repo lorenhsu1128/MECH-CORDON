@@ -33,9 +33,12 @@ export const CAST_IDS = [
   'zenith',
   'iguazu',
   'volta',
+  // 主線擴充：僚機與第 7、8 章的宿敵
+  'basalt',
+  'wren',
+  'kiln',
+  'keel',
 ];
-// 主線擴充的新角色（僚機與第 7、8 章的宿敵）：語音產生好之後併進 CAST_IDS（scripts/voice-lines.js 已經收集它們的台詞）
-export const CAST_NEW = ['basalt', 'wren', 'kiln', 'keel'];
 // 序章與章節畫面裡的名字 → 說話者
 const STORY_NAMES = {
   ECHO: 'echo',
