@@ -208,6 +208,12 @@ function tintSig(by, parts, opts) {
 // 材質與幾何以內容比對（鐵軌、貨櫃這類每次都新建材質或擠出幾何的物件也打得中）
 // 幾何的內容建好之後不會再改（共用的幾何不能改，CLAUDE.md），所以依物件記住；材質之後可能被改（淡出、換色），每次重算
 const GEO_H = new WeakMap();
+// 只要地形與障礙物、不看外觀的建圖（作戰室的全像戰略桌取樣，game/hub-holo.js）：build 不烘焙頂點色，照一般零件合併。
+// 烘焙不呼叫亂數，所以地圖照樣相同；這段期間建的網格不會畫到
+let PK_LITE = false;
+export function setPropLite(on) {
+  PK_LITE = !!on;
+}
 function hashArr(h, a) {
   const u = new Uint32Array(a.buffer, a.byteOffset, a.length);
   for (let i = 0; i < u.length; i++) h = Math.imul(h ^ u[i], 0x01000193);
@@ -420,7 +426,7 @@ export class PK {
       m2 = new THREE.Matrix4(),
       nm = new THREE.Matrix3();
     this.dmgInfo(group);
-    if (this.tintOpts) return this.buildTint(group, shadow, parts, union);
+    if (this.tintOpts && !PK_LITE) return this.buildTint(group, shadow, parts, union);
     for (const [key, list] of this.by) {
       const [m, pi] = key;
       const part = pi >= 0 ? parts[pi] : null;

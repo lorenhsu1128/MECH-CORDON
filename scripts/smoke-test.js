@@ -13473,7 +13473,15 @@ async function testHubUi(browser, base) {
     let sd = 0;
     const m = S.h.reduce((a, v) => a + v, 0) / S.h.length;
     for (const v of S.h) sd += (v - m) * (v - m);
+    // 取樣結果存在瀏覽器（下次開網頁不用重算）：清掉這一頁的記憶體再拿，和原本的一樣
+    const disk = JSON.parse(localStorage.getItem('rubicon_hub_tiles') || 'null');
+    g.hubTiles.delete(info.key);
+    const S3 = g.hubTileGet(info.key);
+    let same3 = !!S3 && S3.h.length === S.h.length && S3.obs.length === S.obs.length;
+    for (let i = 0; same3 && i < S.h.length; i++) same3 = Math.abs(S.h[i] - S3.h[i]) < 1e-4;
     return {
+      disk: disk && disk.list ? disk.list.length : 0,
+      same3,
       pre: !!pre,
       seed: info.src.seed === (pre && pre.seeds[0]),
       same,
@@ -13489,6 +13497,7 @@ async function testHubUi(browser, base) {
     r.same && r.sd > 0.02 && r.obs > 0 && r.tiles >= 2,
     `區域地形取自關卡生成（起伏 ${r.sd.toFixed(3)}、大型障礙物 ${r.obs}、${r.tiles} 區）`,
   );
+  check(r.disk >= r.tiles && r.same3, `區域地形的取樣存在瀏覽器（${r.disk} 塊），讀回來一樣`);
   check(r.nodes > 4 && r.badge === '1', `委託的標籤（${r.nodes}）與新通訊的紅點（${r.badge}）`);
   // 玻璃指揮塔：窗外的格納庫、整備架上的機體與走動的技師、維修車（比例：機體約 9.7 m、人約 1.8 m）
   // 外部素材載入後格納庫會重建成細緻的版本：先等它

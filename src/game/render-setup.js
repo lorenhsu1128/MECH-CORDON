@@ -328,7 +328,7 @@ Object.assign(Game.prototype, {
     return !navigator.webdriver || !!window.__warmAsync;
   },
   // 預熱時的提示（畫面中央）；自動化測試照樣顯示，不影響判定
-  warmMsg(on) {
+  warmMsg(on, txt = '戰場準備中…') {
     let el = document.getElementById('warmMsg');
     if (!el && on) {
       el = document.createElement('div');
@@ -340,7 +340,10 @@ Object.assign(Game.prototype, {
         'font:15px/1.4 sans-serif;letter-spacing:0.15em';
       document.body.appendChild(el);
     }
-    if (el) el.style.display = on ? '' : 'none';
+    if (el) {
+      if (on) el.textContent = txt;
+      el.style.display = on ? '' : 'none';
+    }
   },
   // 低特效（大量單位的場面用）：o＝{ ssao: 'off'｜'half'｜'full', mblur: 布林 }，null＝恢復
   setLowFx(o) {

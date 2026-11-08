@@ -483,8 +483,11 @@ export class World {
       if (opt.edge && !LV) this.start = this.planStart();
       if (opt.entry) this.addEntry(opt.entry);
       if (LV) this.levelGenItems(ob0, me0);
-      else mergeStatic(this.decorG, new Set(), true, { cell: this.limOut / 2, cellTris: 50000 }); // 很大的合併分成 4×4 格（視錐剔除剔得掉）
+      else if (!opt.sample)
+        mergeStatic(this.decorG, new Set(), true, { cell: this.limOut / 2, cellTris: 50000 }); // 很大的合併分成 4×4 格（視錐剔除剔得掉）
     });
+    // 只取樣地形與障礙物（作戰室的全像戰略桌，game/hub-holo.js）：生成到這裡就夠了，之後的登記、合併、遠景、天氣都不呼叫地圖的亂數
+    if (opt.sample) return;
     // 其他打得到的物件也登記成可破壞（不用亂數，照障礙物的順序；現有物件的編號不變）
     // 改版後才登記的物件（legacy＝false）：設定「不可破壞」時打不壞
     this.regNew = true;

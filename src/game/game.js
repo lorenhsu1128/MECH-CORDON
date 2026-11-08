@@ -502,6 +502,8 @@ export class Game {
       this.state === 'levels' ||
       (this.state === 'settings' && this.settingsFrom !== 'pause')
     ) {
+      // 停在標題或存檔畫面：先把作戰室建好、背景編譯著色器（hub-holo.js）
+      if (this.state === 'title' || this.state === 'saves') this.hubPrewarmTick(dt);
       if (this.world) {
         this.renderMain();
       } else {

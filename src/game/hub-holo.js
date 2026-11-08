@@ -21,12 +21,82 @@ import { addHangarLife, buildHangar, disposeHangar, tickHangar } from '../render
 import { HA, loadHangarAssets } from '../render/hangar-assets.js';
 import { animateMech, buildMech } from '../render/mech-model.js';
 import { StylePipeline } from '../render/style/pipeline.js';
+import { legacyTarget } from '../render/legacy-rt.js';
 import { World } from '../world/world.js';
+import { setPropLite } from '../world/prop-models.js';
+import { NET_VERSION } from '../net/transports.js';
 import { START_ASM } from '../data/parts.js';
 import { PALETTES } from '../render/materials.js';
 import { Game } from './game.js';
 
 const TILE_N = 64;
+// 區域地形的取樣結果存在瀏覽器（localStorage）：同一個「主題|種子|選項」的地圖每次生成都一樣，下次開網頁不用重算
+// （2026-11-08 量到第 8 章的存檔第一次進作戰室，8 個區域一格建一張地圖，每格卡 0.25～0.9 秒）。
+// 版本＝網路協定的版本（新主題、地圖生成改了都會提高）＋這裡的格式
+const TILE_LS = 'rubicon_hub_tiles';
+const TILE_V = NET_VERSION + '/1';
+const TILE_KEEP = 16; // 最多留幾塊（最近用過的優先）
+let tileDisk = null;
+function tileStore() {
+  if (tileDisk) return tileDisk;
+  tileDisk = new Map();
+  try {
+    const d = JSON.parse(localStorage.getItem(TILE_LS) || 'null');
+    if (d && d.v === TILE_V && Array.isArray(d.list)) for (const [k, t] of d.list) tileDisk.set(k, t);
+  } catch (e) {
+    /* 讀不到就重算 */
+  }
+  return tileDisk;
+}
+function tilePack(S) {
+  const u = new Uint16Array(S.h.length);
+  for (let i = 0; i < u.length; i++) u[i] = Math.round(clamp(S.h[i], 0, 1) * 65535);
+  let bin = '';
+  const b = new Uint8Array(u.buffer);
+  for (let i = 0; i < b.length; i += 8192) bin += String.fromCharCode.apply(null, b.subarray(i, i + 8192));
+  return {
+    n: S.n,
+    lo: S.lo,
+    range: S.range,
+    half: S.half,
+    water: S.water,
+    h: btoa(bin),
+    obs: S.obs.map((o) => o.map((v) => Math.round(v * 1e4) / 1e4)),
+  };
+}
+function tileUnpack(t) {
+  const bin = atob(t.h);
+  const b = new Uint8Array(bin.length);
+  for (let i = 0; i < b.length; i++) b[i] = bin.charCodeAt(i);
+  const u = new Uint16Array(b.buffer);
+  const h = new Float32Array(u.length);
+  for (let i = 0; i < u.length; i++) h[i] = u[i] / 65535;
+  return { n: t.n, lo: t.lo, range: t.range, half: t.half, water: t.water, h, obs: t.obs };
+}
+function tileLoad(key) {
+  const D = tileStore();
+  const t = D.get(key);
+  if (!t) return null;
+  D.delete(key); // 移到最後＝最近用過
+  D.set(key, t);
+  try {
+    return tileUnpack(t);
+  } catch (e) {
+    D.delete(key);
+    return null;
+  }
+}
+function tileSave(key, S) {
+  const D = tileStore();
+  D.delete(key);
+  D.set(key, tilePack(S));
+  while (D.size > TILE_KEEP) D.delete(D.keys().next().value);
+  try {
+    localStorage.setItem(TILE_LS, JSON.stringify({ v: TILE_V, list: [...D] }));
+  } catch (e) {
+    /* 存不下：這一頁照樣有記憶體裡的 */
+  }
+}
 const HUB_LIFT = 8; // 指揮塔的地板比格納庫的地板高幾公尺
 const HUB_BAY = 22; // 整備架在指揮塔後方幾公尺
 // 模型來源的代號（同一個物件＝同一個號碼；null＝程式模型）
@@ -151,6 +221,7 @@ Object.assign(Game.prototype, {
     this.hubCamS = { ...DEF_CAM, tgt: new THREE.Vector3(0, TABLE_Y + 0.7, -0.8), drag: 0 };
     this.hubTiles = new Map(); // 「主題|種子|選項」→ 取樣結果
     this.hubQ = [];
+    this.hubGen = (this.hubGen || 0) + 1; // 場景的內容改了：著色器要再預熱（hubWarm）
     if (this.post.ok) {
       this.hubPipe = new StylePipeline(this.renderer, {
         scene: s,
@@ -288,6 +359,7 @@ Object.assign(Game.prototype, {
     s.add(H.root);
     this.hubHg = H;
     this.hubHgRich = HA.ready;
+    this.hubGen = (this.hubGen || 0) + 1;
     this.hubMechSig = null;
     this.hubBgSig = null;
   },
@@ -307,6 +379,7 @@ Object.assign(Game.prototype, {
       for (let k = 0; k < 40; k++) animateMech(m, 1 / 60, { ...MECH_POSE, t: k / 60 });
       this.hubScene.add(m.group);
       this.hubMech = m;
+      this.hubGen++;
     } catch (e) {
       console.warn('作戰室的機體', e);
       this.hubMech = null;
@@ -343,12 +416,20 @@ Object.assign(Game.prototype, {
       s.add(m.group);
       return m;
     });
+    this.hubGen++;
   },
   // ---------- 區域地形 ----------
   // 用真的關卡生成取樣：在不加入畫面的場景建 World，讀高度與大型障礙物，然後丟掉
   hubHoloSample(theme, seed, L, opt) {
     const sc = new THREE.Scene();
-    const w = new World(sc, theme, seed, L, null, opt);
+    // 只要地形與障礙物：地圖物件不烘焙頂點色、生成完就停（world.js 的 opt.sample；地圖照樣相同）
+    let w;
+    setPropLite(true);
+    try {
+      w = new World(sc, theme, seed, L, null, { ...opt, sample: true });
+    } finally {
+      setPropLite(false);
+    }
     const N = TILE_N,
       half = (w.size / 2) * 0.985;
     const hs = new Float32Array(N * N);
@@ -406,6 +487,12 @@ Object.assign(Game.prototype, {
   hubTileKey(src) {
     return `${src.theme}|${src.seed}|${JSON.stringify(src.opt)}`;
   },
+  // 取樣結果：這一頁的記憶體 → 瀏覽器存的（tileLoad）；都沒有回傳 null（排隊取樣）
+  hubTileGet(key) {
+    let S = this.hubTiles.get(key);
+    if (!S && (S = tileLoad(key))) this.hubTiles.set(key, S);
+    return S || null;
+  },
   // ---------- 戰略桌（renderHub 呼叫：區域、地形、光柱、DOM 標籤） ----------
   hubHoloBuild() {
     this.hubSetup();
@@ -429,7 +516,7 @@ Object.assign(Game.prototype, {
         info.src = this.hubRegionSrc(R);
         const key = this.hubTileKey(info.src);
         info.key = key;
-        const S = this.hubTiles.get(key);
+        const S = this.hubTileGet(key);
         if (S) this.hubPutTile(info, S);
         else if (!this.hubQ.some((q) => q.key === key)) this.hubQ.push({ key, src: info.src });
       }
@@ -483,6 +570,7 @@ Object.assign(Game.prototype, {
     info.S = S;
     info.tile = buildHoloTile(S, info.src && info.src.sid ? 0x6fd3ff : 0x4aa6d8);
     info.g.add(info.tile);
+    this.hubGen++;
   },
   // 光柱的底座放在地形表面
   hubBeaconY() {
@@ -515,7 +603,7 @@ Object.assign(Game.prototype, {
       disposeTree(this.hubBrief.g);
     }
     this.hubBrief = { sid, key, g: null };
-    const S = this.hubTiles.get(key);
+    const S = this.hubTileGet(key);
     if (S) this.hubBriefPut(S);
     else if (!this.hubQ.some((q) => q.key === key)) this.hubQ.unshift({ key, src });
     this.writeSave(); // 預排的出擊
@@ -530,6 +618,7 @@ Object.assign(Game.prototype, {
     B.g = buildHoloTile(S, 0x6fd3ff, 3.4, { hs: 0.24, alpha: 0.55 });
     B.g.position.y = TABLE_Y + 0.04;
     this.hubRoom.root.add(B.g);
+    this.hubGen++;
   },
   hubNodeClick(sid) {
     if (this.hubSortieState(sid) === 'locked') {
@@ -542,28 +631,32 @@ Object.assign(Game.prototype, {
     }
     this.openBrief(sid);
   },
+  // 區域地形的佇列：取樣一塊（瀏覽器存過的直接拿）、放上戰略桌
+  hubQStep() {
+    if (!this.hubQ || !this.hubQ.length) return;
+    const q = this.hubQ.shift();
+    let S = this.hubTileGet(q.key);
+    if (!S) {
+      try {
+        S = this.hubHoloSample(q.src.theme, q.src.seed, q.src.L, q.src.opt);
+        tileSave(q.key, S);
+      } catch (e) {
+        console.warn('全像地形取樣失敗', e);
+        S = { n: TILE_N, h: new Float32Array(TILE_N * TILE_N), obs: [], water: null };
+      }
+      this.hubTiles.set(q.key, S);
+    }
+    for (const info of this.hubReg || []) if (info.key === q.key) this.hubPutTile(info, S);
+    if (this.hubBrief && this.hubBrief.key === q.key) this.hubBriefPut(S);
+    this.hubBeaconY();
+  },
   // ---------- 每格 ----------
   hubTick(dt, t) {
     this.hubSetup();
     const R = this.hubRoom;
     // 區域地形：每格最多建一塊（第一格先畫出來）
     this.hubFrames = (this.hubFrames || 0) + 1;
-    if (this.hubQ.length && this.hubFrames > 1) {
-      const q = this.hubQ.shift();
-      let S = this.hubTiles.get(q.key);
-      if (!S) {
-        try {
-          S = this.hubHoloSample(q.src.theme, q.src.seed, q.src.L, q.src.opt);
-        } catch (e) {
-          console.warn('全像地形取樣失敗', e);
-          S = { n: TILE_N, h: new Float32Array(TILE_N * TILE_N), obs: [], water: null };
-        }
-        this.hubTiles.set(q.key, S);
-      }
-      for (const info of this.hubReg || []) if (info.key === q.key) this.hubPutTile(info, S);
-      if (this.hubBrief && this.hubBrief.key === q.key) this.hubBriefPut(S);
-      this.hubBeaconY();
-    }
+    if (this.hubFrames > 1) this.hubQStep();
     // 鏡頭：繞桌子（拖曳轉一點，停手後回到正面）；標籤要能點，所以游標停留時鏡頭不動
     const C = this.hubCamS;
     const k = 1 - Math.exp(-dt * 3);
@@ -627,7 +720,10 @@ Object.assign(Game.prototype, {
       R.saveLed.color.setHex(0x5cc8ff).lerp(_white, f);
     }
     if (HA.ready && !this.hubHgRich) this.hubHangarBuild();
-    if (HA.ready && !R.rich) hubRoomRich(R);
+    if (HA.ready && !R.rich) {
+      hubRoomRich(R);
+      this.hubGen++;
+    }
     // 模型來源可能晚一點才讀好（伺服器預設組）：每 0.5 秒檢查一次
     this.hubSrcT = (this.hubSrcT || 0) - dt;
     if (this.hubSrcT <= 0) {
@@ -642,6 +738,15 @@ Object.assign(Game.prototype, {
       b.bc.userData.ring.scale.setScalar(1 + ((t * 0.8) % 1) * (b.s === 'open' ? 1.6 : 0));
     }
     if (this.state === 'hub') this.hubLabels();
+    // 著色器在背景編譯中：不畫，畫面留著上一格（這次進來還沒畫過時顯示「作戰室準備中」）
+    if (this.hubWarm()) {
+      if (!this.hubDrawn) this.warmMsg(true, '作戰室準備中…');
+      return;
+    }
+    if (!this.hubDrawn) {
+      this.hubDrawn = true;
+      this.warmMsg(false);
+    }
     if (this.post.enabled && this.hubPipe) this.hubPipe.render(this.styleP, t);
     else this.renderer.render(this.hubScene, cam);
     // 游標停留的設施：發光輪廓（標籤或模型；淡入淡出）
@@ -651,6 +756,111 @@ Object.assign(Game.prototype, {
     const osp = this.hubOlId && R.spots[this.hubOlId];
     if (osp && osp.layer && this.hubOlK > 0)
       this.hubOutline(osp, this.hubOlK * (0.85 + 0.15 * Math.sin(t * 5)));
+  },
+  // 著色器預熱（docs/perf-threejs-upgrade.md）：作戰室的模型（格納庫的外部素材、機體、指揮室）第一次畫到時才編譯，
+  // 一個 0.1～0.4 秒、畫面停住（2026-11-08 量到第一次進作戰室 28 個、6.5 秒）。場景的內容改了（hubGen）就把整個場景
+  // 再交給 compileAsync（驅動程式在背景平行編譯，已經編過的直接略過）；完成前回傳 true，hubTick 不畫。
+  // 多人與自動化測試（warmAsyncOk 是 false）照舊同步編譯
+  hubWarm() {
+    if (this.hubWarmBusy) return true;
+    if (!this.hubScene || this.hubWarmGen === this.hubGen) return false;
+    this.hubWarmGen = this.hubGen;
+    const R = this.renderer,
+      s = this.hubScene,
+      cam = this.hubCamera;
+    if (!R || typeof R.compile !== 'function') return false;
+    const pipe = this.post.enabled && this.post.ok && this.hubPipe;
+    const async = this.warmAsyncOk();
+    const ps = [];
+    const rt0 = R.getRenderTarget();
+    try {
+      // render target 要和實際算繪的相同（程式的鍵含輸出的編碼與色調映射）
+      R.setRenderTarget(pipe ? pipe.rtScene : null);
+      if (async) ps.push(R.compileAsync(s, cam));
+      else R.compile(s, cam);
+      if (pipe) ps.push(...pipe.warm(async));
+    } catch (e) {
+      return false; // 預熱失敗：照原本第一次畫到才編譯
+    } finally {
+      R.setRenderTarget(rt0);
+    }
+    if (!async) return false;
+    const busy = (this.hubWarmBusy = Promise.race([
+      Promise.all(ps),
+      new Promise((r) => setTimeout(r, 20000)), // 驅動程式一直沒回報完成時（裝置遺失等）
+    ]));
+    const done = () => {
+      if (this.hubWarmBusy !== busy) return;
+      this.hubWarmBusy = null;
+      this.hubPrime();
+      if (this.state !== 'hub' && this.state !== 'brief') this.warmMsg(false);
+    };
+    busy.then(done, done);
+    return true;
+  },
+  // 編譯完成後（畫面還沒用到這些程式）：整個場景不做視錐剔除、連陰影畫一次到很小的 render target，
+  // 陰影的深度材質與 SSAO 法線的變體（compile 編不到）在這時編好、幾何與貼圖上傳（render-setup.js 的 warmPrime）
+  hubPrime() {
+    const R = this.renderer,
+      s = this.hubScene,
+      cam = this.hubCamera;
+    if (!R || !s || !cam) return;
+    const rt = this.primeRT || (this.primeRT = legacyTarget(new THREE.WebGLRenderTarget(4, 4)));
+    const off = [];
+    s.traverse((o) => {
+      if ((o.isMesh || o.isPoints || o.isLine || o.isSprite) && o.frustumCulled) {
+        o.frustumCulled = false;
+        off.push(o);
+      }
+    });
+    const rt0 = R.getRenderTarget();
+    try {
+      R.shadowMap.needsUpdate = true;
+      R.setRenderTarget(rt);
+      R.render(s, cam);
+      const pipe = this.post.enabled && this.post.ok && this.hubPipe;
+      if (pipe && pipe.ssao && pipe.renderNormals) pipe.renderNormals(pipe.ssao);
+    } catch (e) {
+      /* 只是預熱 */
+    } finally {
+      for (const o of off) o.frustumCulled = true;
+      R.setRenderTarget(rt0);
+      R.shadowMap.needsUpdate = true;
+    }
+  },
+  // 停在標題或存檔畫面時先把作戰室建好、在背景編好著色器（格納庫的外部素材讀好之後；單人），之後第一次進作戰室不用等；
+  // 主線有進度時接著把戰略桌的區域地形一塊一塊取樣（每 0.3 秒一塊，瀏覽器存過的直接拿）
+  hubPrewarmTick(dt) {
+    if (this.hubPre === 'done' || !HA.ready) return;
+    if ((this.net && this.net.role) || !this.warmAsyncOk()) return;
+    this.hubPreT = (this.hubPreT || 0) + dt;
+    if (!this.hubPre) {
+      if (this.hubPreT < 1.5) return;
+      this.hubPreT = 0;
+      this.hubPre = 'q';
+      try {
+        if (!this.hubScene) {
+          this.hubSetup();
+          if (!this.hubRoom.rich) {
+            hubRoomRich(this.hubRoom);
+            this.hubGen++;
+          }
+          this.hubMechSync();
+          this.hubBgSync();
+          this.hubWarm();
+        }
+        if (this.save && Object.keys(this.campStory().done).length) this.hubHoloBuild();
+        else this.hubPre = 'done';
+      } catch (e) {
+        console.warn('作戰室的預先建立', e);
+        this.hubPre = 'done';
+      }
+      return;
+    }
+    if (this.hubPreT < 0.3) return;
+    this.hubPreT = 0;
+    if (!this.hubQ.length) this.hubPre = 'done';
+    else this.hubQStep();
   },
   // 游標停留中的設施：標籤優先，其次是模型
   hubHoverSpot() {
