@@ -15283,16 +15283,17 @@ async function testSegOps(browser, base) {
     p.pos.set(e.pos.x + 60, e.pos.y, e.pos.z);
     e.senseEngage(p, true);
     tick(3);
-    out.callShown = e.stCall > 0 && e.stCall < 3;
+    out.callShown = e.stCall > 0 && e.stCall < e.stCallMax - 2.5;
+    out.callMax = e.stCallMax;
     e.hp = 1;
     e.takeDamage(1e6, 0, p, e.center());
     tick(4);
     out.killNoAlarm = e.dead && !ss.st.localEver && !ss.st.alarm;
-    // A→C：5 秒沒擊破＝那一群局部警報（別的群照常待機）
+    // A→C：倒數（一般 7 秒）沒擊破＝那一群局部警報（別的群照常待機）
     e = idle()[0];
     const gid = e.encG;
     e.senseEngage(p, true);
-    tick(5.3);
+    tick(7.3);
     out.local = Object.keys(ss.st.local).length === 1 && !ss.st.alarm;
     out.mates = g.enemies.filter((o) => !o.dead && o.encG === gid).every((o) => o.sn.st === 2);
     out.others = g.enemies.some((o) => !o.dead && o.sn && o.encG !== gid && o.sn.st === 0);
@@ -15340,7 +15341,10 @@ async function testSegOps(browser, base) {
     out.sv = !!(v && v.cl && v.cl.some((a) => a[0] === e2.id && a[1] > 0));
     return out;
   });
-  check(im.callShown && im.killNoAlarm, '無線電倒數：被看到 5 秒內擊破＝不算被發現');
+  check(
+    im.callShown && im.killNoAlarm && [5, 6, 7].includes(im.callMax),
+    `無線電倒數（${im.callMax} 秒）：倒數結束前擊破＝不算被發現`,
+  );
   check(im.local && im.mates && im.others, '倒數結束：只有那一群局部警報，別的群照常待機');
   check(im.noRelayNoFull && im.relayFull, '中繼塔打壞就不會有全區警報；還在的話 15 秒後全區警報');
   check(im.half > 0 && im.half < bonus.gain, `只有局部警報：潛入報酬一半（+${im.half}）`);

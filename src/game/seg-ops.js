@@ -20,8 +20,8 @@ const ST = {
   LIGHTS: [3, 5], // 探照燈塔的數量（依敵群數）
   BONUS: [3000, 1200], // 未被發現的報酬：COAM＝a＋b×等級；只有局部警報＝一半
   // 2026-11-08 使用者定案的改良（docs/campaign-expansion-design.md 的「潛入的改良」）：
-  CALL: 5, // 無線電倒數：敵人進入交戰後幾秒才通知同一群（之前擊破＝不算被發現）
-  CALL_K: { commander: 0.7, ac: 0.8 }, // 依敵人種類的倍率（指揮官、敵對 AC 比較快）
+  CALL: 7, // 無線電倒數：一般敵人進入交戰後幾秒才通知同一群（之前擊破＝不算被發現）
+  CALL_S: { commander: 5, ac: 6 }, // 依敵人種類的秒數（指揮官 MT、敵對 AC 比較快；2026-11-08 使用者定案）
   RELAY_T: 15, // 局部警報持續幾秒沒處理（那一群還有活的），中繼塔就發出全區警報
   RELAYS: [1, 2], // 通訊中繼塔的數量（敵群 3 群以上＝2）
   QB_NOISE: 5 * DS, // 潛入中 QB 的聲音（15 m）
@@ -108,7 +108,7 @@ Object.assign(Game.prototype, {
     const pos = this.campAtGroups(1, true)[0];
     ss.intel = { pos, t: 0, done: false, group: this.campRing(pos, 0x7fc8ff, '資料終端') };
     this.flashAlert(
-      '潛入任務：被看到的敵人 5 秒後才會呼叫無線電 — 在那之前擊破它；先打掉通訊中繼塔就不會有全區警報',
+      '潛入任務：被看到的敵人 7 秒後才會呼叫無線電（指揮官 5 秒、敵對 AC 6 秒） — 在那之前擊破它；先打掉通訊中繼塔就不會有全區警報',
     );
   },
   // 探照燈塔：放在各敵群與起點之間（devPlan 之後，它會清掉裝置）
@@ -198,7 +198,7 @@ Object.assign(Game.prototype, {
       for (const e of this.enemies) {
         if (e.dead || !e.sn || e.sn.st !== 2 || e.guardOf || e.stCall === -1) continue;
         if (e.stCall === undefined) {
-          e.stCallMax = ST.CALL * (ST.CALL_K[e.ai] || (e.ace ? ST.CALL_K.ac : 1));
+          e.stCallMax = ST.CALL_S[e.ai] || (e.ace ? ST.CALL_S.ac : ST.CALL);
           e.stCall = e.stCallMax;
           if (!st.callSaid) {
             st.callSaid = true;
