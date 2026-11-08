@@ -187,7 +187,7 @@ export class Projectile {
       const L = li ? ds : hs;
       for (let i = 0; i < L.length; i++) {
         const t = L[i];
-        if (t.dead) continue;
+        if (t.dead || t.id === this.pierced) continue; // 貫穿彈已經打過的（mech-legend.js）
         const tt = targetSegT(t, prev, seg, pad);
         if (tt >= 0 && tt < bestT) {
           best = t;
@@ -197,6 +197,13 @@ export class Projectile {
     }
     if (best) {
       this.pos.copy(prev).addScaledVector(seg, bestT);
+      // 傳說模組「貫穿彈」：第一個目標打中後繼續飛
+      if (this.pierce && !best.isProp && !(this.splash > 0)) {
+        this.pierce = false;
+        this.pierced = best.id;
+        this.impact(best, true);
+        return;
+      }
       this.impact(best);
       return;
     }
@@ -216,11 +223,16 @@ export class Projectile {
       this.impact(null);
     }
   }
-  impact(direct) {
+  // keep＝貫穿彈：只算這一下的傷害，子彈繼續飛
+  impact(direct, keep) {
     const g = this.game;
-    this.dead = true;
-    g.scene.remove(this.mesh);
-    if (this.netId) g.netEv({ t: 'pend', i: this.netId });
+    if (!keep) {
+      this.dead = true;
+      g.scene.remove(this.mesh);
+      if (this.netId) g.netEv({ t: 'pend', i: this.netId });
+    }
+    // 傳說模組「分裂彈頭」：導彈在命中點分裂（mech-legend.js）
+    if (this.lgSplit && this.owner && this.owner.lgSplitAt) this.owner.lgSplitAt(this, direct);
     // 臨時障礙物受傷、爆炸點燃油漬（game/hazards2.js）
     if (!direct || this.splash > 0) g.hz2Blast(this.pos, this.dmg, this.splash, this.attr);
     if (g.crowd && this.splash > 0) g.crowdBlast(this.pos, this.splash, this.owner); // 爆炸炸到小人（crowd.js）

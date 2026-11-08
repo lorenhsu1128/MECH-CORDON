@@ -6832,3 +6832,9 @@ body.vpad #subBar {
   gap: 8px;
   margin-top: 10px;
 }
+
+/* 傳說模組的卡片（game/tactics.js；主線擴充 B3） */
+.mpCard.legend {
+  box-shadow: 0 0 18px rgba(255, 208, 96, 0.35);
+  background: linear-gradient(180deg, rgba(60, 46, 14, 0.85), rgba(14, 16, 22, 0.92));
+}

@@ -603,6 +603,11 @@ Object.assign(Game.prototype, {
     if (c.pending && last && EXIT_REWARDS[c.pending].faction) c.endPick = EXIT_REWARDS[c.pending].faction;
     else if (c.pending) this.campGrant(c.pending);
     c.pending = null;
+    // 傳說模組（主線擴充 B3）：精英、大型兵器擊破後的三選一固定有一個；最後一段（含 Boss）在結果畫面
+    const lgSeg = ['elite', 'colossus', 'boss'].includes((c.ss && c.ss.type) || this.campSegType());
+    if (lgSeg && last) c.legendEnd = true;
+    else if (lgSeg && !this.campMp())
+      setTimeout(() => this.camp && this.campQueuePick(null, '擊破獎勵：含傳說模組', true), 900);
     if (last) {
       this.state = 'ending';
       this.flashMsg('作戰目標達成', 0x7ee081, 2, { k: 'clear', m: '作戰目標達成', s: 'OBJECTIVE COMPLETE' });
@@ -1543,6 +1548,8 @@ Object.assign(Game.prototype, {
       this.campOpenPick(c.endPick);
       if (sPick) this.modPickQ = [sPick];
     } else if (sPick) this.campOpenPick(sPick, 'Boss 擊破評價 S 的獎勵');
+    // 最後一段擊破（含 Boss）：傳說模組（單人；整章完成時模組會清空，所以只在還沒完成整章時）
+    if (success && c.legendEnd && !mp && !c.replay) this.campQueuePick(null, '擊破獎勵：含傳說模組', true);
   },
 
   // ---------- HUD ----------

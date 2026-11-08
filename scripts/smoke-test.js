@@ -15865,6 +15865,194 @@ async function testLoot(browser, base) {
   await ctx.close();
 }
 
+// 主線擴充第 8 期：傳說模組（16 種的行為、共鳴、三選一固定有一個、自動選的時候略過）
+async function testLegend(browser, base) {
+  console.log('傳說模組：16 種的行為、共鳴、三選一');
+  const { ctx, page } = await newPage(browser, 'legend');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await freezeLoop(page);
+  const r = await page.evaluate(() => {
+    const g = window.__game;
+    const out = {};
+    g.autoPickMod = true;
+    g.save.asm.larm = 'w_lr'; // 雷射步槍（折射、蓄力共鳴）
+    g.campBegin('c1s2');
+    const L = [
+      'lg_split',
+      'lg_pierce',
+      'lg_chain',
+      'lg_last',
+      'lg_refract',
+      'lg_overload',
+      'lg_arc',
+      'lg_reso',
+      'lg_ghost',
+      'lg_arcqb',
+      'lg_stomp',
+      'lg_chase',
+      'lg_react',
+      'lg_absorb',
+      'lg_phoenix',
+      'lg_fort',
+    ];
+    g.campSetMods(L.map((id) => ({ id, lv: 1 })));
+    out.reso = g.campPilotPm().dmg >= 0.08; // 共鳴：兩家以上的傳說模組
+    g.camp.seg = 1;
+    g.camp.types[1] = 'supply';
+    g.campEnterSeg(); // 沒有敵人的區段
+    g.state = 'lg-test';
+    const p = g.player;
+    p.hp = p.maxHp = 1e6;
+    p.iFrames = 0;
+    const W = g.world;
+    const at = (x, z) =>
+      new THREE.Vector3(p.pos.x + x, W.groundAt(p.pos.x + x, p.pos.z + z, 999), p.pos.z + z);
+    const foe = (x, z) => {
+      const e = g.spawnType('mt', 1, 1, at(x, z), 1);
+      e.updateAI = () => {};
+      e.hp = e.maxHp = 1e6;
+      return e;
+    };
+    const lost = (e, fn) => {
+      const h = e.hp;
+      fn();
+      return Math.round(h - e.hp);
+    };
+    // 終彈強化
+    out.last = [p.lgLastK({ mag: 1 }, { mag: 30 }), p.lgLastK({ mag: 5 }, { mag: 30 })];
+    // 電弧刃
+    const a = foe(20, 0),
+      b = foe(26, 4);
+    out.arc = lost(b, () => p.lgMeleeHit(a, 1000, { id: 'w_blade' }));
+    // 折射雷射、蓄力共鳴
+    out.refract = lost(b, () => p.lgLaserHits([{ t: a }], 1000, 100, { id: 'w_lr', color: 0x7ff0ff }, true));
+    out.resoT = p.lgEnK() === 0;
+    // 電弧推進
+    a.pos.copy(at(4, 0));
+    p.qbT = 0.16;
+    p.lgArcT = 0;
+    out.arcqb = lost(a, () => p.lgTick(0.016));
+    p.qbT = 0;
+    // 落雷踐踏
+    out.stomp = lost(a, () => p.lgLand(45));
+    // 過載核心
+    p.lgOverT = 0;
+    p.en = p.enMax * 0.05;
+    out.over = lost(a, () => p.useEn(p.enMax * 0.04));
+    // 追擊推進、連鎖引爆
+    const c = foe(30, -20);
+    c.hp = c.maxHp * 0.1;
+    const k = foe(33, -20);
+    p.lgKill(k);
+    out.chase = p.lgQbK() === 0;
+    out.chain = c.dead;
+    // 殘影：QB 後 1.5 秒內大約一半的射擊打空
+    p.lgQbAt = p.t;
+    let hit = 0;
+    for (let i = 0; i < 40; i++) {
+      const h = p.hp;
+      p.iFrames = 0;
+      p.takeDamage(100, 0, a, p.center(), new THREE.Vector3(0, 0, 1));
+      if (p.hp < h) hit++;
+    }
+    out.ghost = hit;
+    p.lgQbAt = -99;
+    // 反應裝甲：被近戰打中＝爆炸反擊
+    a.pos.copy(at(4, 0));
+    p.lgReactT = 0;
+    out.react = lost(a, () => p.takeDamage(100, 0, a, p.center(), new THREE.Vector3(0, 0, 1), { kb: 0 }));
+    // 堡壘：站著不動 1 秒
+    p.lgStillT = 0;
+    p.iFrames = 0;
+    const d0 = lost(p, () => p.takeDamage(1000, 0, a, p.center(), new THREE.Vector3(0, 0, 1)));
+    p.lgStillT = 2;
+    p.iFrames = 0;
+    const d1 = lost(p, () => p.takeDamage(1000, 0, a, p.center(), new THREE.Vector3(0, 0, 1)));
+    out.fort = d1 / d0;
+    p.lgStillT = 0;
+    // 護盾轉化
+    p.hp = p.maxHp * 0.5;
+    const h0 = p.hp;
+    p.lgAbsorbed(1000);
+    out.absorb = Math.round(p.hp - h0);
+    // 不死鳥：一次
+    p.iFrames = 0;
+    p.takeDamage(1e9, 0, a, p.center(), new THREE.Vector3(0, 0, 1), null, null, 'none');
+    out.phx = !p.dead && Math.abs(p.hp / p.maxHp - 0.3) < 0.02;
+    // 子彈的欄位
+    out.shotX = [!!(p.lgShotX('bullet') || {}).pierce, !!(p.lgShotX('missile') || {}).lgSplit];
+    // 分裂彈頭：導彈打中時多 3 枚小導彈
+    const n0 = g.projectiles.length;
+    p.lgSplitAt({ pos: a.center(), dmg: 1000, impactV: 100, splash: 6, wid: 'bw_ms' }, a);
+    out.split = g.projectiles.length - n0;
+    // 貫穿彈：實際飛行，一直線上的兩台都打中
+    const Proj = g.projectiles[g.projectiles.length - 1].constructor;
+    for (const pr of g.projectiles) pr.dead = true;
+    const e1 = foe(0, -20),
+      e2 = foe(0, -32);
+    const c1 = e1.center();
+    const from = c1.clone().add(new THREE.Vector3(0, 0, 25));
+    const hp1 = e1.hp,
+      hp2 = e2.hp;
+    const pr = new Proj(g, {
+      pos: from,
+      vel: new THREE.Vector3(0, 0, -300),
+      kind: 'bullet',
+      dmg: 500,
+      impactV: 10,
+      team: 'player',
+      owner: p,
+      life: 2,
+      pierce: true,
+      wid: 'w_rifle',
+    });
+    g.projectiles.push(pr);
+    for (let i = 0; i < 60 && !pr.dead; i++) pr.update(1 / 60);
+    out.pierce = [hp1 - e1.hp > 0, hp2 - e2.hp > 0];
+    for (const e of [a, b, c, k, e1, e2]) e.dead = true;
+    g.state = 'play';
+    return out;
+  });
+  check(r.reso, '共鳴：兩家委託方的傳說模組，傷害等小幅提高');
+  check(r.last[0] === 3 && r.last[1] === 1, '終彈強化：彈匣最後一發 ×3');
+  check(r.arc > 0, `電弧刃：電弧跳到附近的敵人（${r.arc}）`);
+  check(r.refract > 0 && r.resoT, `折射雷射：折射到旁邊的敵人（${r.refract}）；蓄力共鳴：能量武器不耗 EN`);
+  check(r.arcqb > 0, `電弧推進：QB 路徑上的敵人受傷（${r.arcqb}）`);
+  check(r.stomp > 0, `落雷踐踏：落地的衝擊波（${r.stomp}）`);
+  check(r.over > 0, `過載核心：EN 用完時電磁脈衝（${r.over}）`);
+  check(r.chase && r.chain, '追擊推進：擊破後 QB 不耗 EN；連鎖引爆：AP 低的敵人直接引爆');
+  check(r.ghost > 8 && r.ghost < 32, `殘影：QB 後的射擊大約一半打空（40 發打中 ${r.ghost}）`);
+  check(r.react > 0, `反應裝甲：被近戰打中時爆炸反擊（${r.react}）`);
+  check(Math.abs(r.fort - 0.6) < 0.05, `堡壘：站著不動時受到的傷害 ×${r.fort.toFixed(2)}`);
+  check(r.absorb === 300, '護盾轉化：擋下的 30% 轉成 AP');
+  check(r.phx, '不死鳥：AP 歸零時以 30% 復活');
+  check(r.shotX[0] && r.shotX[1] && r.split === 3, '貫穿彈與分裂彈頭：子彈帶旗標、導彈分裂成 3 枚');
+  check(r.pierce[0] && r.pierce[1], `貫穿彈：一直線上的兩台都打中（${r.pierce.join('、')}）`);
+  // 三選一：精英擊破後固定有一個傳說模組；自動選的時候略過
+  const pick = await page.evaluate(() => {
+    const g = window.__game;
+    g.campSetMods([]);
+    g.autoPickMod = false;
+    g.campOpenPick(null, '測試', true);
+    const cards = document.querySelectorAll('#mpCards .mpCard');
+    const leg = document.querySelectorAll('#mpCards .mpCard.legend').length;
+    const out = { n: cards.length, leg };
+    g.campClosePick();
+    g.autoPickMod = true;
+    g.campOpenPick(null, '測試', true);
+    out.auto = g.campMods().map((m) => m.id);
+    g.campSetMods([]);
+    return out;
+  });
+  check(pick.n === 3 && pick.leg === 1, '三選一（擊破獎勵）：3 個選項、其中一個是傳說模組');
+  check(
+    pick.auto.length === 1 && !/^lg_/.test(pick.auto[0]),
+    '自動選的時候略過傳說模組：' + pick.auto.join(''),
+  );
+  await ctx.close();
+}
+
 async function testJumpCam(browser, base) {
   console.log('跳躍的鏡頭：高空時機體留在畫面裡、鏡頭拉遠');
   const { ctx, page } = await newPage(browser, 'jumpcam');
@@ -28700,6 +28888,7 @@ const STEPS = [
   ['testColossus', (c) => testColossus(c.browser, c.base)],
   ['testSegAir', (c) => testSegAir(c.browser, c.base)],
   ['testLoot', (c) => testLoot(c.browser, c.base)],
+  ['testLegend', (c) => testLegend(c.browser, c.base)],
   ['testBossTier2', (c) => testBossTier2(c.browser, c.base)],
   ['testBossField', (c) => testBossField(c.browser, c.base)],
   [

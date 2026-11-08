@@ -571,6 +571,7 @@ export class MechEntity {
     if (this.en < v) return false;
     this.en -= v;
     this.enDelay = this.stats.parts.generator.delay;
+    if (this.pm && v > 0) this.lgEnCheck(); // 傳說模組「過載核心」：EN 用完（mech-legend.js）
     return true;
   }
 
@@ -690,8 +691,14 @@ export class MechEntity {
     const dk = pilot ? 1 : d.npcK || 1;
     const pwN = pwK === 'slug' ? d.pellets || 1 : 1; // 獨頭彈＝所有彈丸合成一發
     const arK = pilot && w.arN > 0 ? FEEL.AR_DMG : 1; // 主動裝填成功的彈匣（mech-feel.js）
-    const dmg = d.dmg * this.dmgMul * dk * (rb ? rb.dmg : 1) * (pwfx ? pwfx.dmg * pwN : 1) * arK,
-      imp = d.impact * this.dmgMul * (rb ? rb.imp : 1) * (pwfx ? pwfx.imp * pwN : 1);
+    const lgK = usesAmmo(d) ? this.lgLastK(w, d) : 1; // 傳說模組「終彈強化」（mech-legend.js）
+    const dmg = d.dmg * this.dmgMul * dk * (rb ? rb.dmg : 1) * (pwfx ? pwfx.dmg * pwN : 1) * arK * lgK,
+      imp =
+        d.impact *
+        this.dmgMul *
+        (rb ? rb.imp : 1) *
+        (pwfx ? pwfx.imp * pwN : 1) *
+        (lgK > 1 ? this.lgLastK(w, d, true) : 1);
     const rbT = rb && rb.tags ? { rb: rb.tags } : null; // 投射物打中時顯示提示（projectile.js 的 rbHit）
     // 追尾視角／第一人稱的準星壓在鎖定目標的弱點上（game/weak.js 的 wpAimTick）：這一發算打在那個弱點
     const wpk = pilot && tgtOk && this.wpAim && this.wpAim.e === targetEnt ? this.wpAim.k : null;
@@ -743,6 +750,7 @@ export class MechEntity {
             wpk ? { wpk } : {},
             pwX,
             airFoe && kind === 'bullet' ? { scale: 2.2 } : {}, // 空域：敵人的曳光放大（看得出從哪裡打來）
+            this.pm ? this.lgShotX(kind) || {} : {}, // 傳說模組：貫穿彈、分裂彈頭（mech-legend.js）
             extra || {},
           ),
         ),
@@ -773,7 +781,7 @@ export class MechEntity {
         }
         break;
       case 'shotgun':
-        if (d.enShot && !this.useEn(d.enShot * (1 - this.pmv('enWpn')))) return false; // 能量霰彈：每發耗 EN
+        if (d.enShot && !this.useEn(d.enShot * (1 - this.pmv('enWpn')) * this.lgEnK())) return false; // 能量霰彈：每發耗 EN
         for (let i = 0; i < (pwK === 'slug' ? 1 : d.pellets); i++) shoot(jitter(dir), 'bullet');
         g.fx.muzzle(muzzle, dir, 0xffa050, 1.8, 'sg'); // 霰彈槍：前方扇形的煙
         g.fx.casing(muzzle.clone().addScaledVector(dir, -1 * this.dk), w.side, dir);
@@ -1069,11 +1077,12 @@ export class MechEntity {
             if (this.isPlayer) g.camShake = Math.max(g.camShake, 0.14);
           }
           SFX.shot(charged ? 'laserCharged' : 'laser', d.id, muzzle, this);
+          if (this.pm) this.lgLaserHits(hits, ldmg, limp, d, charged); // 傳說模組：折射雷射、蓄力共鳴
           if (g.range && this === g.player) g.rangeShot(d.id);
           w.cd = d.rof * (charged ? 1.6 : 1);
           this.recoil[w.side > 0 ? 'r' : 'l'] = charged ? 1 : 0.4;
           if (this.isPlayer) g.rumble(charged ? 0.9 : 0.1, charged ? 0.6 : 0.6, charged ? 260 : 70);
-          this.useEn((charged ? 250 : 60) * (1 - this.pmv('enWpn')));
+          this.useEn((charged ? 250 : 60) * (1 - this.pmv('enWpn')) * this.lgEnK());
         }
         break;
       case 'melee':
@@ -1806,6 +1815,7 @@ export class MechEntity {
           },
           d.id,
         );
+        if (this.pm) this.lgMeleeHit(t, st.dmg * mk * this.dmgMul * this.stats.parts.arms.melee, d); // 傳說模組：電弧刃
         g.fx.meleeHit(hp, d.color, !!st.finisher, m.dir, {
           sw,
           s: HITSTOP[wgt],
@@ -2038,6 +2048,12 @@ export class MechEntity {
     if (!sd) return;
     [dmg, impact] = sd;
     const W = weaponById(wid);
+    // 傳說模組：殘影、反應裝甲、堡壘（mech-legend.js）
+    if (this.pm) {
+      const ld = this.lgDefense(dmg, impact, from, melee);
+      if (!ld) return;
+      [dmg, impact] = ld;
+    }
     // 詞綴：正面護盾、反射、指揮的減傷（mech-affix.js）
     if (this.af || (this.game.afLeaders && this.game.afLeaders.length)) {
       const ad = this.afDefense(dmg, impact, from, at, melee, attr || (W ? weaponAttr(W) : 'kin'));
@@ -2165,6 +2181,7 @@ export class MechEntity {
     const g = this.game;
     if (this.shield) {
       if (g.pilotCreditShield) g.pilotCreditShield(this, dmg * mul * this.shield);
+      if (this.pm) this.lgAbsorbed(dmg * mul * this.shield); // 傳說模組「護盾轉化」
       mul *= 1 - this.shield;
       if (from && from.team !== this.team) {
         this.shieldHitT = SHIELD_BASH_T; // 盾擊的時機（meleeStartIdx）
@@ -2288,6 +2305,7 @@ export class MechEntity {
         this.enterDowned();
         return;
       }
+      if (this.pm && this.lgCheatDeath()) return; // 傳說模組「不死鳥」
       this.die(from);
     }
   }
@@ -2615,6 +2633,7 @@ export class MechEntity {
       if (this.markT > 0) this.markT -= dt;
     }
     if (this.iFrames > 0) this.iFrames -= dt;
+    if (this.pm) this.lgTick(dt); // 傳說模組（mech-legend.js）
     if (this.lastStandT > 0) this.lastStandT -= dt;
     if (this.enDelay > 0) this.enDelay -= dt;
     else
@@ -2630,7 +2649,13 @@ export class MechEntity {
     // quick boost
     // 被鉤住、黏住、纏住時沒有方向也能 QB（原地甩動掙脫）；緩速時 QB 耗能增加
     const qbAny = wish.lengthSq() > 0.1 || (this.sts && this.stsQbEscape());
-    if (wantQB && this.qbT <= 0 && qbAny && this.useEn(P.booster.qbCost * (this.sts ? this.stsQbK() : 1))) {
+    if (
+      wantQB &&
+      this.qbT <= 0 &&
+      qbAny &&
+      this.useEn(P.booster.qbCost * (this.sts ? this.stsQbK() : 1) * (this.pm ? this.lgQbK() : 1))
+    ) {
+      if (this.pm) this.lgQbStart(); // 傳說模組：殘影、電弧推進（mech-legend.js）
       this.qbT = 0.16;
       this.qbStartT = this.t; // 完美 QB 的判定（pqbDodge）
       if (this.pilotEnt()) this.cueArmSet('q'); // 提示中按 QB＝完美迴避
@@ -2783,7 +2808,7 @@ export class MechEntity {
     const g2 = w.groundAt(this.pos.x, this.pos.z, this.pos.y);
     if (this.pos.y <= g2) {
       if (!this.grounded && this.vel.y < -6 * this.dk)
-        ((this.landT = 0), (this.landV = -this.vel.y / this.dk)); // landV：動作用（舊尺度的 m/s）
+        ((this.landT = 0), (this.landV = -this.vel.y / this.dk), this.pm && this.lgLand(this.landV)); // landV：動作用（舊尺度的 m/s）；傳說模組「落雷踐踏」
       if (!this.grounded && this.vel.y < -12 * this.dk) {
         g.fx.dust(this.pos.clone().setY(g2 + 0.05), (2.6 * this.scale) / g.fx.k, 9);
         SFX.land(this.isPlayer ? null : this.center(), clamp((-this.vel.y / this.dk - 12) / 18, 0, 1));

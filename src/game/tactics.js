@@ -35,6 +35,7 @@ Object.assign(Game.prototype, {
   },
   // 改變打法的模組：擊破時（mission.js 的 onEnemyKilled，房主／單機）
   modKillFx(e, from) {
+    from.lgKill(e); // 傳說模組：連鎖引爆、追擊推進（entities/mech-legend.js）
     const kb = from.pmv('killBlast');
     if (kb > 0) {
       // 連鎖殉爆：爆炸再擊破的敵人也會爆炸
@@ -72,9 +73,12 @@ Object.assign(Game.prototype, {
   },
   // ---------- 三選一 ----------
   // 打開選擇畫面（遊戲暫停）；faction＝null 時任意委託方
-  campOpenPick(faction, title) {
-    const opts = modOffer(this.campMods(), faction, Math.random);
-    if (this.autoPickMod) return opts.length && this.campTakeMod(opts[0]); // 冒煙測試：直接選第一個
+  // legend＝固定放一個傳說模組（精英、大型兵器、最後一段擊破後；data/modules.js 的 modOffer）
+  campOpenPick(faction, title, legend) {
+    const opts = modOffer(this.campMods(), faction, Math.random, 3, !!legend);
+    // 冒煙測試：直接選第一個（傳說模組會改變打法，自動選的時候略過，其他測試的結果才穩定）
+    if (this.autoPickMod)
+      return opts.length && this.campTakeMod(opts.find((o) => !MODULES[o.id].legend) || opts[0]);
     if (!opts.length) return this.flashMsg('沒有可以選的模組（全部已滿級）', 0x8a97a6, 2);
     if (!(this.net && this.net.role)) {
       // 單人暫停；多人不暫停（其他玩家還在打）
@@ -105,6 +109,9 @@ Object.assign(Game.prototype, {
     const vals = modFxCompare(o.id, o.lv)
       .map((t) => `<div>${escHtml(t)}</div>`)
       .join('');
+    // 傳說模組：金框、★、沒有等級（data/modules.js 的 legend）
+    if (M.legend)
+      return `<div class="mpCard legend" style="border-color:#ffd060"><div class="mpTag" style="color:#ffd060">★ 傳說模組　${escHtml(tag)}</div><b>${escHtml(M.name)}</b><div class="mpTip">${escHtml(M.desc)}</div><div class="dim">改變打法、不能升級；最多持有 2 個，兩家的傳說模組會共鳴（傷害、QB、AP 小幅提高）</div><button data-i="${i}"${price && this.save.coam < price ? ' disabled' : ''}>${escHtml(btn)}${price ? `（${price.toLocaleString()} COAM）` : ''}</button></div>`;
     return `<div class="mpCard" style="border-color:${col}"><div class="mpTag" style="color:${col}">${escHtml(tag)}${o.lv > 1 ? `　強化 Lv${o.lv - 1} → Lv${o.lv}` : '　新'}</div><b>${escHtml(M.name)} Lv${o.lv}</b><div class="mpTip">${escHtml(MOD_TIPS[o.id] || M.desc)}</div><div class="dim">${vals}</div>${fit ? `<div class="mpFit${fit.bad ? ' bad' : ''}">${escHtml(fit.txt)}</div>` : ''}<button data-i="${i}"${price && this.save.coam < price ? ' disabled' : ''}>${escHtml(btn)}${price ? `（${price.toLocaleString()} COAM）` : ''}</button></div>`;
   },
   campTakeMod(o) {
@@ -125,13 +132,25 @@ Object.assign(Game.prototype, {
       this.state = this.modPrev === 'modpick' ? 'play' : this.modPrev || 'play';
       this.lastT = performance.now();
     }
-    // 排隊的三選一（Boss 擊破評價 S 的獎勵，boss-tier.js）
+    // 排隊的三選一（Boss 擊破評價 S 的獎勵、傳說模組）：字串＝委託方（Boss 擊破評價 S），物件＝{ f, title, legend }
     if (this.modPickQ && this.modPickQ.length) {
-      const f = this.modPickQ.shift();
-      setTimeout(() => this.campOpenPick(f, 'Boss 擊破評價 S 的獎勵'), 300);
+      const q = this.modPickQ.shift();
+      setTimeout(
+        () =>
+          typeof q === 'string'
+            ? this.campOpenPick(q, 'Boss 擊破評價 S 的獎勵')
+            : this.campOpenPick(q.f, q.title, q.legend),
+        300,
+      );
     }
     this.campChoicePendShow(); // 排隊的抉擇說明卡（guide.js）
     this.fpRelock(); // 追尾／第一人稱：選完直接回到瞄準（first-person.js）
+  },
+  // 三選一：已經有一個開著時排隊（campClosePick 接著開）
+  campQueuePick(f, title, legend) {
+    if (document.getElementById('modPick').classList.contains('on') || this.state === 'modpick')
+      (this.modPickQ = this.modPickQ || []).push({ f, title, legend });
+    else this.campOpenPick(f, title, legend);
   },
   // ---------- 商店（補給區段） ----------
   campOpenShop() {
