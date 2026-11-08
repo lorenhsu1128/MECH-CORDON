@@ -1884,6 +1884,7 @@ async function mapMechanics(page, key) {
             ) {
               p.pos.set(x, 0.6, z);
               p.vel.set(0, 0, 0);
+              p.voidAt = undefined; // 剛拉回過時 1 秒內不再扣 AP
               return { hp0: p.hp };
             }
       return null;
