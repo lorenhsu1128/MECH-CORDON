@@ -883,6 +883,7 @@ Object.assign(Game.prototype, {
       return this.tutKilled(e);
     }
     this.foeScavenge(e);
+    if (from) from.lastKillT = this.time; // 潛入：一發擊破的那一槍不出聲（seg-ops.js 的 segStealthNoise）
     if (!this.isClient) this.afKilled(e); // 詞綴：分裂、殉爆（game/affix.js）
     if (!this.isClient) this.lootKilled(e); // 素材與零件的掉落（game/loot.js）
     if (!this.isClient && e.nemId) this.nemKilled(e); // 宿敵（nemesis.js）

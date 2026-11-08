@@ -29,7 +29,7 @@ import { tagStyle } from './style/shader.js';
 import { TRAP_BUILDERS } from './trap-models.js';
 import { EVENT_BUILDERS } from './event-models.js';
 import { buildGunTurret, buildHwPick } from './gun-models.js';
-import { buildSecLight } from './stealth-models.js';
+import { buildRelay, buildSecLight } from './stealth-models.js';
 import { HEAVY_WEAPONS } from '../data/devices.js';
 
 const TINT = { tint: { ao: 0.8, grime: 0.3, gh: 0.6 } };
@@ -453,6 +453,7 @@ export const DEVICE_BUILDERS = {
   ...TRAP_BUILDERS,
   ...EVENT_BUILDERS,
   seclight: buildSecLight, // 潛入區段的探照燈塔（主線擴充 A2）
+  relay: buildRelay, // 潛入區段的通訊中繼塔
   gun_hmg: (c) => buildGunTurret('hmg', c),
   gun_rail: (c) => buildGunTurret('rail', c),
   gun_msl: (c) => buildGunTurret('msl', c),

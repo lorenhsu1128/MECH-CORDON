@@ -320,7 +320,8 @@ Object.assign(MechEntity.prototype, {
     sn.losT = 0;
     sn.blind = 0;
     if (was !== 2) sn.spotT = g.time;
-    if (radio && was !== 2) sn.radioT = RADIO_DL;
+    // 潛入區段（還沒全區警報）：不用自己的無線電，改成 seg-ops.js 的無線電倒數與局部警報
+    if (radio && was !== 2) sn.radioT = g.camp && g.segStealthOn() ? -1 : RADIO_DL;
     if (radio && was !== 2) g.barkSay(this, 'spot'); // 敵兵的喊話（game/voice.js）
     if (this.guardOf) for (const o of g.enemies) if (o.guardOf === this.guardOf) o.guardAlert = true;
   },

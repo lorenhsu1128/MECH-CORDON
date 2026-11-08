@@ -65,6 +65,8 @@ Object.assign(Game.prototype, {
     if (type === 'melee' && this.camp && this.segStealthOn()) return; // 潛入：揮刀不出聲（從背後暗殺，seg-ops.js）
     src.firedT = 0.6;
     this.playerFiredAt = 0.3; // 敵人的閃避（房主處理客機開火時也算）
+    // 潛入：聲音小一點、延後一下（那一槍擊破了目標就不算，seg-ops.js）
+    if (this.camp && this.segStealthOn()) return this.segStealthNoiseFire(src);
     this.aiNoise(src, NOISE[type] || 40);
   },
   aiRelease(e) {

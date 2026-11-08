@@ -15179,10 +15179,11 @@ async function testSegOps(browser, base) {
       out.front = !f.dead;
       f.sn.st = 0; // 先不要讓它響警報（下面測探照燈）
     }
-    // 探照燈：玩家一直站在光束裡（每格移到光束中心線上看得到的距離）＝警報
+    // 探照燈：玩家一直站在光束裡（每格移到光束中心線上看得到的距離）＝最近的那一群局部警報
     const lights = g.devs.filter((o) => o.kind === 'seclight');
+    out.relays = g.devs.filter((o) => o.kind === 'relay').length;
     let lit = 0;
-    for (let i = 0; i < 240 && !ss.st.alarm; i++) {
+    for (let i = 0; i < 240 && !ss.st.localEver; i++) {
       const d = lights[Math.floor(i / 80) % lights.length];
       if (d.base !== undefined) {
         const a = d.prog * Math.PI * 2;
@@ -15202,6 +15203,11 @@ async function testSegOps(browser, base) {
       if (lights.some((o) => o.user)) lit++;
     }
     out.lit = lit;
+    out.local = Object.keys(ss.st.local).length;
+    out.localNoFull = !ss.st.alarm;
+    // 局部警報持續 15 秒（中繼塔還在）＝全區警報
+    for (const k in ss.st.local) ss.st.local[k].t = 0.01;
+    g.campTick(1 / 30);
     out.alarm = ss.st.alarm;
     out.why = ss.st.why;
     out.wipe = ss.st.wipe;
@@ -15229,7 +15235,12 @@ async function testSegOps(browser, base) {
   );
   check(st.bs && !st.bsAlarm, '暗殺：從背後近戰一擊擊破、不響警報');
   check(st.front !== false, '正面的近戰不是一擊擊破');
-  check(st.lit > 0 && st.alarm && /探照燈/.test(st.why), `探照燈照到一段時間就響警報（照到 ${st.lit} 格）`);
+  check(
+    st.lit > 0 && st.local === 1 && st.localNoFull,
+    `探照燈照到一段時間：最近的那一群局部警報（照到 ${st.lit} 格）`,
+  );
+  check(st.relays >= 1, `通訊中繼塔 ${st.relays} 座`);
+  check(st.alarm && /中繼塔/.test(st.why), `局部警報 15 秒沒解決：中繼塔發出全區警報（${st.why}）`);
   check(st.wipe > 50 && st.wavesOut, '警報：資料開始被刪除、收起來的增援派出');
   check(st.partial && st.done && st.xpGain > 0, `刪除倒數到 0 只取回一部分、仍可下載（經驗 +${st.xpGain}）`);
   check(
@@ -15249,6 +15260,109 @@ async function testSegOps(browser, base) {
     return { gain: g.save.coam - c0, alarm: ss.st.alarm };
   });
   check(bonus.gain > 0 && !bonus.alarm, `未被發現下載完：潛入報酬 +${bonus.gain} COAM`);
+  // 潛入的改良（2026-11-08）：無線電倒數、局部警報、中繼塔、報酬分級、聲音
+  const im = await page.evaluate(() => {
+    const g = window.__game;
+    g.campEnterSeg();
+    const ss = g.camp.ss,
+      p = g.player;
+    p.hp = p.maxHp = 1e7;
+    const out = {};
+    const tick = (sec) => {
+      for (let i = 0; i < sec * 30; i++) {
+        g.time += 1 / 30;
+        g.campTick(1 / 30);
+      }
+    };
+    const idle = () =>
+      g.enemies.filter(
+        (o) => !o.dead && o.sn && o.sn.st === 0 && !o.guardOf && o.encG !== undefined && o.encG !== null,
+      );
+    // A：被看到 3 秒內擊破＝不算
+    let e = idle()[0];
+    p.pos.set(e.pos.x + 60, e.pos.y, e.pos.z);
+    e.senseEngage(p, true);
+    tick(3);
+    out.callShown = e.stCall > 0 && e.stCall < 3;
+    e.hp = 1;
+    e.takeDamage(1e6, 0, p, e.center());
+    tick(4);
+    out.killNoAlarm = e.dead && !ss.st.localEver && !ss.st.alarm;
+    // A→C：5 秒沒擊破＝那一群局部警報（別的群照常待機）
+    e = idle()[0];
+    const gid = e.encG;
+    e.senseEngage(p, true);
+    tick(5.3);
+    out.local = Object.keys(ss.st.local).length === 1 && !ss.st.alarm;
+    out.mates = g.enemies.filter((o) => !o.dead && o.encG === gid).every((o) => o.sn.st === 2);
+    out.others = g.enemies.some((o) => !o.dead && o.sn && o.encG !== gid && o.sn.st === 0);
+    // C：中繼塔全部打壞＝局部警報再久也不會變成全區
+    const relays = g.devs.filter((o) => o.kind === 'relay');
+    for (const d of relays) d.st = 3;
+    tick(17);
+    out.noRelayNoFull = !ss.st.alarm;
+    for (const d of relays) d.st = 0;
+    for (const k in ss.st.local) ss.st.local[k].t = 15;
+    tick(15.5);
+    out.relayFull = ss.st.alarm;
+    // E：只有局部警報＝潛入報酬一半
+    g.campEnterSeg();
+    const s2 = g.camp.ss;
+    g.player.hp = g.player.maxHp = 1e7;
+    s2.st.localEver = true;
+    const c0 = g.save.coam;
+    g.player.pos.copy(s2.intel.pos);
+    for (let i = 0; i < 300 && !s2.intel.done; i++) g.campTick(1 / 60);
+    out.half = g.save.coam - c0;
+    // B：QB 的聲音 15 m、開火 30 m 而且一發擊破不出聲
+    out.qb = g.segQbNoise(999);
+    const e2 = idle()[0];
+    const put = (d) => {
+      p.pos.set(e2.pos.x + d, e2.pos.y, e2.pos.z);
+      e2.sn.st = 0;
+      e2.sn.meter = 0;
+    };
+    put(20 * 1);
+    p.lastKillT = g.time;
+    g.segStealthNoiseFire(p);
+    tick(0.5);
+    out.killShotQuiet = e2.sn.st === 0;
+    put(20);
+    p.lastKillT = -99;
+    g.segStealthNoiseFire(p);
+    tick(0.5);
+    out.shotHeard = e2.sn.st !== 0;
+    // HUD 的資料：無線電倒數（客機也看得到：campView 的 sv.cl）
+    e2.sn.st = 0;
+    e2.senseEngage(p, true);
+    tick(1);
+    const v = g.segView_stealth();
+    out.sv = !!(v && v.cl && v.cl.some((a) => a[0] === e2.id && a[1] > 0));
+    return out;
+  });
+  check(im.callShown && im.killNoAlarm, '無線電倒數：被看到 5 秒內擊破＝不算被發現');
+  check(im.local && im.mates && im.others, '倒數結束：只有那一群局部警報，別的群照常待機');
+  check(im.noRelayNoFull && im.relayFull, '中繼塔打壞就不會有全區警報；還在的話 15 秒後全區警報');
+  check(im.half > 0 && im.half < bonus.gain, `只有局部警報：潛入報酬一半（+${im.half}）`);
+  check(Math.abs(im.qb - 15) < 0.01, `潛入中 QB 的聲音 15 m（${im.qb}）`);
+  check(im.killShotQuiet && im.shotHeard, '開火的聲音：一發擊破的那一槍不出聲，否則 30 m 內聽得到');
+  check(im.sv, 'HUD：敵人頭上的無線電倒數（快照的 sv.cl）');
+  await page.evaluate(() => {
+    const g = window.__game;
+    g.campEnterSeg();
+    const p = g.player;
+    p.hp = p.maxHp = 1e7;
+    const e = g.enemies.find((o) => !o.dead && o.sn && o.sn.st === 0 && !o.guardOf);
+    const x = e.pos.x + 26,
+      z = e.pos.z + 10;
+    p.pos.set(x, g.world.groundAt(x, z, 999), z);
+    e.senseEngage(p, true);
+    e.aiState.noFire = true;
+    const o = g.enemies.find((q) => q !== e && !q.dead && q.sn && q.sn.st === 0);
+    if (o) o.sn.meter = 0.6;
+    window.__pump(1.2);
+  });
+  await page.screenshot({ path: path.join(SHOT_DIR, 'seg-stealth-call.png') });
   // 畫面：探照燈的光束
   await page.evaluate(() => {
     const g = window.__game;

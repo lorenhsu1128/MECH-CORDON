@@ -120,8 +120,89 @@ export function buildSecLight(color = 0xfff0c8) {
     beam.renderOrder = 5;
     g.head.add(beam);
     g.beam = beam;
+    // 地面上的光圈（潛入的改良 D：照得到的範圍畫在地上；secLightVis 依照到與否換顏色）
+    const fw = Math.tan(D.ang) * L * 0.72;
+    const spot = new THREE.Mesh(
+      new THREE.CircleGeometry(1, 32),
+      new THREE.MeshBasicMaterial({
+        color: 0xfff0c8,
+        transparent: true,
+        opacity: 0.22,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    );
+    spot.rotation.x = -HP;
+    spot.scale.set(fw, fw * 1.8, 1);
+    spot.position.set(0, -H + 0.08, L * 0.72);
+    spot.userData.helper = true;
+    spot.userData.noFade = true;
+    spot.userData.noAO = true;
+    spot.castShadow = spot.receiveShadow = false;
+    spot.renderOrder = 5;
+    g.head.add(spot);
+    g.spot = spot;
   }
   g.wp = g.lens;
+  tagStyle(g);
+  return g;
+}
+
+// ---------- 通訊中繼塔（潛入的改良 C）：細長的格子桅杆＋頂端的天線陣列（ant＝弱點，打壞就藏起來）＋紅色的閃燈（blink） ----------
+export function buildRelay(color = 0xff5040) {
+  const g = new THREE.Group();
+  const D = DEVICES.relay;
+  const H = D.wp[1];
+  const glb = providedModel('device/relay');
+  if (glb) {
+    g.add(glb);
+    g.ant = glb.getObjectByName('ant') || null;
+    g.blink = glb.getObjectByName('blink') || null;
+  }
+  if (!glb) {
+    const M = metalSet(0x5a5e64, { roughness: 0.5 });
+    const b = new THREE.Group();
+    g.add(b);
+    bx(b, M.con, 1.4, 0.3, 1.4, 0, 0.15, 0, 0, 0, 0, 0.05);
+    const C = [
+      [-1, -1],
+      [1, -1],
+      [1, 1],
+      [-1, 1],
+    ];
+    const lv = [0.3, 1.6, 2.9, 4.2, H - 0.4];
+    const wAt = (y) => 0.45 - (y / H) * 0.3;
+    for (let i = 0; i < lv.length - 1; i++) {
+      const w0 = wAt(lv[i]),
+        w1 = wAt(lv[i + 1]);
+      for (let k = 0; k < 4; k++) {
+        const p = C[k],
+          q = C[(k + 1) % 4];
+        rod(b, M.body, [p[0] * w0, lv[i], p[1] * w0], [p[0] * w1, lv[i + 1], p[1] * w1], 0.05, 6);
+        rod(b, M.sub, [p[0] * w0, lv[i], p[1] * w0], [q[0] * w1, lv[i + 1], q[1] * w1], 0.022, 5);
+      }
+    }
+    fine(() => bx(b, M.dark, 0.35, 0.55, 0.25, 0.3, 0.6, -0.3, 0, 0, 0, 0.02)); // 機箱
+    bakeAll(b, { ...TINT, cache: 'relay_mast' });
+    // 天線陣列（弱點）：三片面板＋短桿
+    const ant = new THREE.Group();
+    ant.position.y = H;
+    g.add(ant);
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI * 2;
+      const pn = new THREE.Group();
+      pn.rotation.y = a;
+      ant.add(pn);
+      bx(pn, M.yel, 0.42, 0.7, 0.06, 0, 0, 0.32, 0, 0, 0, 0.01);
+    }
+    cy(ant, M.dark, 0.12, 0.6, 0, 0.5, 0, 10, 0.01);
+    g.ant = ant;
+    const blink = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), mGlow(color, 2));
+    blink.position.y = H + 0.85;
+    g.add(blink);
+    g.blink = blink;
+  }
+  g.wp = g.ant;
   tagStyle(g);
   return g;
 }

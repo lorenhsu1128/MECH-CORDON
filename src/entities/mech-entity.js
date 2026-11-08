@@ -2674,7 +2674,7 @@ export class MechEntity {
       if (wish.lengthSq() > 0.1) this.qbDir.copy(wish).normalize();
       else this.qbDir.set(0, 0, 0);
       if (this.sts) this.statusQB(); // 掙脫（mech-status.js）
-      if (this.pilotEnt()) g.aiNoise(this, NOISE_QB); // 敵人聽得到（game/ai-director.js）
+      if (this.pilotEnt()) g.aiNoise(this, g.segQbNoise(NOISE_QB)); // 敵人聽得到（game/ai-director.js；潛入中小聲）
       SFX.qb(this.isPlayer ? null : this.center());
       if (this.isPlayer) g.rumble(0.1, 0.35, 80);
       g.fx.chevrons(this.pos.clone(), this.qbDir.clone().negate(), 0xffffff);

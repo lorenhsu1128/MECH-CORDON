@@ -415,6 +415,7 @@ Object.assign(Game.prototype, {
     const ob = document.getElementById('oob');
     if (ob) ob.classList.toggle('on', oob > 0 && !p.dead);
     if (!oob) this.zoneEdgeHud(c, p, W, H, dt); // 靠近邊界：朝邊界那一側的畫面邊緣發光
+    this.segLightEdge(c, W, H); // 潛入：探照燈照到時畫面邊緣發黃／紅（seg-ops.js）
     this.voidHud(c, p, W, H, dt); // 虛空地圖：掉出平台時指向最近的平台
     this.rbHud(c, p, W, H, dt); // 邊閃邊打：反擊時間、繞射（game/ranged.js）
     this.wpHud(c, p, W, H); // 鎖定目標的弱點、追尾／第一人稱的改瞄（game/weak.js）
@@ -807,6 +808,7 @@ Object.assign(Game.prototype, {
         c.fillText('STAGGER', s.x, s.y - 4);
       }
       this.drawAwareMark(c, e, s); // 警戒標示與主攻（ai-director.js）
+      this.segStealthMark(c, e, s); // 潛入：察覺量表與無線電倒數（seg-ops.js）
       this.afDrawTag(c, e, s, R); // 詞綴（affix.js）
       // 砲火特效「華麗」：攻擊距離內、還沒鎖定的敵人身上一個橘色菱形（參考 Oh! Robot 的鎖定標記）
       if (rich && !isLock && e.pos.distanceTo(p.pos) < (p.stats.lockRange || 0)) {

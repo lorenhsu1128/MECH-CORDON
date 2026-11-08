@@ -18,7 +18,15 @@ const ST = {
   WIPE: 60, // 警報後資料被刪除的倒數（秒）：來不及下載完只拿到一半的經驗
   EXTRA: 28, // 警報後、下載完之前，保全部隊每隔幾秒從邊緣增援
   LIGHTS: [3, 5], // 探照燈塔的數量（依敵群數）
-  BONUS: [3000, 1200], // 未被發現的報酬：COAM＝a＋b×等級
+  BONUS: [3000, 1200], // 未被發現的報酬：COAM＝a＋b×等級；只有局部警報＝一半
+  // 2026-11-08 使用者定案的改良（docs/campaign-expansion-design.md 的「潛入的改良」）：
+  CALL: 5, // 無線電倒數：敵人進入交戰後幾秒才通知同一群（之前擊破＝不算被發現）
+  CALL_K: { commander: 0.7, ac: 0.8 }, // 依敵人種類的倍率（指揮官、敵對 AC 比較快）
+  RELAY_T: 15, // 局部警報持續幾秒沒處理（那一群還有活的），中繼塔就發出全區警報
+  RELAYS: [1, 2], // 通訊中繼塔的數量（敵群 3 群以上＝2）
+  QB_NOISE: 5 * DS, // 潛入中 QB 的聲音（15 m）
+  BOOST_NOISE: 10 * DS, // 突擊推進、跳躍噴射（30 m）
+  FIRE_NOISE: 10 * DS, // 開火（30 m；一發擊破目標的那一槍不算）
 };
 // 撤離
 const EX = {
@@ -84,11 +92,24 @@ Object.assign(Game.prototype, {
     const ss = this.camp.ss;
     // 敵群都在原地待機；分波的增援（encSpawn 排的）先收起來，警報時才派出
     this.spawnComp(comp(L - 1), 1, this.scaleHp, this.scaleDmg);
-    ss.st = { alarm: false, wipe: 0, partial: false, reserve: this.waves, extraT: ST.EXTRA, why: '' };
+    ss.st = {
+      alarm: false,
+      wipe: 0,
+      partial: false,
+      reserve: this.waves,
+      extraT: ST.EXTRA,
+      why: '',
+      local: {}, // 局部警報：群組鍵 → { t 到全區警報的倒數, ids }
+      localEver: false,
+      noise: [], // 延後的開火聲（一發擊破就取消）
+      boostT: 0,
+    };
     this.waves = [];
     const pos = this.campAtGroups(1, true)[0];
     ss.intel = { pos, t: 0, done: false, group: this.campRing(pos, 0x7fc8ff, '資料終端') };
-    this.flashAlert('潛入任務：不被發現就能拿到全部的報酬 — 從背後近戰可以無聲擊破');
+    this.flashAlert(
+      '潛入任務：被看到的敵人 5 秒後才會呼叫無線電 — 在那之前擊破它；先打掉通訊中繼塔就不會有全區警報',
+    );
   },
   // 探照燈塔：放在各敵群與起點之間（devPlan 之後，它會清掉裝置）
   segPost_stealth() {
@@ -107,12 +128,29 @@ Object.assign(Game.prototype, {
       used.push(pt);
       this.devAdd({ i: ++this.devSeq, k: 'seclight', x: pt.x, z: pt.z, y: 0, v: 1 });
     }
+    // 通訊中繼塔：放在離起點遠的敵群後方
+    const nr = G.length >= 3 ? ST.RELAYS[1] : ST.RELAYS[0];
+    const far = G.map((q) => q.pos)
+      .filter(Boolean)
+      .sort((a, b) => (s ? Math.hypot(b.x - s.x, b.z - s.z) - Math.hypot(a.x - s.x, a.z - s.z) : 0));
+    for (let i = 0; i < nr; i++) {
+      const g = far[i % Math.max(1, far.length)] || null;
+      const a = g && s ? this.devLerp(g, s, -0.25) : g;
+      const pt = this.devSpot(a, used, 2.5, !!a, 22) || this.devSpot(a, used, 1.5, false, 16);
+      if (!pt) continue;
+      used.push(pt);
+      this.devAdd({ i: ++this.devSeq, k: 'relay', x: pt.x, z: pt.z, y: 0, v: 1 });
+    }
+  },
+  // 還在運作的通訊中繼塔數
+  segRelays() {
+    return (this.devs || []).filter((d) => d.kind === 'relay' && d.st === 0).length;
   },
   // 潛入中（還沒警報）：給 mech-sense.js 用——安靜移動（沒有 QB、推進、開火）的玩家，近距離也要在視角內才看得到
   segQuiet(c) {
     const ss = this.camp && this.camp.ss;
     if (!ss || !ss.st || ss.st.alarm) return false;
-    return !(c.boost || c.qbT > 0 || c.firedT > 0);
+    return !(c.boost || c.firedT > 0);
   },
   segStealthOn() {
     const ss = this.camp && this.camp.ss;
@@ -125,6 +163,7 @@ Object.assign(Game.prototype, {
     const st = ss.st;
     st.alarm = true;
     st.why = why;
+    st.local = {};
     if (ss.intel && !ss.intel.done) st.wipe = ST.WIPE;
     this.flashMsg(`警報 — ${why}`, 0xff4d4d, 2.6, { k: 'warn', m: '警報', s: why });
     // 委託板的「絕對隱密」：被發現就失敗（board.js）
@@ -154,9 +193,38 @@ Object.assign(Game.prototype, {
       st = ss.st;
     if (!st) return;
     if (!st.alarm) {
-      // 有敵人進入交戰（看到、被打到又沒死）＝警報
-      for (const e of this.enemies)
-        if (!e.dead && e.sn && e.sn.st === 2 && !e.guardOf) return this.segAlarm('敵人發現了你');
+      this.segStealthNoise(dt, st);
+      // A 無線電倒數：進入交戰（看到、被打到又沒死、聽到很近的聲音）的敵人 ST.CALL 秒後通知同一群＝局部警報
+      for (const e of this.enemies) {
+        if (e.dead || !e.sn || e.sn.st !== 2 || e.guardOf || e.stCall === -1) continue;
+        if (e.stCall === undefined) {
+          e.stCallMax = ST.CALL * (ST.CALL_K[e.ai] || (e.ace ? ST.CALL_K.ac : 1));
+          e.stCall = e.stCallMax;
+          if (!st.callSaid) {
+            st.callSaid = true;
+            this.flashAlert(`${e.name || '敵人'}正在呼叫無線電 — 倒數結束前擊破它！`);
+          }
+          SFX.play('ui2', 0.5, 1.6, 0.05, 0.05, e.center());
+        }
+        e.stCall -= dt;
+        if (e.stCall <= 0) this.segLocalAlarm(e, '敵人用無線電通報了');
+      }
+      // C 局部警報：那一群全滅＝解除；ST.RELAY_T 秒沒處理而且中繼塔還在＝全區警報
+      for (const k of Object.keys(st.local)) {
+        const L = st.local[k];
+        const alive = L.ids.some((id) => {
+          const e = this.entById(id);
+          return e && !e.dead;
+        });
+        if (!alive) {
+          delete st.local[k];
+          this.flashMsg('局部警報解除', 0x7ee081, 1.8, { k: 'good', m: '局部警報解除' });
+          continue;
+        }
+        if (!this.segRelays()) continue; // 中繼塔都被打掉：不會有全區警報
+        L.t -= dt;
+        if (L.t <= 0) return this.segAlarm('通訊中繼塔發出了全區警報');
+      }
       return;
     }
     if (ss.intel && !ss.intel.done) {
@@ -181,7 +249,8 @@ Object.assign(Game.prototype, {
     if (st.partial) c.xpBonus -= Math.round(v / 2);
     if (!st.alarm) {
       const L = this.campLevel();
-      const b = Math.round((ST.BONUS[0] + ST.BONUS[1] * L) / 100) * 100;
+      const half = st.localEver; // E：只有局部警報＝一半
+      const b = Math.round(((ST.BONUS[0] + ST.BONUS[1] * L) * (half ? 0.5 : 1)) / 100) * 100;
       this.save.coam += b;
       this.missionEarned = (this.missionEarned || 0) + b;
       this.bountyPops.push({ txt: '+' + b.toLocaleString() + ' COAM', life: 2.2, y: 0 });
@@ -190,11 +259,16 @@ Object.assign(Game.prototype, {
       setTimeout(
         () =>
           this.camp &&
-          this.flashMsg(`未被發現 — 潛入報酬 +${b.toLocaleString()} COAM`, 0xffc040, 2.6, {
-            k: 'good',
-            m: '未被發現',
-            s: `潛入報酬 +${b.toLocaleString()} COAM`,
-          }),
+          this.flashMsg(
+            `${half ? '只有局部警報' : '未被發現'} — 潛入報酬 +${b.toLocaleString()} COAM`,
+            0xffc040,
+            2.6,
+            {
+              k: 'good',
+              m: half ? '只有局部警報' : '未被發現',
+              s: `潛入報酬 +${b.toLocaleString()} COAM${half ? '（一半）' : ''}`,
+            },
+          ),
         900,
       );
     }
@@ -206,16 +280,31 @@ Object.assign(Game.prototype, {
     const ss = this.camp.ss,
       st = ss.st;
     if (!st || !ss.intel || ss.intel.done) return null;
+    const nl = Object.keys(st.local || {}).length;
     const s = !st.alarm
-      ? '未被發現'
+      ? nl
+        ? `局部警報 ${nl} 群${this.segRelays() ? ` ｜ 全區警報倒數 ${Math.ceil(Math.min(...Object.values(st.local).map((x) => x.t)))} 秒` : ''}`
+        : st.localEver
+          ? '局部警報已解除'
+          : '未被發現'
       : st.partial
         ? '警報中：資料已被刪除一部分'
         : `警報！資料刪除倒數 ${Math.ceil(st.wipe)} 秒`;
-    return `${s} ｜ 前往資料終端下載情報${st.alarm ? ` ｜ 敵軍 ${alive}` : ''}`;
+    const rl = this.segRelays();
+    return `${s} ｜ 前往資料終端下載情報${!st.alarm && rl ? ` ｜ 通訊中繼塔 ${rl}` : ''}${st.alarm ? ` ｜ 敵軍 ${alive}` : ''}`;
   },
   segView_stealth() {
     const st = this.camp.ss.st;
-    return st ? { al: st.alarm ? 1 : 0 } : null;
+    if (!st) return null;
+    const cl = [];
+    if (!st.alarm)
+      for (const e of this.enemies) {
+        if (e.dead || !e.sn) continue;
+        const call = e.stCall > 0 ? Math.round((e.stCall / e.stCallMax) * 100) : 0;
+        const m = e.sn.st !== 2 ? Math.round(clamp(e.sn.meter, 0, 1) * 100) : 0;
+        if (call || m > 4) cl.push([e.id, call, m]);
+      }
+    return { al: st.alarm ? 1 : 0, lc: Object.keys(st.local || {}).length, cl };
   },
 
   // 探照燈塔（地圖裝置 seclight，devices.js 的 devTick 呼叫；房主／單機）：來回掃描，照到玩家一段時間＝警報。
@@ -259,7 +348,138 @@ Object.assign(Game.prototype, {
       d.beep = true;
       SFX.play('alarm', 0.45, 1.4, 0.05, 0.3, head);
     } else if (!seen) d.beep = false;
-    if (d.meter >= 1 && this.segStealthOn()) this.segAlarm('探照燈照到了你');
+    if (d.meter >= 1 && this.segStealthOn()) {
+      d.meter = 0;
+      // 最近的敵群收到通報（局部警報）
+      let best = null,
+        bd = 1e9;
+      for (const e of this.enemies) {
+        if (e.dead || !e.sn || e.guardOf) continue;
+        const dd = e.pos.distanceTo(d.pos);
+        if (dd < bd) ((bd = dd), (best = e));
+      }
+      if (best) this.segLocalAlarm(best, '探照燈照到了你');
+      else this.segAlarm('探照燈照到了你');
+    }
+  },
+  // C 局部警報：e 所在的那一群（同一個敵群，或沒有敵群時附近 RADIO 範圍內的）進入交戰
+  segLocalAlarm(e, why) {
+    const ss = this.camp && this.camp.ss,
+      st = ss && ss.st;
+    if (!st || st.alarm) return;
+    const key = e.encG !== undefined && e.encG !== null ? 'g' + e.encG : 'e' + e.id;
+    e.stCall = -1;
+    if (st.local[key]) return;
+    const ids = [];
+    const pl = this.playersAlive();
+    for (const o of this.enemies) {
+      if (o.dead || !o.sn || o.guardOf) continue;
+      const same = key[0] === 'g' ? o.encG === e.encG : o.pos.distanceTo(e.pos) < 40 * DS;
+      if (!same && o !== e) continue;
+      ids.push(o.id);
+      o.stCall = -1;
+      if (o.sn.st !== 2) {
+        let t = pl[0],
+          bd = 1e9;
+        for (const p of pl) {
+          const dd = p.pos.distanceTo(o.pos);
+          if (dd < bd) ((bd = dd), (t = p));
+        }
+        if (t) o.senseEngage(t, false);
+      }
+    }
+    st.local[key] = { t: ST.RELAY_T, ids };
+    st.localEver = true;
+    const rl = this.segRelays();
+    this.flashMsg(`局部警報 — ${why}`, 0xffa040, 2.6, {
+      k: 'warn',
+      m: '局部警報',
+      s: rl ? `${ST.RELAY_T} 秒內解決這一群，或打掉通訊中繼塔` : '中繼塔已被摧毀：不會有全區警報',
+    });
+    if (this.player) SFX.play('alarm', 0.5, 1.3, 0, 0, this.player.pos);
+    this.campComm('alarmLocal', this.campCtx());
+  },
+  // B 潛入中的聲音：開火延後一下才出聲（那一槍擊破了目標就不算）、突擊推進定時出聲
+  segStealthNoiseFire(src) {
+    const st = this.camp && this.camp.ss && this.camp.ss.st;
+    if (!st) return;
+    st.noise.push({ src, t: 0.35, at: this.time });
+  },
+  segStealthNoise(dt, st) {
+    for (let i = st.noise.length - 1; i >= 0; i--) {
+      const n = st.noise[i];
+      if ((n.t -= dt) > 0) continue;
+      st.noise.splice(i, 1);
+      if (n.src.dead || (n.src.lastKillT !== undefined && n.src.lastKillT >= n.at - 0.05)) continue;
+      this.aiNoise(n.src, ST.FIRE_NOISE);
+    }
+    if ((st.boostT -= dt) <= 0) {
+      st.boostT = 0.5;
+      for (const p of this.playersAlive()) if (p.boost) this.aiNoise(p, ST.BOOST_NOISE);
+    }
+  },
+  // 潛入中 QB 的聲音半徑（mech-entity.js 的 QB 呼叫）
+  segQbNoise(r) {
+    return this.camp && this.segStealthOn() ? ST.QB_NOISE : r;
+  },
+  // D 潛入的 HUD：敵人頭上的察覺量表與無線電倒數（名牌之後，hud.js 呼叫；房主與客機）
+  segStealthMark(c, e, s) {
+    const v = this.segStealthData();
+    if (!v) return;
+    const x = v.get(e.id);
+    if (!x) return;
+    const [call, m] = x;
+    c.save();
+    const w = 46,
+      y = s.y - 40;
+    if (call > 0) {
+      const blink = Math.sin(this.time * 14) > 0;
+      c.fillStyle = 'rgba(0,0,0,.65)';
+      c.fillRect(s.x - w / 2 - 2, y - 2, w + 4, 9);
+      c.fillStyle = blink ? '#ff3a2a' : '#ff8a40';
+      c.fillRect(s.x - w / 2, y, (w * call) / 100, 5);
+      c.font = 'bold 12px Chakra Petch';
+      c.textAlign = 'center';
+      c.lineWidth = 3;
+      c.strokeStyle = 'rgba(0,0,0,.8)';
+      c.strokeText('無線電呼叫中', s.x, y - 5);
+      c.fillStyle = '#ffb090';
+      c.fillText('無線電呼叫中', s.x, y - 5);
+    } else if (m > 0) {
+      c.fillStyle = 'rgba(0,0,0,.55)';
+      c.fillRect(s.x - w / 2 - 1, y + 1, w + 2, 6);
+      c.fillStyle = m > 60 ? '#ffa040' : '#ffd860';
+      c.fillRect(s.x - w / 2, y + 2, (w * m) / 100, 4);
+    }
+    c.restore();
+  },
+  // 房主／單機：直接從實體算；客機：快照的 campView 的 sv.cl。回傳 Map(id → [倒數 %, 察覺 %])，沒有潛入時 null
+  segStealthData() {
+    if (this._stdT === this.time) return this._std;
+    this._stdT = this.time;
+    let cl = null;
+    if (this.camp && this.camp.ss && this.camp.ss.type === 'stealth') {
+      const v = this.segView_stealth();
+      cl = v && v.cl;
+    } else if (this.campC && this.campC.view && this.campC.view.sv && this.campC.view.sv.cl)
+      cl = this.campC.view.sv.cl;
+    this._std = cl ? new Map(cl.map((a) => [a[0], [a[1], a[2]]])) : null;
+    return this._std;
+  },
+  // D 探照燈照到時畫面邊緣發光：黃（照到）→ 紅（快要通報）
+  segLightEdge(c, W, H) {
+    let k = 0;
+    for (const d of this.devs || []) if (d.kind === 'seclight' && d.user) k = Math.max(k, d.meter || 0.3);
+    if (!k) return;
+    const col = k > 0.6 ? '255,60,40' : '255,200,60';
+    const a = 0.25 + 0.35 * k + 0.1 * Math.sin(this.time * 12);
+    const g = c.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.7);
+    g.addColorStop(0, `rgba(${col},0)`);
+    g.addColorStop(1, `rgba(${col},${a.toFixed(3)})`);
+    c.save();
+    c.fillStyle = g;
+    c.fillRect(0, 0, W, H);
+    c.restore();
   },
   // 探照燈塔的外觀（各端每格；trapVis 之後）
   secLightVis(d) {
@@ -274,6 +494,11 @@ Object.assign(Game.prototype, {
       m.beam.material.opacity = (red ? 0.2 : 0.11) * (0.85 + 0.15 * Math.sin(this.time * 9));
     }
     if (m.lens) m.lens.material.emissive.setHex(!on ? 0x111111 : d.user ? 0xff3020 : 0xfff2d0);
+    if (m.spot) {
+      m.spot.visible = on;
+      m.spot.material.color.setHex(d.user ? 0xff5030 : 0xfff0c8);
+      m.spot.material.opacity = d.user ? 0.4 : 0.2;
+    }
   },
 
   // ================= 撤離 =================

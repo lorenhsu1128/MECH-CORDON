@@ -473,3 +473,15 @@ SEG_TYPES.stealth = {
 - **出擊**：c7s1 ANVIL、c7s2 SALAMANDER、c7s3 GANTRY、c8s1 COLOSSUS、c8s2 HEARTH、c8s3 SOVEREIGN（終章）；c7y 是 ECHO-ANVIL、c8y 是 ECHO-HEARTH；紫色的 c7x／c8x 沿用 MIRAGE／VIPER。簡報、通訊、`docs/story-script.md` 的 Boss 名稱一起改。
 - **測試**：`testBoss4`（六隻的行為：舉鎚 → 卡住、潛行不能鎖定 → 鑽出前的火光、吊下貨櫃留下掩體與電磁吸引、主砲齊射 → 散熱、護盾板擋住的方向與過載、召喚殘影 → 停機；截圖 `boss4-<種類>.png`）、`testBossKit7`／`testBossKit8`（共用的專屬內容測試）。
 - **過場動畫**（第 16 期）：見 `docs/cinematics.md` 的「主線擴充」。
+
+## 12. 潛入的改良（2026-11-08 使用者定案：A～E 全部做，無線電倒數從 5 秒起算）
+
+原本任何一個敵人進入交戰就全區警報、只能用走的或從背後近戰一擊，不適合機甲動作遊戲。改成（`game/seg-ops.js` 的 `ST`）：
+
+- **A 無線電倒數**：敵人看到你、被打中沒倒、聽到很近的聲音而進入交戰時，頭上出現「無線電呼叫中」的倒數條（`ST.CALL` 5 秒；指揮官 ×0.7、敵對 AC ×0.8），倒數結束前用任何武器擊破＝不算被發現。潛入中敵人自己的無線電（`mech-sense.js` 的 `radioT`）停用，改由倒數處理。
+- **B 移動與聲音**：走路、跑步都安靜（`segQuiet` 只看突擊推進與開火）；QB 的聲音 15 m（`segQbNoise`）、突擊推進／跳躍噴射 30 m（每 0.5 秒）、開火 30 m 而且延後 0.35 秒——那一槍擊破了目標（`onEnemyKilled` 記的 `lastKillT`）就不出聲（`segStealthNoiseFire`）。背後近戰照舊無聲。
+- **C 局部警報與通訊中繼塔**：倒數結束或探照燈照太久＝那一群（同一個敵群 `encG`）局部警報（`segLocalAlarm`），別的群照常待機；那一群全滅＝解除。局部警報持續 `ST.RELAY_T` 15 秒沒解決、而且地圖上的**通訊中繼塔**（地圖裝置 `relay`，1～2 座，放在離起點遠的敵群後方，打壞頂端的天線就熄掉；模型 `render/stealth-models.js` 的 `buildRelay`）還在＝全區警報（資料刪除倒數、增援，和以前的警報一樣）。中繼塔都打壞就不會有全區警報。
+- **D 看得見的偵測**：探照燈的光束在地上畫出光圈（照到時變紅）、照到時畫面邊緣發黃→紅（`segLightEdge`）；敵人頭上的察覺量表與無線電倒數（`segStealthMark`，客機照 `campView` 的 `sv.cl`）。
+- **E 報酬分級**：完全沒被發現＝全額潛入報酬、只有局部警報＝一半、全區警報＝沒有。委託板的「絕對隱密」改成全區警報才失敗。
+- 台詞：潛入的開場通訊改成新規則、新增局部警報 `alarmLocal` 的 5 句（中文與日文語音）。`NET_VERSION` 11.36。
+- 測試：`testSegOps` 加上無線電倒數、局部警報只叫醒那一群、中繼塔、報酬一半、QB 與開火的聲音、HUD 的資料；截圖 `seg-stealth-call.png`。

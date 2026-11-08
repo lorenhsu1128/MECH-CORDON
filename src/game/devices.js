@@ -405,6 +405,8 @@ Object.assign(Game.prototype, {
       if (d.def.trap) {
         this.trapVis(d, dt); // 環境陷阱（devices-traps.js）
         if (d.kind === 'seclight') this.secLightVis(d);
+        if (d.kind === 'relay' && d.mesh.blink)
+          d.mesh.blink.visible = d.st === 0 && Math.sin(this.time * 6) > 0; // 中繼塔的閃燈
         if (p && !p.dead && this.devUsable(d) && this.devIn(d, p)) near = d;
         this.devIntro(d, p);
         continue;

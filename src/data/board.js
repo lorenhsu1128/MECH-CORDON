@@ -31,7 +31,12 @@ export const RULES = {
   oneShot: { name: '一擊必殺', desc: '雙方受到的傷害 ×5', types: ['battle', 'elite'], segs: 1 },
   noQB: { name: '推進器故障', desc: '不能 QB', types: ['battle', 'front'], segs: 1 },
   fog: { name: '濃霧', desc: '視野很短', types: ['battle', 'stealth', 'intel'], segs: 2 },
-  stealthStrict: { name: '絕對隱密', desc: '潛入作業，被發現就失敗', types: ['stealth'], segs: 1 },
+  stealthStrict: {
+    name: '絕對隱密',
+    desc: '潛入作業，全區警報就失敗（局部警報不算）',
+    types: ['stealth'],
+    segs: 1,
+  },
   extractRich: { name: '大宗物資', desc: '撤離作業，回收物資加倍', types: ['extract'], segs: 1 },
 };
 export const RULE_KEYS = Object.keys(RULES);
