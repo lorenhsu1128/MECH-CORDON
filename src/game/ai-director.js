@@ -62,6 +62,7 @@ Object.assign(Game.prototype, {
     for (const o of this.enemies) if (o.sn && o.sn.st !== 2) o.senseHear(src.pos, r, src);
   },
   aiFireNoise(src, type) {
+    if (type === 'melee' && this.camp && this.segStealthOn()) return; // 潛入：揮刀不出聲（從背後暗殺，seg-ops.js）
     src.firedT = 0.6;
     this.playerFiredAt = 0.3; // 敵人的閃避（房主處理客機開火時也算）
     this.aiNoise(src, NOISE[type] || 40);
@@ -117,7 +118,8 @@ Object.assign(Game.prototype, {
     for (const e of this.enemies) if (e.sn && e.sn.tok) e.sn.tokT += dt;
     // 沒有交戰中的敵人太久：最近的待機敵人（不含守衛）帶著小隊來找玩家
     const live = this.enemies.filter((e) => !e.dead && e.sn && e.sn.on && !e.guardOf);
-    if (live.length && !live.some((e) => e.sn.st === 2)) {
+    // 潛入區段還沒警報時不主動搜索玩家（game/seg-ops.js）
+    if (live.length && !live.some((e) => e.sn.st === 2) && !(this.camp && this.segStealthOn())) {
       D.stallT += dt;
       if (D.stallT > STALL_T) {
         D.stallT = 0;

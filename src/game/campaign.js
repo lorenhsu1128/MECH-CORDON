@@ -33,7 +33,7 @@ const EXIT_R = 4 * MS; // 出口的觸發半徑
 const EXIT_HOLD = 0.8; // 站進出口多久才出發
 const PAD_R = 3.5 * MS; // 補給台、資料終端的半徑
 // 推進型的區段（docs/map-pacing-design.md）：大地圖、從作戰區域一側進場、敵人分成幾群、出口在另一側
-const ADVANCE = ['battle', 'destroy', 'intel', 'breakthrough'];
+const ADVANCE = ['battle', 'destroy', 'intel', 'breakthrough', 'stealth', 'extract'];
 const WSLOTS = ['rarm', 'larm', 'rback', 'lback'];
 const clone = (o) => JSON.parse(JSON.stringify(o));
 // 紀錄點保存的欄位（this.camp 裡其餘的是執行中的狀態）
@@ -331,6 +331,8 @@ Object.assign(Game.prototype, {
     this.waveAlerted = false;
     this.planVehicles();
     if ((bd && bd.rail) || type === 'escort') this.vehPlan = [];
+    const post = this.segH('Post', type);
+    if (post) post.call(this); // 新的區段類型：裝置與掉落物之後的擺放（seg-ops.js；devPlan、planVehicles 會清掉它們）
     if (mp) {
       this.net.tr.broadcast(this.campStartMsg());
       this.netEvents = [];
@@ -450,6 +452,8 @@ Object.assign(Game.prototype, {
       // 推進型：資料終端在最深的敵群那裡
       const pos = this.campAtGroups(1, true)[0];
       ss.intel = { pos, t: 0, done: false, group: this.campRing(pos, 0x7fc8ff, '資料終端') };
+    } else if (this.segH('Spawn', type)) {
+      this.segH('Spawn', type).call(this, L, comp); // 主線擴充的新區段類型（seg-ops.js）
     } else {
       ss.type = 'battle';
       this.spawnComp(comp(L), 1, sh, sd);
@@ -578,7 +582,8 @@ Object.assign(Game.prototype, {
     if (ss.convoy && !ss.convoyDone) return true;
     if (ss.intel && !ss.intel.done) return true;
     if (ss.brk) return true;
-    return false;
+    const blk = this.segH('Block');
+    return !!(blk && blk.call(this));
   },
   // 區段清除：發放上一個出口選的獎勵；最後一段就結束出擊，否則開出口
   campCleared() {
@@ -900,6 +905,8 @@ Object.assign(Game.prototype, {
     if (ss.intel) this.campDisposeGroup(ss.intel.group);
     if (ss.pad) ss.pad.group = null;
     if (ss.intel) ss.intel.group = null;
+    const clr = this.segH('Clear');
+    if (clr) clr.call(this);
   },
   // 站在光環裡累計秒數（離開就歸零：reset）
   campStand(o, dt, r, reset = true) {
@@ -996,8 +1003,13 @@ Object.assign(Game.prototype, {
         this.flashMsg(`情報下載完成（經驗 +${v}）`, 0x7fc8ff, 2.4);
         this.campDisposeGroup(ss.intel.group);
         ss.intel.group = null;
+        const done = this.segH('IntelDone');
+        if (done) done.call(this, v); // 潛入：未被發現的報酬（seg-ops.js）
       }
     }
+    const tick = this.segH('Tick');
+    if (tick) tick.call(this, dt); // 主線擴充的新區段類型（seg-ops.js）
+    if (this.state !== 'play') return;
     if (ss.brk) {
       ss.brk.t -= dt;
       ss.brk.waveT -= dt;
@@ -1537,6 +1549,8 @@ Object.assign(Game.prototype, {
     let goal;
     if (c.cleared) goal = c.hint || '前往出口（站進光環）';
     else if (c.hint) goal = c.hint;
+    else if (this.segH('Goal') && this.segH('Goal').call(this, alive))
+      goal = this.segH('Goal').call(this, alive); // 新的區段類型（seg-ops.js）
     else if (ss.targets)
       goal = `摧毀目標 ${ss.targets.filter((e) => e.dead).length}／${ss.targets.length} ｜ 殘存敵軍 ${alive}`;
     else if (ss.defend)
@@ -1569,11 +1583,13 @@ Object.assign(Game.prototype, {
       for (const ex of c.exits || []) mk(ex.pos, ex.reward, null, null, ex.lab);
       if (ss.pad && ss.pad.group) mk(ss.pad.pos, null, '#7ee081', '補');
       if (ss.intel && ss.intel.group) mk(ss.intel.pos, null, '#7fc8ff', '情');
+      for (const [pos, col, icon] of this.segMarks()) mk(pos, null, col, icon);
     } else if (this.campC && this.campC.vis) {
       const V = this.campC.vis;
       for (const ex of V.exits || []) mk(ex.pos, ex.reward, null, null, ex.lab);
       if (V.pad) mk(V.pad.pos, null, '#7ee081', '補');
       if (V.intel) mk(V.intel.pos, null, '#7fc8ff', '情');
+      for (const [pos, col, icon] of this.segMarks()) mk(pos, null, col, icon);
     }
     if (!marks.length) return;
     const W = innerWidth,

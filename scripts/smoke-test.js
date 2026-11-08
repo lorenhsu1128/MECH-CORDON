@@ -15048,6 +15048,236 @@ async function testVoidMaps(browser, base) {
 }
 
 // 2026-11-07：跳得很高時機體不跑出畫面（安全框）、鏡頭拉遠
+// 主線擴充第 1 期：潛入（探照燈塔、暗殺、安靜移動、警報、資料刪除、未被發現的報酬）與撤離（回收物資、回收機、裝載、撤退）
+async function testSegOps(browser, base) {
+  console.log('主線的新區段：潛入與撤離');
+  const { ctx, page } = await newPage(browser, 'segops');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await freezeLoop(page);
+  const st = await page.evaluate(() => {
+    const g = window.__game;
+    g.autoPickMod = true;
+    g.campBegin('c1s2');
+    g.camp.seg = 1;
+    g.camp.types[1] = 'stealth';
+    g.campEnterSeg();
+    const ss = g.camp.ss,
+      p = g.player;
+    p.hp = p.maxHp = 1e7;
+    const out = {
+      type: ss.type,
+      lights: (g.devs || []).filter((d) => d.kind === 'seclight').length,
+      held: g.waves.length === 0 && !!ss.st,
+      intel: !!ss.intel,
+      idle: g.enemies.filter((e) => !e.dead && e.sn && e.sn.st === 0).length,
+      goal: g.campGoal(1, 0),
+      spec: g.goalSpec().win.join('／'),
+    };
+    // 安靜移動：在待機敵人（視角有限的，無人機看得到四周）的背後 15 m（SENSE_NEAR 以內）不會被察覺；響警報之後同樣的位置會
+    const cands = g.enemies.filter(
+      (o) => !o.dead && o.sn && o.sn.st === 0 && o.ai !== 'ac' && !o.ace && o.sn.fov < 6 && !o.flying,
+    );
+    let e = cands[0];
+    const behind = (o, d) => {
+      const fx = -Math.sin(o.yaw),
+        fz = -Math.cos(o.yaw);
+      const x = o.pos.x - fx * d,
+        z = o.pos.z - fz * d;
+      p.pos.set(x, g.world.groundAt(x, z, o.pos.y + 20), z);
+      p.vel.set(0, 0, 0);
+      p.boost = false;
+      p.qbT = 0;
+      p.firedT = 0;
+    };
+    const meterAt = (alarm, o = e) => {
+      e = o;
+      ss.st.alarm = alarm;
+      e.sn.meter = 0;
+      e.sn.percT = 0;
+      behind(e, 15);
+      const y0 = e.yaw;
+      e.senseIdle(0.01, [p]);
+      e.yaw = y0;
+      const m = e.sn.meter;
+      e.sn.meter = 0;
+      e.sn.st = 0;
+      ss.st.alarm = false;
+      return m;
+    };
+    // 背後的視線被地形或物件擋住的不算：找一台警報後看得到的
+    for (const o of cands) if ((out.loud = meterAt(true, o)) > 0) break;
+    out.quiet = meterAt(false);
+    // 暗殺：背後的近戰一擊擊破、不響警報；正面的近戰沒有一擊
+    behind(e, 3);
+    e.takeDamage(50, 0, p, e.center(), new THREE.Vector3(0, 0, 1), { kb: 0 });
+    out.bs = e.dead;
+    g.campTick(1 / 60);
+    out.bsAlarm = ss.st.alarm;
+    const f = g.enemies.find(
+      (o) => !o.dead && o.sn && o.sn.st === 0 && o.ai !== 'ac' && !o.ace && o.maxHp > 60,
+    );
+    if (f) {
+      const fx = -Math.sin(f.yaw),
+        fz = -Math.cos(f.yaw);
+      p.pos.set(f.pos.x + fx * 3, f.pos.y, f.pos.z + fz * 3);
+      f.takeDamage(10, 0, p, f.center(), new THREE.Vector3(0, 0, 1), { kb: 0 });
+      out.front = !f.dead;
+      f.sn.st = 0; // 先不要讓它響警報（下面測探照燈）
+    }
+    // 探照燈：玩家一直站在光束裡（每格移到光束中心線上看得到的距離）＝警報
+    const lights = g.devs.filter((o) => o.kind === 'seclight');
+    let lit = 0;
+    for (let i = 0; i < 240 && !ss.st.alarm; i++) {
+      const d = lights[Math.floor(i / 80) % lights.length];
+      if (d.base !== undefined) {
+        const a = d.prog * Math.PI * 2;
+        const head = d.pos.clone();
+        head.y += 4.75 * 3;
+        head.x += Math.sin(a) * 3.6;
+        head.z += Math.cos(a) * 3.6;
+        for (const r of [14, 20, 28, 36, 44, 9, 6]) {
+          const x = d.pos.x + Math.sin(a) * r * 3,
+            z = d.pos.z + Math.cos(a) * r * 3;
+          p.pos.set(x, g.world.groundAt(x, z, 999), z);
+          if (!g.world.losBlocked(head, p.center())) break;
+        }
+      }
+      g.time += 1 / 60;
+      g.devTick(1 / 60);
+      if (lights.some((o) => o.user)) lit++;
+    }
+    out.lit = lit;
+    out.alarm = ss.st.alarm;
+    out.why = ss.st.why;
+    out.wipe = ss.st.wipe;
+    out.wavesOut = g.waves.length > 0 || !!g.wavePend;
+    // 資料刪除倒數到 0：只能取回一部分（經驗減半）
+    ss.st.wipe = 0.01;
+    ss.st.extraT = 99;
+    g.campTick(1 / 30);
+    out.partial = ss.st.partial;
+    const xp0 = g.camp.xpBonus;
+    p.pos.copy(ss.intel.pos);
+    for (let i = 0; i < 300 && !ss.intel.done; i++) g.campTick(1 / 60);
+    out.done = ss.intel.done;
+    out.xpGain = g.camp.xpBonus - xp0;
+    g.devVisTick(1 / 60);
+    return out;
+  });
+  check(st.type === 'stealth' && st.intel, '潛入區段：資料終端');
+  check(st.lights >= 3, `潛入區段：探照燈塔 ${st.lights} 座`);
+  check(st.held && st.idle >= 3, `潛入區段：敵人待機（${st.idle} 台）、增援收起來`);
+  check(/未被發現/.test(st.goal) && /不被發現/.test(st.spec), 'HUD 的目標與過關條件卡片寫出潛入的規則');
+  check(
+    st.quiet === 0 && st.loud > 0,
+    `潛入：背後 15 m 安靜移動不被察覺（${st.quiet}），警報後會（${(st.loud || 0).toFixed(2)}）`,
+  );
+  check(st.bs && !st.bsAlarm, '暗殺：從背後近戰一擊擊破、不響警報');
+  check(st.front !== false, '正面的近戰不是一擊擊破');
+  check(st.lit > 0 && st.alarm && /探照燈/.test(st.why), `探照燈照到一段時間就響警報（照到 ${st.lit} 格）`);
+  check(st.wipe > 50 && st.wavesOut, '警報：資料開始被刪除、收起來的增援派出');
+  check(st.partial && st.done && st.xpGain > 0, `刪除倒數到 0 只取回一部分、仍可下載（經驗 +${st.xpGain}）`);
+  check(
+    await page.evaluate(() => window.__game.camp.cleared && window.__game.camp.exits.length >= 2),
+    '潛入：下載完就開出口（不必全滅）',
+  );
+  // 未被發現：額外的潛入報酬
+  const bonus = await page.evaluate(() => {
+    const g = window.__game;
+    g.campEnterSeg();
+    const ss = g.camp.ss,
+      p = g.player;
+    p.hp = p.maxHp = 1e7;
+    const c0 = g.save.coam;
+    p.pos.copy(ss.intel.pos);
+    for (let i = 0; i < 300 && !ss.intel.done; i++) g.campTick(1 / 60);
+    return { gain: g.save.coam - c0, alarm: ss.st.alarm };
+  });
+  check(bonus.gain > 0 && !bonus.alarm, `未被發現下載完：潛入報酬 +${bonus.gain} COAM`);
+  // 畫面：探照燈的光束
+  await page.evaluate(() => {
+    const g = window.__game;
+    const d = g.devs.find((o) => o.kind === 'seclight');
+    const p = g.player;
+    const a = d.prog * Math.PI * 2 + 1.9;
+    const x = d.pos.x + Math.sin(a) * 12,
+      z = d.pos.z + Math.cos(a) * 12;
+    p.pos.set(x, g.world.groundAt(x, z, 999), z);
+    for (const e of g.enemies) e.updateAI = () => {};
+    window.__pump(1.2);
+  });
+  await page.screenshot({ path: path.join(SHOT_DIR, 'seg-stealth.png') });
+  // 撤離
+  const ex = await page.evaluate(() => {
+    const g = window.__game;
+    g.camp.types[1] = 'extract';
+    g.campEnterSeg();
+    const ss = g.camp.ss,
+      p = g.player,
+      ext = ss.ext;
+    p.hp = p.maxHp = 1e7;
+    const out = { type: ss.type, targets: ss.targets.length };
+    const salv = g.pickups.filter((k) => k.kind === 'salvage' && !k.dead);
+    out.salv = salv.length;
+    g.collectPickup(salv[0], p);
+    g.collectPickup(salv[1], p);
+    out.n = ext.n;
+    out.loot = ext.loot;
+    out.goal0 = g.campGoal(1, 0);
+    for (const t of ss.targets) t.takeDamage(1e9, 0, p, t.center(), new THREE.Vector3(0, 0, 1));
+    g.campTick(1 / 60);
+    out.ph1 = ext.ph;
+    out.lz = !!(ext.lz && ext.lz.group);
+    const v = g.campView();
+    out.view = !!(v.sv && v.sv.lz);
+    out.cleared0 = g.camp.cleared;
+    // 客機：照 sv 建回收地點的光環
+    g.campC = { vk: null };
+    g.campClientView(v);
+    out.client = !!(g.campC.vis && g.campC.vis.lz);
+    g.campClearClientVis();
+    g.campC = null;
+    // 等待中有增援
+    const q0 = (g.spawnQ || []).length;
+    ext.waveT = 0;
+    g.campTick(1 / 60);
+    out.wave = (g.spawnQ || []).length > q0;
+    ext.t = 0.01;
+    g.campTick(1 / 30);
+    out.ph2 = ext.ph;
+    const c0 = g.save.coam;
+    p.pos.copy(ext.lz.pos);
+    for (let i = 0; i < 400 && ext.ph < 3; i++) g.campTick(1 / 60);
+    out.ph3 = ext.ph;
+    out.gain = g.save.coam - c0;
+    out.cleared = g.camp.cleared;
+    out.left = g.enemies.filter((e) => !e.dead).length;
+    return out;
+  });
+  check(
+    ex.type === 'extract' && ex.targets >= 1 && ex.salv === 6,
+    `撤離區段：目標 ${ex.targets} 座、回收物資 ${ex.salv} 箱`,
+  );
+  check(
+    ex.n === 2 && ex.loot > 0 && /回收物資 2 箱/.test(ex.goal0),
+    '撿到回收物資：記下來（撤離成功才入帳）',
+  );
+  check(
+    ex.ph1 === 1 && ex.lz && ex.view && !ex.cleared0,
+    '目標全毀：呼叫回收機、回收地點的光環、客機的顯示資料、還不算清除',
+  );
+  check(ex.client, '客機照 sv 建回收地點的光環');
+  check(ex.wave, '等待回收機時有增援');
+  check(ex.ph2 === 2 && ex.ph3 === 3, '回收機抵達 → 站進回收地點裝載完成');
+  check(
+    ex.gain === ex.loot && ex.cleared && ex.left === 0,
+    `撤離成功：物資入帳 +${ex.gain} COAM、敵軍撤退、區段清除`,
+  );
+  await thawLoop(page);
+  await ctx.close();
+}
+
 async function testJumpCam(browser, base) {
   console.log('跳躍的鏡頭：高空時機體留在畫面裡、鏡頭拉遠');
   const { ctx, page } = await newPage(browser, 'jumpcam');
@@ -27877,6 +28107,7 @@ const STEPS = [
   ['testBossZone', (c) => testBossZone(c.browser, c.base)],
   ['testVoidMaps', (c) => testVoidMaps(c.browser, c.base)],
   ['testJumpCam', (c) => testJumpCam(c.browser, c.base)],
+  ['testSegOps', (c) => testSegOps(c.browser, c.base)],
   ['testBossTier2', (c) => testBossTier2(c.browser, c.base)],
   ['testBossField', (c) => testBossField(c.browser, c.base)],
   [

@@ -63,6 +63,7 @@ import './game/tactics.js';
 import './game/guide.js';
 import './game/range.js';
 import './game/campaign-mp.js';
+import './game/seg-ops.js';
 import './entities/mech-objective.js';
 import './entities/mech-foe.js';
 import './entities/mech-status.js';

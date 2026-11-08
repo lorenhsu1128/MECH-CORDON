@@ -84,8 +84,9 @@ Object.assign(Game.prototype, {
     );
   },
   // 在 at 附近（由近到遠的螺旋）找空地；at 為 null 時在玩家周圍 40～120 m×DS 隨機找
-  devSpot(at, used, pad = 5, strict = false) {
-    const far = (x, z) => !used.some((q) => Math.hypot(q.x - x, q.z - z) < 40 * DS);
+  // gap＝和已用位置的最小間距（× DS）
+  devSpot(at, used, pad = 5, strict = false, gap = 40) {
+    const far = (x, z) => !used.some((q) => Math.hypot(q.x - x, q.z - z) < gap * DS);
     if (at) {
       for (let r = 0; r < 60 * DS; r += 3 * DS)
         for (let a = 0; a < 12; a++) {
@@ -240,6 +241,7 @@ Object.assign(Game.prototype, {
       if (d.kind === 'radar') this.devRadarTick(d, dt, inside, holder);
       else if (d.kind === 'recharge') this.devRechargeTick(d, dt, holder);
       else if (d.def.trap) {
+        if (d.kind === 'seclight') this.secLightTick(d, dt, ps); // 潛入區段的探照燈塔（seg-ops.js）
         // 互動型陷阱：按住 hold 秒觸發
         if (d.def.trig === 'use' && d.st === ST_IDLE) {
           if (holder) {
@@ -402,6 +404,7 @@ Object.assign(Game.prototype, {
       }
       if (d.def.trap) {
         this.trapVis(d, dt); // 環境陷阱（devices-traps.js）
+        if (d.kind === 'seclight') this.secLightVis(d);
         if (p && !p.dead && this.devUsable(d) && this.devIn(d, p)) near = d;
         this.devIntro(d, p);
         continue;
@@ -448,7 +451,7 @@ Object.assign(Game.prototype, {
     const has = (f) => ds.some(f);
     const L = [];
     if (has((d) => d.def.ev)) L.push('大型事件');
-    if (has((d) => d.def.trap && !d.def.ev)) L.push('陷阱');
+    if (has((d) => d.def.trap && !d.def.ev && !d.def.sec)) L.push('陷阱');
     if (has((d) => d.def.gun)) L.push('固定砲台');
     if (has((d) => d.kind === 'radar')) L.push('雷達站');
     if (has((d) => d.kind === 'recharge')) L.push('回復站');
@@ -538,21 +541,28 @@ Object.assign(Game.prototype, {
                 : '（可以搶）'
           : d.kind === 'hwpick'
             ? '：' + this.hwName(d)
-            : d.def.trap
-              ? d.st === ST_ACT
-                ? '（作用中）'
-                : d.st === ST_CD
-                  ? `（冷卻 ${Math.ceil(d.prog * d.def.cd)} 秒）`
+            : d.def.sec
+              ? d.st !== ST_IDLE
+                ? '（已熄滅）'
+                : d.user
+                  ? '（照到你了！）'
+                  : '（打燈頭熄掉）'
+              : d.def.trap
+                ? d.st === ST_ACT
+                  ? '（作用中）'
+                  : d.st === ST_CD
+                    ? `（冷卻 ${Math.ceil(d.prog * d.def.cd)} 秒）`
+                    : d.st === ST_USED
+                      ? '（已觸發）'
+                      : (d.def.ev ? '（大型事件：' : '（') +
+                        (d.def.trig === 'shoot' ? '打弱點）' : '控制台）')
+                : d.kind === 'radar'
+                  ? d.st === ST_ON
+                    ? '（已佔領）'
+                    : ''
                   : d.st === ST_USED
-                    ? '（已觸發）'
-                    : (d.def.ev ? '（大型事件：' : '（') + (d.def.trig === 'shoot' ? '打弱點）' : '控制台）')
-              : d.kind === 'radar'
-                ? d.st === ST_ON
-                  ? '（已佔領）'
-                  : ''
-                : d.st === ST_USED
-                  ? '（用完）'
-                  : `（剩 ${Math.round(d.val * 100)}%）`;
+                    ? '（用完）'
+                    : `（剩 ${Math.round(d.val * 100)}%）`;
         const label = `${d.def.name}${tag} ${dist}m`;
         c.strokeText(label, s.x, s.y - 14);
         c.fillText(label, s.x, s.y - 14);

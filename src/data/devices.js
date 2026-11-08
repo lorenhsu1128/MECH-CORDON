@@ -610,6 +610,29 @@ Object.assign(DEVICES, {
     fx: { cache: [0, 0, 7], squad: { at: [0, 0, 12], n: 3 } },
   },
 });
+// ---------- 潛入區段的探照燈塔（game/seg-ops.js；主線擴充 A2，docs/campaign-expansion-design.md） ----------
+// 打壞燈頭（弱點）就熄掉；掃描與照到的判定在 secLightTick。距離：len／near × DS，弱點 wp × MS
+DEVICES.seclight = {
+  solid: [[0, 0, 1.3, 1.3, 4.6]],
+  name: '探照燈塔',
+  color: 0xfff0c8,
+  trap: true,
+  sec: true, // 不是陷阱：沒有效果、不列進「可以利用的裝置」、編輯器不能放
+  trig: 'shoot',
+  hp: 140,
+  wp: [0, 4.75, 0],
+  wpR: 0.75,
+  hideWp: true,
+  act: '燈頭被打壞',
+  tip: '探照燈塔：光束照到你一小段時間就會響警報。打壞燈頭就熄掉（槍聲會讓附近的敵人起疑）。',
+  fx: {},
+  len: 46, // 光束照得到的距離
+  near: 4, // 塔底下照不到
+  ang: 0.24, // 光束的半寬（弧度）
+  sweep: 1.05, // 來回掃描的幅度（弧度）
+  speed: 0.55, // 掃描的速度
+  spotT: 0.7, // 照到多久響警報
+};
 export const EVENT_CHANCE = 0.5; // 一般戰鬥的大型事件出現機率（2026-11-04 使用者定案：先一半）
 // ---------- G1 固定砲台（game/devices-guns.js） ----------
 // 武器的數值是舊尺度（距離、彈速、爆炸半徑 × DS／MS）。heat＝每發的熱量（滿 1 過熱，OVERHEAT_T 秒不能開火）。

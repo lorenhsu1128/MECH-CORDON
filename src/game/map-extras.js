@@ -95,6 +95,11 @@ Object.assign(Game.prototype, {
       ent.hp = Math.min(ent.maxHp, ent.hp + Math.round(ent.maxHp * 0.12));
       this.fx.ring(ent.center(), 5, 0xffe070);
       if (ent.isPlayer) this.renderWeaponHud(true);
+    } else if (pk.kind === 'salvage') {
+      this.segSalvage(ent); // 撤離區段的回收物資（seg-ops.js）
+      this.fx.ring(ent.center(), 5, 0xffc040);
+      if (this.net.role === 'host') this.netEv({ t: 'pkr', i: pk.id });
+      return ent.isPlayer ? SFX.cue('pickup') : SFX.kit();
     } else if (pk.kind === 'ammo') {
       // 彈藥箱：每個實彈武器補充總彈數的 35%（彈數隨快照同步給客機）
       for (const w of Object.values(ent.weapons || {}))

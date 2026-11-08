@@ -118,6 +118,8 @@ Object.assign(Game.prototype, {
     ]);
     const pad = ss.pad && ss.pad.group ? P(ss.pad.pos) : 0;
     const intel = ss.intel && ss.intel.group ? P(ss.intel.pos) : 0;
+    const svf = this.segH('View'),
+      sv = (svf && svf.call(this)) || 0; // 新的區段類型的顯示資料（seg-ops.js）
     return {
       so: so.name,
       seg: c.seg,
@@ -131,7 +133,8 @@ Object.assign(Game.prototype, {
       ex,
       pad,
       intel,
-      vk: JSON.stringify([ex.map((e) => e.slice(0, 3)), pad, intel]),
+      sv,
+      vk: JSON.stringify([ex.map((e) => e.slice(0, 3)), pad, intel, sv]),
     };
   },
   // ---------- 房主：出口投票 ----------
@@ -460,6 +463,7 @@ Object.assign(Game.prototype, {
     }
     if (v.pad) C.vis.pad = { pos: V(v.pad), group: this.campRing(V(v.pad), 0x7ee081, '補給') };
     if (v.intel) C.vis.intel = { pos: V(v.intel), group: this.campRing(V(v.intel), 0x7fc8ff, '資料終端') };
+    this.segClientVis(C.vis, v.sv); // 撤離的回收地點（seg-ops.js）
   },
   campClearClientVis() {
     const C = this.campC;
@@ -467,6 +471,7 @@ Object.assign(Game.prototype, {
     for (const e of C.vis.exits || []) this.campDisposeGroup(e.group);
     if (C.vis.pad) this.campDisposeGroup(C.vis.pad.group);
     if (C.vis.intel) this.campDisposeGroup(C.vis.intel.group);
+    if (C.vis.lz) this.campDisposeGroup(C.vis.lz.group);
     C.vis = null;
     C.vk = null;
   },

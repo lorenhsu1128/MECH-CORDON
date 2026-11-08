@@ -146,6 +146,8 @@ export const CROWD_SEG = {
   breakthrough: [0.6, 1.6],
   supply: [1.6, 0],
   intel: [1.2, 0.8],
+  stealth: [1.4, 0.6],
+  extract: [0.6, 1.4],
   boss: [0.4, 0],
 };
 // 敵方步兵的數值

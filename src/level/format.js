@@ -40,7 +40,7 @@ export const MARK_KINDS = {
 // 編輯器可以放的地圖裝置（撿起的重武器是擊破時掉落的，不能放）
 export const DEV_KINDS = Object.fromEntries(
   Object.entries(DEVICES)
-    .filter(([k]) => k !== 'hwpick')
+    .filter(([k, d]) => k !== 'hwpick' && !d.sec)
     .map(([k, d]) => [
       k,
       d.name + (d.ev ? '（大型事件）' : d.trap ? '（陷阱）' : d.gun ? '（固定砲台）' : ''),

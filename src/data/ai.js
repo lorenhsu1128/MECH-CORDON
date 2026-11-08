@@ -26,6 +26,7 @@ export const NOISE_K = 0.7;
 for (const k in SENSE) SENSE[k].sight *= SIGHT_K;
 export const SENSE_NEAR = 9 * DS; // 這個距離內不看視角（聽得到腳步）
 export const SENSE_INSTANT = 6 * DS; // 這個距離內看得到就立刻交戰
+export const STEALTH_RATE = 0.6; // 潛入區段（還沒警報）安靜移動時察覺得比較慢（game/seg-ops.js）
 export const SENSE_DECAY = 0.45; // 看不到時察覺量表每秒下降
 export const SUSPECT_AT = 0.25; // 察覺量表到這裡就起疑（停下來轉向）
 export const LOS_DT = 0.25; // 每台敵人多久檢查一次視線

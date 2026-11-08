@@ -15,6 +15,7 @@ export const PICKUP_DEFS = {
   cs_ally: { name: 'ALLY-AC 友軍 +1', color: 0xffb060 },
   ammo: { name: '彈藥箱', color: 0xffc040 },
   bossPart: { name: '部位殘骸（彈藥＋修補）', color: 0xffe070 }, // Boss 改版的 J：打壞部位時掉落
+  salvage: { name: '回收物資', color: 0xffc040, life: 1e9 }, // 撤離區段（game/seg-ops.js）：撤離成功才入帳
 };
 let VEH_ID = 1,
   PICK_ID = 1;
@@ -167,7 +168,7 @@ export class Pickup {
     this.kind = kind;
     this.id = id || PICK_ID++;
     this.pos = pos.clone();
-    this.life = 40;
+    this.life = PICKUP_DEFS[kind].life || 40;
     this.dead = false;
     const g = buildPickupMesh(PICKUP_DEFS[kind].color, kind);
     g.position.copy(this.pos);

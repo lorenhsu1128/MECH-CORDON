@@ -513,6 +513,17 @@ export class MechEntity {
     if (this.syEv) this.syEv(k, o); // 風格評價也用這些事件（mech-style.js）
   }
   // 玩家操作的機體（單機與多人的玩家，不含友軍、敵人與 PvP 電腦）：失衡後保護只給它們
+  // 暗殺的條件（takeDamage）：攻擊者是玩家操作的機體、在我背後 ±60°；Boss、部位、敵對 AC、目標物不行
+  backstabBy(from) {
+    if (!from || !from.pilotEnt || !from.pilotEnt() || this.isBoss || this.ace || this.opts.ace) return false;
+    if (['part', 'objective', 'convoy', 'ac', 'holo'].includes(this.ai) || this.opts.parent !== undefined)
+      return false;
+    const dx = from.pos.x - this.pos.x,
+      dz = from.pos.z - this.pos.z;
+    const d = Math.hypot(dx, dz) || 1;
+    // 面向＝(−sin yaw, −cos yaw)；攻擊者在背後＝和面向的夾角大於 120°
+    return (-Math.sin(this.yaw) * dx - Math.cos(this.yaw) * dz) / d < -0.5;
+  }
   pilotEnt() {
     return this.team === 'player' && typeof this.slot === 'number' && !this.pvpAi;
   }
@@ -1986,7 +1997,11 @@ export class MechEntity {
       this.pqbCheck(from); // 完美 QB：QB 的無敵剛開始時躲掉了敵人的攻擊（docs/melee-combo-design.md 第 4 期）
       return;
     }
-    if (this.sn) this.senseHit(from, dmg); // 仇恨與交戰（mech-sense.js）
+    // 暗殺：玩家從背後（±60°）近戰還沒交戰的一般敵人＝一擊無聲擊破（主線擴充 A2，docs/campaign-expansion-design.md）
+    const bs = !!(melee && !melee.exec && this.sn && this.sn.st !== 2 && this.backstabBy(from));
+    if (bs) {
+      this.game.popDamage(this.center(), '暗殺', false, false, true, 0, this.id);
+    } else if (this.sn) this.senseHit(from, dmg); // 仇恨與交戰（mech-sense.js）
     // 固定砲台（game/devices-guns.js）：上砲台時砲台分擔一半；砲台打 Boss（本體與部位）×0.5
     if (this.devMount) dmg = this.game.gunAbsorb(this, dmg);
     if (from && from.devMount && (this.isBoss || this.ai === 'part')) dmg *= this.game.gunBossK();
@@ -2154,7 +2169,7 @@ export class MechEntity {
       mul *= lk;
       tierX = ex;
     }
-    const real = Math.round(dmg * mul + tierX);
+    const real = bs ? Math.ceil(Math.max(0, this.hp)) + 1 : Math.round(dmg * mul + tierX); // 暗殺＝一定擊破
     // 風格評價（mech-style.js）：射擊打中加分（近戰由 tutE 的 hit）、自己被打中掉分
     if (real > 0 && !melee && from && from !== this && from.syHit) from.syHit(this, real, wid);
     // 遠程訓練（tutorial-ranged.js）：射擊打中（dist＝射手到目標的水平距離，判斷理想射程）
