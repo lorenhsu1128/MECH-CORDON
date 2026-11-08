@@ -602,6 +602,55 @@ const THEME = [
       S.at(1.2, () => S.trackBeam(fz, tc(S), 6, 4));
     },
   },
+  // E1（entities/mech-foe-e1.js，火山熔爐帶）
+  {
+    id: 'e1_slagger',
+    name: '熔渣投擲機：熔渣（落點 → 燃燒地面）',
+    who: '火山熔爐帶 slagger',
+    src: 'entities/mech-foe-e1.js（warnCircle 5 × MS、1.2 秒 → addPool 5、6 秒）',
+    srcAt: [0, -40],
+    run: (S) => {
+      const p = tp(S).add(V(2 * DS, 0, 0));
+      S.warnCircle(p, 5 * MS, 1.2, 0xff6a20);
+      S.lob(S.src.muzzle('rarm'), p, 1.2, 0xff6a20);
+      S.at(1.2, () => (S.boom(p, 5 * MS), S.pool(p, 5, 6)));
+    },
+  },
+  {
+    id: 'e1_heatguard',
+    name: '耐熱重裝 MT：火焰噴射',
+    who: '火山熔爐帶 heatguard',
+    src: 'entities/mech-foe-e1.js（flameCone 射程 14 × 0.55、2 秒）',
+    srcAt: [0, -10],
+    run: (S) =>
+      S.every(0.2, 2, () => S.flame(S.src.muzzle('rarm'), dirTo(S.src.pos, tp(S)), 14 * DS * 0.55, 0.3, 8)),
+  },
+  {
+    id: 'e1_magmadrone',
+    name: '熔岩潛行無人機：浮出的火光',
+    who: '火山熔爐帶 magmadrone',
+    src: 'entities/mech-foe-e1.js（warnCircle 3 × MS、1 秒）',
+    srcAt: [0, -8],
+    run: (S) => {
+      const p = S.src.pos.clone();
+      S.warnCircle(p, 3 * MS, 1, 0xff7a20);
+      S.every(0.1, 1, () => S.fx.dust(p.clone(), 2, 3, 0xff8a40));
+      S.at(1, () => S.ring(p.clone().setY(0.5), 4, 0xff7a20));
+    },
+  },
+  {
+    id: 'e1_bellows',
+    name: '熱風鼓風機：熱風',
+    who: '火山熔爐帶 bellows',
+    src: 'entities/mech-foe-e1.js（蓄氣 1.4 秒 → flameCone 22 × 0.4）',
+    srcAt: [0, -14],
+    run: (S) =>
+      S.at(1.4, () =>
+        S.every(0.1, 0.8, () =>
+          S.flame(S.src.muzzle('rarm'), dirTo(S.src.pos, tp(S)), 22 * DS * 0.4, 0.35, 6),
+        ),
+      ),
+  },
 ];
 
 // ---------- Boss 的招式 ----------
@@ -1577,6 +1626,13 @@ const MORE_BOSS = [
   },
 ];
 const MORE_MISSION = [
+  {
+    id: 'ms_wingRevive',
+    name: '救援僚機',
+    who: '主線的僚機（站在倒下的僚機旁邊）',
+    src: 'game/wing.js（ring 6、綠）',
+    run: (S) => S.ring(S.v(6, 1.6 * MS, -6), 6, 0x80ffb0),
+  },
   {
     id: 'ms_ally',
     name: '友軍空降支援',
