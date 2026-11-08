@@ -6838,3 +6838,15 @@ body.vpad #subBar {
   box-shadow: 0 0 18px rgba(255, 208, 96, 0.35);
   background: linear-gradient(180deg, rgba(60, 46, 14, 0.85), rgba(14, 16, 22, 0.92));
 }
+
+/* 委託板（game/board.js；主線擴充 C2） */
+#hubBoardBox .boardRule {
+  color: #ffb070;
+  margin: 4px 0;
+}
+#hubBoardBox .boardBtns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}

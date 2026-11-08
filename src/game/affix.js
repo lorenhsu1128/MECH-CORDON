@@ -24,7 +24,9 @@ Object.assign(Game.prototype, {
   afApply(o, d, t) {
     if (this.isClient || !this.afOn() || !affixable(d, t) || this.isBossLevel) return o;
     let mask = 0;
-    if (this.afForce !== undefined && this.afForce !== null)
+    if (this.camp && this.campRule('allAffix'))
+      mask = rollAffix(d, Math.random, 0.3); // 委託板的「精英部隊」
+    else if (this.afForce !== undefined && this.afForce !== null)
       mask = this.afForce; // 測試用
     else if (navigator.webdriver)
       return o; // 自動化測試：只在 afForce 時帶（其他測試的敵人照舊）

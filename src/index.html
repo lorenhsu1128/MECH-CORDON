@@ -266,6 +266,11 @@
               <path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z M9 11h6 M12 8v6" /></svg
             ><span class="hdT">委託方</span><i class="hdN"></i>
           </button>
+          <button id="btnHubBoard" title="短委託：1～2 段、帶特殊規則；可以雇用僚機">
+            <svg viewBox="0 0 24 24" class="hdI" aria-hidden="true">
+              <path d="M4 4h16v13H4z M8 21l4-4 4 4 M7 8h10 M7 11h7 M7 14h4" /></svg
+            ><span class="hdT">委託板</span><i class="hdN"></i>
+          </button>
           <button id="btnHubLog">
             <svg viewBox="0 0 24 24" class="hdI" aria-hidden="true">
               <path d="M4 5h16v11H9l-5 4z M8 9h8 M8 12h5" /></svg
@@ -301,6 +306,10 @@
               <path d="M10 6l-6 6 6 6 M4 12h12a4 4 0 0 1 4 4v3" /></svg
             ><span class="hdT">回標題</span><i class="hdN"></i>
           </button>
+        </div>
+        <div id="hubBoardBox" class="hubBox" style="display: none">
+          <div class="hubLogHead"><b>委託板</b><button id="btnHubBoardClose">關閉</button></div>
+          <div id="hubBoardList"></div>
         </div>
         <div id="hubFacBox" class="hubBox" style="display: none">
           <div class="hubLogHead"><b>委託方與戰術模組</b><button id="btnHubFacClose">關閉</button></div>

@@ -584,6 +584,7 @@ export class MechEntity {
     if (w.tierOff) return false; // Boss 改版：負責這把武器的部位被打壞了
     if (!this.canAct()) return false;
     if (this.rxJamT > 0) return false; // 屬性反應的 EMP 干擾：不能開火（mech-react.js）
+    if (g.camp && this.pilotEnt() && g.campRuleBlocks(d)) return false; // 委託板的規則：禁用的武器（game/board.js）
     if (g.crowd && w.cd <= 0 && this.t - (this.crowdFireT || -9) > 0.4) {
       this.crowdFireT = this.t;
       g.crowdScare(this.pos, 45); // 開火聲：附近的小人受驚（crowd.js）
@@ -2001,6 +2002,13 @@ export class MechEntity {
     if (this.ai === 'colossus') return; // 大型兵器的本體打不動：打部位與動力核心（mech-colossus.js）
     if (from && from.name) this.lastHitBy = from.name; // 主線失敗時的通訊用
     if (from && from.team && from !== this) this.lastHitEnt = from; // 宿敵（game/nemesis.js）
+    // 委託板的「一擊必殺」：玩家打的、打玩家的傷害 ×5（game/board.js）
+    if (
+      this.game.camp &&
+      this.game.campRule('oneShot') &&
+      (this.pilotEnt() || (from && from.pilotEnt && from.pilotEnt()))
+    )
+      dmg *= 5;
     // 彈刀：玩家的近戰在有效期間、面向攻擊者時，敵人的近戰被彈開（出招時的短暫無敵也算）
     if (melee && !melee.exec && from && this.meleeClash(from)) return;
     // 完美 QB：提示中按了 QB、或 QB 剛開始時被打到＝迴避（不受傷）
@@ -2651,6 +2659,7 @@ export class MechEntity {
     // quick boost
     // 被鉤住、黏住、纏住時沒有方向也能 QB（原地甩動掙脫）；緩速時 QB 耗能增加
     const qbAny = wish.lengthSq() > 0.1 || (this.sts && this.stsQbEscape());
+    if (wantQB && g.camp && this.pilotEnt() && g.campRule('noQB')) wantQB = false; // 委託板的「推進器故障」
     if (
       wantQB &&
       this.qbT <= 0 &&

@@ -1213,6 +1213,8 @@ Object.assign(Game.prototype, {
       this.openPilot();
     };
     $('btnHubLog').onclick = () => this.hubLog(true);
+    $('btnHubBoard').onclick = () => this.hubBoard(true); // 委託板（board.js）
+    $('btnHubBoardClose').onclick = () => this.hubBoard(false);
     $('btnHubSim').onclick = () => this.openSim();
     $('btnHubRecord').onclick = () => this.openRecord();
     $('btnSimBack').onclick = () => this.openHub();

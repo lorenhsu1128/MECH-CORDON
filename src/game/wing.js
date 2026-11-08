@@ -13,7 +13,7 @@ Object.assign(Game.prototype, {
   // 這次出擊的僚機（沒有＝''）
   wingKey() {
     const c = this.camp;
-    if (!c || this.campMp() || !WING_SORTIES.has(c.sid)) return '';
+    if (!c || this.campMp() || (!WING_SORTIES.has(c.sid) && !c.wingHire)) return ''; // 委託板可以雇用（board.js）
     if (!c.wingK)
       c.wingK = wingFor((c.choice && c.choice.key) || this.campLastPick(this.campSortie().chapter));
     return c.wingK;

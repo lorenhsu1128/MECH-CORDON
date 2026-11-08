@@ -79,6 +79,10 @@ Object.assign(Game.prototype, {
   lootPickup(pk, ent) {
     if (ent.isPlayer) this.lootMat(pk.kind.slice(4), 1);
   },
+  // 可以掉落的零件 id（委託板的報酬）
+  lootPartPool() {
+    return [...PART_CAT.keys()];
+  },
   // 結果畫面的列
   lootRows() {
     const L = this.lootRun;

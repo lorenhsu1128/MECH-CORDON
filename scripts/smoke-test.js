@@ -9294,7 +9294,7 @@ async function testCampaign2(browser, base) {
   check(await exitsUp(), '破壞：目標與敵軍全滅後開出口');
   const exT = await page.evaluate(() => window.__game.camp.exits.map((e) => e.type));
   check(
-    exT.every((t) => ['supply', 'escort', 'breakthrough', 'elite'].includes(t)),
+    exT.every((t) => ['supply', 'escort', 'breakthrough', 'elite', 'chase'].includes(t)), // 追擊：主線擴充第 3 期加進有護送的 pool
     '出口預告下一段的類型（' + exT.join('、') + '）',
   );
   // 補給：站上補給台回復
@@ -16235,6 +16235,119 @@ async function testNemesis(browser, base) {
   check(!!r.res && Math.max(...r.res) > 0.1, `對玩家常用的武器屬性有抗性（${(r.res || []).join('／')}）`);
   check(r.bounty > 8000, `擊破宿敵的獎金 +${r.bounty}`);
   check(r.loss1 && r.retire, '被擊破 2 次退場');
+  await ctx.close();
+}
+
+// 主線擴充第 11 期：委託板（清單、接受與雇用僚機、規則的效果、完成的報酬與換新、不影響主線的列舉）
+async function testBoard(browser, base) {
+  console.log('委託板：短委託、規則、雇用僚機、報酬');
+  const { ctx, page } = await newPage(browser, 'board');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await freezeLoop(page);
+  const r = await page.evaluate(() => {
+    const g = window.__game;
+    g.autoPickMod = true;
+    const st = g.campStory();
+    st.board = null;
+    st.sortie = null;
+    g.save.coam = 500000;
+    const out = {};
+    g.openHub();
+    g.hubBoard(true);
+    out.cards = document.querySelectorAll('#hubBoardList .boardJob').length;
+    out.btns = document.querySelectorAll('#hubBoardList button[data-job]').length;
+    g.hubBoard(false);
+    const B = st.board;
+    out.jobs = B.jobs.length;
+    // 主線列舉出擊的地方看不到委託板的出擊（整章完成、作戰室）
+    out.chapterOk = g.campChapterCheck(1) === false;
+    // 接受（雇用僚機）
+    const j = B.jobs[0];
+    const c0 = g.save.coam;
+    g.boardAccept(j.id, true);
+    out.hireCost = c0 - g.save.coam;
+    out.sid = g.camp && g.camp.sid;
+    out.job = !!(g.campSortie() && g.campSortie().job);
+    const so = g.campSortie();
+    // 規則（直接改這個出擊的規則，再進同一段）
+    const enter = (rule, type) => {
+      so.rule = rule;
+      g.state = 'play';
+      g.camp.seg = 0;
+      g.camp.types[0] = type;
+      g.campEnterSeg();
+      g.player.hp = g.player.maxHp = 1e7;
+    };
+    enter('noQB', 'battle');
+    out.wing = !!g.wing;
+    const p = g.player;
+    p.en = p.enMax;
+    p.move(1 / 60, new THREE.Vector3(1, 0, 0), false, true, false, null);
+    out.noQB = !(p.qbT > 0);
+    so.rule = 'noMissile';
+    out.noMissile = g.campRuleBlocks({ type: 'missile' }) && !g.campRuleBlocks({ type: 'bullet' });
+    so.rule = 'meleeOnly';
+    out.meleeOnly = g.campRuleBlocks({ type: 'bullet' }) && !g.campRuleBlocks({ type: 'melee' });
+    // 一擊必殺：打玩家的傷害 ×5
+    const e = g.enemies.find((x) => !x.dead);
+    so.rule = '';
+    p.iFrames = 0;
+    let h = p.hp;
+    p.takeDamage(1000, 0, e, p.center(), new THREE.Vector3(0, 0, 1), null, null, 'none');
+    const d1 = h - p.hp;
+    so.rule = 'oneShot';
+    p.iFrames = 0;
+    h = p.hp;
+    p.takeDamage(1000, 0, e, p.center(), new THREE.Vector3(0, 0, 1), null, null, 'none');
+    out.oneShot = (h - p.hp) / d1;
+    // 限時作戰
+    so.rule = 'timed';
+    g.camp.time = 301;
+    g.campTick(1 / 60);
+    out.timed = g.state;
+    // 精英部隊、濃霧
+    enter('', 'battle');
+    const far0 = g.scene.fog ? g.scene.fog.far : 0;
+    enter('allAffix', 'battle');
+    out.allAffix = g.enemies.filter((x) => !x.dead && x.af).length;
+    enter('fog', 'battle');
+    out.fog = g.scene.fog ? g.scene.fog.far / far0 : 1;
+    // 借用的機體
+    so.asm = { ...g.save.asm, rarm: 'w_sg' };
+    enter('loaner', 'battle');
+    out.loaner = g.player.asm.rarm === 'w_sg';
+    // 大宗物資、絕對隱密
+    enter('extractRich', 'extract');
+    out.salv = g.pickups.filter((k) => k.kind === 'salvage' && !k.dead).length;
+    enter('stealthStrict', 'stealth');
+    g.segAlarm('測試');
+    out.strict = g.state;
+    // 完成：素材、換新的委託
+    g.state = 'play';
+    so.rule = '';
+    const a0 = (g.save.mats && g.save.mats.alloy) || 0;
+    g.boardEnd(true);
+    out.mats = g.save.mats.alloy - a0;
+    out.left = st.board.jobs.length;
+    g.boardEnsure();
+    out.refill = st.board.jobs.length;
+    return out;
+  });
+  check(r.cards === 4 && r.btns === 8 && r.jobs === 4, '委託板：4 個委託，各有「接受」與「雇用僚機並接受」');
+  check(r.chapterOk, '委託板的出擊不算進整章完成');
+  check(r.hireCost > 0 && /^jb_/.test(r.sid) && r.job, `接受委託（雇用僚機 −${r.hireCost} COAM）`);
+  check(r.wing, '雇用的僚機同行');
+  check(r.noQB, '推進器故障：不能 QB');
+  check(r.noMissile && r.meleeOnly, '禁用導彈、只能近戰：擋下對應的武器');
+  check(Math.abs(r.oneShot - 5) < 0.01, `一擊必殺：傷害 ×${r.oneShot.toFixed(2)}`);
+  check(r.timed === 'ending' || r.timed === 'campfail', `限時作戰：超過 5 分鐘失敗（${r.timed}）`);
+  check(r.allAffix >= 3, `精英部隊：敵人都帶詞綴（${r.allAffix} 台）`);
+  check(r.fog < 0.5, `濃霧：霧拉近（×${r.fog.toFixed(2)}）`);
+  check(r.loaner, '借用的機體：用委託方準備的組裝');
+  check(r.salv === 12, `大宗物資：回收物資加倍（${r.salv} 箱）`);
+  check(r.strict === 'ending' || r.strict === 'campfail', `絕對隱密：被發現就失敗（${r.strict}）`);
+  check(r.mats > 0 && r.left === 3 && r.refill === 4, `完成：素材 +${r.mats}、換新的委託`);
   await ctx.close();
 }
 
@@ -29076,6 +29189,7 @@ const STEPS = [
   ['testLegend', (c) => testLegend(c.browser, c.base)],
   ['testWing', (c) => testWing(c.browser, c.base)],
   ['testNemesis', (c) => testNemesis(c.browser, c.base)],
+  ['testBoard', (c) => testBoard(c.browser, c.base)],
   ['testBossTier2', (c) => testBossTier2(c.browser, c.base)],
   ['testBossField', (c) => testBossField(c.browser, c.base)],
   [

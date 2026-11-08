@@ -127,6 +127,11 @@ Object.assign(Game.prototype, {
     st.why = why;
     if (ss.intel && !ss.intel.done) st.wipe = ST.WIPE;
     this.flashMsg(`警報 — ${why}`, 0xff4d4d, 2.6, { k: 'warn', m: '警報', s: why });
+    // 委託板的「絕對隱密」：被發現就失敗（board.js）
+    if (this.campRule('stealthStrict') && this.state === 'play') {
+      this.state = 'ending';
+      return this.campDead(true);
+    }
     const pl = this.playersAlive();
     if (this.player) SFX.play('alarm', 0.9, 1, 0, 0, this.player.pos);
     for (const e of this.enemies) {
@@ -282,7 +287,8 @@ Object.assign(Game.prototype, {
   // 回收物資散在場上（planVehicles 之後，它會清掉掉落物）
   segPost_extract() {
     const W = this.world;
-    for (const p of this.campSpots(EX.SALV, 'inner'))
+    const n = EX.SALV * (this.campRule('extractRich') ? 2 : 1); // 委託板的「大宗物資」
+    for (const p of this.campSpots(n, 'inner'))
       this.spawnPickup('salvage', new THREE.Vector3(p.x, W.groundAt(p.x, p.z, p.y + 3 * MS) + 0.6, p.z));
   },
   // 撿到回收物資（collectPickup；房主／單機）

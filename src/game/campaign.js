@@ -16,6 +16,7 @@ import {
   transMode,
 } from '../data/campaign.js';
 import { TOD_NAMES, planKeys, planSortie } from '../data/campaign-plan.js';
+import { boardRegister } from '../data/board.js';
 import { AC_ROSTER, PART_DEFS, enemyScale } from '../data/enemies.js';
 import { campaignTier } from '../data/boss-tier.js';
 import { ACES, THEME_ACE } from '../data/foes.js';
@@ -60,6 +61,8 @@ const CK_KEYS = [
   'heat',
   'rmods',
   'choice',
+  'wingHire', // 委託板雇用的僚機（board.js）
+  'wingK',
 ];
 // 情報區段下載到的內容（第 3 期換成劇情資料表）
 const INTEL = {
@@ -83,6 +86,7 @@ Object.assign(Game.prototype, {
     if (!S.story.done || typeof S.story.done !== 'object') S.story.done = {};
     if (!Array.isArray(S.story.recent)) S.story.recent = [];
     if (!S.story.choices || typeof S.story.choices !== 'object') S.story.choices = {}; // 陣營抉擇（data/campaign.js 的 CHOICES）
+    boardRegister(S.story); // 委託板的出擊（data/board.js）：紀錄點的檢查之前登記
     const ck = S.story.sortie;
     if (ck && (!SORTIES[ck.sid] || !Array.isArray(ck.plan) || !Array.isArray(ck.types)))
       S.story.sortie = null; // 舊版紀錄點
@@ -292,12 +296,20 @@ Object.assign(Game.prototype, {
     this.net.spawnReg = {};
     this.mpStats = c.stats;
     this.world.applyLight(this);
+    // 委託板的「濃霧」：霧拉近（換新的 Fog，渲染風格的管線重新記錄基準）
+    if (this.campRule('fog') && this.scene.fog)
+      this.scene.fog = new THREE.Fog(
+        this.scene.fog.color,
+        this.scene.fog.near * 0.3,
+        this.scene.fog.far * 0.35,
+      );
     this.sun.position.set(40, 80, 30);
     const mp = this.campMp();
     if (mp)
       this.campMpSpawn(); // 多人：每位玩家各自的模組與上一段的狀態（campaign-mp.js）
     else {
-      this.player = new MechEntity(this, S.asm, this.myPal(), {
+      // 委託板的「借用的機體」：用委託方準備的組裝（board.js）
+      this.player = new MechEntity(this, (this.campRule('loaner') && so.asm) || S.asm, this.myPal(), {
         team: 'player',
         name: 'RAVEN',
         palKey: this.myPalKey(),
@@ -946,6 +958,12 @@ Object.assign(Game.prototype, {
     this.nemTick(dt); // 宿敵闖入（nemesis.js）
     w.tickZone(dt);
     // 危險條款：限時 25 分鐘
+    // 委託板的「限時作戰」：5 分鐘
+    if (this.campRule('timed') && c.time > 300 && this.state === 'play') {
+      this.flashMsg('超過作戰時限', 0xff4d4d, 3);
+      this.state = 'ending';
+      return this.campDead(true);
+    }
     if (c.heat && c.heat.timed && c.time > 1500 && this.state === 'play') {
       this.flashMsg('超過作戰時限', 0xff4d4d, 3);
       this.state = 'ending';
@@ -1449,6 +1467,7 @@ Object.assign(Game.prototype, {
       c.earned += this.missionEarned || 0;
     }
     this.wingSortieEnd(success); // 僚機的好感度（wing.js）
+    this.boardEnd(success); // 委託板：素材、零件、換新的委託（board.js）
     this.mpStats = c.stats;
     this.missionT = c.time;
     this.isBossLevel = true; // 經驗基準以決戰計
