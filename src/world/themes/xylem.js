@@ -163,6 +163,13 @@ export function buildLedges(w, width, drop) {
     if (s < a1) out.push([s, a1]);
     return out.filter(([p, q]) => q - p > 4 * G);
   };
+  // 下層平台：標記，並且不投影（在街區下方，影子只落在海面或雲海上；一張地圖幾十個、三角形多，陰影那一次算繪很貴）
+  const ledge = (ob) => {
+    ob.ledge = true;
+    ob.group.traverse((o) => {
+      if (o.isMesh) o.castShadow = false;
+    });
+  };
   for (const b of B) {
     // 沿 X 的兩側（z0、z1）跨過角落，沿 Z 的兩側不跨（角落不重疊）
     for (const side of ['z0', 'z1', 'x0', 'x1']) {
@@ -175,12 +182,12 @@ export function buildLedges(w, width, drop) {
         const ex0 = room(b, 'x0') >= 3 * G ? room(b, 'x0') : 0,
           ex1 = room(b, 'x1') >= 3 * G ? room(b, 'x1') : 0;
         for (const [p, q] of seg(Math.max(-lim, b.x0 - ex0), Math.min(lim, b.x1 + ex1), cuts(b, side)))
-          w.addDeck((p + q) / 2, z, q - p, r + G, y, T, false, null).ledge = true;
+          ledge(w.addDeck((p + q) / 2, z, q - p, r + G, y, T, false, null));
       } else {
         const x = side === 'x0' ? b.x0 + (G - r) / 2 : b.x1 - (G - r) / 2;
         if (Math.abs(x) > lim) continue;
         for (const [p, q] of seg(b.z0 + G, b.z1 - G, cuts(b, side)))
-          w.addDeck(x, (p + q) / 2, r + G, q - p, y, T, true, null).ledge = true;
+          ledge(w.addDeck(x, (p + q) / 2, r + G, q - p, y, T, true, null));
       }
     }
   }
