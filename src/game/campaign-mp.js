@@ -119,7 +119,9 @@ Object.assign(Game.prototype, {
     const pad = ss.pad && ss.pad.group ? P(ss.pad.pos) : 0;
     const intel = ss.intel && ss.intel.group ? P(ss.intel.pos) : 0;
     const svf = this.segH('View'),
-      sv = (svf && svf.call(this)) || 0; // 新的區段類型的顯示資料（seg-ops.js）
+      rings = this.segRingsSer();
+    let sv = (svf && svf.call(this)) || 0; // 新的區段類型的顯示資料與光環（seg-ops.js）
+    if (rings.length) sv = { ...(sv || {}), rings };
     return {
       so: so.name,
       seg: c.seg,
@@ -463,7 +465,7 @@ Object.assign(Game.prototype, {
     }
     if (v.pad) C.vis.pad = { pos: V(v.pad), group: this.campRing(V(v.pad), 0x7ee081, '補給') };
     if (v.intel) C.vis.intel = { pos: V(v.intel), group: this.campRing(V(v.intel), 0x7fc8ff, '資料終端') };
-    this.segClientVis(C.vis, v.sv); // 撤離的回收地點（seg-ops.js）
+    this.segClientVis(C.vis, v.sv); // 新的區段類型的光環（seg-ops.js）
   },
   campClearClientVis() {
     const C = this.campC;
@@ -471,7 +473,7 @@ Object.assign(Game.prototype, {
     for (const e of C.vis.exits || []) this.campDisposeGroup(e.group);
     if (C.vis.pad) this.campDisposeGroup(C.vis.pad.group);
     if (C.vis.intel) this.campDisposeGroup(C.vis.intel.group);
-    if (C.vis.lz) this.campDisposeGroup(C.vis.lz.group);
+    for (const o of C.vis.segR || []) this.campDisposeGroup(o.group);
     C.vis = null;
     C.vk = null;
   },

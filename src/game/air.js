@@ -481,6 +481,7 @@ Object.assign(Game.prototype, {
     if (this.airBase && this.airBase.dead && this.state === 'play') {
       this.state = 'ending';
       this.flashMsg('友軍雷達站被摧毀', 0xff4d4d, 2.4, { k: 'warn', m: '任務失敗', s: '友軍雷達站被摧毀' });
+      if (this.camp) return this.campDead(true); // 主線的空戰區段（seg-air.js）
       setTimeout(() => this.state === 'ending' && this.endMission(false, false), 1800);
       return;
     }

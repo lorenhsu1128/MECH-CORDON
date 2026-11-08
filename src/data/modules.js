@@ -11,6 +11,9 @@ import { usesAmmo } from './parts.js';
 // 第 13 期起各模組的數值是原本的 1.5 倍（強化要有感）
 export const LV_MUL = [0, 1, 1.6, 2.2];
 export const MOD_MAX_LV = 3;
+export const LEGEND_MAX = 2; // 傳說模組最多持有幾個
+// 共鳴：同時持有兩家委託方的傳說模組時多一點全面的加成（modsPm）
+export const LEGEND_RESO = { dmg: 0.08, qb: 0.06, ap: 0.04 };
 
 export const MODULES = {
   // ---- 卡斯特隆重工：實彈與衝擊 ----
@@ -87,6 +90,121 @@ export const MODULES = {
     fx: { lastStand: 1 },
     lbl: (x) => `AP 低於 30% 時 3 秒無敵並回復 AP ${Math.round(15 * x)}%（冷卻 ${Math.round(60 / x)} 秒）`,
   },
+  // ---- 傳說模組（主線擴充 B3，docs/campaign-expansion-design.md）：改變武器或機動的行為；不能升級（max 1），
+  // 一次出擊最多持有 LEGEND_MAX 個；精英、Boss、大型兵器擊破後的三選一固定有一個（modOffer 的 legend）。
+  // 行為在 entities/mech-legend.js（房主／單機判定）。
+  lg_split: {
+    faction: 'castron',
+    legend: true,
+    name: '分裂彈頭',
+    desc: '導彈命中時分裂成 3 枚小導彈，追蹤附近的敵人',
+    fx: { lgSplit: 1 },
+  },
+  lg_pierce: {
+    faction: 'castron',
+    legend: true,
+    name: '貫穿彈',
+    desc: '實彈貫穿第一個目標，繼續打中後面的敵人',
+    fx: { lgPierce: 1 },
+  },
+  lg_chain: {
+    faction: 'castron',
+    legend: true,
+    name: '連鎖引爆',
+    desc: '擊破的敵人爆炸，爆炸範圍內 AP 低於 20% 的敵人直接引爆',
+    fx: { lgChain: 1 },
+  },
+  lg_last: {
+    faction: 'castron',
+    legend: true,
+    name: '終彈強化',
+    desc: '彈匣的最後一發傷害 ×3、衝擊 ×2',
+    fx: { lgLast: 1 },
+  },
+  lg_refract: {
+    faction: 'aetheric',
+    legend: true,
+    name: '折射雷射',
+    desc: '雷射命中後折射到最近的另一個敵人（傷害 60%）',
+    fx: { lgRefract: 1 },
+  },
+  lg_overload: {
+    faction: 'aetheric',
+    legend: true,
+    name: '過載核心',
+    desc: 'EN 用完時放出電磁脈衝：附近的敵人受傷、失衡量大增',
+    fx: { lgOverload: 1 },
+  },
+  lg_arc: {
+    faction: 'aetheric',
+    legend: true,
+    name: '電弧刃',
+    desc: '近戰命中時電弧跳到附近 2 個敵人',
+    fx: { lgArc: 1 },
+  },
+  lg_reso: {
+    faction: 'aetheric',
+    legend: true,
+    name: '蓄力共鳴',
+    desc: '蓄力射擊命中後 3 秒內，能量武器不耗 EN',
+    fx: { lgReso: 1 },
+  },
+  lg_ghost: {
+    faction: 'veerwell',
+    legend: true,
+    name: '殘影',
+    desc: 'QB 後 1.5 秒內，敵人的射擊有一半打在殘影上',
+    fx: { lgGhost: 1 },
+  },
+  lg_arcqb: {
+    faction: 'veerwell',
+    legend: true,
+    name: '電弧推進',
+    desc: 'QB 的路徑放出電弧，碰到的敵人受傷',
+    fx: { lgArcQB: 1 },
+  },
+  lg_stomp: {
+    faction: 'veerwell',
+    legend: true,
+    name: '落雷踐踏',
+    desc: '從高處落地時產生衝擊波',
+    fx: { lgStomp: 1 },
+  },
+  lg_chase: {
+    faction: 'veerwell',
+    legend: true,
+    name: '追擊推進',
+    desc: '擊破敵人後 2 秒內 QB 不耗 EN',
+    fx: { lgChase: 1 },
+  },
+  lg_react: {
+    faction: 'sancta',
+    legend: true,
+    name: '反應裝甲',
+    desc: '被近戰打中時爆炸反擊（冷卻 3 秒）',
+    fx: { lgReact: 1 },
+  },
+  lg_absorb: {
+    faction: 'sancta',
+    legend: true,
+    name: '護盾轉化',
+    desc: '脈衝盾擋下的傷害有 30% 轉成 AP',
+    fx: { lgAbsorb: 1 },
+  },
+  lg_phoenix: {
+    faction: 'sancta',
+    legend: true,
+    name: '不死鳥',
+    desc: '每個區段一次：AP 歸零時以 30% 復活並放出衝擊波',
+    fx: { lgPhoenix: 1 },
+  },
+  lg_fort: {
+    faction: 'sancta',
+    legend: true,
+    name: '堡壘',
+    desc: '站著不動 1 秒後受到的傷害 −40%、不會失衡',
+    fx: { lgFort: 1 },
+  },
   // ---- 雙重模組 ----
   d_ram: {
     faction: 'duo',
@@ -145,7 +263,8 @@ export function modFx(id, lv) {
   const M = MODULES[id];
   if (!M) return {};
   const out = {};
-  for (const k in M.fx) out[k] = M.flat ? (M.step ? M.fx[k] * lv : M.fx[k]) : M.fx[k] * LV_MUL[lv];
+  for (const k in M.fx)
+    out[k] = M.legend ? M.fx[k] : M.flat ? (M.step ? M.fx[k] * lv : M.fx[k]) : M.fx[k] * LV_MUL[lv];
   return out;
 }
 // 持有的模組合計成增量表
@@ -155,6 +274,11 @@ export function modsPm(list) {
     const fx = modFx(m.id, m.lv);
     for (const k in fx) pm[k] = (pm[k] || 0) + fx[k];
   }
+  // 共鳴：兩家委託方的傳說模組
+  const lf = new Set(
+    (list || []).filter((m) => MODULES[m.id] && MODULES[m.id].legend).map((m) => MODULES[m.id].faction),
+  );
+  if (lf.size >= 2) for (const k in LEGEND_RESO) pm[k] = (pm[k] || 0) + LEGEND_RESO[k];
   return pm;
 }
 // ---------- 顯示用的說明 ----------
@@ -236,6 +360,7 @@ export function modFxText(id, lv) {
   const M = MODULES[id];
   if (!M || lv < 1) return [];
   const fx = modFx(id, lv);
+  if (M.legend) return [M.desc]; // 傳說模組：行為的說明
   if (M.lbl) return [M.lbl(Object.values(fx)[0])];
   return Object.entries(fx).map(([k, x]) => `${FX_NAMES[k] || k} ${fxVal(k, x)}`);
 }
@@ -255,6 +380,10 @@ export function modsSumText(list) {
   for (const m of list || []) {
     const M = MODULES[m.id];
     if (!M) continue;
+    if (M.legend) {
+      special.push(`★${M.name}`);
+      continue;
+    }
     if (M.lbl) {
       special.push(`${M.name} ${m.lv}`);
       continue;
@@ -291,16 +420,30 @@ export function modFit(id, defs) {
 export function modLabel(id, lv) {
   const M = MODULES[id];
   if (!M) return id;
+  if (M.legend) return `★${M.name}（${M.desc}）`;
   return `${M.name} Lv${lv}（${modFxText(id, lv).join('、')}）`;
 }
 // 三選一的選項：faction 指定委託方（null＝任意）；已滿級的不出現；持有兩家以上時有機會出現雙重模組
-export function modOffer(list, faction, rand, n = 3) {
+// legend＝固定放一個傳說模組（精英、Boss、大型兵器擊破後；持有已滿 LEGEND_MAX 時不放）
+export function modOffer(list, faction, rand, n = 3, legend = false) {
   const have = new Map((list || []).map((m) => [m.id, m.lv]));
   const facs = new Set((list || []).map((m) => MODULES[m.id] && MODULES[m.id].faction));
-  const okLv = (id) => (have.get(id) || 0) < MOD_MAX_LV;
+  const okLv = (id) => (have.get(id) || 0) < (MODULES[id].legend ? 1 : MOD_MAX_LV);
   let pool = Object.keys(MODULES).filter(
-    (id) => MODULES[id].faction !== 'duo' && (!faction || MODULES[id].faction === faction) && okLv(id),
+    (id) =>
+      MODULES[id].faction !== 'duo' &&
+      !MODULES[id].legend &&
+      (!faction || MODULES[id].faction === faction) &&
+      okLv(id),
   );
+  const nLeg = (list || []).filter((m) => MODULES[m.id] && MODULES[m.id].legend).length;
+  if (legend && nLeg < LEGEND_MAX) {
+    const lg = Object.keys(MODULES).filter((id) => MODULES[id].legend && !have.has(id));
+    if (lg.length) n--;
+    const pickL = lg.length ? lg[Math.floor(rand() * lg.length)] : null;
+    const rest = modOffer(list, faction, rand, n, false);
+    return pickL ? [{ id: pickL, lv: 1 }, ...rest] : rest;
+  }
   const duos = Object.keys(MODULES).filter(
     (id) => MODULES[id].faction === 'duo' && okLv(id) && MODULES[id].need.every((f) => facs.has(f)),
   );

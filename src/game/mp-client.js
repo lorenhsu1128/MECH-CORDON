@@ -143,6 +143,7 @@ Object.assign(Game.prototype, {
       ms: r.ms || null,
       grunt: !!r.gr,
       pilot: r.pm || null,
+      af: r.af || 0, // 詞綴（data/affix.js）
     };
     // 玩家的模型組還沒下載好：先用伺服器預設組，下載完再換（mp-models.js）
     if (r.ms) RemoteSets.load(r.ms);

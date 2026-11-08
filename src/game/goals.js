@@ -79,6 +79,17 @@ Object.assign(Game.prototype, {
       } else if (type === 'extract') {
         win.push('摧毀目標設施，撐到回收機抵達並裝載' + exit);
         win.push('回收物資要撤離成功才帶得走');
+      } else if (type === 'chase') {
+        win.push('擊破全部逃亡的運輸車' + exit);
+        lose.push('任何一台運輸車抵達逃脫點');
+      } else if (type === 'front') win.push('和友軍一起依序佔領 3 個據點（我方比敵方多時進度上升）' + exit);
+      else if (type === 'air') {
+        win.push('擊落所有敵機（含增援）' + exit);
+        lose.push('友軍雷達站被摧毀');
+      } else if (type === 'colossus') {
+        win.push('打斷大型兵器的腳部關節或引擎讓它停機，再擊破動力核心' + exit);
+        if (this.camp && this.camp.ss && this.camp.ss.col && this.camp.ss.col.kind === 'ship')
+          lose.push('陸上戰艦抵達防衛線');
       } else if (type === 'boss') {
         const n = bossNames();
         win.push(`擊破 ${n || 'Boss'}` + (last ? '' : exit));

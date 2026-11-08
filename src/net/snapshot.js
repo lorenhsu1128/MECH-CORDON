@@ -60,6 +60,7 @@ function serSpecial(e) {
   if (aw) o.aw = aw;
   if (e.bx) o.bx = e.bx;
   if (e.sts) o.su = e.statusSer(); // 狀態效果（mech-status.js）
+  if (e.afs) o.af = e.afs; // 詞綴的狀態：隱形中、狂暴中、反射中（mech-affix.js）
   // Boss 改版（mech-boss-tier.js）：bt＝Boss 的蓄力、打斷量表、破綻；bk＝玩家的破甲充能 %
   if (e.isBoss && e.bt) {
     const t = e.serTier();
@@ -133,6 +134,7 @@ export function applyEnt(e, s, g) {
   e.bossVis = sx[4];
   e.bx = s.bx || null;
   e.aw = s.aw || 0;
+  e.afs = s.af || 0;
   e.btC = s.bt || null;
   e.bkC = (s.bk || 0) / 100;
   if (s.su || e.sts) e.statusApply(s.su);

@@ -15230,12 +15230,12 @@ async function testSegOps(browser, base) {
     out.ph1 = ext.ph;
     out.lz = !!(ext.lz && ext.lz.group);
     const v = g.campView();
-    out.view = !!(v.sv && v.sv.lz);
+    out.view = !!(v.sv && v.sv.rings && v.sv.rings.length);
     out.cleared0 = g.camp.cleared;
     // 客機：照 sv 建回收地點的光環
     g.campC = { vk: null };
     g.campClientView(v);
-    out.client = !!(g.campC.vis && g.campC.vis.lz);
+    out.client = !!(g.campC.vis && g.campC.vis.segR && g.campC.vis.segR.length);
     g.campClearClientVis();
     g.campC = null;
     // 等待中有增援
@@ -15275,6 +15275,593 @@ async function testSegOps(browser, base) {
     `撤離成功：物資入帳 +${ex.gain} COAM、敵軍撤退、區段清除`,
   );
   await thawLoop(page);
+  await ctx.close();
+}
+
+// 主線擴充第 2 期：敵人詞綴（護盾、分裂、隱形、狂暴、反射、再生、殉爆、疾風、磁力、指揮）
+async function testAffix(browser, base) {
+  console.log('敵人詞綴：10 種的效果、擊破、HUD');
+  const { ctx, page } = await newPage(browser, 'affix');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await freezeLoop(page);
+  const r = await page.evaluate(() => {
+    const g = window.__game;
+    const out = {};
+    // 出擊時的機率：強制「護盾」→ 生成的一般敵人都帶（等級 2：不是 Boss 關）
+    g.save.level = 2;
+    g.afForce = 1;
+    g.startMission();
+    const all = g.enemies.filter((e) => !e.dead && e.ai !== 'objective');
+    out.forced = all.filter((e) => e.af & 1).length;
+    out.total = all.length;
+    out.miss = all
+      .filter(
+        (e) =>
+          !(e.af & 1) &&
+          !e.ace &&
+          e.ai !== 'ac' &&
+          !e.isBoss &&
+          !['repair', 'dome', 'dropship', 'minelayer', 'commander'].includes(e.ai),
+      )
+      .map((e) => e.name + ':' + e.ai);
+    out.named = all.some((e) => /^【護盾】/.test(e.name));
+    g.afForce = null;
+    // 測試場：清掉敵人與增援
+    for (const e of g.enemies) e.dead = true;
+    g.enemies = [];
+    g.waves = [];
+    g.wavePend = null;
+    g.state = 'af-test';
+    const p = g.player;
+    p.hp = p.maxHp = 1e7;
+    const W = g.world;
+    const at = (x, z) =>
+      new THREE.Vector3(p.pos.x + x, W.groundAt(p.pos.x + x, p.pos.z + z, 999), p.pos.z + z);
+    const mk = (bit, x, z, type = 'mt') => {
+      g.afForce = bit;
+      const e = g.spawnType(type, 1, 1, at(x, z), 1);
+      g.afForce = null;
+      e.updateAI = () => {};
+      return e;
+    };
+    const face = (e, q) => (e.yaw = Math.atan2(-(q.x - e.pos.x), -(q.z - e.pos.z)));
+    const hit = (e, A = 'kin', melee = null) => {
+      const h0 = e.hp;
+      e.takeDamage(100, 0, p, e.center(), new THREE.Vector3(0, 0, 1), melee, null, A);
+      return h0 - e.hp;
+    };
+    // 護盾：正面大幅減傷、背後全額（玩家在地面上：攻擊者高很多時正面護盾本來就不擋）
+    p.pos.y = W.terrainHeight(p.pos.x, p.pos.z);
+    const sh = mk(1, 30, 0);
+    sh.pos.y = W.terrainHeight(sh.pos.x, sh.pos.z);
+    face(sh, p.pos);
+    const front = hit(sh);
+    sh.yaw += Math.PI;
+    const back = hit(sh);
+    out.shield = [front, back];
+    // 反射：反射中實彈不受傷、能量照常
+    const rf = mk(16, -30, 0);
+    rf.afFx(0);
+    rf.afRefPh = -rf.t + 0.01;
+    rf.afFx(0.016);
+    out.reflect = [hit(rf, 'kin'), hit(rf, 'en'), !!(rf.afs & 4)];
+    // 再生
+    const rg = mk(32, 0, 30);
+    rg.afFx(0);
+    rg.hp = rg.maxHp * 0.5;
+    rg.afHitT = rg.t - 5;
+    rg.afFx(1);
+    out.regen = rg.hp > rg.maxHp * 0.5;
+    // 狂暴
+    const bz = mk(8, 0, -30);
+    const s0 = bz.speedMul,
+      d0 = bz.dmgMul;
+    bz.hp = bz.maxHp * 0.4;
+    bz.afFx(0.016);
+    out.berserk = [bz.speedMul > s0, bz.dmgMul > d0, !!(bz.afs & 2)];
+    // 隱形：停火後不能鎖定、開火時現形
+    const ck = mk(4, 40, 40);
+    ck.afFx(0);
+    ck.afShowT = ck.t - 5;
+    ck.afFx(0.016);
+    const c1 = ck.noLock;
+    ck.afShowT = ck.t;
+    ck.afFx(0.016);
+    out.cloak = [c1, ck.noLock];
+    // 疾風
+    g.afForce = 0;
+    const plain = g.spawnType('mt', 1, 1, at(50, 0), 1);
+    g.afForce = null;
+    plain.updateAI = () => {};
+    const sw = mk(128, 52, 0);
+    out.swift = sw.speedMul / plain.speedMul;
+    // 磁力：附近玩家的導彈改追它
+    const mg = mk(256, -40, -40);
+    const fake = { kind: 'missile', team: 'player', pos: mg.pos.clone(), target: plain, dead: false };
+    g.projectiles.push(fake);
+    mg.afFx(0.016);
+    out.magnet = fake.target === mg;
+    g.projectiles.splice(g.projectiles.indexOf(fake), 1);
+    // 指揮：範圍內的友軍受到的傷害減少
+    const before = hit(plain);
+    const ld = mk(512, 55, 3);
+    const after = hit(plain);
+    out.leader = [before, after];
+    // HUD 與鎖定提示
+    out.hint = g.afHint(sh);
+    // 分裂：擊破時分成兩台小的（沒有詞綴）
+    const sp = mk(2, -50, 20);
+    const n0 = g.enemies.filter((e) => !e.dead).length;
+    const c0 = g.save.coam;
+    sp.takeDamage(1e9, 0, p, sp.center(), new THREE.Vector3(0, 0, 1));
+    const kids = g.enemies.filter((e) => !e.dead && e.opts.afChild);
+    out.split = [
+      g.enemies.filter((e) => !e.dead).length - n0,
+      kids.length,
+      kids.every((k) => !k.af && k.maxHp < sp.maxHp),
+    ];
+    out.bounty = g.save.coam - c0;
+    // 殉爆：擊破後延遲大爆炸，傷到附近的玩家
+    const vo = mk(64, 6, 0);
+    const h0 = p.hp;
+    vo.takeDamage(1e9, 0, p, vo.center(), new THREE.Vector3(0, 0, 1));
+    const h1 = p.hp;
+    for (let i = 0; i < 90; i++) g.updateHazards(1 / 60);
+    out.volatile = [h0 - h1, h1 - p.hp];
+    void ld;
+    // 畫面
+    g.state = 'play';
+    for (const e of g.enemies) e.updateAI = () => {};
+    p.pos.copy(at(0, 15));
+    return out;
+  });
+  check(
+    r.forced > 0 && r.named && !r.miss.length,
+    `強制詞綴：一般敵人都帶、名稱加上【護盾】（${r.forced}／${r.total}，敵對 AC 與支援類不帶${r.miss.length ? '；沒帶：' + r.miss.join('、') : ''}）`,
+  );
+  check(r.shield[0] > 0 && r.shield[0] < r.shield[1] * 0.3, `護盾：正面 ${r.shield[0]}、背後 ${r.shield[1]}`);
+  check(
+    r.reflect[2] && r.reflect[0] === 0 && r.reflect[1] > 0,
+    `反射：反射中實彈 ${r.reflect[0]}、能量 ${r.reflect[1]}`,
+  );
+  check(r.regen, '再生：幾秒沒被打就回復 AP');
+  check(r.berserk.every(Boolean), '狂暴：AP 剩一半時速度與火力上升');
+  check(r.cloak[0] && !r.cloak[1], '隱形：停火時不能鎖定、開火時現形');
+  check(Math.abs(r.swift - 1.45) < 0.01, `疾風：速度 ×${r.swift.toFixed(2)}`);
+  check(r.magnet, '磁力：附近玩家的導彈改追它');
+  check(r.leader[1] < r.leader[0] * 0.8, `指揮：範圍內的友軍受到的傷害 ${r.leader[0]} → ${r.leader[1]}`);
+  check(/繞到背後/.test(r.hint), '鎖定提示寫出詞綴的打法：' + r.hint.trim());
+  check(r.split[0] === 1 && r.split[1] === 2 && r.split[2], '分裂：擊破後分成兩台小的、沒有詞綴');
+  check(r.bounty > 0, `帶詞綴的擊破獎金 +${r.bounty}`);
+  check(
+    r.volatile[0] === 0 && r.volatile[1] > 0,
+    `殉爆：擊破後延遲爆炸、傷到附近的玩家（${Math.round(r.volatile[1])}）`,
+  );
+  await page.evaluate(() => window.__pump(1));
+  await page.screenshot({ path: path.join(SHOT_DIR, 'affix.png') });
+  await ctx.close();
+}
+
+// 主線擴充第 3 期：追擊（逃亡的運輸車、受損減速、逃脫＝失敗、全部擊破＝清除）與大規模戰場（友軍部隊、依序佔領據點、增援與補充）
+async function testSegOps2(browser, base) {
+  console.log('主線的新區段：追擊與大規模戰場');
+  const { ctx, page } = await newPage(browser, 'segops2');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await freezeLoop(page);
+  const ch = await page.evaluate(() => {
+    const g = window.__game;
+    g.autoPickMod = true;
+    // 有公路的主題：集散場
+    g.campBegin('c2s1');
+    const so = g.campSortie();
+    const i = so.segs.findIndex((s) => s.theme === 'industrial');
+    g.camp.seg = Math.max(0, i);
+    g.camp.types[g.camp.seg] = 'chase';
+    g.campEnterSeg();
+    const ss = g.camp.ss,
+      p = g.player;
+    p.hp = p.maxHp = 1e7;
+    const out = { type: ss.type, road: !!g.world.corridor, theme: g.worldTheme };
+    if (!ss.chase) return out;
+    const vs = ss.chase.vs;
+    out.n = vs.length;
+    out.enemy = vs.every((v) => v.team === 'enemy' && g.enemies.includes(v));
+    out.esc = !!(ss.rings && ss.rings.esc);
+    out.sv = !!(g.campView().sv && g.campView().sv.rings.some((r) => r[7] === '逃'));
+    out.goal = g.campGoal(1, 0);
+    const end = vs[0].opts.path[vs[0].opts.path.length - 1];
+    const d0 = vs[0].pos.distanceTo(end);
+    for (let k = 0; k < 180; k++) {
+      g.time += 1 / 60;
+      for (const v of vs) v.updateAI(1 / 60);
+      g.campTick(1 / 60);
+    }
+    out.moved = d0 - vs[0].pos.distanceTo(end);
+    vs[0].hp = vs[0].maxHp * 0.2;
+    g.campTick(1 / 60);
+    out.slow = vs[0].opts.convoySpeed / vs[0].cs0;
+    // 攔截部隊
+    const q0 = (g.spawnQ || []).length;
+    ss.chase.waveT = 0;
+    g.campTick(1 / 60);
+    out.intercept = (g.spawnQ || []).length > q0;
+    // 全部擊破＝清除
+    for (const v of vs) v.takeDamage(1e9, 0, p, v.center(), new THREE.Vector3(0, 0, 1));
+    g.campTick(1 / 60);
+    out.cleared = g.camp.cleared && g.enemies.every((e) => e.dead);
+    // 逃脫＝失敗
+    g.campEnterSeg();
+    const v2 = g.camp.ss.chase.vs[0];
+    v2.pos.copy(v2.opts.path[v2.opts.path.length - 1]);
+    v2.pathI = v2.opts.path.length;
+    v2.updateAI(1 / 60);
+    g.campTick(1 / 60);
+    out.fail = g.state;
+    return out;
+  });
+  check(ch.type === 'chase' && ch.road, `追擊區段：有公路（${ch.theme}）`);
+  check(ch.n === 3 && ch.enemy && ch.esc && ch.sv, '三台逃亡的運輸車（敵方）、逃脫點的光環（客機也有）');
+  check(/追擊：運輸車 3／3/.test(ch.goal || ''), 'HUD 的目標：' + ch.goal);
+  check(ch.moved > 10, `運輸車沿公路逃（3 秒 ${Math.round(ch.moved)} m）`);
+  check(ch.slow < 0.8, `受損越重跑得越慢（AP 20% 時速度 ×${(ch.slow || 0).toFixed(2)}）`);
+  check(ch.intercept, '定時出現攔截部隊');
+  check(ch.cleared, '全部擊破：剩下的敵軍撤退、區段清除');
+  check(ch.fail === 'ending' || ch.fail === 'campfail', `運輸車抵達逃脫點＝失敗（${ch.fail}）`);
+  // 大規模戰場
+  const fr = await page.evaluate(() => {
+    const g = window.__game;
+    g.state = 'play';
+    g.campBegin('c1s2');
+    g.camp.seg = 1;
+    g.camp.types[1] = 'front';
+    g.campEnterSeg();
+    const ss = g.camp.ss,
+      p = g.player,
+      f = ss.front;
+    p.hp = p.maxHp = 1e7;
+    const out = { type: ss.type, pts: f.pts.length, allies: g.allies.filter((a) => !a.dead).length };
+    while (g.spawnQ && g.spawnQ.length) g.spawnQTick();
+    out.enemies = g.enemies.filter((e) => !e.dead).length;
+    // 敵人比平常弱
+    const e0 = g.enemies.find((e) => !e.dead && e.etype && !e.af);
+    const ref = g.spawnType(e0.etype, g.scaleHp, g.scaleDmg, p.pos.clone(), 1);
+    out.weak = e0 ? e0.maxHp / ref.maxHp : -1;
+    ref.takeDamage(1e9, 0, p, ref.center(), new THREE.Vector3(0, 0, 1));
+    out.rings = Object.keys(ss.rings || {}).length;
+    // 依序佔領：站在目前的據點、清掉圈裡的敵人
+    const capture = () => {
+      const o = f.pts[f.cur];
+      p.pos.copy(o.pos);
+      for (const e of g.enemies)
+        if (!e.dead && e.pos.distanceTo(o.pos) < 60)
+          e.takeDamage(1e9, 0, p, e.center(), new THREE.Vector3(0, 0, 1));
+      for (let k = 0; k < 900 && !o.own; k++) g.campTick(1 / 60);
+      return o.own;
+    };
+    out.c0 = capture();
+    out.cur = f.cur;
+    out.goal = g.campGoal(1, 0);
+    // 增援與友軍的補充
+    const q0 = (g.spawnQ || []).length;
+    f.waveT = 0;
+    g.campTick(1 / 60);
+    out.wave = (g.spawnQ || []).length > q0;
+    for (const a of g.allies) if (a.ai !== 'objective') a.dead = true;
+    f.allyT = 0;
+    g.campTick(1 / 60);
+    out.refill = g.allies.filter((a) => !a.dead).length;
+    // 剩下的兩個
+    out.c1 = capture();
+    out.c2 = capture();
+    out.cleared = g.camp.cleared;
+    // 畫面
+    g.campEnterSeg();
+    while (g.spawnQ && g.spawnQ.length) g.spawnQTick();
+    g.player.hp = g.player.maxHp = 1e7;
+    g.state = 'play';
+    g.showScreen('');
+    return out;
+  });
+  check(fr.type === 'front' && fr.pts === 3 && fr.rings === 3, '大規模戰場：3 個據點與光環');
+  check(fr.allies >= 7, `友軍部隊 ${fr.allies} 台`);
+  check(fr.enemies >= 15, `大批的敵人 ${fr.enemies} 台`);
+  check(fr.weak > 0 && fr.weak < 0.6, `敵人比平常弱（AP ×${(fr.weak || 0).toFixed(2)}）`);
+  check(fr.c0 && fr.cur === 1 && /據點 B/.test(fr.goal), '佔領據點 A → 下一個是據點 B：' + fr.goal);
+  check(fr.wave, '敵方的增援湧向目前的據點');
+  check(fr.refill >= 2, `友軍少的時候補充（${fr.refill} 台）`);
+  check(fr.c1 && fr.c2 && fr.cleared, '全部據點佔領＝區段清除');
+  await page.evaluate(() => window.__pump(2));
+  await page.screenshot({ path: path.join(SHOT_DIR, 'seg-front.png') });
+  await ctx.close();
+}
+
+// 主線擴充第 4 期：大型兵器（多足巨兵、陸上戰艦：移動、打斷部位停機、甲板、動力核心、重新啟動、突破防衛線）
+async function testColossus(browser, base) {
+  console.log('主線的新區段：大型兵器');
+  const { ctx, page } = await newPage(browser, 'colossus');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await freezeLoop(page);
+  const r = await page.evaluate(() => {
+    const g = window.__game;
+    g.autoPickMod = true;
+    g.campBegin('c2s1');
+    g.camp.seg = 1;
+    g.camp.types[1] = 'colossus';
+    g.camp.plan[1].col = 'walker';
+    g.campEnterSeg();
+    const ss = g.camp.ss,
+      S = ss.col,
+      b = S.body,
+      p = g.player;
+    p.hp = p.maxHp = 1e7;
+    const out = {
+      type: ss.type,
+      kind: S.kind,
+      noLock: b.noLock,
+      legs: S.legs.length,
+      parts: g.enemies.filter((e) => !e.dead && e.opts.parent === b.id).length,
+      h: Math.round(b.model.height),
+      top: Math.round(b.colTop() - b.pos.y),
+      goal: g.campGoal(1, 0),
+    };
+    // 本體打不動
+    const h0 = b.hp;
+    b.takeDamage(1e6, 0, p, b.center(), new THREE.Vector3(0, 0, 1));
+    out.immune = b.hp === h0;
+    // 移動
+    const p0 = b.pos.clone();
+    for (let i = 0; i < 120; i++) {
+      g.time += 1 / 60;
+      b.updateAI(1 / 60);
+      for (const e of g.enemies) if (e.opts.parent === b.id && !e.dead) e.updateAI(1 / 60);
+    }
+    out.moved = Math.round(b.pos.distanceTo(p0));
+    out.follow = S.legs.every((L) => L.pos.distanceTo(b.pos) < 60);
+    // 打斷 4 條腳：停機、甲板、動力核心
+    const kill = (e) => e.takeDamage(1e9, 0, p, e.center(), new THREE.Vector3(0, 0, 1));
+    for (let i = 0; i < 4; i++) kill(S.legs[i]);
+    g.campTick(1 / 60);
+    b.colFx(1 / 60);
+    out.ph2 = b.col.ph === 2 && !!(b.bossVis & 64) && (b.bossVis & 15) === 15;
+    out.core = !!(S.core && !S.core.dead);
+    out.deck = !!b.colDeck && g.world.obstacles.includes(b.colDeck);
+    out.goal2 = g.campGoal(1, 0);
+    // 時限到：重新啟動、修好 2 個
+    S.t = 0.01;
+    g.campTick(1 / 30);
+    b.colFx(1 / 60);
+    out.restart = b.col.ph === 1 && S.legs.filter((L) => !L.dead).length === 4 && !b.colDeck;
+    // 再打斷、擊破核心＝清除
+    for (const L of S.legs) if (!L.dead) kill(L);
+    g.campTick(1 / 60);
+    kill(S.core);
+    g.campTick(1 / 60);
+    out.cleared = g.camp.cleared && b.dead;
+    // 陸上戰艦：抵達防衛線＝失敗
+    g.camp.plan[1].col = 'ship';
+    g.campEnterSeg();
+    const S2 = g.camp.ss.col,
+      b2 = S2.body;
+    out.ship = S2.kind === 'ship' && S2.legs.length === 2 && !!(g.camp.ss.rings && g.camp.ss.rings.end);
+    const end = b2.col.path[b2.col.path.length - 1];
+    b2.pos.copy(end);
+    b2.col.i = b2.col.path.length - 1;
+    b2.updateAI(1 / 60);
+    g.campTick(1 / 60);
+    out.fail = g.state;
+    return out;
+  });
+  check(r.type === 'colossus' && r.kind === 'walker' && r.noLock, '大型兵器區段：多足巨兵（本體不能鎖定）');
+  check(r.legs === 6 && r.parts >= 10, `腳部關節 ${r.legs} 個、部位合計 ${r.parts}（含砲塔、主砲）`);
+  check(r.immune, '本體打不動');
+  check(r.moved > 5 && r.follow, `沿路線移動（2 秒 ${r.moved} m），部位跟著`);
+  check(/打斷腳部關節 0／4/.test(r.goal), 'HUD 的目標：' + r.goal);
+  check(r.ph2 && r.core && r.deck, `打斷 4 條：停機、腿隱藏、動力核心、甲板（高 ${r.top} m，模型 ${r.h} m）`);
+  check(/動力核心/.test(r.goal2), '停機中的目標：' + r.goal2);
+  check(r.restart, '時限到：重新啟動、修好 2 條、甲板拿掉');
+  check(r.cleared, '擊破動力核心：本體擊破、區段清除');
+  check(r.ship, '陸上戰艦：2 具引擎、防衛線的光環');
+  check(r.fail === 'ending' || r.fail === 'campfail', `陸上戰艦抵達防衛線＝失敗（${r.fail}）`);
+  // 畫面
+  await page.evaluate(() => {
+    const g = window.__game;
+    g.state = 'play';
+    g.camp.plan[1].col = 'walker';
+    g.campEnterSeg();
+    const b = g.camp.ss.col.body,
+      p = g.player;
+    p.hp = p.maxHp = 1e7;
+    const x = b.pos.x + 60,
+      z = b.pos.z + 60;
+    p.pos.set(x, g.world.groundAt(x, z, 999), z);
+    window.__pump(1.5);
+  });
+  await page.screenshot({ path: path.join(SHOT_DIR, 'seg-colossus.png') });
+  await ctx.close();
+}
+
+// 主線擴充第 5 期：空戰區段（地圖換成空域、飛行、友軍雷達站、清除後出口在飛行高度、雷達站被毀＝失敗、多人不出現）
+async function testSegAir(browser, base) {
+  console.log('主線的新區段：空戰');
+  const { ctx, page } = await newPage(browser, 'segair');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await freezeLoop(page);
+  const r = await page.evaluate(() => {
+    const g = window.__game;
+    g.autoPickMod = true;
+    g.campBegin('c1s2');
+    const out = {};
+    // 多人不出現
+    const mp0 = g.campMp;
+    g.campMp = () => true;
+    out.mpOk = g.campTypeOk('air', 1);
+    g.campMp = mp0;
+    out.soloOk = g.campTypeOk('air', 1);
+    g.camp.seg = 1;
+    g.camp.types[1] = 'air';
+    g.campEnterSeg();
+    const p = g.player;
+    p.hp = p.maxHp = 1e7;
+    out.theme = g.worldTheme;
+    out.air = !!g.airMode;
+    out.base = !!(g.airBase && !g.airBase.dead);
+    out.enemies = g.enemies.filter((e) => !e.dead).length;
+    out.name = g.campSegName();
+    out.spec = g.goalSpec().win.join('／') + '｜' + g.goalSpec().lose.join('／');
+    // 全部擊落＝清除，出口在飛行高度
+    g.waves = [];
+    g.wavePend = null;
+    for (const e of g.enemies)
+      if (!e.dead && e.team === 'enemy') e.takeDamage(1e9, 0, p, e.center(), new THREE.Vector3(0, 0, 1));
+    g.campCleared();
+    out.cleared = g.camp.cleared;
+    out.exits = g.camp.exits.length;
+    out.exitAlt = Math.min(...g.camp.exits.map((ex) => ex.pos.y - g.world.terrainHeight(ex.pos.x, ex.pos.z)));
+    // 走進出口：下一段回到地面（空域結束）
+    const ex = g.camp.exits[0];
+    p.pos.copy(ex.pos);
+    for (let i = 0; i < 90 && g.state === 'play'; i++) g.campTick(1 / 60);
+    out.left = g.state;
+    out.airAfter = !!g.airMode;
+    // 雷達站被毀＝失敗
+    g.state = 'play';
+    g.camp.seg = 1;
+    g.camp.types[1] = 'air';
+    g.campEnterSeg();
+    g.player.hp = g.player.maxHp = 1e7;
+    g.airBase.takeDamage(1e9, 0, null, g.airBase.center(), new THREE.Vector3(0, 0, 1));
+    g.airPlayerTick(g.player, 1 / 60);
+    out.fail = g.state;
+    return out;
+  });
+  check(!r.mpOk && r.soloOk, '空戰區段只在單人出現');
+  check(
+    r.theme === 'airspace' && r.air && r.base && r.enemies > 0,
+    `空戰區段：地圖換成空域、飛行、友軍雷達站、敵機 ${r.enemies}`,
+  );
+  check(/空域/.test(r.name), '區段名稱：' + r.name);
+  check(/擊落/.test(r.spec) && /雷達站/.test(r.spec), '過關條件：' + r.spec);
+  check(
+    r.cleared && r.exits >= 2 && r.exitAlt > 100,
+    `全部擊落＝清除，出口在飛行高度（離地 ${Math.round(r.exitAlt)} m）`,
+  );
+  check(r.left === 'camptrans' && !r.airAfter, `走進出口前往下一段、離開空域（${r.left}）`);
+  check(r.fail === 'ending' || r.fail === 'campfail', `友軍雷達站被摧毀＝失敗（${r.fail}）`);
+  await ctx.close();
+}
+
+// 主線擴充第 7 期：素材與零件的掉落、零件調校（套用到武器與機體、PvP 不套用、機甲庫的調校畫面、重置退還一半）
+async function testLoot(browser, base) {
+  console.log('掉落與調校：素材、零件、調校的效果與畫面');
+  const { ctx, page } = await newPage(browser, 'loot');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await freezeLoop(page);
+  const r = await page.evaluate(() => {
+    const g = window.__game;
+    const S = g.save;
+    const out = {};
+    const rid = S.asm.rarm,
+      cid = S.asm.core;
+    // 調校的效果：右手武器「高壓彈藥」3 級、核心「追加裝甲」2 級
+    const base = () => {
+      g.save.level = 2;
+      g.startMission();
+      const p = g.player;
+      return { dmg: p.weapons.rarm.def.dmg, ammo: p.weapons.rarm.def.ammo, hp: p.maxHp };
+    };
+    S.tune = {};
+    const b0 = base();
+    S.tune = { [rid]: { pow: 3 }, [cid]: { armor: 2 } };
+    const b1 = base();
+    out.dmgK = b1.dmg / b0.dmg;
+    out.ammoK = b1.ammo / b0.ammo;
+    out.hpK = b1.hp / b0.hp;
+    out.pvp = !!(g.pilotLocalMods('pvp') || {}).tn;
+    // 掉落：敵對 AC 一定掉合金
+    S.tune = {};
+    g.lootReset();
+    g.state = 'loot-test';
+    const p = g.player;
+    p.hp = p.maxHp = 1e7;
+    const e = g.spawnType('ac', 1, 1, p.pos.clone().add(new THREE.Vector3(20, 0, 0)), 1);
+    e.updateAI = () => {};
+    const k0 = g.pickups.length;
+    e.takeDamage(1e9, 0, p, e.center(), new THREE.Vector3(0, 0, 1));
+    const mats = g.pickups.slice(k0).filter((k) => k.kind.startsWith('mat_'));
+    out.drops = mats.map((k) => k.kind);
+    const a0 = (S.mats && S.mats.alloy) || 0;
+    for (const k of mats) g.collectPickup(k, p);
+    out.alloy = S.mats.alloy - a0;
+    // 零件：還沒擁有的加進擁有、已擁有的換成素材
+    const PARTS_ARM = ['w_lr', 'w_lsg', 'w_lc', 'w_pile', 'w_claw'];
+    const nid = PARTS_ARM.find((id) => !S.owned.includes(id));
+    g.lootPart(nid);
+    out.part = S.owned.includes(nid);
+    const ci0 = S.mats.circuit || 0;
+    g.lootPart(nid);
+    out.dup = (S.mats.circuit || 0) - ci0;
+    out.rows = g.lootRows().map((x) => x.join('：'));
+    g.state = 'play';
+    return { ...out, nid };
+  });
+  check(
+    Math.abs(r.dmgK - 1.18) < 0.01 && r.ammoK < 0.9, // 總彈數和 PvE 的 +40% 相加：(1.4 − 0.24)／1.4
+    `武器的調校：傷害 ×${r.dmgK.toFixed(2)}、總彈數 ×${r.ammoK.toFixed(2)}`,
+  );
+  check(r.hpK > 1.04, `機體的調校：AP ×${r.hpK.toFixed(3)}`);
+  check(!r.pvp, 'PvP 不套用調校');
+  check(
+    r.drops.includes('mat_alloy') && r.alloy >= 1,
+    `擊破敵對 AC 掉素材（${r.drops.join('、')}）、撿到入帳`,
+  );
+  check(r.part && r.dup === 2, `掉落零件：取得 ${r.nid}，已擁有的換成電子零件 ×2`);
+  check(
+    r.rows.some((x) => /素材/.test(x)) && r.rows.some((x) => /取得零件/.test(x)),
+    '結果畫面列出：' + r.rows.join('／'),
+  );
+  // 機甲庫的調校畫面
+  await thawLoop(page);
+  const ui = await page.evaluate(async () => {
+    const g = window.__game;
+    const S = g.save;
+    g.clearMission();
+    g.openGarage();
+    S.coam = 200000;
+    S.mats = { alloy: 20, circuit: 10, core: 3, shard: 0 };
+    S.tune = {};
+    const id = S.asm.rarm;
+    g.tuneOpen('arm', id);
+    const box = document.getElementById('tuneBox');
+    const out = { open: box.classList.contains('on'), rows: box.querySelectorAll('.tuRow').length };
+    box.querySelector('.tuUp').click();
+    out.lv = Object.values(S.tune[id] || {})[0];
+    out.coam = S.coam;
+    out.alloy = S.mats.alloy;
+    box.querySelector('.tuUp').click();
+    out.lv2 = Object.values(S.tune[id] || {})[0];
+    out.alloy2 = S.mats.alloy;
+    // 小卡片有調校按鈕與標示
+    g.garageTipUi(id);
+    out.tipBtn = (document.querySelector('#gTip .tTune') || {}).textContent || '';
+    // 重置：退還一半
+    g.tuneReset(id);
+    out.reset = !S.tune[id];
+    out.alloy3 = S.mats.alloy;
+    out.coam3 = S.coam;
+    g.tuneOpen('arm', id);
+    return out;
+  });
+  check(ui.open && ui.rows >= 2, `調校畫面：${ui.rows} 個項目`);
+  check(ui.lv === 1 && ui.coam === 197000 && ui.alloy === 18, '升級 1 級：扣 3000 COAM、合金 ×2');
+  check(ui.lv2 === 2 && ui.alloy2 === 14, '升級到 2 級：再扣合金 ×4、電子零件 ×2');
+  check(/調校（\+2）/.test(ui.tipBtn), '零件小卡片的調校按鈕標出級數：' + ui.tipBtn);
+  check(ui.reset && ui.alloy3 === 17 && ui.coam3 === 194500, '重置：退還一半（合金 +3、COAM +5500）');
+  await page.screenshot({ path: path.join(SHOT_DIR, 'tune.png') });
   await ctx.close();
 }
 
@@ -28108,6 +28695,11 @@ const STEPS = [
   ['testVoidMaps', (c) => testVoidMaps(c.browser, c.base)],
   ['testJumpCam', (c) => testJumpCam(c.browser, c.base)],
   ['testSegOps', (c) => testSegOps(c.browser, c.base)],
+  ['testAffix', (c) => testAffix(c.browser, c.base)],
+  ['testSegOps2', (c) => testSegOps2(c.browser, c.base)],
+  ['testColossus', (c) => testColossus(c.browser, c.base)],
+  ['testSegAir', (c) => testSegAir(c.browser, c.base)],
+  ['testLoot', (c) => testLoot(c.browser, c.base)],
   ['testBossTier2', (c) => testBossTier2(c.browser, c.base)],
   ['testBossField', (c) => testBossField(c.browser, c.base)],
   [

@@ -77,6 +77,7 @@ Object.assign(Game.prototype, {
       pm: e.pm || null, // 駕駛員加成：客機的 HUD 上限與自身移動預測需要
       ms: o.ms || null, // 玩家機甲的模型組（伺服器上的內容雜湊）
       guard: o.guardOf || 0, // 據點的守衛
+      af: e.af || 0, // 詞綴（data/affix.js）
       edu: this.lvEdu(e), // 自訂關卡的單位與群組（level-play.js）
       p: [e.pos.x, e.pos.y, e.pos.z],
     };

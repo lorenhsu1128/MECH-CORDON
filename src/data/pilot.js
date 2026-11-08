@@ -1,5 +1,6 @@
 // 駕駛員成長：等級、技能配點驗證、加成計算與套用（純函式，房主與客機共用）
 import { PARTS, REMOVED_PARTS, usesAmmo } from './parts.js';
+import { sanitizeTune, tuneFx, tuneGroup } from './tune.js';
 import {
   PILOT_MAX_LEVEL,
   PRESET_MAX,
@@ -162,6 +163,36 @@ export function normalizePilot(p) {
   return out;
 }
 
+// ---------- 零件調校（data/tune.js；主線擴充 E2） ----------
+// 零件 id → [分類, 零件]（調校只看零件 id）
+const PART_CAT = new Map();
+for (const cat in PARTS) for (const p of PARTS[cat]) if (!PART_CAT.has(p.id)) PART_CAT.set(p.id, [cat, p]);
+export const tuneGroupOf = (id) => {
+  const r = PART_CAT.get(id);
+  return r ? tuneGroup(r[0], r[1]) : null;
+};
+// 裝備中的零件的調校（存檔的 save.tune 只取這台用到的）
+export function tuneOfAsm(save) {
+  const out = {};
+  const T = save.tune || {};
+  for (const k in save.asm || {}) {
+    const id = save.asm[k];
+    if (T[id]) out[id] = T[id];
+  }
+  return sanitizeTune(out, tuneGroupOf);
+}
+// 機體零件（頭、核心、手臂、腳、推進器、發電機、火控）的調校加總成增量表
+function frameTuneFx(P, tn) {
+  const out = {};
+  for (const k of ['head', 'core', 'arms', 'legs', 'booster', 'generator', 'fcs']) {
+    const p = P[k];
+    if (!p || !tn[p.id]) continue;
+    const fx = tuneFx(tuneGroupOf(p.id), tn[p.id]);
+    for (const x in fx) out[x] = (out[x] || 0) + fx[x];
+  }
+  return out;
+}
+
 // ---------- 網路傳送 ----------
 // 客機送給房主：兩種模式的等級、配點，以及目前裝備武器的熟練度等級
 export function pilotPayload(save) {
@@ -178,6 +209,7 @@ export function pilotPayload(save) {
     }
     out[mode] = { lv: levelOf(m.xp), s: { ...m.skills }, pf };
   }
+  out.pve.tn = tuneOfAsm(save); // 零件調校（PvP 不套用）
   return out;
 }
 // 房主收到後修正範圍，避免異常資料
@@ -190,6 +222,7 @@ export function sanitizePayload(p) {
     const pf = {};
     for (const id in m.pf || {}) if (WEAPON_IDS.has(id)) pf[id] = clampInt(m.pf[id], 0, PROF_MAX);
     out[mode] = { lv, s: sanitizeSkills(m.s, lv), pf };
+    if (mode === 'pve' && m.tn) out[mode].tn = sanitizeTune(m.tn, tuneGroupOf);
   }
   return out;
 }
@@ -202,6 +235,7 @@ export function computePilotMods(mp, mode) {
   if (!mp) return null;
   const pm = { pf: { ...(mp.pf || {}) } };
   if (mode === 'pve') pm.ammo = PVE_AMMO_K;
+  if (mode === 'pve' && mp.tn && Object.keys(mp.tn).length) pm.tn = mp.tn; // 零件調校
   for (const id in mp.s || {}) {
     const s = SKILL_BY_ID[id];
     if (!s) continue;
@@ -217,6 +251,14 @@ const downF = (f, k) => Math.max(0.2, 1 - (f[k] || 0));
 export function applyPilotStats(st, pm) {
   if (!pm) return st;
   const P = st.parts;
+  // 機體零件的調校：加進同一套增量（不改 pm 本身）
+  if (pm.tn) {
+    const fx = frameTuneFx(P, pm.tn);
+    if (Object.keys(fx).length) {
+      pm = { ...pm };
+      for (const k in fx) pm[k] = (pm[k] || 0) + fx[k];
+    }
+  }
   const parts = {
     ...P,
     legs: {
@@ -285,6 +327,11 @@ export function pilotWeaponDef(def, pm) {
   if (!pm || !def || def.type === 'none') return def;
   const f = profBonus(def.type, (pm.pf && pm.pf[def.id]) || 0);
   for (const k of WEAPON_KEYS) if (pm[k]) f[k] = (f[k] || 0) + pm[k];
+  // 武器的調校（data/tune.js）
+  if (pm.tn && pm.tn[def.id]) {
+    const t = tuneFx(tuneGroupOf(def.id), pm.tn[def.id]);
+    for (const k in t) f[k] = (f[k] || 0) + t[k];
+  }
   if (!Object.keys(f).length) return def;
   const d = { ...def };
   if (d.type === 'melee') {

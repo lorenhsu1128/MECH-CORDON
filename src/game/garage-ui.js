@@ -7,6 +7,7 @@ import { hexBounds, hexScores } from '../data/garage-hex.js';
 import { hexSvg } from '../render/garage-charts.js';
 import { PARTS, SLOTS, asmStats, jumpSpec, partById, usesAmmo } from '../data/parts.js';
 import { applyPilotStats } from '../data/pilot.js';
+import { tuneGroup } from '../data/tune.js';
 import { escHtml } from '../core/html.js';
 import { partIcon, slotIcon } from '../render/garage-icons.js';
 import { hasThumb, renderThumb, thumbCached, thumbKey } from '../render/part-thumbs.js';
@@ -308,6 +309,11 @@ Object.assign(Game.prototype, {
         : owned
           ? '<button class="tEq">裝備</button>'
           : `<button class="tEq">購買並裝備 ${p.price.toLocaleString()} C</button>`;
+    // 零件調校（tune-ui.js）：擁有的零件
+    if (owned && cat !== 'consumable' && tuneGroup(cat, p)) {
+      const n = this.tuneSum(p.id);
+      act += `<button class="tTune">調校${n ? `（+${n}）` : ''}</button>`;
+    }
     // 屬性反應的搭配（data/react.js）
     const combo =
       (cat === 'arm' || cat === 'back') && !['none', 'shield'].includes(p.type)
@@ -320,6 +326,8 @@ Object.assign(Game.prototype, {
     if (be) be.onclick = () => this.garagePick(key, cat, p);
     const bb = tip.querySelector('.tBuy');
     if (bb) bb.onclick = () => this.garageBuyItem(p);
+    const bt = tip.querySelector('.tTune');
+    if (bt) bt.onclick = () => this.tuneOpen(cat, p.id);
   },
   // 這把武器的屬性反應搭配：「先用這把再接實彈＝過熱裝甲」
   garageComboTxt(p) {

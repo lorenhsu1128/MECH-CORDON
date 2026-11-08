@@ -33,7 +33,7 @@ const EXIT_R = 4 * MS; // 出口的觸發半徑
 const EXIT_HOLD = 0.8; // 站進出口多久才出發
 const PAD_R = 3.5 * MS; // 補給台、資料終端的半徑
 // 推進型的區段（docs/map-pacing-design.md）：大地圖、從作戰區域一側進場、敵人分成幾群、出口在另一側
-const ADVANCE = ['battle', 'destroy', 'intel', 'breakthrough', 'stealth', 'extract'];
+const ADVANCE = ['battle', 'destroy', 'intel', 'breakthrough', 'stealth', 'extract', 'front'];
 const WSLOTS = ['rarm', 'larm', 'rback', 'lback'];
 const clone = (o) => JSON.parse(JSON.stringify(o));
 // 紀錄點保存的欄位（this.camp 裡其餘的是執行中的狀態）
@@ -143,6 +143,7 @@ Object.assign(Game.prototype, {
   campSegName(i = this.camp.seg) {
     const seg = this.campSortie().segs[i],
       p = this.camp.plan[i] || {};
+    if (this.campSegType(i) === 'air') return THEMES.airspace.name; // 空戰區段（seg-air.js）
     const v = p.variant && VARIANTS[seg.theme] ? VARIANTS[seg.theme][p.variant] : null;
     const roof = (v && v.theme && v.theme.roof) || THEMES[seg.theme].roof;
     return `${THEMES[seg.theme].name}${v ? '・' + v.name : ''}${p.tod && !roof ? `（${TOD_NAMES[p.tod]}）` : ''}`;
@@ -153,14 +154,14 @@ Object.assign(Game.prototype, {
     const bd = sortieBoss(seg, type);
     p = p || {};
     // 作戰區域：Boss、護送、防衛、補給用全區，精英用小型戰場，其餘照排程
-    const zone = ['boss', 'escort', 'defend', 'supply'].includes(type)
+    const zone = ['boss', 'escort', 'defend', 'supply', 'chase', 'colossus'].includes(type)
       ? 'full'
       : type === 'elite'
         ? 'arena'
         : p.zone || 'full';
     return {
       rail: !!(bd && bd.rail),
-      road: type === 'escort',
+      road: type === 'escort' || type === 'chase',
       variant: p.variant,
       landmark: p.landmark,
       tod: p.tod,
@@ -169,7 +170,7 @@ Object.assign(Game.prototype, {
       zone,
       zoneAxis: p.zoneAxis,
       entry: (tr || {}).entry,
-      open: type === 'boss' ? 1 : undefined, // Boss 區段：地圖物件少一點（World.openArena）
+      open: type === 'boss' || type === 'colossus' ? 1 : undefined, // Boss 與大型兵器的區段：地圖物件少一點（World.openArena）
       // 大地圖與邊緣進場（docs/map-pacing-design.md）：一般戰鬥、摧毀、情報、突破
       big: ADVANCE.includes(type) ? 1 : undefined,
       edge: ADVANCE.includes(type) ? 1 : undefined,
@@ -193,7 +194,8 @@ Object.assign(Game.prototype, {
   },
   // 這個區段能不能是某種類型（護送要有公路）
   campTypeOk(type, i) {
-    if (type !== 'escort') return true;
+    if (type === 'air') return !this.campMp(); // 空戰只有單人（seg-air.js）
+    if (type !== 'escort' && type !== 'chase') return true;
     const seg = this.campSortie().segs[i],
       p = this.camp.plan[i] || {};
     const v = p.variant && VARIANTS[seg.theme] ? VARIANTS[seg.theme][p.variant] : null;
@@ -210,6 +212,7 @@ Object.assign(Game.prototype, {
     this.bossRank = null; // Boss 擊破評價（boss-tier.js）
     this.tierPartsBroken = 0;
     this.hkReset(); // 人員擊殺數（crowd.js）
+    this.lootReset(); // 這次出擊拿到的素材與零件（loot.js）
     // 作戰室預排的（全像戰略桌顯示的第一段地圖）；重打、危險條款另外排
     const pre = !o.replay && !(o.heat && Object.keys(o.heat).length) && st.pre && st.pre[sid];
     if (st.pre) delete st.pre[sid];
@@ -275,11 +278,14 @@ Object.assign(Game.prototype, {
     const L = this.campLevel();
     const bd = sortieBoss(seg, type);
     const seed = c.seeds[c.seg];
-    const W = this.campSegWorld(so, c.seg, type, c.plan[c.seg], c.trans[c.seg]);
+    // 空戰區段（seg-air.js）：這一段的地圖換成空域
+    const air = type === 'air';
+    const theme = air ? 'airspace' : seg.theme;
+    const W = air ? {} : this.campSegWorld(so, c.seg, type, c.plan[c.seg], c.trans[c.seg]);
     this.worldSeed = seed;
-    this.worldTheme = seg.theme;
+    this.worldTheme = theme;
     this.styleRefresh();
-    this.world = new World(this.scene, seg.theme, seed, L, null, W);
+    this.world = new World(this.scene, theme, seed, L, null, W);
     this.isClient = false;
     this.net.spawnReg = {};
     this.mpStats = c.stats;
@@ -330,7 +336,7 @@ Object.assign(Game.prototype, {
     this.crowdPlan(); // 地圖上的小人（crowd.js；人員擊殺數整次出擊累計，campBegin 歸零）
     this.waveAlerted = false;
     this.planVehicles();
-    if ((bd && bd.rail) || type === 'escort') this.vehPlan = [];
+    if ((bd && bd.rail) || type === 'escort' || type === 'chase') this.vehPlan = [];
     const post = this.segH('Post', type);
     if (post) post.call(this); // 新的區段類型：裝置與掉落物之後的擺放（seg-ops.js；devPlan、planVehicles 會清掉它們）
     if (mp) {
@@ -608,6 +614,7 @@ Object.assign(Game.prototype, {
       this.world.expandZone();
     }
     if (!c.exits.length) this.campSpawnExits();
+    this.segAirExits(); // 空戰區段：出口浮在飛行高度（seg-air.js）
     this.flashMsg('區段清除 — 選擇出口前往下一區', 0x7ee081, 2.4, {
       k: 'clear',
       m: '區段清除',
@@ -907,6 +914,7 @@ Object.assign(Game.prototype, {
     if (ss.intel) ss.intel.group = null;
     const clr = this.segH('Clear');
     if (clr) clr.call(this);
+    this.segClearRings(); // 新的區段類型的光環（seg-ops.js）
   },
   // 站在光環裡累計秒數（離開就歸零：reset）
   campStand(o, dt, r, reset = true) {
@@ -1009,6 +1017,7 @@ Object.assign(Game.prototype, {
     }
     const tick = this.segH('Tick');
     if (tick) tick.call(this, dt); // 主線擴充的新區段類型（seg-ops.js）
+    this.segRingSpin(dt);
     if (this.state !== 'play') return;
     if (ss.brk) {
       ss.brk.t -= dt;
@@ -1495,6 +1504,7 @@ Object.assign(Game.prototype, {
       ...(c.replay ? [['作戰紀錄', this.heatNames(c.heat).join('、') || '無危險條款']] : []),
       ['擊破數', String(c.stats[0] ? c.stats[0].kills : 0)],
       ...this.hkRows(), // 人員擊殺數（crowd.js）
+      ...this.lootRows(), // 素材與零件（loot.js）
       // Boss 改版：最後一段 Boss 的擊破評價（S＝多一個戰術模組三選一）
       ...(this.bossRank && success ? [['Boss 擊破評價', this.tierRankTxt(this.bossRank)]] : []),
       ...(this.tierPartsBroken && success

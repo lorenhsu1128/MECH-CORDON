@@ -113,6 +113,7 @@ Object.assign(Game.prototype, {
     this.crowdClear();
     if (!this.world || !this.scene || this.crowdOff) return;
     if (
+      this.airMode ||
       this.sim ||
       this.range ||
       this.tut ||

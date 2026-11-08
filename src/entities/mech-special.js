@@ -263,6 +263,8 @@ Object.assign(MechEntity.prototype, {
   },
   specialFx(dt) {
     const g = this.game;
+    if (this.af) this.afFx(dt); // 詞綴（mech-affix.js）
+    if (this.ai === 'colossus') this.colFx(dt); // 大型兵器的倒下與甲板（mech-colossus.js）
     g.energyTick(this, dt); // 護罩：脈衝裝甲、無敵時間、正面護盾（game/energy.js，第 9.2 期）
     // 主題專屬敵人的顯示（房主與客機都跑）：
     const m = this.model;

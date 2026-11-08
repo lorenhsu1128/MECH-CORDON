@@ -418,6 +418,7 @@ Object.assign(Game.prototype, {
     if (!boss && !air) this.outpostsPlan(L); // 據點與補給箱
     this.devPlan(); // 地圖互動裝置（devices.js）
     this.hkReset(); // 人員擊殺數（crowd.js）
+    this.lootReset(); // 這次出擊拿到的素材與零件（loot.js）
     if (!air) this.crowdPlan(); // 地圖上的小人
     this.waveAlerted = false;
     if (!air) this.planVehicles();
@@ -669,7 +670,8 @@ Object.assign(Game.prototype, {
     const sq = n > 1 ? (this.squadSeq = (this.squadSeq || 0) + 1) : 0; // 編隊：無線電互相通知（game/ai-director.js）
     for (let i = 0; i < n; i++) {
       const asm = d.gen();
-      last = this.spawnEnemy({
+      // 詞綴（game/affix.js）：有機率加上，改名稱、AP、速度
+      const o = {
         name: d.name,
         asm,
         pal: d.pal,
@@ -701,7 +703,8 @@ Object.assign(Game.prototype, {
         pref: d.pref,
         sq,
         at: at ? at.clone().add(new THREE.Vector3(i * 1.5, 0, 0)) : null,
-      });
+      };
+      last = this.spawnEnemy(this.afApply(o, d, t));
     }
     if (n > 1 && !at && !this.guardAt && (this.encG === null || this.encG === undefined))
       this.flashAlert(`${d.name} ×${n} 編隊`);
@@ -860,6 +863,7 @@ Object.assign(Game.prototype, {
     // 第一波：在原地待機，發現玩家才交戰（偷襲先手的小優勢；mech-sense.js）
     if (this.spawnIdle && !e.guardOf && e.senseOn()) e.senseInit(true);
     if (this.encG !== null && this.encG !== undefined) e.encG = this.encG; // 分群（encounters.js）
+    if (e.af) this.afSpawned(e); // 詞綴的指揮（game/affix.js）
     this.registerSpawn(e);
     e.yaw = e.aimYaw = Math.atan2(-(0 - sp.x), -(0 - sp.z));
     e.mesh.position.copy(e.pos);
@@ -879,6 +883,8 @@ Object.assign(Game.prototype, {
       return this.tutKilled(e);
     }
     this.foeScavenge(e);
+    if (!this.isClient) this.afKilled(e); // 詞綴：分裂、殉爆（game/affix.js）
+    if (!this.isClient) this.lootKilled(e); // 素材與零件的掉落（game/loot.js）
     if (!this.isClient) this.barkAllyDown(e); // 敵兵的喊話（game/voice.js）
     if (!this.isClient) this.tierPartDown(e); // Boss 改版的 J：部位破壞（boss-tier.js）
     // 自訂關卡：沒有擊破獎金、不寫存檔（擊破音、連殺、彈藥箱照常）
@@ -923,7 +929,7 @@ Object.assign(Game.prototype, {
     if (from && from.syEvent) from.syEvent('kill');
     this.tierOnKill(e, from); // Boss 戰中擊破雜兵：破甲充能（boss-tier.js）
     const syK = this.camp && from && from.syCoamK ? from.syCoamK() : 1;
-    const rkK = this.tierBountyK(e); // Boss 擊破速度的評價（S ×1.5、A ×1.2）
+    const rkK = this.tierBountyK(e) * this.afBountyK(e); // Boss 擊破速度的評價（S ×1.5、A ×1.2）、詞綴
     const bounty = Math.round(((e.isBoss ? e.maxHp * 2.2 : e.maxHp * 1.8) * syK * rkK) / 100) * 100;
     this.save.coam += bounty;
     this.missionEarned = (this.missionEarned || 0) + bounty;
@@ -974,6 +980,8 @@ Object.assign(Game.prototype, {
   },
   clearMission() {
     this.airEnd(); // 空域（game/air.js）
+    this.afLeaders = []; // 詞綴的指揮（game/affix.js）
+    this.afSeen = null;
     this.setChanged = null; // 任務中改的設定（settings.js 的 settingsApplyMission）
     this.setPendView = this.setPendLm = false;
     // 機甲庫的維修演出（hangar.js）：記下這次出擊的損傷
@@ -1094,6 +1102,7 @@ Object.assign(Game.prototype, {
       ['受損 AP', Math.round(p.dmgTaken)],
       ...this.airResultRows(), // 空域：擊墜數、殘骸連鎖、友軍雷達站（game/air.js）
       ...this.hkRows(), // 人員擊殺數（crowd.js）
+      ...this.lootRows(), // 素材與零件（loot.js）
       // Boss 改版：擊破速度的評價（S 擊破獎金 ×1.5、A ×1.2）
       ...(this.bossRank && success ? [['Boss 擊破評價', this.tierRankTxt(this.bossRank)]] : []),
       ...(this.tierPartsBroken

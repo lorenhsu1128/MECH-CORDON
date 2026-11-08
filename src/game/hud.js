@@ -626,7 +626,7 @@ Object.assign(Game.prototype, {
               : '';
       }
       document.getElementById('lockHint').textContent = p.lock
-        ? `LOCK ▸ ${p.lock.name}  ${Math.round(p.lock.pos.distanceTo(p.pos))}m${p.lock.res || p.lock.laserK !== 1 ? '　' + weakText(p.lock.res, p.lock.laserK) : ''}${this.wpHint(p.lock)}${this.hudMissileLock(p)}${hTxt}`
+        ? `LOCK ▸ ${p.lock.name}  ${Math.round(p.lock.pos.distanceTo(p.pos))}m${p.lock.res || p.lock.laserK !== 1 ? '　' + weakText(p.lock.res, p.lock.laserK) : ''}${this.wpHint(p.lock)}${this.afHint(p.lock)}${this.hudMissileLock(p)}${hTxt}`
         : '無鎖定目標';
       document.getElementById('lockHint').style.color = hTxt.includes('▲')
         ? '#7ee081'
@@ -807,6 +807,7 @@ Object.assign(Game.prototype, {
         c.fillText('STAGGER', s.x, s.y - 4);
       }
       this.drawAwareMark(c, e, s); // 警戒標示與主攻（ai-director.js）
+      this.afDrawTag(c, e, s, R); // 詞綴（affix.js）
       // 砲火特效「華麗」：攻擊距離內、還沒鎖定的敵人身上一個橘色菱形（參考 Oh! Robot 的鎖定標記）
       if (rich && !isLock && e.pos.distanceTo(p.pos) < (p.stats.lockRange || 0)) {
         const cs = this.proj(e.center());

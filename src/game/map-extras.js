@@ -95,6 +95,9 @@ Object.assign(Game.prototype, {
       ent.hp = Math.min(ent.maxHp, ent.hp + Math.round(ent.maxHp * 0.12));
       this.fx.ring(ent.center(), 5, 0xffe070);
       if (ent.isPlayer) this.renderWeaponHud(true);
+    } else if (pk.kind.startsWith('mat_')) {
+      this.lootPickup(pk, ent); // 素材（loot.js）
+      this.fx.ring(ent.center(), 4, d.color);
     } else if (pk.kind === 'salvage') {
       this.segSalvage(ent); // 撤離區段的回收物資（seg-ops.js）
       this.fx.ring(ent.center(), 5, 0xffc040);
@@ -131,7 +134,7 @@ Object.assign(Game.prototype, {
       return ws.length && ws.reduce((a, w) => a + w.ammo / w.def.ammo, 0) / ws.length < 0.3;
     });
     const ace = e.ai === 'ac' || (this.bosses || []).includes(e); // 敵對 AC、精英區段的專屬 AC
-    if (!ace && Math.random() > (low ? 0.36 : 0.18)) return;
+    if (!ace && !e.af && Math.random() > (low ? 0.36 : 0.18)) return; // 帶詞綴的一定掉
     const [x, z] = this.world.nearSolid ? this.world.nearSolid(e.pos.x, e.pos.z) : [e.pos.x, e.pos.z];
     this.spawnPickup('ammo', new THREE.Vector3(x, this.world.groundAt(x, z, e.pos.y + 1) + 0.6, z));
   },
@@ -258,7 +261,15 @@ Object.assign(Game.prototype, {
         if (p) p.remove();
         return true;
       }
+      case 'lootPart': {
+        this.lootPart(e.id); // 掉落的零件：每位玩家各自得到（loot.js）
+        return true;
+      }
       case 'pkGot': {
+        if (e.slot === this.net.me && e.k.startsWith('mat_')) {
+          this.lootMat(e.k.slice(4), 1); // 素材（loot.js）
+          return true;
+        }
         if (e.slot === this.net.me && e.k !== 'repair') {
           this.save.items[e.k] = (this.save.items[e.k] || 0) + 1;
           this.writeSave();

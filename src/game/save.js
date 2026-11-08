@@ -4,7 +4,8 @@ import { isBossLevel } from '../data/enemies.js';
 import { SORTIES } from '../data/campaign.js';
 import { CHAPTER_NAMES } from '../data/story.js';
 import { REMOVED_PARTS as REMOVED, REMOVED_REFUND as REFUND, START_ASM, START_OWNED } from '../data/parts.js';
-import { newPilot, normalizePilot, levelOf } from '../data/pilot.js';
+import { newPilot, normalizePilot, levelOf, tuneGroupOf } from '../data/pilot.js';
+import { MAT_KEYS, sanitizeTune } from '../data/tune.js';
 import { escHtml } from '../core/html.js';
 import { SFX } from '../audio/audio.js';
 import { Game } from './game.js';
@@ -45,8 +46,15 @@ function normalizeSave(o) {
     bosses: num(o.bosses),
     missionsDone: num(o.missionsDone),
     pilot: normalizePilot(o.pilot), // 舊存檔沒有 pilot 時從 Lv1 開始，並修正不合法的配點
+    mats: normalizeMats(o.mats), // 素材（data/tune.js）
+    tune: sanitizeTune(o.tune, tuneGroupOf), // 零件調校
     t: num(o.t),
   };
+}
+function normalizeMats(m) {
+  const out = {};
+  for (const k of MAT_KEYS) out[k] = Math.max(0, Math.floor(num(m && m[k])));
+  return out;
 }
 function readKey(key) {
   try {

@@ -178,6 +178,8 @@ export class MechEntity {
     this.aiSkill = opts.aiSkill || 1;
     this.etype = opts.etype || null; // ENEMY_TYPES 的鍵（攻擊權杖的權重與招式，data/ai.js）
     this.ace = !!opts.ace; // 敵對 AC：一律主攻、不會跟丟目標
+    this.af = opts.af || 0; // 詞綴（data/affix.js、mech-affix.js）
+    this.afs = 0;
     this.sq = opts.sq || 0; // 編隊編號（無線電）
     this.themeFoe = !!opts.themeFoe;
     this.pvpAi = !!opts.pvpAi;
@@ -628,6 +630,7 @@ export class MechEntity {
     const muzzle = this.muzzle(slot);
     const from = this.center();
     if (this.pilotEnt()) g.aiFireNoise(this, d.type); // 開火的聲音（敵人起疑，game/ai-director.js）
+    if (this.af) this.afShowT = this.t; // 詞綴的隱形：開火時現形（mech-affix.js）
     const SP = this.isPlayer ? null : muzzle;
     // 火控的距離輔助：依距離決定預判準度與集彈（data/parts.js 的 fcsAssist）
     const tgtOk = targetEnt && !targetEnt.dead && targetEnt.center;
@@ -1985,6 +1988,7 @@ export class MechEntity {
   }
   takeDamage(dmg, impact, from, at, dir, melee, wid, attr) {
     if (this.dead) return;
+    if (this.ai === 'colossus') return; // 大型兵器的本體打不動：打部位與動力核心（mech-colossus.js）
     if (from && from.name) this.lastHitBy = from.name; // 主線失敗時的通訊用
     // 彈刀：玩家的近戰在有效期間、面向攻擊者時，敵人的近戰被彈開（出招時的短暫無敵也算）
     if (melee && !melee.exec && from && this.meleeClash(from)) return;
@@ -2034,6 +2038,12 @@ export class MechEntity {
     if (!sd) return;
     [dmg, impact] = sd;
     const W = weaponById(wid);
+    // 詞綴：正面護盾、反射、指揮的減傷（mech-affix.js）
+    if (this.af || (this.game.afLeaders && this.game.afLeaders.length)) {
+      const ad = this.afDefense(dmg, impact, from, at, melee, attr || (W ? weaponAttr(W) : 'kin'));
+      if (!ad) return;
+      [dmg, impact] = ad;
+    }
     const cls = melee ? 'melee' : W ? W.type : null; // 武器種類（失衡連攜用）
     if (this.markT > 0) dmg *= 1.3; // 被軌道標定衛星標定（mech-foe.js）
     if (this.laserK !== 1 && isLaserWeapon(W)) dmg *= this.laserK; // 雷射類的傷害倍率（laserK）
@@ -3353,6 +3363,7 @@ export class MechEntity {
     if (this.tutD && g.tut && g.tutAI(this, dt)) return; // 近戰訓練的假人（game/tutorial.js）
     dt *= this.bossTempo(); // Boss 與部位：型態越後面、狂暴時節奏越快（mech-boss.js）
     if ((this.ai === 'objective' || this.ai === 'convoy') && this.objectiveAI(dt)) return; // 主線的目標物（mech-objective.js）
+    if (this.ai === 'colossus' && this.colAI(dt)) return; // 大型兵器的本體（mech-colossus.js）
     // 據點的守衛：還沒出動時守在原地（game/outposts.js）
     if (this.edu && g.lv && g.lvAI(this, dt)) return; // 自訂關卡的單位行為（game/level-play.js）
     if (this.guardOf && g.guardIdle(this)) {

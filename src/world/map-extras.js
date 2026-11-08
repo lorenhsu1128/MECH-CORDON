@@ -16,6 +16,11 @@ export const PICKUP_DEFS = {
   ammo: { name: '彈藥箱', color: 0xffc040 },
   bossPart: { name: '部位殘骸（彈藥＋修補）', color: 0xffe070 }, // Boss 改版的 J：打壞部位時掉落
   salvage: { name: '回收物資', color: 0xffc040, life: 1e9 }, // 撤離區段（game/seg-ops.js）：撤離成功才入帳
+  // 素材（data/tune.js、game/loot.js）：撿到的人入帳
+  mat_alloy: { name: '合金', color: 0xb8c4cc, life: 60 },
+  mat_circuit: { name: '電子零件', color: 0x7fc8ff, life: 60 },
+  mat_core: { name: '能量核心', color: 0xffb040, life: 90 },
+  mat_shard: { name: '傳說殘片', color: 0xffd060, life: 120 },
 };
 let VEH_ID = 1,
   PICK_ID = 1;

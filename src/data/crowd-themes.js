@@ -148,6 +148,10 @@ export const CROWD_SEG = {
   intel: [1.2, 0.8],
   stealth: [1.4, 0.6],
   extract: [0.6, 1.4],
+  chase: [0.8, 1],
+  front: [0.3, 2],
+  colossus: [0.4, 0.8],
+  air: [0, 0],
   boss: [0.4, 0],
 };
 // 敵方步兵的數值
