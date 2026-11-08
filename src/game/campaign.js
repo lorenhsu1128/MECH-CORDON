@@ -333,6 +333,7 @@ Object.assign(Game.prototype, {
     document.getElementById('bossBar').style.display = 'none';
     this.campSpawnType(type, L, bd);
     if (!mp) this.wingSpawn(); // 僚機（wing.js）
+    if (!mp) this.nemPlan(type); // 宿敵闖入（nemesis.js）
     c.ss.n0 = this.enemies.length;
     if (['battle', 'destroy', 'intel', 'breakthrough'].includes(c.ss.type || type)) this.outpostsPlan(L); // 據點與補給箱
     if (c.ss.type !== 'supply') this.devPlan(); // 地圖互動裝置（devices.js）
@@ -942,6 +943,7 @@ Object.assign(Game.prototype, {
     const p = this.player;
     if (!p) return;
     this.wingTick(dt); // 僚機的指令與救援（wing.js）
+    this.nemTick(dt); // 宿敵闖入（nemesis.js）
     w.tickZone(dt);
     // 危險條款：限時 25 分鐘
     if (c.heat && c.heat.timed && c.time > 1500 && this.state === 'play') {

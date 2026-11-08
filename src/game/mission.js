@@ -885,6 +885,7 @@ Object.assign(Game.prototype, {
     this.foeScavenge(e);
     if (!this.isClient) this.afKilled(e); // 詞綴：分裂、殉爆（game/affix.js）
     if (!this.isClient) this.lootKilled(e); // 素材與零件的掉落（game/loot.js）
+    if (!this.isClient && e.nemId) this.nemKilled(e); // 宿敵（nemesis.js）
     if (!this.isClient) this.barkAllyDown(e); // 敵兵的喊話（game/voice.js）
     if (!this.isClient) this.tierPartDown(e); // Boss 改版的 J：部位破壞（boss-tier.js）
     // 自訂關卡：沒有擊破獎金、不寫存檔（擊破音、連殺、彈藥箱照常）
@@ -967,6 +968,7 @@ Object.assign(Game.prototype, {
     if (this.camp) {
       this.flashMsg('AC 已被擊破', 0xff4d4d, 3);
       if (this.campMp()) return; // 多人：全員倒下才算失敗（game.js 的主迴圈）
+      this.nemRecord(); // 宿敵（nemesis.js）
       return this.campDead(); // 主線：回機庫，從紀錄點重來
     }
     if (this.lv) {

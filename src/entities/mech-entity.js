@@ -2000,6 +2000,7 @@ export class MechEntity {
     if (this.dead) return;
     if (this.ai === 'colossus') return; // 大型兵器的本體打不動：打部位與動力核心（mech-colossus.js）
     if (from && from.name) this.lastHitBy = from.name; // 主線失敗時的通訊用
+    if (from && from.team && from !== this) this.lastHitEnt = from; // 宿敵（game/nemesis.js）
     // 彈刀：玩家的近戰在有效期間、面向攻擊者時，敵人的近戰被彈開（出招時的短暫無敵也算）
     if (melee && !melee.exec && from && this.meleeClash(from)) return;
     // 完美 QB：提示中按了 QB、或 QB 剛開始時被打到＝迴避（不受傷）

@@ -16157,6 +16157,87 @@ async function testWing(browser, base) {
   await ctx.close();
 }
 
+// 主線擴充第 10 期：宿敵（擊倒玩家的敵人被記住、升級、闖進之後的區段、抗性、擊破的獎金、退場）
+async function testNemesis(browser, base) {
+  console.log('宿敵：誕生、升級、闖入、擊破與退場');
+  const { ctx, page } = await newPage(browser, 'nemesis');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await freezeLoop(page);
+  const r = await page.evaluate(() => {
+    const g = window.__game;
+    g.autoPickMod = true;
+    const st = g.campStory();
+    st.nemesis = [];
+    const out = {};
+    const enter = () => {
+      g.state = 'play';
+      g.camp.types[g.camp.seg] = 'battle';
+      g.campEnterSeg();
+      g.player.hp = g.player.maxHp = 1e7;
+    };
+    g.campBegin('c1s2');
+    enter();
+    const p = g.player;
+    const at = p.pos.clone().add(new THREE.Vector3(30, 0, 0));
+    // 一般的 MT 擊倒玩家：不算
+    const mt = g.spawnType('mt', 1, 1, at, 1);
+    p.lastHitEnt = mt;
+    g.nemRecord();
+    out.plain = g.nemList().length;
+    // 敵對 AC 擊倒玩家：變成宿敵（名稱、組裝、討厭的屬性）
+    const ac = g.spawnType('ac', 1, 1, at, 1);
+    p.lastHitEnt = ac;
+    g.nemRecord();
+    const n1 = g.nemList()[0];
+    out.ac = n1 && { name: n1.name, lv: n1.lv, asm: !!n1.asm.core, hate: n1.hate };
+    // 帶詞綴的雜兵：升格成 AC 的駕駛員
+    g.afForce = 1;
+    const af = g.spawnType('mt', 1, 1, at, 1);
+    g.afForce = null;
+    p.lastHitEnt = af;
+    g.nemRecord();
+    out.grunt = g.nemList()[1] && g.nemList()[1].name;
+    // 同一個宿敵再擊倒玩家：升級
+    ac.nemId = n1.id;
+    p.lastHitEnt = ac;
+    g.nemRecord();
+    out.lv2 = n1.lv === 2 && n1.wins === 2;
+    // 闖入：之後的區段
+    st.nemesis = [n1];
+    g.nemForce = true;
+    g.camp.nemDone = false;
+    enter();
+    for (let i = 0; i < 30 && g.camp.nemPend; i++) g.campTick(1 / 30);
+    g.nemForce = false;
+    const e = g.enemies.find((x) => x.nemesis && !x.dead);
+    out.spawn = !!e && /^宿敵 /.test(e.name);
+    out.res = e ? e.res || e.opts.res : null;
+    out.once = g.camp.nemDone;
+    // 擊破：獎金、第 2 次退場
+    const c0 = g.save.coam;
+    e.takeDamage(1e9, 0, g.player, e.center(), new THREE.Vector3(0, 0, 1));
+    out.bounty = g.save.coam - c0;
+    out.loss1 = n1.losses === 1 && g.nemList().length === 1;
+    const e2 = g.nemSpawn(n1);
+    e2.takeDamage(1e9, 0, g.player, e2.center(), new THREE.Vector3(0, 0, 1));
+    out.retire = g.nemList().length === 0;
+    return out;
+  });
+  check(r.plain === 0, '一般的 MT 擊倒玩家不會變成宿敵');
+  check(
+    r.ac && r.ac.lv === 1 && r.ac.asm && !!r.ac.hate,
+    `敵對 AC 擊倒玩家：變成宿敵「${r.ac && r.ac.name}」（討厭 ${r.ac && r.ac.hate}）`,
+  );
+  check(/的 /.test(r.grunt || ''), `帶詞綴的雜兵升格成宿敵：${r.grunt}`);
+  check(r.lv2, '同一個宿敵再擊倒玩家：升到 Lv2');
+  check(r.spawn && r.once, '之後的區段闖進來（一次出擊一次）');
+  check(!!r.res && Math.max(...r.res) > 0.1, `對玩家常用的武器屬性有抗性（${(r.res || []).join('／')}）`);
+  check(r.bounty > 8000, `擊破宿敵的獎金 +${r.bounty}`);
+  check(r.loss1 && r.retire, '被擊破 2 次退場');
+  await ctx.close();
+}
+
 async function testJumpCam(browser, base) {
   console.log('跳躍的鏡頭：高空時機體留在畫面裡、鏡頭拉遠');
   const { ctx, page } = await newPage(browser, 'jumpcam');
@@ -28994,6 +29075,7 @@ const STEPS = [
   ['testLoot', (c) => testLoot(c.browser, c.base)],
   ['testLegend', (c) => testLegend(c.browser, c.base)],
   ['testWing', (c) => testWing(c.browser, c.base)],
+  ['testNemesis', (c) => testNemesis(c.browser, c.base)],
   ['testBossTier2', (c) => testBossTier2(c.browser, c.base)],
   ['testBossField', (c) => testBossField(c.browser, c.base)],
   [
