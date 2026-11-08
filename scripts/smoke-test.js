@@ -16053,6 +16053,110 @@ async function testLegend(browser, base) {
   await ctx.close();
 }
 
+// 主線擴充第 9 期：僚機（依路線的角色、生成、指令、跟隨、集中攻擊、倒地與救援、好感度、簡報、多人沒有）
+async function testWing(browser, base) {
+  console.log('僚機：BASALT／WREN、指令、倒地與救援、好感度');
+  const { ctx, page } = await newPage(browser, 'wing');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await freezeLoop(page);
+  const r = await page.evaluate(() => {
+    const g = window.__game;
+    g.autoPickMod = true;
+    const st = g.campStory();
+    st.choices = {};
+    st.bond = {};
+    const out = {};
+    out.brief = g.wingBriefHtml('c2s2');
+    out.brief0 = g.wingBriefHtml('c1s1');
+    g.campBegin('c2s2');
+    g.camp.types[0] = 'battle';
+    g.campEnterSeg();
+    const a = g.wing,
+      p = g.player;
+    p.hp = p.maxHp = 1e7;
+    out.name = a && a.name;
+    out.ally = !!a && a.team === 'ally' && g.allies.includes(a);
+    // 指令：按下的那一格切換
+    const act0 = g.act;
+    let down = false;
+    g.act = (n) => (n === 'wing' ? down : act0.call(g, n));
+    const modes = [g.wingMode];
+    for (let i = 0; i < 4; i++) {
+      down = true;
+      g.wingTick(1 / 60);
+      modes.push(g.wingMode);
+      down = false;
+      g.wingTick(1 / 60);
+    }
+    g.act = act0;
+    out.modes = modes.join(',');
+    // 集中攻擊：玩家鎖定的目標
+    g.wingMode = 'focus';
+    const e = g.enemies.find((x) => !x.dead);
+    p.lock = e;
+    out.focus = a.wingTarget(null) === e;
+    p.lock = null;
+    // 跟著我：離太遠先回去
+    g.wingMode = 'follow';
+    a.pos.set(p.pos.x + 150, a.pos.y, p.pos.z);
+    const d0 = a.pos.distanceTo(p.pos);
+    g.state = 'wing-test';
+    for (let i = 0; i < 90; i++) {
+      g.time += 1 / 60;
+      a.updateAI(1 / 60);
+    }
+    out.follow = d0 - a.pos.distanceTo(p.pos);
+    g.state = 'play';
+    // 倒地與救援
+    a.iFrames = 0;
+    a.takeDamage(1e9, 0, e, a.center(), new THREE.Vector3(0, 0, 1), null, null, 'none');
+    out.down = !a.dead && a.wingDowned && a.noLock;
+    p.pos.copy(a.pos);
+    for (let i = 0; i < 220 && a.wingDowned; i++) g.wingTick(1 / 60);
+    out.revive = !a.wingDowned && Math.abs(a.hp / a.maxHp - 0.4) < 0.02;
+    out.bond1 = g.wingBond('basalt');
+    // 倒地沒救就離開：下一段 50%、好感度 −1
+    a.iFrames = 0;
+    a.takeDamage(1e9, 0, e, a.center(), new THREE.Vector3(0, 0, 1), null, null, 'none');
+    g.wingCapture();
+    g.campEnterSeg();
+    out.next = Math.round((g.wing.hp / g.wing.maxHp) * 100);
+    out.bond2 = g.wingBond('basalt');
+    out.log = (st.log || []).slice(-12).some((x) => /巴索|BASALT/.test(JSON.stringify(x)));
+    // 路線：艾瑟立克＝WREN
+    st.choices = { c2: 'aetheric' };
+    g.campBegin('c3s1');
+    g.camp.types[0] = 'battle';
+    g.campEnterSeg();
+    out.wren = g.wing && g.wing.name;
+    // 沒有僚機的出擊、多人
+    g.campBegin('c1s2');
+    g.camp.types[0] = 'battle';
+    g.campEnterSeg();
+    out.none = !g.wing;
+    const mp0 = g.campMp;
+    g.campMp = () => true;
+    g.camp.sid = 'c2s2';
+    g.camp.wingK = '';
+    out.mp = g.wingKey();
+    g.campMp = mp0;
+    return out;
+  });
+  check(/BASALT/.test(r.brief) && !r.brief0, '簡報：僚機同行的出擊寫出僚機');
+  check(r.name === 'BASALT' && r.ally, '僚機 BASALT（友軍）在區段開始時生成');
+  check(r.modes === 'focus,free,follow,hold,focus', '指令依序切換：' + r.modes);
+  check(r.focus, '集中攻擊：打玩家鎖定的目標');
+  check(r.follow > 10, `跟著我：離太遠先回去（1.5 秒靠近 ${Math.round(r.follow)} m）`);
+  check(r.down, 'AP 歸零：倒地、不會被擊破、敵人不再瞄準');
+  check(r.revive && r.bond1 === 1, '站在旁邊 3 秒救起來（AP 40%）、好感度 +1');
+  check(r.next === 50 && r.bond2 === 0, `倒地沒救就離開：下一段 ${r.next}%、好感度 −1`);
+  check(r.log, '僚機的台詞進通訊紀錄');
+  check(r.wren === 'WREN', '艾瑟立克路線的僚機是 WREN');
+  check(r.none && r.mp === '', '沒有僚機的出擊、多人時沒有僚機');
+  await ctx.close();
+}
+
 async function testJumpCam(browser, base) {
   console.log('跳躍的鏡頭：高空時機體留在畫面裡、鏡頭拉遠');
   const { ctx, page } = await newPage(browser, 'jumpcam');
@@ -28889,6 +28993,7 @@ const STEPS = [
   ['testSegAir', (c) => testSegAir(c.browser, c.base)],
   ['testLoot', (c) => testLoot(c.browser, c.base)],
   ['testLegend', (c) => testLegend(c.browser, c.base)],
+  ['testWing', (c) => testWing(c.browser, c.base)],
   ['testBossTier2', (c) => testBossTier2(c.browser, c.base)],
   ['testBossField', (c) => testBossField(c.browser, c.base)],
   [

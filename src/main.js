@@ -71,6 +71,8 @@ import './game/loot.js';
 import './game/tune-ui.js';
 import './entities/mech-colossus.js';
 import './entities/mech-legend.js';
+import './entities/mech-wing.js';
+import './game/wing.js';
 import './entities/mech-affix.js';
 import './entities/mech-objective.js';
 import './entities/mech-foe.js';

@@ -2,7 +2,7 @@
 // lines＝[說話者, 台詞] 依序播放
 // 事件：sortieStart（出擊開始）、segStart（進入區段）、exitsOpen（區段清除開出口）、trans（轉場）、bossHalf（Boss 剩一半）、
 //       fail（失敗回機庫）、sortieEnd（出擊完成）、hub（回到作戰室）、choice（抉擇出口出現時）、aceDown（擊破宿敵 AC）
-//       alarm（潛入區段響警報）、extCall（撤離區段呼叫回收機）
+//       alarm（潛入區段響警報）、extCall（撤離區段呼叫回收機）、wingStart／wingDown／wingRevive（僚機，條件 wing、bondHi）
 // 條件：sid、seg（區段編號）、type（區段類型）、theme、chapter、fails（失敗次數 ≥）、killedBy（擊破你的敵人名稱包含）、cycle（周目）、
 //       ace（精英區段的專屬 AC）、pick（這一章的陣營抉擇）、c2／c4（這一周目的抉擇 1／抉擇 2：出擊中選的或存檔裡的）、
 //       prevC2／prevC4／prevEnd（上一周目的抉擇 1、抉擇 2、結局）、truth（真結局的條件：紫色委託全部完成過）
@@ -115,6 +115,77 @@ export const COMMS = [
     '他們發現我們了。增援正在路上，動作快。',
     '警報。偷偷來不成了，那就硬來吧。',
   ]),
+  // ---- 僚機（主線擴充 D1，game/wing.js）：BASALT（老練的傭兵）、WREN（新人） ----
+  {
+    event: 'wingStart',
+    wing: 'basalt',
+    once: true,
+    lines: [
+      ['basalt', '你就是 ECHO 帶的那個獨立傭兵？我是巴索，這趟算我一份。'],
+      ['basalt', '用 Z 鍵告訴我怎麼打。不說的話，我就打你鎖定的那台。'],
+      ['echo', 'BASALT 的戰績很漂亮。有他在，這段會輕鬆很多。'],
+    ],
+  },
+  {
+    event: 'wingStart',
+    wing: 'wren',
+    once: true,
+    lines: [
+      ['wren', '芮、芮恩報到！這是我第一次實戰……請多指教！'],
+      ['wren', '指令用 Z 鍵切換，我會照做的。我、我會努力不拖累你。'],
+      ['echo', '新人啊。多照顧一點，倒下了記得去拉一把。'],
+    ],
+  },
+  ...variants({ event: 'wingStart', wing: 'basalt' }, 'basalt', [
+    '又一起出任務了。照老規矩，你打主力，我清旁邊。',
+    '準備好了。這次的報酬夠買新的推進器，別讓我失望。',
+    '巴索就位。跟緊點，別一個人衝太前面。',
+  ]),
+  ...variants({ event: 'wingStart', wing: 'wren' }, 'wren', [
+    '芮恩就位！這次我有好好保養機體了。',
+    '準備完畢！跟上次比，我已經不會手抖了……大概。',
+    '我在你左後方。需要什麼就說！',
+  ]),
+  ...variants({ event: 'wingDown', wing: 'basalt' }, 'basalt', [
+    '嘖，裝甲撐不住了……過來拉我一把。',
+    '被打趴了。我還能動，靠近我就好。',
+    '老了老了……幫個忙，過來一下。',
+  ]),
+  ...variants({ event: 'wingDown', wing: 'wren' }, 'wren', [
+    '對、對不起！機體動不了了……！',
+    '我被打中了……拜託，過來救我！',
+    '系統當機了……我還活著，請過來！',
+  ]),
+  ...variants({ event: 'wingRevive', wing: 'basalt' }, 'basalt', [
+    '欠你一次。這筆我記著。',
+    '好，重新上線。換我掩護你。',
+    '謝了。年輕人的反應就是快。',
+  ]),
+  ...variants({ event: 'wingRevive', wing: 'wren' }, 'wren', [
+    '謝謝你！我、我不會再大意了！',
+    '重新啟動成功！這次換我幫你！',
+    '你回來救我了……謝謝。我們繼續吧！',
+  ]),
+  { event: 'sortieEnd', wing: 'basalt', lines: [['basalt', '收工。報酬我會照分，下次有活再叫我。']] },
+  {
+    event: 'sortieEnd',
+    wing: 'basalt',
+    bondHi: true,
+    lines: [
+      ['basalt', '說真的，好久沒跟這麼合得來的人一起飛了。'],
+      ['basalt', '下次要是有人出更高的價錢，我還是會先問你。'],
+    ],
+  },
+  { event: 'sortieEnd', wing: 'wren', lines: [['wren', '任務完成！我……我有幫上忙吧？']] },
+  {
+    event: 'sortieEnd',
+    wing: 'wren',
+    bondHi: true,
+    lines: [
+      ['wren', '跟你一起出擊的時候，我好像就不怕了。'],
+      ['wren', '總有一天，我會變得跟你一樣強。到時候換我來保護你！'],
+    ],
+  },
   ...variants({ event: 'extCall' }, 'echo', [
     '目標摧毀！回收機出發了，九十秒，撐住。',
     '回收機在路上了，守住回收地點附近。',

@@ -32,6 +32,7 @@ Object.assign(Game.prototype, {
       cs2: 'Digit2',
       aam: 'KeyC',
       interact: 'KeyX',
+      wing: 'KeyZ', // 僚機的指令（game/wing.js）
       pause: 'Escape',
       gzCenter: 'KeyG',
       gzPause: '',
@@ -112,6 +113,7 @@ Object.assign(Game.prototype, {
       cs2: 'Pad13',
       aam: 'Pad8',
       interact: 'Pad15',
+      wing: 'Pad14', // 十字鍵左：僚機的指令（多人時是信號，沒有僚機）
       pause: 'Pad9',
       gzCenter: '',
       gzPause: '',

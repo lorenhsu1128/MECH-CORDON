@@ -25,6 +25,19 @@ export function clientInfo(key) {
 export const SPEAKERS = {
   echo: { name: '操作員 ECHO', color: '#7fc8ff', mark: 'E', note: '你的作戰管制官' },
   instructor: { name: '教官 INSTRUCTOR', color: '#c8a0ff', mark: 'I', note: '模擬艙的戰技教官' },
+  // 僚機（主線擴充 D1，data/wingmen.js）
+  basalt: {
+    name: '巴索 BASALT',
+    color: '#c8b080',
+    mark: 'B',
+    note: '老練的傭兵，卡斯特隆與維爾威常雇用的僚機',
+  },
+  wren: {
+    name: '芮恩 WREN',
+    color: '#80e0c0',
+    mark: 'W',
+    note: '剛拿到執照的新人傭兵，艾瑟立克與聖域派來的僚機',
+  },
   castron: {
     name: '霍斯特（卡斯特隆）',
     color: '#d8903a',

@@ -2306,6 +2306,7 @@ export class MechEntity {
         return;
       }
       if (this.pm && this.lgCheatDeath()) return; // 傳說模組「不死鳥」
+      if (this.wing && this.wingDown()) return; // 僚機：倒地等救援（mech-wing.js）
       this.die(from);
     }
   }
@@ -3415,6 +3416,7 @@ export class MechEntity {
     // 空域：友軍雷達站只有轟炸機去炸，其他的一律追玩家（game/air.js）
     if (g.airMode && pl && pl.ai === 'objective' && this.airRole !== 'bomber' && g.player && !g.player.dead)
       pl = g.player;
+    if (this.wing) pl = this.wingTarget(pl); // 僚機：集中攻擊玩家鎖定的目標、跟著我時不追遠的（mech-wing.js）
     this.lockAge(pl); // 導彈的鎖定時間
     // 第三型態的專屬招式（mech-boss3.js）；有刁鑽度時每個型態的大招都先蓄力、可以打斷（mech-boss-tier.js）
     // 空域的空中要塞改用空戰的招式（mech-air.js 的 airFortressTick），不放這兩套
@@ -3441,6 +3443,7 @@ export class MechEntity {
         return;
       }
     }
+    if (this.wing && this.wingMove(dt)) return; // 僚機：倒地、離錨點太遠時先回去（mech-wing.js）
     if (this.air) {
       if (!pl) return this.airAI(dt, null, null); // 空域的空戰 AI（mech-air.js）
     } else if (!pl) {

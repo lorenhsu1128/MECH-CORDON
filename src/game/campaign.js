@@ -108,6 +108,8 @@ Object.assign(Game.prototype, {
       ...this.campPickCtx(),
       ...this.campPrevCtx(),
       truth: this.campTruth().ok,
+      wing: c.wingK || '', // 僚機（wing.js）
+      bondHi: !!(c.wingK && this.wingBond(c.wingK) >= 3),
       ...extra,
     };
   },
@@ -330,6 +332,7 @@ Object.assign(Game.prototype, {
     c.ss = { type, np }; // 這個區段執行中的狀態（不進紀錄點）
     document.getElementById('bossBar').style.display = 'none';
     this.campSpawnType(type, L, bd);
+    if (!mp) this.wingSpawn(); // 僚機（wing.js）
     c.ss.n0 = this.enemies.length;
     if (['battle', 'destroy', 'intel', 'breakthrough'].includes(c.ss.type || type)) this.outpostsPlan(L); // 據點與補給箱
     if (c.ss.type !== 'supply') this.devPlan(); // 地圖互動裝置（devices.js）
@@ -938,6 +941,7 @@ Object.assign(Game.prototype, {
     c.hint = '';
     const p = this.player;
     if (!p) return;
+    this.wingTick(dt); // 僚機的指令與救援（wing.js）
     w.tickZone(dt);
     // 危險條款：限時 25 分鐘
     if (c.heat && c.heat.timed && c.time > 1500 && this.state === 'play') {
@@ -1092,6 +1096,7 @@ Object.assign(Game.prototype, {
       this.state = 'play';
       c.pending = null;
     }
+    this.wingCapture(); // 僚機的 AP（wing.js）
     if (this.campMp()) this.campCaptureAll();
     else this.campCapture();
     c.earned += this.missionEarned || 0;
@@ -1441,6 +1446,7 @@ Object.assign(Game.prototype, {
     if (this.state === 'play' || this.state === 'ending') {
       c.earned += this.missionEarned || 0;
     }
+    this.wingSortieEnd(success); // 僚機的好感度（wing.js）
     this.mpStats = c.stats;
     this.missionT = c.time;
     this.isBossLevel = true; // 經驗基準以決戰計

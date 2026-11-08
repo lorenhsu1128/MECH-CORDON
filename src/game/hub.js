@@ -133,6 +133,7 @@ Object.assign(Game.prototype, {
         tactic(F.intro),
       );
     }
+    h += this.wingBriefHtml(sid); // 僚機同行（wing.js）
     return h ? `<div class="brIntelH">敵情</div>${h}` : '';
   },
   // 出擊的狀態：done 完成過、open 可以接、locked 前置還沒完成、hidden 陣營抉擇不符（總覽圖上不出現）

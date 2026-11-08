@@ -23,6 +23,8 @@ const COND = [
   'prevC4',
   'prevEnd',
   'truth',
+  'wing', // 僚機（game/wing.js）
+  'bondHi', // 僚機的好感度高
 ];
 const PREV = ['prevC2', 'prevC4', 'prevEnd'];
 const keyOf = (e) => e.event + '|' + e.lines[0][1];

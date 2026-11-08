@@ -320,6 +320,7 @@ Object.assign(Game.prototype, {
       ['cs2', '消耗品 2'],
       ['aam', '空戰導彈（空域）'],
       ['interact', '互動（地圖裝置，按住）'],
+      ['wing', '僚機的指令（主線，依序切換）'],
       ['pause', '暫停'],
       ['gzCenter', '眼動：頭部置中'],
       ['gzPause', '眼動：暫停頭部追蹤'],
