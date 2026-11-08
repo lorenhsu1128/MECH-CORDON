@@ -10,6 +10,7 @@ import { FOES_b1 } from './foes-b1.js';
 import { FOES_b2 } from './foes-b2.js';
 import { FOES_C1 } from './foes-c1.js';
 import { FOES_C2 } from './foes-c2.js';
+import { FOES_E1 } from './foes-e1.js';
 
 const LIGHT = {
   head: 'h_lt',
@@ -624,6 +625,7 @@ export const FOES = {
   ...FOES_b2, // 擴充：第 2 章的新敵人（foes-b2.js）
   ...FOES_C1, // 擴充：冰原、技研都市、Grid 086（foes-c1.js）
   ...FOES_C2,
+  ...FOES_E1,
 };
 
 export const ACES = {
@@ -854,6 +856,34 @@ export const ACES = {
     },
     intro: '洋上都市的擊退專家 UNDERTOW — 貼身把你往甲板邊緣推',
   },
+  // 第 7 章（主線擴充，docs/campaign-expansion-design.md 第 10 節）：卡斯特隆熔爐的守衛，火焰與霰彈的近距離
+  kiln: {
+    theme: 'volcano',
+    name: 'KILN',
+    speaker: 'kiln',
+    pal: 'kiln',
+    ai: 'rusher',
+    wantDist: 9,
+    hpMul: 2.6,
+    dmgMul: 0.9,
+    stabMul: 2,
+    speedMul: 1,
+    turnRate: 3.5,
+    asm: {
+      head: 'h_hv',
+      core: 'c_hv',
+      arms: 'a_hv',
+      legs: 'l_bp',
+      booster: 'b_hi',
+      generator: 'g_hi',
+      fcs: 'f_near',
+      rarm: 'w_sg',
+      larm: 'w_mg',
+      rback: 'bw_gr',
+      lback: 'bw_none',
+    },
+    intro: '熔爐的守衛 KILN — 重裝甲貼身壓制，霰彈與榴彈；拉開距離、繞到側面',
+  },
   zenith: {
     theme: 'orbit',
     name: 'ZENITH',
@@ -948,6 +978,7 @@ export const THEME_ACE = {
   spaceport: 'countdown',
   xylem: 'undertow',
   orbit: 'zenith',
+  volcano: 'kiln',
 };
 // 主題的專屬敵人（depth：垂直主題的深度）
 export function themeFoes(theme, depth = 0) {

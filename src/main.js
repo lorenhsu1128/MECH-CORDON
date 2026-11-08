@@ -72,9 +72,11 @@ import './game/tune-ui.js';
 import './entities/mech-colossus.js';
 import './entities/mech-legend.js';
 import './entities/mech-wing.js';
+import './entities/mech-foe-e1.js'; // 第 7 章的專屬敵人
 import './game/wing.js';
 import './game/nemesis.js';
 import './game/board.js';
+import './game/lava.js';
 import './entities/mech-affix.js';
 import './entities/mech-objective.js';
 import './entities/mech-foe.js';

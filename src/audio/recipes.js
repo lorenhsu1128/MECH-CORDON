@@ -228,5 +228,7 @@ export const ENV_OF_THEME = {
   xylem: 'urban',
   orbit: 'space',
   institute: 'indoor',
+  volcano: 'canyon',
+  ark: 'open',
   airspace: 'space',
 };

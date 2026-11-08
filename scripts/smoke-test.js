@@ -1932,6 +1932,36 @@ async function mapMechanics(page, key) {
   } else if (key === 'institute') {
     const r = await page.evaluate(() => ({ sun: window.__game.sun.intensity }));
     check(r.sun < 0.6, `地下技研都市：光照較暗（太陽 ${r.sun.toFixed(2)}）`);
+  } else if (key === 'volcano') {
+    // 熔岩：有熔岩面、熔岩的地方不能放東西、站在熔岩裡受傷
+    const r = await page.evaluate(() => {
+      const g = window.__game,
+        w = g.world,
+        p = g.player;
+      const L = w.theme.lava.y * 3;
+      let at = null;
+      for (let i = 0; i < 4000 && !at; i++) {
+        const x = (Math.random() * 2 - 1) * w.lim * 0.8,
+          z = (Math.random() * 2 - 1) * w.lim * 0.8;
+        if (w.terrainHeight(x, z) < L - 0.5) at = [x, z];
+      }
+      const out = { mesh: !!w.lavaMesh, found: !!at, off: at ? w.offLimits(at[0], at[1]) : false };
+      if (at) {
+        const st = g.state;
+        g.state = 'lava-test';
+        p.pos.set(at[0], w.terrainHeight(at[0], at[1]), at[1]);
+        p.grounded = true;
+        p.iFrames = 0;
+        const h0 = p.hp;
+        g.lavaAcc = 0;
+        for (let i = 0; i < 40; i++) g.lavaTick(1 / 30);
+        out.hurt = h0 - p.hp;
+        g.state = st;
+      }
+      return out;
+    });
+    check(r.mesh && r.found && r.off, '火山熔爐帶：熔岩面、熔岩的地方不能放東西');
+    check(r.hurt > 0, `火山熔爐帶：站在熔岩裡受傷（${Math.round(r.hurt)}）`);
   }
 }
 
@@ -1960,6 +1990,7 @@ async function testMaps(browser, base) {
     ['orbit', ['solar', 'radiator']],
     ['institute', ['coraltank', 'crystal']],
     ['snow', ['quonset', 'ice']],
+    ['volcano', ['slagcart', 'oreheap']],
   ]) {
     await gSetTab(page);
     await page.selectOption('#gMapSel', key);
@@ -2025,8 +2056,8 @@ async function testMaps(browser, base) {
     await waitVisible(page, 'garage');
   }
   check(
-    (await page.$eval('#gMapSel', (s) => s.value)) === 'snow' &&
-      (await page.evaluate(() => localStorage.getItem('rubicon_map'))) === 'snow',
+    (await page.$eval('#gMapSel', (s) => s.value)) === 'volcano' &&
+      (await page.evaluate(() => localStorage.getItem('rubicon_map'))) === 'volcano',
     '車庫記住選的地圖',
   );
   await gSetTab(page);
@@ -16351,6 +16382,160 @@ async function testBoard(browser, base) {
   await ctx.close();
 }
 
+// 主線擴充第 12 期：火山熔爐帶（6 種變體、6 個地標、熔岩、4 種專屬敵人的行為與模型）
+async function testVolcano(browser, base) {
+  console.log('火山熔爐帶：變體、地標、熔岩、專屬敵人');
+  const { ctx, page } = await newPage(browser, 'volcano');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await freezeLoop(page);
+  const r = await page.evaluate(() => {
+    const g = window.__game;
+    g.state = 'play';
+    g.campBegin('c1s1');
+    g.camp.types[0] = 'supply';
+    g.campEnterSeg();
+    g.state = 'foe-test';
+    const W = g.world.constructor;
+    const out = { vars: {}, lms: {}, bad: [] };
+    let seed = 7100;
+    for (const v of ['', 'caldera', 'flow', 'foundry', 'ashfall', 'obsidian', 'night']) {
+      g.world.dispose();
+      g.world = new W(g.scene, 'volcano', seed++, 18, null, v ? { variant: v } : {});
+      const w = g.world;
+      const kinds = {};
+      for (const p of w.props || []) kinds[p.kind] = (kinds[p.kind] || 0) + 1;
+      let lava = 0,
+        off = 0;
+      for (let i = 0; i < 400; i++) {
+        const x = (Math.random() * 2 - 1) * w.lim,
+          z = (Math.random() * 2 - 1) * w.lim;
+        if (w.terrainHeight(x, z) < w.theme.lava.y * 3 - 0.5) {
+          lava++;
+          if (w.offLimits(x, z)) off++;
+        }
+      }
+      out.vars[v || 'base'] = {
+        ok: Number.isFinite(w.terrainHeight(10, 10)),
+        mesh: !!w.lavaMesh,
+        lava,
+        off,
+        kinds,
+        key: w.variantKey || '',
+      };
+      if (v && w.variantKey !== v) out.bad.push(v);
+    }
+    for (const k of ['crucible', 'derrick', 'crane', 'slag', 'cooling', 'gate']) {
+      g.world.dispose();
+      g.world = new W(g.scene, 'volcano', seed++, 18, null, { landmark: k });
+      out.lms[k] = !!g.world.landmark;
+    }
+    // 專屬敵人：一般的地圖上逐一生成、推進 AI
+    g.world.dispose();
+    g.world = new W(g.scene, 'volcano', 7300, 18, null, { variant: 'obsidian' });
+    const w = g.world;
+    const p = g.player;
+    p.hp = p.maxHp = 1e7;
+    const spot = w.spawnPoint(new THREE.Vector3(), []);
+    p.pos.set(spot.x, w.terrainHeight(spot.x, spot.z), spot.z);
+    p.vel.set(0, 0, 0);
+    const near = (dx) => {
+      const q = w.spawnPoint(p.pos, [], { x: p.pos.x + dx, z: p.pos.z }, 4);
+      return new THREE.Vector3(q.x, w.terrainHeight(q.x, q.z), q.z);
+    };
+    out.foes = {};
+    for (const [k, dx] of [
+      ['slagger', 60],
+      ['heatguard', 15],
+      ['magmadrone', 40],
+      ['bellows', 25],
+    ]) {
+      const e = g.spawnType(k, 1, 1, near(dx), 1);
+      e.senseInit(false);
+      let tris = 0;
+      e.model.group.traverse((o) => {
+        if (o.isMesh && o.material && o.material.side === THREE.BackSide) return; // 描邊外殼
+        if (o.isMesh && o.geometry && o.geometry.index) tris += o.geometry.index.count / 3;
+        else if (o.isMesh && o.geometry) tris += o.geometry.attributes.position.count / 3;
+      });
+      const vis = new Set();
+      const h0 = p.hp;
+      let hid = 0,
+        push = 0;
+      for (let i = 0; i < 60 * 14; i++) {
+        g.time += 1 / 60;
+        p.pos.y = w.terrainHeight(p.pos.x, p.pos.z);
+        p.iFrames = 0;
+        const v0 = p.vel.length();
+        e.updateAI(1 / 60);
+        e.specialFx(1 / 60);
+        g.updateHazards(1 / 60);
+        for (const pr of g.projectiles.slice()) {
+          pr.update(1 / 60);
+          if (pr.dead) g.projectiles.splice(g.projectiles.indexOf(pr), 1);
+        }
+        vis.add(e.bossVis & 3);
+        if (e.noLock) hid++;
+        if (p.vel.length() - v0 > 20) push++;
+        p.vel.set(0, 0, 0);
+      }
+      out.foes[k] = {
+        tris: Math.round(tris),
+        vis: [...vis].sort().join(''),
+        hurt: Math.round(h0 - p.hp),
+        hid,
+        push,
+        dmg: !!e.model.dmg,
+      };
+      e.dead = true;
+      e.mesh.visible = false;
+    }
+    // 耐熱：踩熔岩不受傷、過熱時受傷 ×1.5
+    const hg = g.spawnType('heatguard', 1, 1, near(10), 1);
+    hg.bossVis = 2;
+    const a = hg.foeDefense_e1(100, 10);
+    hg.bossVis = 0;
+    const b = hg.foeDefense_e1(100, 10);
+    out.hot = a[0] / b[0];
+    g.state = 'play';
+    return out;
+  });
+  const V = r.vars;
+  check(
+    Object.values(V).every((v) => v.ok && v.mesh) && !r.bad.length,
+    `火山熔爐帶的標準＋6 種變體都能生成、有熔岩面（${Object.keys(V).join('、')}）`,
+  );
+  check(
+    Object.values(V).every((v) => v.lava === 0 || v.off / v.lava > 0.9),
+    '熔岩的地方都不能放東西（' +
+      Object.entries(V)
+        .map(([k, v]) => `${k} ${v.off}/${v.lava}`)
+        .join('、') +
+      '）',
+  );
+  check(V.caldera.lava > V.base.lava, `火口原：中央的熔岩湖（熔岩點 ${V.caldera.lava} > ${V.base.lava}）`);
+  check(
+    (V.base.kinds.slagcart || 0) + (V.base.kinds.oreheap || 0) > 0,
+    '主題自己的物件（' + JSON.stringify(V.base.kinds) + '）',
+  );
+  check(Object.values(r.lms).every(Boolean), '6 個地標都能放（' + Object.keys(r.lms).join('、') + '）');
+  const F = r.foes;
+  for (const k in F)
+    check(
+      F[k].tris <= 10000 && (F[k].dmg || k === 'heatguard'),
+      `${k}：模型 ${F[k].tris} 面、有受損資料（重裝 MT 用機甲共用的）；狀態 ${F[k].vis}；傷害 ${F[k].hurt}`,
+    );
+  check(F.slagger.vis.includes('1') && F.slagger.hurt > 0, '熔渣投擲機：預警後拋熔渣、打到人');
+  check(F.heatguard.hurt > 0 && F.heatguard.vis.includes('2'), '耐熱重裝 MT：火焰噴射、之後過熱');
+  check(
+    F.magmadrone.hid > 60 && F.magmadrone.vis.includes('2'),
+    `熔岩潛行無人機：潛行時不能鎖定（${F.magmadrone.hid} 格）、浮出開火`,
+  );
+  check(F.bellows.push > 0, `熱風鼓風機：熱風把機體吹走（${F.bellows.push} 次）`);
+  check(Math.abs(r.hot - 1.5) < 0.01, '耐熱重裝 MT 過熱時受傷 ×1.5');
+  await ctx.close();
+}
+
 async function testJumpCam(browser, base) {
   console.log('跳躍的鏡頭：高空時機體留在畫面裡、鏡頭拉遠');
   const { ctx, page } = await newPage(browser, 'jumpcam');
@@ -29190,6 +29375,7 @@ const STEPS = [
   ['testWing', (c) => testWing(c.browser, c.base)],
   ['testNemesis', (c) => testNemesis(c.browser, c.base)],
   ['testBoard', (c) => testBoard(c.browser, c.base)],
+  ['testVolcano', (c) => testVolcano(c.browser, c.base)],
   ['testBossTier2', (c) => testBossTier2(c.browser, c.base)],
   ['testBossField', (c) => testBossField(c.browser, c.base)],
   [

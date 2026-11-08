@@ -62,6 +62,30 @@ export const CROWD_THEMES = {
     },
     soldier: { shirt: 0x5a503c, pants: 0x4a4232, hat: 0x3a3428 },
   },
+  // 移動要塞：甲板的船員（深色的工作服）
+  ark: {
+    civ: 0.3,
+    near: 0.6,
+    inf: [2, 4],
+    look: {
+      shirt: [0x3a3e42, 0x4a4e52, 0x8a2a22],
+      pants: [0x2a2e32, 0x22262a],
+      hat: [0x8a2a22, null, null],
+    },
+    soldier: { shirt: 0x2a2e32, pants: 0x22262a, hat: 0x1a1e22 },
+  },
+  // 火山熔爐帶：熔爐工人（銀色的隔熱衣、安全帽）
+  volcano: {
+    civ: 0.6,
+    near: 0.6,
+    inf: [1, 3],
+    look: {
+      shirt: [0xb8b8b0, 0xa8a8a0, 0x8a5a3a, 0x5a4a40],
+      pants: [0x5a5048, 0x3a3430],
+      hat: [0xd8a020, 0xd8a020, null],
+    },
+    soldier: { shirt: 0x4a3a30, pants: 0x3a302a, hat: 0x2a2420 },
+  },
   // 沙丘：遊牧民（白與砂色的長袍、頭巾）
   dunes: {
     civ: 0.6,

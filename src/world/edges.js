@@ -106,7 +106,9 @@ const STYLES = {
     tunnel: { H: [12, 16], hw: 0.11 },
   },
   institute: { kinds: { ridge: 3, drop: 2, open: 2 }, H: [20, 30], D: [16, 30], range: 0 },
+  volcano: { kinds: { ridge: 3, mesa: 2, drop: 1, terrace: 1 }, H: [22, 40], D: [18, 34], range: 40 },
   xylem: { none: true },
+  ark: { none: true },
   orbit: { none: true },
   airspace: { none: true },
 };

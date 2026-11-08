@@ -476,6 +476,17 @@ export const PALETTES = {
     visor: 0x60e0ff,
     glow: 0x60e0ff,
   },
+  // 第 7 章的專屬 AC KILN（熔爐的守衛：焦黑的裝甲、熔融的橘色）
+  kiln: {
+    main: 0x3a2a24,
+    main2: 0x241a16,
+    main3: 0x6a3a24,
+    sub: 0x1a1210,
+    acc: 0xff7a20,
+    joint: 0x2a2220,
+    visor: 0xffa040,
+    glow: 0xff7a20,
+  },
   undertow: {
     main: 0x2a4a66,
     main2: 0x1a2a3a,

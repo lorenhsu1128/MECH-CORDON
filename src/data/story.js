@@ -91,6 +91,7 @@ export const SPEAKERS = {
   marsh: { name: 'MARSH', color: '#40d0a0', mark: 'M', note: '艾瑟立克雇的兩棲傭兵（第 2 章的宿敵）' },
   sluice: { name: 'SLUICE', color: '#60c8ff', mark: 'L', note: '水壩的守備隊長（第 2 章的宿敵）' },
   stevedore: { name: 'STEVEDORE', color: '#e0b020', mark: 'D', note: '卡斯特隆的碼頭工頭（第 2 章的宿敵）' },
+  kiln: { name: 'KILN', color: '#ff7a20', mark: 'K', note: '卡斯特隆熔爐的守衛（第 7 章的宿敵）' },
   prospector: {
     name: 'PROSPECTOR',
     color: '#c8aa50',
@@ -125,6 +126,9 @@ export const REGIONS = [
   },
   { key: 'east', name: '東岸洋上都市', chapter: 5, x: 84, y: 46, lx: 90, ly: 36.5, themes: ['xylem'] },
   { key: 'sky', name: '高空軌道', chapter: 6, x: 80, y: 10, lx: 80, ly: 22, themes: ['orbit'] },
+  // 主線擴充（docs/campaign-expansion-design.md 第 10 節）
+  { key: 'forge', name: '火山熔爐帶', chapter: 7, x: 80, y: 76, lx: 84, ly: 88, themes: ['volcano'] },
+  { key: 'ark', name: '移動要塞「方舟」', chapter: 8, x: 22, y: 74, lx: 16, ly: 86, themes: ['ark'] },
 ];
 export const CHAPTER_NAMES = {
   1: '第 1 章　荒野的訊號',
@@ -133,6 +137,8 @@ export const CHAPTER_NAMES = {
   4: '第 4 章　構造體',
   5: '第 5 章　洋上的抉擇',
   6: '第 6 章　軌道',
+  7: '第 7 章　熔爐',
+  8: '第 8 章　方舟',
 };
 
 // 依抉擇的文字：陣列的項目是字串，或 { 抉擇 id: { 選項: 字串或字串陣列 } }（沒選過的略過）
@@ -444,6 +450,55 @@ export const BRIEFINGS = {
       '……最後要怎麼做，你自己決定吧，傭兵。',
     ],
     goal: '進入軌道站中樞，擊破 BALTEUS（途中會面臨最後的抉擇）',
+  },
+  // ---- 第 7 章：熔爐（主線擴充，docs/campaign-expansion-design.md 第 10 節）----
+  // 第 8 章完成之前先隱藏（cycle 99）；第 13 期把最後的抉擇搬到 c8s3 時一起開放
+  c7s1: {
+    client: 'castron',
+    node: { x: 74, y: 71 },
+    needs: ['c6s3'],
+    cycle: 99,
+    lines: [
+      '中樞是空的，對吧。……我知道。我一直都知道。',
+      '方舟停在火山熔爐帶，卡斯特隆的熔爐替它供熱。我父親的記憶也在那艘船上。',
+      '熔爐工廠的外圍被我們自己的保全系統鎖住了。打進去，傭兵。這次的報酬，我付雙倍。',
+      '……合約就是合約。可是這一張，是我欠你的。',
+    ],
+    goal: '突破熔爐工廠的外圍，擊破砲兵陣地',
+  },
+  c7s2: {
+    client: 'aetheric',
+    node: { x: 82, y: 80 },
+    needs: ['c7s1'],
+    cycle: 99,
+    lines: [
+      '地熱研究所裡保存著「上一個週期的你」的戰鬥紀錄。',
+      '我想要它。……也許你也想要。你不好奇自己以前是什麼樣子嗎？',
+      '研究所的熔爐清掃機還在運轉，它會把一切靠近的東西燒乾淨。',
+      '有意思。我第一次在委託裡說了真話。',
+    ],
+    goal: '取回研究所的戰鬥紀錄，擊破熔爐清掃機',
+  },
+  c7s3: {
+    client: { c4: { veerwell: 'veerwell', sancta: 'sancta' } },
+    node: { x: 88, y: 71 },
+    needs: ['c7s2'],
+    cycle: 99,
+    lines: [
+      {
+        c4: {
+          veerwell: [
+            '方舟要起航了！在它開走之前，我要一張船票。……不，我要整艘船。',
+            '船塢的推土要塞擋在路上。打掉它，傭兵，時間就是錢。',
+          ],
+          sancta: [
+            '方舟一旦起航，它就會開上軌道電梯，把協定執行完。',
+            '我不知道協定是什麼，但我知道它從來沒有問過我們。船塢的推土要塞……拜託你了。',
+          ],
+        },
+      },
+    ],
+    goal: '在方舟起航前突破船塢，擊破推土要塞',
   },
   // ---- 第 2 周目以後（cycle：從那個周目起出現；不算進整章完成）----
   c1x: {

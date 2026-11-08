@@ -99,9 +99,27 @@ const AMB = {
     ],
     rev: [2.6, 0.3],
   },
+  // 移動要塞：引擎的低鳴、高處的風
+  ark: {
+    L: [
+      { k: 'ambHum', v: 0.4 },
+      { k: 'ambLow', v: 0.35 },
+      { syn: 'wind', v: 0.35 },
+    ],
+    rev: [0.6, 0.06],
+  },
+  // 火山熔爐帶：低沉的地鳴、熔爐的機械聲、風
+  volcano: {
+    L: [
+      { k: 'ambLow', v: 0.45 },
+      { k: 'ambMach', v: 0.18 },
+      { syn: 'wind', v: 0.25 },
+    ],
+    rev: [1.2, 0.12],
+  },
 };
 // 地面材質：金屬地板的主題（一般地面也是金屬／混凝土構造）
-const METAL_THEMES = { grid: 1, grid086: 1, orbit: 1, xylem: 1, spaceport: 1, institute: 1 };
+const METAL_THEMES = { grid: 1, grid086: 1, orbit: 1, xylem: 1, spaceport: 1, institute: 1, ark: 1 };
 
 Object.assign(Game.prototype, {
   // 進入戰區（startMission／客機開局／主線每段）後每格呼叫：主題變了才換環境音

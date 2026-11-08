@@ -23,6 +23,7 @@ import {
 import { D, vcMat } from '../render/detail.js';
 import * as K from '../render/dev-kit.js';
 import { CAR, FLOODED, buildBentLamp, buildRuinTower, buildWreckCar } from './themes/flooded.js';
+import { SMELTER, buildFoundryHall, buildSmelter } from './themes/volcano.js';
 import { planIslands } from './themes/xylem.js';
 import { buildCavePillar, buildCoralTank, buildLab } from './themes/institute.js';
 import { buildChimney, buildScrapHeap, buildShack } from './themes/grid086.js';
@@ -3191,6 +3192,86 @@ export const VARIANTS = {
         rockPiles(w, w.cnt(14, 20), 0x5a4a3a);
       },
     },
+  },
+};
+// 火山熔爐帶（主線第 7 章，world/themes/volcano.js）：熔岩的地方由主題的 offLimits 避開（變體改了地形也一樣）
+VARIANTS.volcano = {
+  caldera: {
+    name: '火口原',
+    // 中央是一大片熔岩湖，周圍的台地圍成一圈
+    terrain: (w) => {
+      const R = w.size * 0.22;
+      return (x, z, h) => {
+        const d = Math.hypot(x, z);
+        if (d > R * 1.4) return h;
+        const t = smooth(clamp(1 - (d - R * 0.6) / (R * 0.8), 0, 1));
+        return h * (1 - t) + -3.2 * G * t;
+      };
+    },
+    offLimits: (w, x, z) => Math.hypot(x, z) < w.size * 0.16, // 出生與散布避開熔岩湖
+  },
+  flow: {
+    name: '熔岩流域',
+    theme: { fog: 0x6a3a24, sky: 0x8a4a2a },
+    // 多一組熔岩河（另一個方向的細流）
+    terrain: (w) => {
+      const n = w.noise2;
+      return (x, z, h) => {
+        const r = Math.abs(n((x / G) * 0.013 - 9.1, (z / G) * 0.013 + 4.4) - 0.5);
+        const c = clamp(1 - r / 0.035, 0, 1);
+        return h * (1 - c) + -2.8 * G * c;
+      };
+    },
+  },
+  foundry: {
+    name: '熔爐工廠',
+    theme: { featureKinds: ['bunkers', 'overpass'] },
+    // 多兩座熔爐塔與兩棟廠房
+    build(w) {
+      for (let k = 0; k < 2; k++) {
+        const g = buildSmelter();
+        place(w, g, [-13, 13, -13, 13], 1.5 * G, [{ c: [0, 0], r: SMELTER.r, h: SMELTER.h }], 0);
+      }
+      for (let k = 0; k < 2; k++) {
+        const fw = rnd(40, 52),
+          fd = rnd(30, 38),
+          fh = rnd(18, 22);
+        place(w, buildFoundryHall(fw, fh, fd), [-fw / 2, fw / 2, -fd / 2, fd / 2], 1.5 * G, [
+          { box: [-fw / 2, fw / 2, fd / 2 - 1.2, fd / 2], y: 0, top: fh },
+          { box: [-fw / 2, -fw / 2 + 1.2, -fd / 2, fd / 2], y: 0, top: fh },
+          { box: [fw / 2 - 1.2, fw / 2, -fd / 2, fd / 2], y: 0, top: fh },
+          { box: [-fw / 2, fw / 2, -fd / 2, fd / 2], y: fh - 1.4, top: fh, deck: true },
+        ]);
+      }
+    },
+  },
+  ashfall: {
+    name: '灰燼暴',
+    theme: { sky: 0x3a2620, fog: 0x3a2a24, fogNear: 20, fogFar: 120, sunI: 0.5, hemiI: 0.65 },
+  },
+  obsidian: {
+    name: '黑曜石原',
+    theme: { ground: 0x1e1a1c, slope: 0x161214, featureKinds: ['bunkers', 'platforms'] },
+    // 台地壓平、熔岩河照舊；散布黑曜石的尖柱（不可破壞的掩體）
+    terrain: () => (x, z, h) => (h > 0 ? h * 0.45 : h),
+    build(w) {
+      const m = mat(0x141018, { roughness: 0.15, metalness: 0.6, flatShading: true });
+      for (let k = w.cnt(10, 16); k > 0; k--) {
+        const r = rnd(3, 6) * MS,
+          h = rnd(10, 22) * MS;
+        const g = new THREE.Group();
+        const c = new THREE.Mesh(new THREE.ConeGeometry(r, h, 5), m);
+        c.position.y = h / 2;
+        c.rotation.z = rnd(-0.15, 0.15);
+        c.castShadow = true;
+        g.add(c);
+        place(w, g, [-r, r, -r, r], 2 * G, [{ c: [0, 0], r: r * 0.7, h: h * 0.8 }], 0.5);
+      }
+    },
+  },
+  night: {
+    name: '熔岩之夜',
+    theme: { ...NIGHT, sky: 0x1a0c08, fog: 0x2a1208, sun: 0xff9a60, sunI: 0.42, hemiI: 0.55, fogFar: 170 },
   },
 };
 export const variantKeys = (theme) => Object.keys(VARIANTS[theme] || {});

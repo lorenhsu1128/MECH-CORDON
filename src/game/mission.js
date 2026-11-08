@@ -983,6 +983,7 @@ Object.assign(Game.prototype, {
   clearMission() {
     this.airEnd(); // 空域（game/air.js）
     this.afLeaders = []; // 詞綴的指揮（game/affix.js）
+    this.lavaTold = false; // 熔岩的提示（lava.js）
     this.afSeen = null;
     this.setChanged = null; // 任務中改的設定（settings.js 的 settingsApplyMission）
     this.setPendView = this.setPendLm = false;

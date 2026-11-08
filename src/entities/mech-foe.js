@@ -24,6 +24,7 @@ import { FOES_b1 } from '../data/foes-b1.js';
 import { FOES_b2 } from '../data/foes-b2.js';
 import { FOES_C1 } from '../data/foes-c1.js';
 import { FOES_C2 } from '../data/foes-c2.js';
+import { FOES_E1 } from '../data/foes-e1.js';
 import { MechEntity } from './mech-entity.js';
 import { Projectile } from './projectile.js';
 
@@ -35,6 +36,7 @@ for (const [k, T] of [
   ['_b2', FOES_b2],
   ['_c1', FOES_C1],
   ['_c2', FOES_C2],
+  ['_e1', FOES_E1], // 第 7 章：火山熔爐帶（mech-foe-e1.js）
 ])
   for (const d of Object.values(T)) EXT_AI.set(d.ai, k);
 const _d1v = new THREE.Vector3();

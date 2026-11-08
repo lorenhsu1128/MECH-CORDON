@@ -737,6 +737,8 @@ export const GUNS_BY_THEME = {
   xylem: ['gun_flak', 'gun_hmg'],
   orbit: ['gun_flak', 'gun_rail'],
   institute: ['gun_rail', 'gun_msl'],
+  volcano: ['gun_hmg', 'gun_msl'],
+  ark: ['gun_flak', 'gun_rail'],
 };
 // ---------- G2 撿重武器 ----------
 // 掛在右手、自動對鎖定目標發射（沒有鎖定時按射擊鍵才往準星發射），彈藥打完就丟掉

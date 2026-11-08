@@ -19,6 +19,7 @@ import { greeble } from './greeble.js';
 import { FOE_BUILDERS_b1, FOE_CATALOG_b1 } from './foe-models-b1.js';
 import { FOE_BUILDERS_C1, FOE_CATALOG_C1 } from './foe-models-c1.js';
 import { FOE_BUILDERS_C2, FOE_CATALOG_C2 } from './foe-models-c2.js';
+import { FOE_BUILDERS_E1, FOE_CATALOG_E1 } from './foe-models-e1.js';
 import { mechMats } from './materials.js';
 import { FOE_BUILDERS_b2, FOE_CATALOG_b2 } from './foe-models-b2.js';
 import { tagStyle } from './style/shader.js';
@@ -3919,6 +3920,7 @@ const FOE_RAW = {
   ...FOE_BUILDERS_b2, // 擴充：第 2 章的新敵人（foe-models-b2.js）
   ...FOE_BUILDERS_C1, // 擴充：冰原、技研都市、Grid 086（foe-models-c1.js）
   ...FOE_BUILDERS_C2,
+  ...FOE_BUILDERS_E1,
 };
 // 統一出口：建好後把不會動的零件依材質合併（render/foe-merge.js，降低 draw call）
 export const FOE_BUILDERS = Object.fromEntries(Object.entries(FOE_RAW).map(([k, f]) => [k, foeMerged(k, f)]));
@@ -3953,4 +3955,5 @@ export const FOE_CATALOG = [
   ...FOE_CATALOG_b2,
   ...FOE_CATALOG_C1,
   ...FOE_CATALOG_C2,
+  ...FOE_CATALOG_E1,
 ];

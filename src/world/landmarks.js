@@ -4405,6 +4405,68 @@ export const LANDMARKS = {
       shapes: [{ box: [-5, 5, -5, 5], y: 0, top: 25 }],
     },
   },
+  // 火山熔爐帶（主線第 7 章，world/themes/volcano.js）：舊尺度建模，addLandmark 整體放大 WS 倍
+  volcano: {
+    crucible: {
+      name: '巨大坩堝',
+      build: vCrucible,
+      bx: [-10, 10, -10, 12],
+      range: 2.5,
+      sink: 0.3,
+      shapes: [{ c: [0, 0], r: 7, h: 14 }],
+    },
+    derrick: {
+      name: '地熱鑽井塔',
+      build: vDerrick,
+      bx: [-6, 6, -6, 6],
+      range: 2.5,
+      sink: 0.3,
+      shapes: [
+        { box: [-5, 5, -5, 5], y: 0, top: 2 },
+        { c: [0, 0], r: 3, h: 30 },
+      ],
+    },
+    crane: {
+      name: '方舟船塢的起重機',
+      build: vDockCrane,
+      bx: [-14, 14, -4, 4],
+      range: 2.5,
+      sink: 0.3,
+      shapes: [
+        { c: [-12, 0], r: 1.4, h: 22 },
+        { c: [12, 0], r: 1.4, h: 22 },
+        { box: [-14, 14, -2, 2], y: 20, top: 23, deck: true },
+      ],
+    },
+    slag: {
+      name: '熔渣山',
+      build: vSlagHill,
+      bx: [-11, 11, -11, 11],
+      range: 4,
+      sink: 0.6,
+      shapes: [{ c: [0, 0], r: 8, h: 10 }],
+    },
+    cooling: {
+      name: '冷卻塔',
+      build: vCoolingTower,
+      bx: [-10, 10, -10, 10],
+      range: 3,
+      sink: 0.3,
+      shapes: [{ c: [0, 0], r: 8.5, h: 26 }],
+    },
+    gate: {
+      name: '熔爐帶的關門',
+      build: vGate,
+      bx: [-16, 16, -3, 3],
+      range: 2.5,
+      sink: 0.3,
+      shapes: [
+        { box: [-16, -9, -3, 3], y: 0, top: 18 },
+        { box: [9, 16, -3, 3], y: 0, top: 18 },
+        { box: [-9, 9, -3, 3], y: 14, top: 18, deck: true },
+      ],
+    },
+  },
 };
 // 精細版（docs/model-detail.md）：box()／cyl() 拼的網格整個換成精細版（基本形體升級以放大 WS 倍之後的尺寸判斷）
 const LM_TINT = { ao: 0.75, grime: 0.2, k: WS };
@@ -4415,3 +4477,114 @@ for (const th in LANDMARKS)
     L.build = () => bakeGroup(f(), LM_TINT);
   }
 export const landmarkKeys = (theme) => Object.keys(LANDMARKS[theme] || {});
+
+// ---------- 火山熔爐帶的地標（舊尺度：1＝3 m；原點在底面中心） ----------
+const VM = {
+  iron: mat(0x3c3a38, { roughness: 0.6, metalness: 0.6 }),
+  rust: mat(0x6a3a24, { roughness: 0.85, metalness: 0.35 }),
+  brick: mat(0x5a3428, { roughness: 0.95 }),
+  basalt: mat(0x2a2422, { roughness: 1 }),
+  yellow: mat(0xd09a20, { roughness: 0.6 }),
+  hot: new THREE.MeshStandardMaterial({
+    color: 0xff6a20,
+    emissive: 0xff6a20,
+    emissiveIntensity: 1.7,
+    roughness: 0.5,
+  }),
+};
+// 巨大坩堝：傾斜的鍋身架在兩座支柱上，熔融金屬從鍋嘴流下
+function vCrucible() {
+  const g = new THREE.Group();
+  for (const s of [-1, 1]) g.add(box(2, 10, 2.4, VM.brick, s * 8, 5, 0));
+  const pot = new THREE.Group();
+  pot.position.set(0, 9, 0);
+  pot.rotation.z = 0.35;
+  pot.add(cyl(6.5, 4.5, 7, VM.rust, 0, 0, 0, 20));
+  pot.add(cyl(6.6, 6.6, 0.6, VM.iron, 0, 3.4, 0, 20));
+  pot.add(cyl(6, 6, 0.2, VM.hot, 0, 3.6, 0, 20));
+  pot.add(box(16.4, 1, 1, VM.iron, 0, 0, 0));
+  g.add(pot);
+  g.add(box(1, 9, 1, VM.hot, 6.5, 4.5, 0)); // 流下的熔融金屬
+  g.add(cyl(3, 3.4, 0.6, VM.hot, 6.5, 0.3, 0, 16)); // 地上的湯池
+  g.add(box(20, 0.6, 3, VM.iron, 0, 0.3, 0));
+  return g;
+}
+// 地熱鑽井塔：格子塔、頂部的滑輪、底部的鑽台與管線
+function vDerrick() {
+  const g = new THREE.Group();
+  g.add(box(10, 2, 10, VM.iron, 0, 1, 0));
+  for (const sx of [-1, 1])
+    for (const sz of [-1, 1]) {
+      const leg = box(0.6, 30, 0.6, VM.yellow, sx * 2.2, 16, sz * 2.2);
+      leg.rotation.set(sz * -0.08, 0, sx * 0.08);
+      g.add(leg);
+    }
+  for (let y = 5; y < 30; y += 5) g.add(box(4.8 - y * 0.06, 0.3, 4.8 - y * 0.06, VM.iron, 0, y, 0));
+  g.add(box(2.4, 1.6, 2.4, VM.iron, 0, 31, 0));
+  g.add(cyl(0.6, 0.6, 28, VM.iron, 0, 15, 0, 10));
+  g.add(cyl(1.4, 1.4, 1, VM.hot, 0, 2.3, 0, 14));
+  return g;
+}
+// 方舟船塢的門型起重機：兩支腳、橫梁、吊車、垂下的掛鉤
+function vDockCrane() {
+  const g = new THREE.Group();
+  for (const s of [-1, 1]) {
+    g.add(box(2.4, 22, 3, VM.yellow, s * 12, 11, 0));
+    g.add(box(4, 1, 6, VM.iron, s * 12, 0.5, 0));
+  }
+  g.add(box(28, 3, 4, VM.yellow, 0, 21.5, 0));
+  g.add(box(4, 2.4, 4.6, VM.iron, 3, 19.6, 0));
+  g.add(cyl(0.12, 0.12, 10, VM.iron, 3, 13.4, 0, 6));
+  g.add(box(1.6, 1.2, 1.6, VM.iron, 3, 8, 0));
+  return g;
+}
+// 熔渣山：堆成一座小山，裂縫發光
+function vSlagHill() {
+  const g = new THREE.Group();
+  g.add(cyl(2, 10, 10, VM.basalt, 0, 5, 0, 9));
+  g.add(cyl(5, 9, 4, VM.basalt, 4, 2, 3, 8));
+  for (let i = 0; i < 6; i++) {
+    const a = i * 1.05;
+    const c = box(0.4, 6, 0.3, VM.hot, Math.cos(a) * 6, 3, Math.sin(a) * 6);
+    c.rotation.set(0.3, -a, 0.5);
+    g.add(c);
+  }
+  return g;
+}
+// 冷卻塔：雙曲面的塔身（剖面旋轉）、頂上的蒸氣口
+function vCoolingTower() {
+  const g = new THREE.Group();
+  const prof = [];
+  for (let i = 0; i <= 10; i++) {
+    const t = i / 10;
+    prof.push([8.5 - Math.sin(t * Math.PI) * 2.2 - t * 1.5, t * 26]);
+  }
+  const m = new THREE.Mesh(
+    new THREE.LatheGeometry(
+      prof.map(([x, y]) => new THREE.Vector2(x, y)),
+      28,
+    ),
+    VM.brick,
+  );
+  m.material = VM.brick;
+  m.castShadow = true;
+  g.add(m);
+  g.add(cyl(6, 6, 0.4, VM.hot, 0, 25.6, 0, 20));
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    g.add(box(0.8, 3, 0.8, VM.iron, Math.cos(a) * 8.2, 1.5, Math.sin(a) * 8.2));
+  }
+  return g;
+}
+// 熔爐帶的關門：兩座塔與跨在上面的通道（機甲走得過）
+function vGate() {
+  const g = new THREE.Group();
+  for (const s of [-1, 1]) {
+    g.add(box(7, 18, 6, VM.brick, s * 12.5, 9, 0));
+    g.add(box(7.4, 1, 6.4, VM.iron, s * 12.5, 18.5, 0));
+    g.add(box(0.4, 3, 2, VM.hot, s * 9, 12, 3.1));
+  }
+  g.add(box(18, 4, 6, VM.iron, 0, 16, 0));
+  g.add(box(18, 0.8, 0.4, VM.yellow, 0, 14.2, 3.1));
+  return g;
+}

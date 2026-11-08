@@ -104,6 +104,8 @@ import { INSTITUTE } from './themes/institute.js';
 import { ORBIT } from './themes/orbit.js';
 import { SPACEPORT } from './themes/spaceport.js';
 import { XYLEM } from './themes/xylem.js';
+import { VOLCANO } from './themes/volcano.js';
+import { ARK } from './themes/ark.js';
 import { AIRSPACE } from './themes/airspace.js';
 
 const _seg = new THREE.Vector3(); // propBlocks 的暫存
@@ -321,9 +323,12 @@ export const THEMES = {
   xylem: XYLEM,
   orbit: ORBIT,
   institute: INSTITUTE,
+  volcano: VOLCANO, // 主線第 7 章（docs/campaign-expansion-design.md）
 };
 // 線性色調映射（賽璐璐類渲染風格）時的曝光補正：線性不壓高光，白色的場景容易爆白、暗的場景補亮一點
 // （render/style/pipeline.js 的 applyScene；ACES 等會壓高光的不套用）。變體可以用 theme.linExp 覆寫
+// 移動要塞「方舟」（主線第 8 章）：做完第 13 期之前先不可列舉（不出現在地圖選單）
+Object.defineProperty(THEMES, 'ark', { value: ARK, enumerable: false, configurable: true });
 const LIN_EXP = {
   snow: 0.7,
   grid: 0.86,
@@ -335,6 +340,8 @@ const LIN_EXP = {
   flooded: 1.15,
   grid086: 1.2,
   institute: 1.15,
+  volcano: 1.1,
+  ark: 1,
 };
 for (const k in LIN_EXP) THEMES[k].linExp = LIN_EXP[k];
 // 設定「色彩管理」打開時的曝光補正（docs/perf-threejs-upgrade.md 第 4 期）：配色照 sRGB 解讀後顏色變深（越暗的顏色變得越多），
@@ -354,6 +361,8 @@ const CM_EXP = {
   spaceport: 2.18,
   wasteland: 2.39,
   xylem: 1.93,
+  volcano: 2.2,
+  ark: 2.3,
 };
 for (const k in CM_EXP) THEMES[k].cmExp = CM_EXP[k];
 // 色彩管理＋線性色調映射（賽璐璐類風格）時再乘上：線性不壓暗部，暗色的主題地面會接近全黑
@@ -1394,6 +1403,8 @@ export class World {
   }
   // 變體不能放東西的地方（坑道網的岩壁…）
   offLimits(x, z) {
+    // 主題自己的（火山熔爐帶的熔岩）＋變體的
+    if (this.theme.offLimits && this.theme.offLimits(this, x, z)) return true;
     return !!(this.variant && this.variant.offLimits && this.variant.offLimits(this, x, z));
   }
   // 地標（world/landmarks.js）：找一塊夠平的地方放大型物件。地標是機甲尺度的大型場景物件，

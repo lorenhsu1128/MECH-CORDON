@@ -29,6 +29,8 @@ const THEME_EVENTS = {
   xylem: 'seawall',
   orbit: 'dock',
   institute: 'blastdoor',
+  volcano: 'chimney', // 熔爐的煙囪倒下（沿用荒野的）
+  ark: 'dock', // 對接的貨物艙（沿用高空軌道的）
 };
 // 每個主題的陷阱
 const THEME_TRAPS = {
@@ -45,6 +47,8 @@ const THEME_TRAPS = {
   wasteland: ['pylon'],
   dunes: ['gas'],
   flooded: ['cable'],
+  volcano: ['testrig'], // 噴火的試驗台（沿用宇宙港的）
+  ark: ['airlock'], // 甲板的氣閘（沿用高空軌道的）
 };
 
 Object.assign(Game.prototype, {
