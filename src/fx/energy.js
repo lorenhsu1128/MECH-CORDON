@@ -493,7 +493,7 @@ void main() {
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`;
 const AREA_FS = /* glsl */ `
-uniform vec3 uColor;
+uniform vec3 uColor, uRim;
 uniform float uOp, uTime, uP, uHit, uShape, uK, uChev;
 uniform vec2 uSize;
 varying vec2 vUv;
@@ -516,37 +516,49 @@ void main() {
     prog = vUv.y;
     len = uSize.y;
   }
+  // FF14 式的乾淨色面；邊緣淡（使用者 2026-11-08：邊緣不要濃）：中間比較濃，往外一段距離慢慢淡出，沒有亮圈
   vec2 m = pm / uK;
-  float n = vnoise(m * 0.45 + vec2(uTime * 0.35, -uTime * 0.25));
-  float dn = din + (n - 0.5) * 0.12 * uK;
-  float aa = smoothstep(0.0, 0.18 * uK, dn);
-  if (aa <= 0.0) discard;
-  dn = max(dn, 0.0);
-  float ew = clamp(min(uSize.x, uSize.y) * 0.1, 0.4 * uK, 1.5 * uK);
-  float edge = exp(-dn / ew);
-  float rim = exp(-dn / (0.22 * uK));
-  float fe = 0.35 * uK / len;
+  float n = vnoise(m * 0.5 + vec2(uTime * 0.3, -uTime * 0.2));
+  float dn = din + (n - 0.5) * 0.08 * uK;
+  if (dn <= 0.0) discard;
+  float hs = uShape < 0.5 ? uSize.x : min(uSize.x, uSize.y) * 0.5;
+  float fw = clamp(hs * 0.2, 0.5 * uK, 1.6 * uK);
+  float aa = smoothstep(0.0, fw, dn);
+  float g = clamp(dn / hs, 0.0, 1.0);
+  float body = 0.34 + 0.08 * g;
+  // 時間：還沒長到的部分淡一點，長滿＝命中；前緣是一條淡淡的淺色（不是白線）
+  float fe = 0.4 * uK / len;
   float inside = 1.0 - smoothstep(uP - fe, uP + fe, prog);
-  float front = exp(-pow((prog - uP) * len / (0.7 * uK), 2.0)) * step(0.0, uP) * (1.0 - uHit);
-  float tex = vnoise(m * 1.2 - uTime * 0.5);
+  float front = exp(-pow((prog - uP) * len / (0.4 * uK), 2.0)) * step(0.0, uP) * (1.0 - uHit);
   float chev = 0.0;
   if (uChev > 0.5) {
-    float s = fract((pm.y + abs(pm.x) * 0.8) / uK * 0.22 - uTime * 1.4);
-    chev = smoothstep(0.0, 0.08, s) * (1.0 - smoothstep(0.2, 0.3, s)) * (1.0 - edge);
+    float s = fract((pm.y + abs(pm.x) * 0.8) / uK * 0.22 - uTime * 1.2);
+    chev = smoothstep(0.0, 0.08, s) * (1.0 - smoothstep(0.2, 0.3, s));
   }
-  float a =
-    0.14 + 0.025 * tex + edge * 0.35 + rim * 0.5 + inside * (0.2 + 0.03 * tex) + front * 0.45 + chev * 0.12 + uHit * 0.45;
-  // 顏色不混白、不加亮（色調映射會把亮的紅洗成粉紅）：只有前緣與命中的閃光稍微亮一點
-  vec3 c = uColor * (0.85 + 0.25 * rim) + vec3(0.25) * (front * 0.6 + uHit * 0.8);
+  float a = body * mix(0.6, 1.1, inside) + front * 0.08 + chev * 0.035 + uHit * 0.3;
+  vec3 c = mix(uColor, uRim, clamp(front * 0.4 + chev * 0.25 + uHit * 0.6, 0.0, 1.0));
   gl_FragColor = vec4(c, clamp(a, 0.0, 1.0) * aa * uOp);
 }`;
+// 攻擊預警的配色（FF14 的橘色）：呼叫端給的紅色系（紅、橘紅）一律換成這個；其他顏色（藍、紫、黃…）照舊，邊色是它的淺色
+export const WARN_ORANGE = 0xff9838;
+const WARN_RIM = 0xffd690;
+const _hsl = { h: 0, s: 0, l: 0 };
+export function warnColors(color) {
+  const c = new THREE.Color(color);
+  c.getHSL(_hsl);
+  if (_hsl.s > 0.35 && (_hsl.h < 0.075 || _hsl.h > 0.9))
+    return [new THREE.Color(WARN_ORANGE), new THREE.Color(WARN_RIM)];
+  return [c, c.clone().lerp(new THREE.Color(0xffffff), 0.55)];
+}
 // shape 0＝圓（size＝(R, R)）、1＝長方形（size＝(寬, 長)）；chev＝裡面淡淡的往前箭頭（路線）
 export function warnAreaMat(color, shape, sx, sy, k, chev = 0) {
+  const [col, rim] = warnColors(color);
   return new THREE.ShaderMaterial({
     vertexShader: AREA_VS,
     fragmentShader: AREA_FS,
     uniforms: {
-      uColor: { value: new THREE.Color(color) },
+      uColor: { value: col },
+      uRim: { value: rim },
       uOp: { value: 0 },
       uTime: { value: 0 },
       uP: { value: 0 },
