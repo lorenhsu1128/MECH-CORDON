@@ -18666,6 +18666,107 @@ async function testWater(browser, base) {
   await ctx.close();
 }
 
+// 地面標示（模型庫的 #ground，library/ground.js）：每個招式範例與地面標示都能播放、沒有例外；
+// 每個地面標示至少有一個招式用到；src/ 裡呼叫地面特效的檔案都登記在某個招式的「程式」欄（過場、教學、空戰等除外）
+async function testGroundMarks(browser, base) {
+  console.log('地面標示：模型庫的地面標示頁籤、每個招式與標示都能播放、登記檢查');
+  if (!fs.existsSync(LIBRARY)) return;
+  const ctx = await browser.newContext({ viewport: { width: 1400, height: 860 } });
+  const page = await ctx.newPage();
+  watch(page, 'ground');
+  await page.goto(base + 'model-library.html?test#ground');
+  await page.waitForFunction(() => window.__ground && window.__ground.open_ && window.__ground.tgt, null, {
+    timeout: 30000,
+  });
+  const cat = await page.evaluate(() => window.__ground.catalog());
+  const ids = [...cat.moves.map((m) => m.id), ...cat.marks];
+  const errs = [];
+  for (let i = 0; i < ids.length; i += 12) {
+    const part = ids.slice(i, i + 12);
+    const e = await page.evaluate((list) => {
+      const g = window.__ground;
+      const out = [];
+      for (const id of list)
+        try {
+          g.pick(id);
+          g.step(7);
+        } catch (err) {
+          out.push(id + '：' + err.message);
+        }
+      return out;
+    }, part);
+    errs.push(...e);
+  }
+  check(
+    !errs.length,
+    `${cat.moves.length} 個招式範例、${cat.marks.length} 種地面標示都能播放${errs.length ? '：' + errs.slice(0, 4).join('；') : ''}`,
+  );
+  const unused = cat.marks.filter((k) => !Object.values(cat.uses).some((u) => u.includes(k)));
+  check(
+    !unused.length,
+    `每種地面標示都有招式用到${unused.length ? '（沒有：' + unused.join('、') + '）' : ''}`,
+  );
+  const empty = cat.moves.filter((m) => !cat.uses[m.id].length).map((m) => m.id);
+  check(!empty.length, `每個招式都用到地面標示${empty.length ? '（沒有：' + empty.join('、') + '）' : ''}`);
+  // 登記：呼叫地面特效的檔案
+  const RE =
+    /fx\.(warnCircle|warnLine|warnRect|groundWave|pulseShell|pillarStrike|shockwave|ring|firePool|flameCone|chevrons)\(|\.(addZone\??\.?|bfAdd|layMine|addPool|shockStart|pulseRing|mortarShot|crateShot|addFlow|campRing|segRing)\(/;
+  const SKIP = [
+    'game/cine', // 過場動畫
+    'game/tutorial', // 近戰、遠程訓練課程（教學的假人）
+    'game/air.js', // 空戰：在天上，不是地面
+    'entities/mech-air.js',
+    'game/range.js', // 靶場的目標重設
+    'game/mp-host.js', // 客機撿東西的同一個環（map-extras 已列）
+    'game/campaign-mp.js', // 客機的出口光環（campaign.js 已列）
+    'game/hub', // 作戰室的全像桌
+    'game/hazards2.js', // 區域效果的本體（標示頁直接用 render/zone-fx.js）
+    'game/support.js', // mortarShot／crateShot／layMine／addFlow 的本體
+    'game/shockwave.js', // shockStart 的本體
+    'game/boss-field.js', // 場地效果的本體（bfAround 等；招式寫 data/boss-kit.js）
+  ];
+  const srcAll = cat.moves.map((m) => m.src).join('\n');
+  const miss = [];
+  for (const dir of ['entities', 'game']) {
+    for (const f of fs.readdirSync(path.join(ROOT, 'src', dir))) {
+      const rel = dir + '/' + f;
+      if (!f.endsWith('.js') || SKIP.some((k) => rel.startsWith(k))) continue;
+      const txt = fs.readFileSync(path.join(ROOT, 'src', dir, f), 'utf8');
+      if (RE.test(txt) && !srcAll.includes(rel)) miss.push(rel);
+    }
+  }
+  check(
+    !miss.length,
+    `呼叫地面特效的檔案都登記在招式範例${miss.length ? '（沒有：' + miss.join('、') + '）' : ''}`,
+  );
+  // 截圖：幾個代表的招式（播到一半）、全部並排
+  for (const [id, sec, name] of [
+    ['b3_orbital', 1.2, 'ground-pillars'],
+    ['bs_orbitalGrid', 1.0, 'ground-grid'],
+    ['bf_furnace', 2, 'ground-field'],
+    ['c1_anchor', 2, 'ground-zone'],
+    ['tp_gas', 1.6, 'ground-trap'],
+  ]) {
+    await page.evaluate(
+      ([i, t]) => {
+        const g = window.__ground;
+        g.speed = 0;
+        g.pick(i);
+        g.step(t);
+      },
+      [id, sec],
+    );
+    await page.screenshot({ path: path.join(SHOT_DIR, name + '.png') });
+  }
+  await page.evaluate(() => {
+    const g = window.__ground;
+    g.showAll();
+    g.step(1.2);
+  });
+  await page.screenshot({ path: path.join(SHOT_DIR, 'ground-all.png') });
+  await ctx.close();
+}
+
 async function testVfxEditor(browser, base) {
   console.log('特效編輯：模型庫的特效頁籤、預覽、改一層的數量、存到瀏覽器、遊戲照存的產生、還原');
   if (!fs.existsSync(LIBRARY)) return;
@@ -29336,6 +29437,7 @@ const STEPS = [
   ['testVfx9', (c) => testVfx9(c.browser, c.base)],
   ['testWater', (c) => testWater(c.browser, c.base)],
   ['testVfxEditor', (c) => testVfxEditor(c.browser, c.base)],
+  ['testGroundMarks', (c) => testGroundMarks(c.browser, c.base)],
   ['testTextFx', (c) => testTextFx(c.browser, c.base)],
   ['testLevels', (c) => testLevels(c.browser, c.base)],
   ['testLevelBossPhase', (c) => testLevelBossPhase(c.browser, c.base)],

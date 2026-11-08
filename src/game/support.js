@@ -1,18 +1,16 @@
 // Game：特殊一般敵人的場上物件與判定（實體行為在 entities/mech-special.js）
 // 迫擊砲彈（落點預警圈）、地雷、護盾產生器與盾牌 MT 擋子彈／雷射、運輸機投放。
 // 傷害只在房主／單機計算；客機收到 'warn'（預警圈）、'mine'／'mineX'（地雷出現／消失）事件只做顯示。
-import { warnDiscMat } from '../fx/energy.js';
 import { SFX } from '../audio/audio.js';
 import { clamp } from '../core/math.js';
 import { DS, MS } from '../core/scale.js';
 import { Projectile } from '../entities/projectile.js';
 import { Game } from './game.js';
+import { AIR_TRIG, MINE_TRIG, buildMineMesh, mineBlink } from '../render/ground-marks.js';
 import { targetDist } from '../world/prop-hit.js';
 
 const MORTAR_G = 26 * DS; // 迫擊砲彈重力（和榴彈相同）
-const MINE_TRIG = 2.2 * MS; // 地雷觸發的水平距離
 const MINE_ALT = 1.5 * MS; // 離地高於這個高度不會觸發（跳過去）
-const AIR_TRIG = 3 * MS; // 空中地雷的觸發距離（3D）
 
 Object.assign(Game.prototype, {
   // flashMsg／flashAlert 本身就會轉送給客機
@@ -332,66 +330,7 @@ Object.assign(Game.prototype, {
     });
   },
   mineMesh(p, air) {
-    const grp = new THREE.Group();
-    if (air) {
-      // 空中地雷：懸浮的發光球＋外圈
-      const core = new THREE.Mesh(
-        new THREE.SphereGeometry(0.35, 10, 8),
-        new THREE.MeshBasicMaterial({ color: 0xff4030, transparent: true, blending: THREE.AdditiveBlending }),
-      );
-      const shell = new THREE.Mesh(
-        new THREE.IcosahedronGeometry(0.6, 0),
-        new THREE.MeshStandardMaterial({ color: 0x3a3e44, roughness: 0.5, metalness: 0.6, wireframe: true }),
-      );
-      const halo = new THREE.Mesh(
-        new THREE.SphereGeometry(AIR_TRIG / MS, 12, 8),
-        new THREE.MeshBasicMaterial({
-          color: 0xff3020,
-          transparent: true,
-          opacity: 0.12,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-        }),
-      );
-      grp.add(core, shell, halo);
-      grp.position.copy(p);
-      grp.scale.setScalar(MS);
-      grp.userData.light = core;
-      grp.userData.halo = halo;
-      this.scene.add(grp);
-      return grp;
-    }
-    const body = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.45, 0.55, 0.22, 10),
-      new THREE.MeshStandardMaterial({ color: 0x3a3e38, roughness: 0.7, metalness: 0.4 }),
-    );
-    body.position.y = 0.11;
-    const light = new THREE.Mesh(
-      new THREE.SphereGeometry(0.12, 8, 6),
-      new THREE.MeshBasicMaterial({ color: 0xff2a20, transparent: true, blending: THREE.AdditiveBlending }),
-    );
-    light.position.y = 0.26;
-    // 感應圈：華麗時是掃描圈（fx/energy.js 的 warnDiscMat，第 9.4 期）
-    const halo = this.fx.rich
-      ? new THREE.Mesh(new THREE.CircleGeometry(MINE_TRIG / MS, 40), warnDiscMat(0xff3020, 1))
-      : new THREE.Mesh(
-          new THREE.RingGeometry(MINE_TRIG / MS - 0.1, MINE_TRIG / MS, 28),
-          new THREE.MeshBasicMaterial({
-            color: 0xff3020,
-            transparent: true,
-            opacity: 0.25,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-            side: THREE.DoubleSide,
-          }),
-        );
-    halo.rotation.x = -Math.PI / 2;
-    halo.position.y = 0.06;
-    grp.add(body, light, halo);
-    grp.position.copy(p);
-    grp.scale.setScalar(MS);
-    grp.userData.light = light;
-    grp.userData.halo = halo;
+    const grp = buildMineMesh(p, air, this.fx.rich);
     this.scene.add(grp);
     return grp;
   },
@@ -459,15 +398,7 @@ Object.assign(Game.prototype, {
     for (let k = this.mines.length - 1; k >= 0; k--) {
       const m = this.mines[k];
       m.t += dt;
-      const L = m.mesh.userData.light;
-      const fast = m.trig >= 0;
-      L.material.opacity = Math.sin(m.t * (fast ? 40 : 6)) > 0 ? 1 : 0.15;
-      const hm = m.mesh.userData.halo.material;
-      if (hm.uniforms) {
-        hm.uniforms.uTime.value = this.fx.time;
-        hm.uniforms.uOp.value = fast ? 1 : 0.55;
-        hm.uniforms.uFlash.value = fast ? (Math.sin(m.t * 40) > 0 ? 1 : 0.4) : 1;
-      } else hm.opacity = fast ? 0.6 : 0.18 + 0.08 * Math.sin(m.t * 3);
+      mineBlink(m.mesh, m.t, m.trig >= 0, this.fx.time);
       if (!host || m.vis) continue;
       m.life -= dt;
       m.arm -= dt;

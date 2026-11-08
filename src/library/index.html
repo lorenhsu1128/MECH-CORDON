@@ -303,6 +303,53 @@
       </div>
     </section>
 
+    <section id="ground" hidden>
+      <header class="wsTop">
+        <b>地面標示</b>
+        <span class="dim small"
+          >遊戲裡畫在地上的預警、區域、光環與箭頭，以及每個用到它們的招式（和遊戲同一份程式畫的）</span
+        >
+        <span class="sp"></span>
+        <button id="gdBack" title="回到格狀檢視（Esc）">← 回模型庫</button>
+      </header>
+      <div class="wsBody">
+        <aside id="gdLeft">
+          <div class="wsRow" id="gdTabs" data-padtabs="button">
+            <button data-t="moves" class="sel">招式範例</button><button data-t="marks">地面標示</button>
+          </div>
+          <input id="gdSearch" type="search" placeholder="搜尋名稱、敵人、檔案…" />
+          <div id="gdList"></div>
+        </aside>
+        <div id="gdView">
+          <canvas id="gdGl"></canvas>
+          <div id="gdBar">
+            <div class="wsRow small">
+              <button id="gdPlay" title="空白鍵">重播</button>
+              <label><input type="checkbox" id="gdLoop" checked /> 重複</label>
+              <label
+                >速度
+                <select id="gdSpeed">
+                  <option value="1">1×</option>
+                  <option value="0.5">0.5×</option>
+                  <option value="0.25">0.25×</option>
+                </select></label
+              >
+              <label title="設定的「砲火特效」：華麗＝第 9 期的著色器特效，標準＝改版前的樣子"
+                ><input type="checkbox" id="gdRich" checked /> 砲火特效華麗</label
+              >
+              <label><input type="checkbox" id="gdMechs" checked /> 顯示機體</label>
+              <button id="gdAll" title="地面標示並排一次看完">全部並排</button>
+              <button id="gdCam" title="鏡頭回到預設的位置">鏡頭歸位</button>
+            </div>
+          </div>
+        </div>
+        <aside id="gdRight">
+          <h3 id="gdName"></h3>
+          <div id="gdInfo"></div>
+        </aside>
+      </div>
+    </section>
+
     <section id="editor" class="edPage" hidden>
       <header class="wsTop">
         <b>GLB 編輯</b>

@@ -642,6 +642,7 @@ button.sel {
 #workshop,
 #motion,
 #vfx,
+#ground,
 #editor {
   position: fixed;
   inset: 0;
@@ -653,6 +654,7 @@ button.sel {
 #workshop[hidden],
 #motion[hidden],
 #vfx[hidden],
+#ground[hidden],
 #editor[hidden] {
   display: none;
 }
@@ -1645,4 +1647,87 @@ select:disabled option {
 }
 .vxIn input[list] {
   width: 100%;
+}
+
+/* ---------- 地面標示（library/ground.js） ---------- */
+#gdLeft,
+#gdRight {
+  overflow-y: auto;
+  padding: 8px 12px 20px;
+  background: var(--panel);
+}
+#gdLeft {
+  border-right: 1px solid var(--line);
+}
+#gdRight {
+  border-left: 1px solid var(--line);
+}
+#gdRight h3 {
+  font-size: 15px;
+  color: var(--acc);
+  margin: 6px 0 8px;
+}
+#gdTabs button.sel {
+  border-color: var(--acc);
+  color: var(--acc);
+}
+#gdSearch {
+  width: 100%;
+  margin: 6px 0;
+}
+#gdList h4 {
+  font-size: 12px;
+  color: var(--acc2);
+  margin: 12px 0 4px;
+}
+#gdList button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin-bottom: 3px;
+}
+#gdList button.sel {
+  border-color: var(--acc);
+  background: rgba(255, 210, 63, 0.1);
+}
+#gdList button .n {
+  float: right;
+  opacity: 0.6;
+}
+#gdView {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+#gdGl {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+#gdBar {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  padding: 6px 8px;
+}
+#gdInfo dt {
+  font-size: 12px;
+  color: var(--acc2);
+  margin-top: 10px;
+}
+#gdInfo dd {
+  margin: 3px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+#gdInfo code {
+  font-size: 12px;
+  word-break: break-all;
+}
+.gdChips button {
+  margin: 0 4px 4px 0;
+  font-size: 12px;
 }

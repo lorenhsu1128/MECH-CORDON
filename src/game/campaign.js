@@ -32,6 +32,8 @@ import { DS, MS } from '../core/scale.js';
 const TRANS_T = 2.4; // 轉場演出秒數
 const EXIT_R = 4 * MS; // 出口的觸發半徑
 const EXIT_HOLD = 0.8; // 站進出口多久才出發
+import { buildCampRing } from '../render/ground-marks.js';
+
 const PAD_R = 3.5 * MS; // 補給台、資料終端的半徑
 // 推進型的區段（docs/map-pacing-design.md）：大地圖、從作戰區域一側進場、敵人分成幾群、出口在另一側
 const ADVANCE = ['battle', 'destroy', 'intel', 'breakthrough', 'stealth', 'extract', 'front'];
@@ -766,61 +768,7 @@ Object.assign(Game.prototype, {
   // 地面光環＋光柱＋標籤（出口、補給台、資料終端共用；不碰撞、不投影）
   campRing(pos, color, title, sub, r = PAD_R) {
     if (this.world) (this.world.protect = this.world.protect || []).push(pos.clone()); // 地圖物件的局部打穿避開（destruct.js）
-    const col = new THREE.Color(color);
-    const g = new THREE.Group();
-    g.position.copy(pos);
-    const ring = new THREE.Mesh(
-      new THREE.RingGeometry(r - 0.6 * MS, r, 40),
-      new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.85, side: THREE.DoubleSide }),
-    );
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.y = 0.15 * MS;
-    g.add(ring);
-    const beam = new THREE.Mesh(
-      new THREE.CylinderGeometry(r * 0.9, r, 60 * MS, 24, 1, true),
-      new THREE.MeshBasicMaterial({
-        color: col,
-        transparent: true,
-        opacity: 0.16,
-        side: THREE.DoubleSide,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-      }),
-    );
-    beam.position.y = 30 * MS;
-    g.add(beam);
-    const cv = document.createElement('canvas');
-    const lines = sub ? String(sub).split('\n') : [];
-    cv.width = 640;
-    cv.height = 120 + lines.length * 52 + (lines.length ? 14 : 0);
-    const x = cv.getContext('2d');
-    x.fillStyle = 'rgba(10,14,20,0.78)';
-    x.fillRect(0, 0, 640, cv.height);
-    x.strokeStyle = '#' + col.getHexString();
-    x.lineWidth = 6;
-    x.strokeRect(3, 3, 634, cv.height - 6);
-    x.fillStyle = '#' + col.getHexString();
-    // 寬度不夠時字縮小
-    const fit = (txt, px, bold) => {
-      x.font = `${bold ? 'bold ' : ''}${px}px sans-serif`;
-      const w = x.measureText(txt).width;
-      if (w > 600) x.font = `${bold ? 'bold ' : ''}${Math.floor((px * 600) / w)}px sans-serif`;
-    };
-    x.textAlign = 'center';
-    fit(title, 64, true);
-    x.fillText(title, 320, 84);
-    lines.forEach((ln, i) => {
-      x.fillStyle = ln.startsWith('⚠') ? '#ffb070' : '#d8e2ec';
-      fit(ln, 40);
-      x.fillText(ln, 320, 156 + i * 52);
-    });
-    const tex = new THREE.CanvasTexture(cv);
-    const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
-    spr.scale.set(12 * MS, (12 * MS * cv.height) / 640, 1);
-    spr.position.y = 9 * MS;
-    spr.renderOrder = 10;
-    g.add(spr);
-    g.userData.ring = ring;
+    const g = buildCampRing(pos, color, title, sub, r);
     this.scene.add(g);
     return g;
   },
