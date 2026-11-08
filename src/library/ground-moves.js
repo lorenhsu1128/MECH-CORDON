@@ -651,6 +651,45 @@ const THEME = [
         ),
       ),
   },
+  // E2（entities/mech-foe-e2.js，移動要塞「方舟」）
+  {
+    id: 'e2_boarder',
+    name: '登艦突擊兵：撲擊（落點 → 爆炸）',
+    who: '方舟 boarder',
+    src: 'entities/mech-foe-e2.js（warnCircle 6 × MS、0.9 秒 → 突擊推進、shockwave）',
+    srcAt: [0, -24],
+    run: (S) => {
+      const p = tp(S);
+      S.warnCircle(p, 6 * MS, 0.9, 0xff3020);
+      S.at(1.3, () => (S.boom(p, 6 * MS), S.ring(p.clone().setY(0.3), 6, 0xff6040)));
+    },
+  },
+  {
+    id: 'e2_railgunner',
+    name: '甲板軌道砲兵：瞄準線 → 貫穿光束',
+    who: '方舟 railgunner',
+    src: 'entities/mech-foe-e2.js（warnLine 每 0.12 秒、1.8 秒 → beamAttack 60）',
+    srcAt: [0, -40],
+    run: (S) => {
+      const from = S.src.muzzle('rarm');
+      S.every(0.12, 1.8, () => S.warnLine(from, tc(S), 0.14, 0x60c0ff, 0.08));
+      S.at(1.8, () => S.beamFx(from, tc(S), 0x9fe8ff, 0.5));
+    },
+  },
+  {
+    id: 'e2_spotter',
+    name: '艦橋觀測無人機：引導砲擊（3 發）',
+    who: '方舟 spotter',
+    src: 'entities/mech-foe-e2.js（warnCircle 5 × MS、1.3 秒起，每發晚 0.25 秒）',
+    srcAt: [0, -28],
+    run: (S) => {
+      for (let i = 0; i < 3; i++) {
+        const p = tp(S).add(V((i - 1) * 6 * DS, 0, i ? 4 * DS : 0));
+        S.warnCircle(p, 5 * MS, 1.3 + i * 0.25, 0xffd040);
+        S.at(1.3 + i * 0.25, () => S.boom(p, 5 * MS, 0xffa040));
+      }
+    },
+  },
 ];
 
 // ---------- Boss 的招式 ----------
@@ -1595,6 +1634,110 @@ const MORE_SPECIAL = [
   },
 ];
 const MORE_BOSS = [
+  // 主線擴充第 7、8 章的新 Boss（entities/mech-boss4.js、game/bosses4.js）
+  {
+    id: 'b4_anvil',
+    name: 'ANVIL 鍛造巨人：巨鎚（落點 → 震波＋熔岩裂地）',
+    who: 'ANVIL（anvil）',
+    src: 'entities/mech-boss4.js 的 anvilAI（warnCircle 7 × MS、1.1 秒 → shockwave、addPool 2.6 × 3）',
+    srcAt: [0, -26],
+    run: (S) => {
+      const p = tp(S);
+      S.warnCircle(p, 7 * MS, 1.1, 0xff4020);
+      S.at(1.1, () => {
+        S.boom(p, 7 * MS, 0xff8030);
+        S.ring(p.clone().setY(0.3), 7, 0xffa060);
+        for (let i = 1; i <= 3; i++) S.pool(S.src.pos.clone().lerp(p, i / 4), 2.6, 7);
+      });
+    },
+  },
+  {
+    id: 'b4_salamander',
+    name: 'SALAMANDER 熔岩潛龍：鑽出（火光 → 噴發）',
+    who: 'SALAMANDER（salamander）',
+    src: 'entities/mech-boss4.js 的 salaAI（warnCircle 6 × MS、1 秒 → explodeAt、addPool 4）',
+    srcAt: [0, -20],
+    run: (S) => {
+      const p = tp(S);
+      S.warnCircle(p, 6 * MS, 1, 0xff6a20);
+      S.at(1, () => (S.boom(p, 6 * MS, 0xff6a20), S.pool(p, 4, 8)));
+    },
+  },
+  {
+    id: 'b4_gantry',
+    name: 'GANTRY 船塢起重要塞：吊下貨櫃、吊鉤砸地',
+    who: 'GANTRY（gantry）',
+    src: 'entities/mech-boss4.js 的 gantryAI（warnCircle 6 × MS、1.2 秒；砸地 10 × MS、0.7 秒）',
+    srcAt: [0, -12],
+    run: (S) => {
+      const p = tp(S);
+      S.warnCircle(p, 6 * MS, 1.2, 0xff4020);
+      S.at(1.2, () => S.boom(p, 5.5 * MS, 0xffb060));
+      const q = S.src.pos.clone();
+      S.at(2, () => S.warnCircle(q, 10 * MS, 0.7, 0xff4020));
+      S.at(2.7, () => S.ring(q.clone().setY(0.3), 10, 0x80d0ff));
+    },
+  },
+  {
+    id: 'b4_deckgun',
+    name: 'COLOSSUS 主砲塔：主砲齊射（長方形）',
+    who: 'COLOSSUS（deckgun）',
+    src: 'entities/mech-boss4.js 的 deckgunAI（warnRect 10 × MS × 92 × DS、1.4 秒 → 12 發爆炸）',
+    srcAt: [0, -50],
+    run: (S) => {
+      const f = dirTo(S.src.pos, tp(S));
+      const yaw = Math.atan2(-f.x, -f.z);
+      const mid = S.src.pos
+        .clone()
+        .addScaledVector(f, 52 * DS)
+        .setY(0.1);
+      S.warnRect(mid, yaw, 10 * MS, 92 * DS, 1.4);
+      for (let i = 0; i < 12; i++)
+        S.at(1.4 + i * 0.05, () =>
+          S.boom(
+            S.src.pos
+              .clone()
+              .addScaledVector(f, (10 + i * 7.5) * DS)
+              .setY(0),
+            5 * MS,
+          ),
+        );
+    },
+  },
+  {
+    id: 'b4_reactor',
+    name: 'HEARTH 機關心臟：脈衝環、縫隙的光束',
+    who: 'HEARTH（reactor）',
+    src: 'entities/mech-boss4.js 的 reactorAI（pulseRing 44；b3Beam × 4、1 秒）',
+    srcAt: [0, -26],
+    run: (S) => {
+      const c = S.src.center();
+      S.pulse(c, 44, 0xff5070);
+      for (let i = 0; i < 4; i++) {
+        const a = Math.PI / 4 + (i * Math.PI) / 2;
+        S.at(1.5, () => S.beam(c, V(-Math.sin(a), 0, -Math.cos(a)), 1, 75));
+      }
+    },
+  },
+  {
+    id: 'b4_sovereign',
+    name: 'SOVEREIGN 方舟的主權者：認證（只有一條安全的光帶）',
+    who: 'SOVEREIGN（sovereign）',
+    src: 'entities/mech-boss4.js 的 sovereignAI（warnRect 12 × MS × 110 × DS、1.5 秒 × 4 條；game/bosses4.js 的 sovEcho4：pillarStrike）',
+    srcAt: [0, -40],
+    run: (S) => {
+      const c = tp(S);
+      for (let k = -2; k <= 2; k++) {
+        if (k === 1) continue;
+        const mid = c
+          .clone()
+          .add(V(k * 13 * MS, 0, 0))
+          .setY(0.1);
+        S.warnRect(mid, 0, 12 * MS, 110 * DS, 1.5, 0x80d0ff);
+        S.at(1.5, () => S.pillar(mid, 6 * MS, 0x80d0ff));
+      }
+    },
+  },
   {
     id: 'bs_trinitySplit',
     name: '三機合體：分離機體出現',
