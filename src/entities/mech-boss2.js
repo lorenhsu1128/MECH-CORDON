@@ -622,13 +622,7 @@ Object.assign(MechEntity.prototype, {
             p.y = g.world.groundAt(p.x, p.z, p.y + 2 * MS);
             pts.push(p);
           }
-          g.fx.warnLine(
-            pts[0].clone().setY(pts[0].y + 0.3),
-            pts[6].clone().setY(pts[6].y + 0.3),
-            0.9,
-            0xff6a20,
-            0.25,
-          );
+          g.fx.warnPath(pts[0], pts[6], 5.6 * DS, 0.9, 0xff6a20);
           g.later(0.9, () => {
             if (this.dead) return;
             pts.forEach((p, i) => g.later(i * 0.08, () => g.addPool(this, p, 2.8, p2 ? 10 : 8, 200 * dm)));
@@ -1378,7 +1372,11 @@ Object.assign(MechEntity.prototype, {
           s.dDir = pl.center().sub(from);
           s.dLen = s.dDir.length() + 22 * DS;
           s.dDir.normalize();
-          g.fx.warnLine(from, from.clone().addScaledVector(s.dDir, s.dLen), 0.6, 0xff5070, 0.3);
+          // 突刺的路線：本體 3.2 m×MS 以內都會被撞到，畫在地面上
+          const to = from.clone().addScaledVector(s.dDir, s.dLen);
+          from.y = g.world.groundAt(from.x, from.z, from.y);
+          to.y = g.world.groundAt(to.x, to.z, to.y + 2 * MS);
+          g.fx.warnPath(from, to, 6.4 * MS, 0.6, 0xff5070);
         }
         if (s.paT > 0.6) {
           s.pa = 'dashing';

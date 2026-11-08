@@ -322,6 +322,16 @@ void main() {
     float filled = step(vUv.y, uFill);
     a = line * 0.9 + ch * (0.5 + 0.5 * filled) + filled * 0.12 * (1.0 - x);
     c = mix(uColor, vec3(1.0), line * 0.4);
+  } else if (uKind > 1.5) {
+    // 瞄準雷射（2026-11-08 預警改版）：柔和的光芯，充能時收細、變亮，光點從槍口往前跑（越接近發射越快）；沒有外框與箭頭
+    float s = mix(0.42, 0.1, uFill);
+    float core = exp(-x * x / (s * s));
+    float glow = exp(-x * x * 3.0);
+    float py = fract(uTime * (0.7 + 2.6 * uFill));
+    float pulse = exp(-pow((vUv.y - py) * uLen / max(uLen * 0.06, 1.5), 2.0));
+    a = core * (0.3 + 0.7 * uFill) * (1.0 + pulse * 0.8) + glow * (0.12 + 0.18 * uFill);
+    a *= mix(1.0, 0.6, vUv.y);
+    c = mix(uColor, vec3(1.0), core * (0.25 + 0.5 * uFill)) * (1.0 + core * uFill * 0.6);
   } else {
     // 能量：中間的亮芯＋兩側流動的雜訊
     float core = exp(-x * x * 30.0);
@@ -472,6 +482,89 @@ export function warnRectMat(color, w, l, k) {
   });
 }
 
+// ---------- 地面的預警（2026-11-08 改版，參考 FF14／Lost Ark）：柔和的色面，沒有描邊的實線 ----------
+// 幾何是貼著地形的格子（fx/effects.js 的 warnGeo），uv＝圓：−1～1 的平面座標／長方形：0～1（uv.y 0 後端 → 1 前端）。
+// 範圍＝淡的底色＋往邊緣漸亮的柔光（邊緣帶一點流動的雜訊）；時間＝裡面一層較亮的填色往外（圓）／往前（長方形）長，
+// 前緣最亮，長滿＝命中；uHit＝命中瞬間的閃光。一般混合（不是加色）：雪地上看得到、夜間不刺眼
+const AREA_VS = /* glsl */ `
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}`;
+const AREA_FS = /* glsl */ `
+uniform vec3 uColor;
+uniform float uOp, uTime, uP, uHit, uShape, uK, uChev;
+uniform vec2 uSize;
+varying vec2 vUv;
+${NOISE}
+void main() {
+  float din, prog, len;
+  vec2 pm;
+  if (uShape < 0.5) {
+    float r = length(vUv);
+    din = (1.0 - r) * uSize.x;
+    prog = r;
+    len = uSize.x;
+    pm = vUv * uSize.x;
+  } else {
+    pm = (vUv - 0.5) * uSize;
+    vec2 hb = uSize * 0.5;
+    float rc = min(min(hb.x, hb.y) * 0.6, 1.5 * uK);
+    vec2 q = abs(pm) - hb + rc;
+    din = -(length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - rc);
+    prog = vUv.y;
+    len = uSize.y;
+  }
+  vec2 m = pm / uK;
+  float n = vnoise(m * 0.45 + vec2(uTime * 0.35, -uTime * 0.25));
+  float dn = din + (n - 0.5) * 0.12 * uK;
+  float aa = smoothstep(0.0, 0.18 * uK, dn);
+  if (aa <= 0.0) discard;
+  dn = max(dn, 0.0);
+  float ew = clamp(min(uSize.x, uSize.y) * 0.1, 0.4 * uK, 1.5 * uK);
+  float edge = exp(-dn / ew);
+  float rim = exp(-dn / (0.22 * uK));
+  float fe = 0.35 * uK / len;
+  float inside = 1.0 - smoothstep(uP - fe, uP + fe, prog);
+  float front = exp(-pow((prog - uP) * len / (0.7 * uK), 2.0)) * step(0.0, uP) * (1.0 - uHit);
+  float tex = vnoise(m * 1.2 - uTime * 0.5);
+  float chev = 0.0;
+  if (uChev > 0.5) {
+    float s = fract((pm.y + abs(pm.x) * 0.8) / uK * 0.22 - uTime * 1.4);
+    chev = smoothstep(0.0, 0.08, s) * (1.0 - smoothstep(0.2, 0.3, s)) * (1.0 - edge);
+  }
+  float a =
+    0.14 + 0.025 * tex + edge * 0.35 + rim * 0.5 + inside * (0.2 + 0.03 * tex) + front * 0.45 + chev * 0.12 + uHit * 0.45;
+  // 顏色不混白、不加亮（色調映射會把亮的紅洗成粉紅）：只有前緣與命中的閃光稍微亮一點
+  vec3 c = uColor * (0.85 + 0.25 * rim) + vec3(0.25) * (front * 0.6 + uHit * 0.8);
+  gl_FragColor = vec4(c, clamp(a, 0.0, 1.0) * aa * uOp);
+}`;
+// shape 0＝圓（size＝(R, R)）、1＝長方形（size＝(寬, 長)）；chev＝裡面淡淡的往前箭頭（路線）
+export function warnAreaMat(color, shape, sx, sy, k, chev = 0) {
+  return new THREE.ShaderMaterial({
+    vertexShader: AREA_VS,
+    fragmentShader: AREA_FS,
+    uniforms: {
+      uColor: { value: new THREE.Color(color) },
+      uOp: { value: 0 },
+      uTime: { value: 0 },
+      uP: { value: 0 },
+      uHit: { value: 0 },
+      uShape: { value: shape },
+      uK: { value: k || 1 },
+      uChev: { value: chev },
+      uSize: { value: new THREE.Vector2(sx, sy) },
+    },
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -4,
+  });
+}
+
 // ---------- 範圍的光幕（重力場、空域的補給區、防空區）：開口圓柱或半球，uv.y＝高度 ----------
 // 往上流動的細掃描線、底部最亮、頂端淡出，經線的格子（uMode 1＝半球：格子密一點、沒有往上流）
 const CURTAIN_FS = /* glsl */ `
@@ -522,6 +615,8 @@ export function energyWarm(k) {
     ribbonMat(0xffffff),
     warnDiscMat(0xffffff),
     warnRectMat(0xffffff, 1, 1, k),
+    warnAreaMat(0xffffff, 0, 1, 1, k),
+    ribbonMat(0xffffff, 2),
     curtainMat(0xffffff),
   ]) {
     const o = new THREE.Mesh(box, m);

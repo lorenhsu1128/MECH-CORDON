@@ -126,11 +126,8 @@ Object.assign(MechEntity.prototype, {
     } else if (mv.k === 'charge') SFX.play('charge', 0.5, 1.2, 0, 0, this.center());
     else if (mv.k === 'sweep') mv.side = Math.random() < 0.5 ? 1 : -1;
     else if (mv.k === 'dash') {
-      const a = this.pos.clone(),
-        b = pl.pos.clone();
-      a.y += 0.4 * MS;
-      b.y += 0.4 * MS;
-      g.fx.warnLine(a, b, 0.55, 0xff6020, 0.14);
+      // 衝刺的路線：地面上機體寬的長條
+      g.fx.warnPath(this.pos.clone(), pl.pos.clone(), 3 * MS, 0.55, 0xff6020);
     }
   },
   // 槍口的閃光（準備中）

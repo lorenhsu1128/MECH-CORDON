@@ -13,6 +13,7 @@ import {
   shellMat,
   warnDiscMat,
   warnRectMat,
+  warnAreaMat,
   waveMat,
 } from './energy.js';
 import { SHARED_GEO, mergeGeos } from '../render/geometry.js';
@@ -135,6 +136,13 @@ function debGeo(k) {
   return DEB_GEO[k];
 }
 
+// 攻擊預警貼地時每個頂點另外看的四個方向（半格）
+const WARN_NB = [
+  [1, 1],
+  [1, -1],
+  [-1, 1],
+  [-1, -1],
+];
 export class Effects {
   constructor(scene) {
     this.scene = scene;
@@ -1762,8 +1770,132 @@ export class Effects {
       }
     });
   }
-  // 落點預警（迫擊砲）：紅色外圈＋由內往外填滿的圓，dl 秒後填滿，接近落地時閃得更快；R 是世界尺寸（和判定一致）
+  // ---------- 攻擊預警（2026-11-08 改版，參考 FF14／Lost Ark；舊的樣式 warn*Old 留給模型庫的地面標示頁比較：fx.warnOld）----------
+  // 落點預警：柔和的圓（fx/energy.js 的 warnAreaMat），從中心往外長滿＝落地；R 是世界尺寸（和判定一致）
   warnCircle(p, R, dl, color = 0xff3020) {
+    if (this.warnOld) return this.warnCircleOld(p, R, dl, color);
+    this.warnArea(p, 0, R, R, dl, color, 0, 0);
+  }
+  // 地面的長方形預警（衝撞路線、進場路線、格子砲擊）：中心 c、朝向 yaw（長邊沿 −Z）、寬 w、長 l（世界尺寸），從後端往前長滿
+  warnRect(c, yaw, w, l, dl, color = 0xff3020) {
+    if (this.warnOld) return this.warnRectOld(c, yaw, w, l, dl, color);
+    this.warnArea(c, yaw, w, l, dl, color, 1, l > w * 2.5 ? 1 : 0);
+  }
+  // 地面的路線（衝刺、突進）：a → b、寬 w（世界尺寸），畫成 warnRect（轉送給客機的也是 warnRect）
+  warnPath(a, b, w, dl, color = 0xff3020) {
+    const dx = b.x - a.x,
+      dz = b.z - a.z;
+    const L = Math.hypot(dx, dz);
+    if (L < 0.01) return;
+    const c = a.clone().lerp(b, 0.5);
+    c.y = Math.min(a.y, b.y);
+    this.warnRect(c, Math.atan2(-dx, -dz), w, L + w * 0.5, dl, color);
+  }
+  warnArea(c, yaw, sx, sy, dl, color, shape, chev) {
+    const m = new THREE.Mesh(
+      this.warnGeo(c, yaw, sx, sy, shape),
+      warnAreaMat(color, shape, sx, sy, this.k, chev),
+    );
+    m.position.copy(c);
+    m.rotation.y = yaw;
+    m.renderOrder = 3;
+    m.userData.noAO = true;
+    const U = m.material.uniforms;
+    // 預警 dl 秒＋命中的閃光 HIT 秒；出現時 0.15 秒從 90% 放大淡入
+    const HIT = 0.16,
+      life = dl + HIT;
+    this.add(m, life, (e, t) => {
+      const el = t * life;
+      U.uTime.value = this.time;
+      U.uP.value = Math.min(1, el / Math.max(dl, 0.01));
+      const fi = Math.min(1, el / 0.15);
+      m.scale.setScalar(0.9 + 0.1 * fi);
+      const h = el > dl ? 1 - (el - dl) / HIT : 0;
+      U.uHit.value = el > dl ? Math.max(0, h) : 0;
+      U.uOp.value = fi * (el > dl ? 0.4 + 0.6 * h : 1);
+    });
+    return m;
+  }
+  // 貼著地面的格子：中心 c、朝向 yaw、圓（半徑 sx）或長方形（寬 sx、長 sy）。地面高度用 fx.groundY（Game 設定：
+  // World.groundAt，含坡道與平台頂）；中心附近的地面離 c.y 太遠（空中、沒有地面函式）時整片平放在 c.y
+  warnGeo(c, yaw, sx, sy, shape) {
+    const K = this.k;
+    const hx = shape ? sx / 2 : sx,
+      hz = shape ? sy / 2 : sx;
+    const nx = Math.max(2, Math.min(24, Math.ceil((hx * 2) / (1.6 * K)))),
+      nz = Math.max(2, Math.min(24, Math.ceil((hz * 2) / (1.6 * K))));
+    const G = this.groundY,
+      y0 = c.y,
+      top = y0 + 1.5 * K;
+    let fit = !!G;
+    if (fit) {
+      const g0 = G(c.x, c.z, top);
+      fit = g0 != null && Math.abs(g0 - y0) < 3 * K;
+    }
+    const cs = Math.cos(yaw),
+      sn = Math.sin(yaw);
+    const sx2 = hx / nx,
+      sz2 = hz / nz;
+    const pos = new Float32Array((nx + 1) * (nz + 1) * 3),
+      uv = new Float32Array((nx + 1) * (nz + 1) * 2);
+    let i = 0;
+    for (let iz = 0; iz <= nz; iz++)
+      for (let ix = 0; ix <= nx; ix++, i++) {
+        const lx = -hx + (2 * hx * ix) / nx,
+          lz = -hz + (2 * hz * iz) / nz;
+        let y = 0;
+        if (fit) {
+          // 取這一點與周圍半格的最高處：地形自己的三角面和這個格子不同，只取這一點的話坡地上地形會從格子之間穿出來
+          const wx = c.x + lx * cs + lz * sn,
+            wz = c.z - lx * sn + lz * cs;
+          let h = G(wx, wz, top);
+          if (h != null)
+            for (const [ox, oz] of WARN_NB) {
+              const v = G(wx + ox * sx2, wz + oz * sz2, top);
+              if (v != null && v > h && v - y0 < 8 * K) h = v;
+            }
+          if (h != null && Math.abs(h - y0) < 8 * K) y = h - y0;
+        }
+        pos.set([lx, y + 0.12, lz], i * 3);
+        if (shape) uv.set([lx / sx + 0.5, 0.5 - lz / sy], i * 2);
+        else uv.set([lx / hx, lz / hz], i * 2);
+      }
+    const idx = [];
+    for (let iz = 0; iz < nz; iz++)
+      for (let ix = 0; ix < nx; ix++) {
+        const a = iz * (nx + 1) + ix,
+          b = a + nx + 1;
+        idx.push(a, b, a + 1, a + 1, b, b + 1);
+      }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    geo.setIndex(idx);
+    return geo;
+  }
+  // 瞄準／光束的預警線：a→b 的瞄準雷射（ribbonMat 的 kind 2：柔和的光芯，充能時收細、變亮，光點從起點往前跑），
+  // 預警 1/3 秒以上的最後閃一下。地面的路線改用 warnPath
+  warnLine(a, b, dl, color = 0xff2020, width = 0.06) {
+    if (this.warnOld) return this.warnLineOld(a, b, dl, color, width);
+    const d = a.distanceTo(b);
+    if (d < 0.01) return;
+    const m = ribbonMesh(color, 2);
+    SHARED_GEO.add(m.geometry);
+    const W = Math.max(width * 10, 0.6) * this.k;
+    m.setAB(a, b, W);
+    const U = m.material.uniforms;
+    const HIT = dl >= 0.33 ? 0.1 : 0,
+      life = dl + HIT;
+    this.add(m, life, (e, t) => {
+      const el = t * life;
+      U.uTime.value = this.time;
+      U.uFill.value = Math.min(1, el / Math.max(dl, 0.01));
+      const h = el > dl ? 1 - (el - dl) / HIT : 0;
+      U.uOp.value = Math.min(1, el * 12) * (el > dl ? 1 + 1.5 * h : 1);
+    });
+  }
+  // 落點預警（迫擊砲）：紅色外圈＋由內往外填滿的圓，dl 秒後填滿，接近落地時閃得更快；R 是世界尺寸（和判定一致）
+  warnCircleOld(p, R, dl, color = 0xff3020) {
     if (this.rich) return this.warnCircleRich(p, R, dl, color);
     const grp = new THREE.Group();
     grp.position.copy(p).setY(p.y + 0.12);
@@ -1799,7 +1931,7 @@ export class Effects {
     });
   }
   // 瞄準／路徑預警線：a→b 的細光束閃爍 dl 秒（雷射扇形、衝刺路線）
-  warnLine(a, b, dl, color = 0xff2020, width = 0.06) {
+  warnLineOld(a, b, dl, color = 0xff2020, width = 0.06) {
     const d = a.distanceTo(b);
     if (d < 0.01) return;
     if (this.rich) {
@@ -1830,7 +1962,7 @@ export class Effects {
     });
   }
   // 地面的長方形預警（衝撞路線、進場路線、格子砲擊）：中心 c、朝向 yaw（長邊沿 −Z）、寬 w、長 l（世界尺寸）
-  warnRect(c, yaw, w, l, dl, color = 0xff3020) {
+  warnRectOld(c, yaw, w, l, dl, color = 0xff3020) {
     if (this.rich) {
       // 華麗（第 9.4 期，warnRectMat）：往前流動的斜紋、從後端往前填滿、兩側與兩端的亮邊
       const m = new THREE.Mesh(

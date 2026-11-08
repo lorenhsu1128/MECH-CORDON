@@ -34,23 +34,31 @@ export const MARKS = [
     cat: 'warn',
     name: '落點預警圈',
     fx: 'fx.warnCircle',
-    note: '紅圈從中心填滿，快落地時閃得更快；迫擊砲、榴彈、落下的物體。半徑和判定一致',
+    note: '柔和的色面、往邊緣漸亮（沒有外框線），裡面一層從中心往外長，長滿＝落地並閃一下；迫擊砲、榴彈、落下的物體。半徑和判定一致',
     demo: (S) => S.warnCircle(S.g(0, -10), 5 * MS, 1.9),
   },
   {
     key: 'warnLine',
     cat: 'warn',
-    name: '預警線',
+    name: '瞄準雷射',
     fx: 'fx.warnLine',
-    note: '從起點往終點充滿的光束帶；瞄準線、雷射、衝刺路線、增援的光柱',
-    demo: (S) => S.warnLine(S.v(-12, 1.2, -10), S.v(12, 1.2, -10), 1.2, 0xff3020, 0.1),
+    note: '從槍口出來的柔和光芯，充能時收細、變亮、光點往前跑，發射前閃一下；瞄準線、光束、增援的光柱（地面的路線用 warnPath）',
+    demo: (S) => S.warnLine(S.v(-12, 4, -10), S.v(12, 1.2, -10), 1.2, 0xff3020, 0.1),
+  },
+  {
+    key: 'warnPath',
+    cat: 'warn',
+    name: '路線預警',
+    fx: 'fx.warnPath（畫成 warnRect）',
+    note: '衝刺、突進、火牆的路線：實際寬度的長條，裡面淡淡的往前箭頭，從起點往前長滿',
+    demo: (S) => S.warnPath(S.g(-12, -12), S.g(12, -12), 3 * MS, 1.2, 0xff6020),
   },
   {
     key: 'warnRect',
     cat: 'warn',
     name: '長方形預警',
     fx: 'fx.warnRect',
-    note: '往前流動的斜紋，從後端往前填滿；衝撞路線、進場航線、格子砲擊',
+    note: '柔和的長方形（圓角、沒有兩側的亮線），從後端往前長滿；細長的有淡淡的往前箭頭；衝撞路線、進場航線、格子砲擊',
     demo: (S) => S.warnRect(S.g(0, -12), 0, 6 * MS, 30 * DS, 1.4),
   },
   {
@@ -414,6 +422,10 @@ export class Run {
   warnLine(a, b, dl, color, w) {
     this.mark('warnLine');
     this.fx.warnLine(a, b, dl, color, w);
+  }
+  warnPath(a, b, w, dl, color) {
+    this.mark('warnPath');
+    this.fx.warnPath(a.clone().setY(0), b.clone().setY(0), w, dl, color);
   }
   warnRect(c, yaw, w, l, dl, color) {
     this.mark('warnRect');

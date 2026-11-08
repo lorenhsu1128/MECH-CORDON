@@ -19180,7 +19180,7 @@ async function testGroundMarks(browser, base) {
   check(!empty.length, `每個招式都用到地面標示${empty.length ? '（沒有：' + empty.join('、') + '）' : ''}`);
   // 登記：呼叫地面特效的檔案
   const RE =
-    /fx\.(warnCircle|warnLine|warnRect|groundWave|pulseShell|pillarStrike|shockwave|ring|firePool|flameCone|chevrons)\(|\.(addZone\??\.?|bfAdd|layMine|addPool|shockStart|pulseRing|mortarShot|crateShot|addFlow|campRing|segRing)\(/;
+    /fx\.(warnCircle|warnLine|warnRect|warnPath|groundWave|pulseShell|pillarStrike|shockwave|ring|firePool|flameCone|chevrons)\(|\.(addZone\??\.?|bfAdd|layMine|addPool|shockStart|pulseRing|mortarShot|crateShot|addFlow|campRing|segRing)\(/;
   const SKIP = [
     'game/cine', // 過場動畫
     'game/tutorial', // 近戰、遠程訓練課程（教學的假人）
@@ -19480,7 +19480,11 @@ async function testVfx9(browser, base) {
     rich4.sh >= 3 && rich4.curtain && rich4.mine,
     `華麗：落點圈、長方形預警、預警線、重力場的光幕、地雷的感應圈改用新的著色器（${JSON.stringify(rich4)}）`,
   );
-  check(std4.sh === 0 && !std4.curtain && !std4.mine, '標準：預警與範圍標示照舊');
+  // 攻擊預警（落點圈、長方形、瞄準線）2026-11-08 改版後兩種設定都用新的樣式；範圍標示照舊
+  check(
+    std4.sh === 3 && !std4.curtain && !std4.mine,
+    `標準：攻擊預警用新的樣式、範圍標示照舊（${JSON.stringify(std4)}）`,
+  );
   await page.evaluate(() => {
     const g = window.__game;
     g.ctrl.fxLv = 'rich';

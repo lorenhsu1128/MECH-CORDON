@@ -69,9 +69,7 @@ const FOE = [
     run: (S) => {
       const a = S.src.pos.clone(),
         b = tp(S);
-      a.y += 0.4 * MS;
-      b.y += 0.4 * MS;
-      S.warnLine(a, b, 0.55, 0xff6020, 0.14);
+      S.warnPath(a, b, 3 * MS, 0.55, 0xff6020);
       S.at(0.55, () => S.chev(S.src.pos.clone(), dirTo(a, b)));
     },
   },
@@ -872,14 +870,14 @@ const BOSS = [
     id: 'bs_firewall',
     name: '熔爐清掃機：火牆',
     who: 'CINDER（furnace）',
-    src: 'entities/mech-boss2.js 的 furnaceAI（warnLine 0.9 秒 → 7 處 addPool 2.8）',
+    src: 'entities/mech-boss2.js 的 furnaceAI（warnPath 0.9 秒、寬 5.6 → 7 處 addPool 2.8）',
     srcAt: [0, -20],
     run: (S) => {
       const d = dirTo(S.src.pos, tp(S));
       const side = V(-d.z, 0, d.x);
       const pts = [];
       for (let i = -3; i <= 3; i++) pts.push(tp(S).addScaledVector(side, i * 4.6 * MS));
-      S.warnLine(pts[0].clone().setY(0.3), pts[6].clone().setY(0.3), 0.9, 0xff6a20, 0.25);
+      S.warnPath(pts[0].clone().setY(0), pts[6].clone().setY(0), 5.6 * DS, 0.9, 0xff6a20);
       S.flame(S.src.muzzle('rarm'), d.clone().setY(0.3).normalize(), 10 * DS, 0.3, 14);
       S.at(0.9, () => pts.forEach((p, i) => S.at(i * 0.08, () => S.pool(p, 2.8, 6))));
     },
@@ -1023,13 +1021,19 @@ const BOSS = [
     id: 'bs_ibisDash',
     name: '脈衝刃翼：直線突刺',
     who: 'PULSAR（ibis）',
-    src: 'entities/mech-boss2.js 的 ibisAI（warnLine 0.6 秒、寬 0.3）',
+    src: 'entities/mech-boss2.js 的 ibisAI（warnPath 0.6 秒、寬 6.4 × MS）',
     srcAt: [0, -24],
     run: (S) => {
       const from = S.src.center();
       const d = tc(S).sub(from);
       const L = d.length() + 22 * DS;
-      S.warnLine(from, from.clone().addScaledVector(d.normalize(), L), 0.6, 0xff5070, 0.3);
+      S.warnPath(
+        from.clone().setY(0),
+        from.clone().addScaledVector(d.normalize(), L).setY(0),
+        6.4 * MS,
+        0.6,
+        0xff5070,
+      );
     },
   },
   {

@@ -194,6 +194,10 @@ export class GroundBrowser {
       this.rich = $('gdRich').checked;
       this.replay();
     };
+    $('gdWarnOld').onchange = () => {
+      this.fx.warnOld = $('gdWarnOld').checked;
+      this.replay();
+    };
     $('gdMechs').onchange = () => this.placeMechs();
     $('gdAll').onclick = () => this.showAll();
     $('gdCam').onclick = () => this.frame();

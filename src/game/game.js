@@ -74,6 +74,8 @@ export class Game {
     // 砲火特效（設定 ctrl.fxLv：rich 華麗（預設）／std 標準＝改版前）與彈殼、焦痕用的地面高度（只看地形，便宜）
     this.fx.richOf = () => this.ctrl.fxLv !== 'std';
     this.fx.ground = (x, z) => (this.world ? this.world.terrainHeight(x, z) : null);
+    // 攻擊預警貼著地面（fx.warnGeo）：含坡道與平台頂
+    this.fx.groundY = (x, z, y) => (this.world ? this.world.groundAt(x, z, y) : null);
     // 地面材質與顏色（第 8.4 期：子彈與爆炸依地面換效果）
     this.fx.surfOf = (x, z, y) => (this.world ? this.surfAt(x, z, y) : 'conc');
     this.fx.groundCol = () => {
