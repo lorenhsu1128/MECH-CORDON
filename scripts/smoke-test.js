@@ -1878,7 +1878,9 @@ async function mapMechanics(page, key) {
                 [-8, 0],
                 [0, 8],
                 [0, -8],
-              ].every(([dx, dz]) => w.isVoid(x + dx, z + dz))
+              ].every(([dx, dz]) => w.isVoid(x + dx, z + dz)) &&
+              // 下方沒有下層平台（浮台上會站住，不會被拉回）
+              w.groundAt(x, z, 0.6) < w.theme.void.fallP
             ) {
               p.pos.set(x, 0.6, z);
               p.vel.set(0, 0, 0);
@@ -14981,6 +14983,37 @@ async function testVoidMaps(browser, base) {
       out.passedFall = passedFall;
       out.back = !w.isVoid(pl.pos.x, pl.pos.z);
       out.lost = +((hp1 - pl.hp) / pl.maxHp).toFixed(3);
+      // 從橋的側邊掉到橋下（上面有橋面＝不算虛空）：拉回一次、回到平台的高度，不會卡在深淵底部每格扣 AP
+      // （2026-11-08 使用者回報：AP 一下子扣到剩 1、一直卡在下面）
+      const br = w.islands.bridges.find((e) => {
+        const mid = (e.s0 + e.s1) / 2;
+        return w.inZone(e.axis === 'z' ? e.at : mid, e.axis === 'z' ? mid : e.at, 10);
+      });
+      out.br = !!br;
+      if (br) {
+        const mid = (br.s0 + br.s1) / 2,
+          off = 0;
+        const x = br.axis === 'z' ? br.at + off : mid,
+          z = br.axis === 'z' ? mid : br.at + off;
+        pl.pos.set(x, w.islands.h - 8, z); // 從橋邊滑下去、跑到橋面下方
+        pl.vel.set(0, 0, 0);
+        pl.grounded = false;
+        pl.safePos = null;
+        pl.voidAt = undefined; // 上一步剛拉回過（1 秒內不重複扣）
+        let n = 0;
+        const fa = g.flashAlert.bind(g);
+        g.flashAlert = (m, ...a) => {
+          if (/墜落/.test(m)) n++;
+          return fa(m, ...a);
+        };
+        const hp2 = pl.hp;
+        window.__pump(6, () => n > 0 && pl.grounded);
+        window.__pump(2);
+        g.flashAlert = fa;
+        out.brN = n;
+        out.brY = +pl.pos.y.toFixed(1);
+        out.brLost = +((hp2 - pl.hp) / pl.maxHp).toFixed(3);
+      }
       // 電腦落到下層平台：拉回站穩的位置
       const e = g.enemies.find((x) => !x.dead && !x.flying && !x.isBoss);
       out.e = !!e;
@@ -15002,6 +15035,10 @@ async function testVoidMaps(browser, base) {
     check(
       r.sp && r.warn1 && r.passedFall && r.back && Math.abs(r.lost - 0.05) < 0.01,
       `${r.theme}：掉進虛空先顯示提示、掉到比較深才拉回到實地（AP −${(r.lost * 100).toFixed(1)}%）`,
+    );
+    check(
+      r.br && r.brN === 1 && r.brY > -1 && Math.abs(r.brLost - 0.05) < 0.01,
+      `${r.theme}：從橋邊掉到橋下，拉回 ${r.brN} 次到平台（y ${r.brY}、AP −${(r.brLost * 100).toFixed(1)}%）`,
     );
     check(r.e && r.eBack, `${r.theme}：敵人落到下層平台就拉回站穩的位置`);
     await page.screenshot({ path: path.join(SHOT_DIR, `void-${map}.png`) });

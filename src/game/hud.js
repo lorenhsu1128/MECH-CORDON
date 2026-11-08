@@ -343,7 +343,11 @@ Object.assign(Game.prototype, {
     if (!w || !w.theme.void || !w.islands || p.dead || this.spectator || this.cine || p.flying) return;
     const top = w.islands.h;
     const ledge = p.grounded && w.onLedge(p.pos.x, p.pos.z, p.pos.y);
-    const fall = !p.grounded && p.pos.y < top - 1 && w.isVoid(p.pos.x, p.pos.z);
+    // 橋下方「上面有橋面」不算虛空，所以另外看下面的地形
+    const fall =
+      !p.grounded &&
+      p.pos.y < top - 1 &&
+      (w.isVoid(p.pos.x, p.pos.z) || w.terrainHeight(p.pos.x, p.pos.z) < w.theme.void.y);
     if (!ledge && !fall) {
       this.voidTo = null;
       return;

@@ -1881,7 +1881,9 @@ export class MechEntity {
       this.vel.x = this.vel.z = 0;
       this.aiState.stuck += 0.05;
     }
-    if (this.grounded && !w.isVoid(this.pos.x, this.pos.z)) {
+    // 站穩的位置只記在平台的高度（2026-11-08 使用者回報：橋下方「上面有橋面」不算虛空，落到深淵底部時會把
+    // 底部記成站穩的位置，拉回又回到底部，每格扣 AP 到剩 1 卡在下面）
+    if (this.grounded && this.pos.y > w.theme.void.y && !w.isVoid(this.pos.x, this.pos.z)) {
       if (!this.safePos) this.safePos = new THREE.Vector3();
       this.safePos.copy(this.pos);
     }
@@ -1893,14 +1895,24 @@ export class MechEntity {
     let p = this.safePos;
     if (pilot || !p) {
       const [x, z] = w.nearSolid(this.pos.x, this.pos.z, pilot);
-      if (!p || w.inZone(x, z)) p = new THREE.Vector3(x, w.terrainHeight(x, z), z);
+      if (!p || w.inZone(x, z)) p = new THREE.Vector3(x, w.theme.void.ref, z);
     }
-    this.pos.set(p.x, w.groundAt(p.x, p.z, p.y + 1), p.z);
+    // 高度＝平台高度附近的最高表面（橋面或街區），不是下面的地形
+    let y = w.groundAt(p.x, p.z, Math.max(p.y, w.theme.void.ref) + 1);
+    if (y < w.theme.void.y) {
+      p = w.safePoint();
+      y = w.groundAt(p.x, p.z, Math.max(p.y, w.theme.void.ref) + 1);
+    }
+    this.pos.set(p.x, y, p.z);
     this.vel.set(0, 0, 0);
     this.iFrames = Math.max(this.iFrames, 1.5);
     const g = this.game;
     if (!g.isClient) g.invShow(this, 1.5); // 無敵時間的能量層（第 9.2 期）
-    if (!g.isClient && !this.dead) this.hp = Math.max(1, this.hp - this.maxHp * (pilot ? 0.05 : 0.1));
+    // 保險：1 秒內再被拉回不再扣（不會因為一直拉回而把 AP 扣光）
+    const again = this.voidAt !== undefined && this.t - this.voidAt < 1;
+    this.voidAt = this.t;
+    if (!g.isClient && !this.dead && !again)
+      this.hp = Math.max(1, this.hp - this.maxHp * (pilot ? 0.05 : 0.1));
     if (this.isPlayer) g.flashAlert(pilot ? '墜落 — AP −5%，返回平台' : '墜落 — AP −10%，返回平台');
     g.fx.ring(this.pos.clone().setY(this.pos.y + 0.1), 4, 0x80c8ff);
   }
@@ -2730,6 +2742,9 @@ export class MechEntity {
     // integrate
     const px0 = this.pos.x,
       pz0 = this.pos.z;
+    // 站在地形上（街區邊緣的斜坡也算）：可以照舊沿著地形走上去；站在下層平台上或在空中時，街區的側面才是牆
+    const onTerr =
+      w.voidY !== undefined && this.grounded && this.pos.y - w.terrainHeight(px0, pz0) < 0.3 * this.dk;
     this.pos.x += this.vel.x * dt;
     this.pos.z += this.vel.z * dt;
     this.pos.y += this.vel.y * dt;
@@ -2765,7 +2780,7 @@ export class MechEntity {
     // slope climb: if terrain rises steeply push up
     let tg = w.terrainHeight(this.pos.x, this.pos.z);
     // 虛空地圖：在街區下方（下層平台、往下掉）時街區的側面是牆，不直接彈上去（2026-11-07）
-    if (w.voidY !== undefined && tg - this.pos.y > 2 * this.dk && !this.flying) {
+    if (w.voidY !== undefined && !onTerr && tg - this.pos.y > 2 * this.dk && !this.flying) {
       this.pos.x = px0;
       this.pos.z = pz0;
       this.vel.x = this.vel.z = 0;
