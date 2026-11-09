@@ -5123,14 +5123,15 @@ async function testPilotUlt(browser, base) {
     return {
       last: pm.uLast || 0,
       heal: pm.uKillHeal || 0,
+      medic: pm.uMedic || 0,
       hide: pm.uStealth || 0,
       bounty: pm.uBounty || 0,
       off,
     };
   });
   check(
-    pvp.last === 0 && pvp.heal === 1 && pvp.hide === 1 && pvp.bounty === 0 && pvp.off,
-    'PvP：射擊等分支的極致技能不生效（顯示變暗）、支援換成擊殺回復與先遣偵察',
+    pvp.last === 0 && pvp.heal === 0 && pvp.medic === 1 && pvp.hide === 1 && pvp.bounty === 0 && pvp.off,
+    'PvP：射擊等分支的極致技能不生效（顯示變暗）、支援換成戰地醫護與先遣偵察',
   );
   // 效果（PvE）
   const r = await page.evaluate(() => {
@@ -5293,12 +5294,15 @@ async function testPilotUlt(browser, base) {
     p.hp = 50000;
     p.lgAbsorbed(1000);
     out.absorb = Math.round(p.hp - 50000);
-    // 懸賞：每擊破 5 台
-    p.hp = 50000;
+    // 擊殺回復：擊破 1 台 AP 回復 10%；懸賞：每擊破 5 台再回復 8%
+    p.hp = 20000;
     p.uKills = 0;
-    for (let i = 0; i < 5; i++) p.lgKill(null);
-    out.bounty = Math.round(((p.hp - 50000) / p.maxHp) * 100);
-    // 戰地醫護：用修復套件之後 3 秒受傷 −50%
+    p.lgKill(null);
+    out.kheal = Math.round(((p.hp - 20000) / p.maxHp) * 100);
+    for (let i = 0; i < 4; i++) p.lgKill(null);
+    out.bounty = Math.round(((p.hp - 20000) / p.maxHp) * 100);
+    // 戰地醫護（PvP 版）：用修復套件之後 3 秒受傷 −50%
+    p.pm = { ...p.pm, uMedic: 1 };
     p.hp = 50000;
     p.kits = 2;
     g.useKit();
@@ -5318,10 +5322,11 @@ async function testPilotUlt(browser, base) {
   });
   check(r2.blast === 22000 && r2.blastSmall === 5000, `抗爆結構：32000 的一擊變成 ${r2.blast}、小的照常`);
   check(r2.absorb === 300, `護盾轉化：擋下的 1000 轉成 AP ${r2.absorb}`);
-  check(r2.bounty === 8, `懸賞：擊破 5 台回復 AP ${r2.bounty}%`);
+  check(r2.kheal === 10, `擊殺回復：擊破 1 台回復 AP ${r2.kheal}%`);
+  check(r2.bounty === 58, `懸賞：擊破 5 台再回復 8%（合計 ${r2.bounty}%）`);
   check(r2.reso === 0, '蓄力共鳴：蓄力的雷射命中後能量武器不耗 EN');
   check(r2.over === 1.5 && r2.over0 === 1, '超頻：風格評價 A 以上 EN 回復 ×1.5');
-  check(r2.medic === 500, `戰地醫護：用修復套件後受傷 −50%（${r2.medic}）`);
+  check(r2.medic === 500, `戰地醫護（PvP 版）：用修復套件後受傷 −50%（${r2.medic}）`);
   await ctx.close();
 }
 

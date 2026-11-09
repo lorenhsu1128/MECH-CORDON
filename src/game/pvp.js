@@ -338,9 +338,6 @@ Object.assign(Game.prototype, {
       if (killer.slot !== undefined && this.mpStats[killer.slot]) this.mpStats[killer.slot].kills++;
       this.flashMsg(`${killer.name} 擊破 ${victim.name}`, 0xffb020, 1.6);
       this.pilotCreditKill(killer, victim);
-      // 駕駛員的極致技能（PvP 版）「擊殺回復」：擊破對手時 AP 回復 10%
-      if (killer.pmv && killer.pmv('uKillHeal') > 0 && !killer.dead)
-        killer.hp = Math.min(killer.maxHp, killer.hp + killer.maxHp * 0.1);
       if (victim.team === 'enemy') {
         const bounty = Math.round((victim.maxHp * 1.8) / 100) * 100;
         this.save.coam += bounty;

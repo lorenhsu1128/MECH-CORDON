@@ -74,6 +74,7 @@ const U = {
   BOUNTY_N: 5, // 懸賞
   MEDIC_T: 3, // 戰地醫護
   MEDIC_R: 40 * DS,
+  KILL_HEAL: 0.1, // 擊殺回復（擊破時回復的 AP 比例）
 };
 
 Object.assign(MechEntity.prototype, {
@@ -204,6 +205,8 @@ Object.assign(MechEntity.prototype, {
     if (this.lg('lgBarrage')) this.lgBarAdd(1);
     if (this.pmv('uChase') > 0) this.uChaseT = U.CHASE_T; // 極致技能「追擊推進」
     if (this.pmv('uAnni') > 0 && e && e.center) this.uAnnihilate(e);
+    // 極致技能「擊殺回復」：擊破時 AP 回復 10%
+    if (this.pmv('uKillHeal') > 0) this.hp = Math.min(this.maxHp, this.hp + this.maxHp * U.KILL_HEAL);
     if (this.pmv('uBounty') > 0 && (this.uKills = (this.uKills || 0) + 1) % U.BOUNTY_N === 0)
       this.uBountyNow();
   },

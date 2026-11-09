@@ -403,7 +403,11 @@ export const SKILLS = [
     tier: 4,
     max: 1,
     pve: { name: '懸賞', fx: { uBounty: 1 }, desc: () => '每擊破 5 台敵人：COAM 報酬、AP 回復 8%' },
-    pvp: { name: '擊殺回復', fx: { uKillHeal: 1 }, desc: () => '擊破對手時 AP 回復 10%' },
+    pvp: {
+      name: '戰地醫護',
+      fx: { uMedic: 1 },
+      desc: () => '用修復套件時，40 m 內的隊友回復 30%；之後 3 秒受到的傷害 −50%',
+    },
   },
   {
     id: 's_u2',
@@ -411,9 +415,9 @@ export const SKILLS = [
     tier: 4,
     max: 1,
     pve: {
-      name: '戰地醫護',
-      fx: { uMedic: 1 },
-      desc: () => '用修復套件時，40 m 內的隊友與僚機回復 30%；之後 3 秒受到的傷害 −50%',
+      name: '擊殺回復',
+      fx: { uKillHeal: 1 },
+      desc: () => '擊破敵人時 AP 回復 10%',
     },
     pvp: { name: '先遣偵察', fx: { uStealth: 1 }, desc: () => '重生後 5 秒內，對手的雷達上看不到你' },
   },
