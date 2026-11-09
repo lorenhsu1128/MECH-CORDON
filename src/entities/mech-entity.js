@@ -765,6 +765,7 @@ export class MechEntity {
             pwX,
             airFoe && kind === 'bullet' ? { scale: 2.2 } : {}, // 空域：敵人的曳光放大（看得出從哪裡打來）
             this.pm ? this.lgShotX(kind) || {} : {}, // 傳說模組：貫穿彈、分裂彈頭（mech-legend.js）
+            gk && gk.pierce && kind === 'bullet' ? { pierce: true } : {}, // 零件品級的穿甲彈（mech-gear-gold.js）
             extra || {},
           ),
         ),
@@ -2011,9 +2012,9 @@ export class MechEntity {
   // 多連導彈的發射數：火控的 lockSpeed 決定鎖滿全部需要的時間（1／lockSpeed 秒）；沒有目標時全部發射
   missileN(d, t) {
     const n = d.count || 1;
-    if (!t || t.dead || n <= 1) return n + (this.gx ? this.gearMissileN() : 0);
+    if (!t || t.dead || n <= 1) return n + (this.gx ? this.gearMissileN(d) : 0);
     const full = 1 / ((this.stats.parts.fcs && this.stats.parts.fcs.lockSpeed) || 1);
-    const x = this.gx ? this.gearMissileN() : 0; // 多目標（mech-gear.js）
+    const x = this.gx ? this.gearMissileN(d) : 0; // 多目標（mech-gear.js）
     const la = this.lockAge(t) * (this.gxF ? this.gearLockK(d, t) : 1); // 鎖定時間（mech-gear-fx.js）
     return clamp(Math.ceil(((n + x) * la) / full), 1, n + x);
   }
@@ -2340,6 +2341,7 @@ export class MechEntity {
         return;
       }
       if (this.pm && this.lgCheatDeath()) return; // 傳說模組「不死鳥」
+      if (this.gxF && this.gearCheatDeath()) return; // 零件品級「最後防線」（mech-gear-gold.js）
       if (this.wing && this.wingDown()) return; // 僚機：倒地等救援（mech-wing.js）
       this.die(from);
     }

@@ -16123,6 +16123,70 @@ async function testGear(browser, base) {
   );
   check(Math.abs(x.spd - 1.08) < 1e-6, `疾走：速度 ×${x.spd}`);
   check(x.fx === 5 && x.gold === 1, `機甲庫列出專屬詞條（${x.fx} 條、金色 ${x.gold} 條）`);
+  // 第 7 期：金色的特殊詞條（敵人身上用弱化版）
+  const y = await page.evaluate(() => {
+    const g = window.__game;
+    const S = g.save;
+    const out = {};
+    S.inv = [];
+    S.eq = {};
+    S.owned.push('c_hv', 'b_eff', 'g_std', 'f_std', 'w_mg', 'w_rifle');
+    Object.assign(S.asm, {
+      core: 'c_hv',
+      booster: 'b_eff',
+      generator: 'g_std',
+      fcs: 'f_std',
+      rarm: 'w_rifle',
+      larm: 'w_mg',
+    });
+    for (const id of ['c_hv', 'b_eff', 'g_std', 'f_std', 'w_mg', 'w_rifle'])
+      S.inv.push({ u: 'g_' + id, id, q: 4, ax: [] });
+    S.level = 2;
+    g.startMission();
+    g.state = 'play';
+    const p = g.player;
+    // 最後防線：AP 歸零時以 25% 撐住、無敵，只有一次
+    p.hp = 10;
+    p.takeDamage(1e6, 0, null, p.center(), new THREE.Vector3(0, 0, 1));
+    out.ls = !p.dead && Math.abs(p.hp / p.maxHp - 0.25) < 0.01 && p.iFrames >= 2.9;
+    // 穿甲彈：每第 5 發
+    const w = p.weapons.rarm;
+    const ks = [];
+    for (let i = 0; i < 5; i++) ks.push(p.gearShotK('rarm', w, w.def, 30 * p.dk, null, null));
+    out.pierce = !!ks[4].pierce && Math.abs(ks[4].d - 1.3) < 1e-6 && !ks[3].pierce;
+    // 滑翔：空中的 QB 不耗 EN
+    p.grounded = false;
+    out.glide = p.gearQbK();
+    p.grounded = true;
+    // 緊急電源：EN 用完時回復 50%
+    p.en = 0;
+    p.gearTick(0.016);
+    out.en = p.en / p.enMax;
+    // 無盡彈鏈：彈匣打完不用裝填
+    out.mgRld = p.gearRldK('larm');
+    // 全域校準：距離輔助至少 0.7
+    out.assist = Math.min(...p.stats.parts.fcs.assist);
+    // 敵人身上的弱化版：最後防線只撐 10%
+    const e = g.spawnType('ac', 1, 1, p.pos.clone().add(new THREE.Vector3(40, 0, 0)), 1);
+    e.updateAI = () => {};
+    e.asm.core = 'c_hv';
+    e.pm = { gr: { core: { id: 'c_hv', q: 4, ax: [] } } };
+    e.gearSetup();
+    e.hp = 10;
+    e.takeDamage(1e6, 0, p, e.center(), new THREE.Vector3(0, 0, 1));
+    out.foe = !e.dead && Math.abs(e.hp / e.maxHp - 0.1) < 0.01;
+    S.inv = [];
+    S.eq = {};
+    g.state = 'title';
+    return out;
+  });
+  check(y.ls, '最後防線：AP 歸零時以 25% 撐住並無敵');
+  check(y.pierce, '穿甲彈：每第 5 發貫穿、傷害 ×1.3');
+  check(y.glide === 0, `滑翔：空中的 QB 不耗 EN（消耗 ×${y.glide}）`);
+  check(Math.abs(y.en - 0.5) < 0.01, `緊急電源：EN 用完時回復到 ${Math.round(y.en * 100)}%`);
+  check(y.mgRld < 0.05, `無盡彈鏈：不用裝填（裝填時間 ×${y.mgRld}）`);
+  check(y.assist >= 0.7, `全域校準：距離輔助至少 0.70（${y.assist}）`);
+  check(y.foe, '敵人身上的金色是弱化版（最後防線只撐 10%）');
   await ctx.close();
 }
 

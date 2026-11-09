@@ -180,7 +180,7 @@ Object.assign(MechEntity.prototype, {
     let ki = 1;
     if (G.fAir && !this.grounded) ki *= 1 - G.fAir;
     if (G.sFirm) ki *= 1 - G.sFirm;
-    if (this.gxF) [k, ki] = this.gearInFixed(from, k, ki, attr);
+    if (this.gxF) [k, ki] = this.gearInFixed(from, k, ki, attr, dmg);
     return [dmg * k, imp * ki];
   },
   // ---------- 事件（tutE 轉過來的，與其他掛勾） ----------
@@ -279,9 +279,9 @@ Object.assign(MechEntity.prototype, {
     return k;
   },
   // 導彈的鎖定數
-  gearMissileN() {
+  gearMissileN(d) {
     let n = this.gx && this.gx.cMulti ? Math.round(this.gx.cMulti) : 0;
-    if (this.gxF && this.gearGoldMissileN) n += this.gearGoldMissileN();
+    if (this.gxF) n += this.gearGoldMissileN(d);
     return n;
   },
   // 預判準度的加成
@@ -301,6 +301,7 @@ Object.assign(MechEntity.prototype, {
     const w = this.weapons[slot];
     if (W.eChain && n >= 3 && w) w.cd *= 1 - W.eChain;
     if (this.gx.eBack) this.gs.empT = this.t + 2;
+    if (this.gxF) this.gearGoldEmp(); // 脈衝護層（mech-gear-gold.js）
   },
   // 每格（update）：停下的時間、失衡結束、EN 用完
   gearTick(dt) {

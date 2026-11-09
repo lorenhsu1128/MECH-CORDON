@@ -64,7 +64,7 @@ Object.assign(MechEntity.prototype, {
           break;
       }
     }
-    if (this.gearGoldShot) this.gearGoldShot(slot, w, d, dist, o, tgt);
+    this.gearGoldShot(slot, w, d, dist, o, tgt);
   },
   // 擴散（fire）
   gearSpreadFixed(dist, slot) {
@@ -82,7 +82,7 @@ Object.assign(MechEntity.prototype, {
       if (d.id === 'w_rifle' && w.streak >= 9 * d.rof) k *= 0.8;
       if (d.id === 'bw_gat' && d.spin && w.streak >= d.spin) k *= 1 - this.gfv('bw_gat');
     }
-    if (this.gearGoldSpread) k *= this.gearGoldSpread(dist, slot);
+    k *= this.gearGoldSpread(dist, slot);
     return k;
   },
   // ---------- 打中別人 ----------
@@ -134,7 +134,7 @@ Object.assign(MechEntity.prototype, {
     // 電弧：能量武器命中時機率連鎖
     if (F.g_arc && !this.gChain && (attr === 'en' || isEn(d)) && Math.random() < this.gfv('g_arc'))
       this.gearChain(tgt, dmg * 0.4, 0, 1, 15, 0x9fe0ff);
-    if (this.gearGoldOut) [dmg, imp] = this.gearGoldOut(tgt, dmg, imp, slot, melee, d, own);
+    [dmg, imp] = this.gearGoldOut(tgt, dmg, imp, slot, melee, d, own);
     return [dmg, imp];
   },
   // 連鎖：tgt 附近（r m）另外 n 個敵人受到 dmg（電弧、跳彈、分岔…）
@@ -167,6 +167,11 @@ Object.assign(MechEntity.prototype, {
       this.gChain = false;
     }
   },
+  // 弱點直取：20 m 內 CRITICAL 不看方向（mech-weak.js 的 wpTake）
+  gearCritAll(tgt) {
+    const G = this.gG('f_cqb');
+    return !!(G && !G.foe && tgt && tgt.pos.distanceTo(this.pos) < 20 * this.dk);
+  },
   // CRITICAL 的倍率（mech-weak.js 的 wpTake）
   gearCritK(tgt) {
     const F = this.gxF;
@@ -177,7 +182,7 @@ Object.assign(MechEntity.prototype, {
     return k;
   },
   // ---------- 被打 ----------
-  gearInFixed(from, k, ki, attr) {
+  gearInFixed(from, k, ki, attr, dmg) {
     const F = this.gxF,
       t = this.t,
       gs = this.gs;
@@ -203,11 +208,11 @@ Object.assign(MechEntity.prototype, {
       ki = 0;
       this.game.popDamage(this.center(), '偏向', this.isPlayer, false, false, 0, this.id);
       if (this.game.fx.ring) this.game.fx.ring(this.center(), 4, 0x80c8ff);
-      if (this.gearGoldReflect) this.gearGoldReflect(from);
+      this.gearGoldReflect(from, dmg);
     }
     if (F.l_tk) ki *= 1 - this.gfv('l_tk');
     if (F.l_hv && gs.stillT >= 0.5) ki /= 1 + this.gfv('l_hv');
-    if (this.gearGoldIn) [k, ki] = this.gearGoldIn(from, k, ki, attr);
+    [k, ki] = this.gearGoldIn(from, k, ki, attr, dmg);
     return [k, ki];
   },
   // ---------- 其他掛勾 ----------
@@ -217,14 +222,14 @@ Object.assign(MechEntity.prototype, {
     if (F.c_lt) k *= (1 - this.gfv('c_lt')) * (this.grounded ? 1 : 1 - this.gfv('c_lt'));
     if (F.l_bp && this.grounded && this.landT < 0.5) k *= 1 - this.gfv('l_bp');
     if (F.b_eff && this.en < this.enMax * 0.3) k *= 1 - this.gfv('b_eff');
-    if (this.gearGoldQb) k *= this.gearGoldQb();
+    k *= this.gearGoldQb();
     return k;
   },
   gearSpdFixed() {
     const F = this.gxF;
     let k = 1;
     if (F.l_bp2 && this.gs.moveT >= 2) k *= 1 + this.gfv('l_bp2');
-    if (this.gearGoldSpd) k *= this.gearGoldSpd();
+    k *= this.gearGoldSpd();
     return k;
   },
   gearRldFixed(slot) {
@@ -237,7 +242,7 @@ Object.assign(MechEntity.prototype, {
       gs.hgQuick = false;
       k *= 0.02;
     }
-    if (this.gearGoldRld) k *= this.gearGoldRld(slot);
+    k *= this.gearGoldRld(slot);
     return k;
   },
   // 預判準度
@@ -255,7 +260,7 @@ Object.assign(MechEntity.prototype, {
     let k = 1;
     if (F.f_near && tgt && tgt.pos.distanceTo(this.pos) < 30 * this.dk) k *= this.gfv('f_near');
     if (F.bw_ms && d && d.id === 'bw_ms') k /= 1 - this.gfv('bw_ms');
-    if (this.gearGoldLock) k *= this.gearGoldLock(d, tgt);
+    k *= this.gearGoldLock(d, tgt);
     return k;
   },
   gearEvFixed(k, o) {
@@ -267,11 +272,9 @@ Object.assign(MechEntity.prototype, {
     if (k === 'shieldHit') gs.shT2 = t + 2;
     if (k === 'airj') gs.airjT = t + 1;
     if (k === 'land' && F.g_fast) this.enDelay = 0;
-    if (this.gearGoldEv) this.gearGoldEv(k, o);
+    this.gearGoldEv(k, o);
   },
-  gearKillFixed(e) {
-    if (this.gearGoldKill) this.gearGoldKill(e);
-  },
+  gearKillFixed() {},
   // EMP 打中一台（game.js 的 empPulse）
   gearEmpHit(tgt, s) {
     const F = this.gxF;
@@ -281,7 +284,7 @@ Object.assign(MechEntity.prototype, {
       tgt.gKinVulnUntil = now + s + 3;
       tgt.gKinVulnK = this.gfv('bw_emp_s');
     }
-    if (this.gearGoldEmpHit) this.gearGoldEmpHit(tgt, s);
+    this.gearGoldEmpHit(tgt, s);
   },
   gearTickFixed(dt) {
     const F = this.gxF,
@@ -306,11 +309,11 @@ Object.assign(MechEntity.prototype, {
     // 穩定輸出：EN 用完時保留一些
     if (F.g_std && this.en <= 1 && !(gs.gstdT > t)) {
       gs.gstdT = t + 10 / F.g_std.k;
-      if (!(this.gearGoldEnOut && this.gearGoldEnOut())) {
+      if (!this.gearGoldEnOut()) {
         this.en = Math.max(this.en, this.enMax * this.gfv('g_std'));
         this.enDelay = 0;
       }
     }
-    if (this.gearGoldTick) this.gearGoldTick(dt);
+    this.gearGoldTick(dt);
   },
 });

@@ -95,6 +95,8 @@ Object.assign(MechEntity.prototype, {
           break;
         }
     }
+    // 零件品級「弱點直取」：近距離時不看方向（mech-gear-fx.js）
+    if (!hit && list && from && from.gxF && from.gearCritAll(this)) hit = list.find((w) => !w.off) || null;
     const open = this.wpOpen();
     if (!hit && !open) return [dmg, impact];
     dmg *= WP.CRIT * (from && from.gxF ? from.gearCritK(this) : 1); // 零件品級：觀測、鷹眼（mech-gear-fx.js）
