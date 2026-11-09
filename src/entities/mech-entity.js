@@ -585,6 +585,13 @@ export class MechEntity {
     if (d.type === 'none' || d.type === 'shield') return false;
     if (this.devMount) return false; // 在固定砲台上：自己的武器不能用（game/devices-guns.js）
     if (w.tierOff) return false; // Boss 改版：負責這把武器的部位被打壞了
+    // 傳說模組「殘影誘餌」：被騙的敵人改打殘影（mech-legend.js）
+    if (targetEnt && targetEnt.lgDecoy && this.lgFooled && this.lgFooled === targetEnt.lgDecoy.id) {
+      if (targetEnt.lgDecoy.t > 0) {
+        targetPos = targetEnt.lgDecoy.pos.clone();
+        targetEnt = null;
+      } else this.lgFooled = 0;
+    }
     if (!this.canAct()) return false;
     if (this.rxJamT > 0) return false; // 屬性反應的 EMP 干擾：不能開火（mech-react.js）
     if (g.camp && this.pilotEnt() && g.campRuleBlocks(d)) return false; // 委託板的規則：禁用的武器（game/board.js）
@@ -635,6 +642,7 @@ export class MechEntity {
     const muzzle = this.muzzle(slot);
     const from = this.center();
     if (this.pilotEnt()) g.aiFireNoise(this, d.type); // 開火的聲音（敵人起疑，game/ai-director.js）
+    if (this.pm) this.lgFired(d, targetEnt); // 傳說模組「浮游砲『回聲』」（mech-legend.js）
     if (this.af) this.afShowT = this.t; // 詞綴的隱形：開火時現形（mech-affix.js）
     const SP = this.isPlayer ? null : muzzle;
     // 火控的距離輔助：依距離決定預判準度與集彈（data/parts.js 的 fcsAssist）
@@ -2153,7 +2161,7 @@ export class MechEntity {
         this.staggerT = melee.finisher ? 2.2 : 1.6;
         this.stagBy = from ? { id: from.id, cls } : null;
         this.knockSide = Math.random() < 0.5 ? -1 : 1;
-        if (from && from.tutE) from.tutE('stag', { tgt: this, melee: true });
+        if (from && from.tutE) from.tutE('stag', { tgt: this, melee: true, over: impact });
         this.game.fx.ring(this.center(), 4, 0xff6040);
         SFX.stagger(this.isPlayer ? null : this.center());
         this.game.fbBreak(this, from);
@@ -2228,6 +2236,7 @@ export class MechEntity {
     const real = bs ? Math.ceil(Math.max(0, this.hp)) + 1 : Math.round(dmg * mul + tierX); // 暗殺＝一定擊破
     // 風格評價（mech-style.js）：射擊打中加分（近戰由 tutE 的 hit）、自己被打中掉分
     if (real > 0 && !melee && from && from !== this && from.syHit) from.syHit(this, real, wid);
+    if (real > 0 && from && from !== this && from.pm) from.lgDealt(this, real); // 傳說模組：火力支援、火力封鎖
     // 遠程訓練（tutorial-ranged.js）：射擊打中（dist＝射手到目標的水平距離，判斷理想射程）
     if (real > 0 && !melee && from && from !== this && g.tut && from === g.player)
       from.tutE('shot', {
@@ -2251,6 +2260,9 @@ export class MechEntity {
     const hpBefore = Math.max(0, this.hp);
     if (g.pilotCreditHit) g.pilotCreditHit(from, this, wid, Math.min(real, hpBefore));
     this.hp -= this.pm && real > 0 ? this.lgBufTake(real, from) : real; // 傳說模組「緩衝裝甲」：一部分改成慢慢扣
+    // 傳說模組「量子鏈結」：鏈結中的敵人受到的傷害分給其他鏈結中的敵人（mech-legend.js）
+    if (this.lgLinkOwner && !this.lgLinkNo && real > 0 && this.lgLinkUntil > this.t)
+      this.lgLinkOwner.lgLinkShare(this, real);
     if (real > 0 && this.air) this.airHurtT = this.t; // 空域：脫離戰鬥的回復（game/air.js）
     if (real > 0 && (this.isBoss || this.opts.parent !== undefined)) this.tierGauge(real, from); // 打斷大招的量表
     // 戰術模組「能量虹吸」：命中回復 EN（近戰多）
@@ -2287,6 +2299,7 @@ export class MechEntity {
       this.acsDecayDelay = pve ? PVE_ACS_DELAY : 1.2;
       // Boss 改版的 A：每打出一次失衡，下一次需要的 ACS 變多、失衡時間變短（換型態重置，mech-boss-tier.js）
       if (this.acs >= this.acsMax * this.tierAcsK()) {
+        const over = this.acs - this.acsMax * this.tierAcsK(); // 超過門檻的衝擊（傳說模組「衝擊傳導」）
         this.acs = this.acsMax;
         // 玩家機體一律 1.4 秒（房主端的遠端玩家 isPlayer 為 false，不能用它判斷）
         this.staggerT =
@@ -2299,7 +2312,7 @@ export class MechEntity {
                 : 2.0) *
           (1 - this.pmv('stagT'));
         this.stagBy = from ? { id: from.id, cls } : null;
-        if (from && from.tutE) from.tutE('stag', { tgt: this, melee: !!melee }); // 近戰訓練：ACS 過載也算打出失衡
+        if (from && from.tutE) from.tutE('stag', { tgt: this, melee: !!melee, over }); // 近戰訓練：ACS 過載也算打出失衡
         this.game.fx.ring(this.center(), 4, 0xffb020);
         // 打出敵人的失衡：短暫頓格（文字提示是命中位置的 BREAK，juice.js）
         if (this.team === 'enemy' && from && from.isPlayer) {
@@ -2472,6 +2485,7 @@ export class MechEntity {
     }
     this.specialCleanup();
     this.statusVisClear();
+    if (this.lgBits) this.lgBitsClear(); // 傳說模組「浮游砲『回聲』」
   }
 
   // 涉水：站在 0.6 m 以上的水裡移動變慢（兩棲的 MARSH 反而變快）
@@ -2694,13 +2708,13 @@ export class MechEntity {
           (this.gx ? this.gearQbK() : 1),
       )
     ) {
-      if (this.pm) this.lgQbStart(); // 傳說模組：殘影、電弧推進（mech-legend.js）
       this.qbT = 0.16;
       this.qbStartT = this.t; // 完美 QB 的判定（pqbDodge）
       if (this.pilotEnt()) this.cueArmSet('q'); // 提示中按 QB＝完美迴避
       this.tutE('qb', {});
       if (wish.lengthSq() > 0.1) this.qbDir.copy(wish).normalize();
       else this.qbDir.set(0, 0, 0);
+      if (this.pm) this.lgQbStart(targetEnt); // 傳說模組：繞背、殘影誘餌（mech-legend.js）
       if (this.sts) this.statusQB(); // 掙脫（mech-status.js）
       if (this.pilotEnt()) g.aiNoise(this, NOISE_QB); // 敵人聽得到（game/ai-director.js）
       SFX.qb(this.isPlayer ? null : this.center());
@@ -2748,6 +2762,7 @@ export class MechEntity {
       target
         .copy(this.qbDir)
         .multiplyScalar((P.booster.qb * this.dk * (this.gx ? this.gearQbSpdK() : 1)) / DS);
+      if (this.lgArc) this.lgArcSteer(target, dt); // 傳說模組「繞背」：沿弧線繞到目標側後方
       this.boost = true;
     } else if (this.abT > 0 && targetEnt) {
       this.abT -= dt;
@@ -3095,6 +3110,11 @@ export class MechEntity {
     if (this.grounded) {
       this.airJumps = J.air;
       this.hoverMode = 0;
+    }
+    // 傳說模組「蹬牆」：空中碰到牆或大型物件時按跳躍＝蹬牆跳，空中跳次數回滿（mech-legend.js）
+    if (press && !this.grounded && this.pm && this.lgWallKick(J)) {
+      this.hoverMode = 0;
+      this.hoverEndT = 0;
     }
     if (press) {
       if (this.grounded) {

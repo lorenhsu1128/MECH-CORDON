@@ -46,14 +46,16 @@ Object.assign(MechEntity.prototype, {
     if (!list || !sn) return null;
     const r = { skip: false, ab: false };
     // 失衡、失去權杖（收招以外）時中斷
-    if (sn.mv && (this.staggerT > 0 || (!sn.tok && sn.mv.ph !== 'rec'))) {
+    // 傳說模組「火力封鎖」：被持續命中時準備中的招式中斷、不能開始新的（mech-legend.js）
+    const sup = this.lgSupUntil > this.t;
+    if (sn.mv && (this.staggerT > 0 || (!sn.tok && sn.mv.ph !== 'rec') || (sup && sn.mv.ph === 'wind'))) {
       if (sn.mv.ph === 'wind') this.cueCancel();
       sn.mv = null;
       sn.mvCd = rnd(1.2, 2);
     }
     if (!sn.mv) {
       sn.mvCd -= dt;
-      if (!sn.tok || sn.mvCd > 0 || !sn.los || !this.canAct() || this.staggerT > 0) return null;
+      if (!sn.tok || sn.mvCd > 0 || !sn.los || !this.canAct() || this.staggerT > 0 || sup) return null;
       // 依序挑下一個能放的招式
       for (let i = 0; i < list.length; i++) {
         const k = list[(sn.mvI + i) % list.length];

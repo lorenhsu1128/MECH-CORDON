@@ -3526,8 +3526,15 @@ body.vpad #comm.on:not(.menu) {
     gap: 8px;
     margin: 2px 0;
   }
+  #mpCards {
+    width: 100%;
+    max-width: calc(100vw - 32px);
+  }
+  /* 三選一或四選一（傳說模組的共鳴）都平分寬度 */
   .mpCard {
-    width: calc((100vw - 48px) / 3);
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
     max-width: 240px;
     padding: 7px 8px;
     gap: 4px;

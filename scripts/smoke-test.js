@@ -16670,6 +16670,308 @@ async function testLegend(browser, base) {
     r.drop[0] && r.drop[1] && r.drop[2] === 1 && r.drop[3] === 20,
     `緊急空投：彈藥全滿、修復套件 +1、護盾 ${r.drop[3]}%`,
   );
+  // ---- 第 2 期：卡斯特隆、維爾威 ----
+  const r2 = await page.evaluate(() => {
+    const g = window.__game;
+    const out = {};
+    g.autoPickMod = true;
+    g.campBegin('c1s2');
+    g.campSetMods(
+      [
+        'lg_transfer',
+        'lg_salvage',
+        'lg_barrage',
+        'lg_suppress',
+        'lg_flank',
+        'lg_zero',
+        'lg_wall',
+        'lg_decoy',
+      ].map((id) => ({ id, lv: 1 })),
+    );
+    g.camp.seg = 1;
+    g.camp.types[1] = 'supply';
+    g.campEnterSeg();
+    g.state = 'lg-test';
+    const p = g.player;
+    p.hp = p.maxHp = 1e6;
+    const W = g.world;
+    const at = (x, z) =>
+      new THREE.Vector3(p.pos.x + x, W.groundAt(p.pos.x + x, p.pos.z + z, 999), p.pos.z + z);
+    const foe = (x, z) => {
+      const e = g.spawnType('mt', 1, 1, at(x, z), 1);
+      e.updateAI = () => {};
+      e.hp = e.maxHp = 1e6;
+      return e;
+    };
+    const tick = (s) => {
+      for (let t = 0; t < s; t += 1 / 60) p.lgTick(1 / 60);
+    };
+    const a = foe(30, 0),
+      b = foe(36, 0),
+      c = foe(30, 8),
+      far = foe(-150, 0);
+    // 衝擊傳導：超過門檻的衝擊 ×1.5 傳給最近的 2 台
+    for (const e of [b, c, far]) e.acs = 0;
+    p.lgEv('stag', { tgt: a, over: 600 });
+    out.xfer = [Math.round(b.acs), Math.round(c.acs), Math.round(far.acs)];
+    // 戰場拾荒：精英一定掉重武器，同時最多一把
+    const n0 = (g.devs || []).filter((d) => d.kind === 'hwpick' && !d.gone).length;
+    a.isElite = true;
+    g.hwDrop(a);
+    g.hwDrop(a);
+    a.isElite = false;
+    out.salvage = (g.devs || []).filter((d) => d.kind === 'hwpick' && !d.gone).length - n0;
+    // 火力支援：擊破 1 層、Boss 的傷害 4%＝1 層；10 層對鎖定目標砲擊
+    p.lgBar = 0;
+    p.lgKill(b);
+    out.bar1 = p.lgBar;
+    p.lgDealt({ isBoss: true, maxHp: 1000, team: 'enemy', t: 0 }, 200);
+    out.barBoss = p.lgBar;
+    p.lgBar = 10;
+    p.lock = a;
+    const nl = (g.hzLater || []).length;
+    tick(0.05);
+    out.barShots = (g.hzLater || []).length - nl;
+    const h0 = a.hp;
+    for (let i = 0; i < 150; i++) g.updateHazards(1 / 60);
+    out.barDmg = Math.round(h0 - a.hp);
+    // 火力封鎖：持續命中 1.5 秒
+    c.t = 0;
+    c.lgSupBy = 0;
+    for (let i = 0; i < 7; i++) {
+      p.lgDealt(c, 10);
+      c.t += 0.3;
+    }
+    out.sup = c.lgSupUntil > c.t;
+    // 繞背：鎖定時往左右 QB → 沿弧線繞到側後方
+    a.yaw = Math.atan2(a.pos.x - p.pos.x, a.pos.z - p.pos.z); // 正面（−sin、−cos）朝向玩家
+    const to = a.pos.clone().sub(p.pos).setY(0).normalize();
+    p.qbDir.set(-to.z, 0, to.x);
+    p.lgFlankCd = 0;
+    p.lgQbStart(a);
+    out.flank0 = !!p.lgArc && Math.abs(p.qbT - 0.4) < 1e-6;
+    for (let i = 0; i < 30 && p.lgArc; i++) {
+      const v = new THREE.Vector3();
+      p.lgArcSteer(v, 1 / 60);
+      p.pos.x += v.x / 60;
+      p.pos.z += v.z / 60;
+    }
+    const fx = -Math.sin(a.yaw),
+      fz = -Math.cos(a.yaw);
+    const dx = p.pos.x - a.pos.x,
+      dz = p.pos.z - a.pos.z;
+    out.flank = +((fx * dx + fz * dz) / Math.hypot(dx, dz)).toFixed(2); // −1＝正後方
+    p.qbT = 0;
+    p.lgArc = null;
+    // 零式加速：完美 QB → 30 m 內的敵人 ×0.35、2 秒
+    p.lgZeroCd = 0;
+    p.lgEv('pqb', {});
+    out.zero = [g.lgZeroK(a), g.lgZeroK(far)];
+    tick(2.1);
+    out.zeroEnd = g.lgZero;
+    // 蹬牆：空中、旁邊有牆（地圖上夠高的方塊障礙物）
+    const nOb = W.obstacles.length;
+    g.addTempWall(at(0, -40), {
+      kind: 'rock',
+      w: 12 * g.fx.k,
+      h: 20 * g.fx.k,
+      d: 2 * g.fx.k,
+      hp: 1e6,
+      life: 30,
+    });
+    const ob = W.obstacles.slice(nOb).find((o) => o.kind === 'box');
+    out.wallOb = !!ob;
+    const cy = p.center().y - p.pos.y;
+    p.pos.set(
+      ob.x,
+      Math.min(ob.top - 2 * g.fx.k, ob.y + 6 * g.fx.k) - cy,
+      ob.z + ob.d / 2 + p.radius + 0.6 * p.dk,
+    );
+    p.airJumps = 0;
+    out.wall = [p.lgWallKick({ air: 2 }), p.airJumps];
+    p.pos.set(ob.x, ob.top + 30 * g.fx.k, ob.z);
+    p.airJumps = 0;
+    out.wallNo = p.lgWallKick({ air: 2 });
+    // 殘影誘餌：QB 時留下殘影，附近一般敵人一半上當，打殘影的位置
+    const ms = [1, 2, 3, 4, 5, 6, 7, 8].map((i) => foe(10 + i * 3, -20));
+    p.pos.copy(at(0, 0));
+    p.lgDecoyCd = 0;
+    p.qbDir.set(0, 0, 0);
+    p.lgQbStart(null);
+    const id = p.lgDecoy && p.lgDecoy.id;
+    out.decoy = [!!id, ms.filter((e) => e.lgFooled === id).length];
+    tick(2.1);
+    out.decoyEnd = p.lgDecoy;
+    for (const e of [a, b, c, far, ...ms]) e.dead = true;
+    g.state = 'play';
+    return out;
+  });
+  check(
+    r2.xfer[0] > 0 && r2.xfer[0] === r2.xfer[1] && r2.xfer[2] === 0,
+    `衝擊傳導：超過門檻的衝擊傳給最近的 2 台、遠的沒有（${r2.xfer.join('、')}）`,
+  );
+  check(r2.salvage === 1, `戰場拾荒：精英一定掉重武器、同時最多一把（${r2.salvage}）`);
+  check(
+    r2.bar1 === 1 && r2.barBoss === 6,
+    `火力支援：擊破 1 層、Boss AP 20%＝5 層，共 6（${r2.bar1}、${r2.barBoss}）`,
+  );
+  check(r2.barShots === 6 && r2.barDmg > 0, `火力支援：10 層時 6 發砲擊（${r2.barShots} 發、${r2.barDmg}）`);
+  check(r2.sup, '火力封鎖：持續命中 1.5 秒後封鎖');
+  check(r2.flank0 && r2.flank < -0.5, `繞背：沿弧線繞到目標的側後方（正面方向的內積 ${r2.flank}）`);
+  check(
+    r2.zero[0] === 0.35 && r2.zero[1] === 1 && r2.zeroEnd === null,
+    '零式加速：完美 QB 後 30 m 內的敵人 ×0.35、2 秒後恢復',
+  );
+  check(r2.wall[0] && r2.wall[1] === 2 && !r2.wallNo, '蹬牆：空中靠著牆＝空中跳回滿、沒有牆時不會');
+  check(
+    r2.decoy[0] && r2.decoy[1] > 0 && r2.decoy[1] < 8 && r2.decoyEnd === null,
+    `殘影誘餌：附近的一般敵人一部分上當（${r2.decoy[1]}／8）、2 秒後消失`,
+  );
+  // ---- 第 3 期：艾瑟立克、共鳴的四選一 ----
+  const r3 = await page.evaluate(() => {
+    const g = window.__game;
+    const out = {};
+    g.autoPickMod = true;
+    g.campBegin('c1s2');
+    g.campSetMods(['lg_rxspread', 'lg_link', 'lg_bits', 'lg_overload'].map((id) => ({ id, lv: 1 })));
+    g.camp.seg = 1;
+    g.camp.types[1] = 'supply';
+    g.campEnterSeg();
+    g.state = 'lg-test';
+    const p = g.player;
+    p.hp = p.maxHp = 1e6;
+    const W = g.world;
+    const at = (x, z) =>
+      new THREE.Vector3(p.pos.x + x, W.groundAt(p.pos.x + x, p.pos.z + z, 999), p.pos.z + z);
+    const foe = (x, z) => {
+      const e = g.spawnType('mt', 1, 1, at(x, z), 1);
+      e.updateAI = () => {};
+      e.hp = e.maxHp = 1e6;
+      e.res = [0, 0, 0];
+      return e;
+    };
+    const lost = (e, fn) => {
+      const h = e.hp;
+      fn();
+      return Math.round(h - e.hp);
+    };
+    const tick = (s) => {
+      for (let t = 0; t < s; t += 1 / 60) p.lgTick(1 / 60);
+    };
+    const a = foe(60, 0),
+      b = foe(66, 0),
+      far = foe(-150, 0);
+    // 反應擴散：同一個反應套到 12 m 內，冷卻減半
+    a.rxPrev = { a: 'kin', t: a.t };
+    a.rxCdT = 0;
+    a.rxHit('en', p); // 實彈 → 能量＝？（反應表裡有的才觸發）
+    const hot = { id: 'hot', name: '過熱裝甲', color: '#ff9a40' };
+    a.rxFire(hot, p);
+    out.spread = [b.rxHotT > 0, !(far.rxHotT > 0)];
+    a.rxPrev = { a: 'en', t: a.t };
+    a.rxCdT = 0;
+    a.rxHit('kin', p);
+    out.cd = +(a.rxCdT - a.t).toFixed(2);
+    // 量子鏈結：a 受到的傷害 30% 分給 b
+    a.rxHotT = b.rxHotT = 0;
+    a.iFrames = 0;
+    out.link = lost(b, () => a.takeDamage(1000, 0, p, a.center(), null, null, null, 'none'));
+    out.linkFar = lost(far, () => a.takeDamage(1000, 0, p, a.center(), null, null, null, 'none'));
+    // 浮游砲「回聲」：能量武器開火時兩座各打 25%
+    tick(0.05);
+    out.bits = !!p.lgBits && p.lgBits.length === 2;
+    a.lgLinkOwner = b.lgLinkOwner = null;
+    p.lgBitsCd = 0;
+    out.bitsDmg = lost(a, () => p.lgFired({ type: 'laser', dmg: 400, impact: 0 }, a));
+    p.lgBitsCd = 0;
+    out.bitsKin = lost(a, () => p.lgFired({ type: 'bullet', dmg: 400, impact: 0 }, a));
+    p.rxJamT = 1;
+    tick(0.05);
+    p.lgBitsCd = 0;
+    out.bitsEmp = [p.lgBitsDown > 9, lost(a, () => p.lgFired({ type: 'laser', dmg: 400, impact: 0 }, a))];
+    p.rxJamT = 0;
+    // 過載脈衝：EN 用完時 12 m 內的敵人 EMP 干擾並受傷
+    b.pos.copy(at(8, 0));
+    b.rxJamT = 0;
+    p.lgOverCd = 0;
+    p.en = 0;
+    const hb = b.hp;
+    p.lgEnCheck();
+    out.over = [b.rxJamT > 0, Math.round(hb - b.hp) > 0, !(far.rxJamT > 0), p.lgOverCd > 5];
+    for (const e of [a, b, far]) e.dead = true;
+    // 共鳴：兩家的傳說 → 四選一
+    g.campSetMods([
+      { id: 'lg_buffer', lv: 1 },
+      { id: 'lg_bits', lv: 1 },
+    ]);
+    g.autoPickMod = false;
+    g.campOpenPick(null, '測試', true);
+    out.reso = document.querySelectorAll('#mpCards .mpCard').length;
+    g.campClosePick();
+    g.campSetMods([{ id: 'lg_buffer', lv: 1 }]);
+    g.campOpenPick(null, '測試', false);
+    out.reso1 = document.querySelectorAll('#mpCards .mpCard').length;
+    g.campClosePick();
+    g.campSetMods([]);
+    g.autoPickMod = true;
+    g.state = 'play';
+    return out;
+  });
+  check(r3.spread[0] && r3.spread[1], '反應擴散：同一個反應套到 12 m 內的敵人、遠的沒有');
+  check(r3.cd === 0.75, `反應擴散：同一個目標的反應冷卻減半（${r3.cd} 秒）`);
+  check(r3.link === 300 && r3.linkFar === 0, `量子鏈結：受到的傷害 30% 分給其他鏈結的敵人（${r3.link}）`);
+  check(
+    r3.bits && r3.bitsDmg > 150 && r3.bitsDmg <= 200 && r3.bitsKin === 0,
+    `浮游砲「回聲」：能量武器開火時兩座各打 25%（共 ${r3.bitsDmg}／400，扣掉能量防禦）、實彈不跟（${r3.bitsKin}）`,
+  );
+  check(r3.bitsEmp[0] && r3.bitsEmp[1] === 0, '浮游砲「回聲」：被 EMP 打中掉下來 10 秒');
+  check(
+    r3.over.every(Boolean),
+    `過載脈衝：EN 用完時附近的敵人 EMP 干擾並受傷、冷卻 6 秒（${r3.over.join('、')}）`,
+  );
+  check(r3.reso === 4 && r3.reso1 === 3, `共鳴：持有兩家的傳說時四選一（${r3.reso}，一家時 ${r3.reso1}）`);
+  // 四選一的畫面：電腦、平板、手機橫式
+  for (const [w, h, name] of [
+    [1920, 1080, 'pc'],
+    [1180, 820, 'tablet'],
+    [844, 390, 'phone'],
+  ]) {
+    await page.setViewportSize({ width: w, height: h });
+    const lay = await page.evaluate(() => {
+      const g = window.__game;
+      g.campSetMods([
+        { id: 'lg_buffer', lv: 1 },
+        { id: 'lg_bits', lv: 1 },
+        { id: 'c_power', lv: 1 },
+      ]);
+      g.autoPickMod = false;
+      g.campOpenPick(null, '測試：四選一', true);
+      const cards = [...document.querySelectorAll('#mpCards .mpCard')].map((c) => c.getBoundingClientRect());
+      const over = cards.some((a, i) =>
+        cards.some(
+          (b, j) =>
+            i < j &&
+            a.left < b.right - 1 &&
+            b.left < a.right - 1 &&
+            a.top < b.bottom - 1 &&
+            b.top < a.bottom - 1,
+        ),
+      );
+      return {
+        n: cards.length,
+        over,
+        out: cards.some((c) => c.left < -1 || c.right > window.innerWidth + 1),
+      };
+    });
+    await page.screenshot({ path: `test-results/legend-pick4-${name}.png` });
+    await page.evaluate(() => {
+      const g = window.__game;
+      g.campClosePick();
+      g.campSetMods([]);
+      g.autoPickMod = true;
+    });
+    check(lay.n === 4 && !lay.over && !lay.out, `四選一的卡片（${name}）：不重疊、不超出畫面`);
+  }
   await ctx.close();
 }
 

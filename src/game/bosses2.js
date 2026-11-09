@@ -283,7 +283,8 @@ Object.assign(Game.prototype, {
     }
   },
   clearHazards() {
-    this.lgFields = null; // 傳說模組「停滯力場」（entities/mech-legend.js）
+    this.lgFields = null; // 傳說模組「停滯力場」「零式加速」（entities/mech-legend.js）
+    this.lgZero = null;
     this.hzLater = [];
     this.hzPools = [];
     this.hzRings = [];

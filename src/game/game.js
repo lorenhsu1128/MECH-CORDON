@@ -594,7 +594,7 @@ export class Game {
     this.lodTick(); // 距離分級：遠處與畫面外的 IK、陰影、粒子
     const batch = this.aiBatchOn();
     for (const e of this.enemies) {
-      if (!e.dead) this.aiStep(e, dt, batch);
+      if (!e.dead) this.aiStep(e, this.lgZero ? dt * this.lgZeroK(e) : dt, batch); // 傳說模組「零式加速」
     }
     this.separateMechs(dt);
     for (let i = this.allies.length - 1; i >= 0; i--) {

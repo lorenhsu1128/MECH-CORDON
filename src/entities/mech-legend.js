@@ -7,7 +7,9 @@
 // 修復套件（lgKit）、補給箱（lgCacheOpen）、增援抵達（lgWaveShield）。
 // Game 端（game/tactics.js）：lgAny／lgMax、停滯力場的 lgFieldK、敵人的投射物 lgHostileShot。
 import { DS } from '../core/scale.js';
+import { weaponAttr } from '../data/attrs.js';
 import { usesAmmo } from '../data/parts.js';
+import { RX } from '../data/react.js';
 import { MechEntity } from './mech-entity.js';
 
 const LG = {
@@ -23,6 +25,35 @@ const LG = {
   FIELD_R: 12 * DS, // 停滯力場
   FIELD_T: 6,
   FIELD_K: 0.3, // 力場裡的時間倍率（game/tactics.js 的 lgFieldK）
+  XFER_K: 1.5, // 衝擊傳導
+  XFER_N: 2,
+  XFER_R: 15 * DS,
+  BAR_N: 10, // 火力支援：層數
+  BAR_BOSS: 0.04, // 對 Boss 造成 AP 4% 的傷害＝1 層
+  BAR_K: 1.5, // 每發＝最高單發 ×1.5
+  BAR_SHOTS: 6,
+  SUP_GAP: 0.45, // 火力封鎖：兩次命中的間隔在這之內算持續
+  SUP_T: 1.5,
+  SUP_HOLD: 1.0,
+  FLANK_T: 0.4, // 繞背
+  FLANK_CD: 4,
+  FLANK_MAX: 60 * DS,
+  FLANK_SIDE: 0.5, // 繞到正後方偏一側（弧度）
+  ZERO_T: 2, // 零式加速
+  ZERO_CD: 8,
+  ZERO_K: 0.35,
+  ZERO_R: 30 * DS,
+  DECOY_T: 2, // 殘影誘餌
+  DECOY_CD: 5,
+  DECOY_R: 60 * DS,
+  RXS_R: 12 * DS, // 反應擴散
+  LINK_T: 6, // 量子鏈結
+  LINK_K: 0.3,
+  BITS_K: 0.25, // 浮游砲「回聲」：每座每發＝那一發的 25%
+  BITS_CD: 0.2,
+  BITS_DOWN: 10,
+  OVER_CD: 6, // 過載脈衝
+  OVER_R: 12 * DS,
 };
 
 Object.assign(MechEntity.prototype, {
@@ -44,15 +75,11 @@ Object.assign(MechEntity.prototype, {
   lgEnK() {
     return this.lgConduitT > 0 ? 0 : 1;
   },
-  lgQbStart() {
-    this.lgQbAt = this.t;
-  },
   // QB 的 EN 消耗倍率（能源導管中＝0）
   lgQbK() {
     return this.lgConduitT > 0 ? 0 : 1;
   },
   lgLand() {},
-  lgEnCheck() {},
   // 受傷前（takeDamage，無敵判斷之後）：增援壁壘、緊急空投的護盾；回傳 null＝躲掉
   lgDefense(dmg, impact, from) {
     if (!this.pm) return [dmg, impact];
@@ -92,12 +119,322 @@ Object.assign(MechEntity.prototype, {
     return false;
   },
   // 事件（tutE）：stag＝打出失衡、pqb＝完美 QB、rx＝屬性反應…
-  lgEv(k) {
-    if (k === 'stag' && this.lg('lgBuffer')) this.lgDebtClear();
+  lgEv(k, o) {
+    if (k === 'stag') {
+      if (this.lg('lgBuffer')) this.lgDebtClear();
+      if (this.lg('lgTransfer') && o && o.tgt) this.lgTransfer(o.tgt, o.over);
+    }
+    if (k === 'pqb' && this.lg('lgZero') && !(this.lgZeroCd > 0)) this.lgZeroOn();
   },
   // 擊破（tactics.js 的 modKillFx）
   lgKill() {
     if (this.lg('lgBuffer')) this.lgDebtClear();
+    if (this.lg('lgBarrage')) this.lgBarAdd(1);
+  },
+  // ================= 第 2 期：卡斯特隆、維爾威 =================
+  // 打到敵人（takeDamage，扣 AP 之前）：火力支援（Boss 的傷害累積層數）、火力封鎖（持續命中）
+  lgDealt(t, real) {
+    if (!t || t.team === this.team || t.isProp) return;
+    if (this.lg('lgBarrage') && t.isBoss) {
+      this.lgBossAcc = (this.lgBossAcc || 0) + real / Math.max(1, t.maxHp);
+      while (this.lgBossAcc >= LG.BAR_BOSS - 1e-9) {
+        this.lgBossAcc -= LG.BAR_BOSS;
+        this.lgBarAdd(1);
+      }
+    }
+    if (this.lg('lgSuppress') && !t.isBoss) {
+      // 兩次命中的間隔在 SUP_GAP 內＝持續命中；累積 SUP_T 秒後封鎖，持續命中一直延長
+      const now = t.t;
+      const gap = now - t.lgSupLast;
+      if (t.lgSupBy === this.id && gap >= 0 && gap <= LG.SUP_GAP) t.lgSupAcc += gap;
+      else t.lgSupAcc = 0;
+      t.lgSupBy = this.id;
+      t.lgSupLast = now;
+      if (t.lgSupAcc >= LG.SUP_T) {
+        if (!(t.lgSupUntil > now)) this.game.fx.ring(t.center(), 3, 0xffb040);
+        t.lgSupUntil = now + LG.SUP_HOLD;
+      }
+    }
+  },
+  // 火力支援：層數，滿了對鎖定目標砲擊
+  lgBarAdd(n) {
+    this.lgBar = Math.min(LG.BAR_N, (this.lgBar || 0) + n);
+  },
+  // 目前最高的單發傷害（武器定義已含駕駛員與零件品級的加成）
+  lgTopShot() {
+    let v = 0;
+    for (const w of Object.values(this.weapons || {})) {
+      const d = w && w.def;
+      if (!d || d.type === 'none' || d.type === 'shield') continue;
+      v = Math.max(v, (d.dmg || 0) * (d.pellets || 1), d.chargeDmg || 0);
+    }
+    return Math.max(300, v) * this.dmgMul;
+  },
+  lgBarrageFire(tgt) {
+    const g = this.game;
+    this.lgBar = 0;
+    const dmg = this.lgTopShot() * LG.BAR_K;
+    const R = 4 * DS;
+    g.fx.warnCircle(tgt.pos.clone(), R * 2.2, 1.0, 0xffb040);
+    if (this.isPlayer) g.flashMsg('火力支援：砲擊', 0xffb040, 1.4);
+    for (let i = 0; i < LG.BAR_SHOTS; i++)
+      g.later(1.0 + i * 0.18, () => {
+        if (this.dead) return;
+        const c = tgt.dead ? null : tgt.pos;
+        const base = c || this.lgBarLast || this.pos;
+        this.lgBarLast = base.clone();
+        const a = Math.random() * Math.PI * 2,
+          r = Math.random() * R * 1.2;
+        const p = base.clone().add(new THREE.Vector3(Math.sin(a) * r, 0, Math.cos(a) * r));
+        p.y = g.world.groundAt(p.x, p.z, p.y + 4 * DS) + 0.5;
+        g.explodeAt(p, dmg, 900, R, this, false);
+      });
+  },
+  // 衝擊傳導：打出失衡的那一擊，超過門檻的衝擊 ×150% 傳給附近 2 台（Boss 傳給它的部位）
+  lgTransfer(tgt, over) {
+    if (!(over > 0) || this.lgXfer) return;
+    const g = this.game;
+    const c = tgt.center();
+    let list;
+    if (tgt.isBoss) list = g.enemies.filter((e) => !e.dead && e.opts && e.opts.parent === tgt.id);
+    else
+      list = g
+        .hostilesOfEnt(this)
+        .filter(
+          (e) =>
+            e !== tgt &&
+            !e.dead &&
+            !e.isProp &&
+            !(e.staggerT > 0) &&
+            e.pos.distanceTo(tgt.pos) < LG.XFER_R &&
+            !(e.opts && e.opts.parent !== undefined),
+        )
+        .sort((a, b) => a.pos.distanceTo(tgt.pos) - b.pos.distanceTo(tgt.pos));
+    list = list.slice(0, LG.XFER_N);
+    if (!list.length) return;
+    this.lgXfer = true;
+    try {
+      for (const e of list) {
+        g.fx.bolt(c, e.center(), 0xffb040, 0.25);
+        e.iFrames = 0;
+        e.takeDamage(1, over * LG.XFER_K, this, e.center(), null, null, null, 'none');
+      }
+    } finally {
+      this.lgXfer = false;
+    }
+  },
+  // QB 開始（move，方向決定之後）：繞背、殘影誘餌
+  lgQbStart(tgt) {
+    this.lgQbAt = this.t;
+    if (this.lg('lgDecoy') && !(this.lgDecoyCd > 0)) this.lgDecoyMake();
+    if (!this.lg('lgFlank') || !(this.lgFlankCd <= 0 || this.lgFlankCd === undefined)) return;
+    if (!tgt || tgt.dead || this.qbDir.lengthSq() < 0.5) return;
+    const dx = this.pos.x - tgt.pos.x,
+      dz = this.pos.z - tgt.pos.z;
+    const R = Math.hypot(dx, dz);
+    if (R < 4 * DS || R > LG.FLANK_MAX) return;
+    // 往左右：QB 方向和「往目標」夾角大
+    const tx = -dx / R,
+      tz = -dz / R;
+    if (Math.abs(this.qbDir.x * tx + this.qbDir.z * tz) > 0.55) return;
+    const a0 = Math.atan2(dx, dz);
+    // 角度往正方向增加時的切線＝(cos a, −sin a)；QB 往哪一邊就往哪一邊繞
+    const sgn = Math.sign(this.qbDir.x * Math.cos(a0) - this.qbDir.z * Math.sin(a0)) || 1;
+    const back = tgt.yaw !== undefined ? tgt.yaw : a0 + Math.PI; // 目標的背後（正面是 −sin、−cos）
+    if (Math.abs(Math.atan2(Math.sin(a0 - back), Math.cos(a0 - back))) < 0.6) return; // 已經在背後
+    const goal = back - sgn * LG.FLANK_SIDE; // 從 QB 的方向先到的那一側
+    const T = Math.PI * 2;
+    let d = sgn > 0 ? (((goal - a0) % T) + T) % T : -((((a0 - goal) % T) + T) % T);
+    if (Math.abs(d) > Math.PI) d = sgn * Math.PI; // 最多繞半圈
+    this.lgArc = { tgt, a0, d, R: Math.max(8 * DS, Math.min(R, 30 * DS)), t: 0 };
+    this.qbT = LG.FLANK_T;
+    this.lgFlankCd = LG.FLANK_CD;
+    this.iFrames = Math.max(this.iFrames, LG.FLANK_T * 0.8);
+  },
+  // 繞背：QB 的目標速度改成沿圓弧前進（move 的 qbT 那一段）
+  lgArcSteer(target, dt) {
+    const A = this.lgArc;
+    if (!A || A.tgt.dead || this.qbT <= 0) {
+      this.lgArc = null;
+      return;
+    }
+    A.t += dt;
+    const u = Math.min(1, (A.t + dt) / LG.FLANK_T);
+    const a = A.a0 + A.d * u;
+    const px = A.tgt.pos.x + Math.sin(a) * A.R,
+      pz = A.tgt.pos.z + Math.cos(a) * A.R;
+    const vx = (px - this.pos.x) / Math.max(dt, 1 / 30),
+      vz = (pz - this.pos.z) / Math.max(dt, 1 / 30);
+    const cap = 220 * DS;
+    const k = Math.min(1, cap / Math.max(1, Math.hypot(vx, vz)));
+    target.x = vx * k;
+    target.z = vz * k;
+    if (u >= 1) this.lgArc = null;
+  },
+  // 殘影誘餌：QB 的起點留下殘影，附近一般敵人 50% 改打殘影
+  lgDecoyMake() {
+    const g = this.game;
+    this.lgDecoyCd = LG.DECOY_CD;
+    const id = (this.lgDecoySeq = (this.lgDecoySeq || 0) + 1);
+    this.lgDecoy = { id, pos: this.center(), t: LG.DECOY_T, ringT: 0 };
+    if (this.model && g.fx.ghosts) g.fx.ghosts.snap(this.model.group, 0x9fe8ff);
+    for (const e of g.hostilesOfEnt(this))
+      if (!e.dead && !e.isBoss && !e.isProp && e.pos.distanceTo(this.pos) < LG.DECOY_R && Math.random() < 0.5)
+        e.lgFooled = id;
+  },
+  // 零式加速：完美 QB 之後周圍的敵人與子彈變慢（Game.lgZero；只有單人）
+  lgZeroOn() {
+    const g = this.game;
+    this.lgZeroCd = LG.ZERO_CD;
+    g.lgZero = { owner: this, t: LG.ZERO_T };
+    g.fx.shockwave(this.center(), 10, 0x9fe8ff, 0.5);
+    if (this.isPlayer) g.flashMsg('零式加速', 0x9fe8ff, 1.2);
+  },
+  // 蹬牆：空中、身邊有牆或大型物件 → 空中跳次數回滿、往牆的反方向蹬出去（jumpMove）
+  lgWallKick(J) {
+    if (!this.lg('lgWall')) return false;
+    const W = this.game.world;
+    const c = this.center();
+    const r = (this.radius || 1.5 * this.dk) + 1.2 * this.dk;
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const dx = Math.sin(a),
+        dz = Math.cos(a);
+      const p = new THREE.Vector3(c.x + dx * r, c.y, c.z + dz * r);
+      if (!W.hitsWorld(p)) continue;
+      this.airJumps = J.air;
+      const spd = 30 * this.dk;
+      this.vel.x = -dx * spd;
+      this.vel.z = -dz * spd;
+      this.game.fx.ring(p, 2.5, 0x9fe8ff);
+      if (this.isPlayer) this.game.flashMsg('蹬牆', 0x9fe8ff, 0.6);
+      return true;
+    }
+    return false;
+  },
+  // ================= 第 3 期：艾瑟立克 =================
+  // 觸發屬性反應之後（mech-react.js 的 rxFire）：反應擴散、量子鏈結
+  lgRxFire(r, tgt) {
+    const g = this.game;
+    if (this.lg('lgLink')) this.lgLinkAdd(tgt);
+    if (!this.lg('lgRxSpread')) return;
+    const c = tgt.center();
+    for (const e of g.hostilesOfEnt(this)) {
+      if (e === tgt || e.dead || e.isProp || !e.pos || e.pos.distanceTo(tgt.pos) > LG.RXS_R) continue;
+      g.fx.bolt(c, e.center(), parseInt(r.color.slice(1), 16), 0.25);
+      e.rxFire(r, this, true);
+      if (this.lg('lgLink')) this.lgLinkAdd(e);
+    }
+  },
+  // 量子鏈結：被反應打中的敵人鏈結 6 秒（Boss 本體與部位一起）
+  lgLinkAdd(e) {
+    const g = this.game;
+    let list = [e];
+    const bossId = e.isBoss ? e.id : e.opts && e.opts.parent !== undefined ? e.opts.parent : null;
+    if (bossId !== null)
+      list = g.enemies.filter((x) => !x.dead && (x.id === bossId || (x.opts && x.opts.parent === bossId)));
+    for (const x of list) {
+      x.lgLinkOwner = this;
+      x.lgLinkUntil = x.t + LG.LINK_T;
+    }
+  },
+  // 量子鏈結：鏈結中的敵人受到的傷害 30% 分給其他鏈結中的敵人（takeDamage，扣 AP 之後）
+  lgLinkShare(src, real) {
+    const g = this.game;
+    const others = g.enemies.filter(
+      (e) => e !== src && !e.dead && e.lgLinkOwner === this && e.lgLinkUntil > e.t,
+    );
+    if (!others.length) return;
+    const c = src.center();
+    const show = !(src.lgLinkFxT > src.t);
+    if (show) src.lgLinkFxT = src.t + 0.25;
+    for (const e of others) {
+      if (show) g.fx.bolt(c, e.center(), 0xb890ff, 0.18);
+      e.lgLinkNo = true;
+      e.iFrames = 0;
+      try {
+        e.takeDamage(real * LG.LINK_K, 0, this, e.center(), null, null, null, 'none');
+      } finally {
+        e.lgLinkNo = false;
+      }
+    }
+  },
+  // 開火（fire，擊發之前）：浮游砲跟著能量武器開火
+  lgFired(d, tgt) {
+    if (!this.lg('lgBits') || !tgt || tgt.dead || !tgt.center || weaponAttr(d) !== 'en') return;
+    if (!this.lgBits || this.lgBitsDown > 0 || this.lgBitsCd > 0) return;
+    const g = this.game;
+    this.lgBitsCd = LG.BITS_CD;
+    const dmg = ((d.dmg || 0) * (d.pellets || 1) || (d.chargeDmg || 0) * 0.5) * this.dmgMul * LG.BITS_K;
+    if (!(dmg > 0)) return;
+    const tc = tgt.center();
+    for (const b of this.lgBits) {
+      const p = b.position.clone();
+      g.fx.beam(p, tc.clone(), 0xb8a0ff, 0.08, this.team);
+      tgt.iFrames = 0;
+      tgt.takeDamage(dmg, (d.impact || 0) * LG.BITS_K, this, tc, null, null, null, 'en');
+      if (tgt.dead) break;
+    }
+  },
+  // 浮游砲的模型與位置（繞著機體轉；被 EMP 打中掉下來 10 秒）
+  lgBitsTick(dt) {
+    const g = this.game;
+    if (!this.lgBits) {
+      this.lgBits = [0, 1].map(() => {
+        const m = new THREE.Mesh(
+          g.fx.sharedGeo('lgBit', () => new THREE.OctahedronGeometry(0.45 * DS)),
+          new THREE.MeshBasicMaterial({ color: 0xc8b0ff }),
+        );
+        g.scene.add(m);
+        return m;
+      });
+      this.lgBitsA = 0;
+    }
+    if (this.lgBitsCd > 0) this.lgBitsCd -= dt;
+    const emp = this.empLockT > 0 || this.rxJamT > 0;
+    if (emp && !(this.lgBitsDown > 0)) {
+      this.lgBitsDown = LG.BITS_DOWN;
+      if (this.isPlayer) g.flashMsg('浮游砲被 EMP 打下來了（10 秒）', 0x8a97a6, 1.4);
+    }
+    if (this.lgBitsDown > 0) this.lgBitsDown -= dt;
+    this.lgBitsA += dt * 1.6;
+    const c = this.center();
+    this.lgBits.forEach((m, i) => {
+      const a = this.lgBitsA + i * Math.PI;
+      m.visible = !(this.lgBitsDown > 0) && !this.dead;
+      m.position.set(
+        c.x + Math.sin(a) * 3 * DS,
+        c.y + 1.4 * DS + Math.sin(a * 2) * 0.3 * DS,
+        c.z + Math.cos(a) * 3 * DS,
+      );
+      m.rotation.y = a * 2;
+    });
+  },
+  lgBitsClear() {
+    if (!this.lgBits) return;
+    for (const m of this.lgBits) this.game.scene.remove(m);
+    this.lgBits = null;
+  },
+  // EN 用完（useEn）：過載脈衝
+  lgEnCheck() {
+    if (!this.lg('lgOverload') || this.en > this.enMax * 0.02 || this.lgOverCd > 0) return;
+    const g = this.game;
+    this.lgOverCd = LG.OVER_CD;
+    let top = 0;
+    for (const w of Object.values(this.weapons || {})) {
+      const d = w && w.def;
+      if (d && weaponAttr(d) === 'en') top = Math.max(top, (d.dmg || 0) * (d.pellets || 1), d.chargeDmg || 0);
+    }
+    const dmg = (top > 0 ? top : this.lgTopShot() * 0.5) * this.dmgMul;
+    const c = this.center();
+    g.fx.shockwave(c, LG.OVER_R / DS, 0x7fc8ff, 0.45);
+    if (this.isPlayer) g.flashMsg('過載脈衝', 0x7fc8ff, 1);
+    for (const e of g.hostilesOfEnt(this)) {
+      if (e.dead || e.isProp || !e.pos || e.pos.distanceTo(this.pos) > LG.OVER_R) continue;
+      e.rxJamT = Math.max(e.rxJamT || 0, RX.JAM_T * (e.isBoss ? RX.BOSS : 1));
+      e.iFrames = 0;
+      e.takeDamage(dmg, 300, this, e.center(), null, null, null, 'en');
+    }
   },
   // 撿到彈藥箱（map-extras.js 的 collectPickup）：補給回收
   lgPickup(kind) {
@@ -222,6 +559,28 @@ Object.assign(MechEntity.prototype, {
     if (this.lg('lgCiws')) {
       this.lgCiwsCd = (this.lgCiwsCd || 0) - dt;
       if (this.lgCiwsCd <= 0 && this.lgCiwsTick()) this.lgCiwsCd = LG.CIWS_CD;
+    }
+    // 計時：繞背、零式加速、殘影誘餌、過載脈衝；浮游砲
+    if (this.lgOverCd > 0) this.lgOverCd -= dt;
+    if (this.lg('lgBits')) this.lgBitsTick(dt);
+    if (this.lgFlankCd > 0) this.lgFlankCd -= dt;
+    if (this.lgZeroCd > 0) this.lgZeroCd -= dt;
+    if (this.lgDecoyCd > 0) this.lgDecoyCd -= dt;
+    if (g.lgZero && g.lgZero.owner === this && (g.lgZero.t -= dt) <= 0) g.lgZero = null;
+    if (this.lgDecoy) {
+      const D = this.lgDecoy;
+      D.t -= dt;
+      D.ringT -= dt;
+      if (D.ringT <= 0 && D.t > 0) {
+        D.ringT = 0.5;
+        g.fx.ring(D.pos, 3, 0x9fe8ff);
+      }
+      if (D.t <= 0) this.lgDecoy = null;
+    }
+    // 火力支援：滿層時對鎖定目標砲擊（沒有目標時留著）
+    if (this.lgBar >= LG.BAR_N) {
+      const t = this.lock;
+      if (t && !t.dead && !t.isProp) this.lgBarrageFire(t);
     }
     if (
       this.lg('lgDrop') &&

@@ -324,12 +324,22 @@ Object.assign(Game.prototype, {
   hwDrop(e) {
     if (!this.devAllowed() || !e || !e.pos) return;
     const t = ENEMY_TYPES[e.etype] || {};
-    const ch = t.roster || e.isAce ? HW_DROP_ACE : e.ai === 'part' ? HW_DROP_PART : HW_DROP[e.etype] || 0;
+    let ch = t.roster || e.isAce ? HW_DROP_ACE : e.ai === 'part' ? HW_DROP_PART : HW_DROP[e.etype] || 0;
+    // 傳說模組「戰場拾荒」：敵對 AC、精英、Boss 的部位一定掉（場上與手上同時最多一把）
+    const big =
+      t.roster || e.isAce || e.ace || e.ai === 'ac' || e.isElite || (e.opts && e.opts.parent !== undefined);
+    if (big && this.lgAny('lgSalvage') && !this.hwOut()) ch = 1;
     if (!(Math.random() < ch)) return;
     const W = this.world;
     if (W.isVoid(e.pos.x, e.pos.z)) return;
     const idx = Math.floor(Math.random() * HW_KEYS.length);
     this.devAdd({ i: ++this.devSeq, k: 'hwpick', x: e.pos.x, z: e.pos.z, y: 0, v: idx });
+  },
+  // 場上或玩家手上有沒有重武器（傳說模組「戰場拾荒」）
+  hwOut() {
+    return (
+      (this.devs || []).some((d) => d.kind === 'hwpick' && !d.gone) || this.playersAlive().some((p) => p.hw)
+    );
   },
   hwName(d) {
     return HEAVY_WEAPONS[HW_KEYS[Math.round(d.val) % HW_KEYS.length]].name;

@@ -60,10 +60,20 @@ Object.assign(Game.prototype, {
     return !!p.team && p.team !== ent.team;
   },
   // 傳說模組「停滯力場」：投射物在力場裡的時間倍率（projectile.js 的 update）
+  // 「零式加速」：持有者 30 m 內的敵人投射物 ×0.35
   lgFieldK(p) {
+    const Z = this.lgZero;
+    if (Z && Z.t > 0 && this.lgHostileShot(p, Z.owner) && p.pos.distanceTo(Z.owner.pos) < 30 * this.fx.k)
+      return 0.35;
     for (const f of this.lgFields || [])
       if (f.t > 0 && this.lgHostileShot(p, f.owner) && p.pos.distanceTo(f.pos) < f.r) return 0.3;
     return 1;
+  },
+  // 傳說模組「零式加速」：敵人的時間倍率（game.js 的 aiStep；持有者 30 m 內）
+  lgZeroK(e) {
+    const Z = this.lgZero;
+    if (!Z || Z.t <= 0 || Z.owner.dead) return 1;
+    return e.pos.distanceTo(Z.owner.pos) < 30 * this.fx.k ? 0.35 : 1;
   },
   // 改變打法的模組：擊破時（mission.js 的 onEnemyKilled，房主／單機）
   modKillFx(e, from) {

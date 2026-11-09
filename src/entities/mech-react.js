@@ -18,7 +18,7 @@ Object.assign(MechEntity.prototype, {
       const r = reactionOf(P.a, A);
       if (r) {
         this.rxPrev = null;
-        this.rxCdT = t + RX.CD;
+        this.rxCdT = t + RX.CD * (from.pm && from.pmv('lgRxSpread') > 0 ? 0.5 : 1); // 傳說模組「反應擴散」：冷卻減半
         this.rxFire(r, from);
         if (r.id === 'hot') mul = 1 + (RX.HOT_K - 1) * (this.isBoss ? RX.BOSS : 1);
         return mul;
@@ -27,24 +27,28 @@ Object.assign(MechEntity.prototype, {
     this.rxPrev = { a: A, t };
     return mul;
   },
-  rxFire(r, from) {
+  // spread＝傳說模組「反應擴散」套到周圍的（不再加風格評價、不再觸發擴散）
+  rxFire(r, from, spread) {
     const g = this.game,
       c = this.center(),
       bk = this.isBoss ? RX.BOSS : 1;
     g.popDamage(c.clone().setY(c.y + 3.6 * this.dk), r.name, false, true, false, 0, this.id);
     g.fx.shockwave(c, 4 * this.dk, parseInt(r.color.slice(1), 16), 0.35);
-    if (from.syAdd) from.syAdd('rx:' + r.id, 30, r.name); // 風格評價
-    if (g.tut && from.tutE) from.tutE('rx', { id: r.id, tgt: this }); // 遠程訓練
-    if (from.gx) from.gearEv('rx', {}); // 催化（mech-gear.js）
-    if (from.isPlayer) SFX.reaction(r.id);
-    else if (from.slot !== undefined && g.net && g.net.role === 'host')
-      g.netEv({ t: 'fb', s: from.slot, k: 'rx', r: r.id });
+    if (!spread) {
+      if (from.syAdd) from.syAdd('rx:' + r.id, 30, r.name); // 風格評價
+      if (g.tut && from.tutE) from.tutE('rx', { id: r.id, tgt: this }); // 遠程訓練
+      if (from.gx) from.gearEv('rx', {}); // 催化（mech-gear.js）
+      if (from.isPlayer) SFX.reaction(r.id);
+      else if (from.slot !== undefined && g.net && g.net.role === 'host')
+        g.netEv({ t: 'fb', s: from.slot, k: 'rx', r: r.id });
+    }
     // 受擊反應（mech-hit-react.js）：過熱扭動、EMP 強痙攣、破甲被炸開
     const hk = { hot: 'rxHot', jam: 'rxJam', burst: 'rxBurst' }[r.id];
     if (hk && this.hrAdd) this.hrAdd(hk, 0, 1, 0, true);
     if (r.id === 'hot') this.rxHotT = RX.HOT_T;
     else if (r.id === 'jam') this.rxJamT = RX.JAM_T * bk;
     else if (r.id === 'burst') g.later(0, () => this.rxBurst(from, bk)); // 下一格（不在 takeDamage 裡再受傷）
+    if (!spread && from.pm) from.lgRxFire(r, this); // 傳說模組：反應擴散、量子鏈結（mech-legend.js）
   },
   rxBurst(from, bk) {
     const g = this.game,
