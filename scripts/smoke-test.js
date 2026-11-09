@@ -19734,6 +19734,14 @@ async function testFx(browser, base) {
       out.heatPass = (sp.heatN || 0) - h0;
       fx.clear();
       out.heatOff = !fx.heatOn();
+      // 推進器的熱源：噴焰朝向鏡頭時不放（會把自己的機體扭曲），側面照放（2026-11-09）
+      const p0 = at(0, 0, 3);
+      const toCam = fx.viewPos.clone().sub(p0).normalize();
+      fx.thruster.onHeat(p0.clone(), 2, 0.2, toCam);
+      out.heatFace = fx.ht.n;
+      fx.thruster.onHeat(p0.clone(), 2, 0.2, new THREE.Vector3(-toCam.z, 0, toCam.x).normalize());
+      out.heatSide = fx.ht.n - out.heatFace;
+      fx.clear();
       g.ctrl.fxLv = 'std';
       fx.heat(at(0, 0, 3), 4, 0.6, 0.8);
       out.heatStd = fx.ht.n;
@@ -19898,6 +19906,10 @@ async function testFx(browser, base) {
   check(
     r.heatN === 1 && r.heatOn && r.heatPass > 0 && r.heatOff && r.heatStd === 0,
     `第 8.3 期：熱扭曲的熱源與畫面扭曲（畫了 ${r.heatPass} 格）、清除後停止、砲火特效標準時沒有`,
+  );
+  check(
+    r.heatFace === 0 && r.heatSide === 1,
+    `推進器的熱扭曲：噴焰朝向鏡頭時不放（${r.heatFace}）、側面照放（${r.heatSide}）`,
   );
   check(
     r.fire >= 2 && r.fireL.every((d) => d >= 0 && d < 40) && r.fireOff,

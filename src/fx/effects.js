@@ -143,6 +143,18 @@ const WARN_NB = [
   [-1, 1],
   [-1, -1],
 ];
+// 噴焰朝向鏡頭的程度 → 熱扭曲的強度倍率：側面看（噴焰和視線的夾角 84° 以上）＝1，
+// 夾角 66° 以內＝0（空戰時機體前傾、噴焰朝後下方，追尾鏡頭在後上方，量到的 cos 約 0.5）
+const _hv = new THREE.Vector3();
+export function heatFacingK(p, dir, cam) {
+  _hv.subVectors(cam, p);
+  const d = _hv.length();
+  if (d < 1e-3) return 0;
+  const facing = _hv.dot(dir) / d; // 1＝噴焰直直噴向鏡頭
+  const t = Math.min(1, Math.max(0, (facing - 0.1) / (0.4 - 0.1)));
+  return 1 - t * t * (3 - 2 * t);
+}
+
 export class Effects {
   constructor(scene) {
     this.scene = scene;
@@ -167,7 +179,12 @@ export class Effects {
     this.hitStop = 0;
     this.thruster = new ThrusterFx(scene); // 機甲推進器噴焰粒子
     this.thruster.cull = (p) => this.skip(p, 4);
-    this.thruster.onHeat = (p, s, a) => this.heat(p, s, 0.25, a, 2.5); // 推進器噴口後方的熱扭曲
+    // 推進器噴口後方的熱扭曲：噴口正對鏡頭時（從背後看）熱源夾在鏡頭和機體之間、會把整台機體扭曲，
+    // 所以依噴焰方向和視線的夾角減弱，正對時不放（2026-11-09 使用者回報空戰的追尾視角）
+    this.thruster.onHeat = (p, s, a, dir) => {
+      const k = dir ? heatFacingK(p, dir, this.viewPos) : 1;
+      if (k > 0.05) this.heat(p, s, 0.25, a * k, 2.5);
+    };
     this.ribbons = new RibbonFx(scene); // 帶狀軌跡：刀光、地面的推進氣流帶（fx/trail.js）
     this.ghosts = new GhostFx(scene); // 殘影（render/ghost.js，只給玩家自己）
     this.view = null; // 粒子的距離分級（skip／far）：上一格鏡頭的視錐與位置
