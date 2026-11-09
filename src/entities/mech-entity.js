@@ -202,6 +202,7 @@ export class MechEntity {
     this.kitsMax = 3 + this.pmv('kits');
     this.kits = this.kitsMax;
     this.kitHeal = 0.4 + this.pmv('kitHeal');
+    this.gearSetup(); // 零件品級的詞條（mech-gear.js）
     this.dmgTaken = 0;
     this.smokeT = 0;
     this.iFrames = 0;
@@ -511,6 +512,7 @@ export class MechEntity {
   // 近戰訓練的判定事件（game/tutorial.js 的 tutEv）：只有教學中的玩家機體
   tutE(k, o) {
     const g = this.game;
+    if (this.gx) this.gearEv(k, o); // 零件品級的詞條（mech-gear.js）
     if (g.tut && this === g.player) g.tutEv(k, o);
     if (this.syEv) this.syEv(k, o); // 風格評價也用這些事件（mech-style.js）
   }
@@ -625,7 +627,7 @@ export class MechEntity {
         if (slot.endsWith('arm') && !w.dropped) this.dropWeapon(slot);
         return false;
       }
-      w.reloadT = d.reload;
+      w.reloadT = d.reload * this.gearRldK(slot); // 速裝（mech-gear.js）
       if (this.isPlayer) SFX.reloadStart(d.type === 'missile' || d.type === 'shell' || d.type === 'grenade');
       return false;
     }
@@ -683,6 +685,7 @@ export class MechEntity {
         (rb ? rb.spread : 1) *
         (pwfx ? pwfx.spread : 1) *
         (this.wpOff && this.wpOff.sen ? WP.SEN_SPREAD : 1) * // 感測器被打壞（mech-weak.js）
+        (this.gx ? this.gearSpreadK(distT) : 1) * // 遠距校正（mech-gear.js）
         airSp +
       (hmul > 1 ? 0.015 * (hmul - 1) * 4 : 0);
     // 彈道方向：從實際槍口指向瞄準點（不是從機體中心），手部與肩部武器落點都對準準星
@@ -693,13 +696,23 @@ export class MechEntity {
     const pwN = pwK === 'slug' ? d.pellets || 1 : 1; // 獨頭彈＝所有彈丸合成一發
     const arK = pilot && w.arN > 0 ? FEEL.AR_DMG : 1; // 主動裝填成功的彈匣（mech-feel.js）
     const lgK = usesAmmo(d) ? this.lgLastK(w, d) : 1; // 傳說模組「終彈強化」（mech-legend.js）
-    const dmg = d.dmg * this.dmgMul * dk * (rb ? rb.dmg : 1) * (pwfx ? pwfx.dmg * pwN : 1) * arK * lgK,
+    const gk = this.gx ? this.gearShotK(slot, w, d, distT, rb) : null; // 零件品級的詞條（mech-gear.js）
+    const dmg =
+        d.dmg *
+        this.dmgMul *
+        dk *
+        (rb ? rb.dmg : 1) *
+        (pwfx ? pwfx.dmg * pwN : 1) *
+        arK *
+        lgK *
+        (gk ? gk.d : 1),
       imp =
         d.impact *
         this.dmgMul *
         (rb ? rb.imp : 1) *
         (pwfx ? pwfx.imp * pwN : 1) *
-        (lgK > 1 ? this.lgLastK(w, d, true) : 1);
+        (lgK > 1 ? this.lgLastK(w, d, true) : 1) *
+        (gk ? gk.i : 1);
     const rbT = rb && rb.tags ? { rb: rb.tags } : null; // 投射物打中時顯示提示（projectile.js 的 rbHit）
     // 追尾視角／第一人稱的準星壓在鎖定目標的弱點上（game/weak.js 的 wpAimTick）：這一發算打在那個弱點
     const wpk = pilot && tgtOk && this.wpAim && this.wpAim.e === targetEnt ? this.wpAim.k : null;
@@ -932,8 +945,9 @@ export class MechEntity {
       case 'emp':
         {
           if (w.cd > 0) return false;
-          g.empPulse(this, d.radius, d.stun, d.color, d.id);
+          const nh = g.empPulse(this, d.radius, d.stun, d.color, d.id);
           w.cd = d.rof;
+          if (this.gx) this.gearEmp(slot, nh); // 連鎖脈衝、後撤脈衝（mech-gear.js）
           this.recoil.l = this.recoil.r = 0.5;
         }
         break;
@@ -1168,7 +1182,7 @@ export class MechEntity {
       w.ammo--;
       if (w.arN > 0) w.arN--;
       if (w.mag <= 0 && w.ammo > 0) {
-        w.reloadT = d.reload;
+        w.reloadT = d.reload * (this.gx ? this.gearRldK(slot) : 1);
         if (this.isPlayer)
           SFX.reloadStart(d.type === 'missile' || d.type === 'shell' || d.type === 'grenade');
       }
@@ -1950,6 +1964,7 @@ export class MechEntity {
   leadK(dist) {
     let k = leadOf(this.fcsAssist(dist));
     if (!this.pilotEnt()) k *= (this.isBoss ? 1.05 : 0.85) * clamp(this.aiSkill || 1, 0.5, 1.25);
+    if (this.gx) k = Math.min(1.1, k + this.gearLeadK(dist, this.lock)); // 近距離輔助、追擊預判（mech-gear.js）
     return k;
   }
   // 追蹤的目標速度：手臂的射擊適性越高，目標換方向時跟得越快（QB 能甩開低適性的預判）
@@ -1993,9 +2008,10 @@ export class MechEntity {
   // 多連導彈的發射數：火控的 lockSpeed 決定鎖滿全部需要的時間（1／lockSpeed 秒）；沒有目標時全部發射
   missileN(d, t) {
     const n = d.count || 1;
-    if (!t || t.dead || n <= 1) return n;
+    if (!t || t.dead || n <= 1) return n + (this.gx ? this.gearMissileN() : 0);
     const full = 1 / ((this.stats.parts.fcs && this.stats.parts.fcs.lockSpeed) || 1);
-    return clamp(Math.ceil((n * this.lockAge(t)) / full), 1, n);
+    const x = this.gx ? this.gearMissileN() : 0; // 多目標（mech-gear.js）
+    return clamp(Math.ceil(((n + x) * this.lockAge(t)) / full), 1, n + x);
   }
   takeDamage(dmg, impact, from, at, dir, melee, wid, attr) {
     if (this.dead) return;
@@ -2028,6 +2044,9 @@ export class MechEntity {
     // 固定砲台（game/devices-guns.js）：上砲台時砲台分擔一半；砲台打 Boss（本體與部位）×0.5
     if (this.devMount) dmg = this.game.gunAbsorb(this, dmg);
     if (from && from.devMount && (this.isBoss || this.ai === 'part')) dmg *= this.game.gunBossK();
+    // 零件品級的詞條（mech-gear.js）：攻擊者的加成、自己的減傷
+    if (from && from.gx && from !== this) [dmg, impact] = from.gearOutK(this, dmg, impact, wid, melee);
+    if (this.gx) [dmg, impact] = this.gearInK(from, dmg, impact);
     this.tutE('hurt', { melee: !!melee, shield: this.shield > 0 }); // 近戰訓練（game/tutorial.js）
     // DUELIST 格擋：未在連段中、未硬直、面向攻擊者時 55% 擋下近戰第 1 段並反擊
     if (
@@ -2510,7 +2529,8 @@ export class MechEntity {
       this.speedMul *
       (this.buffT > 0 ? 1.15 : 1) *
       this.waterK() *
-      (this.sts ? this.stsSpeedK() : 1); // 指揮官 MT 強化、水中、狀態效果
+      (this.sts ? this.stsSpeedK() : 1) * // 指揮官 MT 強化、水中、狀態效果
+      (this.gx ? this.gearSpdK() : 1); // 零件品級的詞條（mech-gear.js）
     this.t += dt;
     // AI 閃避衝擊波時按住跳躍（Game.updateShocks 設定）
     if (this.aiJumpT > 0) {
@@ -2644,12 +2664,17 @@ export class MechEntity {
     }
     if (this.iFrames > 0) this.iFrames -= dt;
     if (this.pm) this.lgTick(dt); // 傳說模組（mech-legend.js）
+    if (this.gx) this.gearTick(dt); // 零件品級的詞條（mech-gear.js）
     if (this.lastStandT > 0) this.lastStandT -= dt;
     if (this.enDelay > 0) this.enDelay -= dt;
     else
       this.en = Math.min(
         this.enMax,
-        this.en + P.generator.recharge * dt * (this.grounded ? 1.6 + this.pmv('gnd') : 1),
+        this.en +
+          P.generator.recharge *
+            dt *
+            (this.grounded ? 1.6 + this.pmv('gnd') : 1) *
+            (this.gx ? this.gearRchK() : 1),
       );
     // 空域的飛行（entities/mech-air.js）：推力、轉向、機動，姿勢與動作照下面的 poseTail
     if (this.air) {
@@ -2664,7 +2689,12 @@ export class MechEntity {
       wantQB &&
       this.qbT <= 0 &&
       qbAny &&
-      this.useEn(P.booster.qbCost * (this.sts ? this.stsQbK() : 1) * (this.pm ? this.lgQbK() : 1))
+      this.useEn(
+        P.booster.qbCost *
+          (this.sts ? this.stsQbK() : 1) *
+          (this.pm ? this.lgQbK() : 1) *
+          (this.gx ? this.gearQbK() : 1),
+      )
     ) {
       if (this.pm) this.lgQbStart(); // 傳說模組：殘影、電弧推進（mech-legend.js）
       this.qbT = 0.16;
@@ -2717,7 +2747,9 @@ export class MechEntity {
     let target = new THREE.Vector3();
     if (this.qbT > 0) {
       this.qbT -= dt;
-      target.copy(this.qbDir).multiplyScalar((P.booster.qb * this.dk) / DS);
+      target
+        .copy(this.qbDir)
+        .multiplyScalar((P.booster.qb * this.dk * (this.gx ? this.gearQbSpdK() : 1)) / DS);
       this.boost = true;
     } else if (this.abT > 0 && targetEnt) {
       this.abT -= dt;
@@ -3089,8 +3121,8 @@ export class MechEntity {
         if (this.isPlayer) g.rumble(0.12, 0.3, 70);
       } else if (J.canHover && (this.hoverMode || this.hoverEndT > 0)) {
         this.hoverMode = 2;
-      } else if (this.airJumps > 0 && this.en >= P.booster.qbCost * 0.7) {
-        this.en -= P.booster.qbCost * 0.7;
+      } else if (this.airJumps > 0 && this.en >= P.booster.qbCost * 0.7 * (this.gx ? this.gearAirJK() : 1)) {
+        this.en -= P.booster.qbCost * 0.7 * (this.gx ? this.gearAirJK() : 1);
         this.enDelay = P.generator.delay;
         const f = AIR_DECAY[Math.min(J.air - this.airJumps, AIR_DECAY.length - 1)];
         this.airJumps--;

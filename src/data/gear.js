@@ -112,8 +112,9 @@ export const AX = {
   asF: { n: '遠距離輔助', at: 'p', k: 'asF', r: [0.05, 0.1], abs: 1, kinds: ['fcs'] },
   lks: { n: '導彈鎖定速度', at: 'p', k: 'lks', r: [0.15, 0.3], kinds: ['fcs'] },
 };
-// 進階詞條（紫、金）的表由 data/gear-adv.js 登記進來（避免互相 import）
-export const ADV = {};
+// 進階詞條（紫、金）的表在 data/gear-adv.js
+import { ADV } from './gear-adv.js';
+export { ADV };
 export const axDef = (k) => AX[k] || ADV[k] || null;
 
 // 這個零件可以抽的數值詞條
@@ -132,6 +133,7 @@ export function rollAx(cat, p, adv, rng, except = [], star) {
   let v = D.r[0] + (D.r[1] - D.r[0]) * rng();
   const st = adv && (star || rng() < 0.1);
   if (st) v *= 1.5;
+  if (D.int) v = Math.round(v);
   return st ? [k, r3(v), 1] : [k, r3(v)];
 }
 // 產生一件裝備（o.enemy＝敵人身上的：隨機詞條只帶 1 條）
@@ -175,7 +177,8 @@ function sanitizeAx(ax, cat, p, q) {
     const D = axDef(k);
     const st = adv && a[2] ? 1 : 0;
     const hi = D.r[1] * (st ? 1.5 : 1);
-    const v = Math.max(D.r[0], Math.min(hi, Number(a[1]) || 0));
+    let v = Math.max(D.r[0], Math.min(hi, Number(a[1]) || 0));
+    if (D.int) v = Math.round(v);
     out.push(st ? [k, r3(v), 1] : [k, r3(v)]);
   }
   return out;
@@ -322,8 +325,36 @@ export function gearWeaponFx(g, p) {
   for (const [k, v] of g.ax || []) {
     const D = AX[k];
     if (D && D.at === 'w') f[D.k] = (f[D.k] || 0) + v;
+    // 進階詞條的固定效果（代價詞條：玻璃大砲、孤注一擲、過熱、血戰）
+    const A = g.q >= 3 && ADV[k];
+    if (A && A.wfx) {
+      const o = A.wfx(v);
+      for (const x in o) f[x] = (f[x] || 0) + o[x];
+    }
   }
   return f;
+}
+// 整台的進階詞條的固定效果（重甲、輕裝、暴衝、高壓、狙擊模式）：同名的取最大（不疊加）→ { m 加成表, p 零件 }
+export function gearAdvStatic(gr, P) {
+  const best = {};
+  for (const k in gr || {}) {
+    const g = gr[k];
+    if (!g || g.q < 3 || (P && (!P[k] || P[k].id !== g.id))) continue;
+    for (const [x, v] of g.ax || []) {
+      const A = ADV[x];
+      if (A && (A.mfx || A.pfx) && !(best[x] >= v)) best[x] = v;
+    }
+  }
+  const m = {},
+    p = {};
+  for (const x in best) {
+    const A = ADV[x];
+    const mo = A.mfx ? A.mfx(best[x]) : {},
+      po = A.pfx ? A.pfx(best[x]) : {};
+    for (const y in mo) m[y] = (m[y] || 0) + mo[y];
+    for (const y in po) p[y] = (p[y] || 0) + po[y];
+  }
+  return { m, p };
 }
 // 機體零件（與盾的整台詞條）：{ m 整台的增量, p 零件自己的增量 }
 export function gearFrameFx(g, cat) {

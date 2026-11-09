@@ -117,6 +117,7 @@ Object.assign(MechEntity.prototype, {
     else if (from.slot !== undefined && g.net && g.net.role === 'host')
       g.netEv({ t: 'fb', s: from.slot, k: 'crit' });
     if (from.syEvent) from.syEvent('crit'); // 風格評價
+    if (from.gx) from.gearEv('crit', {}); // 速裝（mech-gear.js）
     if (g.tut && from.tutE)
       from.tutE('crit', { tgt: this, k: hit ? hit.k : null, aim: !!(hit && hit.k === this.wpAimK), open }); // 遠程訓練
     if (hit) {

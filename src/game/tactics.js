@@ -36,6 +36,7 @@ Object.assign(Game.prototype, {
   // 改變打法的模組：擊破時（mission.js 的 onEnemyKilled，房主／單機）
   modKillFx(e, from) {
     from.lgKill(e); // 傳說模組：連鎖引爆、追擊推進（entities/mech-legend.js）
+    if (from.gx) from.gearKill(e); // 零件品級的詞條（entities/mech-gear.js）
     const kb = from.pmv('killBlast');
     if (kb > 0) {
       // 連鎖殉爆：爆炸再擊破的敵人也會爆炸

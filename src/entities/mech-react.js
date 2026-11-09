@@ -35,6 +35,7 @@ Object.assign(MechEntity.prototype, {
     g.fx.shockwave(c, 4 * this.dk, parseInt(r.color.slice(1), 16), 0.35);
     if (from.syAdd) from.syAdd('rx:' + r.id, 30, r.name); // 風格評價
     if (g.tut && from.tutE) from.tutE('rx', { id: r.id, tgt: this }); // 遠程訓練
+    if (from.gx) from.gearEv('rx', {}); // 催化（mech-gear.js）
     if (from.isPlayer) SFX.reaction(r.id);
     else if (from.slot !== undefined && g.net && g.net.role === 'host')
       g.netEv({ t: 'fb', s: from.slot, k: 'rx', r: r.id });

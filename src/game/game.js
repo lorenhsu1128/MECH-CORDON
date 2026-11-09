@@ -245,6 +245,7 @@ export class Game {
         }
         const s = stun * (t.isBoss ? 0.4 : 1);
         t.staggerT = Math.max(t.staggerT, s);
+        t.gEmpUntil = this.time + s; // 零件品級的「電擊」（mech-gear.js）
         this.fx.arc(t.center(), 1.6, color || 0x9fe0ff);
         chain.push(t);
         t.acs = t.acsMax;
@@ -268,6 +269,7 @@ export class Game {
     }
     this.boltChain(c, chain, color || 0x9fe0ff);
     if (src.isPlayer) this.flashMsg(n ? `電磁脈衝 — ${n} 台敵機硬直` : '電磁脈衝 — 未命中', 0x80c8ff, 1.4);
+    return n;
   }
   // 準星所指的世界點：沿鏡頭射線步進，碰到地形／障礙物就停；沒碰到就取 120 m 處。光束武器一律以此為瞄準點
   reticlePoint(p) {

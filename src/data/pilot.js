@@ -2,7 +2,16 @@
 import { PARTS, REMOVED_PARTS, usesAmmo } from './parts.js';
 import { tuneFx, tuneGroup } from './tune.js';
 import { defCut } from './attrs.js';
-import { GEAR_CAT, gearFrameFx, gearGr, gearPart, gearResolve, gearWeaponFx, sanitizeGr } from './gear.js';
+import {
+  GEAR_CAT,
+  gearAdvStatic,
+  gearFrameFx,
+  gearGr,
+  gearPart,
+  gearResolve,
+  gearWeaponFx,
+  sanitizeGr,
+} from './gear.js';
 import {
   PILOT_MAX_LEVEL,
   PRESET_MAX,
@@ -326,6 +335,19 @@ function gearStatFx(P, gr) {
       for (let i = 0; i < 3; i++) as[i] = Math.min(1, as[i] * (1 + q) + add[i]);
       o.fcs = { assist: as, lockSpeed: (part.lockSpeed || 1) * (1 + (F.p.lks || 0)) };
     }
+  }
+  // 進階詞條的固定效果（同名取最大）
+  const A = gearAdvStatic(gr, P);
+  for (const x in A.m) o.m[x] = (o.m[x] || 0) + A.m[x];
+  if (A.p.asN || A.p.asF) {
+    const f = o.fcs || {
+      assist: (P.fcs.assist || [0.6, 0.6, 0.45]).slice(),
+      lockSpeed: P.fcs.lockSpeed || 1,
+    };
+    f.assist = f.assist.map((v, i) =>
+      Math.max(0, Math.min(1, v + (i === 0 ? A.p.asN || 0 : i === 2 ? A.p.asF || 0 : 0))),
+    );
+    o.fcs = f;
   }
   return o;
 }

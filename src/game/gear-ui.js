@@ -5,6 +5,7 @@ import { escHtml } from '../core/html.js';
 import { SLOTS, partById } from '../data/parts.js';
 import { MATS } from '../data/tune.js';
 import {
+  ADV,
   DISMANTLE,
   GEAR_CAT,
   GRADES,
@@ -64,13 +65,51 @@ Object.assign(Game.prototype, {
     if (key && this.save.asm[key] === id) return pick[key] || null;
     return this.gearForId(id);
   },
+  // 詞條不生效的原因（空字串＝有效）：PvP、被另一件的同名詞條蓋過、這台機甲用不到
+  gearAxNa(g, a) {
+    if (this.pilotCtxMode && this.pilotCtxMode() === 'pvp') return 'PvP 不套用';
+    const A = ADV[a[0]];
+    if (!A || g.q < 3) return '';
+    const S = this.save;
+    const pick = this.gearNow();
+    const mine = Object.keys(pick).find((k) => pick[k] && pick[k].u === g.u);
+    if (!mine) return '';
+    // 整台的詞條：同名取最強
+    if (A.sc === 'g')
+      for (const k in pick) {
+        const o = pick[k];
+        if (!o || o.u === g.u || o.q < 3) continue;
+        const b = o.ax.find((x) => x[0] === a[0]);
+        if (b && (b[1] > a[1] || (b[1] === a[1] && k < mine)))
+          return `被${gearPart(o.id).name}的同名詞條蓋過`;
+      }
+    // 同類專精：沒有裝備那一類的武器
+    const SPT = {
+      fSpK: ['bullet'],
+      fSpS: ['shotgun'],
+      fSpX: ['shell', 'grenade'],
+      fSpM: ['missile'],
+      fSpL: ['laser', 'empbeam'],
+      fSpMe: ['melee'],
+    };
+    if (SPT[a[0]]) {
+      const ok = ['rarm', 'larm', 'rback', 'lback'].some((s) => {
+        const p = gearPart(S.asm[s]);
+        if (!p) return false;
+        const t = p.type === 'shotgun' && p.attr === 'en' ? 'laser' : p.type;
+        return SPT[a[0]].includes(t);
+      });
+      if (!ok) return '沒有裝備這一類的武器';
+    }
+    return '';
+  },
   // 這一件的品級、主要數值、詞條（小卡片、背包頁共用）
   gearLinesHtml(g) {
     if (!g || (!g.q && !g.ax.length)) return '';
     const main = mainText(g.id, g.q);
     const ax = g.ax
       .map((a) => {
-        const na = this.gearAxNa ? this.gearAxNa(g, a) : '';
+        const na = this.gearAxNa(g, a);
         return `<div class="gAx${a[2] ? ' star' : ''}${na ? ' na' : ''}"${na ? ` title="${escHtml(na)}"` : ''}>◆ ${escHtml(axText(a))}${na ? `<small>（${escHtml(na)}）</small>` : ''}</div>`;
       })
       .join('');

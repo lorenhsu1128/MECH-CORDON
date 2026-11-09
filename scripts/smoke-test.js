@@ -15973,6 +15973,103 @@ async function testGear(browser, base) {
   check(f.asc, '改良升階成精製：多一條詞條、扣 9,000 COAM');
   check(f.lines === 2 && f.opts === 2 && f.rr, '重骰：選一條、兩個候選，換掉選的那一條（另一條不變）');
   check(f.locked && f.cost2, '重骰過的只能重骰同一條、第二次 ×1.5（3,000 COAM）');
+  // 第 5 期：進階詞條（紫、金）——固定效果、觸發型、同名不疊加、敵人只用敵人可用的、不生效的標示
+  const v = await page.evaluate(() => {
+    const g = window.__game;
+    const G = window.__gear;
+    const S = g.save;
+    const out = {};
+    S.inv = [];
+    S.eq = {};
+    S.level = 2;
+    g.startMission();
+    const hp0 = g.player.maxHp;
+    const rid = S.asm.rarm;
+    S.inv.push({
+      u: 'p1',
+      id: rid,
+      q: 3,
+      ax: [
+        ['aNear', 0.15],
+        ['aGlass', 0.3],
+      ],
+    });
+    S.inv.push({
+      u: 'p2',
+      id: S.asm.core,
+      q: 3,
+      ax: [
+        ['fHeavy', 0.25],
+        ['fLast', 0.2],
+      ],
+    });
+    S.inv.push({
+      u: 'p3',
+      id: S.asm.arms,
+      q: 3,
+      ax: [
+        ['fHeavy', 0.2],
+        ['fExe', 0.15],
+      ],
+    });
+    g.startMission();
+    g.state = 'play';
+    const p = g.player;
+    const w = p.weapons.rarm;
+    out.gx = !!p.gx && p.gxW.rarm && p.gxW.rarm.aNear === 0.15 && p.gx.fHeavy === 0.25;
+    out.dmgK = w.def.dmg / 110; // 特製 +12%＋玻璃大砲 +30%
+    out.apK = p.maxHp / hp0; // 核心、手臂的品級＋重甲（取最大的 25%）
+    out.near = [
+      p.gearShotK('rarm', w, w.def, 10 * p.dk, null).d,
+      p.gearShotK('rarm', w, w.def, 50 * p.dk, null).d,
+    ];
+    out.inK = p.gearInK({ team: 'enemy' }, 100, 100)[0];
+    const e = g.spawnType('ac', 1, 1, p.pos.clone().add(new THREE.Vector3(30, 0, 0)), 1);
+    e.updateAI = () => {};
+    e.hp = e.maxHp * 0.2;
+    out.exe = p.gearOutK(e, 100, 100, rid, null)[0];
+    p.hp = p.maxHp * 0.2;
+    out.last = p.gearShotK('rarm', w, w.def, 50 * p.dk, null).d;
+    // 敵人：只有 1 條、玩家才觸發得到的不生效
+    out.enemyAx = G.rollGear('w_rifle', 4, Math.random, { enemy: true }).ax.length === 1;
+    e.pm = {
+      gr: {
+        rarm: {
+          id: e.asm.rarm,
+          q: 3,
+          ax: [
+            ['aFast', 0.4],
+            ['aNear', 0.1],
+          ],
+        },
+      },
+    };
+    e.gearSetup();
+    out.enemyF = !!e.gxW.rarm && !e.gxW.rarm.aFast && e.gxW.rarm.aNear === 0.1;
+    // 紫色：2 條進階詞條
+    const r = G.rollGear('w_rifle', 3, Math.random);
+    out.purple = r.ax.length === 2 && r.ax.every((a) => G.ADV[a[0]]);
+    // 不生效的標示：手臂的重甲被核心的蓋過
+    g.state = 'title';
+    out.na = g.gearAxNa(S.inv[2], S.inv[2].ax[0]);
+    out.naCore = g.gearAxNa(S.inv[1], S.inv[1].ax[0]);
+    S.inv = [];
+    S.eq = {};
+    return out;
+  });
+  check(
+    v.gx && Math.abs(v.dmgK - 1.42) < 0.01,
+    `武器的進階詞條：玻璃大砲的固定效果（傷害 ×${v.dmgK.toFixed(3)}）`,
+  );
+  check(Math.abs(v.apK - 1.328) < 0.01, `整台的同名詞條取最大（重甲 25%）＋品級：AP ×${v.apK.toFixed(3)}`);
+  check(
+    Math.abs(v.near[0] - 1.15) < 1e-6 && v.near[1] === 1 && Math.abs(v.inK - 115) < 1e-6,
+    `觸發型：近身爆發（${v.near}）、玻璃大砲的代價（受傷 ${v.inK}）`,
+  );
+  check(Math.abs(v.exe - 115) < 1e-6 && Math.abs(v.last - 1.2) < 1e-6, `處刑（${v.exe}）、背水（${v.last}）`);
+  check(v.enemyAx && v.enemyF, '敵人身上：隨機詞條 1 條、玩家才觸發得到的不生效');
+  check(v.purple, '特製：2 條進階詞條');
+  check(/蓋過/.test(v.na) && !v.naCore, `同名詞條被蓋過的標示（${v.na}）`);
   await ctx.close();
 }
 
