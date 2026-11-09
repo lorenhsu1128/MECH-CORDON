@@ -176,6 +176,7 @@ Object.assign(Game.prototype, {
       );
     }
     this.flashMsg(`${ent ? ent.name + ' ' : ''}打開補給箱：${txt}`, d.color, 2);
+    this.gearCache(c); // 零件品級：補給箱有機率放一件裝備（gear-loot.js）
   },
   cacheCoam(v) {
     this.save.coam += v;

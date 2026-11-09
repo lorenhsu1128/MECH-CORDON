@@ -99,13 +99,7 @@ Object.assign(Game.prototype, {
     const job = B && B.jobs.find((j) => j.id === id);
     if (!job || !success || c.replay) return;
     for (const k in job.mats) if (job.mats[k]) this.lootMat(k, job.mats[k]);
-    if (Math.random() < job.part) {
-      const ids = Object.values(job.asm || this.save.asm).filter(Boolean);
-      // 委託方準備的零件：借用機體的、或隨機一個還沒擁有的
-      const pool = (this.lootPartPool ? this.lootPartPool() : []).filter((x) => !this.save.owned.includes(x));
-      const pid = pool.length ? pool[Math.floor(Math.random() * pool.length)] : ids[0];
-      if (pid) this.lootPart(pid);
-    }
+    this.gearReward('委託報酬'); // 零件品級：一件至少改良的裝備（gear-loot.js）
     B.jobs = B.jobs.filter((j) => j !== job);
     this.writeSave();
   },

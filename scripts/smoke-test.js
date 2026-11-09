@@ -15844,6 +15844,82 @@ async function testGear(browser, base) {
   check(r.full, '背包滿了不能再加');
   check(r.san === '[["dmg",0.15]]', `整理詞條：不認得的拿掉、數值限制在範圍、超過條數的不收（${r.san}）`);
   await page.screenshot({ path: path.join(SHOT_DIR, 'gear-inv.png') });
+  // 第 3 期：掉落——敵對 AC 身上的零件、地上的光柱、背包滿了撿不起來、離開地圖時自動撿起、結果的列
+  const d = await page.evaluate(() => {
+    const g = window.__game;
+    const G = window.__gear;
+    const S = g.save;
+    const out = {};
+    S.inv = [];
+    S.eq = {};
+    S.level = 9; // 第 5 章以上：敵人身上的零件是精製～特製
+    g.startMission();
+    g.lootReset();
+    g.state = 'play'; // 主迴圈已停住（freezeLoop）
+    const p = g.player;
+    p.hp = p.maxHp = 1e7;
+    const e = g.spawnType('ac', 1, 1, p.pos.clone().add(new THREE.Vector3(30, 0, 0)), 1);
+    e.updateAI = () => {};
+    const gr = (e.pm && e.pm.gr) || {};
+    const qs = Object.values(gr).map((x) => x.q);
+    out.enemyQ = qs;
+    out.enemyAx = Object.values(gr).every((x) => x.ax.length <= 1);
+    out.weap = e.weapons.rarm.def.dmg !== undefined;
+    // 地上的裝備：品級的光柱，走過去撿起
+    g.gearGive('w_lr', 2, p.pos.clone().add(new THREE.Vector3(12, 0, 0)));
+    out.drops = (g.gearDrops || []).length;
+    out.beam = !!(g.gearDrops[0] && g.gearDrops[0].grp.parent);
+    p.pos.copy(g.gearDrops[0].pos);
+    g.gearDropsTick(0.1);
+    out.got =
+      S.inv.length === 1 && S.inv[0].id === 'w_lr' && S.inv[0].q === 2 && (g.gearDrops || []).length === 0;
+    // 背包滿了：撿不起來、提示，光柱留在地上
+    for (let i = 0; i < G.INV_MAX; i++) S.inv.push(G.rollGear('w_lc', 1, Math.random));
+    g.gearGive('w_lsg', 1, p.pos.clone().add(new THREE.Vector3(10, 0, 0)));
+    p.pos.copy(g.gearDrops[0].pos);
+    g.msgLog = [];
+    const fm = g.flashMsg.bind(g);
+    let warn = '';
+    g.flashMsg = (t, ...a) => {
+      warn += t;
+      return fm(t, ...a);
+    };
+    g.gearDropsTick(0.1);
+    g.flashMsg = fm;
+    out.fullWarn = /背包已滿/.test(warn) && g.gearDrops.length === 1;
+    // 清出空間後離開地圖：自動撿起
+    S.inv = S.inv.slice(0, 5);
+    g.clearMission();
+    out.flush = S.inv.some((x) => x.id === 'w_lsg') && !(g.gearDrops || []).length;
+    out.rows = g
+      .lootRows()
+      .map((x) => x.join('：'))
+      .join('／');
+    // 標準版：沒擁有的解鎖、擁有的換成合金
+    const a0 = (S.mats && S.mats.alloy) || 0;
+    const nid = ['w_lr', 'w_pile', 'w_claw', 'w_lc'].find((x) => !S.owned.includes(x));
+    g.gearGet(G.rollGear(nid, 0, Math.random));
+    out.unlock = S.owned.includes(nid);
+    g.gearGet(G.rollGear(nid, 0, Math.random));
+    out.alloy = S.mats.alloy - a0;
+    // 敵人的品級範圍、Boss 的掉落表、委託板與出口的獎勵
+    out.range = [g.gearCh(), JSON.stringify(window.__gearLoot ? 1 : 0)];
+    S.inv = [];
+    g.gearReward('測試');
+    out.reward = S.inv.length === 1 && S.inv[0].q >= 1;
+    S.inv = [];
+    g.state = 'title';
+    return out;
+  });
+  check(
+    d.enemyQ.length > 0 && d.enemyQ.every((q) => q >= 2 && q <= 3) && d.enemyAx,
+    `敵對 AC 身上的零件帶品級（第 5 章以後精製～特製：${d.enemyQ}）、隨機詞條最多 1 條`,
+  );
+  check(d.drops === 1 && d.beam && d.got, '單人：裝備掉在地上（品級顏色的光柱），走過去撿起');
+  check(d.fullWarn, '背包滿了撿不起來、提示，裝備留在地上');
+  check(d.flush && /取得裝備/.test(d.rows), `離開地圖時沒撿的自動撿起、結果畫面列出（${d.rows}）`);
+  check(d.unlock && d.alloy === 1, '標準版：沒擁有的零件解鎖、已擁有的換成合金');
+  check(d.reward, '委託板與出口的「裝備」獎勵：一件至少改良');
   await ctx.close();
 }
 
@@ -15903,9 +15979,9 @@ async function testLoot(browser, base) {
     const nid = PARTS_ARM.find((id) => !S.owned.includes(id));
     g.lootPart(nid);
     out.part = S.owned.includes(nid);
-    const ci0 = S.mats.circuit || 0;
+    const ci0 = S.mats.alloy || 0;
     g.lootPart(nid);
-    out.dup = (S.mats.circuit || 0) - ci0;
+    out.dup = (S.mats.alloy || 0) - ci0;
     out.rows = g.lootRows().map((x) => x.join('：'));
     g.state = 'play';
     return { ...out, nid };
@@ -15924,7 +16000,7 @@ async function testLoot(browser, base) {
     r.drops.includes('mat_alloy') && r.alloy >= 1,
     `擊破敵對 AC 掉素材（${r.drops.join('、')}）、撿到入帳`,
   );
-  check(r.part && r.dup === 2, `掉落零件：取得 ${r.nid}，已擁有的換成電子零件 ×2`);
+  check(r.part && r.dup === 1, `掉落零件（標準版）：取得 ${r.nid}，已擁有的換成合金 ×1`);
   check(
     r.rows.some((x) => /素材/.test(x)) && r.rows.some((x) => /取得零件/.test(x)),
     '結果畫面列出：' + r.rows.join('／'),

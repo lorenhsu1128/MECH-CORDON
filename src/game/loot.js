@@ -5,6 +5,7 @@ import { SFX } from '../audio/audio.js';
 import { escHtml } from '../core/html.js';
 import { PARTS, partById } from '../data/parts.js';
 import { DROP, MATS, MAT_KEYS } from '../data/tune.js';
+import { GRADES } from '../data/gear.js';
 import { Game } from './game.js';
 
 // 零件 id → 分類（只取可以購買的零件）
@@ -15,7 +16,7 @@ for (const cat of ['head', 'core', 'arms', 'legs', 'booster', 'generator', 'fcs'
 Object.assign(Game.prototype, {
   // 出擊開始（startMission、campBegin）
   lootReset() {
-    this.lootRun = { mats: {}, parts: [] };
+    this.lootRun = { mats: {}, parts: [], gear: [], lost: 0 };
   },
   lootOn() {
     return !(this.pvp || this.lv || this.tut || this.lab || this.range || this.sim || this.cine);
@@ -52,15 +53,8 @@ Object.assign(Game.prototype, {
         this.spawnPickup('mat_' + k, new THREE.Vector3(x, W.groundAt(x, z, c.y + 2) + 0.6, z));
       });
     }
-    // 零件：具名 AC、宿敵、Boss、大型兵器（它裝備的、還沒擁有的）
-    if ((ace || big) && e.asm && Math.random() < (e.nemesis ? 1 : DROP.part)) {
-      const ids = Object.values(e.asm).filter((id) => PART_CAT.has(id));
-      const id = ids[Math.floor(Math.random() * ids.length)];
-      if (id) {
-        this.lootPart(id);
-        if (this.net && this.net.role === 'host') this.netEv({ t: 'lootPart', id });
-      }
-    }
+    // 零件品級的掉落：敵人身上的那一件、Boss 的掉落表、一般敵人低機率（gear-loot.js）
+    this.gearKilled(e, ace, big);
   },
   // 得到素材（撿到的是自己的機體時）
   lootMat(k, n = 1) {
@@ -71,22 +65,10 @@ Object.assign(Game.prototype, {
     if (this.lootRun) this.lootRun.mats[k] = (this.lootRun.mats[k] || 0) + n;
     this.writeSave();
   },
-  // 得到零件（已擁有的換成素材）
-  lootPart(id) {
-    const S = this.save,
-      cat = PART_CAT.get(id);
-    if (!cat) return;
-    const p = partById(cat, id);
-    if (S.owned.includes(id)) {
-      this.lootMat('circuit', 2);
-      this.flashMsg(`戰利品：${p.name}（已擁有，換成電子零件 ×2）`, 0x7fc8ff, 2.2);
-      return;
-    }
-    S.owned.push(id);
-    if (this.lootRun) this.lootRun.parts.push(id);
-    this.writeSave();
-    SFX.cue('pickup');
-    this.flashMsg(`戰利品：取得零件「${p.name}」`, 0xffd060, 2.8, { k: 'good', m: '取得零件', s: p.name });
+  // 得到零件（零件品級：q＝品級，標準版＝解鎖或換成合金；gear-loot.js 的 gearGive 直接入帳）
+  lootPart(id, q = 0) {
+    if (!PART_CAT.has(id)) return;
+    this.gearGive(id, q, null);
   },
   // 撿到素材的掉落物（collectPickup）：k＝mat_<種類>；客機的由 pkGot 事件入帳
   lootPickup(pk, ent) {
@@ -105,6 +87,13 @@ Object.assign(Game.prototype, {
     if (m.length) rows.push(['素材', m.join('、')]);
     if (L.parts.length)
       rows.push(['取得零件', L.parts.map((id) => partById(PART_CAT.get(id), id).name).join('、')]);
+    // 零件品級（gear-loot.js）
+    if (L.gear && L.gear.length)
+      rows.push([
+        '取得裝備',
+        L.gear.map((x) => `${GRADES[x.q].n}・${partById(PART_CAT.get(x.id) || 'arm', x.id).name}`).join('、'),
+      ]);
+    if (L.lost) rows.push(['背包已滿', `${L.lost} 件沒有撿到`]);
     return rows;
   },
   // 素材的持有（機甲庫的調校畫面用）

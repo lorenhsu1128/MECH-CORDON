@@ -195,6 +195,7 @@ Object.assign(Game.prototype, {
       }
     }
     this.pickups = this.pickups.filter((p) => !p.dead);
+    if (isHost) this.gearDropsTick(dt); // 地上的裝備（gear-loot.js，只有單人）
   },
   // 客機：從快照／事件同步車輛與物件
   clientMapEvent(e) {
@@ -261,10 +262,8 @@ Object.assign(Game.prototype, {
         if (p) p.remove();
         return true;
       }
-      case 'lootPart': {
-        this.lootPart(e.id); // 掉落的零件：每位玩家各自得到（loot.js）
-        return true;
-      }
+      case 'gear':
+        return this.gearNetEvent(e); // 零件品級的掉落：每位玩家各自得到（gear-loot.js）
       case 'pkGot': {
         if (e.slot === this.net.me && e.k.startsWith('mat_')) {
           this.lootMat(e.k.slice(4), 1); // 素材（loot.js）

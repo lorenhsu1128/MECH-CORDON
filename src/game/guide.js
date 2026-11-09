@@ -40,6 +40,7 @@ Object.assign(Game.prototype, {
         : `${R.icon} 資金`;
     if (reward === 'xp') return L ? `${R.icon} 經驗 +${120 + L * 30}` : `${R.icon} 經驗`;
     if (reward === 'repair') return `${R.icon} 修理：AP＋35%・彈藥＋35%`;
+    if (reward === 'gear') return `${R.icon} 裝備：至少「改良」的零件`;
     const F = FACTIONS[R.faction];
     return `${R.icon} ${R.name}（${F ? F.style : ''}）`;
   },

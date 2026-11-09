@@ -785,6 +785,7 @@ Object.assign(Game.prototype, {
     o.palKey = o.pal;
     if (!o.res && o.isBoss && this.spawnRes) o.res = this.spawnRes; // Boss 的弱點（spawnBossDef）
     if (o.isBoss && this.spawnTier && o.tier === undefined) o.tier = this.spawnTier; // Boss 改版的刁鑽度
+    this.gearEnemy(o); // 敵對 AC 身上的零件帶品級與詞條（gear-loot.js）
     const e = new MechEntity(this, o.asm, PALETTES[o.pal], o);
     if (o.hpAbs) e.maxHp = e.hp = Math.round(o.hpAbs); // 指定的血量（Boss 改版的部位：Boss 的比例）
     // 增援波次：在預告的地點附近（空降的從上空落下）
@@ -985,6 +986,7 @@ Object.assign(Game.prototype, {
     }, 2600);
   },
   clearMission() {
+    this.gearDropsFlush(); // 地上沒撿的裝備自動撿起（gear-loot.js）
     this.airEnd(); // 空域（game/air.js）
     this.afLeaders = []; // 詞綴的指揮（game/affix.js）
     this.lavaTold = false; // 熔岩的提示（lava.js）

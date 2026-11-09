@@ -10,6 +10,7 @@ import { PW, PW_FX } from '../data/charge.js';
 import { FEEL } from '../data/feel.js';
 import { PICKUP_DEFS } from '../world/map-extras.js';
 import { ENC_MARK_MIN } from './constants.js';
+import { GRADES } from '../data/gear.js';
 import { Game } from './game.js';
 
 const ZONE_WARN = 14; // ×DS：離作戰區域的邊界這麼近時畫面邊緣發光（hud.js 的 zoneEdgeHud）
@@ -497,6 +498,7 @@ Object.assign(Game.prototype, {
       c.fillStyle = '#' + d.color.toString(16).padStart(6, '0');
       c.fillText(d.name + (pk.life < 10 ? ` ${Math.ceil(pk.life)}s` : ''), s.x, s.y - 26);
     }
+    this.gearDropsHud(c); // 地上的裝備（gear-loot.js）
     if (this.bosses && this.bosses.length) {
       const hp = this.bosses.reduce((a, b) => a + Math.max(0, b.hp), 0),
         mx = this.bosses.reduce((a, b) => a + b.maxHp, 0);
@@ -875,6 +877,13 @@ Object.assign(Game.prototype, {
         c.font = 'bold 13px Chakra Petch';
         c.textAlign = 'left';
         c.fillText(e.name + '  ' + Math.round(e.pos.distanceTo(p.pos)) + 'm', cs.x + bx + 8, cs.y - bx + 12);
+        // 零件品級：身上最高的品級（gear-loot.js）
+        const gq = this.gearMaxQ(e);
+        if (gq) {
+          c.fillStyle = GRADES[gq].c;
+          c.font = 'bold 11px Chakra Petch';
+          c.fillText('◆ ' + GRADES[gq].n + '裝備', cs.x + bx + 8, cs.y - bx + 27);
+        }
         c.restore();
       }
     }

@@ -136,6 +136,12 @@ export const EXIT_REWARDS = {
   coam: { name: '資金', icon: '¥', color: '#ffc040', desc: 'COAM 報酬' },
   repair: { name: '修理', icon: '✚', color: '#7ee081', desc: '回復 AP 35%、補給彈藥 35%' },
   xp: { name: '經驗', icon: '★', color: '#7fc8ff', desc: '駕駛員經驗' },
+  gear: {
+    name: '裝備',
+    icon: '▲',
+    color: '#b77bff',
+    desc: '一件至少「改良」的零件（docs/gear-rarity-design.md）',
+  },
   // 戰術模組（data/modules.js）：清除後從該委託方的模組三選一
   mod_castron: {
     name: '卡斯特隆模組',

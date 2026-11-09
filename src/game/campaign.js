@@ -710,6 +710,8 @@ Object.assign(Game.prototype, {
         this.fx.ring(q.center(), 5, 0x7ee081);
       }
       this.flashMsg('出口獎勵：修理與補給', 0x7ee081, 2);
+    } else if (k === 'gear') {
+      this.gearReward('出口獎勵'); // 零件品級（gear-loot.js）：多人時每位玩家各自一件
     } else if (k === 'xp') {
       const v = 120 + L * 30;
       this.camp.xpBonus += v;
