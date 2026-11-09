@@ -23,6 +23,7 @@ import { SHARED_GEO, gBox, gCyl, isOutline } from '../render/geometry.js';
 import { PALETTES } from '../render/materials.js';
 import { animateMech, buildMech } from '../render/mech-model.js';
 import { Game } from './game.js';
+import { HOVER_T } from './constants.js';
 import { MB } from '../core/scale.js';
 
 const POSE = { pose: 'garage', moving: false, grounded: true, hover: false, boost: false, aimPitch: 0 };
@@ -366,7 +367,7 @@ Object.assign(Game.prototype, {
     }
     if (!key || hg.prev || hg.swap || this.hangarFx() === 'off') return;
     hg.hoverT += dt;
-    if (hg.hoverT < 0.12) return;
+    if (hg.hoverT < HOVER_T) return;
     this.hangarPreviewBuild(this.garageSlot, pid);
   },
   hangarPreviewBuild(slot, pid) {

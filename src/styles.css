@@ -6936,16 +6936,58 @@ body.vpad #subBar {
 .foNote {
   font-size: 13px;
 }
+/* 作戰卡：出擊鍵正上方、同寬（docs/free-sortie-design.md） */
 #gOps {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  flex-wrap: wrap;
+  width: min(300px, 44vw);
 }
-#gOps b {
-  flex: 1;
+#gActions .gMain > #btnSortie {
+  min-width: min(300px, 44vw);
+}
+#btnFreeOps {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  text-align: left;
+  background: var(--gGlass);
+  border: 1px solid rgba(255, 176, 32, 0.45);
+  border-left: 4px solid var(--acc);
+  letter-spacing: 0;
+}
+#btnFreeOps:hover,
+#btnFreeOps.padFocus {
+  background: rgba(255, 176, 32, 0.14);
+  border-color: var(--acc);
+}
+.gOpsK {
+  font-size: 11px;
+  color: var(--acc);
+  writing-mode: vertical-rl;
+  letter-spacing: 0.2em;
+}
+.gOpsT {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   min-width: 0;
+}
+.gOpsT b {
+  font-size: 15px;
+  color: #fff;
+}
+.gOpsT small {
+  font-size: 12px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gOpsE {
+  font-size: 12px;
+  color: var(--acc);
+  white-space: nowrap;
 }
 @media (max-height: 540px) {
   .foCols {
@@ -6954,4 +6996,11 @@ body.vpad #subBar {
   #foBody {
     max-height: none;
   }
+}
+#gTip .tPin {
+  margin-left: auto;
+  padding: 0 4px;
+  font-size: 12px;
+  background: none;
+  border: none;
 }

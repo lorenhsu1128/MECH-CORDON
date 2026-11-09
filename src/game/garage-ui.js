@@ -12,6 +12,7 @@ import { escHtml } from '../core/html.js';
 import { partIcon, slotIcon } from '../render/garage-icons.js';
 import { hasThumb, renderThumb, thumbCached, thumbKey } from '../render/part-thumbs.js';
 import { Game } from './game.js';
+import { HOVER_T } from './constants.js';
 
 const WING_L = ['rarm', 'larm', 'rback', 'lback', 'c1', 'c2'];
 const WING_R = ['head', 'core', 'arms', 'legs', 'booster', 'generator', 'fcs'];
@@ -63,6 +64,7 @@ Object.assign(Game.prototype, {
           this.gFlyOpen = true;
         }
         this.gTipPid = null;
+        this.gTipPin = null; // 換部位：解除小卡片的釘選
         SFX.ui();
         this.renderGarage();
       };
@@ -101,10 +103,19 @@ Object.assign(Game.prototype, {
       const dl = eq ? 0 : this.garageTileDelta(key, cat, p);
       const arrow = dl ? `<i class="${dl > 0 ? 'dUp' : 'dDn'}">${dl > 0 ? '▲' : '▼'}</i>` : '';
       d.innerHTML = `<span class="gThumb" data-thumb="${key}:${p.id}">${partIcon(cat, p)}</span><span class="pM">${escHtml(model(p))}</span>${badge}${arrow}<span class="srOnly">${escHtml(p.name)} ${this.garageSpecText(cat, p)}</span>`;
-      d.title = p.name;
-      d.onpointerenter = () => this.garageHover(p.id);
-      d.onfocus = () => this.garageHover(p.id);
+      // 已擁有、可以調校的零件：右鍵（觸控長按）、手把 X 直接開調校（tune-ui.js）
+      const tun = owned && cat !== 'consumable' && tuneGroup(cat, p);
+      d.title = p.name + (tun ? '（右鍵：調校）' : '');
+      // 游標停留 HOVER_T 秒才換小卡片（garageUiTick）：往下移到小卡片的途中掠過的格子不算
+      d.onfocus = () => !d.matches(':hover') && this.garageHover(p.id);
       d.onclick = () => this.garagePick(key, cat, p);
+      if (tun) {
+        d.oncontextmenu = (e) => {
+          e.preventDefault();
+          this.tuneOpen(cat, p.id);
+        };
+        d.padDec = () => this.tuneOpen(cat, p.id);
+      }
       list.appendChild(d);
     }
     this.garageTipUi(this.gTipPid || asm[key]);
@@ -115,6 +126,7 @@ Object.assign(Game.prototype, {
     const S = this.save,
       asm = S.asm;
     this.gTipPid = p.id;
+    this.gTipPin = p.id; // 點過的零件：小卡片固定在它，滑過其他格子只預覽量表
     if (cat === 'consumable') {
       asm[key] = p.id;
       const other = key === 'c1' ? 'c2' : 'c1';
@@ -321,13 +333,24 @@ Object.assign(Game.prototype, {
             .map((x) => `<div class="tCombo">◆ ${escHtml(x)}</div>`)
             .join('')
         : '';
-    tip.innerHTML = `<div class="tH"><b>${escHtml(p.name)}</b>${attr}</div>${p.desc ? `<div class="tD">${escHtml(p.desc)}</div>` : ''}${combo}${body}${defs}<div class="tA">${act}</div>`;
+    const pin =
+      this.gTipPin === p.id
+        ? '<button class="tPin" title="解除釘選（游標停在零件上就換卡片）">📌</button>'
+        : '';
+    tip.innerHTML = `<div class="tH"><b>${escHtml(p.name)}</b>${attr}${pin}</div>${p.desc ? `<div class="tD">${escHtml(p.desc)}</div>` : ''}${combo}${body}${defs}<div class="tA">${act}</div>`;
     const be = tip.querySelector('.tEq');
     if (be) be.onclick = () => this.garagePick(key, cat, p);
     const bb = tip.querySelector('.tBuy');
     if (bb) bb.onclick = () => this.garageBuyItem(p);
     const bt = tip.querySelector('.tTune');
     if (bt) bt.onclick = () => this.tuneOpen(cat, p.id);
+    const bp = tip.querySelector('.tPin');
+    if (bp)
+      bp.onclick = () => {
+        SFX.ui();
+        this.gTipPin = null;
+        this.garageTipUi(p.id);
+      };
   },
   // 這把武器的屬性反應搭配：「先用這把再接實彈＝過熱裝甲」
   garageComboTxt(p) {
@@ -345,7 +368,7 @@ Object.assign(Game.prototype, {
   garageHover(pid) {
     if (this.gHoverPid === pid) return;
     this.gHoverPid = pid;
-    if (pid) {
+    if (pid && (!this.gTipPin || this.gTipPin === pid)) {
       this.gTipPid = pid;
       this.garageTipUi(pid);
     }
@@ -495,10 +518,17 @@ Object.assign(Game.prototype, {
   garageUiTick() {
     if (this.state !== 'garage') return;
     if (this.gTab === 'eq') {
-      const el =
-        document.querySelector('#partList .part.padFocus') || document.querySelector('#partList .part:hover');
+      // 手把的焦點立刻換；滑鼠要停在同一格 HOVER_T 秒（快速掠過的格子不算），離開格子立刻收回量表的預覽
+      const pf = document.querySelector('#partList .part.padFocus');
+      const el = pf || document.querySelector('#partList .part:hover');
       const pid = el ? el.dataset.pid : null;
-      if (pid !== this.gHoverPid) this.garageHover(pid);
+      const now = performance.now();
+      if (pid !== this.gHoverCand) {
+        this.gHoverCand = pid;
+        this.gHoverT0 = now;
+      }
+      if (pid !== this.gHoverPid && (!pid || pf || now - this.gHoverT0 >= HOVER_T * 1000))
+        this.garageHover(pid);
     }
     this.garageThumbTick();
     this.garageCallouts();

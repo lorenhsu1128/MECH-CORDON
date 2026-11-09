@@ -105,7 +105,12 @@ Object.assign(Game.prototype, {
     el.style.display = show ? '' : 'none';
     // 機甲庫設定頁的地圖選單照舊（＝「戰鬥（依等級）」的地圖，作戰設定裡也能選）
     if (!show) return;
-    el.innerHTML = `<span class="dim">作戰</span><b>${escHtml(this.foSummary())}</b><button id="btnFreeOps">作戰設定</button>`;
+    // 作戰卡（出擊鍵正上方、同寬，整張可以點）：上行＝模式，下行＝內容
+    const fo = this.foCur();
+    const sum = this.foSummary();
+    const title = FO_MODES[fo.mode];
+    const det = sum.startsWith(title + '・') ? sum.slice(title.length + 1) : sum;
+    el.innerHTML = `<button id="btnFreeOps" title="作戰設定：選任務、地圖、對手與等級"><span class="gOpsK">作戰</span><span class="gOpsT"><b>${escHtml(title)}</b><small>${escHtml(det)}</small></span><span class="gOpsE">⚙ 變更</span></button>`;
     document.getElementById('btnFreeOps').onclick = () => this.openFreeOps();
   },
 

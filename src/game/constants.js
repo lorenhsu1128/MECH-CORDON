@@ -27,3 +27,6 @@ export const HEAT = {
   timed: { name: '限時作戰', desc: '25 分鐘內完成，超過就失敗', k: 0.2 },
   nosupply: { name: '補給中斷', desc: '沒有補給區段', k: 0.15 },
 };
+
+// 機甲庫的零件格子：游標停留多久才換小卡片、量表與全像預覽（garage-ui.js、hangar.js；快速掠過的格子不算）
+export const HOVER_T = 0.2;

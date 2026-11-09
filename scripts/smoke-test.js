@@ -13955,6 +13955,48 @@ async function testGarageUi(browser, base) {
     `規格頁的圖表（${spec.cards} 張卡片、武器 ${spec.fire} 把），雙翼收起`,
   );
   await page.screenshot({ path: path.join(SHOT_DIR, 'garage-ui-spec.png') });
+  // 小卡片的停留與釘選、右鍵調校（2026-11-09 使用者回報：往下移到裝備中武器的「調校」時掠過其他格子、卡片被換掉）
+  await page.click('#gTabs [data-tab="eq"]');
+  await page.evaluate(() => {
+    const g = window.__game;
+    for (const id of ['w_mg', 'w_sg']) if (!g.save.owned.includes(id)) g.save.owned.push(id);
+    g.garageSlot = 'rarm';
+    g.gFlyOpen = true;
+    g.gTipPin = null;
+    g.renderGarage();
+  });
+  const tipName = () => page.$eval('#gTip .tH b', (e) => e.textContent);
+  const eqB = await (await page.$('#partList .part.eq')).boundingBox();
+  await page.mouse.click(eqB.x + eqB.width / 2, eqB.y + eqB.height / 2);
+  await wait(200);
+  const eqName = await tipName();
+  const pinned = !!(await page.$('#gTip .tPin'));
+  let tuB = await (await page.$('#gTip .tTune')).boundingBox();
+  for (let y = eqB.y + eqB.height / 2; y < tuB.y; y += 20) {
+    await page.mouse.move(eqB.x + eqB.width / 2, y);
+    await wait(300);
+  }
+  const slow = await tipName();
+  check(pinned && slow === eqName, `點過的零件釘選小卡片：慢慢往下移到「調校」也不換（${eqName} → ${slow}）`);
+  await page.click('#gTip .tPin');
+  const mgB = await (await page.$('#partList .part[data-pid="w_mg"]')).boundingBox();
+  await page.mouse.move(mgB.x + mgB.width / 2, mgB.y + mgB.height / 2);
+  await wait(400);
+  const mgName = await tipName();
+  tuB = await (await page.$('#gTip .tTune')).boundingBox();
+  await page.mouse.move(tuB.x + tuB.width / 2, tuB.y + tuB.height / 2, { steps: 6 });
+  await wait(250);
+  const fast = await tipName();
+  check(/MG-014/.test(mgName) && fast === mgName, `游標停留才換卡片：快速掠過的格子不算（${fast}）`);
+  await page.click('#partList .part[data-pid="w_sg"]', { button: 'right' });
+  await wait(200);
+  const rt = await page.evaluate(() => {
+    const b = document.getElementById('tuneBox');
+    const t = b && b.classList.contains('on') ? b.querySelector('.tuH b').textContent : '';
+    window.__game.tuneClose();
+    return t;
+  });
+  check(/SG-027/.test(rt), `零件格子按右鍵直接開調校（${rt}）`);
   // 設定頁：機體配色的色票
   await page.click('#gTabs [data-tab="set"]');
   await page.click('#gPal [data-pal="p3"]');
@@ -29903,6 +29945,8 @@ async function testFreeOps(browser, base) {
     g.openGarage();
     const ops = document.getElementById('gOps');
     const out = { ops: !!ops && ops.style.display !== 'none', sum: ops ? ops.textContent : '' };
+    out.card = Math.round(document.getElementById('btnFreeOps').getBoundingClientRect().width);
+    out.sortie0 = Math.round(document.getElementById('btnSortie').getBoundingClientRect().width);
     document.getElementById('btnFreeOps').click();
     out.state = g.state;
     out.modes = document.querySelectorAll('#foModes button').length;
@@ -29925,6 +29969,7 @@ async function testFreeOps(browser, base) {
     return out;
   });
   check(ui.ops && /依等級/.test(ui.sum), `機甲庫顯示作戰設定的摘要：${ui.sum}`);
+  check(ui.card >= 260 && ui.card <= ui.sortie0 + 1, `作戰卡和出擊鍵同寬（${ui.card}／${ui.sortie0}）`);
   check(ui.state === 'freeops' && ui.modes === 4, `作戰設定畫面 4 種模式（${ui.state}、${ui.modes}）`);
   check(ui.mode === 'seg' && ui.rows >= 6, `單一區段的欄位 ${ui.rows} 列`);
   check(
