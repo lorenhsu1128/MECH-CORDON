@@ -4,6 +4,7 @@ import { applyPilotStats, pilotWeaponDef } from './pilot.js';
 import { SLOTS, asmStats, partById, usesAmmo } from './parts.js';
 import { effectiveAp, weaponDps } from './firepower.js';
 import { TUNE, tuneFx, tuneGroup } from './tune.js';
+import { AX, GRADE_K } from './gear.js';
 
 const WSLOTS = ['rarm', 'larm', 'rback', 'lback'];
 const sum = (a, f) => (a || []).reduce((s, x) => s + (f(x) || 0), 0);
@@ -74,29 +75,29 @@ export function tuneSlotOf(asm, cat, id, pref) {
   return s ? s[0] : null;
 }
 
-// 組裝裡用到的零件的調校（tn）：save.tune 只取這台的，override＝{ 零件 id: 調校表 } 取代
-export function tuneTnOf(asm, tuneAll, override) {
-  const out = {};
-  for (const k in asm) {
-    const id = asm[k];
-    if (tuneAll && tuneAll[id]) out[id] = tuneAll[id];
+// 這台機體的裝備（pm.gr，data/gear.js）把某個槽位的調校換成 t（null＝不換）
+export function tuneGrWith(gr, slot, id, t, g) {
+  const out = { ...(gr || {}) };
+  if (!slot) return out;
+  const e = { ...(out[slot] && out[slot].id === id ? out[slot] : { id, q: 0, ax: [] }), ...(g || {}) };
+  if (t !== undefined) {
+    if (t && Object.keys(t).some((k) => k !== '_x' || t._x)) e.t = t;
+    else delete e.t;
   }
-  for (const id in override || {}) {
-    if (override[id] && Object.keys(override[id]).some((k) => k !== '_x')) out[id] = override[id];
-    else delete out[id];
-  }
+  e.id = id;
+  out[slot] = e;
   return out;
 }
 
 // 套用調校之後的數值：V＝{ d 這個零件（武器）的定義, ef 整台, dps 這把武器的持續 DPS }
-// pm0＝駕駛員加成（不含調校的部分，tn 會被取代），asm 必須已經裝著這個零件
-export function tuneValues(asm, cat, id, tn, pm0) {
-  const pm = { ...(pm0 || {}), tn };
+// pm0＝駕駛員加成（不含裝備的部分，gr 會被取代），asm 必須已經在 slot 裝著這個零件
+export function tuneValues(asm, cat, id, gr, pm0, slot) {
+  const pm = { ...(pm0 || {}), gr };
   const ef = applyPilotStats(asmStats(asm), pm);
   let d = null,
     dps = 0;
   if (isW(cat)) {
-    d = pilotWeaponDef(partById(cat, id), pm);
+    d = pilotWeaponDef(partById(cat, id), pm, slot);
     const v = weaponDps(d, ef.parts.generator, pm.enWpn || 0);
     dps = v ? v.sus : 0;
   }
@@ -104,8 +105,8 @@ export function tuneValues(asm, cat, id, tn, pm0) {
 }
 
 // 整台的指標（調校總覽的比較用）
-export function tuneMetrics(asm, tn, pm0) {
-  const pm = { ...(pm0 || {}), tn };
+export function tuneMetrics(asm, gr, pm0) {
+  const pm = { ...(pm0 || {}), gr };
   const st = asmStats(asm);
   const ef = applyPilotStats(st, pm);
   let sus = 0,
@@ -113,7 +114,7 @@ export function tuneMetrics(asm, tn, pm0) {
   for (const k of WSLOTS) {
     const p = st.parts[k];
     if (!p || p.type === 'none') continue;
-    const v = weaponDps(pilotWeaponDef(p, pm), ef.parts.generator, pm.enWpn || 0);
+    const v = weaponDps(pilotWeaponDef(p, pm, k), ef.parts.generator, pm.enWpn || 0);
     if (v) {
       sus += v.sus;
       imp += v.imp || 0;
@@ -162,19 +163,36 @@ export function metricDiff(a, b) {
   };
 }
 
-// 小卡片用：調校之後的零件定義（武器、推進器、發電機、火控的數值本身會變；頭／核心／手臂／腳的調校加在整台上，零件不變）
-export function tunedPart(cat, p, t) {
-  if (!p || !t) return p;
+// 小卡片用：調校（與品級、詞條，gq＝{ q, ax }）之後的零件定義（武器、推進器、發電機、火控的數值本身會變；
+// 頭／核心／手臂／腳的調校與詞條加在整台上，零件不變）
+export function tunedPart(cat, p, t, gq) {
+  if (!p) return p;
+  if (isW(cat)) {
+    if (!t && !(gq && (gq.q || (gq.ax && gq.ax.length)))) return p;
+    return pilotWeaponDef(
+      p,
+      { gr: { s: { id: p.id, q: (gq && gq.q) || 0, ax: (gq && gq.ax) || [], t } } },
+      's',
+    );
+  }
   const g = tuneGroup(cat, p);
-  if (!g) return p;
-  const fx = tuneFx(g, t);
-  if (!Object.keys(fx).length) return p;
+  const fx = g && t ? { ...tuneFx(g, t) } : {};
+  for (const [k, v] of (gq && gq.ax) || []) {
+    const D = AX[k];
+    if (D && D.at === 'm') fx[D.k] = (fx[D.k] || 0) + v;
+  }
+  const qk = 1 + GRADE_K * ((gq && gq.q) || 0);
   const up = (k) => 1 + (fx[k] || 0),
     dn = (k) => Math.max(0.2, 1 - (fx[k] || 0));
-  if (isW(cat)) return pilotWeaponDef(p, { tn: { [p.id]: t } });
-  if (cat === 'booster') return { ...p, qb: p.qb * up('qb'), qbCost: p.qbCost * dn('qbc') };
-  if (cat === 'generator') return { ...p, cap: p.cap * up('enCap'), recharge: p.recharge * up('rch') };
-  if (cat === 'fcs') return { ...p, range: p.range * up('lock') };
+  if (cat === 'booster') return { ...p, qb: p.qb * qk * up('qb'), qbCost: p.qbCost * dn('qbc') };
+  if (cat === 'generator')
+    return {
+      ...p,
+      cap: p.cap * qk * up('enCap'),
+      recharge: p.recharge * qk * up('rch'),
+      delay: p.delay * dn('dly'),
+    };
+  if (cat === 'fcs') return { ...p, range: p.range * qk * up('lock') };
   return p;
 }
 // 這個調校表的效果合計文字（小卡片的「調校：整台 AP +6%」）

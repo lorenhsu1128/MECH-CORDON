@@ -15789,7 +15789,16 @@ async function testLoot(browser, base) {
     out.dmgK = b1.dmg / b0.dmg;
     out.ammoK = b1.ammo / b0.ammo;
     out.hpK = b1.hp / b0.hp;
-    out.pvp = !!(g.pilotLocalMods('pvp') || {}).tn;
+    out.pvp = !!(g.pilotLocalMods('pvp') || {}).gr;
+    // 零件品級（data/gear.js）：右手武器的精製（藍）裝備＝主要數值 +8%＋傷害詞條 +10%
+    S.tune = {};
+    S.inv = [{ u: 'tst1', id: rid, q: 2, ax: [['dmg', 0.1]] }];
+    S.eq = {};
+    out.gearK = base().dmg / b0.dmg;
+    out.eqU = S.eq.rarm;
+    out.gearPvp = !!(g.pilotLocalMods('pvp') || {}).gr;
+    S.inv = [];
+    S.eq = {};
     // 掉落：敵對 AC 一定掉合金
     S.tune = {};
     g.lootReset();
@@ -15823,6 +15832,10 @@ async function testLoot(browser, base) {
   );
   check(r.hpK > 1.04, `機體的調校：AP ×${r.hpK.toFixed(3)}`);
   check(!r.pvp, 'PvP 不套用調校');
+  check(
+    Math.abs(r.gearK - 1.18) < 0.01 && r.eqU === 'tst1' && !r.gearPvp,
+    `零件品級：精製＋傷害詞條 ×${(r.gearK || 0).toFixed(3)}、裝在右手（${r.eqU}）、PvP 不套用`,
+  );
   check(
     r.drops.includes('mat_alloy') && r.alloy >= 1,
     `擊破敵對 AC 掉素材（${r.drops.join('、')}）、撿到入帳`,

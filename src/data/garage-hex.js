@@ -67,7 +67,7 @@ export function hexScores(asm, pm) {
   for (const k of WSLOTS) {
     const p = st.parts[k];
     if (!p || p.type === 'none') continue;
-    const v = weaponDps(pilotWeaponDef(p, pm), gen, (pm && pm.enWpn) || 0);
+    const v = weaponDps(pilotWeaponDef(p, pm, k), gen, (pm && pm.enWpn) || 0);
     if (v) sus += v.sus;
     if (ranged(p)) rs.push(p.range);
   }

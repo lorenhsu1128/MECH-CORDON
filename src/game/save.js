@@ -6,6 +6,7 @@ import { CHAPTER_NAMES } from '../data/story.js';
 import { REMOVED_PARTS as REMOVED, REMOVED_REFUND as REFUND, START_ASM, START_OWNED } from '../data/parts.js';
 import { newPilot, normalizePilot, levelOf, tuneGroupOf } from '../data/pilot.js';
 import { MAT_KEYS, sanitizeTune } from '../data/tune.js';
+import { sanitizeInv } from '../data/gear.js';
 import { escHtml } from '../core/html.js';
 import { SFX } from '../audio/audio.js';
 import { Game } from './game.js';
@@ -47,9 +48,16 @@ function normalizeSave(o) {
     missionsDone: num(o.missionsDone),
     pilot: normalizePilot(o.pilot), // 舊存檔沒有 pilot 時從 Lv1 開始，並修正不合法的配點
     mats: normalizeMats(o.mats), // 素材（data/tune.js）
-    tune: sanitizeTune(o.tune, tuneGroupOf), // 零件調校
+    tune: sanitizeTune(o.tune, tuneGroupOf), // 零件調校（標準版；每件裝備的在 inv 裡）
+    inv: sanitizeInv(o.inv), // 零件品級的背包（data/gear.js；舊存檔＝空的，擁有的零件都是標準版）
+    eq: normalizeEq(o.eq),
     t: num(o.t),
   };
+}
+function normalizeEq(e) {
+  const out = {};
+  if (e && typeof e === 'object') for (const k in e) if (typeof e[k] === 'string') out[k] = e[k].slice(0, 24);
+  return out;
 }
 function normalizeMats(m) {
   const out = {};
@@ -84,6 +92,8 @@ Object.assign(Game.prototype, {
       bosses: 0,
       missionsDone: 0,
       pilot: newPilot(), // 駕駛員成長：PvE／PvP 各自獨立
+      inv: [], // 零件品級的背包（data/gear.js）
+      eq: {},
     };
   },
   // 啟動時呼叫：舊版單一存檔搬進存檔 1（以 rubicon_save_cur 是否存在判斷是否搬過），決定目前的槽位

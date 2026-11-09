@@ -92,22 +92,26 @@ export function sanitizeTune(t, groupOf) {
   const out = {};
   if (!t || typeof t !== 'object') return out;
   for (const id in t) {
-    const g = groupOf(id);
-    if (!g || !t[id] || typeof t[id] !== 'object') continue;
-    const row = {};
-    let sum = 0;
-    const x = tuneBreaks(t[id]);
-    if (x) row._x = x;
-    for (const o of TUNE[g]) {
-      const lv = Math.max(0, Math.min(TUNE_MAX, t[id][o.k] | 0));
-      if (lv && sum + lv <= TUNE_TOTAL + x) {
-        row[o.k] = lv;
-        sum += lv;
-      }
-    }
-    if (Object.keys(row).length) out[id] = row;
+    const row = sanitizeTuneRow(t[id], groupOf(id));
+    if (row) out[id] = row;
   }
   return out;
+}
+// 一個零件的調校表（零件品級的每件裝備各自一份，data/gear.js）；沒有內容時回傳 null
+export function sanitizeTuneRow(src, g) {
+  if (!g || !TUNE[g] || !src || typeof src !== 'object') return null;
+  const row = {};
+  let sum = 0;
+  const x = tuneBreaks(src);
+  if (x) row._x = x;
+  for (const o of TUNE[g]) {
+    const lv = Math.max(0, Math.min(TUNE_MAX, src[o.k] | 0));
+    if (lv && sum + lv <= TUNE_TOTAL + x) {
+      row[o.k] = lv;
+      sum += lv;
+    }
+  }
+  return Object.keys(row).length ? row : null;
 }
 
 // ---------- 掉落（E1） ----------

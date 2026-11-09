@@ -8,7 +8,7 @@ import { hexSvg } from '../render/garage-charts.js';
 import { PARTS, SLOTS, asmStats, jumpSpec, partById, usesAmmo } from '../data/parts.js';
 import { applyPilotStats } from '../data/pilot.js';
 import { tuneGroup, tuneLevels } from '../data/tune.js';
-import { tuneFxTxt, tuneTnOf, tunedPart } from '../data/tune-view.js';
+import { tuneFxTxt, tuneGrWith, tunedPart } from '../data/tune-view.js';
 import { escHtml } from '../core/html.js';
 import { partIcon, slotIcon } from '../render/garage-icons.js';
 import { hasThumb, renderThumb, thumbCached, thumbKey } from '../render/part-thumbs.js';
@@ -101,8 +101,8 @@ Object.assign(Game.prototype, {
       let badge = '';
       if (cat === 'consumable' && p.id !== 'cs_none') badge = `<i class="pN">×${S.items[p.id] || 0}</i>`;
       else if (!owned) badge = `<i class="pPr">${(p.price / 1000).toFixed(0)}k</i>`;
-      else if (tuneLevels((S.tune || {})[p.id]))
-        badge = `<i class="pTu" title="調校 +${tuneLevels(S.tune[p.id])}">+${tuneLevels(S.tune[p.id])}</i>`;
+      else if (this.tuneSum(p.id))
+        badge = `<i class="pTu" title="調校 +${this.tuneSum(p.id)}">+${this.tuneSum(p.id)}</i>`;
       const dl = eq ? 0 : this.garageTileDelta(key, cat, p);
       const arrow = dl ? `<i class="${dl > 0 ? 'dUp' : 'dDn'}">${dl > 0 ? '▲' : '▼'}</i>` : '';
       d.innerHTML = `<span class="gThumb" data-thumb="${key}:${p.id}">${partIcon(cat, p)}</span><span class="pM">${escHtml(model(p))}</span>${badge}${arrow}<span class="srOnly">${escHtml(p.name)} ${this.garageSpecText(cat, p)}</span>`;
@@ -221,9 +221,9 @@ Object.assign(Game.prototype, {
     // [名稱, 數值, 目前零件的數值, 越大越好？, 格式]
     const rows = [];
     // 調校過的零件：數值照調校後的（data/tune-view.js；頭／核心／手臂／腳的調校加在整台上，下面另列一行）
-    const TU = S.tune || {};
-    const pv = tunedPart(cat, p, TU[p.id]),
-      cv = tunedPart(cat, cur, TU[cur.id]);
+    const tuOf = (id) => this.gearTune(id, (this.gearForId(id) || {}).u);
+    const pv = tunedPart(cat, p, tuOf(p.id)),
+      cv = tunedPart(cat, cur, tuOf(cur.id));
     const R = (n, f, good = 1, form = fmt) => {
       const a = f(pv),
         b = f(cv);
@@ -344,9 +344,9 @@ Object.assign(Game.prototype, {
       this.gTipPin === p.id
         ? '<button class="tPin" title="解除釘選（游標停在零件上就換卡片）">📌</button>'
         : '';
-    const tl = owned && cat !== 'consumable' ? tuneLevels(TU[p.id]) : 0;
+    const tl = owned && cat !== 'consumable' ? tuneLevels(tuOf(p.id)) : 0;
     const tuTag = tl ? `<span class="tTu" title="數值是調校後的">調校 +${tl}</span>` : '';
-    const tuFx = tl ? tuneFxTxt(cat, p, TU[p.id]) : [];
+    const tuFx = tl ? tuneFxTxt(cat, p, tuOf(p.id)) : [];
     const tuLine = tuFx.length ? `<div class="tTuFx">調校效果：${escHtml(tuFx.join('、'))}</div>` : '';
     tip.innerHTML = `<div class="tH"><b>${escHtml(p.name)}</b>${attr}${tuTag}${pin}</div>${p.desc ? `<div class="tD">${escHtml(p.desc)}</div>` : ''}${combo}${body}${tuLine}${defs}<div class="tA">${act}</div>`;
     const be = tip.querySelector('.tEq');
@@ -386,17 +386,14 @@ Object.assign(Game.prototype, {
     this.garageStatsUi(pid);
   },
   // ---------- 量表（裝備頁） ----------
-  // tp＝{ id, t }：調校視窗的升級按鈕預覽（這個零件換成調校表 t 之後的差異，tune-ui.js 的 tunePreview）
+  // tp＝{ id, slot, t }：調校視窗的升級按鈕預覽（這個槽位的調校換成 t 之後的差異，tune-ui.js 的 tunePreview）
   garageStatsUi(pid, tp) {
     const asm = this.save.asm;
     const key = this.garageSlot;
     const prevAsm = pid && pid !== asm[key] ? { ...asm, [key]: pid } : tp ? asm : null;
     let pm = this.rangePmOn() ? this.rangePm() : null,
-      pmN = pm;
-    if (tp) {
-      pm = { ...(pm || {}), tn: tuneTnOf(asm, this.save.tune) };
-      pmN = { ...pm, tn: tuneTnOf(asm, this.save.tune, { [tp.id]: tp.t }) };
-    }
+      pmN = prevAsm && !tp ? this.gearPmFor(prevAsm, pm) : pm; // 換上的零件用背包裡最好的那一件（data/gear.js）
+    if (tp && pm) pmN = { ...pm, gr: tuneGrWith(pm.gr, tp.slot, tp.id, tp.t) };
     const cur = hexScores(asm, pm),
       nx = prevAsm ? hexScores(prevAsm, pmN) : null;
     const st = asmStats(asm),

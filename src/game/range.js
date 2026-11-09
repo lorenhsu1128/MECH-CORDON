@@ -798,7 +798,7 @@ Object.assign(Game.prototype, {
     for (const k of WSLOTS) {
       const p = st.parts[k];
       if (!p || p.type === 'none') continue;
-      const d = pilotWeaponDef(p, pm);
+      const d = pilotWeaponDef(p, pm, k);
       const v = weaponDps(d, gen, (pm && pm.enWpn) || 0);
       if (v)
         ws.push({

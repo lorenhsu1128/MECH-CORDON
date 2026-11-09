@@ -3,7 +3,7 @@
 // 「這個零件」：摘要（未調校 → 目前的實際數值）、每個項目的每級效果、Lv3 合計、下一級的實際數值、費用、升級、限界突破、重置（退還一半）；
 // 游標停在升級按鈕上時機甲庫的量表預覽升這一級的差異。
 // 「總覽」：身上所有可以調校的零件的每個項目，下一級對整台的火力／耐久／機動的影響，依每 1 萬 COAM 的提升排序。
-// 存在 save.tune[零件 id]（同一種零件全部一樣）；數值的計算在 data/tune-view.js。
+// 調校跟著每件裝備（data/gear.js：背包裡那一件的 t；標準版存在 save.tune[零件 id]）；數值的計算在 data/tune-view.js。
 import { SFX } from '../audio/audio.js';
 import { escHtml } from '../core/html.js';
 import { SLOTS, partById } from '../data/parts.js';
@@ -26,8 +26,8 @@ import {
   tuneHasNum,
   tuneMetrics,
   tuneNum,
+  tuneGrWith,
   tuneSlotOf,
-  tuneTnOf,
   tuneValues,
 } from '../data/tune-view.js';
 import { Game } from './game.js';
@@ -59,18 +59,23 @@ const GROUP_NOTE = {
 };
 
 Object.assign(Game.prototype, {
-  // 這個零件已經調了幾級（小卡片的標示）
-  tuneSum(id) {
-    return tuneLevels((this.save.tune || {})[id]);
+  // 這個零件（目前用的那一件）已經調了幾級（小卡片的標示）；u＝指定那一件
+  tuneSum(id, u) {
+    return tuneLevels(this.gearTune(id, u !== undefined ? u : (this.gearForId(id) || {}).u));
   },
-  // view：'part'（這個零件）／'ov'（總覽）；沒給時沿用上次的分頁
-  tuneOpen(cat, id, view) {
+  // 調的是哪一件：裝備中的、背包裡最好的，都沒有＝標準版（u＝null）
+  tuneT(c) {
+    return this.gearTune(c.id, c.u) || {};
+  },
+  // view：'part'（這個零件）／'ov'（總覽）；沒給時沿用上次的分頁；u＝指定那一件（沒給＝目前用的那一件）
+  tuneOpen(cat, id, view, u) {
     const p = partById(cat, id);
     if (!tuneGroup(cat, p)) return;
     const prev = this.tuneCur;
     this.tuneCur = {
       cat,
       id,
+      u: u !== undefined ? u : (this.gearForId(id) || {}).u || null,
       view: view || (prev && prev.view) || 'part',
       sort: (prev && prev.sort) || 'fire',
     };
@@ -91,9 +96,9 @@ Object.assign(Game.prototype, {
     const tabs = `<div class="tuTabs" data-padtabs="button"><button class="tuTab${c.view === 'part' ? ' on' : ''}" data-v="part">這個零件：${escHtml(p.name)}</button><button class="tuTab${c.view === 'ov' ? ' on' : ''}" data-v="ov">總覽（身上的零件）</button></div>`;
     const mats = `<div class="tuMats">COAM ${S.coam.toLocaleString()}　${this.lootMatsHtml()}</div>`;
     const pmOn = this.rangePmOn();
-    const note = `<div class="tuNote dim">調校只在裝備時有效・同一種零件共用・PvP 不套用${pmOn ? '・數值含駕駛員加成' : ''}</div>`;
+    const note = `<div class="tuNote dim">調校只在裝備時有效・跟著每一件裝備・PvP 不套用${pmOn ? '・數值含駕駛員加成' : ''}</div>`;
     const body = c.view === 'ov' ? this.tuneOvHtml() : this.tunePartHtml(c.cat, c.id);
-    box.innerHTML = `${tabs}${mats}${note}${body}<div class="tuA">${c.view === 'part' ? `<button class="tuReset"${this.tuneSum(c.id) ? '' : ' disabled'}>重置（退還一半）</button>` : ''}<button class="tuClose">關閉</button></div>`;
+    box.innerHTML = `${tabs}${mats}${note}${body}<div class="tuA">${c.view === 'part' ? `<button class="tuReset"${this.tuneSum(c.id, c.u) ? '' : ' disabled'}>重置（退還一半）</button>` : ''}<button class="tuClose">關閉</button></div>`;
     box.classList.add('on');
     for (const b of box.querySelectorAll('.tuTab'))
       b.onclick = () => {
@@ -110,9 +115,10 @@ Object.assign(Game.prototype, {
     for (const b of box.querySelectorAll('.tuUp')) {
       const id = b.dataset.id || c.id;
       const cat = b.dataset.cat || c.cat;
-      b.onclick = () => this.tuneUp(id, tuneGroup(cat, partById(cat, id)), b.dataset.k);
+      const u = b.dataset.id ? b.dataset.u || null : c.u;
+      b.onclick = () => this.tuneUp(id, tuneGroup(cat, partById(cat, id)), b.dataset.k, u);
       // 游標停在升級按鈕上（手把的焦點也算）：量表預覽升這一級（只有裝備中的零件）
-      const on = () => this.tunePreview(id, b.dataset.k);
+      const on = () => this.tunePreview(id, b.dataset.k, u);
       const off = () => this.tunePreview(null);
       b.onpointerenter = on;
       b.onpointerleave = off;
@@ -122,16 +128,16 @@ Object.assign(Game.prototype, {
     for (const b of box.querySelectorAll('.tuOpen'))
       b.onclick = () => {
         SFX.ui();
-        this.tuneOpen(b.dataset.cat, b.dataset.id, 'part');
+        this.tuneOpen(b.dataset.cat, b.dataset.id, 'part', b.dataset.u || null);
       };
     const bk = box.querySelector('.tuBreak');
-    if (bk) bk.onclick = () => this.tuneBreak(c.id);
+    if (bk) bk.onclick = () => this.tuneBreak(c.id, c.u);
     const rs = box.querySelector('.tuReset');
     if (rs)
       rs.onclick = () =>
         this.uiConfirm(
           '重置這個零件的調校？花費的 COAM 與素材退還一半。',
-          () => this.tuneReset(c.id),
+          () => this.tuneReset(c.id, c.u),
           '重置',
           '取消',
         );
@@ -142,15 +148,19 @@ Object.assign(Game.prototype, {
     const S = this.save;
     const p = partById(cat, id);
     const g = tuneGroup(cat, p);
-    const t = (S.tune || {})[id] || {};
+    const c = this.tuneCur;
+    const t = this.tuneT(c);
     const sum = tuneLevels(t);
     const cap = tuneCap(t),
       nx = tuneBreaks(t);
-    // 以裝上這個零件的組裝計算（沒裝備時換進目前選的部位）
+    // 以裝上這一件的組裝計算（沒裝備時換進目前選的部位）
     const key = tuneSlotOf(S.asm, cat, id, this.garageSlot);
     const asm = { ...S.asm, [key]: id };
     const pm0 = this.rangePm();
-    const val = (tt) => tuneValues(asm, cat, id, tuneTnOf(asm, S.tune, { [id]: tt }), pm0);
+    const gg = this.gearByU(c.u);
+    const gr0 = pm0 ? pm0.gr : this.gearPmFor(asm, {}).gr;
+    const gq = gg ? { q: gg.q, ax: gg.ax } : { q: 0, ax: [] };
+    const val = (tt) => tuneValues(asm, cat, id, tuneGrWith(gr0, key, id, tt, gq), pm0, key);
     const V0 = val({}),
       Vc = val(t);
     const isW = !!Vc.d;
@@ -218,7 +228,9 @@ Object.assign(Game.prototype, {
     const S = this.save;
     const asm = S.asm;
     const pm0 = this.rangePm();
-    const M0 = tuneMetrics(asm, tuneTnOf(asm, S.tune), pm0);
+    const pick = this.gearNow();
+    const gr0 = (pm0 && pm0.gr) || this.gearPmFor(asm, {}).gr;
+    const M0 = tuneMetrics(asm, gr0, pm0);
     const seen = new Set();
     const list = [],
       full = [];
@@ -226,9 +238,11 @@ Object.assign(Game.prototype, {
       const id = asm[k];
       const p = partById(cat, id);
       const g = tuneGroup(cat, p);
-      if (!g || seen.has(id) || !S.owned.includes(id)) continue;
-      seen.add(id);
-      const t = (S.tune || {})[id] || {};
+      const u = pick[k] ? pick[k].u : null;
+      const sk = u || id; // 同一件（標準版兩手共用調校）只列一次
+      if (!g || seen.has(sk) || !S.owned.includes(id)) continue;
+      seen.add(sk);
+      const t = this.gearTune(id, u) || {};
       const sum = tuneLevels(t),
         cap = tuneCap(t);
       if (sum >= cap) {
@@ -238,9 +252,15 @@ Object.assign(Game.prototype, {
       for (const o of TUNE[g]) {
         const lv = t[o.k] || 0;
         if (lv >= TUNE_MAX) continue;
-        const M1 = tuneMetrics(asm, tuneTnOf(asm, S.tune, { [id]: { ...t, [o.k]: lv + 1 } }), pm0);
+        const t1 = { ...t, [o.k]: lv + 1 };
+        let gr1 = tuneGrWith(gr0, k, id, t1);
+        // 標準版兩手同一種：兩手一起變
+        if (!u)
+          for (const [k2] of SLOTS)
+            if (k2 !== k && asm[k2] === id && !pick[k2]) gr1 = tuneGrWith(gr1, k2, id, t1);
+        const M1 = tuneMetrics(asm, gr1, pm0);
         const cost = tuneCost(lv + 1);
-        list.push({ id, cat, p, o, lv, cost, diff: metricDiff(M0, M1) });
+        list.push({ id, u, cat, p, o, lv, cost, diff: metricDiff(M0, M1) });
       }
     }
     return { list, full };
@@ -270,7 +290,7 @@ Object.assign(Game.prototype, {
           .join('');
         const v = x.diff[sk];
         const can = this.tuneAfford(x.cost);
-        return `${pre}<div class="tuOv"><button class="tuOpen" data-id="${x.id}" data-cat="${x.cat}" title="開啟這個零件的調校"><b>${escHtml(x.p.name)}</b><span>${escHtml(x.o.name)}　Lv${x.lv} → ${x.lv + 1}</span></button><div class="tuOvC">${chips || '<span class="dim">整台的指標沒有變化</span>'}</div><div class="tuOvS ${v > 0 ? 'up' : v < 0 ? 'dn' : ''}">${SORTS.find((s) => s[0] === sk)[1]} ${Math.abs(v) < 0.05 ? '±0%' : pctTxt(v)}<small>每 1 萬 C ${Math.abs(per(x)) < 0.05 ? '±0%' : pctTxt(per(x))}</small></div><button class="tuUp" data-id="${x.id}" data-cat="${x.cat}" data-k="${x.o.k}"${can ? '' : ' disabled'}>升級（${escHtml(costTxt(x.cost))}）</button></div>`;
+        return `${pre}<div class="tuOv"><button class="tuOpen" data-id="${x.id}" data-u="${x.u || ''}" data-cat="${x.cat}" title="開啟這個零件的調校"><b>${escHtml(x.p.name)}</b><span>${escHtml(x.o.name)}　Lv${x.lv} → ${x.lv + 1}</span></button><div class="tuOvC">${chips || '<span class="dim">整台的指標沒有變化</span>'}</div><div class="tuOvS ${v > 0 ? 'up' : v < 0 ? 'dn' : ''}">${SORTS.find((s) => s[0] === sk)[1]} ${Math.abs(v) < 0.05 ? '±0%' : pctTxt(v)}<small>每 1 萬 C ${Math.abs(per(x)) < 0.05 ? '±0%' : pctTxt(per(x))}</small></div><button class="tuUp" data-id="${x.id}" data-u="${x.u || ''}" data-cat="${x.cat}" data-k="${x.o.k}"${can ? '' : ' disabled'}>升級（${escHtml(costTxt(x.cost))}）</button></div>`;
       })
       .join('');
     const fullTxt = full.length
@@ -278,15 +298,20 @@ Object.assign(Game.prototype, {
       : '';
     return `${sorts}${expl}${rows || '<p class="dim">身上沒有還能調校的零件</p>'}${fullTxt}`;
   },
-  // 量表預覽升級後的差異（tune 按鈕的游標停留）：k＝項目，null＝取消
-  tunePreview(id, k) {
+  // 量表預覽升級後的差異（tune 按鈕的游標停留）：k＝項目，null＝取消；u＝那一件
+  tunePreview(id, k, u) {
     if (!id) return this.garageStatsUi(null);
     const S = this.save;
-    if (!Object.values(S.asm).includes(id)) return;
-    const t = (S.tune || {})[id] || {};
+    const pick = this.gearNow();
+    // 裝備中的才預覽：那一件所在的槽位
+    const slot = Object.keys(pick).find(
+      (s) => S.asm[s] === id && (pick[s] ? pick[s].u : null) === (u || null),
+    );
+    if (!slot) return;
+    const t = this.gearTune(id, u) || {};
     const lv = t[k] || 0;
     if (lv >= TUNE_MAX) return;
-    this.garageStatsUi(null, { id, t: { ...t, [k]: lv + 1 } });
+    this.garageStatsUi(null, { id, slot, t: { ...t, [k]: lv + 1 } });
   },
   tuneClose() {
     const box = document.getElementById('tuneBox');
@@ -300,17 +325,17 @@ Object.assign(Game.prototype, {
       M = S.mats || {};
     return S.coam >= c.coam && Object.keys(MATS).every((k) => (M[k] || 0) >= (c[k] || 0));
   },
-  tuneUp(id, g, k) {
+  tuneUp(id, g, k, u = null) {
     const S = this.save;
-    S.tune = S.tune || {};
-    const t = S.tune[id] || (S.tune[id] = {});
+    const t = { ...(this.gearTune(id, u) || {}) };
     const lv = t[k] || 0;
-    if (lv >= TUNE_MAX || this.tuneSum(id) >= tuneCap(t)) return;
+    if (lv >= TUNE_MAX || tuneLevels(t) >= tuneCap(t)) return;
     const c = tuneCost(lv + 1);
     if (!this.tuneAfford(c)) return this.flashMsg('COAM 或素材不足', 0xff4d4d, 1.2);
     S.coam -= c.coam;
     for (const m of Object.keys(MATS)) if (c[m]) S.mats[m] -= c[m];
     t[k] = lv + 1;
+    this.gearTuneSet(id, u, t);
     this.writeSave();
     SFX.cue('pickup');
     const o = TUNE[g].find((x) => x.k === k);
@@ -318,11 +343,10 @@ Object.assign(Game.prototype, {
     this.renderGarage();
     this.tuneRender();
   },
-  // 限界突破：花傳說殘片＋COAM，這個零件的合計上限 +1
-  tuneBreak(id) {
+  // 限界突破：花傳說殘片＋COAM，這一件的合計上限 +1
+  tuneBreak(id, u = null) {
     const S = this.save;
-    S.tune = S.tune || {};
-    const t = S.tune[id] || (S.tune[id] = {});
+    const t = { ...(this.gearTune(id, u) || {}) };
     const nx = tuneBreaks(t);
     const c = TUNE_BREAK[nx];
     if (!c) return;
@@ -330,28 +354,36 @@ Object.assign(Game.prototype, {
     S.coam -= c.coam;
     for (const m of Object.keys(MATS)) if (c[m]) S.mats[m] -= c[m];
     t._x = nx + 1;
+    this.gearTuneSet(id, u, t);
     this.writeSave();
     SFX.cue('pickup');
     this.flashMsg(`限界突破：合計上限 ${tuneCap(t)} 級`, 0xffd060, 1.6);
     this.renderGarage();
     this.tuneRender();
   },
-  // 重置：退還一半（COAM 與素材都是）
-  tuneReset(id) {
-    const S = this.save,
-      t = (S.tune || {})[id];
-    if (!t) return;
+  // 調校花掉的（COAM 與素材）：重置與分解退還一半
+  tuneSpent(t) {
     const back = { coam: 0 };
-    for (const k in t)
+    for (const k in t || {})
       for (let lv = 1; k !== '_x' && lv <= t[k]; lv++) {
         const c = tuneCost(lv);
         for (const m in c) back[m] = (back[m] || 0) + c[m];
       }
+    return back;
+  },
+  tuneRefund(t) {
+    const S = this.save;
+    const back = this.tuneSpent(t);
     S.coam += Math.floor(back.coam / 2);
     for (const m of Object.keys(MATS)) if (back[m]) S.mats[m] = (S.mats[m] || 0) + Math.floor(back[m] / 2);
+  },
+  // 重置：退還一半（COAM 與素材都是）
+  tuneReset(id, u = null) {
+    const t = this.gearTune(id, u);
+    if (!t) return;
+    this.tuneRefund(t);
     // 限界突破是永久的：重置只清項目的級數
-    if (t._x) S.tune[id] = { _x: t._x };
-    else delete S.tune[id];
+    this.gearTuneSet(id, u, t._x ? { _x: t._x } : null);
     this.writeSave();
     this.flashMsg('調校已重置', 0x7fc8ff, 1.2);
     this.renderGarage();

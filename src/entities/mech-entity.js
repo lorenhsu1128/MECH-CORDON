@@ -488,7 +488,7 @@ export class MechEntity {
       let def = partById(s.endsWith('arm') ? 'arm' : 'back', this.asm[s]);
       const fist = s.endsWith('arm') && def.type === 'none' && !this.model.vehicle;
       if (fist) def = FIST_DEF; // 空手 → 拳擊
-      def = pilotWeaponDef(def, this.pm);
+      def = pilotWeaponDef(def, this.pm, s);
       this.weapons[s] = {
         def,
         ammo: def.ammo || 0,

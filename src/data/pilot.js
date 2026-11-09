@@ -1,6 +1,8 @@
 // 駕駛員成長：等級、技能配點驗證、加成計算與套用（純函式，房主與客機共用）
 import { PARTS, REMOVED_PARTS, usesAmmo } from './parts.js';
-import { sanitizeTune, tuneFx, tuneGroup } from './tune.js';
+import { tuneFx, tuneGroup } from './tune.js';
+import { defCut } from './attrs.js';
+import { GEAR_CAT, gearFrameFx, gearGr, gearPart, gearResolve, gearWeaponFx, sanitizeGr } from './gear.js';
 import {
   PILOT_MAX_LEVEL,
   PRESET_MAX,
@@ -171,27 +173,13 @@ export const tuneGroupOf = (id) => {
   const r = PART_CAT.get(id);
   return r ? tuneGroup(r[0], r[1]) : null;
 };
-// 裝備中的零件的調校（存檔的 save.tune 只取這台用到的）
-export function tuneOfAsm(save) {
-  const out = {};
-  const T = save.tune || {};
-  for (const k in save.asm || {}) {
-    const id = save.asm[k];
-    if (T[id]) out[id] = T[id];
-  }
-  return sanitizeTune(out, tuneGroupOf);
+// 裝備中的零件的品級、詞條與調校（data/gear.js；save.inv、save.eq、save.tune）→ { 槽位: { id, q, ax, t } }
+export function gearOfSave(save) {
+  if (!save || !save.asm) return {};
+  return gearGr(save, save.asm, gearResolve(save));
 }
-// 機體零件（頭、核心、手臂、腳、推進器、發電機、火控）的調校加總成增量表
-function frameTuneFx(P, tn) {
-  const out = {};
-  for (const k of ['head', 'core', 'arms', 'legs', 'booster', 'generator', 'fcs']) {
-    const p = P[k];
-    if (!p || !tn[p.id]) continue;
-    const fx = tuneFx(tuneGroupOf(p.id), tn[p.id]);
-    for (const x in fx) out[x] = (out[x] || 0) + fx[x];
-  }
-  return out;
-}
+// 調校表 → 增量
+const tuneOf = (id, t) => (t ? tuneFx(tuneGroupOf(id), t) : {});
 
 // ---------- 網路傳送 ----------
 // 客機送給房主：兩種模式的等級、配點，以及目前裝備武器的熟練度等級
@@ -209,7 +197,7 @@ export function pilotPayload(save) {
     }
     out[mode] = { lv: levelOf(m.xp), s: { ...m.skills }, pf };
   }
-  out.pve.tn = tuneOfAsm(save); // 零件調校（PvP 不套用）
+  out.pve.gr = gearOfSave(save); // 零件的品級、詞條與調校（PvP 不套用）
   return out;
 }
 // 房主收到後修正範圍，避免異常資料
@@ -222,7 +210,7 @@ export function sanitizePayload(p) {
     const pf = {};
     for (const id in m.pf || {}) if (WEAPON_IDS.has(id)) pf[id] = clampInt(m.pf[id], 0, PROF_MAX);
     out[mode] = { lv, s: sanitizeSkills(m.s, lv), pf };
-    if (mode === 'pve' && m.tn) out[mode].tn = sanitizeTune(m.tn, tuneGroupOf);
+    if (mode === 'pve' && m.gr) out[mode].gr = sanitizeGr(m.gr);
   }
   return out;
 }
@@ -235,7 +223,7 @@ export function computePilotMods(mp, mode) {
   if (!mp) return null;
   const pm = { pf: { ...(mp.pf || {}) } };
   if (mode === 'pve') pm.ammo = PVE_AMMO_K;
-  if (mode === 'pve' && mp.tn && Object.keys(mp.tn).length) pm.tn = mp.tn; // 零件調校
+  if (mode === 'pve' && mp.gr && Object.keys(mp.gr).length) pm.gr = mp.gr; // 零件的品級、詞條與調校（data/gear.js）
   for (const id in mp.s || {}) {
     const s = SKILL_BY_ID[id];
     if (!s) continue;
@@ -251,13 +239,11 @@ const downF = (f, k) => Math.max(0.2, 1 - (f[k] || 0));
 export function applyPilotStats(st, pm) {
   if (!pm) return st;
   const P = st.parts;
-  // 機體零件的調校：加進同一套增量（不改 pm 本身）
-  if (pm.tn) {
-    const fx = frameTuneFx(P, pm.tn);
-    if (Object.keys(fx).length) {
-      pm = { ...pm };
-      for (const k in fx) pm[k] = (pm[k] || 0) + fx[k];
-    }
+  // 零件的品級、詞條、調校（data/gear.js）：整台的加進同一套增量（不改 pm 本身），零件自己的另外記
+  const G = pm.gr ? gearStatFx(P, pm.gr) : null;
+  if (G && Object.keys(G.m).length) {
+    pm = { ...pm };
+    for (const k in G.m) pm[k] = (pm[k] || 0) + G.m[k];
   }
   const parts = {
     ...P,
@@ -267,32 +253,86 @@ export function applyPilotStats(st, pm) {
       airH: P.legs.airH * upF(pm, 'jump'),
       airN: P.legs.airN + Math.round(pm.airN || 0), // 主線的戰術模組
     },
-    booster: { ...P.booster, qb: P.booster.qb * upF(pm, 'qb'), qbCost: P.booster.qbCost * downF(pm, 'qbc') },
+    booster: {
+      ...P.booster,
+      qb: P.booster.qb * (1 + ((G && G.bst) || 0)) * upF(pm, 'qb'),
+      qbCost: P.booster.qbCost * downF(pm, 'qbc'),
+    },
+    arms: G && G.arms ? { ...P.arms, ...G.arms } : P.arms,
+    fcs: G && G.fcs ? { ...P.fcs, ...G.fcs } : P.fcs,
     generator: {
       ...P.generator,
-      cap: P.generator.cap * upF(pm, 'enCap'),
-      recharge: P.generator.recharge * upF(pm, 'rch'),
+      cap: P.generator.cap * (1 + ((G && G.gen) || 0)) * upF(pm, 'enCap'),
+      recharge: P.generator.recharge * (1 + ((G && G.gen) || 0)) * upF(pm, 'rch'),
       delay: P.generator.delay * downF(pm, 'dly'),
     },
   };
   return {
     ...st,
     parts,
-    ap: Math.round(st.ap * upF(pm, 'ap')),
-    stab: Math.round(st.stab * upF(pm, 'stab')),
+    ap: Math.round((st.ap + ((G && G.ap) || 0)) * upF(pm, 'ap')),
+    stab: Math.round((st.stab + ((G && G.stab) || 0)) * upF(pm, 'stab')),
     def: Math.min(0.35, st.def + (pm.def || 0)),
     // 三種防禦（data/attrs.js）：def 加到全部、defKin／defExp／defEn 各自
     defs: st.defs && {
-      kin: Math.min(0.5, st.defs.kin + (pm.def || 0) + (pm.defKin || 0)),
-      exp: Math.min(0.5, st.defs.exp + (pm.def || 0) + (pm.defExp || 0)),
-      en: Math.min(0.5, st.defs.en + (pm.def || 0) + (pm.defEn || 0)),
+      kin: Math.min(0.5, gDef(st, G, 0, 'kin') + (pm.def || 0) + (pm.defKin || 0)),
+      exp: Math.min(0.5, gDef(st, G, 1, 'exp') + (pm.def || 0) + (pm.defExp || 0)),
+      en: Math.min(0.5, gDef(st, G, 2, 'en') + (pm.def || 0) + (pm.defEn || 0)),
     },
     enAdapt: (st.enAdapt || 1) + (pm.enAd || 0),
     speed: st.speed * upF(pm, 'spd'),
     jump: st.jump * upF(pm, 'jump'),
     enCap: Math.round(st.enCap * upF(pm, 'enCap')),
-    lockRange: st.lockRange * upF(pm, 'lock'),
+    lockRange: st.lockRange * (1 + ((G && G.lock) || 0)) * upF(pm, 'lock'),
   };
+}
+// 零件品級與詞條對機體的影響：{ m 整台的增量（加進 pm）, ap／stab 加到合計的數值, dv 三種防禦值的增加,
+// gen 發電機容量與回復、bst QB 推力、lock 鎖定距離（品級，乘在零件上）, arms／fcs 改過的欄位 }
+const FRAME = ['head', 'core', 'arms', 'legs'];
+function gearStatFx(P, gr) {
+  const o = { m: {}, ap: 0, stab: 0, dv: [0, 0, 0], gen: 0, bst: 0, lock: 0 };
+  for (const k in gr) {
+    const g = gr[k],
+      part = P[k];
+    if (!g || !part || part.id !== g.id) continue;
+    // 調校（武器的在 pilotWeaponDef）
+    if (!/arm$|back$/.test(k)) {
+      const t = tuneOf(g.id, g.t);
+      for (const x in t) o.m[x] = (o.m[x] || 0) + t[x];
+    }
+    const F = gearFrameFx(g, GEAR_CAT.get(g.id));
+    for (const x in F.m) o.m[x] = (o.m[x] || 0) + F.m[x];
+    const q = F.p.q || 0;
+    if (FRAME.includes(k)) {
+      o.ap += (part.ap || 0) * q;
+      if (k === 'legs' || k === 'head') o.stab += k === 'legs' ? (part.stab || 0) * q : 0;
+      const d = part.defs || [0, 0, 0];
+      const dq = k === 'core' || k === 'arms' ? q : 0;
+      o.dv[0] += d[0] * (dq + (F.p.dfK || 0));
+      o.dv[1] += d[1] * (dq + (F.p.dfE || 0));
+      o.dv[2] += d[2] * (dq + (F.p.dfN || 0));
+      if (k === 'head') o.lock += q;
+      if (k === 'arms' && (F.p.aim || F.p.mel))
+        o.arms = {
+          aim: Math.min(1, (part.aim || 0.6) + (F.p.aim || 0)),
+          melee: (part.melee || 1) * (1 + (F.p.mel || 0)),
+        };
+    } else if (k === 'booster') o.bst += q;
+    else if (k === 'generator') o.gen += q;
+    else if (k === 'fcs') {
+      o.lock += q;
+      const as = (part.assist || [0.6, 0.6, 0.45]).slice();
+      const add = [F.p.asN || 0, F.p.asM || 0, F.p.asF || 0];
+      for (let i = 0; i < 3; i++) as[i] = Math.min(1, as[i] * (1 + q) + add[i]);
+      o.fcs = { assist: as, lockSpeed: (part.lockSpeed || 1) * (1 + (F.p.lks || 0)) };
+    }
+  }
+  return o;
+}
+// 防禦：零件的防禦值增加時重新換算減傷
+function gDef(st, G, i, key) {
+  if (!G || !G.dv[i] || !st.defV) return st.defs[key];
+  return defCut(st.defV[i] + G.dv[i]);
 }
 
 // 會影響武器定義的技能效果
@@ -323,13 +363,16 @@ export function profBonus(type, lv) {
   return f;
 }
 // 回傳套用技能與熟練度後的武器定義副本；沒有任何加成時回傳原物件
-export function pilotWeaponDef(def, pm) {
+export function pilotWeaponDef(def, pm, slot) {
   if (!pm || !def || def.type === 'none') return def;
   const f = profBonus(def.type, (pm.pf && pm.pf[def.id]) || 0);
   for (const k of WEAPON_KEYS) if (pm[k]) f[k] = (f[k] || 0) + pm[k];
-  // 武器的調校（data/tune.js）
-  if (pm.tn && pm.tn[def.id]) {
-    const t = tuneFx(tuneGroupOf(def.id), pm.tn[def.id]);
+  // 這個槽位的裝備：品級、詞條、調校（data/gear.js；零件 id 和槽位裡的相同才套用）
+  const g = slot && pm.gr && pm.gr[slot];
+  if (g && g.id === def.id) {
+    const w = gearWeaponFx(g, gearPart(g.id));
+    for (const k in w) f[k] = (f[k] || 0) + w[k];
+    const t = tuneOf(g.id, g.t);
     for (const k in t) f[k] = (f[k] || 0) + t[k];
   }
   if (!Object.keys(f).length) return def;
@@ -362,9 +405,10 @@ export function pilotWeaponDef(def, pm) {
   if (d.turn) d.turn *= upF(f, 'turn');
   if (d.splash) d.splash *= upF(f, 'splash');
   if (d.chargeT) d.chargeT *= downF(f, 'chg');
-  if (d.enPerSec) d.enPerSec *= downF(f, 'eps') * downF(f, 'enWpn');
+  if (d.enPerSec) d.enPerSec *= downF(f, 'eps') * downF(f, 'enWpn') * downF(f, 'enc');
+  if (d.enShot) d.enShot *= downF(f, 'enc');
   if (d.radius) d.radius *= upF(f, 'radius');
   if (d.stun) d.stun *= upF(f, 'stun');
-  if (d.absorb) d.absorb = Math.min(0.6, d.absorb + (f.absorb || 0));
+  if (d.absorb) d.absorb = Math.min(0.65, d.absorb + (f.absorb || 0));
   return d;
 }
