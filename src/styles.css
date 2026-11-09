@@ -1295,7 +1295,9 @@ select {
   overflow: auto;
   display: grid;
   grid-template-columns: repeat(6, minmax(112px, 1fr));
-  grid-template-rows: auto auto clamp(26px, 4vh, 48px) auto clamp(26px, 4vh, 48px) auto;
+  grid-template-rows:
+    auto auto clamp(26px, 4vh, 48px) auto clamp(26px, 4vh, 48px) auto clamp(20px, 3vh, 40px)
+    auto;
   align-content: center;
   column-gap: 8px;
   padding: 14px 18px;
@@ -1397,6 +1399,17 @@ select {
   width: calc(var(--nd) * 1.16);
   height: calc(var(--nd) * 1.16);
   border: 2px solid #b48a32;
+}
+/* 第 4 層：極致技能（金色雙框）；PvP 不生效的變暗 */
+.pNode.t4 {
+  border: 2px solid #ffd060;
+  box-shadow:
+    0 0 0 3px #12171c,
+    0 0 0 4px rgba(255, 208, 96, 0.55);
+  color: #e8c878;
+}
+.pNode.off {
+  opacity: 0.45;
 }
 .pNode .pIco {
   width: 46%;
@@ -1914,7 +1927,7 @@ select {
     overflow: visible;
     flex: none;
     grid-template-columns: repeat(6, minmax(72px, 1fr));
-    grid-template-rows: auto auto 22px auto 22px auto;
+    grid-template-rows: auto auto 22px auto 22px auto 22px auto;
     padding: 6px 10px;
   }
   .pBrHead {

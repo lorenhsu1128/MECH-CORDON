@@ -704,7 +704,7 @@ export class MechEntity {
     const dk = pilot ? 1 : d.npcK || 1;
     const pwN = pwK === 'slug' ? d.pellets || 1 : 1; // 獨頭彈＝所有彈丸合成一發
     const arK = pilot && w.arN > 0 ? FEEL.AR_DMG : 1; // 主動裝填成功的彈匣（mech-feel.js）
-    const lgK = this.pm ? this.lgShotK(d) : 1; // 傳說模組：補給回收、超頻（mech-legend.js）
+    const lgK = this.pm ? this.lgShotK(d, w) : 1; // 模組「補給回收」、極致技能「終彈」（mech-legend.js）
     const gk = this.gx ? this.gearShotK(slot, w, d, distT, rb, tgtOk ? targetEnt : null) : null; // 零件品級的詞條（mech-gear.js）
     const dmg =
         d.dmg *
@@ -715,7 +715,13 @@ export class MechEntity {
         arK *
         lgK *
         (gk ? gk.d : 1),
-      imp = d.impact * this.dmgMul * (rb ? rb.imp : 1) * (pwfx ? pwfx.imp * pwN : 1) * (gk ? gk.i : 1);
+      imp =
+        d.impact *
+        this.dmgMul *
+        (rb ? rb.imp : 1) *
+        (pwfx ? pwfx.imp * pwN : 1) *
+        (gk ? gk.i : 1) *
+        (this.pm ? this.lgShotImpK(d, w) : 1);
     const rbT = rb && rb.tags ? { rb: rb.tags } : null; // 投射物打中時顯示提示（projectile.js 的 rbHit）
     // 追尾視角／第一人稱的準星壓在鎖定目標的弱點上（game/weak.js 的 wpAimTick）：這一發算打在那個弱點
     const wpk = pilot && tgtOk && this.wpAim && this.wpAim.e === targetEnt ? this.wpAim.k : null;
@@ -1837,6 +1843,7 @@ export class MechEntity {
           },
           d.id,
         );
+        if (this.pm) this.lgMeleeHit(t, st.dmg * mk * this.dmgMul * this.stats.parts.arms.melee, d); // 極致技能「電弧刃」
         g.fx.meleeHit(hp, d.color, !!st.finisher, m.dir, {
           sw,
           s: HITSTOP[wgt],
@@ -2437,6 +2444,8 @@ export class MechEntity {
   }
   respawnAt(pos) {
     const g = this.game;
+    // 駕駛員的極致技能（PvP 版）「先遣偵察」：重生後 5 秒內對手的雷達上看不到（房主與客機各自呼叫 respawnAt）
+    this.uHideUntil = this.pmv && this.pmv('uStealth') > 0 ? performance.now() + 5000 : 0;
     this.statusClearAll(true);
     try {
       g.scene.remove(this.mesh);
@@ -2686,7 +2695,12 @@ export class MechEntity {
     else
       this.en = Math.min(
         this.enMax,
-        this.en + P.generator.recharge * dt * (this.grounded ? 1.6 + this.pmv('gnd') : 1) * this.gearRchK(), // 零件品級、電漿灼燒（mech-gear.js）
+        this.en +
+          P.generator.recharge *
+            dt *
+            (this.grounded ? 1.6 + this.pmv('gnd') : 1) *
+            this.gearRchK() *
+            (this.pm ? this.lgRchK() : 1), // 零件品級、電漿灼燒（mech-gear.js）、極致技能「超頻」
       );
     // 空域的飛行（entities/mech-air.js）：推力、轉向、機動，姿勢與動作照下面的 poseTail
     if (this.air) {

@@ -56,34 +56,97 @@ const LG = {
   OVER_R: 12 * DS,
 };
 
+// 駕駛員第 4 層的極致技能（data/skills.js 的 u* 鍵；只有 PvE，PvP 由 skillView 拿掉）
+const U = {
+  LAST_DMG: 3, // 終彈
+  LAST_IMP: 2,
+  ANNI_R: 9 * DS, // 殲滅射擊
+  ANNI_HP: 0.15,
+  ARC_R: 18 * DS, // 電弧刃
+  ARC_K: 0.4,
+  ARC_N: 2,
+  REACT_CD: 3, // 近身反擊
+  CHASE_T: 2, // 追擊推進
+  ARCQB_R: 6 * DS, // 電弧推進
+  RESO_T: 3, // 蓄力共鳴
+  ABSORB_K: 0.3, // 護盾轉化
+  BLAST_K: 0.12, // 抗爆結構
+  BOUNTY_N: 5, // 懸賞
+  MEDIC_T: 3, // 戰地醫護
+  MEDIC_R: 40 * DS,
+};
+
 Object.assign(MechEntity.prototype, {
   lg(k) {
     return this.pm ? this.pmv(k) > 0 : false;
   },
-  // 這一發的傷害倍率（fire）：補給回收（實彈）
-  lgShotK(d) {
+  // 這一發的傷害倍率（fire）：補給回收（實彈）、駕駛員的極致技能「終彈」
+  lgShotK(d, w) {
     let k = 1;
     if (this.lgSalvoT > 0 && usesAmmo(d)) k *= 1 + 0.12 * this.pmv('lgSalvo');
+    if (this.lgLastShot(d, w)) k *= U.LAST_DMG;
     return k;
+  },
+  // 這一發的衝擊倍率（fire）：終彈
+  lgShotImpK(d, w) {
+    return this.lgLastShot(d, w) ? U.LAST_IMP : 1;
+  },
+  // 終彈：實彈武器彈匣的最後一發
+  lgLastShot(d, w) {
+    return this.pmv('uLast') > 0 && !!w && usesAmmo(d) && w.mag === 1 && d.mag > 1;
   },
   // 子彈的額外欄位（fire 的 shoot）
   lgShotX() {
     return null;
   },
-  lgLaserHits() {},
-  // 能量武器的 EN 消耗倍率（能源導管中＝0）
-  lgEnK() {
-    return this.lgConduitT > 0 ? 0 : 1;
+  // 雷射命中之後（fire 的 laser）：極致技能「蓄力共鳴」
+  lgLaserHits(hits, dmg, imp, d, charged) {
+    if (charged && this.pmv('uReso') > 0 && hits.some((h) => !h.t.isProp)) {
+      if (!(this.uResoT > 0) && this.isPlayer) this.game.flashMsg('蓄力共鳴：3 秒不耗 EN', 0x7fc8ff, 1);
+      this.uResoT = U.RESO_T;
+    }
   },
-  // QB 的 EN 消耗倍率（能源導管中＝0）
+  // 能量武器的 EN 消耗倍率（能源導管、蓄力共鳴中＝0）
+  lgEnK() {
+    return this.lgConduitT > 0 || this.uResoT > 0 ? 0 : 1;
+  },
+  // QB 的 EN 消耗倍率（能源導管、追擊推進中＝0）
   lgQbK() {
-    return this.lgConduitT > 0 ? 0 : 1;
+    return this.lgConduitT > 0 || this.uChaseT > 0 ? 0 : 1;
+  },
+  // EN 回復的倍率（極致技能「超頻」：風格評價 A 以上）
+  lgRchK() {
+    return this.pmv('uOver') > 0 && this.sy && this.sy.rank >= 3 ? 1.5 : 1;
+  },
+  // 近戰命中（mech-entity.js 的近戰判定）：極致技能「電弧刃」
+  lgMeleeHit(t, dmg, d) {
+    if (!(this.pmv('uArc') > 0) || !t) return;
+    const g = this.game;
+    const list = g
+      .hostilesOfEnt(this)
+      .filter((e) => e !== t && !e.dead && !e.isProp && e.pos && e.pos.distanceTo(t.pos) < U.ARC_R)
+      .sort((a, b) => a.pos.distanceTo(t.pos) - b.pos.distanceTo(t.pos))
+      .slice(0, U.ARC_N);
+    for (const o of list) {
+      g.fx.bolt(t.center(), o.center(), 0x9fe0ff, 0.25);
+      o.takeDamage(dmg * U.ARC_K, 200, this, o.center(), null, undefined, d && d.id, weaponAttr(d || {}));
+    }
   },
   lgLand() {},
   // 受傷前（takeDamage，無敵判斷之後）：增援壁壘、緊急空投的護盾；回傳 null＝躲掉
-  lgDefense(dmg, impact, from) {
+  lgDefense(dmg, impact, from, melee) {
     if (!this.pm) return [dmg, impact];
+    const g = this.game;
     const foe = from && from.team && from.team !== this.team;
+    // 極致技能「近身反擊」：被近戰打中時爆炸反擊
+    if (foe && melee && this.pmv('uReact') > 0 && !(this.uReactT > this.t)) {
+      this.uReactT = this.t + U.REACT_CD;
+      const c = this.center();
+      g.explodeAt(c, 1200 * this.dmgMul, 1600, 7 * DS, this, false);
+      g.fx.shockwave(c, 7, 0xffa040, 0.4);
+    }
+    // 極致技能「戰地醫護」：用修復套件之後受到的傷害 −50%
+    if (foe && this.uMedicT > 0) dmg *= 0.5;
     if (this.lgShieldT !== undefined && this.lgShieldT <= 0) this.lgShield = 0;
     if (foe && this.lgShield > 0) {
       const a = Math.min(this.lgShield, dmg);
@@ -94,8 +157,14 @@ Object.assign(MechEntity.prototype, {
     return [dmg, impact];
   },
   // 實際扣 AP 的地方（takeDamage）：緩衝裝甲把敵人造成的傷害 40% 改成 4 秒內慢慢扣；回傳現在要扣的
+  // 極致技能「抗爆結構」：單次超過 AP 上限 12% 的部分減半（先算）
   lgBufTake(real, from) {
-    if (!this.lg('lgBuffer') || !from || !from.team || from.team === this.team) return real;
+    if (!from || !from.team || from.team === this.team) return real;
+    if (this.pmv('uBlast') > 0) {
+      const cap = this.maxHp * U.BLAST_K;
+      if (real > cap) real = cap + (real - cap) * 0.5;
+    }
+    if (!this.lg('lgBuffer')) return real;
     const d = real * LG.BUF_K;
     (this.lgDebt = this.lgDebt || []).push({ v: d, t: LG.BUF_T });
     return real - d;
@@ -114,7 +183,10 @@ Object.assign(MechEntity.prototype, {
       if (this.isPlayer) this.game.flashMsg(`緩衝裝甲：抵銷 ${Math.round(v).toLocaleString()}`, 0x7ee081, 1);
     }
   },
-  lgAbsorbed() {},
+  // 脈衝盾擋下的傷害（takeDamage 的 shield）：極致技能「護盾轉化」
+  lgAbsorbed(v) {
+    if (v > 0 && this.pmv('uAbsorb') > 0) this.hp = Math.min(this.maxHp, this.hp + v * U.ABSORB_K);
+  },
   lgCheatDeath() {
     return false;
   },
@@ -127,9 +199,37 @@ Object.assign(MechEntity.prototype, {
     if (k === 'pqb' && this.lg('lgZero') && !(this.lgZeroCd > 0)) this.lgZeroOn();
   },
   // 擊破（tactics.js 的 modKillFx）
-  lgKill() {
+  lgKill(e) {
     if (this.lg('lgBuffer')) this.lgDebtClear();
     if (this.lg('lgBarrage')) this.lgBarAdd(1);
+    if (this.pmv('uChase') > 0) this.uChaseT = U.CHASE_T; // 極致技能「追擊推進」
+    if (this.pmv('uAnni') > 0 && e && e.center) this.uAnnihilate(e);
+    if (this.pmv('uBounty') > 0 && (this.uKills = (this.uKills || 0) + 1) % U.BOUNTY_N === 0)
+      this.uBountyNow();
+  },
+  // 極致技能「殲滅射擊」：擊破時，附近 AP 低的一般敵人直接引爆（Boss、敵對 AC、部位不會）
+  uAnnihilate(e) {
+    const g = this.game;
+    const c = e.center();
+    for (const o of g.hostilesOfEnt(this)) {
+      if (o === e || o.dead || o.isProp || !o.pos || o.isBoss || o.ace || o.ai === 'ac' || o.isElite)
+        continue;
+      if ((o.opts && o.opts.parent !== undefined) || o.pos.distanceTo(e.pos) > U.ANNI_R) continue;
+      if (o.hp > o.maxHp * U.ANNI_HP) continue;
+      g.fx.bolt(c, o.center(), 0xffa040, 0.25);
+      o.iFrames = 0;
+      o.takeDamage(o.hp + 1, 600, this, o.center(), null, null, null, 'none'); // 'none'＝不看防禦，一定引爆
+    }
+  },
+  // 極致技能「懸賞」：每擊破 5 台
+  uBountyNow() {
+    const g = this.game;
+    const L = g.camp && g.campLevel ? g.campLevel() : (g.save && g.save.level) || 1;
+    const v = 300 + L * 60;
+    if (this.isPlayer && g.cacheCoam) g.cacheCoam(v);
+    this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.08);
+    g.fx.ring(this.center(), 5, 0xffc040);
+    if (this.isPlayer) g.flashMsg(`懸賞：COAM +${v.toLocaleString()}、AP 回復`, 0xffc040, 1.6);
   },
   // ================= 第 2 期：卡斯特隆、維爾威 =================
   // 打到敵人（takeDamage，扣 AP 之前）：火力支援（Boss 的傷害累積層數）、火力封鎖（持續命中）
@@ -467,8 +567,18 @@ Object.assign(MechEntity.prototype, {
   },
   // 用修復套件（mission.js、mp-host.js）：停滯力場
   lgKit() {
-    if (!this.lg('lgStasis')) return;
     const g = this.game;
+    // 極致技能「戰地醫護」：40 m 內的隊友與僚機回復 30%，自己 3 秒受傷 −50%
+    if (this.pmv('uMedic') > 0) {
+      this.uMedicT = U.MEDIC_T;
+      for (const a of [...(g.players || []), ...(g.allies || [])]) {
+        if (!a || a === this || a.dead || a.team !== this.team || a.pos.distanceTo(this.pos) > U.MEDIC_R)
+          continue;
+        a.hp = Math.min(a.maxHp, a.hp + a.maxHp * 0.3);
+        g.fx.ring(a.center(), 4, 0x7ee081);
+      }
+    }
+    if (!this.lg('lgStasis')) return;
     const f = { owner: this, pos: this.center(), r: LG.FIELD_R, t: LG.FIELD_T, ringT: 0 };
     (g.lgFields = g.lgFields || []).push(f);
     if (this.isPlayer) g.flashMsg('停滯力場：敵人的子彈變慢', 0x9fe8d0, 1.4);
@@ -542,6 +652,21 @@ Object.assign(MechEntity.prototype, {
     if (!this.pm) return;
     const g = this.game;
     if (this.lgSalvoT > 0) this.lgSalvoT -= dt;
+    // 極致技能的計時、電弧推進（QB 中每 0.08 秒）
+    if (this.uResoT > 0) this.uResoT -= dt;
+    if (this.uChaseT > 0) this.uChaseT -= dt;
+    if (this.uMedicT > 0) this.uMedicT -= dt;
+    if (this.qbT > 0 && this.pmv('uArcQB') > 0) {
+      this.uArcT = (this.uArcT || 0) - dt;
+      if (this.uArcT <= 0) {
+        this.uArcT = 0.08;
+        for (const e of g.hostilesOfEnt(this)) {
+          if (e.dead || e.isProp || !e.pos || e.pos.distanceTo(this.pos) > U.ARCQB_R) continue;
+          g.fx.bolt(this.center(), e.center(), 0x9fe0ff, 0.2);
+          e.takeDamage(160 * this.dmgMul, 300, this, e.center(), null, null, null, 'en');
+        }
+      }
+    }
     if (this.lgConduitT > 0) this.lgConduitT -= dt;
     if (this.lgShieldT > 0) this.lgShieldT -= dt;
     // 緩衝裝甲：每筆在 4 秒內平均扣完，這部分不會讓 AP 掉到 1 以下

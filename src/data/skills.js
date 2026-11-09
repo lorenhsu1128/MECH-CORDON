@@ -2,12 +2,12 @@
 // 效果 fx 是「每一級」的增量，computePilotMods 會把所有已投點技能的增量乘上等級後加總：
 //   比例類（dmg、rld…）是 ±比例，例如 0.03 = +3%、rld 0.06 = 換彈時間 −6%
 //   固定值類（def、kits、qbIF…）直接加在基準值上
-export const PILOT_MAX_LEVEL = 35;
+export const PILOT_MAX_LEVEL = 45; // 2026-11-10 從 35 提高（第 4 層極致技能）
 export const PRESET_MAX = 5;
 // 從 L 級升到 L+1 級所需經驗
 export const xpToNext = (L) => 250 + 120 * L;
 // 各階層需要在同分支「較低階層」投入的點數
-export const TIER_REQ = { 1: 0, 2: 3, 3: 7 };
+export const TIER_REQ = { 1: 0, 2: 3, 3: 7, 4: 9 }; // 第 4 層另外要第 3 層已點（data/pilot.js 的 gateReason）
 
 export const BRANCHES = [
   { id: 'gun', name: '射擊' },
@@ -293,11 +293,138 @@ export const SKILLS = [
     pve: { name: '急救專家', fx: { reviveHp: 0.2 }, desc: () => '救援隊友時回復 40% → 60%' },
     pvp: { name: '應急修復', fx: { kitEn: 0.3 }, desc: () => '使用修補包時同時回復 30% EN' },
   },
+  // ---------- 第 4 層：極致技能（2026-11-10；改規則，每個分支 2 項都可以點）----------
+  // 開放：同分支前段投入 TIER_REQ[4] 點，而且第 3 層已點（gateReason 的 cap）。
+  // pveOnly＝PvP 不生效（skillView 回傳空的 fx）；支援分支照舊分 pve／pvp 兩個版本。
+  // 行為在 entities/mech-legend.js（pmv 的 u* 鍵）。
+  {
+    id: 'g_u1',
+    br: 'gun',
+    tier: 4,
+    max: 1,
+    pveOnly: true,
+    name: '終彈',
+    fx: { uLast: 1 },
+    desc: () => '實彈武器彈匣的最後一發：傷害 ×3、衝擊 ×2',
+  },
+  {
+    id: 'g_u2',
+    br: 'gun',
+    tier: 4,
+    max: 1,
+    pveOnly: true,
+    name: '殲滅射擊',
+    fx: { uAnni: 1 },
+    desc: () => '擊破敵人時，9 m 內 AP 低於 15% 的一般敵人直接引爆（Boss、敵對 AC 不會）',
+  },
+  {
+    id: 'm_u1',
+    br: 'melee',
+    tier: 4,
+    max: 1,
+    pveOnly: true,
+    name: '電弧刃',
+    fx: { uArc: 1 },
+    desc: () => '近戰命中時，電弧跳到附近 2 個敵人（傷害 40%）',
+  },
+  {
+    id: 'm_u2',
+    br: 'melee',
+    tier: 4,
+    max: 1,
+    pveOnly: true,
+    name: '近身反擊',
+    fx: { uReact: 1 },
+    desc: () => '被近戰打中時爆炸反擊（冷卻 3 秒）',
+  },
+  {
+    id: 'v_u1',
+    br: 'mob',
+    tier: 4,
+    max: 1,
+    pveOnly: true,
+    name: '追擊推進',
+    fx: { uChase: 1 },
+    desc: () => '擊破敵人後 2 秒內，QB 不耗 EN',
+  },
+  {
+    id: 'v_u2',
+    br: 'mob',
+    tier: 4,
+    max: 1,
+    pveOnly: true,
+    name: '電弧推進',
+    fx: { uArcQB: 1 },
+    desc: () => 'QB 的路徑放出電弧，碰到的敵人受傷',
+  },
+  {
+    id: 'e_u1',
+    br: 'en',
+    tier: 4,
+    max: 1,
+    pveOnly: true,
+    name: '蓄力共鳴',
+    fx: { uReso: 1 },
+    desc: () => '蓄力射擊命中後 3 秒內，能量武器不耗 EN',
+  },
+  {
+    id: 'e_u2',
+    br: 'en',
+    tier: 4,
+    max: 1,
+    pveOnly: true,
+    name: '超頻',
+    fx: { uOver: 1 },
+    desc: () => '風格評價 A 以上時，EN 回復 ×1.5',
+  },
+  {
+    id: 'a_u1',
+    br: 'armor',
+    tier: 4,
+    max: 1,
+    pveOnly: true,
+    name: '護盾轉化',
+    fx: { uAbsorb: 1 },
+    desc: () => '脈衝盾擋下的傷害，30% 轉成 AP',
+  },
+  {
+    id: 'a_u2',
+    br: 'armor',
+    tier: 4,
+    max: 1,
+    pveOnly: true,
+    name: '抗爆結構',
+    fx: { uBlast: 1 },
+    desc: () => '單次受到的傷害超過 AP 上限的 12% 時，超過的部分減半',
+  },
+  {
+    id: 's_u1',
+    br: 'sup',
+    tier: 4,
+    max: 1,
+    pve: { name: '懸賞', fx: { uBounty: 1 }, desc: () => '每擊破 5 台敵人：COAM 報酬、AP 回復 8%' },
+    pvp: { name: '擊殺回復', fx: { uKillHeal: 1 }, desc: () => '擊破對手時 AP 回復 10%' },
+  },
+  {
+    id: 's_u2',
+    br: 'sup',
+    tier: 4,
+    max: 1,
+    pve: {
+      name: '戰地醫護',
+      fx: { uMedic: 1 },
+      desc: () => '用修復套件時，40 m 內的隊友與僚機回復 30%；之後 3 秒受到的傷害 −50%',
+    },
+    pvp: { name: '先遣偵察', fx: { uStealth: 1 }, desc: () => '重生後 5 秒內，對手的雷達上看不到你' },
+  },
 ];
 export const SKILL_BY_ID = Object.fromEntries(SKILLS.map((s) => [s.id, s]));
 // 依模式取得技能的名稱／效果／說明
+// pveOnly（第 4 層的極致技能）在 PvP 不生效：fx 是空的、說明加上「PvE 限定」
 export function skillView(s, mode) {
   const v = s[mode] || s;
+  if (s.pveOnly && mode === 'pvp')
+    return { name: v.name, fx: {}, desc: (r) => `PvE 限定（對戰時不生效）：${v.desc(r)}`, off: true };
   return { name: v.name, fx: v.fx, desc: v.desc };
 }
 

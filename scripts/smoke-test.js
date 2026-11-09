@@ -5041,6 +5041,290 @@ async function continueToPilot(page) {
   return waitVisible(page, 'pilot');
 }
 const ptsLeft = async (page) => Number(await page.textContent('#pPtsLeft'));
+// 駕駛員第 4 層的極致技能（2026-11-10）：等級上限 45、開放條件、PvE 限定、12 項的效果、技能樹的版面
+async function testPilotUlt(browser, base) {
+  console.log('駕駛員的極致技能：等級上限 45、第 4 層的開放條件、PvP 限定、效果、三種畫面大小');
+  const { ctx, page } = await newPage(browser, 'pilotult');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await freezeLoop(page);
+  // 開放條件：前段 9 點＋第 3 層；滿級 45 級＝44 點
+  const gate = await page.evaluate(() => {
+    const g = window.__game;
+    const out = {};
+    const P = g.save.pilot.pve;
+    P.xp = 1e7;
+    P.skills = { g_dmg: 3, g_rld: 3, g_mag: 2, g_fcs: 2 };
+    g.openPilot();
+    const disabled = (id) => {
+      g.pilotSelect(id);
+      return document.getElementById('pHoldBtn').disabled;
+    };
+    out.lv = document.getElementById('pLevel').textContent;
+    out.noCap = disabled('g_u1');
+    out.lockTxt = document.getElementById('pInfo').textContent;
+    P.skills.g_cap = 1;
+    g.renderPilot();
+    out.ok = !disabled('g_u1') && !disabled('g_u2');
+    out.gateTxt = document.querySelector('#pTree .pGate[data-br="gun"][data-tier="4"]').textContent;
+    out.nodes = document.querySelectorAll('#pTree .pNode.t4').length;
+    return out;
+  });
+  check(/45/.test(gate.lv), `駕駛員等級上限 45（${gate.lv.replace(/\s+/g, ' ').slice(0, 40)}）`);
+  check(gate.noCap && /第 3 層/.test(gate.lockTxt), '第 4 層：第 3 層沒點時不能投點');
+  check(gate.ok && /✓/.test(gate.gateTxt), '第 4 層：前段 9 點＋第 3 層＝兩項都可以點');
+  check(gate.nodes === 12, `技能樹有 12 個極致技能的節點（${gate.nodes}）`);
+  for (const [w, h, name] of [
+    [1920, 1080, 'pc'],
+    [1180, 820, 'tablet'],
+    [844, 390, 'phone'],
+  ]) {
+    await page.setViewportSize({ width: w, height: h });
+    const lay = await page.evaluate(() => {
+      const g = window.__game;
+      g.pilotLinks();
+      const ns = [...document.querySelectorAll('#pTree .pNode')].map((n) => n.getBoundingClientRect());
+      const over = ns.some((a, i) =>
+        ns.some(
+          (b, j) => i < j && a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom,
+        ),
+      );
+      return { over };
+    });
+    await page.screenshot({ path: `test-results/pilot-ult-${name}.png` });
+    check(!lay.over, `技能樹（${name}）：第 4 層的節點不重疊`);
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
+  // PvP：支援以外的極致技能不生效、支援換成 PvP 版
+  const pvp = await page.evaluate(() => {
+    const g = window.__game;
+    const P = g.save.pilot.pvp;
+    P.xp = 1e7;
+    P.skills = {
+      g_dmg: 3,
+      g_rld: 3,
+      g_mag: 2,
+      g_fcs: 2,
+      g_cap: 1,
+      g_u1: 1,
+      s_kit: 3,
+      s_kitn: 1,
+      s_x1: 2,
+      s_x2: 2,
+      s_cap: 1,
+      s_u1: 1,
+      s_u2: 1,
+    };
+    const pm = g.pilotLocalMods('pvp');
+    g.pilotMode = 'pvp';
+    g.renderPilot();
+    const off = document.querySelector('#pTree .pNode[data-skill="g_u1"]').classList.contains('off');
+    g.pilotMode = 'pve';
+    return {
+      last: pm.uLast || 0,
+      heal: pm.uKillHeal || 0,
+      hide: pm.uStealth || 0,
+      bounty: pm.uBounty || 0,
+      off,
+    };
+  });
+  check(
+    pvp.last === 0 && pvp.heal === 1 && pvp.hide === 1 && pvp.bounty === 0 && pvp.off,
+    'PvP：射擊等分支的極致技能不生效（顯示變暗）、支援換成擊殺回復與先遣偵察',
+  );
+  // 效果（PvE）
+  const r = await page.evaluate(() => {
+    const g = window.__game;
+    const out = {};
+    const P = g.save.pilot.pve;
+    P.xp = 1e7;
+    P.skills = {
+      g_dmg: 3,
+      g_rld: 3,
+      g_mag: 2,
+      g_fcs: 2,
+      g_cap: 1,
+      g_u1: 1,
+      g_u2: 1,
+      m_dmg: 3,
+      m_en: 3,
+      m_imp: 2,
+      m_rch: 2,
+      m_cap: 1,
+      m_u1: 1,
+      m_u2: 1,
+      v_spd: 3,
+      v_qbc: 3,
+      v_qb: 2,
+      v_air: 2,
+      v_cap: 1,
+      v_u1: 1,
+      v_u2: 1,
+    };
+    g.writeSave && g.writeSave();
+    g.autoPickMod = true;
+    g.campBegin('c1s2');
+    g.campSetMods([]);
+    g.camp.seg = 1;
+    g.camp.types[1] = 'supply';
+    g.campEnterSeg();
+    g.state = 'ult-test';
+    const p = g.player;
+    out.keys = ['uLast', 'uAnni', 'uArc', 'uReact', 'uChase', 'uArcQB'].filter((k) => p.pmv(k) > 0).length;
+    p.hp = p.maxHp = 1e6;
+    const W = g.world;
+    const at = (x, z) =>
+      new THREE.Vector3(p.pos.x + x, W.groundAt(p.pos.x + x, p.pos.z + z, 999), p.pos.z + z);
+    const foe = (x, z) => {
+      const e = g.spawnType('mt', 1, 1, at(x, z), 1);
+      e.updateAI = () => {};
+      e.hp = e.maxHp = 1e5;
+      return e;
+    };
+    const lost = (e, fn) => {
+      const h = e.hp;
+      fn();
+      return Math.round(h - e.hp);
+    };
+    const tick = (s) => {
+      for (let t = 0; t < s; t += 1 / 60) p.lgTick(1 / 60);
+    };
+    // 終彈：彈匣最後一發 ×3、衝擊 ×2
+    const w = p.weapons.rarm;
+    w.mag = 1;
+    out.last = [p.lgShotK(w.def, w), p.lgShotImpK(w.def, w)];
+    w.mag = 5;
+    out.last2 = p.lgShotK(w.def, w);
+    // 殲滅射擊：擊破時 9 m 內 AP 低於 15% 的一般敵人引爆
+    const a = foe(40, 0),
+      b = foe(44, 0),
+      c = foe(46, 0);
+    b.hp = b.maxHp * 0.1;
+    c.hp = c.maxHp * 0.5;
+    p.lgKill(a);
+    out.anni = [b.dead, c.dead];
+    // 追擊推進：擊破後 2 秒 QB 不耗 EN
+    out.chase = p.lgQbK();
+    tick(2.1);
+    out.chaseEnd = p.lgQbK();
+    // 電弧刃：近戰命中時跳到附近 2 個
+    const d1 = foe(-40, 0),
+      d2 = foe(-44, 0),
+      d3 = foe(-46, 2),
+      d4 = foe(-150, 0);
+    out.arc = [d2, d3, d4].map((e) => lost(e, () => p.lgMeleeHit(d1, 1000, p.weapons.rarm.def)));
+    // 近身反擊：被近戰打中時爆炸
+    p.uReactT = 0;
+    d1.pos.copy(at(3, 0));
+    out.react = lost(d1, () => {
+      p.iFrames = 0;
+      p.takeDamage(10, 0, d1, p.center(), new THREE.Vector3(0, 0, 1), { kb: 0 });
+    });
+    // 電弧推進：QB 中碰到的敵人受傷
+    p.qbT = 0.16;
+    p.uArcT = 0;
+    out.arcqb = lost(d1, () => p.lgTick(1 / 60));
+    p.qbT = 0;
+    for (const e of [a, b, c, d1, d2, d3, d4]) e.dead = true;
+    g.state = 'play';
+    return out;
+  });
+  check(r.keys === 6, `PvE：射擊、近戰、機動的極致技能都生效（${r.keys}／6）`);
+  check(
+    r.last[0] === 3 && r.last[1] === 2 && r.last2 === 1,
+    '終彈：彈匣最後一發傷害 ×3、衝擊 ×2，其他發照常',
+  );
+  check(r.anni[0] && !r.anni[1], '殲滅射擊：擊破時附近 AP 低於 15% 的敵人引爆、AP 高的不會');
+  check(r.chase === 0 && r.chaseEnd === 1, '追擊推進：擊破後 2 秒 QB 不耗 EN');
+  check(r.arc[0] > 0 && r.arc[1] > 0 && r.arc[2] === 0, `電弧刃：跳到附近 2 個（${r.arc.join('、')}）`);
+  check(r.react > 0 && r.arcqb > 0, `近身反擊（${r.react}）、電弧推進（${r.arcqb}）`);
+  // 裝甲與支援（PvE）
+  const r2 = await page.evaluate(() => {
+    const g = window.__game;
+    const out = {};
+    const P = g.save.pilot.pve;
+    P.skills = {
+      a_ap: 3,
+      a_stb: 3,
+      a_def: 2,
+      a_rec: 2,
+      a_cap: 1,
+      a_u1: 1,
+      a_u2: 1,
+      s_kit: 3,
+      s_kitn: 1,
+      s_x1: 2,
+      s_x2: 2,
+      s_cap: 1,
+      s_u1: 1,
+      s_u2: 1,
+      e_cap: 3,
+      e_rch: 3,
+      e_dly: 2,
+      e_wpn: 2,
+      e_gnd: 1,
+      e_u1: 1,
+      e_u2: 1,
+    };
+    g.camp.seg = 1;
+    g.camp.types[1] = 'supply';
+    g.campEnterSeg();
+    g.state = 'ult-test';
+    const p = g.player;
+    p.hp = p.maxHp = 100000;
+    const W = g.world;
+    const at = (x, z) =>
+      new THREE.Vector3(p.pos.x + x, W.groundAt(p.pos.x + x, p.pos.z + z, 999), p.pos.z + z);
+    const a = g.spawnType('mt', 1, 1, at(40, 0), 1);
+    a.updateAI = () => {};
+    const lost = (e, fn) => {
+      const h = e.hp;
+      fn();
+      return Math.round(h - e.hp);
+    };
+    const hurt = (dmg) => {
+      p.iFrames = 0;
+      p.takeDamage(dmg, 0, a, p.center(), new THREE.Vector3(0, 0, 1), null, null, 'none');
+    };
+    // 抗爆結構：AP 上限 12%（12000）以上的部分減半
+    out.blast = lost(p, () => hurt(32000));
+    out.blastSmall = lost(p, () => hurt(5000));
+    // 護盾轉化：擋下的傷害 30% 轉成 AP
+    p.hp = 50000;
+    p.lgAbsorbed(1000);
+    out.absorb = Math.round(p.hp - 50000);
+    // 懸賞：每擊破 5 台
+    p.hp = 50000;
+    p.uKills = 0;
+    for (let i = 0; i < 5; i++) p.lgKill(null);
+    out.bounty = Math.round(((p.hp - 50000) / p.maxHp) * 100);
+    // 戰地醫護：用修復套件之後 3 秒受傷 −50%
+    p.hp = 50000;
+    p.kits = 2;
+    g.useKit();
+    out.medic = lost(p, () => hurt(1000));
+    // 蓄力共鳴：蓄力的雷射命中後 3 秒不耗 EN
+    p.lgLaserHits([{ t: a }], 100, 0, { type: 'laser' }, true);
+    out.reso = p.lgEnK();
+    // 超頻：風格評價 A 以上 EN 回復 ×1.5
+    if (!p.sy) p.sy = { pts: 0, idle: 0, hist: [], labels: [], rank: -1, cls: '', sendT: 0 };
+    p.sy.rank = 3;
+    out.over = p.lgRchK();
+    p.sy.rank = 1;
+    out.over0 = p.lgRchK();
+    a.dead = true;
+    g.state = 'play';
+    return out;
+  });
+  check(r2.blast === 22000 && r2.blastSmall === 5000, `抗爆結構：32000 的一擊變成 ${r2.blast}、小的照常`);
+  check(r2.absorb === 300, `護盾轉化：擋下的 1000 轉成 AP ${r2.absorb}`);
+  check(r2.bounty === 8, `懸賞：擊破 5 台回復 AP ${r2.bounty}%`);
+  check(r2.reso === 0, '蓄力共鳴：蓄力的雷射命中後能量武器不耗 EN');
+  check(r2.over === 1.5 && r2.over0 === 1, '超頻：風格評價 A 以上 EN 回復 ×1.5');
+  check(r2.medic === 500, `戰地醫護：用修復套件後受傷 −50%（${r2.medic}）`);
+  await ctx.close();
+}
+
 async function testPilot(browser, base) {
   console.log('駕駛員：舊存檔遷移 → 配點 → 車庫數值 → 預設組');
   const { ctx, page } = await newPage(browser, 'pilot');
@@ -31086,6 +31370,7 @@ const STEPS = [
   ['testDestructSegs', (c) => testDestructSegs(c.browser, c.base + '?test')],
   ['testSaves', (c) => testSaves(c.browser, c.base + '?test')],
   ['testPilot', (c) => testPilot(c.browser, c.base)],
+  ['testPilotUlt', (c) => testPilotUlt(c.browser, c.base)],
   ['testLibrary', (c) => testLibrary(c.browser, c.base)],
   ['testFoeModelsD1', (c) => testFoeModelsD1(c.browser, c.base)],
   ['testLibraryGlb', (c) => testLibraryGlb(c.browser, c.base)],

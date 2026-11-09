@@ -245,15 +245,18 @@ Object.assign(Game.prototype, {
       c.arc(x, y, r, 0, Math.PI * 2);
       c.fill();
     };
+    const now = performance.now();
+    const hid = (q) => q.uHideUntil > now; // 極致技能「先遣偵察」（PvP）
     for (const e of this.hostilesOfEnt(p)) {
-      if (!e.dead && !e.noLock)
+      if (!e.dead && !e.noLock && !hid(e))
         dot(e.pos, e.isBoss ? '#ff4d4d' : e === p.lock ? '#ffb020' : '#ff7070', e.isBoss ? 5 : 3);
     }
     for (const a of this.allies) {
       if (!a.dead) dot(a.pos, '#80ffb0');
     }
     for (const q of this.players || []) {
-      if (!q.dead && q !== p) dot(q.pos, this.net.slotColor(q.slot || 0), 4);
+      if (!q.dead && q !== p && !(hid(q) && this.isHostile(q, p)))
+        dot(q.pos, this.net.slotColor(q.slot || 0), 4);
     }
     for (const v of this.vehicles || []) {
       if (!v.dead) dot(v.center(), '#ffd070', 4);

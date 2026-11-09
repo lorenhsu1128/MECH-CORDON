@@ -69,6 +69,11 @@ export function gateReason(skills, id) {
   const s = SKILL_BY_ID[id];
   const need = TIER_REQ[s.tier];
   if (lowerSpent(skills, s.br, s.tier) < need) return `本分支前段需投入 ${need} 點`;
+  // 第 4 層（極致技能）：第 3 層要先點
+  if (s.tier === 4) {
+    const cap = SKILLS.find((x) => x.br === s.br && x.tier === 3);
+    if (cap && !(skills[cap.id] > 0)) return `需要第 3 層的技能`;
+  }
   if (s.req && (skills[s.req] || 0) < SKILL_BY_ID[s.req].max) return `需要「${SKILL_BY_ID[s.req].name}」滿級`;
   return '';
 }

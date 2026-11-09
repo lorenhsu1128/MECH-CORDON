@@ -173,10 +173,11 @@ Object.assign(Game.prototype, {
       head.innerHTML = `${branchIcon(br.id)}<b>${br.name}</b><span class="pBrN"></span>`;
       tree.appendChild(head);
       const list = SKILLS.filter((s) => s.br === br.id);
-      // 門檻列（T2、T3）
+      // 門檻列（T2、T3、T4＝極致技能）
       for (const [tier, row] of [
         [2, 3],
         [3, 5],
+        [4, 7],
       ]) {
         const g = document.createElement('div');
         g.className = 'pGate';
@@ -186,7 +187,7 @@ Object.assign(Game.prototype, {
         g.style.gridRow = row;
         tree.appendChild(g);
       }
-      for (const tier of [1, 2, 3]) {
+      for (const tier of [1, 2, 3, 4]) {
         const cell = document.createElement('div');
         cell.className = 'pCell t' + tier;
         cell.style.gridColumn = col;
@@ -194,7 +195,7 @@ Object.assign(Game.prototype, {
         for (const s of list.filter((x) => x.tier === tier)) {
           const v = skillView(s, mode);
           const b = document.createElement('button');
-          b.className = 'pNode t' + tier;
+          b.className = 'pNode t' + tier + (v.off ? ' off' : ''); // off＝PvP 不生效的極致技能
           b.dataset.skill = s.id;
           b.title = v.name;
           b.innerHTML = `<span class="pRing"></span><span class="pHold"></span>${skillIcon(s.id, s.br)}<span class="pRk"></span><span class="srOnly">${escHtml(v.name)}</span>`;
@@ -257,7 +258,7 @@ Object.assign(Game.prototype, {
       const n = SKILLS.filter((s) => s.br === br.id).reduce((a, s) => a + (P.skills[s.id] || 0), 0);
       const h = document.querySelector(`#pTree .pBrHead[data-br="${br.id}"] .pBrN`);
       if (h) h.textContent = n;
-      for (const tier of [2, 3]) {
+      for (const tier of [2, 3, 4]) {
         const g = document.querySelector(`#pTree .pGate[data-br="${br.id}"][data-tier="${tier}"]`);
         if (!g) continue;
         const low = SKILLS.filter((s) => s.br === br.id && s.tier < tier).reduce(
@@ -267,7 +268,8 @@ Object.assign(Game.prototype, {
         const need = TIER_REQ[tier];
         g.classList.toggle('ok', low >= need);
         g.innerHTML = `<span>${low >= need ? '✓' : `${Math.min(low, need)}／${need}`}</span>`;
-        g.title = `T${tier}：本分支前段投入 ${need} 點`;
+        g.title =
+          tier === 4 ? `極致：本分支前段投入 ${need} 點、第 3 層已點` : `T${tier}：本分支前段投入 ${need} 點`;
       }
     }
     this.pilotLinks();
@@ -311,11 +313,13 @@ Object.assign(Game.prototype, {
       const L = SKILLS.filter((s) => s.br === br.id);
       const t1 = L.filter((s) => s.tier === 1),
         t2 = L.filter((s) => s.tier === 2),
-        t3 = L.find((s) => s.tier === 3);
+        t3 = L.find((s) => s.tier === 3),
+        t4 = L.filter((s) => s.tier === 4);
       const on = (s) => (P.skills[s.id] || 0) > 0;
       t2.forEach((s, i) => t1[i] && line(t1[i].id, s.id, on(s) ? 'on' : ''));
       if (t3) {
         for (const s of t2) line(s.id, t3.id, on(t3) && on(s) ? 'on' : '');
+        for (const s of t4) line(t3.id, s.id, on(s) ? 'on' : ''); // 第 4 層（極致技能）
         if (t3.req) {
           const rq = SKILLS.find((s) => s.id === t3.req);
           // 前置技能：從它沿外側走到 T3（不和 T2 的線重疊時才畫得清楚，所以畫成虛線）
@@ -458,10 +462,10 @@ Object.assign(Game.prototype, {
       hb.onclick = () => {};
       el.querySelector('#pDecBtn').onclick = () => this.pilotDec(this.pSel);
     }
-    el.classList.toggle('t3', s.tier === 3);
+    el.classList.toggle('t3', s.tier >= 3);
     el.querySelector('.pInfoIco').innerHTML = skillIcon(s.id, s.br);
     el.querySelector('.pInfoH').innerHTML =
-      `<b>${escHtml(v.name)}</b><span class="dim">${br.name} · T${s.tier}</span><span class="pPips">${pips}</span>`;
+      `<b>${escHtml(v.name)}</b><span class="dim">${br.name} · ${s.tier === 4 ? '極致' : 'T' + s.tier}</span><span class="pPips">${pips}</span>`;
     el.querySelector('.pInfoE').innerHTML =
       `<span>${eff}</span>${why ? `<span class="${gate && !r ? 'lock' : 'dim'}">${gate && !r ? '🔒 ' : ''}${escHtml(why)}</span>` : ''}`;
     // 按鈕作用在選取的技能（游標停在別的節點上時看的是那一個，按鈕仍是選取的）
