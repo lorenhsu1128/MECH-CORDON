@@ -15763,6 +15763,90 @@ async function testSegAir(browser, base) {
 }
 
 // 主線擴充第 7 期：素材與零件的掉落、零件調校（套用到武器與機體、PvP 不套用、機甲庫的調校畫面、重置退還一半）
+// 零件品級（docs/gear-rarity-design.md）：背包、裝備的選擇、機甲庫的格子／小卡片／背包頁、分解、鎖定、上限
+async function testGear(browser, base) {
+  console.log('零件品級：背包、裝備的選擇、機甲庫的介面');
+  const { ctx, page } = await newPage(browser, 'gear');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await freezeLoop(page);
+  const r = await page.evaluate(() => {
+    const g = window.__game;
+    const G = window.__gear;
+    const S = g.save;
+    const out = {};
+    let sd = 3;
+    const rng = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+    S.coam = 300000;
+    S.mats = { alloy: 0, circuit: 0, core: 0, shard: 0 };
+    S.inv = [];
+    S.eq = {};
+    const rid = S.asm.rarm;
+    const a = G.rollGear(rid, 1, rng),
+      b = G.rollGear(rid, 2, rng);
+    g.invAdd(a);
+    g.invAdd(b);
+    out.axN = [a.ax.length, b.ax.length];
+    // 沒有指定時裝最好的那一件
+    out.auto = g.gearNow().rarm.u === b.u;
+    g.openGarage();
+    g.garageTab('eq');
+    g.garageSlot = 'rarm';
+    g.gFlyOpen = true;
+    g.renderGarage();
+    const tile = document.querySelector(`#partList .part[data-pid="${rid}"]`);
+    out.tile = tile.classList.contains('gq2') && !!tile.querySelector('.pQn');
+    const rows = [...document.querySelectorAll('#gTip .gIl')];
+    out.rows = rows.length;
+    // 點清單：換成改良的那一件、再換成標準版
+    rows.find((x) => x.dataset.u === a.u).click();
+    out.pickA = S.eq.rarm === a.u && g.gearNow().rarm.u === a.u;
+    [...document.querySelectorAll('#gTip .gIl')].find((x) => !x.dataset.u).click();
+    out.pickStd = g.gearNow().rarm === null && S.eq.rarm === G.STD + rid;
+    out.payStd = !(g.pilotLocalMods('pve').gr || {}).rarm;
+    // 背包頁：鎖定的不能分解，分解得到素材
+    g.garageTab('inv');
+    out.invRows = document.querySelectorAll('#gInv .invR').length;
+    a.lk = 1;
+    g.invDismantle([a.u, b.u]);
+    out.left = S.inv.map((x) => x.u);
+    out.mats = { ...S.mats };
+    // 上限：滿了不能加
+    S.inv = [];
+    for (let i = 0; i < G.INV_MAX; i++) S.inv.push(G.rollGear('w_lr', 1, rng));
+    out.full = g.invFull() && !g.invAdd(G.rollGear('w_lr', 1, rng));
+    // 整理：不認得的詞條、超出範圍的數值
+    const bad = G.sanitizeGear({
+      u: 'x1',
+      id: rid,
+      q: 1,
+      ax: [
+        ['dmg', 9],
+        ['zzz', 1],
+        ['imp', 0.1],
+      ],
+    });
+    out.san = JSON.stringify(bad.ax);
+    S.inv = [];
+    S.eq = {};
+    return out;
+  });
+  check(r.axN[0] === 1 && r.axN[1] === 2, `改良 1 條、精製 2 條數值詞條（${r.axN}）`);
+  check(r.auto, '沒有指定時裝背包裡最好的那一件');
+  check(r.tile, '零件格子標出最高品級與件數');
+  check(r.rows === 3, `小卡片列出這個型號的裝備與標準版（${r.rows} 列）`);
+  check(r.pickA && r.pickStd && r.payStd, '小卡片點一下換上那一件、也能換回標準版（加成表不帶）');
+  check(r.invRows === 2, `背包頁列出 ${r.invRows} 件`);
+  check(
+    r.left.length === 1 && r.mats.alloy === 2 && r.mats.circuit === 2,
+    `分解：鎖定的留下、精製得到合金 2＋電子零件 2（${JSON.stringify(r.mats)}）`,
+  );
+  check(r.full, '背包滿了不能再加');
+  check(r.san === '[["dmg",0.15]]', `整理詞條：不認得的拿掉、數值限制在範圍、超過條數的不收（${r.san}）`);
+  await page.screenshot({ path: path.join(SHOT_DIR, 'gear-inv.png') });
+  await ctx.close();
+}
+
 async function testLoot(browser, base) {
   console.log('掉落與調校：素材、零件、調校的效果與畫面');
   const { ctx, page } = await newPage(browser, 'loot');
@@ -15795,7 +15879,7 @@ async function testLoot(browser, base) {
     S.inv = [{ u: 'tst1', id: rid, q: 2, ax: [['dmg', 0.1]] }];
     S.eq = {};
     out.gearK = base().dmg / b0.dmg;
-    out.eqU = S.eq.rarm;
+    out.eqU = (g.gearNow().rarm || {}).u;
     out.gearPvp = !!(g.pilotLocalMods('pvp') || {}).gr;
     S.inv = [];
     S.eq = {};
@@ -30442,6 +30526,7 @@ const STEPS = [
   ['testSegAir', (c) => testSegAir(c.browser, c.base)],
   ['testFreeOps', (c) => testFreeOps(c.browser, c.base)],
   ['testLoot', (c) => testLoot(c.browser, c.base)],
+  ['testGear', (c) => testGear(c.browser, c.base)],
   ['testLegend', (c) => testLegend(c.browser, c.base)],
   ['testWing', (c) => testWing(c.browser, c.base)],
   ['testNemesis', (c) => testNemesis(c.browser, c.base)],

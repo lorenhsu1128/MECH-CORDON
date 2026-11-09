@@ -8,6 +8,7 @@ import { hexSvg } from '../render/garage-charts.js';
 import { PARTS, SLOTS, asmStats, jumpSpec, partById, usesAmmo } from '../data/parts.js';
 import { applyPilotStats } from '../data/pilot.js';
 import { tuneGroup, tuneLevels } from '../data/tune.js';
+import { GEAR_CAT } from '../data/gear.js';
 import { tuneFxTxt, tuneGrWith, tunedPart } from '../data/tune-view.js';
 import { escHtml } from '../core/html.js';
 import { partIcon, slotIcon } from '../render/garage-icons.js';
@@ -45,6 +46,7 @@ Object.assign(Game.prototype, {
     for (const b of document.querySelectorAll('#gTabs [data-tab]'))
       b.classList.toggle('on', b.dataset.tab === t);
     if (t === 'spec') this.garageSpecUi();
+    if (t === 'inv') this.invUi(); // 背包（gear-ui.js）
   },
   // ---------- 雙翼的部位格 ----------
   garageSlotsUi() {
@@ -96,7 +98,10 @@ Object.assign(Game.prototype, {
       const eq = asm[key] === p.id;
       const owned = cat === 'consumable' || S.owned.includes(p.id);
       const d = document.createElement('button');
-      d.className = 'part' + (eq ? ' eq' : '') + (owned ? '' : ' locked');
+      // 零件品級（gear-ui.js）：背包裡最高的品級與件數
+      const gt = cat !== 'consumable' ? this.gearTileHtml(p.id) : { cls: '', html: '', style: '' };
+      d.className = 'part' + (eq ? ' eq' : '') + (owned ? '' : ' locked') + gt.cls;
+      if (gt.style) d.style.cssText = gt.style;
       d.dataset.pid = p.id; // 全像預覽（hangar.js）與小卡片
       let badge = '';
       if (cat === 'consumable' && p.id !== 'cs_none') badge = `<i class="pN">×${S.items[p.id] || 0}</i>`;
@@ -105,7 +110,7 @@ Object.assign(Game.prototype, {
         badge = `<i class="pTu" title="調校 +${this.tuneSum(p.id)}">+${this.tuneSum(p.id)}</i>`;
       const dl = eq ? 0 : this.garageTileDelta(key, cat, p);
       const arrow = dl ? `<i class="${dl > 0 ? 'dUp' : 'dDn'}">${dl > 0 ? '▲' : '▼'}</i>` : '';
-      d.innerHTML = `<span class="gThumb" data-thumb="${key}:${p.id}">${partIcon(cat, p)}</span><span class="pM">${escHtml(model(p))}</span>${badge}${arrow}<span class="srOnly">${escHtml(p.name)} ${this.garageSpecText(cat, p)}</span>`;
+      d.innerHTML = `<span class="gThumb" data-thumb="${key}:${p.id}">${partIcon(cat, p)}</span><span class="pM">${escHtml(model(p))}</span>${badge}${gt.html}${arrow}<span class="srOnly">${escHtml(p.name)} ${this.garageSpecText(cat, p)}</span>`;
       // 已擁有、可以調校的零件：右鍵（觸控長按）、手把 X 直接開調校（tune-ui.js）
       const tun = owned && cat !== 'consumable' && tuneGroup(cat, p);
       d.title = p.name + (tun ? '（右鍵：調校）' : '');
@@ -221,9 +226,13 @@ Object.assign(Game.prototype, {
     // [名稱, 數值, 目前零件的數值, 越大越好？, 格式]
     const rows = [];
     // 調校過的零件：數值照調校後的（data/tune-view.js；頭／核心／手臂／腳的調校加在整台上，下面另列一行）
-    const tuOf = (id) => this.gearTune(id, (this.gearForId(id) || {}).u);
-    const pv = tunedPart(cat, p, tuOf(p.id)),
-      cv = tunedPart(cat, cur, tuOf(cur.id));
+    // 零件品級（gear-ui.js）：看的是哪一件（點過的、裝備中的、背包裡最好的）
+    const gearable = owned && cat !== 'consumable' && GEAR_CAT.has(p.id);
+    const gsel = gearable ? this.gearTipPick(p.id) : null;
+    const gcur = GEAR_CAT.has(cur.id) ? this.gearNow()[key] || null : null;
+    const tuOf = (id, g) => this.gearTune(id, g ? g.u : null);
+    const pv = tunedPart(cat, p, tuOf(p.id, gsel), gsel),
+      cv = tunedPart(cat, cur, tuOf(cur.id, gcur), gcur);
     const R = (n, f, good = 1, form = fmt) => {
       const a = f(pv),
         b = f(cv);
@@ -344,17 +353,20 @@ Object.assign(Game.prototype, {
       this.gTipPin === p.id
         ? '<button class="tPin" title="解除釘選（游標停在零件上就換卡片）">📌</button>'
         : '';
-    const tl = owned && cat !== 'consumable' ? tuneLevels(tuOf(p.id)) : 0;
+    const tl = owned && cat !== 'consumable' ? tuneLevels(tuOf(p.id, gsel)) : 0;
     const tuTag = tl ? `<span class="tTu" title="數值是調校後的">調校 +${tl}</span>` : '';
-    const tuFx = tl ? tuneFxTxt(cat, p, tuOf(p.id)) : [];
+    const tuFx = tl ? tuneFxTxt(cat, p, tuOf(p.id, gsel)) : [];
+    const gTag = gearable ? this.gearTag(gsel) : '';
+    const gLines = gearable ? this.gearLinesHtml(gsel) + this.gearListHtml(p.id) : '';
     const tuLine = tuFx.length ? `<div class="tTuFx">調校效果：${escHtml(tuFx.join('、'))}</div>` : '';
-    tip.innerHTML = `<div class="tH"><b>${escHtml(p.name)}</b>${attr}${tuTag}${pin}</div>${p.desc ? `<div class="tD">${escHtml(p.desc)}</div>` : ''}${combo}${body}${tuLine}${defs}<div class="tA">${act}</div>`;
+    tip.innerHTML = `<div class="tH"><b>${escHtml(p.name)}</b>${gTag}${attr}${tuTag}${pin}</div>${p.desc ? `<div class="tD">${escHtml(p.desc)}</div>` : ''}${combo}${body}${tuLine}${gLines}${defs}<div class="tA">${act}</div>`;
+    if (gearable) this.gearListBind(tip, cat, p);
     const be = tip.querySelector('.tEq');
     if (be) be.onclick = () => this.garagePick(key, cat, p);
     const bb = tip.querySelector('.tBuy');
     if (bb) bb.onclick = () => this.garageBuyItem(p);
     const bt = tip.querySelector('.tTune');
-    if (bt) bt.onclick = () => this.tuneOpen(cat, p.id);
+    if (bt) bt.onclick = () => this.tuneOpen(cat, p.id, undefined, gsel ? gsel.u : null);
     const bp = tip.querySelector('.tPin');
     if (bp)
       bp.onclick = () => {
@@ -390,10 +402,21 @@ Object.assign(Game.prototype, {
   garageStatsUi(pid, tp) {
     const asm = this.save.asm;
     const key = this.garageSlot;
-    const prevAsm = pid && pid !== asm[key] ? { ...asm, [key]: pid } : tp ? asm : null;
+    const prevAsm =
+      pid && pid !== asm[key] ? { ...asm, [key]: pid } : tp ? { ...asm, [tp.slot]: tp.id } : null;
     let pm = this.rangePmOn() ? this.rangePm() : null,
       pmN = prevAsm && !tp ? this.gearPmFor(prevAsm, pm) : pm; // 換上的零件用背包裡最好的那一件（data/gear.js）
-    if (tp && pm) pmN = { ...pm, gr: tuneGrWith(pm.gr, tp.slot, tp.id, tp.t) };
+    if (tp && pm) {
+      if ('gear' in tp) {
+        // 小卡片的裝備清單：換成那一件（null＝標準版）
+        const G = tp.gear;
+        const t = G ? G.t : (this.save.tune || {})[tp.id];
+        pmN = {
+          ...pm,
+          gr: tuneGrWith(pm.gr, tp.slot, tp.id, t || null, { q: G ? G.q : 0, ax: G ? G.ax : [] }),
+        };
+      } else pmN = { ...pm, gr: tuneGrWith(pm.gr, tp.slot, tp.id, tp.t) };
+    }
     const cur = hexScores(asm, pm),
       nx = prevAsm ? hexScores(prevAsm, pmN) : null;
     const st = asmStats(asm),

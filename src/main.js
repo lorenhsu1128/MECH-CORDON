@@ -72,6 +72,7 @@ import './game/seg-air.js';
 import './game/loot.js';
 import './game/tune-ui.js';
 import './game/gear.js';
+import './game/gear-ui.js';
 import './entities/mech-colossus.js';
 import './entities/mech-legend.js';
 import './entities/mech-wing.js';

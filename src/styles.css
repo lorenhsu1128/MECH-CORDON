@@ -5472,13 +5472,16 @@ select:disabled option {
   backdrop-filter: blur(4px);
 }
 #garage[data-tab='spec'] #gSpec,
+#garage[data-tab='inv'] #gInv,
 #garage[data-tab='set'] #gSet {
   display: block;
 }
 #garage[data-tab='spec'] .gWing,
 #garage[data-tab='set'] .gWing,
+#garage[data-tab='inv'] .gWing,
 #garage[data-tab='spec'] #gFly,
 #garage[data-tab='set'] #gFly,
+#garage[data-tab='inv'] #gFly,
 #garage[data-tab='spec'] #gMeters,
 #garage[data-tab='set'] #gMeters {
   display: none;
@@ -7168,4 +7171,181 @@ body.vpad #subBar {
   color: #a8e6ab;
   font-size: 11px;
   line-height: 1.4;
+}
+
+/* 零件品級（game/gear-ui.js、docs/gear-rarity-design.md） */
+#garage .part[class*=' gq'] {
+  box-shadow: inset 0 -3px 0 var(--gq);
+}
+#garage .part.gq0 {
+  box-shadow: none;
+}
+#garage .part .pQn {
+  right: 3px;
+  bottom: 12px;
+  font-weight: bold;
+}
+#garage .part.eq .pQn {
+  right: 13px;
+}
+.gTag {
+  font-size: 10px;
+  font-style: normal;
+  padding: 0 4px;
+  border: 1px solid;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+.gLines {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.gLines .gMain {
+  color: #dfe7ee;
+}
+.gLines .gAx {
+  color: #a9c8e0;
+}
+.gLines .gAx.star {
+  color: #ffd977;
+}
+.gLines .gAx.na {
+  color: #6b7782;
+  text-decoration: line-through;
+}
+.gLines .gAx small {
+  text-decoration: none;
+  display: inline-block;
+  margin-left: 4px;
+}
+.gLines .gFx {
+  color: #d9b8ff;
+}
+.gLines .gFx.gold {
+  color: #ffd060;
+}
+.gLines .gFx.na {
+  color: #6b7782;
+}
+.gIList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  font-size: 11px;
+}
+.gIList .gIl {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  text-align: left;
+  padding: 3px 6px;
+  border-left: 3px solid var(--gq);
+  font-size: 11px;
+}
+.gIList .gIl b {
+  color: var(--gq);
+  font-weight: normal;
+  white-space: nowrap;
+}
+.gIList .gIl span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dim);
+}
+.gIList .gIl em {
+  font-style: normal;
+  font-size: 10px;
+  color: var(--acc);
+  white-space: nowrap;
+}
+.gIList .gIl.on {
+  background: rgba(92, 200, 255, 0.12);
+}
+.gIList .gIl.sel {
+  outline: 1px solid var(--acc2);
+}
+em.nw,
+.gIList .gIl em.nw {
+  color: #ffd060;
+  font-style: normal;
+}
+#gInv .invMats {
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+#gInv .invF,
+#gInv .invBulkRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 6px;
+  align-items: center;
+}
+#gInv .invF button,
+#gInv .invBulkRow button {
+  padding: 3px 8px;
+  font-size: 12px;
+}
+#gInv .invF button.on {
+  border-color: var(--acc);
+  background: rgba(92, 200, 255, 0.15);
+}
+#gInv .invBulkRow .dim {
+  font-size: 11px;
+}
+#gInv .invR {
+  border-left: 3px solid var(--gq);
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  background: rgba(255, 255, 255, 0.03);
+}
+#gInv .invN {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  font-size: 13px;
+  margin-bottom: 3px;
+}
+#gInv .invN .gTag {
+  margin-left: 0;
+}
+#gInv .invN .dim {
+  font-size: 11px;
+}
+#gInv .invN em {
+  font-style: normal;
+  font-size: 11px;
+}
+#gInv .invEq {
+  color: var(--acc);
+}
+#gInv .invTu {
+  color: #7ee081;
+}
+#gInv .invA {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+#gInv .invA button {
+  padding: 3px 8px;
+  font-size: 11px;
+}
+/* 背包頁：右下的作戰卡片會蓋住清單，這一頁先收起來 */
+#garage[data-tab='inv'] #gOps {
+  display: none !important;
+}
+/* 平板：小卡片加了裝備清單變長，不要伸到下方的量表底下 */
+@media (max-width: 1400px) and (min-height: 541px) {
+  #gFly {
+    max-height: calc(100% - 214px);
+  }
 }

@@ -267,16 +267,9 @@ export function gearPick(S, asm, pref) {
   }
   return out;
 }
-// 目前組裝的選擇寫回 save.eq（回傳 gearPick 的結果）
+// 目前組裝的裝備。save.eq 只記玩家自己選的（機甲庫的 gearEquip），自動挑的不寫回：拿到更好的就自動換上
 export function gearResolve(S) {
-  const pick = gearPick(S, S.asm, S.eq);
-  const eq = {};
-  for (const k in pick) {
-    if (pick[k]) eq[k] = pick[k].u;
-    else if (S.eq && S.eq[k] === STD + S.asm[k]) eq[k] = S.eq[k];
-  }
-  S.eq = eq;
-  return pick;
+  return gearPick(S, S.asm, S.eq);
 }
 export const STD = '-:';
 // 分解得到的素材（調校過的另外退還一半的調校費用，game/gear-ui.js）

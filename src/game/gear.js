@@ -1,7 +1,11 @@
 // Game：零件品級與詞條（docs/gear-rarity-design.md）——背包 save.inv、裝備的選擇 save.eq、裝備的加成。
 // 純函式與資料在 data/gear.js；這裡是存檔的操作與機甲庫用的小工具。
 import { GEAR_CAT, INV_MAX, gearBest, gearGr, gearPick, gearResolve } from '../data/gear.js';
+import * as GD from '../data/gear.js';
 import { Game } from './game.js';
+
+// 自動化測試（網址帶 ?test）：data/gear.js 的函式放在 window.__gear
+if (typeof location !== 'undefined' && new URLSearchParams(location.search).has('test')) window.__gear = GD;
 
 Object.assign(Game.prototype, {
   // 背包與裝備的欄位（讀檔後、新存檔）
