@@ -1054,7 +1054,7 @@ Object.assign(Game.prototype, {
       ex.group.userData.ring.rotation.z += dt * 0.8;
       if (this.campStand(ex, dt, EXIT_R)) {
         c.hint = `進入出口：${SEG_TYPES[ex.type].name}・${EXIT_REWARDS[ex.reward].name}…`;
-        if (ex.t >= EXIT_HOLD * (this.lgAny('lgExit') ? 0.5 : 1)) return this.campLeave(ex); // 傳說模組「急行軍」
+        if (ex.t >= EXIT_HOLD) return this.campLeave(ex);
       }
     }
   },

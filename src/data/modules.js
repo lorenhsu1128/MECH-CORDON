@@ -12,8 +12,8 @@ import { usesAmmo } from './parts.js';
 export const LV_MUL = [0, 1, 1.6, 2.2];
 export const MOD_MAX_LV = 3;
 export const LEGEND_MAX = 2; // 傳說模組最多持有幾個
-// 共鳴：同時持有兩家委託方的傳說模組時多一點全面的加成（modsPm）
-export const LEGEND_RESO = { dmg: 0.08, qb: 0.06, ap: 0.04 };
+export const LEGEND_NEED = 2; // 持有某家的一般模組幾個以上，才會出現那一家的傳說模組
+// 共鳴：同時持有兩家委託方的傳說模組時，之後的三選一變成四選一（legendPickN）
 
 export const MODULES = {
   // ---- 卡斯特隆重工：實彈與衝擊 ----
@@ -90,122 +90,91 @@ export const MODULES = {
     fx: { lastStand: 1 },
     lbl: (x) => `AP 低於 30% 時 3 秒無敵並回復 AP ${Math.round(15 * x)}%（冷卻 ${Math.round(60 / x)} 秒）`,
   },
-  // ---- 傳說模組（主線擴充 B3，docs/campaign-expansion-design.md）：改變武器或機動的行為；不能升級（max 1），
-  // 一次出擊最多持有 LEGEND_MAX 個；精英、Boss、大型兵器擊破後的三選一固定有一個（modOffer 的 legend）。
-  // 行為在 entities/mech-legend.js（房主／單機判定）。
-  // 2026-11-09 改版（docs/gear-rarity-design.md 第 8 節）：和零件品級的詞條重疊的 12 個換成「只有一次出擊才有」的效果——
-  // 地圖裝置、增援、據點、修復套件、出口、風格評價、掉落；留下連鎖引爆、蓄力共鳴、電弧推進、反應裝甲
-  lg_salvo: {
+  // ---- 一般模組：看地圖的輔助效果（2026-11-10 從傳說模組改成一般模組，docs/gear-rarity-design.md 第 8 節）----
+  // fx 的值＝LV_MUL（1／1.6／2.2），行為端以 pmv 的值當等級倍率 x（entities/mech-legend.js、Game.lgMax）
+  c_salvo: {
     faction: 'castron',
-    legend: true,
     name: '補給回收',
-    desc: '撿到彈藥箱時所有武器立刻裝滿彈匣，10 秒內實彈武器傷害 +20%',
+    desc: '撿到彈藥箱時彈匣全部裝滿、實彈傷害提高',
     fx: { lgSalvo: 1 },
+    lbl: (x) => `撿到彈藥箱時所有武器的彈匣裝滿，10 秒內實彈武器傷害 +${Math.round(12 * x)}%`,
   },
-  lg_chain: {
+  c_scrap: {
     faction: 'castron',
-    legend: true,
-    name: '連鎖引爆',
-    desc: '擊破的敵人爆炸，爆炸範圍內 AP 低於 20% 的敵人直接引爆',
-    fx: { lgChain: 1 },
-  },
-  lg_scrap: {
-    faction: 'castron',
-    legend: true,
     name: '拾荒本能',
-    desc: '擊破帶詞綴的敵人與敵對 AC 一定掉彈藥箱，素材多掉一個',
+    desc: '擊破帶詞綴的敵人與敵對 AC 時掉彈藥箱、素材',
     fx: { lgScrap: 1 },
+    lbl: (x) => `擊破帶詞綴的敵人與敵對 AC：${Math.min(100, Math.round(45 * x))}% 掉彈藥箱、素材多一個`,
   },
-  lg_bounty: {
-    faction: 'castron',
-    legend: true,
-    name: '懸賞',
-    desc: '每擊破 5 台敵人：COAM 報酬、回復 AP 8%',
-    fx: { lgBounty: 1 },
-  },
-  lg_jam: {
+  a_jam: {
     faction: 'aetheric',
-    legend: true,
     name: '干擾網',
-    desc: '增援抵達時，新出現的敵人硬直 3 秒（Boss 除外）',
+    desc: '增援抵達時新出現的敵人硬直',
     fx: { lgJam: 1 },
+    lbl: (x) => `增援抵達時，新出現的敵人硬直 ${(2 * x).toFixed(1)} 秒（Boss 除外）`,
   },
-  lg_overclock: {
+  a_conduit: {
     faction: 'aetheric',
-    legend: true,
-    name: '超頻',
-    desc: '風格評價 A 以上時，EN 回復 +50%、能量武器傷害 +15%',
-    fx: { lgOverclock: 1 },
-  },
-  lg_conduit: {
-    faction: 'aetheric',
-    legend: true,
     name: '能源導管',
-    desc: '使用地圖裝置（雷達站、回復站、固定砲台）時 EN 全滿，8 秒內 QB 與能量武器不耗 EN',
+    desc: '使用地圖裝置時 EN 全滿、短時間不耗 EN',
     fx: { lgConduit: 1 },
+    lbl: (x) =>
+      `使用地圖裝置（雷達站、回復站、固定砲台）時 EN 全滿，${Math.round(4 * x)} 秒內 QB 與能量武器不耗 EN`,
   },
-  lg_reso: {
-    faction: 'aetheric',
-    legend: true,
-    name: '蓄力共鳴',
-    desc: '蓄力射擊命中後 3 秒內，能量武器不耗 EN',
-    fx: { lgReso: 1 },
-  },
-  lg_scout: {
+  v_trap: {
     faction: 'veerwell',
-    legend: true,
-    name: '先遣偵察',
-    desc: '還沒交戰的敵人察覺你的速度 −50%',
-    fx: { lgScout: 1 },
-  },
-  lg_arcqb: {
-    faction: 'veerwell',
-    legend: true,
-    name: '電弧推進',
-    desc: 'QB 的路徑放出電弧，碰到的敵人受傷',
-    fx: { lgArcQB: 1 },
-  },
-  lg_exit: {
-    faction: 'veerwell',
-    legend: true,
-    name: '急行軍',
-    desc: '站進出口的時間減半；每一段開場 15 秒內速度 +20%',
-    fx: { lgExit: 1 },
-  },
-  lg_trap: {
-    faction: 'veerwell',
-    legend: true,
     name: '陷阱大師',
-    desc: '環境陷阱對敵人的傷害 ×2，而且不會傷到你',
+    desc: '環境陷阱對敵人更痛、不會傷到你',
     fx: { lgTrap: 1 },
+    lbl: (x) => `環境陷阱對敵人的傷害 ×${(1 + 0.5 * x).toFixed(1)}，而且不會傷到你`,
   },
-  lg_react: {
+  s_cache: {
     faction: 'sancta',
-    legend: true,
-    name: '反應裝甲',
-    desc: '被近戰打中時爆炸反擊（冷卻 3 秒）',
-    fx: { lgReact: 1 },
-  },
-  lg_medic: {
-    faction: 'sancta',
-    legend: true,
-    name: '戰地醫護',
-    desc: '用修復套件時，40 m 內的隊友與僚機也回復 30%；之後 3 秒受到的傷害 −50%',
-    fx: { lgMedic: 1 },
-  },
-  lg_cache: {
-    faction: 'sancta',
-    legend: true,
     name: '補給專家',
-    desc: '打開補給箱時回復 AP 25%、修復套件 +1，箱子裡有裝備的機率加倍',
+    desc: '打開補給箱時回復 AP、修復套件 +1',
     fx: { lgCache: 1 },
+    lbl: (x) =>
+      `打開補給箱時回復 AP ${Math.round(12 * x)}%、修復套件 +1，箱子裡有裝備的機率 ×${(1 + 0.5 * x).toFixed(1)}`,
   },
-  lg_bulwark: {
+  s_bulwark: {
+    faction: 'sancta',
+    name: '增援壁壘',
+    desc: '增援抵達時得到護盾',
+    fx: { lgBulwark: 1 },
+    lbl: (x) => `增援抵達時，得到一層 AP ${Math.round(8 * x)}% 的護盾（打掉為止）`,
+  },
+  // ---- 傳說模組（主線擴充 B3；2026-11-10 改版，docs/gear-rarity-design.md 第 8 節）----
+  // 改規則、不加數值：效果以自己這一擊的傷害或衝擊為基礎（放大裝備），任何區段（含 Boss）都能用。
+  // 不能升級，一次出擊最多持有 LEGEND_MAX 個；持有某家的一般模組 LEGEND_NEED 個以上才會出現那一家的傳說；
+  // 精英、Boss、大型兵器擊破後的三選一固定有一個（modOffer 的 legend）；只有單人。
+  // 行為在 entities/mech-legend.js（房主／單機判定）。
+  lg_buffer: {
     faction: 'sancta',
     legend: true,
-    name: '增援壁壘',
-    desc: '增援抵達時，得到一層 AP 15% 的護盾（打掉為止）',
-    fx: { lgBulwark: 1 },
+    name: '緩衝裝甲',
+    desc: '受到的傷害 40% 改成 4 秒內慢慢扣（這部分不會讓你被擊破）；這段時間擊破敵人或打出失衡，剩下的一筆勾銷',
+    fx: { lgBuffer: 1 },
+  },
+  lg_ciws: {
+    faction: 'sancta',
+    legend: true,
+    name: '近迫防禦',
+    desc: '每 3 秒自動擊落一發飛向你的導彈、榴彈、砲彈或可以打掉的投射物（Boss 的大型彈體除外）',
+    fx: { lgCiws: 1 },
+  },
+  lg_drop: {
+    faction: 'sancta',
+    legend: true,
+    name: '緊急空投',
+    desc: '每一段第一次 AP 低於 35% 時空投補給：彈藥全滿、修復套件 +1、6 秒的護盾（AP 20%）',
+    fx: { lgDrop: 1 },
+  },
+  lg_stasis: {
+    faction: 'sancta',
+    legend: true,
+    name: '停滯力場',
+    desc: '使用修復套件時展開 6 秒的力場（半徑 12 m）：敵人的子彈與投射物在裡面變慢 70%',
+    fx: { lgStasis: 1 },
   },
   // ---- 雙重模組 ----
   d_ram: {
@@ -276,12 +245,23 @@ export function modsPm(list) {
     const fx = modFx(m.id, m.lv);
     for (const k in fx) pm[k] = (pm[k] || 0) + fx[k];
   }
-  // 共鳴：兩家委託方的傳說模組
+  return pm;
+}
+// 共鳴：持有兩家委託方的傳說模組時，三選一變成四選一
+export function legendPickN(list, n = 3) {
   const lf = new Set(
     (list || []).filter((m) => MODULES[m.id] && MODULES[m.id].legend).map((m) => MODULES[m.id].faction),
   );
-  if (lf.size >= 2) for (const k in LEGEND_RESO) pm[k] = (pm[k] || 0) + LEGEND_RESO[k];
-  return pm;
+  return lf.size >= 2 ? n + 1 : n;
+}
+// 傳說模組的出現條件：持有這家的一般模組（不含傳說、雙重）LEGEND_NEED 個以上 → 符合的委託方
+export function legendReady(list) {
+  const n = {};
+  for (const m of list || []) {
+    const M = MODULES[m.id];
+    if (M && !M.legend && M.faction !== 'duo') n[M.faction] = (n[M.faction] || 0) + 1;
+  }
+  return new Set(Object.keys(n).filter((f) => n[f] >= LEGEND_NEED));
 }
 // ---------- 顯示用的說明 ----------
 // 一句白話的效果（三選一的卡片、委託方面板）
@@ -321,6 +301,13 @@ export const MOD_TIPS = {
   d_barrier: '減傷，EN 上限也提高',
   d_shock: '擊破敵人時讓周圍的敵人失衡',
   d_rescue: '擊破回復 AP，移動也更快',
+  c_salvo: '撿到彈藥箱時彈匣裝滿，之後實彈更痛',
+  c_scrap: '擊破帶詞綴的敵人與敵對 AC 會掉彈藥箱與素材',
+  a_jam: '剛出現的增援會先愣住',
+  a_conduit: '用地圖裝置時 EN 全滿，一陣子不耗 EN',
+  v_trap: '環境陷阱打敵人更痛，也不會傷到你',
+  s_cache: '打開補給箱時回復 AP、多一個修復套件',
+  s_bulwark: '增援抵達時得到一層護盾',
 };
 // 數值的名稱；DOWN 的是「減少」（換彈、充能、消耗、擴散）
 const FX_NAMES = {
@@ -440,11 +427,26 @@ export function modOffer(list, faction, rand, n = 3, legend = false) {
   );
   const nLeg = (list || []).filter((m) => MODULES[m.id] && MODULES[m.id].legend).length;
   if (legend && nLeg < LEGEND_MAX) {
-    const lg = Object.keys(MODULES).filter((id) => MODULES[id].legend && !have.has(id));
-    if (lg.length) n--;
-    const pickL = lg.length ? lg[Math.floor(rand() * lg.length)] : null;
-    const rest = modOffer(list, faction, rand, n, false);
-    return pickL ? [{ id: pickL, lv: 1 }, ...rest] : rest;
+    // 只從符合條件的委託方抽（指定的委託方符合時只抽它）；都不符合時換成一個持有模組的升級
+    const ready = legendReady(list);
+    const lgOf = (f) =>
+      Object.keys(MODULES).filter(
+        (id) =>
+          MODULES[id].legend &&
+          !have.has(id) &&
+          ready.has(MODULES[id].faction) &&
+          (!f || MODULES[id].faction === f),
+      );
+    let lg = faction && ready.has(faction) ? lgOf(faction) : [];
+    if (!lg.length) lg = lgOf(null);
+    const rest = modOffer(list, faction, rand, n - 1, false);
+    if (lg.length) return [{ id: lg[Math.floor(rand() * lg.length)], lv: 1 }, ...rest];
+    const up = (list || []).filter(
+      (m) => MODULES[m.id] && !MODULES[m.id].legend && !rest.some((o) => o.id === m.id) && okLv(m.id),
+    );
+    if (!up.length) return modOffer(list, faction, rand, n, false);
+    const u = up[Math.floor(rand() * up.length)];
+    return [{ id: u.id, lv: u.lv + 1 }, ...rest];
   }
   const duos = Object.keys(MODULES).filter(
     (id) => MODULES[id].faction === 'duo' && okLv(id) && MODULES[id].need.every((f) => facs.has(f)),

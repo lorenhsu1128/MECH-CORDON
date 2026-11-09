@@ -3,7 +3,17 @@
 import { SFX } from '../audio/audio.js';
 import { escHtml } from '../core/html.js';
 import { SORTIES } from '../data/campaign.js';
-import { MODULES, MOD_TIPS, modFxCompare, modLabel, modOffer, modsPm } from '../data/modules.js';
+import {
+  LEGEND_MAX,
+  LEGEND_NEED,
+  MODULES,
+  MOD_TIPS,
+  legendPickN,
+  modFxCompare,
+  modLabel,
+  modOffer,
+  modsPm,
+} from '../data/modules.js';
 import { BRIEFINGS, FACTIONS } from '../data/story.js';
 import { Game } from './game.js';
 
@@ -33,13 +43,31 @@ Object.assign(Game.prototype, {
     for (const k in mp) pm[k] = (pm[k] || 0) + mp[k];
     return pm;
   },
-  // 有沒有玩家持有這個傳說模組（加成表的鍵）
+  // 有沒有玩家持有這個模組（加成表的鍵；data/modules.js 的 lg* 行為模組）
   lgAny(k) {
-    return this.playersAlive().some((p) => p.pmv && p.pmv(k) > 0);
+    return this.lgMax(k) > 0;
+  },
+  // 玩家持有的最高等級倍率（一般模組的 lg* 鍵＝LV_MUL：1／1.6／2.2）
+  lgMax(k) {
+    let v = 0;
+    for (const p of this.playersAlive()) if (p.pmv) v = Math.max(v, p.pmv(k));
+    return v;
+  },
+  // 敵人的投射物（對這台機體來說；entities/mech-legend.js 的近迫防禦、停滯力場）
+  lgHostileShot(p, ent) {
+    const o = p.owner;
+    if (o) return o !== ent && this.isHostile(o, ent);
+    return !!p.team && p.team !== ent.team;
+  },
+  // 傳說模組「停滯力場」：投射物在力場裡的時間倍率（projectile.js 的 update）
+  lgFieldK(p) {
+    for (const f of this.lgFields || [])
+      if (f.t > 0 && this.lgHostileShot(p, f.owner) && p.pos.distanceTo(f.pos) < f.r) return 0.3;
+    return 1;
   },
   // 改變打法的模組：擊破時（mission.js 的 onEnemyKilled，房主／單機）
   modKillFx(e, from) {
-    from.lgKill(e); // 傳說模組：連鎖引爆、追擊推進（entities/mech-legend.js）
+    from.lgKill(e); // 傳說模組（entities/mech-legend.js）
     if (from.gx) from.gearKill(e); // 零件品級的詞條（entities/mech-gear.js）
     const kb = from.pmv('killBlast');
     if (kb > 0) {
@@ -80,7 +108,7 @@ Object.assign(Game.prototype, {
   // 打開選擇畫面（遊戲暫停）；faction＝null 時任意委託方
   // legend＝固定放一個傳說模組（精英、大型兵器、最後一段擊破後；data/modules.js 的 modOffer）
   campOpenPick(faction, title, legend) {
-    const opts = modOffer(this.campMods(), faction, Math.random, 3, !!legend);
+    const opts = modOffer(this.campMods(), faction, Math.random, legendPickN(this.campMods()), !!legend); // 共鳴＝四選一
     // 冒煙測試：直接選第一個（傳說模組會改變打法，自動選的時候略過，其他測試的結果才穩定）
     if (this.autoPickMod)
       return opts.length && this.campTakeMod(opts.find((o) => !MODULES[o.id].legend) || opts[0]);
@@ -95,7 +123,13 @@ Object.assign(Game.prototype, {
     const $ = (id) => document.getElementById(id);
     const F = FACTIONS[faction];
     $('mpTitle').textContent = title || (F ? `${F.name} 提供的戰術模組` : '戰術模組');
-    $('mpSub').textContent = '選一個（從下一個區段開始生效，延續到這一章結束）';
+    $('mpSub').textContent =
+      '選一個（從下一個區段開始生效，延續到這一章結束）' +
+      (legend &&
+      !opts.some((o) => MODULES[o.id].legend) &&
+      this.campMods().filter((m) => MODULES[m.id] && MODULES[m.id].legend).length < LEGEND_MAX
+        ? `；還沒有委託方符合傳說模組的條件（持有同一家的模組 ${LEGEND_NEED} 個），改成一個升級`
+        : '');
     $('mpCards').innerHTML = opts.map((o, i) => this.modCardHtml(o, i, '選擇')).join('');
     $('mpDuo').innerHTML = this.guideDuoHtml(faction);
     $('mpSkip').textContent = '略過';
@@ -116,7 +150,7 @@ Object.assign(Game.prototype, {
       .join('');
     // 傳說模組：金框、★、沒有等級（data/modules.js 的 legend）
     if (M.legend)
-      return `<div class="mpCard legend" style="border-color:#ffd060"><div class="mpTag" style="color:#ffd060">★ 傳說模組　${escHtml(tag)}</div><b>${escHtml(M.name)}</b><div class="mpTip">${escHtml(M.desc)}</div><div class="dim">改變打法、不能升級；最多持有 2 個，兩家的傳說模組會共鳴（傷害、QB、AP 小幅提高）</div><button data-i="${i}"${price && this.save.coam < price ? ' disabled' : ''}>${escHtml(btn)}${price ? `（${price.toLocaleString()} COAM）` : ''}</button></div>`;
+      return `<div class="mpCard legend" style="border-color:#ffd060"><div class="mpTag" style="color:#ffd060">★ 傳說模組　${escHtml(tag)}</div><b>${escHtml(M.name)}</b><div class="mpTip">${escHtml(M.desc)}</div><div class="dim">改變規則、不能升級；最多持有 ${LEGEND_MAX} 個。持有兩家的傳說時共鳴：之後的三選一變成四選一</div><button data-i="${i}"${price && this.save.coam < price ? ' disabled' : ''}>${escHtml(btn)}${price ? `（${price.toLocaleString()} COAM）` : ''}</button></div>`;
     return `<div class="mpCard" style="border-color:${col}"><div class="mpTag" style="color:${col}">${escHtml(tag)}${o.lv > 1 ? `　強化 Lv${o.lv - 1} → Lv${o.lv}` : '　新'}</div><b>${escHtml(M.name)} Lv${o.lv}</b><div class="mpTip">${escHtml(MOD_TIPS[o.id] || M.desc)}</div><div class="dim">${vals}</div>${fit ? `<div class="mpFit${fit.bad ? ' bad' : ''}">${escHtml(fit.txt)}</div>` : ''}<button data-i="${i}"${price && this.save.coam < price ? ' disabled' : ''}>${escHtml(btn)}${price ? `（${price.toLocaleString()} COAM）` : ''}</button></div>`;
   },
   campTakeMod(o) {

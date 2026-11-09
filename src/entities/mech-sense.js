@@ -214,7 +214,7 @@ Object.assign(MechEntity.prototype, {
         }
       }
       if (seen) {
-        sn.meter += gain * (seen.pmv && seen.pmv('lgScout') > 0 ? 0.5 : 1); // 傳說模組「先遣偵察」
+        sn.meter += gain;
         sn.heard = seen.pos.clone();
       }
     }

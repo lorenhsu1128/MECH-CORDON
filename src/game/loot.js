@@ -33,8 +33,8 @@ Object.assign(Game.prototype, {
     if ((big || (ace && e.isElite) || e.nemesis) && Math.random() < DROP.core) drops.push('core');
     if (big && Math.random() < DROP.shard) drops.push('shard');
     if (big) drops.push('alloy', 'circuit');
-    // 傳說模組「拾荒本能」：帶詞綴的敵人與敵對 AC 一定掉彈藥箱，素材多一個
-    if ((e.af || ace) && !big && this.lgAny('lgScrap')) {
+    // 模組「拾荒本能」：帶詞綴的敵人與敵對 AC 依等級 45～99% 掉彈藥箱，素材多一個
+    if ((e.af || ace) && !big && this.lgAny('lgScrap') && Math.random() < 0.45 * this.lgMax('lgScrap')) {
       drops.push(drops[0] || 'alloy');
       if (this.dropAmmoAt) this.dropAmmoAt(e);
     }

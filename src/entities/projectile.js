@@ -109,6 +109,8 @@ export class Projectile {
   }
   update(dt) {
     const g = this.game;
+    // 傳說模組「停滯力場」：敵人的投射物在力場裡變慢（entities/mech-legend.js；只有單人）
+    if (g.lgFields && !this.visual) dt *= g.lgFieldK(this);
     this.age = (this.age || 0) + dt;
     // 追著玩家的導彈：快打到時 QB＝甩掉追蹤，算完美 QB（mech-weak.js；只在房主／單機）
     if (this.kind === 'missile' && this.target && !this.target.dead && this.target.missileDodge)

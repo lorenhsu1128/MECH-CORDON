@@ -88,7 +88,11 @@ Object.assign(Game.prototype, {
   },
   // 據點的補給箱（outposts.js 的 cacheOpen）
   gearCache(c) {
-    if (this.isClient || !this.lootOn() || Math.random() >= GEAR_DROP.cache * (this.lgAny('lgCache') ? 2 : 1))
+    if (
+      this.isClient ||
+      !this.lootOn() ||
+      Math.random() >= GEAR_DROP.cache * (1 + 0.5 * this.lgMax('lgCache'))
+    )
       return;
     const pos = c && c.pos ? c.pos.clone() : this.player ? this.player.center() : null;
     this.gearGive(pickOne(ALL_GEAR), rollQ(qCap(this.gearCh()), 0, Math.random), pos);

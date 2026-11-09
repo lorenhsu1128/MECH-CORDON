@@ -514,6 +514,7 @@ export class MechEntity {
     const g = this.game;
     if (this.gx) this.gearEv(k, o); // 零件品級的詞條（mech-gear.js）
     if (g.tut && this === g.player) g.tutEv(k, o);
+    if (this.pm) this.lgEv(k, o); // 傳說模組（mech-legend.js）
     if (this.syEv) this.syEv(k, o); // 風格評價也用這些事件（mech-style.js）
   }
   // 玩家操作的機體（單機與多人的玩家，不含友軍、敵人與 PvP 電腦）：失衡後保護只給它們
@@ -2249,7 +2250,7 @@ export class MechEntity {
     }
     const hpBefore = Math.max(0, this.hp);
     if (g.pilotCreditHit) g.pilotCreditHit(from, this, wid, Math.min(real, hpBefore));
-    this.hp -= real;
+    this.hp -= this.pm && real > 0 ? this.lgBufTake(real, from) : real; // 傳說模組「緩衝裝甲」：一部分改成慢慢扣
     if (real > 0 && this.air) this.airHurtT = this.t; // 空域：脫離戰鬥的回復（game/air.js）
     if (real > 0 && (this.isBoss || this.opts.parent !== undefined)) this.tierGauge(real, from); // 打斷大招的量表
     // 戰術模組「能量虹吸」：命中回復 EN（近戰多）
@@ -2531,8 +2532,7 @@ export class MechEntity {
       (this.buffT > 0 ? 1.15 : 1) *
       this.waterK() *
       (this.sts ? this.stsSpeedK() : 1) * // 指揮官 MT 強化、水中、狀態效果
-      (this.gx ? this.gearSpdK() : 1) * // 零件品級的詞條（mech-gear.js）
-      (this.pm ? this.lgSpdK() : 1); // 傳說模組「急行軍」（mech-legend.js）
+      (this.gx ? this.gearSpdK() : 1); // 零件品級的詞條（mech-gear.js）
     this.t += dt;
     // AI 閃避衝擊波時按住跳躍（Game.updateShocks 設定）
     if (this.aiJumpT > 0) {
@@ -2672,12 +2672,7 @@ export class MechEntity {
     else
       this.en = Math.min(
         this.enMax,
-        this.en +
-          P.generator.recharge *
-            dt *
-            (this.grounded ? 1.6 + this.pmv('gnd') : 1) *
-            this.gearRchK() * // 零件品級、電漿灼燒（mech-gear.js）
-            (this.pm ? this.lgRchK() : 1), // 傳說模組「超頻」
+        this.en + P.generator.recharge * dt * (this.grounded ? 1.6 + this.pmv('gnd') : 1) * this.gearRchK(), // 零件品級、電漿灼燒（mech-gear.js）
       );
     // 空域的飛行（entities/mech-air.js）：推力、轉向、機動，姿勢與動作照下面的 poseTail
     if (this.air) {

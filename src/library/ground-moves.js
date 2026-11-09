@@ -1559,13 +1559,13 @@ const MECH = [
   },
   {
     id: 'mc_legend',
-    name: '傳說模組：踏地與過載',
-    who: '主線的傳說模組（踏地衝擊、過載放電、殉爆）',
-    src: 'entities/mech-legend.js（shockwave）',
+    name: '傳說模組：停滯力場、緊急空投',
+    who: '主線的傳說模組與 lg* 模組（停滯力場的範圍、緊急空投的光柱、護盾）',
+    src: 'entities/mech-legend.js（ring、pillarStrike）',
     run: (S) => {
-      S.ring(S.v(0, 0.3, -6), 10, 0x9fd8ff, 0.5);
-      S.at(0.7, () => S.ring(S.v(0, 1.5 * MS, -6), 8, 0x7fc8ff, 0.5));
-      S.at(1.4, () => S.ring(S.v(0, 1.5 * MS, -6), 12, 0xffb040, 0.7));
+      S.ring(S.v(0, 0.3, -6), 12, 0x9fe8d0, 0.5);
+      S.at(0.5, () => S.ring(S.v(0, 0.3, -6), 12, 0x9fe8d0, 0.5));
+      S.at(1.2, () => S.ring(S.v(0, 1.5 * MS, -6), 6, 0x7ee081, 0.5));
     },
   },
   {

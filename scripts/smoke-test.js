@@ -16457,36 +16457,70 @@ async function testLoot(browser, base) {
 
 // 主線擴充第 8 期：傳說模組（16 種的行為、共鳴、三選一固定有一個、自動選的時候略過）
 async function testLegend(browser, base) {
-  console.log('傳說模組：16 種的行為、共鳴、三選一（2026-11-09 改版）');
+  console.log('傳說模組：取得條件、共鳴、各傳說的規則、從傳說降成一般模組的 lg*（2026-11-10 改版）');
   const { ctx, page } = await newPage(browser, 'legend');
   await page.goto(base + '?test');
   await waitVisible(page, 'title');
   await freezeLoop(page);
+  // 三選一：出現條件（持有同一家的一般模組 2 個）、沒有符合時換成升級、自動選略過傳說
+  const pick = await page.evaluate(() => {
+    const g = window.__game;
+    const out = {};
+    g.campBegin('c1s2');
+    const open = (mods) => {
+      g.campSetMods(mods);
+      g.autoPickMod = false;
+      g.campOpenPick(null, '測試', true);
+      const ids = g.modOpts.map((o) => o.id);
+      const sub = document.getElementById('mpSub').textContent;
+      const n = document.querySelectorAll('#mpCards .mpCard').length;
+      const leg = document.querySelectorAll('#mpCards .mpCard.legend').length;
+      g.campClosePick();
+      return { ids, sub, n, leg };
+    };
+    out.none = open([{ id: 's_ap', lv: 1 }]);
+    out.ready = open([
+      { id: 's_ap', lv: 1 },
+      { id: 's_def', lv: 1 },
+    ]);
+    g.autoPickMod = true;
+    g.campSetMods([
+      { id: 's_ap', lv: 1 },
+      { id: 's_def', lv: 1 },
+    ]);
+    g.campOpenPick(null, '測試', true);
+    out.auto = g.campMods().map((m) => m.id);
+    g.campSetMods([]);
+    return out;
+  });
+  check(
+    pick.none.leg === 0 && /還沒有委託方符合/.test(pick.none.sub) && pick.none.ids[0] === 's_ap',
+    `傳說的條件不符合時沒有傳說、換成持有模組的升級（${pick.none.ids.join('、')}）`,
+  );
+  check(
+    pick.ready.n === 3 && pick.ready.leg === 1 && /^lg_/.test(pick.ready.ids[0]),
+    `持有聖域的模組 2 個：三選一有一個傳說模組（${pick.ready.ids.join('、')}）`,
+  );
+  check(
+    pick.auto.length === 3 && pick.auto.every((id) => !/^lg_/.test(id)),
+    '自動選的時候略過傳說模組：' + pick.auto.join('、'),
+  );
   const r = await page.evaluate(() => {
     const g = window.__game;
     const out = {};
     g.autoPickMod = true;
     g.campBegin('c1s2');
-    const L = [
-      'lg_salvo',
-      'lg_chain',
-      'lg_scrap',
-      'lg_bounty',
-      'lg_jam',
-      'lg_overclock',
-      'lg_conduit',
-      'lg_reso',
-      'lg_scout',
-      'lg_arcqb',
-      'lg_exit',
-      'lg_trap',
-      'lg_react',
-      'lg_medic',
-      'lg_cache',
-      'lg_bulwark',
-    ];
-    g.campSetMods(L.map((id) => ({ id, lv: 1 })));
-    out.reso = g.campPilotPm().dmg >= 0.08; // 共鳴：兩家以上的傳說模組
+    const L = ['c_salvo', 'c_scrap', 'a_jam', 'a_conduit', 'v_trap', 's_cache', 's_bulwark'].map((id) => ({
+      id,
+      lv: 3,
+    }));
+    g.campSetMods([
+      ...L,
+      { id: 'lg_buffer', lv: 1 },
+      { id: 'lg_ciws', lv: 1 },
+      { id: 'lg_drop', lv: 1 },
+      { id: 'lg_stasis', lv: 1 },
+    ]);
     g.camp.seg = 1;
     g.camp.types[1] = 'supply';
     g.campEnterSeg(); // 沒有敵人的區段
@@ -16508,116 +16542,133 @@ async function testLegend(browser, base) {
       fn();
       return Math.round(h - e.hp);
     };
+    const hurt = (dmg, from) => {
+      p.iFrames = 0;
+      p.takeDamage(dmg, 0, from, p.center(), new THREE.Vector3(0, 0, 1), null, null, 'none');
+    };
+    const tick = (s) => {
+      for (let t = 0; t < s; t += 1 / 60) p.lgTick(1 / 60);
+    };
     const a = foe(20, 0);
-    // 急行軍：開場 15 秒速度 +20%
-    out.exit = p.lgSpdK();
-    // 補給回收：撿到彈藥箱時彈匣裝滿、實彈 +20%
+    // ---- 一般模組（Lv3＝×2.2）----
     const w = p.weapons.rarm;
     w.mag = 1;
     p.lgPickup('ammo');
     out.salvo = [w.mag === w.def.mag, p.lgShotK(w.def)];
-    // 超頻：風格評價 A 以上
-    if (!p.sy) p.sy = { pts: 0, idle: 0, hist: [], labels: [], rank: -1, cls: '', sendT: 0 };
-    p.sy.rank = 4;
-    out.over = [p.lgRchK(), p.lgShotK({ type: 'laser', attr: 'en' })];
-    // 能源導管
     p.en = 0;
     p.lgDevUse();
-    out.conduit = p.en === p.enMax && p.lgQbK() === 0 && p.lgEnK() === 0;
-    // 戰地醫護：用修復套件後 3 秒受傷 −50%
-    p.lgKit();
-    p.iFrames = 0;
-    out.medic = lost(p, () =>
-      p.takeDamage(1000, 0, a, p.center(), new THREE.Vector3(0, 0, 1), null, null, 'none'),
-    );
-    p.lgMedicT = 0;
-    // 增援壁壘：護盾 AP 15%
+    out.conduit = [p.en === p.enMax && p.lgQbK() === 0 && p.lgEnK() === 0, p.lgConduitT];
     p.lgWaveShield();
-    p.iFrames = 0;
-    out.bulwark = lost(p, () =>
-      p.takeDamage(1000, 0, a, p.center(), new THREE.Vector3(0, 0, 1), null, null, 'none'),
-    );
+    out.bulwark = p.lgShield / p.maxHp;
     p.lgShield = 0;
-    // 補給專家
     p.kits = 0;
     p.hp = p.maxHp * 0.5;
     p.lgCacheOpen();
-    out.cache = p.kits === 1 && Math.abs(p.hp / p.maxHp - 0.75) < 0.01;
-    // 懸賞：每擊破 5 台
-    const c0 = g.save.coam;
-    for (let i = 0; i < 5; i++) p.lgKill({ center: () => p.center(), maxHp: 1, pos: p.pos });
-    out.bounty = g.save.coam - c0;
-    // 連鎖引爆
-    const c = foe(30, -20);
-    c.hp = c.maxHp * 0.1;
-    const k = foe(33, -20);
-    p.lgKill(k);
-    out.chain = c.dead;
-    // 電弧推進
-    a.pos.copy(at(4, 0));
-    p.qbT = 0.16;
-    p.lgArcT = 0;
-    out.arcqb = lost(a, () => p.lgTick(0.016));
-    p.qbT = 0;
-    // 反應裝甲
-    p.lgReactT = 0;
-    out.react = lost(a, () => p.takeDamage(100, 0, a, p.center(), new THREE.Vector3(0, 0, 1), { kb: 0 }));
-    // 干擾網：增援的敵人硬直
+    out.cache = [p.kits, p.hp / p.maxHp];
+    p.hp = p.maxHp;
     g.waveAt = { pos: at(40, 0) };
     const j = g.spawnType('mt', 1, 1, at(40, 0), 1);
     g.waveAt = null;
     j.updateAI = () => {};
-    out.jam = j.staggerT >= 2.9;
-    // 陷阱大師：對敵人 ×2、不傷到自己
+    out.jam = j.staggerT;
     const e2 = foe(-30, 0);
     const d1 = lost(e2, () => g.devHurt(e2, 0.01, 0, null, e2.center(), 'exp'));
     out.trap = [d1, lost(p, () => g.devHurt(p, 0.01, 0, null, p.center(), 'exp'))];
-    // 拾荒本能、先遣偵察：持有判定
-    out.any = g.lgAny('lgScrap') && g.lgAny('lgScout');
-    for (const e of [a, c, k, j, e2]) e.dead = true;
+    out.scrap = g.lgMax('lgScrap');
+    // ---- 緩衝裝甲：40% 改成 4 秒內慢慢扣、擊破敵人抵銷 ----
+    p.lgDebt = [];
+    out.buf0 = lost(p, () => hurt(1000, a));
+    out.buf1 = lost(p, () => tick(4.2));
+    hurt(1000, a);
+    tick(1);
+    p.lgKill(a);
+    out.bufClr = p.lgDebtSum();
+    out.bufEnv = lost(p, () => hurt(1000, null)); // 不是敵人造成的（環境）照常扣
+    p.lgDebt = [];
+    p.hp = 200;
+    hurt(250, a); // 立刻扣 150（剩 50），100 慢慢扣：不會被擊破
+    tick(4.2);
+    out.bufFloor = [p.dead, Math.round(p.hp)];
+    p.hp = p.maxHp;
+    // ---- 近迫防禦：擊落追著自己的導彈 ----
+    g.mortarShot(a, at(60, 60), { dmg: 1, im: 0, R: 1 });
+    const mo = g.projectiles[g.projectiles.length - 1];
+    const Proj = mo.constructor;
+    mo.dead = true;
+    g.scene.remove(mo.mesh);
+    const m = new Proj(g, {
+      pos: at(0, 20).setY(p.center().y),
+      vel: new THREE.Vector3(0, 0, -40),
+      kind: 'missile',
+      team: 'enemy',
+      owner: a,
+      target: p,
+      turn: 2,
+      dmg: 100,
+      impactV: 0,
+      life: 5,
+    });
+    g.projectiles.push(m);
+    p.lgCiwsCd = 0;
+    tick(0.05);
+    out.ciws = [m.dead, p.lgCiwsCd > 2];
+    // ---- 停滯力場：用修復套件時展開，敵人的投射物變慢 ----
+    p.kits = 2;
+    p.hp = p.maxHp * 0.5;
+    g.useKit();
+    const m2 = new Proj(g, {
+      pos: p.center().add(new THREE.Vector3(0, 0, 8)),
+      vel: new THREE.Vector3(0, 0, -1),
+      kind: 'bullet',
+      team: 'enemy',
+      owner: a,
+      dmg: 1,
+      life: 5,
+    });
+    out.field = [!!g.lgFields, g.lgFieldK(m2)];
+    m2.dead = true;
+    g.scene.remove(m2.mesh);
+    tick(6.2);
+    out.fieldEnd = g.lgFields;
+    // ---- 緊急空投：AP 低於 35% 時一次 ----
+    for (const x of Object.values(p.weapons)) if (x && x.def && x.def.mag) x.ammo = 0;
+    p.kits = 0;
+    p.lgDropUsed = false;
+    p.hp = p.maxHp * 0.3;
+    tick(0.05);
+    out.drop = [p.lgDropUsed, w.ammo === w.def.ammo, p.kits, Math.round((p.lgShield / p.maxHp) * 100)];
+    p.lgShield = 0;
+    for (const e of [a, j, e2]) e.dead = true;
     g.state = 'play';
     return out;
   });
-  check(r.reso, '共鳴：兩家委託方的傳說模組，傷害等小幅提高');
-  check(Math.abs(r.exit - 1.2) < 1e-6, '急行軍：每一段開場速度 +20%');
-  check(r.salvo[0] && Math.abs(r.salvo[1] - 1.2) < 1e-6, '補給回收：撿到彈藥箱時彈匣裝滿、實彈傷害 ×1.2');
+  check(r.salvo[0] && Math.abs(r.salvo[1] - 1.264) < 1e-6, `補給回收 Lv3：彈匣裝滿、實彈 ×${r.salvo[1]}`);
   check(
-    r.over[0] === 1.5 && Math.abs(r.over[1] - 1.15) < 1e-6,
-    '超頻：風格評價 A 以上時 EN 回復 ×1.5、能量武器 ×1.15',
+    r.conduit[0] && Math.abs(r.conduit[1] - 8.8) < 1e-6,
+    `能源導管 Lv3：EN 全滿、${r.conduit[1]} 秒不耗 EN`,
   );
-  check(r.conduit, '能源導管：使用地圖裝置時 EN 全滿、QB 與能量武器不耗 EN');
-  check(r.medic === 500, `戰地醫護：用修復套件後受傷 −50%（${r.medic}）`);
-  check(r.bulwark === 0, `增援壁壘：護盾擋下傷害（${r.bulwark}）`);
-  check(r.cache, '補給專家：打開補給箱時回復 AP 25%、修復套件 +1');
-  check(r.bounty > 0, `懸賞：擊破 5 台得到 COAM（${r.bounty}）`);
-  check(r.chain, '連鎖引爆：AP 低的敵人直接引爆');
-  check(r.arcqb > 0 && r.react > 0, `電弧推進（${r.arcqb}）、反應裝甲（${r.react}）`);
-  check(r.jam, '干擾網：增援的敵人硬直 3 秒');
+  check(Math.abs(r.bulwark - 0.176) < 1e-6, `增援壁壘 Lv3：護盾 AP ${r.bulwark}`);
+  check(
+    r.cache[0] === 1 && Math.abs(r.cache[1] - 0.764) < 1e-3,
+    `補給專家 Lv3：修復套件 +1、AP ${r.cache[1]}`,
+  );
+  check(Math.abs(r.jam - 4.4) < 1e-6, `干擾網 Lv3：增援硬直 ${r.jam} 秒`);
   check(
     r.trap[0] > 15000 && r.trap[1] === 0,
-    `陷阱大師：對敵人 ×2（${r.trap[0]}）、不傷到自己（${r.trap[1]}）`,
+    `陷阱大師 Lv3：對敵人（${r.trap[0]}）、不傷到自己（${r.trap[1]}）`,
   );
-  check(r.any, '拾荒本能、先遣偵察：Game.lgAny 判定持有');
-  // 三選一：精英擊破後固定有一個傳說模組；自動選的時候略過
-  const pick = await page.evaluate(() => {
-    const g = window.__game;
-    g.campSetMods([]);
-    g.autoPickMod = false;
-    g.campOpenPick(null, '測試', true);
-    const cards = document.querySelectorAll('#mpCards .mpCard');
-    const leg = document.querySelectorAll('#mpCards .mpCard.legend').length;
-    const out = { n: cards.length, leg };
-    g.campClosePick();
-    g.autoPickMod = true;
-    g.campOpenPick(null, '測試', true);
-    out.auto = g.campMods().map((m) => m.id);
-    g.campSetMods([]);
-    return out;
-  });
-  check(pick.n === 3 && pick.leg === 1, '三選一（擊破獎勵）：3 個選項、其中一個是傳說模組');
+  check(Math.abs(r.scrap - 2.2) < 1e-6, `Game.lgMax：一般模組的等級倍率（${r.scrap}）`);
+  check(r.buf0 === 600 && r.buf1 === 400, `緩衝裝甲：先扣 ${r.buf0}、4 秒內再扣 ${r.buf1}`);
+  check(r.bufClr === 0 && r.bufEnv === 1000, `緩衝裝甲：擊破敵人抵銷剩下的、環境傷害照常（${r.bufEnv}）`);
+  check(!r.bufFloor[0] && r.bufFloor[1] === 1, `緩衝裝甲：慢慢扣的部分不會擊破（AP ${r.bufFloor[1]}）`);
+  check(r.ciws[0] && r.ciws[1], '近迫防禦：擊落追著自己的導彈、冷卻 3 秒');
   check(
-    pick.auto.length === 1 && !/^lg_/.test(pick.auto[0]),
-    '自動選的時候略過傳說模組：' + pick.auto.join(''),
+    r.field[0] && r.field[1] === 0.3 && r.fieldEnd === null,
+    '停滯力場：用修復套件展開、敵人的子彈 ×0.3、6 秒後消失',
+  );
+  check(
+    r.drop[0] && r.drop[1] && r.drop[2] === 1 && r.drop[3] === 20,
+    `緊急空投：彈藥全滿、修復套件 +1、護盾 ${r.drop[3]}%`,
   );
   await ctx.close();
 }

@@ -341,8 +341,8 @@ Object.assign(Game.prototype, {
     let k = frac;
     if (t.isBoss) k *= 0.08;
     else if (t.team === 'player' || t.team === 'ally') k *= 0.5;
-    // 傳說模組「陷阱大師」：對敵人 ×2、不傷到持有者
-    if (t.team === 'enemy' && this.lgAny('lgTrap')) k *= 2;
+    // 模組「陷阱大師」：對敵人 ×1.5～2.1（依等級）、不傷到持有者
+    if (t.team === 'enemy' && this.lgAny('lgTrap')) k *= 1 + 0.5 * this.lgMax('lgTrap');
     if (t.team === 'player' && t.pmv && t.pmv('lgTrap') > 0) return;
     if (!(k > 0)) return;
     const from = by && !by.dead && t.team === 'enemy' ? by : null;
