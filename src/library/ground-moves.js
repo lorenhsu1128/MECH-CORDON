@@ -1579,6 +1579,20 @@ const MECH = [
       S.at(0.6, () => S.ring(S.src.center(), 12, 0x9fd8ff, 0.4));
     },
   },
+  {
+    id: 'mc_gear',
+    name: '零件品級：專屬與金色詞條',
+    who: '特製／傳說零件（玩家與敵人）：偏向場、音爆、不倒、蓄能盾、電漿雲、燒夷、地上的裝備光柱',
+    src: 'entities/mech-gear-fx.js（ring）、entities/mech-gear-gold.js（shockwave、addPool）、game/gear-loot.js（ring）',
+    srcAt: [0, -10],
+    run: (S) => {
+      S.ring(S.src.center(), 4, 0x80c8ff, 0.3); // 偏向場
+      S.at(0.5, () => S.ring(S.src.center(), 8, 0xbfe8ff, 0.3)); // 音爆
+      S.at(1.0, () => S.ring(S.src.center(), 12, 0xffd080, 0.45)); // 不倒
+      S.at(1.5, () => S.pool(S.g(0, -4), 3, 4, true)); // 電漿雲
+      S.at(2.0, () => S.pool(S.g(4, -6), 5, 6)); // 燒夷
+    },
+  },
 ];
 
 // ---------- 其他（各系統的命中、反應、出現時的地面環）----------
