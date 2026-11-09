@@ -481,6 +481,7 @@ Object.assign(Game.prototype, {
       });
       this.bosses = [e];
       ss.elite = e;
+      e.isElite = true; // 精英區段的具名 AC：掉能量核心（loot.js）
       for (const t of comp(L - 2).slice(0, 2)) this.spawnType(t, sh, sd);
       document.getElementById('bossBar').style.display = 'block';
       document.getElementById('bossName').textContent = `敵對 AC「${r.name}」`;

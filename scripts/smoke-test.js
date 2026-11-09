@@ -16096,6 +16096,88 @@ async function testLoot(browser, base) {
   check(ui.lv2 === 2 && ui.alloy2 === 14, '升級到 2 級：再扣合金 ×4、電子零件 ×2');
   check(/調校（\+2）/.test(ui.tipBtn), '零件小卡片的調校按鈕標出級數：' + ui.tipBtn);
   check(ui.reset && ui.alloy3 === 17 && ui.coam3 === 194500, '重置：退還一半（合金 +3、COAM +5500）');
+  // 限界突破（傳說殘片）、精英 AC 的能量核心、空戰的素材直接入帳（2026-11-09）
+  const bk = await page.evaluate(() => {
+    const g = window.__game;
+    const S = g.save;
+    const out = {};
+    const id = S.asm.rarm;
+    S.coam = 200000;
+    S.mats = { alloy: 30, circuit: 20, core: 5, shard: 3 };
+    S.tune = { [id]: { pow: 3, rate: 2 } };
+    g.tuneOpen('arm', id);
+    const box = document.getElementById('tuneBox');
+    out.full = [...box.querySelectorAll('.tuUp')].every((b) => b.disabled);
+    box.querySelector('.tuBreak').click();
+    out.x = S.tune[id]._x;
+    out.shard = S.mats.shard;
+    out.coam = S.coam;
+    out.cap = /最多 6 級/.test(box.querySelector('.tuH').textContent);
+    const mag = [...box.querySelectorAll('.tuUp')].find((b) => b.dataset.k === 'mag');
+    out.magOk = !!mag && !mag.disabled;
+    mag.click();
+    out.sum = g.tuneSum(id);
+    g.tuneReset(id);
+    out.keep = JSON.stringify(S.tune[id]);
+    // 突破後的合計上限也通過駕駛員加成的整理（多人的房主校正同一個函式）
+    const magOf = (t) => {
+      S.tune = { [id]: t };
+      g.save.level = 2;
+      g.startMission();
+      return g.player.weapons.rarm.def.mag;
+    };
+    const m0 = magOf({ pow: 3, rate: 2 });
+    out.magNoX = magOf({ pow: 3, rate: 2, mag: 1 }) === m0;
+    out.magX = magOf({ pow: 3, rate: 2, mag: 1, _x: 1 }) > m0;
+    S.tune = {};
+    // 精英區段的具名 AC：能量核心
+    const r0 = Math.random;
+    g.clearMission();
+    g.campBegin('c1s1');
+    g.camp.seg = 1;
+    g.camp.types[1] = 'elite';
+    g.campEnterSeg();
+    const e = g.camp.ss.elite;
+    out.elite = !!(e && e.isElite);
+    const pk0 = g.pickups.length;
+    Math.random = () => 0.01;
+    try {
+      g.lootKilled(e);
+    } finally {
+      Math.random = r0;
+    }
+    out.core = g.pickups.slice(pk0).some((p) => p.kind === 'mat_core');
+    g.clearMission();
+    g.camp = null;
+    g.state = 'garage';
+    // 空戰：直接入帳、不在地面放掉落物
+    localStorage.setItem('rubicon_map', 'airspace');
+    g.save.level = 5;
+    g.startMission();
+    const a = g.enemies.find((x) => !x.dead && x.team === 'enemy');
+    const al0 = S.mats.alloy || 0,
+      pk1 = g.pickups.length;
+    Math.random = () => 0.01;
+    try {
+      g.lootKilled(a);
+    } finally {
+      Math.random = r0;
+    }
+    out.air = (S.mats.alloy || 0) > al0 && g.pickups.length === pk1;
+    localStorage.setItem('rubicon_map', 'industrial');
+    g.clearMission();
+    g.openGarage(); // 狀態離開 play（主迴圈不再讀清掉的玩家）
+    return out;
+  });
+  check(
+    bk.full && bk.x === 1 && bk.shard === 2 && bk.coam === 185000 && bk.cap,
+    '限界突破：傳說殘片 ×1＋15000 COAM，合計上限 5 → 6',
+  );
+  check(bk.magOk && bk.sum === 6, `突破後可以再升一級（合計 ${bk.sum}）`);
+  check(bk.keep === '{"_x":1}', `重置不退突破（${bk.keep}）`);
+  check(bk.magNoX && bk.magX, '駕駛員加成的整理照突破次數決定合計上限');
+  check(bk.elite && bk.core, '精英區段的具名 AC 掉能量核心');
+  check(bk.air, '空戰的素材直接入帳（不放在地面）');
   await page.screenshot({ path: path.join(SHOT_DIR, 'tune.png') });
   await ctx.close();
 }

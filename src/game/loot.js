@@ -32,13 +32,26 @@ Object.assign(Game.prototype, {
     if ((big || (ace && e.isElite) || e.nemesis) && Math.random() < DROP.core) drops.push('core');
     if (big && Math.random() < DROP.shard) drops.push('shard');
     if (big) drops.push('alloy', 'circuit');
-    const c = e.center();
-    const W = this.world;
-    drops.forEach((k, i) => {
-      const a = (i / Math.max(1, drops.length)) * Math.PI * 2;
-      const [x, z] = W.nearSolid(c.x + Math.cos(a) * 3 * e.dk, c.z + Math.sin(a) * 3 * e.dk);
-      this.spawnPickup('mat_' + k, new THREE.Vector3(x, W.groundAt(x, z, c.y + 2) + 0.6, z));
-    });
+    // 空戰（空域、主線的空戰區段）：掉落物在地面撿不到，直接入帳（空戰只有單人）
+    if (this.airMode) {
+      for (const k of drops) this.lootMat(k, 1);
+      if (drops.length) {
+        const n = {};
+        for (const k of drops) n[k] = (n[k] || 0) + 1;
+        const txt = Object.keys(n)
+          .map((k) => `${MATS[k].name}${n[k] > 1 ? ' ×' + n[k] : ''}`)
+          .join('、');
+        if (this.bountyPops) this.bountyPops.push({ txt: '+' + txt, life: 2.2, y: 0 });
+      }
+    } else {
+      const c = e.center();
+      const W = this.world;
+      drops.forEach((k, i) => {
+        const a = (i / Math.max(1, drops.length)) * Math.PI * 2;
+        const [x, z] = W.nearSolid(c.x + Math.cos(a) * 3 * e.dk, c.z + Math.sin(a) * 3 * e.dk);
+        this.spawnPickup('mat_' + k, new THREE.Vector3(x, W.groundAt(x, z, c.y + 2) + 0.6, z));
+      });
+    }
     // 零件：具名 AC、宿敵、Boss、大型兵器（它裝備的、還沒擁有的）
     if ((ace || big) && e.asm && Math.random() < (e.nemesis ? 1 : DROP.part)) {
       const ids = Object.values(e.asm).filter((id) => PART_CAT.has(id));

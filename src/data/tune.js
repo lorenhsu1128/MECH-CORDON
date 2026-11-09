@@ -56,6 +56,17 @@ export function tuneGroup(cat, p) {
 }
 export const TUNE_MAX = 3; // 每一項的最高級數
 export const TUNE_TOTAL = 5; // 每個零件全部項目加起來的上限
+// 限界突破（傳說殘片的用途，2026-11-09）：每次讓這個零件的合計上限 +1，最多 2 次（5 → 7）；突破是永久的，重置調校不退。
+// 存在調校表的 _x（save.tune[零件 id]._x＝突破次數），項目的級數上限 TUNE_MAX 不變
+export const TUNE_BREAK = [
+  { coam: 15000, shard: 1 },
+  { coam: 30000, shard: 2 },
+];
+export const tuneBreaks = (t) => Math.max(0, Math.min(TUNE_BREAK.length, (t && t._x) | 0));
+export const tuneCap = (t) => TUNE_TOTAL + tuneBreaks(t);
+// 已經調了幾級（不含突破次數）
+export const tuneLevels = (t) =>
+  t ? Object.keys(t).reduce((a, k) => a + (k === '_x' ? 0 : Math.max(0, t[k] | 0)), 0) : 0;
 // 升到 lv 級的費用
 export function tuneCost(lv) {
   return [
@@ -85,9 +96,11 @@ export function sanitizeTune(t, groupOf) {
     if (!g || !t[id] || typeof t[id] !== 'object') continue;
     const row = {};
     let sum = 0;
+    const x = tuneBreaks(t[id]);
+    if (x) row._x = x;
     for (const o of TUNE[g]) {
       const lv = Math.max(0, Math.min(TUNE_MAX, t[id][o.k] | 0));
-      if (lv && sum + lv <= TUNE_TOTAL) {
+      if (lv && sum + lv <= TUNE_TOTAL + x) {
         row[o.k] = lv;
         sum += lv;
       }
