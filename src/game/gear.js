@@ -2,10 +2,14 @@
 // 純函式與資料在 data/gear.js；這裡是存檔的操作與機甲庫用的小工具。
 import { GEAR_CAT, INV_MAX, gearBest, gearGr, gearPick, gearResolve } from '../data/gear.js';
 import * as GD from '../data/gear.js';
+import * as TD from '../data/tune.js';
 import { Game } from './game.js';
 
 // 自動化測試（網址帶 ?test）：data/gear.js 的函式放在 window.__gear
-if (typeof location !== 'undefined' && new URLSearchParams(location.search).has('test')) window.__gear = GD;
+if (typeof location !== 'undefined' && new URLSearchParams(location.search).has('test')) {
+  window.__gear = GD;
+  window.__tune = TD; // scripts/boss-bench.js 的配裝（調校）
+}
 
 Object.assign(Game.prototype, {
   // 背包與裝備的欄位（讀檔後、新存檔）

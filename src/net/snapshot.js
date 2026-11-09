@@ -33,6 +33,7 @@ export function serEnt(e) {
     m: e.melee.active ? [e.melee.slot, e.melee.stage, +e.melee.t.toFixed(2)] : 0,
     w: ws,
     k: e.kits,
+    sc: e.scar > 0 ? Math.round(e.scar) : 0, // 結構損傷（docs/boss-design.md 第 8 節）
     lx: +(e.leanX || 0).toFixed(2),
     lz: +(e.leanZ || 0).toFixed(2),
     f: e.flying ? 1 : 0,
@@ -74,6 +75,7 @@ export function applyEnt(e, s, g) {
   e.deaths = s.de || 0;
   e.respawnT = s.rs !== undefined && s.rs >= 0 ? s.rs : undefined;
   e.hp = s.h;
+  e.scar = s.sc || 0;
   e.acs = s.ac;
   if (e.staggerT > 0 && s.st <= 0 && e.pilotEnt()) e.stagGuardT = STAG_GUARD;
   e.staggerT = s.st;

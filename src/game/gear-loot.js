@@ -3,6 +3,7 @@
 // 判定在房主／單機；多人時每位玩家各自產生一件（各撿各的），直接入帳（gear 事件），不放在地上。
 import { SFX } from '../audio/audio.js';
 import { MS } from '../core/scale.js';
+import { AF, affixList } from '../data/affix.js';
 import { GEAR_CAT, GEAR_SLOTS, GRADES, AX_N, gearPart, rollAx, rollGear } from '../data/gear.js';
 import {
   ALL_GEAR,
@@ -64,7 +65,8 @@ Object.assign(Game.prototype, {
       // Boss：一定掉一件（掉落表），有機率是金色
       const key = (e.boss3Key && e.boss3Key()) || (e.opts && e.opts.bossKind) || '';
       const echo = String(e.name || '').startsWith('ECHO-');
-      const gold = Math.random() < goldChance(ch, echo);
+      const nAf = e.af ? affixList(e.af).length : 0; // 依戰力的 Boss 詞綴：每個多一點金色機率（docs/boss-design.md 第 8 節）
+      const gold = Math.random() < goldChance(ch, echo) + AF.BOSS_GOLD * nAf;
       return this.gearGive(pickOne(bossPool(key, e.asm)), gold ? 4 : rollQ(cap, 1, Math.random), at);
     }
     const named = this.bosses && this.bosses.includes(e);

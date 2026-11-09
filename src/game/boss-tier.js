@@ -22,6 +22,9 @@ import {
   kSquad,
   oRank,
   tierRow,
+  KILL_HEAL_CD,
+  K_GUARD_K,
+  K_GUARD_R,
 } from '../data/boss-tier.js';
 
 // J：算進部位數、打壞時掉補給與結算加成的部位種類（浮游砲、分身、三機合體的分離機體不算）
@@ -88,6 +91,7 @@ Object.assign(Game.prototype, {
   bossTierTick(dt) {
     const t = this.tierFightTier();
     if (!t) return;
+    this.tierShellTick(dt);
     for (const p of this.players || []) if (p && !p.dead && p.bkTick) p.bkTick(dt, t);
     this.tierFieldTick(dt); // 部位重建、跟著 Boss 的區域、作戰區域縮小
     this.kSquadT = (this.kSquadT === undefined ? K_SQUAD_T : this.kSquadT) - dt;
@@ -107,6 +111,50 @@ Object.assign(Game.prototype, {
     });
     this.waveAt = null;
     this.flashAlert('敵方小隊進入戰區 — 擊破累積破甲充能');
+  },
+  // 第 8 節：裝甲殼的時限、起身衝擊波（刁鑽度 5 起：失衡結束時往外的地面衝擊波）
+  tierShellTick(dt) {
+    for (const b of this.bosses || []) {
+      if (b.dead || !b.tierOn()) continue;
+      const s = b.bt;
+      if (s && s.shell && (s.shell.t -= dt) <= 0) b.tierShellBreak('time');
+      const stag = b.staggerT > 0;
+      if (b.wasStag && !stag && tierRow(b.bossTier()).wake && !b.flying && b.ai !== 'part') {
+        const gy = this.world.groundAt(b.pos.x, b.pos.z, b.pos.y + 1);
+        this.shockStart(b, {
+          at: new THREE.Vector3(b.pos.x, gy, b.pos.z),
+          R: 18 * (b.scale || 1),
+          sp: 18,
+          dl: 0.7,
+          dmg: 300 * b.dmgMul,
+          im: 900 * b.dmgMul,
+        });
+      }
+      b.wasStag = stag;
+    }
+  },
+  // 第 8 節方案 6：Boss 戰中擊破回復（回收迴路、擊殺回復、詞條的回收）同一台機體 KILL_HEAL_CD 秒只算一次。
+  // 同一格的多個擊破回復共用一次判定（同一次擊破的不同來源都算）
+  killHealOk(p) {
+    if (!p || !this.tierFightTier()) return true;
+    if (p.khAt === p.t) return p.khOk;
+    p.khOk = !(p.t - (p.khT === undefined ? -99 : p.khT) < KILL_HEAL_CD);
+    if (p.khOk) p.khT = p.t;
+    p.khAt = p.t;
+    return p.khOk;
+  },
+  // 刁鑽度 7～8：Boss 附近的雜兵受到的傷害減半（takeDamage）
+  bossGuardK(e) {
+    const t = this.tierFightTier();
+    if (!t || !tierRow(t).kGuard || e.isBoss || e.ai === 'part' || e.ai === 'holo') return 1;
+    const R = K_GUARD_R * DS;
+    if (!this.bosses.some((b) => !b.dead && b.pos.distanceTo(e.pos) < R * (b.scale || 1))) return 1;
+    if (!e.kgFx || e.t - e.kgFx > 1.5) {
+      e.kgFx = e.t;
+      this.fx.ring(e.center(), 2.5, 0xff9040);
+      this.tierIntro('guard', 'Boss 掩護 — Boss 附近的雜兵受到的傷害減半，把它們引開再打');
+    }
+    return K_GUARD_K;
   },
   // 擊破敵人（onEnemyKilled，房主／單機）：Boss 戰中擊破雜兵累積破甲充能
   tierOnKill(e, from) {
@@ -197,6 +245,7 @@ Object.assign(Game.prototype, {
     this.tierPartsBroken = (this.tierPartsBroken || 0) + 1;
     const sp = e.tierSpec;
     if (sp) b.tierPartLost(sp, true);
+    b.tierShellBreak('part'); // 第 8 節：部位破壞打開裝甲殼
     const kit = b.tierKit();
     if (sp && kit.onLost) kit.onLost(this, b, sp); // 這隻自己的（STRIDER 兩隻前腳都壞了跪下…）
     const c = e.center();
@@ -362,7 +411,7 @@ Object.assign(Game.prototype, {
       vb = null;
     for (const b of bs) {
       const x = b.tierView && b.tierView();
-      if (x && (x.chg >= 0 || x.open > 0)) {
+      if (x && (x.chg >= 0 || x.open > 0 || x.shell > 0)) {
         v = x;
         vb = b;
         if (x.chg >= 0) break;
@@ -379,6 +428,11 @@ Object.assign(Game.prototype, {
           lab.textContent = `${v.second ? '再次蓄力' : '蓄力中'}：${v.name} — 打斷 ${Math.round(v.gauge * 100)}%`;
           fill.style.width = clamp(v.gauge * 100, 0, 100) + '%';
           document.getElementById('bossTierT').style.width = clamp((1 - v.chg) * 100, 0, 100) + '%';
+        } else if (v.shell > 0 && !(v.open > 0)) {
+          bar.className = 'shell';
+          lab.textContent = `裝甲殼：打壞部位、打斷大招或趁破綻打開 — ${Math.ceil(v.shell)}s`;
+          fill.style.width = '100%';
+          document.getElementById('bossTierT').style.width = clamp((v.shell / 20) * 100, 0, 100) + '%';
         } else {
           bar.className = 'open';
           lab.textContent = v.fake ? '破綻？' : `破綻！ ${v.open.toFixed(1)}s`;

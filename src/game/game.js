@@ -243,7 +243,7 @@ export class Game {
           this.popDamage(t.center(), '抵抗', t.isPlayer, false, false, 0, t.id, 0);
           continue;
         }
-        const s = stun * (t.isBoss ? 0.4 : 1);
+        const s = stun * (t.isBoss ? 0.4 * t.tierEmpK() : 1); // Boss：越打越短（mech-boss-tier.js）
         t.staggerT = Math.max(t.staggerT, s);
         t.gEmpUntil = this.time + s; // 零件品級的「電擊」（mech-gear.js）
         if (src.gxF) src.gearEmpHit(t, s); // 弱化脈衝、電磁標記（mech-gear-fx.js）

@@ -17929,6 +17929,285 @@ async function testJumpCam(browser, base) {
   await ctx.close();
 }
 
+// Boss 變難（不堆血量，docs/boss-design.md 第 8 節，2026-11-10）：型態閘門與裝甲殼、EMP 與壓制的抗性、起身衝擊波、
+// 結構損傷、不看防禦的大招、讀 QB、雜兵燃料的限制、依戰力的 Boss 詞綴、HUD 的三種畫面大小
+async function testBossHard(browser, base) {
+  console.log('Boss 變難：型態閘門、裝甲殼、結構損傷、不看防禦的大招、讀 QB、雜兵燃料、依戰力的詞綴');
+  const { ctx, page } = await newPage(browser, 'bosshard');
+  await seededRandom(page);
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await freezeLoop(page);
+  const r = await page.evaluate(() => {
+    const g = window.__game;
+    const out = {};
+    g.save.level = 3;
+    g.startMission();
+    g.state = 'bh-test';
+    const pl = g.player;
+    const b = g.boss;
+    for (const e of g.enemies) if (e !== b && !e.dead && !e.isBoss && e.ai !== 'part') e.depart();
+    pl.pos.copy(b.pos).add(new THREE.Vector3(0, 0, -30));
+    const fresh = (tier) => {
+      b.opts.tier = tier;
+      b.bt = null;
+      b.phDone = 1;
+      b.hp = b.maxHp;
+      b.staggerT = 0;
+      b.stagGuardT = 0;
+      b.iFrames = 0;
+      b.acs = 0;
+    };
+    const hit = (dmg, attr = 'none') => {
+      b.iFrames = 0;
+      b.staggerT = 0;
+      const h0 = b.hp;
+      b.takeDamage(dmg, 0, pl, b.center(), null, null, null, attr);
+      return h0 - b.hp;
+    };
+    // 1. 型態閘門（刁鑽度 3）：AP 75% 一口氣打 90% → 停在 70%；換型態之後才繼續
+    fresh(3);
+    b.hp = b.maxHp * 0.75;
+    hit(b.maxHp * 0.9);
+    out.gate = +(b.hp / b.maxHp).toFixed(3);
+    g.bossPhaseTick(0);
+    out.gatePh = b.phDone;
+    b.iFrames = 0;
+    hit(b.maxHp * 0.9);
+    out.gate2 = +(b.hp / b.maxHp).toFixed(3);
+    // 2. 裝甲殼（刁鑽度 5）：碰到門檻 → 停在門檻上一點、打不進；破綻打開 → 落到門檻
+    fresh(5);
+    b.hp = b.maxHp * 0.75;
+    hit(b.maxHp * 0.9);
+    out.shell = !!(b.bt && b.bt.shell);
+    out.shellHp = b.hp > b.maxHp * 0.7 && b.hp < b.maxHp * 0.7 + 2;
+    out.shellHit = hit(5000);
+    g.drawHud(0.016);
+    out.shellHud = document.getElementById('bossTierLab').textContent;
+    out.shellView = b.tierView().shell > 0;
+    out.shellSer = (b.serTier() || [])[7] > 0;
+    b.bossOpen();
+    out.shellOpen = !(b.bt && b.bt.shell) && b.hp <= b.maxHp * 0.7;
+    // 同一個門檻不再長殼；時間到也會自己打開
+    fresh(5);
+    b.hp = b.maxHp * 0.36;
+    b.phDone = 2;
+    hit(b.maxHp * 0.5);
+    b.bt.shell.t = 0.01;
+    g.tierShellTick(0.1);
+    out.shellTime = !b.bt.shell && b.hp <= b.maxHp * 0.35;
+    // 部位破壞也打開
+    fresh(5);
+    b.hp = b.maxHp * 0.75;
+    hit(b.maxHp * 0.9);
+    b.tierShellBreak('part');
+    out.shellPart = !b.bt.shell;
+    // 3. EMP 對 Boss：同一個型態裡越來越短（刁鑽度 5：每次 −20%，最短 30%），也算半次失衡
+    fresh(5);
+    out.emp = [b.tierEmpK(), b.tierEmpK(), b.tierEmpK(), b.tierEmpK(), b.tierEmpK()].map(
+      (x) => +x.toFixed(2),
+    );
+    out.empStag = b.bt.stagN;
+    // ACS 需要的上限依刁鑽度（刁鑽度 7：×3.5）
+    out.aMax = window.__bossTier.aNeedK(7, 30);
+    // 4. 起身衝擊波（刁鑽度 5 起）：失衡結束的那一格
+    fresh(5);
+    const s0 = (g.shocks || []).length;
+    b.staggerT = 1;
+    g.tierShellTick(0.016);
+    b.staggerT = 0;
+    g.tierShellTick(0.016);
+    out.wake = (g.shocks || []).length > s0;
+    fresh(3);
+    const s1 = (g.shocks || []).length;
+    b.staggerT = 1;
+    g.tierShellTick(0.016);
+    b.staggerT = 0;
+    g.tierShellTick(0.016);
+    out.wake3 = (g.shocks || []).length === s1;
+    // 5. 結構損傷（刁鑽度 3：30%）：Boss 打中 1000 → 灰色 300；擊破回復補不到；反擊 Boss 回復；修復套件先修
+    fresh(3);
+    pl.maxHp = 10000;
+    pl.hp = 10000;
+    pl.scar = 0;
+    pl.iFrames = 0;
+    pl.takeDamage(1000, 0, b, pl.center(), null, null, null, 'none');
+    out.scarLoss = Math.round(10000 - pl.hp);
+    out.scar = Math.round(pl.scar);
+    pl.hp = pl.maxHp; // 回復到滿
+    g.bossPhaseTick(0);
+    out.scarCap = Math.round(pl.hp);
+    g.drawHud(0.016);
+    out.scarHud = parseFloat(document.getElementById('hpScar').style.width);
+    pl.scarT = pl.t;
+    b.iFrames = 0;
+    const rs0 = pl.scar,
+      rh0 = b.hp;
+    b.takeDamage(b.maxHp * 0.002, 0, pl, b.center(), null, null, null, 'none'); // 造成 Boss 最大 AP 的 x → 回復自己 5x
+    out.rally = Math.round(pl.scar);
+    out.rallyExp = Math.round(rs0 - ((rh0 - b.hp) / b.maxHp) * pl.maxHp * 5);
+    pl.scarT = pl.t - 10;
+    const sc0 = pl.scar;
+    b.iFrames = 0;
+    b.takeDamage(b.maxHp * 0.002, 0, pl, b.center(), null, null, null, 'none');
+    out.rallyLate = Math.round(pl.scar) === Math.round(sc0);
+    pl.kits = 2;
+    pl.hp = 5000;
+    g.useKit();
+    out.scarKit = Math.round(pl.scar);
+    pl.scar = 0;
+    // 6. 不看防禦的大招（刁鑽度 3：每發 12%）：放出後 4 秒；一般武器的小傷害照常
+    fresh(3);
+    pl.hp = pl.maxHp;
+    pl.iFrames = 0;
+    b.bigT = b.t + 4;
+    pl.takeDamage(400 * b.dmgMul, 0, b, pl.center(), null, null, null, 'exp');
+    out.big = Math.round(pl.maxHp - pl.hp);
+    pl.hp = pl.maxHp;
+    pl.scar = 0;
+    pl.iFrames = 0;
+    const small = 40 * b.dmgMul;
+    pl.takeDamage(small, 0, b, pl.center(), null, null, null, 'none');
+    out.bigSmall = Math.round(pl.maxHp - pl.hp) <= Math.round(small) + 1;
+    b.bigT = 0;
+    pl.hp = pl.maxHp;
+    pl.scar = 0;
+    // 7. 讀 QB：刁鑽度 3 起多看「QB 連打」
+    fresh(3);
+    out.habits3 = b.tierHabitKinds();
+    fresh(1);
+    out.habits1 = b.tierHabitKinds();
+    // 8. 雜兵燃料：Boss 戰中擊破回復 3 秒一次（同一格的共用一次判定）；刁鑽度 7～8 Boss 附近的雜兵減傷
+    fresh(3);
+    pl.khT = undefined;
+    pl.khAt = undefined;
+    const kh = [g.killHealOk(pl), g.killHealOk(pl)];
+    pl.t += 1;
+    kh.push(g.killHealOk(pl));
+    pl.t += 3;
+    kh.push(g.killHealOk(pl));
+    out.kh = kh;
+    fresh(7);
+    const add = g.spawnType('mt', 1, 1, b.pos.clone().add(new THREE.Vector3(6, 0, 0)), 1);
+    add.updateAI = () => {};
+    add.hp = add.maxHp = 1e5;
+    const far = g.spawnType('mt', 1, 1, b.pos.clone().add(new THREE.Vector3(200, 0, 0)), 1);
+    far.updateAI = () => {};
+    far.hp = far.maxHp = 1e5;
+    far.pos.copy(b.pos).add(new THREE.Vector3(0, 0, 250 * (b.scale || 1))); // 生成時可能被挪回作戰區域裡
+    add.pos.copy(b.pos).add(new THREE.Vector3(6, 0, 0));
+    out.guard = [g.bossGuardK(add), g.bossGuardK(far)];
+    fresh(3);
+    out.guard3 = g.bossGuardK(add);
+    add.depart();
+    far.depart();
+    // 9. 依戰力的詞綴：數量、適應、再生不超過型態的上限、獎金
+    const A = window.__affix || null;
+    out.count = A ? [0.2, 0.4, 0.6, 0.9].map(A.bossAfCount) : null;
+    b.af = 1024 | 32; // 適應＋再生
+    fresh(3);
+    const d1 = hit(b.maxHp * 0.06, 'kin');
+    hit(b.maxHp * 0.06, 'kin');
+    const d3 = hit(b.maxHp * 0.06, 'kin');
+    out.adapt = +(d3 / d1).toFixed(2);
+    b.hp = b.maxHp * 0.5;
+    b.phDone = 2;
+    b.afHitT = b.t - 10;
+    for (let i = 0; i < 600; i++) b.afFx(0.1);
+    out.regenCap = +(b.hp / b.maxHp).toFixed(3);
+    out.bounty = +g.afBountyK(b).toFixed(2);
+    g.drawHud(0.016);
+    out.afHud = document.getElementById('bossAf').textContent;
+    out.power0 = +g.bossPower().toFixed(2);
+    g.bossAfForce = 16;
+    out.roll = g.bossAfRoll(3);
+    out.roll0 = g.bossAfRoll(0);
+    g.bossAfForce = undefined;
+    out.rollTest = g.bossAfRoll(3); // 自動化測試：沒有設定時不帶
+    b.af = 1024 | 32;
+    fresh(5);
+    b.hp = b.maxHp * 0.75;
+    hit(b.maxHp * 0.9);
+    pl.scar = 1500;
+    pl.hp = 6000;
+    g.state = 'play';
+    return out;
+  });
+  check(
+    r.gate === 0.7 && r.gatePh === 2,
+    `型態閘門：一口氣的大傷害停在 70%（${r.gate}），換型態（${r.gatePh}）`,
+  );
+  check(r.gate2 === 0.35, `型態閘門：換到第二型態後再停在 35%（${r.gate2}）`);
+  check(r.shell && r.shellHp && r.shellHit === 0, '裝甲殼（刁鑽度 5）：碰到門檻長殼、停在門檻上、打不進 AP');
+  check(
+    /裝甲殼/.test(r.shellHud) && r.shellView && r.shellSer,
+    `裝甲殼：HUD 與同步（${r.shellHud.slice(0, 24)}）`,
+  );
+  check(r.shellOpen && r.shellTime && r.shellPart, '裝甲殼：破綻、部位破壞、時間到都會打開，落到門檻換型態');
+  check(
+    r.emp.join(',') === '1,0.8,0.6,0.4,0.3' && r.empStag === 2.5,
+    `EMP 對 Boss：越來越短（${r.emp.join('、')}）、算半次失衡（${r.empStag}）`,
+  );
+  check(r.aMax === 3.5, `失衡越打越難：刁鑽度 7 的上限 ×${r.aMax}`);
+  check(r.wake && r.wake3, '起身衝擊波：刁鑽度 5 起失衡結束時放、刁鑽度 3 沒有');
+  check(
+    r.scarLoss > 0 && Math.abs(r.scar - r.scarLoss * 0.3) <= 1 && r.scarCap === 10000 - r.scar,
+    `結構損傷：受到 ${r.scarLoss} → 灰色 ${r.scar}（30%）、AP 補到 ${r.scarCap} 為止`,
+  );
+  check(Math.abs(r.scarHud - r.scar / 100) < 0.2, `結構損傷：AP 條的灰色段（${r.scarHud}%）`);
+  check(
+    r.rally < r.scar && Math.abs(r.rally - r.rallyExp) <= 1 && r.rallyLate,
+    `結構損傷：5 秒內反擊 Boss 回復（剩 ${r.rally}）、超過 5 秒不算`,
+  );
+  check(r.scarKit === 0, '結構損傷：修復套件先修');
+  check(r.big === 1200 && r.bigSmall, `不看防禦的大招：每發 12%（${r.big}）、小傷害照常`);
+  check(
+    r.habits3.includes('qb') && !r.habits1.includes('qb'),
+    `讀 QB：刁鑽度 3 起看 QB 連打（${r.habits3.join('、')}）`,
+  );
+  check(r.kh.join(',') === 'true,true,false,true', `雜兵燃料：擊破回復 3 秒一次（${r.kh.join('、')}）`);
+  check(
+    r.guard[0] === 0.5 && r.guard[1] === 1 && r.guard3 === 1,
+    `雜兵燃料：刁鑽度 7 Boss 附近的雜兵減傷（${r.guard.join('、')}，刁鑽度 3 ${r.guard3}）`,
+  );
+  check(!r.count || r.count.join(',') === '0,1,2,3', `依戰力的詞綴數（${r.count}）`);
+  check(r.adapt < 0.8, `詞綴「適應」：同一種屬性越打越少（第 3 下 ×${r.adapt}）`);
+  check(r.regenCap > 0.69 && r.regenCap <= 0.7, `詞綴「再生」：不超過目前型態的上限（${r.regenCap}）`);
+  check(r.bounty === 1.3 && /適應/.test(r.afHud), `Boss 詞綴：獎金 ×${r.bounty}、血條下方標示（${r.afHud}）`);
+  check(r.roll === 16 && r.roll0 === 0 && r.rollTest === 0, 'Boss 詞綴：刁鑽度 0 與自動化測試不帶');
+  // HUD：裝甲殼、詞綴、結構損傷的三種畫面大小
+  for (const [w, h, name] of [
+    [1920, 1080, 'pc'],
+    [1180, 820, 'tablet'],
+    [844, 390, 'phone'],
+  ]) {
+    await page.setViewportSize({ width: w, height: h });
+    const lay = await page.evaluate(() => {
+      const g = window.__game;
+      window.__pump(0.05);
+      g.drawHud(0.016);
+      const rc = (id) => document.getElementById(id).getBoundingClientRect();
+      const sc = rc('hpScar');
+      const a = rc('bossAf'),
+        t = rc('bossTier');
+      return {
+        af: a.width > 0 && a.right <= window.innerWidth + 1,
+        tier: t.width > 0,
+        scar: sc.width > 0 && g.player.scar > 0,
+        scarW: Math.round(sc.width) + '/' + Math.round(g.player.scar),
+        over: a.bottom > t.top + 2 && a.top < t.bottom - 2,
+      };
+    });
+    await page.screenshot({ path: `test-results/boss-hard-${name}.png` });
+    check(
+      lay.af && lay.tier && !lay.over && lay.scar,
+      `Boss 的 HUD（${name}）：詞綴與裝甲殼的列不重疊、不超出，AP 條有結構損傷的灰色段（${lay.scarW}）`,
+    );
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await ctx.close();
+}
+
 async function testBossTier(browser, base) {
   console.log('Boss 改版第 1 期：刁鑽度、失衡遞增、破綻、打斷大招、破甲充能、風格加成、擊破評價');
   const { ctx, page } = await newPage(browser, 'bosstier');
@@ -31472,6 +31751,7 @@ const STEPS = [
   ['testFoesB1', (c) => testFoesB1(c.browser, c.base)],
   ['testBossPower', (c) => testBossPower(c.browser, c.base)],
   ['testBossTier', (c) => testBossTier(c.browser, c.base)],
+  ['testBossHard', (c) => testBossHard(c.browser, c.base)],
   ['testBossZone', (c) => testBossZone(c.browser, c.base)],
   ['testVoidMaps', (c) => testVoidMaps(c.browser, c.base)],
   ['testJumpCam', (c) => testJumpCam(c.browser, c.base)],

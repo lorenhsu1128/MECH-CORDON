@@ -23,7 +23,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `docs/gear-rarity-design.md`：零件品級與詞條（綠藍紫金：品級每級主要數值 +4%、綠藍的數值詞條、紫金的進階詞條（觸發型、代價）、每個零件的紫色專屬與金色特殊詞條、背包 `save.inv` 與每件各自的調校、升階與重骰、掉落（地上的光柱、背包滿撿不起來）、敵人身上的品級、PvP 不套用；傳說模組的改版（第 8 節第二版：改規則不加數值、持有同一家 2 個才出現、共鳴＝四選一、看地圖的 7 個降成一般模組；16 個傳說 3 期完成）；`data/gear*.js`、`game/gear*.js`、`entities/mech-gear*.js`；8 期全部完成，第 10 節是實作紀錄）的定案與實作；改零件、詞條、掉落時照它進行並同步更新。
 - `docs/free-sortie-design.md`：自由出擊的作戰設定（全部開放；模式：戰鬥（依等級，原本的流程）／單一區段／連續出擊／主線出擊重現；手動選等級不推進等級；主線系統全帶；做法是把設定組成臨時出擊 `SORTIES.fr` 交給主線的流程 `campBegin(…, { free })`，`camp.free` 時不寫主線進度、紀錄點只在記憶體 `freeCk`；多人是大廳的房間模式「任務」`ops`；`game/free-ops.js`、`data/free-ops.js`）的定案與實作；改自由出擊或主線的出擊流程時照它進行並同步更新。
 - `docs/campaign-design.md`：主線任務模式（機戰傭兵6＋黑帝斯）的設計文件與實作分期；做主線相關功能時照它進行，設計有變動時同步更新。
-- `docs/boss-design.md`：Boss 改版（刁鑽度 1～8、A／C／D／E／I／J／K／L／M／O 十個方案、22 隻 Boss 的專屬內容）的定案，第 7 節是實作紀錄（程式位置、坑、測試、每期的做法）。改 Boss 的規則或專屬內容時照它們進行並同步更新。
+- `docs/boss-design.md`：Boss 改版（刁鑽度 1～8、A／C／D／E／I／J／K／L／M／O 十個方案、22 隻 Boss 的專屬內容）的定案，第 7 節是實作紀錄（程式位置、坑、測試、每期的做法）；第 8 節是 Boss 變難（不堆血量：型態閘門與裝甲殼、結構損傷、不看防禦的大招、讀 QB、硬直抗性、雜兵燃料的限制、依玩家戰力的 Boss 詞綴；量測 `node scripts/boss-bench.js`）。改 Boss 的規則或專屬內容時照它們進行並同步更新。
 - `docs/story-script.md`：主線的劇本（世界觀與真相、角色、序章、各章的開場／章末、簡報、通訊、結局、周目）；改台詞或劇情時與 `data/story.js`、`data/story-comms.js` 同步。
 - `docs/cinematics.md`：過場動畫（序章、各章開場／章末）的引擎、劇本格式、各段的分鏡；改過場動畫時同步更新。
 - `docs/mech-animation.md`：機甲動作改版（動漫風格、滑行／跑步／走路、彈簧、上下半身分離、QB／跳躍／落地；第二期持握角度、依武器的射擊動作與可編輯的近戰關鍵影格；第三期受擊、依方向的失衡、擊破跪倒、附加晃動、待機與個性；第四期動感：全身傾斜與轉彎傾斜、QB 的預備與滑停、空中跳翻轉、部位之間的先後、近戰片段放大與骨盆位移、連腿一起的迴旋斬、刀光、地面的推進氣流帶與腳印）的定案與實作；改 `animateMech` 時照它進行並同步更新。
@@ -62,6 +62,7 @@ npm run format       # Prettier 排版（format:check 只檢查）
 npm test             # 先 build，再跑冒煙測試（見下方；預設顯示卡算繪、分段平行，約 9 分鐘；SMOKE_JOBS=1 單一程序依序跑）
 npm start            # 先 build，再啟動伺服器：控制台 http://localhost:8090/、遊戲 http://localhost/
 npm run build:exe    # build ＋ 用 @yao-pkg/pkg 打包 dist/rubicon-server.exe（目標 Node 22）
+node scripts/boss-bench.js   # Boss 的難度量測：自動操作的玩家用三套配裝（new／old／max）打代表性的 Boss（--boss、--build、--cap、--tag），報告 test-results/boss-bench/<tag>.md
 node scripts/model-bench.js  # 程式模型的量測：每個模型的三角形與網格數、各地圖的繪製次數／三角形／幀時間（--only=models|maps、--cat、--maps、--tag、--compare）
 node scripts/model-shots.js vehicle/tank prop/car  # 模型庫檢視窗的近拍（test-results/shots/，--html 用舊版比較、--tag）
 python scripts/sfx-prep.py <素材包資料夾>  # 音效素材的切割與轉檔 → src/assets/sfx2/（來源見 CREDITS.txt）

@@ -46,6 +46,17 @@ Object.assign(MechEntity.prototype, {
       }
       return null;
     }
+    // 適應（只有 Boss）：同一種屬性打越多抗性越高，換屬性就慢慢消退
+    if (this.afHas('adapt') && A && A !== 'none') {
+      const ad = this.adK || (this.adK = {});
+      const k = ad[A] || 0;
+      dmg *= 1 - k;
+      ad[A] = Math.min(AF.ADAPT_MAX, k + (dmg / Math.max(1, this.maxHp)) * AF.ADAPT_GAIN);
+      if (k < 0.2 && ad[A] >= 0.2) {
+        const nm = { kin: '實彈', exp: '爆發', en: '能量' }[A] || A;
+        g.popDamage(at || this.center(), `適應：${nm}`, false, false, false, 0, this.id);
+      }
+    }
     // 正面護盾：從正面打來的遠程攻擊（攻擊者沒有高很多）大幅減傷；近戰照常
     if (this.afHas('shield') && !melee && from && from.pos) {
       const to = (at && at.distanceTo(this.center()) > this.radius * 0.6 ? at : from.pos)
@@ -95,8 +106,14 @@ Object.assign(MechEntity.prototype, {
         else s &= ~AFS.REFLECT;
       }
       // 再生：REGEN_WAIT 秒沒被打
-      if (this.afHas('regen') && this.t - this.afHitT > AF.REGEN_WAIT && this.hp < this.maxHp)
-        this.hp = Math.min(this.maxHp, this.hp + this.maxHp * AF.REGEN_RATE * dt);
+      if (this.afHas('regen') && this.t - this.afHitT > AF.REGEN_WAIT && this.hp < this.maxHp) {
+        // Boss：慢一點，而且不超過目前型態的上限（docs/boss-design.md 第 8 節）
+        const cap = this.isBoss ? g.bossRegenCap(this) : this.maxHp;
+        const rate = this.isBoss ? AF.REGEN_BOSS : AF.REGEN_RATE;
+        if (this.hp < cap) this.hp = Math.min(cap, this.hp + this.maxHp * rate * dt);
+      }
+      // 適應：抗性慢慢消退
+      if (this.adK) for (const k in this.adK) this.adK[k] = Math.max(0, this.adK[k] - AF.ADAPT_DECAY * dt);
       // 磁力：附近玩家的導彈改追自己
       if (this.afHas('magnet'))
         for (const pr of g.projectiles || []) {

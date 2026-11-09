@@ -14,7 +14,17 @@ export const AFFIXES = {
   swift: { bit: 128, name: '疾風', icon: '»', tip: '移動很快 — 用霰彈或預判' },
   magnet: { bit: 256, name: '磁力', icon: '⊛', tip: '把附近的導彈吸過去 — 先打掉它再用導彈' },
   leader: { bit: 512, name: '指揮', icon: '★', tip: '附近的敵人受到的傷害減少 — 先打它' },
+  // 只有 Boss（docs/boss-design.md 第 8 節方案 7：依玩家的戰力抽）
+  adapt: {
+    bit: 1024,
+    name: '適應',
+    icon: '◎',
+    tip: '一直用同一種屬性打，它會慢慢產生抗性 — 換屬性打',
+    boss: true,
+  },
 };
+// Boss 可以帶的詞綴（第 8 節方案 7）
+export const BOSS_AF = ['reflect', 'regen', 'magnet', 'leader', 'adapt'];
 export const AF_KEYS = Object.keys(AFFIXES);
 // 執行中的狀態（afs）
 export const AFS = { CLOAK: 1, BERSERK: 2, REFLECT: 4 };
@@ -41,6 +51,12 @@ export const AF = {
   MAGNET_R: 32 * DS, // 吸導彈的距離
   LEADER_R: 26 * DS, // 指揮的範圍
   LEADER_K: 0.7, // 範圍內的友軍受到的傷害
+  REGEN_BOSS: 0.01, // Boss 的再生：每秒回復最大 AP 的比例（不超過目前型態的上限）
+  ADAPT_GAIN: 4, // 適應：同一種屬性造成 Boss 最大 AP 的 10% → 抗性 +40%
+  ADAPT_MAX: 0.4,
+  ADAPT_DECAY: 0.04, // 每秒減少
+  BOSS_BOUNTY: 0.15, // Boss 每個詞綴的擊破獎金
+  BOSS_GOLD: 0.06, // Boss 每個詞綴的金色掉落機率
 };
 
 // 不帶詞綴的敵人（行為特殊、目標物、支援類）
@@ -81,7 +97,9 @@ export function affixChance({ chapter = 0, cycle = 1, level = 1 }) {
 }
 // 抽詞綴（回傳位元；0＝沒有）：two＝第二個詞綴的機率
 export function rollAffix(d, rng, two) {
-  const pool = AF_KEYS.filter((k) => !(d.flying && FLY_BAN.has(k)) && !(k === 'cloak' && d.modelKind));
+  const pool = AF_KEYS.filter(
+    (k) => !AFFIXES[k].boss && !(d.flying && FLY_BAN.has(k)) && !(k === 'cloak' && d.modelKind),
+  );
   const a = pool[Math.floor(rng() * pool.length)];
   let mask = AFFIXES[a].bit;
   if (rng() < two) {
@@ -92,5 +110,7 @@ export function rollAffix(d, rng, two) {
   }
   return mask;
 }
+// Boss 的詞綴數：依玩家的戰力分數（0～1；game/affix.js 的 bossPower）
+export const bossAfCount = (score) => (score < 0.35 ? 0 : score < 0.55 ? 1 : score < 0.75 ? 2 : 3);
 export const affixList = (mask) => AF_KEYS.filter((k) => mask & AFFIXES[k].bit);
 export const affixNames = (mask) => affixList(mask).map((k) => AFFIXES[k].name);

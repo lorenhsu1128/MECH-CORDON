@@ -1,10 +1,26 @@
 // Game：敵人詞綴（主線擴充 B4，data/affix.js、docs/campaign-expansion-design.md）——生成時抽詞綴（房主／單機）、
 // 擊破時的分裂與殉爆、鎖定提示與 HUD 的詞綴標示。實體的判定與外觀在 entities/mech-affix.js。
 import { SFX } from '../audio/audio.js';
-import { AF, AFFIXES, affixChance, affixList, affixNames, affixable, rollAffix } from '../data/affix.js';
+import {
+  AF,
+  AFFIXES,
+  BOSS_AF,
+  affixChance,
+  affixList,
+  affixNames,
+  affixable,
+  bossAfCount,
+  rollAffix,
+} from '../data/affix.js';
+import { BOSS_PHASES } from '../data/enemies.js';
+import { gearResolve } from '../data/gear.js';
+import { levelOf } from '../data/pilot.js';
+import { SKILLS } from '../data/skills.js';
 import { Game } from './game.js';
 
 const B = (k) => AFFIXES[k].bit;
+// 自動化測試（網址帶 ?test）：Boss 詞綴的數量（testBossHard）
+if (typeof location !== 'undefined' && /[?&]test\b/.test(location.search)) window.__affix = { bossAfCount };
 
 Object.assign(Game.prototype, {
   // 這一場有沒有詞綴（PvP、自訂關卡、教學、實驗室、靶場、模擬器、空域、過場沒有）
@@ -109,9 +125,82 @@ Object.assign(Game.prototype, {
       });
     }
   },
-  // 擊破獎金的倍率（onEnemyKilled）
+  // 擊破獎金的倍率（onEnemyKilled）；Boss 依詞綴數
   afBountyK(e) {
+    if (e.isBoss) return 1 + AF.BOSS_BOUNTY * affixList(e.af || 0).length;
     return e.af && !e.opts.afChild ? AF.BOUNTY : 1;
+  },
+  // ---------- 第 8 節方案 7：依玩家的戰力給 Boss 詞綴 ----------
+  // 戰力分數 0～1（房主／單機的存檔）：零件品級 40%、傳說模組 20%、極致技能 20%、駕駛員等級 20%
+  bossPower() {
+    const S = this.save;
+    if (!S) return 0;
+    let qs = 0,
+      qn = 0;
+    try {
+      const pick = gearResolve(S);
+      for (const k in pick) {
+        qn++;
+        qs += pick[k] ? pick[k].q || 0 : 0;
+      }
+    } catch (e) {
+      qn = 0;
+    }
+    const gear = qn ? qs / (qn * 4) : 0;
+    const mods = this.camp && this.campMods ? this.campMods() : [];
+    const leg = Math.min(1, mods.filter((m) => /^lg_/.test(m.id)).length / 2);
+    const P = (S.pilot && S.pilot.pve) || {};
+    const sk = P.skills || {};
+    const ult = Math.min(1, SKILLS.filter((s) => s.tier === 4 && sk[s.id] > 0).length / 4);
+    const lv = Math.min(1, levelOf(P.xp || 0) / 45);
+    return 0.4 * gear + 0.2 * leg + 0.2 * ult + 0.2 * lv;
+  },
+  // spawnBossDef 開頭：這一場 Boss 的詞綴（位元；0＝沒有）。刁鑽度 0（靶場等）、自動化測試（沒有 bossAfAuto）不帶
+  bossAfRoll(tier) {
+    if (!tier || this.isClient || this.lv) return 0;
+    if (!this.afOn() && !this.bossAfAuto) return 0; // 模擬器等不帶（scripts/boss-bench.js 的量測設 bossAfAuto）
+    if (this.bossAfForce !== undefined && this.bossAfForce !== null) return this.bossAfForce; // 測試用
+    if (navigator.webdriver && !this.bossAfAuto) return 0;
+    const fa = this.camp && this.camp.free && this.camp.free.affix;
+    if (fa === 'off') return 0;
+    const n = bossAfCount(this.bossPower());
+    const pool = BOSS_AF.slice();
+    let mask = 0;
+    for (let i = 0; i < n && pool.length; i++) {
+      const k = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+      mask |= AFFIXES[k].bit;
+    }
+    return mask;
+  },
+  // spawnBossDef 結尾：說明這一場的 Boss 詞綴
+  bossAfIntro() {
+    const b = (this.bosses || []).find((x) => x.af);
+    if (!b) return;
+    const ks = affixList(b.af);
+    this.bossAfNames = ks.map((k) => AFFIXES[k].icon + AFFIXES[k].name).join('　');
+    setTimeout(() => {
+      if (this.state !== 'play') return;
+      this.alertAll(
+        `強化 Boss（依你的戰力）：${ks.map((k) => `【${AFFIXES[k].name}】${AFFIXES[k].tip}`).join('　')}`,
+      );
+    }, 2600);
+  },
+  // Boss 血條下方的詞綴標示（hud.js）：房主與客機各自看 af
+  bossAfHud() {
+    const el = document.getElementById('bossAf');
+    if (!el) return;
+    const b = (this.bosses || []).find((x) => x.af && !x.dead);
+    const txt = b
+      ? affixList(b.af)
+          .map((k) => AFFIXES[k].icon + AFFIXES[k].name)
+          .join('　')
+      : '';
+    if (el.textContent !== txt) el.textContent = txt;
+  },
+  // Boss 的再生上限：目前型態的 AP 上限（不會回到上一個型態）
+  bossRegenCap(b) {
+    const ph = b.bossPhase();
+    return b.maxHp * (ph <= 1 ? 1 : BOSS_PHASES[ph - 2]) - 1;
   },
   // 鎖定提示（hud.js）：目標的詞綴與打法
   afHint(e) {

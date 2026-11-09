@@ -29,6 +29,10 @@ import { partIcon } from '../render/garage-icons.js';
 import { branchIcon, skillIcon } from '../render/pilot-icons.js';
 import { Game } from './game.js';
 
+// 自動化測試（網址帶 ?test）：技能表（scripts/boss-bench.js 的配點）
+if (typeof location !== 'undefined' && /[?&]test\b/.test(location.search))
+  window.__skills = { SKILLS, TIER_REQ };
+
 const MODE_NAME = { pve: 'PvE', pvp: 'PvP' };
 const HOLD = 0.45; // 按住幾秒投一點
 const fmt = (v) => Math.round(v).toLocaleString();

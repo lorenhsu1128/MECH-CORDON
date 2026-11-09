@@ -9,21 +9,31 @@ import { MechEntity } from './mech-entity.js';
 import { Projectile } from './projectile.js';
 import { syRank } from '../data/style-meter.js';
 import {
+  BIG_REF,
+  BIG_WIN,
+  C_QB_RATE,
+  C_QB_SNAP,
   C_RESP,
   C_SAMPLE,
   C_THR,
   D_FAKE_T,
   D_OPEN,
+  EMP_MIN,
   I_CD,
   K_HIT,
   L_BONUS,
   M_ACS,
   M_HIT,
+  SCAR_MAX,
+  SCAR_RALLY,
+  SCAR_RALLY_T,
+  SHELL_T,
   aNeedK,
   aStagT,
   tierRow,
 } from '../data/boss-tier.js';
 import { C_STAR, HABITS, HABIT_NAMES } from '../data/boss-kit.js';
+import { BOSS_PHASES } from '../data/enemies.js';
 
 // 第一、二型態的大招（第三型態＝mech-boss3.js 的 SPECIALS）：[名稱, fn(Boss, 目標)]；
 // 種類鍵照 boss3Key()。各 Boss 的專屬內容（第 3～5 期）會換成自己的招式，這裡先用共用零件組成。
@@ -165,9 +175,113 @@ Object.assign(MechEntity.prototype, {
   tierPhaseReset() {
     if (!this.bt) return;
     this.bt.stagN = 0;
+    this.bt.empN = 0;
     this.bt.ch = null;
     this.bt.cdI = I_CD[0];
     this.bt.chain = 0;
+  },
+  // ---------- 第 8 節：型態閘門（傷害不溢出型態門檻；刁鑽度 5 起門檻前有裝甲殼）----------
+  // takeDamage 扣 AP 的地方：回傳實際要扣的量
+  tierGate(v) {
+    if (!(v > 0) || !this.isBoss || !this.tierOn()) return v;
+    const s = this.tierState();
+    if (s.shell) return 0; // 裝甲殼：打不進 AP（打斷量表照算）
+    const done = this.bossPhase(); // 目前 AP 所在的型態（換型態的演出在下一格的 bossPhaseTick）
+    if (done >= 3) return v;
+    const floor = this.maxHp * BOSS_PHASES[done - 1];
+    if (this.hp - v > floor) return v;
+    const T = tierRow(this.bossTier());
+    s.shellDone = s.shellDone || {};
+    if (T.gShell && !s.shellDone[done]) {
+      // 停在門檻上一點：還不換型態，先長出裝甲殼
+      s.shell = { ph: done + 1, t: SHELL_T, floor };
+      s.shellDone[done] = 1;
+      const g = this.game,
+        c = this.center();
+      g.fx.shockwave(c, 12 * (this.scale || 1), 0x9fb8ff, 0.6);
+      g.popDamage(c.clone().setY(c.y + 3 * DS), '裝甲殼', false, true, false, 0, this.id);
+      SFX.play('bell', 0.5, 0.7, 0.02, 0.2, c);
+      g.flashMsg('裝甲殼展開 — 打壞部位、打斷大招，或趁破綻打開', 0x9fb8ff, 2.4, {
+        k: 'warn',
+        m: '裝甲殼展開',
+        s: '打壞部位、打斷大招，或趁破綻打開',
+      });
+      g.tierIntro(
+        'shell',
+        '裝甲殼 — 打到型態門檻時 Boss 長出裝甲殼，打壞部位、打斷大招或趁破綻才能打開，進入下一個型態',
+      );
+      return Math.max(0, this.hp - (floor + 1));
+    }
+    return Math.max(0, this.hp - floor); // 剛好停在門檻：bossPhase() 換到下一個型態，bossPhaseTick 演出
+  },
+  // 打開裝甲殼（部位破壞、打斷、破綻、時間到）：AP 落到門檻 → 換型態
+  tierShellBreak(why) {
+    const s = this.bt;
+    if (!s || !s.shell || this.dead) return;
+    const floor = s.shell.floor;
+    s.shell = null;
+    this.hp = Math.min(this.hp, floor);
+    const g = this.game,
+      c = this.center();
+    g.fx.shockwave(c, 16 * (this.scale || 1), 0xffd040, 0.7);
+    g.fx.flash(c, 5, 0xffe0a0, 0.25);
+    const txt = why === 'time' ? '裝甲殼解除' : '裝甲殼破壞！';
+    g.popDamage(c.clone().setY(c.y + 3 * DS), txt, false, true, false, 0, this.id);
+    SFX.stagger(c);
+  },
+  // ---------- 第 8 節：不看防禦的大招 ----------
+  // 被打的玩家機體的 takeDamage 開頭（this＝Boss）：大招期間的一發 → 依對方最大 AP 的比例（0＝不是大招）
+  tierBigDmg(dmg, tgt) {
+    if (!(this.bigT > this.t) || !this.tierOn()) return 0;
+    const ref = BIG_REF * (this.dmgMul || 1);
+    if (dmg < ref * 0.5) return 0; // 小的（一般武器）照常
+    const k = Math.min(1.5, dmg / ref);
+    if (tgt.isPlayer)
+      this.game.tierIntro('big', '大招 — 依 AP 上限的比例扣、不看防禦與減傷，看到預警一定要躲開');
+    return tgt.maxHp * tierRow(this.bossTier()).bPct * k;
+  },
+  // ---------- 第 8 節：結構損傷（玩家機體；Boss 打中的一部分變成補不回來的灰色 AP）----------
+  // takeDamage 扣完 AP 之後（this＝被打的玩家機體）
+  scarHit(take, from) {
+    if (!(take > 0) || !from || !from.tierBoss || !this.pilotEnt()) return;
+    const b = from.tierBoss();
+    if (!b || !b.tierOn()) return;
+    const k = tierRow(b.bossTier()).sScar || 0;
+    if (!k) return;
+    this.scar = Math.min(
+      this.maxHp * SCAR_MAX,
+      Math.max(0, this.maxHp - Math.max(0, this.hp)),
+      (this.scar || 0) + take * k,
+    );
+    this.scarT = this.t;
+    if (this.isPlayer)
+      this.game.tierIntro(
+        'scar',
+        '結構損傷 — Boss 打中的一部分 AP 變成灰色，擊破回復補不到；5 秒內反擊 Boss 或用修復套件才能回復',
+      );
+  },
+  // 打中 Boss（this＝Boss 或部位，real＝造成的傷害）：反擊回復
+  scarRally(from, real) {
+    if (!from || !(from.scar > 0) || !(real > 0) || from.t - (from.scarT || -99) > SCAR_RALLY_T) return;
+    const b = this.tierBoss();
+    if (!b) return;
+    const v = Math.min(from.scar, (real / Math.max(1, b.maxHp)) * from.maxHp * SCAR_RALLY);
+    from.scar -= v;
+    from.hp = Math.min(from.maxHp - from.scar, from.hp + v);
+  },
+  // 修復套件先修結構損傷（mission.js 的 useKit、mp-host.js 的 useKitFor）
+  scarKit(heal) {
+    if (this.scar > 0) this.scar = Math.max(0, this.scar - heal);
+  },
+  // EMP 對 Boss 的硬直倍率（game.js 的 EMP）：同一個型態裡每次縮短 eRes，也算半次失衡（A 的需要變多）
+  tierEmpK() {
+    if (!this.isBoss || !this.tierOn()) return 1;
+    const s = this.tierState(),
+      T = tierRow(this.bossTier());
+    const k = Math.max(EMP_MIN, 1 - T.eRes * (s.empN || 0));
+    s.empN = (s.empN || 0) + 1;
+    s.stagN += 0.5;
+    return k;
   },
   // ---------- D 破綻 ----------
   // 本體受到的傷害倍率（bossDefense 最後乘上）：平時 dBase，破綻時 ×1.6
@@ -186,6 +300,7 @@ Object.assign(MechEntity.prototype, {
     const was = s.openT > 0 && !(s.fake > 0);
     s.openT = Math.max(s.openT, T);
     s.fake = 0;
+    if (s.shell) this.tierShellBreak('open'); // 破綻：打開裝甲殼
     if (was) return;
     this.hrAdd('bossOpen', 0, 1, 0, true, 1); // 受擊反應：收招時垮下來（mech-hit-react.js）
     if (!nat || !s.natShown) {
@@ -280,6 +395,7 @@ Object.assign(MechEntity.prototype, {
         s.cdI = I_CD[1] * rnd(0.85, 1.15);
         g.flashMsg(`${this.name.split(' ')[0]}：${ch.name}！`, 0xff4030, 1.4);
         SFX.play('alarm', 0.5, 0.9, 0.02, 0.5, this.center());
+        this.bigT = this.t + BIG_WIN; // 第 8 節：這段時間的攻擊算大招（依最大 AP 比例、不看防禦）
         if (pl && !pl.dead) ch.fn(this, pl);
         g.later(1.6, () => !this.dead && this.tierMoveEnd(ch.id));
       }
@@ -354,6 +470,7 @@ Object.assign(MechEntity.prototype, {
       T = tierRow(this.bossTier());
     s.ch = null;
     s.cdI = I_CD[1] * rnd(0.85, 1.15);
+    if (s.shell) this.tierShellBreak('int'); // 打斷：打開裝甲殼
     // 長時間失衡：無視失衡後保護，也不算進 A 的次數
     this.stagGuardT = 0;
     this.acs = this.acsMax;
@@ -496,7 +613,7 @@ Object.assign(MechEntity.prototype, {
     if (!s || !this.isBoss) return null;
     const ch = s.ch;
     const hb = this.tierHabitBits();
-    if (!ch && !(s.openT > 0) && !s.cp && !hb && !s.pa) return null;
+    if (!ch && !(s.openT > 0) && !s.cp && !hb && !s.pa && !s.shell) return null;
     const T = tierRow(this.bossTier());
     return [
       ch ? Math.round((ch.t / ch.T) * 100) : -1,
@@ -506,6 +623,7 @@ Object.assign(MechEntity.prototype, {
       s.cp ? Math.round(s.cp.t * 10) : 0, // 反擊點的剩餘秒數 ×10
       s.cp ? s.cp.by : -1, // 誰的反擊點
       hb, // 正在應對的習慣（1 空中 2 貼身 4 遠距 8 掩體）
+      s.shell ? Math.max(1, Math.round(s.shell.t * 10)) : 0, // 裝甲殼的剩餘秒數 ×10
     ];
   },
   // 顯示用的狀態（房主＝自己的 bt；客機＝快照）：{ chg, gauge, open, fake, guard, second, name }
@@ -527,6 +645,7 @@ Object.assign(MechEntity.prototype, {
         cp: (v[4] || 0) / 10,
         cpBy: v[5] === undefined ? -1 : v[5],
         habits: v[6] || 0,
+        shell: (v[7] || 0) / 10,
       };
     }
     const s = this.bt;
@@ -544,6 +663,7 @@ Object.assign(MechEntity.prototype, {
       cp: s.cp ? s.cp.t : 0,
       cpBy: s.cp ? s.cp.by : -1,
       habits: this.tierHabitBits(),
+      shell: s.shell ? s.shell.t : 0,
     };
   },
   // 破綻的金色光環（房主與客機各自畫，不轉送）
@@ -719,6 +839,19 @@ Object.assign(MechEntity.prototype, {
     const H = s.hb;
     for (const r of H.resp) r.t -= dt;
     H.resp = H.resp.filter((r) => r.t > 0);
+    // QB 連打：記下 QB 的開始；應對中，QB 結束的瞬間補一輪射擊（讀 QB）
+    if (pl) {
+      const q = pl.qbT > 0;
+      if (q && !H.qbOn) (H.qbs = H.qbs || []).push(this.t);
+      if (!q && H.qbOn && H.resp.some((r) => r.h === 'qb') && this.staggerT <= 0 && !s.ch) {
+        if (this.t - (H.snapT || -99) > C_QB_SNAP && this.canAct && this.canAct()) {
+          H.snapT = this.t;
+          this.b3Volley(pl, 1, 0);
+        }
+      }
+      H.qbOn = q;
+      if (H.qbs) while (H.qbs.length && this.t - H.qbs[0] > T.cWin) H.qbs.shift();
+    }
     // 應對中：每 4 秒出一次反制的招式
     if (H.resp.length && pl && !pl.dead && this.staggerT <= 0 && !s.ch && (H.act -= dt) <= 0) {
       H.act = 4;
@@ -736,15 +869,16 @@ Object.assign(MechEntity.prototype, {
     if (H.smp.length < n || H.resp.length >= T.cMax) return;
     for (const h of this.tierHabitKinds()) {
       if (H.resp.some((r) => r.h === h)) continue;
-      const k = H.smp.filter((x) => x[h]).length / H.smp.length;
-      if (k < C_THR[h]) continue;
+      if (h === 'qb') {
+        if ((H.qbs || []).length / T.cWin < C_QB_RATE) continue;
+      } else if (H.smp.filter((x) => x[h]).length / H.smp.length < C_THR[h]) continue;
       H.resp.push({ h, t: C_RESP });
       H.smp = [];
       H.act = 1.5;
       g.flashMsg(`${this.name.split(' ')[0]} 正在應對：${HABIT_NAMES[h]}`, 0xff9040, 1.8);
       g.tierIntro(
         'habit',
-        'Boss 會應對你的打法 — 一直用同一種打法（空中、貼身、遠距、躲掩體）時 Boss 會換招逼你換',
+        'Boss 會應對你的打法 — 一直用同一種打法（空中、貼身、遠距、躲掩體、一直 QB）時 Boss 會換招逼你換',
       );
       break;
     }
@@ -755,7 +889,8 @@ Object.assign(MechEntity.prototype, {
     const kit = this.tierKit();
     const star = kit.star || C_STAR[this.boss3Key()] || 'close';
     if (T.cKinds <= 1) return [star];
-    if (T.cKinds === 2) return (kit.habits || [star, HABITS.find((h) => h !== star)]).slice(0, 2);
+    // 刁鑽度 3 起另外看 QB 連打（第 8 節）
+    if (T.cKinds === 2) return [...(kit.habits || [star, HABITS.find((h) => h !== star)]).slice(0, 2), 'qb'];
     return HABITS;
   },
   tierHabitBits() {
@@ -773,6 +908,7 @@ Object.assign(MechEntity.prototype, {
     if (h === 'air') return this.b3Fan(pl, 3, 0.14); // 對空：朝空中的目標掃射
     if (h === 'close') return this.b3Shock(18); // 貼身：周圍的衝擊波
     if (h === 'far') return this.b3Rain(pl, 4, 6, 0.3); // 遠距：砲擊追著落點
+    if (h === 'qb') return this.b3Mines(pl, 4, 9); // QB 連打：周圍布雷（亂閃會踩到）
     return this.b3Rain(pl, 5, 4, 0.25); // 掩體：曲射越過掩體
   },
 });

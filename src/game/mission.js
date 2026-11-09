@@ -47,6 +47,7 @@ Object.assign(Game.prototype, {
     }
     if (p.kits <= 0 || p.hp >= p.maxHp || p.dead || p.downed) return;
     p.kits--;
+    p.scarKit(p.maxHp * p.kitHeal); // 先修結構損傷（mech-boss-tier.js）
     p.hp = Math.min(p.maxHp, p.hp + Math.round(p.maxHp * p.kitHeal));
     p.lgKit(); // 傳說模組「戰地醫護」（mech-legend.js）
     p.en = Math.min(p.enMax, p.en + p.enMax * p.pmv('kitEn'));
@@ -486,6 +487,7 @@ Object.assign(Game.prototype, {
     this.kSquadT = undefined;
     this.spawnTier = tier === undefined ? freeTier(bossDefIndex(bd0)) : tier;
     if (this.tierTestOff) this.spawnTier = 0; // 冒煙測試：檢查各 Boss 原本的機制時不套用刁鑽度
+    this.spawnAf = this.bossAfRoll(this.spawnTier); // 依玩家戰力的 Boss 詞綴（game/affix.js）
     // Boss 本體的血量與火力加強（部位與增援用原本的 scaleHp）
     const bd = { ...bd0, hpMul: bd0.hpMul * BOSS_HP_K, dmgMul: bd0.dmgMul * BOSS_DMG_K };
     this.spawnRes = bd0.res || null; // 本體的弱點（spawnEnemy 依 isBoss 套用）
@@ -557,6 +559,8 @@ Object.assign(Game.prototype, {
     this.waves = []; // Boss 關的增援改在換型態時派出（bosses.js 的 bossPhaseTick）
     this.spawnRes = null;
     this.spawnTier = 0;
+    this.spawnAf = 0;
+    this.bossAfIntro();
     this.tierPartsBroken = 0;
     this.tierReb = [];
     for (const b of this.bosses) this.tierSetupParts(b); // Boss 改版的 J：部位（boss-tier.js）
@@ -786,6 +790,7 @@ Object.assign(Game.prototype, {
     o.palKey = o.pal;
     if (!o.res && o.isBoss && this.spawnRes) o.res = this.spawnRes; // Boss 的弱點（spawnBossDef）
     if (o.isBoss && this.spawnTier && o.tier === undefined) o.tier = this.spawnTier; // Boss 改版的刁鑽度
+    if (o.isBoss && this.spawnAf && !o.af) o.af = this.spawnAf; // 依玩家戰力的 Boss 詞綴（game/affix.js）
     this.gearEnemy(o); // 敵對 AC 身上的零件帶品級與詞條（gear-loot.js）
     const e = new MechEntity(this, o.asm, PALETTES[o.pal], o);
     if (this.waveAt && !o.isBoss && this.lgAny('lgJam'))
@@ -906,7 +911,7 @@ Object.assign(Game.prototype, {
       return;
     }
     // 主線的戰術模組「回收迴路」：擊破時回復 AP
-    if (from && from.pmv && !from.dead && from.pmv('killHeal') > 0)
+    if (from && from.pmv && !from.dead && from.pmv('killHeal') > 0 && this.killHealOk(from))
       from.hp = Math.min(from.maxHp, from.hp + from.maxHp * from.pmv('killHeal'));
     if (from && from.pmv && from.team === 'player') this.modKillFx(e, from);
     if (this.airMode)

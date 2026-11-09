@@ -42,8 +42,9 @@ export const C_STAR = {
   reactor: 'far',
   sovereign: 'air',
 };
-export const HABITS = ['air', 'close', 'far', 'cover'];
-export const HABIT_NAMES = { air: '空中', close: '貼身', far: '遠距', cover: '掩體' };
+// qb＝QB 連打（docs/boss-design.md 第 8 節：刁鑽度 3 起，每秒 QB 次數超過 C_QB_RATE）
+export const HABITS = ['air', 'close', 'far', 'cover', 'qb'];
+export const HABIT_NAMES = { air: '空中', close: '貼身', far: '遠距', cover: '掩體', qb: 'QB 連打' };
 
 export const BOSS_KIT = {};
 // ---------- 第 1、2 章的 Boss（第 3 期）----------

@@ -287,6 +287,7 @@ Object.assign(Game.prototype, {
   useKitFor(p) {
     if (p.kits <= 0 || p.hp >= p.maxHp || p.dead || p.downed) return;
     p.kits--;
+    p.scarKit(p.maxHp * p.kitHeal); // 先修結構損傷（mech-boss-tier.js）
     p.hp = Math.min(p.maxHp, p.hp + Math.round(p.maxHp * p.kitHeal));
     p.lgKit(); // 傳說模組「戰地醫護」（mech-legend.js）
     p.en = Math.min(p.enMax, p.en + p.enMax * p.pmv('kitEn'));
@@ -316,6 +317,7 @@ Object.assign(Game.prototype, {
     {
       t.downed = false;
       t.hp = Math.round(t.maxHp * (0.4 + rescuer.pmv('reviveHp')));
+      t.scar = 0; // 結構損傷：救起來時清掉
       t.acs = 0;
       t.staggerT = 0;
       t.iFrames = 2;

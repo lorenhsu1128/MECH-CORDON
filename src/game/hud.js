@@ -129,6 +129,7 @@ Object.assign(Game.prototype, {
       const hp = this.bosses.reduce((a, b) => a + Math.max(0, b.hp), 0),
         mx = this.bosses.reduce((a, b) => a + b.maxHp, 0);
       document.getElementById('bossHp').style.width = clamp((hp / mx) * 100, 0, 100) + '%';
+      this.bossAfHud(); // Boss 的詞綴（game/affix.js）
     }
   },
   // o：文字演出的種類與文字 { k, m 主字, s 副字 }（game/textfx.js；沒給時依顏色判斷種類）
@@ -407,6 +408,9 @@ Object.assign(Game.prototype, {
     // bars
     document.getElementById('hpBar').style.width = clamp((p.hp / p.maxHp) * 100, 0, 100) + '%';
     document.getElementById('hpTxt').textContent = `${Math.max(0, Math.round(p.hp))} / ${p.maxHp}`;
+    // 結構損傷：AP 條右邊的灰色段（補不回來的部分）
+    const sc = document.getElementById('hpScar');
+    if (sc) sc.style.width = clamp(((p.scar || 0) / p.maxHp) * 100, 0, 100) + '%';
     document.getElementById('enBar').style.width = clamp((p.en / p.enMax) * 100, 0, 100) + '%';
     const acsBar = document.getElementById('acsBar');
     acsBar.style.width = clamp((p.acs / p.acsMax) * 100, 0, 100) + '%';
@@ -503,6 +507,7 @@ Object.assign(Game.prototype, {
       const hp = this.bosses.reduce((a, b) => a + Math.max(0, b.hp), 0),
         mx = this.bosses.reduce((a, b) => a + b.maxHp, 0);
       document.getElementById('bossHp').style.width = clamp((hp / mx) * 100, 0, 100) + '%';
+      this.bossAfHud(); // Boss 的詞綴（game/affix.js）
     }
     // 隊友列表與方位箭頭
     if (this.net && this.net.role && this.players && this.players.length > 1) {

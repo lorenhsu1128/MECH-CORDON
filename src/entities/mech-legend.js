@@ -161,6 +161,7 @@ Object.assign(MechEntity.prototype, {
   // 極致技能「抗爆結構」：單次超過 AP 上限 12% 的部分減半（先算）
   lgBufTake(real, from) {
     if (!from || !from.team || from.team === this.team) return real;
+    if (this.bigHitNow) return real; // Boss 的大招：抗爆結構、緩衝裝甲都不算（docs/boss-design.md 第 8 節）
     if (this.pmv('uBlast') > 0) {
       const cap = this.maxHp * U.BLAST_K;
       if (real > cap) real = cap + (real - cap) * 0.5;
@@ -206,7 +207,8 @@ Object.assign(MechEntity.prototype, {
     if (this.pmv('uChase') > 0) this.uChaseT = U.CHASE_T; // 極致技能「追擊推進」
     if (this.pmv('uAnni') > 0 && e && e.center) this.uAnnihilate(e);
     // 極致技能「擊殺回復」：擊破時 AP 回復 10%
-    if (this.pmv('uKillHeal') > 0) this.hp = Math.min(this.maxHp, this.hp + this.maxHp * U.KILL_HEAL);
+    if (this.pmv('uKillHeal') > 0 && this.game.killHealOk(this))
+      this.hp = Math.min(this.maxHp, this.hp + this.maxHp * U.KILL_HEAL);
     if (this.pmv('uBounty') > 0 && (this.uKills = (this.uKills || 0) + 1) % U.BOUNTY_N === 0)
       this.uBountyNow();
   },

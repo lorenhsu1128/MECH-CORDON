@@ -177,7 +177,12 @@ Object.assign(Game.prototype, {
   bossPhaseTick(dt) {
     if (!this.bosses || !this.bosses.length || this.pvp || this.lab) return;
     const live = this.bosses.filter((b) => !b.dead);
-    if (!live.length) return;
+    if (!live.length) {
+      for (const p of this.players || []) if (p && p.scar) p.scar = 0; // 結構損傷：Boss 戰結束時清掉
+      return;
+    }
+    for (const p of this.players || [])
+      if (p && p.scar > 0 && !p.dead && p.hp > p.maxHp - p.scar) p.hp = p.maxHp - p.scar; // 結構損傷的部分補不回來
     this.bossFightT = (this.bossFightT || 0) + dt;
     this.bossTierTick(dt); // Boss 改版：雜兵小隊、破甲充能（boss-tier.js）
     if (!this.bossEnraged && this.bossFightT >= BOSS_ENRAGE_T) {

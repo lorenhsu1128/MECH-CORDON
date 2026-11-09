@@ -193,6 +193,16 @@ table.keys td {
   background: var(--hp);
   transition: width 0.08s linear;
 }
+/* 結構損傷：AP 條右邊的灰色斜紋（docs/boss-design.md 第 8 節） */
+.bar > #hpScar {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  background: repeating-linear-gradient(135deg, #a8adb8 0 3px, #6c717b 3px 6px);
+  box-shadow: inset 1px 0 0 #b8bcc6;
+}
 .bar.en > i {
   background: var(--en);
 }
@@ -310,6 +320,28 @@ table.keys td {
   width: min(560px, 80vw);
   display: none;
 }
+/* Boss 的型態門檻（70%／35%：傷害不會一口氣打穿，docs/boss-design.md 第 8 節）與詞綴 */
+#bossBar .bar > s {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.75);
+}
+#bossBar .bar > s.ph1 {
+  left: 70%;
+}
+#bossBar .bar > s.ph2 {
+  left: 35%;
+}
+#bossAf {
+  font-size: 12px;
+  color: #ffd070;
+  text-align: center;
+  letter-spacing: 0.05em;
+  min-height: 0;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.9);
+}
 #bossBar .name {
   font-size: 13px;
   letter-spacing: 0.15em;
@@ -379,6 +411,14 @@ table.keys td {
   color: #ffd040;
   font-weight: bold;
   font-size: 14px;
+}
+#bossTier.shell .lab {
+  color: #9fb8ff;
+  font-weight: bold;
+}
+#bossTier.shell .tbar > i {
+  background: #6f88d8;
+  box-shadow: 0 0 8px #9fb8ff;
 }
 #bossTier.open .tbar > i {
   background: #ffd040;

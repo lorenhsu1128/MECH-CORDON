@@ -14,11 +14,26 @@ import { BOSS_DEFS } from './enemies.js';
 //   O 擊破速度：oS S 級的時間倍率
 //   C 應對玩家：cKinds 偵測幾種、cWin 觀察秒數、cMax 同時應對幾種
 //   E 場地：eWhen 哪些型態會變（[2,3] 等）、eZone 作戰區域縮小比例、eMove 不利的區域會移動
+//   第 8 節（Boss 變難、不堆血量）：aMax 需要的 ACS 累加上限、eRes 每次 EMP 硬直縮短的比例、
+//   gShell 型態門檻前的裝甲殼、wake 失衡結束時的起身衝擊波、sScar Boss 打中玩家時變成結構損傷的比例、
+//   bPct 大招每一發打中時扣的 AP（最大 AP 的比例，不看防禦）、kGuard Boss 附近的雜兵受到的傷害減半
 const row = (o) => o;
 export const TIER = [
   null,
   row({
-    ...{ aFree: 3, aUp: 0.15, aCut: 0, aMin: 1.5 },
+    ...{
+      aFree: 3,
+      aUp: 0.15,
+      aCut: 0,
+      aMin: 1.5,
+      aMax: 2,
+      eRes: 0.1,
+      gShell: false,
+      wake: false,
+      sScar: 0.2,
+      bPct: 0.1,
+      kGuard: false,
+    },
     ...{ dBase: 0.8, dOpenT: 4, dWhich: 'all' },
     ...{ iCharge: 3, iNeed: 0.03, iStun: 5, iTrick: '' },
     ...{ jParts: 2, jHp: 0.08, jRebuild: 0, jSwap: false },
@@ -34,7 +49,7 @@ export const TIER = [
 TIER[2] = { ...TIER[1] };
 TIER[3] = {
   ...TIER[1],
-  ...{ aFree: 2, aUp: 0.25, aCut: 0.1, aMin: 1.2 },
+  ...{ aFree: 2, aUp: 0.25, aCut: 0.1, aMin: 1.2, aMax: 2.5, eRes: 0.15, sScar: 0.3, bPct: 0.12 },
   ...{ dBase: 0.65, dOpenT: 3, dWhich: 'two' },
   ...{ iCharge: 2.4, iNeed: 0.05, iStun: 4.5, iTrick: 'retreat' },
   ...{ jParts: 3, jHp: 0.1 },
@@ -47,7 +62,18 @@ TIER[3] = {
 TIER[4] = { ...TIER[3] };
 TIER[5] = {
   ...TIER[3],
-  ...{ aFree: 1, aUp: 0.3, aCut: 0.15, aMin: 1.0 },
+  ...{
+    aFree: 1,
+    aUp: 0.3,
+    aCut: 0.15,
+    aMin: 1.0,
+    aMax: 3,
+    eRes: 0.2,
+    gShell: true,
+    wake: true,
+    sScar: 0.4,
+    bPct: 0.14,
+  },
   ...{ dBase: 0.55, dOpenT: 2.2, dWhich: 'one' },
   ...{ iCharge: 2, iNeed: 0.06, iStun: 4, iTrick: 'guard' },
   ...{ jHp: 0.11, jRebuild: 45 },
@@ -61,7 +87,17 @@ TIER[5] = {
 TIER[6] = { ...TIER[5] };
 TIER[7] = {
   ...TIER[5],
-  ...{ aFree: 0, aUp: 0.35, aCut: 0.2, aMin: 0.9 },
+  ...{
+    aFree: 0,
+    aUp: 0.35,
+    aCut: 0.2,
+    aMin: 0.9,
+    aMax: 3.5,
+    eRes: 0.25,
+    sScar: 0.5,
+    bPct: 0.16,
+    kGuard: true,
+  },
   ...{ dBase: 0.5, dOpenT: 1.8, dWhich: 'fake' },
   ...{ iCharge: 1.8, iNeed: 0.07, iStun: 3.5, iTrick: 'double' },
   ...{ jHp: 0.12, jRebuild: 30, jSwap: true },
@@ -75,7 +111,21 @@ TIER[7] = {
 TIER[8] = { ...TIER[7] };
 
 // 共用常數
-export const A_MAX = 2; // A：需要的 ACS 累加上限 ×2
+export const A_MAX = 2; // A：需要的 ACS 累加上限 ×2（沒有 aMax 時）
+export const SHELL_T = 20; // 型態門檻的裝甲殼：最多幾秒（打不開也會自己打開）
+// 結構損傷（第 8 節方案 2）：上限（AP 上限的比例）、反擊回復的時間窗、反擊回復的倍率
+// （對 Boss 造成 Boss 最大 AP 的 1% → 回復自己最大 AP 的 SCAR_RALLY%）
+export const SCAR_MAX = 0.6;
+export const SCAR_RALLY_T = 5;
+export const SCAR_RALLY = 5;
+// 大招（第 8 節方案 3）：放出後幾秒內的攻擊算大招；基準傷害（b3* 的一發約 400×dmgMul，低於一半的不算）
+export const BIG_WIN = 4;
+export const BIG_REF = 400;
+// 雜兵燃料的限制（第 8 節方案 6）：Boss 戰中擊破回復的間隔秒數、Boss 掩護雜兵的距離與倍率
+export const KILL_HEAL_CD = 3;
+export const K_GUARD_R = 25;
+export const K_GUARD_K = 0.5;
+export const EMP_MIN = 0.3; // EMP 對 Boss 的硬直：越打越短，最短到原本的幾成
 export const D_OPEN = 1.6; // D：破綻時受到的傷害
 export const D_FAKE_T = 0.4; // D：假收招之後 0.4 秒接下一招
 export const I_CD = [9, 16]; // I：大招的間隔秒數（型態開頭先等 I_CD[0]，之後 I_CD[1]）
@@ -93,6 +143,8 @@ export const M_ACS = 0.6; // M：打回去的彈的衝擊（Boss 的 ACS 上限�
 export const C_SAMPLE = 0.25; // C：每 0.25 秒看一次玩家的位置
 export const C_RESP = 12; // C：應對持續 12 秒
 export const C_THR = { air: 0.6, close: 0.6, far: 0.6, cover: 0.4 }; // C：這種習慣佔觀察時間的比例超過它就應對
+export const C_QB_RATE = 0.5; // C：QB 連打＝觀察時間內平均每秒 QB 幾次以上
+export const C_QB_SNAP = 2.5; // C：應對 QB 連打時，QB 結束的瞬間補一輪射擊（最短間隔秒數）
 export const E_ZONE_T = 6; // E：作戰區域縮小花的秒數
 
 export function tierRow(t) {
@@ -119,7 +171,7 @@ export function bossDefIndex(bd) {
 export function aNeedK(t, n) {
   const T = tierRow(t);
   const over = Math.max(0, n + 1 - T.aFree);
-  return Math.min(A_MAX, 1 + T.aUp * over);
+  return Math.min(T.aMax || A_MAX, 1 + T.aUp * over);
 }
 export function aStagT(t, n, base = 1.5) {
   const T = tierRow(t);

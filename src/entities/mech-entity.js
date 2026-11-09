@@ -2050,6 +2050,17 @@ export class MechEntity {
       this.pqbCheck(from); // 完美 QB：QB 的無敵剛開始時躲掉了敵人的攻擊（docs/melee-combo-design.md 第 4 期）
       return;
     }
+    // Boss 的大招（docs/boss-design.md 第 8 節）：依最大 AP 的比例、不看防禦與減傷（mech-boss-tier.js）
+    this.bigHitNow = false;
+    if (from && from.tierBoss && !melee && this.pilotEnt()) {
+      const bb = from.tierBoss();
+      const bd = bb ? bb.tierBigDmg(dmg, this) : 0;
+      if (bd > 0) {
+        dmg = bd;
+        attr = 'none';
+        this.bigHitNow = true;
+      }
+    }
     // 暗殺：玩家從背後（±60°）近戰還沒交戰的一般敵人＝一擊無聲擊破（主線擴充 A2，docs/campaign-expansion-design.md）
     const bs = !!(melee && !melee.exec && this.sn && this.sn.st !== 2 && this.backstabBy(from));
     if (bs) {
@@ -2106,6 +2117,8 @@ export class MechEntity {
     }
     const cls = melee ? 'melee' : W ? W.type : null; // 武器種類（失衡連攜用）
     if (this.markT > 0) dmg *= 1.3; // 被軌道標定衛星標定（mech-foe.js）
+    if (this.team === 'enemy' && !this.isBoss && this.game.bosses && this.game.bosses.length)
+      dmg *= this.game.bossGuardK(this); // 刁鑽度 7～8：Boss 附近的雜兵減傷（game/boss-tier.js）
     if (this.laserK !== 1 && isLaserWeapon(W)) dmg *= this.laserK; // 雷射類的傷害倍率（laserK）
     if (this.sn && this.sn.vuln > 0) dmg *= 1.25; // 招式後的破綻（過熱，mech-moves.js）
     // 弱點（mech-weak.js）：玩家操作的機體的遠程攻擊打在弱點的那一面、準備中露出的弱點 → CRITICAL
@@ -2266,7 +2279,14 @@ export class MechEntity {
     }
     const hpBefore = Math.max(0, this.hp);
     if (g.pilotCreditHit) g.pilotCreditHit(from, this, wid, Math.min(real, hpBefore));
-    this.hp -= this.pm && real > 0 ? this.lgBufTake(real, from) : real; // 傳說模組「緩衝裝甲」：一部分改成慢慢扣
+    let take = this.pm && real > 0 ? this.lgBufTake(real, from) : real; // 傳說模組「緩衝裝甲」：一部分改成慢慢扣
+    if (this.isBoss && take > 0) take = this.tierGate(take); // Boss 的型態閘門：傷害不溢出型態門檻（mech-boss-tier.js）
+    this.hp -= take;
+    if (take > 0 && from && from !== this) {
+      if (this.team === 'player')
+        this.scarHit(take, from); // 結構損傷（mech-boss-tier.js）
+      else if (from.scar > 0 && (this.isBoss || this.opts.parent !== undefined)) this.scarRally(from, take);
+    }
     // 傳說模組「量子鏈結」：鏈結中的敵人受到的傷害分給其他鏈結中的敵人（mech-legend.js）
     if (this.lgLinkOwner && !this.lgLinkNo && real > 0 && this.lgLinkUntil > this.t)
       this.lgLinkOwner.lgLinkShare(this, real);

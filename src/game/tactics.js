@@ -17,6 +17,10 @@ import {
 import { BRIEFINGS, FACTIONS } from '../data/story.js';
 import { Game } from './game.js';
 
+// 自動化測試（網址帶 ?test）：模組表（scripts/boss-bench.js 的配裝）
+if (typeof location !== 'undefined' && /[?&]test\b/.test(location.search))
+  window.__mods = { MODULES, modsPm };
+
 Object.assign(Game.prototype, {
   // 目前這一章持有的模組（換章時清空）
   campMods(chapter) {

@@ -135,7 +135,9 @@ Object.assign(MechEntity.prototype, {
       t = this.t;
     const stag = tgt.staggerT > 0;
     if (W.aStag && stag) dmg *= 1 + W.aStag;
-    if (W.aSup) tgt.acsDecayDelay = Math.max(tgt.acsDecayDelay || 0, W.aSup);
+    // 壓制：有刁鑽度的 Boss 只有一半（docs/boss-design.md 第 8 節）
+    if (W.aSup)
+      tgt.acsDecayDelay = Math.max(tgt.acsDecayDelay || 0, W.aSup * (tgt.isBoss && tgt.tierOn() ? 0.5 : 1));
     if (melee) {
       const m = this.melee || {};
       if (W.mChain && m.stage > 0) dmg *= 1 + W.mChain * Math.min(3, m.stage);
@@ -224,7 +226,8 @@ Object.assign(MechEntity.prototype, {
       }
     }
     const G = this.gx;
-    if (G.fRecycle) this.hp = Math.min(this.maxHp, this.hp + this.maxHp * G.fRecycle);
+    if (G.fRecycle && this.game.killHealOk(this))
+      this.hp = Math.min(this.maxHp, this.hp + this.maxHp * G.fRecycle);
     if (G.gRecycle) this.en = Math.min(this.enMax, this.en + this.enMax * G.gRecycle);
     if (this.gxF) this.gearKillFixed(e);
     if (this.isPlayer && this.game.renderWeaponHud) this.game.renderWeaponHud(true);
