@@ -73,13 +73,7 @@ Object.assign(Game.prototype, {
       } else if (type === 'breakthrough') win.push('突破敵陣，走進出口（不必全滅敵軍）');
       else if (type === 'supply') win.push('（可選）使用補給台，之後走進出口出發');
       else if (type === 'intel') win.push('站在資料終端下載情報，並擊破所有敵軍' + exit);
-      else if (type === 'stealth') {
-        win.push('站在資料終端下載情報（不必全滅）' + exit);
-        win.push(
-          '不被發現：額外的潛入報酬（被看到的敵人在無線電倒數（7 秒，指揮官 5、敵對 AC 6）內擊破就不算；只有局部警報＝一半）',
-        );
-        if (this.campRule('stealthStrict')) lose.push('全區警報（委託板「絕對隱密」）');
-      } else if (type === 'extract') {
+      else if (type === 'extract') {
         win.push('摧毀目標設施，撐到回收機抵達並裝載' + exit);
         win.push('回收物資要撤離成功才帶得走');
       } else if (type === 'chase') {

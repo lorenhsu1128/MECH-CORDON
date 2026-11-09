@@ -1490,14 +1490,6 @@ const MISSION = [
     },
   },
   {
-    id: 'ms_seclight',
-    name: '潛入：探照燈塔',
-    who: '潛入區段',
-    src: 'game/seg-ops.js 的 secLightTick／secLightVis（照到時變紅）',
-    trap: 'seclight',
-    run: (S) => S.secLight(),
-  },
-  {
     id: 'ms_pickup',
     name: '撿到東西',
     who: '補給箱、修理、彈藥、據點的箱子',

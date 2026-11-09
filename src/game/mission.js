@@ -634,7 +634,7 @@ Object.assign(Game.prototype, {
   },
   spawnType(t, scaleHp, scaleDmg, at, count) {
     if (this.airMode) t = this.airType(t); // 空域：地面的敵人換成無人機（game/air.js）
-    // waveEdgePoint／spawnPoint 回傳的是 { x, z }：換成貼地的向量（撤離、潛入的情報增援傳的是這種）
+    // waveEdgePoint／spawnPoint 回傳的是 { x, z }：換成貼地的向量（撤離的增援傳的是這種）
     if (at && !at.isVector3) at = new THREE.Vector3(at.x, this.world.groundAt(at.x, at.z, 999), at.z);
     const d = ENEMY_TYPES[t] || FOES[t];
     if (FOES[t] && this.simMark && !this.sim && !this.lv && !this.airMode) this.simMark('foes', t); // 遇過的專屬敵人（模擬器、自由出擊）
@@ -887,7 +887,6 @@ Object.assign(Game.prototype, {
       return this.tutKilled(e);
     }
     this.foeScavenge(e);
-    if (from) from.lastKillT = this.time; // 潛入：一發擊破的那一槍不出聲（seg-ops.js 的 segStealthNoise）
     if (!this.isClient) this.afKilled(e); // 詞綴：分裂、殉爆（game/affix.js）
     if (!this.isClient) this.lootKilled(e); // 素材與零件的掉落（game/loot.js）
     if (!this.isClient && e.nemId) this.nemKilled(e); // 宿敵（nemesis.js）

@@ -2,7 +2,7 @@
 // lines＝[說話者, 台詞] 依序播放
 // 事件：sortieStart（出擊開始）、segStart（進入區段）、exitsOpen（區段清除開出口）、trans（轉場）、bossHalf（Boss 剩一半）、
 //       fail（失敗回機庫）、sortieEnd（出擊完成）、hub（回到作戰室）、choice（抉擇出口出現時）、aceDown（擊破宿敵 AC）
-//       alarm（潛入區段響警報）、extCall（撤離區段呼叫回收機）、wingStart／wingDown／wingRevive（僚機，條件 wing、bondHi）
+//       extCall（撤離區段呼叫回收機）、wingStart／wingDown／wingRevive（僚機，條件 wing、bondHi）
 // 條件：sid、seg（區段編號）、type（區段類型）、theme、chapter、fails（失敗次數 ≥）、killedBy（擊破你的敵人名稱包含）、cycle（周目）、
 //       ace（精英區段的專屬 AC）、pick（這一章的陣營抉擇）、c2／c4（這一周目的抉擇 1／抉擇 2：出擊中選的或存檔裡的）、
 //       prevC2／prevC4／prevEnd（上一周目的抉擇 1、抉擇 2、結局）、truth（真結局的條件：紫色委託全部完成過）
@@ -83,19 +83,7 @@ export const COMMS = [
     '站在終端旁邊別亂跑，我很快就好。',
     '有情報可以拿，去終端那邊吧。',
   ]),
-  // 主線擴充（docs/campaign-expansion-design.md）：潛入、撤離
-  ...variants({ event: 'segStart', type: 'stealth' }, 'echo', [
-    '這段要安靜一點。探照燈和哨兵都別碰到，終端在最裡面。',
-    '潛入作業。別用突擊推進，也別亂開槍，他們聽得到。',
-    '被看到的話，在它呼叫無線電之前打倒它。',
-    '探照燈照到太久，附近那一群就會被通報。',
-    '安靜進去、安靜出來。沒被發現的話，報酬會多很多。',
-    '這次不用全滅，拿到資料就走。',
-    '他們在待機。要開槍的話，最好一槍解決。',
-    '看到探照燈塔了嗎？必要的話打掉燈頭，但會有聲音。',
-    '先找通訊中繼塔。打掉它，就不會有全區警報。',
-    '終端的位置我標好了，路上的哨兵能避就避。',
-  ]),
+  // 主線擴充（docs/campaign-expansion-design.md）：撤離
   ...variants({ event: 'segStart', type: 'extract' }, 'echo', [
     '目標設施打掉之後，我叫回收機過來。撐到它到就好。',
     '場上有散落的物資，撿起來，撤離成功才算我們的。',
@@ -139,21 +127,6 @@ export const COMMS = [
     '高空的敵機很多，空戰導彈用 C 鍵發射。',
     '全部擊落之後，出口會出現在你的飛行高度。',
     '空中的戰場比較大，別飛太遠。',
-  ]),
-  // 潛入的局部警報（seg-ops.js 的 segLocalAlarm）
-  ...variants({ event: 'alarmLocal' }, 'echo', [
-    '局部警報！把那一群解決掉，不然中繼塔會通報全區。',
-    '有一群醒了。十五秒內處理掉，或者打掉中繼塔。',
-    '被那一群發現了。別讓中繼塔發出警報。',
-    '局部警報。還來得及，先清掉他們。',
-    '那一群在呼叫中繼塔了，動作快！',
-  ]),
-  ...variants({ event: 'alarm' }, 'echo', [
-    '被發現了！資料開始被刪除，快去終端！',
-    '警報響了，整區都醒了。別管了，直接衝！',
-    '糟糕，警報！在他們刪完資料之前下載！',
-    '他們發現我們了。增援正在路上，動作快。',
-    '警報。偷偷來不成了，那就硬來吧。',
   ]),
   // ---- 僚機（主線擴充 D1，game/wing.js）：BASALT（老練的傭兵）、WREN（新人） ----
   {

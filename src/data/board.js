@@ -30,13 +30,7 @@ export const RULES = {
   allAffix: { name: '精英部隊', desc: '所有敵人都帶詞綴', types: ['battle', 'destroy'], segs: 1 },
   oneShot: { name: '一擊必殺', desc: '雙方受到的傷害 ×5', types: ['battle', 'elite'], segs: 1 },
   noQB: { name: '推進器故障', desc: '不能 QB', types: ['battle', 'front'], segs: 1 },
-  fog: { name: '濃霧', desc: '視野很短', types: ['battle', 'stealth', 'intel'], segs: 2 },
-  stealthStrict: {
-    name: '絕對隱密',
-    desc: '潛入作業，全區警報就失敗（局部警報不算）',
-    types: ['stealth'],
-    segs: 1,
-  },
+  fog: { name: '濃霧', desc: '視野很短', types: ['battle', 'intel'], segs: 2 },
   extractRich: { name: '大宗物資', desc: '撤離作業，回收物資加倍', types: ['extract'], segs: 1 },
 };
 export const RULE_KEYS = Object.keys(RULES);
@@ -100,6 +94,12 @@ export function boardRegister(story) {
   const B = story && story.board;
   if (!B || !Array.isArray(B.jobs)) return;
   for (const job of B.jobs) {
+    // 拿掉的規則或區段類型（2026-11-09 的潛入、「絕對隱密」）：舊存檔的委託改成「濃霧」、那一段改成情報
+    for (const s of job.segs || []) s.pool = (s.pool || []).map((t) => (SEG_TYPES[t] ? t : 'intel'));
+    if (!RULES[job.rule]) {
+      job.rule = 'fog';
+      job.name = `${RULES.fog.name}：${SEG_TYPES[job.segs[0].pool[0]].name}`;
+    }
     const sid = 'jb_' + job.id;
     if (Object.prototype.hasOwnProperty.call(SORTIES, sid)) continue;
     Object.defineProperty(SORTIES, sid, { value: jobSortie(job), enumerable: false, configurable: true });

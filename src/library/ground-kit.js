@@ -297,14 +297,6 @@ export const MARKS = [
     demo: (S) => S.trap('shock'),
   },
   {
-    key: 'seclight',
-    cat: 'area',
-    name: '探照燈塔的光束',
-    fx: 'render/stealth-models.js 的 buildSecLight＋game/seg-ops.js 的 secLightVis',
-    note: '潛入區段；照到時變紅，一小段時間就響警報',
-    demo: (S) => S.secLight(),
-  },
-  {
     key: 'chevrons',
     cat: 'mech',
     name: '推進箭頭',
@@ -784,33 +776,6 @@ export class Run {
           }
         }
         return t < T0 + dur;
-      },
-      drop: () => this.st.scene.remove(m),
-    });
-  }
-  // 潛入區段的探照燈塔（game/seg-ops.js 的 secLightTick／secLightVis）：來回掃描，後半段照到玩家變紅
-  secLight(at = G(0, -22).add(this.off)) {
-    this.mark('seclight');
-    if (this.dry) return;
-    const { mesh: m, def: D } = this.device('seclight', at);
-    const base = Math.atan2(-at.x, -at.z);
-    let t = 0,
-      ph = 0;
-    this.objs.push({
-      tick: (dt) => {
-        t += dt;
-        ph += dt * D.speed;
-        const a = base + Math.sin(ph) * D.sweep;
-        const prog = (((a / (Math.PI * 2)) % 1) + 1) % 1;
-        if (m.head) m.head.rotation.y = prog * Math.PI * 2;
-        const seen = Math.abs(Math.atan2(Math.sin(a - base), Math.cos(a - base))) < D.ang;
-        if (m.beam) {
-          m.beam.visible = true;
-          m.beam.material.color.setHex(seen ? 0xff4030 : 0xfff0c8);
-          m.beam.material.opacity = (seen ? 0.2 : 0.11) * (0.85 + 0.15 * Math.sin(t * 9));
-        }
-        if (m.lens) m.lens.material.emissive.setHex(seen ? 0xff3020 : 0xfff2d0);
-        return t < 12;
       },
       drop: () => this.st.scene.remove(m),
     });

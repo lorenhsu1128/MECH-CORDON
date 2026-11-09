@@ -179,7 +179,6 @@ export const SEG_TYPES = {
   intel: { name: '情報', goal: '下載資料終端的情報' },
   boss: { name: 'Boss', goal: '擊破 Boss' },
   // 主線擴充（docs/campaign-expansion-design.md）：處理在 game/seg-ops.js
-  stealth: { name: '潛入', goal: '不被發現，下載情報' },
   extract: { name: '撤離', goal: '摧毀目標、撐到回收機抵達' },
   chase: { name: '追擊', goal: '擊破逃亡的運輸車' },
   front: { name: '戰線', goal: '和友軍依序佔領據點' },
@@ -248,7 +247,7 @@ export const SORTIES = {
       { theme: 'wasteland', pool: ['battle'] },
       {
         theme: 'dunes',
-        pool: ['battle', 'destroy', 'defend', 'intel', 'elite', 'stealth'],
+        pool: ['battle', 'destroy', 'defend', 'intel', 'elite'],
       },
       { theme: 'wasteland', pool: ['supply', 'escort', 'breakthrough', 'elite', 'chase'] },
       { theme: 'desert', border: true, pool: ['elite', 'destroy', 'battle', 'extract'] },
@@ -265,7 +264,7 @@ SORTIES.c1s2 = {
     { theme: 'desert', border: true, pool: ['battle', 'supply'] },
     {
       theme: 'desert',
-      pool: ['battle', 'destroy', 'intel', 'stealth'],
+      pool: ['battle', 'destroy', 'intel'],
       variants: ['tunnels', 'vein', 'openpit', 'drowned'],
     },
     {
@@ -291,7 +290,7 @@ SORTIES.c2s1 = {
     { theme: 'industrial', pool: ['battle'] },
     {
       theme: 'industrial',
-      pool: ['battle', 'destroy', 'defend', 'intel', 'elite', 'stealth', 'front'],
+      pool: ['battle', 'destroy', 'defend', 'intel', 'elite', 'front'],
     },
     { theme: 'industrial', pool: ['supply', 'escort', 'breakthrough', 'elite', 'chase'] },
     { theme: 'dam', pool: ['battle', 'destroy', 'intel', 'extract'] },
@@ -306,7 +305,7 @@ SORTIES.c2s2 = {
   reward: 64000,
   segs: [
     { theme: 'dam', pool: ['battle'] },
-    { theme: 'dam', pool: ['battle', 'destroy', 'elite', 'intel', 'stealth'] },
+    { theme: 'dam', pool: ['battle', 'destroy', 'elite', 'intel'] },
     { theme: 'dam', pool: ['supply', 'defend', 'breakthrough', 'front'] },
     { theme: 'dam', pool: ['elite', 'battle', 'destroy'], choice: 'c2' },
     { theme: 'flooded', pool: ['battle', 'supply', 'defend', 'intel'] },
@@ -322,7 +321,7 @@ SORTIES.c2s3a = {
     { theme: 'flooded', pool: ['battle'] },
     {
       theme: 'flooded',
-      pool: ['battle', 'destroy', 'elite', 'intel', 'stealth'],
+      pool: ['battle', 'destroy', 'elite', 'intel'],
     },
     { theme: 'flooded', pool: ['supply', 'defend', 'breakthrough', 'front'] },
     { theme: 'industrial', pool: ['battle', 'destroy', 'defend', 'extract'] },
@@ -337,7 +336,7 @@ SORTIES.c2s3b = {
   reward: 76000,
   segs: [
     { theme: 'industrial', pool: ['battle'] },
-    { theme: 'industrial', pool: ['destroy', 'battle', 'intel', 'elite', 'stealth'] },
+    { theme: 'industrial', pool: ['destroy', 'battle', 'intel', 'elite'] },
     { theme: 'industrial', pool: ['supply', 'escort', 'defend', 'chase', 'front'] },
     { theme: 'flooded', pool: ['battle', 'destroy', 'breakthrough', 'extract'] },
     { theme: 'flooded', pool: ['supply', 'elite', 'intel'] },
@@ -354,7 +353,7 @@ SORTIES.c3s1 = {
     { theme: 'snow', pool: ['battle'] },
     {
       theme: 'snow',
-      pool: ['battle', 'destroy', 'defend', 'intel', 'elite', 'stealth', 'front', 'colossus'],
+      pool: ['battle', 'destroy', 'defend', 'intel', 'elite', 'front', 'colossus'],
     },
     { theme: 'snow', pool: ['supply', 'escort', 'breakthrough', 'chase'] },
     { theme: 'snow', pool: ['battle', 'elite', 'destroy', 'extract'] },
@@ -369,7 +368,7 @@ SORTIES.c3s2 = {
   reward: 98000,
   segs: [
     { theme: 'snow', pool: ['battle'] },
-    { theme: 'snow', pool: ['battle', 'destroy', 'elite', 'intel', 'stealth', 'colossus'] },
+    { theme: 'snow', pool: ['battle', 'destroy', 'elite', 'intel', 'colossus'] },
     { theme: 'snow', pool: ['supply', 'breakthrough', 'defend', 'front'] },
     {
       theme: 'institute',
@@ -393,7 +392,7 @@ SORTIES.c3s3 = {
     { theme: 'institute', pool: ['battle'], variants: ['tanks', 'core', 'blackout'] },
     {
       theme: 'institute',
-      pool: ['battle', 'destroy', 'elite', 'intel', 'stealth', 'colossus'],
+      pool: ['battle', 'destroy', 'elite', 'intel', 'colossus'],
       variants: ['core', 'cavern', 'tanks'],
     },
     {
@@ -426,7 +425,7 @@ SORTIES.c4s1 = {
     { theme: 'grid086', pool: ['battle'], variants: ['scrapyard', 'catwalks', 'pillars'] },
     {
       theme: 'grid086',
-      pool: ['battle', 'destroy', 'elite', 'intel', 'stealth', 'colossus'],
+      pool: ['battle', 'destroy', 'elite', 'intel', 'colossus'],
       variants: ['scrapyard', 'catwalks', 'foundry'],
     },
     {
@@ -453,7 +452,7 @@ SORTIES.c4s2 = {
     {
       theme: 'spaceport',
       mode: 'relay',
-      pool: ['battle', 'destroy', 'elite', 'intel', 'stealth', 'colossus', 'air'],
+      pool: ['battle', 'destroy', 'elite', 'intel', 'colossus', 'air'],
       variants: ['runway', 'ruins'],
     },
     {
@@ -483,7 +482,7 @@ SORTIES.c4s3a = {
     {
       theme: 'spaceport',
       mode: 'relay',
-      pool: ['battle', 'destroy', 'escort', 'intel', 'stealth', 'chase', 'air'],
+      pool: ['battle', 'destroy', 'escort', 'intel', 'chase', 'air'],
       variants: ['runway', 'ruins'],
     },
     {
@@ -510,7 +509,7 @@ SORTIES.c4s3b = {
     { theme: 'grid086', pool: ['battle'], variants: ['scrapyard', 'catwalks', 'rust'] },
     {
       theme: 'grid086',
-      pool: ['battle', 'destroy', 'defend', 'intel', 'stealth', 'front'],
+      pool: ['battle', 'destroy', 'defend', 'intel', 'front'],
       variants: ['catwalks', 'foundry', 'pillars'],
     },
     {
@@ -544,7 +543,7 @@ SORTIES.c5s1 = {
     { theme: 'xylem', pool: ['battle'], variants: ['harbor', 'dense', 'bridges'] },
     {
       theme: 'xylem',
-      pool: ['battle', 'destroy', 'elite', 'intel', 'stealth', 'colossus', 'air'],
+      pool: ['battle', 'destroy', 'elite', 'intel', 'colossus', 'air'],
       variants: ['dense', 'harbor', 'open', 'night'],
     },
     {
@@ -570,7 +569,7 @@ SORTIES.c5s2a = {
     { theme: 'xylem', pool: ['battle'], variants: ['dense', 'harbor', 'night'] },
     {
       theme: 'xylem',
-      pool: ['battle', 'destroy', 'defend', 'intel', 'stealth', 'front', 'air'],
+      pool: ['battle', 'destroy', 'defend', 'intel', 'front', 'air'],
       variants: ['dense', 'open', 'bridges'],
     },
     {
@@ -597,7 +596,7 @@ SORTIES.c5s2b = {
     { theme: 'xylem', pool: ['battle'], variants: ['harbor', 'dense', 'bridges'] },
     {
       theme: 'xylem',
-      pool: ['defend', 'battle', 'destroy', 'intel', 'stealth', 'front', 'air'],
+      pool: ['defend', 'battle', 'destroy', 'intel', 'front', 'air'],
       variants: ['dense', 'harbor', 'night'],
     },
     {
@@ -624,7 +623,7 @@ SORTIES.c5s3 = {
     { theme: 'xylem', pool: ['battle'], variants: ['squall', 'dense', 'night'] },
     {
       theme: 'xylem',
-      pool: ['battle', 'destroy', 'elite', 'intel', 'stealth', 'colossus', 'air'],
+      pool: ['battle', 'destroy', 'elite', 'intel', 'colossus', 'air'],
       variants: ['dense', 'open', 'squall', 'bridges'],
     },
     {
@@ -653,7 +652,7 @@ SORTIES.c6s1 = {
     {
       theme: 'spaceport',
       mode: 'relay',
-      pool: ['battle', 'destroy', 'elite', 'intel', 'stealth', 'colossus', 'air'],
+      pool: ['battle', 'destroy', 'elite', 'intel', 'colossus', 'air'],
       variants: ['runway', 'ruins'],
     },
     {
@@ -687,7 +686,7 @@ SORTIES.c6s2 = {
     { theme: 'orbit', pool: ['battle'], variants: ['cluster', 'dock', 'debris'] },
     {
       theme: 'orbit',
-      pool: ['battle', 'destroy', 'elite', 'intel', 'stealth', 'colossus', 'air'],
+      pool: ['battle', 'destroy', 'elite', 'intel', 'colossus', 'air'],
       variants: ['cluster', 'span', 'sunlit'],
     },
     {
@@ -719,7 +718,7 @@ SORTIES.c6s3 = {
     { theme: 'orbit', pool: ['battle'], variants: ['dock', 'cluster', 'sunlit'] },
     {
       theme: 'orbit',
-      pool: ['battle', 'elite', 'destroy', 'intel', 'stealth', 'colossus', 'air'],
+      pool: ['battle', 'elite', 'destroy', 'intel', 'colossus', 'air'],
       variants: ['cluster', 'span', 'debris'],
     },
     {
@@ -751,7 +750,7 @@ SORTIES.c7s1 = {
   reward: 320000,
   segs: [
     { theme: 'volcano', pool: ['battle'], variants: ['flow', 'ashfall'] },
-    { theme: 'volcano', pool: ['battle', 'destroy', 'intel', 'stealth'], variants: ['foundry', 'obsidian'] },
+    { theme: 'volcano', pool: ['battle', 'destroy', 'intel'], variants: ['foundry', 'obsidian'] },
     { theme: 'volcano', pool: ['supply', 'escort', 'defend', 'chase', 'front'], variants: ['flow', 'night'] },
     { theme: 'volcano', pool: ['elite'], ace: 'kiln', variants: ['foundry', 'caldera'] },
     {
@@ -769,7 +768,7 @@ SORTIES.c7s2 = {
   reward: 330000,
   segs: [
     { theme: 'volcano', pool: ['battle'], variants: ['obsidian', 'night'] },
-    { theme: 'volcano', pool: ['intel', 'battle', 'destroy', 'stealth'], variants: ['caldera', 'flow'] },
+    { theme: 'volcano', pool: ['intel', 'battle', 'destroy'], variants: ['caldera', 'flow'] },
     {
       theme: 'volcano',
       pool: ['supply', 'defend', 'breakthrough', 'front'],
@@ -793,7 +792,7 @@ SORTIES.c7s3 = {
     { theme: 'volcano', pool: ['battle'], variants: ['foundry', 'flow'] },
     {
       theme: 'volcano',
-      pool: ['battle', 'destroy', 'elite', 'intel', 'stealth', 'colossus'],
+      pool: ['battle', 'destroy', 'elite', 'intel', 'colossus'],
       variants: ['caldera', 'night'],
     },
     { theme: 'volcano', pool: ['supply', 'escort', 'breakthrough', 'chase'], variants: ['flow', 'ashfall'] },
@@ -819,7 +818,7 @@ SORTIES.c8s1 = {
   reward: 360000,
   segs: [
     { theme: 'ark', pool: ['battle'], variants: ['fore', 'hangar'] },
-    { theme: 'ark', pool: ['battle', 'destroy', 'intel', 'stealth'], variants: ['flank', 'engine'] },
+    { theme: 'ark', pool: ['battle', 'destroy', 'intel'], variants: ['flank', 'engine'] },
     { theme: 'ark', pool: ['supply', 'escort', 'defend', 'chase', 'front'], variants: ['storm', 'hangar'] },
     { theme: 'ark', pool: ['elite'], ace: 'keel', variants: ['fore', 'engine'] },
     { theme: 'ark', pool: ['battle', 'destroy', 'extract', 'colossus'], variants: ['night', 'flank'] },
@@ -833,7 +832,7 @@ SORTIES.c8s2 = {
   reward: 380000,
   segs: [
     { theme: 'ark', pool: ['battle'], variants: ['engine', 'night'] },
-    { theme: 'ark', pool: ['intel', 'battle', 'destroy', 'stealth'], variants: ['engine', 'flank'] },
+    { theme: 'ark', pool: ['intel', 'battle', 'destroy'], variants: ['engine', 'flank'] },
     { theme: 'ark', pool: ['supply', 'defend', 'breakthrough', 'front'], variants: ['storm', 'hangar'] },
     {
       theme: 'ark',
@@ -855,7 +854,7 @@ SORTIES.c8s3 = {
     { theme: 'ark', pool: ['battle'], variants: ['fore', 'storm'] },
     {
       theme: 'ark',
-      pool: ['battle', 'elite', 'destroy', 'intel', 'stealth', 'colossus'],
+      pool: ['battle', 'elite', 'destroy', 'intel', 'colossus'],
       variants: ['flank', 'engine'],
     },
     { theme: 'ark', pool: ['supply', 'defend', 'breakthrough', 'front'], variants: ['hangar', 'night'] },
@@ -876,7 +875,7 @@ SORTIES.c1x = {
     { theme: 'dunes', pool: ['battle'], variants: ['buried', 'storm', 'wrecks'] },
     {
       theme: 'dunes',
-      pool: ['intel', 'battle', 'destroy', 'stealth'],
+      pool: ['intel', 'battle', 'destroy'],
       variants: ['buried', 'night'],
     },
     {
@@ -897,7 +896,7 @@ SORTIES.c2x = {
     { theme: 'flooded', pool: ['battle'], variants: ['mist', 'stilts'] },
     {
       theme: 'flooded',
-      pool: ['intel', 'destroy', 'battle', 'stealth'],
+      pool: ['intel', 'destroy', 'battle'],
       variants: ['stilts', 'canal'],
     },
     { theme: 'dam', pool: ['supply', 'escort', 'defend', 'chase', 'front'], variants: ['night', 'quarry'] },
@@ -915,7 +914,7 @@ SORTIES.c3x = {
     { theme: 'snow', pool: ['battle'], variants: ['polar', 'forest'] },
     {
       theme: 'snow',
-      pool: ['destroy', 'intel', 'battle', 'stealth'],
+      pool: ['destroy', 'intel', 'battle'],
       variants: ['forest', 'crevasse'],
     },
     { theme: 'snow', pool: ['supply', 'defend', 'breakthrough', 'front'], variants: ['polar', 'outpost'] },
@@ -933,7 +932,7 @@ SORTIES.c4x = {
     { theme: 'grid086', pool: ['battle'], variants: ['pillars', 'rust'] },
     {
       theme: 'grid086',
-      pool: ['destroy', 'intel', 'elite', 'stealth', 'colossus'],
+      pool: ['destroy', 'intel', 'elite', 'colossus'],
       variants: ['rust', 'scrapyard'],
     },
     {
@@ -964,7 +963,7 @@ SORTIES.c5x = {
     { theme: 'xylem', pool: ['battle'], variants: ['night', 'bridges'] },
     {
       theme: 'xylem',
-      pool: ['destroy', 'intel', 'battle', 'stealth', 'air'],
+      pool: ['destroy', 'intel', 'battle', 'air'],
       variants: ['bridges', 'dense'],
     },
     { theme: 'xylem', pool: ['supply', 'defend', 'escort', 'chase', 'front'], variants: ['night', 'harbor'] },
@@ -982,7 +981,7 @@ SORTIES.c6x = {
     { theme: 'orbit', pool: ['battle'], variants: ['sunlit', 'debris'] },
     {
       theme: 'orbit',
-      pool: ['intel', 'destroy', 'battle', 'stealth', 'air'],
+      pool: ['intel', 'destroy', 'battle', 'air'],
       variants: ['debris', 'span'],
     },
     { theme: 'orbit', pool: ['supply', 'defend', 'breakthrough', 'front'], variants: ['sunlit', 'cluster'] },
@@ -998,7 +997,7 @@ SORTIES.c7x = {
   reward: 260000,
   segs: [
     { theme: 'volcano', pool: ['battle'], variants: ['obsidian', 'flow'] },
-    { theme: 'volcano', pool: ['intel', 'destroy', 'battle', 'stealth'], variants: ['foundry', 'night'] },
+    { theme: 'volcano', pool: ['intel', 'destroy', 'battle'], variants: ['foundry', 'night'] },
     {
       theme: 'volcano',
       pool: ['supply', 'defend', 'breakthrough', 'front'],
@@ -1016,7 +1015,7 @@ SORTIES.c8x = {
   reward: 280000,
   segs: [
     { theme: 'ark', pool: ['battle'], variants: ['hangar', 'storm'] },
-    { theme: 'ark', pool: ['intel', 'destroy', 'battle', 'stealth'], variants: ['flank', 'night'] },
+    { theme: 'ark', pool: ['intel', 'destroy', 'battle'], variants: ['flank', 'night'] },
     { theme: 'ark', pool: ['supply', 'defend', 'breakthrough', 'front'], variants: ['engine', 'fore'] },
     { theme: 'ark', pool: ['elite'], ace: 'keel', variants: ['fore', 'hangar'] },
     { theme: 'ark', pool: ['battle', 'supply', 'intel'], variants: ['storm', 'flank'] },
@@ -1032,7 +1031,7 @@ SORTIES.c1y = {
   memory: 1,
   segs: [
     { theme: 'wasteland', pool: ['battle'], variants: ['town', 'craters'] },
-    { theme: 'desert', border: true, pool: ['intel', 'battle', 'destroy', 'stealth'] },
+    { theme: 'desert', border: true, pool: ['intel', 'battle', 'destroy'] },
     { theme: 'desert', pool: ['elite'], ace: 'prospector', variants: ['tunnels', 'vein'] },
     { theme: 'desert', pool: ['boss'], boss: 'artillery', echo: true, variants: ['openpit', 'shaft'] },
   ],
@@ -1047,7 +1046,7 @@ SORTIES.c2y = {
     { theme: 'dam', pool: ['battle'], variants: ['night', 'quarry'] },
     {
       theme: 'dam',
-      pool: ['intel', 'destroy', 'battle', 'stealth'],
+      pool: ['intel', 'destroy', 'battle'],
       variants: ['plant', 'weirs'],
     },
     { theme: 'dam', pool: ['elite'], ace: 'sluice', variants: ['quarry', 'night'] },
@@ -1064,7 +1063,7 @@ SORTIES.c3y = {
     { theme: 'institute', pool: ['battle'], variants: ['tanks', 'core', 'blackout'] },
     {
       theme: 'institute',
-      pool: ['intel', 'destroy', 'battle', 'stealth'],
+      pool: ['intel', 'destroy', 'battle'],
       variants: ['blackout', 'flooded'],
     },
     { theme: 'institute', pool: ['elite'], ace: 'specimen', variants: ['blackout', 'flooded'] },
@@ -1081,7 +1080,7 @@ SORTIES.c4y = {
     { theme: 'spaceport', pool: ['battle'], variants: ['runway', 'ruins', 'crash'] },
     {
       theme: 'spaceport',
-      pool: ['intel', 'destroy', 'battle', 'stealth', 'air'],
+      pool: ['intel', 'destroy', 'battle', 'air'],
       variants: ['pads', 'launchnight'],
     },
     {
@@ -1103,7 +1102,7 @@ SORTIES.c5y = {
     { theme: 'xylem', pool: ['battle'], variants: ['harbor', 'dense', 'night'] },
     {
       theme: 'xylem',
-      pool: ['intel', 'destroy', 'battle', 'stealth', 'air'],
+      pool: ['intel', 'destroy', 'battle', 'air'],
       variants: ['bridges', 'squall'],
     },
     { theme: 'xylem', pool: ['elite'], ace: 'undertow', variants: ['bridges', 'squall'] },
@@ -1120,7 +1119,7 @@ SORTIES.c6y = {
     { theme: 'orbit', pool: ['battle'], variants: ['sunlit', 'debris'] },
     {
       theme: 'orbit',
-      pool: ['intel', 'destroy', 'battle', 'stealth', 'air'],
+      pool: ['intel', 'destroy', 'battle', 'air'],
       variants: ['cluster', 'span'],
     },
     { theme: 'orbit', pool: ['elite'], ace: 'zenith', variants: ['sunlit', 'nightside'] },
@@ -1135,7 +1134,7 @@ SORTIES.c7y = {
   memory: 7,
   segs: [
     { theme: 'volcano', pool: ['battle'], variants: ['night', 'caldera'] },
-    { theme: 'volcano', pool: ['intel', 'destroy', 'battle', 'stealth'], variants: ['foundry', 'obsidian'] },
+    { theme: 'volcano', pool: ['intel', 'destroy', 'battle'], variants: ['foundry', 'obsidian'] },
     { theme: 'volcano', pool: ['elite'], ace: 'kiln', variants: ['flow', 'night'] },
     { theme: 'volcano', pool: ['boss'], boss: 'anvil', echo: true, variants: ['caldera', 'foundry'] },
   ],
@@ -1148,7 +1147,7 @@ SORTIES.c8y = {
   memory: 8,
   segs: [
     { theme: 'ark', pool: ['battle'], variants: ['night', 'fore'] },
-    { theme: 'ark', pool: ['intel', 'destroy', 'battle', 'stealth'], variants: ['engine', 'flank'] },
+    { theme: 'ark', pool: ['intel', 'destroy', 'battle'], variants: ['engine', 'flank'] },
     { theme: 'ark', pool: ['elite'], ace: 'zenith', variants: ['fore', 'hangar'] },
     { theme: 'ark', pool: ['boss'], boss: 'reactor', echo: true, variants: ['fore'] },
   ],

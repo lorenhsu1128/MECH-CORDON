@@ -584,7 +584,6 @@ Object.assign(Game.prototype, {
       'intel',
       'elite',
       'breakthrough',
-      'stealth',
       'extract',
       'front',
       'escort',

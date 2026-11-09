@@ -16,7 +16,6 @@ import {
   SENSE_INSTANT,
   SENSE_NEAR,
   SHARE_R,
-  STEALTH_RATE,
   STICKY,
   SUP_RING,
   SUSPECT_AT,
@@ -202,21 +201,13 @@ Object.assign(MechEntity.prototype, {
           dz = c.pos.z - this.pos.z;
         const d = Math.hypot(dx, dz);
         if (d > R) continue;
-        // 潛入區段（還沒警報）：安靜移動的玩家近距離也要在視角內才看得到（從背後摸過去，game/seg-ops.js）
-        const quiet = g.camp && g.segQuiet(c);
-        if (
-          (d > SENSE_NEAR || quiet) &&
-          sn.fov < 6.2 &&
-          (dx * fx + dz * fz) / (d || 1) < Math.cos(sn.fov / 2)
-        )
-          continue;
+        if (d > SENSE_NEAR && sn.fov < 6.2 && (dx * fx + dz * fz) / (d || 1) < Math.cos(sn.fov / 2)) continue;
         if (g.world.losBlocked(this.eye(), c.center())) continue;
         let rate = 1 / (0.3 + (1.2 * d) / sn.sight);
-        if (quiet) rate *= STEALTH_RATE;
         if (c.boost || c.qbT > 0) rate *= 1.5;
         if (c.firedT > 0) rate *= 2;
         if (sn.st !== 0) rate *= 1.8;
-        if (d < SENSE_INSTANT * (quiet ? 0.5 : 1)) rate = 99;
+        if (d < SENSE_INSTANT) rate = 99;
         if (rate * 0.2 > gain) {
           gain = rate * 0.2;
           seen = c;
@@ -320,8 +311,7 @@ Object.assign(MechEntity.prototype, {
     sn.losT = 0;
     sn.blind = 0;
     if (was !== 2) sn.spotT = g.time;
-    // 潛入區段（還沒全區警報）：不用自己的無線電，改成 seg-ops.js 的無線電倒數與局部警報
-    if (radio && was !== 2) sn.radioT = g.camp && g.segStealthOn() ? -1 : RADIO_DL;
+    if (radio && was !== 2) sn.radioT = RADIO_DL;
     if (radio && was !== 2) g.barkSay(this, 'spot'); // 敵兵的喊話（game/voice.js）
     if (this.guardOf) for (const o of g.enemies) if (o.guardOf === this.guardOf) o.guardAlert = true;
   },

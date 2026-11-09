@@ -36,7 +36,7 @@ import { buildCampRing } from '../render/ground-marks.js';
 
 const PAD_R = 3.5 * MS; // 補給台、資料終端的半徑
 // 推進型的區段（docs/map-pacing-design.md）：大地圖、從作戰區域一側進場、敵人分成幾群、出口在另一側
-const ADVANCE = ['battle', 'destroy', 'intel', 'breakthrough', 'stealth', 'extract', 'front'];
+const ADVANCE = ['battle', 'destroy', 'intel', 'breakthrough', 'extract', 'front'];
 const WSLOTS = ['rarm', 'larm', 'rback', 'lback'];
 const clone = (o) => JSON.parse(JSON.stringify(o));
 // 紀錄點保存的欄位（this.camp 裡其餘的是執行中的狀態）
@@ -289,6 +289,9 @@ Object.assign(Game.prototype, {
     const free = this.camp && this.camp.free;
     this.camp = clone(ck);
     this.camp.fails = fails;
+    // 拿掉的區段類型（2026-11-09 的潛入）：舊紀錄點裡已經決定的段改成情報（同樣是資料終端）
+    if (Array.isArray(this.camp.types))
+      this.camp.types = this.camp.types.map((t) => (t && !SEG_TYPES[t] ? 'intel' : t));
     if (free) this.camp.free = free;
     if (ck.mods) this.campSetMods(ck.mods); // 紀錄點之後拿到的模組不算
     return true;
@@ -1026,7 +1029,7 @@ Object.assign(Game.prototype, {
         this.campDisposeGroup(ss.intel.group);
         ss.intel.group = null;
         const done = this.segH('IntelDone');
-        if (done) done.call(this, v); // 潛入：未被發現的報酬（seg-ops.js）
+        if (done) done.call(this, v); // 區段類型自己的處理（seg-ops.js 的 segIntelDone_<類型>，目前沒有）
       }
     }
     const tick = this.segH('Tick');

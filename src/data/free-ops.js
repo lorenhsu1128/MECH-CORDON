@@ -24,7 +24,6 @@ export const FO_TYPES = [
   'escort',
   'breakthrough',
   'intel',
-  'stealth',
   'extract',
   'chase',
   'front',
