@@ -108,6 +108,7 @@ Object.assign(Game.prototype, {
       for (const w of Object.values(ent.weapons || {}))
         if (w && w.def && w.def.ammo > 0)
           w.ammo = Math.min(w.def.ammo, w.ammo + Math.ceil(w.def.ammo * 0.35));
+      if (ent.lgPickup) ent.lgPickup('ammo'); // 傳說模組「補給回收」（mech-legend.js）
       this.fx.ring(ent.center(), 5, 0xffc040);
       if (ent.isPlayer) this.renderWeaponHud(true);
     } else {
@@ -124,6 +125,11 @@ Object.assign(Game.prototype, {
       this.netEv({ t: 'pkr', i: pk.id });
       if (!ent.isPlayer && ent.slot !== undefined) this.netEv({ t: 'pkGot', slot: ent.slot, k: pk.kind });
     }
+  },
+  // 在擊破的敵人旁放一個彈藥箱（傳說模組「拾荒本能」）
+  dropAmmoAt(e) {
+    const [x, z] = this.world.nearSolid ? this.world.nearSolid(e.pos.x, e.pos.z) : [e.pos.x, e.pos.z];
+    this.spawnPickup('ammo', new THREE.Vector3(x + 2, this.world.groundAt(x + 2, z, e.pos.y + 1) + 0.6, z));
   },
   // 擊破敵人時掉落彈藥箱（房主／單機）：敵對 AC 一定掉，其他 18%；有玩家彈藥剩不到三成時機率加倍
   dropAmmo(e) {

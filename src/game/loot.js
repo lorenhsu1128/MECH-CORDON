@@ -33,6 +33,11 @@ Object.assign(Game.prototype, {
     if ((big || (ace && e.isElite) || e.nemesis) && Math.random() < DROP.core) drops.push('core');
     if (big && Math.random() < DROP.shard) drops.push('shard');
     if (big) drops.push('alloy', 'circuit');
+    // 傳說模組「拾荒本能」：帶詞綴的敵人與敵對 AC 一定掉彈藥箱，素材多一個
+    if ((e.af || ace) && !big && this.lgAny('lgScrap')) {
+      drops.push(drops[0] || 'alloy');
+      if (this.dropAmmoAt) this.dropAmmoAt(e);
+    }
     // 空戰（空域、主線的空戰區段）：掉落物在地面撿不到，直接入帳（空戰只有單人）
     if (this.airMode) {
       for (const k of drops) this.lootMat(k, 1);

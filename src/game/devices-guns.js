@@ -170,6 +170,7 @@ Object.assign(Game.prototype, {
     d.mountT = 0;
     d.itPrev = true;
     p.devMount = d.id;
+    if (p.lgDevUse) p.lgDevUse(); // 傳說模組「能源導管」
     p.vel.set(0, 0, 0);
     this.devLvEmit(d); // 自訂關卡的觸發器
     if (p.isPlayer) this.flashMsg(`上${d.def.name} — 射擊鍵開火，再按一次互動鍵離開`, d.def.color, 2);

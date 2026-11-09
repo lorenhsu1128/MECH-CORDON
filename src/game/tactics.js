@@ -33,6 +33,10 @@ Object.assign(Game.prototype, {
     for (const k in mp) pm[k] = (pm[k] || 0) + mp[k];
     return pm;
   },
+  // 有沒有玩家持有這個傳說模組（加成表的鍵）
+  lgAny(k) {
+    return this.playersAlive().some((p) => p.pmv && p.pmv(k) > 0);
+  },
   // 改變打法的模組：擊破時（mission.js 的 onEnemyKilled，房主／單機）
   modKillFx(e, from) {
     from.lgKill(e); // 傳說模組：連鎖引爆、追擊推進（entities/mech-legend.js）

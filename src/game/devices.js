@@ -275,6 +275,7 @@ Object.assign(Game.prototype, {
         if (d.prog >= 1) {
           d.st = ST_ON;
           d.t = 0;
+          if (holder.lgDevUse) holder.lgDevUse(); // 傳說模組「能源導管」
           SFX.cue('cache');
           this.flashMsg(`${holder.name || ''} 佔領雷達站 — 敵人的位置已標示`, def.color, 2.4);
           this.devLvEmit(d);
@@ -325,6 +326,7 @@ Object.assign(Game.prototype, {
     const hp = Math.min(def.hpRate * p.maxHp * dt, hpNeed, d.val * p.maxHp);
     p.hp += hp;
     p.en = Math.min(p.enMax, p.en + def.enRate * p.enMax * dt);
+    if (p.lgDevUse) p.lgDevUse(); // 傳說模組「能源導管」
     d.val = Math.max(0, d.val - hp / p.maxHp);
     d.prog = 1;
     d.user = p.id;

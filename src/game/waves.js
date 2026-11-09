@@ -190,6 +190,7 @@ Object.assign(Game.prototype, {
     } finally {
       this.waveAt = null;
     }
+    if (!k) for (const p of this.playersAlive()) p.lgWaveShield(); // 傳說模組「增援壁壘」
     if (w.drop && !k)
       this.fx.shockwave(
         new THREE.Vector3(w.pos.x, this.world.groundAt(w.pos.x, w.pos.z, 999), w.pos.z),

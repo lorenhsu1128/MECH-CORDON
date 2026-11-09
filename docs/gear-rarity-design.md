@@ -2,7 +2,7 @@
 
 2026-11-09 和使用者討論的定案與詞條表草稿。參考：暗黑破壞神 3／4（品級、極品詞條、重骰）、Borderlands（廠牌個性、紅字傳說）、天命 2（觸發型特性、異域武器）、全境封鎖 2（天賦、代價）、Warframe（Riven 的代價詞條）、機戰傭兵 5（同一個零件分品級）、鋼彈創壞者（高品級的特性）。
 
-**狀態**：詞條表待使用者確認，還沒有實作。
+**狀態**：2026-11-09 照下面的 8 期全部實作完成（第 10 節是實作紀錄與和草稿不同的地方）。**詞條的最終內容以程式為準**：數值詞條 `src/data/gear.js` 的 `AX`、進階詞條 `src/data/gear-adv.js`、專屬與金色 `src/data/gear-excl.js`；第 4、5 節的表是討論時的草稿。
 
 ## 1. 定案
 
@@ -336,25 +336,32 @@
   - 三種畫面大小都要截圖檢查
 - **掉落**：裝備改成地上的拾取物；光柱是品級的顏色，背包滿時改成灰色閃爍。
 
-## 8. 傳說模組要重想的部分
+## 8. 傳說模組的重新設計（已實作）
 
-和裝備重疊的傳說模組要換掉，方向是「只有一次出擊才有、裝備做不到的」：地圖裝置、增援波次、據點、僚機、風格評價、出口獎勵等。和使用者另外討論。
+和裝備詞條重疊的 12 個傳說模組換成「只有一次出擊才有、裝備做不到的」效果；留下連鎖引爆、蓄力共鳴、電弧推進、反應裝甲。每家委託方仍是 4 個（`src/data/modules.js`，行為 `src/entities/mech-legend.js`；Game 端用 `Game.lgAny(鍵)` 判斷有沒有玩家持有）。
 
-| 傳說模組 | 和哪個裝備詞條重疊 |
-|---|---|
-| 分裂彈頭 `lg_split` | MS-4 金色：分裂導彈 |
-| 貫穿彈 `lg_pierce` | RF-024 金色：穿甲彈 |
-| 終彈強化 `lg_last` | 進階詞條「最後幾發」 |
-| 折射雷射 `lg_refract`、電弧刃 `lg_arc` | GN-ARC 紫色：電弧；SG-027 金色：跳彈 |
-| 落雷踐踏 `lg_stomp` | LG-KASUAR 金色：落雷 |
-| 不死鳥 `lg_phoenix` | BD-TITAN 金色：最後防線 |
-| 堡壘 `lg_fort` | 進階詞條「不動如山」；AR-TITAN 金色：固定砲台 |
-| 護盾轉化 `lg_absorb` | SH-02 金色：蓄能盾 |
-| 追擊推進 `lg_chase` | BST-FLUEGEL 金色：滑翔 |
-| 過載核心 `lg_overload` | GN-VP20 金色：緊急電源 |
-| 殘影 `lg_ghost` | LG-NACHTREIHER 金色：殘像步 |
+| 委託方 | 傳說模組 | 效果 | 掛勾 |
+|---|---|---|---|
+| 卡斯特隆 | 補給回收 `lg_salvo` | 撿到彈藥箱時彈匣裝滿，10 秒內實彈傷害 +20% | `collectPickup` → `lgPickup` |
+| | 連鎖引爆 `lg_chain` | （原本的） | |
+| | 拾荒本能 `lg_scrap` | 擊破帶詞綴的敵人與敵對 AC 一定掉彈藥箱，素材多一個 | `lootKilled` |
+| | 懸賞 `lg_bounty` | 每擊破 5 台：COAM、AP 回復 8% | `lgKill` |
+| 艾瑟立克 | 干擾網 `lg_jam` | 增援抵達時新出現的敵人硬直 3 秒（Boss 除外） | `spawnEnemy`（`waveAt`） |
+| | 超頻 `lg_overclock` | 風格評價 A 以上：EN 回復 ×1.5、能量武器 ×1.15 | EN 回復、`lgShotK` |
+| | 能源導管 `lg_conduit` | 使用雷達站、回復站、固定砲台時 EN 全滿，8 秒內 QB 與能量武器不耗 EN | `devices*.js` → `lgDevUse` |
+| | 蓄力共鳴 `lg_reso` | （原本的） | |
+| 維爾威 | 先遣偵察 `lg_scout` | 還沒交戰的敵人察覺你的速度 −50% | `mech-sense.js` |
+| | 電弧推進 `lg_arcqb` | （原本的） | |
+| | 急行軍 `lg_exit` | 站進出口的時間減半；每一段開場 15 秒速度 +20% | `campTick`、`lgSpdK` |
+| | 陷阱大師 `lg_trap` | 環境陷阱對敵人 ×2、不傷到持有者 | `devHurt` |
+| 聖域 | 反應裝甲 `lg_react` | （原本的） | |
+| | 戰地醫護 `lg_medic` | 用修復套件時 40 m 內的隊友與僚機回復 30%，之後 3 秒受傷 −50% | 修復套件 → `lgKit` |
+| | 補給專家 `lg_cache` | 打開補給箱時 AP 回復 25%、修復套件 +1，箱子有裝備的機率加倍 | `cacheOpen` → `lgCacheOpen` |
+| | 增援壁壘 `lg_bulwark` | 增援抵達時得到 AP 15% 的護盾 | `waveSpawn` → `lgWaveShield` |
 
-## 9. 分期（草案）
+舊存檔持有的已拿掉的傳說模組，讀取時自動略過（`campMods` 只留認得的）。
+
+## 9. 分期（全部完成）
 
 | 期 | 內容 |
 |---|---|
@@ -365,4 +372,19 @@
 | 5 | 進階詞條（觸發型、代價、極品） |
 | 6 | 紫色專屬詞條（55 條）與敵人的版本 |
 | 7 | 金色特殊詞條（55 條）、Boss 的掉落表、敵人的弱化版 |
-| 8 | 傳說模組重新設計（另外討論） |
+| 8 | 傳說模組重新設計（第 8 節） |
+
+## 10. 實作紀錄
+
+### 程式位置
+- **資料**：`src/data/gear.js`（品級、數值詞條 `AX`、產生 `rollGear`、整理 `sanitizeGear`／`sanitizeGr`、裝備的選擇 `gearPick`／`gearResolve`、加成表 `gearGr`、武器與機體的固定效果 `gearWeaponFx`／`gearFrameFx`／`gearAdvStatic`）、`gear-adv.js`（進階詞條 `ADV`）、`gear-excl.js`（專屬與金色 `EXCL`、顯示 `fixedLines`）、`gear-loot.js`（掉落機率、各章上限、Boss 的掉落表）。
+- **計算**：`src/data/pilot.js` 的加成表 `pm.gr`＝{ 槽位: { id, q, ax, t } }，`applyPilotStats` 加零件自己的數值與整台的詞條，`pilotWeaponDef(def, pm, 槽位)` 依槽位套用武器的（兩手同一種武器、詞條不同）。客機的 `pilotPayload` 帶 `pve.gr`，房主 `sanitizeGr`；PvP 不帶。
+- **機體端的判定**（房主／單機）：`src/entities/mech-gear.js`（進階詞條，建立實體時整理成 `gxW`／`gx`）、`mech-gear-fx.js`（紫色專屬）、`mech-gear-gold.js`（金色特殊）；掛在 `fire`（傷害、衝擊、擴散、射速 `gk.cd`、蓄力 `gk.c`、貫穿）、`takeDamage` 開頭（`gearOutK`／`gearInK`／目標的易傷 `gearVulnK`）、裝填、QB、空中跳、EN 回復、速度、預判、導彈鎖定、EMP、`tutE` 的事件、擊破（`modKillFx`）、AP 歸零（最後防線）、CRITICAL（`wpTake`）。
+- **Game 端**：`src/game/gear.js`（背包與裝備的選擇、調校跟著每一件）、`gear-ui.js`（格子、小卡片的裝備清單與詞條、不生效的標示 `gearAxNa`、背包頁、分解）、`gear-forge.js`（升階、重骰）、`gear-loot.js`（敵人身上的品級 `gearEnemy`、掉落 `gearKilled`、地上的光柱、背包滿、離開地圖時自動撿起、多人的 `gear` 事件）。
+- **存檔**：`save.inv`（背包）、`save.eq`（玩家自己選的那一件；`'-:零件 id'`＝指定標準版，沒選時自動裝最好的）。標準版的調校仍在 `save.tune[零件 id]`。`NET_VERSION` 11.39。
+- **測試**：冒煙測試 `testGear`（各期的檢查）、`testLoot`、`testLegend`。
+
+### 和草稿不同的地方
+- 背包上限只排除裝備中的（預設組只記零件 id，換上時自動挑最好的那一件）。
+- 進階詞條：「突進距離」換成「迴旋護身」（近戰命中後 1 秒受傷 −）、「破防」換成「破甲斬」（對 ACS 累積一半以上的目標衝擊 +）、「衝撞」換成「突擊衝擊」（突擊推進中的攻擊衝擊 +）、火控的「標定」改成「鎖定同一目標 3 秒後傷害 +」（敵人也能用）；同類專精拆成 6 條（實彈、霰彈、爆發、導彈、能量、近戰）。
+- 專屬與金色有幾條改成遊戲現有系統做得到的版本，例如：觀測頭金色改成「鎖定距離 +25%、對鎖定中的目標傷害 +8%」、重裝頭金色改成「失衡時間 −30%」、BZ-31 紫色改成「重彈：衝擊 +20%」、脈衝刀以外的金色光束類改成「連鎖光束」、指揮核心沿用指揮官 MT 的指揮強化。完整的最終文字看 `gear-excl.js`。

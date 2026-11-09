@@ -16457,7 +16457,7 @@ async function testLoot(browser, base) {
 
 // 主線擴充第 8 期：傳說模組（16 種的行為、共鳴、三選一固定有一個、自動選的時候略過）
 async function testLegend(browser, base) {
-  console.log('傳說模組：16 種的行為、共鳴、三選一');
+  console.log('傳說模組：16 種的行為、共鳴、三選一（2026-11-09 改版）');
   const { ctx, page } = await newPage(browser, 'legend');
   await page.goto(base + '?test');
   await waitVisible(page, 'title');
@@ -16466,25 +16466,24 @@ async function testLegend(browser, base) {
     const g = window.__game;
     const out = {};
     g.autoPickMod = true;
-    g.save.asm.larm = 'w_lr'; // 雷射步槍（折射、蓄力共鳴）
     g.campBegin('c1s2');
     const L = [
-      'lg_split',
-      'lg_pierce',
+      'lg_salvo',
       'lg_chain',
-      'lg_last',
-      'lg_refract',
-      'lg_overload',
-      'lg_arc',
+      'lg_scrap',
+      'lg_bounty',
+      'lg_jam',
+      'lg_overclock',
+      'lg_conduit',
       'lg_reso',
-      'lg_ghost',
+      'lg_scout',
       'lg_arcqb',
-      'lg_stomp',
-      'lg_chase',
+      'lg_exit',
+      'lg_trap',
       'lg_react',
-      'lg_absorb',
-      'lg_phoenix',
-      'lg_fort',
+      'lg_medic',
+      'lg_cache',
+      'lg_bulwark',
     ];
     g.campSetMods(L.map((id) => ({ id, lv: 1 })));
     out.reso = g.campPilotPm().dmg >= 0.08; // 共鳴：兩家以上的傳說模組
@@ -16509,125 +16508,96 @@ async function testLegend(browser, base) {
       fn();
       return Math.round(h - e.hp);
     };
-    // 終彈強化
-    out.last = [p.lgLastK({ mag: 1 }, { mag: 30 }), p.lgLastK({ mag: 5 }, { mag: 30 })];
-    // 電弧刃
-    const a = foe(20, 0),
-      b = foe(26, 4);
-    out.arc = lost(b, () => p.lgMeleeHit(a, 1000, { id: 'w_blade' }));
-    // 折射雷射、蓄力共鳴
-    out.refract = lost(b, () => p.lgLaserHits([{ t: a }], 1000, 100, { id: 'w_lr', color: 0x7ff0ff }, true));
-    out.resoT = p.lgEnK() === 0;
+    const a = foe(20, 0);
+    // 急行軍：開場 15 秒速度 +20%
+    out.exit = p.lgSpdK();
+    // 補給回收：撿到彈藥箱時彈匣裝滿、實彈 +20%
+    const w = p.weapons.rarm;
+    w.mag = 1;
+    p.lgPickup('ammo');
+    out.salvo = [w.mag === w.def.mag, p.lgShotK(w.def)];
+    // 超頻：風格評價 A 以上
+    if (!p.sy) p.sy = { pts: 0, idle: 0, hist: [], labels: [], rank: -1, cls: '', sendT: 0 };
+    p.sy.rank = 4;
+    out.over = [p.lgRchK(), p.lgShotK({ type: 'laser', attr: 'en' })];
+    // 能源導管
+    p.en = 0;
+    p.lgDevUse();
+    out.conduit = p.en === p.enMax && p.lgQbK() === 0 && p.lgEnK() === 0;
+    // 戰地醫護：用修復套件後 3 秒受傷 −50%
+    p.lgKit();
+    p.iFrames = 0;
+    out.medic = lost(p, () =>
+      p.takeDamage(1000, 0, a, p.center(), new THREE.Vector3(0, 0, 1), null, null, 'none'),
+    );
+    p.lgMedicT = 0;
+    // 增援壁壘：護盾 AP 15%
+    p.lgWaveShield();
+    p.iFrames = 0;
+    out.bulwark = lost(p, () =>
+      p.takeDamage(1000, 0, a, p.center(), new THREE.Vector3(0, 0, 1), null, null, 'none'),
+    );
+    p.lgShield = 0;
+    // 補給專家
+    p.kits = 0;
+    p.hp = p.maxHp * 0.5;
+    p.lgCacheOpen();
+    out.cache = p.kits === 1 && Math.abs(p.hp / p.maxHp - 0.75) < 0.01;
+    // 懸賞：每擊破 5 台
+    const c0 = g.save.coam;
+    for (let i = 0; i < 5; i++) p.lgKill({ center: () => p.center(), maxHp: 1, pos: p.pos });
+    out.bounty = g.save.coam - c0;
+    // 連鎖引爆
+    const c = foe(30, -20);
+    c.hp = c.maxHp * 0.1;
+    const k = foe(33, -20);
+    p.lgKill(k);
+    out.chain = c.dead;
     // 電弧推進
     a.pos.copy(at(4, 0));
     p.qbT = 0.16;
     p.lgArcT = 0;
     out.arcqb = lost(a, () => p.lgTick(0.016));
     p.qbT = 0;
-    // 落雷踐踏
-    out.stomp = lost(a, () => p.lgLand(45));
-    // 過載核心
-    p.lgOverT = 0;
-    p.en = p.enMax * 0.05;
-    out.over = lost(a, () => p.useEn(p.enMax * 0.04));
-    // 追擊推進、連鎖引爆
-    const c = foe(30, -20);
-    c.hp = c.maxHp * 0.1;
-    const k = foe(33, -20);
-    p.lgKill(k);
-    out.chase = p.lgQbK() === 0;
-    out.chain = c.dead;
-    // 殘影：QB 後 1.5 秒內大約一半的射擊打空
-    p.lgQbAt = p.t;
-    let hit = 0;
-    for (let i = 0; i < 40; i++) {
-      const h = p.hp;
-      p.iFrames = 0;
-      p.takeDamage(100, 0, a, p.center(), new THREE.Vector3(0, 0, 1));
-      if (p.hp < h) hit++;
-    }
-    out.ghost = hit;
-    p.lgQbAt = -99;
-    // 反應裝甲：被近戰打中＝爆炸反擊
-    a.pos.copy(at(4, 0));
+    // 反應裝甲
     p.lgReactT = 0;
     out.react = lost(a, () => p.takeDamage(100, 0, a, p.center(), new THREE.Vector3(0, 0, 1), { kb: 0 }));
-    // 堡壘：站著不動 1 秒
-    p.lgStillT = 0;
-    p.iFrames = 0;
-    const d0 = lost(p, () => p.takeDamage(1000, 0, a, p.center(), new THREE.Vector3(0, 0, 1)));
-    p.lgStillT = 2;
-    p.iFrames = 0;
-    const d1 = lost(p, () => p.takeDamage(1000, 0, a, p.center(), new THREE.Vector3(0, 0, 1)));
-    out.fort = d1 / d0;
-    p.lgStillT = 0;
-    // 護盾轉化
-    p.hp = p.maxHp * 0.5;
-    const h0 = p.hp;
-    p.lgAbsorbed(1000);
-    out.absorb = Math.round(p.hp - h0);
-    // 不死鳥：一次
-    p.iFrames = 0;
-    p.takeDamage(1e9, 0, a, p.center(), new THREE.Vector3(0, 0, 1), null, null, 'none');
-    out.phx = !p.dead && Math.abs(p.hp / p.maxHp - 0.3) < 0.02;
-    // 子彈的欄位
-    out.shotX = [!!(p.lgShotX('bullet') || {}).pierce, !!(p.lgShotX('missile') || {}).lgSplit];
-    // 分裂彈頭：導彈打中時多 3 枚小導彈
-    const n0 = g.projectiles.length;
-    p.lgSplitAt({ pos: a.center(), dmg: 1000, impactV: 100, splash: 6, wid: 'bw_ms' }, a);
-    out.split = g.projectiles.length - n0;
-    // 貫穿彈：實際飛行，一直線上的兩台都打中
-    const Proj = g.projectiles[g.projectiles.length - 1].constructor;
-    for (const pr of g.projectiles) pr.dead = true;
-    const e1 = foe(0, -20),
-      e2 = foe(0, -32);
-    // 地圖是隨機的（礦坑的岩頂、地形、物件可能擋在兩台之間）：這一段暫時不判定地形
-    const W0 = { hw: W.hitsWorld, roof: W.roofMesh };
-    W.hitsWorld = () => false;
-    W.roofMesh = null;
-    const ds0 = g.destructiblesF;
-    g.destructiblesF = () => [];
-    const c1 = e1.center();
-    const from = c1.clone().add(new THREE.Vector3(0, 0, 25));
-    const hp1 = e1.hp,
-      hp2 = e2.hp;
-    const pr = new Proj(g, {
-      pos: from.clone(),
-      vel: new THREE.Vector3(0, 0, -300),
-      kind: 'bullet',
-      dmg: 500,
-      impactV: 10,
-      team: 'player',
-      owner: p,
-      life: 2,
-      pierce: true,
-      wid: 'w_rifle',
-    });
-    g.projectiles.push(pr);
-    for (let i = 0; i < 60 && !pr.dead; i++) pr.update(1 / 60);
-    out.pierce = [hp1 - e1.hp > 0, hp2 - e2.hp > 0];
-    W.hitsWorld = W0.hw;
-    W.roofMesh = W0.roof;
-    g.destructiblesF = ds0;
-    for (const e of [a, b, c, k, e1, e2]) e.dead = true;
+    // 干擾網：增援的敵人硬直
+    g.waveAt = { pos: at(40, 0) };
+    const j = g.spawnType('mt', 1, 1, at(40, 0), 1);
+    g.waveAt = null;
+    j.updateAI = () => {};
+    out.jam = j.staggerT >= 2.9;
+    // 陷阱大師：對敵人 ×2、不傷到自己
+    const e2 = foe(-30, 0);
+    const d1 = lost(e2, () => g.devHurt(e2, 0.01, 0, null, e2.center(), 'exp'));
+    out.trap = [d1, lost(p, () => g.devHurt(p, 0.01, 0, null, p.center(), 'exp'))];
+    // 拾荒本能、先遣偵察：持有判定
+    out.any = g.lgAny('lgScrap') && g.lgAny('lgScout');
+    for (const e of [a, c, k, j, e2]) e.dead = true;
     g.state = 'play';
     return out;
   });
   check(r.reso, '共鳴：兩家委託方的傳說模組，傷害等小幅提高');
-  check(r.last[0] === 3 && r.last[1] === 1, '終彈強化：彈匣最後一發 ×3');
-  check(r.arc > 0, `電弧刃：電弧跳到附近的敵人（${r.arc}）`);
-  check(r.refract > 0 && r.resoT, `折射雷射：折射到旁邊的敵人（${r.refract}）；蓄力共鳴：能量武器不耗 EN`);
-  check(r.arcqb > 0, `電弧推進：QB 路徑上的敵人受傷（${r.arcqb}）`);
-  check(r.stomp > 0, `落雷踐踏：落地的衝擊波（${r.stomp}）`);
-  check(r.over > 0, `過載核心：EN 用完時電磁脈衝（${r.over}）`);
-  check(r.chase && r.chain, '追擊推進：擊破後 QB 不耗 EN；連鎖引爆：AP 低的敵人直接引爆');
-  check(r.ghost > 8 && r.ghost < 32, `殘影：QB 後的射擊大約一半打空（40 發打中 ${r.ghost}）`);
-  check(r.react > 0, `反應裝甲：被近戰打中時爆炸反擊（${r.react}）`);
-  check(Math.abs(r.fort - 0.6) < 0.05, `堡壘：站著不動時受到的傷害 ×${r.fort.toFixed(2)}`);
-  check(r.absorb === 300, '護盾轉化：擋下的 30% 轉成 AP');
-  check(r.phx, '不死鳥：AP 歸零時以 30% 復活');
-  check(r.shotX[0] && r.shotX[1] && r.split === 3, '貫穿彈與分裂彈頭：子彈帶旗標、導彈分裂成 3 枚');
-  check(r.pierce[0] && r.pierce[1], `貫穿彈：一直線上的兩台都打中（${r.pierce.join('、')}）`);
+  check(Math.abs(r.exit - 1.2) < 1e-6, '急行軍：每一段開場速度 +20%');
+  check(r.salvo[0] && Math.abs(r.salvo[1] - 1.2) < 1e-6, '補給回收：撿到彈藥箱時彈匣裝滿、實彈傷害 ×1.2');
+  check(
+    r.over[0] === 1.5 && Math.abs(r.over[1] - 1.15) < 1e-6,
+    '超頻：風格評價 A 以上時 EN 回復 ×1.5、能量武器 ×1.15',
+  );
+  check(r.conduit, '能源導管：使用地圖裝置時 EN 全滿、QB 與能量武器不耗 EN');
+  check(r.medic === 500, `戰地醫護：用修復套件後受傷 −50%（${r.medic}）`);
+  check(r.bulwark === 0, `增援壁壘：護盾擋下傷害（${r.bulwark}）`);
+  check(r.cache, '補給專家：打開補給箱時回復 AP 25%、修復套件 +1');
+  check(r.bounty > 0, `懸賞：擊破 5 台得到 COAM（${r.bounty}）`);
+  check(r.chain, '連鎖引爆：AP 低的敵人直接引爆');
+  check(r.arcqb > 0 && r.react > 0, `電弧推進（${r.arcqb}）、反應裝甲（${r.react}）`);
+  check(r.jam, '干擾網：增援的敵人硬直 3 秒');
+  check(
+    r.trap[0] > 15000 && r.trap[1] === 0,
+    `陷阱大師：對敵人 ×2（${r.trap[0]}）、不傷到自己（${r.trap[1]}）`,
+  );
+  check(r.any, '拾荒本能、先遣偵察：Game.lgAny 判定持有');
   // 三選一：精英擊破後固定有一個傳說模組；自動選的時候略過
   const pick = await page.evaluate(() => {
     const g = window.__game;

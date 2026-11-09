@@ -48,6 +48,7 @@ Object.assign(Game.prototype, {
     if (p.kits <= 0 || p.hp >= p.maxHp || p.dead || p.downed) return;
     p.kits--;
     p.hp = Math.min(p.maxHp, p.hp + Math.round(p.maxHp * p.kitHeal));
+    p.lgKit(); // 傳說模組「戰地醫護」（mech-legend.js）
     p.en = Math.min(p.enMax, p.en + p.enMax * p.pmv('kitEn'));
     this.fx.ring(p.center(), 5, 0x7ee081);
     SFX.kit();
@@ -787,6 +788,7 @@ Object.assign(Game.prototype, {
     if (o.isBoss && this.spawnTier && o.tier === undefined) o.tier = this.spawnTier; // Boss 改版的刁鑽度
     this.gearEnemy(o); // 敵對 AC 身上的零件帶品級與詞條（gear-loot.js）
     const e = new MechEntity(this, o.asm, PALETTES[o.pal], o);
+    if (this.waveAt && !o.isBoss && this.lgAny('lgJam')) e.staggerT = Math.max(e.staggerT, 3); // 傳說模組「干擾網」
     if (o.hpAbs) e.maxHp = e.hp = Math.round(o.hpAbs); // 指定的血量（Boss 改版的部位：Boss 的比例）
     // 增援波次：在預告的地點附近（空降的從上空落下）
     // 據點的守衛（guardAt）：一律在箱子旁（不上高處），離玩家 GUARD_MIN_D 以上（否則一開場就出動）

@@ -288,6 +288,7 @@ Object.assign(Game.prototype, {
     if (p.kits <= 0 || p.hp >= p.maxHp || p.dead || p.downed) return;
     p.kits--;
     p.hp = Math.min(p.maxHp, p.hp + Math.round(p.maxHp * p.kitHeal));
+    p.lgKit(); // 傳說模組「戰地醫護」（mech-legend.js）
     p.en = Math.min(p.enMax, p.en + p.enMax * p.pmv('kitEn'));
     this.fx.ring(p.center(), 5, 0x7ee081);
     SFX.kit();

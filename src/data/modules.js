@@ -93,19 +93,14 @@ export const MODULES = {
   // ---- 傳說模組（主線擴充 B3，docs/campaign-expansion-design.md）：改變武器或機動的行為；不能升級（max 1），
   // 一次出擊最多持有 LEGEND_MAX 個；精英、Boss、大型兵器擊破後的三選一固定有一個（modOffer 的 legend）。
   // 行為在 entities/mech-legend.js（房主／單機判定）。
-  lg_split: {
+  // 2026-11-09 改版（docs/gear-rarity-design.md 第 8 節）：和零件品級的詞條重疊的 12 個換成「只有一次出擊才有」的效果——
+  // 地圖裝置、增援、據點、修復套件、出口、風格評價、掉落；留下連鎖引爆、蓄力共鳴、電弧推進、反應裝甲
+  lg_salvo: {
     faction: 'castron',
     legend: true,
-    name: '分裂彈頭',
-    desc: '導彈命中時分裂成 3 枚小導彈，追蹤附近的敵人',
-    fx: { lgSplit: 1 },
-  },
-  lg_pierce: {
-    faction: 'castron',
-    legend: true,
-    name: '貫穿彈',
-    desc: '實彈貫穿第一個目標，繼續打中後面的敵人',
-    fx: { lgPierce: 1 },
+    name: '補給回收',
+    desc: '撿到彈藥箱時所有武器立刻裝滿彈匣，10 秒內實彈武器傷害 +20%',
+    fx: { lgSalvo: 1 },
   },
   lg_chain: {
     faction: 'castron',
@@ -114,33 +109,40 @@ export const MODULES = {
     desc: '擊破的敵人爆炸，爆炸範圍內 AP 低於 20% 的敵人直接引爆',
     fx: { lgChain: 1 },
   },
-  lg_last: {
+  lg_scrap: {
     faction: 'castron',
     legend: true,
-    name: '終彈強化',
-    desc: '彈匣的最後一發傷害 ×3、衝擊 ×2',
-    fx: { lgLast: 1 },
+    name: '拾荒本能',
+    desc: '擊破帶詞綴的敵人與敵對 AC 一定掉彈藥箱，素材多掉一個',
+    fx: { lgScrap: 1 },
   },
-  lg_refract: {
+  lg_bounty: {
+    faction: 'castron',
+    legend: true,
+    name: '懸賞',
+    desc: '每擊破 5 台敵人：COAM 報酬、回復 AP 8%',
+    fx: { lgBounty: 1 },
+  },
+  lg_jam: {
     faction: 'aetheric',
     legend: true,
-    name: '折射雷射',
-    desc: '雷射命中後折射到最近的另一個敵人（傷害 60%）',
-    fx: { lgRefract: 1 },
+    name: '干擾網',
+    desc: '增援抵達時，新出現的敵人硬直 3 秒（Boss 除外）',
+    fx: { lgJam: 1 },
   },
-  lg_overload: {
+  lg_overclock: {
     faction: 'aetheric',
     legend: true,
-    name: '過載核心',
-    desc: 'EN 用完時放出電磁脈衝：附近的敵人受傷、失衡量大增',
-    fx: { lgOverload: 1 },
+    name: '超頻',
+    desc: '風格評價 A 以上時，EN 回復 +50%、能量武器傷害 +15%',
+    fx: { lgOverclock: 1 },
   },
-  lg_arc: {
+  lg_conduit: {
     faction: 'aetheric',
     legend: true,
-    name: '電弧刃',
-    desc: '近戰命中時電弧跳到附近 2 個敵人',
-    fx: { lgArc: 1 },
+    name: '能源導管',
+    desc: '使用地圖裝置（雷達站、回復站、固定砲台）時 EN 全滿，8 秒內 QB 與能量武器不耗 EN',
+    fx: { lgConduit: 1 },
   },
   lg_reso: {
     faction: 'aetheric',
@@ -149,12 +151,12 @@ export const MODULES = {
     desc: '蓄力射擊命中後 3 秒內，能量武器不耗 EN',
     fx: { lgReso: 1 },
   },
-  lg_ghost: {
+  lg_scout: {
     faction: 'veerwell',
     legend: true,
-    name: '殘影',
-    desc: 'QB 後 1.5 秒內，敵人的射擊有一半打在殘影上',
-    fx: { lgGhost: 1 },
+    name: '先遣偵察',
+    desc: '還沒交戰的敵人察覺你的速度 −50%',
+    fx: { lgScout: 1 },
   },
   lg_arcqb: {
     faction: 'veerwell',
@@ -163,19 +165,19 @@ export const MODULES = {
     desc: 'QB 的路徑放出電弧，碰到的敵人受傷',
     fx: { lgArcQB: 1 },
   },
-  lg_stomp: {
+  lg_exit: {
     faction: 'veerwell',
     legend: true,
-    name: '落雷踐踏',
-    desc: '從高處落地時產生衝擊波',
-    fx: { lgStomp: 1 },
+    name: '急行軍',
+    desc: '站進出口的時間減半；每一段開場 15 秒內速度 +20%',
+    fx: { lgExit: 1 },
   },
-  lg_chase: {
+  lg_trap: {
     faction: 'veerwell',
     legend: true,
-    name: '追擊推進',
-    desc: '擊破敵人後 2 秒內 QB 不耗 EN',
-    fx: { lgChase: 1 },
+    name: '陷阱大師',
+    desc: '環境陷阱對敵人的傷害 ×2，而且不會傷到你',
+    fx: { lgTrap: 1 },
   },
   lg_react: {
     faction: 'sancta',
@@ -184,26 +186,26 @@ export const MODULES = {
     desc: '被近戰打中時爆炸反擊（冷卻 3 秒）',
     fx: { lgReact: 1 },
   },
-  lg_absorb: {
+  lg_medic: {
     faction: 'sancta',
     legend: true,
-    name: '護盾轉化',
-    desc: '脈衝盾擋下的傷害有 30% 轉成 AP',
-    fx: { lgAbsorb: 1 },
+    name: '戰地醫護',
+    desc: '用修復套件時，40 m 內的隊友與僚機也回復 30%；之後 3 秒受到的傷害 −50%',
+    fx: { lgMedic: 1 },
   },
-  lg_phoenix: {
+  lg_cache: {
     faction: 'sancta',
     legend: true,
-    name: '不死鳥',
-    desc: '每個區段一次：AP 歸零時以 30% 復活並放出衝擊波',
-    fx: { lgPhoenix: 1 },
+    name: '補給專家',
+    desc: '打開補給箱時回復 AP 25%、修復套件 +1，箱子裡有裝備的機率加倍',
+    fx: { lgCache: 1 },
   },
-  lg_fort: {
+  lg_bulwark: {
     faction: 'sancta',
     legend: true,
-    name: '堡壘',
-    desc: '站著不動 1 秒後受到的傷害 −40%、不會失衡',
-    fx: { lgFort: 1 },
+    name: '增援壁壘',
+    desc: '增援抵達時，得到一層 AP 15% 的護盾（打掉為止）',
+    fx: { lgBulwark: 1 },
   },
   // ---- 雙重模組 ----
   d_ram: {
