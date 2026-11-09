@@ -11,14 +11,8 @@ import { MechEntity } from '../entities/mech-entity.js';
 import { PALETTES } from '../render/materials.js';
 import { World } from '../world/world.js';
 import { Game } from './game.js';
+import { HEAT } from './constants.js';
 
-// 危險條款：k＝報酬加成
-const HEAT = {
-  shield: { name: '敵人強化', desc: '敵人 AP ×1.35', k: 0.25 },
-  p2: { name: 'Boss 第二型態', desc: 'Boss 一開始就是第二型態', k: 0.25 },
-  timed: { name: '限時作戰', desc: '25 分鐘內完成，超過就失敗', k: 0.2 },
-  nosupply: { name: '補給中斷', desc: '沒有補給區段', k: 0.15 },
-};
 const INSTRUCTOR = {
   name: 'INSTRUCTOR',
   pal: 'duelist',

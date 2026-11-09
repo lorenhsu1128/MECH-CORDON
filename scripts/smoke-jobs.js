@@ -17,6 +17,7 @@ const SENSITIVE = [
   'testMpStatus',
   'testMpCrowd',
   'testMpCampaign',
+  'testFreeOpsMp',
   'testMpLevels',
   'server',
   'testChase',

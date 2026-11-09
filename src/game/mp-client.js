@@ -717,6 +717,7 @@ Object.assign(Game.prototype, {
     if (d.lv) return this.lvClientEnd(d); // 自訂關卡：沒有經驗與獎勵
     this.campC = null;
     this.campCk = null;
+    this.campCkFree = null;
     this.state = 'result';
     const $ = (id) => document.getElementById(id);
     // 駕駛員經驗與熟練度由房主計算，各自寫入自己的存檔

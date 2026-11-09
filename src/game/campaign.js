@@ -105,6 +105,14 @@ Object.assign(Game.prototype, {
   campSortie() {
     return SORTIES[this.camp.sid];
   },
+  // 紀錄點：主線寫在存檔的 story.sortie；自由出擊（camp.free，docs/free-sortie-design.md）只放在記憶體
+  campCkGet() {
+    return this.camp && this.camp.free ? this.freeCk || null : this.campStory().sortie;
+  },
+  campCkSet(ck) {
+    if (this.camp && this.camp.free) this.freeCk = ck;
+    else this.campStory().sortie = ck;
+  },
   // 通訊的條件（data/story.js 的 COMMS）
   campCtx(extra = {}) {
     const c = this.camp,
@@ -230,10 +238,11 @@ Object.assign(Game.prototype, {
     this.hkReset(); // 人員擊殺數（crowd.js）
     this.lootReset(); // 這次出擊拿到的素材與零件（loot.js）
     // 作戰室預排的（全像戰略桌顯示的第一段地圖）；重打、危險條款另外排
-    const pre = !o.replay && !(o.heat && Object.keys(o.heat).length) && st.pre && st.pre[sid];
-    if (st.pre) delete st.pre[sid];
-    const plan = pre ? pre.plan : planSortie(so, Math.random, st.recent);
-    st.recent = [...st.recent, ...planKeys(so, plan)].slice(-40);
+    // 自由出擊（o.free＝作戰設定，game/free-ops.js）：排程由作戰設定決定、不寫 recent
+    const pre = !o.free && !o.replay && !(o.heat && Object.keys(o.heat).length) && st.pre && st.pre[sid];
+    if (st.pre && !o.free) delete st.pre[sid];
+    const plan = o.plan ? o.plan : pre ? pre.plan : planSortie(so, Math.random, st.recent);
+    if (!o.free) st.recent = [...st.recent, ...planKeys(so, plan)].slice(-40);
     this.camp = {
       sid,
       seg: 0,
@@ -249,27 +258,38 @@ Object.assign(Game.prototype, {
       earned: 0,
       time: 0,
       fails: 0,
-      replay: !!o.replay,
+      replay: !!(o.replay || o.free), // 自由出擊沿用重打的隔離（模組從零開始、抉擇不寫進存檔）
       heat: o.heat || {},
       rmods: [],
     };
+    if (o.free) {
+      this.camp.free = o.free;
+      if (o.free.wing) {
+        this.camp.wingHire = true; // 僚機（wing.js）：照委託板的雇用
+        this.camp.wingK = o.free.wing;
+      }
+      if (o.types) this.camp.types = o.types.slice();
+    }
     // 戰術模組：這一章持有的（換章時清空）；放棄出擊時退回出擊開始時的狀態
     this.camp.mods0 = this.campMods(so.chapter).map((m) => ({ ...m }));
     const pool0 = so.segs[0].pool.filter(
       (t) => this.campTypeOk(t, 0) && !(o.heat && o.heat.nosupply && t === 'supply'),
     );
-    this.camp.types[0] =
-      pre && pool0.includes(pre.type0) ? pre.type0 : pick(pool0.length ? pool0 : ['battle']);
+    if (!this.camp.types[0])
+      this.camp.types[0] =
+        pre && pool0.includes(pre.type0) ? pre.type0 : pick(pool0.length ? pool0 : ['battle']);
     this.campCheckpoint();
     this.campShowTrans(TRANSITIONS.drop, true);
   },
   // 從存檔的紀錄點還原（車庫的「繼續主線出擊」、失敗後重試）
   campRestore() {
-    const ck = this.campStory().sortie;
+    const ck = this.campCkGet();
     if (!ck) return false;
     const fails = this.camp ? this.camp.fails : ck.fails || 0;
+    const free = this.camp && this.camp.free;
     this.camp = clone(ck);
     this.camp.fails = fails;
+    if (free) this.camp.free = free;
     if (ck.mods) this.campSetMods(ck.mods); // 紀錄點之後拿到的模組不算
     return true;
   },
@@ -277,10 +297,17 @@ Object.assign(Game.prototype, {
     this.camp.mods = this.campMods().map((m) => ({ ...m }));
     const ck = {};
     for (const k of CK_KEYS) ck[k] = this.camp[k];
-    this.campStory().sortie = clone(ck);
-    this.writeSave();
+    this.campCkSet(clone(ck));
+    if (!this.camp.free) this.writeSave();
     // 多人：紀錄點也給客機一份（房主遷移時由新房主接手）
-    if (this.campMp()) this.net.tr.broadcast({ t: 'cck', ck: clone(ck) });
+    // 自由出擊：臨時出擊的定義與作戰設定也給（新房主接手時要用）
+    if (this.campMp())
+      this.net.tr.broadcast({
+        t: 'cck',
+        ck: clone(ck),
+        free: this.camp.free || null,
+        fr: this.camp.sid === 'fr' ? SORTIES.fr : null,
+      });
   },
 
   // ---------- 區段 ----------
@@ -319,7 +346,8 @@ Object.assign(Game.prototype, {
       this.campMpSpawn(); // 多人：每位玩家各自的模組與上一段的狀態（campaign-mp.js）
     else {
       // 委託板的「借用的機體」：用委託方準備的組裝（board.js）
-      this.player = new MechEntity(this, (this.campRule('loaner') && so.asm) || S.asm, this.myPal(), {
+      const loan = this.campRule('loaner') && (so.asm || (c.free && c.free.asm));
+      this.player = new MechEntity(this, loan || S.asm, this.myPal(), {
         team: 'player',
         name: 'RAVEN',
         palKey: this.myPalKey(),
@@ -428,8 +456,8 @@ Object.assign(Game.prototype, {
       // 具名 AC（強化）＋少數護衛
       // 主題的專屬 AC（劇情角色）；沒有時用一般的具名 AC
       // 區段指定的（依抉擇）＞主題的；別的主題的專屬 AC 是跨章節再登場（強化）
-      const ace = this.campSegAce(seg) || THEME_ACE[seg.theme];
-      const key = ace || pick(Object.keys(AC_ROSTER));
+      const ace = seg.acr ? '' : this.campSegAce(seg) || THEME_ACE[seg.theme];
+      const key = ace || (AC_ROSTER[seg.acr] ? seg.acr : pick(Object.keys(AC_ROSTER))); // acr：自由出擊指定的具名 AC
       const r = ace ? ACES[ace] : AC_ROSTER[key];
       const up = ace && ACES[ace].theme !== seg.theme ? 1.15 : 1;
       if (ace) {
@@ -1097,7 +1125,8 @@ Object.assign(Game.prototype, {
   // 抉擇演出：x_<抉擇>_pre（選前，live）、x_<抉擇>_<選項>（選後）；單人、劇情動畫開啟時才播。回傳 true＝播放中
   campChoiceCine(id, key, done, opts) {
     const k = `x_${id}_${key}`;
-    if (this.campMp() || !this.cineAllowed() || !this.storyAuto() || !this.cineFor(k)) return false;
+    if (this.camp.free || this.campMp() || !this.cineAllowed() || !this.storyAuto() || !this.cineFor(k))
+      return false;
     const st = this.campStory();
     const o = (opts || []).map((q) => {
       const F = FACTIONS[q.faction] || {};
@@ -1322,12 +1351,12 @@ Object.assign(Game.prototype, {
     this.state = 'campfail';
     this.showScreen('campFail');
     const so = this.campSortie(),
-      ck = this.campStory().sortie;
+      ck = this.campCkGet();
     document.getElementById('cfTitle').textContent = 'AC 已被擊破';
     document.getElementById('cfInfo').textContent =
       `${so.name}　紀錄點：區段 ${ck.seg + 1}／${so.segs.length} 的轉場起點（失敗 ${c.fails} 次）`;
     document.getElementById('ctBtns2').style.display = '';
-    document.getElementById('btnCampHubKeep').style.display = this.campMp() ? 'none' : '';
+    this.campFailBtns();
     // 失敗的通訊（依擊破你的敵人、失敗次數）直接顯示在失敗畫面
     this.commClear();
     const e = this.campComm('fail', this.campCtx({ killedBy: this.campKilledBy }), false);
@@ -1352,7 +1381,7 @@ Object.assign(Game.prototype, {
   // 之後和失敗畫面一樣可以從紀錄點繼續、整備後繼續、回作戰室（作戰室的「繼續出擊」接回）或放棄出擊
   campRetreat() {
     const c = this.camp,
-      ck = this.campStory().sortie;
+      ck = this.campCkGet();
     if (!c || !ck) return this.campEnd(false, true);
     SFX.ui();
     this.clearMission();
@@ -1366,11 +1395,19 @@ Object.assign(Game.prototype, {
       `${so.name}　紀錄點：區段 ${ck.seg + 1}／${so.segs.length} 的轉場起點（這一段的進度不保留）`;
     document.getElementById('cfComm').innerHTML = '';
     document.getElementById('ctBtns2').style.display = '';
-    document.getElementById('btnCampHubKeep').style.display = '';
+    this.campFailBtns();
+  },
+  // 失敗／撤退畫面的按鈕：自由出擊沒有「回作戰室」（紀錄點不保留），放棄的文字改成回機甲庫
+  campFailBtns() {
+    const free = !!(this.camp && this.camp.free);
+    const b = document.getElementById('btnCampHubKeep');
+    b.style.display = this.campMp() || free ? 'none' : '';
+    const q = document.getElementById('btnCampQuit');
+    if (q) q.textContent = free ? '結束出擊（回機甲庫）' : '放棄出擊';
   },
   // 回作戰室、保留紀錄點（作戰室的「繼續出擊」從那一段的開頭接回）
   campHubKeep() {
-    const ck = this.campStory().sortie;
+    const ck = this.campCkGet();
     SFX.ui();
     if (ck && ck.mods) this.campSetMods(ck.mods); // 紀錄點之後拿到的模組不算（接回時同樣以紀錄點為準）
     this.clearMission();
@@ -1382,6 +1419,7 @@ Object.assign(Game.prototype, {
   // 失敗／撤退畫面的「放棄出擊」：紀錄點會被刪除，先確認（多人照舊直接放棄）
   campQuitAsk() {
     if (this.campMp()) return this.campEnd(false, true);
+    if (this.camp && this.camp.free) return this.campEnd(false, true); // 自由出擊：沒有存檔裡的紀錄點
     this.uiConfirm(
       '放棄這次出擊？紀錄點會被刪除，下次要從第一段重新開始。',
       () => this.campEnd(false, true),
@@ -1399,7 +1437,7 @@ Object.assign(Game.prototype, {
   campResume() {
     if (this.srvGate(() => this.campResume())) return; // 伺服器預設組還在讀：讀完再進來（local-lib.js）
     SFX.ui();
-    if (this.campStory().sortie && this.campRestore())
+    if (this.campCkGet() && this.campRestore())
       this.campShowTrans(this.camp.trans[this.camp.seg] || TRANSITIONS.drop, 'resume');
   },
   // 放棄存檔裡的紀錄點（車庫）
@@ -1435,7 +1473,11 @@ Object.assign(Game.prototype, {
     }
     const e = xpAll[mp ? this.net.me : 0];
     let bonus = 0;
-    if (success) {
+    const free = c.free; // 自由出擊（docs/free-sortie-design.md）：只給報酬與經驗，不寫主線進度
+    if (success && free) {
+      bonus = Math.round((so.reward * this.heatMul(c.heat) * this.tierPartsK()) / 100) * 100;
+      S.coam += bonus;
+    } else if (success) {
       bonus = Math.round((so.reward * this.heatMul(c.heat) * this.tierPartsK()) / 100) * 100; // 危險條款的報酬加成、打壞的 Boss 部位（boss-tier.js）
       S.coam += bonus;
       st.done[c.sid] = (st.done[c.sid] || 0) + 1;
@@ -1469,8 +1511,9 @@ Object.assign(Game.prototype, {
         this.flashMsg('章節完成：戰術模組重置', 0xffd060, 3);
       }
     } else if (c.mods0) this.campSetMods(c.mods0); // 失敗／放棄：退回出擊開始時的模組
-    this.campResultHub = !mp; // 結果畫面的「確定」回到機庫（多人回大廳）
-    st.sortie = null;
+    this.campResultHub = !mp && !free; // 結果畫面的「確定」回到機庫（多人回大廳；自由出擊回機甲庫）
+    if (free) this.freeCk = null;
+    else st.sortie = null;
     this.writeSave();
     const segsDone = success ? so.segs.length : c.seg;
     this.clearMission();
@@ -1478,7 +1521,8 @@ Object.assign(Game.prototype, {
     this.camp = null;
     this.state = 'result';
     this.pilotRenderResult(this.pilotGrant('pve', e));
-    $('rTitle').textContent = success ? '主線出擊 完成' : aborted ? '主線出擊 放棄' : '主線出擊 失敗';
+    const ttl = free ? '自由出擊' : '主線出擊';
+    $('rTitle').textContent = ttl + (success ? ' 完成' : aborted ? ' 結束' : ' 失敗');
     const rank = success ? (c.fails === 0 ? 'S' : c.fails <= 1 ? 'A' : c.fails <= 3 ? 'B' : 'C') : '—';
     $('rRank').textContent = rank;
     $('rRank').style.color = success ? '' : '#8a97a6';
@@ -1489,7 +1533,9 @@ Object.assign(Game.prototype, {
       ['完成區段', `${segsDone} / ${so.segs.length}`],
       ['作戰時間', `${mm} 分 ${String(ss).padStart(2, '0')} 秒`],
       ['重試次數', String(c.fails)],
-      ...(c.replay ? [['作戰紀錄', this.heatNames(c.heat).join('、') || '無危險條款']] : []),
+      ...(c.replay
+        ? [[free ? '危險條款' : '作戰紀錄', this.heatNames(c.heat).join('、') || '無危險條款']]
+        : []),
       ['擊破數', String(c.stats[0] ? c.stats[0].kills : 0)],
       ...this.hkRows(), // 人員擊殺數（crowd.js）
       ...this.lootRows(), // 素材與零件（loot.js）
@@ -1505,7 +1551,7 @@ Object.assign(Game.prototype, {
     $('resultGrid').innerHTML = rows
       .map((r) => `<span class="dim">${escHtml(r[0])}</span><span>${escHtml(r[1])}</span>`)
       .join('');
-    $('btnResultOk').textContent = mp ? '返回大廳' : '返回作戰室';
+    $('btnResultOk').textContent = mp ? '返回大廳' : free ? '返回機甲庫' : '返回作戰室';
     this.showScreen('result');
     if (mp) {
       // 多人：經驗依每位玩家、作戰完成報酬各自入帳（clientEnd）
@@ -1541,7 +1587,7 @@ Object.assign(Game.prototype, {
   },
   // HUD 上方的作戰資訊（房主與單人由 campView 產生，客機用快照帶來的同一份資料）
   campHudHtml(v) {
-    return `<b>主線｜${escHtml(v.so)}</b> ｜ 區段 ${v.seg + 1}／${v.n}【${escHtml((SEG_TYPES[v.type] || SEG_TYPES.battle).name)}】${escHtml(v.name)}<div id="objective">${escHtml(v.goal)} ｜ ${Math.floor(v.time / 60)} 分</div><div style="color:var(--acc)">COAM ${this.save.coam.toLocaleString()}${v.pend ? ` <span class="dim">（清除後：${escHtml(v.pend)}）</span>` : ''}</div>`;
+    return `<b>${v.free ? '' : '主線｜'}${escHtml(v.so)}</b> ｜ 區段 ${v.seg + 1}／${v.n}【${escHtml((SEG_TYPES[v.type] || SEG_TYPES.battle).name)}】${escHtml(v.name)}<div id="objective">${escHtml(v.goal)} ｜ ${Math.floor(v.time / 60)} 分</div><div style="color:var(--acc)">COAM ${this.save.coam.toLocaleString()}${v.pend ? ` <span class="dim">（清除後：${escHtml(v.pend)}）</span>` : ''}</div>`;
   },
   campGoal(alive, wavesLeft) {
     const c = this.camp,

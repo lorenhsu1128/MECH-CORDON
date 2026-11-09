@@ -201,6 +201,7 @@ Object.assign(Game.prototype, {
     if (mp && warn.length) $('btnGarageLobby').disabled = true;
     else $('btnGarageLobby').disabled = false;
     this.campGarageUi(warn);
+    this.garageOpsUi(); // 自由出擊的作戰設定摘要（free-ops.js）
     this.gHoverPid = undefined;
     this.garageHover(null);
     this.garageTab(this.gTab || 'eq');

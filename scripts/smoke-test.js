@@ -29871,6 +29871,481 @@ async function testDestructSegs(browser, base) {
   }
 }
 
+// 自由出擊的作戰設定（docs/free-sortie-design.md、game/free-ops.js）：畫面、各模式出擊、隔離主線的進度、結果回機甲庫
+async function testFreeOps(browser, base) {
+  console.log('自由出擊的作戰設定');
+  const { ctx, page } = await newPage(browser, 'freeops');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await freezeLoop(page);
+  // 機甲庫的摘要與作戰設定畫面
+  const ui = await page.evaluate(() => {
+    const g = window.__game;
+    g.save.level = 7;
+    g.save.coam = 100000;
+    g.writeSave();
+    try {
+      localStorage.removeItem('rubicon_freeops');
+    } catch (e) {}
+    g.fo = null;
+    g.openGarage();
+    const ops = document.getElementById('gOps');
+    const out = { ops: !!ops && ops.style.display !== 'none', sum: ops ? ops.textContent : '' };
+    document.getElementById('btnFreeOps').click();
+    out.state = g.state;
+    out.modes = document.querySelectorAll('#foModes button').length;
+    document.querySelector('#foModes button[data-mode="seg"]').click();
+    out.mode = g.fo.mode;
+    out.rows = document.querySelectorAll('#foBody .foRow').length;
+    // 選 Boss：Boss 的選單出現
+    const sel = document.querySelector('#foBody select[data-fo="type"]');
+    sel.value = 'boss';
+    sel.onchange();
+    out.bossSel = document.querySelectorAll('#foBody select[data-fo="boss"] option').length;
+    out.lvMax = Math.max(
+      ...[...document.querySelectorAll('#foBody select[data-fo="level"] option')].map((o) => +o.value),
+    );
+    out.saved = JSON.parse(localStorage.getItem('rubicon_freeops')).type;
+    for (const m of ['chain', 'sortie', 'level']) {
+      document.querySelector(`#foModes button[data-mode="${m}"]`).click();
+      out[m] = document.querySelectorAll('#foBody .foRow').length;
+    }
+    return out;
+  });
+  check(ui.ops && /依等級/.test(ui.sum), `機甲庫顯示作戰設定的摘要：${ui.sum}`);
+  check(ui.state === 'freeops' && ui.modes === 4, `作戰設定畫面 4 種模式（${ui.state}、${ui.modes}）`);
+  check(ui.mode === 'seg' && ui.rows >= 6, `單一區段的欄位 ${ui.rows} 列`);
+  check(
+    ui.bossSel === 29 && ui.saved === 'boss',
+    `Boss 可以從 28 隻裡選（${ui.bossSel - 1}），設定存進瀏覽器`,
+  );
+  check(ui.lvMax === 7, `手動的等級上限是目前等級（${ui.lvMax}）`);
+  check(
+    ui.chain >= 2 && ui.sortie >= 1 && ui.level >= 1,
+    `連續出擊／主線出擊重現／依等級的欄位（${ui.chain}、${ui.sortie}、${ui.level}）`,
+  );
+  for (const [w, h, n] of [
+    [1920, 1080, 'pc'],
+    [844, 390, 'phone'],
+  ]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.evaluate(() => {
+      const g = window.__game;
+      g.fo.mode = 'seg';
+      g.fo.type = 'elite';
+      g.renderFreeOps();
+    });
+    await wait(200);
+    await page.screenshot({ path: path.join(SHOT_DIR, `freeops-${n}.png`) });
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
+  // 各種任務：單一區段出擊、類型與地圖合用
+  const types = await page.evaluate(() => {
+    const g = window.__game;
+    g.autoPickMod = true;
+    const st = g.campStory();
+    st.sortie = {
+      sid: 'c1s1',
+      seg: 2,
+      seeds: [1, 2, 3, 4, 5],
+      plan: [{}, {}, {}, {}, {}],
+      types: ['battle'],
+      trans: [],
+      carry: {},
+    };
+    const ck0 = JSON.stringify(st.sortie);
+    const done0 = JSON.stringify(st.done);
+    const res = [];
+    const T = [
+      'battle',
+      'elite',
+      'destroy',
+      'defend',
+      'escort',
+      'breakthrough',
+      'intel',
+      'stealth',
+      'extract',
+      'chase',
+      'front',
+      'colossus',
+      'air',
+      'boss',
+    ];
+    for (const type of T) {
+      g.fo = {
+        ...g.fo,
+        mode: 'seg',
+        type,
+        theme: type === 'escort' || type === 'chase' ? 'orbit' : '',
+        variant: '',
+        landmark: '',
+        boss: type === 'boss' ? '5' : '',
+        level: 4,
+      };
+      g.foBegin();
+      const tr = g.state;
+      g.campGo();
+      const c = g.camp;
+      res.push({
+        type,
+        tr,
+        st: g.state,
+        free: !!(c && c.free),
+        got: c && c.ss && (c.ss.type || g.campSegType()),
+        theme: g.worldTheme,
+        road: !!(g.world && g.world.corridor),
+        en: g.enemies.filter((e) => !e.dead).length,
+        boss: g.bossDef ? g.bossDef.name : '',
+        hud: g.campHudTop(),
+        L: g.campLevel(),
+      });
+      g.clearMission();
+      g.campClearExits();
+      g.camp = null;
+    }
+    return { res, ck: JSON.stringify(st.sortie) === ck0, done: JSON.stringify(st.done) === done0 };
+  });
+  for (const r of types.res)
+    check(
+      r.tr === 'camptrans' &&
+        r.st === 'play' &&
+        r.free &&
+        r.got === r.type &&
+        r.L === 4 &&
+        !/主線｜/.test(r.hud),
+      `自由出擊【${r.type}】${r.theme}：轉場 → 任務中、類型 ${r.got}、敵人 ${r.en}${r.boss ? '、' + r.boss : ''}`,
+    );
+  const esc = types.res.find((r) => r.type === 'escort');
+  check(esc.theme !== 'orbit' && esc.road, `護送選了沒有公路的地圖時換地圖（${esc.theme}）`);
+  const bs = types.res.find((r) => r.type === 'boss');
+  check(!!bs.boss, `指定 Boss（BOSS_DEFS[5]）：${bs.boss}`);
+  check(types.ck && types.done, '主線的紀錄點與完成次數沒有被自由出擊動到');
+  // 精英指定具名 AC；完成：報酬入帳、等級不推進、結果回機甲庫
+  const fin = await page.evaluate(() => {
+    const g = window.__game;
+    const out = {};
+    const r = document.querySelector('#foBody select[data-fo="ace"]');
+    out.aceOpts = r ? r.options.length : 0;
+    g.fo = { ...g.fo, mode: 'seg', type: 'elite', theme: 'wasteland', ace: 'r:longshot', level: 5 };
+    g.foBegin();
+    g.campGo();
+    out.elite = g.camp.ss.elite ? g.camp.ss.elite.name : '';
+    const L0 = g.save.level,
+      c0 = g.save.coam;
+    g.campEnd(true, false);
+    out.title = document.getElementById('rTitle').textContent;
+    out.ok = document.getElementById('btnResultOk').textContent;
+    out.coam = g.save.coam - c0;
+    out.level = g.save.level === L0;
+    out.done = !g.campStory().done.fr;
+    document.getElementById('btnResultOk').click();
+    out.after = g.state;
+    // 失敗畫面：沒有回作戰室，放棄＝結束出擊回機甲庫
+    g.fo = { ...g.fo, mode: 'seg', type: 'battle', theme: 'industrial', level: 3 };
+    g.foBegin();
+    g.campGo();
+    g.campFail();
+    out.fail = g.state;
+    out.keep = document.getElementById('btnCampHubKeep').style.display;
+    out.quit = document.getElementById('btnCampQuit').textContent;
+    g.campRetry(false);
+    out.retry = g.state;
+    g.campGo();
+    out.retried = g.state === 'play' && !!g.camp.free;
+    g.campFail();
+    document.getElementById('btnCampQuit').click();
+    out.quitT = document.getElementById('rTitle').textContent;
+    document.getElementById('btnResultOk').click();
+    out.after2 = g.state;
+    return out;
+  });
+  check(!!fin.elite, `精英區段指定具名 AC：${fin.elite}`);
+  check(/自由出擊 完成/.test(fin.title) && fin.ok === '返回機甲庫', `結果畫面：${fin.title}／${fin.ok}`);
+  check(
+    fin.coam > 0 && fin.level && fin.done,
+    `完成報酬入帳（+${fin.coam}）、等級不推進、不算主線的完成次數`,
+  );
+  check(fin.after === 'garage', `結果畫面的確定回機甲庫（${fin.after}）`);
+  check(
+    fin.fail === 'campfail' && fin.keep === 'none' && /回機甲庫/.test(fin.quit),
+    `失敗畫面沒有回作戰室、${fin.quit}`,
+  );
+  check(fin.retry === 'camptrans' && fin.retried, '從紀錄點繼續（記憶體裡的紀錄點）');
+  check(/自由出擊 結束/.test(fin.quitT) && fin.after2 === 'garage', `結束出擊回機甲庫（${fin.quitT}）`);
+  // 地圖細項：地標、時間、天候、作戰區域、交界變體、深度、大型兵器的種類
+  const det = await page.evaluate(() => {
+    const g = window.__game;
+    const go = (o) => {
+      g.fo = {
+        ...g.fo,
+        mode: 'seg',
+        level: 3,
+        landmark: '',
+        variant: '',
+        tod: '',
+        weather: '',
+        zone: '',
+        ...o,
+      };
+      g.foBegin();
+      g.campGo();
+      const w = g.world;
+      const r = {
+        theme: g.worldTheme,
+        v: w.variantKey,
+        lm: w.landmark ? w.landmark.key : '',
+        tod: w.tod,
+        wx: w.weather ? w.weather.kind : 'none',
+        zone: w.zoneShape,
+        depth: w.depth,
+        col: g.camp.ss.col ? g.camp.ss.col.kind : '',
+        name: g.levelName,
+      };
+      g.clearMission();
+      g.campClearExits();
+      g.camp = null;
+      return r;
+    };
+    return {
+      a: go({
+        type: 'battle',
+        theme: 'dunes',
+        variant: 'base',
+        landmark: Object.keys(g.foRef().landmarks.dunes)[1],
+        tod: 'night',
+        weather: 'rain',
+        zone: 'long',
+      }),
+      b: go({ type: 'intel', theme: 'desert', variant: 'outskirts', landmark: 'none', depth: 3 }),
+      c: go({ type: 'colossus', theme: 'snow', col: 'ship' }),
+      lm: Object.keys(g.foRef().landmarks.dunes)[1],
+    };
+  });
+  check(
+    det.a.theme === 'dunes' &&
+      !det.a.v &&
+      det.a.lm === det.lm &&
+      det.a.tod === 'night' &&
+      det.a.wx === 'rain' &&
+      det.a.zone === 'long',
+    `指定地標／夜間／降雨／狹長地帶（${JSON.stringify(det.a)}）`,
+  );
+  check(
+    det.b.v === 'outskirts' && !det.b.lm && det.b.depth === 3,
+    `交界變體、沒有地標、深度 3（${JSON.stringify(det.b)}）`,
+  );
+  check(det.c.col === 'ship', `大型兵器指定陸上戰艦（${det.c.col}）`);
+  // 連續出擊：隨機排程、清除後有出口；自己排的每段照排的類型
+  const ch = await page.evaluate(() => {
+    const g = window.__game;
+    const out = {};
+    g.fo = { ...g.fo, mode: 'chain', chainRandom: true, n: 4, level: 4 };
+    g.foBegin();
+    out.n = SORTIES_FR().segs.length;
+    out.last = SORTIES_FR().segs[3].pool[0];
+    g.campGo();
+    g.waves = [];
+    g.wavePend = null;
+    for (const e of g.enemies) if (!e.dead && e.team === 'enemy') e.hp = 0;
+    g.enemies = g.enemies.filter((e) => e.guardOf);
+    g.camp.ss.brk = null;
+    g.campCleared();
+    out.exits = g.camp.exits.length;
+    const ex = g.camp.exits[0];
+    out.exType = ex && ex.type;
+    g.campLeave(ex);
+    out.seg = g.camp.seg;
+    out.trans = g.state;
+    g.campGarage();
+    out.garage = g.state === 'garage' && document.getElementById('gCamp').style.display !== 'none';
+    out.ops = document.getElementById('gOps').style.display === 'none';
+    g.campGarageGo();
+    out.seg2 = g.state === 'play' && g.campSegType() === out.exType;
+    g.clearMission();
+    g.campClearExits();
+    g.camp = null;
+    g.fo = {
+      ...g.fo,
+      mode: 'chain',
+      chainRandom: false,
+      n: 2,
+      segs: [
+        { type: 'destroy', theme: 'dam' },
+        { type: 'boss', theme: 'snow', boss: '0' },
+      ],
+    };
+    g.foSave();
+    g.foLoad();
+    g.foBegin();
+    out.mine = SORTIES_FR()
+      .segs.map((s) => s.theme + ':' + s.pool.join('/'))
+      .join(',');
+    g.clearMission();
+    g.camp = null;
+    return out;
+    function SORTIES_FR() {
+      return window.__game.foRef().sorties.fr;
+    }
+  });
+  check(
+    ch.n === 4 && ['boss', 'elite', 'colossus'].includes(ch.last),
+    `連續出擊的隨機排程 4 段、最後一段 ${ch.last}`,
+  );
+  check(ch.exits >= 2 && ch.seg === 1 && ch.trans === 'camptrans', `區段清除 → ${ch.exits} 個出口 → 轉場`);
+  check(ch.garage && ch.ops && ch.seg2, `轉場整備（機甲庫的整備面板）→ 下一段是出口選的【${ch.exType}】`);
+  check(/^dam:destroy,snow:boss$/.test(ch.mine), `自己排的連續出擊（${ch.mine}）`);
+  // 主線出擊重現：抉擇不寫進存檔、不播通訊；規則：借用的機體、全部帶詞綴、敵人強化
+  const so = await page.evaluate(() => {
+    const g = window.__game;
+    const st = g.campStory();
+    const ch0 = JSON.stringify(st.choices),
+      log0 = (st.log || []).length;
+    g.afForce = null;
+    g.fo = { ...g.fo, mode: 'sortie', sid: 'c2s2', rule: 'loaner', affix: 'all', heat: { shield: true } };
+    g.foBegin();
+    const out = { sid: g.camp.sid, free: !!g.camp.free };
+    g.campGo();
+    out.loan = JSON.stringify(g.player.asm || {}) !== JSON.stringify(g.save.asm);
+    out.affix = g.enemies.filter((e) => !e.dead && e.af).length;
+    out.all = g.enemies.filter((e) => !e.dead && e.team === 'enemy' && !e.isBoss).length;
+    g.camp.choice = { id: 'c2', key: 'aetheric' };
+    g.campEnd(true, false);
+    out.choices = JSON.stringify(st.choices) === ch0;
+    out.log = (st.log || []).length === log0;
+    out.title = document.getElementById('rTitle').textContent;
+    g.fo.rule = '';
+    g.fo.heat = {};
+    g.fo.affix = 'auto';
+    document.getElementById('btnResultOk').click();
+    return out;
+  });
+  check(so.sid === 'c2s2' && so.free, `主線出擊重現：照主線的出擊（${so.sid}）`);
+  check(so.loan, '規則「借用的機體」：用委託方準備的組裝');
+  check(so.affix > 0 && so.affix >= so.all * 0.6, `全部帶詞綴（${so.affix}／${so.all}）`);
+  check(so.choices && so.log && /自由出擊 完成/.test(so.title), '抉擇不寫進存檔、不播主線的通訊');
+  await ctx.close();
+}
+
+// 多人的「任務」房間模式（自由出擊的作戰設定，docs/free-sortie-design.md 第 5 期）：大廳同步摘要、出擊、客機的 HUD、
+// 紀錄點帶臨時出擊的定義、完成回大廳
+async function testFreeOpsMp(browser, url) {
+  console.log('多人的任務模式（房主的作戰設定）');
+  const ctx = await browser.newContext({ viewport: { width: 1100, height: 680 } });
+  const host = await ctx.newPage();
+  const cli = await ctx.newPage();
+  watch(host, 'freeopsmp:host');
+  watch(cli, 'freeopsmp:client');
+  await host.goto(url);
+  await cli.goto(url);
+  await host.click('#btnMP');
+  await setNick(host, 'HOST');
+  await host.click('#btnMPHost');
+  await waitVisible(host, 'lobby');
+  await host.check('#mpAuto');
+  await host.dispatchEvent('#mpAuto', 'change');
+  await cli.click('#btnMP');
+  await setNick(cli, 'CLIENT');
+  await wait(1000);
+  await cli.click('#btnMPList');
+  await cli.waitForSelector('#mpRooms .part', { timeout: 15000 });
+  await cli.click('#mpRooms .part');
+  await waitVisible(cli, 'lobby', 15000);
+  await host.selectOption('#pvMode', 'ops');
+  await wait(300);
+  // 房主開作戰設定：沒有「依等級」、空戰、僚機；設定成單一區段的破壞
+  const ui = await host.evaluate(() => {
+    const g = window.__game;
+    g.save.level = 5;
+    document.getElementById('pvOps').click();
+    const out = {
+      state: g.state,
+      modes: [...document.querySelectorAll('#foModes button')].map((b) => b.dataset.mode).join(','),
+    };
+    document.querySelector('#foModes button[data-mode="seg"]').click();
+    out.air = !!document.querySelector('#foBody select[data-fo="type"] option[value="air"]');
+    out.wing = !!document.querySelector('#foBody select[data-fo="wing"]');
+    const sel = document.querySelector('#foBody select[data-fo="type"]');
+    sel.value = 'destroy';
+    sel.onchange();
+    const th = document.querySelector('#foBody select[data-fo="theme"]');
+    th.value = 'industrial';
+    th.onchange();
+    out.back = document.getElementById('btnFoBack').textContent;
+    out.go = document.getElementById('btnFoGo').style.display;
+    document.getElementById('btnFoBack').click();
+    out.after = g.state;
+    return out;
+  });
+  check(ui.state === 'freeops' && !/level/.test(ui.modes), `房主從大廳開作戰設定（模式 ${ui.modes}）`);
+  check(!ui.air && !ui.wing, '多人時沒有空戰、僚機');
+  check(ui.back === '返回大廳' && ui.go === 'none' && ui.after === 'lobby', '作戰設定的按鈕回大廳');
+  await wait(800);
+  const sum = (await cli.textContent('#lobbyMode')) || '';
+  check(/破壞・貨運集散場/.test(sum), `客機看到房主的作戰設定：${sum.slice(0, 60)}`);
+  for (const p of [host, cli]) await p.evaluate(() => (window.__game.autoPickMod = true));
+  await cli.evaluate(() => (window.__game.hostLostMs = 15000));
+  await cli.click('#btnLobbyReady');
+  await wait(500);
+  await host.click('#btnLobbyReady');
+  await wait(500);
+  await host.click('#btnLobbySortie');
+  await cli.bringToFront();
+  await host.evaluate(() => (window.requestAnimationFrame = () => 0));
+  let pumping = true;
+  const pumpLoop = (async () => {
+    while (pumping) {
+      await host.evaluate(() => window.__game.loop()).catch(() => {});
+      await wait(20);
+    }
+  })();
+  const started = (await waitVisible(host, 'hudWrap', 25000)) && (await waitVisible(cli, 'hudWrap', 25000));
+  check(started, '任務模式：雙方進入區段');
+  await wait(1500);
+  const h = await host.evaluate(() => {
+    const g = window.__game;
+    return {
+      free: !!(g.camp && g.camp.free),
+      type: g.camp && g.campSegType(),
+      theme: g.worldTheme,
+      targets: g.camp && g.camp.ss.targets ? g.camp.ss.targets.length : 0,
+    };
+  });
+  check(
+    h.free && h.type === 'destroy' && h.theme === 'industrial' && h.targets > 0,
+    `房主：破壞、${h.theme}、目標 ${h.targets}`,
+  );
+  const c = await cli.evaluate(() => {
+    const g = window.__game;
+    return {
+      top: document.getElementById('hudTop').textContent,
+      ck: !!g.campCk && g.campCk.sid === 'fr',
+      free: !!g.campCkFree,
+      fr: !!(g.foRef().sorties.fr && g.foRef().sorties.fr.free),
+    };
+  });
+  check(/自由出擊/.test(c.top) && !/主線｜/.test(c.top), `客機的 HUD：${c.top.slice(0, 40)}`);
+  check(c.ck && c.free && c.fr, '客機收到紀錄點與臨時出擊的定義（房主遷移時接手用）');
+  // 完成：雙方結果畫面、客機回大廳
+  await host.evaluate(() => window.__game.campEnd(true, false));
+  const res = await (async () => {
+    for (let i = 0; i < 100; i++) {
+      const t = await cli.evaluate(() =>
+        window.__game.state === 'result' ? document.getElementById('rTitle').textContent : '',
+      );
+      if (t) return t;
+      await wait(100);
+    }
+    return '';
+  })();
+  check(/自由出擊 完成/.test(res), `客機的結果畫面：${res}`);
+  const hres = await host.evaluate(() => document.getElementById('btnResultOk').textContent);
+  check(hres === '返回大廳', `房主的結果畫面回大廳（${hres}）`);
+  pumping = false;
+  await pumpLoop;
+  await ctx.close();
+}
+
 const STEPS = [
   ['testFile', (c) => testFile(c.browser)],
   ['testSolo', (c) => testSolo(c.browser, c.base)],
@@ -29985,6 +30460,7 @@ const STEPS = [
   ['testSegOps2', (c) => testSegOps2(c.browser, c.base)],
   ['testColossus', (c) => testColossus(c.browser, c.base)],
   ['testSegAir', (c) => testSegAir(c.browser, c.base)],
+  ['testFreeOps', (c) => testFreeOps(c.browser, c.base)],
   ['testLoot', (c) => testLoot(c.browser, c.base)],
   ['testLegend', (c) => testLegend(c.browser, c.base)],
   ['testWing', (c) => testWing(c.browser, c.base)],
@@ -30119,6 +30595,7 @@ const STEPS = [
   ['testMpStatus', (c) => testMpStatus(c.browser, c.base + '?lan=local&test')],
   ['testMpCrowd', (c) => testMpCrowd(c.browser, c.base + '?lan=local&test')],
   ['testMpCampaign', (c) => testMpCampaign(c.browser, c.base + '?lan=local&test')],
+  ['testFreeOpsMp', (c) => testFreeOpsMp(c.browser, c.base + '?lan=local&test')],
   ['testDevicesMp', (c) => testDevicesMp(c.browser, c.base + '?lan=local&test')],
   ['testMpLevels', (c) => testMpLevels(c.browser, c.base + '?lan=local&test')],
   ['testServerSeed', () => testServerSeed()],

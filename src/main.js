@@ -136,5 +136,6 @@ import './game/devices.js';
 import './game/devices-traps.js';
 import './game/devices-guns.js';
 import './game/top-aim.js';
+import './game/free-ops.js';
 
 new Game();

@@ -443,6 +443,22 @@
           </div>
         </div>
       </div>
+      <!-- 自由出擊的作戰設定（game/free-ops.js、docs/free-sortie-design.md） -->
+      <div id="freeOps" class="screen">
+        <div class="foBox">
+          <h2>作戰設定</h2>
+          <div id="foModes" data-padtabs="button"></div>
+          <div id="foDesc" class="dim"></div>
+          <div class="foCols">
+            <div id="foBody"></div>
+            <div id="foInfo"></div>
+          </div>
+          <div class="row">
+            <button class="primary" id="btnFoGo">出擊</button>
+            <button id="btnFoBack">返回機甲庫</button>
+          </div>
+        </div>
+      </div>
       <!-- 主線：簡報 -->
       <div id="brief" class="screen">
         <div id="brMapCap"></div>
@@ -601,6 +617,7 @@
             </div>
             <div class="gMain">
               <div id="gWarn"></div>
+              <div id="gOps" style="display: none"></div>
               <div id="gCamp" class="mySetBox" style="display: none">
                 <div id="gCampInfo"></div>
                 <div class="gCampBtns">

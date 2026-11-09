@@ -494,6 +494,7 @@ export class Game {
       this.state === 'brief' ||
       this.state === 'sim' ||
       this.state === 'record' ||
+      this.state === 'freeops' ||
       this.state === 'epilogue' ||
       this.state === 'story' ||
       this.state === 'cinelib' ||

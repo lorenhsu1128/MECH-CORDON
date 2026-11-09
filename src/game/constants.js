@@ -19,3 +19,11 @@ export const GUARD_ALERT_R = 38 * DS; // 守衛發現玩家的距離
 export const GUARD_MIN_D = GUARD_ALERT_R + 6 * DS; // 守衛生成時離玩家至少這麼遠（否則一開場就出動）
 // 地圖節奏改版（game/encounters.js）：這麼遠以上的敵人改用敵群的標示，不畫各自的畫面外箭頭
 export const ENC_MARK_MIN = 38 * DS;
+
+// ---------- 作戰紀錄與自由出擊的危險條款（sim.js、free-ops.js）：k＝報酬加成 ----------
+export const HEAT = {
+  shield: { name: '敵人強化', desc: '敵人 AP ×1.35', k: 0.25 },
+  p2: { name: 'Boss 第二型態', desc: 'Boss 一開始就是第二型態', k: 0.25 },
+  timed: { name: '限時作戰', desc: '25 分鐘內完成，超過就失敗', k: 0.2 },
+  nosupply: { name: '補給中斷', desc: '沒有補給區段', k: 0.15 },
+};

@@ -308,6 +308,8 @@ Object.assign(Game.prototype, {
       return this.campBeginMp(this.net.pvpSet.sid);
     // 多人自訂關卡（level-net.js）
     if (mp0 && this.net.pvpSet && this.net.pvpSet.mode === 'level') return this.lvBeginMp();
+    // 多人的任務（房主的作戰設定，free-ops.js）
+    if (mp0 && this.net.pvpSet && this.net.pvpSet.mode === 'ops') return this.foBegin();
     // 空域（空戰，game/air.js）：只有單人；Boss 關只排空中要塞
     const air0 = !mp0 && this.mapPref() === 'airspace';
     const pvp0 = !!(mp0 && this.net.pvpSet && this.net.pvpSet.mode === 'pvp');

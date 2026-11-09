@@ -31,6 +31,7 @@ const SRV_IDLE = new Set([
   'pilot',
   'sim',
   'record',
+  'freeops',
   'rangemenu',
   'epilogue',
   'cinelib',

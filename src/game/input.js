@@ -1193,8 +1193,7 @@ Object.assign(Game.prototype, {
         .then(() => {
           this.lmBusy = false;
           // 出擊演出（hangar.js）播完才出擊
-          if (this.state === 'garage')
-            this.hangarLaunch(() => this.state === 'garage' && this.startMission());
+          if (this.state === 'garage') this.hangarLaunch(() => this.state === 'garage' && this.freeGo()); // 作戰設定（free-ops.js）
         });
     };
     // 主線任務模式（game/campaign.js）
@@ -1295,6 +1294,8 @@ Object.assign(Game.prototype, {
     $('btnCampFailGarage').onclick = () => this.campRetry(true);
     $('btnCampHubKeep').onclick = () => this.campHubKeep();
     $('btnCampQuit').onclick = () => this.campQuitAsk();
+    $('btnFoGo').onclick = () => this.freeOpsGo(); // 自由出擊的作戰設定（free-ops.js）
+    $('btnFoBack').onclick = () => this.freeOpsBack();
     // 靶場（range.js）
     $('btnRange').onclick = () => this.openRangeMenu();
     $('btnRangeGo').onclick = () => this.rangeMenuGo();

@@ -22,7 +22,8 @@ Object.assign(Game.prototype, {
     return st.nemesis;
   },
   nemOn() {
-    return !!this.camp && !this.campMp() && !this.camp.replay;
+    const c = this.camp;
+    return !!c && !this.campMp() && (!c.replay || !!(c.free && c.free.nem)); // 自由出擊：作戰設定開了才有
   },
   // 玩家被擊倒（onPlayerDead，主線單人）：擊倒的敵人變成宿敵，或已經是宿敵的升級
   nemRecord() {

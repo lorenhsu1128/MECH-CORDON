@@ -24,7 +24,9 @@ Object.assign(Game.prototype, {
   afApply(o, d, t) {
     if (this.isClient || !this.afOn() || !affixable(d, t) || this.isBossLevel) return o;
     let mask = 0;
-    if (this.camp && this.campRule('allAffix'))
+    const fa = this.camp && this.camp.free && this.camp.free.affix; // 自由出擊的作戰設定：off／auto／all
+    if (fa === 'off') return o;
+    if ((this.camp && this.campRule('allAffix')) || fa === 'all')
       mask = rollAffix(d, Math.random, 0.3); // 委託板的「精英部隊」
     else if (this.afForce !== undefined && this.afForce !== null)
       mask = this.afForce; // 測試用

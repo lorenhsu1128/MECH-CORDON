@@ -124,6 +124,7 @@ Object.assign(Game.prototype, {
     if (rings.length) sv = { ...(sv || {}), rings };
     return {
       so: so.name,
+      free: c.free ? 1 : 0, // 自由出擊（HUD 不寫「主線」）
       seg: c.seg,
       n: so.segs.length,
       type: ss.type || this.campSegType(),
@@ -373,6 +374,14 @@ Object.assign(Game.prototype, {
         return true;
       case 'cck':
         this.campCk = d.ck;
+        this.campCkFree = d.free || null; // 自由出擊（free-ops.js）
+        if (d.fr && d.fr.segs)
+          Object.defineProperty(SORTIES, 'fr', {
+            value: d.fr,
+            enumerable: false,
+            configurable: true,
+            writable: true,
+          });
         return true;
       case 'cfail': {
         this.campC = this.campC || {};
@@ -486,6 +495,10 @@ Object.assign(Game.prototype, {
     this.campC = null;
     this.camp = clone(ck);
     this.camp.fails = ck.fails || 0;
+    if (this.campCkFree) {
+      this.camp.free = this.campCkFree; // 自由出擊：紀錄點放在記憶體（campCkGet）
+      this.freeCk = clone(ck);
+    }
     this.flashMsg('你已成為房主：從紀錄點繼續作戰', 0xffb020, 3);
     this.campShowTrans(
       this.camp.trans[this.camp.seg] || { title: '重新編組', sub: '從紀錄點繼續' },

@@ -188,7 +188,11 @@ export const SEG_TYPES = {
 };
 
 // boss：kind（新 Boss）或名稱開頭（JUGGERNAUT、STRIDER 這類沒有 kind 的）
-const bossOf = (key) => BOSS_DEFS.find((b) => b.kind === key || b.name.startsWith(key + ' ')) || BOSS_DEFS[0];
+// '#<索引>'＝BOSS_DEFS 的第幾隻（自由出擊的作戰設定，data/free-ops.js）
+const bossOf = (key) =>
+  (/^#\d+$/.test(key || '') && BOSS_DEFS[+key.slice(1)]) ||
+  BOSS_DEFS.find((b) => b.kind === key || b.name.startsWith(key + ' ')) ||
+  BOSS_DEFS[0];
 
 // 陣營抉擇（docs/campaign-design.md 第 2 節）：區段的 choice＝這一段清除後出現的是互斥的抉擇出口（每個選項一個），
 // 走進去就決定；出擊完成時寫進 save.story.choices[id]，之後的出擊節點（BRIEFINGS 的 when）與通訊（條件 pick）跟著改變

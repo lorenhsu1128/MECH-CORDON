@@ -16,7 +16,7 @@ Object.assign(Game.prototype, {
     const c = this.camp;
     if (!c) return false;
     const so = this.campSortie();
-    return !!(so && so.rule === k);
+    return !!(so && so.rule === k) || !!(c.free && c.free.rule === k); // 自由出擊的作戰設定（free-ops.js）
   },
   // 規則擋下的武器（fire：玩家操作的機體）
   campRuleBlocks(d) {

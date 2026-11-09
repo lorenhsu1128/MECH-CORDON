@@ -37,7 +37,7 @@ Object.assign(Game.prototype, {
     const W = this.world;
     const mp = !!(this.net && this.net.role);
     const kinds = ['coam', 'repair', 'ammo', 'kit'];
-    if (this.camp && !mp && !this.camp.replay) kinds.push('mod');
+    if (this.camp && !mp && (!this.camp.replay || this.camp.free)) kinds.push('mod');
     // 分群的地圖（encounters.js）：據點放在規畫好的位置（和敵群分開）
     const pre = this.encCaches && this.encCaches.length ? this.encCaches.slice() : null;
     const n = pre ? pre.length : Math.random() < 0.5 ? 3 : 2;
