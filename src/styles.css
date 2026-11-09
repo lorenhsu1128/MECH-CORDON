@@ -7349,3 +7349,65 @@ em.nw,
     max-height: calc(100% - 214px);
   }
 }
+
+/* 升階與重骰（game/gear-forge.js） */
+.gIList .fgTip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.gIList .fgTip button {
+  padding: 3px 8px;
+  font-size: 11px;
+}
+#forgeBox {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(420px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+  box-sizing: border-box;
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  background: rgba(12, 18, 26, 0.96);
+  border: 1px solid var(--acc);
+  z-index: 60;
+  pointer-events: auto;
+}
+#forgeBox.on {
+  display: flex;
+}
+#forgeBox .fgH {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+#forgeBox .fgH .gTag {
+  margin-left: 0;
+}
+#forgeBox .fgH .dim {
+  margin-left: auto;
+  font-size: 11px;
+}
+#forgeBox > .dim {
+  font-size: 12px;
+}
+#forgeBox .fgLine,
+#forgeBox .fgOpt,
+#forgeBox .fgKeep {
+  text-align: left;
+  padding: 7px 10px;
+  font-size: 13px;
+}
+#forgeBox .fgOpt {
+  border-color: #7fc8ff;
+}
+#forgeBox .fgA {
+  display: flex;
+  justify-content: flex-end;
+}

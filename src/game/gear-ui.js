@@ -84,7 +84,10 @@ Object.assign(Game.prototype, {
   gearListHtml(id) {
     const S = this.save;
     const list = S.inv.filter((g) => g.id === id).sort((a, b) => b.q - a.q);
-    if (!list.length) return '';
+    const sel0 = this.gearTipPick(id);
+    // 升階與重骰（gear-forge.js）：看的那一件；標準版可以升階成改良
+    const forge = `<div class="fgTip">${sel0 ? this.forgeBtnsHtml(sel0) : this.forgeStdHtml(id)}</div>`;
+    if (!list.length) return `<div class="gIList">${forge}</div>`;
     const key = this.garageSlot;
     const pick = this.gearNow();
     const cur = S.asm[key] === id ? pick[key] : undefined;
@@ -102,10 +105,12 @@ Object.assign(Game.prototype, {
       const ax = g ? g.ax.map((a) => axText(a)).join('・') : '詞條無';
       return `<button class="gIl${on ? ' on' : ''}${(sel ? sel.u : null) === (g ? g.u : null) ? ' sel' : ''}" data-u="${g ? g.u : ''}" style="--gq:${GRADES[q].c}"${other ? ' disabled title="裝在另一個槽位"' : ''}><b>${GRADES[q].n}</b><span>${escHtml(ax)}</span>${tl ? `<em>調+${tl}</em>` : ''}${on ? '<em>裝備中</em>' : other ? '<em>另一手</em>' : ''}${g && g.nw ? '<em class="nw">新</em>' : ''}</button>`;
     };
-    return `<div class="gIList"><div class="dim">這個型號的裝備（${list.length} 件＋標準版）：點一下換上</div>${list.map(row).join('')}${row(null)}</div>`;
+    return `<div class="gIList"><div class="dim">這個型號的裝備（${list.length} 件＋標準版）：點一下換上</div>${list.map(row).join('')}${row(null)}${forge}</div>`;
   },
   // 小卡片的清單：換上那一件
   gearListBind(tip, cat, p) {
+    this.forgeBind(tip, null);
+    this.forgeStdBind(tip);
     for (const b of tip.querySelectorAll('.gIl')) {
       const u = b.dataset.u || null;
       b.onclick = () => this.gearEquip(this.garageSlot, p.id, u);
@@ -230,6 +235,7 @@ Object.assign(Game.prototype, {
           '取消',
         );
       };
+    this.forgeBind(box, () => this.invUi()); // 升階與重骰（gear-forge.js）
     // 看過的「新」標記拿掉（下次打開就不顯示）
     let ch = false;
     for (const g of S.inv)

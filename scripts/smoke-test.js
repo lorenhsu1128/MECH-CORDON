@@ -15920,6 +15920,59 @@ async function testGear(browser, base) {
   check(d.flush && /取得裝備/.test(d.rows), `離開地圖時沒撿的自動撿起、結果畫面列出（${d.rows}）`);
   check(d.unlock && d.alloy === 1, '標準版：沒擁有的零件解鎖、已擁有的換成合金');
   check(d.reward, '委託板與出口的「裝備」獎勵：一件至少改良');
+  // 第 4 期：升階與重骰
+  const f = await page.evaluate(() => {
+    const g = window.__game;
+    const G = window.__gear;
+    const S = g.save;
+    const out = {};
+    S.inv = [];
+    S.eq = {};
+    S.coam = 1e6;
+    S.mats = { alloy: 99, circuit: 99, core: 99, shard: 9 };
+    g.uiConfirm = (t, ok) => ok(); // 確認視窗直接確定
+    g.openGarage();
+    g.garageTab('eq');
+    g.garageSlot = 'rarm';
+    g.gFlyOpen = true;
+    g.renderGarage();
+    // 標準版升階 → 一件改良（裝上）
+    const rid = S.asm.rarm;
+    document.querySelector('#gTip .fgStd').click();
+    const a = S.inv[0];
+    out.std = S.inv.length === 1 && a.q === 1 && a.ax.length === 1 && g.gearNow().rarm.u === a.u;
+    // 改良 → 精製：多一條
+    const c0 = S.coam;
+    g.forgeAscendAsk(a.u);
+    out.asc = a.q === 2 && a.ax.length === 2 && c0 - S.coam === 9000;
+    // 重骰：選一條 → 兩個候選 → 換掉；之後只能重骰那一條，費用變貴
+    g.forgeRerollOpen(a.u);
+    const lines = [...document.querySelectorAll('#forgeBox .fgLine')];
+    out.lines = lines.length;
+    const k0 = a.ax[1][0];
+    lines[1].click();
+    const opts = document.querySelectorAll('#forgeBox .fgOpt');
+    out.opts = opts.length;
+    const other = a.ax[0][0];
+    const c1 = S.coam;
+    opts[0].click();
+    out.rr = !!a.rr && a.rr.n === 1 && a.ax[0][0] === other && c1 - S.coam === 2000;
+    g.forgeRerollOpen(a.u);
+    out.locked =
+      !document.querySelector('#forgeBox .fgLine') &&
+      document.querySelectorAll('#forgeBox .fgOpt').length === 2;
+    const c2 = S.coam;
+    document.querySelectorAll('#forgeBox .fgOpt')[1].click();
+    out.cost2 = c2 - S.coam === 3000;
+    out.k0 = k0;
+    S.inv = [];
+    S.eq = {};
+    return out;
+  });
+  check(f.std, '標準版升階成改良（一條詞條、直接裝上）');
+  check(f.asc, '改良升階成精製：多一條詞條、扣 9,000 COAM');
+  check(f.lines === 2 && f.opts === 2 && f.rr, '重骰：選一條、兩個候選，換掉選的那一條（另一條不變）');
+  check(f.locked && f.cost2, '重骰過的只能重骰同一條、第二次 ×1.5（3,000 COAM）');
   await ctx.close();
 }
 
