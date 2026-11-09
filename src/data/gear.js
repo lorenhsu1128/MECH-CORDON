@@ -112,8 +112,9 @@ export const AX = {
   asF: { n: '遠距離輔助', at: 'p', k: 'asF', r: [0.05, 0.1], abs: 1, kinds: ['fcs'] },
   lks: { n: '導彈鎖定速度', at: 'p', k: 'lks', r: [0.15, 0.3], kinds: ['fcs'] },
 };
-// 進階詞條（紫、金）的表在 data/gear-adv.js
+// 進階詞條（紫、金）的表在 data/gear-adv.js；專屬與金色的固定詞條在 data/gear-excl.js
 import { ADV } from './gear-adv.js';
+import { EXCL } from './gear-excl.js';
 export { ADV };
 export const axDef = (k) => AX[k] || ADV[k] || null;
 
@@ -331,6 +332,12 @@ export function gearWeaponFx(g, p) {
       const o = A.wfx(v);
       for (const x in o) f[x] = (f[x] || 0) + o[x];
     }
+  }
+  // 專屬詞條的固定效果（重彈、擴散爆炸、飽和、震撼、延長；金色 ×1.5）
+  const X = g.q >= 3 && EXCL[g.id] && EXCL[g.id].p;
+  if (X && X.wfx) {
+    const o = X.wfx(X.v * (g.q === 4 ? 1.5 : 1));
+    for (const x in o) f[x] = (f[x] || 0) + o[x];
   }
   return f;
 }

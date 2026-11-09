@@ -97,7 +97,7 @@ Object.assign(MechEntity.prototype, {
     }
     const open = this.wpOpen();
     if (!hit && !open) return [dmg, impact];
-    dmg *= WP.CRIT;
+    dmg *= WP.CRIT * (from && from.gxF ? from.gearCritK(this) : 1); // 零件品級：觀測、鷹眼（mech-gear-fx.js）
     this.wpGold = true; // 金色的傷害數字（takeDamage 的 popDamage）
     this.hrCrit = true; // 受擊反應放大（mech-hit-react.js 的 hrFromHit）
     const g = this.game;

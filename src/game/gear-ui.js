@@ -18,6 +18,7 @@ import {
   mainText,
 } from '../data/gear.js';
 import { tuneLevels } from '../data/tune.js';
+import { fixedLines } from '../data/gear-excl.js';
 import { Game } from './game.js';
 
 const CAT_N = {
@@ -113,7 +114,16 @@ Object.assign(Game.prototype, {
         return `<div class="gAx${a[2] ? ' star' : ''}${na ? ' na' : ''}"${na ? ` title="${escHtml(na)}"` : ''}>◆ ${escHtml(axText(a))}${na ? `<small>（${escHtml(na)}）</small>` : ''}</div>`;
       })
       .join('');
-    return `<div class="gLines">${main ? `<div class="gMain">${escHtml(main)}</div>` : ''}${ax}${this.gearFixedHtml ? this.gearFixedHtml(g) : ''}</div>`;
+    return `<div class="gLines">${main ? `<div class="gMain">${escHtml(main)}</div>` : ''}${ax}${this.gearFixedHtml(g)}</div>`;
+  },
+  // 特製／傳說的固定詞條（data/gear-excl.js）：紫色專屬、金色特殊
+  gearFixedHtml(g) {
+    return fixedLines(g.id, g.q)
+      .map(
+        (x) =>
+          `<div class="gFx${x.k === 'g' ? ' gold' : ''}">${x.k === 'g' ? '★' : '◇'} ${escHtml(x.n)}：${escHtml(x.txt)}</div>`,
+      )
+      .join('');
   },
   gearTag(g) {
     const q = (g && g.q) || 0;

@@ -78,6 +78,7 @@ import './game/gear-forge.js';
 import './entities/mech-colossus.js';
 import './entities/mech-legend.js';
 import './entities/mech-gear.js';
+import './entities/mech-gear-fx.js';
 import './entities/mech-wing.js';
 import './entities/mech-foe-e1.js'; // 第 7 章的專屬敵人
 import './entities/mech-foe-e2.js'; // 第 8 章的專屬敵人

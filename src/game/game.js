@@ -246,6 +246,7 @@ export class Game {
         const s = stun * (t.isBoss ? 0.4 : 1);
         t.staggerT = Math.max(t.staggerT, s);
         t.gEmpUntil = this.time + s; // 零件品級的「電擊」（mech-gear.js）
+        if (src.gxF) src.gearEmpHit(t, s); // 弱化脈衝、電磁標記（mech-gear-fx.js）
         this.fx.arc(t.center(), 1.6, color || 0x9fe0ff);
         chain.push(t);
         t.acs = t.acsMax;

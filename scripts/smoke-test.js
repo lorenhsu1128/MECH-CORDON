@@ -16063,13 +16063,66 @@ async function testGear(browser, base) {
   );
   check(Math.abs(v.apK - 1.328) < 0.01, `整台的同名詞條取最大（重甲 25%）＋品級：AP ×${v.apK.toFixed(3)}`);
   check(
-    Math.abs(v.near[0] - 1.15) < 1e-6 && v.near[1] === 1 && Math.abs(v.inK - 115) < 1e-6,
-    `觸發型：近身爆發（${v.near}）、玻璃大砲的代價（受傷 ${v.inK}）`,
+    // 核心的特製另外有專屬詞條「均衡框架」（AP 50% 以上：傷害 +6%、受傷 −6%）
+    Math.abs(v.near[0] - 1.15 * 1.06) < 1e-6 &&
+      Math.abs(v.near[1] - 1.06) < 1e-6 &&
+      Math.abs(v.inK - 115 * 0.94) < 1e-6,
+    `觸發型：近身爆發（${v.near.map((x) => x.toFixed(3))}）、玻璃大砲的代價（受傷 ${v.inK.toFixed(1)}）`,
   );
   check(Math.abs(v.exe - 115) < 1e-6 && Math.abs(v.last - 1.2) < 1e-6, `處刑（${v.exe}）、背水（${v.last}）`);
   check(v.enemyAx && v.enemyF, '敵人身上：隨機詞條 1 條、玩家才觸發得到的不生效');
   check(v.purple, '特製：2 條進階詞條');
   check(/蓋過/.test(v.na) && !v.naCore, `同名詞條被蓋過的標示（${v.na}）`);
+  // 第 6 期：紫色的專屬詞條（每個零件一條；金色 ×1.5）
+  const x = await page.evaluate(() => {
+    const g = window.__game;
+    const S = g.save;
+    const out = {};
+    S.inv = [];
+    S.eq = {};
+    S.owned.push('w_bz', 'w_mg', 'c_hv', 'c_aeg', 'l_bp2');
+    S.asm.rarm = 'w_bz';
+    S.asm.larm = 'w_mg';
+    S.asm.core = 'c_aeg';
+    S.asm.legs = 'l_bp2';
+    S.inv.push({ u: 'x1', id: 'w_bz', q: 3, ax: [] });
+    S.inv.push({ u: 'x2', id: 'w_mg', q: 4, ax: [] });
+    S.inv.push({ u: 'x3', id: 'c_aeg', q: 3, ax: [] });
+    S.inv.push({ u: 'x4', id: 'l_bp2', q: 3, ax: [] });
+    S.level = 2;
+    g.startMission();
+    g.state = 'play';
+    const p = g.player;
+    out.bzImp = p.weapons.rarm.def.impact / 900; // 重彈：衝擊 +20%
+    const w = p.weapons.larm;
+    w.streak = 3.5;
+    out.mgCd = p.gearShotK('larm', w, w.def, 30 * p.dk, null, null).cd; // 金色的彈鏈 ×1.5：射速 +22.5%
+    // 偏向場：擋下第一次能量攻擊、之後冷卻
+    const e = { team: 'enemy', pos: p.pos.clone() };
+    out.aeg1 = p.gearInK(e, 100, 100, 'en')[0];
+    out.aeg2 = p.gearInK(e, 100, 100, 'en')[0];
+    out.kin = p.gearInK(e, 100, 100, 'kin')[0];
+    // 疾走：持續移動 2 秒後速度 +8%
+    p.gs.moveT = 2.5;
+    out.spd = p.gearSpdK();
+    // 機甲庫的顯示：特製的專屬詞條、傳說多一條特殊詞條
+    g.state = 'title';
+    g.openGarage();
+    g.garageTab('inv');
+    out.fx = document.querySelectorAll('#gInv .gFx').length;
+    out.gold = document.querySelectorAll('#gInv .gFx.gold').length;
+    S.inv = [];
+    S.eq = {};
+    return out;
+  });
+  check(Math.abs(x.bzImp - 1.2) < 0.01, `重彈（專屬的固定效果）：衝擊 ×${x.bzImp.toFixed(3)}`);
+  check(Math.abs(x.mgCd - 1 / 1.225) < 1e-6, `彈鏈（傳說＝專屬 ×1.5）：射擊間隔 ×${x.mgCd.toFixed(3)}`);
+  check(
+    x.aeg1 === 0 && x.aeg2 === 100 && x.kin === 100,
+    `偏向場：擋下一次能量攻擊、之後冷卻（${x.aeg1}、${x.aeg2}）`,
+  );
+  check(Math.abs(x.spd - 1.08) < 1e-6, `疾走：速度 ×${x.spd}`);
+  check(x.fx === 5 && x.gold === 1, `機甲庫列出專屬詞條（${x.fx} 條、金色 ${x.gold} 條）`);
   await ctx.close();
 }
 

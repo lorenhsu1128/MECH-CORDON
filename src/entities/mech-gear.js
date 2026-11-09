@@ -50,7 +50,7 @@ Object.assign(MechEntity.prototype, {
     if (!Object.keys(gx).length && !Object.keys(gxW).length && !Object.keys(gxF).length) return;
     this.gx = gx;
     this.gxW = gxW;
-    this.gxF = gxF;
+    this.gxF = Object.keys(gxF).length ? gxF : null;
     this.gs = { ramp: 0, rampT: 0 };
   },
   // 這個武器 id 在哪一個槽位（兩手同一種時取第一個）
@@ -65,8 +65,8 @@ Object.assign(MechEntity.prototype, {
     return (slot && this.gxW && this.gxW[slot]) || {};
   },
   // ---------- 開火（fire：這一發的傷害、衝擊、擴散） ----------
-  gearShotK(slot, w, d, dist, rb) {
-    const o = { d: 1, i: 1 };
+  gearShotK(slot, w, d, dist, rb, tgt) {
+    const o = { d: 1, i: 1, cd: 1, c: 1 };
     if (!this.gx) return o;
     const W = this.gearW(slot),
       G = this.gx,
@@ -100,14 +100,23 @@ Object.assign(MechEntity.prototype, {
       o.d *= 1 + G.gFull;
     if (G.sCounter && gs.shT > t) o.d *= 1 + G.sCounter;
     if (G.bRam && this.abT > 0) o.i *= 1 + G.bRam;
-    if (this.gearShotFixed) this.gearShotFixed(slot, w, d, dist, o); // 專屬與金色
+    if (this.gxF) this.gearShotFixed(slot, w, d, dist, o, tgt); // 專屬與金色（mech-gear-fx.js）
     return o;
   },
   // 擴散的倍率（遠距校正）
-  gearSpreadK(dist) {
+  gearSpreadK(dist, slot) {
     let k = 1;
     if (this.gx.cFar && dist > 60 * this.dk) k *= 1 - this.gx.cFar;
-    if (this.gearSpreadFixed) k *= this.gearSpreadFixed(dist);
+    if (this.gxF) k *= this.gearSpreadFixed(dist, slot);
+    return k;
+  },
+  // 目標端的易傷（takeDamage，任何攻擊者）：電漿灼燒、弱化脈衝、電磁標記、粉碎、標定射擊
+  gearVulnK(attr, from) {
+    const now = this.game.time;
+    let k = 1;
+    if (this.gEnVulnUntil > now && attr === 'en') k *= 1 + (this.gEnVulnK || 0);
+    if (this.gKinVulnUntil > now && attr === 'kin') k *= 1 + (this.gKinVulnK || 0);
+    if (this.gMarkUntil > now && from && from.team !== this.team) k *= 1 + (this.gMarkK || 0);
     return k;
   },
   // 離地高度（高處優勢）
@@ -117,7 +126,7 @@ Object.assign(MechEntity.prototype, {
     return this.pos.y - W.groundAt(this.pos.x, this.pos.z, this.pos.y + 0.5);
   },
   // ---------- 打中別人（takeDamage 的開頭，目標端呼叫） ----------
-  gearOutK(tgt, dmg, imp, wid, melee) {
+  gearOutK(tgt, dmg, imp, wid, melee, attr) {
     if (!this.gx || !tgt || tgt.team === this.team) return [dmg, imp];
     const slot = melee ? (this.melee && this.melee.slot) || this.gearSlotOf(wid) : this.gearSlotOf(wid);
     const W = this.gearW(slot),
@@ -152,11 +161,11 @@ Object.assign(MechEntity.prototype, {
     if (G.fExe && tgt.maxHp && tgt.hp < tgt.maxHp * 0.3) dmg *= 1 + G.fExe;
     if (G.eShock && tgt.gEmpUntil > this.game.time) dmg *= 1 + G.eShock;
     if (G.cMark && this.lkId === tgt.id && this.t - (this.lkT0 || 0) >= 3) dmg *= 1 + G.cMark;
-    if (this.gearOutFixed) [dmg, imp] = this.gearOutFixed(tgt, dmg, imp, slot, melee);
+    if (this.gxF) [dmg, imp] = this.gearOutFixed(tgt, dmg, imp, slot, melee, wid, attr);
     return [dmg, imp];
   },
   // ---------- 被打（takeDamage 的開頭） ----------
-  gearInK(from, dmg, imp) {
+  gearInK(from, dmg, imp, attr) {
     if (!this.gx || (from && from.team === this.team)) return [dmg, imp];
     const G = this.gx,
       gs = this.gs,
@@ -171,7 +180,7 @@ Object.assign(MechEntity.prototype, {
     let ki = 1;
     if (G.fAir && !this.grounded) ki *= 1 - G.fAir;
     if (G.sFirm) ki *= 1 - G.sFirm;
-    if (this.gearInFixed) [k, ki] = this.gearInFixed(from, k, ki);
+    if (this.gxF) [k, ki] = this.gearInFixed(from, k, ki, attr);
     return [dmg * k, imp * ki];
   },
   // ---------- 事件（tutE 轉過來的，與其他掛勾） ----------
@@ -191,7 +200,7 @@ Object.assign(MechEntity.prototype, {
     } else if (k === 'crit') gs.fastT = t + 8;
     else if (k === 'rx') gs.catT = t + 5;
     else if (k === 'shieldHit') gs.shT = t + 1;
-    if (this.gearEvFixed) this.gearEvFixed(k, o);
+    if (this.gxF) this.gearEvFixed(k, o);
   },
   // 擊破（tactics.js 的 modKillFx，房主／單機）
   gearKill(e) {
@@ -217,7 +226,7 @@ Object.assign(MechEntity.prototype, {
     const G = this.gx;
     if (G.fRecycle) this.hp = Math.min(this.maxHp, this.hp + this.maxHp * G.fRecycle);
     if (G.gRecycle) this.en = Math.min(this.enMax, this.en + this.enMax * G.gRecycle);
-    if (this.gearKillFixed) this.gearKillFixed(e);
+    if (this.gxF) this.gearKillFixed(e);
     if (this.isPlayer && this.game.renderWeaponHud) this.game.renderWeaponHud(true);
   },
   // 開始裝填（reloadT 的倍率）：速裝；殺戮彈匣的加成在這裡結束
@@ -228,7 +237,7 @@ Object.assign(MechEntity.prototype, {
     const W = this.gearW(slot);
     let k = 1;
     if (W.aFast && this.gs.fastT > this.t) k *= 1 - W.aFast;
-    if (this.gearRldFixed) k *= this.gearRldFixed(slot);
+    if (this.gxF) k *= this.gearRldFixed(slot);
     return k;
   },
   // QB 的消耗倍率：斬後推進、後撤脈衝
@@ -239,8 +248,8 @@ Object.assign(MechEntity.prototype, {
     let k = 1;
     if (gs.slashT > t) k *= 1 - (gs.slashV || 0);
     if (this.gx.eBack && gs.empT > t) k *= 1 - this.gx.eBack;
-    if (this.gearQbFixed) k *= this.gearQbFixed();
-    return Math.max(0.1, k);
+    if (this.gxF) k *= this.gearQbFixed();
+    return Math.max(0, k);
   },
   // QB 的速度倍率（地面推進）
   gearQbSpdK() {
@@ -255,8 +264,8 @@ Object.assign(MechEntity.prototype, {
   },
   // EN 回復的倍率：待機充能、過載
   gearRchK() {
-    if (!this.gx) return 1;
-    let k = 1;
+    let k = this.gEnSlowUntil > this.game.time ? 0.7 : 1; // 電漿灼燒（敵人身上的版本）
+    if (!this.gx) return k;
     if (this.gx.gIdle && this.gs.stillT >= 0.5) k *= 1 + this.gx.gIdle;
     if (this.gx.gOver && this.en < this.enMax * 0.2) k *= 0.8;
     return k;
@@ -266,20 +275,23 @@ Object.assign(MechEntity.prototype, {
     if (!this.gx) return 1;
     let k = 1;
     if (this.gx.gOver && this.en < this.enMax * 0.2) k *= 1 + this.gx.gOver;
-    if (this.gearSpdFixed) k *= this.gearSpdFixed();
+    if (this.gxF) k *= this.gearSpdFixed();
     return k;
   },
   // 導彈的鎖定數
   gearMissileN() {
-    return this.gx && this.gx.cMulti ? Math.round(this.gx.cMulti) : 0;
+    let n = this.gx && this.gx.cMulti ? Math.round(this.gx.cMulti) : 0;
+    if (this.gxF && this.gearGoldMissileN) n += this.gearGoldMissileN();
+    return n;
   },
   // 預判準度的加成
   gearLeadK(dist, tgt) {
     if (!this.gx) return 0;
     let k = 0;
     if (this.gx.cNear && dist < 20 * this.dk) k += this.gx.cNear;
-    if (this.gx.cChase && tgt && this.t - 0 >= 0 && tgt.qbStartT !== undefined && tgt.t - tgt.qbStartT < 0.5)
+    if (this.gx.cChase && tgt && tgt.qbStartT !== undefined && tgt.t - tgt.qbStartT < 0.5)
       k += this.gx.cChase;
+    if (this.gxF) k += this.gearLeadFixed(dist, tgt);
     return k;
   },
   // EMP 放出（fire 的 emp）：n＝擊中的台數
@@ -301,6 +313,6 @@ Object.assign(MechEntity.prototype, {
     const out = this.en <= 1;
     if (out && !gs.enOut && this.gx.gFastRec) this.enDelay *= 1 - this.gx.gFastRec;
     gs.enOut = out;
-    if (this.gearTickFixed) this.gearTickFixed(dt);
+    if (this.gxF) this.gearTickFixed(dt);
   },
 });

@@ -685,7 +685,7 @@ export class MechEntity {
         (rb ? rb.spread : 1) *
         (pwfx ? pwfx.spread : 1) *
         (this.wpOff && this.wpOff.sen ? WP.SEN_SPREAD : 1) * // 感測器被打壞（mech-weak.js）
-        (this.gx ? this.gearSpreadK(distT) : 1) * // 遠距校正（mech-gear.js）
+        (this.gx ? this.gearSpreadK(distT, slot) : 1) * // 零件品級的詞條（mech-gear.js）
         airSp +
       (hmul > 1 ? 0.015 * (hmul - 1) * 4 : 0);
     // 彈道方向：從實際槍口指向瞄準點（不是從機體中心），手部與肩部武器落點都對準準星
@@ -696,7 +696,7 @@ export class MechEntity {
     const pwN = pwK === 'slug' ? d.pellets || 1 : 1; // 獨頭彈＝所有彈丸合成一發
     const arK = pilot && w.arN > 0 ? FEEL.AR_DMG : 1; // 主動裝填成功的彈匣（mech-feel.js）
     const lgK = usesAmmo(d) ? this.lgLastK(w, d) : 1; // 傳說模組「終彈強化」（mech-legend.js）
-    const gk = this.gx ? this.gearShotK(slot, w, d, distT, rb) : null; // 零件品級的詞條（mech-gear.js）
+    const gk = this.gx ? this.gearShotK(slot, w, d, distT, rb, tgtOk ? targetEnt : null) : null; // 零件品級的詞條（mech-gear.js）
     const dmg =
         d.dmg *
         this.dmgMul *
@@ -1027,7 +1027,9 @@ export class MechEntity {
       case 'laser':
         {
           const charged = w.charge >= d.chargeT && d.chargeT > 0;
-          const ldmg = charged ? d.chargeDmg * this.dmgMul * dk * (rb ? rb.dmg : 1) : dmg;
+          const ldmg = charged
+            ? d.chargeDmg * this.dmgMul * dk * (rb ? rb.dmg : 1) * (gk ? gk.d * gk.c : 1)
+            : dmg;
           const limp = charged ? imp * 2.2 : imp;
           w.charge = 0;
           w.charging = false;
@@ -1175,6 +1177,7 @@ export class MechEntity {
         break;
     }
     if (this.wpOff && this.wpOff.rad && d.type !== 'melee') w.cd *= WP.RAD_CD; // 散熱片被打壞（mech-weak.js）
+    if (gk && gk.cd !== 1 && d.type !== 'melee') w.cd *= gk.cd; // 零件品級的射速（mech-gear.js）
     if (pwK && (!this.pwFollow || (pwK === 'fin' && this.pwFollow.n === PW_FX.fin.n)))
       this.pwFireFx(pwK, muzzle, dir); // 強力彈的開火演出（第一發）
     if (usesAmmo(d)) {
@@ -2011,7 +2014,8 @@ export class MechEntity {
     if (!t || t.dead || n <= 1) return n + (this.gx ? this.gearMissileN() : 0);
     const full = 1 / ((this.stats.parts.fcs && this.stats.parts.fcs.lockSpeed) || 1);
     const x = this.gx ? this.gearMissileN() : 0; // 多目標（mech-gear.js）
-    return clamp(Math.ceil(((n + x) * this.lockAge(t)) / full), 1, n + x);
+    const la = this.lockAge(t) * (this.gxF ? this.gearLockK(d, t) : 1); // 鎖定時間（mech-gear-fx.js）
+    return clamp(Math.ceil(((n + x) * la) / full), 1, n + x);
   }
   takeDamage(dmg, impact, from, at, dir, melee, wid, attr) {
     if (this.dead) return;
@@ -2045,8 +2049,10 @@ export class MechEntity {
     if (this.devMount) dmg = this.game.gunAbsorb(this, dmg);
     if (from && from.devMount && (this.isBoss || this.ai === 'part')) dmg *= this.game.gunBossK();
     // 零件品級的詞條（mech-gear.js）：攻擊者的加成、自己的減傷
-    if (from && from.gx && from !== this) [dmg, impact] = from.gearOutK(this, dmg, impact, wid, melee);
-    if (this.gx) [dmg, impact] = this.gearInK(from, dmg, impact);
+    const gA = attr || (wid && weaponById(wid) ? weaponAttr(weaponById(wid)) : melee ? 'kin' : attr);
+    if (from && from.gx && from !== this) [dmg, impact] = from.gearOutK(this, dmg, impact, wid, melee, gA);
+    if (this.gx) [dmg, impact] = this.gearInK(from, dmg, impact, gA);
+    if (this.gEnVulnUntil || this.gKinVulnUntil || this.gMarkUntil) dmg *= this.gearVulnK(gA, from);
     this.tutE('hurt', { melee: !!melee, shield: this.shield > 0 }); // 近戰訓練（game/tutorial.js）
     // DUELIST 格擋：未在連段中、未硬直、面向攻擊者時 55% 擋下近戰第 1 段並反擊
     if (
@@ -2851,7 +2857,10 @@ export class MechEntity {
     const g2 = w.groundAt(this.pos.x, this.pos.z, this.pos.y);
     if (this.pos.y <= g2) {
       if (!this.grounded && this.vel.y < -6 * this.dk)
-        ((this.landT = 0), (this.landV = -this.vel.y / this.dk), this.pm && this.lgLand(this.landV)); // landV：動作用（舊尺度的 m/s）；傳說模組「落雷踐踏」
+        ((this.landT = 0),
+          (this.landV = -this.vel.y / this.dk),
+          this.pm && this.lgLand(this.landV),
+          this.gx && this.gearEv('land', { v: this.landV })); // landV：動作用（舊尺度的 m/s）；傳說模組「落雷踐踏」；零件品級（mech-gear-fx.js）
       if (!this.grounded && this.vel.y < -12 * this.dk) {
         g.fx.dust(this.pos.clone().setY(g2 + 0.05), (2.6 * this.scale) / g.fx.k, 9);
         SFX.land(this.isPlayer ? null : this.center(), clamp((-this.vel.y / this.dk - 12) / 18, 0, 1));
@@ -3126,6 +3135,7 @@ export class MechEntity {
         this.enDelay = P.generator.delay;
         const f = AIR_DECAY[Math.min(J.air - this.airJumps, AIR_DECAY.length - 1)];
         this.airJumps--;
+        if (this.gx) this.gearEv('airj', {}); // 彈跳（mech-gear-fx.js）
         const R = airRise(J, f);
         if (this.vel.y < R.v) this.riseStart(R.v, R.T);
         if (wish.lengthSq() > 0.1) {
