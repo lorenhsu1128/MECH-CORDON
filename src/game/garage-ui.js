@@ -7,7 +7,8 @@ import { hexBounds, hexScores } from '../data/garage-hex.js';
 import { hexSvg } from '../render/garage-charts.js';
 import { PARTS, SLOTS, asmStats, jumpSpec, partById, usesAmmo } from '../data/parts.js';
 import { applyPilotStats } from '../data/pilot.js';
-import { tuneGroup } from '../data/tune.js';
+import { tuneGroup, tuneLevels } from '../data/tune.js';
+import { tuneFxTxt, tuneTnOf, tunedPart } from '../data/tune-view.js';
 import { escHtml } from '../core/html.js';
 import { partIcon, slotIcon } from '../render/garage-icons.js';
 import { hasThumb, renderThumb, thumbCached, thumbKey } from '../render/part-thumbs.js';
@@ -100,6 +101,8 @@ Object.assign(Game.prototype, {
       let badge = '';
       if (cat === 'consumable' && p.id !== 'cs_none') badge = `<i class="pN">×${S.items[p.id] || 0}</i>`;
       else if (!owned) badge = `<i class="pPr">${(p.price / 1000).toFixed(0)}k</i>`;
+      else if (tuneLevels((S.tune || {})[p.id]))
+        badge = `<i class="pTu" title="調校 +${tuneLevels(S.tune[p.id])}">+${tuneLevels(S.tune[p.id])}</i>`;
       const dl = eq ? 0 : this.garageTileDelta(key, cat, p);
       const arrow = dl ? `<i class="${dl > 0 ? 'dUp' : 'dDn'}">${dl > 0 ? '▲' : '▼'}</i>` : '';
       d.innerHTML = `<span class="gThumb" data-thumb="${key}:${p.id}">${partIcon(cat, p)}</span><span class="pM">${escHtml(model(p))}</span>${badge}${arrow}<span class="srOnly">${escHtml(p.name)} ${this.garageSpecText(cat, p)}</span>`;
@@ -217,9 +220,13 @@ Object.assign(Game.prototype, {
     const owned = cat === 'consumable' || S.owned.includes(p.id);
     // [名稱, 數值, 目前零件的數值, 越大越好？, 格式]
     const rows = [];
+    // 調校過的零件：數值照調校後的（data/tune-view.js；頭／核心／手臂／腳的調校加在整台上，下面另列一行）
+    const TU = S.tune || {};
+    const pv = tunedPart(cat, p, TU[p.id]),
+      cv = tunedPart(cat, cur, TU[cur.id]);
     const R = (n, f, good = 1, form = fmt) => {
-      const a = f(p),
-        b = f(cur);
+      const a = f(pv),
+        b = f(cv);
       if (a === undefined || a === null || Number.isNaN(a)) return;
       rows.push([n, a, b, good, form, f]);
     };
@@ -337,7 +344,11 @@ Object.assign(Game.prototype, {
       this.gTipPin === p.id
         ? '<button class="tPin" title="解除釘選（游標停在零件上就換卡片）">📌</button>'
         : '';
-    tip.innerHTML = `<div class="tH"><b>${escHtml(p.name)}</b>${attr}${pin}</div>${p.desc ? `<div class="tD">${escHtml(p.desc)}</div>` : ''}${combo}${body}${defs}<div class="tA">${act}</div>`;
+    const tl = owned && cat !== 'consumable' ? tuneLevels(TU[p.id]) : 0;
+    const tuTag = tl ? `<span class="tTu" title="數值是調校後的">調校 +${tl}</span>` : '';
+    const tuFx = tl ? tuneFxTxt(cat, p, TU[p.id]) : [];
+    const tuLine = tuFx.length ? `<div class="tTuFx">調校效果：${escHtml(tuFx.join('、'))}</div>` : '';
+    tip.innerHTML = `<div class="tH"><b>${escHtml(p.name)}</b>${attr}${tuTag}${pin}</div>${p.desc ? `<div class="tD">${escHtml(p.desc)}</div>` : ''}${combo}${body}${tuLine}${defs}<div class="tA">${act}</div>`;
     const be = tip.querySelector('.tEq');
     if (be) be.onclick = () => this.garagePick(key, cat, p);
     const bb = tip.querySelector('.tBuy');
@@ -375,17 +386,23 @@ Object.assign(Game.prototype, {
     this.garageStatsUi(pid);
   },
   // ---------- 量表（裝備頁） ----------
-  garageStatsUi(pid) {
+  // tp＝{ id, t }：調校視窗的升級按鈕預覽（這個零件換成調校表 t 之後的差異，tune-ui.js 的 tunePreview）
+  garageStatsUi(pid, tp) {
     const asm = this.save.asm;
     const key = this.garageSlot;
-    const prevAsm = pid && pid !== asm[key] ? { ...asm, [key]: pid } : null;
-    const pm = this.rangePmOn() ? this.rangePm() : null;
+    const prevAsm = pid && pid !== asm[key] ? { ...asm, [key]: pid } : tp ? asm : null;
+    let pm = this.rangePmOn() ? this.rangePm() : null,
+      pmN = pm;
+    if (tp) {
+      pm = { ...(pm || {}), tn: tuneTnOf(asm, this.save.tune) };
+      pmN = { ...pm, tn: tuneTnOf(asm, this.save.tune, { [tp.id]: tp.t }) };
+    }
     const cur = hexScores(asm, pm),
-      nx = prevAsm ? hexScores(prevAsm, pm) : null;
+      nx = prevAsm ? hexScores(prevAsm, pmN) : null;
     const st = asmStats(asm),
       st2 = prevAsm ? asmStats(prevAsm) : null;
     const ef = applyPilotStats(st, pm),
-      ef2 = st2 ? applyPilotStats(st2, pm) : null;
+      ef2 = st2 ? applyPilotStats(st2, pmN) : null;
     const B = hexBounds();
     const meter = (name, a, b, max, over, good = 1, txt) => {
       const w = clamp01(a / max),
@@ -445,7 +462,7 @@ Object.assign(Game.prototype, {
       ? F.ws
           .map(
             (w) =>
-              `<div class="sR fire"><span><i class="aDot" style="background:${ATTRS[w.attr].color}"></i>${SN[w.slot]}　${escHtml(model({ id: w.id, name: w.name }))}</span><span class="sB"><u style="width:${((w.burst / fMax) * 100).toFixed(1)}%;background:${ATTRS[w.attr].color}"></u><b style="width:${((w.sus / fMax) * 100).toFixed(1)}%;background:${ATTRS[w.attr].color}"></b></span><span>${fmt(w.sus)}<em class="dim"> / ${fmt(w.burst)}</em></span></div>`,
+              `<div class="sR fire"><span><i class="aDot" style="background:${ATTRS[w.attr].color}"></i>${SN[w.slot]}　${escHtml(model({ id: w.id, name: w.name }))}${tuneLevels((this.save.tune || {})[w.id]) ? `<em class="tuTag" title="調校過">調+${tuneLevels(this.save.tune[w.id])}</em>` : ''}</span><span class="sB"><u style="width:${((w.burst / fMax) * 100).toFixed(1)}%;background:${ATTRS[w.attr].color}"></u><b style="width:${((w.sus / fMax) * 100).toFixed(1)}%;background:${ATTRS[w.attr].color}"></b></span><span>${fmt(w.sus)}<em class="dim"> / ${fmt(w.burst)}</em></span></div>`,
           )
           .join('') +
         `<div class="sSum"><span>合計　持續 <b>${fmt(F.sus)}</b>　瞬間 <b>${fmt(F.burst)}</b>　衝擊／秒 <b>${fmt(F.imp)}</b></span></div>`

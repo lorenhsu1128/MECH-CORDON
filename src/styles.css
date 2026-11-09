@@ -6768,10 +6768,11 @@ body.vpad #subBar {
   display: none;
   position: absolute;
   left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: min(560px, calc(100vw - 32px));
-  max-height: calc(100vh - 32px);
+  top: 16px;
+  transform: translateX(-50%);
+  width: min(660px, calc(100vw - 32px));
+  max-height: calc(100vh - 150px); /* 下方留給量表（升級按鈕的預覽） */
+  box-sizing: border-box;
   overflow-y: auto;
   background: rgba(10, 14, 20, 0.95);
   border: 1px solid var(--acc, #ffb020);
@@ -7003,4 +7004,168 @@ body.vpad #subBar {
   font-size: 12px;
   background: none;
   border: none;
+}
+
+/* 調校的數值（game/tune-ui.js，2026-11-09）：分頁、摘要、每級效果、下一級、總覽；機甲庫的調校標示 */
+#tuneBox .tuTabs,
+#tuneBox .tuSorts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+#tuneBox .tuTab,
+#tuneBox .tuSort {
+  font-size: 12px;
+  opacity: 0.65;
+}
+#tuneBox .tuTab.on,
+#tuneBox .tuSort.on {
+  opacity: 1;
+  border-color: var(--acc, #ffb020);
+  color: var(--acc, #ffb020);
+}
+#tuneBox .tuNote {
+  font-size: 11px;
+  line-height: 1.5;
+  margin-bottom: 6px;
+}
+#tuneBox .tuSum {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 2px 12px;
+  font-size: 12px;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  background: rgba(255, 255, 255, 0.04);
+}
+#tuneBox .tuSum > div {
+  display: contents;
+}
+#tuneBox .tuSum .tuSH span {
+  color: var(--dim);
+  font-size: 11px;
+}
+#tuneBox .tuLv {
+  font-size: 11px;
+  color: var(--dim);
+  font-weight: normal;
+}
+#tuneBox .tuPer,
+#tuneBox .tuNx {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  font-size: 12px;
+  margin-top: 2px;
+}
+#tuneBox .tuPer > i,
+#tuneBox .tuNx > i {
+  font-style: normal;
+  color: var(--dim);
+  font-size: 11px;
+}
+#tuneBox .tuFx.na {
+  color: var(--dim);
+  text-decoration: line-through;
+}
+#tuneBox .tuL3 {
+  font-size: 11px;
+}
+#tuneBox .tuOv {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) 1.3fr auto minmax(110px, 150px);
+  gap: 4px 10px;
+  align-items: center;
+  padding: 6px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+#tuneBox .tuOpen {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  font-size: 12px;
+  background: none;
+  border: none;
+  padding: 2px 0;
+}
+#tuneBox .tuOpen span {
+  color: var(--dim);
+  font-size: 11px;
+}
+#tuneBox .tuOvC {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  font-size: 11px;
+}
+#tuneBox .tuOvS {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 13px;
+  font-weight: bold;
+}
+#tuneBox .tuOvS small {
+  font-size: 10px;
+  font-weight: normal;
+  color: var(--dim);
+}
+#tuneBox .tuOv .tuUp {
+  grid-column: auto;
+  font-size: 11px;
+  padding: 4px 6px;
+  white-space: normal;
+}
+@media (max-width: 760px) {
+  #tuneBox .tuOv {
+    grid-template-columns: 1fr auto;
+  }
+  #tuneBox .tuOv .tuOvC,
+  #tuneBox .tuOv .tuUp {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-height: 540px) {
+  #tuneBox {
+    top: 8px;
+    max-height: calc(100vh - 16px);
+    padding: 8px 12px;
+  }
+  /* 矮螢幕：摘要只列有變化的數值（沒變的在各項目的「下一級」裡看得到） */
+  #tuneBox .tuSum .same {
+    display: none;
+  }
+  #tuneBox .tuH b {
+    font-size: 13px;
+  }
+  #tuneBox .tuRow {
+    padding: 5px 0;
+  }
+}
+#tuneBox .tuOvDiv {
+  font-size: 11px;
+  padding: 8px 0 2px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.2);
+}
+#garage .part .pTu {
+  left: 3px;
+  top: 3px;
+  color: #7ee081;
+}
+#gTip .tTu,
+.tuTag {
+  font-size: 10px;
+  font-style: normal;
+  padding: 0 4px;
+  border: 1px solid #7ee081;
+  color: #7ee081;
+  margin-left: 4px;
+}
+#gTip .tTuFx {
+  color: #a8e6ab;
+  font-size: 11px;
+  line-height: 1.4;
 }

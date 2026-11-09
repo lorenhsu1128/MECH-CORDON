@@ -16096,6 +16096,66 @@ async function testLoot(browser, base) {
   check(ui.lv2 === 2 && ui.alloy2 === 14, '升級到 2 級：再扣合金 ×4、電子零件 ×2');
   check(/調校（\+2）/.test(ui.tipBtn), '零件小卡片的調校按鈕標出級數：' + ui.tipBtn);
   check(ui.reset && ui.alloy3 === 17 && ui.coam3 === 194500, '重置：退還一半（合金 +3、COAM +5500）');
+  // 調校的數值（2026-11-09）：每級效果、未調校 → 目前、下一級、無效果、總覽的排序、升級按鈕的量表預覽、格子與小卡片的標示
+  const tv = await page.evaluate(() => {
+    const g = window.__game;
+    const S = g.save;
+    const id = S.asm.rarm;
+    S.coam = 200000;
+    S.mats = { alloy: 30, circuit: 20, core: 5, shard: 0 };
+    if (!S.owned.includes('bw_ms')) S.owned.push('bw_ms');
+    S.asm.rback = 'bw_ms';
+    S.tune = { [id]: { pow: 2 } };
+    g.renderGarage();
+    g.tuneClose();
+    g.tuneOpen('arm', id, 'part');
+    const box = document.getElementById('tuneBox');
+    const out = {};
+    out.per = box.querySelector('.tuPer').textContent;
+    out.sum = box.querySelector('.tuSum').textContent;
+    out.nx = [...box.querySelectorAll('.tuNx')].map((e) => e.textContent);
+    // 升級按鈕的預覽：量表的火力出現差異
+    const rate = box.querySelector('.tuUp[data-k="rate"]');
+    rate.onpointerenter();
+    out.prev = /\+/.test(document.querySelector('#gMeters .gM:nth-child(2)').textContent);
+    rate.onpointerleave();
+    out.prevOff = !/\+/.test(document.querySelector('#gMeters .gM:nth-child(2)').textContent);
+    // 導彈沒有擴散：速射機構的擴散標成無效果
+    g.tuneOpen('back', 'bw_ms', 'part');
+    out.na = [...box.querySelectorAll('.tuFx.na')].map((e) => e.textContent);
+    // 總覽：身上的零件，依每 1 萬 C 的提升排序
+    g.tuneOpen('arm', id, 'ov');
+    const rows = [...box.querySelectorAll('.tuOv')];
+    out.ovN = rows.length;
+    out.ovFirst = rows[0] && rows[0].querySelector('.tuOvS').textContent;
+    box.querySelector('.tuSort[data-s="tough"]').click();
+    out.tough = (box.querySelector('.tuOv .tuOvS') || {}).textContent || '';
+    box.querySelector('.tuOv .tuOpen').click();
+    out.back = g.tuneCur.view;
+    g.tuneClose();
+    // 格子的 +n 與小卡片的調校後數值
+    g.garageSlot = 'rarm';
+    g.renderGarage();
+    out.badge = !!document.querySelector(`#garage .part[data-pid="${id}"] .pTu`);
+    g.garageTipUi(id);
+    out.tip = document.getElementById('gTip').textContent;
+    S.tune = {};
+    return out;
+  });
+  check(/傷害 \+6%/.test(tv.per) && /總彈數 −8%/.test(tv.per), '調校：每級的效果寫出數字：' + tv.per);
+  check(/→/.test(tv.sum) && /\+12%/.test(tv.sum), '調校：摘要列出未調校 → 目前');
+  check(tv.nx.length === 3 && tv.nx.every((t) => /持續 DPS .+→/.test(t)), '調校：每一項都有下一級的實際數值');
+  check(tv.prev && tv.prevOff, '調校：游標停在升級按鈕上，量表預覽升級後的火力、離開就取消');
+  check(
+    tv.na.some((t) => /擴散.+無效果/.test(t)),
+    '調校：導彈的擴散標成無效果：' + tv.na.join('／'),
+  );
+  check(tv.ovN >= 4 && /火力 \+/.test(tv.ovFirst), `調校總覽：${tv.ovN} 項、第一名 ${tv.ovFirst}`);
+  check(/耐久/.test(tv.tough) && tv.back === 'part', '調校總覽：改依耐久排序、點零件開啟它的調校');
+  check(
+    tv.badge && /調校 \+2/.test(tv.tip) && /調校效果：傷害 \+12%/.test(tv.tip),
+    '機甲庫：格子與小卡片標出調校',
+  );
   // 限界突破（傳說殘片）、精英 AC 的能量核心、空戰的素材直接入帳（2026-11-09）
   const bk = await page.evaluate(() => {
     const g = window.__game;
