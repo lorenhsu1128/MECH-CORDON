@@ -141,3 +141,58 @@ export function buildCampRing(pos, color, title, sub, r) {
   g.userData.ring = ring;
   return g;
 }
+
+// 僚機的救援圈（game/wing.js）：綠色的範圍圈＝救援的距離，圈本身兼進度條（12 點方向順時針填滿）
+const REV_COL = 0x5fe08a;
+export function buildReviveRing(r) {
+  const g = new THREE.Group();
+  const mat = (op, col = REV_COL) =>
+    new THREE.MeshBasicMaterial({
+      color: col,
+      transparent: true,
+      opacity: op,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+  const w = 0.7 * MS;
+  const base = new THREE.Mesh(new THREE.RingGeometry(r - w, r, 72), mat(0.3)); // 範圍
+  const area = new THREE.Mesh(new THREE.CircleGeometry(r - w, 48), mat(0.07)); // 圈內淡淡的底
+  // 進度：比範圍圈寬、亮（淡綠接近白），一眼分得出填了多少
+  const prog = new THREE.Mesh(
+    new THREE.RingGeometry(r - w * 1.6, r + w * 0.5, 72, 1, Math.PI / 2, -0.001),
+    mat(1, 0xb8ffd0),
+  );
+  base.position.y = 0.16 * MS;
+  area.position.y = 0.12 * MS;
+  prog.position.y = 0.2 * MS;
+  for (const m of [area, base, prog]) {
+    m.rotation.x = -Math.PI / 2;
+    m.renderOrder = 6;
+    m.userData.noAO = true;
+    g.add(m);
+  }
+  g.userData = { r, w, base, area, prog, k: -1 };
+  return g;
+}
+// k＝進度 0～1、inside＝玩家在圈裡（圈變亮、閃一下）、t＝時間
+export function reviveRingSet(g, k, inside, t) {
+  const u = g.userData;
+  const kk = Math.round(Math.max(0, Math.min(1, k)) * 120) / 120;
+  if (kk !== u.k) {
+    u.k = kk;
+    u.prog.geometry.dispose();
+    // 局部 +Y 轉到地面是 −Z（北）；負的角度＝從上面看順時針
+    u.prog.geometry = new THREE.RingGeometry(
+      u.r - u.w * 1.6,
+      u.r + u.w * 0.5,
+      72,
+      1,
+      Math.PI / 2,
+      -Math.max(0.001, kk * Math.PI * 2),
+    );
+  }
+  u.prog.visible = kk > 0;
+  const pulse = 0.5 + 0.5 * Math.sin(t * (inside ? 8 : 3));
+  u.base.material.opacity = inside ? 0.35 + 0.2 * pulse : 0.2 + 0.12 * pulse;
+  u.area.material.opacity = inside ? 0.12 : 0.06;
+}

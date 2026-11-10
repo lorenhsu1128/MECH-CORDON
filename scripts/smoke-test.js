@@ -17379,9 +17379,19 @@ async function testWing(browser, base) {
     a.iFrames = 0;
     a.takeDamage(1e9, 0, e, a.center(), new THREE.Vector3(0, 0, 1), null, null, 'none');
     out.down = !a.dead && a.wingDowned && a.noLock;
+    // 綠色的救援圈：站在圈裡 1.5 秒＝半圈；離開 1 秒退回 0.5 秒（不歸零）；水平 18 m、高 20 m 照樣算在圈裡
     p.pos.copy(a.pos);
+    for (let i = 0; i < 90; i++) g.wingTick(1 / 60);
+    const ring = g.wingRing;
+    out.ring = !!(ring && ring.parent === g.scene && ring.userData.prog.visible);
+    out.ringK = ring ? ring.userData.k : -1;
+    p.pos.set(a.pos.x + 300, a.pos.y, a.pos.z);
+    for (let i = 0; i < 60; i++) g.wingTick(1 / 60);
+    out.decay = +g.camp.wingRev.toFixed(2);
+    p.pos.set(a.pos.x + 18, a.pos.y + 20, a.pos.z);
     for (let i = 0; i < 220 && a.wingDowned; i++) g.wingTick(1 / 60);
     out.revive = !a.wingDowned && Math.abs(a.hp / a.maxHp - 0.4) < 0.02;
+    out.ringGone = !g.wingRing;
     out.bond1 = g.wingBond('basalt');
     // 倒地沒救就離開：下一段 50%、好感度 −1
     a.iFrames = 0;
@@ -17416,7 +17426,14 @@ async function testWing(browser, base) {
   check(r.focus, '集中攻擊：打玩家鎖定的目標');
   check(r.follow > 10, `跟著我：離太遠先回去（1.5 秒靠近 ${Math.round(r.follow)} m）`);
   check(r.down, 'AP 歸零：倒地、不會被擊破、敵人不再瞄準');
-  check(r.revive && r.bond1 === 1, '站在旁邊 3 秒救起來（AP 40%）、好感度 +1');
+  check(
+    r.ring && Math.abs(r.ringK - 0.5) < 0.02 && Math.abs(r.decay - 1) < 0.05,
+    `救援圈：站在圈裡 1.5 秒填滿一半（${r.ringK}）、離開 1 秒進度退回 ${r.decay} 秒（不歸零）`,
+  );
+  check(
+    r.revive && r.bond1 === 1 && r.ringGone,
+    '水平 18 m、高 20 m 也算在圈裡，累積 3 秒救起來（AP 40%）、好感度 +1、救援圈消失',
+  );
   check(r.next === 50 && r.bond2 === 0, `倒地沒救就離開：下一段 ${r.next}%、好感度 −1`);
   check(r.log, '僚機的台詞進通訊紀錄');
   check(r.wren === 'WREN', '艾瑟立克路線的僚機是 WREN');

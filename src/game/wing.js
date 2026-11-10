@@ -7,6 +7,7 @@ import { AC_ROSTER } from '../data/enemies.js';
 import { WING, WINGMEN, WING_MODES, WING_SORTIES, wingAsm, wingFor } from '../data/wingmen.js';
 import { MechEntity } from '../entities/mech-entity.js';
 import { PALETTES } from '../render/materials.js';
+import { buildReviveRing, reviveRingSet } from '../render/ground-marks.js';
 import { Game } from './game.js';
 
 Object.assign(Game.prototype, {
@@ -74,7 +75,7 @@ Object.assign(Game.prototype, {
     const a = this.wing,
       c = this.camp,
       p = this.player;
-    if (!a || !c || !p) return;
+    if (!a || !c || !p) return this.wingRingDrop();
     // 指令：按下的那一格切換
     const on = this.act('wing');
     if (on && !this._wingK) {
@@ -86,19 +87,43 @@ Object.assign(Game.prototype, {
       this.flashMsg(`僚機指令：${M.name}（${M.tip}）`, 0x80ffb0, 1.6);
     }
     this._wingK = on;
-    if (!a.wingDowned) return;
-    // 救援：站在旁邊 REVIVE_T 秒
-    const near = !p.dead && p.pos.distanceTo(a.pos) < WING.REVIVE_R * MS;
-    c.wingRev = near ? (c.wingRev || 0) + dt : 0;
+    if (!a.wingDowned) return this.wingRingDrop();
+    // 救援：站在綠色圈裡（水平距離；高度放寬）累積 REVIVE_T 秒；被打不會中斷，離開圈時進度慢慢退回
+    const R = WING.REVIVE_R * MS;
+    const near =
+      !p.dead &&
+      Math.hypot(p.pos.x - a.pos.x, p.pos.z - a.pos.z) < R &&
+      Math.abs(p.pos.y - a.pos.y) < WING.REVIVE_Y * MS;
+    c.wingRev = near ? (c.wingRev || 0) + dt : Math.max(0, (c.wingRev || 0) - dt * WING.REVIVE_DECAY);
     if (near) c.hint = `救援 ${a.name}… ${Math.min(100, Math.round((c.wingRev / WING.REVIVE_T) * 100))}%`;
+    // 地上的綠色圈：範圍＋進度
+    if (this.wingRing && this.wingRing.parent !== this.scene) this.wingRing = null;
+    if (!this.wingRing) {
+      this.wingRing = buildReviveRing(R);
+      this.scene.add(this.wingRing);
+    }
+    this.wingRing.position.set(a.pos.x, a.pos.y, a.pos.z);
+    reviveRingSet(this.wingRing, c.wingRev / WING.REVIVE_T, near, this.time || 0);
     if (c.wingRev >= WING.REVIVE_T) {
       c.wingRev = 0;
+      this.wingRingDrop();
       a.wingRevive(WING.REVIVE_HP);
       this.fx.ring(a.center(), 6, 0x80ffb0);
       SFX.kit();
       this.wingBondAdd(a.wing, 1);
       this.campComm('wingRevive', this.campCtx({ wing: a.wing }));
     }
+  },
+  // 拿掉地上的救援圈
+  wingRingDrop() {
+    const g = this.wingRing;
+    if (!g) return;
+    this.wingRing = null;
+    if (g.parent) g.parent.remove(g);
+    g.traverse((o) => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) o.material.dispose();
+    });
   },
   // 僚機倒地（entities/mech-wing.js）
   wingOnDown(a) {
@@ -114,6 +139,7 @@ Object.assign(Game.prototype, {
     const a = this.wing,
       c = this.camp;
     if (!a || !c) return;
+    this.wingRingDrop();
     if (a.wingDowned) {
       c.wingHp = 0;
       this.wingBondAdd(a.wing, -1);

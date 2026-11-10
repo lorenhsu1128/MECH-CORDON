@@ -996,6 +996,7 @@ Object.assign(Game.prototype, {
   },
   clearMission() {
     this.gearDropsFlush(); // 地上沒撿的裝備自動撿起（gear-loot.js）
+    this.wingRingDrop(); // 僚機的救援圈（wing.js）
     this.airEnd(); // 空域（game/air.js）
     this.afLeaders = []; // 詞綴的指揮（game/affix.js）
     this.lavaTold = false; // 熔岩的提示（lava.js）
