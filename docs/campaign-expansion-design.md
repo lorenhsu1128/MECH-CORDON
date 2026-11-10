@@ -421,7 +421,7 @@ SEG_TYPES.stealth = {
 
 - **資料**（`data/board.js`）：12 種規則 `RULES`（限時作戰、禁用導彈、禁用近戰、只能近戰、借用的機體、帶傷出擊、精英部隊、一擊必殺、推進器故障、濃霧、絕對隱密、大宗物資；各自可以搭的區段類型與段數）、`genJob`（依這一章主線用過的主題與平均等級產生 1～2 段的委託；報酬＝COAM 12000＋6000×章、素材、30% 零件；借用的機體帶一套具名 AC 的組裝）。
 - **存檔與登記**：`save.story.board`＝{ chapter, seq, jobs }（4 個，換章時全部換新）。每個委託以 `Object.defineProperty` 登記成 `SORTIES` 的**不可列舉**項目 `jb_<id>`（`boardRegister`，`campStory` 檢查紀錄點之前與 `boardEnsure` 都會呼叫），所以 `campBegin`、紀錄點、結果畫面照用，但總覽圖、整章完成、作戰紀錄、模擬器這些 `for…in`／`Object.keys(SORTIES)` 看不到它。出擊物件多 `job`、`rule`、`asm`。
-- **作戰室**：設施列的「委託板」（`#btnHubBoard` → `#hubBoardBox`，`game/board.js` 的 `hubBoard`）：每個委託的規則、區段、報酬，「接受委託」與「雇用僚機並接受」（6000＋2000×章 COAM；`camp.wingHire`，`wingKey` 照最近的抉擇選角色；`wingHire`／`wingK` 進紀錄點）。有進行中的出擊時不能接。
+- **作戰室**：「委託方」面板（`#btnHubFac` → `#hubFacBox`）的「獨立委託」分頁（2026-11-10 使用者回報原本單獨的委託板背景透明、看不出能接獨立委託，併進委託方面板：分頁 `#hubFacTabs`＝獨立委託（預設）／委託方與戰術模組，`guide.js` 的 `hubFactions(open, tab)`／`hubFacTab`，委託板的內容 `game/board.js` 的 `hubBoardRender`，`hubBoard(open)` 只是開這個分頁；場景的設施標籤顯示「獨立委託 n」）：每個委託的規則、區段、報酬，「接受委託」與「雇用僚機並接受」（6000＋2000×章 COAM；`camp.wingHire`，`wingKey` 照最近的抉擇選角色；`wingHire`／`wingK` 進紀錄點）。有進行中的出擊時不能接。
 - **規則的掛勾**（`campRule(鍵)`）：`fire` 的 `campRuleBlocks`（禁用導彈／近戰、只能近戰）、`move` 的 QB（推進器故障）、`takeDamage` 開頭（一擊必殺：玩家打的與打玩家的 ×5）、`campTick`（限時 5 分鐘）、`campEnterSeg`（借用的機體、濃霧：換一個近 0.3／遠 0.35 倍的 Fog）、`afApply`（精英部隊：一律抽詞綴）、`segAlarm`（絕對隱密：警報＝失敗）、`segPost_extract`（大宗物資：回收物資 12 箱）、`boardAccept`（帶傷出擊：carry 的 AP 30%、修復套件 0）。
 - **完成**（`campEnd` 的 `boardEnd`）：素材、30% 一個還沒擁有的零件，這個委託從板上拿掉（下次打開補新的）。COAM 照出擊的 `reward`。
 - 和原本的設計不同：「只有空中跳」與「傳說模組的預約」沒有做；多人不能接委託板。

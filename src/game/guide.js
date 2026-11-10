@@ -172,12 +172,24 @@ Object.assign(Game.prototype, {
     if (so.memory) out.push(`ECHO 的私人委託：完成時回收記憶片段 ${so.memory}／6`);
     return out;
   },
-  // ---------- 作戰室的委託方面板 ----------
-  hubFactions(open) {
+  // ---------- 作戰室的委託方面板：分頁「獨立委託」（委託板，board.js 的 hubBoardRender）＋「委託方與戰術模組」 ----------
+  hubFactions(open, tab) {
     const el = document.getElementById('hubFacBox');
     el.style.display = open ? '' : 'none';
     if (!open) return;
     SFX.ui();
+    this.hubBoardRender();
+    this.hubFacRender();
+    this.hubFacTab(tab || this.hubFacT || 'board');
+  },
+  hubFacTab(t) {
+    this.hubFacT = t;
+    for (const b of document.querySelectorAll('#hubFacTabs button'))
+      b.classList.toggle('on', b.dataset.ft === t);
+    document.getElementById('hubBoardList').style.display = t === 'board' ? '' : 'none';
+    document.getElementById('hubFacList').style.display = t === 'fac' ? '' : 'none';
+  },
+  hubFacRender() {
     const st = this.campStory();
     const held = new Map(this.campMods().map((m) => [m.id, m.lv]));
     const picks = {};

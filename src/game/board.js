@@ -1,7 +1,6 @@
 // Game：作戰室的委託板（主線擴充 C2，data/board.js、docs/campaign-expansion-design.md）——短委託的清單、接受（可以雇用僚機）、
 // 完成時的報酬與換新的委託；規則的判斷 campRule（各處的掛勾：mech-entity.js 的 fire／move／takeDamage、campaign.js、
 // affix.js、seg-ops.js）。只有單人。
-import { SFX } from '../audio/audio.js';
 import { escHtml } from '../core/html.js';
 import { BOARD_N, HIRE_COST, RULES, boardRegister, genJob } from '../data/board.js';
 import { SEG_TYPES } from '../data/campaign.js';
@@ -37,12 +36,11 @@ Object.assign(Game.prototype, {
     boardRegister(st);
     return B;
   },
+  // 委託板：作戰室「委託方」面板的「獨立委託」分頁（guide.js 的 hubFactions）
   hubBoard(open) {
-    const el = document.getElementById('hubBoardBox');
-    if (!el) return;
-    el.style.display = open ? '' : 'none';
-    if (!open) return;
-    SFX.ui();
+    this.hubFactions(open, 'board');
+  },
+  hubBoardRender() {
     const B = this.boardEnsure();
     this.writeSave();
     const ch = B.chapter;
@@ -57,11 +55,13 @@ Object.assign(Game.prototype, {
       .map((j) => {
         const R = RULES[j.rule];
         const segs = j.segs.map((s) => SEG_TYPES[s.pool[0]].name).join(' → ');
-        return `<div class="facSec boardJob"><div class="facHead"><b>${escHtml(j.name)}</b><span class="dim">${escHtml(THEMES[j.theme] ? THEMES[j.theme].name : '')}・${j.segs.length} 段（${escHtml(segs)}）・Lv${j.level}</span></div><div class="boardRule">⚑ ${escHtml(R.name)}：${escHtml(R.desc)}</div><div class="dim">報酬：${j.coam.toLocaleString()} SP、${escHtml(matTxt(j.mats))}、${Math.round(j.part * 100)}% 機率得到零件</div><div class="boardBtns"><button data-job="${j.id}">接受委託</button><button data-job="${j.id}" data-hire="1"${this.save.coam < cost ? ' disabled' : ''}>雇用僚機 ${escHtml(WINGMEN[wk].name)} 並接受（${cost.toLocaleString()} C）</button></div></div>`;
+        return `<div class="facSec boardJob"><div class="facHead"><b>${escHtml(j.name)}</b><span class="dim">${escHtml(THEMES[j.theme] ? THEMES[j.theme].name : '')}・${j.segs.length} 段（${escHtml(segs)}）・Lv${j.level}</span></div><div class="boardRule">⚑ ${escHtml(R.name)}：${escHtml(R.desc)}</div><div class="dim">報酬：${j.coam.toLocaleString()} SP、${escHtml(matTxt(j.mats))}、${Math.round(j.part * 100)}% 機率得到零件</div><div class="boardBtns"><button data-job="${j.id}">接受委託</button><button data-job="${j.id}" data-hire="1"${this.save.coam < cost ? ' disabled' : ''}>雇用僚機 ${escHtml(WINGMEN[wk].name)} 並接受（${cost.toLocaleString()} SP）</button></div></div>`;
       })
       .join('');
+    const busy = !!this.campStory().sortie;
+    document.getElementById('hubFacJobN').textContent = ` ${B.jobs.length}`;
     document.getElementById('hubBoardList').innerHTML =
-      `<p class="dim">短委託：1～2 段、帶一條特殊規則；不算進整章完成，完成後換新的委託。</p>${rows}`;
+      `<p class="dim">委託板的獨立委託：和主線無關的短委託，1～2 段、帶一條特殊規則；不算進整章完成，完成後換新的委託。</p>${busy ? '<p class="boardBusy">還有進行中的出擊：先繼續或放棄它才能接</p>' : ''}${rows}`;
     for (const b of document.querySelectorAll('#hubBoardList button[data-job]'))
       b.onclick = () => this.boardAccept(+b.dataset.job, !!b.dataset.hire);
   },

@@ -246,6 +246,7 @@ Object.assign(Game.prototype, {
       record: { t: '重打完成過的委託' },
       sim: this.tutDone('L1') ? null : { t: '近戰訓練 第 1 課', hot: true },
       garage: { t: '組裝與整備' },
+      fac: { t: `獨立委託 ${this.boardEnsure().jobs.length}` }, // 委託板（board.js）
       save: { t: `使用中：存檔 ${this.saveSlot}` },
     });
     this.hubSlotSync(); // 存檔終端的插槽燈（save.js）

@@ -7003,11 +7003,53 @@ body.vpad #subBar {
 }
 
 /* 委託板（game/board.js；主線擴充 C2） */
-#hubBoardBox .boardRule {
+/* 委託方面板蓋在通訊框（#comm.menu 46）與圖示列上面 */
+#hubFacBox {
+  z-index: 47;
+  bottom: 88px; /* 不壓到下方的圖示列 */
+}
+@media (max-height: 540px) {
+  #hubFacBox {
+    top: 56px;
+    bottom: 62px;
+  }
+}
+#hubFacTabs {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 6px;
+}
+#hubFacTabs button {
+  white-space: nowrap;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+#hubFacTabs button.on {
+  border-color: var(--acc);
+  background: rgba(255, 176, 32, 0.2);
+  color: var(--acc);
+}
+#hubFacTabs small {
+  opacity: 0.8;
+}
+#hubBoardList {
+  overflow: auto;
+  flex: 1;
+}
+#hubBoardList .boardJob {
+  border-color: #ffb070;
+  background: rgba(255, 176, 112, 0.05);
+}
+#hubFacBox .boardBusy {
+  color: #ff8a50;
+}
+#hubFacBox .boardRule {
   color: #ffb070;
   margin: 4px 0;
 }
-#hubBoardBox .boardBtns {
+#hubFacBox .boardBtns {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;

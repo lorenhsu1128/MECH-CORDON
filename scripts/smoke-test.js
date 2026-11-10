@@ -14621,6 +14621,7 @@ async function testGuide(browser, base) {
   await page.click('#mpSkip');
   // 作戰室的委託方面板
   await page.click('#btnHubFac');
+  await page.click('#hubFacTabs button[data-ft="fac"]');
   const fac = await page.evaluate(() => ({
     vis: document.getElementById('hubFacBox').style.display !== 'none',
     n: document.querySelectorAll('#hubFacList .facSec').length,
@@ -17550,7 +17551,17 @@ async function testBoard(browser, base) {
     g.hubBoard(true);
     out.cards = document.querySelectorAll('#hubBoardList .boardJob').length;
     out.btns = document.querySelectorAll('#hubBoardList button[data-job]').length;
-    g.hubBoard(false);
+    // 委託板是「委託方」面板的「獨立委託」分頁：面板有深色底、分頁切換
+    const box = document.getElementById('hubFacBox');
+    out.bg = getComputedStyle(box).backgroundColor;
+    out.tabOn = document.querySelector('#hubFacTabs button.on').dataset.ft;
+    out.facHid = document.getElementById('hubFacList').style.display === 'none';
+    out.dock = !document.getElementById('btnHubBoard');
+    g.hubFacTab('fac');
+    out.tab2 =
+      document.getElementById('hubBoardList').style.display === 'none' &&
+      document.querySelectorAll('#hubFacList .facSec').length === 5;
+    g.hubFactions(false);
     const B = st.board;
     out.jobs = B.jobs.length;
     // 主線列舉出擊的地方看不到委託板的出擊（整章完成、作戰室）
@@ -17625,6 +17636,10 @@ async function testBoard(browser, base) {
     return out;
   });
   check(r.cards === 4 && r.btns === 8 && r.jobs === 4, '委託板：4 個委託，各有「接受」與「雇用僚機並接受」');
+  check(
+    r.bg !== 'rgba(0, 0, 0, 0)' && r.tabOn === 'board' && r.facHid && r.dock && r.tab2,
+    `委託板併進「委託方」面板的「獨立委託」分頁（深色底 ${r.bg}、預設分頁、切到委託方與模組、圖示列沒有單獨的委託板）`,
+  );
   check(r.chapterOk, '委託板的出擊不算進整章完成');
   check(r.hireCost > 0 && /^jb_/.test(r.sid) && r.job, `接受委託（雇用僚機 −${r.hireCost} COAM）`);
   check(r.wing, '雇用的僚機同行');

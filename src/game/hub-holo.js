@@ -113,7 +113,7 @@ const DEF_CAM = { yaw: 0, pitch: 0.56, dist: 12.6 };
 const HUB_SPOTS = [
   ['garage', '機甲庫', 'btnHubGarage'],
   ['pilot', '駕駛員', 'btnHubPilot'],
-  ['fac', '委託方與模組', 'btnHubFac'],
+  ['fac', '委託方・獨立委託', 'btnHubFac'],
   ['log', '通訊台', 'btnHubLog'],
   ['echo', 'ECHO 的終端', 'btnHubEcho'],
   ['story', '章節回顧', 'btnHubStory'],

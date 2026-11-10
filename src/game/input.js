@@ -1213,8 +1213,6 @@ Object.assign(Game.prototype, {
       this.openPilot();
     };
     $('btnHubLog').onclick = () => this.hubLog(true);
-    $('btnHubBoard').onclick = () => this.hubBoard(true); // 委託板（board.js）
-    $('btnHubBoardClose').onclick = () => this.hubBoard(false);
     $('btnHubSim').onclick = () => this.openSim();
     $('btnHubRecord').onclick = () => this.openRecord();
     $('btnSimBack').onclick = () => this.openHub();
@@ -1223,7 +1221,12 @@ Object.assign(Game.prototype, {
     $('btnEpHub').onclick = () => this.epilogueBack();
     $('btnRecGo').onclick = () => this.recordGo();
     $('btnHubLogClose').onclick = () => this.hubLog(false);
-    $('btnHubFac').onclick = () => this.hubFactions(true);
+    $('btnHubFac').onclick = () => this.hubFactions(true); // 委託方面板：獨立委託（board.js）＋委託方與模組（guide.js）
+    for (const b of document.querySelectorAll('#hubFacTabs button'))
+      b.onclick = () => {
+        SFX.ui();
+        this.hubFacTab(b.dataset.ft);
+      };
     $('btnHubEcho').onclick = () => this.hubEcho(true);
     $('btnHubStory').onclick = () => this.hubStory(true);
     $('btnHubStoryClose').onclick = () => this.hubStory(false);
