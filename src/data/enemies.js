@@ -99,7 +99,7 @@ const B_HELIOS = {
     '重武裝母艦直升機 — 地毯轟炸後拉高、投放空降兵時艙門打開是破綻；主旋翼壞了高度下降（近戰打得到），機槍莢艙與炸彈艙可以打壞',
 };
 const B_DUO = {
-  name: 'IGUAZU & VOLTA 雙 AC 小隊',
+  name: 'IGUAZU & VOLTA 雙機小隊',
   kind: 'duo',
   asm: null,
   scale: 1.05,
@@ -136,7 +136,7 @@ const B_BALTEUS = {
   wantDist: 16,
   speedMul: 1.5,
   intro:
-    '自律型艦載機動兵器 — 脈衝裝甲展開時集中火力打破它（打破是破綻），導彈牆之後也是破綻；飛彈莢艙、火焰噴射器、脈衝裝甲發生器可以打壞',
+    '自律型艦載機動兵器 — 斥力裝甲展開時集中火力打破它（打破是破綻），導彈牆之後也是破綻；飛彈莢艙、火焰噴射器、斥力裝甲發生器可以打壞',
 };
 const B_AEGIS = {
   res: [0.2, 0, -0.25], // 弱點（data/attrs.js）：[實彈, 爆發, 能量] 的額外減傷
@@ -324,7 +324,7 @@ const B_LEVIATHAN = {
 };
 // ---------- 第三批 Boss（entities/mech-boss2.js、game/bosses2.js）----------
 const B_DOPPEL = {
-  name: 'DOPPEL 複製 AC',
+  name: 'DOPPEL 複製機甲',
   kind: 'mirror',
   ai: 'ac', // 移動與開火同一般 AC；出擊時換成玩家的組裝
   mech: true,
@@ -349,7 +349,7 @@ const B_DOPPEL = {
   wantDist: 20,
   speedMul: 1.15,
   intro:
-    '複製 AC — 用和你相同的機體作戰，適應裝甲會對你最常用的傷害類型提高抗性，輪流換武器；適應過載之後是破綻，打壞的武器它就不能用',
+    '複製機甲 — 用和你相同的機體作戰，適應裝甲會對你最常用的傷害類型提高抗性，輪流換武器；適應過載之後是破綻，打壞的武器它就不能用',
 };
 const B_VIPER = {
   res: [-0.25, 0, 0], // 弱點（data/attrs.js）：[實彈, 爆發, 能量] 的額外減傷
@@ -1217,7 +1217,7 @@ export const FOE_HP_K = 0.8;
 export const ENEMY_TYPES = {
   mt: {
     cost: 1,
-    name: 'MT 輕型',
+    name: '輕型步行機',
     pal: 'mt',
     scale: 0.85,
     hpMul: 0.5,
@@ -1242,7 +1242,7 @@ export const ENEMY_TYPES = {
   mth: {
     res: [0.2, 0, -0.25],
     cost: 2,
-    name: 'MT 重型',
+    name: '重型步行機',
     pal: 'heavy',
     scale: 1.05,
     hpMul: 0.85,
@@ -1318,7 +1318,7 @@ export const ENEMY_TYPES = {
   // --- 新增 MT / 載具 / 飛行器 ---
   mt_shot: {
     cost: 3,
-    name: 'MT 突擊型',
+    name: '突擊型步行機',
     pal: 'mt',
     scale: 0.9,
     hpMul: 0.4,
@@ -1344,7 +1344,7 @@ export const ENEMY_TYPES = {
   },
   mt_gren: {
     cost: 1.5,
-    name: 'MT 榴彈型',
+    name: '榴彈型步行機',
     pal: 'mt',
     scale: 0.95,
     hpMul: 0.55,
@@ -1516,7 +1516,7 @@ export const ENEMY_TYPES = {
   mt_shield: {
     res: [0.2, 0, -0.25],
     cost: 2,
-    name: '盾牌 MT',
+    name: '盾牌步行機',
     pal: 'heavy',
     scale: 1.0,
     hpMul: 0.8,
@@ -1525,7 +1525,7 @@ export const ENEMY_TYPES = {
     ai: 'shield',
     wantDist: 14,
     speedMul: 0.8,
-    intro: '盾牌 MT — 正面擋下射擊：繞到背後、從高處往下打，或用近戰破盾',
+    intro: '盾牌步行機 — 正面擋下射擊：繞到背後、從高處往下打，或用近戰破盾',
     gen: () => ({
       head: 'h_hv',
       core: 'c_hv',
@@ -1542,7 +1542,7 @@ export const ENEMY_TYPES = {
   },
   mt_mortar: {
     cost: 2,
-    name: '迫擊砲 MT',
+    name: '迫擊砲步行機',
     pal: 'mt',
     scale: 0.95,
     hpMul: 0.55,
@@ -1551,7 +1551,7 @@ export const ENEMY_TYPES = {
     ai: 'mortar',
     pref: 'still', // 優先打站著不動的
     wantDist: 50,
-    intro: '迫擊砲 MT — 地面的紅圈是砲彈落點，別停在原地',
+    intro: '迫擊砲步行機 — 地面的紅圈是砲彈落點，別停在原地',
     gen: () => ({
       head: 'h_scan',
       core: 'c_std',
@@ -1601,7 +1601,7 @@ export const ENEMY_TYPES = {
   mt_stomp: {
     res: [0.2, 0, -0.25],
     cost: 2.5,
-    name: '重踏機甲',
+    name: '重踏步行機',
     pal: 'heavy',
     scale: 1.15,
     hpMul: 1.0,
@@ -1609,7 +1609,7 @@ export const ENEMY_TYPES = {
     stabMul: 1.3,
     ai: 'stomper',
     wantDist: 6,
-    intro: '重踏機甲 — 近身會踏地放衝擊波，看準時機起跳',
+    intro: '重踏步行機 — 近身會踏地放衝擊波，看準時機起跳',
     gen: () => ({
       head: 'h_hv',
       core: 'c_hv',
@@ -1703,7 +1703,7 @@ export const ENEMY_TYPES = {
     wantDist: 18,
     speedMul: 1.25,
     cargo: ['mt', 'mt', 'mth'],
-    intro: '運輸機 — 會在附近投放 MT，趁投放前擊落',
+    intro: '運輸機 — 會在附近投放步行機，趁投放前擊落',
     gen: () => ({
       head: 'h_std',
       core: 'c_std',
@@ -1720,7 +1720,7 @@ export const ENEMY_TYPES = {
   },
   mt_cmd: {
     cost: 2.5,
-    name: '指揮官 MT',
+    name: '指揮官步行機',
     pal: 'command',
     scale: 1.05,
     hpMul: 0.9,
@@ -1729,7 +1729,7 @@ export const ENEMY_TYPES = {
     ai: 'commander',
     wantDist: 32,
     support: true,
-    intro: '指揮官 MT — 周圍敵機命中與速度提升；擊破後敵軍暫時混亂',
+    intro: '指揮官步行機 — 周圍敵機命中與速度提升；擊破後敵軍暫時混亂',
     gen: () => ({
       head: 'h_scan',
       core: 'c_std',
@@ -1757,7 +1757,7 @@ export const ENEMY_TYPES = {
   ac_volker: { cost: 5, roster: 'volker', pal: 'volker', scale: 1.05 },
   ac: {
     cost: 3.5,
-    name: '敵對 AC',
+    name: '敵對機甲',
     pal: 'ac',
     scale: 1.0,
     hpMul: 0.85,

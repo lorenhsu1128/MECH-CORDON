@@ -306,7 +306,7 @@ export const BUILTIN_STYLES = [
   { id: 'real', name: '寫實（原本的畫面）', params: {} },
   {
     id: 'ac6',
-    name: '機戰傭兵 6',
+    name: '重裝寫實',
     params: {
       mechDetail: 1,
       normalK: 1.25,

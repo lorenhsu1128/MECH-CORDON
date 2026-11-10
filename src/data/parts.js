@@ -1646,11 +1646,11 @@ export const CONSUMABLES = [
   },
   {
     id: 'cs_ally',
-    name: 'ALLY-AC 友軍支援',
+    name: 'ALLY-MECH 友軍支援',
     price: 12000,
     max: 4,
     dur: 45,
-    desc: '呼叫一台隨機組裝的友軍 AC 空降到你身邊，自主作戰 45 秒後撤離。友軍會吸引敵火、使用自己的武器',
+    desc: '呼叫一台隨機組裝的友軍機甲空降到你身邊，自主作戰 45 秒後撤離。友軍會吸引敵火、使用自己的武器',
   },
 ];
 PARTS.consumable = CONSUMABLES;

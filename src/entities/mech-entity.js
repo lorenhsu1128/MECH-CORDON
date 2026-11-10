@@ -143,7 +143,7 @@ export class MechEntity {
     // 機甲三倍高改版：所有實體放大 MS 倍
     this.scale = (opts.scale || 1) * MS;
     this.isBoss = !!opts.isBoss;
-    this.name = opts.name || 'AC';
+    this.name = opts.name || 'MECH';
     this.model =
       opts.modelKind === 'vehicle'
         ? buildVehicle(pal, this.scale)
@@ -2349,7 +2349,7 @@ export class MechEntity {
         this.game.fbBreak(this, from);
         SFX.stagger(this.isPlayer ? null : this.center());
         if (this.isPlayer) {
-          this.game.flashAlert('ACS 過載 — 姿態崩潰');
+          this.game.flashAlert('BAL 過載 — 姿態崩潰');
           this.game.rumble(1.0, 1.0, 600);
         }
         this.game.netEv({ t: 'stag', i: this.id });
@@ -2458,9 +2458,9 @@ export class MechEntity {
     } else if (this.team === 'player') {
       if (g.net && g.net.role) {
         g.flashMsg(`${this.name} 已被擊破`, 0xff4d4d, 2.5);
-        if (this.isPlayer) g.flashMsg('AC 已被擊破 — 旁觀模式（Tab 切換隊友）', 0xff4d4d, 3);
+        if (this.isPlayer) g.flashMsg('機體已被擊破 — 旁觀模式（Tab 切換隊友）', 0xff4d4d, 3);
       } else if (this.isPlayer) g.onPlayerDead();
-    } else g.flashAlert('友軍 AC 已被擊破');
+    } else g.flashAlert('友軍 機體已被擊破');
   }
   respawnAt(pos) {
     const g = this.game;

@@ -452,7 +452,7 @@ Object.assign(Game.prototype, {
   airResultRows() {
     const S = this.airStats;
     if (!S) return [];
-    const rows = [['擊墜數', `${S.kills}（敵對 AC ${S.aces}）`]];
+    const rows = [['擊墜數', `${S.kills}（敵對機甲 ${S.aces}）`]];
     if (S.ground) rows.push(['地面目標', String(S.ground)]);
     if (S.chain) rows.push(['殘骸連鎖', `${S.chain} 次`]);
     if (this.airBase)

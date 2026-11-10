@@ -234,7 +234,7 @@ Object.assign(MechEntity.prototype, {
     if (this.isPlayer && g.cacheCoam) g.cacheCoam(v);
     this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.08);
     g.fx.ring(this.center(), 5, 0xffc040);
-    if (this.isPlayer) g.flashMsg(`懸賞：COAM +${v.toLocaleString()}、AP 回復`, 0xffc040, 1.6);
+    if (this.isPlayer) g.flashMsg(`懸賞：SP +${v.toLocaleString()}、AP 回復`, 0xffc040, 1.6);
   },
   // ================= 第 2 期：卡斯特隆、維爾威 =================
   // 打到敵人（takeDamage，扣 AP 之前）：火力支援（Boss 的傷害累積層數）、火力封鎖（持續命中）

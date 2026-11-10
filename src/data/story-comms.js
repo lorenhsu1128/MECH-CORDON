@@ -212,20 +212,20 @@ export const COMMS = [
     once: true,
     lines: [
       ['enemy', '……又一個傭兵？'],
-      ['echo', '具名 AC。小心，這傢伙不是一般的雜兵。'],
+      ['echo', '具名機甲。小心，這傢伙不是一般的雜兵。'],
     ],
   },
   ...variants({ event: 'segStart', type: 'elite' }, 'echo', [
-    '具名 AC 反應。集中火力。',
-    '前面有具名 AC，小心應對。',
-    '這區有一台具名 AC，別大意。',
-    '具名 AC 出現了，跟雜兵不一樣喔。',
-    '偵測到具名 AC，打起精神。',
-    '有高手在等你，是具名 AC。',
-    '具名 AC 反應，先看清楚它的裝備。',
-    '是具名 AC，慢慢來，別急。',
+    '具名機甲反應。集中火力。',
+    '前面有具名機甲，小心應對。',
+    '這區有一台具名機甲，別大意。',
+    '具名機甲出現了，跟雜兵不一樣喔。',
+    '偵測到具名機甲，打起精神。',
+    '有高手在等你，是具名機甲。',
+    '具名機甲反應，先看清楚它的裝備。',
+    '是具名機甲，慢慢來，別急。',
     '對方是有名的傭兵，集中火力。',
-    '具名 AC 在前方，準備交戰。',
+    '具名機甲在前方，準備交戰。',
   ]),
 
   // ======== 第 1 章 ========
@@ -323,7 +323,7 @@ export const COMMS = [
     lines: [
       ['rust', '喂喂喂，新來的？這片荒野的廢鐵都是我的！'],
       ['rust', '尤其是那座舊天線——我追它的訊號追了三天，你別想插隊。'],
-      ['echo', '具名 AC「RUST」。拾荒傭兵，每次遇到的裝備都不一樣。'],
+      ['echo', '具名機甲「RUST」。拾荒傭兵，每次遇到的裝備都不一樣。'],
       ['rust', '你那台機體的零件……看起來挺值錢的嘛。'],
     ],
   },
@@ -335,7 +335,7 @@ export const COMMS = [
     once: true,
     lines: [
       ['sirocco', '……這裡是艾瑟立克的調查範圍。回頭。'],
-      ['echo', '具名 AC「SIROCCO」。艾瑟立克的護衛，高速近戰型，會從視野外突進。'],
+      ['echo', '具名機甲「SIROCCO」。艾瑟立克的護衛，高速近戰型，會從視野外突進。'],
       ['sirocco', '不回頭也好。我很久沒遇到值得出刀的對手了。'],
     ],
   },
@@ -348,7 +348,7 @@ export const COMMS = [
     lines: [
       ['prospector', '卡斯特隆的狗？還是維爾威的？……都一樣。'],
       ['prospector', '陣地醒來那天，我整隊礦工就埋在這下面。卡斯特隆連一句道歉都沒有。'],
-      ['echo', '具名 AC「PROSPECTOR」。重裝、打樁機加霰彈，別讓他貼近。'],
+      ['echo', '具名機甲「PROSPECTOR」。重裝、打樁機加霰彈，別讓他貼近。'],
       ['prospector', '滾出去，或是埋在這裡陪他們。'],
     ],
   },
@@ -531,7 +531,7 @@ export const COMMS = [
     lines: [
       ['stevedore', '喂，傭兵！你替研究所那些白袍子打工？'],
       ['stevedore', '霍斯特老頭說你是自己人。自己人不打自己人。'],
-      ['echo', '具名 AC「STEVEDORE」。卡斯特隆的碼頭工頭，雙肩榴彈，會躲在貨櫃堆後面砲擊。'],
+      ['echo', '具名機甲「STEVEDORE」。卡斯特隆的碼頭工頭，雙肩榴彈，會躲在貨櫃堆後面砲擊。'],
       ['stevedore', '……不聽？那就讓你嚐嚐碼頭的貨櫃有多重！'],
     ],
   },
@@ -561,7 +561,7 @@ export const COMMS = [
     lines: [
       ['sluice', '水壩守備隊。這裡不屬於任何一家公司。'],
       ['sluice', '下游有三座城鎮靠這座水壩過冬。不管你替誰工作，都別碰閘門。'],
-      ['echo', '具名 AC「SLUICE」。他在保護下游，會佔住壩頂的高處用重火力壓制。'],
+      ['echo', '具名機甲「SLUICE」。他在保護下游，會佔住壩頂的高處用重火力壓制。'],
     ],
   },
   { event: 'aceDown', ace: 'sluice', lines: [['sluice', '……你們這些傭兵，從來不看下游。']] },
@@ -573,7 +573,7 @@ export const COMMS = [
     lines: [
       ['marsh', '喲，卡斯特隆的乖狗狗。主人叫你來咬人？'],
       ['marsh', '研究所的白袍子出了雙倍的錢請我斷後。你拿的是單倍吧？真可憐。'],
-      ['echo', '具名 AC「MARSH」。兩棲型，在水裡會潛行、鎖定不到。站到高處，等它出來。'],
+      ['echo', '具名機甲「MARSH」。兩棲型，在水裡會潛行、鎖定不到。站到高處，等它出來。'],
     ],
   },
   { event: 'aceDown', ace: 'marsh', lines: [['marsh', '……下次在你看不到的地方咬你。']] },
@@ -729,7 +729,7 @@ export const COMMS = [
     once: true,
     lines: [
       ['whiteout', '……又是你。我從下游走來的，在主壩的新聞上看過你的標誌。'],
-      ['echo', '具名 AC「WHITEOUT」。暴風雪裡鎖定不到，只有開火的瞬間會暴露位置。'],
+      ['echo', '具名機甲「WHITEOUT」。暴風雪裡鎖定不到，只有開火的瞬間會暴露位置。'],
       ['whiteout', '營地的人是我在守。你來，是要拿走什麼？'],
     ],
   },
@@ -741,7 +741,7 @@ export const COMMS = [
     once: true,
     lines: [
       ['specimen', '……你來了。你終於來了。這裡的牆上有你的編號，我每天都看著它。'],
-      ['echo', '具名 AC「SPECIMEN」。研究所的強化人間，會定期過載，過載後有破綻。'],
+      ['echo', '具名機甲「SPECIMEN」。研究所的強化人間，會定期過載，過載後有破綻。'],
       ['specimen', '為什麼是你？我才是先被做出來的那個！'],
     ],
   },
@@ -905,7 +905,7 @@ export const COMMS = [
     once: true,
     lines: [
       ['spire', '哈！又一個爬不上來的地面人！這座構造體是 Doser 的家，維爾威連一張租約都沒給過！'],
-      ['echo', '具名 AC「SPIRE」。會跳到高處的平台往下打——爬上同一層，別讓他一直佔著高處。'],
+      ['echo', '具名機甲「SPIRE」。會跳到高處的平台往下打——爬上同一層，別讓他一直佔著高處。'],
       ['spire', '想往下？先往上看我！'],
     ],
   },
@@ -917,7 +917,7 @@ export const COMMS = [
     once: true,
     lines: [
       ['countdown', '十、九、八——你好啊！我是維爾威的發射技師！這座港我拆過三次、裝過四次！'],
-      ['echo', '具名 AC「COUNTDOWN」。大量飛彈齊射，聽到鎖定警告就找掩體。'],
+      ['echo', '具名機甲「COUNTDOWN」。大量飛彈齊射，聽到鎖定警告就找掩體。'],
       ['countdown', '三、二、一——砰！'],
     ],
   },
@@ -1055,7 +1055,7 @@ export const COMMS = [
       ['volta', '我們接到委託，要在這裡擋你一下。'],
       ['iguazu', '說來奇怪，這張委託單的委託方欄位是空的。'],
       ['volta', '報酬倒是很清楚：四家各付四分之一。'],
-      ['echo', 'IGUAZU 與 VOLTA！兩台 AC 會互相掩護，先集中打一台。'],
+      ['echo', 'IGUAZU 與 VOLTA！兩台機甲會互相掩護，先集中打一台。'],
     ],
   },
   {
@@ -1086,7 +1086,7 @@ export const COMMS = [
     once: true,
     lines: [
       ['undertow', '……又是外來的。電纜是我們的祖先拉的，你們每個人都想把它拔走。'],
-      ['echo', '具名 AC「UNDERTOW」。貼身之後會把你往邊緣推，待在街區中央。'],
+      ['echo', '具名機甲「UNDERTOW」。貼身之後會把你往邊緣推，待在街區中央。'],
     ],
   },
   { event: 'aceDown', ace: 'undertow', lines: [['undertow', '海會記得你。']] },
@@ -1233,7 +1233,7 @@ export const COMMS = [
     ace: 'zenith',
     lines: [
       ['zenith', '停下來，KEY-07。'],
-      ['echo', '具名 AC「ZENITH」。……這個訊號，我認得。'],
+      ['echo', '具名機甲「ZENITH」。……這個訊號，我認得。'],
       ['zenith', '我是上一個。上一個被叫到這裡的人。'],
       ['zenith', '這裡不是終點。站只是一個發射器——按下按鈕的地方在地上。'],
       ['zenith', '先打倒我吧。答案在熔岩的那一頭。'],
@@ -1246,7 +1246,7 @@ export const COMMS = [
     ace: 'zenith',
     lines: [
       ['zenith', '停下來，KEY-07。'],
-      ['echo', '具名 AC「ZENITH」。……這個訊號，我認得。'],
+      ['echo', '具名機甲「ZENITH」。……這個訊號，我認得。'],
       ['zenith', '又見面了。我是上一個。我走到這裡，然後就醒在荒野了。我花了很久才想起來。'],
       ['zenith', '不要交出去。也不要讓它掉下去。不管你選哪一個，都一樣。'],
       ['zenith', '……可是你現在還看不到第三扇門吧。那就先打倒我。'],
@@ -1343,7 +1343,7 @@ export const COMMS = [
     ace: 'kiln',
     lines: [
       ['kiln', '霍斯特少爺派你來的？……熔爐不歡迎客人。'],
-      ['echo', '具名 AC「KILN」。重裝甲、霰彈、榴彈，貼身壓制型。拉開距離。'],
+      ['echo', '具名機甲「KILN」。重裝甲、霰彈、榴彈，貼身壓制型。拉開距離。'],
     ],
   },
   {
@@ -1437,7 +1437,7 @@ export const COMMS = [
     ace: 'keel',
     lines: [
       ['keel', '登艦者。……不，是鑰匙。你終於來了。'],
-      ['echo', '具名 AC「KEEL」。盾與重裝甲、地面衝擊波。跳起來躲衝擊波，繞到盾的另一側。'],
+      ['echo', '具名機甲「KEEL」。盾與重裝甲、地面衝擊波。跳起來躲衝擊波，繞到盾的另一側。'],
     ],
   },
   {
@@ -1551,7 +1551,7 @@ export const COMMS = [
     once: true,
     lines: [
       ['zenith', '地面是給弱者站的。'],
-      ['echo', '具名 AC「ZENITH」。純空戰型，幾乎不落地。它在空中換位置時最好打。'],
+      ['echo', '具名機甲「ZENITH」。純空戰型，幾乎不落地。它在空中換位置時最好打。'],
     ],
   },
   // ======== 第 2 周目：委託方的「好像見過」、依上一周目的抉擇 ========
@@ -1990,7 +1990,7 @@ export const COMMS = [
     sid: 'c6y',
     lines: [
       ['echo', '最後一個私人委託。管制核心就在日照面的背後。'],
-      ['echo', '複製 AC 用的是你每一次的組裝。……全部的。'],
+      ['echo', '複製機甲用的是你每一次的組裝。……全部的。'],
     ],
   },
   { event: 'bossHalf', sid: 'c6y', lines: [['echo', 'DOPPEL 學得很快。但你這一次記得，它不記得。']] },
@@ -2236,7 +2236,7 @@ export const COMMS = [
     theme: 'wasteland',
     type: 'battle',
     once: true,
-    lines: [['echo', '拾荒 MT 的反應。它們會撿同伴的零件變強，先打落單的。']],
+    lines: [['echo', '拾荒步行機的反應。它們會撿同伴的零件變強，先打落單的。']],
   },
   {
     event: 'segStart',
@@ -2297,7 +2297,7 @@ export const COMMS = [
     event: 'segStart',
     theme: 'snow',
     once: true,
-    lines: [['echo', '西部冰原。雪裡藏著東西——看到地上冒白煙就是潛伏的 MT。']],
+    lines: [['echo', '西部冰原。雪裡藏著東西——看到地上冒白煙就是潛伏的步行機。']],
   },
   {
     event: 'segStart',
@@ -2385,10 +2385,10 @@ export const COMMS = [
   {
     event: 'fail',
     killedBy: 'IGUAZU',
-    lines: [['echo', '兩台 AC 會互相掩護。拉開距離，讓它們分開再各個擊破。']],
+    lines: [['echo', '兩台機甲會互相掩護。拉開距離，讓它們分開再各個擊破。']],
   },
   { event: 'fail', killedBy: 'SERAPHIM', lines: [['echo', '浮游砲包圍時往外衝，別待在包圍圈中央。']] },
-  { event: 'fail', killedBy: 'DOPPEL', lines: [['echo', '複製 AC 會適應你常用的武器。換武器打。']] },
+  { event: 'fail', killedBy: 'DOPPEL', lines: [['echo', '複製機甲會適應你常用的武器。換武器打。']] },
   { event: 'fail', killedBy: 'BALTEUS', lines: [['echo', '最後一戰了，別放棄。換個裝備再試一次。']] },
   { event: 'fail', killedBy: 'JUGGERNAUT', lines: [['echo', 'JUGGERNAUT 的正面太硬了。繞到側面。']] },
   { event: 'fail', killedBy: 'CINDER', lines: [['echo', '燃燒的地面會一直扣血。別在火裡跟它對射。']] },
@@ -2457,7 +2457,7 @@ export const COMMS = [
   {
     event: 'fail',
     killedBy: '潛伏',
-    lines: [['echo', '雪中潛伏 MT 靠近才會現身。注意地上的白煙，先開火逼它出來。']],
+    lines: [['echo', '雪中潛伏步行機靠近才會現身。注意地上的白煙，先開火逼它出來。']],
   },
   {
     event: 'fail',
@@ -2498,7 +2498,7 @@ export const COMMS = [
   {
     event: 'fail',
     killedBy: '叉架',
-    lines: [['echo', '叉架 MT 的正面有貨櫃擋著。繞到側面，或用近戰把貨櫃打掉。']],
+    lines: [['echo', '叉架步行機的正面有貨櫃擋著。繞到側面，或用近戰把貨櫃打掉。']],
   },
   {
     event: 'fail',
@@ -2529,7 +2529,7 @@ export const COMMS = [
   {
     event: 'fail',
     killedBy: '汙染',
-    lines: [['echo', '腐蝕區會持續損傷、讓 ACS 回復變慢。別在綠色的地面上停留。']],
+    lines: [['echo', '腐蝕區會持續損傷、讓 BAL 回復變慢。別在綠色的地面上停留。']],
   },
   { event: 'fail', fails: 3, lines: [['echo', '已經第三次了。換個裝備試試看？重量和射程都會影響打法。']] },
   {
@@ -2538,15 +2538,15 @@ export const COMMS = [
     lines: [['echo', '砲台正面太硬了。先打周圍的設施，砲台的裝甲才會變弱。']],
   },
   { event: 'fail', killedBy: 'SANDWORM', lines: [['echo', '鑽地蟲在地下時打不到。等它鑽出來再集中火力。']] },
-  { event: 'fail', killedBy: 'MT', lines: [['echo', '被雜兵圍住了。用 QB 拉開距離，別停在原地。']] },
+  { event: 'fail', killedBy: '步行機', lines: [['echo', '被雜兵圍住了。用 QB 拉開距離，別停在原地。']] },
   ...variants({ event: 'fail' }, 'echo', [
-    'AC 回收完成。從紀錄點重新開始吧。',
+    '機體回收完成。從紀錄點重新開始吧。',
     '回收完成了，別在意，再來一次。',
     '機體回收了，我們從紀錄點重來。',
     '沒關係，從紀錄點再試一次吧。',
     '回收完畢，休息一下再出發。',
     '這次不太順，調整一下再上。',
-    'AC 回收好了，人沒事最重要。',
+    '機體回收好了，人沒事最重要。',
     '紀錄點還在，我們重新來過。',
     '回收完成。想一下哪裡可以改，再試試。',
     '只是輸了這一次而已，再挑戰吧。',

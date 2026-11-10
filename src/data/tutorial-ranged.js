@@ -284,7 +284,7 @@ export const R_LESSONS = [
       {
         id: 'back',
         t: '繞到背後',
-        text: '鎖定目標身上的<b>菱形</b>是弱點：亮黃色＝現在打得到。MT 的推進器在<b>背後</b>，它轉身很慢——繞到它背後開火＝CRITICAL（傷害 ×1.5）。',
+        text: '鎖定目標身上的<b>菱形</b>是弱點：亮黃色＝現在打得到。步行機的推進器在<b>背後</b>，它轉身很慢——繞到它背後開火＝CRITICAL（傷害 ×1.5）。',
         say: '從正面打是浪費子彈。',
         dummy: { type: 'mt', lv: 0, dist: 40, turn: 0.35, sense: true },
         goal: [{ ev: 'crit', n: 4, test: (o) => o.k === 'thr', lbl: 'CRITICAL' }],
@@ -315,7 +315,7 @@ export const R_LESSONS = [
         id: 'reaim',
         t: '改瞄弱點（追尾視角）',
         opt: true,
-        text: '追尾視角或第一人稱時，把<b>準星壓在弱點上</b>（菱形外多一個圓圈）＝這一發算打在那個弱點，不用繞到那一面。對正面的 MT 瞄頭頂的感測器打 3 次 CRITICAL。',
+        text: '追尾視角或第一人稱時，把<b>準星壓在弱點上</b>（菱形外多一個圓圈）＝這一發算打在那個弱點，不用繞到那一面。對正面的步行機瞄頭頂的感測器打 3 次 CRITICAL。',
         say: '看得見，就打得到。',
         dummy: { type: 'mt', lv: 0, dist: 35, sense: true },
         setup: { view: 'chase' },

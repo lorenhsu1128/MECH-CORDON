@@ -57,7 +57,7 @@ export const BEHAVIORS = {
 };
 export const UNIT_KINDS = {
   enemy: '敵人',
-  ace: '宿敵 AC',
+  ace: '宿敵機甲',
   boss: 'Boss',
   ally: '友軍',
   convoy: '護送車輛',
@@ -197,7 +197,7 @@ export const CUES = {
   good: '中央訊息（好消息）',
   warn: '中央訊息（警告）',
   clear: '清除',
-  ace: '敵對 AC 介入',
+  ace: '敵對機甲介入',
 };
 export const WHO = {
   echo: 'ECHO（作戰支援）',

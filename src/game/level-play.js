@@ -368,7 +368,11 @@ Object.assign(Game.prototype, {
             }),
           );
         if (r)
-          this.flashMsg(`敵對 AC「${r.name}」`, 0xff4d4d, 2.2, { k: 'ace', m: r.name, s: 'HOSTILE AC 介入' });
+          this.flashMsg(`敵對機甲「${r.name}」`, 0xff4d4d, 2.2, {
+            k: 'ace',
+            m: r.name,
+            s: 'HOSTILE MECH 介入',
+          });
       } else if (u.kind === 'boss') {
         const bd = BOSS_DEFS[+u.type];
         if (bd && !(bd.rail && !(w.corridor && w.corridor.kind === 'rail'))) {
@@ -1071,7 +1075,7 @@ Object.assign(Game.prototype, {
       ['擊破數', String(kills)],
       ['受損 AP', String(Math.round(p ? p.dmgTaken : 0))],
       ...this.hkRows(), // 人員擊殺數（crowd.js）
-      ['獎勵', '自訂關卡沒有 COAM 與經驗'],
+      ['獎勵', '自訂關卡沒有 SP 與經驗'],
     ];
     if (!success && reason) rows.splice(3, 0, ['原因', reason]);
     $('resultGrid').innerHTML = rows

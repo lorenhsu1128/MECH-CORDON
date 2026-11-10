@@ -4032,7 +4032,7 @@ export const LANDMARKS = {
       shapes: [{ c: [0, 0], r: 4, h: 7 }],
     },
     giant: {
-      name: '冰封的巨型 AC',
+      name: '冰封的巨型機甲',
       build: frozenGiant,
       bx: [-13, 13, -6, 7],
       range: 3,
@@ -4318,7 +4318,7 @@ export const LANDMARKS = {
       ],
     },
     ac: {
-      name: '半埋的舊 AC 殘骸',
+      name: '半埋的舊機甲殘骸',
       build: buriedAc,
       bx: [-11, 14, -8, 10],
       range: 4,

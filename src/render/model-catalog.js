@@ -172,7 +172,7 @@ const addMech = (key, name, asm, palKey, scale, note = '', boss = false) =>
 addMech('player', 'RAVEN（玩家初始機）', START_ASM, 'player', 1);
 for (const [key, r] of Object.entries(AC_ROSTER)) {
   const t = ENEMY_TYPES['ac_' + key];
-  addMech('ac_' + key, r.name, r.asm, r.pal, t ? t.scale : 1, '具名 AC');
+  addMech('ac_' + key, r.name, r.asm, r.pal, t ? t.scale : 1, '具名機甲');
 }
 const duo = BOSS_DEFS.find((b) => b.kind === 'duo');
 for (const D of DUO_BOSS)
@@ -182,7 +182,7 @@ for (const D of DUO_BOSS)
     D.asm,
     D.pal,
     duo ? duo.scale : 1,
-    'Boss（雙 AC 小隊）',
+    'Boss（雙機小隊）',
     true,
   );
 BOSS_DEFS.forEach((b) => {
@@ -651,8 +651,8 @@ addPlain('prop', 'scrap', '廢鐵板', '荒涼工業荒野與沙丘地帶的裝�
 addPlain(
   'prop',
   'mt_wreck',
-  'MT 殘骸',
-  '沙丘地帶的掩體；MT 也放大 3 倍，約 12.6 × 9.6 × 12.6 m，遊戲中埋入 1.8 m，可破壞',
+  '步行機殘骸',
+  '沙丘地帶的掩體；步行機也放大 3 倍，約 12.6 × 9.6 × 12.6 m，遊戲中埋入 1.8 m，可破壞',
   () => buildMtWreck(0x6a6f66),
 );
 addPlain('prop', 'sandstone', '風蝕砂岩', '沙丘地帶的岩石；半徑 6–10、高 15–25 m，可破壞' + PROP_SCALED, () =>

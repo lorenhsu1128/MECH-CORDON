@@ -123,7 +123,7 @@ Object.assign(Game.prototype, {
     const L = s.level;
     return [
       `任務 ${String(L).padStart(2, '0')}${isBossLevel(L) ? '（決戰）' : ''}`,
-      `COAM ${s.coam.toLocaleString()}`,
+      `SP ${s.coam.toLocaleString()}`,
       `駕駛員 PvE Lv${levelOf(s.pilot.pve.xp)}／PvP Lv${levelOf(s.pilot.pvp.xp)}`,
       `擊破 ${s.kills}${s.bosses ? `（魔王 ${s.bosses}）` : ''}`,
     ];
@@ -353,7 +353,7 @@ Object.assign(Game.prototype, {
       if (so) out.push(`出擊中：${so.name}（區段 ${ck.seg + 1}／${so.segs.length}）`);
     }
     out.push(
-      `COAM ${s.coam.toLocaleString()} ｜ 駕駛員 Lv${levelOf(s.pilot.pve.xp)} ｜ 最後遊玩 ${fmtTime(s.t)}`,
+      `SP ${s.coam.toLocaleString()} ｜ 駕駛員 Lv${levelOf(s.pilot.pve.xp)} ｜ 最後遊玩 ${fmtTime(s.t)}`,
     );
     return out;
   },

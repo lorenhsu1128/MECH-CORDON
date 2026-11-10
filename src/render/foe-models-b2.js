@@ -902,8 +902,8 @@ export const FOE_BUILDERS_b2 = {
 };
 // 模型庫登記：[key, 名稱, 備註]（model-catalog.js 依此建立 vehicle/foe_<key>）
 export const FOE_CATALOG_b2 = [
-  ['riveter', '鉚釘槍 MT', '集散場專屬；射出黏性鉚釘，黏上 3 秒後爆炸'],
-  ['welder', '電焊 MT', '集散場專屬；貼近後以電弧吸走 EN'],
+  ['riveter', '鉚釘槍步行機', '集散場專屬；射出黏性鉚釘，黏上 3 秒後爆炸'],
+  ['welder', '電焊步行機', '集散場專屬；貼近後以電弧吸走 EN'],
   ['water_cannon', '高壓水砲車', '水壩專屬；蓄水後噴出高衝擊的水柱'],
   ['turbine', '渦輪吸入機', '水壩專屬；打開前蓋把周圍的機體吸向葉片'],
   ['eel_drone', '電鰻無人機', '水沒市街專屬；貼著水面游，放電讓水中的機體受傷'],

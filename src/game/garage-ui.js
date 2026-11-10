@@ -160,7 +160,7 @@ Object.assign(Game.prototype, {
         asm[key] = p.id;
         SFX.ui();
       } else {
-        this.flashMsg('COAM 不足', 0xff4d4d, 1);
+        this.flashMsg('SP 不足', 0xff4d4d, 1);
         return;
       }
     } else asm[key] = p.id;
@@ -171,7 +171,7 @@ Object.assign(Game.prototype, {
     const S = this.save;
     const n = S.items[p.id] || 0;
     if (n >= p.max) return this.flashMsg(`最多攜帶 ${p.max} 個`, 0xff4d4d, 1);
-    if (S.coam < p.price) return this.flashMsg('COAM 不足', 0xff4d4d, 1);
+    if (S.coam < p.price) return this.flashMsg('SP 不足', 0xff4d4d, 1);
     S.coam -= p.price;
     S.items[p.id] = n + 1;
     SFX.ui();
@@ -516,7 +516,7 @@ Object.assign(Game.prototype, {
             (w) =>
               `<div><span>${SN[w.slot]}</span><span class="col"><b style="height:${(w.hit30 * 100).toFixed(0)}%"></b><em>${pct(w.hit30)}</em></span><span class="col far"><b style="height:${(w.hit60 * 100).toFixed(0)}%"></b><em>${pct(w.hit60)}</em></span></div>`,
           )
-          .join('')}</div><div class="sNote">左＝90 m、右＝180 m（對移動中的 AC）</div>`
+          .join('')}</div><div class="sNote">左＝90 m、右＝180 m（對移動中的機甲）</div>`
       : '<p class="dim">沒有可以估算的武器</p>';
     const defs = ATTR_KEYS.map((k) =>
       bar(

@@ -26,7 +26,7 @@ const costTxt = (c) =>
 Object.assign(Game.prototype, {
   forgePay(c) {
     if (!this.tuneAfford(c)) {
-      this.flashMsg('COAM 或素材不足', 0xff4d4d, 1.2);
+      this.flashMsg('SP 或素材不足', 0xff4d4d, 1.2);
       return false;
     }
     const S = this.save;

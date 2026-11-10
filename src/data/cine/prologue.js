@@ -879,7 +879,7 @@ export function prologueCine(ctx) {
       { t: 1.2, fx: 'streaks', at: { a: 'sp' }, n: 60, color: 0xffc070, speed: 40 },
       { t: 1.22, slow: 0.25, dur: 0.7 },
       { t: 1.22, flash: '#ffd0a0', in: 0.03, hold: 0.05, out: 0.3 },
-      { t: 1.6, sub: 'ACS 過載——對方失衡！', who: 'echo', dur: 1.4 },
+      { t: 1.6, sub: 'BAL 過載——對方失衡！', who: 'echo', dur: 1.4 },
       { t: 2.0, a: 'h', qb: [1, -1] },
       { t: 2.0, sfx: 'boostUp', vol: 1 },
       { t: 2.3, boom: { a: 'sp', o: [-1, 1, 1] }, big: true },

@@ -46,7 +46,7 @@ export const FOES = {
     theme: 'wasteland',
     foe: 'scav',
     cost: 1.5,
-    name: '拾荒 MT',
+    name: '拾荒步行機',
     res: [-0.25, 0, 0], // 輕裝的拼裝機體：實彈打穿
     pal: 'scav',
     scale: 0.85,
@@ -57,7 +57,7 @@ export const FOES = {
     wantDist: 18,
     group: 3,
     speedMul: 1.15,
-    intro: '拾荒 MT：會撿起被擊破同伴的零件變強，優先擊破落單的',
+    intro: '拾荒步行機：會撿起被擊破同伴的零件變強，優先擊破落單的',
     gen: () => ({ ...LIGHT, rarm: Math.random() < 0.5 ? 'w_mg' : 'w_sg' }),
   },
   junk: {
@@ -108,7 +108,7 @@ export const FOES = {
     theme: 'industrial',
     foe: 'forklift',
     cost: 2,
-    name: '叉架 MT',
+    name: '叉架步行機',
     res: [0, 0, -0.25], // 外露的液壓與電路：能量
     pal: 'yard',
     scale: 1,
@@ -123,7 +123,7 @@ export const FOES = {
     group: 2,
     speedMul: 0.9,
     turnRate: 2.5,
-    intro: '叉架 MT：舉著貨櫃當盾牌，正面打不太動——繞到側面、用近戰打掉貨櫃，或等它把貨櫃丟出來',
+    intro: '叉架步行機：舉著貨櫃當盾牌，正面打不太動——繞到側面、用近戰打掉貨櫃，或等它把貨櫃丟出來',
     gen: () => ({ ...HEAVY, rarm: 'w_mg' }),
   },
   // ---- 多重水壩 ----
@@ -196,7 +196,7 @@ export const FOES = {
     theme: 'flooded',
     foe: 'sprayer',
     cost: 2,
-    name: '汙染噴射 MT',
+    name: '汙染噴射步行機',
     res: [-0.25, 0, 0], // 背著藥劑槽：實彈打穿
     pal: 'toxic',
     scale: 1,
@@ -210,7 +210,7 @@ export const FOES = {
     wantDist: 14,
     speedMul: 0.85,
     turnRate: 2.5,
-    intro: '汙染噴射 MT：噴出的汙染液留下腐蝕區，站在裡面會持續損傷、ACS 也回復得很慢',
+    intro: '汙染噴射步行機：噴出的汙染液留下腐蝕區，站在裡面會持續損傷、BAL 也回復得很慢',
     gen: () => ({ ...HEAVY, rarm: 'w_mg' }),
   },
   // ---- 冰原 ----
@@ -218,7 +218,7 @@ export const FOES = {
     theme: 'snow',
     foe: 'lurker',
     cost: 2,
-    name: '雪中潛伏 MT',
+    name: '雪中潛伏步行機',
     res: [0, -0.25, 0], // 埋在雪裡：爆發把它炸出來
     pal: 'snowcamo',
     scale: 1,
@@ -233,7 +233,7 @@ export const FOES = {
     group: 2,
     speedMul: 1.1,
     turnRate: 3,
-    intro: '雪中潛伏 MT：埋在雪裡看不到也鎖定不到，只有熱源的白煙——靠近 16 m 才會現身',
+    intro: '雪中潛伏步行機：埋在雪裡看不到也鎖定不到，只有熱源的白煙——靠近 16 m 才會現身',
     gen: () => ({ ...HEAVY, rarm: 'w_sg' }),
   },
   skater: {
@@ -397,7 +397,7 @@ export const FOES = {
     theme: 'spaceport',
     foe: 'spacemt',
     cost: 1.5,
-    name: '舊式宇宙用 MT',
+    name: '舊式宇宙用步行機',
     res: [0, -0.25, 0], // 老舊的氣密外殼：爆發
     pal: 'spacemt',
     scale: 1,
@@ -412,7 +412,7 @@ export const FOES = {
     group: 2,
     speedMul: 1,
     turnRate: 3,
-    intro: '舊式宇宙用 MT：為低重力設計，跳得高、滯空久，打的時候注意它的落點',
+    intro: '舊式宇宙用步行機：為低重力設計，跳得高、滯空久，打的時候注意它的落點',
     gen: () => ({ ...LIGHT, rarm: 'w_rifle' }),
   },
   // ---- 洋上都市 ----

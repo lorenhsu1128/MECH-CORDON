@@ -146,7 +146,7 @@ Object.assign(MechEntity.prototype, {
     else brk();
     g.camShake = Math.max(g.camShake, this.isBoss ? 0.5 : 0.2);
     if (this.isPlayer) {
-      g.flashMsg('AC 已被擊破 — 旁觀模式（Tab 切換隊友）', 0xff4d4d, 3);
+      g.flashMsg('機體已被擊破 — 旁觀模式（Tab 切換隊友）', 0xff4d4d, 3);
     }
   },
   enterDowned() {

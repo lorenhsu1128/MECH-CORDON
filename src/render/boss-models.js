@@ -4384,6 +4384,6 @@ export const BP_CATALOG = [
   ['bay', '浮游砲艙'],
   ['replica', '複製的武器'],
   ['flamer', '火焰噴射器'],
-  ['pulse', '脈衝裝甲發生器'],
+  ['pulse', '斥力裝甲發生器'],
 ];
 for (const [k] of BP_CATALOG) BUILDERS['bp_' + k] = BP[k];

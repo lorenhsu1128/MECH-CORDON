@@ -593,7 +593,7 @@ export const WRECK_REF = {
 };
 export const WRECK_NAME = {
   container: '貨櫃類（貨櫃、疊放貨櫃、有蓋貨車、貨物艙）',
-  car: '車輛（車、MT 殘骸）',
+  car: '車輛（車、步行機殘骸）',
   bus: '公車',
   truck: '卡車、燃料車',
   lamppost: '燈桿與天線（路燈、照明塔、信號燈桿、天線桿）',

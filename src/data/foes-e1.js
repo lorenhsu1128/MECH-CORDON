@@ -58,7 +58,7 @@ export const FOES_E1 = {
     foe: 'heatguard',
     cost: 2.5,
     max: 3,
-    name: '耐熱重裝 MT',
+    name: '耐熱重裝步行機',
     pal: 'mt',
     scale: 1.05,
     hpMul: 0.9,
@@ -70,7 +70,7 @@ export const FOES_E1 = {
     speedMul: 0.85,
     res: [0.2, 0, -0.25],
     intro:
-      '耐熱重裝 MT：踩熔岩不會受傷，貼近用火焰噴射器燒你；噴完會過熱一下——這時打它最痛，能量武器特別有效',
+      '耐熱重裝步行機：踩熔岩不會受傷，貼近用火焰噴射器燒你；噴完會過熱一下——這時打它最痛，能量武器特別有效',
     gen: () => ({ ...MID, rarm: 'w_mg' }),
   },
   magmadrone: {

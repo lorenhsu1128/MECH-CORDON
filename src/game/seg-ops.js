@@ -139,7 +139,7 @@ Object.assign(Game.prototype, {
         const base = new THREE.Vector3(at.x, W.groundAt(at.x, at.z, 999), at.z);
         this.fx.warnLine(base, base.clone().setY(base.y + 45), 3.5, 0xff3030, 0.5);
         this.spawnLater(list, at);
-        this.flashAlert(ext.ace && ext.k >= 4 ? '敵對 AC 接近！' : `敵方增援（第 ${ext.k} 波）`);
+        this.flashAlert(ext.ace && ext.k >= 4 ? '敵對機甲接近！' : `敵方增援（第 ${ext.k} 波）`);
       }
       if (ext.t <= 0) {
         ext.ph = 2;
@@ -177,15 +177,15 @@ Object.assign(Game.prototype, {
     if (v > 0) {
       this.save.coam += v;
       this.missionEarned = (this.missionEarned || 0) + v;
-      this.bountyPops.push({ txt: '+' + v.toLocaleString() + ' COAM', life: 2.2, y: 0 });
+      this.bountyPops.push({ txt: '+' + v.toLocaleString() + ' SP', life: 2.2, y: 0 });
       this.writeSave();
       if (this.campMp()) this.campMpCoam(v);
     }
     this.flashMsg(
-      ext.n ? `撤離成功 — 回收物資 ${ext.n} 箱 +${v.toLocaleString()} COAM` : '撤離成功',
+      ext.n ? `撤離成功 — 回收物資 ${ext.n} 箱 +${v.toLocaleString()} SP` : '撤離成功',
       0x7ee081,
       2.6,
-      { k: 'good', m: '撤離成功', s: ext.n ? `回收物資 ${ext.n} 箱 +${v.toLocaleString()} COAM` : '' },
+      { k: 'good', m: '撤離成功', s: ext.n ? `回收物資 ${ext.n} 箱 +${v.toLocaleString()} SP` : '' },
     );
     this.waves = [];
     this.wavePend = null;
@@ -425,7 +425,7 @@ Object.assign(Game.prototype, {
     if (t === 'ac') {
       const r0 = pick(Object.values(AC_ROSTER));
       o = {
-        name: '友軍 AC',
+        name: '友軍機甲',
         asm: r0.asm,
         ai: 'ac',
         hpMul: 1.3 * this.scaleHp,

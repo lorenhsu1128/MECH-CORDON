@@ -102,9 +102,9 @@ export const MODULES = {
   c_scrap: {
     faction: 'castron',
     name: '拾荒本能',
-    desc: '擊破帶詞綴的敵人與敵對 AC 時掉彈藥箱、素材',
+    desc: '擊破帶詞綴的敵人與敵對機甲時掉彈藥箱、素材',
     fx: { lgScrap: 1 },
-    lbl: (x) => `擊破帶詞綴的敵人與敵對 AC：${Math.min(100, Math.round(45 * x))}% 掉彈藥箱、素材多一個`,
+    lbl: (x) => `擊破帶詞綴的敵人與敵對機甲：${Math.min(100, Math.round(45 * x))}% 掉彈藥箱、素材多一個`,
   },
   a_jam: {
     faction: 'aetheric',
@@ -187,7 +187,7 @@ export const MODULES = {
     faction: 'castron',
     legend: true,
     name: '戰場拾荒',
-    desc: '敵對 AC、精英、Boss 的部位被擊破時一定掉一把重武器（自動攻擊；場上與手上同時最多一把）',
+    desc: '敵對機甲、精英、Boss 的部位被擊破時一定掉一把重武器（自動攻擊；場上與手上同時最多一把）',
     fx: { lgSalvage: 1 },
   },
   lg_barrage: {
@@ -386,7 +386,7 @@ export const MOD_TIPS = {
   d_shock: '擊破敵人時讓周圍的敵人失衡',
   d_rescue: '擊破回復 AP，移動也更快',
   c_salvo: '撿到彈藥箱時彈匣裝滿，之後實彈更痛',
-  c_scrap: '擊破帶詞綴的敵人與敵對 AC 會掉彈藥箱與素材',
+  c_scrap: '擊破帶詞綴的敵人與敵對機甲會掉彈藥箱與素材',
   a_jam: '剛出現的增援會先愣住',
   a_conduit: '用地圖裝置時 EN 全滿，一陣子不耗 EN',
   v_trap: '環境陷阱打敵人更痛，也不會傷到你',

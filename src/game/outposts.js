@@ -14,7 +14,7 @@ import { GUARD_ALERT_R } from './constants.js';
 import { Game } from './game.js';
 
 const CACHE_KINDS = {
-  coam: { name: 'COAM 資金', color: 0xffd060 },
+  coam: { name: 'SP 資金', color: 0xffd060 },
   repair: { name: '全員修理', color: 0x7ee081 },
   ammo: { name: '彈藥補給', color: 0x7fc8ff },
   kit: { name: '修理套件補滿', color: 0x9fffc8 },
@@ -155,7 +155,7 @@ Object.assign(Game.prototype, {
       const v = 150 + L * 40;
       this.cacheCoam(v);
       this.netEv({ t: 'cacheCoam', v });
-      txt = `COAM +${v.toLocaleString()}`;
+      txt = `SP +${v.toLocaleString()}`;
     } else if (c.kind === 'repair') {
       for (const p of this.playersAlive()) {
         p.hp = Math.min(p.maxHp, p.hp + Math.round(p.maxHp * 0.35));
@@ -183,7 +183,7 @@ Object.assign(Game.prototype, {
     this.save.coam += v;
     this.missionEarned = (this.missionEarned || 0) + v;
     this.writeSave();
-    this.bountyPops.push({ txt: '+' + v.toLocaleString() + ' COAM', life: 2.2, y: 0 });
+    this.bountyPops.push({ txt: '+' + v.toLocaleString() + ' SP', life: 2.2, y: 0 });
   },
   clearCaches() {
     for (const c of this.caches || []) if (!c.opened) this.cacheRemove(c);

@@ -57,7 +57,7 @@ Object.assign(Game.prototype, {
       .map((j) => {
         const R = RULES[j.rule];
         const segs = j.segs.map((s) => SEG_TYPES[s.pool[0]].name).join(' → ');
-        return `<div class="facSec boardJob"><div class="facHead"><b>${escHtml(j.name)}</b><span class="dim">${escHtml(THEMES[j.theme] ? THEMES[j.theme].name : '')}・${j.segs.length} 段（${escHtml(segs)}）・Lv${j.level}</span></div><div class="boardRule">⚑ ${escHtml(R.name)}：${escHtml(R.desc)}</div><div class="dim">報酬：${j.coam.toLocaleString()} COAM、${escHtml(matTxt(j.mats))}、${Math.round(j.part * 100)}% 機率得到零件</div><div class="boardBtns"><button data-job="${j.id}">接受委託</button><button data-job="${j.id}" data-hire="1"${this.save.coam < cost ? ' disabled' : ''}>雇用僚機 ${escHtml(WINGMEN[wk].name)} 並接受（${cost.toLocaleString()} C）</button></div></div>`;
+        return `<div class="facSec boardJob"><div class="facHead"><b>${escHtml(j.name)}</b><span class="dim">${escHtml(THEMES[j.theme] ? THEMES[j.theme].name : '')}・${j.segs.length} 段（${escHtml(segs)}）・Lv${j.level}</span></div><div class="boardRule">⚑ ${escHtml(R.name)}：${escHtml(R.desc)}</div><div class="dim">報酬：${j.coam.toLocaleString()} SP、${escHtml(matTxt(j.mats))}、${Math.round(j.part * 100)}% 機率得到零件</div><div class="boardBtns"><button data-job="${j.id}">接受委託</button><button data-job="${j.id}" data-hire="1"${this.save.coam < cost ? ' disabled' : ''}>雇用僚機 ${escHtml(WINGMEN[wk].name)} 並接受（${cost.toLocaleString()} C）</button></div></div>`;
       })
       .join('');
     document.getElementById('hubBoardList').innerHTML =
@@ -73,7 +73,7 @@ Object.assign(Game.prototype, {
     if (st.sortie) return this.flashMsg('還有進行中的出擊：先繼續或放棄它', 0xff8a50, 2.2);
     if (hire) {
       const cost = HIRE_COST[0] + HIRE_COST[1] * B.chapter;
-      if (this.save.coam < cost) return this.flashMsg('COAM 不足', 0xff4d4d, 1.2);
+      if (this.save.coam < cost) return this.flashMsg('SP 不足', 0xff4d4d, 1.2);
       this.save.coam -= cost;
     }
     this.hubBoard(false);

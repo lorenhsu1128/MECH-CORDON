@@ -227,7 +227,7 @@ export const SKILLS = [
     max: 3,
     name: '姿態穩定',
     fx: { stab: 0.05 },
-    desc: (r) => `姿態穩定（ACS 上限）+${pct(0.05 * r)}`,
+    desc: (r) => `姿態穩定（BAL 上限）+${pct(0.05 * r)}`,
   },
   {
     id: 'a_def',
@@ -245,7 +245,7 @@ export const SKILLS = [
     max: 2,
     name: '姿態回復',
     fx: { acsDec: 0.12, stagT: 0.08 },
-    desc: (r) => `ACS 衰減 +${pct(0.12 * r)}、失衡時間 −${pct(0.08 * r)}`,
+    desc: (r) => `BAL 衰減 +${pct(0.12 * r)}、失衡時間 −${pct(0.08 * r)}`,
   },
   {
     id: 'a_cap',
@@ -315,7 +315,7 @@ export const SKILLS = [
     pveOnly: true,
     name: '殲滅射擊',
     fx: { uAnni: 1 },
-    desc: () => '擊破敵人時，9 m 內 AP 低於 15% 的一般敵人直接引爆（Boss、敵對 AC 不會）',
+    desc: () => '擊破敵人時，9 m 內 AP 低於 15% 的一般敵人直接引爆（Boss、敵對機甲不會）',
   },
   {
     id: 'm_u1',
@@ -402,7 +402,7 @@ export const SKILLS = [
     br: 'sup',
     tier: 4,
     max: 1,
-    pve: { name: '懸賞', fx: { uBounty: 1 }, desc: () => '每擊破 5 台敵人：COAM 報酬、AP 回復 8%' },
+    pve: { name: '懸賞', fx: { uBounty: 1 }, desc: () => '每擊破 5 台敵人：SP 報酬、AP 回復 8%' },
     pvp: {
       name: '戰地醫護',
       fx: { uMedic: 1 },

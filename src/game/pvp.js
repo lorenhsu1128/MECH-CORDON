@@ -311,7 +311,7 @@ Object.assign(Game.prototype, {
   pvpWinnerLabel(e) {
     const t = this.pvpTeamOf(e);
     if (this.pvpType === 'ffa') return `${e.name} 獲勝`;
-    if (t === -1) return '電腦 AC 獲勝';
+    if (t === -1) return '電腦機甲獲勝';
     if (this.pvpType === 'vsai') return '玩家獲勝';
     return `${t === 0 ? '藍' : '紅'}隊獲勝`;
   },
@@ -376,7 +376,7 @@ Object.assign(Game.prototype, {
     $('rRank').textContent = winners.has(this.net.me) ? 'WIN' : 'LOSE';
     $('resultGrid').innerHTML =
       rows.map((r) => `<span class="dim">${escHtml(r[0])}</span><span>${escHtml(r[1])}</span>`).join('') +
-      `<span class="dim">本場獎勵</span><span>+${myBonus.toLocaleString()}</span><span class="dim">COAM 結餘</span><span>${this.save.coam.toLocaleString()}</span>`;
+      `<span class="dim">本場獎勵</span><span>+${myBonus.toLocaleString()}</span><span class="dim">SP 結餘</span><span>${this.save.coam.toLocaleString()}</span>`;
     $('btnResultOk').textContent = '返回大廳';
     if (this.net.role === 'host') {
       this.net.tr.broadcast({

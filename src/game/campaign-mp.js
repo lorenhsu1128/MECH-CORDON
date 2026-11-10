@@ -415,7 +415,7 @@ Object.assign(Game.prototype, {
     this.save.coam += e.v;
     this.missionEarned = (this.missionEarned || 0) + e.v;
     this.writeSave();
-    this.bountyPops.push({ txt: '+' + e.v.toLocaleString() + ' COAM', life: 2.2, y: 0 });
+    this.bountyPops.push({ txt: '+' + e.v.toLocaleString() + ' SP', life: 2.2, y: 0 });
     return true;
   },
   // 客機：直接出擊／整備後繼續

@@ -681,7 +681,7 @@ Object.assign(Game.prototype, {
       <span class="lseg">戰區 <select id="labTheme">${themes}</select>
         <button id="labSeed" title="同一戰區換一個地形">換地形</button>
         <select id="labTeams"><option value="1">1 對 1</option><option value="2">2 對 2</option><option value="3">3 對 3</option><option value="4">4 對 4</option></select>
-        <label title="加入裝甲車、直升機與 MT"><input type="checkbox" id="labExtras" /> 載具與雜兵</label></span>
+        <label title="加入裝甲車、直升機與步行機"><input type="checkbox" id="labExtras" /> 載具與雜兵</label></span>
       <span class="lseg">解析度 <select id="labRes"></select></span>
       <span class="lseg"><button id="labShot" title="下載這一格的 PNG">截圖</button><button id="labExit">離開</button></span>
       <span id="labStat" class="dim"></span>

@@ -101,7 +101,7 @@ Object.assign(Game.prototype, {
     for (const [k, i] of aces) {
       const A = ACES[k];
       let chips = '',
-        sub = `宿敵 AC・第 ${i + 1} 段（精英）`;
+        sub = `宿敵機甲・第 ${i + 1} 段（精英）`;
       if (A.asm) {
         const st = asmStats(A.asm);
         const D = st.defs || { kin: 0, exp: 0, en: 0 };
@@ -332,7 +332,7 @@ Object.assign(Game.prototype, {
     $('brIntel').innerHTML = this.briefIntelHtml(sid, pre);
     $('brRoute').innerHTML = route;
     $('brReward').textContent =
-      `完成報酬 ${so.reward.toLocaleString()} COAM（另有區段報酬）　完成次數 ${this.campStory().done[sid] || 0}`;
+      `完成報酬 ${so.reward.toLocaleString()} SP（另有區段報酬）　完成次數 ${this.campStory().done[sid] || 0}`;
     this.tfxBrief(cl === 'echo'); // 文字演出：系統日誌樣式逐字（點一下全部顯示）
     this.hubBriefShow(sid); // 背景：第一段地形的全像（hub-holo.js）
   },

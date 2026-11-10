@@ -106,7 +106,7 @@ Object.assign(Game.prototype, {
       (boss
         ? `目標：擊破 ${bossForLevel(L).name}`
         : `目標：肅清隨機戰區內所有敵對兵力（預估 ${Math.round(6 + L * 2.2)} 戰力點，分波來襲）`) +
-      '　每擊破一台即時入帳 COAM，無修理費';
+      '　每擊破一台即時入帳 SP，無修理費';
     this.garageFireCache = null; // 理論火力（range.js）：每次重畫重新計算
     // 部位格、零件格子與小卡片、量表與六角圖（game/garage-ui.js）
     this.garageUiInit();

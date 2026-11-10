@@ -444,7 +444,7 @@ Object.assign(Game.prototype, {
         this.missionEarned = (this.missionEarned || 0) + e.v;
         this.save.kills++;
         this.writeSave();
-        this.bountyPops.push({ txt: '+' + e.v.toLocaleString() + ' COAM', life: 2.2, y: 0 });
+        this.bountyPops.push({ txt: '+' + e.v.toLocaleString() + ' SP', life: 2.2, y: 0 });
         break;
       case 'shock':
         this.shockFx(new THREE.Vector3(e.p[0], e.p[1], e.p[2]), e.R, e.sp, e.dl);
@@ -465,7 +465,7 @@ Object.assign(Game.prototype, {
         {
           const t = this.entById(e.i);
           if (t && t.isPlayer) {
-            this.flashAlert('ACS 過載 — 姿態崩潰');
+            this.flashAlert('BAL 過載 — 姿態崩潰');
             this.rumble(1, 1, 600);
           }
         }
@@ -730,7 +730,7 @@ Object.assign(Game.prototype, {
       $('rRank').textContent = (d.winners || []).includes(this.net.me) ? 'WIN' : 'LOSE';
       $('resultGrid').innerHTML =
         d.rows.map((r) => `<span class="dim">${escHtml(r[0])}</span><span>${escHtml(r[1])}</span>`).join('') +
-        `<span class="dim">本場獎勵</span><span>+${bonus.toLocaleString()}</span><span class="dim">COAM 結餘</span><span>${this.save.coam.toLocaleString()}</span>`;
+        `<span class="dim">本場獎勵</span><span>+${bonus.toLocaleString()}</span><span class="dim">SP 結餘</span><span>${this.save.coam.toLocaleString()}</span>`;
       $('btnResultOk').textContent = '返回大廳';
       this.clearMission();
       this.showScreen('result');
@@ -755,7 +755,7 @@ Object.assign(Game.prototype, {
     const rows = [...d.rows.filter((r) => r[0] !== '人員擊殺'), ...this.hkRows()];
     $('resultGrid').innerHTML =
       rows.map((r) => `<span class="dim">${escHtml(r[0])}</span><span>${escHtml(r[1])}</span>`).join('') +
-      `<span class="dim">COAM 結餘</span><span>${this.save.coam.toLocaleString()}</span>`;
+      `<span class="dim">SP 結餘</span><span>${this.save.coam.toLocaleString()}</span>`;
     $('btnResultOk').textContent = '返回大廳';
     this.showScreen('result');
   },

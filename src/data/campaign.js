@@ -133,7 +133,7 @@ export function transList(theme, mode) {
 
 // 出口獎勵（下一個區段清除後發放）
 export const EXIT_REWARDS = {
-  coam: { name: '資金', icon: '¥', color: '#ffc040', desc: 'COAM 報酬' },
+  coam: { name: '資金', icon: '¥', color: '#ffc040', desc: 'SP 報酬' },
   repair: { name: '修理', icon: '✚', color: '#7ee081', desc: '回復 AP 35%、補給彈藥 35%' },
   xp: { name: '經驗', icon: '★', color: '#7fc8ff', desc: '駕駛員經驗' },
   gear: {
@@ -176,7 +176,7 @@ export const EXIT_REWARDS = {
 // 區段類型（出口上預告）：goal＝HUD 的目標說明
 export const SEG_TYPES = {
   battle: { name: '戰鬥', goal: '肅清敵軍' },
-  elite: { name: '精英', goal: '擊破敵對 AC' },
+  elite: { name: '精英', goal: '擊破敵對機甲' },
   destroy: { name: '破壞', goal: '摧毀目標設施' },
   defend: { name: '防衛', goal: '守住防衛目標' },
   escort: { name: '護送', goal: '護送車隊抵達終點' },

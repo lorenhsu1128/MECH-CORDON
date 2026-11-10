@@ -62,7 +62,7 @@ Object.assign(Game.prototype, {
       const win = [],
         lose = [];
       if (type === 'battle') win.push('擊破所有敵軍（含增援）' + exit);
-      else if (type === 'elite') win.push('擊破敵對 AC' + exit);
+      else if (type === 'elite') win.push('擊破敵對機甲' + exit);
       else if (type === 'destroy') win.push('摧毀所有目標設施與敵軍' + exit);
       else if (type === 'defend') {
         win.push('守住防衛目標，擊破所有敵軍' + exit);

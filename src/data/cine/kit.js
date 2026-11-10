@@ -444,7 +444,7 @@ export function shootout(set, grade, key, o = {}) {
       { t: 1.22, flash: '#ffd0a0', in: 0.03, hold: 0.05, out: 0.3 },
       ...(lines[1]
         ? [sub(lines[1].text, lines[1].who || 'echo', 1.5, d2 - 1.5)]
-        : [sub('ACS 過載——對方失衡！', 'echo', 1.5, 1.4)]),
+        : [sub('BAL 過載——對方失衡！', 'echo', 1.5, 1.4)]),
       { t: d2 - 1, a: 'hs', qb: [1, -1] },
       { t: d2 - 0.7, boom: { a: 'foe', o: [-1, 1, 1] }, big: true },
       { t: d2 - 0.7, shake: 1 },

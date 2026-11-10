@@ -24018,7 +24018,7 @@ async function testLevelsServer(browser, url) {
   });
   check(await waitVisible(page, 'result', 20000), '伺服器上的關卡：遊玩、通關、結果畫面');
   const rows = await page.evaluate(() => document.getElementById('resultGrid').textContent);
-  check(/沒有 COAM/.test(rows), '結果畫面：自訂關卡沒有獎勵');
+  check(/沒有 SP/.test(rows), '結果畫面：自訂關卡沒有獎勵');
   await wait(500);
   const e2 = ((await (await fetch(url + 'api/levels')).json()).levels || []).find((x) => x.id === id);
   check(e2 && e2.plays === 1 && e2.clears === 1, `遊玩／通關次數（${e2 && e2.plays}／${e2 && e2.clears}）`);

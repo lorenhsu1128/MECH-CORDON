@@ -123,7 +123,7 @@ const BIG = {
     ['適應裝甲強化', (b) => b.b3Shock(22)],
   ],
   BALTEUS: [
-    ['脈衝裝甲展開', (b) => b.b3Ring(28)],
+    ['斥力裝甲展開', (b) => b.b3Ring(28)],
     ['脈衝爆發', (b) => b.b3Shock(26)],
   ],
 };
@@ -532,7 +532,7 @@ Object.assign(MechEntity.prototype, {
   tierArmor(frac, sec) {
     const s = this.tierState();
     s.pa = { hp: this.maxHp * frac, t: sec };
-    this.game.flashMsg(`${this.name.split(' ')[0]} 展開脈衝裝甲 — 打破它！`, 0x60e0ff, 1.8);
+    this.game.flashMsg(`${this.name.split(' ')[0]} 展開斥力裝甲 — 打破它！`, 0x60e0ff, 1.8);
   },
   // bossDefense：脈衝裝甲吸收（回傳打得進去的倍率）
   tierArmorK(dmg, at) {
@@ -546,7 +546,7 @@ Object.assign(MechEntity.prototype, {
     s.pa = null;
     const g = this.game,
       c = this.center();
-    g.popDamage(c.clone().setY(c.y + 3 * DS), '脈衝裝甲破壞', false, true, false, 0, this.id);
+    g.popDamage(c.clone().setY(c.y + 3 * DS), '斥力裝甲破壞', false, true, false, 0, this.id);
     g.fx.shockwave(c, 9 * (this.scale || 1), 0x60e0ff, 0.5);
     SFX.stagger(c);
     this.bossOpen();

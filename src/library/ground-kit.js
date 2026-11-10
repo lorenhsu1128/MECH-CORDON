@@ -117,7 +117,7 @@ export const MARKS = [
     cat: 'area',
     name: '腐蝕區',
     fx: 'fx.firePool(…, 1)',
-    note: '綠色；站在裡面 ACS 回復 ×0.3',
+    note: '綠色；站在裡面 BAL 回復 ×0.3',
     demo: (S) => S.pool(S.g(8, -10), 4.5, 6, true),
   },
   {

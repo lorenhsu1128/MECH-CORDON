@@ -323,14 +323,14 @@ Object.assign(Game.prototype, {
           ? '<div class="dim" style="font-size:11px">主線合作：進度記在房主的存檔；每個人的經驗、資金、戰術模組各自取得。轉場時可以各自進機甲庫整備，最多等 90 秒。</div>'
           : '') +
         (S.mode === 'pvp'
-          ? `<div class="krow"><span>對戰型態</span><span>${host ? `<select id="pvType"><option value="ffa">大亂鬥（2–4 人）</option><option value="team">分隊 2v2</option><option value="vsai">玩家 vs 電腦 AC（1v1～4v4）</option></select>` : { ffa: '大亂鬥', team: '分隊 2v2', vsai: '玩家 vs 電腦 AC' }[S.type]}</span></div><div class="krow"><span>勝負規則</span><span>${host ? `<select id="pvRule"><option value="kills">擊破制（重生 5s×死亡次數，目標＝參戰機甲數×5）</option><option value="elim">淘汰制（一條命）</option></select>` : S.rule === 'kills' ? '擊破制' : '淘汰制'}</span></div>` +
+          ? `<div class="krow"><span>對戰型態</span><span>${host ? `<select id="pvType"><option value="ffa">大亂鬥（2–4 人）</option><option value="team">分隊 2v2</option><option value="vsai">玩家 vs 電腦機甲（1v1～4v4）</option></select>` : { ffa: '大亂鬥', team: '分隊 2v2', vsai: '玩家 vs 電腦機甲' }[S.type]}</span></div><div class="krow"><span>勝負規則</span><span>${host ? `<select id="pvRule"><option value="kills">擊破制（重生 5s×死亡次數，目標＝參戰機甲數×5）</option><option value="elim">淘汰制（一條命）</option></select>` : S.rule === 'kills' ? '擊破制' : '淘汰制'}</span></div>` +
             (S.type !== 'vsai'
-              ? `<div class="krow"><span>人數不足時</span><span>${host ? `<select id="pvFill"><option value="no">只用目前玩家出擊</option><option value="yes">電腦 AC 補位（大亂鬥補到 4 台、分隊每隊 2 台）</option></select>` : S.fill === 'yes' ? '電腦 AC 補位' : '只用目前玩家'}</span></div>`
+              ? `<div class="krow"><span>人數不足時</span><span>${host ? `<select id="pvFill"><option value="no">只用目前玩家出擊</option><option value="yes">電腦機甲補位（大亂鬥補到 4 台、分隊每隊 2 台）</option></select>` : S.fill === 'yes' ? '電腦機甲補位' : '只用目前玩家'}</span></div>`
               : '') +
             (S.type === 'vsai' || S.fill === 'yes'
-              ? `<div class="krow"><span>電腦 AC 難度</span><span>${host ? `<select id="pvDiff"><option value="easy">簡單</option><option value="std">標準</option><option value="hard">困難</option></select>` : AI_DIFF[S.diff].name}</span></div>`
+              ? `<div class="krow"><span>電腦機甲難度</span><span>${host ? `<select id="pvDiff"><option value="easy">簡單</option><option value="std">標準</option><option value="hard">困難</option></select>` : AI_DIFF[S.diff].name}</span></div>`
               : '') +
-            `<div class="dim" style="font-size:11px">PVP：友軍 AC 消耗品停用、不可救援；時間 6 分鐘。${S.type === 'team' ? '分隊：點自己的位子切換隊伍（藍／紅）。' : ''}</div>`
+            `<div class="dim" style="font-size:11px">PVP：友軍機甲消耗品停用、不可救援；時間 6 分鐘。${S.type === 'team' ? '分隊：點自己的位子切換隊伍（藍／紅）。' : ''}</div>`
           : '');
       if (host) {
         const bind = (id, key) => {
@@ -376,7 +376,7 @@ Object.assign(Game.prototype, {
       if (S.mode === 'level' && !(S.lv && S.lv.h)) ok = false;
       $('btnLobbySortie').disabled = !ok;
       $('btnLobbySortie').title =
-        !ok && cnt < 2 && S.mode === 'pvp' ? '人數不足：等待玩家加入，或選「電腦 AC 補位」' : '';
+        !ok && cnt < 2 && S.mode === 'pvp' ? '人數不足：等待玩家加入，或選「電腦機甲補位」' : '';
     }
     $('lobbySave').textContent = `我的機體與駕駛員：存檔 ${this.saveSlot}`;
     if ((n.pvpSet || {}).mode === 'story') {

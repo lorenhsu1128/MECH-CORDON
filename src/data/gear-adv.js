@@ -119,7 +119,7 @@ export const ADV = {
     kinds: RANGED,
     en: true,
     sc: 'w',
-    txt: (v) => `命中時目標的 ACS 停止回復 ${v.toFixed(1)} 秒`,
+    txt: (v) => `命中時目標的 BAL 停止回復 ${v.toFixed(1)} 秒`,
   },
   aGlass: {
     n: '玻璃大砲',
@@ -208,7 +208,7 @@ export const ADV = {
     kinds: ['melee'],
     en: true,
     sc: 'w',
-    txt: (v) => `對 ACS 累積一半以上的目標，衝擊 +${P(v)}`,
+    txt: (v) => `對 BAL 累積一半以上的目標，衝擊 +${P(v)}`,
   },
   mBlood: {
     n: '血戰',

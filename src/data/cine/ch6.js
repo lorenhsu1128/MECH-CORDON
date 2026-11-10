@@ -121,7 +121,7 @@ export function ch6Intro(ctx) {
       };
   const padSt = sancta
     ? ['SANCTA LAUNCH FACILITY', 'SEAL RELEASE ...... 1 / 1', 'NO SECOND LAUNCH']
-    : ['VEERWELL LAUNCH COMPLEX // PAD 02', 'PAYLOAD : AC  R-07', 'COMMERCIAL FLIGHT 0001'];
+    : ['VEERWELL LAUNCH COMPLEX // PAD 02', 'PAYLOAD : MECH  R-07', 'COMMERCIAL FLIGHT 0001'];
   const padLines = sancta
     ? [
         ['我們封鎖的發射設施，只能解封一次。', 'sancta'],

@@ -122,7 +122,7 @@
           <p class="dim">
             你是編號 621
             的強化人類傭兵。在被封鎖的行星上，隨機生成的戰區、隨機編成的敵軍，每三個任務就有一台戰略級兵器等著你。組裝你的
-            AC，接下委託。
+            機甲，接下委託。
           </p>
           <p class="touchHelp">
             觸控操作：左下搖桿移動、拖曳畫面瞄準；右下「射擊」「肩部」「跳躍」「QB」，左搖桿旁「修復」「道具1」「道具2」，右上「視角」「暫停」。接上手把或鍵盤也能玩（在設定中改鍵）。
@@ -150,8 +150,7 @@
             </tr>
             <tr>
               <td colspan="2">
-                <kbd>V</kbd> 視角切換：俯視 → 追尾（機戰傭兵6
-                式：鏡頭在機體後方、滑鼠轉鏡頭、中央鎖定框自動鎖定、
+                <kbd>V</kbd> 視角切換：俯視 → 追尾（背後視角：鏡頭在機體後方、滑鼠轉鏡頭、中央鎖定框自動鎖定、
                 <kbd>滑鼠中鍵</kbd> 目標輔助（鏡頭跟著目標，甩動滑鼠換目標））→ 第一人稱；追尾與第一人稱的 WS
                 前後、AD 側移依鏡頭方向
               </td>
@@ -192,7 +191,7 @@
             <button id="btnPaint" title="在 GLB 模型上直接繪製貼圖（Mech Cordon Paint）">貼圖繪製</button>
             <button
               id="btnStyleLab"
-              title="切換、調整整體畫面風格（寫實、機戰傭兵 6、Gundam 動畫、吉卜力…），以模擬戰鬥即時預覽"
+              title="切換、調整整體畫面風格（寫實、重裝寫實、Gundam 動畫、吉卜力…），以模擬戰鬥即時預覽"
             >
               渲染風格
             </button>
@@ -227,8 +226,8 @@
             推進器（CC0）。操作說明：主線從「作戰室」接委託；自由出擊在「機甲庫」組裝後按「自由出擊」。近戰武器：連點攻擊鍵接續連段，連擊三次或終結技會讓敵人失衡。手部沒裝武器或子彈打光時自動改用拳擊（三段、出招瞬間前衝）。敵人姿態計（橙色弧）填滿會硬直，硬直中受到
             1.5 倍傷害。站得比目標高命中率上升、比目標低則下降（每公尺 ±7%）；飛行高度上限離地 22
             m；機體之間會互相碰撞推開（無傷害）；子彈有飛行時間，高機動機體可用 QB
-            側閃躲開。每擊破一台敵機即時入帳 COAM，沒有修理費。敵軍含 5 種具名 AC、突擊／榴彈／自爆
-            MT、裝甲車、步行砲台、武裝直升機、導彈無人機群；自爆與無人機的爆炸敵我不分。
+            側閃躲開。每擊破一台敵機即時入帳 SP，沒有修理費。敵軍含 5 種具名機甲、突擊／榴彈／自爆
+            步行機、裝甲車、步行砲台、武裝直升機、導彈無人機群；自爆與無人機的爆炸敵我不分。
           </p>
         </div>
       </div>
@@ -240,7 +239,7 @@
         <div id="hubHead">
           <h2>作戰室 <span class="gCtx hub">主線</span></h2>
           <span id="hubChapter" class="dim"></span>
-          <span class="coam">COAM <span id="hubCoam">0</span></span>
+          <span class="coam">SP <span id="hubCoam">0</span></span>
         </div>
         <div class="hubCap" id="hubCap"></div>
         <div id="hubTopL">
@@ -549,7 +548,7 @@
       <!-- 主線：失敗 -->
       <div id="campFail" class="screen">
         <div class="ctBox">
-          <div id="cfTitle">AC 已被擊破</div>
+          <div id="cfTitle">機體已被擊破</div>
           <div id="cfInfo" class="dim"></div>
           <div id="cfComm"></div>
           <div id="ctBtns2">
@@ -572,7 +571,7 @@
         <div id="gTop">
           <div id="gTitle">
             <h2>機甲庫 <span id="gCtx" class="gCtx"></span></h2>
-            <div class="coam">COAM <span id="gCoam">0</span></div>
+            <div class="coam">SP <span id="gCoam">0</span></div>
           </div>
           <div id="missionCard"><b id="mcTitle">任務</b><span id="mcDesc" class="dim"></span></div>
           <div id="gTabs">
@@ -972,7 +971,7 @@
                 <span>預設視角</span
                 ><select id="ctrlView">
                   <option value="tps">第三人稱俯視（預設）</option>
-                  <option value="chase">追尾視角（機戰傭兵6 式，鏡頭在機體後方）</option>
+                  <option value="chase">追尾視角（背後視角，鏡頭在機體後方）</option>
                   <option value="fps">第一人稱</option>
                 </select>
                 <span class="dim" style="font-size: 11px">任務中按 V（觸控：「視角」）依序切換</span>
@@ -1390,7 +1389,7 @@
           </div>
           <p class="dim" style="font-size: 11px">
             自訂關卡沒有
-            COAM、經驗與熟練度，只記通關紀錄。上傳到伺服器前要先在編輯器從頭試玩並通關一次；只有作者本人可以覆寫或刪除。
+            SP、經驗與熟練度，只記通關紀錄。上傳到伺服器前要先在編輯器從頭試玩並通關一次；只有作者本人可以覆寫或刪除。
           </p>
         </div>
       </div>
@@ -1438,7 +1437,7 @@
             <span id="hpTxt"></span><label>AP</label><i id="hpBar"></i><b id="hpScar"></b>
           </div>
           <div class="bar en"><label>EN</label><i id="enBar"></i></div>
-          <div class="bar acs"><label>ACS</label><i id="acsBar"></i></div>
+          <div class="bar acs"><label>BAL</label><i id="acsBar"></i></div>
           <div class="bar bk" id="bkWrap" style="display: none">
             <label>破甲充能</label><i id="bkBar"></i>
           </div>

@@ -51,7 +51,7 @@ void main() {
   vec3 w = vW / uK;
   float a;
   if (uKind < 0.5) {
-    // 脈衝裝甲：斜向流動的能量紋＋雜訊的脈動
+    // 斥力裝甲：斜向流動的能量紋＋雜訊的脈動
     float s = fract(dot(w, vec3(0.55, 1.0, 0.35)) * 0.9 - uTime * 1.2);
     float band = smoothstep(0.0, 0.08, s) * (1.0 - smoothstep(0.12, 0.3, s));
     float n = fbm(w.xz * 1.3 + w.y * 0.7 + uTime * 0.6);

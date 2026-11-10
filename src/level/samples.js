@@ -229,7 +229,7 @@ function defendDemo() {
     ]),
     trig('t3', '第 3 波', { k: 'gdead', g: 'g2' }, [
       { k: 'wait', t: 3 },
-      { k: 'tfx', cue: 'warning', m: 'WARNING', s: '敵對 AC 接近' },
+      { k: 'tfx', cue: 'warning', m: 'WARNING', s: '敵對機甲接近' },
       { k: 'obj', text: '守住發電設施（最終波）' },
       { k: 'spawn', g: 'g3', how: 'edge', m: 'm5', warn: '1' },
       { k: 'set', c: 'c1', v: 3 },

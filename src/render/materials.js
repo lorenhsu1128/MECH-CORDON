@@ -167,9 +167,9 @@ function makeDecalTexture() {
     x.fillStyle = '#e8e2d0';
     x.font = 'bold 46px Chakra Petch, sans-serif';
     x.textAlign = 'center';
-    x.fillText('AC', 64, 56);
+    x.fillText('MC', 64, 56);
     x.font = 'bold 26px Chakra Petch, sans-serif';
-    x.fillText('AC-01', 64, 96);
+    x.fillText('MC-01', 64, 96);
     x.fillRect(16, 64, 96, 3);
   });
   tile(4, () => {

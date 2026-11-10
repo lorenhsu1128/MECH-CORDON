@@ -261,10 +261,7 @@ Object.assign(Game.prototype, {
     );
     const [x, z] = this.world.nearSolid ? this.world.nearSolid(c.x, c.z) : [c.x, c.z];
     this.spawnPickup('bossPart', new THREE.Vector3(x, this.world.groundAt(x, z, c.y) + 0.6, z));
-    this.tierIntro(
-      'part',
-      '部位破壞 — 打壞 Boss 的部位會停用它負責的招式並掉落補給，結算時每個部位 COAM +8%',
-    );
+    this.tierIntro('part', '部位破壞 — 打壞 Boss 的部位會停用它負責的招式並掉落補給，結算時每個部位 SP +8%');
     // 重建（刁鑽度 5 起）；7～8 重建的部位換成另一種招式
     if (sp && T.jRebuild) {
       const nsp = { ...sp };

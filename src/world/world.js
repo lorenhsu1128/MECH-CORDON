@@ -2242,7 +2242,7 @@ export class World {
           tank: '儲槽',
           spire: '岩柱',
           floodlight: '照明塔',
-          mtwreck: 'MT 殘骸',
+          mtwreck: '步行機殘骸',
           sandstone: '砂岩',
           fence: '防風牆',
           quonset: '拱屋',

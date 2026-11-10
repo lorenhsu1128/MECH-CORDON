@@ -369,7 +369,7 @@ Object.assign(Game.prototype, {
       this.save.coam += extra;
       this.missionEarned = (this.missionEarned || 0) + extra;
       this.netEv({ t: 'bounty', v: extra });
-      this.bountyPops.push({ txt: '環境擊殺 +' + extra.toLocaleString() + ' COAM', life: 2.4, y: 0 });
+      this.bountyPops.push({ txt: '環境擊殺 +' + extra.toLocaleString() + ' SP', life: 2.4, y: 0 });
     }
   },
   // ---------- 顯示（各端每格） ----------

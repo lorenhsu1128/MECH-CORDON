@@ -153,7 +153,7 @@ const hrMelee = (wid) => (D, t, dt, g) => {
 const hrMeleeT = (wid) => meleeAll(wid === 'w_fist' ? FIST_DEF : partById('arm', wid)).length * 1.2 + 0.4;
 // 其他身體：在旁邊生成一台（不動、AP 無限），鏡頭看它；每一台被火箭筒、霰彈、EMP、近戰打
 const HR_BODIES = [
-  ['mth', '戰車腳的 MT'],
+  ['mth', '戰車腳的步行機'],
   ['strider', '四足的步行砲台'],
   ['tank', '裝甲車'],
   ['heli', '直升機'],

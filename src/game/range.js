@@ -87,7 +87,7 @@ Object.assign(Game.prototype, {
   // 可以選的目標：標準靶、一般敵人與敵對 AC 全部；專屬敵人、宿敵、Boss 要主線遇過
   rangeTargets() {
     const seen = this.simSeen();
-    const g = [['標準', [['dummy', '標準靶（AC 型，不還手）']]]];
+    const g = [['標準', [['dummy', '標準靶（機甲型，不還手）']]]];
     g.push([
       '一般敵人',
       Object.keys(ENEMY_TYPES)
@@ -95,7 +95,7 @@ Object.assign(Game.prototype, {
         .map((k) => ['type:' + k, ENEMY_TYPES[k].name]),
     ]);
     g.push([
-      '敵對 AC',
+      '敵對機甲',
       Object.keys(AC_ROSTER)
         .filter((k) => AC_ROSTER[k].asm)
         .map((k) => ['ac:' + k, AC_ROSTER[k].name]),
@@ -103,7 +103,7 @@ Object.assign(Game.prototype, {
     const foes = Object.keys(seen.foes).filter((k) => FOES[k] && !FOES[k].spawnOnly);
     if (foes.length) g.push(['專屬敵人（主線遇過）', foes.map((k) => ['type:' + k, FOES[k].name])]);
     const aces = Object.keys(seen.aces).filter((k) => ACES[k]);
-    if (aces.length) g.push(['宿敵 AC（主線遇過）', aces.map((k) => ['ace:' + k, ACES[k].name])]);
+    if (aces.length) g.push(['宿敵機甲（主線遇過）', aces.map((k) => ['ace:' + k, ACES[k].name])]);
     const bosses = Object.keys(seen.bosses)
       .map((k) => BOSS_DEFS.find((b) => b.kind === k))
       .filter(Boolean);
@@ -584,7 +584,7 @@ Object.assign(Game.prototype, {
   },
   rangePlayerDead() {
     this.range.st.downs++;
-    this.flashMsg('AC 已被擊破 — 重新出場', 0xff4d4d, 1.6);
+    this.flashMsg('機體已被擊破 — 重新出場', 0xff4d4d, 1.6);
     setTimeout(() => {
       if (!this.range) return;
       this.rangeSpawnPlayer();
@@ -838,7 +838,7 @@ Object.assign(Game.prototype, {
     const hp = (v) => (v === null ? '—' : Math.round(v * 100) + '%');
     const hw = F.ws.filter((w) => w.hit30 !== null);
     if (hw.length) {
-      h += '<div class="dim gFireNote">預估命中率（對移動中的 AC：90 m ／ 180 m）</div>';
+      h += '<div class="dim gFireNote">預估命中率（對移動中的機甲：90 m ／ 180 m）</div>';
       for (const w of hw)
         h += row(`${SLOT_NAMES[w.slot]}　${escHtml(w.name)}`, `${hp(w.hit30)} ／ ${hp(w.hit60)}`);
     }

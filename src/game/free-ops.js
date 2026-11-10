@@ -279,10 +279,10 @@ Object.assign(Game.prototype, {
     if (s.type === 'elite')
       rows.push(
         this.foSel(
-          '敵對 AC',
+          '敵對機甲',
           path + 'ace',
           [
-            ['', '地圖的專屬 AC'],
+            ['', '地圖的專屬機甲'],
             ...Object.keys(ACES).map((k) => ['a:' + k, `${ACES[k].name}（專屬）`]),
             ...Object.keys(AC_ROSTER).map((k) => ['r:' + k, AC_ROSTER[k].name]),
           ],
@@ -476,7 +476,7 @@ Object.assign(Game.prototype, {
       line('段數', `${so.segs.length} 段：${so.segs.map((s) => THEMES[s.theme].name).join('→')}`);
       const b = so.segs[so.segs.length - 1];
       if (b.pool[0] === 'boss' && b.boss) line('終點', String(b.boss));
-      line('完成報酬', `${so.reward.toLocaleString()} COAM`);
+      line('完成報酬', `${so.reward.toLocaleString()} SP`);
       return (
         rows.join('') + '<div class="dim foNote">不播劇情、不寫主線的進度與抉擇；戰術模組從零開始。</div>'
       );
@@ -496,7 +496,7 @@ Object.assign(Game.prototype, {
             : fo.theme && THEME_ACE[fo.theme]
               ? ACES[THEME_ACE[fo.theme]]
               : null;
-        if (a) line('敵對 AC', a.intro || a.name);
+        if (a) line('敵對機甲', a.intro || a.name);
       }
       if (fo.theme && fo.landmark && fo.landmark !== 'none' && LANDMARKS[fo.theme][fo.landmark])
         line('地標', LANDMARKS[fo.theme][fo.landmark].name);
@@ -504,7 +504,7 @@ Object.assign(Game.prototype, {
     }
     line('等級', `Lv ${fo.level}（不推進自由出擊的等級）`);
     const hk = 1 + Object.keys(fo.heat).reduce((a, k) => a + (HEAT[k] ? HEAT[k].k : 0), 0);
-    line('完成報酬', `${Math.round(foReward(fo.level, n) * hk).toLocaleString()} COAM`);
+    line('完成報酬', `${Math.round(foReward(fo.level, n) * hk).toLocaleString()} SP`);
     return rows.join('');
   },
 

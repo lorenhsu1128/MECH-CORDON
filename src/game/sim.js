@@ -87,7 +87,7 @@ Object.assign(Game.prototype, {
     const aces = Object.keys(s.aces);
     h += aces.length
       ? aces.map((k) => row('ace', k, ACES[k].name, ACES[k].intro)).join('')
-      : '<p class="dim">主線遇到宿敵 AC 後，這裡就能再戰。</p>';
+      : '<p class="dim">主線遇到宿敵機甲後，這裡就能再戰。</p>';
     h += '<h3>Boss 練習</h3>';
     const bosses = Object.keys(s.bosses);
     h += bosses.length
@@ -207,7 +207,7 @@ Object.assign(Game.prototype, {
         st.instructor = 1;
         if (!this.save.owned.includes(INSTRUCTOR_PRIZE)) this.save.owned.push(INSTRUCTOR_PRIZE);
         this.save.coam += 20000;
-        prize = '考核通過：解鎖零件 LS-70 光束大劍、COAM +20,000';
+        prize = '考核通過：解鎖零件 LS-70 光束大劍、SP +20,000';
       } else prize = '考核通過（已經領過獎勵）';
       this.writeSave();
     }

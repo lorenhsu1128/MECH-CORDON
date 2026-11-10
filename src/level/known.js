@@ -9,8 +9,8 @@ import { placeIds } from './placeables.js';
 const enemyName = (k) => {
   const d = ENEMY_TYPES[k] || FOES[k];
   if (!d) return k;
-  if (d.roster) return '敵對 AC：' + ((AC_ROSTER[d.roster] || {}).name || d.roster);
-  if (k === 'ac') return '敵對 AC（隨機）';
+  if (d.roster) return '敵對機甲：' + ((AC_ROSTER[d.roster] || {}).name || d.roster);
+  if (k === 'ac') return '敵對機甲（隨機）';
   return d.name || k;
 };
 let UT = null;
@@ -28,13 +28,13 @@ export function unitTypes(kind) {
             note: '主題專屬：' + ((THEMES[FOES[k].theme] || {}).name || ''),
           })),
       ],
-      ace: Object.keys(ACES).map((k) => ({ id: k, name: ACES[k].name, note: '宿敵 AC' })),
+      ace: Object.keys(ACES).map((k) => ({ id: k, name: ACES[k].name, note: '宿敵機甲' })),
       boss: BOSS_DEFS.map((b, i) => ({
         id: String(i),
         name: b.name,
         note: 'Boss' + (b.rail ? '（需要鐵路）' : ''),
       })),
-      ally: Object.keys(AC_ROSTER).map((k) => ({ id: k, name: AC_ROSTER[k].name, note: '友軍 AC' })),
+      ally: Object.keys(AC_ROSTER).map((k) => ({ id: k, name: AC_ROSTER[k].name, note: '友軍機甲' })),
       convoy: [{ id: 'convoy', name: '護送車輛', note: '沿路徑前進' }],
       // 地圖上的小人（game/crowd.js）：不算敵人、不擋勝負
       human: [

@@ -31,7 +31,7 @@ const FOE = [
   {
     id: 'mv_lob',
     name: '榴彈（落點圈）',
-    who: '榴彈 MT（mt_gren）',
+    who: '榴彈步行機（mt_gren）',
     src: 'entities/mech-moves.js 的 moveStart（lob）',
     srcAt: [0, -20],
     run: (S) => {
@@ -63,7 +63,7 @@ const FOE = [
   {
     id: 'mv_dash',
     name: '衝刺（路線預警）',
-    who: '霰彈 MT（mt_shot）',
+    who: '霰彈步行機（mt_shot）',
     src: 'entities/mech-moves.js 的 moveStart（dash）',
     srcAt: [0, -16],
     run: (S) => {
@@ -76,7 +76,7 @@ const FOE = [
   {
     id: 'mv_aim',
     name: '架砲（紅色瞄準線）',
-    who: '重裝 MT、戰車、直升機（aimShot）',
+    who: '重裝步行機、戰車、直升機（aimShot）',
     src: 'entities/mech-moves.js 的 mv_aimShot（mvLine 每 0.2 秒）',
     srcAt: [4, -26],
     run: (S) => S.every(0.2, 0.7, () => S.warnLine(S.src.muzzle('rarm'), tc(S), 0.24, 0xff3020, 0.04)),
@@ -84,7 +84,7 @@ const FOE = [
   {
     id: 'mv_volley',
     name: '導彈齊射（橘色鎖定線）',
-    who: '重裝 MT、砲台（volley）',
+    who: '重裝步行機、砲台（volley）',
     src: 'entities/mech-moves.js 的 mv_volley',
     srcAt: [-4, -30],
     run: (S) => S.every(0.3, 0.9, () => S.warnLine(S.src.muzzle('rback'), tc(S), 0.34, 0xffa020, 0.03)),
@@ -124,7 +124,7 @@ const FOE = [
   {
     id: 'ac_charge',
     name: '蓄力武器的瞄準線',
-    who: '帶蓄力武器的敵對 AC',
+    who: '帶蓄力武器的敵對機甲',
     src: 'entities/mech-entity.js 的 fire（chargeT）',
     srcAt: [-6, -28],
     run: (S) => S.warnLine(S.src.muzzle('rarm'), tc(S), 1.2, 0xff2020, 0.05),
@@ -136,7 +136,7 @@ const SPECIAL = [
   {
     id: 'sp_mortar',
     name: '迫擊砲',
-    who: '迫擊砲 MT（mortar）',
+    who: '迫擊砲步行機（mortar）',
     src: 'entities/mech-special.js（mortarShot，R 5.5）',
     srcAt: [0, -34],
     run: (S) => S.mortar(tp(S).add(V(rnd(-1.5, 1.5) * DS, 0, rnd(-1.5, 1.5) * DS)), 5.5 * MS),
@@ -159,22 +159,22 @@ const SPECIAL = [
   {
     id: 'sp_stomp',
     name: '重踏（地面衝擊波）',
-    who: '重踏機甲（stomper）、bastion 型 AC、大型 Boss AC',
+    who: '重踏步行機（stomper）、bastion 型機甲、大型 Boss 機甲',
     src: 'entities/mech-entity.js 的 aiShock（重踏 R 12、sp 16、預警 0.7）',
     srcAt: [0, -10],
     run: (S) => S.shock(S.src.pos, 12, 16, 0.7),
   },
   {
     id: 'sp_shockAC',
-    name: '地面衝擊波（bastion 型 AC）',
-    who: 'bastion 型 AC',
+    name: '地面衝擊波（bastion 型機甲）',
+    who: 'bastion 型機甲',
     src: 'entities/mech-entity.js 的 aiShock（R 20、sp 20、預警 0.8）',
     srcAt: [0, -12],
     run: (S) => S.shock(S.src.pos, 20, 20, 0.8),
   },
   {
     id: 'sp_shockBoss',
-    name: '地面衝擊波（大型 Boss AC）',
+    name: '地面衝擊波（大型 Boss 機甲）',
     who: 'JUGGERNAUT、STRIDER、BALTEUS 等',
     src: 'entities/mech-entity.js 的 aiShock（R 30、sp 24、預警 0.9）',
     srcAt: [0, -14],
@@ -220,7 +220,7 @@ const THEME = [
   },
   {
     id: 'fo_forklift',
-    name: '叉架 MT：丟出貨櫃',
+    name: '叉架步行機：丟出貨櫃',
     who: '集散場 forklift',
     src: 'entities/mech-foe.js（crateShot R 3.5 × MS、0.9 秒）',
     srcAt: [0, -14],
@@ -247,7 +247,7 @@ const THEME = [
   },
   {
     id: 'fo_sprayer',
-    name: '汙染噴射 MT：腐蝕區',
+    name: '汙染噴射步行機：腐蝕區',
     who: '水沒市街 sprayer',
     src: 'entities/mech-foe.js（warnCircle 4.5、1 秒 → addPool 酸）',
     srcAt: [0, -18],
@@ -294,7 +294,7 @@ const THEME = [
   {
     id: 'fo_undertow',
     name: 'UNDERTOW：貼身推擊',
-    who: '洋上都市的專屬 AC',
+    who: '洋上都市的專屬機甲',
     src: 'entities/mech-foe.js（shockwave 4）',
     srcAt: [0, -4],
     run: (S) => S.ring(tc(S), 4, 0x40c0e0, 0.3),
@@ -329,7 +329,7 @@ const THEME = [
   {
     id: 'fo_specimen',
     name: 'SPECIMEN：過載',
-    who: '技研都市的專屬 AC',
+    who: '技研都市的專屬機甲',
     src: 'entities/mech-foe.js（shockwave 5）',
     srcAt: [0, -14],
     run: (S) => S.ring(S.src.center(), 5, 0xff3a30, 0.4),
@@ -412,7 +412,7 @@ const THEME = [
   // B2（entities/mech-foe-b2.js）
   {
     id: 'b2_riveter',
-    name: '鉚釘槍 MT：瞄準線與黏性鉚釘',
+    name: '鉚釘槍步行機：瞄準線與黏性鉚釘',
     who: '集散場 riveter',
     src: 'entities/mech-foe-b2.js（warnLine 0.7 秒、命中 ring 1.2）',
     srcAt: [4, -18],
@@ -423,7 +423,7 @@ const THEME = [
   },
   {
     id: 'b2_welder',
-    name: '電焊 MT：電弧預警',
+    name: '電焊步行機：電弧預警',
     who: '集散場 welder',
     src: 'entities/mech-foe-b2.js（warnLine 0.8 秒）',
     srcAt: [0, -8],
@@ -616,7 +616,7 @@ const THEME = [
   },
   {
     id: 'e1_heatguard',
-    name: '耐熱重裝 MT：火焰噴射',
+    name: '耐熱重裝步行機：火焰噴射',
     who: '火山熔爐帶 heatguard',
     src: 'entities/mech-foe-e1.js（flameCone 射程 14 × 0.55、2 秒）',
     srcAt: [0, -10],
@@ -1156,7 +1156,7 @@ const b3 = {
 };
 const B3 = [
   ['JUGGERNAUT', 'JUGGERNAUT', '砲擊連段', (S) => (b3.shock(S, 26), b3.rain(S, 6, 10, 0.5))],
-  ['mirror', 'DOPPEL（複製 AC）', '適應過載', (S) => (b3.volley(S, 3, 0.35), b3.mines(S, 5, 9))],
+  ['mirror', 'DOPPEL（複製機甲）', '適應過載', (S) => (b3.volley(S, 3, 0.35), b3.mines(S, 5, 9))],
   ['flagship', 'AEGIS（護盾指揮艦）', '艦砲齊射', (S) => b3.line(S, 8, 4.5, 0.12)],
   ['interceptor', 'VIPER（高速突擊機）', '空雷封鎖', (S) => b3.mines(S, 8, 10, true)],
   ['STRIDER', 'STRIDER', '十字雷射', (S) => b3.cross(S)],
@@ -1326,7 +1326,7 @@ const TIER = [
     'tierCounterOn（shockwave 5）',
     (S) => S.ring(S.src.center(), 5, 0x50a8ff, 0.4),
   ],
-  ['tr_armor', '脈衝裝甲破壞', 'tierArmorK（shockwave 9）', (S) => S.ring(S.src.center(), 9, 0x60e0ff, 0.5)],
+  ['tr_armor', '斥力裝甲破壞', 'tierArmorK（shockwave 9）', (S) => S.ring(S.src.center(), 9, 0x60e0ff, 0.5)],
   [
     'tr_bk',
     '破甲彈命中',

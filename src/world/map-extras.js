@@ -12,7 +12,7 @@ const BLACK = new THREE.Color(0);
 export const PICKUP_DEFS = {
   repair: { name: '修補包', color: 0x7ee081 },
   cs_bomber: { name: 'AIRSTRIKE 空襲 +1', color: 0x5cc8ff },
-  cs_ally: { name: 'ALLY-AC 友軍 +1', color: 0xffb060 },
+  cs_ally: { name: 'ALLY-MECH 友軍 +1', color: 0xffb060 },
   ammo: { name: '彈藥箱', color: 0xffc040 },
   bossPart: { name: '部位殘骸（彈藥＋修補）', color: 0xffe070 }, // Boss 改版的 J：打壞部位時掉落
   salvage: { name: '回收物資', color: 0xffc040, life: 1e9 }, // 撤離區段（game/seg-ops.js）：撤離成功才入帳

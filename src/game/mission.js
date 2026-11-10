@@ -62,7 +62,7 @@ Object.assign(Game.prototype, {
     const p = this.player;
     if (!p || p.dead || p.downed || this.state !== 'play') return;
     if (this.pvp && this.save.asm[slot] === 'cs_ally') {
-      this.flashMsg('PVP 中不能使用友軍 AC', 0xff4d4d, 1);
+      this.flashMsg('PVP 中不能使用友軍機甲', 0xff4d4d, 1);
       return;
     }
     if (this.net && this.net.role === 'client') {
@@ -670,7 +670,11 @@ Object.assign(Game.prototype, {
         ace: true,
         pref: r.ai === 'sniper' ? 'far' : undefined,
       });
-      this.flashMsg(`敵對 AC「${r.name}」介入`, 0xff4d4d, 2.2, { k: 'ace', m: r.name, s: 'HOSTILE AC 介入' });
+      this.flashMsg(`敵對機甲「${r.name}」介入`, 0xff4d4d, 2.2, {
+        k: 'ace',
+        m: r.name,
+        s: 'HOSTILE MECH 介入',
+      });
       this.flashAlert(r.intro);
       return e;
     }
@@ -950,7 +954,7 @@ Object.assign(Game.prototype, {
     this.missionEarned = (this.missionEarned || 0) + bounty;
     this.writeSave();
     this.netEv({ t: 'bounty', v: bounty });
-    this.bountyPops.push({ txt: '+' + bounty.toLocaleString() + ' COAM', life: 2.2, y: 0 });
+    this.bountyPops.push({ txt: '+' + bounty.toLocaleString() + ' SP', life: 2.2, y: 0 });
     if (this.devEnvNow) this.devEnvKill(e, from, bounty); // 環境陷阱擊破：環境擊殺（devices-traps.js）
     this.hwDrop(e); // 重型敵人掉落重武器（devices-guns.js）
   },
@@ -966,7 +970,7 @@ Object.assign(Game.prototype, {
       this.fx.ring(s.center(), 3, 0xc8702a);
       if (!this.scavTold) {
         this.scavTold = true;
-        this.flashAlert('拾荒 MT 撿起零件強化了');
+        this.flashAlert('拾荒步行機撿起零件強化了');
       }
       break;
     }
@@ -976,20 +980,20 @@ Object.assign(Game.prototype, {
     if (this.range) return this.rangePlayerDead(); // 靶場：重新出場
     if (this.tut) return; // 近戰訓練：不會被擊破（tutSaveEnt）
     if (this.sim) {
-      this.flashMsg('AC 已被擊破', 0xff4d4d, 2);
+      this.flashMsg('機體已被擊破', 0xff4d4d, 2);
       return setTimeout(() => this.sim && this.simEnd(false), 1800); // 模擬戰
     }
     if (this.camp) {
-      this.flashMsg('AC 已被擊破', 0xff4d4d, 3);
+      this.flashMsg('機體已被擊破', 0xff4d4d, 3);
       if (this.campMp()) return; // 多人：全員倒下才算失敗（game.js 的主迴圈）
       this.nemRecord(); // 宿敵（nemesis.js）
       return this.campDead(); // 主線：回機庫，從紀錄點重來
     }
     if (this.lv) {
       if (this.net && this.net.role) return; // 多人：全員倒下才算失敗
-      return this.lvEnd(false, 'AC 已被擊破');
+      return this.lvEnd(false, '機體已被擊破');
     }
-    this.flashMsg('AC 已被擊破', 0xff4d4d, 3);
+    this.flashMsg('機體已被擊破', 0xff4d4d, 3);
     setTimeout(() => {
       if (this.state === 'play') this.endMission(false, false);
     }, 2600);
@@ -1129,7 +1133,7 @@ Object.assign(Game.prototype, {
         : []),
       ['擊破獎金（已即時入帳）', '+' + earned.toLocaleString()],
       ['任務完成獎金', '+' + bonus.toLocaleString()],
-      ['COAM 結餘', S.coam.toLocaleString()],
+      ['SP 結餘', S.coam.toLocaleString()],
     ];
     $('resultGrid').innerHTML = rows
       .map((r) => `<span class="dim">${escHtml(r[0])}</span><span>${escHtml(r[1])}</span>`)
@@ -1153,7 +1157,7 @@ Object.assign(Game.prototype, {
         rank,
         bonus: success ? baseBonus : 0,
         xpBySlot: xpAll,
-        rows: [...rows.filter((r) => r[0] !== 'COAM 結餘'), ...mprows],
+        rows: [...rows.filter((r) => r[0] !== 'SP 結餘'), ...mprows],
       });
       for (const x of this.net.players) x.ready = false;
     } else $('btnResultOk').textContent = '返回機甲庫';

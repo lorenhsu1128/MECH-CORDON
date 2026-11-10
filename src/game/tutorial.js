@@ -119,7 +119,7 @@ Object.assign(Game.prototype, {
     h += R
       ? '<p class="dim">教學中可以用所有武器（不必先買）。不會被擊破、沒有時間限制。</p>'
       : '<p class="dim">教學中可以用所有近戰武器（不必先買）；左手是霰彈槍。不會被擊破、沒有時間限制。</p>';
-    if (L.coam && !(r && r.w && r.w.length)) h += `<p>第一次完成：COAM +${L.coam.toLocaleString()}</p>`;
+    if (L.coam && !(r && r.w && r.w.length)) h += `<p>第一次完成：SP +${L.coam.toLocaleString()}</p>`;
     if (L.final) h += `<p>結業：從三把${R ? '遠程' : '近戰'}武器裡挑一把免費拿走。</p>`;
     const canSkip = L.skippable && !this.tutDone(lid);
     h += `<div class="row"><button class="primary" id="btnTutGo">開始</button>${canSkip ? '<button id="btnTutSkipL">直接跳過這一課</button>' : ''}<button id="btnTutBack">返回</button></div>`;
@@ -1148,7 +1148,7 @@ Object.assign(Game.prototype, {
     let reward = '';
     if (first && L.coam) {
       this.save.coam += L.coam;
-      reward = `COAM +${L.coam.toLocaleString()}`;
+      reward = `SP +${L.coam.toLocaleString()}`;
     }
     this.writeSave();
     const R = ranged(L);
@@ -1176,7 +1176,7 @@ Object.assign(Game.prototype, {
         S[pk] = 'coam';
         this.save.coam += prizeCoam;
         this.writeSave();
-        h += `<p>結業獎勵：三把${kindTxt}武器你都有了，改給 COAM +${prizeCoam.toLocaleString()}</p>`;
+        h += `<p>結業獎勵：三把${kindTxt}武器你都有了，改給 SP +${prizeCoam.toLocaleString()}</p>`;
       }
     }
     const nx = list[i + 1];

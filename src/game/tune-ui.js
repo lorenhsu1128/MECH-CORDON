@@ -94,7 +94,7 @@ Object.assign(Game.prototype, {
     const p = partById(c.cat, c.id);
     const S = this.save;
     const tabs = `<div class="tuTabs" data-padtabs="button"><button class="tuTab${c.view === 'part' ? ' on' : ''}" data-v="part">這個零件：${escHtml(p.name)}</button><button class="tuTab${c.view === 'ov' ? ' on' : ''}" data-v="ov">總覽（身上的零件）</button></div>`;
-    const mats = `<div class="tuMats">COAM ${S.coam.toLocaleString()}　${this.lootMatsHtml()}</div>`;
+    const mats = `<div class="tuMats">SP ${S.coam.toLocaleString()}　${this.lootMatsHtml()}</div>`;
     const pmOn = this.rangePmOn();
     const note = `<div class="tuNote dim">調校只在裝備時有效・跟著每一件裝備・PvP 不套用${pmOn ? '・數值含駕駛員加成' : ''}</div>`;
     const body = c.view === 'ov' ? this.tuneOvHtml() : this.tunePartHtml(c.cat, c.id);
@@ -136,7 +136,7 @@ Object.assign(Game.prototype, {
     if (rs)
       rs.onclick = () =>
         this.uiConfirm(
-          '重置這個零件的調校？花費的 COAM 與素材退還一半。',
+          '重置這個零件的調校？花費的 SP 與素材退還一半。',
           () => this.tuneReset(c.id, c.u),
           '重置',
           '取消',
@@ -273,7 +273,7 @@ Object.assign(Game.prototype, {
     list.sort((a, b) => per(b) - per(a));
     const sorts = `<div class="tuSorts" data-padtabs=".tuSort"><span class="dim">排序</span>${SORTS.map(([k, n]) => `<button class="tuSort${k === sk ? ' on' : ''}" data-s="${k}">${n}</button>`).join('')}</div>`;
     const expl =
-      '<div class="tuNote dim">依「每 1 萬 COAM 提升多少」排序（素材另計）。火力＝整台持續 DPS、耐久＝有效 AP（AP 依防禦換算）、機動＝速度、QB 速度、QB 消耗、EN 容量、EN 回復的變化合計。</div>';
+      '<div class="tuNote dim">依「每 1 萬 SP 提升多少」排序（素材另計）。火力＝整台持續 DPS、耐久＝有效 AP（AP 依防禦換算）、機動＝速度、QB 速度、QB 消耗、EN 容量、EN 回復的變化合計。</div>';
     let divided = false;
     const rows = list
       .map((x) => {
@@ -331,7 +331,7 @@ Object.assign(Game.prototype, {
     const lv = t[k] || 0;
     if (lv >= TUNE_MAX || tuneLevels(t) >= tuneCap(t)) return;
     const c = tuneCost(lv + 1);
-    if (!this.tuneAfford(c)) return this.flashMsg('COAM 或素材不足', 0xff4d4d, 1.2);
+    if (!this.tuneAfford(c)) return this.flashMsg('SP 或素材不足', 0xff4d4d, 1.2);
     S.coam -= c.coam;
     for (const m of Object.keys(MATS)) if (c[m]) S.mats[m] -= c[m];
     t[k] = lv + 1;
@@ -350,7 +350,7 @@ Object.assign(Game.prototype, {
     const nx = tuneBreaks(t);
     const c = TUNE_BREAK[nx];
     if (!c) return;
-    if (!this.tuneAfford(c)) return this.flashMsg('COAM 或傳說殘片不足', 0xff4d4d, 1.2);
+    if (!this.tuneAfford(c)) return this.flashMsg('SP 或傳說殘片不足', 0xff4d4d, 1.2);
     S.coam -= c.coam;
     for (const m of Object.keys(MATS)) if (c[m]) S.mats[m] -= c[m];
     t._x = nx + 1;

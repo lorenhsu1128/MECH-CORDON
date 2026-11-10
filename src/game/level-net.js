@@ -172,7 +172,7 @@ Object.assign(Game.prototype, {
     const opts = (this.lvLobbyList || [])
       .map((x) => `<option value="${escHtml(x.key)}">${escHtml(x.name)}</option>`)
       .join('');
-    return `<div class="krow"><span>關卡</span><span><select id="pvLevel"><option value="">（選擇關卡）</option>${opts}</select></span></div>${lv ? `<div class="dim" style="font-size:11px">${escHtml(lv.name)}${lv.author ? '　作者 ' + escHtml(lv.author) : ''}　建議 ${lv.np || 1} 人${lv.segs > 1 ? `　${lv.segs} 段` : ''}　自訂關卡沒有 COAM 與經驗</div>` : ''}`;
+    return `<div class="krow"><span>關卡</span><span><select id="pvLevel"><option value="">（選擇關卡）</option>${opts}</select></span></div>${lv ? `<div class="dim" style="font-size:11px">${escHtml(lv.name)}${lv.author ? '　作者 ' + escHtml(lv.author) : ''}　建議 ${lv.np || 1} 人${lv.segs > 1 ? `　${lv.segs} 段` : ''}　自訂關卡沒有 SP 與經驗</div>` : ''}`;
   },
   async lvLobbyRefresh() {
     const list = [];

@@ -487,8 +487,8 @@ Object.assign(Game.prototype, {
       e.isElite = true; // 精英區段的具名 AC：掉能量核心（loot.js）
       for (const t of comp(L - 2).slice(0, 2)) this.spawnType(t, sh, sd);
       document.getElementById('bossBar').style.display = 'block';
-      document.getElementById('bossName').textContent = `敵對 AC「${r.name}」`;
-      this.flashAlert(r.intro || `敵對 AC「${r.name}」`);
+      document.getElementById('bossName').textContent = `敵對機甲「${r.name}」`;
+      this.flashAlert(r.intro || `敵對機甲「${r.name}」`);
     } else if (type === 'destroy') {
       const n = 3 + (L >= 4 ? 1 : 0);
       this.spawnComp(comp(L - 1), 1, sh, sd);
@@ -694,7 +694,7 @@ Object.assign(Game.prototype, {
       const v = Math.round((4000 + L * 1500) / 100) * 100;
       this.save.coam += v;
       this.missionEarned = (this.missionEarned || 0) + v;
-      this.bountyPops.push({ txt: '+' + v.toLocaleString() + ' COAM', life: 2.2, y: 0 });
+      this.bountyPops.push({ txt: '+' + v.toLocaleString() + ' SP', life: 2.2, y: 0 });
       this.writeSave();
       this.flashMsg(`出口獎勵：資金 +${v.toLocaleString()}`, 0xffc040, 2);
       if (this.campMp()) this.campMpCoam(v); // 每位玩家各自入帳
@@ -1255,13 +1255,13 @@ Object.assign(Game.prototype, {
     $('gCampInfo').innerHTML =
       `AP <b>${Math.round((cy.hp == null ? 1 : cy.hp) * 100)}%</b>　彈藥 <b>${Math.round(cost.ammoPct * 100)}%</b>　修復套件 <b>${cost.kitsN}／${cost.kitsMax}</b><div class="gCampMods">${cl ? '' : this.campModsHtml()}</div>`;
     $('btnCampRepair').textContent = cost.repair
-      ? `修理 AP（${cost.repair.toLocaleString()} COAM）`
+      ? `修理 AP（${cost.repair.toLocaleString()} SP）`
       : 'AP 已滿';
     $('btnCampRepair').disabled = !cost.repair || this.save.coam < cost.repair;
-    $('btnCampAmmo').textContent = cost.ammo ? `補充彈藥（${cost.ammo.toLocaleString()} COAM）` : '彈藥已滿';
+    $('btnCampAmmo').textContent = cost.ammo ? `補充彈藥（${cost.ammo.toLocaleString()} SP）` : '彈藥已滿';
     $('btnCampAmmo').disabled = !cost.ammo || this.save.coam < cost.ammo;
     $('btnCampKits').textContent = cost.kits
-      ? `補充修復套件（${cost.kits.toLocaleString()} COAM）`
+      ? `補充修復套件（${cost.kits.toLocaleString()} SP）`
       : '修復套件已滿';
     $('btnCampKits').disabled = !cost.kits || this.save.coam < cost.kits;
     $('btnCampGo2').disabled = warn.length > 0;
@@ -1358,7 +1358,7 @@ Object.assign(Game.prototype, {
     this.showScreen('campFail');
     const so = this.campSortie(),
       ck = this.campCkGet();
-    document.getElementById('cfTitle').textContent = 'AC 已被擊破';
+    document.getElementById('cfTitle').textContent = '機體已被擊破';
     document.getElementById('cfInfo').textContent =
       `${so.name}　紀錄點：區段 ${ck.seg + 1}／${so.segs.length} 的轉場起點（失敗 ${c.fails} 次）`;
     document.getElementById('ctBtns2').style.display = '';
@@ -1552,7 +1552,7 @@ Object.assign(Game.prototype, {
         : []),
       ['報酬（已即時入帳）', '+' + c.earned.toLocaleString()],
       ['作戰完成報酬', '+' + bonus.toLocaleString()],
-      ['COAM 結餘', S.coam.toLocaleString()],
+      ['SP 結餘', S.coam.toLocaleString()],
     ];
     $('resultGrid').innerHTML = rows
       .map((r) => `<span class="dim">${escHtml(r[0])}</span><span>${escHtml(r[1])}</span>`)
@@ -1573,7 +1573,7 @@ Object.assign(Game.prototype, {
           ending: (success && this.campEnding) || null,
           cycle: this.campEndingCycle || 1,
           xpBySlot: xpAll,
-          rows: rows.filter((r) => r[0] !== 'COAM 結餘'),
+          rows: rows.filter((r) => r[0] !== 'SP 結餘'),
         });
       for (const x of this.net.players) x.ready = false;
     }
@@ -1593,7 +1593,7 @@ Object.assign(Game.prototype, {
   },
   // HUD 上方的作戰資訊（房主與單人由 campView 產生，客機用快照帶來的同一份資料）
   campHudHtml(v) {
-    return `<b>${v.free ? '' : '主線｜'}${escHtml(v.so)}</b> ｜ 區段 ${v.seg + 1}／${v.n}【${escHtml((SEG_TYPES[v.type] || SEG_TYPES.battle).name)}】${escHtml(v.name)}<div id="objective">${escHtml(v.goal)} ｜ ${Math.floor(v.time / 60)} 分</div><div style="color:var(--acc)">COAM ${this.save.coam.toLocaleString()}${v.pend ? ` <span class="dim">（清除後：${escHtml(v.pend)}）</span>` : ''}</div>`;
+    return `<b>${v.free ? '' : '主線｜'}${escHtml(v.so)}</b> ｜ 區段 ${v.seg + 1}／${v.n}【${escHtml((SEG_TYPES[v.type] || SEG_TYPES.battle).name)}】${escHtml(v.name)}<div id="objective">${escHtml(v.goal)} ｜ ${Math.floor(v.time / 60)} 分</div><div style="color:var(--acc)">SP ${this.save.coam.toLocaleString()}${v.pend ? ` <span class="dim">（清除後：${escHtml(v.pend)}）</span>` : ''}</div>`;
   },
   campGoal(alive, wavesLeft) {
     const c = this.camp,

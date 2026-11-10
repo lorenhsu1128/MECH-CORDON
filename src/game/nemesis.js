@@ -52,7 +52,7 @@ Object.assign(Game.prototype, {
     };
     if (big && k.asm) {
       name = baseName(k.name);
-      if (!name || name === '敵對 AC') name = title(); // 沒有名字的敵對 AC：取一個稱號
+      if (!name || name === '敵對機甲') name = title(); // 沒有名字的敵對 AC：取一個稱號
       asm = { ...k.asm };
       ai = k.ai === 'ac' || !k.ai ? 'ac' : k.ai;
       pal = k.palKey || 'enemy';
@@ -131,8 +131,8 @@ Object.assign(Game.prototype, {
     const v = Math.round((NEM.BOUNTY[0] + NEM.BOUNTY[1] * n.lv) / 100) * 100;
     this.save.coam += v;
     this.missionEarned = (this.missionEarned || 0) + v;
-    this.bountyPops.push({ txt: '+' + v.toLocaleString() + ' COAM', life: 2.2, y: 0 });
-    this.flashMsg(`宿敵 ${n.name} 擊破 — +${v.toLocaleString()} COAM`, 0xffd060, 2.6, {
+    this.bountyPops.push({ txt: '+' + v.toLocaleString() + ' SP', life: 2.2, y: 0 });
+    this.flashMsg(`宿敵 ${n.name} 擊破 — +${v.toLocaleString()} SP`, 0xffd060, 2.6, {
       k: 'good',
       m: '宿敵擊破',
       s: n.name,

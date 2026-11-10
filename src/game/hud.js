@@ -103,7 +103,7 @@ Object.assign(Game.prototype, {
           .filter(Boolean)
           .join('  ');
         c.fillText(
-          `AP ${Math.round(q.hp)}/${q.maxHp}  EN ${Math.round(q.en)}  ACS ${Math.round(q.acs)}/${q.acsMax}  套件 ${q.kits}`,
+          `AP ${Math.round(q.hp)}/${q.maxHp}  EN ${Math.round(q.en)}  BAL ${Math.round(q.acs)}/${q.acsMax}  套件 ${q.kits}`,
           22,
           y + 24,
         );
@@ -441,7 +441,7 @@ Object.assign(Game.prototype, {
         ? `<b>${this.lv.test ? '試玩' : '自訂關卡'}</b> ｜ ${escHtml(this.levelName)}<div id="objective">殘存敵軍 ${alive} ｜ ${this.missionT.toFixed(0)}s</div>${this.lv.hudHtml || ''}`
         : this.campC && this.campC.view
           ? this.campHudHtml(this.campC.view)
-          : `<b>${this.isBossLevel ? '決戰任務' : '任務'} ${String(this.save.level).padStart(2, '0')}</b> ｜ ${escHtml(this.levelName)}<div id="objective">${this.extract > 0 ? `撤離倒數 ${Math.ceil(this.extract)} 秒（回收補給箱）` : `殘存敵軍 ${alive}${wavesLeft ? ' （尚有增援）' : ''}`} ｜ ${this.missionT.toFixed(0)}s</div><div style="color:var(--acc)">COAM ${this.save.coam.toLocaleString()} <span class="dim">（本次 +${(this.missionEarned || 0).toLocaleString()}）</span></div>`;
+          : `<b>${this.isBossLevel ? '決戰任務' : '任務'} ${String(this.save.level).padStart(2, '0')}</b> ｜ ${escHtml(this.levelName)}<div id="objective">${this.extract > 0 ? `撤離倒數 ${Math.ceil(this.extract)} 秒（回收補給箱）` : `殘存敵軍 ${alive}${wavesLeft ? ' （尚有增援）' : ''}`} ｜ ${this.missionT.toFixed(0)}s</div><div style="color:var(--acc)">SP ${this.save.coam.toLocaleString()} <span class="dim">（本次 +${(this.missionEarned || 0).toLocaleString()}）</span></div>`;
     if (this.goalCur) document.getElementById('hudTop').insertAdjacentHTML('beforeend', this.goalHudHtml());
     if ((this.frames & 15) === 0) {
       const ht = document.getElementById('hudTop'),
