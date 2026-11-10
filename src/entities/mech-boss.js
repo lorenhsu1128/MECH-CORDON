@@ -142,8 +142,12 @@ Object.assign(MechEntity.prototype, {
   bossPhase() {
     const par = this.ai === 'part' || this.ai === 'holo' ? this.parentEnt && this.parentEnt() : null;
     if (par && par !== this && par.bossPhase) return par.bossPhase();
-    const r = this.hp / this.maxHp;
-    const ph = r <= BOSS_PHASES[1] ? 3 : r <= BOSS_PHASES[0] ? 2 : 1;
+    // 用乘法和 tierGate 的門檻（maxHp × BOSS_PHASES）比，不用 hp／maxHp：停在門檻上時除回來可能是 0.70000000001，
+    // 判斷成還在上一個型態、閘門又擋下之後的傷害，就永遠卡在門檻（2026-11-10 量測：ANVIL、DOPPEL 卡在 70%）。
+    // 多半格的寬容：客機收到的 AP 是取整的
+    const h = this.hp - 0.5,
+      m = this.maxHp;
+    const ph = h <= m * BOSS_PHASES[1] ? 3 : h <= m * BOSS_PHASES[0] ? 2 : 1;
     return this.forceP2 ? Math.max(2, ph) : ph;
   },
   // 節奏倍率（房主的 updateAI 把 dt 乘上它）：型態越後面越快，狂暴再加快
@@ -512,8 +516,11 @@ Object.assign(MechEntity.prototype, {
       this.bossOpen(0.25, true); // Boss 改版：發生器重建中＝破綻
       if (s.rebuildT <= 0) {
         s.rebuildT = 0;
-        g.spawnPylons(this);
-        g.alertAll('護盾發生器重建完成');
+        // 每重建一次少一座（4 → 3 → 2）：2026-11-10 量測，第三型態雜兵很多時 4 座一直重建，舊上限的配裝打不倒
+        s.rebuilds = (s.rebuilds || 0) + 1;
+        const n = Math.max(2, 4 - s.rebuilds);
+        g.spawnPylons(this, n);
+        g.alertAll(`護盾發生器重建完成（${n} 座）`);
       }
     } else s.rebuildT = 0;
     // 待在原地附近，面向目標橫移
@@ -527,8 +534,9 @@ Object.assign(MechEntity.prototype, {
     s.dropT = (s.dropT === undefined ? 15 : s.dropT) - dt;
     if (s.dropT <= 0) {
       s.dropT = this.phase2() ? 24 : 32;
+      // 場上活著的雜兵（不算部位）少於 10 台才叫：發生器、部位不佔名額，雜兵不會越堆越多
       if (
-        g.enemies.filter((e) => !e.dead).length < 14 &&
+        g.enemies.filter((e) => !e.dead && !e.isBoss && e.ai !== 'part').length < 10 &&
         !g.enemies.some((e) => !e.dead && e.ai === 'dropship')
       ) {
         g.spawnType('dropship', g.scaleHp || 1, g.scaleDmg || 1);

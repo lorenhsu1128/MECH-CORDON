@@ -214,18 +214,31 @@ function runFight(o) {
     const L = live();
     if (!L.length) break;
     // 自動操作：打 Boss；Boss 4 秒沒掉 AP（護盾、無敵、裝甲殼）就改打部位與雜兵 6 秒
+    // 只在瞄著 Boss 的時候累積（以前改打雜兵時 Boss 當然不掉 AP，計時一直累積，就永遠在打雜兵）
     const bh = L.reduce((a, b) => a + b.hp, 0);
     if (bh < bossHp0 - 1) stall = 0;
-    else stall += dt;
+    else if (p.lock && p.lock.isBoss && alt <= 0) stall += dt;
     bossHp0 = bh;
-    if (stall > 4 && alt <= 0) alt = 6;
+    if (stall > 4 && alt <= 0) {
+      alt = 6;
+      stall = 0;
+    }
     alt -= dt;
     let tgt = null,
       bd = Infinity;
+    // 看提示的玩家：Boss 的裝甲部位還在（mech-boss.js 的 bossDefense：指揮艦的發生器、空中要塞的引擎、
+    // 砲兵陣地的砲台、多足要塞的腳部關節）時先打那些部位
+    const ARMOR = { flagship: 'pylon', fortress: 'engine', artillery: 'cannon', spider: 'joint' };
+    const armored = new Map();
+    for (const b of L) {
+      const k = ARMOR[b.ai];
+      if (k && b.partsOf(k).length && !(b.ai === 'spider' && b.aiState.collapsed)) armored.set(b.id, k);
+    }
     for (const e of g.enemies) {
       if (e.dead || e.decoy || e.noLock) continue;
       let d = Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z);
-      if (e.isBoss) d *= alt > 0 ? 4 : 0.6;
+      if (e.isBoss) d *= alt > 0 || armored.has(e.id) ? 4 : 0.6;
+      else if (e.ai === 'part' && e.opts && armored.get(e.opts.parent) === e.opts.partKind) d *= 0.3;
       if (d < bd) {
         bd = d;
         tgt = e;
@@ -254,7 +267,7 @@ function runFight(o) {
       wish.normalize();
       V.wish = wish;
       V.fireR = V.fireL = V.backR = V.backL = d < 160;
-      if (!p.lock || p.lock.dead) p.lock = tgt;
+      p.lock = tgt; // 每格鎖定挑出來的目標（以前只在沒有鎖定時才鎖，一鎖到 Boss 就不會改打部位與雜兵）
     }
     B.flipT -= dt;
     if (B.flipT <= 0) {
@@ -299,6 +312,7 @@ function runFight(o) {
   st.af = bosses[0].af || 0;
   st.name = bosses[0].name; // 實際生成的 Boss（確認模擬器叫出的是這一隻）
   st.kills = bosses.filter((b) => b.dead).length;
+  st.n = bosses.length; // 雙 AC 有兩台：全部擊破才算擊破
   st.bossLeft = live().reduce((a, b) => a + Math.max(0, b.hp), 0) / st.bossHp;
   B.on = false;
   g.tutVirt = null;
@@ -391,7 +405,7 @@ const buildDefs = (L) => ({
           `${bo.kind.padEnd(10)} ${bn.padEnd(4)} ` +
             (st.err
               ? st.err
-              : `${st.kills ? '擊破' : '未擊破'} ${st.t.toFixed(0)}s  陣亡 ${st.deaths}  承受 ${(st.taken / st.maxHp).toFixed(2)}×AP  回復 ${(st.healed / st.maxHp).toFixed(2)}×AP  ` +
+              : `${st.kills >= st.n ? '擊破' : `未擊破（${st.kills}／${st.n}）`} ${st.t.toFixed(0)}s  陣亡 ${st.deaths}  承受 ${(st.taken / st.maxHp).toFixed(2)}×AP  回復 ${(st.healed / st.maxHp).toFixed(2)}×AP  ` +
                 `型態 ${[1, 2, 3].map((k) => (ph[k] || 0).toFixed(0)).join('/')}s  失衡 ${st.stag}  雜兵 ${st.adds}  詞綴 ${st.af}  （${((Date.now() - r0) / 1000).toFixed(0)}s）`) +
             (errs.length ? '  ⚠ ' + errs[0] : ''),
         );
@@ -420,7 +434,7 @@ const buildDefs = (L) => ({
     }
     const ph = r.ph || {};
     L.push(
-      `| ${r.boss} | ${r.tier} | ${r.build} | ${r.kills ? '擊破' : `剩 ${(r.bossLeft * 100).toFixed(0)}%`} | ${r.t.toFixed(0)} | ${r.deaths} | ${(r.taken / r.maxHp).toFixed(2)} | ${(r.healed / r.maxHp).toFixed(2)} | ${[1, 2, 3].map((k) => (ph[k] || 0).toFixed(0)).join('／')} | ${r.stag} |`,
+      `| ${r.boss} | ${r.tier} | ${r.build} | ${r.kills >= (r.n || 1) ? '擊破' : `剩 ${(r.bossLeft * 100).toFixed(0)}%`} | ${r.t.toFixed(0)} | ${r.deaths} | ${(r.taken / r.maxHp).toFixed(2)} | ${(r.healed / r.maxHp).toFixed(2)} | ${[1, 2, 3].map((k) => (ph[k] || 0).toFixed(0)).join('／')} | ${r.stag} |`,
     );
   }
   fs.writeFileSync(path.join(OUTD, TAG + '.md'), L.join('\n') + '\n');

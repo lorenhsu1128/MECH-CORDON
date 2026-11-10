@@ -113,11 +113,11 @@ Object.assign(Game.prototype, {
       ...(o.name ? { name: o.name } : {}),
     });
   },
-  // 護盾指揮艦的四座發生器（開場與重建）
-  spawnPylons(b) {
+  // 護盾指揮艦的發生器（開場 4 座；重建時一次比一次少，n）
+  spawnPylons(b, n = 4) {
     const a0 = Math.random() * Math.PI * 2;
-    for (let i = 0; i < 4; i++) {
-      const a = a0 + (i / 4) * Math.PI * 2;
+    for (let i = 0; i < n; i++) {
+      const a = a0 + (i / n) * Math.PI * 2;
       const [x, z] = this.world.nearSolid(
         clamp(b.pos.x + Math.cos(a) * 22 * DS, -this.world.lim + 4 * MS, this.world.lim - 4 * MS),
         clamp(b.pos.z + Math.sin(a) * 22 * DS, -this.world.lim + 4 * MS, this.world.lim - 4 * MS),
@@ -194,13 +194,14 @@ Object.assign(Game.prototype, {
       this.flashMsg('Boss 狂暴化 — 火力與速度上升', 0xff3020, 3, { k: 'enrage', m: '狂暴化', s: 'ENRAGE' });
       for (const b of live) this.fx.shockwave(b.center(), 22, 0xff2010, 0.8);
     }
-    // 雙 AC：一台倒下時另一台狂暴（回復 25%、火力 ×1.3、節奏加快）
+    // 雙 AC：一台倒下時另一台狂暴（火力 ×1.3、節奏加快）。不再回復 25%，型態閘門也不再擋（mech-boss-tier.js 的
+    // tierGate 看 duoRage）：2026-11-10 量測，倖存的一台回滿之後從第一型態重跑閘門與裝甲殼，等於連打兩場
     if (this.bosses.length > 1 && live.length === 1 && !live[0].duoRage) {
       const b = live[0];
       b.duoRage = true;
       b.enraged = true;
       b.dmgMul *= BOSS_ENRAGE_DMG;
-      b.hp = Math.min(b.maxHp, b.hp + b.maxHp * 0.25);
+      if (b.bt) b.bt.shell = null;
       this.fx.shockwave(b.center(), 18, 0xff2010, 0.7);
       this.flashMsg(`${b.name.split(' ')[0]} 狂暴化 — 僚機被擊破`, 0xff3020, 2.5, {
         k: 'enrage',

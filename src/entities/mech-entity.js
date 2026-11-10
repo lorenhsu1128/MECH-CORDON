@@ -2054,7 +2054,7 @@ export class MechEntity {
     this.bigHitNow = false;
     if (from && from.tierBoss && !melee && this.pilotEnt()) {
       const bb = from.tierBoss();
-      const bd = bb ? bb.tierBigDmg(dmg, this) : 0;
+      const bd = bb ? bb.tierBigDmg(dmg, this, wid) : 0;
       if (bd > 0) {
         dmg = bd;
         attr = 'none';

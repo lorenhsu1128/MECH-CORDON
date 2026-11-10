@@ -5592,8 +5592,8 @@ async function testBosses(browser, base) {
     );
   let r = await run(6, 'aegis');
   check(
-    r.a === 0 && r.b > 0 && r.rebuilt === 4 && r.dead && r.left === 0,
-    `${r.name}：發生器在時打不動（${r.a}）、拆光後 ${r.b}、25 秒後重建 ${r.rebuilt} 座、擊破後部位消失`,
+    r.a === 0 && r.b > 0 && r.rebuilt === 3 && r.dead && r.left === 0,
+    `${r.name}：發生器在時打不動（${r.a}）、拆光後 ${r.b}、25 秒後重建 ${r.rebuilt} 座（一次比一次少）、擊破後部位消失`,
   );
   r = await run(12, 'worm');
   check(
@@ -9467,6 +9467,8 @@ async function testCampaign(browser, base) {
   // 最後一段：Boss 擊破 → 出擊完成
   await page.evaluate(() => {
     const g = window.__game;
+    // 這裡只檢查擊破之後的流程：不套用刁鑽度（型態閘門與大招閘門會讓一口氣的大傷害停在門檻上，規則在 testBossHard）
+    g.tierTestOff = true;
     g.campRestore();
     g.camp.seg = 4;
     g.campCheckpoint();
@@ -9486,6 +9488,7 @@ async function testCampaign(browser, base) {
     fin.t === '主線出擊 完成' && fin.done === 1 && !fin.ck && !fin.camp,
     '結果：完成紀錄寫入存檔、紀錄點清除',
   );
+  await page.evaluate(() => (window.__game.tierTestOff = false));
   await page.click('#btnResultOk');
   check(await waitVisible(page, 'hub'), '結果畫面「返回作戰室」');
   const nodes2 = await page.$$eval('.hubNode', (l) => l.map((n) => n.dataset.sid + ':' + n.classList[1]));
@@ -18045,6 +18048,33 @@ async function testBossHard(browser, base) {
       b.tierTick(0.016, pl);
     }
     out.bgRel = !!(b.bt.bigDone && b.bt.bigDone[3]) && b.tierGate(1e9) === 1e9;
+    // 停在門檻（maxHp × 0.7／0.35）上要判斷成下一個型態：以前用 hp／maxHp 比，某些最大 AP 除回來是
+    // 0.70000000001，判斷成上一個型態、閘門又擋下之後的傷害，就永遠卡在門檻（2026-11-10 量測：ANVIL、DOPPEL）
+    {
+      const m0 = b.maxHp,
+        h0 = b.hp,
+        bad = [];
+      // 18 萬以上約 2% 的最大 AP 會出錯（後期的 Boss）；188698＝量測時卡住的 ANVIL
+      for (const m of [...Array(400).keys()].map((i) => 187201 + i).concat(188698)) {
+        b.maxHp = m;
+        b.hp = m * 0.7;
+        const p2 = b.bossPhase();
+        b.hp = m * 0.35;
+        const p3 = b.bossPhase();
+        b.hp = m * 0.7 + 1; // 大招閘門停住的「門檻上一點」
+        const p1 = b.bossPhase();
+        if (p2 !== 2 || p3 !== 3 || p1 !== 1) bad.push(m);
+      }
+      b.maxHp = m0;
+      b.hp = h0;
+      out.phFloat = bad.length;
+    }
+    // 雙 AC 剩一台（狂暴 duoRage）：型態閘門不再擋（以前回滿 25% 之後從第一型態重跑閘門與裝甲殼）
+    fresh(5);
+    b.hp = b.maxHp * 0.75;
+    b.duoRage = true;
+    out.duoGate = b.tierGate(b.maxHp * 0.6) === b.maxHp * 0.6;
+    b.duoRage = false;
     // 依戰力的比例
     g.bossPw = 0;
     out.powK = [g.bossPowK()];
@@ -18156,6 +18186,12 @@ async function testBossHard(browser, base) {
     const small = 40 * b.dmgMul;
     pl.takeDamage(small, 0, b, pl.center(), null, null, null, 'none');
     out.bigSmall = Math.round(pl.maxHp - pl.hp) <= Math.round(small) + 1;
+    // Boss 的一般武器（有武器 id）在這段時間開火照常算，不當成大招
+    pl.hp = pl.maxHp;
+    pl.scar = 0;
+    pl.iFrames = 0;
+    pl.takeDamage(400 * b.dmgMul, 0, b, pl.center(), null, null, 'w_lc', 'en');
+    out.bigWid = !pl.bigHitNow;
     b.bigT = 0;
     pl.hp = pl.maxHp;
     pl.scar = 0;
@@ -18260,6 +18296,9 @@ async function testBossHard(browser, base) {
   );
   check(r.scarKit === 0, '結構損傷：修復套件先修');
   check(r.big === 1200 && r.bigSmall, `不看防禦的大招：每發 12%（${r.big}）、小傷害照常`);
+  check(r.bigWid, '不看防禦的大招：Boss 的一般武器在這段時間開火照常算');
+  check(r.duoGate, '雙 AC 剩一台（狂暴）時型態閘門不再擋');
+  check(r.phFloat === 0, `停在型態門檻上判斷成下一個型態（401 種最大 AP 裡錯 ${r.phFloat} 個）`);
   check(
     r.habits3.includes('qb') && !r.habits1.includes('qb'),
     `讀 QB：刁鑽度 3 起看 QB 連打（${r.habits3.join('、')}）`,

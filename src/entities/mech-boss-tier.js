@@ -183,7 +183,7 @@ Object.assign(MechEntity.prototype, {
   // ---------- 第 8 節：型態閘門（傷害不溢出型態門檻；刁鑽度 5 起門檻前有裝甲殼）----------
   // takeDamage 扣 AP 的地方：回傳實際要扣的量
   tierGate(v) {
-    if (!(v > 0) || !this.isBoss || !this.tierOn()) return v;
+    if (!(v > 0) || !this.isBoss || !this.tierOn() || this.duoRage) return v; // 雙 AC 剩一台（狂暴）：不再擋
     const s = this.tierState();
     if (s.shell) return 0; // 裝甲殼：打不進 AP（打斷量表照算）
     const done = this.bossPhase(); // 目前 AP 所在的型態（換型態的演出在下一格的 bossPhaseTick）
@@ -247,8 +247,11 @@ Object.assign(MechEntity.prototype, {
   },
   // ---------- 第 8 節：不看防禦的大招 ----------
   // 被打的玩家機體的 takeDamage 開頭（this＝Boss）：大招期間的一發 → 依對方最大 AP 的比例（0＝不是大招）
-  tierBigDmg(dmg, tgt) {
-    if (!(this.bigT > this.t) || !this.tierOn()) return 0;
+  // wid＝武器 id：Boss 的一般武器（雷射砲、導彈…）在這段時間開火也照常算，只有大招本身的攻擊（砲擊、光束、
+  // 衝擊波、能量環、地雷、燃燒地面，都沒有武器 id）才依比例扣（2026-11-10 量測：一般武器的單發大，被當成大招，
+  // 新手配裝對 AEGIS、IGUAZU & VOLTA 承受 3～4 倍 AP）
+  tierBigDmg(dmg, tgt, wid) {
+    if (wid || !(this.bigT > this.t) || !this.tierOn()) return 0;
     const ref = BIG_REF * (this.dmgMul || 1);
     if (dmg < ref * 0.5) return 0; // 小的（一般武器）照常
     const k = Math.min(1.5, dmg / ref);

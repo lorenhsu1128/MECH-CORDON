@@ -103,9 +103,11 @@ const B_DUO = {
   kind: 'duo',
   asm: null,
   scale: 1.05,
-  hpMul: 1.6,
+  // 兩台各自用這組倍率：合計 AP ×2.6、火力 ×0.8（2026-11-10 量測：原本 1.6／0.62＝合計火力是單台 AC Boss 的兩倍，
+  // 改版前的上限配裝陣亡 26 次，其他 Boss 都在 4 次以下）
+  hpMul: 1.3,
   stabMul: 1.6,
-  dmgMul: 0.62,
+  dmgMul: 0.4,
   wantDist: 20,
   speedMul: 1.1,
   intro:
@@ -795,7 +797,7 @@ const B_SOVEREIGN = {
   radius: 2.6,
   hpMul: 3.2,
   stabMul: 4,
-  dmgMul: 0.6,
+  dmgMul: 0.5, // 2026-11-10 量測：0.6 時改版前的上限配裝陣亡 18 次（終章 Boss，仍是最難的一隻）
   wantDist: 24,
   speedMul: 1.3,
   intro:
