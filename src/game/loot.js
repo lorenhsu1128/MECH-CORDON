@@ -5,7 +5,7 @@ import { SFX } from '../audio/audio.js';
 import { escHtml } from '../core/html.js';
 import { PARTS, partById } from '../data/parts.js';
 import { DROP, MATS, MAT_KEYS } from '../data/tune.js';
-import { GRADES } from '../data/gear.js';
+import { GRADES, gearPart } from '../data/gear.js';
 import { Game } from './game.js';
 
 // 零件 id → 分類（只取可以購買的零件）
@@ -91,12 +91,16 @@ Object.assign(Game.prototype, {
     const m = MAT_KEYS.filter((k) => L.mats[k]).map((k) => `${MATS[k].name} ×${L.mats[k]}`);
     if (m.length) rows.push(['素材', m.join('、')]);
     if (L.parts.length)
-      rows.push(['取得零件', L.parts.map((id) => partById(PART_CAT.get(id), id).name).join('、')]);
+      rows.push([
+        '取得零件',
+        L.parts.map((id) => (gearPart(id) || partById(PART_CAT.get(id), id)).name).join('、'),
+      ]);
     // 零件品級（gear-loot.js）
     if (L.gear && L.gear.length)
       rows.push([
         '取得裝備',
-        L.gear.map((x) => `${GRADES[x.q].n}・${partById(PART_CAT.get(x.id) || 'arm', x.id).name}`).join('、'),
+        // 用 gearPart：PART_CAT 只有有售價的零件，初始零件等會查成「（空）」
+        L.gear.map((x) => `${GRADES[x.q].n}・${(gearPart(x.id) || { name: x.id }).name}`).join('、'),
       ]);
     if (L.lost) rows.push(['背包已滿', `${L.lost} 件沒有撿到`]);
     return rows;
