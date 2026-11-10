@@ -44,7 +44,7 @@ export const WING_MODES = [
 export const WING = {
   REVIVE_R: 7, // 救援的距離（× MS，只看水平距離；地上的綠色圈就是這個範圍）
   REVIVE_Y: 12, // 救援的高度容許（× MS）：跳起來、懸浮躲攻擊不會中斷
-  REVIVE_T: 3, // 站在圈裡幾秒救起來（被打不會中斷）
+  REVIVE_T: 2, // 站在圈裡幾秒救起來（被打不會中斷）
   REVIVE_DECAY: 0.5, // 離開圈的時候進度每秒退回幾秒（不會一下子歸零）
   REVIVE_HP: 0.4,
   LEASH: { focus: 70, free: 70, follow: 28, hold: 12 }, // 離錨點（玩家或守住的位置）多遠就回去（× DS）
