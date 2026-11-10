@@ -62,7 +62,7 @@ npm run format       # Prettier 排版（format:check 只檢查）
 npm test             # 先 build，再跑冒煙測試（見下方；預設顯示卡算繪、分段平行，約 9 分鐘；SMOKE_JOBS=1 單一程序依序跑）
 npm start            # 先 build，再啟動伺服器：控制台 http://localhost:8090/、遊戲 http://localhost/
 npm run build:exe    # build ＋ 用 @yao-pkg/pkg 打包 dist/rubicon-server.exe（目標 Node 22）
-node scripts/boss-bench.js   # Boss 的難度量測：自動操作的玩家用三套配裝（new／old／max）打代表性的 Boss（--boss、--build、--cap、--tag），報告 test-results/boss-bench/<tag>.md
+node scripts/boss-bench.js   # Boss 的難度量測：自動操作的玩家用三套配裝（new／old／max）打全部 28 隻 Boss（約 1 小時；--boss=core 只跑每個刁鑽度一隻的代表、--boss=<kind,…>、--build、--cap、--tag），報告 test-results/boss-bench/<tag>.md
 node scripts/model-bench.js  # 程式模型的量測：每個模型的三角形與網格數、各地圖的繪製次數／三角形／幀時間（--only=models|maps、--cat、--maps、--tag、--compare）
 node scripts/model-shots.js vehicle/tank prop/car  # 模型庫檢視窗的近拍（test-results/shots/，--html 用舊版比較、--tag）
 python scripts/sfx-prep.py <素材包資料夾>  # 音效素材的切割與轉檔 → src/assets/sfx2/（來源見 CREDITS.txt）

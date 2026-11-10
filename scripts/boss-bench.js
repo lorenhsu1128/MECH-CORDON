@@ -3,8 +3,9 @@
 // 記下擊破時間、承受的傷害、回復、陣亡次數（不會真的被擊破：AP 歸零就記一次並補滿）、
 // 各型態停留的時間（被跳過的型態）、Boss 失衡的次數。主迴圈停住、以固定 dt 推進、不算繪，所以結果和電腦快慢無關。
 //
-//   node scripts/boss-bench.js                          全部 Boss × 全部配裝
+//   node scripts/boss-bench.js                          全部 28 隻 Boss × 全部配裝（約 1 小時）
 //   node scripts/boss-bench.js --boss=artillery,spider  只跑這幾隻（BOSSES 的 kind）
+//   node scripts/boss-bench.js --boss=core              只跑每個刁鑽度一隻的代表（core，約 15 分鐘）
 //   node scripts/boss-bench.js --build=old,max --tag=now --cap=420
 //
 // 配裝（BUILDS）：new＝剛開始（白裝、駕駛員 1 級、沒有模組）；old＝改版前的上限（白裝、駕駛員 35 級的 34 點、
@@ -28,18 +29,45 @@ const TAG = args.tag || 'now';
 const CAP = +(args.cap || 480); // 一場最多幾秒（遊戲時間；狂暴在 360 秒）
 const DIST = args.dist ? path.resolve(args.dist) : path.join(ROOT, 'dist');
 
-// 代表性的 Boss：kind、刁鑽度（主線的章）、等級（主線那一段的等級）
+// 全部的 Boss：kind（沒有 kind 的用名稱開頭，模擬器 simStart 也認得）、刁鑽度（主線第一次出現的章；
+// 只在第 2 周目委託出現的＝章＋1）、等級（主線那一段的大約等級：出擊的 level＋2～3）、core＝各刁鑽度的代表
 const BOSSES = [
-  { kind: 'artillery', tier: 1, L: 5 },
-  { kind: 'railgun', tier: 2, L: 7 },
-  { kind: 'phantom', tier: 3, L: 11 },
-  { kind: 'spider', tier: 4, L: 13 },
-  { kind: 'flagship', tier: 5, L: 16 },
-  { kind: 'funnel', tier: 6, L: 19 },
-  { kind: 'sovereign', tier: 8, L: 26 },
+  { kind: 'artillery', tier: 1, L: 5, core: 1 },
+  { kind: 'worm', tier: 1, L: 5 },
+  { kind: 'JUGGERNAUT', tier: 2, L: 6 },
+  { kind: 'railgun', tier: 2, L: 7, core: 1 },
+  { kind: 'heli', tier: 2, L: 7 },
+  { kind: 'rampart', tier: 2, L: 8 },
+  { kind: 'train', tier: 2, L: 8 },
+  { kind: 'furnace', tier: 3, L: 9 },
+  { kind: 'STRIDER', tier: 3, L: 10 },
+  { kind: 'phantom', tier: 3, L: 11, core: 1 },
+  { kind: 'ibis', tier: 3, L: 11 },
+  { kind: 'spider', tier: 4, L: 13, core: 1 },
+  { kind: 'trinity', tier: 4, L: 14 },
+  { kind: 'hunter', tier: 4, L: 14 },
+  { kind: 'orbital', tier: 4, L: 15 },
+  { kind: 'flagship', tier: 5, L: 16, core: 1 },
+  { kind: 'fortress', tier: 5, L: 17 },
+  { kind: 'interceptor', tier: 5, L: 17 },
+  { kind: 'duo', tier: 5, L: 18 },
+  { kind: 'funnel', tier: 6, L: 19, core: 1 },
+  { kind: 'mirror', tier: 6, L: 20 },
+  { kind: 'BALTEUS', tier: 6, L: 21 },
+  { kind: 'anvil', tier: 7, L: 21, core: 1 },
+  { kind: 'salamander', tier: 7, L: 22 },
+  { kind: 'gantry', tier: 7, L: 23 },
+  { kind: 'deckgun', tier: 8, L: 24 },
+  { kind: 'reactor', tier: 8, L: 25 },
+  { kind: 'sovereign', tier: 8, L: 26, core: 1 },
 ];
 const BUILDS = ['new', 'old', 'max'];
-const pickB = args.boss ? BOSSES.filter((b) => args.boss.split(',').includes(b.kind)) : BOSSES;
+const pickB = !args.boss
+  ? BOSSES
+  : args.boss === 'core'
+    ? BOSSES.filter((b) => b.core)
+    : BOSSES.filter((b) => args.boss.split(',').includes(b.kind));
+if (!pickB.length) throw new Error('--boss 沒有符合的 Boss（BOSSES 的 kind 或 core）');
 const pickC = args.build ? args.build.split(',') : BUILDS;
 
 const BENCH_ASM = {
@@ -269,6 +297,7 @@ function runFight(o) {
     }
   }
   st.af = bosses[0].af || 0;
+  st.name = bosses[0].name; // 實際生成的 Boss（確認模擬器叫出的是這一隻）
   st.kills = bosses.filter((b) => b.dead).length;
   st.bossLeft = live().reduce((a, b) => a + Math.max(0, b.hp), 0) / st.bossHp;
   B.on = false;

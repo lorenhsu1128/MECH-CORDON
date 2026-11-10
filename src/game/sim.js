@@ -165,7 +165,8 @@ Object.assign(Game.prototype, {
       document.getElementById('bossBar').style.display = 'block';
       document.getElementById('bossName').textContent = r.name;
     } else if (kind === 'boss') {
-      const bd = BOSS_DEFS.find((b) => b.kind === key);
+      // 沒有 kind 的（JUGGERNAUT、STRIDER、BALTEUS）用名稱開頭（scripts/boss-bench.js）
+      const bd = BOSS_DEFS.find((b) => b.kind === key || (!b.kind && b.name.split(' ')[0] === key));
       if (bd) {
         const bt = this.simSeen().bossT || {};
         this.spawnBossDef(bd, sh, sd, bt[key] || 3); // 刁鑽度照遇到那一隻時的章（沒有紀錄時 3）
