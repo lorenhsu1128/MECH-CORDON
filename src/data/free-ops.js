@@ -2,7 +2,7 @@
 // 純資料與純函式；隨機的決定、地圖合不合用（公路、鐵路、bossBan）在 game/free-ops.js。
 import { SEG_TYPES } from './campaign.js';
 
-export const FO_KEY = 'rubicon_freeops';
+export const FO_KEY = 'mech_cordon_freeops';
 export const FO_MODES = {
   level: '戰鬥（依等級）',
   seg: '單一區段',

@@ -23,7 +23,7 @@
 
 - **過場動畫的人物**（`src/assets/people/CREDITS.txt`）：和格納庫同一套骨架的 biz（西裝）、suitw（女性西裝，換白色當白袍）、hoodie、farmer、casual、hooded（斗篷，拿掉劍）、pilot（科幻駕駛服，拿掉手槍），留 Idle、Idle_Neutral、Walk、Run、Interact、Wave、Death、HitRecieve、Idle_Gun_Pointing；另一套低面數骨架（約 2000 面）的 man、woman、womanc、mansuit，留 Idle、Walk、Run、Sitting、Standing、Clapping、Death。處理：用 gltf-transform 拿掉其他動畫與武器網格、去重、頂點量化（KHR_mesh_quantization，r128 的 GLTFLoader 支援），大小約原檔的一半。建置成 `dist/lib/people-assets.js`。**注意**：骨架網格的外框是綁定姿勢的公分，身高要用骨頭量（`loadPeopleAssets`）。
 - Poly Pizza 上 Quaternius 的人物頁面（`poly.pizza/m/<id>`）裡有 GLB 的直接網址（`static.poly.pizza/<uuid>.glb`）；Ultimate Animated Character Pack 只有一部分在 Poly Pizza 上（找得到的見 CREDITS.txt），其他要從 quaternius.com 下載 FBX 再轉。
-- 來源與授權記在 `src/assets/hangar/CREDITS.txt`；建置時由 `scripts/build.js` 寫成 `dist/lib/hangar-assets.js`（`window.RUBICON_HANGAR`）。
+- 來源與授權記在 `src/assets/hangar/CREDITS.txt`；建置時由 `scripts/build.js` 寫成 `dist/lib/hangar-assets.js`（`window.MECH_CORDON_HANGAR`）。
 - 在格納庫裡人物縮成 `HU`＝1/MS（`docs/world-scale.md`）。
 - 這三隻是 Quaternius 早期的動畫人物（和「Ultimate Animated Character Pack」同一套骨架），所以那一包裡的其他人物可以直接共用這些動畫。
 

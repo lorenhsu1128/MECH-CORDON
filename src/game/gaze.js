@@ -19,7 +19,7 @@ import {
 import { Game } from './game.js';
 
 const $ = (id) => document.getElementById(id);
-const CAL_KEY = 'rubicon_gaze'; // 校準結果（裝置與坐姿相關，不放進設定 rubicon_ctrl）
+const CAL_KEY = 'mech_cordon_gaze'; // 校準結果（裝置與坐姿相關，不放進設定 mech_cordon_ctrl）
 // headMode：頭部延伸視角的方式 offset＝偏移（頭轉幾度鏡頭多看幾度，擺正回原位）／rate＝速度（頭偏著鏡頭就一直轉）；
 // cam：攝影機（id＝裝置、res＝480／720、mirror＝預覽鏡像）；tune：調校（core/gaze.js 的 TUNE_DEF，game/gaze-tune.js 的調校視窗）
 const DEF = { on: false, lock: true, head: false, dwell: 0.25, headMode: 'offset', dot: false };
@@ -62,11 +62,11 @@ const b64buf = (s) => {
   return u;
 };
 function loadScript() {
-  if (window.RUBICON_GAZE) return Promise.resolve(true);
+  if (window.MECH_CORDON_GAZE) return Promise.resolve(true);
   return new Promise((res) => {
     const s = document.createElement('script');
     s.src = 'lib/gaze-assets.js';
-    s.onload = () => res(!!window.RUBICON_GAZE);
+    s.onload = () => res(!!window.MECH_CORDON_GAZE);
     s.onerror = () => res(false);
     document.head.appendChild(s);
   });
@@ -124,9 +124,9 @@ Object.assign(Game.prototype, {
   gazeSecure() {
     return !!(window.isSecureContext && navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
   },
-  // 從區網的 http 網址開啟時，伺服器的 https 網址（window.RUBICON_HTTPS＝port，server.js 注入）
+  // 從區網的 http 網址開啟時，伺服器的 https 網址（window.MECH_CORDON_HTTPS＝port，server.js 注入）
   gazeHttpsUrl() {
-    const port = window.RUBICON_HTTPS;
+    const port = window.MECH_CORDON_HTTPS;
     if (!port || location.protocol !== 'http:') return '';
     return `https://${location.hostname}${port === 443 ? '' : ':' + port}${location.pathname}${location.search}`;
   },
@@ -250,8 +250,8 @@ Object.assign(Game.prototype, {
     if (g.fl) return g.fl;
     if (!(await loadScript())) throw new Error('找不到 lib/gaze-assets.js');
     quietMediaPipe();
-    const G = window.RUBICON_GAZE,
-      L = window.RUBICON_GAZE_LIB;
+    const G = window.MECH_CORDON_GAZE,
+      L = window.MECH_CORDON_GAZE_LIB;
     if (!g.files) {
       // 直接開檔時不能 fetch 本地檔案：wasm 的載入程式與 wasm 改成 blob 網址交給 MediaPipe
       g.files = {

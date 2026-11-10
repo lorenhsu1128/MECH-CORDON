@@ -1,4 +1,4 @@
-// 和貼圖繪製（Rubicon Paint，子專案 rubicon_paint/，建置到 dist/paint/）的連線：
+// 和貼圖繪製（Mech Cordon Paint，子專案 mech_cordon_paint/，建置到 dist/paint/）的連線：
 // 模型庫開一個新視窗，以 postMessage 傳 GLB 過去；畫完在那邊按「存回模型庫」，GLB 傳回來存進槽位。
 // 不靠共用 IndexedDB：直接開檔與伺服器都能用，伺服器預設組也一樣（putBuf 會寫到伺服器）。
 // 訊息（data.t）：
@@ -8,8 +8,8 @@
 import { MODEL_CATALOG } from '../render/model-catalog.js';
 import { MECH_COLORS, PALETTES } from '../render/materials.js';
 
-const PAINT_URL = () => (window.RUBICON_SERVER ? '/paint/' : 'paint/index.html');
-const WIN_NAME = 'rubicon-paint';
+const PAINT_URL = () => (window.MECH_CORDON_SERVER ? '/paint/' : 'paint/index.html');
+const WIN_NAME = 'mech-cordon-paint';
 
 export class PaintLink {
   constructor({ store, toast, onSaved }) {

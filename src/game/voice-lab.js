@@ -1,14 +1,14 @@
 // Game：ECHO 的語音試聽（標題的「ECHO 語音試聽」，docs/audio-design.md 的語音重做）。
 // 候選聲音（VoxCPM2 的聲音設計：6 種類型 × 3 個）× 試聽台詞的格子，scripts/voice-audition.py 產生，
-// 建置成 lib/voice-audition.js（window.RUBICON_VOICE_AUD＝{ '@index': 說明, '<候選>-<台詞>': base64 mp3 }），
-// 打開這個畫面時才載入。音色可以切換原音／駕駛艙／無線電；評分與備註存在 localStorage rubicon_voice_aud，
+// 建置成 lib/voice-audition.js（window.MECH_CORDON_VOICE_AUD＝{ '@index': 說明, '<候選>-<台詞>': base64 mp3 }），
+// 打開這個畫面時才載入。音色可以切換原音／駕駛艙／無線電；評分與備註存在 localStorage mech_cordon_voice_aud，
 // 「複製評分」把結果整理成文字（貼給開發者決定 ECHO 用哪個聲音）。不寫存檔。
 import { SFX } from '../audio/audio.js';
 import { escHtml } from '../core/html.js';
 import { Game } from './game.js';
 
 const $ = (id) => document.getElementById(id);
-const KEY = 'rubicon_voice_aud';
+const KEY = 'mech_cordon_voice_aud';
 const FX_NAMES = { raw: '原音', cockpit: '駕駛艙', radio: '無線電' };
 
 let SAT = null;
@@ -51,17 +51,17 @@ Object.assign(Game.prototype, {
           '<p class="dim">找不到試聽音檔（lib/voice-audition.js）。用 scripts/voice-audition.py 產生後重新建置。</p>';
         return;
       }
-      V.idx = window.RUBICON_VOICE_AUD['@index'];
+      V.idx = window.MECH_CORDON_VOICE_AUD['@index'];
       this.vlabRender();
     });
   },
   vlabLoad() {
-    if (window.RUBICON_VOICE_AUD) return Promise.resolve(true);
+    if (window.MECH_CORDON_VOICE_AUD) return Promise.resolve(true);
     if (this.vlabLoading) return this.vlabLoading;
     return (this.vlabLoading = new Promise((res) => {
       const s = document.createElement('script');
       s.src = 'lib/voice-audition.js';
-      s.onload = () => res(!!window.RUBICON_VOICE_AUD);
+      s.onload = () => res(!!window.MECH_CORDON_VOICE_AUD);
       s.onerror = () => {
         this.vlabLoading = null;
         res(false);
@@ -146,7 +146,7 @@ Object.assign(Game.prototype, {
   async vlabBuf(key) {
     const V = this.vlab;
     if (key in V.buf) return V.buf[key];
-    const b64 = window.RUBICON_VOICE_AUD && window.RUBICON_VOICE_AUD[key];
+    const b64 = window.MECH_CORDON_VOICE_AUD && window.MECH_CORDON_VOICE_AUD[key];
     if (!b64 || !SFX.ctx) return null;
     const b = await new Promise((res) => SFX.ctx.decodeAudioData(SFX.b64(b64), res, () => res(null)));
     return (V.buf[key] = b);

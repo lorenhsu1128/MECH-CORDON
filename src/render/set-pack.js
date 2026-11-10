@@ -1,10 +1,10 @@
-// 模型組檔（.rubicon-set，不壓縮的 zip）：manifest.json ＋ joints.json ＋ models/<槽位>.glb（＋ orig/<槽位>.glb）
+// 模型組檔（.mech-cordon-set，不壓縮的 zip）：manifest.json ＋ joints.json ＋ models/<槽位>.glb（＋ orig/<槽位>.glb）
 // ＋ refs.json、refs/<front|side>.<副檔名>（模型庫的參考圖與校正值，上傳到伺服器時不含）
 // 模型庫匯出／匯入與遊戲上傳到伺服器共用
 import { makeZip, readZip } from '../core/zip.js';
 import { cleanMechs, setScoped } from './local-models.js';
 
-export const SET_FORMAT = 'rubicon-model-set';
+export const SET_FORMAT = 'mech-cordon-model-set';
 const enc = new TextEncoder(),
   dec = new TextDecoder();
 const FIXED_DATE = new Date(1980, 0, 1);
@@ -82,7 +82,11 @@ export async function unpackSet(buf, { anySlot = false } = {}) {
   try {
     manifest = mf && JSON.parse(dec.decode(mf));
   } catch (e) {}
-  if (!manifest || manifest.format !== SET_FORMAT || !Array.isArray(manifest.models))
+  if (
+    !manifest ||
+    (manifest.format !== SET_FORMAT && manifest.format !== 'rubicon-model-set') ||
+    !Array.isArray(manifest.models)
+  )
     throw new Error('不是模型組檔（缺少 manifest.json）');
   const skipped = [];
   const recs = [];

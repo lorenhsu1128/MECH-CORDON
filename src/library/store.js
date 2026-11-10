@@ -5,7 +5,7 @@
 //   載具、地圖物件、小物件所有模型組共用（記錄的 set 為 ''）
 // 資料庫第 4 版：models（鍵 [set, id]）、setJoints（鍵 [set, slot]）、sets、presets；
 // 第 3 版的 glb／joints 升級時搬進「預設」模型組
-// - 伺服器預設組（從 rubicon-server 的 /models 開啟時）：資料在伺服器（server-models/default），所有分類都有；
+// - 伺服器預設組（從 mech-cordon-server 的 /models 開啟時）：資料在伺服器（server-models/default），所有分類都有；
 //   選它時所有寫入（存 GLB、刪除、關節設定、零件組合）直接送到伺服器的 /api/models/default/…，不存 IndexedDB
 import BUILTIN_MODELS from 'virtual:models';
 import PLAYER_MECH from 'virtual:player-mech';
@@ -20,17 +20,17 @@ import {
 } from '../render/local-models.js';
 import { RefStore } from './ref-tools.js';
 
-const DB = 'rubicon-model-library',
+const DB = 'mech-cordon-model-library',
   MODELS = 'models',
   JOINTS = 'setJoints',
   PRESETS = 'presets',
   SETS = 'sets';
-const CUR_KEY = 'rubicon_modelset';
+const CUR_KEY = 'mech_cordon_modelset';
 const DEFAULT_NAME = '預設';
 // 內建的玩家預設機甲（src/assets/player-mech/，遊戲的 BuiltinMech）：模型庫第一次看到這一版時建成一個模型組並切過去，
 // 可以在模型庫檢視與調整（改的是模型組的複本，要放回內建請匯出後覆蓋 src/assets/player-mech/）。
 // 簽名（槽位＋檔案大小＋關節設定）記在 localStorage，同一版只建一次（使用者刪掉後不再自動建立）
-const BUILTIN_MECH_KEY = 'rubicon_builtin_mech';
+const BUILTIN_MECH_KEY = 'mech_cordon_builtin_mech';
 const BUILTIN_MECH_NAME = '內建預設機甲';
 function builtinMechSig() {
   const models = (PLAYER_MECH && PLAYER_MECH.models) || {};
@@ -139,7 +139,7 @@ export class GlbStore {
     this.cur = DEFAULT_SET;
     this.presets = new Map(); // 舊版的共用預組（只用來搬進各模型組的機甲清單）：名稱 → { name, asm, t }
     this.ok = true;
-    this.server = typeof window !== 'undefined' && !!window.RUBICON_SERVER; // 從 rubicon-server 開啟
+    this.server = typeof window !== 'undefined' && !!window.MECH_CORDON_SERVER; // 從 mech-cordon-server 開啟
     this.serverLoaded = false;
     this.onError = null; // (訊息) → void：伺服器寫入失敗
   }
@@ -200,7 +200,7 @@ export class GlbStore {
   async seedBuiltinMech() {
     const sig = builtinMechSig();
     if (!sig) return null;
-    // 自動化測試（navigator.webdriver）預設不建立，避免改變既有測試的模型組；要測時先設 localStorage 的 rubicon_builtin_mech_test
+    // 自動化測試（navigator.webdriver）預設不建立，避免改變既有測試的模型組；要測時先設 localStorage 的 mech_cordon_builtin_mech_test
     try {
       if (navigator.webdriver && !localStorage.getItem(BUILTIN_MECH_KEY + '_test')) return null;
     } catch (e) {}

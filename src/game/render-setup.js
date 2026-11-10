@@ -352,7 +352,7 @@ Object.assign(Game.prototype, {
   setPost(on) {
     this.post.enabled = on;
     try {
-      localStorage.setItem('rubicon_post', on ? '1' : '0');
+      localStorage.setItem('mech_cordon_post', on ? '1' : '0');
     } catch (e) {}
   },
   wrapFx() {

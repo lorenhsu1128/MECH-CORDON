@@ -60,7 +60,7 @@ function loadDraco() {
     dracoP = new Promise((resolve, reject) => {
       if (!THREE.DRACOLoader) return reject(new Error('DRACOLoader 未載入'));
       const done = () => {
-        const D = window.RUBICON_DRACO;
+        const D = window.MECH_CORDON_DRACO;
         const d = new THREE.DRACOLoader();
         // 解碼器檔案改由已載入的內容提供，不經網路
         d._loadLibrary = (url) =>
@@ -69,7 +69,7 @@ function loadDraco() {
           );
         resolve(d);
       };
-      if (window.RUBICON_DRACO) return done();
+      if (window.MECH_CORDON_DRACO) return done();
       const s = document.createElement('script');
       s.src = DRACO_SCRIPT;
       s.onload = done;
@@ -103,14 +103,19 @@ export async function parseGlb(buf) {
   return gltf;
 }
 
-// 貼花層：材質的 extras.rubicon_decal＝{ v, color 貼花圖片, slots 色槽權重圖片 }（images 的索引，不是 textures：
+// 貼花層：材質的 extras.mech_cordon_decal＝{ v, color 貼花圖片, slots 色槽權重圖片 }（images 的索引，不是 textures：
 // 一般的 glTF 檢視器不會讀它們，只看到可換色的底圖）。兩張都是預乘 alpha 的 PNG，自己解碼（不讓瀏覽器預乘），
 // 記在材質的底圖上（setDecal），著色器把貼花疊在「灰階底圖 × 色槽顏色」之上。
+// 改名前（RUBICON PROTOCOL）的 GLB 是 extras.rubicon_decal，照樣讀。
 // 讀完把 userData 的紀錄拿掉：GLTFExporter 會把 userData 寫回 extras，圖片索引就對不上了
 async function loadDecals(gltf) {
   const parser = gltf.parser;
   const json = parser && parser.json;
-  if (!json || !(json.materials || []).some((m) => m.extras && m.extras.rubicon_decal)) return;
+  if (
+    !json ||
+    !(json.materials || []).some((m) => m.extras && (m.extras.mech_cordon_decal || m.extras.rubicon_decal))
+  )
+    return;
   const imgs = new Map();
   const image = (i, wrap) => {
     if (!Number.isInteger(i) || !json.images || !json.images[i] || json.images[i].bufferView == null)
@@ -150,8 +155,9 @@ async function loadDecals(gltf) {
     if (o.isMesh) for (const m of Array.isArray(o.material) ? o.material : [o.material]) if (m) mats.add(m);
   });
   for (const m of mats) {
-    const d = m.userData && m.userData.rubicon_decal;
+    const d = m.userData && (m.userData.mech_cordon_decal || m.userData.rubicon_decal);
     if (!d) continue;
+    delete m.userData.mech_cordon_decal;
     delete m.userData.rubicon_decal;
     if (!m.map) continue;
     const [tex, wts] = await Promise.all([image(d.color, m.map), image(d.slots, m.map)]);

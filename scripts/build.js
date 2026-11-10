@@ -1,5 +1,5 @@
 // 建置：每個頁面打包成 dist/ 下的單一 HTML（CSS／JS／音效／模型全部內嵌，可直接開啟或由伺服器提供）
-//   src/index.html          → dist/rubicon-protocol.html（遊戲）
+//   src/index.html          → dist/mech-cordon.html（遊戲）
 //   src/library/index.html  → dist/model-library.html（模型庫）
 // 外部程式庫（three.js、PeerJS）不內嵌：頁面模板裡的 <script src="lib/<套件>/<路徑>"> 由 node_modules
 // 複製到 dist/lib/ 同樣的路徑；three.js 例外：lib/three/three.js 由 scripts/three-bundle.js 打包（核心＋用到的 addons，
@@ -38,7 +38,7 @@ function buildThree() {
     legalComments: 'none',
     // DRACOLoader 以 import.meta.url 組出解碼器的預設網址：IIFE 裡沒有 import.meta，給一個假的基底
     // （render/glb.js 覆寫 _loadLibrary，解碼器由 lib/draco/draco-decoder.js 的內容提供，不會真的去讀這些網址）
-    define: { 'import.meta.url': '"https://rubicon.local/three/"' },
+    define: { 'import.meta.url': '"https://mech-cordon.local/three/"' },
     outfile: path.join(LIB, THREE_LIB),
     logLevel: 'warning',
   });
@@ -67,7 +67,7 @@ function writeDraco() {
   fs.writeFileSync(
     out,
     '// three.js r128 的 Draco 解碼器（examples/js/libs/draco/gltf），由 scripts/build.js 產生\n' +
-      `window.RUBICON_DRACO = { wrapper: ${JSON.stringify(wrapper)}, wasm: ${JSON.stringify(wasm)} };\n`,
+      `window.MECH_CORDON_DRACO = { wrapper: ${JSON.stringify(wrapper)}, wasm: ${JSON.stringify(wasm)} };\n`,
   );
   // Draco 編碼器（純 JS，定義全域 DracoEncoderModule）：模型庫的 GLB 編輯器輸出 Draco 壓縮時才以 <script> 載入。
   // three.js r1xx 不再附編碼器：用 r128 附的那一份（scripts/vendor/draco_encoder.js，和 three.js 的版本無關）
@@ -77,7 +77,7 @@ function writeDraco() {
   );
 }
 
-// 過場動畫的配樂：src/assets/music/*.mp3 → dist/lib/cine-music.js（window.RUBICON_MUSIC＝{ 曲名: base64 }）。
+// 過場動畫的配樂：src/assets/music/*.mp3 → dist/lib/cine-music.js（window.MECH_CORDON_MUSIC＝{ 曲名: base64 }）。
 // 不內嵌進遊戲的 HTML（約 4 MB）：第一次播過場動畫時才以 <script> 載入（game/cine.js 的 cineMusicLoad）
 const MUSIC_DIR = path.join(SRC, 'assets', 'music');
 function writeMusic() {
@@ -100,17 +100,17 @@ function writeMusic() {
     out,
     '// 過場動畫的配樂（src/assets/music/），由 scripts/build.js 產生\n' +
       credits +
-      `window.RUBICON_MUSIC = ${JSON.stringify(data)};\n`,
+      `window.MECH_CORDON_MUSIC = ${JSON.stringify(data)};\n`,
   );
 }
 
 // 機甲庫格納庫的外部素材：src/assets/hangar/（*.glb、tex/*.webp）→ dist/lib/hangar-assets.js
-// （window.RUBICON_HANGAR＝{ 相對路徑: base64 }）。不內嵌（約 17 MB）：第一次進機甲庫前才以 <script> 載入（render/hangar-assets.js）
+// （window.MECH_CORDON_HANGAR＝{ 相對路徑: base64 }）。不內嵌（約 17 MB）：第一次進機甲庫前才以 <script> 載入（render/hangar-assets.js）
 const HANGAR_DIR = path.join(SRC, 'assets', 'hangar');
-// 過場動畫的人物：src/assets/people/（*.glb）→ dist/lib/people-assets.js（window.RUBICON_PEOPLE），
+// 過場動畫的人物：src/assets/people/（*.glb）→ dist/lib/people-assets.js（window.MECH_CORDON_PEOPLE），
 // 第一次播過場動畫時才載入（render/hangar-assets.js 的 loadPeopleAssets）
 const PEOPLE_DIR = path.join(SRC, 'assets', 'people');
-// 粒子特效的圖集（docs/vfx-design.md）：src/assets/fx/atlas.png → dist/lib/fx-assets.js（window.RUBICON_FX），
+// 粒子特效的圖集（docs/vfx-design.md）：src/assets/fx/atlas.png → dist/lib/fx-assets.js（window.MECH_CORDON_FX），
 // 遊戲與模型庫啟動後載入（fx/atlas.js 的 loadFxAssets）；atlas.json（格號）直接打包進程式
 const FX_DIR = path.join(SRC, 'assets', 'fx');
 function writePack(dir, file, name, title) {
@@ -171,25 +171,25 @@ function writeSounds() {
   writeAudio(
     path.join(SRC, 'assets', 'sfx2'),
     'sfx-assets.js',
-    'RUBICON_SFX2',
+    'MECH_CORDON_SFX2',
     '分層的音效素材（src/assets/sfx2/）',
   );
   writeAudio(
     path.join(SRC, 'assets', 'bgm'),
     'bgm-assets.js',
-    'RUBICON_BGM',
+    'MECH_CORDON_BGM',
     '任務中的配樂（src/assets/bgm/）',
   );
   writeAudio(
     path.join(SRC, 'assets', 'voice-audition'),
     'voice-audition.js',
-    'RUBICON_VOICE_AUD',
+    'MECH_CORDON_VOICE_AUD',
     'ECHO 的語音試聽（src/assets/voice-audition/，scripts/voice-audition.py）',
   );
   writeAudio(
     path.join(SRC, 'assets', 'bgm-audition'),
     'bgm-audition.js',
-    'RUBICON_BGM_AUD',
+    'MECH_CORDON_BGM_AUD',
     '任務配樂的候選試聽（src/assets/bgm-audition/，scripts/bgm-audition.py）',
   );
   // ECHO 的語音：每個聲音一個檔案（src/assets/voice/<聲音>/ → lib/voice-<聲音>.js），只載入設定選的那個
@@ -200,18 +200,18 @@ function writeSounds() {
         writeAudio(
           path.join(vdir, v),
           `voice-${v}.js`,
-          `RUBICON_VOICE_${v.toUpperCase()}`,
+          `MECH_CORDON_VOICE_${v.toUpperCase()}`,
           `ECHO 的語音（src/assets/voice/${v}/，scripts/voice-gen.py）`,
         );
 }
 function writeHangar() {
-  writePack(HANGAR_DIR, 'hangar-assets.js', 'RUBICON_HANGAR', '機甲庫格納庫的素材（src/assets/hangar/）');
-  writePack(PEOPLE_DIR, 'people-assets.js', 'RUBICON_PEOPLE', '過場動畫的人物（src/assets/people/）');
-  writePack(FX_DIR, 'fx-assets.js', 'RUBICON_FX', '粒子特效的圖集（src/assets/fx/）');
+  writePack(HANGAR_DIR, 'hangar-assets.js', 'MECH_CORDON_HANGAR', '機甲庫格納庫的素材（src/assets/hangar/）');
+  writePack(PEOPLE_DIR, 'people-assets.js', 'MECH_CORDON_PEOPLE', '過場動畫的人物（src/assets/people/）');
+  writePack(FX_DIR, 'fx-assets.js', 'MECH_CORDON_FX', '粒子特效的圖集（src/assets/fx/）');
 }
 
 const PAGES = [
-  { name: '遊戲', dir: SRC, out: 'rubicon-protocol.html' },
+  { name: '遊戲', dir: SRC, out: 'mech-cordon.html' },
   { name: '模型庫', dir: path.join(SRC, 'library'), out: 'model-library.html' },
 ];
 // src/assets/models/ 下的 GLB 會自動內嵌：import BUILTIN_MODELS from 'virtual:models' 取得 { '槽位 id': Uint8Array }
@@ -361,9 +361,9 @@ const options = (page) => ({
   ],
 });
 
-// 眼動追蹤（docs/gaze-design.md）：MediaPipe Tasks Vision 的 JS（打包成 IIFE，window.RUBICON_GAZE_LIB）＋
+// 眼動追蹤（docs/gaze-design.md）：MediaPipe Tasks Vision 的 JS（打包成 IIFE，window.MECH_CORDON_GAZE_LIB）＋
 // wasm 載入程式（文字）＋wasm 與臉部模型 src/assets/gaze/face_landmarker.task（base64）→ dist/lib/gaze-assets.js
-// （window.RUBICON_GAZE）。不內嵌（約 25 MB）：設定裡打開眼動追蹤時才以 <script> 載入（game/gaze.js）。
+// （window.MECH_CORDON_GAZE）。不內嵌（約 25 MB）：設定裡打開眼動追蹤時才以 <script> 載入（game/gaze.js）。
 // 直接開檔時不能 fetch 本地檔案，所以 wasm 與模型都包在 JS 裡，載入程式與 wasm 以 data:／blob: 網址交給 MediaPipe
 const GAZE_DIR = path.join(SRC, 'assets', 'gaze');
 async function writeGaze() {
@@ -374,7 +374,7 @@ async function writeGaze() {
     stdin: {
       contents:
         "import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';\n" +
-        'window.RUBICON_GAZE_LIB = { FaceLandmarker, FilesetResolver };\n',
+        'window.MECH_CORDON_GAZE_LIB = { FaceLandmarker, FilesetResolver };\n',
       resolveDir: ROOT,
     },
     bundle: true,
@@ -392,15 +392,15 @@ async function writeGaze() {
     path.join(LIB, 'gaze-assets.js'),
     `// 眼動追蹤：@mediapipe/tasks-vision ${ver}（Apache-2.0）與 Face Landmarker 模型（Apache-2.0），由 scripts/build.js 產生\n` +
       r.outputFiles[0].text +
-      `window.RUBICON_GAZE = { loader: ${JSON.stringify(loader)}, wasm: ${JSON.stringify(wasm)}, model: ${JSON.stringify(task)} };\n`,
+      `window.MECH_CORDON_GAZE = { loader: ${JSON.stringify(loader)}, wasm: ${JSON.stringify(wasm)}, model: ${JSON.stringify(task)} };\n`,
   );
 }
 
 // 子專案（納入本版本庫的純靜態網站，不需建置）原樣複製到 dist/ 底下，伺服器在 /<資料夾>/ 提供：
-// 文字動畫 APNG 產生器 rubicon_apng_gen/ → dist/apng/；貼圖繪製 rubicon_paint/ → dist/paint/。
+// 文字動畫 APNG 產生器 mech_cordon_apng_gen/ → dist/apng/；貼圖繪製 mech_cordon_paint/ → dist/paint/。
 const SUBPROJECTS = [
-  { src: 'rubicon_apng_gen', out: 'apng', dirs: ['css', 'js'] },
-  { src: 'rubicon_paint', out: 'paint', dirs: ['css', 'js', 'lib'] },
+  { src: 'mech_cordon_apng_gen', out: 'apng', dirs: ['css', 'js'] },
+  { src: 'mech_cordon_paint', out: 'paint', dirs: ['css', 'js', 'lib'] },
 ];
 function copySubprojects() {
   for (const p of SUBPROJECTS) {
@@ -415,12 +415,12 @@ function copySubprojects() {
 
 // 伺服器預設組的內建來源（src/assets/server-default/，檔名＝槽位 id）：複製到 dist/server-default/，
 // 伺服器啟動時自動匯入（server.js 的 seedDefaults；exe 版要把這個資料夾放在 exe 旁）
-// 區網伺服器 https 的自簽憑證（server.js 的 loadCert；提交進 git）：複製到 dist/rubicon-cert/，exe 版讀 exe 旁的這一份
+// 區網伺服器 https 的自簽憑證（server.js 的 loadCert；提交進 git）：複製到 dist/mech-cordon-cert/，exe 版讀 exe 旁的這一份
 function copyCert() {
-  const src = path.join(ROOT, 'rubicon-cert', 'cert.json');
+  const src = path.join(ROOT, 'mech-cordon-cert', 'cert.json');
   if (!fs.existsSync(src)) return;
-  fs.mkdirSync(path.join(DIST, 'rubicon-cert'), { recursive: true });
-  fs.copyFileSync(src, path.join(DIST, 'rubicon-cert', 'cert.json'));
+  fs.mkdirSync(path.join(DIST, 'mech-cordon-cert'), { recursive: true });
+  fs.copyFileSync(src, path.join(DIST, 'mech-cordon-cert', 'cert.json'));
 }
 function copyServerDefault() {
   const src = path.join(SRC, 'assets', 'server-default');

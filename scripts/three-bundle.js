@@ -42,14 +42,14 @@ const ADDONS = {
   TransformControls,
 };
 // ===== 畫面模式（docs/perf-threejs-upgrade.md 第 4 期）=====
-// localStorage rubicon_render＝{ mode: 'classic'｜'hdr'（預設）, cm: 布林（預設 true） }（設定畫面的「畫面模式」「色彩管理」，重新整理後生效：
+// localStorage mech_cordon_render＝{ mode: 'classic'｜'hdr'（預設）, cm: 布林（預設 true） }（設定畫面的「畫面模式」「色彩管理」，重新整理後生效：
 // 色彩管理要在建立任何顏色之前決定）。classic＝r128 的畫面（第 1 期的相容設定）；hdr＝場景以半浮點畫、色調映射在後處理最後
 // 做一次（render/legacy-rt.js、render/style/pipeline.js）、環境貼圖的漫射光照照 r187。光照單位兩種模式都照 r128（×π 在著色器裡，
 // 和把各處的強度 ×π 完全相同）
 const RENDER = (() => {
   let o = {};
   try {
-    o = JSON.parse(localStorage.getItem('rubicon_render') || '{}') || {};
+    o = JSON.parse(localStorage.getItem('mech_cordon_render') || '{}') || {};
   } catch (e) {
     /* 壞掉的設定：用預設 */
   }
@@ -135,6 +135,6 @@ if (RENDER.cm) {
 }
 
 // 模組的命名空間是唯讀的：複製成一般物件（程式裡會在 THREE 上找 addon、少數地方會補屬性）
-const THREE = Object.assign({}, CORE, ADDONS, LIGHTS, { RUBICON_RENDER: RENDER });
+const THREE = Object.assign({}, CORE, ADDONS, LIGHTS, { MECH_CORDON_RENDER: RENDER });
 window.THREE = THREE;
 window.SimplexNoise = SimplexNoise;

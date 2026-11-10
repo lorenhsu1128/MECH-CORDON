@@ -1,7 +1,7 @@
 // ============================================================
 //  ECHO 的語音（docs/audio-design.md）：通訊、序章與章節畫面、過場動畫的字幕、駕駛艙的系統提示。
 //  兩個聲音（VoxCPM2 產生，scripts/voice-gen.py）：設定 ctrl.voice＝gentle 溫柔知性／ai AI 系統感／off。
-//  語音檔在 lib/voice-<聲音>.js（window.RUBICON_VOICE_<聲音>＝{ 鍵: base64 mp3 }），第一次要說話時只載入選的那個，
+//  語音檔在 lib/voice-<聲音>.js（window.MECH_CORDON_VOICE_<聲音>＝{ 鍵: base64 mp3 }），第一次要說話時只載入選的那個，
 //  每句第一次播時才解碼。同一時間只說一句：優先度高的打斷低的（系統提示的「導彈接近」打斷通訊）。
 //  語言：設定 ctrl.voiceLang＝zh 中文／ja 日文（日文的聲音在 <聲音>_ja 資料夾；沒有日文的句子改唸中文）。
 //  字幕：設定 ctrl.sub＝zh 繁體中文／ja 日文／off 不顯示（通訊框只留說話者，唸不出來的照樣顯示文字），ctrl.subSize 大小；
@@ -128,7 +128,7 @@ Object.assign(Game.prototype, {
   // 第一次要說話時以 <script> 載入 lib/voice-<聲音>.js（ECHO 約 11 MB、其他角色 0.1～1.5 MB，不內嵌）
   voiceLoad(id = this.voiceFolder()) {
     if (!id) return Promise.resolve(false);
-    const G = 'RUBICON_VOICE_' + id.toUpperCase();
+    const G = 'MECH_CORDON_VOICE_' + id.toUpperCase();
     if (window[G]) return Promise.resolve(true);
     this.voiceLoading = this.voiceLoading || {};
     if (this.voiceLoading[id]) return this.voiceLoading[id];
@@ -153,7 +153,7 @@ Object.assign(Game.prototype, {
     if (ck in this.vbuf) return this.vbuf[ck];
     // 日文的聲音沒有這句（還沒翻譯、載不到）時改唸中文
     const zh = folder.endsWith('_ja') ? folder.slice(0, -3) : null;
-    const b64 = (await this.voiceLoad(folder)) && window['RUBICON_VOICE_' + folder.toUpperCase()][key];
+    const b64 = (await this.voiceLoad(folder)) && window['MECH_CORDON_VOICE_' + folder.toUpperCase()][key];
     if (!b64) return (this.vbuf[ck] = zh ? await this.voiceBuf(key, zh) : null);
     const b = await new Promise((res) => SFX.ctx.decodeAudioData(SFX.b64(b64), res, () => res(null)));
     // 解碼過的最多留 80 句（先解碼的先丟）

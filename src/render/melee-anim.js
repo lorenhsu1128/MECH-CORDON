@@ -4,7 +4,7 @@
 //   每個關節各自一條軌跡（只在有寫它的關鍵影格之間內插），沒有寫的關節照程式算的姿勢。
 // - 片段是為右手武器做的；左手武器左右鏡像（mirrorPose）。
 // - 資料來源：預設片段（TEMPLATES）＜內建 src/assets/anims/melee.json（模型庫的動作編輯器匯出後放回）＜
-//   單人時模型庫動作編輯器存在瀏覽器的版本（localStorage rubicon_melee_anim；多人一律用內建，各端一致）。
+//   單人時模型庫動作編輯器存在瀏覽器的版本（localStorage mech_cordon_melee_anim；多人一律用內建，各端一致）。
 import BUILTIN from '../assets/anims/melee.json';
 import { meleeMove } from '../data/melee.js';
 
@@ -1512,7 +1512,7 @@ export const DEFAULT_MAP = {
 };
 
 // ---------- 片段的資料組 ----------
-export const LOCAL_KEY = 'rubicon_melee_anim';
+export const LOCAL_KEY = 'mech_cordon_melee_anim';
 function merge(data) {
   return {
     clips: { ...TEMPLATES, ...((data && data.clips) || {}) },

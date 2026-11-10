@@ -42,8 +42,8 @@ let DIST = args.dist ? path.resolve(args.dist) : path.join(ROOT, 'dist');
 
 // --gp：複製一份建置，three.min.js 換成加了紀錄的未壓縮版
 function gpDist() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rubicon-perf-'));
-  fs.copyFileSync(path.join(DIST, 'rubicon-protocol.html'), path.join(dir, 'rubicon-protocol.html'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mech-cordon-perf-'));
+  fs.copyFileSync(path.join(DIST, 'mech-cordon.html'), path.join(dir, 'mech-cordon.html'));
   fs.cpSync(path.join(DIST, 'lib'), path.join(dir, 'lib'), { recursive: true });
   let src = fs.readFileSync(path.join(ROOT, 'node_modules/three/build/three.js'), 'utf8');
   const a = `			} else {
@@ -244,24 +244,24 @@ async function sampling(ctx, page) {
     await page.addInitScript(initScript);
     // 著色器預熱：預設走非同步（compileAsync，和玩家的瀏覽器相同）；--sync 改回同步
     if (!args.sync) await page.addInitScript(() => (window.__warmAsync = true));
-    await page.addInitScript((map) => localStorage.setItem('rubicon_map', map), MAP);
+    await page.addInitScript((map) => localStorage.setItem('mech_cordon_map', map), MAP);
     // --variant＝主題變體（'base'＝標準）；--full＝畫面設定全開（快速設定的「品質」：水面高、砲火華麗、機甲特效完整、殘影）
     if (args.variant)
-      await page.addInitScript((v) => localStorage.setItem('rubicon_variant', v), args.variant);
+      await page.addInitScript((v) => localStorage.setItem('mech_cordon_variant', v), args.variant);
     if (args.full)
       await page.addInitScript(() => {
-        const c = JSON.parse(localStorage.getItem('rubicon_ctrl') || '{}');
+        const c = JSON.parse(localStorage.getItem('mech_cordon_ctrl') || '{}');
         Object.assign(c, { water: 'high', fxLv: 'rich', mechFx: 'full', ghost: 'on', tfx: 'full' });
-        localStorage.setItem('rubicon_ctrl', JSON.stringify(c));
+        localStorage.setItem('mech_cordon_ctrl', JSON.stringify(c));
       });
     // --learn：帶入上一次量測記下的著色器變體（render/shader-warm.js；玩家的瀏覽器會一直留著）
     const LEARN = path.join(OUT, 'perf-warm.json');
     if (args.learn && fs.existsSync(LEARN))
       await page.addInitScript(
-        (s) => localStorage.setItem('rubicon_shader_warm2', s),
+        (s) => localStorage.setItem('mech_cordon_shader_warm2', s),
         fs.readFileSync(LEARN, 'utf8'),
       );
-    await page.goto(require('url').pathToFileURL(path.join(DIST, 'rubicon-protocol.html')).href + '?test');
+    await page.goto(require('url').pathToFileURL(path.join(DIST, 'mech-cordon.html')).href + '?test');
     await page.waitForFunction(() => window.__game, null, { timeout: 60000 });
     await sleep(1500);
     await page.click('#btnSaves');
@@ -313,7 +313,7 @@ async function sampling(ctx, page) {
       });
     }
     const out = await page.evaluate(summarize);
-    const learned = await page.evaluate(() => localStorage.getItem('rubicon_shader_warm2'));
+    const learned = await page.evaluate(() => localStorage.getItem('mech_cordon_shader_warm2'));
     if (learned) fs.writeFileSync(LEARN, learned);
     out.map = MAP;
     out.load = load;

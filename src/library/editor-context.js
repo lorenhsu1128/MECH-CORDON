@@ -8,7 +8,7 @@ import { applyQuick } from './pose.js';
 import { buildMechWithGlb, composeAsm, disposeObject } from './stage.js';
 import { restPose } from './workshop.js';
 
-const KEY = 'rubicon_glb_ctx';
+const KEY = 'mech_cordon_glb_ctx';
 const BODY_CATS = ['head', 'core', 'arms', 'legs', 'booster', 'weapon', 'back'];
 const WIRE = new THREE.MeshBasicMaterial({
   color: 0x8fa3b8,

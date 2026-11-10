@@ -1,6 +1,6 @@
 // 模型組：機甲區塊與武器的 GLB、關節設定、建議零件組合各模型組一份（資料見 store.js）
 // - 模型庫上方的「模型組」選單：切換、新增空白、複製目前、改名、刪除、匯出／匯入
-// - 匯出成單一檔案（.rubicon-set，內容是不壓縮的 zip）：manifest.json ＋ joints.json ＋ models/<槽位>.glb
+// - 匯出成單一檔案（.mech-cordon-set，內容是不壓縮的 zip）：manifest.json ＋ joints.json ＋ models/<槽位>.glb
 //   （＋ orig/<槽位>.glb：GLB 編輯器保留的原始檔），可以備份、分享，或在 file:// 與伺服器網址之間搬移
 import { escHtml } from '../core/html.js';
 import { packSetData, unpackSet } from '../render/set-pack.js';
@@ -24,7 +24,7 @@ export async function packSet(store, id) {
 export const fileName = (name) =>
   (String(name)
     .replace(/[\\/:*?"<>|]+/g, '_')
-    .trim() || 'model-set') + '.rubicon-set';
+    .trim() || 'model-set') + '.mech-cordon-set';
 
 // 模型庫上方的模型組選單；onSwitch()：目前模型組換了（切換、刪除、匯入）或內容整組改變
 export class SetMenu {

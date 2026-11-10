@@ -535,12 +535,12 @@ async function runSortie(browser, sid, done, seen) {
   const LEARN = path.join(OUTD, 'warm.json');
   if (args.learn && fs.existsSync(LEARN))
     await page.addInitScript(
-      (s) => localStorage.setItem('rubicon_shader_warm2', s),
+      (s) => localStorage.setItem('mech_cordon_shader_warm2', s),
       fs.readFileSync(LEARN, 'utf8'),
     );
   res = { sid, segs: [], errs };
   try {
-    await page.goto(require('url').pathToFileURL(path.join(DIST, 'rubicon-protocol.html')).href + '?test');
+    await page.goto(require('url').pathToFileURL(path.join(DIST, 'mech-cordon.html')).href + '?test');
     await page.waitForFunction(() => window.__game, null, { timeout: 60000 });
     await sleep(1500);
     await page.click('#btnSaves');
@@ -642,7 +642,7 @@ async function runSortie(browser, sid, done, seen) {
         break;
       }
     }
-    const learned = await page.evaluate(() => localStorage.getItem('rubicon_shader_warm2'));
+    const learned = await page.evaluate(() => localStorage.getItem('mech_cordon_shader_warm2'));
     if (learned && args.learn) fs.writeFileSync(LEARN, learned);
   } catch (e) {
     res.error = String(e && e.message);

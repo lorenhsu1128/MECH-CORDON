@@ -276,7 +276,7 @@ Object.assign(Game.prototype, {
   },
   edAuthorName() {
     try {
-      return (localStorage.getItem('rubicon_nick') || '').slice(0, 24);
+      return (localStorage.getItem('mech_cordon_nick') || '').slice(0, 24);
     } catch (e) {
       return '';
     }

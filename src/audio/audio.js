@@ -177,13 +177,13 @@ export const SFX = {
     }
     this.loadPack();
   },
-  // 分層的素材（src/assets/sfx2 → lib/sfx-assets.js，window.RUBICON_SFX2）：遊戲啟動後以 <script> 載入；
+  // 分層的素材（src/assets/sfx2 → lib/sfx-assets.js，window.MECH_CORDON_SFX2）：遊戲啟動後以 <script> 載入；
   // 載到之前配方退回原本的樣本
   loadPack() {
     if (this.packLoading) return;
     this.packLoading = true;
     const go = () => {
-      const P = window.RUBICON_SFX2;
+      const P = window.MECH_CORDON_SFX2;
       if (!P) return;
       const keys = Object.keys(P);
       let n = 0;
@@ -199,7 +199,7 @@ export const SFX = {
           },
         );
     };
-    if (window.RUBICON_SFX2) return go();
+    if (window.MECH_CORDON_SFX2) return go();
     if (typeof document === 'undefined') return;
     const s = document.createElement('script');
     s.src = 'lib/sfx-assets.js';

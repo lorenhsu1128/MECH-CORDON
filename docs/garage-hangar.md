@@ -59,7 +59,7 @@
   - Quaternius 的人物 3 種（技師、太空服人員、武裝人員），帶骨架動畫，只保留 Idle、Walk、Interact、Idle_Neutral、Wave。
   - 處理方式：以 glTF Transform 減面（道具 300～17k 面）、貼圖縮小並轉成 WebP、頂點量化（人物不量化，量化後的蒙皮網格在 r128 不顯示）。
 - **載入**（`render/hangar-assets.js`）：
-  - 建置時打包成 `dist/lib/hangar-assets.js`（約 19 MB，`window.RUBICON_HANGAR`），不內嵌在遊戲的 HTML 裡。
+  - 建置時打包成 `dist/lib/hangar-assets.js`（約 19 MB，`window.MECH_CORDON_HANGAR`），不內嵌在遊戲的 HTML 裡。
   - 遊戲啟動 1.5 秒後開始載入（`setupGarageScene`），進機甲庫時也會觸發；解析成範本 `HA.glb`／`HA.tex`。
   - 還沒載好時先用程式模型；載好後在沒有播演出時，由 `hangarTick` 以 `hangarEnsure(true)` 重建成細緻的版本。
   - 人物用 `THREE.SkeletonUtils.clone` 複製（`index.html` 多了這個程式庫）。

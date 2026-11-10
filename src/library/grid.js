@@ -66,10 +66,10 @@ export class ModelGrid {
       { rootMargin: '400px 0px' },
     );
     this.cells = entries.map((e) => this.makeCell(e));
-    // 每行格數（3／5／7）與「全部旋轉」：模型庫的設定（localStorage rubicon_lib_grid）
+    // 每行格數（3／5／7）與「全部旋轉」：模型庫的設定（localStorage mech_cordon_lib_grid）
     let g = {};
     try {
-      g = JSON.parse(localStorage.getItem('rubicon_lib_grid') || '{}') || {};
+      g = JSON.parse(localStorage.getItem('mech_cordon_lib_grid') || '{}') || {};
     } catch (e) {}
     this.cols = [3, 5, 7].includes(g.cols) ? g.cols : 3;
     this.spinAll = typeof g.spin === 'boolean' ? g.spin : this.cols === 3;
@@ -131,7 +131,7 @@ export class ModelGrid {
   }
   saveCfg() {
     try {
-      localStorage.setItem('rubicon_lib_grid', JSON.stringify({ cols: this.cols, spin: this.spinAll }));
+      localStorage.setItem('mech_cordon_lib_grid', JSON.stringify({ cols: this.cols, spin: this.spinAll }));
     } catch (e) {}
   }
   // 實際每行格數：每格至少 160 px，窄螢幕自動減少（手機寬度一行一格）

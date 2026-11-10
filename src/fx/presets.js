@@ -1,7 +1,7 @@
 // ============================================================
 //  特效預設（docs/vfx-design.md 第 5 期）：一個特效＝幾層發射器（照 wawa-vfx 的發射器設定），
 //  內建的在 src/assets/fx/presets.json；模型庫的「特效」頁籤（library/vfx.js）可以調整、存到瀏覽器
-//  （localStorage rubicon_fx_presets，遊戲也讀＝只有外觀，多人各端各自的也沒關係）、匯出 JSON 放回內建。
+//  （localStorage mech_cordon_fx_presets，遊戲也讀＝只有外觀，多人各端各自的也沒關係）、匯出 JSON 放回內建。
 //  每一層的欄位（S＝呼叫端給的尺度：例如爆炸半徑 × k；長度、速度、重力都乘 S）：
 //    sys    系統：sm 煙塵、gl 發光、ln 拉長、rg 地面的環、dc 焦痕
 //    n      數量（呼叫端可以再乘 o.n）；chance 每顆的機率
@@ -17,7 +17,7 @@ import { frand } from './rand.js';
 import BUILTIN from '../assets/fx/presets.json';
 import { FXC, FXG } from './atlas.js';
 
-export const FX_LOCAL_KEY = 'rubicon_fx_presets';
+export const FX_LOCAL_KEY = 'mech_cordon_fx_presets';
 const SYS = ['sm', 'gl', 'ln', 'rg', 'dc'];
 const NUM2 = ['life', 'pos', 'speed', 'delay', 's0', 's1', 'rv'];
 const NUM1 = ['n', 'chance', 'k', 'a', 'occ', 'fade', 'g', 'drag', 'asp', 'ring', 'rot'];

@@ -119,5 +119,5 @@
 
 ## 12. 模型庫與 GLB 重置（第 12 期）
 
-- 舊的本地模型庫（瀏覽器的 IndexedDB `rubicon-model-library`）是舊尺度做的：**第一次開啟新版時整個清掉一次**（`render/local-models.js` 的 `glbResetOnce`：所有模型組的 GLB 與關節設定、預設以外的模型組；遊戲讀取或模型庫開啟時誰先誰做，做過記在 localStorage `rubicon_glb_scale3x`），並把本地模型庫設定關掉、模型庫回到預設模型組，所以**遊戲的 GLB 一律用伺服器預設組**（直接開檔時是內建預設機甲與程式模型）。本地沒有任何 GLB 時只記下做過、不動設定；之後再放進模型庫的 GLB 照舊使用。參考圖（`rubicon-ref-images`）、預組清單不動。自動化測試不做（測試自己放的資料），要測時設 `rubicon_glb_reset_test`（冒煙測試 `testGlbReset`）。
+- 舊的本地模型庫（瀏覽器的 IndexedDB `mech-cordon-model-library`）是舊尺度做的：**第一次開啟新版時整個清掉一次**（`render/local-models.js` 的 `glbResetOnce`：所有模型組的 GLB 與關節設定、預設以外的模型組；遊戲讀取或模型庫開啟時誰先誰做，做過記在 localStorage `mech_cordon_glb_scale3x`），並把本地模型庫設定關掉、模型庫回到預設模型組，所以**遊戲的 GLB 一律用伺服器預設組**（直接開檔時是內建預設機甲與程式模型）。本地沒有任何 GLB 時只記下做過、不動設定；之後再放進模型庫的 GLB 照舊使用。參考圖（`mech-cordon-ref-images`）、預組清單不動。自動化測試不做（測試自己放的資料），要測時設 `mech_cordon_glb_reset_test`（冒煙測試 `testGlbReset`）。
 - 伺服器預設組的地圖物件 GLB：有代表尺寸（`ref`）的照實際大小縮放，不用改；固定尺寸的雷達天線、觀測圓頂照新的現實尺寸重新匯出（根節點乘 2.5、2）；紐澤西護欄的 `ref` 改成 GLB 的製作尺寸（4 × 1.1 × 0.9 m）。

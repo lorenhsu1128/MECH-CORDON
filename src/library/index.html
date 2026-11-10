@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>RUBICON PROTOCOL — 模型庫</title>
+    <title>MECH CORDON — 模型庫</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
       href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Noto+Sans+TC:wght@400;700&display=swap"
@@ -15,7 +15,7 @@
     <canvas id="gridGl"></canvas>
     <header id="top">
       <div class="brand">
-        <b>RUBICON</b> 模型庫
+        <b>MECH CORDON</b> 模型庫
         <span class="dim" id="count"></span>
       </div>
       <div class="tools">
@@ -37,11 +37,14 @@
               <button id="setDel" class="danger">刪除</button>
             </div>
             <div class="row">
-              <button id="setExport" title="匯出成單一檔案（.rubicon-set）：備份、分享，或搬到另一種開啟方式">
+              <button
+                id="setExport"
+                title="匯出成單一檔案（.mech-cordon-set）：備份、分享，或搬到另一種開啟方式"
+              >
                 匯出…
               </button>
-              <button id="setImport" title="匯入 .rubicon-set，新增成一個模型組">匯入…</button>
-              <input id="setImportFile" type="file" accept=".rubicon-set,.zip" hidden />
+              <button id="setImport" title="匯入 .mech-cordon-set，新增成一個模型組">匯入…</button>
+              <input id="setImportFile" type="file" accept=".mech-cordon-set,.rubicon-set,.zip" hidden />
             </div>
             <div class="row">
               <button id="setPublish" hidden title="把這個模型組的機甲區塊、武器與關節設定取代伺服器預設組的">
@@ -69,7 +72,7 @@
             <option value="proc">只看程式模型</option>
           </select></label
         >
-        <button id="btnPaint" title="在 GLB 模型上直接繪製貼圖（Rubicon Paint）">貼圖繪製</button>
+        <button id="btnPaint" title="在 GLB 模型上直接繪製貼圖（Mech Cordon Paint）">貼圖繪製</button>
         <button id="btnManifest" title="匯出所有 GLB 槽位與檢查結果">匯出對照表</button>
         <button
           id="btnJoints"
@@ -126,7 +129,10 @@
             <input id="wsImportFile" type="file" accept=".json,application/json" hidden />
           </div>
           <div class="wsRow">
-            <button id="wsMechExport" title="畫面上這台機甲：用到的 GLB、關節設定與零件組合（.rubicon-set）">
+            <button
+              id="wsMechExport"
+              title="畫面上這台機甲：用到的 GLB、關節設定與零件組合（.mech-cordon-set）"
+            >
               匯出機甲（含 GLB）
             </button>
             <label class="small"><input type="checkbox" id="wsMechRefs" /> 含參考圖</label>
@@ -137,7 +143,7 @@
               <option value="new">建立新模型組</option>
               <option value="merge">合併到目前模型組</option>
             </select>
-            <input id="wsMechFile" type="file" accept=".rubicon-set,.zip" hidden />
+            <input id="wsMechFile" type="file" accept=".mech-cordon-set,.rubicon-set,.zip" hidden />
           </div>
           <h3>零件</h3>
           <div id="wsParts"></div>
@@ -652,7 +658,10 @@
           <button id="insRemove">移除瀏覽器暫存</button>
           <button id="insTemplate" title="把程式模型照規格匯出成 GLB，當作建模範本">下載範本 GLB</button>
           <button id="insEdit" title="在 GLB 編輯器修正朝向、尺寸與原點">在 GLB 編輯器開啟</button>
-          <button id="insPaint" title="在貼圖繪製（Rubicon Paint）直接在模型上畫貼圖，畫完按「存回模型庫」">
+          <button
+            id="insPaint"
+            title="在貼圖繪製（Mech Cordon Paint）直接在模型上畫貼圖，畫完按「存回模型庫」"
+          >
             繪製貼圖
           </button>
           <input id="insFile" type="file" accept=".glb,model/gltf-binary" hidden />

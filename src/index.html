@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>RUBICON PROTOCOL — 機甲傭兵 單機版</title>
+    <title>MECH CORDON — 機甲傭兵 單機版</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
       href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Noto+Sans+TC:wght@400;700&display=swap"
@@ -114,7 +114,7 @@
       <!-- Title -->
       <div id="title" class="screen center">
         <div class="panel" style="max-width: 640px">
-          <h1><small>SINGLE PLAYER MECH ACTION</small>RUBICON PROTOCOL</h1>
+          <h1><small>SINGLE PLAYER MECH ACTION</small>MECH CORDON</h1>
           <div id="srvLoad">
             <div class="lmBar"><i id="srvLoadBar"></i></div>
             <span id="srvLoadTxt" class="dim"></span>
@@ -171,6 +171,9 @@
               主線（作戰室）
             </button>
             <button id="btnSaves" title="三個存檔槽：繼續、新的傭兵生涯、匯出／匯入、刪除">選擇存檔</button>
+            <button id="btnLegacy" title="把改名前（RUBICON PROTOCOL）的存檔、設定與資料庫轉存成新版">
+              轉換舊存檔
+            </button>
             <button id="btnMP">多人連線（區網 2–4 人）</button>
             <button
               id="btnLevels"
@@ -186,7 +189,7 @@
             <button id="btnApng" title="製作文字動畫素材（APNG／WebP）" style="display: none">
               文字動畫
             </button>
-            <button id="btnPaint" title="在 GLB 模型上直接繪製貼圖（Rubicon Paint）">貼圖繪製</button>
+            <button id="btnPaint" title="在 GLB 模型上直接繪製貼圖（Mech Cordon Paint）">貼圖繪製</button>
             <button
               id="btnStyleLab"
               title="切換、調整整體畫面風格（寫實、機戰傭兵 6、Gundam 動畫、吉卜力…），以模擬戰鬥即時預覽"
@@ -1305,6 +1308,39 @@
           </div>
         </div>
       </div>
+      <!-- 轉換舊存檔（game/legacy.js）-->
+      <div id="legacy" class="screen center">
+        <div class="panel" style="width: min(600px, 94vw); max-height: 92vh; overflow: auto">
+          <h2>轉換舊存檔</h2>
+          <p class="dim" style="font-size: 12px">
+            遊戲改名為 MECH CORDON（機戰封鎖線）之後，舊版 RUBICON PROTOCOL
+            的存檔與設定不會自動帶過來。在這裡把找到的舊存檔轉存到新的槽位；舊資料會保留，確認沒問題後再刪除。
+          </p>
+          <h3>舊存檔</h3>
+          <div id="legacySaves"></div>
+          <div class="row">
+            <button id="btnLegacyFile" title="讀取舊版（或新版）存檔畫面匯出的 .json">
+              讀取匯出的存檔檔案…
+            </button>
+          </div>
+          <input type="file" id="legacyFile" accept=".json,application/json" hidden />
+          <h3>設定與資料庫</h3>
+          <div id="legacyOther"></div>
+          <div class="row">
+            <button
+              id="btnLegacyAll"
+              title="按鍵、畫面、音量等設定，以及模型庫、自訂關卡、參考圖、貼圖繪製的資料"
+            >
+              轉換設定與資料庫
+            </button>
+            <button id="btnLegacyDel" class="danger">刪除舊版的資料…</button>
+          </div>
+          <p id="legacyMsg" style="font-size: 12px; min-height: 1.5em"></p>
+          <div class="row">
+            <button id="btnLegacyBack">返回標題</button>
+          </div>
+        </div>
+      </div>
       <!-- 存檔（game/save.js）-->
       <div id="saves" class="screen center">
         <div class="panel" style="width: min(560px, 94vw); max-height: 92vh; overflow: auto">
@@ -1332,10 +1368,15 @@
           </div>
           <div class="row">
             <button class="primary" id="btnLvNew">新建關卡</button><button id="btnLvImport">匯入檔案…</button
-            ><input type="file" id="lvFile" accept=".rubicon-level,.json,application/json" hidden /><input
-              id="lvSearch"
-              placeholder="搜尋名稱、作者"
-            /><select id="lvSort" title="伺服器上的關卡的排序">
+            ><input
+              type="file"
+              id="lvFile"
+              accept=".mech-cordon-level,.rubicon-level,.json,application/json"
+              hidden
+            /><input id="lvSearch" placeholder="搜尋名稱、作者" /><select
+              id="lvSort"
+              title="伺服器上的關卡的排序"
+            >
               <option value="new">最新</option>
               <option value="plays">最多人玩</option>
               <option value="rate">通關率最低（最難）</option>

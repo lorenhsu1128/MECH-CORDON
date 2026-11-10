@@ -44,18 +44,18 @@ Object.assign(Game.prototype, {
   },
   // 配樂：第一次播放時以 <script> 載入 lib/cine-music.js（約 19 MB，不內嵌在遊戲的 HTML 裡）
   cineMusicLoad() {
-    if (window.RUBICON_MUSIC) return Promise.resolve(true);
+    if (window.MECH_CORDON_MUSIC) return Promise.resolve(true);
     if (this.cineMusicP) return this.cineMusicP;
     this.cineMusicP = new Promise((res) => {
       const s = document.createElement('script');
       s.src = 'lib/cine-music.js';
-      s.onload = () => res(!!window.RUBICON_MUSIC);
+      s.onload = () => res(!!window.MECH_CORDON_MUSIC);
       s.onerror = () => {
         this.cineMusicP = null;
         res(false);
       };
       document.head.appendChild(s);
-      setTimeout(() => res(!!window.RUBICON_MUSIC), 15000);
+      setTimeout(() => res(!!window.MECH_CORDON_MUSIC), 15000);
     });
     return this.cineMusicP;
   },
@@ -115,7 +115,7 @@ Object.assign(Game.prototype, {
     const load = Promise.all([this.cineMusicLoad(), ppl]).then(async ([has]) => {
       if (!has) return false;
       const names = [...new Set(def.music.map((m) => m.track))];
-      await Promise.all(names.map((n) => SFX.musicDecode(n, window.RUBICON_MUSIC[n])));
+      await Promise.all(names.map((n) => SFX.musicDecode(n, window.MECH_CORDON_MUSIC[n])));
       return true;
     });
     // 等太久（電腦慢、網路慢）就先開始播；配樂好了再從目前的時間接上

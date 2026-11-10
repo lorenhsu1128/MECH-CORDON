@@ -1,14 +1,14 @@
 // Game：任務配樂的試聽（標題的「配樂試聽」，docs/audio-design.md 的配樂重選）。
 // 候選曲（CC0／CC-BY，多種樂器合奏）由 scripts/bgm-audition.py 剪成 60 秒的片段，建置成 lib/bgm-audition.js
-// （window.RUBICON_BGM_AUD＝{ '@index': [曲子的說明], '<id>': base64 mp3 }），打開這個畫面時才載入。
-// 每首可以勾選要用在哪一級（探索／警戒／交戰／Boss／空域）、打星、寫備註，存在 localStorage rubicon_bgm_aud；
+// （window.MECH_CORDON_BGM_AUD＝{ '@index': [曲子的說明], '<id>': base64 mp3 }），打開這個畫面時才載入。
+// 每首可以勾選要用在哪一級（探索／警戒／交戰／Boss／空域）、打星、寫備註，存在 localStorage mech_cordon_bgm_aud；
 // 「複製勾選結果」依用途整理成文字（貼給開發者決定換哪些曲子）。最下面可以聽遊戲中實際使用的循環段（lib/bgm-assets.js）。不寫存檔。
 import { SFX } from '../audio/audio.js';
 import { escHtml } from '../core/html.js';
 import { Game } from './game.js';
 
 const $ = (id) => document.getElementById(id);
-const KEY = 'rubicon_bgm_aud';
+const KEY = 'mech_cordon_bgm_aud';
 const USES = [
   ['explore', '探索'],
   ['alert', '警戒'],
@@ -77,7 +77,7 @@ Object.assign(Game.prototype, {
     if (B.idx) return this.blabRender();
     $('blList').innerHTML = '<p class="dim">載入試聽曲（約 28 MB）…</p>';
     if (!this.blabLoading)
-      this.blabLoading = loadScript('lib/bgm-audition.js', () => !!window.RUBICON_BGM_AUD).then((ok) => {
+      this.blabLoading = loadScript('lib/bgm-audition.js', () => !!window.MECH_CORDON_BGM_AUD).then((ok) => {
         this.blabLoading = null;
         return ok;
       });
@@ -88,7 +88,7 @@ Object.assign(Game.prototype, {
           '<p class="dim">找不到試聽曲（lib/bgm-audition.js）。用 scripts/bgm-audition.py 產生後重新建置。</p>';
         return;
       }
-      B.idx = window.RUBICON_BGM_AUD['@index'];
+      B.idx = window.MECH_CORDON_BGM_AUD['@index'];
       this.blabRender();
     });
   },
@@ -139,15 +139,15 @@ Object.assign(Game.prototype, {
       this.blabStart(cur.key, cur.buf, ((e.clientX - r.left) / r.width) * cur.buf.duration);
     };
     for (const b of $('blList').querySelectorAll('button[data-p]'))
-      b.onclick = () => this.blabToggle(b.dataset.p, () => window.RUBICON_BGM_AUD[b.dataset.p]);
+      b.onclick = () => this.blabToggle(b.dataset.p, () => window.MECH_CORDON_BGM_AUD[b.dataset.p]);
     for (const b of $('blList').querySelectorAll('button[data-cur]'))
       b.onclick = async () => {
         const k = b.dataset.cur;
-        if (!window.RUBICON_BGM) {
+        if (!window.MECH_CORDON_BGM) {
           $('blNow').textContent = '載入目前的配樂…';
-          await loadScript('lib/bgm-assets.js', () => !!window.RUBICON_BGM);
+          await loadScript('lib/bgm-assets.js', () => !!window.MECH_CORDON_BGM);
         }
-        this.blabToggle('cur:' + k, () => window.RUBICON_BGM && window.RUBICON_BGM[k]);
+        this.blabToggle('cur:' + k, () => window.MECH_CORDON_BGM && window.MECH_CORDON_BGM[k]);
       };
     for (const x of $('blList').querySelectorAll('input[data-u]'))
       x.onchange = () => {

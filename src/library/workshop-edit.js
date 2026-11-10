@@ -25,7 +25,7 @@ const FIELDS = [
 ];
 const same = (a, b) => a && b && a.slot === b.slot && a.name === b.name;
 const round = (v, k) => Math.round(v * k) / k;
-const SETTINGS_KEY = 'rubicon_workshop_steps';
+const SETTINGS_KEY = 'mech_cordon_workshop_steps';
 // 步進：位置以公分、旋轉以角度；吸附預設關閉
 // 顯示方式：高亮選中區塊、其他區塊半透明、隱藏無關區塊、穿幫提示
 // keep：移動連接點時「只動關節」（子區塊不動，改它的原點）；false＝子區塊跟著連接點移動

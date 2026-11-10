@@ -29,15 +29,15 @@ const PAUSE_STATES = { pause: 1, modpick: 1, rangecfg: 1 };
 Object.assign(Game.prototype, {
   // 第一次進任務時以 <script> 載入 lib/bgm-assets.js（約 27 MB，不內嵌）
   bgmLoad() {
-    if (window.RUBICON_BGM) return Promise.resolve(true);
+    if (window.MECH_CORDON_BGM) return Promise.resolve(true);
     if (this.bgmLoading) return this.bgmLoading;
     this.bgmLoading = new Promise((res) => {
       const s = document.createElement('script');
       s.src = 'lib/bgm-assets.js';
-      s.onload = () => res(!!window.RUBICON_BGM);
+      s.onload = () => res(!!window.MECH_CORDON_BGM);
       s.onerror = () => res(false);
       document.head.appendChild(s);
-      setTimeout(() => res(!!window.RUBICON_BGM), 20000);
+      setTimeout(() => res(!!window.MECH_CORDON_BGM), 20000);
     });
     return this.bgmLoading;
   },
@@ -93,12 +93,12 @@ Object.assign(Game.prototype, {
   },
   bgmTick(dt) {
     const B = (this.bgm = this.bgm || { lv: -1, want: -1, wantT: 0, pv: 1 });
-    if (!B.loading && !window.RUBICON_BGM) {
+    if (!B.loading && !window.MECH_CORDON_BGM) {
       B.loading = true;
       this.bgmLoad();
       return;
     }
-    if (!window.RUBICON_BGM) return;
+    if (!window.MECH_CORDON_BGM) return;
     const tg = this.bgmTarget();
     const lvOf = (x) => (x === 'air' ? 2 : x);
     if (tg !== B.want) {
@@ -123,7 +123,7 @@ Object.assign(Game.prototype, {
     const old = B.key;
     B.key = key;
     B.lv = lv;
-    const buf = await SFX.musicDecode('bgm_' + name, window.RUBICON_BGM[name]);
+    const buf = await SFX.musicDecode('bgm_' + name, window.MECH_CORDON_BGM[name]);
     if (!buf || this.bgm !== B || B.key !== key) return;
     const c = SFX.ctx,
       t = c.currentTime;

@@ -127,7 +127,7 @@ export async function simplifyGeometry(g, ratio) {
 }
 
 // ---------- 匯出設定（存在這個瀏覽器）----------
-const KEY = 'rubicon_glb_export';
+const KEY = 'mech_cordon_glb_export';
 export function loadExportOpts() {
   let o = {};
   try {

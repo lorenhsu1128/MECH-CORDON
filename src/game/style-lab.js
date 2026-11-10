@@ -376,7 +376,7 @@ Object.assign(Game.prototype, {
         if (!b) return;
         const a = document.createElement('a');
         a.href = URL.createObjectURL(b);
-        a.download = 'rubicon-style-' + Date.now() + '.png';
+        a.download = 'mech-cordon-style-' + Date.now() + '.png';
         a.click();
         setTimeout(() => URL.revokeObjectURL(a.href), 2000);
       });
@@ -919,7 +919,7 @@ Object.assign(Game.prototype, {
       const blob = new Blob([StyleStore.exportJson(name, lab.P)], { type: 'application/json' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = name.replace(/[\\/:*?"<>|]/g, '_') + '.rubicon-style.json';
+      a.download = name.replace(/[\\/:*?"<>|]/g, '_') + '.mech-cordon-style.json';
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 2000);
     };
@@ -946,7 +946,7 @@ Object.assign(Game.prototype, {
       const lab = L();
       const name =
         ($('labName').value || '').trim() || StyleStore.nameOf(lab.src.k, lab.src.id) || '我的風格';
-      const author = (localStorage.getItem('rubicon_nick') || '').slice(0, 24);
+      const author = (localStorage.getItem('mech_cordon_nick') || '').slice(0, 24);
       const same = lab.src.k === 'server' && StyleStore.nameOf('server', lab.src.id) === name;
       try {
         this.labMsg('上傳中…');

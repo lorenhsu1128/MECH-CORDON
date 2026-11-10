@@ -1,4 +1,4 @@
-// 伺服器上的模型組（只在從 rubicon-server 的網址開啟時）：
+// 伺服器上的模型組（只在從 mech-cordon-server 的網址開啟時）：
 // - ServerModels：伺服器預設組（所有分類）。敵人、AI 機甲、載具、地圖物件，以及沒上傳模型組的玩家都用它
 // - RemoteSets：玩家上傳的模型組（依內容雜湊下載、解析並快取）；多人時每台玩家機甲用它主人的那一組
 // - uploadSet：把本地模型庫的一組打包上傳（內容相同時伺服器已有就不再上傳）
@@ -7,7 +7,7 @@ import { sha256Hex } from '../core/sha256.js';
 import { SERVER_SET, instanceOf, parseTemplate, slotChain } from './local-models.js';
 import { packSetData, unpackSet } from './set-pack.js';
 
-export const onServer = () => typeof window !== 'undefined' && !!window.RUBICON_SERVER;
+export const onServer = () => typeof window !== 'undefined' && !!window.MECH_CORDON_SERVER;
 const tick = () => new Promise((r) => setTimeout(r, 0));
 const slotUrl = (slot) => slot.split('/').map(encodeURIComponent).join('/');
 

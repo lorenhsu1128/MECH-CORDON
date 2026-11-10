@@ -40,8 +40,8 @@ Object.assign(Game.prototype, {
   },
   loadKeys() {
     try {
-      const k = JSON.parse(localStorage.getItem('rubicon_keys') || 'null');
-      const o = JSON.parse(localStorage.getItem('rubicon_ctrl') || 'null');
+      const k = JSON.parse(localStorage.getItem('mech_cordon_keys') || 'null');
+      const o = JSON.parse(localStorage.getItem('mech_cordon_ctrl') || 'null');
       this.keymap = Object.assign(this.defaultKeys(), k || {});
       this.ctrl = Object.assign(
         {
@@ -70,7 +70,7 @@ Object.assign(Game.prototype, {
         this.ctrl.topCtl = 'classic';
         this.ctrl.topV = 1;
       }
-      const pm = JSON.parse(localStorage.getItem('rubicon_pad') || 'null');
+      const pm = JSON.parse(localStorage.getItem('mech_cordon_pad') || 'null');
       this.padmap = Object.assign(this.defaultPad(), pm || {});
       SFX.setVol(this.ctrl.vol); // 音量（設定的「聲音」）
     } catch (e) {
@@ -81,9 +81,9 @@ Object.assign(Game.prototype, {
   },
   saveKeys() {
     try {
-      localStorage.setItem('rubicon_keys', JSON.stringify(this.keymap));
-      localStorage.setItem('rubicon_ctrl', JSON.stringify(this.ctrl));
-      localStorage.setItem('rubicon_pad', JSON.stringify(this.padmap));
+      localStorage.setItem('mech_cordon_keys', JSON.stringify(this.keymap));
+      localStorage.setItem('mech_cordon_ctrl', JSON.stringify(this.ctrl));
+      localStorage.setItem('mech_cordon_pad', JSON.stringify(this.padmap));
     } catch (e) {}
   },
   act(name) {
@@ -724,11 +724,11 @@ Object.assign(Game.prototype, {
     document.getElementById('btnLibrary').onclick = () => window.open('model-library.html', '_blank');
     // 文字動畫 APNG 產生器：原生 ES Modules，只有從伺服器開啟時才能用（/apng/）
     const apng = document.getElementById('btnApng');
-    if (window.RUBICON_SERVER) apng.style.display = '';
+    if (window.MECH_CORDON_SERVER) apng.style.display = '';
     apng.onclick = () => window.open('/apng/', '_blank');
-    // 貼圖繪製（Rubicon Paint）：一般 script，直接開檔也能用（同資料夾的 paint/）
+    // 貼圖繪製（Mech Cordon Paint）：一般 script，直接開檔也能用（同資料夾的 paint/）
     document.getElementById('btnPaint').onclick = () =>
-      window.open(window.RUBICON_SERVER ? '/paint/' : 'paint/index.html', '_blank');
+      window.open(window.MECH_CORDON_SERVER ? '/paint/' : 'paint/index.html', '_blank');
     document.getElementById('btnLmReload').onclick = () => this.lmRefresh(true);
     document.getElementById('btnStyleLab').onclick = () => this.openLab();
     document.getElementById('btnCineLib').onclick = () => this.openCineLib();
@@ -870,15 +870,15 @@ Object.assign(Game.prototype, {
       this.ctrl.fxLv = e.target.value; // 砲火特效（fx.rich，下一顆子彈、下一個爆炸就生效）
       this.saveKeys();
     };
-    // 畫面模式與色彩管理（docs/perf-threejs-upgrade.md 第 4 期）：存在 rubicon_render，頁面載入時由 lib/three/three.js 讀取
+    // 畫面模式與色彩管理（docs/perf-threejs-upgrade.md 第 4 期）：存在 mech_cordon_render，頁面載入時由 lib/three/three.js 讀取
     const renderOpt = (k, v) => {
       let o = {};
       try {
-        o = JSON.parse(localStorage.getItem('rubicon_render') || '{}') || {};
+        o = JSON.parse(localStorage.getItem('mech_cordon_render') || '{}') || {};
       } catch (err) {}
       o[k] = v;
       try {
-        localStorage.setItem('rubicon_render', JSON.stringify(o));
+        localStorage.setItem('mech_cordon_render', JSON.stringify(o));
       } catch (err) {}
       if (navigator.webdriver) return; // 自動化測試不重新整理
       this.uiConfirm(
@@ -1184,6 +1184,7 @@ Object.assign(Game.prototype, {
     });
     const $ = (id) => document.getElementById(id);
     this.bindSaves();
+    this.bindLegacy();
     $('btnSortie').onclick = () => {
       // 單機出擊前重新讀取本地模型庫（伺服器預設組還在讀時先顯示進度、讀完再按一次）
       if (this.lmBusy || this.srvGate(() => $('btnSortie').onclick())) return;

@@ -35,7 +35,7 @@ export class Net {
     this.local = location.search.includes('lan=local');
     this.nick = (() => {
       try {
-        return localStorage.getItem('rubicon_nick') || '';
+        return localStorage.getItem('mech_cordon_nick') || '';
       } catch (e) {
         return '';
       }
@@ -70,7 +70,7 @@ export class Net {
     return this._prefix;
   }
   get server() {
-    return !!window.RUBICON_SERVER && !this.local;
+    return !!window.MECH_CORDON_SERVER && !this.local;
   }
   mkTransport(prefix) {
     return this.local

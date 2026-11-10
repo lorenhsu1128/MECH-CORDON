@@ -1107,18 +1107,18 @@ Object.assign(Game.prototype, {
     if (d.success) this.lvRecord(this.lvFull, this.missionT);
     this.showScreen('result');
   },
-  // 本機的通關紀錄：localStorage rubicon_lv_best＝{ 關卡 id: 最佳秒數 }
+  // 本機的通關紀錄：localStorage mech_cordon_lv_best＝{ 關卡 id: 最佳秒數 }
   lvRecord(full, t) {
     if (!full) return;
     try {
-      const o = JSON.parse(localStorage.getItem('rubicon_lv_best') || '{}');
+      const o = JSON.parse(localStorage.getItem('mech_cordon_lv_best') || '{}');
       if (!o[full.id] || t < o[full.id]) o[full.id] = +t.toFixed(1);
-      localStorage.setItem('rubicon_lv_best', JSON.stringify(o));
+      localStorage.setItem('mech_cordon_lv_best', JSON.stringify(o));
     } catch (e) {}
   },
   lvBest(id) {
     try {
-      return JSON.parse(localStorage.getItem('rubicon_lv_best') || '{}')[id] || 0;
+      return JSON.parse(localStorage.getItem('mech_cordon_lv_best') || '{}')[id] || 0;
     } catch (e) {
       return 0;
     }

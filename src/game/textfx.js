@@ -160,7 +160,7 @@ Object.assign(Game.prototype, {
     const rows = [];
     for (let i = 0; i < rivals.length; i += 3) rows.push(rivals.slice(i, i + 3).join('　'));
     const text = [
-      'RUBICON PROTOCOL',
+      'MECH CORDON',
       '',
       'OPERATOR',
       SPEAKERS.echo.name,

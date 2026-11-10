@@ -1,5 +1,5 @@
 // 機甲庫格納庫的外部素材（docs/garage-hangar.md）：Poly Haven 的 CC0 道具與 PBR 貼圖、Quaternius 的 CC0 人物（骨架動畫）。
-// 原始檔在 src/assets/hangar/（來源與授權見 CREDITS.txt），建置成 dist/lib/hangar-assets.js（window.RUBICON_HANGAR＝{ 檔名: base64 }），
+// 原始檔在 src/assets/hangar/（來源與授權見 CREDITS.txt），建置成 dist/lib/hangar-assets.js（window.MECH_CORDON_HANGAR＝{ 檔名: base64 }），
 // 不內嵌在遊戲的 HTML 裡：第一次需要時以 <script> 載入、解析成範本。沒載到時格納庫照舊用程式模型。
 export const HA = { ready: false, failed: false, glb: {}, tex: {}, p: null, listeners: [] };
 if (/[?&]test\b/.test(location.search)) window.__HA = HA; // 冒煙測試等素材載入完
@@ -11,11 +11,11 @@ const b64buf = (s) => {
   return u;
 };
 function loadScript() {
-  if (window.RUBICON_HANGAR) return Promise.resolve(true);
+  if (window.MECH_CORDON_HANGAR) return Promise.resolve(true);
   return new Promise((res) => {
     const s = document.createElement('script');
     s.src = 'lib/hangar-assets.js';
-    s.onload = () => res(!!window.RUBICON_HANGAR);
+    s.onload = () => res(!!window.MECH_CORDON_HANGAR);
     s.onerror = () => res(false);
     document.head.appendChild(s);
   });
@@ -44,7 +44,7 @@ export function loadHangarAssets() {
   HA.p = (async () => {
     try {
       if (!THREE.GLTFLoader || !(await loadScript())) throw new Error('沒有 lib/hangar-assets.js');
-      const D = window.RUBICON_HANGAR;
+      const D = window.MECH_CORDON_HANGAR;
       for (const [k, v] of Object.entries(D)) {
         const u8 = b64buf(v);
         if (k.endsWith('.glb')) {
@@ -62,7 +62,7 @@ export function loadHangarAssets() {
           HA.tex[k.slice(4).replace(/\.webp$/, '')] = img;
         }
       }
-      window.RUBICON_HANGAR = null; // base64 字串不再需要
+      window.MECH_CORDON_HANGAR = null; // base64 字串不再需要
       HA.ready = true;
     } catch (e) {
       console.warn('格納庫素材載入失敗，改用程式模型：', e && e.message);
@@ -83,17 +83,17 @@ export function loadPeopleAssets() {
   PA.p = (async () => {
     try {
       if (!THREE.GLTFLoader) throw new Error('沒有 GLTFLoader');
-      if (!window.RUBICON_PEOPLE) {
+      if (!window.MECH_CORDON_PEOPLE) {
         const ok = await new Promise((res) => {
           const s = document.createElement('script');
           s.src = 'lib/people-assets.js';
-          s.onload = () => res(!!window.RUBICON_PEOPLE);
+          s.onload = () => res(!!window.MECH_CORDON_PEOPLE);
           s.onerror = () => res(false);
           document.head.appendChild(s);
         });
         if (!ok) throw new Error('沒有 lib/people-assets.js');
       }
-      for (const [k, v] of Object.entries(window.RUBICON_PEOPLE)) {
+      for (const [k, v] of Object.entries(window.MECH_CORDON_PEOPLE)) {
         if (!k.endsWith('.glb')) continue;
         const g = await parseGlb(b64buf(v));
         g.scene.updateMatrixWorld(true);
@@ -107,7 +107,7 @@ export function loadPeopleAssets() {
         });
         PA.h[n] = top > 0.3 ? top * 1.06 : 1.8;
       }
-      window.RUBICON_PEOPLE = null;
+      window.MECH_CORDON_PEOPLE = null;
       PA.ready = true;
     } catch (e) {
       console.warn('過場動畫的人物載入失敗，改用程式的小人：', e && e.message);

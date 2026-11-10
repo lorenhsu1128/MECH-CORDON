@@ -2,7 +2,7 @@
 
 ## 一、量測方式
 
-- 建置版 `dist/rubicon-protocol.html`（main 7717788），headless Edge＋顯示卡算繪（ANGLE D3D11），1600×900、像素比 1，貨運集散場，預設畫質（SSAO 開）。
+- 建置版 `dist/mech-cordon.html`（main 7717788），headless Edge＋顯示卡算繪（ANGLE D3D11），1600×900、像素比 1，貨運集散場，預設畫質（SSAO 開）。
 - 腳本：新存檔 → 出擊 → 往前走、射擊、QB，每 5 秒把玩家移到最近的敵人旁邊並擊破兩台（觸發擊破特效、增援）。
 - 逐格記錄：`loop` 的 CPU 時間與兩格的間隔、各段耗時（包裝 Game 的方法與管線的各段）、`renderer.info` 的程式／幾何／貼圖數量變化、JS heap 下降（GC）；包裝 `gl.linkProgram`／`getProgramParameter` 記下每次著色器連結的耗時與關鍵的 define；CDP 的 CPU 取樣與記憶體配置取樣（含已回收的物件）；把 three.js 換成未壓縮版、在 `setProgram` 記錄每次呼叫 `getProgram` 的原因。
 - 腳本在 `C:\Users\loren\AppData\Local\Temp\claude\…\scratchpad\`（hitch-probe.js、probe2～4.js），第 0 期會整理成 `scripts/perf-probe.js`。
@@ -88,7 +88,7 @@
 5. **著色器 chunk**：`GeometricContext` 移除（`RE_Direct` 的參數改成 `geometryPosition`／`geometryNormal`／`geometryViewDir`…）、`encodings_fragment`→`colorspace_fragment`、`output_fragment`→`opaque_fragment`、貼圖座標改成每張貼圖自己的 `vMapUv` 等、`uv2`→`uv1`＋`aoMap.channel`。`render/style/shader.js` 的 `RE_Direct_Style` 與對 `lights_fragment_begin`、`normal_fragment_maps`、`map_fragment` 的改寫要重寫；22 個 `ShaderMaterial` 逐一檢查；GLB 貼花的 `ST_DECAL`；編輯器的 AO 貼圖（`uv2` 5 處）。
 6. **其他 API**：`Scene.autoUpdate`→`matrixWorldAutoUpdate`（管線靠它只算一次世界矩陣）、`RGBFormat` 移除、`material.skinning` 移除（6 處）、`PCFSoftShadowMap` 在 r182 標成棄用（改用已經是柔邊的 `PCFShadowMap`）、`Clock` r183 棄用、GLTFLoader 的 `parser.associations` 格式、GLTFExporter 的參數、`SSAOPass` 的內部（管線借用它的法線與 AO 材質）、`SkeletonUtils` 改成函式。
 7. **多人**：各端必須同一版本（子彈發射點依模型），升級要提高 `NET_VERSION`。
-8. **不受影響**：貼圖繪製 `rubicon_paint/` 自帶 r128，可以不動；文字動畫 APNG 不用 three。
+8. **不受影響**：貼圖繪製 `mech_cordon_paint/` 自帶 r128，可以不動；文字動畫 APNG 不用 three。
 
 ### 風險
 
@@ -108,7 +108,7 @@
 | 後處理管線                   | `render/style/pipeline.js` 10 段 GLSL（合成、描線、動態模糊、調色、FXAA、景深、熱扭曲、光束、深度拷貝、比較），借用 SSAOPass 的內部                       | 整條改寫成節點的 `PostProcessing`（MRT 一次輸出顏色＋法線＋深度，SSAO 改 GTAO 節點，不用再畫一次法線）         |
 | 其他自訂著色器               | 約 53 段 GLSL：顯示卡粒子 `fx/gpu.js`、噴流、帶狀軌跡、水面（模擬、焦散、表面）、雲海、天空與塵埃、天氣、全像戰略桌、六角護盾、描邊、邊界線、過場的場景…… | 逐一改寫成 TSL；粒子與水波模擬可以改用計算著色器                                                               |
 | GLB 貼花、陣營換色、遮擋淡出 | 靠材質的 uniform 與 define                                                                                                                                | 節點的 uniform                                                                                                 |
-| 模型庫、GLB 編輯器           | 同一套材質與管線                                                                                                                                          | 一起改；貼圖繪製 `rubicon_paint/` 可以留在 r128                                                                |
+| 模型庫、GLB 編輯器           | 同一套材質與管線                                                                                                                                          | 一起改；貼圖繪製 `mech_cordon_paint/` 可以留在 r128                                                                |
 
 **好處**：
 
@@ -180,7 +180,7 @@
 2. **火光與閃光不再是 three.js 的 PointLight**：`fx/effects.js` 的 4 盞（閃光 1＋火光 3）不加進場景，`lightTick` 以 `setFxLights` 寫進風格著色器的 `stFxP`／`stFxC`，著色器在 `lights_fragment_begin` 之後只算漫射（照 r128 非物理單位的衰減；色階風格照一般光源的色階加進 `stLit`；沒有高光）。實驗：風格材質一個變體的編譯 約 360 ms → 約 180 ms（每盞點光會讓風格光照多展開一次）。機甲庫與作戰室的畫面呼叫 `clearFxLights`。
 3. **平面著色改成 uniform**：`MeshStandardMaterial.prototype.flatShading` 改成存取子，three.js 讀到的一律是 false，實際的值在 `_stFlat`，著色器以 `stFlat` 在 `normal_fragment_begin` 之後用導數算面法線（和 `FLAT_SHADED` 相同）；`copy` 一併複製。任務中的風格程式約 20 種 → 約 16 種。
 4. **著色器預熱**（`game/render-setup.js` 的 `shaderWarm`）：新地圖第一次算繪前（出擊、主線換區段、自訂關卡、客機開局；關卡編輯器除外）以 `renderer.compile` 編好整個場景（含畫面外的）、後處理的各段與熱扭曲的場景（`StylePipeline.warm`）、SSAO 法線的兩個版本；render target 設成實際算繪的（程式的鍵含輸出編碼）；`material` 不是材質的物件（粒子批次的代理）略過。前一格先顯示「戰場準備中…」（`warmMsg`）。
-5. **學習式預熱**（`render/shader-warm.js`）：任務中第一次出現的風格著色器變體（程式參數：貼圖、頂點色、雙面、蒙皮、instancing…，不含光源與霧）記在 localStorage `rubicon_shader_warm`（最多 48 筆），下次預熱時以假網格一起編好。碎片、殘骸等用完就移除的東西，遇過一次之後就不會在戰鬥中卡住。
+5. **學習式預熱**（`render/shader-warm.js`）：任務中第一次出現的風格著色器變體（程式參數：貼圖、頂點色、雙面、蒙皮、instancing…，不含光源與霧）記在 localStorage `mech_cordon_shader_warm`（最多 48 筆），下次預熱時以假網格一起編好。碎片、殘骸等用完就移除的東西，遇過一次之後就不會在戰鬥中卡住。
 6. **程式模型區塊的快取**（`render/mech-model.js` 的 `makeProcPiece`，只在遊戲裡開 `setPieceCache(true)`）：同一個區塊（零件＋配色＋重型核心）第一次建好後留作範本，之後複製；幾何共用並記在 `SHARED_GEO`（`fx.dispose`、`groundRef`、格納庫的掃描帶不釋放它），材質換成這台機甲自己的（mechMats 的對應、`red`），區塊自己建的材質每台複製一份，描邊共用。MT 的生成 約 50 ms → 約 11 ms。
 7. **運輸車輛先建模**（`game/map-extras.js` 的 `vehPrebuild`／`vehClear`、`Vehicle.model`）：預熱時先建好（隱藏、在場景裡，一起預熱），車輛開出時取用；先建好的列車固定 5 節（不動亂數）。
 8. **GC**：`World.collide` 回傳共用的陣列（呼叫端都立刻解構）；`updateOcclusion` 的射線重複使用、材質的目標不透明度記在材質上（`_occS`／`_occTo`，不再每格重建 Map），群組表只在遮擋物數量改變（或每 120 次）時重建；SSAO 法線的走訪回呼只建一次。
@@ -207,7 +207,7 @@
 - 畫場景的 render target 以 `render/legacy-rt.js` 的 `legacyTarget` 標成 `isXRRenderTarget`：r187 只在畫到畫面時做色調映射，這樣才會照 r128 每個材質自己做（`rtScene`／`rtPrev`／比較用的兩張、熱扭曲、水面反射、過場第 5 章、零件縮圖（縮圖讀回時在 JS 轉 sRGB））。
 - 受控實驗（同一個場景，r128 與 r187 讀像素）：方向光、半球光、環境光、點光、陰影、環境貼圖都只差 1～5 階；`testStyleThemes` 72 張的平均亮度差 0.6。
 
-**改寫**：風格著色器（`RE_Direct` 的新參數、`vMapUv`、`sRGBTransferEOTF`、`vFogDepth`、`totalDiffuse + totalSpecular`、陰影的 regex、平面著色插在算切線空間之前、色階路徑的光色 ÷π）；`encoding`→`colorSpace`、`Scene.autoUpdate`→`matrixWorldAutoUpdate`、`updateRange`→`addUpdateRange`、`encodings_fragment`→`colorspace_fragment`、`LinearTosRGB`→`sRGBTransferOETF`、`PCFSoftShadowMap`→`PCFShadowMap`（r182 起本身就是柔邊；風格的「硬／柔」陰影因此沒有差別）、`SSAOPass` 的 `_renderPass`／`_renderOverride`、`TransformControls` 加 `getHelper()`、`GLTFExporter.parse` 的錯誤回呼、GLTFLoader 的 `associations` 格式、AO 不再補 `uv2`；學習式預熱的參數名稱改 r187 的（localStorage 換成 `rubicon_shader_warm2`）；`NET_VERSION` 11.26。冒煙測試：`GLTFExporter`／`DRACOExporter` 的新寫法、AO 不檢查 `uv2`、鎖定測試拿掉地圖裝置（亂數取用次數一變陷阱就落在距離內）。完整 `npm test` 跑過，失敗的 21 項修正後重跑通過。
+**改寫**：風格著色器（`RE_Direct` 的新參數、`vMapUv`、`sRGBTransferEOTF`、`vFogDepth`、`totalDiffuse + totalSpecular`、陰影的 regex、平面著色插在算切線空間之前、色階路徑的光色 ÷π）；`encoding`→`colorSpace`、`Scene.autoUpdate`→`matrixWorldAutoUpdate`、`updateRange`→`addUpdateRange`、`encodings_fragment`→`colorspace_fragment`、`LinearTosRGB`→`sRGBTransferOETF`、`PCFSoftShadowMap`→`PCFShadowMap`（r182 起本身就是柔邊；風格的「硬／柔」陰影因此沒有差別）、`SSAOPass` 的 `_renderPass`／`_renderOverride`、`TransformControls` 加 `getHelper()`、`GLTFExporter.parse` 的錯誤回呼、GLTFLoader 的 `associations` 格式、AO 不再補 `uv2`；學習式預熱的參數名稱改 r187 的（localStorage 換成 `mech_cordon_shader_warm2`）；`NET_VERSION` 11.26。冒煙測試：`GLTFExporter`／`DRACOExporter` 的新寫法、AO 不檢查 `uv2`、鎖定測試拿掉地圖裝置（亂數取用次數一變陷阱就落在距離內）。完整 `npm test` 跑過，失敗的 21 項修正後重跑通過。
 
 **效能（第 0 期的 r128 與 r187 交替量測兩次，貨運集散場 40 秒）**：
 
@@ -257,7 +257,7 @@
 
 使用者看過對照截圖後定案：HDR 設為預設、不加環境漫射光；色彩管理開啟，以之前的畫面為基準重新調色（不用逐項確認，有問題直接修）。
 
-**設定**：「畫面模式」HDR（預設）／經典、「色彩管理」開（預設）／關，存在 localStorage `rubicon_render`＝`{ mode, cm, iblK }`，由 `lib/three/three.js`（`scripts/three-bundle.js`）在頁面最一開始讀（色彩管理要在建立任何顏色之前決定），改了要重新整理；`THREE.RUBICON_RENDER`＝`{ hdr, cm, iblK }`。冒煙測試以環境變數 `SMOKE_RENDER`（JSON）指定整套測試的模式。
+**設定**：「畫面模式」HDR（預設）／經典、「色彩管理」開（預設）／關，存在 localStorage `mech_cordon_render`＝`{ mode, cm, iblK }`，由 `lib/three/three.js`（`scripts/three-bundle.js`）在頁面最一開始讀（色彩管理要在建立任何顏色之前決定），改了要重新整理；`THREE.MECH_CORDON_RENDER`＝`{ hdr, cm, iblK }`。冒煙測試以環境變數 `SMOKE_RENDER`（JSON）指定整套測試的模式。
 
 **HDR**（`render/legacy-rt.js` 的 `HDR`、`render/style/pipeline.js`）：
 
@@ -364,7 +364,7 @@
 改善（`game/hub-holo.js`）：
 
 - **取樣的輕量模式**：`hubHoloSample` 以 `world/prop-models.js` 的 `setPropLite(true)`（`PK.build` 不烘焙，照一般零件合併）＋World 的 `opt.sample`（生成完就停：不登記可破壞物件、不合併、沒有遠景、邊界線、天氣）建圖。這些都不呼叫地圖的亂數，所以地形與障礙物和正式出擊完全相同（冒煙測試「第一段的地形和戰略桌上的一樣」照樣通過）。每塊降到 0.07～0.34 秒。
-- **取樣結果存在瀏覽器**：localStorage `rubicon_hub_tiles`（版本＝`NET_VERSION`＋格式，最近用過的 16 塊；高度 Uint16＋base64、障礙物四位小數，8 塊約 100 KB）。同一份「主題｜種子｜選項」之後開網頁直接拿（`hubTileGet`）。
+- **取樣結果存在瀏覽器**：localStorage `mech_cordon_hub_tiles`（版本＝`NET_VERSION`＋格式，最近用過的 16 塊；高度 Uint16＋base64、障礙物四位小數，8 塊約 100 KB）。同一份「主題｜種子｜選項」之後開網頁直接拿（`hubTileGet`）。
 - **著色器在背景預熱**：場景的內容改了（`hubGen`：建立、換上細緻素材、換機體、放上區域地形）時 `hubWarm` 把整個場景交給 `compileAsync`（含後處理的各段），完成前 `hubTick` 不畫（畫面留著上一格；這次進來還沒畫過時顯示「作戰室準備中…」），完成後 `hubPrime` 連陰影畫一次到很小的 render target（陰影的深度材質與 SSAO 法線）。多人與自動化測試照舊同步。
 - **在標題畫面先建好**：停在標題或存檔畫面 1.5 秒（格納庫的外部素材讀好之後、單人）時 `hubPrewarmTick` 建作戰室並背景編譯；主線有進度時接著把戰略桌的區域地形每 0.3 秒取樣一塊。
 

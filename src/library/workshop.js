@@ -493,14 +493,14 @@ export class Workshop {
     const presets = this.store.mechsOf().map((p) => ({ name: p.name, asm: p.asm }));
     if (!presets.length) return this.toast('還沒有儲存任何預組', true);
     const data = {
-      format: 'rubicon-mech-presets',
+      format: 'mech-cordon-mech-presets',
       version: 1,
       exportedAt: new Date().toISOString(),
       presets,
     };
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
-    a.download = 'rubicon-mech-presets.json';
+    a.download = 'mech-cordon-mech-presets.json';
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
     this.toast(`已匯出 ${presets.length} 組預組`);
@@ -513,7 +513,11 @@ export class Workshop {
       return this.toast('無法讀取：不是有效的 JSON 檔', true);
     }
     const list =
-      data && data.format === 'rubicon-mech-presets' && Array.isArray(data.presets) ? data.presets : null;
+      data &&
+      (data.format === 'mech-cordon-mech-presets' || data.format === 'rubicon-mech-presets') &&
+      Array.isArray(data.presets)
+        ? data.presets
+        : null;
     if (!list) return this.toast('這不是組裝調整的預組檔', true);
     let n = 0;
     for (const p of list) {

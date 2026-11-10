@@ -1,7 +1,7 @@
 // Game：眼動追蹤的調校視窗（docs/gaze-design.md 的「調校」；參考 LookPilot 的 Tracking settings，只參考操作設計、自己實作）。
 // 分頁：總覽（攝影機畫面與特徵點、頭部的輸入與鏡頭的輸出、偵測的狀態、全域的靈敏度／平滑度／死區）、頭部左右、頭部上下
 // （對應曲線與每個軸的設定）、眼睛（校準、快速修正偏移、注視點的平滑與眨眼門檻）、攝影機、設定組合（內建＋自己的、匯出入）。
-// 調校存在 ctrl.gaze.tune（core/gaze.js 的 tuneSanitize），設定組合存在 localStorage rubicon_gaze_presets；
+// 調校存在 ctrl.gaze.tune（core/gaze.js 的 tuneSanitize），設定組合存在 localStorage mech_cordon_gaze_presets；
 // 置中位置與校準結果和裝置、坐姿有關，不放進設定組合。
 import { SFX } from '../audio/audio.js';
 import { escHtml } from '../core/html.js';
@@ -10,7 +10,7 @@ import { HEAD_V, OUT_K, TUNE_DEF, axisMap, curveEval, tuneSanitize } from '../co
 import { Game } from './game.js';
 
 const $ = (id) => document.getElementById(id);
-const PRESET_KEY = 'rubicon_gaze_presets';
+const PRESET_KEY = 'mech_cordon_gaze_presets';
 const D2R = Math.PI / 180;
 const TABS = [
   ['ov', '總覽'],
@@ -396,7 +396,7 @@ Object.assign(Game.prototype, {
         `<h4>內建</h4>${BUILTIN.map(([n], i) => row(n, i, false)).join('')}` +
         `<h4>我的設定組合</h4>${list.length ? list.map((p, i) => row(p.name, i, true)).join('') : '<p class="dim" style="font-size:12px">還沒有。調好之後在下面存成新的設定組合。</p>'}` +
         `<div class="krow" data-desc="把現在的調校（靈敏度、平滑度、死區、曲線、眼睛的設定）存成一組；置中位置與校準結果不會存進去"><input id="gtNewName" maxlength="40" placeholder="名稱（例如：晚上、戴眼鏡）" /><span class="row"><button id="gtSaveNew">存成新的設定組合</button><button id="gtImport">匯入檔案…</button></span></div>` +
-        `<p class="dim" style="font-size:11px">匯出的檔案（.rubicon-gaze.json）可以給別人匯入；置中位置與校準結果和攝影機、坐姿有關，不會放進設定組合。</p>` +
+        `<p class="dim" style="font-size:11px">匯出的檔案（.mech-cordon-gaze.json）可以給別人匯入；置中位置與校準結果和攝影機、坐姿有關，不會放進設定組合。</p>` +
         `<input type="file" id="gtFile" accept=".json,application/json" hidden />`;
     }
     $('gtBody').innerHTML = h;
@@ -428,7 +428,7 @@ Object.assign(Game.prototype, {
       if (g && g.cal) {
         delete g.cal.bias;
         try {
-          localStorage.setItem('rubicon_gaze', JSON.stringify(g.cal));
+          localStorage.setItem('mech_cordon_gaze', JSON.stringify(g.cal));
         } catch (e) {}
       }
       this.gazeTuneRender();
@@ -550,11 +550,11 @@ Object.assign(Game.prototype, {
   },
   // 匯出：{ app, v, name, tune }
   gazePresetExport(p) {
-    const txt = JSON.stringify({ app: 'rubicon-gaze', v: 1, name: p.name, tune: p.t }, null, 1);
+    const txt = JSON.stringify({ app: 'mech-cordon-gaze', v: 1, name: p.name, tune: p.t }, null, 1);
     this.gzLastExport = txt; // 冒煙測試讀
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([txt], { type: 'application/json' }));
-    a.download = p.name.replace(/[\\/:*?"<>|]/g, '_') + '.rubicon-gaze.json';
+    a.download = p.name.replace(/[\\/:*?"<>|]/g, '_') + '.mech-cordon-gaze.json';
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   },
@@ -563,7 +563,7 @@ Object.assign(Game.prototype, {
     try {
       o = JSON.parse(txt);
     } catch (e) {}
-    if (!o || o.app !== 'rubicon-gaze' || !o.tune) {
+    if (!o || (o.app !== 'mech-cordon-gaze' && o.app !== 'rubicon-gaze') || !o.tune) {
       this.gazeTuneNote('不是眼動追蹤的設定組合檔案');
       return false;
     }

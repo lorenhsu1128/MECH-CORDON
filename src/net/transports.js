@@ -1,7 +1,7 @@
 // ============================================================
 //  MULTIPLAYER — 區域網路 2–4 人合作（方式 2：公用信令 + 自動房間名）
 // ============================================================
-export const NET_VERSION = '11.40'; // 11.40：Boss 變難（結構損傷 sc、bt 的裝甲殼）； 11.38：拿掉區段類型「潛入」（舊版房主會開出新版不認得的潛入區段）； 11.37：大廳的房間模式「任務」ops（自由出擊的作戰設定，pvpSet.foSum）、紀錄點 cck 帶 free／fr； 11.36：潛入的改良（無線電倒數、局部警報、通訊中繼塔 relay、campView 的 sv.cl／lc）； 11.35：新主題方舟 ark 與 4 種專屬敵人、第 8 章、第 7、8 章的 6 隻新 Boss（anvil／salamander／gantry／deckgun／reactor／sovereign）； 11.34：新主題火山熔爐帶 volcano 與 4 種專屬敵人、熔岩； 11.33：主線的追擊、大規模戰場、大型兵器、空戰區段（campView 的 sv.rings、區段類型）、素材掉落 mat_*、零件掉落 lootPart、調校（pilot 的 tn）； 11.32：敵人詞綴（生成紀錄的 af、快照的 af）； 11.31：主線的潛入與撤離區段（探照燈塔 seclight、campView 的 sv、回收物資 salvage）； 11.30：洋上都市與高空軌道的街區、橋、下層平台改了（地圖生成不同）； 11.29：敵兵喊話每個事件 10 句（b_<事件>0～9）； 11.28：屏障的閃光 shieldFlare、無敵時間 inv 事件、bt 旗標 8＝脈衝裝甲； 11.27：客機輸入的 fp 3＝俯視的面向游標； 11.26：three.js r187（各端的模型與子彈發射點要同一版）
+export const NET_VERSION = '11.41'; // 11.41：改名 MECH CORDON（PeerJS／BroadcastChannel 的名稱、伺服器注入的全域變數）； 11.40：Boss 變難（結構損傷 sc、bt 的裝甲殼）； 11.38：拿掉區段類型「潛入」（舊版房主會開出新版不認得的潛入區段）； 11.37：大廳的房間模式「任務」ops（自由出擊的作戰設定，pvpSet.foSum）、紀錄點 cck 帶 free／fr； 11.36：潛入的改良（無線電倒數、局部警報、通訊中繼塔 relay、campView 的 sv.cl／lc）； 11.35：新主題方舟 ark 與 4 種專屬敵人、第 8 章、第 7、8 章的 6 隻新 Boss（anvil／salamander／gantry／deckgun／reactor／sovereign）； 11.34：新主題火山熔爐帶 volcano 與 4 種專屬敵人、熔岩； 11.33：主線的追擊、大規模戰場、大型兵器、空戰區段（campView 的 sv.rings、區段類型）、素材掉落 mat_*、零件掉落 lootPart、調校（pilot 的 tn）； 11.32：敵人詞綴（生成紀錄的 af、快照的 af）； 11.31：主線的潛入與撤離區段（探照燈塔 seclight、campView 的 sv、回收物資 salvage）； 11.30：洋上都市與高空軌道的街區、橋、下層平台改了（地圖生成不同）； 11.29：敵兵喊話每個事件 10 句（b_<事件>0～9）； 11.28：屏障的閃光 shieldFlare、無敵時間 inv 事件、bt 旗標 8＝脈衝裝甲； 11.27：客機輸入的 fp 3＝俯視的面向游標； 11.26：three.js r187（各端的模型與子彈發射點要同一版）
 export const PLAYER_PALS = ['player', 'ally', 'p3', 'p4'];
 export const PLAYER_COLORS = ['#5cc8ff', '#80ffb0', '#ffb060', '#d070ff'];
 export const SIGNALS = ['集火！', '救我！', '撤退！', '謝謝', '等等', '出發！'];
@@ -9,7 +9,7 @@ export const MAX_ROOMS = 8;
 // ICE：STUN + 免費 TURN 中繼（區網直連失敗時的備援；relay 模式會經網際網路繞一圈，延遲較高）
 function ICE_SERVERS() {
   const list = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
-  const mode = localStorage.getItem('rubicon_relay') || 'auto';
+  const mode = localStorage.getItem('mech_cordon_relay') || 'auto';
   if (mode !== 'off') {
     list.push({
       urls: [
@@ -21,7 +21,7 @@ function ICE_SERVERS() {
       credential: 'openrelayproject',
     });
     try {
-      const c = JSON.parse(localStorage.getItem('rubicon_turn') || 'null');
+      const c = JSON.parse(localStorage.getItem('mech_cordon_turn') || 'null');
       if (c && c.url) list.push({ urls: c.url, username: c.user || '', credential: c.pass || '' });
     } catch (e) {}
   }
@@ -32,7 +32,7 @@ export async function unmaskLocalIp(log) {
   try {
     const s = await navigator.mediaDevices.getUserMedia({ audio: true });
     s.getTracks().forEach((t) => t.stop());
-    localStorage.setItem('rubicon_unmask', '1');
+    localStorage.setItem('mech_cordon_unmask', '1');
     log('已取得權限：之後的連線會使用真實區網 IP（可重新按「連線診斷」確認 mDNS 匿名數變 0）');
     return true;
   } catch (e) {
@@ -195,7 +195,7 @@ export class LocalTransport {
     this.onConn = null;
     this.onMsg = null;
     this.onClose = null;
-    this.ch = new BroadcastChannel('rubicon-lan');
+    this.ch = new BroadcastChannel('mech-cordon-lan');
     this.ch.onmessage = (e) => this.recv(e.data);
     this.alive = new Map();
     this.hbLast = performance.now();
@@ -289,7 +289,7 @@ export class LocalTransport {
   }
 }
 
-// ---------- 伺服器中繼（方式 1：房主電腦跑 rubicon-server.exe，所有訊息經伺服器轉送） ----------
+// ---------- 伺服器中繼（方式 1：房主電腦跑 mech-cordon-server.exe，所有訊息經伺服器轉送） ----------
 export class WsTransport {
   constructor() {
     this.conns = new Map();

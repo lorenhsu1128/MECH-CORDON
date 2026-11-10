@@ -20,7 +20,7 @@
 ## 2. 整體結構
 
 ```
-自訂關卡（.rubicon-level，一個 JSON）
+自訂關卡（.mech-cordon-level，一個 JSON）
  ├ 底圖：主題、變體、種子（或空白）、時間、天候、作戰區域
  ├ 地形：高度圖（整張，絕對高度）＋水面高度
  ├ 物件：擺放的掩體、平台、坡道、可破壞物件、裝飾（＋移除的產生器物件）
@@ -244,7 +244,7 @@ UI 是卡片清單（不是節點圖），平板也好點：每個觸發器一�
 
 ```js
 {
-  format: 'rubicon-level', v: 2, gen: '10.1',   // 格式版本（2＝機甲三倍高改版：座標與高度是新尺度，v1 讀取時 migrateLevel 乘 3）、產生底圖的遊戲版本
+  format: 'mech-cordon-level', v: 2, gen: '10.1',   // 格式版本（2＝機甲三倍高改版：座標與高度是新尺度，v1 讀取時 migrateLevel 乘 3）、產生底圖的遊戲版本
   id: '…',               // 建立時隨機產生，改名不變
   name, desc, author,     // 文字一律在顯示時 escHtml
   created, updated,
@@ -272,14 +272,14 @@ UI 是卡片清單（不是節點圖），平板也好點：每個觸發器一�
 
 ### 8.2 本機
 
-- 獨立的 IndexedDB `rubicon-levels`（不碰存檔與模型庫的資料庫）：`levels`（鍵 id）＋自動存檔（每 30 秒與試玩前）。
-- 匯出／匯入 `.rubicon-level`（就是上面的 JSON）。
+- 獨立的 IndexedDB `mech-cordon-levels`（不碰存檔與模型庫的資料庫）：`levels`（鍵 id）＋自動存檔（每 30 秒與試玩前）。
+- 匯出／匯入 `.mech-cordon-level`（就是上面的 JSON）。
 
 ### 8.3 伺服器
 
 - `server-models/levels/<id>.json`＋`index.json`（名稱、作者、說明、縮圖、主題、人數建議、通關時間、上傳時間、遊玩次數、通關次數）。
 - API：`GET /api/levels`（清單，不含內容）、`GET /api/levels/<id>`、`PUT /api/levels/<id>`（需要作者金鑰）、`DELETE /api/levels/<id>`（需要作者金鑰）、`POST /api/levels/<id>/play`（遊玩／通關次數）。
-- 作者金鑰：瀏覽器第一次上傳時隨機產生（localStorage `rubicon_author`），伺服器存它的雜湊；只有同一把金鑰能覆寫、刪除（不同於渲染風格的「任何人都能刪」，因為關卡是作品）。伺服器控制台可以刪任何關卡。
+- 作者金鑰：瀏覽器第一次上傳時隨機產生（localStorage `mech_cordon_author`），伺服器存它的雜湊；只有同一把金鑰能覆寫、刪除（不同於渲染風格的「任何人都能刪」，因為關卡是作品）。伺服器控制台可以刪任何關卡。
 - 遊戲裡的「伺服器上的關卡」：清單（縮圖、名稱、作者、主題、通關率）、排序（最新／最多人玩）、搜尋、下載到本機、直接遊玩。
 
 ## 9. 多人

@@ -114,9 +114,7 @@ function hubInstrument() {
     await page.addInitScript(initScript);
     // 著色器預熱照玩家的瀏覽器走非同步（--sync 改回自動化測試的同步）；--nopre＝不在標題畫面先建作戰室
     if (!args.sync) await page.addInitScript(() => (window.__warmAsync = true));
-    await page.goto(
-      require('url').pathToFileURL(path.join(ROOT, 'dist/rubicon-protocol.html')).href + '?test',
-    );
+    await page.goto(require('url').pathToFileURL(path.join(ROOT, 'dist/mech-cordon.html')).href + '?test');
     await page.waitForFunction(() => window.__game, null, { timeout: 60000 });
     if (args.nopre) await page.evaluate(() => (window.__game.hubPre = 'done'));
     await sleep(args.nopre ? 1500 : 6000);
@@ -260,7 +258,7 @@ function hubInstrument() {
       await enter('重新整理後從標題進作戰室', true);
       console.log(
         '瀏覽器存的區域地形：',
-        await page.evaluate(() => (localStorage.getItem('rubicon_hub_tiles') || '').length),
+        await page.evaluate(() => (localStorage.getItem('mech_cordon_hub_tiles') || '').length),
         '字',
       );
     }

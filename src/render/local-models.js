@@ -1,15 +1,15 @@
 // 本地模型庫（只在單人模式套用）：讀取模型庫存在這個瀏覽器的 GLB 與關節設定，取代遊戲中的程式模型。
-// - 資料在模型庫的 IndexedDB（rubicon-model-library）；瀏覽器暫存以「來源」區分，遊戲與模型庫要用同一種方式開啟
+// - 資料在模型庫的 IndexedDB（mech-cordon-model-library）；瀏覽器暫存以「來源」區分，遊戲與模型庫要用同一種方式開啟
 //   （都從同一個伺服器網址，或都用 file://）才讀得到，讀不到就維持程式模型
-// - 設定（總開關＋分類開關＋模型組）存在 localStorage 的 rubicon_localmodels
+// - 設定（總開關＋分類開關＋模型組）存在 localStorage 的 mech_cordon_localmodels
 // - 模型組：機甲區塊與武器的 GLB、關節設定依設定的模型組讀取（全部機甲共用一組），其他分類共用
 // - 多人時一律停用（allow 由遊戲設定，有連線角色時回傳 false）；碰撞與判定一律維持程式模型的數值
 import { OUTLINE_MAT } from './geometry.js';
 import { glbScene, parseGlb, tintMaterial } from './glb.js';
 import { setJointOverrides } from './mech-joints.js';
 
-const DB = 'rubicon-model-library';
-const SETTINGS_KEY = 'rubicon_localmodels';
+const DB = 'mech-cordon-model-library';
+const SETTINGS_KEY = 'mech_cordon_localmodels';
 
 // 分類：槽位 id 的第一段 → 分類
 export const LM_GROUPS = [
@@ -105,13 +105,13 @@ export function cleanMechs(list) {
 // 三倍高改版的 GLB 重置：舊尺度做的本地模型庫整個清掉一次（所有模型組的 GLB 與關節設定、預設以外的模型組），
 // 本地模型庫設定關掉、模型庫回到預設模型組，所以遊戲的 GLB 一律用伺服器預設組（直接開檔時是內建預設機甲與程式模型）。
 // 遊戲（readDb）與模型庫（library/store.js 的 db()）誰先開啟誰做，做過記在 localStorage
-export const GLB_RESET_KEY = 'rubicon_glb_scale3x';
+export const GLB_RESET_KEY = 'mech_cordon_glb_scale3x';
 export function glbResetOnce(d) {
   let done = false;
   try {
     done = localStorage.getItem(GLB_RESET_KEY) === '1';
-    // 自動化測試不重置（測試自己放的資料），要測時先設 rubicon_glb_reset_test
-    if (navigator.webdriver && !localStorage.getItem('rubicon_glb_reset_test')) done = true;
+    // 自動化測試不重置（測試自己放的資料），要測時先設 mech_cordon_glb_reset_test
+    if (navigator.webdriver && !localStorage.getItem('mech_cordon_glb_reset_test')) done = true;
   } catch (e) {}
   if (done) return Promise.resolve(false);
   const mark = (off) => {
@@ -120,7 +120,7 @@ export function glbResetOnce(d) {
       if (!off) return;
       const st = loadSettings();
       localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...st, on: false, set: DEFAULT_SET }));
-      localStorage.removeItem('rubicon_modelset');
+      localStorage.removeItem('mech_cordon_modelset');
     } catch (e) {}
   };
   const names = ['models', 'setJoints', 'glb', 'joints', 'sets'].filter((n) =>

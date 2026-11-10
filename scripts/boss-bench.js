@@ -374,11 +374,9 @@ const buildDefs = (L) => ({
             return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
           };
           window.__reseed = (s) => (a = s >>> 0);
-          localStorage.setItem('rubicon_map', 'industrial');
+          localStorage.setItem('mech_cordon_map', 'industrial');
         });
-        await page.goto(
-          require('url').pathToFileURL(path.join(DIST, 'rubicon-protocol.html')).href + '?test',
-        );
+        await page.goto(require('url').pathToFileURL(path.join(DIST, 'mech-cordon.html')).href + '?test');
         await page.waitForFunction(() => window.__game && window.__skills && window.__mods, null, {
           timeout: 60000,
         });

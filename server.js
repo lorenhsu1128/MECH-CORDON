@@ -1,4 +1,4 @@
-// RUBICON PROTOCOL — 區網伺服器（網頁服務 + 房間登記 + WebSocket 中繼 + 控制台）
+// MECH CORDON — 區網伺服器（網頁服務 + 房間登記 + WebSocket 中繼 + 控制台）
 'use strict';
 const http = require('http'),
   https = require('https'),
@@ -10,14 +10,17 @@ const { WebSocketServer, WebSocket } = require('ws');
 const qrcode = require('qrcode-generator');
 
 const BASE = process.pkg ? path.dirname(process.execPath) : __dirname;
-const CFG_PATH = path.join(BASE, 'rubicon-server.json');
-// 遊戲頁：打包成 exe 時讀同資料夾的 rubicon-protocol.html；開發時讀 npm run build 的產物
+const CFG_PATH = path.join(BASE, 'mech-cordon-server.json');
+// 改名前（RUBICON PROTOCOL）的設定檔、憑證資料夾、環境變數：沒有新的時照樣用舊的
+const CFG_OLD = path.join(BASE, 'rubicon-server.json');
+const env = (k) => process.env['MECH_CORDON_' + k] || process.env['RUBICON_' + k];
+// 遊戲頁：打包成 exe 時讀同資料夾的 mech-cordon.html；開發時讀 npm run build 的產物
 const WEB_DIR = process.pkg ? BASE : path.join(__dirname, 'dist');
 const LIB_DIR = path.join(WEB_DIR, 'lib'); // 程式庫（同資料夾的 lib/）
 // 子專案的靜態網站（同資料夾的 apng/、paint/，在 /apng/、/paint/ 提供）
 const TOOL_DIRS = {
   apng: { dir: path.join(WEB_DIR, 'apng'), name: 'apng' }, // 文字動畫 APNG 產生器
-  paint: { dir: path.join(WEB_DIR, 'paint'), name: 'paint' }, // 貼圖繪製（Rubicon Paint）
+  paint: { dir: path.join(WEB_DIR, 'paint'), name: 'paint' }, // 貼圖繪製（Mech Cordon Paint）
 };
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -33,7 +36,7 @@ const CONTROL_PORT = 8090;
 const VERSION = '1.0';
 let cfg = { port: 80, httpsPort: 443, autoStart: true };
 try {
-  cfg = Object.assign(cfg, JSON.parse(fs.readFileSync(CFG_PATH, 'utf8')));
+  cfg = Object.assign(cfg, JSON.parse(fs.readFileSync(fs.existsSync(CFG_PATH) ? CFG_PATH : CFG_OLD, 'utf8')));
 } catch (e) {}
 function saveCfg() {
   try {
@@ -55,20 +58,20 @@ function localIPs() {
     for (const a of ifs[k]) if (a.family === 'IPv4' && !a.internal) out.push({ name: k, ip: a.address });
   return out;
 }
-// 模型庫（選用）：與遊戲頁放在同一個資料夾；同樣注入 RUBICON_SERVER（模型組選單多「伺服器預設組」）
+// 模型庫（選用）：與遊戲頁放在同一個資料夾；同樣注入 MECH_CORDON_SERVER（模型組選單多「伺服器預設組」）
 function libraryHtml() {
   const p = path.join(WEB_DIR, 'model-library.html');
   if (!fs.existsSync(p)) return null;
   return fs
     .readFileSync(p, 'utf8')
-    .replace('<head>', '<head><script>window.RUBICON_SERVER=' + JSON.stringify(VERSION) + ';</script>');
+    .replace('<head>', '<head><script>window.MECH_CORDON_SERVER=' + JSON.stringify(VERSION) + ';</script>');
 }
 
 // ===================== 伺服器模型組 =====================
 // server-models/default：伺服器預設組（所有分類的 GLB＋關節設定＋零件組合，manifest.json 記錄各槽位的雜湊）
-// server-models/uploads/<sha256>.rubicon-set：玩家上傳的模型組（內容雜湊當檔名，30 天沒用到就刪除）
+// server-models/uploads/<sha256>.mech-cordon-set：玩家上傳的模型組（內容雜湊當檔名，30 天沒用到就刪除）
 // 區網內任何人都能讀寫；寫入一律排隊執行，先寫暫存檔再改名
-const MODELS_DIR = process.env.RUBICON_MODELS_DIR || path.join(BASE, 'server-models');
+const MODELS_DIR = env('MODELS_DIR') || path.join(BASE, 'server-models');
 const DEF_DIR = path.join(MODELS_DIR, 'default');
 const UP_DIR = path.join(MODELS_DIR, 'uploads');
 const MAX_GLB = 64 * 1024 * 1024,
@@ -226,7 +229,7 @@ function migrateMechScale() {
 // 啟動時自動匯入伺服器預設組的內建來源：WEB_DIR/server-default/<槽位>.glb（建置時從 src/assets/server-default/ 複製到
 // dist/；exe 版放在 exe 旁）。每個槽位只匯入一次（manifest.seeded 記下匯入時的雜湊）：在模型庫刪掉的不會補回、
 // 自己換過的不覆蓋；來源換成新檔、而伺服器上還是當初匯入的那一份時才更新
-const SEED_DIR = process.env.RUBICON_SEED_DIR || path.join(WEB_DIR, 'server-default'); // 環境變數：冒煙測試改用別的資料夾
+const SEED_DIR = env('SEED_DIR') || path.join(WEB_DIR, 'server-default'); // 環境變數：冒煙測試改用別的資料夾
 function seedDefaults() {
   if (!fs.existsSync(SEED_DIR)) return null;
   const man = loadManifest();
@@ -281,13 +284,11 @@ function seedDefaults() {
   if (changed) saveManifest();
   return { add, upd, del };
 }
-// 開發模式（從專案執行 server.js、沒有用 RUBICON_MODELS_DIR 指定別的資料夾）：伺服器預設組的 GLB 寫入與刪除同時存回
+// 開發模式（從專案執行 server.js、沒有用 MECH_CORDON_MODELS_DIR 指定別的資料夾）：伺服器預設組的 GLB 寫入與刪除同時存回
 // src/assets/server-default/，commit 之後別台伺服器 pull 下來重啟就自動匯入；和內建的玩家預設機甲
 // （src/assets/player-mech/）相同的檔案不存（npm run publish:server 上傳的那些）
 const DEV_SEED =
-  !process.pkg && !process.env.RUBICON_MODELS_DIR
-    ? path.join(__dirname, 'src', 'assets', 'server-default')
-    : null;
+  !process.pkg && !env('MODELS_DIR') ? path.join(__dirname, 'src', 'assets', 'server-default') : null;
 const devSeedPath = (slot) => path.join(DEV_SEED, ...slot.split('/')) + '.glb';
 function devSeedPut(slot, body) {
   if (!DEV_SEED) return;
@@ -304,6 +305,13 @@ function devSeedDel(slot) {
 }
 function cleanUploads() {
   try {
+    // 改名前上傳的模型組（<sha256>.rubicon-set）：內容雜湊不變，換成新的副檔名
+    for (const f of fs.readdirSync(UP_DIR))
+      if (f.endsWith('.rubicon-set'))
+        fs.renameSync(
+          path.join(UP_DIR, f),
+          path.join(UP_DIR, f.replace(/\.rubicon-set$/, '.mech-cordon-set')),
+        );
     const old = Date.now() - 30 * 86400e3;
     for (const f of fs.readdirSync(UP_DIR)) {
       const p = path.join(UP_DIR, f);
@@ -315,7 +323,7 @@ function modelsSummary() {
   const m = loadManifest();
   let uploads = 0;
   try {
-    uploads = fs.readdirSync(UP_DIR).filter((f) => f.endsWith('.rubicon-set')).length;
+    uploads = fs.readdirSync(UP_DIR).filter((f) => f.endsWith('.mech-cordon-set')).length;
   } catch (e) {}
   return {
     glb: Object.keys(m.models).length,
@@ -511,7 +519,8 @@ async function modelsApi(req, resp, u, q) {
       } catch (e) {
         return bad('JSON 格式錯誤');
       }
-      if (!L || L.format !== 'rubicon-level' || L.id !== id) return bad('不是這個編號的自訂關卡');
+      if (!L || (L.format !== 'mech-cordon-level' && L.format !== 'rubicon-level') || L.id !== id)
+        return bad('不是這個編號的自訂關卡');
       if (!L.clear || !(L.clear.t > 0)) return bad('上傳前要先自己通關一次');
       const B = L.base || {};
       const meta = {
@@ -550,7 +559,7 @@ async function modelsApi(req, resp, u, q) {
     return bad('不支援的操作', 405);
   }
   if ((m = /^\/api\/sets\/([0-9a-f]{64})$/.exec(u))) {
-    const f = path.join(UP_DIR, m[1] + '.rubicon-set');
+    const f = path.join(UP_DIR, m[1] + '.mech-cordon-set');
     if (M === 'GET' && q.get('check')) return json({ exists: fs.existsSync(f) }); // 上傳前確認（不回 404）
     if (M === 'GET' || M === 'HEAD') {
       if (fs.existsSync(f)) {
@@ -575,24 +584,29 @@ async function modelsApi(req, resp, u, q) {
   return false;
 }
 function gameHtml() {
-  const p = path.join(WEB_DIR, 'rubicon-protocol.html');
+  const p = path.join(WEB_DIR, 'mech-cordon.html');
   if (!fs.existsSync(p)) return null;
   let h = fs.readFileSync(p, 'utf8');
-  // RUBICON_HTTPS：安全連線的 port（眼動追蹤要開攝影機，區網的 http 網址不行，遊戲的設定畫面提示改用 https）
-  const hp = game && game.httpsPort ? ';window.RUBICON_HTTPS=' + game.httpsPort : '';
+  // MECH_CORDON_HTTPS：安全連線的 port（眼動追蹤要開攝影機，區網的 http 網址不行，遊戲的設定畫面提示改用 https）
+  const hp = game && game.httpsPort ? ';window.MECH_CORDON_HTTPS=' + game.httpsPort : '';
   h = h.replace(
     '<head>',
-    '<head><script>window.RUBICON_SERVER=' + JSON.stringify(VERSION) + hp + ';</script>',
+    '<head><script>window.MECH_CORDON_SERVER=' + JSON.stringify(VERSION) + hp + ';</script>',
   );
   return h;
 }
 
 // ===================== 安全連線（自簽憑證） =====================
 // 瀏覽器只在安全環境（https、localhost、file://）開放攝影機，眼動追蹤（docs/gaze-design.md）從別台電腦連進來時要用 https。
-// 憑證放在 rubicon-cert/cert.json（開發時是專案根目錄、exe 版是 exe 旁；RUBICON_CERT_DIR 可改位置），提交進 git、
-// 建置時複製到 dist/rubicon-cert/，所以別台電腦 pull 下來就有同一張；沒有或快過期時才產生新的（10 年）。
+// 憑證放在 mech-cordon-cert/cert.json（開發時是專案根目錄、exe 版是 exe 旁；MECH_CORDON_CERT_DIR 可改位置），提交進 git、
+// 建置時複製到 dist/mech-cordon-cert/，所以別台電腦 pull 下來就有同一張；沒有或快過期時才產生新的（10 年）。
 // 自簽的憑證瀏覽器一律會警告一次（按「進階 → 繼續前往」），主體別名和目前的 IP 不同也一樣可以繼續，所以 IP 變了不重新產生
-const CERT_DIR = process.env.RUBICON_CERT_DIR || path.join(BASE, 'rubicon-cert');
+const CERT_DIR =
+  env('CERT_DIR') ||
+  (!fs.existsSync(path.join(BASE, 'mech-cordon-cert', 'cert.json')) &&
+  fs.existsSync(path.join(BASE, 'rubicon-cert', 'cert.json'))
+    ? path.join(BASE, 'rubicon-cert')
+    : path.join(BASE, 'mech-cordon-cert'));
 const CERT_FILE = path.join(CERT_DIR, 'cert.json');
 function certNames() {
   return ['localhost', os.hostname().toLowerCase(), '127.0.0.1', ...localIPs().map((i) => i.ip)];
@@ -606,7 +620,7 @@ async function loadCert() {
   const selfsigned = require('selfsigned');
   const until = new Date(Date.now() + 3650 * 864e5);
   const isIp = (n) => /^\d+\.\d+\.\d+\.\d+$/.test(n);
-  const pem = await selfsigned.generate([{ name: 'commonName', value: 'RUBICON PROTOCOL LAN Server' }], {
+  const pem = await selfsigned.generate([{ name: 'commonName', value: 'MECH CORDON LAN Server' }], {
     keySize: 2048,
     algorithm: 'sha256',
     notAfterDate: until,
@@ -666,8 +680,8 @@ function startGame(port) {
       return rej(
         new Error(
           process.pkg
-            ? '找不到 rubicon-protocol.html（請放在與執行檔相同的資料夾）'
-            : '找不到 dist/rubicon-protocol.html（請先執行 npm run build）',
+            ? '找不到 mech-cordon.html（請放在與執行檔相同的資料夾）'
+            : '找不到 dist/mech-cordon.html（請先執行 npm run build）',
         ),
       );
     const peers = new Map(),
@@ -713,7 +727,7 @@ function startGame(port) {
           });
         return;
       }
-      if (u === '/' || u === '/index.html' || u === '/rubicon-protocol.html') {
+      if (u === '/' || u === '/index.html' || u === '/mech-cordon.html' || u === '/rubicon-protocol.html') {
         const h = gameHtml();
         resp.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
         resp.end(h);
@@ -935,9 +949,9 @@ function stopGame() {
 
 // ===================== 控制台（固定 8090，任何位址可連） =====================
 function controlPage() {
-  return `<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RUBICON 伺服器控制台</title>
+  return `<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MECH CORDON 伺服器控制台</title>
 <style>body{margin:0;background:#0f1319;color:#e6edf3;font:14px/1.6 "Noto Sans TC",system-ui,sans-serif}.wrap{max-width:980px;margin:0 auto;padding:20px}h1{font-size:20px;margin:0 0 6px;color:#ffb020;letter-spacing:.1em}h2{font-size:15px;margin:22px 0 8px;color:#5cc8ff}.card{background:#171c24;border:1px solid #2a3644;border-radius:6px;padding:14px 16px;margin:10px 0}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}button{font:inherit;padding:7px 16px;border:1px solid #3a4655;background:#222a35;color:#e6edf3;cursor:pointer;border-radius:4px}button.p{background:#ffb020;color:#111;border-color:#ffb020;font-weight:700}button.d{background:#5a1f24;border-color:#8a2a32}button:disabled{opacity:.4;cursor:default}input{font:inherit;background:#0f1319;color:#e6edf3;border:1px solid #3a4655;padding:6px 10px;border-radius:4px;width:90px}.st{display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:700}.on{background:#1f6b3a;color:#b6ffcf}.off{background:#5a1f24;color:#ffb6b6}table{border-collapse:collapse;width:100%;font-size:13px}th,td{border-bottom:1px solid #2a3644;padding:6px 8px;text-align:left}th{color:#9aa6b6;font-weight:400}pre{background:#0b0e13;border:1px solid #2a3644;padding:10px;height:180px;overflow:auto;font-size:12px;margin:0}.qr{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}.qr img{background:#fff;padding:6px;border-radius:4px}.dim{color:#9aa6b6}code{background:#0b0e13;padding:2px 6px;border-radius:3px}</style></head><body><div class="wrap">
-<h1>RUBICON PROTOCOL — 伺服器控制台</h1><div class="dim">版本 ${VERSION} · 控制台 port 8090 · 遊戲網頁與房間中繼由下方遊戲伺服器提供</div>
+<h1>MECH CORDON — 伺服器控制台</h1><div class="dim">版本 ${VERSION} · 控制台 port 8090 · 遊戲網頁與房間中繼由下方遊戲伺服器提供</div>
 <div class="card"><div class="row"><span>狀態：<span id="st" class="st off">停止</span></span><span>遊戲 port <input id="port" type="number" min="1" max="65535"></span><span title="安全連線（自簽憑證）：眼動追蹤要開攝影機，別台電腦要用 https 網址；0＝不開">HTTPS port <input id="hport" type="number" min="0" max="65535"></span><button class="p" id="bStart">啟動</button><button id="bStop">停止</button><button id="bRestart">重啟</button><button class="d" id="bQuit">結束程式</button><span id="err" style="color:#ff8a8a"></span></div>
 <div class="dim" style="margin-top:8px">port 80 被佔用時（IIS／Skype／其他網頁伺服器）請改用 8080 等其他 port。第一次啟動請在 Windows 防火牆詢問時按「允許」。<br>https 網址用自簽憑證：第一次開啟時瀏覽器會警告，按「進階 → 繼續前往」即可（要在遊戲裡用眼動追蹤的電腦才需要 https）。</div></div>
 <h2>玩家連線位址（區網內用瀏覽器開啟即可玩單機或多人）</h2><div class="card qr" id="addrs"></div>
@@ -1095,4 +1109,4 @@ process.on('SIGINT', async () => {
   await stopGame();
   process.exit(0);
 });
-console.log('RUBICON PROTOCOL Server v' + VERSION + '  —  關閉此視窗即停止伺服器');
+console.log('MECH CORDON Server v' + VERSION + '  —  關閉此視窗即停止伺服器');

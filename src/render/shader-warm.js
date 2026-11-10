@@ -6,7 +6,7 @@
 // 只記風格著色器（MeshStandardMaterial／MeshPhysicalMaterial，onBeforeCompile 呼叫 noteStyleVariant）。
 import { RIG_SRC } from './mesh-merge.js';
 
-const KEY = 'rubicon_shader_warm2'; // r187 的參數名稱（r128 時的紀錄 rubicon_shader_warm 不再用）
+const KEY = 'mech_cordon_shader_warm2'; // r187 的參數名稱（r128 時的紀錄 mech_cordon_shader_warm 不再用）
 const MAX = 96;
 // 變體的欄位（three.js r187 WebGLPrograms.getParameters 的名稱）
 const FIELDS = [
@@ -57,7 +57,8 @@ function load() {
 // p：onBeforeCompile 收到的程式參數；mat：材質
 export function noteStyleVariant(p, mat) {
   // 貼花與 MeshPhysicalMaterial 不記（r128 的標準材質的 shaderID 也是 'physical'，所以看材質本身）
-  if (!WARM.rec || !p || mat.isMeshPhysicalMaterial || p.customProgramCacheKey !== 'rubicon-style-2') return;
+  if (!WARM.rec || !p || mat.isMeshPhysicalMaterial || p.customProgramCacheKey !== 'mech-cordon-style-2')
+    return;
   const d = {};
   for (const k of FIELDS) if (p[k]) d[k] = p[k];
   if (p.opaque === false) d[TRANSP] = 1;

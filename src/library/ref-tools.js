@@ -1,5 +1,5 @@
 // 參考圖、正交視圖與快速姿勢（組裝調整頁、檢視窗的組合預覽、GLB 編輯器的全身參考共用）
-// - 參考圖：每個模型組一套（正面、側面各一張＋校正值），存在獨立的 IndexedDB（rubicon-ref-images，
+// - 參考圖：每個模型組一套（正面、側面各一張＋校正值），存在獨立的 IndexedDB（mech-cordon-ref-images，
 //   不動模型庫資料庫的版本），匯出／匯入模型組時一起帶（set-pack.js 的 refs/）
 // - 校正：在圖上拖頭頂、腳底與身體中心三條線，依「目標身高」（空白＝遊戲身高）換算成公尺；
 //   圖片放在機甲背後的平面上，腳底中心對準機甲原點（地面）
@@ -31,7 +31,7 @@ export const RefStore = {
   open() {
     if (this.db) return this.db;
     this.db = new Promise((res, rej) => {
-      const r = indexedDB.open('rubicon-ref-images', 1);
+      const r = indexedDB.open('mech-cordon-ref-images', 1);
       r.onupgradeneeded = () => r.result.createObjectStore('refs');
       r.onsuccess = () => res(r.result);
       r.onerror = () => rej(r.error);

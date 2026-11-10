@@ -1,8 +1,8 @@
 // 把伺服器預設組的來源發佈到執行中的伺服器：內建的玩家預設機甲（src/assets/player-mech/ 的 GLB＋joints.json）
 // 與地圖物件等其他槽位（src/assets/server-default/，檔名＝槽位 id，例如 prop/rock.glb）
 // npm run publish:server -- [--host=http://127.0.0.1:80] [--src=資料夾（只發佈這一個）] [--force] [--keep]
-// - 透過執行中的 rubicon-server 的 API（/api/models/default/…）寫入，伺服器不用重新啟動；
-//   沒給 --host 時讀專案根目錄的 rubicon-server.json 的 port（預設 80）
+// - 透過執行中的 mech-cordon-server 的 API（/api/models/default/…）寫入，伺服器不用重新啟動；
+//   沒給 --host 時讀專案根目錄的 mech-cordon-server.json 的 port（預設 80）
 // - 內容雜湊和伺服器上相同的 GLB 略過（--force 全部重傳）
 // - 伺服器上有、來源資料夾沒有的機甲區塊與武器（head／core／arms／legs／booster／weapon／back）移除（--keep 保留）；
 //   載具、地圖物件、小物件只上傳、不移除（伺服器上刪掉的槽位要在模型庫刪）
@@ -22,7 +22,7 @@ const MECH_CATS = ['head', 'core', 'arms', 'legs', 'booster', 'weapon', 'back'];
 function defaultHost() {
   let port = 80;
   try {
-    port = JSON.parse(fs.readFileSync(path.join(ROOT, 'rubicon-server.json'), 'utf8')).port || 80;
+    port = JSON.parse(fs.readFileSync(path.join(ROOT, 'mech-cordon-server.json'), 'utf8')).port || 80;
   } catch (e) {}
   return 'http://127.0.0.1' + (port === 80 ? '' : ':' + port);
 }
@@ -55,7 +55,7 @@ async function main() {
   try {
     man = await api(host, '/api/models/default');
   } catch (e) {
-    console.error(`連不到伺服器 ${host}（先啟動 rubicon-server）：${e.message}`);
+    console.error(`連不到伺服器 ${host}（先啟動 mech-cordon-server）：${e.message}`);
     process.exit(1);
   }
   const files = srcs.flatMap((src) => listGlb(src).map((f) => [src, f]));

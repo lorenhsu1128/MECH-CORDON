@@ -3,7 +3,7 @@
 // - 中：3D 機甲（目前模型組的 GLB）、時間軸（招式進度 0～1，依招式長度播放）、關鍵影格的位置
 // - 右：關鍵影格清單（時間、緩動）與選取的關鍵影格的各關節數值（度）
 // 修改的只是覆寫（this.data：{ v, clips, map }，沒改過的片段與對應用預設）。「存到瀏覽器」＝單人遊戲用
-// （localStorage rubicon_melee_anim）；要變成內建（多人也用）就匯出 melee.json 覆蓋 src/assets/anims/melee.json 後重新建置。
+// （localStorage mech_cordon_melee_anim）；要變成內建（多人也用）就匯出 melee.json 覆蓋 src/assets/anims/melee.json 後重新建置。
 import { escHtml } from '../core/html.js';
 import { FIST_DEF, PARTS, START_ASM } from '../data/parts.js';
 import { meleeAll, meleeMove } from '../data/melee.js';

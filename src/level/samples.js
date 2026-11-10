@@ -74,20 +74,20 @@ const base = (theme, level, np = 1) => ({
   np,
 });
 const meta = (id, name, desc) => ({
-  format: 'rubicon-level',
+  format: 'mech-cordon-level',
   v: 1,
   gen: '1',
   id,
   name,
   desc,
-  author: 'RUBICON',
+  author: 'MECH CORDON',
   created: T0,
   updated: T0,
   thumb: '',
   terrain: { n: 0, h: '', water: null },
   removed: [],
   segs: null,
-  clear: { by: 'RUBICON', t: 1, at: T0 },
+  clear: { by: 'MECH CORDON', t: 1, at: T0 },
 });
 
 function patrolDemo() {

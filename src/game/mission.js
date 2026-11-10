@@ -242,10 +242,10 @@ Object.assign(Game.prototype, {
     this.fx.ring(new THREE.Vector3(cx, this.world.terrainHeight(cx, cz) + 0.1, cz), 6, 0x80ffb0);
   },
 
-  // ---------- 地圖選擇（localStorage rubicon_map：主題 key，空字串＝隨機）----------
+  // ---------- 地圖選擇（localStorage mech_cordon_map：主題 key，空字串＝隨機）----------
   mapPref() {
     try {
-      const k = localStorage.getItem('rubicon_map') || '';
+      const k = localStorage.getItem('mech_cordon_map') || '';
       return THEMES[k] ? k : '';
     } catch (e) {
       return '';
@@ -253,23 +253,23 @@ Object.assign(Game.prototype, {
   },
   setMapPref(k) {
     try {
-      localStorage.setItem('rubicon_map', THEMES[k] ? k : '');
+      localStorage.setItem('mech_cordon_map', THEMES[k] ? k : '');
     } catch (e) {}
   },
   mapName(k) {
     return THEMES[k] ? THEMES[k].name : '隨機';
   },
-  // 主題變體（localStorage rubicon_variant：''＝隨機、'base'＝標準、其餘＝變體 key）
+  // 主題變體（localStorage mech_cordon_variant：''＝隨機、'base'＝標準、其餘＝變體 key）
   variantPref() {
     try {
-      return localStorage.getItem('rubicon_variant') || '';
+      return localStorage.getItem('mech_cordon_variant') || '';
     } catch (e) {
       return '';
     }
   },
   setVariantPref(k) {
     try {
-      localStorage.setItem('rubicon_variant', k || '');
+      localStorage.setItem('mech_cordon_variant', k || '');
     } catch (e) {}
   },
   // 依選擇決定這次的變體：隨機時一半標準、一半隨機變體；選的變體不屬於這個主題時用標準。

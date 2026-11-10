@@ -9,7 +9,7 @@
   const HISTORY_MAX = 40;
   const HISTORY_BYTES = 1e9; // 復原紀錄的像素上限（大貼圖時步數跟著變少）
 
-  // 貼花組：材質名稱都是 RUBICON PROTOCOL 的換色槽位、有底圖的貼圖組（例如內建的預設機甲）。
+  // 貼花組：材質名稱都是 MECH CORDON 的換色槽位、有底圖的貼圖組（例如內建的預設機甲）。
   // 底圖是灰階、遊戲依配色換色，所以「底圖」與標成「底圖（可換色）」的圖層合成可換色的底圖，
   // 其他圖層合成貼花層（另存，疊在換色之後）：固定色的照畫的顏色，指定色槽的跟著那個色槽換色。
   const PALETTE_SLOTS = ['main', 'main2', 'main3', 'sub', 'acc', 'joint', 'visor', 'glow', 'gun', 'grey'];
@@ -1009,7 +1009,9 @@
           s.h = Math.round(s.h * k);
         }
         for (const m of s.materials) {
-          if (m.userData.rubicon_decal) s.decalSrc = m.userData.rubicon_decal;
+          const dc = m.userData.mech_cordon_decal || m.userData.rubicon_decal; // rubicon_decal：改名前的 GLB
+          if (dc) s.decalSrc = dc;
+          delete m.userData.mech_cordon_decal;
           delete m.userData.rubicon_decal; // GLTFExporter 會把 userData 寫回 extras（匯出時另外寫）
         }
         s.syncMatrices();

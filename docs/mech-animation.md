@@ -60,7 +60,7 @@ AC 機甲（人形機甲：二足、逆關節，部分適用四足與履帶）�
 ### 近戰的關鍵影格（`render/melee-anim.js`）
 
 - 片段 `{ name, keys: [{ t, e, p }] }`：t＝招式進度 0～1（招式長度與判定照武器資料，不受動作影響），e＝到這一格的緩動（io／out／in／lin／back／hold），p＝關節的值（度；壓低是公尺）。關節：上身扭轉、上身、下半身朝向、壓低、頭、左右上臂／前臂／手上武器、左右大腿／膝／腳掌。每個關節各自一條軌跡，沒寫的關節照程式算的姿勢。片段是為右手做的，左手武器左右鏡像。
-- 預設片段 `TEMPLATES`（橫斬、逆斬、突刺、下劈、迴旋斬、大斬、爪、撞擊、樁擊、直拳、勾拳、重擊、近戰連擊加的上挑 upper 與踢 kick…）與武器的對應 `DEFAULT_MAP`（段號是 `combo` 接 `moves` 的索引，招式有 `clip` 時用它；見 `docs/melee-combo-design.md`）；內建覆寫 `src/assets/anims/melee.json`（`{ v, clips, map }`）；單人時用模型庫動作編輯器存在瀏覽器的版本（localStorage `rubicon_melee_anim`，`lmRefresh` 重新讀；多人一律內建）。
+- 預設片段 `TEMPLATES`（橫斬、逆斬、突刺、下劈、迴旋斬、大斬、爪、撞擊、樁擊、直拳、勾拳、重擊、近戰連擊加的上挑 upper 與踢 kick…）與武器的對應 `DEFAULT_MAP`（段號是 `combo` 接 `moves` 的索引，招式有 `clip` 時用它；見 `docs/melee-combo-design.md`）；內建覆寫 `src/assets/anims/melee.json`（`{ v, clips, map }`）；單人時用模型庫動作編輯器存在瀏覽器的版本（localStorage `mech_cordon_melee_anim`，`lmRefresh` 重新讀；多人一律內建）。
 - `animateMech`：`st.melee.clip` 有片段時，片段寫到的關節改用比較硬的彈簧 `SP.clip` 跟著片段（`CO`），扭轉 `an.tw`、壓低加到 crouch；迴旋斬轉完一圈換回 ±180° 以內。
 
 ### 動作編輯器（模型庫的「動作編輯」，`library/motion.js`，網址 `#motion`）

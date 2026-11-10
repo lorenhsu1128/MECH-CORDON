@@ -1,10 +1,11 @@
-// 自訂關卡的檔案格式（.rubicon-level，一個 JSON；設計見 docs/level-editor-design.md）：
+// 自訂關卡的檔案格式（.mech-cordon-level，一個 JSON；設計見 docs/level-editor-design.md）：
 // 欄位定義、上限、讀檔的驗證（sanitizeLevel：別人做的關卡一律先經過它）、高度圖編碼、
 // 觸發器的事件／條件／動作表（編輯器的表單與執行時共用）。純資料，不碰 THREE 與 DOM。
 
 import { DEVICES } from '../data/devices.js';
 
-export const LEVEL_FORMAT = 'rubicon-level';
+export const LEVEL_FORMAT = 'mech-cordon-level';
+export const LEVEL_FORMAT_OLD = 'rubicon-level'; // 改名前（RUBICON PROTOCOL）的關卡：照樣讀，存檔時換成新的
 export const LEVEL_V = 2; // 2：三倍高改版（座標與高度乘 LEVEL_K，舊檔在 migrateLevel 轉換）
 export const LEVEL_K = 3; // 尺度的倍率（core/scale.js 的 WS；這裡是純資料，不 import）
 export const LIMITS = {
@@ -428,7 +429,8 @@ export function newLevel(base = {}) {
 // 讀檔一律經過這裡：限制數量、範圍、字串長度；不認得的項目略過（warn 收集提示）。
 // known＝{ themes: Set, props: Set, units: (type) => bool, variants: (theme, key) => bool }，由呼叫端提供（避免這裡 import 遊戲資料）
 export function sanitizeLevel(raw, known, warn = []) {
-  if (!raw || typeof raw !== 'object' || raw.format !== LEVEL_FORMAT) throw new Error('不是自訂關卡檔');
+  if (!raw || typeof raw !== 'object' || (raw.format !== LEVEL_FORMAT && raw.format !== LEVEL_FORMAT_OLD))
+    throw new Error('不是自訂關卡檔');
   const L = migrateLevel(JSON.parse(JSON.stringify(raw)));
   const lim = 260 * LEVEL_K; // 座標範圍（場地 ±345 m，留一點餘裕）
   const xyz = (o) => ({

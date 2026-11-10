@@ -1,4 +1,4 @@
-伺服器預設組的地圖物件 GLB（npm run publish:server 上傳到執行中的 rubicon-server；遊戲與模型庫不內嵌，伺服器組刪掉某一格就恢復程式模型）。
+伺服器預設組的地圖物件 GLB（npm run publish:server 上傳到執行中的 mech-cordon-server；遊戲與模型庫不內嵌，伺服器組刪掉某一格就恢復程式模型）。
 檔名＝槽位 id（prop/<物件>.glb），以模型庫的代表尺寸製作、glTF 座標（+Z 正面）；岩石類的材質名稱是 main（遊戲換成主題的岩石色，貼圖是灰階）。
 Poly Haven（https://polyhaven.com，CC0 1.0）：
   rock＝namaqualand_boulder_04；sandstone＝namaqualand_boulder_04；rock_spire＝namaqualand_cliff_01（轉成直立）；debris＝namaqualand_boulder_05；

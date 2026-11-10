@@ -13,7 +13,7 @@
 
 - **素材**：`@mediapipe/tasks-vision`（devDependency，Apache-2.0）＋臉部模型 `src/assets/gaze/face_landmarker.task`
   （Apache-2.0，`CREDITS.txt`）。`scripts/build.js` 的 `writeGaze` 寫成 `dist/lib/gaze-assets.js`（約 25 MB）：
-  打包後的 JS（`window.RUBICON_GAZE_LIB`＝{ FaceLandmarker, FilesetResolver }）＋`window.RUBICON_GAZE`＝
+  打包後的 JS（`window.MECH_CORDON_GAZE_LIB`＝{ FaceLandmarker, FilesetResolver }）＋`window.MECH_CORDON_GAZE`＝
   { loader: wasm 載入程式（文字）, wasm: base64, model: base64 }。不內嵌在 HTML，打開眼動追蹤時才以 `<script>` 載入。
   直接開檔時不能 fetch 本地檔案，所以載入程式與 wasm 換成 **blob 網址**交給 `createFromOptions`（data 網址不行），
   模型用 `modelAssetBuffer`。顯示卡（GPU delegate）失敗時改用 CPU。MediaPipe 把 INFO／glog 的訊息印到
@@ -51,9 +51,9 @@
   - 校準畫面（`#gazeCal`，`gazeCalOpen`）：攝影機預覽（鏡像）與是否偵測到臉 → 9 點（每點 1.6 秒：0.6 秒移動與穩定、
     之後每個新的偵測結果算一筆）→ 擬合 → 驗證 5 點（每點取中位數，報平均誤差 px 與畫面高的比例：6% 以下很好、
     11% 以下可以用）→ 驗證的資料加進去重新擬合 → 藍點即時顯示注視點。Esc／取消還原原本的校準；手把照選單規則操作。
-- **設定與存檔**：`ctrl.gaze`＝{ on, lock, head, dwell, headMode, dot, cam, tune }（`rubicon_ctrl`；舊版的速度倍率 `headK`
-  讀檔時搬進調校的全域靈敏度）；設定組合 `rubicon_gaze_presets`；校準結果
-  `rubicon_gaze`＝{ v, M: { mu, sd, w }, err, t, pts（驗證點的結果）, bias（快速修正的偏差） }（和裝置與坐姿有關，不放進設定）。
+- **設定與存檔**：`ctrl.gaze`＝{ on, lock, head, dwell, headMode, dot, cam, tune }（`mech_cordon_ctrl`；舊版的速度倍率 `headK`
+  讀檔時搬進調校的全域靈敏度）；設定組合 `mech_cordon_gaze_presets`；校準結果
+  `mech_cordon_gaze`＝{ v, M: { mu, sd, w }, err, t, pts（驗證點的結果）, bias（快速修正的偏差） }（和裝置與坐姿有關，不放進設定）。
 
 ## 調校（2026-11-03，參考 LookPilot）
 
@@ -75,8 +75,8 @@ Roll 與 X／Y／Z 移動軸和這個遊戲無關，不做。LookPilot 的官方
     靈敏度、最大輸入（5～60°）、死區與平滑度（乘在全域上的倍率，0～2）、偏移（只有偏移模式）、反向、不對稱（兩個方向各一條曲線）。
   - 眼睛：校準、快速修正偏移、清除偏移修正、上一次的驗證結果圖、注視點的平滑度、眨眼門檻、顯示注視點；這一頁開著時畫出注視點。
   - 攝影機：選攝影機（`enumerateDevices`）、解析度 640×480／1280×720、預覽鏡像、重新開啟。
-  - 設定組合：內建 4 組（標準、穩定、靈敏、戴眼鏡／光線差）＋自己的（存成新的、改名、刪除、匯出 `.rubicon-gaze.json`
-    ＝{ app: 'rubicon-gaze', v, name, tune }、匯入）；置中位置與校準結果不存進設定組合（和攝影機、坐姿有關）。
+  - 設定組合：內建 4 組（標準、穩定、靈敏、戴眼鏡／光線差）＋自己的（存成新的、改名、刪除、匯出 `.mech-cordon-gaze.json`
+    ＝{ app: 'mech-cordon-gaze', v, name, tune }、匯入）；置中位置與校準結果不存進設定組合（和攝影機、坐姿有關）。
   - 改的值立刻存檔（`gazeTuneSet` → `tuneSanitize`）；標題旁顯示目前符合哪一組設定組合（都不符合＝自訂）。
   - **坑**：攝影機的 `<video>` 被移出頁面時瀏覽器會暫停播放，偵測就停住（第一版放在分頁的內容裡，切分頁、套用設定組合時
     `innerHTML` 重畫把它移走，之後整個眼動追蹤停擺）。影像一律放在不會重畫的地方（調校視窗的即時追蹤欄、校準畫面、平時
@@ -98,11 +98,11 @@ Roll 與 X／Y／Z 移動軸和這個遊戲無關，不做。LookPilot 的官方
 瀏覽器只在 https、localhost、file:// 提供 `getUserMedia`，別台電腦用 `http://192.168.x.x` 連進來時拿不到攝影機。
 `server.js` 在遊戲 port 之外開 https（`cfg.httpsPort`，預設 443，控制台可以改，0＝不開；被佔用時只記日誌）：
 同一個處理函式、WebSocket 中繼改成 `noServer` 讓 http 與 https 的 upgrade 都交給同一個 `wss`。
-憑證是 `rubicon-cert/cert.json`（`selfsigned` 產生，RSA 2048／SHA-256，10 年，主體別名 localhost、電腦名稱、
-127.0.0.1、產生時的區網 IP）：**提交進 git**，建置時複製到 `dist/rubicon-cert/`（exe 版讀 exe 旁的），所以別台電腦
+憑證是 `mech-cordon-cert/cert.json`（`selfsigned` 產生，RSA 2048／SHA-256，10 年，主體別名 localhost、電腦名稱、
+127.0.0.1、產生時的區網 IP）：**提交進 git**，建置時複製到 `dist/mech-cordon-cert/`（exe 版讀 exe 旁的），所以別台電腦
 pull 下來就是同一張；只有沒有或快過期時才重新產生（IP 不同不重產——自簽的憑證一律會警告一次，名稱不符也一樣可以
-「繼續前往」）。私鑰在版本庫裡，只適合區網遊戲，不是真正的安全保護。遊戲頁注入 `window.RUBICON_HTTPS`（port），
-設定畫面據此給出 https 網址；控制台在每個區網位址旁列出 https 網址。`RUBICON_CERT_DIR` 可改憑證的位置
+「繼續前往」）。私鑰在版本庫裡，只適合區網遊戲，不是真正的安全保護。遊戲頁注入 `window.MECH_CORDON_HTTPS`（port），
+設定畫面據此給出 https 網址；控制台在每個區網位址旁列出 https 網址。`MECH_CORDON_CERT_DIR` 可改憑證的位置
 （冒煙測試指到暫存資料夾）。
 
 ## 測試
@@ -114,7 +114,7 @@ pull 下來就是同一張；只有沒有或快過期時才重新產生（IP 不
 設定組合的存檔／匯出／套用／匯入、快速修正偏移、攝影機分頁、Esc 關閉）。最後用瀏覽器內建的假攝影機
 （`--use-fake-device-for-media-stream`，冒煙測試的瀏覽器都帶這個參數）測真的影像：調校視窗切遍分頁、套用設定組合、
 關閉之後影像一直在頁面裡播放、偵測次數持續增加、每個分頁都有即時追蹤欄。`server` 另外檢查 https 的 /health、
-`RUBICON_HTTPS` 的注入與 wss 中繼。真的攝影機只能由人實際試。
+`MECH_CORDON_HTTPS` 的注入與 wss 中繼。真的攝影機只能由人實際試。
 
 ## 之後可以做
 

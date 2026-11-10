@@ -26,9 +26,9 @@
 ## 檔案與載入
 
 - `src/assets/sfx/*.mp3`：原本的 83 個，照舊內嵌在 HTML（介面音、載入前就要有的聲音）。
-- `src/assets/sfx2/*.mp3`：新增的分層素材（單聲道、44.1 kHz、依用途 64～96 kbps），建置成 `dist/lib/sfx-assets.js`（`window.RUBICON_SFX2`），遊戲啟動後載入（`SFX.loadPack`）；**載到之前所有配方都退回原本的樣本**（配方的每一層找不到檔案就略過，主層有 `fb` 後備）。
-- `src/assets/bgm/*.mp3`：任務中的配樂（立體聲 80 kbps，21 首、約 20 MB），建置成 `dist/lib/bgm-assets.js`（`window.RUBICON_BGM`），第一次進任務才載入。
-- `src/assets/voice/echo/*.mp3`＋`index.json`：ECHO 的語音（單聲道 24 kHz、32 kbps），建置成 `dist/lib/voice-assets.js`（`window.RUBICON_VOICE`＝{ 雜湊: base64 }），第一次播通訊時載入。
+- `src/assets/sfx2/*.mp3`：新增的分層素材（單聲道、44.1 kHz、依用途 64～96 kbps），建置成 `dist/lib/sfx-assets.js`（`window.MECH_CORDON_SFX2`），遊戲啟動後載入（`SFX.loadPack`）；**載到之前所有配方都退回原本的樣本**（配方的每一層找不到檔案就略過，主層有 `fb` 後備）。
+- `src/assets/bgm/*.mp3`：任務中的配樂（立體聲 80 kbps，21 首、約 20 MB），建置成 `dist/lib/bgm-assets.js`（`window.MECH_CORDON_BGM`），第一次進任務才載入。
+- `src/assets/voice/echo/*.mp3`＋`index.json`：ECHO 的語音（單聲道 24 kHz、32 kbps），建置成 `dist/lib/voice-assets.js`（`window.MECH_CORDON_VOICE`＝{ 雜湊: base64 }），第一次播通訊時載入。
 - 各資料夾的 `CREDITS.txt` 照 `src/assets/music/` 的格式寫來源與授權，建置時寫進產生的 js 檔頭。
 
 ## 第 1 期：混音管理
@@ -136,15 +136,15 @@
 - **整合方式**：方案 A，先產生再內建（和 Kokoro 版相同：產生音檔 → `lib/*.js`，直接開檔、多人都能用）。沒選的：伺服器即時產生（要 Python＋顯示卡，exe 帶不了）、瀏覽器內執行（社群的 WebGPU ONNX 移植約 1.9 GB、實驗性質、file:// 讀不到）。
 - **聲音**：只參考二次元遊戲的**選角類型**，用文字描述產生，**不克隆任何遊戲的原聲**（配音員的聲音與錄音都有權利，克隆後散布不行）。6 種類型（冷靜管制官、溫柔知性、AI 系統感、慵懶酷系、成熟低音、可愛活潑）× 3 個候選（種子）。聲音設計每次的音色不同，所以每個候選先用描述產生第 1 句，其他句子拿那一句當參考音檔克隆，音色才一致；正式產生全部台詞時也這樣做。
 - **口音**：先只在描述裡寫「台灣口音」試（VoxCPM2 的方言清單沒有台灣口音）；不夠時再考慮克隆有授權的台灣口音參考錄音或 LoRA 微調（5～10 分鐘的錄音）。
-- **試聽**：`scripts/voice-audition.py` → `src/assets/voice-audition/`（`<候選>-<台詞>.mp3`＋`index.json`；參考音檔在 gitignore 的 `ref/`）→ `dist/lib/voice-audition.js`（`RUBICON_VOICE_AUD`，`'@index'` 是說明）。標題的「ECHO 語音試聽」（`game/voice-lab.js`，`state` 'voicelab'）：7 句試聽台詞 × 18 個候選的格子、同一句依序比較、音色（原音／駕駛艙／無線電）、評分與備註（localStorage `rubicon_voice_aud`）、複製評分。
+- **試聽**：`scripts/voice-audition.py` → `src/assets/voice-audition/`（`<候選>-<台詞>.mp3`＋`index.json`；參考音檔在 gitignore 的 `ref/`）→ `dist/lib/voice-audition.js`（`MECH_CORDON_VOICE_AUD`，`'@index'` 是說明）。標題的「ECHO 語音試聽」（`game/voice-lab.js`，`state` 'voicelab'）：7 句試聽台詞 × 18 個候選的格子、同一句依序比較、音色（原音／駕駛艙／無線電）、評分與備註（localStorage `mech_cordon_voice_aud`）、複製評分。
 - **選定**（2026-11-01 使用者）：溫柔知性 #2 與 AI 系統感 #3 兩個都配進遊戲，設定頁切換；範圍＝全部（通訊、序章與章節畫面、系統提示、增援預告）＋過場動畫裡 ECHO 的字幕；每句產生 2 次挑好的；試聽頁保留。
 
 ### ECHO 的語音（VoxCPM2，兩個聲音）
 
-- **播放**：d32068a 的 `game/voice.js`／`data/voice.js` 放回來（通訊 `voiceSay`、系統提示 `voiceCue`、增援預告 `voiceSeq`、劇情畫面 `voiceStory`、說話時壓低音效與配樂、無線電／駕駛艙的音色），改成兩個聲音：設定「ECHO 的聲音」`ctrl.voice`＝gentle 溫柔知性（預設）／ai AI 系統感／off（舊設定的 on／comm 當成 gentle）；`data/voice.js` 的 `VOICE_IDS`。語音檔每個聲音一個 `lib/voice-<聲音>.js`（`RUBICON_VOICE_<聲音>`），只載入選的那個，換聲音時清掉解碼過的。換聲音時試聽一句。
+- **播放**：d32068a 的 `game/voice.js`／`data/voice.js` 放回來（通訊 `voiceSay`、系統提示 `voiceCue`、增援預告 `voiceSeq`、劇情畫面 `voiceStory`、說話時壓低音效與配樂、無線電／駕駛艙的音色），改成兩個聲音：設定「ECHO 的聲音」`ctrl.voice`＝gentle 溫柔知性（預設）／ai AI 系統感／off（舊設定的 on／comm 當成 gentle）；`data/voice.js` 的 `VOICE_IDS`。語音檔每個聲音一個 `lib/voice-<聲音>.js`（`MECH_CORDON_VOICE_<聲音>`），只載入選的那個，換聲音時清掉解碼過的。換聲音時試聽一句。
 - **過場動畫**：`cineSub` 遇到 who 是 echo 的字幕就 `voiceSay`；跳時間、暫停、略過時停掉。
 - **台詞**：`scripts/voice-lines.js` 收集 364 句（通訊、程式裡的 `commSay('echo', …)`、劇情畫面、系統提示、過場動畫（每個周目 × 抉擇的組合都產生一次劇本））→ `src/assets/voice/lines.json`＝{ 鍵: { t 台詞, k 情境 } }；情境（alarm 緊急的系統提示、sys、comm、story、cine、private 私人頻道、end 結局與記憶片段）決定語氣指示（`voice-gen.py` 的 `STYLE`，有「！」再加「語氣有力」）。
-- **產生**（`scripts/voice-gen.py`）：參考音檔＝試聽那個候選的第 1 句（`src/assets/voice/ref/<聲音>.flac`），VoxCPM2 的 controllable cloning 每句 2 次 → faster-whisper（large-v3）轉寫、只比中文字的相似度（英文名字與數字的寫法不算），長度不合理的扣分，留最像的；太低的寫進 `src/assets/voice/<聲音>/report.txt`，`--retry` 再產生 2 次重挑。唸法：「ECHO」這類 4 個字母以上的全大寫名字改成一般大小寫照單字唸（試聽時全大寫被逐字母唸成「一差丑」），AP、AC、COAM 照字母；R-07 唸「R 零七」；「……」換成停頓。響度以 RMS 對齊，24 kHz 單聲道 40 kbps。暫存的每一次產生放在系統暫存的 `rubicon-voice-takes/`。
+- **產生**（`scripts/voice-gen.py`）：參考音檔＝試聽那個候選的第 1 句（`src/assets/voice/ref/<聲音>.flac`），VoxCPM2 的 controllable cloning 每句 2 次 → faster-whisper（large-v3）轉寫、只比中文字的相似度（英文名字與數字的寫法不算），長度不合理的扣分，留最像的；太低的寫進 `src/assets/voice/<聲音>/report.txt`，`--retry` 再產生 2 次重挑。唸法：「ECHO」這類 4 個字母以上的全大寫名字改成一般大小寫照單字唸（試聽時全大寫被逐字母唸成「一差丑」），AP、AC、COAM 照字母；R-07 唸「R 零七」；「……」換成停頓。響度以 RMS 對齊，24 kHz 單聲道 40 kbps。暫存的每一次產生放在系統暫存的 `mech-cordon-voice-takes/`。
 
 ### 其他角色的語音與敵兵的喊話（2026-11-01）
 
@@ -181,8 +181,8 @@
 
 - 使用者回報目前的任務配樂（Kevin MacLeod）聽起來很 MIDI、單調，要多種樂器合奏的曲子。候選只收 CC0／CC-BY（不收 SA／ND／NC，也不收 Pixabay 授權）：
   Scott Buckley（CC-BY 4.0，混合交響，scottbuckley.com.au）15 首、Alexander Nakarada（CC-BY 4.0，交響＋金屬／電子）7 首、Alex-Productions（CC-BY 3.0，賽博龐克電子＋電影感）9 首、Punch Deck（CC-BY 3.0）1 首、OpenGameArt 的 nene「Boss Battle #2 [Symphonic Metal]」、Emma_MA「Determined Pursuit」「QaziJamJam」（CC0）、Fato_Shadow_Music「War Machine」（CC-BY 4.0），共 36 首；Nakarada、Alex-Productions、Punch Deck 從 free-stock-music.com 下載（每首的頁面都確認過授權）。
-- `scripts/bgm-audition.py <資料夾>` 依建議用途挑 60 秒片段 → `src/assets/bgm-audition/`（`index.json` 曲名、作者、授權、來源、說明；`CREDITS.txt`）→ 建置成 `dist/lib/bgm-audition.js`（`window.RUBICON_BGM_AUD`，約 28 MB，打開試聽頁才載入）。
-- 標題的「配樂試聽」（`game/bgm-lab.js`，`state` 'bgmlab'）：播放／停止、進度條點一下跳轉、依建議用途篩選、每首勾選用在探索／警戒／交戰／Boss／空域、評分、備註（localStorage `rubicon_bgm_aud`），「複製勾選結果」依用途整理成文字；最下面可以播目前的配樂比較。冒煙測試 `testBgmLab`。
+- `scripts/bgm-audition.py <資料夾>` 依建議用途挑 60 秒片段 → `src/assets/bgm-audition/`（`index.json` 曲名、作者、授權、來源、說明；`CREDITS.txt`）→ 建置成 `dist/lib/bgm-audition.js`（`window.MECH_CORDON_BGM_AUD`，約 28 MB，打開試聽頁才載入）。
+- 標題的「配樂試聽」（`game/bgm-lab.js`，`state` 'bgmlab'）：播放／停止、進度條點一下跳轉、依建議用途篩選、每首勾選用在探索／警戒／交戰／Boss／空域、評分、備註（localStorage `mech_cordon_bgm_aud`），「複製勾選結果」依用途整理成文字；最下面可以播目前的配樂比較。冒煙測試 `testBgmLab`。
 - 使用者請開發者直接選：探索＝Signal To Noise／Penumbra／The Long Dark；警戒＝Eyes In The Void／Electrorchestra／Escape Velocity／Hidden；交戰＝Simulacra／Terminus／Chase／Epic Cyberpunk／Determined Pursuit／QaziJamJam；Boss＝Goliath／Vanguard／Hellfire／The Great Battle／Boss Battle #2；空域＝Sentinel／Born Of The Sky／Starfire。`scripts/bgm-prep.py` 的 `TRACKS` 記來源檔與授權，`raw` 是原本就做成循環的（整首照用），執行時重寫 `src/assets/bgm/CREDITS.txt`；`game/bgm.js` 的 `SETS`／`AIR_SET`。nene 的 zip 裡檔名是反的（`*_opening.wav` 才能無縫循環，量過接縫）。
 - 之後要換曲：在試聽頁聽、改 `TRACKS` 與 `SETS`，重跑 `bgm-prep.py`。
 

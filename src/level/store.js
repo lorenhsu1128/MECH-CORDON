@@ -1,8 +1,8 @@
-// 自訂關卡的儲存：本機 IndexedDB `rubicon-levels`（不碰存檔與模型庫的資料庫）、匯出／匯入 .rubicon-level、
+// 自訂關卡的儲存：本機 IndexedDB `mech-cordon-levels`（不碰存檔與模型庫的資料庫）、匯出／匯入 .mech-cordon-level、
 // 區網伺服器的上傳（要作者金鑰，只有作者能覆寫與刪除）、下載、清單與遊玩次數。
 import { sha256Hex } from '../core/sha256.js';
 
-const DB = 'rubicon-levels';
+const DB = 'mech-cordon-levels';
 let dbp = null;
 function db() {
   if (dbp) return dbp;
@@ -53,20 +53,20 @@ export const LevelStore = {
   authorKey() {
     let k = null;
     try {
-      k = localStorage.getItem('rubicon_author');
+      k = localStorage.getItem('mech_cordon_author');
     } catch (e) {}
     if (!k || k.length < 16) {
       const c = 'abcdefghijklmnopqrstuvwxyz0123456789';
       k = '';
       for (let i = 0; i < 32; i++) k += c[Math.floor(Math.random() * c.length)];
       try {
-        localStorage.setItem('rubicon_author', k);
+        localStorage.setItem('mech_cordon_author', k);
       } catch (e) {}
     }
     return k;
   },
   get serverOn() {
-    return !!window.RUBICON_SERVER;
+    return !!window.MECH_CORDON_SERVER;
   },
   async serverList() {
     const r = await fetch('/api/levels', { cache: 'no-store' });
@@ -106,7 +106,7 @@ export const LevelStore = {
   // 我上傳過的（記在 localStorage，清單顯示「我的」與刪除按鈕；伺服器以金鑰另外檢查）
   mine() {
     try {
-      return JSON.parse(localStorage.getItem('rubicon_author_lv') || '[]');
+      return JSON.parse(localStorage.getItem('mech_cordon_author_lv') || '[]');
     } catch (e) {
       return [];
     }
@@ -116,7 +116,7 @@ export const LevelStore = {
     if (on) s.add(id);
     else s.delete(id);
     try {
-      localStorage.setItem('rubicon_author_lv', JSON.stringify([...s]));
+      localStorage.setItem('mech_cordon_author_lv', JSON.stringify([...s]));
     } catch (e) {}
   },
   hash: (L) => LevelStore.hashTxt(JSON.stringify(L)),
@@ -125,7 +125,7 @@ export const LevelStore = {
     const blob = new Blob([JSON.stringify(L)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = (L.name || 'level').replace(/[\\/:*?"<>|]/g, '_') + '.rubicon-level';
+    a.download = (L.name || 'level').replace(/[\\/:*?"<>|]/g, '_') + '.mech-cordon-level';
     document.body.appendChild(a);
     a.click();
     setTimeout(() => {

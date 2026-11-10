@@ -2,7 +2,7 @@
 
 export const STR = {
   'zh-TW': {
-    title: 'RUBICON PROTOCOL 文字動畫 APNG 產生器',
+    title: 'MECH CORDON 文字動畫 APNG 產生器',
     lead: '製作「戰鬥開始」切入畫面、預告片式的文字演出、地點與時間字幕等 TRPG 用的文字動畫 APNG 素材。全部在瀏覽器內完成。',
     themeLight: '淺色模式（點一下切換為深色）', themeDark: '深色模式（點一下切換為淺色）',
     modes: {

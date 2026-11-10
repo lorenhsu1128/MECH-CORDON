@@ -45,7 +45,7 @@ Object.assign(Game.prototype, {
       const user = prompt('帳號', '') || '';
       const pass = prompt('密碼', '') || '';
       try {
-        localStorage.setItem('rubicon_turn', JSON.stringify({ url, user, pass }));
+        localStorage.setItem('mech_cordon_turn', JSON.stringify({ url, user, pass }));
       } catch (e) {}
       this.net.log(url ? '已設定自訂中繼：' + url : '已清除自訂中繼');
     };
@@ -53,10 +53,10 @@ Object.assign(Game.prototype, {
       this.net.log('診斷中（約 4 秒）…');
       iceDiag((t) => this.net.log(t)).catch((e) => this.net.log('診斷失敗：' + e.message));
     };
-    $('mpRelay').value = localStorage.getItem('rubicon_relay') || 'auto';
+    $('mpRelay').value = localStorage.getItem('mech_cordon_relay') || 'auto';
     $('mpRelay').onchange = (e) => {
       try {
-        localStorage.setItem('rubicon_relay', e.target.value);
+        localStorage.setItem('mech_cordon_relay', e.target.value);
       } catch (x) {}
     };
     $('btnMPHost').onclick = () => this.mpHost();
@@ -77,7 +77,7 @@ Object.assign(Game.prototype, {
     $('mpNick').onchange = (e) => {
       this.net.nick = e.target.value.trim().slice(0, 12);
       try {
-        localStorage.setItem('rubicon_nick', this.net.nick);
+        localStorage.setItem('mech_cordon_nick', this.net.nick);
       } catch (x) {}
     };
     $('btnLobbyGarage').onclick = () => {
@@ -138,7 +138,7 @@ Object.assign(Game.prototype, {
       this.net.log('請先輸入暱稱');
       return;
     }
-    if (localStorage.getItem('rubicon_unmask') === '1') await unmaskLocalIp(() => {});
+    if (localStorage.getItem('mech_cordon_unmask') === '1') await unmaskLocalIp(() => {});
     this.net.log('建立房間中…');
     try {
       await this.net.host(this.net.nick + ' 的房');
@@ -154,7 +154,7 @@ Object.assign(Game.prototype, {
       this.net.log('請先輸入暱稱');
       return;
     }
-    if (localStorage.getItem('rubicon_unmask') === '1') await unmaskLocalIp(() => {});
+    if (localStorage.getItem('mech_cordon_unmask') === '1') await unmaskLocalIp(() => {});
     this.net.log('搜尋附近的房間…');
     const el = document.getElementById('mpRooms');
     el.innerHTML = '';
@@ -217,7 +217,7 @@ Object.assign(Game.prototype, {
     setTimeout(() => {
       this.net.joining = false;
     }, 8000);
-    if (localStorage.getItem('rubicon_unmask') === '1') await unmaskLocalIp(() => {});
+    if (localStorage.getItem('mech_cordon_unmask') === '1') await unmaskLocalIp(() => {});
     this.net.log('送出加入請求…');
     try {
       await this.net.join(peerId);

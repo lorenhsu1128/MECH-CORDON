@@ -1,5 +1,5 @@
-// Game：存檔（三個存檔槽 localStorage rubicon_save_1～3，目前的槽位 rubicon_save_cur）與存檔畫面；
-// 作戰室的存檔終端（docs/hub-ui.md 第六期）與抉擇前備份（rubicon_save_bk_1～3）
+// Game：存檔（三個存檔槽 localStorage mech_cordon_save_1～3，目前的槽位 mech_cordon_save_cur）與存檔畫面；
+// 作戰室的存檔終端（docs/hub-ui.md 第六期）與抉擇前備份（mech_cordon_save_bk_1～3）
 import { isBossLevel } from '../data/enemies.js';
 import { SORTIES } from '../data/campaign.js';
 import { CHAPTER_NAMES } from '../data/story.js';
@@ -12,11 +12,12 @@ import { SFX } from '../audio/audio.js';
 import { Game } from './game.js';
 
 const SLOTS = [1, 2, 3];
-const slotKey = (i) => 'rubicon_save_' + i;
-const CUR_KEY = 'rubicon_save_cur';
-const OLD_KEY = 'rubicon_save'; // 單一存檔的舊版：第一次啟動時搬進存檔 1，舊鍵保留當備份
-const FORMAT = 'rubicon-save';
-const bkKey = (i) => 'rubicon_save_bk_' + i; // 抉擇前備份：每個槽位最近一份（不佔槽位）
+const slotKey = (i) => 'mech_cordon_save_' + i;
+const CUR_KEY = 'mech_cordon_save_cur';
+const OLD_KEY = 'mech_cordon_save'; // 單一存檔的舊版：第一次啟動時搬進存檔 1，舊鍵保留當備份
+const FORMAT = 'mech-cordon-save';
+const FORMAT_OLD = 'rubicon-save'; // 改名前（RUBICON PROTOCOL）匯出的存檔
+const bkKey = (i) => 'mech_cordon_save_bk_' + i; // 抉擇前備份：每個槽位最近一份（不佔槽位）
 
 const num = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
 // 讀檔與匯入共用：補齊欄位、修正型別（零件 id 不認得時 partById 會退回預設零件）
@@ -96,7 +97,7 @@ Object.assign(Game.prototype, {
       eq: {},
     };
   },
-  // 啟動時呼叫：舊版單一存檔搬進存檔 1（以 rubicon_save_cur 是否存在判斷是否搬過），決定目前的槽位
+  // 啟動時呼叫：舊版單一存檔搬進存檔 1（以 mech_cordon_save_cur 是否存在判斷是否搬過），決定目前的槽位
   initSaves() {
     try {
       if (localStorage.getItem(CUR_KEY) === null) {
@@ -113,6 +114,22 @@ Object.assign(Game.prototype, {
   },
   readSlot(i) {
     return readKey(slotKey(i));
+  },
+  // 轉換舊存檔（game/legacy.js）用：整理成目前版本的存檔、存檔卡片的一行摘要
+  saveParse(o) {
+    return normalizeSave(o);
+  },
+  saveInfo(s) {
+    const L = s.level;
+    return [
+      `任務 ${String(L).padStart(2, '0')}${isBossLevel(L) ? '（決戰）' : ''}`,
+      `COAM ${s.coam.toLocaleString()}`,
+      `駕駛員 PvE Lv${levelOf(s.pilot.pve.xp)}／PvP Lv${levelOf(s.pilot.pvp.xp)}`,
+      `擊破 ${s.kills}${s.bosses ? `（魔王 ${s.bosses}）` : ''}`,
+    ];
+  },
+  saveTime(s) {
+    return fmtTime(s && s.t);
   },
   loadSave() {
     return this.readSlot(this.saveSlot || 1);
@@ -181,13 +198,7 @@ Object.assign(Game.prototype, {
       if (!s)
         return `<div class="saveCard empty${cur}" data-slot="${i}">${head}<p class="dim">（空）</p><div class="row">
           <button class="primary" data-act="new">新的傭兵生涯</button><button data-act="imp">匯入</button></div></div>`;
-      const L = s.level;
-      const info = [
-        `任務 ${String(L).padStart(2, '0')}${isBossLevel(L) ? '（決戰）' : ''}`,
-        `COAM ${s.coam.toLocaleString()}`,
-        `駕駛員 PvE Lv${levelOf(s.pilot.pve.xp)}／PvP Lv${levelOf(s.pilot.pvp.xp)}`,
-        `擊破 ${s.kills}${s.bosses ? `（魔王 ${s.bosses}）` : ''}`,
-      ];
+      const info = this.saveInfo(s);
       return `<div class="saveCard${cur}" data-slot="${i}">${head}<p>${info.map(escHtml).join(' ｜ ')}</p>
         <p class="dim" style="font-size: 12px">最後遊玩 ${escHtml(fmtTime(s.t))}</p><div class="row">
         <button class="primary" data-act="cont">繼續</button><button data-act="exp">匯出</button
@@ -251,7 +262,7 @@ Object.assign(Game.prototype, {
     if (!s) return;
     const d = new Date();
     const p = (n) => String(n).padStart(2, '0');
-    const name = `rubicon-save-${i}-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}.json`;
+    const name = `mech-cordon-save-${i}-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}.json`;
     const blob = new Blob([JSON.stringify({ format: FORMAT, v: 1, save: s }, null, 1)], {
       type: 'application/json',
     });
@@ -270,9 +281,9 @@ Object.assign(Game.prototype, {
     let data = null;
     try {
       const o = JSON.parse(await file.text());
-      if (o && o.format === FORMAT) data = normalizeSave(o.save);
+      if (o && (o.format === FORMAT || o.format === FORMAT_OLD)) data = normalizeSave(o.save);
     } catch (e) {}
-    if (!data) return this.savesMsg('不是 RUBICON PROTOCOL 的存檔檔案（.json）', true);
+    if (!data) return this.savesMsg('不是 MECH CORDON（或舊版 RUBICON PROTOCOL）的存檔檔案（.json）', true);
     // 從作戰室的存檔終端匯入：覆蓋時用確認視窗
     if (this.importHub) {
       this.importHub = false;

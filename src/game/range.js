@@ -15,8 +15,8 @@ import { PALETTES } from '../render/materials.js';
 import { World } from '../world/world.js';
 import { Game } from './game.js';
 
-const CFG_KEY = 'rubicon_range';
-const LOG_KEY = 'rubicon_range_log';
+const CFG_KEY = 'mech_cordon_range';
+const LOG_KEY = 'mech_cordon_range_log';
 const LOG_MAX = 12;
 const WIN = 5; // 「最近 5 秒」的 DPS
 const BEH = { static: '靜止', strafe: '橫移', turret: '原地開火', ai: '完整 AI' };

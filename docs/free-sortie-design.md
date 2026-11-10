@@ -24,7 +24,7 @@
 - 結果畫面的「確定」回機甲庫；失敗畫面的「回作戰室」換成「回機甲庫」（放棄這次出擊）。
 - 獎勵：完成報酬＝`(2000＋2000×等級)×段數`（約等於主線同等級的出擊）×危險條款倍率；經驗照主線的算法。
 
-## 作戰設定（localStorage `rubicon_freeops`，`data/free-ops.js` 的 `foSanitize`）
+## 作戰設定（localStorage `mech_cordon_freeops`，`data/free-ops.js` 的 `foSanitize`）
 
 | 欄位                                   | 內容                                                                             |
 | -------------------------------------- | -------------------------------------------------------------------------------- |
@@ -56,7 +56,7 @@
 - 第 1～4 期一次做完（2026-11-09）：
   - `data/free-ops.js`：選項表、`foSanitize`、`freeSortie`（臨時出擊與排程）、`foReward`、`foChapter`（等級 → 章，詞綴機率與 Boss 刁鑽度用）。
   - `game/free-ops.js`：畫面（`renderFreeOps`、`foSegHtml` 等）、機甲庫的摘要 `garageOpsUi`（單人時機甲庫設定頁的地圖選單隱藏，
-    「依等級」的地圖與變體改在作戰設定裡選，仍寫 `rubicon_map`／`rubicon_variant`）、決定區段 `foResolveSeg`、`foBegin`。
+    「依等級」的地圖與變體改在作戰設定裡選，仍寫 `mech_cordon_map`／`mech_cordon_variant`）、決定區段 `foResolveSeg`、`foBegin`。
     機甲庫的「出擊」經過 `freeGo`。
   - 主線端的改動：`campBegin` 的 `o.free`／`o.plan`／`o.types`；紀錄點 `campCkGet`／`campCkSet`；
     `campEnd`、`campFail`（`campFailBtns`）、`campQuitAsk`、`campChoiceCine`、`campComm` 的自由出擊分支；

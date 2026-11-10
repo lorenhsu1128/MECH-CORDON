@@ -2,7 +2,7 @@
 // - 左：特效清單、它的層（發射器）、新增／複製／刪除層、還原、存檔與匯出
 // - 中：預覽（顯示卡粒子 fx/gpu.js，和遊戲同一套；旁邊一台機甲當比例的參考）、尺度 S、顏色、間隔、渲染風格的色階
 // - 右：選取的層的欄位（空白＝不用這個欄位）
-// 「存到瀏覽器」＝遊戲也用（localStorage rubicon_fx_presets，只有外觀，多人各端各自的也沒關係）；
+// 「存到瀏覽器」＝遊戲也用（localStorage mech_cordon_fx_presets，只有外觀，多人各端各自的也沒關係）；
 // 要變成內建就匯出 presets.json 覆蓋 src/assets/fx/presets.json 後重新建置。
 import { escHtml } from '../core/html.js';
 import { START_ASM } from '../data/parts.js';

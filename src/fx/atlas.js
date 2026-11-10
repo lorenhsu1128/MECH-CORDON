@@ -255,28 +255,28 @@ export function fxAtlasTex() {
   return t;
 }
 
-// 載入 lib/fx-assets.js（window.RUBICON_FX＝{ 'atlas.png': base64 }）；只做一次，回傳 Promise<boolean>
+// 載入 lib/fx-assets.js（window.MECH_CORDON_FX＝{ 'atlas.png': base64 }）；只做一次，回傳 Promise<boolean>
 export function loadFxAssets() {
   if (FXA.p) return FXA.p;
   FXA.p = (async () => {
     try {
-      if (!window.RUBICON_FX) {
+      if (!window.MECH_CORDON_FX) {
         const ok = await new Promise((res) => {
           const s = document.createElement('script');
           s.src = 'lib/fx-assets.js';
-          s.onload = () => res(!!window.RUBICON_FX);
+          s.onload = () => res(!!window.MECH_CORDON_FX);
           s.onerror = () => res(false);
           document.head.appendChild(s);
         });
         if (!ok) throw new Error('沒有 lib/fx-assets.js');
       }
       const img = new Image();
-      img.src = 'data:image/png;base64,' + window.RUBICON_FX['atlas.png'];
+      img.src = 'data:image/png;base64,' + window.MECH_CORDON_FX['atlas.png'];
       await img.decode();
       const tex = fxAtlasTex();
       tex.image = buildCanvas(img);
       tex.needsUpdate = true;
-      window.RUBICON_FX = null;
+      window.MECH_CORDON_FX = null;
       FXA.ready = true;
     } catch (e) {
       console.warn('粒子貼圖載入失敗，改用程式產生的：', e && e.message);

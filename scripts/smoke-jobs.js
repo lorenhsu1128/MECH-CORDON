@@ -305,7 +305,7 @@ async function coordinate({ units, jobs: n, args, root, shotDir }) {
           j.units.map((u) => u.keys.join('+')).join('、'),
       );
   });
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rubicon-smoke-'));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mech-cordon-smoke-'));
   const opt = { args, root, tmp };
   const all = phases.flat();
   const recs = {};

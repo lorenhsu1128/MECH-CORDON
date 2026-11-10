@@ -3,6 +3,7 @@ import { Game } from './game/game.js';
 
 import './game/render-setup.js';
 import './game/save.js';
+import './game/legacy.js';
 import './game/input.js';
 import './game/settings.js';
 import './game/local-lib.js';

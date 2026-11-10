@@ -526,7 +526,7 @@ function toast(msg, action) {
 /* ---------- 主題・介面文字 ---------- */
 
 function applyTheme() {
-  // 預設深色（與 RUBICON PROTOCOL 本體一致）
+  // 預設深色（與 MECH CORDON 本體一致）
   const t = app.store.theme || 'dark';
   document.documentElement.dataset.theme = t;
   $('themeBtn').title = t === 'dark' ? str().themeDark : str().themeLight;

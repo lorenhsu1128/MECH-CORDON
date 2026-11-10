@@ -371,7 +371,7 @@ Object.assign(Game.prototype, {
     {
       let ro = {};
       try {
-        ro = JSON.parse(localStorage.getItem('rubicon_render') || '{}') || {};
+        ro = JSON.parse(localStorage.getItem('mech_cordon_render') || '{}') || {};
       } catch (e) {}
       $('ctrlRenderMode').value = ro.mode === 'classic' ? 'classic' : 'hdr';
       $('ctrlColorMgmt').value = ro.cm === false ? '' : '1';
@@ -442,7 +442,7 @@ Object.assign(Game.prototype, {
       else SFX.ui('ok');
     };
   },
-  // 動作 IK：和渲染風格實驗室的面板共用開關（rubicon_ik），任務中也能改、立即生效
+  // 動作 IK：和渲染風格實驗室的面板共用開關（mech_cordon_ik），任務中也能改、立即生效
   renderIkSettings() {
     const box = $('ikBox');
     box.innerHTML =

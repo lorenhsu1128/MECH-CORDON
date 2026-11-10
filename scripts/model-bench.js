@@ -98,7 +98,7 @@ async function maps(browser) {
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   });
-  await page.goto(url('rubicon-protocol.html'));
+  await page.goto(url('mech-cordon.html'));
   await page.waitForFunction(
     () => {
       const t = document.getElementById('title');
@@ -118,8 +118,8 @@ async function maps(browser) {
   for (const key of MAPS) {
     const t0 = Date.now();
     await page.evaluate((key) => {
-      localStorage.setItem('rubicon_map', key);
-      localStorage.setItem('rubicon_variant', 'base');
+      localStorage.setItem('mech_cordon_map', key);
+      localStorage.setItem('mech_cordon_variant', 'base');
       const g = window.__game;
       g.save.level = 1;
       window.__reseed(7777); // 出擊前重設亂數：每個版本的地圖相同

@@ -33,7 +33,7 @@ const TILE_N = 64;
 // 區域地形的取樣結果存在瀏覽器（localStorage）：同一個「主題|種子|選項」的地圖每次生成都一樣，下次開網頁不用重算
 // （2026-11-08 量到第 8 章的存檔第一次進作戰室，8 個區域一格建一張地圖，每格卡 0.25～0.9 秒）。
 // 版本＝網路協定的版本（新主題、地圖生成改了都會提高）＋這裡的格式
-const TILE_LS = 'rubicon_hub_tiles';
+const TILE_LS = 'mech_cordon_hub_tiles';
 const TILE_V = NET_VERSION + '/1';
 const TILE_KEEP = 16; // 最多留幾塊（最近用過的優先）
 let tileDisk = null;

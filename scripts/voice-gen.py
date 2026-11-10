@@ -38,7 +38,7 @@ import soundfile as sf
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 VDIR = os.path.join(ROOT, 'src', 'assets', 'voice')
-TAKES = os.path.join(tempfile.gettempdir(), 'rubicon-voice-takes')
+TAKES = os.path.join(tempfile.gettempdir(), 'mech-cordon-voice-takes')
 ACCENT = '帶台灣口音的國語，'
 # 描述要明講性別（只寫「男性」常常產生女聲）：男＝前面加「男聲」、後面加「聲音低沉的男人」
 GENDER = {'m': ('男聲，', '，聲音低沉的男人'), 'f': ('女聲，', ''), 'x': ('', '')}

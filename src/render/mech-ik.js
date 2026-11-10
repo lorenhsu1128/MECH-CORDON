@@ -4,11 +4,11 @@
 // 只在遊戲中（MechEntity）使用；模型庫、車庫、組裝調整不套用（存檔一律是拉直靜止姿勢）。
 // 骨頭長度一律在執行時從關節群組的世界座標量（連接點可被關節設定與 GLB 原點改變）。
 // 手臂瞄準與壓低骨盆會移動手的位置，也就是子彈發射點（MechEntity.muzzle）；多人只在房主計算子彈，各端不必一致。
-// 開關存在 localStorage rubicon_ik（渲染風格實驗室的「動作 IK」面板）。
+// 開關存在 localStorage mech_cordon_ik（渲染風格實驗室的「動作 IK」面板）。
 import { clamp, lerp } from '../core/math.js';
 import { OUTLINE_MAT } from './geometry.js';
 
-const KEY = 'rubicon_ik';
+const KEY = 'mech_cordon_ik';
 // [鍵, 名稱, 說明]
 export const IK_ITEMS = [
   ['feet', '腳部貼地', '二足／逆關節的腳踩在斜坡、坡道與台階上，高低差大時壓低骨盆'],

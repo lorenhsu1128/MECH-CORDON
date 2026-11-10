@@ -431,6 +431,6 @@ for ( int i = 0; i < 4; i ++ ) {
     shader.fragmentShader = f;
   };
   proto.customProgramCacheKey = function () {
-    return hasDecal(this) ? 'rubicon-style-2d' : 'rubicon-style-2';
+    return hasDecal(this) ? 'mech-cordon-style-2d' : 'mech-cordon-style-2';
   };
 }

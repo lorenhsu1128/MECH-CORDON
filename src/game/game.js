@@ -40,7 +40,7 @@ export class Game {
     this.post = {
       enabled: (() => {
         try {
-          return localStorage.getItem('rubicon_post') !== '0';
+          return localStorage.getItem('mech_cordon_post') !== '0';
         } catch (e) {
           return true;
         }
@@ -144,7 +144,7 @@ export class Game {
       window.__loadLevel = loadLevel; // 自訂關卡的讀檔驗證（小人單位）
     }
     const sp = new URLSearchParams(location.search).get('spectate');
-    if (sp && window.RUBICON_SERVER) {
+    if (sp && window.MECH_CORDON_SERVER) {
       setTimeout(() => {
         SFX.init();
         this.openMP();
@@ -489,6 +489,7 @@ export class Game {
     if (
       this.state === 'title' ||
       this.state === 'saves' ||
+      this.state === 'legacy' ||
       this.state === 'result' ||
       this.state === 'mp' ||
       this.state === 'lobby' ||

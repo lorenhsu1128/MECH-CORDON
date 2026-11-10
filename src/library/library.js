@@ -160,7 +160,7 @@ function renderTabs() {
 function backToGame() {
   if (editor && editor.content && editor.dirty && !confirm('GLB 編輯器有尚未存檔的修改，確定要回遊戲？'))
     return;
-  const url = window.RUBICON_SERVER ? '/' : 'rubicon-protocol.html';
+  const url = window.MECH_CORDON_SERVER ? '/' : 'mech-cordon.html';
   const op = window.opener;
   if (op && !op.closed) {
     try {
@@ -218,7 +218,7 @@ function exportManifest() {
   };
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' }));
-  a.download = 'rubicon-model-manifest.json';
+  a.download = 'mech-cordon-model-manifest.json';
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }

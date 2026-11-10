@@ -6,7 +6,7 @@
 
   // ---------- 狀態 ----------
   // ---------- 介面縮放：以 1400×850 為 100%，依視窗大小自動縮放（也可以在選單固定比例） ----------
-  const UI_KEY = 'rubicon_paint_ui_scale';
+  const UI_KEY = 'mech_cordon_paint_ui_scale';
   function uiPref() {
     try {
       return localStorage.getItem(UI_KEY) || 'auto';
@@ -293,7 +293,7 @@
     );
   }
 
-  // ---------- 貼花層（RUBICON PROTOCOL 的換色模型：材質 extras.rubicon_decal＝{ v, color, slots } 指向 images） ----------
+  // ---------- 貼花層（MECH CORDON 的換色模型：材質 extras.mech_cordon_decal＝{ v, color, slots } 指向 images） ----------
   // 兩張都是預乘 alpha 的 PNG：自己解碼（不讓瀏覽器預乘或轉色彩空間）
   function glbParts(buf) {
     const dv = new DataView(buf);
@@ -329,7 +329,7 @@
     }
     return n;
   }
-  // 匯出後把貼花層寫進 GLB：材質的 extras.rubicon_decal 先由 userData 標成 { set: 貼花組編號 }，這裡換成圖片索引
+  // 匯出後把貼花層寫進 GLB：材質的 extras.mech_cordon_decal 先由 userData 標成 { set: 貼花組編號 }，這裡換成圖片索引
   function insertDecals(ab, list) {
     const { json, bin } = glbParts(ab);
     const chunks = [bin ? bin.slice() : new Uint8Array(0)];
@@ -351,11 +351,11 @@
     const idx = new Map();
     for (const d of list) idx.set(d.set, { v: 1, color: add(d.dec), slots: d.wts ? add(d.wts) : undefined });
     for (const m of json.materials || []) {
-      const e = m.extras && m.extras.rubicon_decal;
+      const e = m.extras && m.extras.mech_cordon_decal;
       if (!e) continue;
       const v = idx.get(e.set);
-      if (v) m.extras.rubicon_decal = v;
-      else delete m.extras.rubicon_decal;
+      if (v) m.extras.mech_cordon_decal = v;
+      else delete m.extras.mech_cordon_decal;
       if (!Object.keys(m.extras).length) delete m.extras;
     }
     const pad4 = (n) => (4 - (n % 4)) % 4;
@@ -1649,7 +1649,7 @@
   async function buildProject() {
     const files = [];
     const meta = {
-      app: 'rubicon-paint',
+      app: 'mech-cordon-paint',
       version: 1,
       fileName: S.fileName,
       demo: !S.sourceBuf,
@@ -1677,7 +1677,7 @@
 
   function idb() {
     return new Promise((resolve, reject) => {
-      const r = indexedDB.open('rubicon-paint', 1);
+      const r = indexedDB.open('mech-cordon-paint', 1);
       r.onupgradeneeded = () => r.result.createObjectStore('autosave');
       r.onsuccess = () => resolve(r.result);
       r.onerror = () => reject(r.error);
@@ -2226,7 +2226,7 @@
     zip: { description: 'ZIP 壓縮檔', accept: { 'application/zip': ['.zip'] } },
     psd: { description: 'Photoshop 檔', accept: { 'image/vnd.adobe.photoshop': ['.psd'] } },
     glb: { description: 'GLB 模型', accept: { 'model/gltf-binary': ['.glb'] } },
-    rpaint: { description: 'Rubicon Paint 專案', accept: { 'application/octet-stream': ['.rpaint'] } },
+    rpaint: { description: 'Mech Cordon Paint 專案', accept: { 'application/octet-stream': ['.rpaint'] } },
   };
   function download(blob, name) {
     const a = document.createElement('a');
@@ -2344,7 +2344,7 @@
       const undo = () => {
         for (const [m, map] of restore) m.map = map;
         for (const [m, c] of colors) m.color.copy(c);
-        for (const s of painter.sets) for (const m of s.materials) delete m.userData.rubicon_decal;
+        for (const s of painter.sets) for (const m of s.materials) delete m.userData.mech_cordon_decal;
         for (const o of shown) o.visible = false;
       };
       for (const s of painter.sets) {
@@ -2354,7 +2354,7 @@
           for (const m of s.materials) {
             colors.push([m, m.color.clone()]);
             m.color.setRGB(1, 1, 1);
-            if (has.has(s.id)) m.userData.rubicon_decal = { set: s.id };
+            if (has.has(s.id)) m.userData.mech_cordon_decal = { set: s.id };
           }
         }
         t.flipY = false;
@@ -2376,7 +2376,7 @@
           shown.push(o);
         }
       // 載入的模型根部是 GLTFLoader 的場景群組：沒有變換時只匯出它的子節點，維持原檔的節點層級
-      // （例如 RUBICON PROTOCOL 模型庫的 rubicon_origin 原點節點必須是場景唯一的根節點）
+      // （例如 MECH CORDON 模型庫的 mech_cordon_origin 原點節點必須是場景唯一的根節點）
       const input =
         model.matrix.equals(new THREE.Matrix4()) && model.children.length ? model.children : model;
       try {
@@ -2472,7 +2472,7 @@
     requestAnimationFrame(fitUV);
   };
 
-  // ---------- 和 RUBICON PROTOCOL 模型庫連線 ----------
+  // ---------- 和 MECH CORDON 模型庫連線 ----------
   // 模型庫的「繪製貼圖」開這個視窗（網址 #lib），以 postMessage 傳來槽位的 GLB（rp-open）；
   // 「存回模型庫」把畫好的 GLB 傳回去（rp-save），模型庫存進槽位後回覆 rp-saved。
   // 圖層另外以專案檔存在這個瀏覽器（autosave 表，鍵 lib:模型組\n槽位，記錄存回的 GLB 的雜湊）：
@@ -2517,7 +2517,7 @@
     $('libGroup').hidden = false;
     $('libLabel').textContent = `模型庫：${m.slotName}（${m.setName}）`;
     $('libLabel').title = `${m.slot}／模型組「${m.setName}」`;
-    document.title = `${m.slotName} — Rubicon Paint`;
+    document.title = `${m.slotName} — Mech Cordon Paint`;
     let rec = null;
     try {
       rec = await idbDo('readonly', (st) => st.get(libKey(LIB.link)));

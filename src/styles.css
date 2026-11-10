@@ -2298,6 +2298,27 @@ body.lab #fps {
 .saveCard .row button {
   padding: 6px 12px;
 }
+/* 轉換舊存檔（game/legacy.js）：有舊資料時標題的按鈕加一個小圓點 */
+#btnLegacy.hasOld::after {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--acc);
+  vertical-align: middle;
+}
+#legacy h3 {
+  margin: 14px 0 6px;
+  font-size: 14px;
+}
+#legacySaves {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
 
 /* 設定畫面：動作 IK 的各項開關 */
 #ikBox .ikGrid {
@@ -7559,4 +7580,11 @@ em.nw,
 #forgeBox .fgA {
   display: flex;
   justify-content: flex-end;
+}
+#legacy button.danger {
+  color: var(--danger);
+}
+#legacy .good {
+  color: #7fd27f;
+  font-size: 12px;
 }

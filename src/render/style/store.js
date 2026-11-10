@@ -1,9 +1,9 @@
-// 渲染風格：選擇與儲存（localStorage rubicon_style）、我的預設、伺服器上分享的風格（/api/styles）
+// 渲染風格：選擇與儲存（localStorage mech_cordon_style）、我的預設、伺服器上分享的風格（/api/styles）
 // 內容：{ sel: { k: 'builtin'|'mine'|'server', id }, metal, res, mine: [{ id, name, base, params }],
 //         server: { id: { name, author, params } }（伺服器清單的快取，伺服器暫時連不上時仍可使用）}
 import { BUILTIN_STYLES, builtinParams, normalizeStyle } from './params.js';
 
-const KEY = 'rubicon_style';
+const KEY = 'mech_cordon_style';
 const read = () => {
   try {
     const o = JSON.parse(localStorage.getItem(KEY) || 'null');
@@ -106,16 +106,17 @@ export const StyleStore = {
   exportJson(name, params) {
     const p = normalizeStyle(params);
     delete p.metal;
-    return JSON.stringify({ type: 'rubicon-style', v: 1, name, params: p }, null, 1);
+    return JSON.stringify({ type: 'mech-cordon-style', v: 1, name, params: p }, null, 1);
   },
   parseJson(text) {
     const o = JSON.parse(text);
-    if (!o || o.type !== 'rubicon-style' || !o.params) throw new Error('不是渲染風格檔');
+    if (!o || (o.type !== 'mech-cordon-style' && o.type !== 'rubicon-style') || !o.params)
+      throw new Error('不是渲染風格檔');
     return { name: String(o.name || '匯入的風格').slice(0, 40), params: normalizeStyle(o.params) };
   },
   // ---------- 伺服器 ----------
   get serverOn() {
-    return !!window.RUBICON_SERVER;
+    return !!window.MECH_CORDON_SERVER;
   },
   async fetchServer() {
     if (!this.serverOn) return false;

@@ -168,7 +168,7 @@ Object.assign(Game.prototype, {
       const cfg = this.rangeCfgGet();
       cfg.pm = e.target.checked;
       try {
-        localStorage.setItem('rubicon_range', JSON.stringify(cfg));
+        localStorage.setItem('mech_cordon_range', JSON.stringify(cfg));
       } catch {
         /* 不記住也沒關係 */
       }

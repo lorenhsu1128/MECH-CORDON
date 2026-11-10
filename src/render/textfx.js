@@ -1,14 +1,14 @@
-// 文字演出：直接使用子專案「文字動畫 APNG 產生器」（rubicon_apng_gen）的模板與動畫引擎
+// 文字演出：直接使用子專案「文字動畫 APNG 產生器」（mech_cordon_apng_gen）的模板與動畫引擎
 //  - CUES：遊戲裡的時機 → 產生器的模板（模式＋模板 id，和產生器畫面上的模板按鈕相同）＋遊戲用的修改
 //  - TextFx：在全螢幕的疊加畫布（橫幅、中央訊息、全畫面）或 DOM 元素裡的畫布播放
 //  - revealDom：多行的 DOM 文字（簡報、結局、轉場說明）照預告模板的參數逐字出現（保留版面與捲動）
 // 引擎每個字各自畫、有模糊與光暈，所以「顯示中」沒有動作時重複使用畫好的畫面
 
-import { applyTemplate, findTemplate, STYLE_PRESETS } from '../../rubicon_apng_gen/js/presets.js';
-import { createScene, envelope, Renderer } from '../../rubicon_apng_gen/js/engine/render.js';
-import { clearMeasureCache } from '../../rubicon_apng_gen/js/engine/layout.js';
-import * as Fonts from '../../rubicon_apng_gen/js/fonts.js';
-import { merge } from '../../rubicon_apng_gen/js/util.js';
+import { applyTemplate, findTemplate, STYLE_PRESETS } from '../../mech_cordon_apng_gen/js/presets.js';
+import { createScene, envelope, Renderer } from '../../mech_cordon_apng_gen/js/engine/render.js';
+import { clearMeasureCache } from '../../mech_cordon_apng_gen/js/engine/layout.js';
+import * as Fonts from '../../mech_cordon_apng_gen/js/fonts.js';
+import { merge } from '../../mech_cordon_apng_gen/js/util.js';
 
 const preset = (id) => (STYLE_PRESETS.find((p) => p.id === id) || {}).patch || {};
 

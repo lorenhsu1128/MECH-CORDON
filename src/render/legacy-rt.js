@@ -5,7 +5,7 @@
 // 這個旗標在 r187 只影響色調映射、輸出色彩空間與多重取樣緩衝的格式。
 // 畫面模式「HDR」：不做色調映射、以半浮點保留超過 1 的亮度，色調映射在後處理的最後（pipeline.js 的調色）做一次。
 // always：一律照經典（零件縮圖：讀回 8 位元的像素直接當圖片用）
-export const HDR = !!(THREE.RUBICON_RENDER && THREE.RUBICON_RENDER.hdr);
+export const HDR = !!(THREE.MECH_CORDON_RENDER && THREE.MECH_CORDON_RENDER.hdr);
 export function legacyTarget(t, always = false) {
   t.texture.colorSpace = THREE.LinearSRGBColorSpace;
   if (HDR && !always) t.texture.type = THREE.HalfFloatType;

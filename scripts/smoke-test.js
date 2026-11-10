@@ -19,7 +19,7 @@ const ROOT = path.resolve(__dirname, '..');
 const SC = 3;
 const args = process.argv.slice(2);
 const htmlArg = args.find((a) => !a.startsWith('--'));
-const HTML = path.resolve(htmlArg || path.join(ROOT, 'dist/rubicon-protocol.html'));
+const HTML = path.resolve(htmlArg || path.join(ROOT, 'dist/mech-cordon.html'));
 const WITH_SERVER = !htmlArg && !args.includes('--no-server');
 const LIBRARY = path.join(path.dirname(HTML), 'model-library.html');
 const SHOT_DIR = path.join(ROOT, 'test-results');
@@ -89,9 +89,9 @@ async function startGameServer(models = SERVER_MODELS, seed = path.join(WORK_DIR
       TEST_GAME_PORT: 0,
       TEST_CONTROL_PORT: 0,
       TEST_HTTPS_PORT: 0,
-      RUBICON_CERT_DIR: path.join(WORK_DIR, 'cert'),
-      RUBICON_MODELS_DIR: models,
-      RUBICON_SEED_DIR: seed,
+      MECH_CORDON_CERT_DIR: path.join(WORK_DIR, 'cert'),
+      MECH_CORDON_MODELS_DIR: models,
+      MECH_CORDON_SEED_DIR: seed,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -326,7 +326,7 @@ async function testFile(browser) {
   await ctx.close();
 }
 
-// 貼圖繪製（dist/paint/，子專案 rubicon_paint）：直接開檔的模型庫 → 「繪製貼圖」→ 畫一筆 → 存回模型庫
+// 貼圖繪製（dist/paint/，子專案 mech_cordon_paint）：直接開檔的模型庫 → 「繪製貼圖」→ 畫一筆 → 存回模型庫
 // → 槽位換成新 GLB（保留原始檔、根節點不變）→ 重新開啟接著上次的圖層
 async function testPaint(browser) {
   console.log('貼圖繪製：模型庫開啟 → 畫 → 存回 → 再開接著畫');
@@ -349,7 +349,7 @@ async function testPaint(browser) {
         () => true,
         () => false,
       ),
-    '標題畫面「貼圖繪製」按鈕開啟 Rubicon Paint（直接開檔）',
+    '標題畫面「貼圖繪製」按鈕開啟 Mech Cordon Paint（直接開檔）',
   );
   check(await tool.isHidden('#libGroup'), '不是從模型庫開啟時不顯示「存回模型庫」');
   await tool.close();
@@ -376,7 +376,7 @@ async function testPaint(browser) {
     page.evaluate(
       (slot) =>
         new Promise((resolve) => {
-          const r = indexedDB.open('rubicon-model-library');
+          const r = indexedDB.open('mech-cordon-model-library');
           r.onsuccess = () => {
             const q = r.result.transaction('models').objectStore('models').get(['default', slot]);
             q.onsuccess = () => {
@@ -416,7 +416,7 @@ async function testPaint(browser) {
     return { p, ok };
   };
   let { p, ok } = await open();
-  check(ok, '檢視窗「繪製貼圖」在 Rubicon Paint 開啟槽位的 GLB');
+  check(ok, '檢視窗「繪製貼圖」在 Mech Cordon Paint 開啟槽位的 GLB');
   check(
     ((await p.textContent('#libLabel')) || '').includes('預設'),
     `繪圖視窗標示模型庫的槽位與模型組（${await p.textContent('#libLabel')}）`,
@@ -461,7 +461,7 @@ async function testPaint(browser) {
     .waitForFunction(
       () =>
         new Promise((res) => {
-          const rq = indexedDB.open('rubicon-paint', 1);
+          const rq = indexedDB.open('mech-cordon-paint', 1);
           rq.onerror = () => res(false);
           rq.onsuccess = () => {
             const db = rq.result;
@@ -1051,7 +1051,7 @@ async function testLabDemo(browser) {
       D = g.lab.demo;
     const names = [...document.querySelectorAll('#labDemoList button')].map((b) => b.textContent);
     const find = (s) => names.findIndex((n) => n.includes(s));
-    const out = { caps: [], bodies: [], moved: 0, save: localStorage.getItem('rubicon_save_1') };
+    const out = { caps: [], bodies: [], moved: 0, save: localStorage.getItem('mech_cordon_save_1') };
     for (const s of ['受擊：手持武器', '受擊：肩上武器', '受擊：屬性反應', '受擊：脈衝刀的每一招']) {
       g.labDemoGo(find(s));
       window.__pump(2);
@@ -1071,7 +1071,7 @@ async function testLabDemo(browser) {
         : Math.abs(m.lift.rotation.x) + Math.abs(m.lift.rotation.z);
       if (v > 0.03) out.moved++;
     }
-    out.saveSame = out.save === localStorage.getItem('rubicon_save_1');
+    out.saveSame = out.save === localStorage.getItem('mech_cordon_save_1');
     out.enemies = g.enemies.length;
     return out;
   });
@@ -1133,7 +1133,7 @@ async function testStyleLab(browser) {
   await page.click('#btnToTitle');
   await waitVisible(page, 'title');
   const save0 = await page.evaluate(() =>
-    localStorage.getItem('rubicon_save_' + (localStorage.getItem('rubicon_save_cur') || 1)),
+    localStorage.getItem('mech_cordon_save_' + (localStorage.getItem('mech_cordon_save_cur') || 1)),
   );
   await page.click('#btnStyleLab');
   check(await waitVisible(page, 'labPanel', 15000), '標題「渲染風格」開啟實驗室面板');
@@ -1189,7 +1189,7 @@ async function testStyleLab(browser) {
   await page.selectOption('#labCam', 'cinema');
   await wait(1500);
   await page.screenshot({ path: path.join(SHOT_DIR, 'style-lab-ac6.png') });
-  // 動作 IK：手臂瞄準讓槍管對準瞄準點；關掉後權重淡出到 0；開關記在 rubicon_ik
+  // 動作 IK：手臂瞄準讓槍管對準瞄準點；關掉後權重淡出到 0；開關記在 mech_cordon_ik
   await page.click('#labIk summary');
   const ikState = () =>
     page.evaluate(() => {
@@ -1226,7 +1226,7 @@ async function testStyleLab(browser) {
     await wait(500);
     ik2 = await ikState();
   }
-  const ikSaved = await page.evaluate(() => JSON.parse(localStorage.getItem('rubicon_ik')));
+  const ikSaved = await page.evaluate(() => JSON.parse(localStorage.getItem('mech_cordon_ik')));
   check(
     ik2.w < 0.01 && ik2.avg > ik1.avg && ikSaved.on === false && (await page.isDisabled('#ik_arms')),
     `關掉 IK：權重淡出到 0、槍管回到動作層（平均誤差 ${ik2.avg.toFixed(3)} rad）、開關記住`,
@@ -1236,7 +1236,7 @@ async function testStyleLab(browser) {
   await page.uncheck('#ik_feet');
   check(
     await page.evaluate(() => {
-      const o = JSON.parse(localStorage.getItem('rubicon_ik'));
+      const o = JSON.parse(localStorage.getItem('mech_cordon_ik'));
       return o.on === true && o.feet === false && o.arms === true;
     }),
     '單項開關（關掉腳部貼地）',
@@ -1574,7 +1574,7 @@ async function testStyleLab(browser) {
   await page.fill('#labName', '測試風格');
   await page.click('#labSaveNew');
   await page.click('#labApply');
-  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('rubicon_style')));
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('mech_cordon_style')));
   check(
     stored.sel.k === 'mine' &&
       stored.mine.some((m) => m.name === '測試風格' && m.params.toon === 1) &&
@@ -1585,7 +1585,7 @@ async function testStyleLab(browser) {
   check(await waitVisible(page, 'title'), '離開實驗室回到標題');
   check(
     (await page.evaluate(() =>
-      localStorage.getItem('rubicon_save_' + (localStorage.getItem('rubicon_save_cur') || 1)),
+      localStorage.getItem('mech_cordon_save_' + (localStorage.getItem('mech_cordon_save_cur') || 1)),
     )) === save0,
     '模擬戰鬥不改存檔（擊破不入帳）',
   );
@@ -1601,7 +1601,7 @@ async function testStyleLab(browser) {
   await page.uncheck('#ikBox input[data-ik="arms"]');
   await page.uncheck('#ikBox input[data-ik="on"]');
   const ikSet1 = await page.evaluate(() => ({
-    o: JSON.parse(localStorage.getItem('rubicon_ik')),
+    o: JSON.parse(localStorage.getItem('mech_cordon_ik')),
     dis: document.querySelector('#ikBox input[data-ik="feet"]').disabled,
   }));
   check(
@@ -1630,12 +1630,17 @@ async function testSaves(browser, base) {
   const { ctx, page } = await newPage(browser, 'saves');
   await page.goto(base);
   await waitVisible(page, 'title');
-  // 模擬舊版：只有 rubicon_save，沒有 rubicon_save_cur
+  // 模擬舊版：只有 mech_cordon_save，沒有 mech_cordon_save_cur
   await page.evaluate(() => {
-    for (const k of ['rubicon_save_cur', 'rubicon_save_1', 'rubicon_save_2', 'rubicon_save_3'])
+    for (const k of [
+      'mech_cordon_save_cur',
+      'mech_cordon_save_1',
+      'mech_cordon_save_2',
+      'mech_cordon_save_3',
+    ])
       localStorage.removeItem(k);
     localStorage.setItem(
-      'rubicon_save',
+      'mech_cordon_save',
       JSON.stringify({ coam: 123456, owned: ['h_std'], asm: { head: 'h_std' }, level: 5, kills: 42 }),
     );
   });
@@ -1643,11 +1648,11 @@ async function testSaves(browser, base) {
   await waitVisible(page, 'title');
   const ls = (k) => page.evaluate((k) => localStorage.getItem(k), k);
   const lvl = async (i) => {
-    const v = await ls('rubicon_save_' + i);
+    const v = await ls('mech_cordon_save_' + i);
     return v ? JSON.parse(v).level : 0;
   };
   check(
-    (await lvl(1)) === 5 && !!(await ls('rubicon_save')) && (await ls('rubicon_save_cur')) === '1',
+    (await lvl(1)) === 5 && !!(await ls('mech_cordon_save')) && (await ls('mech_cordon_save_cur')) === '1',
     '舊版存檔搬進存檔 1（舊鍵保留）',
   );
   check(
@@ -1673,7 +1678,7 @@ async function testSaves(browser, base) {
   await page.click('#btnToTitle');
   await waitVisible(page, 'title');
   check(
-    (await ls('rubicon_save_cur')) === '2' &&
+    (await ls('mech_cordon_save_cur')) === '2' &&
       (await lvl(2)) === 1 &&
       (await lvl(1)) === 5 &&
       (await page.textContent('#btnContinue')).includes('存檔 2'),
@@ -1685,8 +1690,8 @@ async function testSaves(browser, base) {
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click(`${card(1)} [data-act="exp"]`)]);
   const exported = JSON.parse(fs.readFileSync(await dl.path(), 'utf8'));
   check(
-    /^rubicon-save-1-\d{8}\.json$/.test(dl.suggestedFilename()) &&
-      exported.format === 'rubicon-save' &&
+    /^mech-cordon-save-1-\d{8}\.json$/.test(dl.suggestedFilename()) &&
+      exported.format === 'mech-cordon-save' &&
       exported.save.level === 5,
     `匯出存檔 1（${dl.suggestedFilename()}）`,
   );
@@ -1727,13 +1732,13 @@ async function testSaves(browser, base) {
   await page.click(`${card(3)} [data-act="del"]`);
   await page.click(`${card(3)} [data-act="yes"]`);
   check(
-    !(await ls('rubicon_save_3')) && !!(await page.$(`${card(3)} [data-act="new"]`)),
+    !(await ls('mech_cordon_save_3')) && !!(await page.$(`${card(3)} [data-act="new"]`)),
     '刪除存檔 3 後變成空槽',
   );
   // 刪除目前的存檔 2：改用最近玩過的存檔 1
   await page.click(`${card(2)} [data-act="del"]`);
   await page.click(`${card(2)} [data-act="yes"]`);
-  check((await ls('rubicon_save_cur')) === '1', '刪除目前的槽位後改用另一個有存檔的槽位（存檔 1）');
+  check((await ls('mech_cordon_save_cur')) === '1', '刪除目前的槽位後改用另一個有存檔的槽位（存檔 1）');
   // 從存檔畫面繼續存檔 1 → 車庫用的是存檔 1
   await page.click(`${card(1)} [data-act="cont"]`);
   check(await waitVisible(page, 'garage'), '存檔畫面「繼續」進入車庫');
@@ -1995,7 +2000,7 @@ async function testMaps(browser, base) {
   ]) {
     await gSetTab(page);
     await page.selectOption('#gMapSel', key);
-    await page.evaluate(() => localStorage.setItem('rubicon_variant', 'base')); // 標準變體（隨機的變體物件組不同）
+    await page.evaluate(() => localStorage.setItem('mech_cordon_variant', 'base')); // 標準變體（隨機的變體物件組不同）
     await page.click('#btnSortie');
     check(await waitVisible(page, 'hudWrap', 20000), `${key} 出擊`);
     await playFor(page, 1500);
@@ -2058,7 +2063,7 @@ async function testMaps(browser, base) {
   }
   check(
     (await page.$eval('#gMapSel', (s) => s.value)) === 'ark' &&
-      (await page.evaluate(() => localStorage.getItem('rubicon_map'))) === 'ark',
+      (await page.evaluate(() => localStorage.getItem('mech_cordon_map'))) === 'ark',
     '車庫記住選的地圖',
   );
   await gSetTab(page);
@@ -2306,7 +2311,7 @@ async function testRefTools(browser, base) {
   await page.waitForSelector('.cell');
   await page.evaluate(() => (document.querySelector('#setMenu').open = true));
   const [d2] = await Promise.all([page.waitForEvent('download'), page.click('#setExport')]);
-  const sp = path.join(SHOT_DIR, 'ref-set.rubicon-set');
+  const sp = path.join(SHOT_DIR, 'ref-set.mech-cordon-set');
   await d2.saveAs(sp);
   const buf = fs.readFileSync(sp);
   check(
@@ -2407,10 +2412,12 @@ async function testMotion(browser, base) {
   });
   check(nw.name === '測試突刺' && nw.map && nw.map[2] === nw.id, '複製成新片段並套用到第 3 段');
   await page.click('#moSave');
-  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('rubicon_melee_anim') || 'null'));
+  const saved = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('mech_cordon_melee_anim') || 'null'),
+  );
   check(
     !!saved && saved.clips.slash && saved.clips.slash.keys.length === r.n && saved.clips[nw.id],
-    '存到瀏覽器（rubicon_melee_anim）',
+    '存到瀏覽器（mech_cordon_melee_anim）',
   );
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#moExport')]);
   const fp = path.join(SHOT_DIR, 'motion-melee.json');
@@ -3311,7 +3318,7 @@ async function testWorkshopKeep(page, base) {
     page.evaluate(() => {
       const src = window.__workshop.store.source('arms/a_std/l_fore');
       const len = new DataView(src.buf).getUint32(12, true);
-      return new TextDecoder().decode(new Uint8Array(src.buf, 20, len)).includes('rubicon_origin');
+      return new TextDecoder().decode(new Uint8Array(src.buf, 20, len)).includes('mech_cordon_origin');
     });
   await page.click(ELBOW);
   await wait(300);
@@ -4009,7 +4016,7 @@ async function testEditorOptimize(browser, base) {
     '檢視窗讀取 WebP＋Draco 的 GLB',
   );
   // 把設定改回預設，避免影響其他測試（設定存在 localStorage）
-  await page.evaluate(() => localStorage.removeItem('rubicon_glb_export'));
+  await page.evaluate(() => localStorage.removeItem('mech_cordon_glb_export'));
   await ctx.close();
 }
 
@@ -4017,11 +4024,11 @@ async function testEditorOptimize(browser, base) {
 const editSave = (page, fn) =>
   page.evaluate((src) => {
     const s = JSON.parse(
-      localStorage.getItem('rubicon_save_' + (localStorage.getItem('rubicon_save_cur') || 1)),
+      localStorage.getItem('mech_cordon_save_' + (localStorage.getItem('mech_cordon_save_cur') || 1)),
     );
     new Function('s', src)(s);
     localStorage.setItem(
-      'rubicon_save_' + (localStorage.getItem('rubicon_save_cur') || 1),
+      'mech_cordon_save_' + (localStorage.getItem('mech_cordon_save_cur') || 1),
       JSON.stringify(s),
     );
   }, fn);
@@ -4031,7 +4038,7 @@ async function injectLibrary(page, glbs, joints, set = 'default') {
   await page.evaluate(
     ({ glbs, joints, set }) =>
       new Promise((res, rej) => {
-        const r = indexedDB.open('rubicon-model-library');
+        const r = indexedDB.open('mech-cordon-model-library');
         r.onerror = () => rej(r.error);
         r.onsuccess = () => {
           const d = r.result;
@@ -4269,14 +4276,14 @@ async function testGlbReset(browser, base) {
     await waitVisible(page, 'title');
     // 新玩家：沒有資料庫 → 遊戲讀取時只記旗標，設定照舊
     await page.evaluate(() => {
-      localStorage.setItem('rubicon_glb_reset_test', '1');
-      localStorage.setItem('rubicon_localmodels', JSON.stringify({ on: true, set: 'default' }));
+      localStorage.setItem('mech_cordon_glb_reset_test', '1');
+      localStorage.setItem('mech_cordon_localmodels', JSON.stringify({ on: true, set: 'default' }));
     });
     // 舊資料：第 4 版的資料庫，兩個模型組＋共用的地圖物件
     await page.evaluate(
       () =>
         new Promise((res, rej) => {
-          const r = indexedDB.open('rubicon-model-library', 4);
+          const r = indexedDB.open('mech-cordon-model-library', 4);
           r.onupgradeneeded = () => {
             const d = r.result;
             d.createObjectStore('presets', { keyPath: 'name' });
@@ -4314,13 +4321,13 @@ async function testGlbReset(browser, base) {
       const s = window.__workshop.store;
       let lm = {};
       try {
-        lm = JSON.parse(localStorage.getItem('rubicon_localmodels') || '{}');
+        lm = JSON.parse(localStorage.getItem('mech_cordon_localmodels') || '{}');
       } catch (e) {}
       return {
         recs: s.recs.size,
         sets: s.setList().map((x) => x.name),
         joints: s.jointCount(),
-        flag: localStorage.getItem('rubicon_glb_scale3x'),
+        flag: localStorage.getItem('mech_cordon_glb_scale3x'),
         on: lm.on,
       };
     });
@@ -4344,14 +4351,14 @@ async function testGlbReset(browser, base) {
     try {
       await p2.goto(base + 'model-library.html?test');
       await p2.evaluate(() => {
-        localStorage.setItem('rubicon_glb_reset_test', '1');
-        localStorage.setItem('rubicon_localmodels', JSON.stringify({ on: true, set: 'default' }));
+        localStorage.setItem('mech_cordon_glb_reset_test', '1');
+        localStorage.setItem('mech_cordon_localmodels', JSON.stringify({ on: true, set: 'default' }));
       });
       await p2.reload();
       await p2.waitForSelector('.cell');
       const q = await p2.evaluate(() => [
-        localStorage.getItem('rubicon_glb_scale3x'),
-        JSON.parse(localStorage.getItem('rubicon_localmodels')).on,
+        localStorage.getItem('mech_cordon_glb_scale3x'),
+        JSON.parse(localStorage.getItem('mech_cordon_localmodels')).on,
       ]);
       check(q[0] === '1' && q[1] === true, '本地沒有 GLB 時只記下做過，設定不動');
     } finally {
@@ -4379,7 +4386,7 @@ async function testModelSets(browser, base) {
   await old.evaluate(
     ({ fore, rifle }) =>
       new Promise((res, rej) => {
-        const r = indexedDB.open('rubicon-model-library', 3);
+        const r = indexedDB.open('mech-cordon-model-library', 3);
         r.onupgradeneeded = () => {
           const d = r.result;
           d.createObjectStore('glb', { keyPath: 'id' });
@@ -4538,7 +4545,7 @@ async function testModelSets(browser, base) {
   await d.saveAs(file);
   const zb = fs.readFileSync(file);
   check(
-    /測試C\.rubicon-set$/.test(file) &&
+    /測試C\.mech-cordon-set$/.test(file) &&
       zb.slice(0, 2).toString() === 'PK' &&
       zb.includes('manifest.json') &&
       zb.includes('models/weapon/w_rifle/r.glb'),
@@ -4609,7 +4616,7 @@ async function testModelSets(browser, base) {
   await game.reload();
   await waitVisible(game, 'title');
   check(
-    (await game.evaluate(() => JSON.parse(localStorage.getItem('rubicon_localmodels')).set)) === val,
+    (await game.evaluate(() => JSON.parse(localStorage.getItem('mech_cordon_localmodels')).set)) === val,
     '遊戲記住選擇的模型組',
   );
   await testMechPack(page, game, base);
@@ -4657,7 +4664,7 @@ async function testMechPack(page, game, base) {
   await d.saveAs(file);
   const zb = fs.readFileSync(file);
   check(
-    /機體X\.rubicon-set$/.test(d.suggestedFilename()) &&
+    /機體X\.mech-cordon-set$/.test(d.suggestedFilename()) &&
       expect.length >= 2 &&
       expect.every((id) => zb.includes(`models/${id}.glb`)) &&
       zb.includes('"mech"') &&
@@ -4739,7 +4746,7 @@ async function testMechPack(page, game, base) {
   await wait(1500);
   const g = await game.evaluate(() => ({
     head: window.__game.save.asm.head,
-    set: JSON.parse(localStorage.getItem('rubicon_localmodels')).set,
+    set: JSON.parse(localStorage.getItem('mech_cordon_localmodels')).set,
     note: document.getElementById('gLocal').textContent,
   }));
   const xid = await page.evaluate(() => window.__workshop.store.setList().find((x) => x.name === '機體X').id);
@@ -4986,7 +4993,9 @@ async function testServerModels(browser, url) {
   await cli.selectOption('#lobbyModelsSel', idB);
   check(await tagOk(host, '玩家B'), '客機選「玩家B」後上傳，房主大廳顯示並下載完成');
   check(await tagOk(cli, '玩家A'), '客機也下載房主的模型組');
-  const ups = fs.readdirSync(path.join(SERVER_MODELS, 'uploads')).filter((f) => f.endsWith('.rubicon-set'));
+  const ups = fs
+    .readdirSync(path.join(SERVER_MODELS, 'uploads'))
+    .filter((f) => f.endsWith('.mech-cordon-set'));
   check(ups.length === 2, `伺服器存了 2 個玩家上傳的模型組（${ups.length}）`);
   await host.screenshot({ path: path.join(SHOT_DIR, 'server-models-lobby-host.png') });
   await cli.screenshot({ path: path.join(SHOT_DIR, 'server-models-lobby-client.png') });
@@ -6336,8 +6345,8 @@ async function testTraps(browser, base) {
     await page.evaluate(
       ([t, seed]) => {
         window.__reseed(seed);
-        localStorage.setItem('rubicon_map', t);
-        localStorage.setItem('rubicon_variant', 'base');
+        localStorage.setItem('mech_cordon_map', t);
+        localStorage.setItem('mech_cordon_variant', 'base');
         const g = window.__game;
         if (g.state !== 'title') {
           g.clearMission();
@@ -6749,8 +6758,8 @@ async function testEvents(browser, base) {
   ];
   for (const [theme, kind] of LIST) {
     await page.evaluate((t) => {
-      localStorage.setItem('rubicon_map', t);
-      localStorage.setItem('rubicon_variant', 'base');
+      localStorage.setItem('mech_cordon_map', t);
+      localStorage.setItem('mech_cordon_variant', 'base');
       const g = window.__game;
       g.evForce = true;
       if (g.state !== 'title') {
@@ -7638,8 +7647,8 @@ async function testCamOcclusion(browser, base) {
   await page.goto(base + '?test');
   await waitVisible(page, 'title');
   const r = await page.evaluate(() => {
-    localStorage.setItem('rubicon_map', 'industrial'); // 集散場的起重機沒有登記成遮擋物
-    localStorage.setItem('rubicon_variant', 'base');
+    localStorage.setItem('mech_cordon_map', 'industrial'); // 集散場的起重機沒有登記成遮擋物
+    localStorage.setItem('mech_cordon_variant', 'base');
     const g = window.__game;
     g.save.level = 1;
     g.startMission();
@@ -7921,7 +7930,7 @@ async function testAir(browser, base) {
   await page.goto(base + '?test');
   await waitVisible(page, 'title');
   await page.evaluate(() => {
-    localStorage.setItem('rubicon_map', 'airspace');
+    localStorage.setItem('mech_cordon_map', 'airspace');
     const g = window.__game;
     g.save.level = 5; // 不是 Boss 關
     g.startMission();
@@ -8499,7 +8508,7 @@ async function testAir(browser, base) {
     g.clearMission();
     g.state = 'title';
     g.showScreen('title');
-    localStorage.removeItem('rubicon_map');
+    localStorage.removeItem('mech_cordon_map');
     return g.camera.far;
   });
   check(camFar < 2000, `離開空域後鏡頭距離還原（${camFar}）`);
@@ -8512,7 +8521,7 @@ async function testAir(browser, base) {
     await pf.goto(base + '?test');
     await waitVisible(pf, 'title');
     await pf.evaluate(() => {
-      localStorage.setItem('rubicon_map', 'airspace');
+      localStorage.setItem('mech_cordon_map', 'airspace');
       const g = window.__game;
       g.save.level = 5;
       g.startMission();
@@ -8716,7 +8725,7 @@ async function testAir(browser, base) {
       g.clearMission();
       g.state = 'title';
       g.showScreen('title');
-      localStorage.removeItem('rubicon_map');
+      localStorage.removeItem('mech_cordon_map');
     });
     await thawLoop(pf);
     await c5.close();
@@ -8727,7 +8736,7 @@ async function testAir(browser, base) {
     await pb.goto(base + '?test');
     await waitVisible(pb, 'title');
     await pb.evaluate(() => {
-      localStorage.setItem('rubicon_map', 'airspace');
+      localStorage.setItem('mech_cordon_map', 'airspace');
       const g = window.__game;
       g.save.level = 3; // Boss 關
       g.startMission();
@@ -8820,7 +8829,7 @@ async function testAir(browser, base) {
       g.clearMission();
       g.state = 'title';
       g.showScreen('title');
-      localStorage.removeItem('rubicon_map');
+      localStorage.removeItem('mech_cordon_map');
     });
     await thawLoop(pb);
     await c4.close();
@@ -8840,7 +8849,7 @@ async function testAir(browser, base) {
     await pg.goto(base + '?test');
     await waitVisible(pg, 'title');
     await pg.evaluate(() => {
-      localStorage.setItem('rubicon_map', 'airspace');
+      localStorage.setItem('mech_cordon_map', 'airspace');
       const g = window.__game;
       g.save.level = 5; // 不是 Boss 關
       g.touchActive = true;
@@ -9002,7 +9011,7 @@ async function testAir(browser, base) {
     // 地面：追尾視角也有右搖桿，俯視沒有
     const gr = await pg.evaluate(() => {
       const g = window.__game;
-      localStorage.removeItem('rubicon_map');
+      localStorage.removeItem('mech_cordon_map');
       g.startMission();
       g.setView('chase', true);
       g.updateVpad();
@@ -9847,8 +9856,8 @@ async function testCampaign2(browser, base) {
     await page.evaluate(
       ([th, v, tod]) => {
         const g = window.__game;
-        localStorage.setItem('rubicon_map', th);
-        localStorage.setItem('rubicon_variant', v);
+        localStorage.setItem('mech_cordon_map', th);
+        localStorage.setItem('mech_cordon_variant', v);
         g.save.level = 1;
         g.startMission();
         g.world.tod = tod;
@@ -9864,8 +9873,8 @@ async function testCampaign2(browser, base) {
   await page.evaluate(() => {
     const g = window.__game;
     g.clearMission();
-    localStorage.setItem('rubicon_map', 'industrial');
-    localStorage.setItem('rubicon_variant', 'base');
+    localStorage.setItem('mech_cordon_map', 'industrial');
+    localStorage.setItem('mech_cordon_variant', 'base');
     g.openGarage();
   });
   await waitVisible(page, 'garage');
@@ -12154,7 +12163,7 @@ async function testGaze(browser, base) {
     })
     .catch(() => {});
   const st1 = await page.evaluate(() => ({
-    ctrl: JSON.parse(localStorage.getItem('rubicon_ctrl')).gaze,
+    ctrl: JSON.parse(localStorage.getItem('mech_cordon_ctrl')).gaze,
     status: document.getElementById('gazeStatus').textContent,
     cal: !document.getElementById('gazeCalBtn').disabled,
   }));
@@ -12206,13 +12215,13 @@ async function testGaze(browser, base) {
     err: window.__game.gz.cal ? window.__game.gz.cal.err : 999,
     redo: !document.getElementById('gcRedo').hidden,
     pts: window.__game.gz.cal ? window.__game.gz.cal.pts.length : 0,
-    saved: !!JSON.parse(localStorage.getItem('rubicon_gaze') || 'null'),
+    saved: !!JSON.parse(localStorage.getItem('mech_cordon_gaze') || 'null'),
   }));
   await page.screenshot({ path: path.join(SHOT_DIR, 'gaze-cal-done.png') });
   check(cal.ph === 'done' && !cal.redo && cal.pts === 5, '重做差的點之後沒有差的點、存下 5 個驗證點的結果');
   check(
     cal.ph === 'done' && cal.saved && cal.err < 40 && /平均誤差/.test(cal.msg),
-    `校準完成：平均誤差 ${cal.err.toFixed(1)} px、存進 rubicon_gaze`,
+    `校準完成：平均誤差 ${cal.err.toFixed(1)} px、存進 mech_cordon_gaze`,
   );
   await page.click('#gcGo'); // 完成
   const closed = await page.evaluate(
@@ -12464,7 +12473,7 @@ async function testGaze(browser, base) {
   });
   const tu1 = await page.evaluate(() => ({
     sens: window.__game.gazeTune().g.sens,
-    saved: JSON.parse(localStorage.getItem('rubicon_ctrl')).gaze.tune.g.sens,
+    saved: JSON.parse(localStorage.getItem('mech_cordon_ctrl')).gaze.tune.g.sens,
     now: document.getElementById('gtNow').textContent,
   }));
   check(
@@ -12514,7 +12523,7 @@ async function testGaze(browser, base) {
   await page.click('#gtSaveNew');
   const pr1 = await page.evaluate(() => {
     const g = window.__game;
-    const list = JSON.parse(localStorage.getItem('rubicon_gaze_presets'));
+    const list = JSON.parse(localStorage.getItem('mech_cordon_gaze_presets'));
     document.querySelector('[data-exp="0"]').click();
     return {
       n: list.length,
@@ -12532,14 +12541,14 @@ async function testGaze(browser, base) {
     const g = window.__game;
     const ok = g.gazePresetImport(txt, 'x.json');
     const bad = g.gazePresetImport('{"x":1}', 'y.json');
-    return { ok, bad, n: JSON.parse(localStorage.getItem('rubicon_gaze_presets')).length };
+    return { ok, bad, n: JSON.parse(localStorage.getItem('mech_cordon_gaze_presets')).length };
   }, pr1.exp);
   await page.screenshot({ path: path.join(SHOT_DIR, 'gaze-tune-presets.png') });
   check(
     pr1.n === 1 &&
       pr1.name === '測試組合' &&
       pr1.cur &&
-      /"rubicon-gaze"/.test(pr1.exp) &&
+      /"mech-cordon-gaze"/.test(pr1.exp) &&
       /測試組合/.test(pr1.exp),
     '設定組合：存成新的（使用中）、匯出 JSON',
   );
@@ -13766,7 +13775,7 @@ async function testHubUi(browser, base) {
     const m = S.h.reduce((a, v) => a + v, 0) / S.h.length;
     for (const v of S.h) sd += (v - m) * (v - m);
     // 取樣結果存在瀏覽器（下次開網頁不用重算）：清掉這一頁的記憶體再拿，和原本的一樣
-    const disk = JSON.parse(localStorage.getItem('rubicon_hub_tiles') || 'null');
+    const disk = JSON.parse(localStorage.getItem('mech_cordon_hub_tiles') || 'null');
     g.hubTiles.delete(info.key);
     const S3 = g.hubTileGet(info.key);
     let same3 = !!S3 && S3.h.length === S.h.length && S3.obs.length === S.obs.length;
@@ -13998,7 +14007,7 @@ async function testHubSave(browser, base) {
   await act(2, 'save');
   await wait(150);
   const s1 = await page.evaluate(() => {
-    const s = JSON.parse(localStorage.getItem('rubicon_save_2') || 'null');
+    const s = JSON.parse(localStorage.getItem('mech_cordon_save_2') || 'null');
     return {
       coam: s && s.coam,
       sortie: !!(s && s.story && s.story.sortie && s.story.sortie.sid === 'c1s2'),
@@ -14014,10 +14023,10 @@ async function testHubSave(browser, base) {
   await page.evaluate(() => (window.__game.save.coam = 1));
   await act(2, 'save');
   await modal(false);
-  const c0 = await page.evaluate(() => JSON.parse(localStorage.getItem('rubicon_save_2')).coam);
+  const c0 = await page.evaluate(() => JSON.parse(localStorage.getItem('mech_cordon_save_2')).coam);
   await act(2, 'save');
   await modal(true);
-  const c1 = await page.evaluate(() => JSON.parse(localStorage.getItem('rubicon_save_2')).coam);
+  const c1 = await page.evaluate(() => JSON.parse(localStorage.getItem('mech_cordon_save_2')).coam);
   check(c0 === 77777 && c1 === 1, `覆蓋有資料的存檔要確認：取消不變（${c0}）、確定覆蓋（${c1}）`);
   // 讀取存檔 3（第 2 周目、另一份 COAM）：換槽位、作戰室依那份存檔重建
   await page.evaluate(() => {
@@ -14026,7 +14035,7 @@ async function testHubSave(browser, base) {
     s3.coam = 33333;
     s3.story = { cycle: 2, done: {}, choices: {}, storySeen: { p2: 1, i2_1: 1 } };
     s3.t = Date.now() - 3600e3;
-    localStorage.setItem('rubicon_save_3', JSON.stringify(s3));
+    localStorage.setItem('mech_cordon_save_3', JSON.stringify(s3));
     g.hubSaveRender();
   });
   const t3 = await page.evaluate(
@@ -14040,14 +14049,14 @@ async function testHubSave(browser, base) {
     const g = window.__game;
     return {
       slot: g.saveSlot,
-      cur: localStorage.getItem('rubicon_save_cur'),
+      cur: localStorage.getItem('mech_cordon_save_cur'),
       coam: g.save.coam,
       hud: document.getElementById('hubCoam').textContent,
       ch: document.getElementById('hubChapter').textContent,
       closed: getComputedStyle(document.getElementById('hubSaveBox')).display === 'none',
       state: g.state,
       lights: g.hubSlotInfo.join(','),
-      kept: JSON.parse(localStorage.getItem('rubicon_save_1')).coam,
+      kept: JSON.parse(localStorage.getItem('mech_cordon_save_1')).coam,
     };
   });
   check(
@@ -14074,7 +14083,7 @@ async function testHubSave(browser, base) {
   await act(2, 'del');
   await modal(true);
   const d = await page.evaluate(() => ({
-    gone: localStorage.getItem('rubicon_save_2') === null,
+    gone: localStorage.getItem('mech_cordon_save_2') === null,
     empty: document.querySelector('#hubSaveList .hsCard[data-slot="2"]').classList.contains('empty'),
   }));
   check(
@@ -14085,13 +14094,13 @@ async function testHubSave(browser, base) {
   const sv = await page.evaluate(async () => {
     const g = window.__game;
     g.save.coam = 55555; // 只改記憶體裡的，按下才寫入
-    const before = JSON.parse(localStorage.getItem('rubicon_save_3')).coam;
+    const before = JSON.parse(localStorage.getItem('mech_cordon_save_3')).coam;
     const t0 = performance.now();
     document.querySelector('#hubSaveList .hsCard[data-slot="3"] button[data-act="save"]').click();
     await new Promise((r) => setTimeout(r, 100));
     return {
       before,
-      coam: JSON.parse(localStorage.getItem('rubicon_save_3')).coam,
+      coam: JSON.parse(localStorage.getItem('mech_cordon_save_3')).coam,
       modal: !!g.uiModalOn,
       msg: document.getElementById('hubSaveMsg').textContent,
       flash: g.saveFlashT >= t0,
@@ -14646,7 +14655,7 @@ async function testAudio(browser, base) {
       f();
       return log.slice();
     };
-    localStorage.setItem('rubicon_map', 'snow');
+    localStorage.setItem('mech_cordon_map', 'snow');
     g.startMission();
     g.state = 'audio-test';
     g.waves = [];
@@ -14690,7 +14699,7 @@ async function testAudio(browser, base) {
     });
     g.clearMission();
     out.ambAfter = S.ambNodes.length;
-    localStorage.setItem('rubicon_map', 'industrial');
+    localStorage.setItem('mech_cordon_map', 'industrial');
     g.state = 'title';
     return out;
   });
@@ -14732,14 +14741,14 @@ async function testVoiceLab(browser, base) {
   await waitVisible(page, 'voiceLab');
   await page.waitForFunction(() => document.querySelectorAll('.vlCand').length > 0, null, { timeout: 30000 });
   const r = await page.evaluate(async () => {
-    const I = window.RUBICON_VOICE_AUD['@index'];
+    const I = window.MECH_CORDON_VOICE_AUD['@index'];
     const out = {
       cands: document.querySelectorAll('.vlCand').length,
       n: I.cands.length,
       lines: I.lines.length,
     };
     const keys = I.cands.flatMap((c) => I.lines.map((l) => `${c.id}-${l.id}`));
-    out.missing = keys.filter((k) => !window.RUBICON_VOICE_AUD[k]).length;
+    out.missing = keys.filter((k) => !window.MECH_CORDON_VOICE_AUD[k]).length;
     document.querySelector('.vlBtns button').click();
     const t0 = performance.now();
     while (!document.querySelector('.vlBtns button.on') && performance.now() - t0 < 8000)
@@ -14748,7 +14757,7 @@ async function testVoiceLab(browser, base) {
     const sel = document.querySelector('select[data-r]');
     sel.value = '4';
     sel.onchange();
-    out.saved = (JSON.parse(localStorage.getItem('rubicon_voice_aud')) || {})[I.cands[0].id];
+    out.saved = (JSON.parse(localStorage.getItem('mech_cordon_voice_aud')) || {})[I.cands[0].id];
     return out;
   });
   await page.screenshot({ path: path.join(SHOT_DIR, 'voice-lab.png') });
@@ -14771,7 +14780,7 @@ async function testBgmLab(browser, base) {
   await waitVisible(page, 'bgmLab');
   await page.waitForFunction(() => document.querySelectorAll('.blRow').length > 0, null, { timeout: 60000 });
   const r = await page.evaluate(async () => {
-    const A = window.RUBICON_BGM_AUD,
+    const A = window.MECH_CORDON_BGM_AUD,
       I = A['@index'];
     const wait = async (f, ms = 8000) => {
       const t0 = performance.now();
@@ -14796,7 +14805,7 @@ async function testBgmLab(browser, base) {
     const sel = document.querySelector(`select[data-r="${id}"]`);
     sel.value = '5';
     sel.onchange();
-    out.saved = (JSON.parse(localStorage.getItem('rubicon_bgm_aud')) || {})[id];
+    out.saved = (JSON.parse(localStorage.getItem('mech_cordon_bgm_aud')) || {})[id];
     document.getElementById('blCopy').click();
     out.copy = document.getElementById('blOut').textContent;
     document.querySelector('button[data-cur]').click();
@@ -14832,7 +14841,7 @@ async function testAudio2(browser, base) {
   const r = await page.evaluate(async () => {
     const g = window.__game,
       S = window.__sfx;
-    const out = { nPack: Object.keys(window.RUBICON_SFX2 || {}).length, syn: !!S.buf['~thA'] };
+    const out = { nPack: Object.keys(window.MECH_CORDON_SFX2 || {}).length, syn: !!S.buf['~thA'] };
     const log = [];
     const play0 = S.play.bind(S);
     S.play = (k, ...a) => (log.push(k), play0(k, ...a));
@@ -14841,7 +14850,7 @@ async function testAudio2(browser, base) {
       f();
       return log.slice();
     };
-    localStorage.setItem('rubicon_map', 'snow');
+    localStorage.setItem('mech_cordon_map', 'snow');
     g.startMission();
     g.state = 'audio-test';
     g.waves = [];
@@ -14905,8 +14914,8 @@ async function testAudio2(browser, base) {
     g.ctrl.voice = 'gentle';
     out.vLoad = (await g.voiceLoad('gentle')) && (await g.voiceLoad('ai'));
     out.vKeys = Math.min(
-      Object.keys(window.RUBICON_VOICE_GENTLE || {}).length,
-      Object.keys(window.RUBICON_VOICE_AI || {}).length,
+      Object.keys(window.MECH_CORDON_VOICE_GENTLE || {}).length,
+      Object.keys(window.MECH_CORDON_VOICE_AI || {}).length,
     );
     out.vSay = await g.voiceSay('空降完成。這次作戰由我管制。');
     out.vNone = await g.voiceSay('（沒有這句的語音）');
@@ -15053,7 +15062,7 @@ async function testAudio2(browser, base) {
     g.subBarClear();
     g.voiceStop();
     g.clearMission();
-    localStorage.setItem('rubicon_map', 'industrial');
+    localStorage.setItem('mech_cordon_map', 'industrial');
     g.state = 'title';
     return out;
   });
@@ -15308,7 +15317,7 @@ async function testBossZone(browser, base) {
   console.log('Boss 的作戰區域縮小：雙 AC 不疊加、卡在區域外的敵人移回來（洋上都市）');
   const { ctx, page } = await newPage(browser, 'bosszone');
   await seededRandom(page);
-  await page.addInitScript(() => localStorage.setItem('rubicon_map', 'xylem'));
+  await page.addInitScript(() => localStorage.setItem('mech_cordon_map', 'xylem'));
   await page.goto(base + '?test');
   await waitVisible(page, 'title');
   await freezeLoop(page);
@@ -15376,7 +15385,7 @@ async function testVoidMaps(browser, base) {
   for (const map of ['xylem', 'orbit']) {
     const { ctx, page } = await newPage(browser, 'void-' + map);
     await seededRandom(page);
-    await page.addInitScript((m) => localStorage.setItem('rubicon_map', m), map);
+    await page.addInitScript((m) => localStorage.setItem('mech_cordon_map', m), map);
     await page.goto(base + '?test');
     await waitVisible(page, 'title');
     await freezeLoop(page);
@@ -16769,7 +16778,7 @@ async function testLoot(browser, base) {
     g.camp = null;
     g.state = 'garage';
     // 空戰：直接入帳、不在地面放掉落物
-    localStorage.setItem('rubicon_map', 'airspace');
+    localStorage.setItem('mech_cordon_map', 'airspace');
     g.save.level = 5;
     g.startMission();
     const a = g.enemies.find((x) => !x.dead && x.team === 'enemy');
@@ -16782,7 +16791,7 @@ async function testLoot(browser, base) {
       Math.random = r0;
     }
     out.air = (S.mats.alloy || 0) > al0 && g.pickups.length === pk1;
-    localStorage.setItem('rubicon_map', 'industrial');
+    localStorage.setItem('mech_cordon_map', 'industrial');
     g.clearMission();
     g.openGarage(); // 狀態離開 play（主迴圈不再讀清掉的玩家）
     return out;
@@ -20341,8 +20350,8 @@ async function testWater(browser, base) {
   const start = (q) =>
     page.evaluate((q) => {
       const g = window.__game;
-      localStorage.setItem('rubicon_map', 'dam');
-      localStorage.setItem('rubicon_variant', 'base');
+      localStorage.setItem('mech_cordon_map', 'dam');
+      localStorage.setItem('mech_cordon_variant', 'base');
       g.ctrl.water = q;
       g.startMission();
       g.waves = [];
@@ -20535,7 +20544,7 @@ async function testWater(browser, base) {
   // 高空軌道的雲海：粒子的煙霧＋雲底，不是水面
   const c = await page.evaluate(() => {
     const g = window.__game;
-    localStorage.setItem('rubicon_map', 'orbit');
+    localStorage.setItem('mech_cordon_map', 'orbit');
     g.ctrl.water = 'mid';
     g.startMission();
     g.waves = [];
@@ -20708,7 +20717,7 @@ async function testVfxEditor(browser, base) {
     out.n1 = v.sys.gl.n - a;
     out.dirty = v.dirty;
     document.getElementById('vxSave').click();
-    out.saved = JSON.parse(localStorage.getItem('rubicon_fx_presets') || '{}');
+    out.saved = JSON.parse(localStorage.getItem('mech_cordon_fx_presets') || '{}');
     return out;
   });
   await page.screenshot({ path: path.join(SHOT_DIR, 'vfx-editor.png') });
@@ -20722,7 +20731,7 @@ async function testVfxEditor(browser, base) {
   // 遊戲照瀏覽器存的產生
   const gp = await ctx.newPage();
   watch(gp, 'vfx-game');
-  await gp.goto(base + 'rubicon-protocol.html?test');
+  await gp.goto(base + 'mech-cordon.html?test');
   await waitVisible(gp, 'title');
   const n = await gp.evaluate(() => {
     const g = window.__game;
@@ -20735,7 +20744,7 @@ async function testVfxEditor(browser, base) {
   // 全部還原：清掉瀏覽器存的
   const back = await page.evaluate(() => {
     document.getElementById('vxResetAll').click();
-    return localStorage.getItem('rubicon_fx_presets');
+    return localStorage.getItem('mech_cordon_fx_presets');
   });
   check(back === null, '全部還原：清掉瀏覽器存的');
   await ctx.close();
@@ -21475,8 +21484,8 @@ async function testCine(browser, base) {
     timeout: 30000,
   });
   const mus = await page.evaluate(() => ({
-    lib: !!window.RUBICON_MUSIC,
-    n: window.RUBICON_MUSIC ? Object.keys(window.RUBICON_MUSIC).length : 0,
+    lib: !!window.MECH_CORDON_MUSIC,
+    n: window.MECH_CORDON_MUSIC ? Object.keys(window.MECH_CORDON_MUSIC).length : 0,
     ok: window.__game.cine.musicOk,
     state: window.__game.state,
   }));
@@ -25202,14 +25211,14 @@ async function testCrowd(browser, base) {
     const g = window.__game;
     const out = {};
     // 主題的外觀：高空軌道＝白色真空作業服
-    localStorage.setItem('rubicon_map', 'orbit');
+    localStorage.setItem('mech_cordon_map', 'orbit');
     g.save.level = 1;
     g.startMission();
     g.waves = [];
     g.wavePend = null;
     const civO = g.crowd.list.filter((h) => h.kind === 'civ');
     out.orbit = civO.length > 0 && civO.every((h) => h.look.shirt === 0xe8e8e8 || h.look.shirt === 0xd8d8d0);
-    localStorage.setItem('rubicon_map', 'industrial');
+    localStorage.setItem('mech_cordon_map', 'industrial');
     g.startMission();
     g.waves = [];
     g.wavePend = null;
@@ -30442,8 +30451,8 @@ async function testServerBasics(browser, game) {
   check(game.health.length > 0, `/health 回應（${game.health.trim().slice(0, 60)}）`);
   const page = await (await browser.newContext()).newPage();
   await page.goto(game.url);
-  check(await page.evaluate(() => !!window.RUBICON_SERVER), '遊戲頁已注入 window.RUBICON_SERVER');
-  // 安全連線（自簽憑證，眼動追蹤要開攝影機）：https 的 /health、注入 RUBICON_HTTPS、wss 中繼
+  check(await page.evaluate(() => !!window.MECH_CORDON_SERVER), '遊戲頁已注入 window.MECH_CORDON_SERVER');
+  // 安全連線（自簽憑證，眼動追蹤要開攝影機）：https 的 /health、注入 MECH_CORDON_HTTPS、wss 中繼
   const hm = game.log().match(/\[test-port\] 443 (\d+)/);
   const hport = hm ? +hm[1] : 0;
   const hget = (u) =>
@@ -30462,9 +30471,9 @@ async function testServerBasics(browser, game) {
     `https（自簽憑證）的 /health（port ${hport}）`,
   );
   check(
-    (await page.evaluate(() => window.RUBICON_HTTPS)) === hport &&
-      (await hget('/')).body.includes('RUBICON_HTTPS'),
-    '遊戲頁注入 window.RUBICON_HTTPS（https 的 port）',
+    (await page.evaluate(() => window.MECH_CORDON_HTTPS)) === hport &&
+      (await hget('/')).body.includes('MECH_CORDON_HTTPS'),
+    '遊戲頁注入 window.MECH_CORDON_HTTPS（https 的 port）',
   );
   const wssOk = await new Promise((res) => {
     const ws = new (require('ws').WebSocket)(`wss://127.0.0.1:${hport}/ws`, { rejectUnauthorized: false });
@@ -30505,7 +30514,7 @@ async function testServerBasics(browser, game) {
   check(
     pj.ok &&
       /javascript/.test(pj.headers.get('content-type') || '') &&
-      (await ph.text()).includes('Rubicon Paint'),
+      (await ph.text()).includes('Mech Cordon Paint'),
     '/paint/ 提供貼圖繪製與它的程式庫',
   );
   const [apng] = await Promise.all([page.waitForEvent('popup'), page.click('#btnApng')]);
@@ -30673,8 +30682,8 @@ async function testDestruct(browser, base) {
     const G = window.__game;
     await G.lmRefresh();
     G.save.level = 1;
-    localStorage.setItem('rubicon_map', 'industrial');
-    localStorage.setItem('rubicon_variant', 'base');
+    localStorage.setItem('mech_cordon_map', 'industrial');
+    localStorage.setItem('mech_cordon_variant', 'base');
     G.ctrl.destruct = 'normal'; // 檢查可破壞模式的數值（預設是易破壞）
     G.startMission();
   });
@@ -30983,8 +30992,8 @@ async function testDestructCollapse(browser, base) {
       const G = window.__game;
       await G.lmRefresh();
       G.save.level = 1;
-      localStorage.setItem('rubicon_map', map);
-      localStorage.setItem('rubicon_variant', 'base');
+      localStorage.setItem('mech_cordon_map', map);
+      localStorage.setItem('mech_cordon_variant', 'base');
       G.ctrl.destruct = 'normal'; // 檢查可破壞模式的數值（預設是易破壞）
       G.startMission();
     }, map);
@@ -31154,8 +31163,8 @@ async function testDestructSegs(browser, base) {
       const G = window.__game;
       await G.lmRefresh();
       G.save.level = 1;
-      localStorage.setItem('rubicon_map', map);
-      localStorage.setItem('rubicon_variant', 'base');
+      localStorage.setItem('mech_cordon_map', map);
+      localStorage.setItem('mech_cordon_variant', 'base');
       G.ctrl.destruct = 'normal'; // 檢查可破壞模式的數值（預設是易破壞）
       G.startMission();
     }, map);
@@ -31337,7 +31346,7 @@ async function testFreeOps(browser, base) {
     g.save.coam = 100000;
     g.writeSave();
     try {
-      localStorage.removeItem('rubicon_freeops');
+      localStorage.removeItem('mech_cordon_freeops');
     } catch (e) {}
     g.fo = null;
     g.openGarage();
@@ -31359,7 +31368,7 @@ async function testFreeOps(browser, base) {
     out.lvMax = Math.max(
       ...[...document.querySelectorAll('#foBody select[data-fo="level"] option')].map((o) => +o.value),
     );
-    out.saved = JSON.parse(localStorage.getItem('rubicon_freeops')).type;
+    out.saved = JSON.parse(localStorage.getItem('mech_cordon_freeops')).type;
     for (const m of ['chain', 'sortie', 'level']) {
       document.querySelector(`#foModes button[data-mode="${m}"]`).click();
       out[m] = document.querySelectorAll('#foBody .foRow').length;
@@ -31800,6 +31809,176 @@ async function testFreeOpsMp(browser, url) {
   await ctx.close();
 }
 
+// 轉換舊存檔（game/legacy.js、docs/rebrand-design.md）：改名前的 rubicon_* 存檔、設定與 IndexedDB 轉成新版
+async function testLegacy(browser, base) {
+  console.log('轉換舊存檔：舊存檔轉存到槽位、覆蓋確認、匯出的檔案、設定與資料庫、刪除舊資料');
+  const { ctx, page } = await newPage(browser, 'legacy');
+  await page.goto(base);
+  await waitVisible(page, 'title');
+  await page.evaluate(async () => {
+    for (const k of Object.keys(localStorage))
+      if (k.startsWith('mech_cordon_save')) localStorage.removeItem(k);
+    const sv = (level, coam) =>
+      JSON.stringify({ coam, owned: ['h_std'], asm: { head: 'h_std' }, level, kills: 3, t: 1 });
+    localStorage.setItem('rubicon_save_1', sv(7, 777));
+    localStorage.setItem('rubicon_save_2', sv(9, 999));
+    localStorage.setItem('rubicon_save_bk_2', sv(8, 888));
+    localStorage.setItem('rubicon_save_cur', '2');
+    localStorage.setItem('rubicon_save', sv(2, 222)); // 更早的單一存檔：已經有舊槽位 1，不列出
+    localStorage.setItem('rubicon_nick', 'OLDPILOT');
+    localStorage.setItem('rubicon_lv_best', '{"x":1}');
+    const mk = (name, store, opt, put) =>
+      new Promise((res, rej) => {
+        const r = indexedDB.open(name, 1);
+        r.onupgradeneeded = () => r.result.createObjectStore(store, opt);
+        r.onsuccess = () => {
+          const d = r.result;
+          const t = d.transaction(store, 'readwrite');
+          put(t.objectStore(store));
+          t.oncomplete = () => {
+            d.close();
+            res();
+          };
+          t.onerror = () => rej(t.error);
+        };
+        r.onerror = () => rej(r.error);
+      });
+    await mk('rubicon-levels', 'levels', { keyPath: 'id' }, (s) => {
+      s.put({ id: 'lv_old1', name: '舊關卡 1' });
+      s.put({ id: 'lv_old2', name: '舊關卡 2' });
+    });
+    await mk('rubicon-paint', 'autosave', undefined, (s) => s.put({ a: 1 }, 'lib:預設\nhead/h_std'));
+  });
+  await page.reload();
+  await waitVisible(page, 'title');
+  check(
+    await page.evaluate(() => document.getElementById('btnLegacy').classList.contains('hasOld')),
+    '標題的「轉換舊存檔」有舊資料的標記',
+  );
+  await page.click('#btnLegacy');
+  check(await waitVisible(page, 'legacy'), '開啟轉換舊存檔的畫面');
+  await page
+    .waitForFunction(
+      () => document.getElementById('legacyOther').textContent.includes('自訂關卡 2 筆'),
+      null,
+      {
+        timeout: 8000,
+      },
+    )
+    .catch(() => {});
+  const cards = await page.$$eval('#legacySaves [data-n]', (a) => a.map((e) => e.textContent));
+  const other = await page.textContent('#legacyOther');
+  check(
+    cards.length === 2 && cards[0].includes('任務 07') && cards[1].includes('任務 09'),
+    `列出兩份舊存檔（${cards.length}）`,
+  );
+  check(
+    other.includes('設定 2 項') && other.includes('貼圖繪製的自動存檔 1 筆'),
+    `列出舊的設定與資料庫（${other}）`,
+  );
+  const ls = (k) => page.evaluate((k) => localStorage.getItem(k), k);
+  const lvl = async (k) => {
+    const v = await ls(k);
+    return v ? JSON.parse(v).level : 0;
+  };
+  // 舊存檔 2 → 存檔 3（空的：直接寫入，抉擇前備份跟著）
+  await page.selectOption('#legacySaves [data-n="1"] select', '3');
+  await page.click('#legacySaves [data-n="1"] button[data-act="conv"]');
+  await wait(200);
+  check(
+    (await lvl('mech_cordon_save_3')) === 9 && (await lvl('mech_cordon_save_bk_3')) === 8,
+    '舊存檔 2 轉存到空的存檔 3（抉擇前備份跟著）',
+  );
+  check((await page.textContent('#legacySaves [data-n="1"]')).includes('已轉存到存檔 3'), '卡片標出已轉存');
+  // 舊存檔 1 → 存檔 3（有進度）：先確認，取消不變，確定才覆蓋
+  await page.selectOption('#legacySaves [data-n="0"] select', '3');
+  await page.click('#legacySaves [data-n="0"] button[data-act="conv"]');
+  check(await page.isVisible('#uiModal.on'), '轉存到有進度的槽位要先確認');
+  await page.click('#uiModal button:not(.primary)');
+  check((await lvl('mech_cordon_save_3')) === 9, '取消時存檔 3 不變');
+  await page.click('#legacySaves [data-n="0"] button[data-act="conv"]');
+  await page.click('#uiModal button.primary');
+  await wait(200);
+  check((await lvl('mech_cordon_save_3')) === 7, '確定後舊存檔 1 覆蓋存檔 3');
+  // 舊版匯出的存檔檔案
+  const file = {
+    name: 'rubicon-save-1-20261001.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(
+      JSON.stringify({ format: 'rubicon-save', v: 1, save: { coam: 5, asm: { head: 'h_std' }, level: 12 } }),
+    ),
+  };
+  const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.click('#btnLegacyFile')]);
+  await fc.setFiles(file);
+  await page
+    .waitForFunction(() => document.querySelectorAll('#legacySaves [data-n]').length === 3, null, {
+      timeout: 5000,
+    })
+    .catch(() => {});
+  check((await page.textContent('#legacySaves [data-n="2"]')).includes('任務 12'), '讀取舊版匯出的存檔檔案');
+  await page.selectOption('#legacySaves [data-n="2"] select', '1');
+  await page.click('#legacySaves [data-n="2"] button[data-act="conv"]');
+  await wait(200);
+  check((await lvl('mech_cordon_save_1')) === 12, '檔案轉存到空的存檔 1');
+  await page.screenshot({ path: path.join(SHOT_DIR, 'legacy.png') });
+  // 設定與資料庫
+  await page.evaluate(() => (window.__legacyNoReload = true));
+  await page.click('#btnLegacyAll');
+  await page.click('#uiModal button.primary');
+  await page
+    .waitForFunction(() => document.getElementById('legacyMsg').textContent.includes('已轉換'), null, {
+      timeout: 10000,
+    })
+    .catch(() => {});
+  check((await ls('mech_cordon_nick')) === 'OLDPILOT', '舊設定照名字轉成新的鍵');
+  const dbs = await page.evaluate(async () => {
+    const read = (name, store) =>
+      new Promise((res) => {
+        const r = indexedDB.open(name);
+        r.onsuccess = () => {
+          const d = r.result;
+          if (!d.objectStoreNames.contains(store)) return res(-1);
+          const q = d.transaction(store).objectStore(store).count();
+          q.onsuccess = () => {
+            d.close();
+            res(q.result);
+          };
+        };
+      });
+    return [await read('mech-cordon-levels', 'levels'), await read('mech-cordon-paint', 'autosave')];
+  });
+  check(dbs[0] === 2 && dbs[1] === 1, `舊的資料庫複製到新的（關卡 ${dbs[0]}、貼圖繪製 ${dbs[1]}）`);
+  await page.reload();
+  await waitVisible(page, 'title');
+  check(
+    await page.evaluate(() => window.__game.save && window.__game.saveSlot >= 1),
+    '重新整理後照常載入（存檔槽可用）',
+  );
+  // 刪除舊資料
+  await page.click('#btnLegacy');
+  await waitVisible(page, 'legacy');
+  await page.click('#btnLegacyDel');
+  await page.click('#uiModal button.primary');
+  await wait(600);
+  const left = await page.evaluate(async () => {
+    const keys = Object.keys(localStorage).filter((k) => k.startsWith('rubicon'));
+    const names = indexedDB.databases ? (await indexedDB.databases()).map((d) => d.name) : [];
+    return { keys, dbs: names.filter((n) => n.startsWith('rubicon')) };
+  });
+  check(
+    left.keys.length === 0 && left.dbs.length === 0,
+    `刪除舊版的資料（剩 ${left.keys.join(',')} ${left.dbs.join(',')}）`,
+  );
+  check((await lvl('mech_cordon_save_1')) === 12, '刪除舊資料不影響新存檔');
+  await page.click('#btnLegacyBack');
+  check(
+    (await waitVisible(page, 'title')) &&
+      !(await page.evaluate(() => document.getElementById('btnLegacy').classList.contains('hasOld'))),
+    '返回標題後沒有舊資料的標記',
+  );
+  await ctx.close();
+}
+
 const STEPS = [
   ['testFile', (c) => testFile(c.browser)],
   ['testSolo', (c) => testSolo(c.browser, c.base)],
@@ -31809,6 +31988,7 @@ const STEPS = [
   ['testDestructCollapse', (c) => testDestructCollapse(c.browser, c.base + '?test')],
   ['testDestructSegs', (c) => testDestructSegs(c.browser, c.base + '?test')],
   ['testSaves', (c) => testSaves(c.browser, c.base + '?test')],
+  ['testLegacy', (c) => testLegacy(c.browser, c.base + '?test')],
   ['testPilot', (c) => testPilot(c.browser, c.base)],
   ['testPilotUlt', (c) => testPilotUlt(c.browser, c.base)],
   ['testLibrary', (c) => testLibrary(c.browser, c.base)],
@@ -32115,7 +32295,7 @@ async function launchBrowser() {
       '--use-fake-ui-for-media-stream',
     ],
   });
-  // SMOKE_RENDER＝畫面模式（localStorage rubicon_render 的 JSON，例如 {"mode":"hdr"}）：每個新的瀏覽器環境都先寫入，
+  // SMOKE_RENDER＝畫面模式（localStorage mech_cordon_render 的 JSON，例如 {"mode":"hdr"}）：每個新的瀏覽器環境都先寫入，
   // 整套測試以那個模式跑（docs/perf-threejs-upgrade.md 第 4 期）
   if (process.env.SMOKE_RENDER) {
     const nc = browser.newContext.bind(browser);
@@ -32123,7 +32303,7 @@ async function launchBrowser() {
       const c = await nc(o);
       await c.addInitScript((v) => {
         try {
-          if (!localStorage.getItem('rubicon_render')) localStorage.setItem('rubicon_render', v);
+          if (!localStorage.getItem('mech_cordon_render')) localStorage.setItem('mech_cordon_render', v);
         } catch (e) {}
       }, process.env.SMOKE_RENDER);
       return c;
@@ -32157,9 +32337,9 @@ async function launchBrowser() {
     if (!realDefaults)
       await c.addInitScript(() => {
         try {
-          if (localStorage.getItem('rubicon_ctrl') === null)
+          if (localStorage.getItem('mech_cordon_ctrl') === null)
             localStorage.setItem(
-              'rubicon_ctrl',
+              'mech_cordon_ctrl',
               JSON.stringify({ pace: 0.85, paceV: 2, destruct: 'normal', topCtl: 'classic' }),
             );
         } catch (e) {
@@ -32168,8 +32348,10 @@ async function launchBrowser() {
       });
     await c.addInitScript(() => {
       try {
-        if (localStorage.getItem('rubicon_map') === null) localStorage.setItem('rubicon_map', 'industrial');
-        if (localStorage.getItem('rubicon_variant') === null) localStorage.setItem('rubicon_variant', 'base');
+        if (localStorage.getItem('mech_cordon_map') === null)
+          localStorage.setItem('mech_cordon_map', 'industrial');
+        if (localStorage.getItem('mech_cordon_variant') === null)
+          localStorage.setItem('mech_cordon_variant', 'base');
       } catch (e) {
         /* 沒有 localStorage 的頁面 */
       }

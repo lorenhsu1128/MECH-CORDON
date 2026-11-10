@@ -1015,7 +1015,7 @@ export function prologueCine(ctx) {
     },
     ev: [
       { t: 0, a: 'hero', aim: [40, 8, -80] },
-      { t: 0.4, card: 'RUBICON PROTOCOL', s: '盧比孔協定', style: 'logo', dur: 4 },
+      { t: 0.4, card: 'MECH CORDON', s: '盧比孔協定', style: 'logo', dur: 4 },
       { t: 6.4, sub: T.last[1], who: T.last[0], dur: 3.4 },
     ],
   });
