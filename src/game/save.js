@@ -83,7 +83,7 @@ Object.assign(Game.prototype, {
   // ---------- save ----------
   newSave() {
     return {
-      coam: 60000,
+      coam: 100000,
       owned: START_OWNED.slice(),
       asm: Object.assign({}, START_ASM),
       items: { cs_bomber: 2, cs_ally: 1 },

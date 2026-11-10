@@ -17965,6 +17965,40 @@ async function testBossHard(browser, base) {
       b.takeDamage(dmg, 0, pl, b.center(), null, null, null, attr);
       return h0 - b.hp;
     };
+    // 0. 大招閘門：這個型態的大招沒出 → 停在門檻上一點；打斷或放出之後才越過；最後一個型態不會被擊破
+    g.bigGateOff = false;
+    fresh(3);
+    b.hp = b.maxHp * 0.75;
+    hit(b.maxHp * 0.9);
+    out.bg = b.hp > b.maxHp * 0.7 && b.hp < b.maxHp * 0.7 + 2;
+    out.bgHit = hit(b.maxHp * 0.1);
+    b.tierTick(0.016, pl); // 第一格：記下型態（重置間隔）
+    b.bt.cdI = 0;
+    b.tierTick(0.016, pl);
+    out.bgCh = !!b.bt.ch;
+    b.tierInterrupt(pl);
+    b.staggerT = 0;
+    out.bgOpen = hit(b.maxHp * 0.1) > 0 && b.hp <= b.maxHp * 0.7;
+    fresh(3);
+    b.hp = b.maxHp * 0.2;
+    b.phDone = 3;
+    hit(b.maxHp);
+    out.bgLast = !b.dead && b.hp > 0 && b.hp < 2;
+    b.tierTick(0.016, pl);
+    b.bt.cdI = 0;
+    b.tierTick(0.016, pl);
+    if (b.bt.ch) {
+      b.bt.ch.t = b.bt.ch.T;
+      b.tierTick(0.016, pl);
+    }
+    out.bgRel = !!(b.bt.bigDone && b.bt.bigDone[3]) && b.tierGate(1e9) === 1e9;
+    // 依戰力的比例
+    g.bossPw = 0;
+    out.powK = [g.bossPowK()];
+    g.bossPw = 1;
+    out.powK.push(g.bossPowK());
+    g.bossPw = 0.4 / 0.7; // 倍率 1（以下照刁鑽度表的比例檢查）
+    g.bigGateOff = true; // 以下各項檢查原本的閘門與裝甲殼
     // 1. 型態閘門（刁鑽度 3）：AP 75% 一口氣打 90% → 停在 70%；換型態之後才繼續
     fresh(3);
     b.hp = b.maxHp * 0.75;
@@ -18138,6 +18172,18 @@ async function testBossHard(browser, base) {
     `型態閘門：一口氣的大傷害停在 70%（${r.gate}），換型態（${r.gatePh}）`,
   );
   check(r.gate2 === 0.35, `型態閘門：換到第二型態後再停在 35%（${r.gate2}）`);
+  check(
+    r.bg && r.bgHit < 1 && r.bgCh && r.bgOpen,
+    `大招閘門：大招沒出時停在門檻上、打斷後越過（${r.bg}／${r.bgHit}／${r.bgCh}／${r.bgOpen}）`,
+  );
+  check(
+    r.bgLast && r.bgRel,
+    `大招閘門：最後一個型態沒放大招不會被擊破、放出後可以擊破（${r.bgLast}／${r.bgRel}）`,
+  );
+  check(
+    r.powK[0] === 0.6 && Math.abs(r.powK[1] - 1.3) < 1e-9,
+    `結構損傷與大招的比例依戰力：${r.powK.join(' → ')}`,
+  );
   check(r.shell && r.shellHp && r.shellHit === 0, '裝甲殼（刁鑽度 5）：碰到門檻長殼、停在門檻上、打不進 AP');
   check(
     /裝甲殼/.test(r.shellHud) && r.shellView && r.shellSer,
@@ -18379,6 +18425,7 @@ async function testBossTier(browser, base) {
     const coam0 = g.missionEarned || 0;
     pl.sy = null;
     reset();
+    g.bigGateOff = true; // 大招閘門（第 8 節）另外在 testBossHard 檢查
     b.hp = 5;
     b.takeDamage(1e6, 0, pl, b.center());
     out.rank = g.bossRank && g.bossRank.r;

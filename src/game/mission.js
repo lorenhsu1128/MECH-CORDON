@@ -487,6 +487,7 @@ Object.assign(Game.prototype, {
     this.kSquadT = undefined;
     this.spawnTier = tier === undefined ? freeTier(bossDefIndex(bd0)) : tier;
     if (this.tierTestOff) this.spawnTier = 0; // 冒煙測試：檢查各 Boss 原本的機制時不套用刁鑽度
+    this.bossPw = this.isClient ? 0 : this.bossPower(); // 結構損傷與大招的比例依戰力（bossPowK）
     this.spawnAf = this.bossAfRoll(this.spawnTier); // 依玩家戰力的 Boss 詞綴（game/affix.js）
     // Boss 本體的血量與火力加強（部位與增援用原本的 scaleHp）
     const bd = { ...bd0, hpMul: bd0.hpMul * BOSS_HP_K, dmgMul: bd0.dmgMul * BOSS_DMG_K };

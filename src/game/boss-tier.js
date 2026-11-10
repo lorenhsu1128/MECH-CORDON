@@ -60,6 +60,10 @@ Object.assign(Game.prototype, {
     return b ? b.opts.tier : 0;
   },
   // 第一次遇到某個機制：跳一次說明（記在存檔，多人時只有房主自己的存檔）
+  // 第 8 節：結構損傷與大招的比例依玩家戰力（bossPower，spawnBossDef 記下）：戰力 0＝×0.6、1＝×1.3
+  bossPowK() {
+    return Math.max(0.6, Math.min(1.3, 0.6 + 0.7 * (this.bossPw || 0)));
+  },
   tierIntro(key, txt) {
     const S = this.save;
     if (!S) return;

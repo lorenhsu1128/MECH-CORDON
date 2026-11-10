@@ -187,12 +187,28 @@ Object.assign(MechEntity.prototype, {
     const s = this.tierState();
     if (s.shell) return 0; // 裝甲殼：打不進 AP（打斷量表照算）
     const done = this.bossPhase(); // 目前 AP 所在的型態（換型態的演出在下一格的 bossPhaseTick）
-    if (done >= 3) return v;
-    const floor = this.maxHp * BOSS_PHASES[done - 1];
+    const floor = done >= 3 ? 0 : this.maxHp * BOSS_PHASES[done - 1];
     if (this.hp - v > floor) return v;
+    s.bigDone = s.bigDone || {};
+    s.held = s.held || {};
+    // 大招閘門：這個型態的大招還沒放出也沒被打斷 → 停在門檻上一點（最後一個型態＝不會被擊破）
+    if (!s.bigDone[done] && !this.game.bigGateOff) {
+      if (!s.held[done]) {
+        s.held[done] = 1;
+        const c = this.center();
+        this.game.popDamage(c.clone().setY(c.y + 3 * DS), '大招未出', false, true, false, 0, this.id);
+        this.game.tierIntro(
+          'gate',
+          '型態門檻 — 每個型態 Boss 一定會放一次大招；打斷它或躲過它之後，AP 才會越過門檻',
+        );
+      }
+      return Math.max(0, this.hp - (floor + 1));
+    }
+    if (done >= 3) return v;
     const T = tierRow(this.bossTier());
     s.shellDone = s.shellDone || {};
-    if (T.gShell && !s.shellDone[done]) {
+    // 刁鑽度 5 起的裝甲殼：這個型態已經被大招閘門擋過就不再長（一個型態只擋一次）
+    if (T.gShell && !s.shellDone[done] && !s.held[done]) {
       // 停在門檻上一點：還不換型態，先長出裝甲殼
       s.shell = { ph: done + 1, t: SHELL_T, floor };
       s.shellDone[done] = 1;
@@ -238,7 +254,7 @@ Object.assign(MechEntity.prototype, {
     const k = Math.min(1.5, dmg / ref);
     if (tgt.isPlayer)
       this.game.tierIntro('big', '大招 — 依 AP 上限的比例扣、不看防禦與減傷，看到預警一定要躲開');
-    return tgt.maxHp * tierRow(this.bossTier()).bPct * k;
+    return tgt.maxHp * tierRow(this.bossTier()).bPct * k * this.game.bossPowK();
   },
   // ---------- 第 8 節：結構損傷（玩家機體；Boss 打中的一部分變成補不回來的灰色 AP）----------
   // takeDamage 扣完 AP 之後（this＝被打的玩家機體）
@@ -246,7 +262,7 @@ Object.assign(MechEntity.prototype, {
     if (!(take > 0) || !from || !from.tierBoss || !this.pilotEnt()) return;
     const b = from.tierBoss();
     if (!b || !b.tierOn()) return;
-    const k = tierRow(b.bossTier()).sScar || 0;
+    const k = (tierRow(b.bossTier()).sScar || 0) * this.game.bossPowK();
     if (!k) return;
     this.scar = Math.min(
       this.maxHp * SCAR_MAX,
@@ -391,6 +407,7 @@ Object.assign(MechEntity.prototype, {
       if (ch.t >= ch.T) {
         // 放出（只斷一次＝大招減半）
         s.ch = null;
+        (s.bigDone = s.bigDone || {})[ph] = 1; // 大招閘門（tierGate）：這個型態放過大招了
         if (ch.broke || (s.lostW && s.lostW[ch.id] > 0)) s.halfT = 4; // 只斷一次、負責的部位壞了：減半
         s.cdI = I_CD[1] * rnd(0.85, 1.15);
         g.flashMsg(`${this.name.split(' ')[0]}：${ch.name}！`, 0xff4030, 1.4);
@@ -407,7 +424,10 @@ Object.assign(MechEntity.prototype, {
     const kit0 = this.tierKit();
     if (kit0.canCharge && !kit0.canCharge(this)) return (s.cdI = 0.5); // 這隻現在不能蓄力（地下、隧道裡…）
     const mv = this.tierMove(ph);
-    if (!mv) return (s.cdI = I_CD[1]);
+    if (!mv) {
+      (s.bigDone = s.bigDone || {})[ph] = 1; // 沒有大招（負責的部位壞了…）：閘門直接打開
+      return (s.cdI = I_CD[1]);
+    }
     const face = pl.pos.clone().sub(this.pos).setY(0);
     if (face.lengthSq() < 0.01) face.set(0, 0, -1);
     s.ch = {
@@ -468,6 +488,7 @@ Object.assign(MechEntity.prototype, {
     const s = this.tierState(),
       g = this.game,
       T = tierRow(this.bossTier());
+    if (s.ch) (s.bigDone = s.bigDone || {})[+s.ch.id.slice(1)] = 1; // 大招閘門：打斷也算經過大招
     s.ch = null;
     s.cdI = I_CD[1] * rnd(0.85, 1.15);
     if (s.shell) this.tierShellBreak('int'); // 打斷：打開裝甲殼
