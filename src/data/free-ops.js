@@ -41,7 +41,7 @@ export const WEATHER_NAMES = {
   sand: '沙塵暴',
   dust: '粉塵',
   ash: '火山灰',
-  coral: 'Coral 粒子',
+  coral: '深脈粒子',
 };
 export const COL_NAMES = { walker: '多足巨兵', ship: '陸上戰艦' };
 

@@ -1364,7 +1364,7 @@ const TRAP = [
   ['scrap', '吊掛的廢料', 'Lattice-9'],
   ['valve', '海水閥', '洋上都市'],
   ['airlock', '氣閘', '高空軌道'],
-  ['coral', 'Coral 收容槽', '研究特區'],
+  ['coral', '深脈收容槽', '研究特區'],
 ].map(([k, name, theme]) => ({
   id: 'tp_' + k,
   name: `${name}（${theme}）`,

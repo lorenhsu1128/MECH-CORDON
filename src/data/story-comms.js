@@ -741,7 +741,7 @@ export const COMMS = [
     once: true,
     lines: [
       ['specimen', '……你來了。你終於來了。這裡的牆上有你的編號，我每天都看著它。'],
-      ['echo', '具名機甲「SPECIMEN」。研究所的強化人間，會定期過載，過載後有破綻。'],
+      ['echo', '具名機甲「SPECIMEN」。研究所的改造駕駛員，會定期過載，過載後有破綻。'],
       ['specimen', '為什麼是你？我才是先被做出來的那個！'],
     ],
   },
@@ -1875,7 +1875,7 @@ export const COMMS = [
     event: 'sortieEnd',
     sid: 'c5x',
     lines: [
-      ['station', '這是盧比孔協定週期紀錄。本週期 KEY 投放日——'],
+      ['station', '這是封鎖線協定週期紀錄。本週期 KEY 投放日——'],
       ['castron', '……你聽到了嗎？聽到了也沒用。下次你就會忘了。'],
       ['castron', '我也希望我能忘。'],
     ],
@@ -1983,7 +1983,7 @@ export const COMMS = [
   {
     event: 'sortieEnd',
     sid: 'c5y',
-    lines: [['echo', '……找到了。盧比孔協定。按下重來的，是軌道站。簽字的，是卡斯特隆和艾瑟立克。']],
+    lines: [['echo', '……找到了。封鎖線協定。按下重來的，是軌道站。簽字的，是卡斯特隆和艾瑟立克。']],
   },
   {
     event: 'sortieStart',

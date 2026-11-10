@@ -776,7 +776,7 @@ export const ACES = {
       rback: 'bw_ms',
       lback: 'bw_none',
     },
-    intro: '研究特區的強化人間 SPECIMEN — 定期過載（加速、火力上升），之後會硬直',
+    intro: '研究特區的改造駕駛員 SPECIMEN — 定期過載（加速、火力上升），之後會硬直',
   },
   spire: {
     theme: 'grid086',

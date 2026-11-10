@@ -1,6 +1,6 @@
 // 地圖物件的破壞（docs/destruction-design.md）：材質表、各物件種類的材質、受損的階段、血量的換算。純資料與純函式。
 //   材質決定：對三種屬性的傷害倍率 k＝[實彈, 爆發, 能量]、第 2 階段起的持續效果 fx、會不會起火 fire、
-//   損毀時的演出 boom（'fire' 火球、'arc' 電弧、'coral' Coral 光）、碎片的形狀 deb、碎片的顏色 col（沒有時用物件的顏色）。
+//   損毀時的演出 boom（'fire' 火球、'arc' 電弧、'coral' 深脈光）、碎片的形狀 deb、碎片的顏色 col（沒有時用物件的顏色）。
 //   只有 fuel、vehicle、wood 會起火（2026-11-02 使用者定案：不是所有物件都會起火）。
 import { hexForSet } from '../render/color-cm.js';
 
@@ -15,7 +15,7 @@ export const PMAT = {
   ice: { name: '冰', k: [0.7, 1.3, 1.5], fx: 'ice', deb: 'ice', col: 0xcfe6f2 },
   wood: { name: '木', k: [1, 1.3, 1.2], fx: 'smoke', fire: true, deb: 'plank', col: 0x6b5236 },
   glass: { name: '玻璃帷幕', k: [1, 1.4, 1], fx: 'dust', deb: 'plate', col: 0x7d8a96 },
-  coral: { name: 'Coral', k: [0.8, 1.2, 0.6], fx: 'coral', boom: 'coral', deb: 'crystal', col: 0xc0303a },
+  coral: { name: '深脈', k: [0.8, 1.2, 0.6], fx: 'coral', boom: 'coral', deb: 'crystal', col: 0xc0303a },
   pipe: { name: '管線', k: [0.9, 1.4, 0.9], fx: 'steam', deb: 'plate' },
 };
 

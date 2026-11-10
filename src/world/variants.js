@@ -2307,7 +2307,7 @@ export const VARIANTS = {
     tanks: {
       name: '收容區',
       theme: { featureKinds: ['bunkers'] },
-      // 成排的 Coral 收容槽
+      // 成排的深脈收容槽
       build(w) {
         const axis = rndi(0, 1),
           T = 2.5; // 收容槽放大 2.5 倍（同研究特區）

@@ -2533,10 +2533,10 @@ const CORAL = new THREE.MeshStandardMaterial({
   emissiveIntensity: 1.4,
   roughness: 0.3,
 });
-// Coral 反應爐：圓筒爐心＋四根冷卻柱＋發光的爐口
+// 深脈反應爐：圓筒爐心＋四根冷卻柱＋發光的爐口
 function coralReactor() {
   const g = new THREE.Group();
-  // 反應爐：爐體（剖面、補強環、觀察窗）＋頂部發光的 Coral 核心與蓋框＋四支冷卻柱（有環）與連接的管
+  // 反應爐：爐體（剖面、補強環、觀察窗）＋頂部發光的深脈核心與蓋框＋四支冷卻柱（有環）與連接的管
   g.add(
     mesh(
       D.lathe(
@@ -2600,10 +2600,10 @@ function coralReactor() {
   }
   return g;
 }
-// 巨大結晶柱：從地面長到很高的 Coral 結晶
+// 巨大結晶柱：從地面長到很高的深脈結晶
 function coralSpire() {
   const g = new THREE.Group();
-  // Coral 的晶柱：六角柱＋尖端、旁邊的小晶簇、底部的岩床（發光的裂縫）
+  // 深脈的晶柱：六角柱＋尖端、旁邊的小晶簇、底部的岩床（發光的裂縫）
   for (const [x, z, h, r, tx, tz] of [
     [0, 0, 28, 3, 0.05, 0],
     [3, 2, 16, 1.8, 0.3, 0.2],
@@ -2709,7 +2709,7 @@ function specimenCage() {
 // 斷裂的輸送管：粗大的管線從高處斷開，一截倒在地上
 function brokenTube() {
   const g = new THREE.Group();
-  // 斷裂的輸送管：支柱、管（補強環、斷口的內部是暗色）、外漏的 Coral、垂下的電纜
+  // 斷裂的輸送管：支柱、管（補強環、斷口的內部是暗色）、外漏的深脈、垂下的電纜
   plated(g, 3, 16, 3, M.concrete, -12, 8, 0, 0, 0, 0, 4);
   const tube = (x, y, z, ry, rz) => {
     const o = new THREE.Group();
@@ -2749,7 +2749,7 @@ function brokenTube() {
 // 研究所紀念碑：台座上的環形雕塑
 function monument() {
   const g = new THREE.Group();
-  // 紀念碑：三層的台座（銘板）、支柱、圓環（內圈的肋）、中心發光的 Coral 球、周圍的燈柱
+  // 紀念碑：三層的台座（銘板）、支柱、圓環（內圈的肋）、中心發光的深脈球、周圍的燈柱
   plated(g, 10, 2, 10, M.concrete, 0, 1, 0, 0, 0, 0, 9);
   plated(g, 6, 2, 6, M.concrete, 0, 3, 0, 0, 0, 0, 9);
   g.add(mesh(D.box(3, 1, 0.1, 0.02), M.steel, 0, 3, -3.06));
@@ -3919,7 +3919,7 @@ export const LANDMARKS = {
   },
   institute: {
     reactor: {
-      name: 'Coral 反應爐',
+      name: '深脈反應爐',
       build: coralReactor,
       bx: [-11, 11, -11, 11],
       range: 3,

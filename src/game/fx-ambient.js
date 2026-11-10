@@ -19,7 +19,7 @@ const SPOTS = {
   control: { k: 'chimney', rate: 1.2 }, // 機房的排氣
   streetlamp: { k: 'zap', rate: 0.4 }, // 淹沒城區：壞掉的路燈
   scrapheap: { k: 'dust', rate: 1 }, // Lattice-9 的廢料堆
-  coraltank: { k: 'coral', rate: 4 }, // 研究特區：Coral 收容槽的光點
+  coraltank: { k: 'coral', rate: 4 }, // 研究特區：深脈收容槽的光點
   crystal: { k: 'coral', rate: 2 },
   fuelsphere: { k: 'vent', rate: 3.5 }, // 宇宙港的燃料槽：低溫燃料的冷凝蒸氣
   radiator: { k: 'vent', rate: 2 }, // 高空軌道的散熱板

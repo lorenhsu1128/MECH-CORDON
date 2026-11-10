@@ -400,7 +400,7 @@ export function prologueCine(ctx) {
       { t: 7.78, shake: 1.2 },
     ],
   });
-  // ---- 0:46 Coral（黑底字卡）----
+  // ---- 0:46 深脈（黑底字卡）----
   shots.push({
     at: 46,
     set: { k: 'black' },
@@ -1015,7 +1015,7 @@ export function prologueCine(ctx) {
     },
     ev: [
       { t: 0, a: 'hero', aim: [40, 8, -80] },
-      { t: 0.4, card: 'MECH CORDON', s: '盧比孔協定', style: 'logo', dur: 4 },
+      { t: 0.4, card: 'MECH CORDON', s: '機戰封鎖線', style: 'logo', dur: 4 },
       { t: 6.4, sub: T.last[1], who: T.last[0], dur: 3.4 },
     ],
   });

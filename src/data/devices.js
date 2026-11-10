@@ -271,7 +271,7 @@ Object.assign(DEVICES, {
     fx: { zone: { R: 9, dur: 4, frac: 0.01, push: 9, vis: 'wind', attr: 'none', air: 20 } },
   },
   coral: {
-    name: 'Coral 收容槽',
+    name: '深脈收容槽',
     color: 0xff4a5a,
     trap: true,
     trig: 'shoot',
@@ -280,8 +280,8 @@ Object.assign(DEVICES, {
     wpR: 1.2,
     hideWp: true,
     solid: [[0, 0, 2.8, 2.8, 3.6]],
-    act: 'Coral 爆發',
-    tip: 'Coral 收容槽：打破玻璃筒，Coral 爆發造成能量傷害，附近 6 秒扣 EN。' + TRAP_TIP,
+    act: '深脈爆發',
+    tip: '深脈收容槽：打破玻璃筒，深脈爆發造成能量傷害，附近 6 秒扣 EN。' + TRAP_TIP,
     boomColor: 0xff3a5a,
     dustColor: 0x8a3a4a,
     fx: {

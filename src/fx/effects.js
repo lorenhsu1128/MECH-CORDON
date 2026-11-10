@@ -839,7 +839,7 @@ export class Effects {
     emitPreset(this.g, 'star', p, { S: r * this.k, color });
   }
   // 地圖的持續特效（game/fx-ambient.js）：burn 燃燒的殘骸（黑煙＋火星）、steam 管線的蒸氣、dust 料斗落下的粉塵；
-  // 第 8.6 期：flare 火炬、zap 漏電、coral Coral 的光點、vent 冷凝蒸氣（往下沉）、chimney 煙囪的煙
+  // 第 8.6 期：flare 火炬、zap 漏電、coral 深脈的光點、vent 冷凝蒸氣（往下沉）、chimney 煙囪的煙
   ambient(kind, p, key) {
     if (kind === 'burn' || kind === 'flare')
       this.glow(key || p, p, kind === 'flare' ? 2 : 1, 0xff7a2a, kind === 'flare' ? 16 : 9);

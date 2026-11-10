@@ -1459,7 +1459,7 @@ export function buildTrapAirlock(color = 0xffd060) {
   return g;
 }
 
-// ---------- 地下研究特區：Coral 收容槽（玻璃筒裡紅色的 Coral，弱點＝筒身） ----------
+// ---------- 地下研究特區：深脈收容槽（玻璃筒裡紅色的深脈，弱點＝筒身） ----------
 export function buildTrapCoral(color = 0xff4a5a) {
   const g = new THREE.Group();
   if (glbOr('device/coral', g)) return g;
@@ -1550,7 +1550,7 @@ export function buildTrapCoral(color = 0xff4a5a) {
     hazard(b, M.yel, M.dark, 1.2, 0.1, 0.03, 0, 0.45, 1.36, 0, 6);
   });
   bakeAll(b, { ...TINT, cache: 'trap_coral' });
-  // 弱點：玻璃筒（半透明）＋裡面發光的 Coral（分枝的團塊）與筒內的支架
+  // 弱點：玻璃筒（半透明）＋裡面發光的深脈（分枝的團塊）與筒內的支架
   const wp = node(g, 'wp');
   const w = new THREE.Group();
   wp.add(w);

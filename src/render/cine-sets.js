@@ -40,7 +40,7 @@ float fbm3( vec3 p ) {
 }
 `;
 
-// 行星：大陸、海、極冠、雲層、晨昏線；夜側的 Coral 紅色脈絡（伏筆）
+// 行星：大陸、海、極冠、雲層、晨昏線；夜側的深脈紅色脈絡（伏筆）
 const PLANET_VERT = /* glsl */ `
 varying vec3 vN; varying vec3 vW;
 void main() {
@@ -74,7 +74,7 @@ void main() {
 	// 海面的太陽反光
 	vec3 h = normalize( sunDir + v );
 	lit += vec3( 1.0, 0.95, 0.85 ) * pow( max( dot( n, h ), 0.0 ), 90.0 ) * ( 1.0 - land ) * ( 1.0 - cl ) * day * 0.5;
-	// 夜側：Coral 的紅色脈絡
+	// 夜側：深脈的紅色脈絡
 	float vein = ( 1.0 - smoothstep( 0.0, 0.012, abs( fbm3( n * 60.0 + vec3( 7.0 ) ) - 0.5 ) ) ) * land * ( 1.0 - cl * 0.8 );
 	lit += vec3( 1.0, 0.16, 0.1 ) * vein * ( 1.0 - day ) * coral * 0.35;
 	// 邊緣的大氣散射

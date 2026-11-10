@@ -641,7 +641,7 @@ export function c6Open() {
         sub(0.3, '四家代表，走進中樞。', null, 1.7),
         { t: 1.9, call: (g) => g.cineStationLamps(0xffffff) },
         { t: 1.9, sfx: 'glitch', vol: 0.5, rate: 0.6 },
-        sub(2.0, '認證完成。KEY-07。盧比孔協定，執行。', 'station', 2.5),
+        sub(2.0, '認證完成。KEY-07。封鎖線協定，執行。', 'station', 2.5),
         { t: 4.35, flash: '#ffffff', in: 0.1, hold: 0.15, out: 0.1 },
       ],
     },
@@ -826,7 +826,7 @@ export function c6Seal() {
       ev: [
         { t: 0, sfx: 'glitch', vol: 0.7, rate: 0.5 },
         { t: 0.05, sfx: 'alarm', vol: 0.5, rate: 0.8 },
-        sub(1.0, '盧比孔協定，強制執行。', 'station', 1.7),
+        sub(1.0, '封鎖線協定，強制執行。', 'station', 1.7),
       ],
     },
     2.8,

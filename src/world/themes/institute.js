@@ -1,5 +1,5 @@
 // 主題：地下研究特區（AC6 第 4 章的地下探查與研究特區）——封閉的大洞窟：岩頂（朝下的平面，俯視的鏡頭看得穿）、
-// 昏暗的紅色光、研究設施廢墟、Coral 收容槽與結晶、頂天立地的岩柱
+// 昏暗的紅色光、研究設施廢墟、深脈收容槽與結晶、頂天立地的岩柱
 import { RNG, rnd } from '../../core/math.js';
 import { WS } from '../../core/scale.js';
 import {
@@ -95,7 +95,7 @@ export function buildLab(w, h, d, seed) {
   });
   return k.build();
 }
-// Coral 收容槽：玻璃圓筒＋發光核心；原點在底面中心，半徑約 1.8
+// 深脈收容槽：玻璃圓筒＋發光核心；原點在底面中心，半徑約 1.8
 export function buildCoralTank() {
   const glb = propGlb('coral_tank', { fade: true });
   if (glb) return glb;
@@ -165,7 +165,7 @@ export function buildCoralTank() {
   });
   return k.build();
 }
-// Coral 結晶簇：數根發光的尖柱；原點在底面中心，s＝大小倍率
+// 深脈結晶簇：數根發光的尖柱；原點在底面中心，s＝大小倍率
 export function buildCoralCrystal(s) {
   const glb = propGlb('coral_crystal', { ref: [3, 4, 3], size: [3 * s, 4 * s, 3 * s], fade: true });
   if (glb) return glb;
@@ -196,7 +196,7 @@ export function buildCavePillar(r, h) {
   const k = new PK();
   k.cyl(m, r * 0.55, r, h * 0.55, 0, h * 0.275, 0, 0, 0, 0, 7);
   k.cyl(m, r * 1.1, r * 0.55, h * 0.5, 0, h * 0.75, 0, 0, 0, 0, 7);
-  // 岩縫裡的 Coral
+  // 岩縫裡的深脈
   const v = coralMat(0.7);
   for (let i = 0; i < 3; i++)
     k.box(
@@ -319,7 +319,7 @@ export function buildPipeRun() {
   });
   return k.build();
 }
-// 地上的 Coral 脈（裝飾，發光的細帶）
+// 地上的深脈礦帶（裝飾，發光的細帶）
 export function buildCoralVein(len) {
   const glb = propGlb('coral_vein', { ref: [6, 0.1, 0.4], size: [len, 0.1, 0.4] });
   if (glb) return glb;
@@ -521,7 +521,7 @@ export const INSTITUTE = {
   planTerrain,
   buildStructures,
   buildProps,
-  propNames: { coraltank: 'Coral 收容槽', crystal: 'Coral 結晶', piperun: '管線' },
+  propNames: { coraltank: '深脈收容槽', crystal: '深脈結晶', piperun: '管線' },
   catalog: [
     [
       'lab_building',
@@ -531,13 +531,13 @@ export const INSTITUTE = {
     ],
     [
       'coral_tank',
-      'Coral 收容槽',
+      '深脈收容槽',
       '地下研究特區；遊戲中放大 2.5 倍（半徑約 5、高 14 m），可破壞',
       () => buildCoralTank(),
     ],
     [
       'coral_crystal',
-      'Coral 結晶簇',
+      '深脈結晶簇',
       '地下研究特區；遊戲中 2–5 倍（高 8–20 m），可破壞；GLB 依尺寸縮放',
       () => buildCoralCrystal(1),
     ],
@@ -548,6 +548,6 @@ export const INSTITUTE = {
       () => buildCavePillar(4, 38),
     ],
     ['pipe_run', '管線', '地下研究特區的雜物；現實尺寸 6 × 1.7 × 2 m（沿 X），可破壞', () => buildPipeRun()],
-    ['coral_vein', 'Coral 脈', '地下研究特區的裝飾，地上發光的細帶；GLB 依長度縮放', () => buildCoralVein(6)],
+    ['coral_vein', '深脈礦帶', '地下研究特區的裝飾，地上發光的細帶；GLB 依長度縮放', () => buildCoralVein(6)],
   ],
 };
