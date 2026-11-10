@@ -1,4 +1,4 @@
-// 地圖專屬敵人擴充（B2 組）：第 2 章的集散場、多重水壩、汙染水沒市街各 2 種
+// 地圖專屬敵人擴充（B2 組）：第 2 章的集散場、階梯水壩、汙染淹沒城區各 2 種
 // 欄位同 data/foes.js 的 FOES（由 FOES 尾端展開登記）；行為在 entities/mech-foe-b2.js，模型在 render/foe-models-b2.js。
 // res＝[實彈, 爆發, 能量] 的額外減傷（−0.25 弱點、＋0.2 抗性，data/attrs.js）。
 
@@ -63,7 +63,7 @@ export const FOES_b2 = {
     intro: '電焊步行機：貼近後焊槍亮起藍光，電弧連上就會吸走 EN——拉開 12 m 以上電弧就斷，爆發武器特別有效',
     gen: () => ({ ...BASE }),
   },
-  // ---- 多重水壩 ----
+  // ---- 階梯水壩 ----
   watercannon: {
     theme: 'dam',
     foe: 'watercannon',
@@ -108,7 +108,7 @@ export const FOES_b2 = {
     intro: '渦輪吸入機：打開前蓋後把周圍 18 m 的機體吸向葉片——往外 QB 脫離，前蓋打開時從正面打渦輪傷害 ×1.6',
     gen: () => ({ ...BASE, rarm: 'w_mg' }),
   },
-  // ---- 汙染水沒市街 ----
+  // ---- 汙染淹沒城區 ----
   eel: {
     theme: 'flooded',
     foe: 'eel',

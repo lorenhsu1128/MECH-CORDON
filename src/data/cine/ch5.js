@@ -239,7 +239,7 @@ const TK = {
   aetheric: '艾瑟立克研究機構　軌道纜索出現週期性共振　◆　研究所呼籲各方保持距離',
   veerwell: '維爾威動態　軌道校準作業　今晚開始　◆　VWL 指數創新高',
   sancta: '聖域互助同盟　東岸避難所　收容已達上限　◆　請沿黃色路線移動',
-  xylem: 'Xylem 市議會：本市不屬於任何勢力　◆　居民自衛隊　全區戒備',
+  xylem: 'Reefhold 市議會：本市不屬於任何勢力　◆　居民自衛隊　全區戒備',
 };
 
 export function ch5Intro() {
@@ -687,7 +687,7 @@ export function ch5Intro() {
         t: 0.5,
         title: '第五章　洋上的抉擇',
         s: 'CHAPTER V',
-        tick: '第五章　洋上的抉擇　◆　東岸 Xylem　四大勢力集結　◆　AEGIS 護盾展開　◆　R-07　第一座發生器破壞',
+        tick: '第五章　洋上的抉擇　◆　東岸 Reefhold　四大勢力集結　◆　AEGIS 護盾展開　◆　R-07　第一座發生器破壞',
       },
       cam: {
         fov: 30,

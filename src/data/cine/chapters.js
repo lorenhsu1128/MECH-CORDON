@@ -376,7 +376,7 @@ const BEATS = {
       vista(PORT, G.dusk, 'push'),
       fight(PORT, G.dusk, ['mt', 'strider']),
       vista(PORT, G.dusk, 'pan'),
-      rival(GRID, G.day, 'spire', 'SPIRE', 'Doser 的首領'),
+      rival(GRID, G.day, 'spire', 'SPIRE', '掘骸者的首領'),
       hero(GRID, G.day, 'hover'),
     ],
     outro: [

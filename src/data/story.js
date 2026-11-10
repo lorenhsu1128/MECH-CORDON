@@ -78,13 +78,13 @@ export const SPEAKERS = {
   cmd: { name: '指揮官', color: '#ffb020', mark: 'H' }, // 自訂關卡的說話者
   ally: { name: '友軍', color: '#7ee081', mark: 'A' },
   custom: { name: '通訊', color: '#d8e2ec', mark: '?' },
-  iguazu: { name: 'IGUAZU', color: '#ff9a40', mark: 'I', note: '獨立傭兵' },
-  volta: { name: 'VOLTA', color: '#c080ff', mark: 'V', note: '獨立傭兵' },
-  rust: { name: 'RUST', color: '#c07040', mark: 'R', note: '拾荒傭兵（第 1 章的宿敵）' },
+  iguazu: { name: 'KESTREL', color: '#ff9a40', mark: 'I', note: '獨立傭兵' },
+  volta: { name: 'BRANT', color: '#c080ff', mark: 'V', note: '獨立傭兵' },
+  rust: { name: 'OXIDE', color: '#c07040', mark: 'R', note: '拾荒傭兵（第 1 章的宿敵）' },
   sirocco: { name: 'SIROCCO', color: '#e8d4b0', mark: 'S', note: '艾瑟立克調查隊的護衛（第 1 章的宿敵）' },
   zenith: { name: 'ZENITH', color: '#ffd060', mark: 'Z', note: '上一位鑰匙（第 6 章的宿敵）' },
   undertow: { name: 'UNDERTOW', color: '#40c0e0', mark: 'U', note: '洋上都市的守衛（第 5 章的宿敵）' },
-  spire: { name: 'SPIRE', color: '#e0b040', mark: 'P', note: 'Doser 的首領（第 4 章的宿敵）' },
+  spire: { name: 'SPIRE', color: '#e0b040', mark: 'P', note: '掘骸者的首領（第 4 章的宿敵）' },
   countdown: { name: 'COUNTDOWN', color: '#ff6a20', mark: 'C', note: '維爾威的發射技師（第 4 章的宿敵）' },
   specimen: { name: 'SPECIMEN', color: '#ff5a50', mark: 'X', note: '失敗的鑰匙候選（第 3 章的宿敵）' },
   whiteout: { name: 'WHITEOUT', color: '#9fd8ff', mark: 'W', note: '難民營的狙擊手（第 3 章的宿敵）' },
@@ -227,11 +227,11 @@ export const BRIEFINGS = {
     when: { c2: 'castron' },
     lines: [
       '艾瑟立克輸了，但他們偷走了核心的一半資料，正往西邊逃。',
-      '他們把殘部撤進水沒市街的舊研究所，推土要塞在替他們開路。',
+      '他們把殘部撤進淹沒城區的舊研究所，推土要塞在替他們開路。',
       '掃乾淨，別讓那份資料出工業帶。',
       '……還有，下游的城鎮在問什麼時候放水。不關你的事，你專心打。',
     ],
-    goal: '掃蕩水沒市街的艾瑟立克據點，擊破推土要塞 BEHEMOTH',
+    goal: '掃蕩淹沒城區的艾瑟立克據點，擊破推土要塞 BEHEMOTH',
   },
   c2s3b: {
     client: 'aetheric',
@@ -263,7 +263,7 @@ export const BRIEFINGS = {
       '營地失聯了。偵察隊說冰原基地有一台大型兵器在巡邏，還有一個暴風雪裡的狙擊手。',
       '找到他們。報酬照付。……我會記下這件事，不管結果怎麼樣。',
     ],
-    goal: '偵察冰原基地，擊破巡邏用超大型四足 STRIDER',
+    goal: '偵察冰原基地，擊破巡邏用超大型四足 TETRARCH',
   },
   c3s2: {
     client: 'veerwell',
@@ -305,12 +305,12 @@ export const BRIEFINGS = {
     node: { x: 45, y: 22 },
     needs: ['c3s3'],
     lines: [
-      '傭兵！發射設施的電力來自 Grid 086 的底層。底層有一顆 Coral 反應爐，讀數跟研究所一模一樣。',
-      '構造體裡的 Doser 把平台改造成了要塞，底層還有一台多足要塞在巡邏。',
+      '傭兵！發射設施的電力來自 Lattice-9 的底層。底層有一顆 Coral 反應爐，讀數跟研究所一模一樣。',
+      '構造體裡的掘骸者把平台改造成了要塞，底層還有一台多足要塞在巡邏。',
       '一路往下，拿到底層的控制權。這一單做完，維爾威就是這顆星球上最有錢的公司。',
       '……我開玩笑的。一半是開玩笑的。',
     ],
-    goal: '深入 Grid 086 的底層，擊破多足要塞 ARACHNE',
+    goal: '深入 Lattice-9 的底層，擊破多足要塞 ARACHNE',
   },
   c4s2: {
     client: 'sancta',
@@ -374,7 +374,7 @@ export const BRIEFINGS = {
     when: { c4: 'veerwell' },
     lines: [
       '發射設施已經重啟，現在只差校準。電纜的上空有一座空中要塞。',
-      '聖域雇了構造體那個 Doser 首領來擋我們。他們什麼時候變得這麼有錢？',
+      '聖域雇了構造體那個掘骸者首領來擋我們。他們什麼時候變得這麼有錢？',
       '確保電纜，打下空中要塞。這一單結束，軌道就是維爾威的了。',
     ],
     goal: '確保軌道電纜，擊破空中要塞 LEVIATHAN',
@@ -403,7 +403,7 @@ export const BRIEFINGS = {
       '拿下電纜塔。接通之後……上面會回應。',
       '……這一次，你不要回應。',
     ],
-    goal: '奪取海底電纜塔，擊破 IGUAZU & VOLTA 雙機小隊',
+    goal: '奪取海底電纜塔，擊破 KESTREL & BRANT 雙機小隊',
   },
   // ---- 第 6 章 ----
   c6s1: {
@@ -446,11 +446,11 @@ export const BRIEFINGS = {
     needs: ['c6s2'],
     lines: [
       '中樞就在前面，所有委託方都在等你的結果。',
-      '裡面守著舊時代的艦載機動兵器 BALTEUS。打倒它，站就是你的了。……或者說，是付錢的人的。',
+      '裡面守著舊時代的艦載機動兵器 ARCHON。打倒它，站就是你的了。……或者說，是付錢的人的。',
       '我做這行三十年了。我只說一次：合約就是合約。',
       '……中樞裡有什麼，回來告訴我。',
     ],
-    goal: '進入軌道站中樞，擊破 BALTEUS',
+    goal: '進入軌道站中樞，擊破 ARCHON',
   },
   // ---- 第 7 章：熔爐（主線擴充，docs/campaign-expansion-design.md 第 10 節）----
   c7s1: {
@@ -554,7 +554,7 @@ export const BRIEFINGS = {
         beyond: '調查隊的資料裡還有一句：「站離開了。可是它為什麼還在天上？」',
       },
     },
-    goal: '回收調查隊的紀錄，擊破移動要塞 JUGGERNAUT',
+    goal: '回收調查隊的紀錄，擊破移動要塞 MONOLITH',
   },
   c2x: {
     client: 'sancta',
@@ -578,7 +578,7 @@ export const BRIEFINGS = {
     needs: ['c3s2'],
     cycle: 2,
     lines: [
-      '我在技研都市的實驗紀錄裡找到你的名字了。',
+      '我在研究特區的實驗紀錄裡找到你的名字了。',
       '日期……比你第一次出擊還早。早了很多很多年。',
       '紀錄的副本在冰原的觀測站，母艦直升機在守著。博士說那個觀測站「不存在」。',
     ],
@@ -712,7 +712,7 @@ export const BRIEFINGS = {
     needs: ['c3s3'],
     cycle: 3,
     lines: [
-      '技研都市最底層有一間沒有編號的實驗室。',
+      '研究特區最底層有一間沒有編號的實驗室。',
       '那裡是你被造出來的地方。SPECIMEN 也是。',
       'MIRAGE 的分身是用你的資料做的。……我很抱歉，你得對著自己開槍。',
     ],
@@ -891,11 +891,11 @@ export const CHAPTER_TEXT = {
   },
   4: {
     intro: [
-      '北部。舊時代的巨型構造體 Grid 086，和它背後的舊宇宙港。',
+      '北部。舊時代的巨型構造體 Lattice-9，和它背後的舊宇宙港。',
       '這顆星球上，唯一還能把東西送上軌道的地方。',
       '維爾威想要它，因為控制了唯一的路，就控制了一切。',
       '聖域想守住它，因為從冰原逃來的難民就住在宇宙港旁邊。',
-      '構造體裡還住著拾荒的 Doser，他們把平台改成了要塞。',
+      '構造體裡還住著拾荒的掘骸者，他們把平台改成了要塞。',
       '所有人都在往上看。而你，是唯一被允許上去的人。只是你還不知道。',
     ],
     outro: [
@@ -920,7 +920,7 @@ export const CHAPTER_TEXT = {
   },
   5: {
     intro: [
-      '東岸。建在海上的都市 Xylem，和一條從海底一路伸到軌道上的電纜。',
+      '東岸。建在海上的都市 Reefhold，和一條從海底一路伸到軌道上的電纜。',
       '所有勢力都來了。',
       '卡斯特隆要在上面插旗。維爾威要校準軌道。聖域的難民又一次被夾在中間。',
       '都市的居民在建築之間拉起防線。他們不想選邊，他們只是住在這裡。',
@@ -950,7 +950,7 @@ export const CHAPTER_TEXT = {
       '只有 ECHO 什麼都沒說。',
     ],
     outro: [
-      'BALTEUS 倒下之後，你走進中樞。',
+      'ARCHON 倒下之後，你走進中樞。',
       '中樞是空的。沒有控制台，沒有王座，只有一行還在跳動的字。',
       '「認證終端：不在此處。所在地：方舟。」',
       '軌道站的倒數沒有停。',

@@ -1,10 +1,10 @@
 // ---------- MechEntity 擴充：地圖專屬敵人擴充（C1 組，data/foes-c1.js）----------
 // 冰原：cryo 冷凍噴霧機（噴嘴結霜白光預警 → 錐形冷凍霧：損傷＋'slow'）、icemortar 冰錐迫擊砲（白圈預警的拋射冰錐 →
 // 落點傷害＋臨時冰牆 addTempWall）。
-// 地下技研都市：holoproj 全像投影器（投出 3 個 holofake 假敵人：可以鎖定、搶走鎖定、打一下就消失、不給賞金；
+// 地下研究特區：holoproj 全像投影器（投出 3 個 holofake 假敵人：可以鎖定、搶走鎖定、打一下就消失、不給賞金；
 // 本體被擊破全部消失）、parasite 寄生纏附體（蹲低預警 → 撲擊 → 'latch' 纏附：跟著目標的機體、不能鎖定，
 // 被甩掉時彈開並硬直）。
-// Grid 086：anchor 重力錨（紫圈預警 → 重力圈 addZone 'gravity'）、zipline 滑索突擊兵（纜索閃光預警 → 從上層平台
+// Lattice-9：anchor 重力錨（紫圈預警 → 重力圈 addZone 'gravity'）、zipline 滑索突擊兵（纜索閃光預警 → 從上層平台
 // 沿纜索滑到目標背後，落地 0.8 秒破綻（受傷 ×1.3）→ 近距離霰彈；之後再爬回平台）。
 // 行為只在房主／單機（foeMove_c1、foeFire_c1、foeDefense_c1）；顯示 foeFx_c1 在房主與客機每格依 bossVis 驅動模型。
 // bossVis：cryo 1 預警 2 噴霧；icemortar 1 預警 2 後座；holoproj 1 預警 2 投影；parasite 1 蹲伏 2 纏附 4 硬直；

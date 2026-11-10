@@ -38,11 +38,11 @@ export function enemyQRange(ch, boss) {
 }
 // Boss 的掉落表：和它的攻擊方式相關的零件（機甲 Boss 另外加上它身上的零件）
 export const BOSS_GEAR = {
-  JUGGERNAUT: ['w_bz', 'bw_ms8', 'l_tk', 'c_hv'],
+  MONOLITH: ['w_bz', 'bw_ms8', 'l_tk', 'c_hv'],
   mirror: ['h_scan', 'f_mid'],
   flagship: ['c_aeg', 'bw_sh', 'g_hi'],
   interceptor: ['b_hi', 'c_nat', 'w_mg'],
-  STRIDER: ['l_qd', 'bw_gat', 'a_hv'],
+  TETRARCH: ['l_qd', 'bw_gat', 'a_hv'],
   railgun: ['w_lc', 'bw_lc', 'f_snipe'],
   worm: ['w_pile', 'w_claw', 'l_hv'],
   funnel: ['bw_pm', 'f_near', 'g_arc'],
@@ -54,7 +54,7 @@ export const BOSS_GEAR = {
   phantom: ['h_lt', 'w_emp', 'bw_emp_s'],
   spider: ['l_qd', 'bw_ms', 'a_hv'],
   orbital: ['bw_lc', 'f_far', 'h_scan'],
-  BALTEUS: ['w_saber', 'bw_ms8', 'c_std'],
+  ARCHON: ['w_saber', 'bw_ms8', 'c_std'],
   trinity: ['w_blade', 'w_rifle', 'f_mid'],
   hunter: ['w_emp', 'bw_emp_l', 'g_fast'],
   train: ['bw_gat', 'l_hv', 'h_std'],

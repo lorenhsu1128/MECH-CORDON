@@ -6,7 +6,7 @@
 // 名稱一律以 c4 開頭，避免和別章重複。
 //
 // 掛勾（鏡頭的欄位）：
-//   c4tower：Grid 086 往雲上延伸的高塔（S.tw）、雲海、遠方的發射台（S.pad）；鏡頭附近的原本平台隱藏
+//   c4tower：Lattice-9 往雲上延伸的高塔（S.tw）、雲海、遠方的發射台（S.pad）；鏡頭附近的原本平台隱藏
 //   c4env：依鏡頭高度改調色（S.env＝{ y0, y1, lo, hi }：雲下 → 雲上；hfog＝雲海）
 //   c4pin：把演員釘在關鍵影格上（S.pin＝[{ id, keys: [{ t, p, yaw, pitch }] }]，爬柱子、吊在平台底面）
 //   c4dz：滑動變焦（S.dz＝{ t0, t1, a 演員, h 畫面高度 m }：依距離改 fov，主體大小不變、背景往後掉）
@@ -139,7 +139,7 @@ function buildPadTower(h, tx, w = 7) {
   k.cyl(dk, 0.12, 0.2, 8, tx, h + 4, 0, 0, 0, 0, 6);
   return k.build();
 }
-// Doser／難民的帳篷（布＋支架），原點在底面中心
+// 掘骸者／難民的帳篷（布＋支架），原點在底面中心
 function buildTent(color) {
   const cloth = new THREE.MeshStandardMaterial({ color, roughness: 0.95, flatShading: true });
   const k = new PK(false);
@@ -334,7 +334,7 @@ Object.assign(Game.prototype, {
         R.g.add(l);
       }
     });
-    // Doser 的棚屋與油桶（住在平台上；地圖物件是真實尺寸，只有位置乘 k）
+    // 掘骸者的棚屋與油桶（住在平台上；地圖物件是真實尺寸，只有位置乘 k）
     R.g1.position.copy(A);
     for (const [i, x, z, r, b] of T.huts || []) {
       const [dx, dz] = T.off[i] || [0, 0];

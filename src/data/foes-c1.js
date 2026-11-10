@@ -1,5 +1,5 @@
-// 地圖專屬敵人擴充（C1 組）：冰原 cryo 冷凍噴霧機、icemortar 冰錐迫擊砲；地下技研都市 holo 全像投影器、
-// parasite 寄生纏附體；Grid 086 anchor 重力錨、zipline 滑索突擊兵。欄位同 data/foes.js 的 FOES；
+// 地圖專屬敵人擴充（C1 組）：冰原 cryo 冷凍噴霧機、icemortar 冰錐迫擊砲；地下研究特區 holo 全像投影器、
+// parasite 寄生纏附體；Lattice-9 anchor 重力錨、zipline 滑索突擊兵。欄位同 data/foes.js 的 FOES；
 // 行為在 entities/mech-foe-c1.js，模型在 render/foe-models-c1.js。res＝[實彈, 爆發, 能量] 的額外減傷（−0.25 弱點、＋0.2 抗性）。
 
 const HEAVY = {
@@ -74,7 +74,7 @@ export const FOES_C1 = {
     intro: '冰錐迫擊砲：白圈是冰錐的落點，落地後長出冰牆擋路——冰牆也能當掩體、打得碎，爆發武器有效',
     gen: () => ({ ...HEAVY, rarm: 'w_mg' }),
   },
-  // ---- 地下技研都市 ----
+  // ---- 地下研究特區 ----
   holo: {
     theme: 'institute',
     foe: 'holo',
@@ -119,7 +119,7 @@ export const FOES_C1 = {
     intro: '寄生纏附體：蹲低就是要撲上來——被纏住會持續損傷、變慢，QB 兩次或近戰甩掉，能量武器有效',
     gen: () => ({ ...HEAVY }),
   },
-  // ---- Grid 086 ----
+  // ---- Lattice-9 ----
   anchor: {
     theme: 'grid086',
     foe: 'anchor',

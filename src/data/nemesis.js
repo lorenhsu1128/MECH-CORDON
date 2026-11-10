@@ -16,19 +16,19 @@ export const NEM = {
 };
 // 雜兵升格成宿敵時的稱號（依擊倒玩家的方式）
 export const NEM_TITLES = ['灰燼', '斷刃', '鐵鏽', '無聲', '餓狼', '殘響', '黑潮', '碎骨', '夜鴉', '寒鋼'];
-export const NEM_CALLS = ['ASH', 'EDGE', 'RUST', 'MUTE', 'WOLF', 'ECHO', 'TIDE', 'BONE', 'CROW', 'STEEL'];
+export const NEM_CALLS = ['ASH', 'EDGE', 'SCRAP', 'MUTE', 'WOLF', 'ECHO', 'TIDE', 'BONE', 'CROW', 'STEEL'];
 // 台詞的模板
 export const NEM_LINES = {
-  born: ['RAVEN，記住這個名字——{名}。', '原來傳說中的傭兵也不過如此。', '這一仗我會一直記得。你也是。'],
+  born: ['KEYSTONE，記住這個名字——{名}。', '原來傳說中的傭兵也不過如此。', '這一仗我會一直記得。你也是。'],
   back: [
-    '又見面了，RAVEN。上次在{地}，你可沒這麼難纏。',
+    '又見面了，KEYSTONE。上次在{地}，你可沒這麼難纏。',
     '找到你了。這次別讓我太快結束。',
     '{次}次了。你還沒學乖嗎？',
     '我為了你換了新的零件。好好看著。',
   ],
   win: ['又倒下了？無聊。', '你的打法我已經看穿了。', '下次再來吧——如果你還有下次。'],
   down: ['……這次算你贏。', '不可能……我記住你了。', '哈……總算有點意思了。'],
-  retire: ['夠了……這個戰場不需要我了。', '你贏了，RAVEN。徹底地。'],
+  retire: ['夠了……這個戰場不需要我了。', '你贏了，KEYSTONE。徹底地。'],
 };
 export const fill = (t, o) =>
   t

@@ -46,7 +46,7 @@ const BIG = {
     ['噴砂吐息', (b, pl) => b.b3Fan(pl, 3, 0.25)],
     ['連續鑽出', (b, pl) => b.b3Erupt(pl, 3, 7)],
   ],
-  JUGGERNAUT: [
+  MONOLITH: [
     ['主砲蓄力', (b, pl) => b.b3Line(pl, 5, 4.5, 0.12)],
     ['齊射', (b, pl) => b.b3Volley(pl, 3, 0.3)],
   ],
@@ -70,7 +70,7 @@ const BIG = {
     ['熔渣連射', (b, pl) => b.b3Pools(pl, 3, 8)],
     ['火牆', (b) => b.b3Ring(30)],
   ],
-  STRIDER: [
+  TETRARCH: [
     ['雷射蓄力', (b, pl) => b.b3Fan(pl, 1, 0)],
     ['跳躍踩踏', (b) => b.b3Shock(26)],
   ],
@@ -122,7 +122,7 @@ const BIG = {
     ['照你的武器連射', (b, pl) => b.b3Volley(pl, 3, 0.3)],
     ['適應裝甲強化', (b) => b.b3Shock(22)],
   ],
-  BALTEUS: [
+  ARCHON: [
     ['斥力裝甲展開', (b) => b.b3Ring(28)],
     ['脈衝爆發', (b) => b.b3Shock(26)],
   ],
@@ -249,7 +249,7 @@ Object.assign(MechEntity.prototype, {
   // 被打的玩家機體的 takeDamage 開頭（this＝Boss）：大招期間的一發 → 依對方最大 AP 的比例（0＝不是大招）
   // wid＝武器 id：Boss 的一般武器（雷射砲、導彈…）在這段時間開火也照常算，只有大招本身的攻擊（砲擊、光束、
   // 衝擊波、能量環、地雷、燃燒地面，都沒有武器 id）才依比例扣（2026-11-10 量測：一般武器的單發大，被當成大招，
-  // 新手配裝對 AEGIS、IGUAZU & VOLTA 承受 3～4 倍 AP）
+  // 新手配裝對 AEGIS、KESTREL & BRANT 承受 3～4 倍 AP）
   tierBigDmg(dmg, tgt, wid) {
     if (wid || !(this.bigT > this.t) || !this.tierOn()) return 0;
     const ref = BIG_REF * (this.dmgMul || 1);
@@ -528,7 +528,7 @@ Object.assign(MechEntity.prototype, {
     this.shieldFlareAt(to); // 正面護盾的閃光（第 9.2 期，轉送給客機）
     return 0.25;
   },
-  // 脈衝裝甲（BALTEUS 的大招）：frac＝裝甲量（最大 AP 比例），sec 秒；打破之前傷害只有 30% 打得進去
+  // 脈衝裝甲（ARCHON 的大招）：frac＝裝甲量（最大 AP 比例），sec 秒；打破之前傷害只有 30% 打得進去
   tierArmor(frac, sec) {
     const s = this.tierState();
     s.pa = { hp: this.maxHp * frac, t: sec };

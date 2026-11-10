@@ -127,7 +127,7 @@ Object.assign(Game.prototype, {
     this.levelName = '渲染風格實驗室・' + T.name;
     this.player = new MechEntity(this, this.save.asm, this.myPal(), {
       team: 'player',
-      name: 'RAVEN',
+      name: 'KEYSTONE',
       palKey: this.myPalKey(),
       slot: 0,
       hpMul: 1.6,
@@ -296,7 +296,8 @@ Object.assign(Game.prototype, {
     document.body.classList.toggle('labWatch', mode === 'watch');
     $('hudWrap').style.display = mode === 'ctrl' ? 'block' : 'none';
     this.stylePipe.resetHistory();
-    if (!quiet) this.flashMsg(mode === 'ctrl' ? '操作模式 — 你駕駛藍隊的 RAVEN' : '觀看模式', 0x5cc8ff, 1.4);
+    if (!quiet)
+      this.flashMsg(mode === 'ctrl' ? '操作模式 — 你駕駛藍隊的 KEYSTONE' : '觀看模式', 0x5cc8ff, 1.4);
     this.labHud();
   },
   // ---------- 每格 ----------

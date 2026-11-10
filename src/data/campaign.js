@@ -192,7 +192,7 @@ export const SEG_TYPES = {
   air: { name: '空戰', goal: '擊落敵機、保護友軍雷達站' },
 };
 
-// boss：kind（新 Boss）或名稱開頭（JUGGERNAUT、STRIDER 這類沒有 kind 的）
+// boss：kind（新 Boss）或名稱開頭（MONOLITH、TETRARCH 這類沒有 kind 的）
 // '#<索引>'＝BOSS_DEFS 的第幾隻（自由出擊的作戰設定，data/free-ops.js）
 const bossOf = (key) =>
   (/^#\d+$/.test(key || '') && BOSS_DEFS[+key.slice(1)]) ||
@@ -305,7 +305,7 @@ SORTIES.c2s1 = {
   ],
 };
 SORTIES.c2s2 = {
-  name: '多重水壩 — 主壩爭奪',
+  name: '階梯水壩 — 主壩爭奪',
   chapter: 2,
   level: 5,
   reward: 64000,
@@ -319,7 +319,7 @@ SORTIES.c2s2 = {
   ],
 };
 SORTIES.c2s3a = {
-  name: '水沒市街 — 研究機構掃蕩',
+  name: '淹沒城區 — 研究機構掃蕩',
   chapter: 2,
   level: 6,
   reward: 76000,
@@ -349,7 +349,7 @@ SORTIES.c2s3b = {
     { theme: 'industrial', pool: ['boss'], boss: 'train', variants: ['railyard', 'stacks'] },
   ],
 };
-// ---- 第 3 章：西部冰原與地下（冰原 → 技研都市，跨主題下降；宿敵再登場）----
+// ---- 第 3 章：西部冰原與地下（冰原 → 研究特區，跨主題下降；宿敵再登場）----
 SORTIES.c3s1 = {
   name: '西部冰原 — 冰原基地偵察',
   chapter: 3,
@@ -364,7 +364,7 @@ SORTIES.c3s1 = {
     { theme: 'snow', pool: ['supply', 'escort', 'breakthrough', 'chase'] },
     { theme: 'snow', pool: ['battle', 'elite', 'destroy', 'extract'] },
     { theme: 'snow', pool: ['supply', 'defend', 'intel'] },
-    { theme: 'snow', pool: ['boss'], boss: 'STRIDER', variants: ['icefield', 'outpost', 'blizzard'] },
+    { theme: 'snow', pool: ['boss'], boss: 'TETRARCH', variants: ['icefield', 'outpost', 'blizzard'] },
   ],
 };
 SORTIES.c3s2 = {
@@ -390,7 +390,7 @@ SORTIES.c3s2 = {
   ],
 };
 SORTIES.c3s3 = {
-  name: '地下技研都市 — 研究核心',
+  name: '地下研究特區 — 研究核心',
   chapter: 3,
   level: 9,
   reward: 110000,
@@ -421,9 +421,9 @@ SORTIES.c3s3 = {
     { theme: 'institute', pool: ['boss'], boss: 'ibis', variants: ['cavern', 'core'] },
   ],
 };
-// ---- 第 4 章：北部構造體（Grid 086 往下、宇宙港先接力再下降；抉擇 2 在 c4s2）----
+// ---- 第 4 章：北部構造體（Lattice-9 往下、宇宙港先接力再下降；抉擇 2 在 c4s2）----
 SORTIES.c4s1 = {
-  name: '北部構造體 — Grid 086 調查',
+  name: '北部構造體 — Lattice-9 調查',
   chapter: 4,
   level: 10,
   reward: 124000,
@@ -745,7 +745,7 @@ SORTIES.c6s3 = {
     },
     // 上一位鑰匙 ZENITH：這裡不是終點（最後的抉擇在第 8 章的 c8s3）
     { theme: 'orbit', pool: ['elite'], ace: 'zenith', variants: ['dock', 'span', 'sunlit'] },
-    { theme: 'orbit', pool: ['boss'], boss: 'BALTEUS', variants: ['dock'] },
+    { theme: 'orbit', pool: ['boss'], boss: 'ARCHON', variants: ['dock'] },
   ],
 };
 // ---- 第 7 章：熔爐（火山熔爐帶；主線擴充，docs/campaign-expansion-design.md 第 10 節）----
@@ -890,7 +890,7 @@ SORTIES.c1x = {
       variants: ['town', 'craters'],
     },
     { theme: 'wasteland', pool: ['elite'], ace: 'sirocco', variants: ['craters', 'junction'] },
-    { theme: 'wasteland', pool: ['boss'], boss: 'JUGGERNAUT', variants: ['craters', 'factory'] },
+    { theme: 'wasteland', pool: ['boss'], boss: 'MONOLITH', variants: ['craters', 'factory'] },
   ],
 };
 SORTIES.c2x = {
@@ -1043,7 +1043,7 @@ SORTIES.c1y = {
   ],
 };
 SORTIES.c2y = {
-  name: '多重水壩 — 主壩的記憶',
+  name: '階梯水壩 — 主壩的記憶',
   chapter: 2,
   level: 9,
   reward: 108000,
@@ -1060,7 +1060,7 @@ SORTIES.c2y = {
   ],
 };
 SORTIES.c3y = {
-  name: '地下技研都市 — 重置的紀錄',
+  name: '地下研究特區 — 重置的紀錄',
   chapter: 3,
   level: 11,
   reward: 136000,

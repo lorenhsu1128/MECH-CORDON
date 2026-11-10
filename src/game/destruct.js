@@ -159,7 +159,7 @@ Object.assign(Game.prototype, {
       const dir = src ? p.center().sub(src).setY(0) : null;
       if (dir && dir.lengthSq() > 1e-4) dir.normalize();
       if (p.body) {
-        // 直接打得壞的甲板格子（Grid 086）：整格掉下去
+        // 直接打得壞的甲板格子（Lattice-9）：整格掉下去
         this.propDirty && this.propDirty.delete(p);
         this.netEv({ t: 'pcol', i: p.idx, d: 0 });
         this.propCollapse(p, 0, false);
@@ -621,7 +621,7 @@ Object.assign(Game.prototype, {
   // 地圖物件受傷、小人死亡 → 換成橫躺的碰撞（矮的方塊）。quiet＝直接躺好（重連、血量表）
   propCollapse(b, di, quiet) {
     if (b.collapsed || b.colQ) return;
-    // 連鎖倒塌（Grid 086 的多層平台）：同一格開始倒的超過 COL_MAX 個就排到下一格（quiet＝重連、血量表，照舊直接）
+    // 連鎖倒塌（Lattice-9 的多層平台）：同一格開始倒的超過 COL_MAX 個就排到下一格（quiet＝重連、血量表，照舊直接）
     if (!quiet) {
       if ((this.colN || 0) >= COL_MAX) {
         b.colQ = true;
@@ -884,7 +884,7 @@ Object.assign(Game.prototype, {
   },
   // 甲板掉下來（docs/destruction-design.md 第 5 期）：預警（甲板底下的地面）、晃動 → 往下掉到地上 → 碎裂、揚塵，
   // 之後幾秒淡出消失（不留殘骸與碰撞：一直蓋在地上會遮住底下的物件、和下面的殘骸穿模；2026-11-07 使用者定案）。
-  // 上面的物件摔壞、站在上面的機體跟著掉、底下的受到爆發傷害；撐在上面的承重柱與結構跟著倒（Grid 086 的第二層）
+  // 上面的物件摔壞、站在上面的機體跟著掉、底下的受到爆發傷害；撐在上面的承重柱與結構跟著倒（Lattice-9 的第二層）
   propDrop(b, quiet) {
     const w = this.world,
       fx = this.fx,
@@ -1302,7 +1302,7 @@ Object.assign(Game.prototype, {
     }
     this.rumbleAt(c, 0.8, 0.6, 320, size + 40);
   },
-  // 地下的岩頂（技研都市、礦坑的坑道網）：投射物打到岩頂的格子（房主／單機），血量打完就開洞
+  // 地下的岩頂（研究特區、礦坑的坑道網）：投射物打到岩頂的格子（房主／單機），血量打完就開洞
   roofDamage(pos, dmg, attr) {
     const w = this.world;
     if (this.destructMode() === 'off') return false; // 不可破壞：岩頂和以前一樣不擋子彈

@@ -820,7 +820,7 @@ export function buildTrapGas(color = 0xff8a30) {
   return g;
 }
 
-// ---------- 水沒市街：電線桿＋柱上變壓器（弱點），斷掉的電纜垂到水裡 ----------
+// ---------- 淹沒城區：電線桿＋柱上變壓器（弱點），斷掉的電纜垂到水裡 ----------
 export function buildTrapCable(color = 0x8fd8ff) {
   const g = new THREE.Group();
   if (glbOr('device/cable', g)) return g;
@@ -962,7 +962,7 @@ export function buildTrapCable(color = 0x8fd8ff) {
   return g;
 }
 
-// ---------- 多重水壩：放水的閘口（往 +Z 噴水）＋閘門的捲揚機＋旁邊的控制台 ----------
+// ---------- 階梯水壩：放水的閘口（往 +Z 噴水）＋閘門的捲揚機＋旁邊的控制台 ----------
 export function buildTrapSluice(color = 0x7fd0ff) {
   const g = new THREE.Group();
   if (glbOr('device/sluice', g)) return g;
@@ -1156,7 +1156,7 @@ export function buildTrapTestRig(color = 0xff9a40) {
   return g;
 }
 
-// ---------- Grid 086：單柱懸臂吊著一捆廢料（弱點＝吊鉤） ----------
+// ---------- Lattice-9：單柱懸臂吊著一捆廢料（弱點＝吊鉤） ----------
 export function buildTrapScrap(color = 0xffa040) {
   const g = new THREE.Group();
   if (glbOr('device/scrap', g)) return g;
@@ -1459,7 +1459,7 @@ export function buildTrapAirlock(color = 0xffd060) {
   return g;
 }
 
-// ---------- 地下技研都市：Coral 收容槽（玻璃筒裡紅色的 Coral，弱點＝筒身） ----------
+// ---------- 地下研究特區：Coral 收容槽（玻璃筒裡紅色的 Coral，弱點＝筒身） ----------
 export function buildTrapCoral(color = 0xff4a5a) {
   const g = new THREE.Group();
   if (glbOr('device/coral', g)) return g;

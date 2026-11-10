@@ -323,7 +323,7 @@ export const COMMS = [
     lines: [
       ['rust', '喂喂喂，新來的？這片荒野的廢鐵都是我的！'],
       ['rust', '尤其是那座舊天線——我追它的訊號追了三天，你別想插隊。'],
-      ['echo', '具名機甲「RUST」。拾荒傭兵，每次遇到的裝備都不一樣。'],
+      ['echo', '具名機甲「OXIDE」。拾荒傭兵，每次遇到的裝備都不一樣。'],
       ['rust', '你那台機體的零件……看起來挺值錢的嘛。'],
     ],
   },
@@ -408,7 +408,7 @@ export const COMMS = [
     sid: 'c2s2',
     seg: 3,
     c2: 'castron',
-    lines: [['castron', '很好。水沒市街裡是艾瑟立克的殘部，他們想帶著資料逃走。']],
+    lines: [['castron', '很好。淹沒城區裡是艾瑟立克的殘部，他們想帶著資料逃走。']],
   },
   {
     event: 'segStart',
@@ -465,7 +465,7 @@ export const COMMS = [
     sid: 'c2s3a',
     once: true,
     lines: [
-      ['castron', '研究所在水沒市街的中心。艾瑟立克偷走了核心一半的資料，別讓它出工業帶。'],
+      ['castron', '研究所在淹沒城區的中心。艾瑟立克偷走了核心一半的資料，別讓它出工業帶。'],
       ['echo', '水道很深，涉水會變慢。盡量走高處。'],
     ],
   },
@@ -500,7 +500,7 @@ export const COMMS = [
     sid: 'c2s3b',
     once: true,
     lines: [
-      ['aetheric', '卡斯特隆的補給線經過水沒市街和集散場。切斷它。'],
+      ['aetheric', '卡斯特隆的補給線經過淹沒城區和集散場。切斷它。'],
       ['echo', '武裝列車在調度場整備。在它開出來之前，先清掉沿線的部隊。'],
     ],
   },
@@ -593,7 +593,7 @@ export const COMMS = [
     sid: 'c3s1',
     type: 'boss',
     lines: [
-      ['echo', 'STRIDER 確認。它在營地周圍繞圈——不是攻擊，是在找東西。'],
+      ['echo', 'TETRARCH 確認。它在營地周圍繞圈——不是攻擊，是在找東西。'],
       ['sancta', '它在找什麼？營地裡只有人。'],
       ['echo', '……它在找訊號的接收者。腳下是死角，但它的砲台會往下打。'],
     ],
@@ -603,7 +603,7 @@ export const COMMS = [
     sid: 'c3s1',
     lines: [
       ['sancta', '營地的人還活著。大部分。名字我會一個一個記下來。'],
-      ['sancta', 'STRIDER 的殘骸上有研究所的編號。冰原下面有東西，而且它在找人。'],
+      ['sancta', 'TETRARCH 的殘骸上有研究所的編號。冰原下面有東西，而且它在找人。'],
       ['echo', '冰原基地的後面有一個入口，熱源很強。'],
     ],
   },
@@ -663,7 +663,7 @@ export const COMMS = [
     lines: [
       ['marsh', '我說過吧？在你看不到的地方咬你。'],
       ['marsh', '這座研究所的白袍子說，你是他們的財產。有意思吧？'],
-      ['echo', 'MARSH 換了裝備，比在水沒市街的時候更強。'],
+      ['echo', 'MARSH 換了裝備，比在淹沒城區的時候更強。'],
     ],
   },
   {
@@ -702,7 +702,7 @@ export const COMMS = [
       ['echo', '……這份資料毀損了。'],
       [
         'echo',
-        '核心裡最完整的是一組座標：軌道上的一座站。要上去只能用北邊舊宇宙港的發射設施，電力靠 Grid 086 的底層。',
+        '核心裡最完整的是一組座標：軌道上的一座站。要上去只能用北邊舊宇宙港的發射設施，電力靠 Lattice-9 的底層。',
       ],
       ['castron', '……你看了？算了。報酬加倍，那些東西忘掉。'],
     ],
@@ -716,7 +716,7 @@ export const COMMS = [
       ['echo', '……這份資料毀損了。'],
       [
         'echo',
-        '核心裡最完整的是一組座標：軌道上的一座站。要上去只能用北邊舊宇宙港的發射設施，電力靠 Grid 086 的底層。',
+        '核心裡最完整的是一組座標：軌道上的一座站。要上去只能用北邊舊宇宙港的發射設施，電力靠 Lattice-9 的底層。',
       ],
       ['aetheric', '有意思。認證成功了。……我是說，資料讀取成功了。'],
     ],
@@ -752,7 +752,7 @@ export const COMMS = [
     sid: 'c4s1',
     once: true,
     lines: [
-      ['veerwell', 'Grid 086 是一層一層的平台，底層的反應爐就是我們要的。時間就是錢，傭兵！'],
+      ['veerwell', 'Lattice-9 是一層一層的平台，底層的反應爐就是我們要的。時間就是錢，傭兵！'],
       ['echo', '平台底下有砲塔，柱子上會有東西爬上來。'],
     ],
   },
@@ -771,7 +771,7 @@ export const COMMS = [
     lines: [
       ['veerwell', '底層拿下來了！反應爐的電力可以接到宇宙港了。'],
       ['veerwell', '壞消息：發射設施被三機合體佔了，聖域的難民又住在旁邊，不讓我們動它。'],
-      ['echo', 'Doser 正在撤離構造體。……他們說維爾威要把這裡變成電廠。'],
+      ['echo', '掘骸者正在撤離構造體。……他們說維爾威要把這裡變成電廠。'],
     ],
   },
   {
@@ -904,7 +904,7 @@ export const COMMS = [
     ace: 'spire',
     once: true,
     lines: [
-      ['spire', '哈！又一個爬不上來的地面人！這座構造體是 Doser 的家，維爾威連一張租約都沒給過！'],
+      ['spire', '哈！又一個爬不上來的地面人！這座構造體是掘骸者的家，維爾威連一張租約都沒給過！'],
       ['echo', '具名機甲「SPIRE」。會跳到高處的平台往下打——爬上同一層，別讓他一直佔著高處。'],
       ['spire', '想往下？先往上看我！'],
     ],
@@ -1055,7 +1055,7 @@ export const COMMS = [
       ['volta', '我們接到委託，要在這裡擋你一下。'],
       ['iguazu', '說來奇怪，這張委託單的委託方欄位是空的。'],
       ['volta', '報酬倒是很清楚：四家各付四分之一。'],
-      ['echo', 'IGUAZU 與 VOLTA！兩台機甲會互相掩護，先集中打一台。'],
+      ['echo', 'KESTREL 與 BRANT！兩台機甲會互相掩護，先集中打一台。'],
     ],
   },
   {
@@ -1129,7 +1129,7 @@ export const COMMS = [
     lines: [
       ['rust', '喲！卡斯特隆付我一大筆錢，要我把你的零件帶回去。'],
       ['rust', '……他們說要「完整」的。奇怪的要求，對吧？'],
-      ['echo', 'RUST。卡斯特隆雇的。'],
+      ['echo', 'OXIDE。卡斯特隆雇的。'],
     ],
   },
   {
@@ -1310,7 +1310,7 @@ export const COMMS = [
     sid: 'c6s3',
     type: 'boss',
     lines: [
-      ['echo', 'BALTEUS 確認。舊時代的艦載機動兵器，軌道站最後的守衛。'],
+      ['echo', 'ARCHON 確認。舊時代的艦載機動兵器，軌道站最後的守衛。'],
       ['station', 'KEY-07 已抵達。協定準備執行。'],
       ['castron', '……不要聽它的。打。'],
     ],
@@ -1320,7 +1320,7 @@ export const COMMS = [
     event: 'sortieEnd',
     sid: 'c6s3',
     lines: [
-      ['echo', 'BALTEUS 沉默了。……傭兵，中樞的門開了。'],
+      ['echo', 'ARCHON 沉默了。……傭兵，中樞的門開了。'],
       ['station', '認證終端：不在此處。所在地：方舟。'],
       ['castron', '……'],
       ['echo', '方舟？……傭兵，先回來。我需要想一想。'],
@@ -1752,7 +1752,7 @@ export const COMMS = [
     type: 'boss',
     lines: [
       ['station', '——識別碼不符。排除。'],
-      ['echo', 'JUGGERNAUT！它的裝甲很厚，從側面和背後打。'],
+      ['echo', 'MONOLITH！它的裝甲很厚，從側面和背後打。'],
     ],
   },
   {
@@ -2115,7 +2115,7 @@ export const COMMS = [
     ace: 'rust',
     lines: [
       ['rust', '又是你！上次的帳還沒算完。'],
-      ['echo', 'RUST 換了一套裝備，注意它的武器。'],
+      ['echo', 'OXIDE 換了一套裝備，注意它的武器。'],
     ],
   },
   {
@@ -2255,7 +2255,7 @@ export const COMMS = [
     event: 'trans',
     sid: 'c2s1',
     seg: 3,
-    lines: [['echo', '前方是多重水壩的下游。河谷很長，電磁砲台的射程涵蓋整條河道。']],
+    lines: [['echo', '前方是階梯水壩的下游。河谷很長，電磁砲台的射程涵蓋整條河道。']],
   },
   {
     event: 'trans',
@@ -2279,13 +2279,13 @@ export const COMMS = [
     event: 'segStart',
     theme: 'xylem',
     once: true,
-    lines: [['echo', '洋上都市 Xylem。街區外是海，掉下去會被拉回來但會受損。小心衝撞無人機。']],
+    lines: [['echo', '洋上都市 Reefhold。街區外是海，掉下去會被拉回來但會受損。小心衝撞無人機。']],
   },
   {
     event: 'segStart',
     theme: 'grid086',
     once: true,
-    lines: [['echo', 'Grid 086。平台底下吊著砲塔，柱子上會有東西爬上來——上下都要注意。']],
+    lines: [['echo', 'Lattice-9。平台底下吊著砲塔，柱子上會有東西爬上來——上下都要注意。']],
   },
   {
     event: 'segStart',
@@ -2303,7 +2303,7 @@ export const COMMS = [
     event: 'segStart',
     theme: 'institute',
     once: true,
-    lines: [['echo', '地下技研都市。紅色的雷射柵欄會觸發警報，實驗體聚在一起會融合——先處理它們。']],
+    lines: [['echo', '地下研究特區。紅色的雷射柵欄會觸發警報，實驗體聚在一起會融合——先處理它們。']],
   },
   {
     event: 'segStart',
@@ -2315,21 +2315,21 @@ export const COMMS = [
     event: 'segStart',
     theme: 'dam',
     once: true,
-    lines: [['echo', '多重水壩。閘門上有砲台——地面出現藍色預警就是要開閘了，別待在水道裡。']],
+    lines: [['echo', '階梯水壩。閘門上有砲台——地面出現藍色預警就是要開閘了，別待在水道裡。']],
   },
   {
     event: 'segStart',
     theme: 'flooded',
     once: true,
-    lines: [['echo', '水沒市街。水裡移動會變慢，水下還有砲艇——看到水花就是它要浮上來了。']],
+    lines: [['echo', '淹沒城區。水裡移動會變慢，水下還有砲艇——看到水花就是它要浮上來了。']],
   },
   // ---- 失敗 ----
   {
     event: 'fail',
-    killedBy: 'RUST',
+    killedBy: 'OXIDE',
     lines: [
       ['rust', '哈！你的零件我收下了。'],
-      ['echo', 'RUST 的裝備每次都不同，先看清楚它拿什麼再決定距離。'],
+      ['echo', 'OXIDE 的裝備每次都不同，先看清楚它拿什麼再決定距離。'],
     ],
   },
   {
@@ -2356,7 +2356,11 @@ export const COMMS = [
     lines: [['echo', '推土要塞正面打不動。引它撞牆，硬直時繞到背後。']],
   },
   { event: 'fail', killedBy: 'IRON CITADEL', lines: [['echo', '列車進隧道時打不到。守在隧道口等它出來。']] },
-  { event: 'fail', killedBy: 'STRIDER', lines: [['echo', '四足的腳下是死角，但它會跳起來踩你。保持移動。']] },
+  {
+    event: 'fail',
+    killedBy: 'TETRARCH',
+    lines: [['echo', '四足的腳下是死角，但它會跳起來踩你。保持移動。']],
+  },
   {
     event: 'fail',
     killedBy: 'MIRAGE',
@@ -2384,13 +2388,13 @@ export const COMMS = [
   { event: 'fail', killedBy: 'VIPER', lines: [['echo', '突擊機掃射前會有警示線。掉頭減速時是攻擊的機會。']] },
   {
     event: 'fail',
-    killedBy: 'IGUAZU',
+    killedBy: 'KESTREL',
     lines: [['echo', '兩台機甲會互相掩護。拉開距離，讓它們分開再各個擊破。']],
   },
   { event: 'fail', killedBy: 'SERAPHIM', lines: [['echo', '浮游砲包圍時往外衝，別待在包圍圈中央。']] },
   { event: 'fail', killedBy: 'DOPPEL', lines: [['echo', '複製機甲會適應你常用的武器。換武器打。']] },
-  { event: 'fail', killedBy: 'BALTEUS', lines: [['echo', '最後一戰了，別放棄。換個裝備再試一次。']] },
-  { event: 'fail', killedBy: 'JUGGERNAUT', lines: [['echo', 'JUGGERNAUT 的正面太硬了。繞到側面。']] },
+  { event: 'fail', killedBy: 'ARCHON', lines: [['echo', '最後一戰了，別放棄。換個裝備再試一次。']] },
+  { event: 'fail', killedBy: 'MONOLITH', lines: [['echo', 'MONOLITH 的正面太硬了。繞到側面。']] },
   { event: 'fail', killedBy: 'CINDER', lines: [['echo', '燃燒的地面會一直扣血。別在火裡跟它對射。']] },
   { event: 'fail', killedBy: 'HELIOS', lines: [['echo', '先清掉它放出來的無人機，再打本體。']] },
   { event: 'fail', killedBy: 'HALBERD', lines: [['echo', '電磁砲充能時一定要躲到掩體後面。']] },

@@ -3,29 +3,29 @@ import { pick } from '../core/math.js';
 import { PARTS } from './parts.js';
 
 export const AC_NAMES = [
-  'RUSTY',
-  'NIGHTFALL',
-  'KING',
-  'VOLTA',
-  'IGUAZU',
-  'CHARTREUSE',
-  'MICHIGAN',
-  'SWINBURNE',
-  'RAVEN',
-  'FREUD',
-  'SNAIL',
-  'PATER',
-  'HAWKINS',
-  'CHATTY',
-  'DOLMAYAN',
-  'INVINCIBLE',
+  'HALYARD',
+  'CANTOR',
+  'OSPREY',
+  'LANTERN',
+  'MARROW',
+  'SEXTANT',
+  'TINDER',
+  'MERIDIAN',
+  'TALLOW',
+  'GANNET',
+  'PIKE',
+  'ROOK',
+  'SPARROW',
+  'CAIRN',
+  'THRUSH',
+  'CORVID',
 ];
 // Boss 依序輪替（bossForLevel：任務 3、4、6、7、9…）
 // kind：沒有＝一般大型機甲（bossAI）；heli、duo 見 mission.js；其他新 Boss 由 game/bosses.js 生成、
 // entities/mech-boss.js 控制（ai 同 kind）。mech：用機甲模型（模型庫列在完整機甲）；modelKind 'boss'＋vehKey：程式模型
 const B_JUGGERNAUT = {
   res: [0.2, 0, -0.25], // 弱點（data/attrs.js）：[實彈, 爆發, 能量] 的額外減傷
-  name: 'JUGGERNAUT 戰略級移動要塞',
+  name: 'MONOLITH 戰略級移動要塞',
   asm: {
     head: 'h_hv',
     core: 'c_hv',
@@ -50,7 +50,7 @@ const B_JUGGERNAUT = {
 };
 const B_STRIDER = {
   res: [0.2, -0.25, 0], // 弱點（data/attrs.js）：[實彈, 爆發, 能量] 的額外減傷
-  name: 'STRIDER 巡邏用超大型四足',
+  name: 'TETRARCH 巡邏用超大型四足',
   asm: {
     head: 'h_scan',
     core: 'c_nat',
@@ -99,7 +99,7 @@ const B_HELIOS = {
     '重武裝母艦直升機 — 地毯轟炸後拉高、投放空降兵時艙門打開是破綻；主旋翼壞了高度下降（近戰打得到），機槍莢艙與炸彈艙可以打壞',
 };
 const B_DUO = {
-  name: 'IGUAZU & VOLTA 雙機小隊',
+  name: 'KESTREL & BRANT 雙機小隊',
   kind: 'duo',
   asm: null,
   scale: 1.05,
@@ -111,11 +111,11 @@ const B_DUO = {
   wantDist: 20,
   speedMul: 1.1,
   intro:
-    'IGUAZU & VOLTA — 一台被打出失衡時另一台會來救（救的路上是破綻），連攜齊射之後也是破綻；兩台的肩上武器可以打壞',
+    'KESTREL & BRANT — 一台被打出失衡時另一台會來救（救的路上是破綻），連攜齊射之後也是破綻；兩台的肩上武器可以打壞',
 };
 const B_BALTEUS = {
   res: [0, -0.25, 0.2], // 弱點（data/attrs.js）：[實彈, 爆發, 能量] 的額外減傷
-  name: 'BALTEUS 自律型艦載機動兵器',
+  name: 'ARCHON 自律型艦載機動兵器',
   asm: {
     head: 'h_lt',
     core: 'c_lt',
@@ -1045,7 +1045,7 @@ export const AC_ROSTER = {
     intro: '雙霰彈近距壓制 — 保持中距離、別讓它貼上來',
   },
   nightfall: {
-    name: 'NIGHTFALL',
+    name: 'DUSKWARD',
     pal: 'nightfall',
     ai: 'ac',
     wantDist: 40,
@@ -1168,7 +1168,7 @@ export const AC_ROSTER = {
 };
 export const DUO_BOSS = [
   {
-    name: 'IGUAZU',
+    name: 'KESTREL',
     pal: 'berserker',
     asm: {
       head: 'h_lt',
@@ -1188,7 +1188,7 @@ export const DUO_BOSS = [
     speedMul: 1.3,
   },
   {
-    name: 'VOLTA',
+    name: 'BRANT',
     pal: 'rain',
     asm: {
       head: 'h_scan',
@@ -1451,7 +1451,7 @@ export const ENEMY_TYPES = {
   heli: {
     res: [-0.25, 0, 0],
     cost: 3,
-    name: '武裝直升機 HOUND',
+    name: '武裝直升機 HARRIER',
     pal: 'enemy',
     scale: 0.9,
     hpMul: 0.75,

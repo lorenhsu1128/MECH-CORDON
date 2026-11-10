@@ -62,7 +62,7 @@ Object.assign(MechEntity.prototype, {
           w.streak = 0;
           w.reloadT = own.foe ? 3 : 2;
           w.gHeat = true;
-          if (this.isPlayer) this.game.flashMsg('MG-014 過熱', 0xff8040, 1.2);
+          if (this.isPlayer) this.game.flashMsg('MG-18 過熱', 0xff8040, 1.2);
         }
         break;
       case 'w_hg':

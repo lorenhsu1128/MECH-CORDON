@@ -1434,7 +1434,7 @@ export class World {
       },
     };
     // 只避開大型障礙物（找不到時放寬地面高低差，大型地標可以部分埋進地面）；佔到位置的小物件移除
-    // 平台很密的地圖（Grid 086）找不到時，佔到位置的平台也移除
+    // 平台很密的地圖（Lattice-9）找不到時，佔到位置的平台也移除
     let big = (o) => (o.kind === 'box' ? o.deck || o.w * o.d > 60 * G : o.r > 3 * G);
     const all = this.obstacles;
     let spot = null;
@@ -2503,7 +2503,7 @@ export class World {
       body.sup = [];
       body.mode = 'drop';
       body.ramps = this.rampsNear(b);
-      // Grid 086 的甲板格子：直接打得壞（整格掉下去），四角的支柱和旁邊的格子共用
+      // Lattice-9 的甲板格子：直接打得壞（整格掉下去），四角的支柱和旁邊的格子共用
       const grid = ob.seg === 'grid';
       if (grid) {
         body.grid = true;
@@ -2546,7 +2546,7 @@ export class World {
       for (const o of under) {
         claimed.add(o);
         if (o.prop) {
-          // 共用的支柱（Grid 086）：撐著好幾格
+          // 共用的支柱（Lattice-9）：撐著好幾格
           o.prop.ofs.push(body);
           body.sup.push(o.prop);
           continue;
@@ -2601,7 +2601,7 @@ export class World {
       body.hp = body.maxHp = Math.round(hpSum * 1.5);
     }
   }
-  // Grid 086 的甲板格子的支柱（一張大地圖幾百根、一根一個網格，主線的大地圖每格多幾百次繪製；2026-11-07）：
+  // Lattice-9 的甲板格子的支柱（一張大地圖幾百根、一根一個網格，主線的大地圖每格多幾百次繪製；2026-11-07）：
   // 依區域（4×4 格）與材質合併成少數幾個網格，原本的網格隱藏、不在 meshes 裡（不做鏡頭遮擋的淡出）。
   // 某一根損毀時 propUnmerge 把它在合併網格裡的頂點縮成一點（不畫），原本的網格顯示回來，之後照原本的做法切開、隱藏
   mergeGridPillars() {
@@ -3823,7 +3823,7 @@ export class World {
   // 沒有登記成 occluders 的網格（大型結構、地標、起重機、支柱、殘骸、倒下的結構…）擋住機體時，各自換成可以淡出的材質副本，
   // 不再擋住、淡回原本的不透明度後還原原本的材質。射線每 3 格打一次；地形、水面、岩頂、遠景與 InstancedMesh 略過。
   // 半透明材質只略過 updateOcclusion 管理的（occluders 的群組）與特效類的（很淡、加色）：可以淡出的材質（fadeMat）沒登記
-  // 成 occluders 時（岩石、橋墩、技研都市的高塔、倒下的結構…）以前會被當成已經處理而永遠不淡出。
+  // 成 occluders 時（岩石、橋墩、研究特區的高塔、倒下的結構…）以前會被當成已經處理而永遠不淡出。
   // 用群組判斷、不用材質：同一個材質可能也被別的 occluder 用到（那個沒擋住時這個就永遠不淡出）。回傳有沒有網格擋住
   fadeMeshes(camPos, pts, dt) {
     const rc = this._rc || (this._rc = new THREE.Raycaster());

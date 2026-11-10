@@ -169,7 +169,7 @@ const addMech = (key, name, asm, palKey, scale, note = '', boss = false) =>
     noGlb: true,
     build: (k) => wholeRig(buildMech(asm, pal(k), 1), scale),
   });
-addMech('player', 'RAVEN（玩家初始機）', START_ASM, 'player', 1);
+addMech('player', 'KEYSTONE（玩家初始機）', START_ASM, 'player', 1);
 for (const [key, r] of Object.entries(AC_ROSTER)) {
   const t = ENEMY_TYPES['ac_' + key];
   addMech('ac_' + key, r.name, r.asm, r.pal, t ? t.scale : 1, '具名機甲');

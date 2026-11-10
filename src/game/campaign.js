@@ -74,7 +74,7 @@ const INTEL = {
   institute: ['研究紀錄：強化人間計畫的第 7 號受試者還在運作', 'Coral 收容槽的讀數：濃度正在上升'],
   orbit: ['軌道站的日誌：「它」還在等待命令', '舊時代的設計圖：最上層有一台艦載機動兵器'],
   xylem: ['都市的管理日誌：最後一位居民在 30 年前離開', '海底電纜的配置：都市的電力來自軌道'],
-  grid086: ['Doser 的物資清單：他們在囤積燃料', '構造體的結構圖：底層有一座沒有登記的發電機'],
+  grid086: ['掘骸者的物資清單：他們在囤積燃料', '構造體的結構圖：底層有一座沒有登記的發電機'],
   spaceport: ['發射排程：最後一班火箭在 20 年前', '軌道站的座標：它還在上面'],
   industrial: ['集散場的貨運排程：武裝列車每天經過調度場兩次', '卡斯特隆的出貨清單：大量的重型榴彈'],
   dam: ['水壩的閘門控制碼：主壩的閘門可以從下游開啟', '艾瑟立克的電力需求表：數字大得不像是研究用的'],
@@ -352,7 +352,7 @@ Object.assign(Game.prototype, {
       const loan = this.campRule('loaner') && (so.asm || (c.free && c.free.asm));
       this.player = new MechEntity(this, loan || S.asm, this.myPal(), {
         team: 'player',
-        name: 'RAVEN',
+        name: 'KEYSTONE',
         palKey: this.myPalKey(),
         slot: 0,
         pilot: this.campPilotPm(), // 駕駛員（PvE）＋戰術模組

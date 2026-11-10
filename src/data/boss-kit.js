@@ -1,5 +1,5 @@
 // Boss 改版（docs/boss-design.md 第 3 節）：每隻 Boss 的專屬內容，純資料。鍵＝MechEntity.boss3Key()
-// （kind，沒有 kind 的用名稱開頭 JUGGERNAUT／STRIDER／BALTEUS）。
+// （kind，沒有 kind 的用名稱開頭 MONOLITH／TETRARCH／ARCHON）。
 // 欄位（都可以省略，省略時用 mech-boss-tier.js 的共用版本）：
 //   star：刁鑽度 1～2 只偵測的那一種習慣（'air'／'close'／'far'／'cover'）
 //   habits：刁鑽度 3～4 偵測的兩種（第一個是 star）
@@ -15,13 +15,13 @@
 export const C_STAR = {
   artillery: 'close',
   worm: 'air',
-  JUGGERNAUT: 'close',
+  MONOLITH: 'close',
   railgun: 'cover',
   heli: 'close',
   rampart: 'far',
   train: 'close',
   furnace: 'air',
-  STRIDER: 'close',
+  TETRARCH: 'close',
   phantom: 'far',
   ibis: 'far',
   spider: 'air',
@@ -34,7 +34,7 @@ export const C_STAR = {
   duo: 'cover',
   funnel: 'cover',
   mirror: 'close',
-  BALTEUS: 'far',
+  ARCHON: 'far',
   anvil: 'close',
   salamander: 'far',
   gantry: 'cover',
@@ -92,8 +92,8 @@ K1.worm = {
     cover: (b, pl) => b.b3Erupt(pl, 2, 3), // 從掩體下方鑽出
   },
 };
-// JUGGERNAUT 戰略級移動要塞
-K1.JUGGERNAUT = {
+// MONOLITH 戰略級移動要塞
+K1.MONOLITH = {
   parts: [
     {
       id: 'pod',
@@ -228,8 +228,8 @@ K1.furnace = {
 Object.assign(BOSS_KIT, K1);
 // ---------- 第 3、4 章的 Boss（第 4 期）----------
 const K2 = {};
-// STRIDER 巡邏用超大型四足
-K2.STRIDER = {
+// TETRARCH 巡邏用超大型四足
+K2.TETRARCH = {
   parts: [
     {
       id: 'laser',
@@ -251,7 +251,7 @@ K2.STRIDER = {
     b.staggerT = Math.max(b.staggerT, 6);
     b.bossOpen(6);
     g.netEv({ t: 'stag', i: b.id });
-    g.flashMsg('STRIDER 跪下 — 前腳全毀！', 0x7ee081, 2);
+    g.flashMsg('TETRARCH 跪下 — 前腳全毀！', 0x7ee081, 2);
   },
   open2: ['p3', 'p2'],
   open1: ['p3'],
@@ -467,23 +467,23 @@ K3.interceptor = {
     cover: (b, pl) => b.b3Line(pl, 4, 3, 0.1), // 俯衝轟炸
   },
 };
-// IGUAZU & VOLTA 雙 AC 小隊
+// KESTREL & BRANT 雙 AC 小隊
 K3.duo = {
   parts: [
     {
       id: 'ms',
-      name: 'IGUAZU 的肩上飛彈',
+      name: 'KESTREL 的肩上飛彈',
       model: 'missiles',
-      on: 'IGUAZU',
+      on: 'KESTREL',
       off: [0.42, 0.95, 0],
       slots: ['rback'],
       weak: ['p3'],
     },
     {
       id: 'gr',
-      name: 'VOLTA 的肩上榴彈',
+      name: 'BRANT 的肩上榴彈',
       model: 'grenade',
-      on: 'VOLTA',
+      on: 'BRANT',
       off: [-0.42, 0.95, 0],
       slots: ['lback', 'rback'],
       weak: ['p3'],
@@ -553,8 +553,8 @@ K3.mirror = {
     cover: (b, pl) => b.b3Rain(pl, 4, 4, 0.25), // 繞到側面
   },
 };
-// BALTEUS 自律型艦載機動兵器
-K3.BALTEUS = {
+// ARCHON 自律型艦載機動兵器
+K3.ARCHON = {
   parts: [
     {
       id: 'pods',
@@ -734,8 +734,8 @@ const FIELD = {
       g.flashAlert('戰場改變 — 地面塌陷');
     },
   },
-  // JUGGERNAUT：二型 砲擊的彈坑（土堤掩體）；三型 移動的燃燒帶
-  JUGGERNAUT: {
+  // MONOLITH：二型 砲擊的彈坑（土堤掩體）；三型 移動的燃燒帶
+  MONOLITH: {
     2: (g, b) => {
       g.bfCover(b, 'berm', 4, { w: 8, h: 2.6, d: 3, life: 90, spread: 20 });
       g.flashAlert('戰場改變 — 砲擊留下的彈坑可以當掩體');
@@ -795,8 +795,8 @@ const FIELD = {
       g.flashAlert('戰場改變 — 冷卻水管破裂：蒸氣裡的火會熄滅');
     },
   },
-  // STRIDER：二型 冰面（滑）；三型 暴風雪、作戰區域縮小
-  STRIDER: {
+  // TETRARCH：二型 冰面（滑）；三型 暴風雪、作戰區域縮小
+  TETRARCH: {
     2: (g, b) => {
       g.bfAround(b, 'ice', 'player', 1, 22, 50);
       g.flashAlert('戰場改變 — 冰面：腳下會滑');
@@ -881,7 +881,7 @@ const FIELD = {
     },
     3: (g, b, T) => g.tierShrinkZone(Math.min(T.eZone, 0.7)),
   },
-  // IGUAZU & VOLTA：二型 掩體被打碎（碎石）；三型 作戰區域縮小
+  // KESTREL & BRANT：二型 掩體被打碎（碎石）；三型 作戰區域縮小
   duo: {
     2: (g, b) => {
       g.bfCover(b, 'rubble', 3, { w: 7, h: 2.5, d: 4, life: 90 });
@@ -905,8 +905,8 @@ const FIELD = {
     },
     3: (g, b, T) => g.tierShrinkZone(Math.min(T.eZone, 0.7)),
   },
-  // BALTEUS：二型 熔岩裂地；三型 作戰區域縮小、移動的燃燒帶
-  BALTEUS: {
+  // ARCHON：二型 熔岩裂地；三型 作戰區域縮小、移動的燃燒帶
+  ARCHON: {
     2: (g, b) => g.bfAround(b, 'magma', 'player', 4, 8, 40),
     3: (g, b, T) => {
       g.tierShrinkZone(Math.min(T.eZone, 0.75));

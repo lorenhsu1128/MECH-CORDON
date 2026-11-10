@@ -4016,7 +4016,7 @@ export class MechEntity {
     }
     this.flying = true;
   }
-  // 一般大型 Boss（JUGGERNAUT、STRIDER、BALTEUS）：依裝備的武器排出攻擊模式輪替（沒有對應武器的模式不排，不會空窗）
+  // 一般大型 Boss（MONOLITH、TETRARCH、ARCHON）：依裝備的武器排出攻擊模式輪替（沒有對應武器的模式不排，不會空窗）
   // 0 機槍／霰彈、1 導彈／榴彈／火箭、2 機槍＋導彈齊射、3 突進（突擊推進衝向目標，近身時近戰／霰彈、撞擊）、
   // 4 雷射（第一型態：紅線預警後的蓄力射擊；第二型態：橫掃）。回傳 true 表示這一格要突擊推進
   bossAI(dt, d, dir, perp, wish, pl) {

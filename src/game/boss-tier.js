@@ -251,7 +251,7 @@ Object.assign(Game.prototype, {
     if (sp) b.tierPartLost(sp, true);
     b.tierShellBreak('part'); // 第 8 節：部位破壞打開裝甲殼
     const kit = b.tierKit();
-    if (sp && kit.onLost) kit.onLost(this, b, sp); // 這隻自己的（STRIDER 兩隻前腳都壞了跪下…）
+    if (sp && kit.onLost) kit.onLost(this, b, sp); // 這隻自己的（TETRARCH 兩隻前腳都壞了跪下…）
     const c = e.center();
     this.popDamage(c.clone().setY(c.y + 2 * DS), '部位破壞', false, true, false, 0, e.id);
     this.flashMsg(

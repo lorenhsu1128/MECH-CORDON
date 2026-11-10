@@ -94,7 +94,7 @@ export const CROWD_THEMES = {
     look: { shirt: [0xe0d6c0, 0xc8b48a, 0x8a5a3a], pants: [0xd0c4a8, 0x8a7a5a], hat: [0xe8e0d0, 0xc8b48a] },
     soldier: { shirt: 0xb8a070, pants: 0x9a8458, hat: 0xb8a070 },
   },
-  // 汙染水沒市街：拾荒者（雨衣）
+  // 汙染淹沒城區：拾荒者（雨衣）
   flooded: {
     civ: 0.8,
     near: 0.6,
@@ -102,7 +102,7 @@ export const CROWD_THEMES = {
     look: { shirt: [0xd8c020, 0x3a5a3a, 0x4a4a52], pants: [0x2a3028, 0x3a3a3a], hat: [0xd8c020, null] },
     soldier: { shirt: 0x34402e, pants: 0x2a3226, hat: 0x2a3226 },
   },
-  // 多重水壩：工程師（藍色工作服、白色安全帽）
+  // 階梯水壩：工程師（藍色工作服、白色安全帽）
   dam: {
     civ: 1,
     near: 0.7,
@@ -118,7 +118,7 @@ export const CROWD_THEMES = {
     look: { shirt: [0xe8701e, 0xe0e0e0, 0x3a4a6a], pants: [0xe8701e, 0x3a3e48], hat: [WH, WH, null] },
     soldier: { shirt: 0x3e4248, pants: 0x34383e, hat: 0x2a2d30 },
   },
-  // 巨型構造體 Grid 086：維修員
+  // 巨型構造體 Lattice-9：維修員
   grid086: {
     civ: 0.8,
     near: 0.7,
@@ -126,7 +126,7 @@ export const CROWD_THEMES = {
     look: { shirt: [0x5a5e66, 0xd8b020, 0x3a3e46], pants: [0x2c3036, 0x4a4e56], hat: [HI, 0x5a5e66, null] },
     soldier: { shirt: 0x3a3e46, pants: 0x2c3036, hat: 0x2c3036 },
   },
-  // 洋上都市 Xylem：市民（各種顏色）
+  // 洋上都市 Reefhold：市民（各種顏色）
   xylem: {
     civ: 1.3,
     near: 0.4,
@@ -146,7 +146,7 @@ export const CROWD_THEMES = {
     look: { shirt: [0xe8e8e8, 0xd8d8d0], pants: [0xe0e0e0, 0xc8c8c0], hat: [WH] },
     soldier: { shirt: 0x5a5e66, pants: 0x4a4e56, hat: 0x5a5e66 },
   },
-  // 地下技研都市：白衣的研究員、黑衣的保全
+  // 地下研究特區：白衣的研究員、黑衣的保全
   institute: {
     civ: 1,
     near: 0.6,

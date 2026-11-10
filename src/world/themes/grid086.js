@@ -1,4 +1,4 @@
-// 主題：Grid 086 巨型構造體（AC6 貝利烏斯西部的 Grid 086）——地面層之上有兩層鋼構平台（Y1、Y2），
+// 主題：Lattice-9 巨型構造體（AC6 貝利烏斯西部的 Lattice-9）——地面層之上有兩層鋼構平台（Y1、Y2），
 // 平台之間留有空隙；坡道從地面接到第一層、從第一層接到第二層（懸空坡道 lift），也可以跳躍、懸浮上下
 import { RNG, pick, rnd } from '../../core/math.js';
 import { WS } from '../../core/scale.js';
@@ -27,7 +27,7 @@ const TILE = 24 * G,
   THICK = 1.2 * G;
 
 // ---------- 物件 ----------
-// Doser 棚屋：拼湊的鐵皮屋，5 × 3.6 × 4，原點在底面中心
+// 掘骸者棚屋：拼湊的鐵皮屋，5 × 3.6 × 4，原點在底面中心
 export const SHACK = [5, 3.6, 4];
 export function buildShack(color) {
   const glb = propGlb('doser_shack', { color, fade: true });
@@ -613,7 +613,7 @@ function buildProps(w) {
 }
 
 export const GRID086 = {
-  name: '巨型構造體 Grid 086',
+  name: '巨型構造體 Lattice-9',
   ground: 0x3d3a37,
   slope: 0x2e2c2a,
   rock: 0x2a2826,
@@ -633,27 +633,27 @@ export const GRID086 = {
   planTerrain,
   buildStructures,
   buildProps,
-  propNames: { shack: 'Doser 棚屋', scrapheap: '廢料堆', barrels: '油桶', pipestack: '管線束' },
+  propNames: { shack: '掘骸者棚屋', scrapheap: '廢料堆', barrels: '油桶', pipestack: '管線束' },
   catalog: [
     [
       'doser_shack',
-      'Doser 棚屋',
-      'Grid 086 的雜物；現實尺寸 5 × 3.6 × 4 m，可破壞',
+      '掘骸者棚屋',
+      'Lattice-9 的雜物；現實尺寸 5 × 3.6 × 4 m，可破壞',
       () => buildShack(0x6a6a5a),
     ],
     [
       'scrap_heap',
       '廢料堆',
-      'Grid 086 的掩體；半徑 5–10 m，可破壞；GLB 以半徑 2.5 m 製作、依尺寸縮放',
+      'Lattice-9 的掩體；半徑 5–10 m，可破壞；GLB 以半徑 2.5 m 製作、依尺寸縮放',
       () => buildScrapHeap(1),
     ],
-    ['barrels', '油桶群', 'Grid 086；現實尺寸 3 個一組，可破壞', () => buildBarrels()],
+    ['barrels', '油桶群', 'Lattice-9；現實尺寸 3 個一組，可破壞', () => buildBarrels()],
     [
       'chimney',
       '排氣煙囪',
-      'Grid 086 的地標；高 80–110 m，不可破壞；GLB 以高 30 m 製作、依尺寸縮放',
+      'Lattice-9 的地標；高 80–110 m，不可破壞；GLB 以高 30 m 製作、依尺寸縮放',
       () => buildChimney(1.5, 30),
     ],
-    ['pipe_stack', '管線束', 'Grid 086；高 20–30 m，可破壞；GLB 依高度縮放', () => buildPipeStack(9)],
+    ['pipe_stack', '管線束', 'Lattice-9；高 20–30 m，可破壞；GLB 依高度縮放', () => buildPipeStack(9)],
   ],
 };

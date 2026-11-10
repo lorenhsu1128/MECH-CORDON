@@ -125,7 +125,7 @@ Object.assign(Game.prototype, {
     this.sun.position.set(40, 80, 30);
     this.player = new MechEntity(this, this.save.asm, this.myPal(), {
       team: 'player',
-      name: 'RAVEN',
+      name: 'KEYSTONE',
       palKey: this.myPalKey(),
       slot: 0,
       pilot: this.pilotLocalMods('pve'),
@@ -165,7 +165,7 @@ Object.assign(Game.prototype, {
       document.getElementById('bossBar').style.display = 'block';
       document.getElementById('bossName').textContent = r.name;
     } else if (kind === 'boss') {
-      // 沒有 kind 的（JUGGERNAUT、STRIDER、BALTEUS）用名稱開頭（scripts/boss-bench.js）
+      // 沒有 kind 的（MONOLITH、TETRARCH、ARCHON）用名稱開頭（scripts/boss-bench.js）
       const bd = BOSS_DEFS.find((b) => b.kind === key || (!b.kind && b.name.split(' ')[0] === key));
       if (bd) {
         const bt = this.simSeen().bossT || {};
@@ -230,7 +230,7 @@ Object.assign(Game.prototype, {
     this.campResultHub = true;
     this.showScreen('result');
   },
-  // RUST：每次出現的組裝都不同（從具名 AC 的組裝挑一套，再換一把右手武器）
+  // OXIDE：每次出現的組裝都不同（從具名 AC 的組裝挑一套，再換一把右手武器）
   foeRandomAsm() {
     const ks = Object.keys(AC_ROSTER);
     const a = { ...AC_ROSTER[ks[Math.floor(Math.random() * ks.length)]].asm };

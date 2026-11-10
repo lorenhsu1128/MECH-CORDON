@@ -1119,7 +1119,7 @@ function cargoAirship() {
   return g;
 }
 
-// ---------- 多重水壩 ----------
+// ---------- 階梯水壩 ----------
 // 巨型水輪機：橫倒的轉輪＋葉片＋主軸
 function turbineRunner() {
   const g = new THREE.Group();
@@ -1900,7 +1900,7 @@ function citySpire() {
   return g;
 }
 
-// ---------- Grid 086 ----------
+// ---------- Lattice-9 ----------
 // 斷裂的主樑：巨大的鋼樑從高處斜插到地面
 function brokenGirder() {
   const g = new THREE.Group();
@@ -1919,7 +1919,7 @@ function brokenGirder() {
   rubble(g, 14, 0, 7, 10, 151, M.hullD);
   return g;
 }
-// Doser 聚落：棚屋圍成一圈，中間有篝火與旗桿
+// 掘骸者聚落：棚屋圍成一圈，中間有篝火與旗桿
 function doserCamp() {
   const g = new THREE.Group();
   // 拾荒者的營地：一圈的貨櫃屋（門、窗、屋頂的雜物）、營火（石圈）、旗杆、帆布棚
@@ -2526,7 +2526,7 @@ function stationChunk() {
   return g;
 }
 
-// ---------- 地下技研都市 ----------
+// ---------- 地下研究特區 ----------
 const CORAL = new THREE.MeshStandardMaterial({
   color: 0xff3a30,
   emissive: 0xff2010,
@@ -3122,7 +3122,7 @@ function frozenGiant() {
   return g;
 }
 
-// ---------- 汙染水沒市街 ----------
+// ---------- 汙染淹沒城區 ----------
 // 傾倒的摩天樓：斜靠的高樓與成排的窗
 function leaningTower() {
   const g = new THREE.Group();
@@ -3808,7 +3808,7 @@ export const LANDMARKS = {
       shapes: [{ box: [-12, -8, -2, 2], y: -1, top: 30 }],
     },
     doser: {
-      name: 'Doser 聚落',
+      name: '掘骸者聚落',
       build: doserCamp,
       bx: [-12, 12, -12, 12],
       range: 3,

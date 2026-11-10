@@ -187,7 +187,7 @@ Boss 擊破時依時間給 S／A／B（結算畫面與 Boss 擊破橫幅）：�
 - E：二型 流沙區（緩速）、碎掉的岩柱成為高台；三型 地面塌陷出坑洞、作戰區域縮小
 - C：★空中＝從地下撲向空中；貼身＝鑽出時周圍的衝擊波；遠距＝地下高速移動到你腳下；掩體＝從掩體下方鑽出
 
-#### JUGGERNAUT 戰略級移動要塞
+#### MONOLITH 戰略級移動要塞
 - 出現：第 1 章 c1x（第 2 周目起，2）
 - J：肩上飛彈莢艙（沒有齊射）、主砲（沒有砲擊連段）、履帶（移動與衝撞變慢）
 - D：衝撞撞空後的滑停；齊射之後
@@ -245,7 +245,7 @@ Boss 擊破時依時間給 S／A／B（結算畫面與 Boss 擊破橫幅）：�
 
 ### 第 3 章
 
-#### STRIDER 巡邏用超大型四足
+#### TETRARCH 巡邏用超大型四足
 - 出現：第 3 章 c3s1（3）
 - J：背部雷射砲（沒有十字雷射）、左前腳、右前腳（兩隻都壞了＝跪下 6 秒，之後重新站起）
 - D：十字雷射後砲管過熱；跳躍落地
@@ -339,9 +339,9 @@ Boss 擊破時依時間給 S／A／B（結算畫面與 Boss 擊破橫幅）：�
 - E：二型 空雷殘留區；三型 作戰區域縮小
 - C：空中＝空雷；貼身＝貼近時的音爆；遠距＝遠距掃射；掩體＝俯衝轟炸
 
-#### IGUAZU & VOLTA 雙 AC 小隊（duo）
+#### KESTREL & BRANT 雙 AC 小隊（duo）
 - 出現：第 5 章 c5s3（5）
-- J：IGUAZU 的肩上飛彈、VOLTA 的肩上榴彈（各停用齊射的一半）
+- J：KESTREL 的肩上飛彈、BRANT 的肩上榴彈（各停用齊射的一半）
 - D：連攜齊射之後；一台被打出失衡時另一台會來救（救的路上是破綻）
 - I：一型 夾擊；二型 交叉火線；三型 連攜齊射（兩台靠在一起）
 - M：飛彈
@@ -368,7 +368,7 @@ Boss 擊破時依時間給 S／A／B（結算畫面與 Boss 擊破橫幅）：�
 - E：二型 布雷區；三型 作戰區域縮小
 - C：複製你的習慣：空中＝跟著你飛；貼身＝改用近戰；遠距＝突進；掩體＝繞到側面
 
-#### BALTEUS 自律型艦載機動兵器
+#### ARCHON 自律型艦載機動兵器
 - 出現：第 6 章 c6s3（6）
 - J：左右飛彈莢艙（導彈牆變一半）、火焰噴射器（沒有近身火焰）、脈衝裝甲發生器（沒有脈衝裝甲）
 - D：脈衝裝甲被打破之後；導彈牆之後
@@ -403,9 +403,9 @@ Boss 擊破時依時間給 S／A／B（結算畫面與 Boss 擊破橫幅）：�
 
 1. **共用架構**：刁鑽度、A、D（減傷與破綻框架）、I（打斷量表）、K（破甲充能與 Boss 戰的雜兵小隊）、L、O、HUD、多人同步、說明文字。
 2. **部位、打回去、應對、場地的工具**：J（部位停用招式、重建、掉落）、M（打回去的彈體、反擊點）、C（四種習慣的偵測）、E（換型態的場地變化）。
-3. **第 1、2 章的 Boss**（BASTILLE、SANDWORM、JUGGERNAUT、HALBERD、HELIOS、BEHEMOTH、CITADEL、CINDER）：各自的專屬內容與截圖。
-4. **第 3、4 章的 Boss**（STRIDER、MIRAGE、PULSAR、ARACHNE、CERBERUS、NULLIFIER、JUDGEMENT）。
-5. **第 5、6 章的 Boss**（AEGIS、LEVIATHAN、VIPER、DUO、SERAPHIM、DOPPEL、BALTEUS），以及周目與殘響 Boss 的檢查。
+3. **第 1、2 章的 Boss**（BASTILLE、SANDWORM、MONOLITH、HALBERD、HELIOS、BEHEMOTH、CITADEL、CINDER）：各自的專屬內容與截圖。
+4. **第 3、4 章的 Boss**（TETRARCH、MIRAGE、PULSAR、ARACHNE、CERBERUS、NULLIFIER、JUDGEMENT）。
+5. **第 5、6 章的 Boss**（AEGIS、LEVIATHAN、VIPER、DUO、SERAPHIM、DOPPEL、ARCHON），以及周目與殘響 Boss 的檢查。
 6. **收尾**：CLAUDE.md 同步、冒煙測試（每隻 Boss 的部位、打斷、破綻、打回去都觸發一次）。
 
 每期做完測完就 build、commit、push，直接接下一期。
@@ -424,7 +424,7 @@ Boss 擊破時依時間給 S／A／B（結算畫面與 Boss 擊破橫幅）：�
 | 型態、節奏、`bossTick`（不用 move 的實體）、失衡後保護、`partBreak`、`bossDefense` | `src/entities/mech-boss.js` |
 | 第三批 Boss 的行為、`boss2Defense` | `src/entities/mech-boss2.js` |
 | 最終型態的專屬招式 `SPECIALS`／`boss3Tick` 與共用零件 `b3*` | `src/entities/mech-boss3.js` |
-| 一般大型 Boss（JUGGERNAUT、STRIDER、BALTEUS；HELIOS 是 kind heli）的 `bossAI` | `src/entities/mech-entity.js` |
+| 一般大型 Boss（MONOLITH、TETRARCH、ARCHON；HELIOS 是 kind heli）的 `bossAI` | `src/entities/mech-entity.js` |
 | 受傷、ACS、失衡（Boss 1.5 秒）、`stagGuardT` | `mech-entity.js` 的 `takeDamage`（約 1860～2100 行） |
 | 防禦掛勾的順序 | `specialDefense`（`mech-special.js`）→ `bossDefense` → `boss2Defense` |
 | 完美 QB、反擊提示 | `mech-entity.js` 的 `pqbCheck`、`cueTick` |
@@ -479,9 +479,9 @@ Boss 擊破時依時間給 S／A／B（結算畫面與 Boss 擊破橫幅）：�
 
 #### 第 3 期的實作
 
-- **`BOSS_KIT` 已填**：artillery、worm、JUGGERNAUT、railgun、heli、rampart、train、furnace（`src/data/boss-kit.js` 的 `K1`）。每隻有 `tip`（開打 5 秒後的說明）、`parts`、`open2`／`open1`、`big`（第一、二型態的大招，取代 `mech-boss-tier.js` 的暫代 `BIG`）、`reflect`、`field[2]`／`field[3]`（函式 `(g, b, T)`）、`counter`（四種）、需要時 `canCharge`（鑽地蟲只在鑽出來時、列車不在隧道時）。
+- **`BOSS_KIT` 已填**：artillery、worm、MONOLITH、railgun、heli、rampart、train、furnace（`src/data/boss-kit.js` 的 `K1`）。每隻有 `tip`（開打 5 秒後的說明）、`parts`、`open2`／`open1`、`big`（第一、二型態的大招，取代 `mech-boss-tier.js` 的暫代 `BIG`）、`reflect`、`field[2]`／`field[3]`（函式 `(g, b, T)`）、`counter`（四種）、需要時 `canCharge`（鑽地蟲只在鑽出來時、列車不在隧道時）。
 - **部位的機能**（`parts[]`）：`stops`（停用大招）、`flag`（各 Boss 的 AI 用 `b.tierFlag(flag)` 看）、`slots`（停用武器：`fire()` 看 `w.tierOff`）、`speedK`、`hoverK`；`tierPartLost(sp, on)` 統一處理，重建時（`tierSpawnPart(..., true)`）才恢復。部位數的計算改成「原本就有的部位一種算一個」（四座砲台＝1、四節車廂＝1）。
-- **接到各 Boss 的 AI 的機能**：BASTILLE 的 `lead`（砲台與 `b3Rain` 不預判）／`mines`（不補布雷無人機）；SANDWORM 的 `track`（鑽出點不追）／`bite`（沒有地下衝刺）、鑽出撲空＝停留 +2 秒＋破綻；JUGGERNAUT 衝撞撞空＝破綻；HALBERD 的 `aim`／`cap`／`vent`；BEHEMOTH 的 `blade`／`side`／`exhaust`、衝撞落空＝破綻；CITADEL 的 `valve`；CINDER 的 `slag`／`flame`／`hinge`。`b.tierRush()`＝一般大型 Boss 的突進或推土要塞的衝撞（大招與應對用）。
+- **接到各 Boss 的 AI 的機能**：BASTILLE 的 `lead`（砲台與 `b3Rain` 不預判）／`mines`（不補布雷無人機）；SANDWORM 的 `track`（鑽出點不追）／`bite`（沒有地下衝刺）、鑽出撲空＝停留 +2 秒＋破綻；MONOLITH 衝撞撞空＝破綻；HALBERD 的 `aim`／`cap`／`vent`；BEHEMOTH 的 `blade`／`side`／`exhaust`、衝撞落空＝破綻；CITADEL 的 `valve`；CINDER 的 `slag`／`flame`／`hinge`。`b.tierRush()`＝一般大型 Boss 的突進或推土要塞的衝撞（大招與應對用）。
 - **打回去**：`tierReflects(kind)`（`reflect` 沒寫時：飛彈、榴彈、砲彈；迫擊砲彈 `'mortar'` 要寫明）；`mortarShot` 也會帶 `tierShotOpt`。CINDER 的 `reflectPool`：打掉的熔渣落在它腳下變成燃燒地面。
 - **打斷量表**：本體被自己的裝甲（`bossDefense` 的 k，例如 BASTILLE 砲台在時 ×0.12）擋掉的部分也算（`tkArmor`），否則有部位擋住本體的 Boss 打不斷。
 - 場地的小工具：`g.tierWalls(b, n, o)`、`g.tierPools(b, n, 'player'|'boss'|'line', R)`、`g.tierSmoke(b, R, follow)`、`g.tierShrinkZone(k, at)`。
@@ -489,15 +489,15 @@ Boss 擊破時依時間給 S／A／B（結算畫面與 Boss 擊破橫幅）：�
 
 #### 第 4 期的實作
 
-- `BOSS_KIT` 加上 STRIDER、phantom、ibis、spider、trinity、hunter、orbital（`K2`）。新的欄位：部位的 `weak`（負責的大招放出時減半：`bt.lostW` → `halfT`）、`kit.onLost(g, b, sp)`（STRIDER 兩隻前腳都壞了跪下 6 秒＋破綻）。
+- `BOSS_KIT` 加上 TETRARCH、phantom、ibis、spider、trinity、hunter、orbital（`K2`）。新的欄位：部位的 `weak`（負責的大招放出時減半：`bt.lostW` → `halfT`）、`kit.onLost(g, b, sp)`（TETRARCH 兩隻前腳都壞了跪下 6 秒＋破綻）。
 - 接到 AI 的機能：ARACHNE 倒下與跳躍落地＝破綻、背部砲塔 `mines`（`b3Mines` 都看這個旗標）；NULLIFIER 的 `coil`（EMP 範圍 20 → 12）／`anchor`（沒有牽引）、EMP 放完＝破綻；JUDGEMENT 的 `antenna`（光柱追得慢）／`relay`（沒有格子砲擊）；MIRAGE 的 `cloak`（迷彩時間 ×0.55）／`holo`（分身最多 1 台）、現形開火結束＝破綻；PULSAR 的 `wingL`／`wingR`（各少一種招式）／`ring`（能量環變慢），能量環被 QB 的無敵時間穿過＝反擊點（`bosses2.js` 的能量環判定）；CERBERUS 分離的瞬間＝破綻，`alpha`／`beta`／`gamma` 讓分離後那一台變弱（武器 `tierOff`、`repairOff`）。
 - `canCharge`：ARACHNE 要在地上、CERBERUS 分離中（本體藏起來）不蓄力。
 - 測試：`testBossKit34`。另外修正 testBosses 的 NULLIFIER 牽引檢查（玩家放在距離下限上，時有時無）。
 
 #### 第 5 期的實作
 
-- `BOSS_KIT` 加上 flagship、fortress、interceptor、duo、funnel、mirror、BALTEUS（`K3`），22 隻都有了。新的欄位：部位的 `on`（雙 AC：名稱開頭符合的那一台才有這個部位）、`kit.onStag(b)`（Boss 被 ACS 打出失衡時；雙 AC＝另一台 2.5 秒破綻）。
-- 接到 AI 的機能：AEGIS 發生器重建中＝破綻；LEVIATHAN 引擎全毀降下＝6 秒破綻、下方砲台 `weak`（全彈發射減半）；VIPER 的 `wing`（掉頭 2.6 → 4 秒）／`gun`（掃射 3.2 → 1.8 秒）；SERAPHIM 的 `bay`（浮游砲少 3 座）；BALTEUS 的脈衝裝甲（第一型態的大招 `tierArmor(比例, 秒)`：打破之前只有 30% 打得進去，打破＝破綻；`bossDefense` 的 `tierArmorK`）。
+- `BOSS_KIT` 加上 flagship、fortress、interceptor、duo、funnel、mirror、ARCHON（`K3`），22 隻都有了。新的欄位：部位的 `on`（雙 AC：名稱開頭符合的那一台才有這個部位）、`kit.onStag(b)`（Boss 被 ACS 打出失衡時；雙 AC＝另一台 2.5 秒破綻）。
+- 接到 AI 的機能：AEGIS 發生器重建中＝破綻；LEVIATHAN 引擎全毀降下＝6 秒破綻、下方砲台 `weak`（全彈發射減半）；VIPER 的 `wing`（掉頭 2.6 → 4 秒）／`gun`（掃射 3.2 → 1.8 秒）；SERAPHIM 的 `bay`（浮游砲少 3 座）；ARCHON 的脈衝裝甲（第一型態的大招 `tierArmor(比例, 秒)`：打破之前只有 30% 打得進去，打破＝破綻；`bossDefense` 的 `tierArmorK`）。
 - 周目與殘響 Boss：`testCycle3` 檢查殘響 Boss 是 8、同一區段不殘響化時是章 +2（第 3 周目）。
 - 測試：`testBossKit56`；`testBossKit` 的打斷在本體被護盾或裝甲擋住時改打部位（部位的傷害也算進量表）。
 
@@ -510,7 +510,7 @@ Boss 擊破時依時間給 S／A／B（結算畫面與 Boss 擊破橫幅）：�
 
 #### 第 9 期的實作
 
-- 每隻 Boss 的破綻與部位寫進 `data/enemies.js` 的 `BOSS_DEFS` 的 `intro`（原本的打法說明保留，22 隻都有；JUGGERNAUT、HELIOS、STRIDER、BALTEUS、雙 AC 原本沒有，補上）。開場顯示：新 Boss 照舊在 `spawnBossKind`，一般大型 Boss、直升機、雙 AC 在 `spawnBossDef` 的最後。拿掉開打 5 秒後的 `tierTip` 與 `BOSS_KIT` 的 `tip`；作戰室簡報的敵情也用 `intro`，所以一起更新了。
+- 每隻 Boss 的破綻與部位寫進 `data/enemies.js` 的 `BOSS_DEFS` 的 `intro`（原本的打法說明保留，22 隻都有；MONOLITH、HELIOS、TETRARCH、ARCHON、雙 AC 原本沒有，補上）。開場顯示：新 Boss 照舊在 `spawnBossKind`，一般大型 Boss、直升機、雙 AC 在 `spawnBossDef` 的最後。拿掉開打 5 秒後的 `tierTip` 與 `BOSS_KIT` 的 `tip`；作戰室簡報的敵情也用 `intro`，所以一起更新了。
 
 ---
 
@@ -573,7 +573,7 @@ Boss 擊破時依時間給 S／A／B（結算畫面與 Boss 擊破橫幅）：�
 
 ### 8.8 量測（第 0 期，`scripts/boss-bench.js`）
 
-2026-11-10 起腳本預設跑全部 28 隻（刁鑽度＝主線第一次出現的章、只在第 2 周目委託的＝章＋1；等級是那一段的大約等級；沒有 kind 的 JUGGERNAUT／STRIDER／BALTEUS 由模擬器以名稱開頭叫出），`--boss=core` 是下面兩張表用的每個刁鑽度一隻的代表（另加刁鑽度 7 的 anvil）。結果的每一列記下實際生成的 Boss 名稱 `name`。
+2026-11-10 起腳本預設跑全部 28 隻（刁鑽度＝主線第一次出現的章、只在第 2 周目委託的＝章＋1；等級是那一段的大約等級；沒有 kind 的 MONOLITH／TETRARCH／ARCHON 由模擬器以名稱開頭叫出），`--boss=core` 是下面兩張表用的每個刁鑽度一隻的代表（另加刁鑽度 7 的 anvil）。結果的每一列記下實際生成的 Boss 名稱 `name`。
 
 模擬器的 Boss 模擬戰、自動操作的玩家（保持 30～55 m 繞圈、QB、跳躍、四把武器一直開火、AP 低時用修復套件、不躲預警；Boss 4 秒沒掉 AP 就改打部位與雜兵）、主迴圈停住以固定 dt 推進、不算繪。三套配裝的組裝相同：new＝白裝、駕駛員 1 級、沒有模組；old＝改版前的上限（白裝、駕駛員 35 級、6 個一般模組 2 級）；max＝現在的上限（全金＋調校、駕駛員 45 級含極致技能、一般模組 3 級＋2 個傳說）。結果在 `test-results/boss-bench/<tag>.md`。
 
@@ -612,9 +612,9 @@ Boss 擊破時依時間給 S／A／B（結算畫面與 Boss 擊破橫幅）：�
 使用者看了 `--boss` 全部 28 隻的量測（`all`：13 筆 480 秒內沒擊破）後要求「把 Boss 的問題都仔細的修掉」。逐隻追蹤（每秒記下 AP、型態、大招、裝甲殼、鎖定的目標、傷害來源）之後的原因與修正：
 
 - **卡在型態門檻（ANVIL 三套、DOPPEL 三套都停在 70%）**：`tierGate` 把 AP 停在 `maxHp×0.7`，`bossPhase()` 卻用 `hp／maxHp <= 0.7` 判斷；最大 AP 18 萬以上約 2% 的數值除回來是 0.7000000000000001（例：188698 → 132088.6／188698），判斷成還在第一型態，閘門又把之後的傷害全部擋下，永遠卡住。`bossPhase()` 改成用乘法和門檻比（並寬容半點：客機收到的 AP 是取整的）。冒煙測試 `testBossHard` 檢查 401 種最大 AP（舊的判斷錯 144 個）。
-- **一般武器被當成大招**：大招放出後 `BIG_WIN` 4 秒內，Boss 的一般武器（雷射砲、雷射步槍、導彈）單發夠大也被改成「依 AP 上限的比例、不看防禦」；新手配裝對 AEGIS、IGUAZU & VOLTA 因此多承受 3～4 倍 AP。`tierBigDmg` 收武器 id，有武器 id 的照常算，只有大招本身的攻擊（砲擊、光束、衝擊波、能量環、地雷、燃燒地面，都沒有武器 id）才依比例扣。
+- **一般武器被當成大招**：大招放出後 `BIG_WIN` 4 秒內，Boss 的一般武器（雷射砲、雷射步槍、導彈）單發夠大也被改成「依 AP 上限的比例、不看防禦」；新手配裝對 AEGIS、KESTREL & BRANT 因此多承受 3～4 倍 AP。`tierBigDmg` 收武器 id，有武器 id 的照常算，只有大招本身的攻擊（砲擊、光束、衝擊波、能量環、地雷、燃燒地面，都沒有武器 id）才依比例扣。
 - **AEGIS 的第三型態打不完**：4 座護盾發生器每 25 秒重建一次，運輸機的條件是「場上全部敵人少於 14」（發生器、部位也算），第三型態場上一直有 12～20 台雜兵。重建改成一次比一次少（4 → 3 → 2 座，最少 2），運輸機只在活著的雜兵（不算部位與 Boss）少於 10 台時呼叫。
-- **IGUAZU & VOLTA 等於連打兩場**：兩台各用一般 AC Boss 的倍率（合計火力是單台的兩倍），一台倒下時另一台回復 25%、狂暴，而且自己從第一型態重跑型態閘門、裝甲殼、大招閘門。改成每台 AP ×1.3、火力 ×0.4（合計 AP ×2.6、火力 ×0.8）；倖存的一台只狂暴（火力 ×1.3、節奏加快），不回復、`tierGate` 不再擋（`duoRage`）。
+- **KESTREL & BRANT 等於連打兩場**：兩台各用一般 AC Boss 的倍率（合計火力是單台的兩倍），一台倒下時另一台回復 25%、狂暴，而且自己從第一型態重跑型態閘門、裝甲殼、大招閘門。改成每台 AP ×1.3、火力 ×0.4（合計 AP ×2.6、火力 ×0.8）；倖存的一台只狂暴（火力 ×1.3、節奏加快），不回復、`tierGate` 不再擋（`duoRage`）。
 - **SOVEREIGN**：火力 ×0.6 → ×0.5（改版前的上限配裝陣亡 18 次，其他 Boss 4 次以下；終章 Boss 仍是最難的一隻）。
 - **量測腳本自己的問題**（`scripts/boss-bench.js`）：
   - 自動操作的玩家只在「沒有鎖定或目標被擊破」時才換鎖定，一鎖到 Boss 就不換，「改打部位與雜兵」從來沒有作用 → 每格鎖定挑出來的目標。
@@ -628,13 +628,13 @@ Boss 擊破時依時間給 S／A／B（結算畫面與 Boss 擊破橫幅）：�
 |---|---|---|---|
 | artillery（1） | 67 秒／0 | 62 秒／0 | 37 秒／0 |
 | worm（1） | 45 秒／0 | 47 秒／0 | 40 秒／0 |
-| JUGGERNAUT（2） | 106 秒／5 | 69 秒／0 | 37 秒／0 |
+| MONOLITH（2） | 106 秒／5 | 69 秒／0 | 37 秒／0 |
 | railgun（2） | 42 秒／0 | 41 秒／0 | 44 秒／0 |
 | heli（2） | 52 秒／0 | 51 秒／0 | 35 秒／0 |
 | rampart（2） | 56 秒／0 | 57 秒／0 | 171 秒／0 |
 | train（2） | 47 秒／0 | 38 秒／0 | 37 秒／0 |
 | furnace（3） | 50 秒／0 | 42 秒／0 | 38 秒／0 |
-| STRIDER（3） | 96 秒／3 | 61 秒／0 | 84 秒／0 |
+| TETRARCH（3） | 96 秒／3 | 61 秒／0 | 84 秒／0 |
 | phantom（3） | 76 秒／2 | 45 秒／0 | 40 秒／0 |
 | ibis（3） | 48 秒／0 | 48 秒／0 | 38 秒／0 |
 | spider（4） | 94 秒／2 | 66 秒／0 | 69 秒／0 |
@@ -647,7 +647,7 @@ Boss 擊破時依時間給 S／A／B（結算畫面與 Boss 擊破橫幅）：�
 | duo（5） | 剩 4%／56 | 146 秒／7 | 51 秒／0 |
 | funnel（6） | 107 秒／4 | 58 秒／0 | 41 秒／0 |
 | mirror（6） | 371 秒／19 | 177 秒／2 | 71 秒／0 |
-| BALTEUS（6） | 139 秒／12 | 96 秒／7 | 46 秒／0 |
+| ARCHON（6） | 139 秒／12 | 96 秒／7 | 46 秒／0 |
 | anvil（7） | 169 秒／3 | 174 秒／1 | 40 秒／0 |
 | salamander（7） | 240 秒／5 | 146 秒／0 | 56 秒／0 |
 | gantry（7） | 185 秒／4 | 120 秒／0 | 42 秒／0 |
@@ -655,4 +655,4 @@ Boss 擊破時依時間給 S／A／B（結算畫面與 Boss 擊破橫幅）：�
 | reactor（8） | 剩 45%／23 | 235 秒／4 | 57 秒／0 |
 | sovereign（8） | 250 秒／31 | 243 秒／22 | 69 秒／0 |
 
-- SOVEREIGN 的 old 換四個種子是陣亡 22／12／9／14 次（表上是種子 1），終章 Boss 仍是最難的；BALTEUS 是 7／5／8／4。單一種子的變動很大，比較時要注意。
+- SOVEREIGN 的 old 換四個種子是陣亡 22／12／9／14 次（表上是種子 1），終章 Boss 仍是最難的；ARCHON 是 7／5／8／4。單一種子的變動很大，比較時要注意。

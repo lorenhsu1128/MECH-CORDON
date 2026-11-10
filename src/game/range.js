@@ -305,7 +305,7 @@ Object.assign(Game.prototype, {
     const p0 = this.rangeStartPos();
     this.player = new MechEntity(this, this.save.asm, this.myPal(), {
       team: 'player',
-      name: 'RAVEN',
+      name: 'KEYSTONE',
       palKey: this.myPalKey(),
       slot: 0,
       pilot: this.rangePm(),

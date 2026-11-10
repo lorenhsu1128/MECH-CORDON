@@ -551,7 +551,7 @@ export function prologueCine(ctx) {
       { t: 2.6, sfx: 'boostUp', vol: 0.8, rate: 0.8 },
     ],
   });
-  // ---- 1:18 蒙太奇 A：雪中的多重水壩 ----
+  // ---- 1:18 蒙太奇 A：雪中的階梯水壩 ----
   const dam = { k: 'world', theme: 'dam', seed: 3301, clear: 30 };
   const damG = { sunAz: 220, sunEl: 20, tintLo: '#284860', tintLoK: 0.35, contrast: 1.12 };
   shots.push({

@@ -175,7 +175,7 @@ const SPECIAL = [
   {
     id: 'sp_shockBoss',
     name: '地面衝擊波（大型 Boss 機甲）',
-    who: 'JUGGERNAUT、STRIDER、BALTEUS 等',
+    who: 'MONOLITH、TETRARCH、ARCHON 等',
     src: 'entities/mech-entity.js 的 aiShock（R 30、sp 24、預警 0.9）',
     srcAt: [0, -14],
     run: (S) => S.shock(S.src.pos, 30, 24, 0.9),
@@ -248,7 +248,7 @@ const THEME = [
   {
     id: 'fo_sprayer',
     name: '汙染噴射步行機：腐蝕區',
-    who: '水沒市街 sprayer',
+    who: '淹沒城區 sprayer',
     src: 'entities/mech-foe.js（warnCircle 4.5、1 秒 → addPool 酸）',
     srcAt: [0, -18],
     run: (S) => {
@@ -321,7 +321,7 @@ const THEME = [
   {
     id: 'fo_blob',
     name: '實驗體融合',
-    who: '技研都市 blob',
+    who: '研究特區 blob',
     src: 'entities/mech-foe.js（shockwave 6）',
     srcAt: [0, -14],
     run: (S) => S.ring(S.src.pos.clone().setY(S.src.pos.y + 1), 6, 0xff3a30),
@@ -329,7 +329,7 @@ const THEME = [
   {
     id: 'fo_specimen',
     name: 'SPECIMEN：過載',
-    who: '技研都市的專屬機甲',
+    who: '研究特區的專屬機甲',
     src: 'entities/mech-foe.js（shockwave 5）',
     srcAt: [0, -14],
     run: (S) => S.ring(S.src.center(), 5, 0xff3a30, 0.4),
@@ -452,7 +452,7 @@ const THEME = [
   {
     id: 'b2_eel',
     name: '電鰻無人機：水面放電',
-    who: '水沒市街 eel',
+    who: '淹沒城區 eel',
     src: 'entities/mech-foe-b2.js（warnCircle 14 × MS、1.5 秒 → addZone electro 4 秒）',
     srcAt: [0, -10],
     run: (S) => {
@@ -496,7 +496,7 @@ const THEME = [
   {
     id: 'c1_parasite',
     name: '寄生纏附體：撲擊預警',
-    who: '技研都市 parasite',
+    who: '研究特區 parasite',
     src: 'entities/mech-foe-c1.js（warnLine 0.7 秒）',
     srcAt: [3, -8],
     run: (S) => S.warnLine(S.src.center(), tc(S), 0.7, 0xff3a30),
@@ -504,7 +504,7 @@ const THEME = [
   {
     id: 'c1_anchor',
     name: '重力錨：重力圈',
-    who: 'Grid 086 anchor',
+    who: 'Lattice-9 anchor',
     src: 'entities/mech-foe-c1.js（warnCircle 14 × MS＋warnLine、1.2 秒 → addZone gravity 8 秒）',
     srcAt: [0, -26],
     run: (S) => {
@@ -521,7 +521,7 @@ const THEME = [
   {
     id: 'c1_zipline',
     name: '滑索突擊兵：纜索預警',
-    who: 'Grid 086 zipline',
+    who: 'Lattice-9 zipline',
     src: 'entities/mech-foe-c1.js（warnLine）',
     srcAt: [-10, -20],
     run: (S) => {
@@ -1155,11 +1155,11 @@ const b3 = {
   },
 };
 const B3 = [
-  ['JUGGERNAUT', 'JUGGERNAUT', '砲擊連段', (S) => (b3.shock(S, 26), b3.rain(S, 6, 10, 0.5))],
+  ['MONOLITH', 'MONOLITH', '砲擊連段', (S) => (b3.shock(S, 26), b3.rain(S, 6, 10, 0.5))],
   ['mirror', 'DOPPEL（複製機甲）', '適應過載', (S) => (b3.volley(S, 3, 0.35), b3.mines(S, 5, 9))],
   ['flagship', 'AEGIS（護盾指揮艦）', '艦砲齊射', (S) => b3.line(S, 8, 4.5, 0.12)],
   ['interceptor', 'VIPER（高速突擊機）', '空雷封鎖', (S) => b3.mines(S, 8, 10, true)],
-  ['STRIDER', 'STRIDER', '十字雷射', (S) => b3.cross(S)],
+  ['TETRARCH', 'TETRARCH', '十字雷射', (S) => b3.cross(S)],
   ['railgun', 'HALBERD（電磁砲台）', '散射砲', (S) => b3.fan(S, 5, 0.22)],
   ['worm', 'SANDWORM（鑽地蟲）', '地表崩塌', (S) => b3.erupt(S, 5, 9)],
   ['funnel', 'SERAPHIM（浮游砲指揮機）', '光束牢籠', (S) => b3.cage(S, 6, 16)],
@@ -1167,11 +1167,11 @@ const B3 = [
   ['furnace', 'CINDER（熔爐清掃機）', '火海', (S) => (b3.pools(S, 5, 9), b3.ring(S, 36))],
   ['artillery', 'BASTILLE（砲兵陣地）', '飽和砲擊', (S) => b3.rain(S, 12, 18, 0.25)],
   ['rampart', 'BEHEMOTH（衝撞推土要塞）', '碎石雨', (S) => (b3.shock(S, 22), b3.rain(S, 6, 12, 0.4))],
-  ['duo', 'IGUAZU & VOLTA', '連攜齊射', (S) => b3.volley(S, 4, 0.3)],
+  ['duo', 'KESTREL & BRANT', '連攜齊射', (S) => b3.volley(S, 4, 0.3)],
   ['phantom', 'MIRAGE（光學迷彩電戰機）', '分身突襲', (S) => b3.ring(S, 28)],
   ['spider', 'ARACHNE（多足要塞）', '震地', (S) => (b3.shocks(S, 3, 0.8), b3.mines(S, 4, 8))],
   ['orbital', 'JUDGEMENT（衛星砲導引塔）', '雙重光柱', (S) => b3.pillars(S, 6, 12)],
-  ['BALTEUS', 'BALTEUS', '導彈牆', (S) => (b3.volley(S, 4, 0.25), b3.ring(S, 32))],
+  ['ARCHON', 'ARCHON', '導彈牆', (S) => (b3.volley(S, 4, 0.25), b3.ring(S, 32))],
   ['trinity', 'CERBERUS（三機合體）', '三重衝擊', (S) => b3.shocks(S, 3, 0.7)],
   ['hunter', 'NULLIFIER（電磁狩獵機）', '電磁風暴', (S) => (b3.ring(S, 40), b3.mines(S, 6, 10))],
   ['train', 'IRON CITADEL（武裝列車）', '全車廂砲擊', (S) => b3.rain(S, 10, 16, 0.2)],
@@ -1226,7 +1226,7 @@ const BF = [
     '二型：流沙區／三型：地面塌陷',
     (S) => (around(S, 'quicksand', 'player', 1, 14), around(S, 'collapse', 'player', 3, 7)),
   ],
-  ['JUGGERNAUT', 'JUGGERNAUT', '三型：移動的燃燒帶', (S) => belt(S)],
+  ['MONOLITH', 'MONOLITH', '三型：移動的燃燒帶', (S) => belt(S)],
   ['railgun', 'HALBERD', '三型：煙霧', (S) => haze(S, SMOKE, 18)],
   ['heli', 'HELIOS', '二型：燃燒帶／三型：煙霧', (S) => (belt(S), haze(S, SMOKE, 20))],
   ['rampart', 'BEHEMOTH', '三型：塌陷（兩者之間）', (S) => around(S, 'collapse', 'line', 2, 7)],
@@ -1238,8 +1238,8 @@ const BF = [
     (S) => (around(S, 'magma', 'player', 5, 8), around(S, 'steam', 'player', 2, 12)),
   ],
   [
-    'STRIDER',
-    'STRIDER',
+    'TETRARCH',
+    'TETRARCH',
     '二型：冰面／三型：暴風雪',
     (S) => (around(S, 'ice', 'player', 1, 22), haze(S, SNOW, 24)),
   ],
@@ -1274,12 +1274,7 @@ const BF = [
     (S) => around(S, 'shock', 'player', 3, 6, { color: '#b07dff' }),
   ],
   ['mirror', 'DOPPEL', '二型：布雷區', (S) => minefield(S, 16)],
-  [
-    'BALTEUS',
-    'BALTEUS',
-    '二型：熔岩裂地／三型：燃燒帶',
-    (S) => (around(S, 'magma', 'player', 4, 8), belt(S)),
-  ],
+  ['ARCHON', 'ARCHON', '二型：熔岩裂地／三型：燃燒帶', (S) => (around(S, 'magma', 'player', 4, 8), belt(S))],
 ].map(([k, boss, name, run]) => ({
   id: 'bf_' + k,
   name: `${boss}：${name}`,
@@ -1363,13 +1358,13 @@ const TRAP = [
   ['ice', '冰面裂縫', '冰原'],
   ['pylon', '輸電鐵塔', '荒野'],
   ['gas', '天然氣井', '沙丘'],
-  ['cable', '斷掉的電纜', '水沒市街'],
+  ['cable', '斷掉的電纜', '淹沒城區'],
   ['sluice', '閘口控制台', '水壩'],
   ['testrig', '推進器試車台', '舊宇宙港'],
-  ['scrap', '吊掛的廢料', 'Grid 086'],
+  ['scrap', '吊掛的廢料', 'Lattice-9'],
   ['valve', '海水閥', '洋上都市'],
   ['airlock', '氣閘', '高空軌道'],
-  ['coral', 'Coral 收容槽', '技研都市'],
+  ['coral', 'Coral 收容槽', '研究特區'],
 ].map(([k, name, theme]) => ({
   id: 'tp_' + k,
   name: `${name}（${theme}）`,

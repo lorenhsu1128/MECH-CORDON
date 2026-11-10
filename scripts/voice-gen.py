@@ -111,7 +111,7 @@ STYLE = {
     'shout': '大聲喊叫、急促',
     'low': '警戒、壓低聲音',
 }
-# 全大寫的英文字照字母唸（AP、AC…）；4 個字母以上的是名字（ECHO、RUST、SIROCCO…），改成一般的大小寫讓它照單字唸
+# 全大寫的英文字照字母唸（AP、AC…）；4 個字母以上的是名字（ECHO、OXIDE、SIROCCO…），改成一般的大小寫讓它照單字唸
 SPELL = {'COAM', 'EMP', 'ACS', 'QB'}
 WORDS = {'KEY': 'Key'}
 

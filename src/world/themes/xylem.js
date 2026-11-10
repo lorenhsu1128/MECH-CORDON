@@ -1,4 +1,4 @@
-// 主題：洋上都市 Xylem（AC6 的無人洋上都市）——海上的都市街區以橋相連，街區外是虛空（掉進海裡會被拉回）
+// 主題：洋上都市 Reefhold（AC6 的無人洋上都市）——海上的都市街區以橋相連，街區外是虛空（掉進海裡會被拉回）
 import { RNG, clamp, rnd } from '../../core/math.js';
 import { WS } from '../../core/scale.js';
 import {
@@ -640,7 +640,7 @@ function buildProps(w) {
 }
 
 export const XYLEM = {
-  name: '洋上都市 Xylem',
+  name: '洋上都市 Reefhold',
   ground: 0x9aa0a6,
   slope: 0x6a7076,
   rock: 0x50565c,

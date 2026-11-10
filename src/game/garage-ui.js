@@ -23,7 +23,7 @@ const DIAGS = [Math.PI / 4, Math.PI / 3, (Math.PI * 5) / 12]; // 標註線的斜
 const fmt = (v) => Math.round(v).toLocaleString();
 const pct = (v) => Math.round(v * 100) + '%';
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
-// 型號（零件名的第一段，例如「RF-024 突擊步槍」→「RF-024」）
+// 型號（零件名的第一段，例如「RF-31 突擊步槍」→「RF-31」）
 const model = (p) => (p.id.endsWith('_none') ? '—' : String(p.name).split(/[ \u3000]/)[0]);
 const _v = new THREE.Vector3();
 

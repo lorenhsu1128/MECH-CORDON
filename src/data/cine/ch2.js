@@ -5,7 +5,7 @@
 import { CHAPTER_TEXT, pickLines } from '../story.js';
 import { G, W, black, parseLine, timeline } from './kit.js';
 
-// 多重水壩（種子 6211）：原點在壩的下游 20 m，壩體正面在 z＝−19、壩頂 y≈13.6；
+// 階梯水壩（種子 6211）：原點在壩的下游 20 m，壩體正面在 z＝−19、壩頂 y≈13.6；
 // 閘門 x＝−40.4（洩洪河道，寬 16）、4.2（寬 24）、58.3
 const DAM = W('dam', { seed: 6211, anchor: [0, -20], clear: 10 });
 const IND = W('industrial', { seed: 6201 });
@@ -606,7 +606,7 @@ function outroCastron(L) {
     },
     3,
   );
-  // 監視器牆（水沒市街＝下游的城鎮，夜）
+  // 監視器牆（淹沒城區＝下游的城鎮，夜）
   const cell = (label, p, l, die) => ({ label, cam: fixed(p, l, 13, { fov: 50 }), die });
   T.add(
     {
@@ -767,7 +767,7 @@ function outroAetheric(L) {
       [3.4, '對象：獨立傭兵　登錄號 R-07'],
       [5.4, '前雇主：卡斯特隆重工'],
       [8.5, '罪狀：違反主壩合約，將主壩移交敵對勢力', 'rule'],
-      [12.5, '最後目擊：多重水壩　主壩'],
+      [12.5, '最後目擊：階梯水壩　主壩'],
       [17.5, '賞金：████████ SP'],
       [20.5, '生死不論。', 'big'],
     ],

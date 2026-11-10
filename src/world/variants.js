@@ -948,7 +948,7 @@ export function buildWatchtower() {
   });
   return k.build();
 }
-// 研究所的地表入口：斜坡往下的大型閘門框（寬 24、高 14；技研都市「地表入口」）
+// 研究所的地表入口：斜坡往下的大型閘門框（寬 24、高 14；研究特區「地表入口」）
 export const GATE_S = 2; // 機甲進出的閘門：舊模型放大 2 倍（寬 48、高 28 m）
 export function buildFacilityGate() {
   const k = new PK();
@@ -995,7 +995,7 @@ export function buildFacilityGate() {
   });
   return k.build();
 }
-// 熔渣坑（Grid 086「熔爐區」的裝飾）：發光的圓形坑
+// 熔渣坑（Lattice-9「熔爐區」的裝飾）：發光的圓形坑
 export function buildSlagPit(r) {
   const k = new PK();
   const hot = new THREE.MeshStandardMaterial({ color: 0xff7a20, emissive: 0xff5010, emissiveIntensity: 1.6 });
@@ -2025,7 +2025,7 @@ export const VARIANTS = {
     scrapyard: {
       name: '廢料場',
       theme: { featureKinds: [] },
-      // 大量的廢料堆與 Doser 棚屋
+      // 大量的廢料堆與掘骸者棚屋
       build(w) {
         // 廢料堆 10–20 m（掩體）；棚屋照現實尺寸
         w.scatter(w.cnt(12, 18), 14, (x, z, y) => {
@@ -2310,7 +2310,7 @@ export const VARIANTS = {
       // 成排的 Coral 收容槽
       build(w) {
         const axis = rndi(0, 1),
-          T = 2.5; // 收容槽放大 2.5 倍（同技研都市）
+          T = 2.5; // 收容槽放大 2.5 倍（同研究特區）
         for (let off = -40 * w.k; off <= 40 * w.k; off += rnd(30, 40)) {
           if (Math.abs(off) < 8 * MS) continue;
           for (let v = -44 * w.k; v < 44 * w.k; v += 18) {
@@ -2335,7 +2335,7 @@ export const VARIANTS = {
     },
     entrance: {
       name: '地表入口',
-      border: true, // 交界區段：冰原往地下技研都市過渡
+      border: true, // 交界區段：冰原往地下研究特區過渡
       theme: {
         roof: null,
         weather: 'snow',
@@ -3351,7 +3351,12 @@ export const VARIANT_CATALOG = [
     () => buildQuayCrane(),
   ],
   ['bollard', '繫船柱', '集散場「港灣碼頭」的裝飾', () => buildBollard()],
-  ['slag_pit', '熔渣坑', 'Grid 086「熔爐區」的裝飾，發光的圓坑（遊戲中直徑 12–21 m）', () => buildSlagPit(3)],
+  [
+    'slag_pit',
+    '熔渣坑',
+    'Lattice-9「熔爐區」的裝飾，發光的圓坑（遊戲中直徑 12–21 m）',
+    () => buildSlagPit(3),
+  ],
   [
     'hull_plate',
     '船殼板殘骸',
@@ -3361,7 +3366,7 @@ export const VARIANT_CATALOG = [
   [
     'facility_gate',
     '研究所閘門',
-    '技研都市「地表入口」；機甲進出的閘門，寬 56、高 34 m（舊模型放大 2 倍）',
+    '研究特區「地表入口」；機甲進出的閘門，寬 56、高 34 m（舊模型放大 2 倍）',
     () => buildFacilityGate(),
   ],
   [
@@ -3371,7 +3376,7 @@ export const VARIANT_CATALOG = [
     () => buildSnowWall(9.6),
   ],
   ['watchtower', '瞭望塔', '冰原「前線基地」；現實尺寸高約 10.5 m，可破壞', () => buildWatchtower()],
-  ['toxic_drum', '汙染物桶', '水沒市街「汙染沼澤」；可破壞', () => buildToxicDrum()],
+  ['toxic_drum', '汙染物桶', '淹沒城區「汙染沼澤」；可破壞', () => buildToxicDrum()],
   [
     'weir',
     '攔砂壩',
@@ -3423,7 +3428,7 @@ export const VARIANT_CATALOG = [
   [
     'lamp_post',
     '照明柱',
-    '夜間的變體、技研都市「停電區」（紅色）；現實高 8–12 m，可破壞',
+    '夜間的變體、研究特區「停電區」（紅色）；現實高 8–12 m，可破壞',
     () => buildLampPost(7),
   ],
   [

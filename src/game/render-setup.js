@@ -14,7 +14,7 @@ installStyleShader(); // 越早越好：之後建立的標準材質都會用風�
 
 // 陰影的深度材質（docs/perf-campaign-plan.md 第 3 期）：three.js 對一般網格共用一個 MeshDepthMaterial，蒙皮網格
 // （合併過的專屬敵人）、InstancedMesh 和一般網格交替畫的時候，這個材質的 skinning／instancing 旗標一直切換，
-// 每切一次就重算一次程式參數與快取鍵（Grid 086 每格約 30 次，是戰鬥中 GC 的大宗）。蒙皮與 InstancedMesh
+// 每切一次就重算一次程式參數與快取鍵（Lattice-9 每格約 30 次，是戰鬥中 GC 的大宗）。蒙皮與 InstancedMesh
 // 改用各自的深度材質（原型上的 customDepthMaterial；物件自己設的照舊優先），產生的程式和原本相同。
 // 需要 three.js 另外處理的（alphaTest 貼圖、置換、剪裁、alphaToCoverage、morph）照原本的路徑。
 {

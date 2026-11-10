@@ -1,5 +1,5 @@
 // 第 4 章 構造體：垂直一鏡到底＋倒數（docs/cinematics-storyboard.md 第二版）。台詞＝CHAPTER_TEXT[4]
-//  - 開場：整段是一次倒數（畫面角落 T−60 → 0，最後一秒遠方的發射架點火）；從 Grid 086 最底層開始一鏡到底往上升，
+//  - 開場：整段是一次倒數（畫面角落 T−60 → 0，最後一秒遠方的發射架點火）；從 Lattice-9 最底層開始一鏡到底往上升，
 //    經過爬行機、底部砲塔、SPIRE，穿過雲層到雲上；中途一次滑動變焦；派克與諾拉的對話是同一個鏡頭裡兩種顏色的字幕；
 //    章名直向從下往上捲
 //  - 抉擇 2 選前：發射控制室的倒數 T−10、兩個按鈕的光（綠＝維爾威、黃＝聖域）
@@ -85,7 +85,7 @@ const sub = (t, text, who, dur) => ({ t, sub: text, who: who || null, dur });
 // 圓柱座標（繞著高塔）：θ 度、半徑、高度 → [x, y, z]
 const orb = (th, r, h) => [Math.cos((th * Math.PI) / 180) * r, h, Math.sin((th * Math.PI) / 180) * r];
 
-// ---------- 高塔（Grid 086 往雲上延伸的部分）：層高、每層的偏移、Doser 的棚屋 ----------
+// ---------- 高塔（Lattice-9 往雲上延伸的部分）：層高、每層的偏移、掘骸者的棚屋 ----------
 const TOWER = {
   lv: [11, 21, 33, 46, 60, 75, 88, 101, 114, 127],
   off: [
@@ -161,7 +161,7 @@ export function ch4Intro() {
       ],
     },
     { id: 'hr', k: 'hero', p: [-6, -5], h: 127, yaw: 5 },
-    // Doser 的人住在平台上（第三版分鏡：SPIRE 守的是這些人）；從平台上方往下找地面
+    // 掘骸者的人住在平台上（第三版分鏡：SPIRE 守的是這些人）；從平台上方往下找地面
     ...[
       // 16 秒鏡頭在第 1、2 層之間，看得到第 1 層的上面：抬頭看鏡頭的人、揮手的小孩
       ['d0', 'man', 1, 2, -1, 'Idle_Neutral'],
@@ -254,7 +254,7 @@ export function ch4Intro() {
         sub(22.4, L[4], null, 5.6),
         { t: 21.6, sfx: 'thud1', vol: 0.6, rate: 0.4 },
         { t: 28.4, sfx: 'thud2', vol: 0.7, rate: 0.35 },
-        { t: 34, card: 'SPIRE', s: 'Doser 的首領', style: 'name', dur: 5 },
+        { t: 34, card: 'SPIRE', s: '掘骸者的首領', style: 'name', dur: 5 },
         { t: 34, sfx: 'charge', vol: 0.5, rate: 0.6, at: { a: 'sp' } },
         sub(35.2, '這裡是我的家。闖進來的，就從最高的地方摔下去。', 'spire', 4.4),
         { t: 39.3, sfx: 'boostUp', vol: 0.8, rate: 0.8, at: { a: 'sp' } },

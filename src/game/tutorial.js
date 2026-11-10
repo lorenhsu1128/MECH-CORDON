@@ -315,7 +315,7 @@ Object.assign(Game.prototype, {
     }
     this.player = new MechEntity(this, asm, this.myPal(), {
       team: 'player',
-      name: 'RAVEN',
+      name: 'KEYSTONE',
       palKey: this.myPalKey(),
       slot: 0,
       pilot: this.pilotLocalMods('pve'),

@@ -636,7 +636,7 @@ export function buildEvSinkhole(color = 0xffb060) {
   return g;
 }
 
-// ---------- 水沒市街：抽水站（控制台：逆轉 → 水位上升） ----------
+// ---------- 淹沒城區：抽水站（控制台：逆轉 → 水位上升） ----------
 export function buildEvPump(color = 0x6ad8ff) {
   const g = new THREE.Group();
   if (glbOr('device/pump', g)) return g;
@@ -724,7 +724,7 @@ export function buildEvPump(color = 0x6ad8ff) {
   return g;
 }
 
-// ---------- 多重水壩：洩洪閘（sink：閘門沉下去＝打開），控制台在旁邊 ----------
+// ---------- 階梯水壩：洩洪閘（sink：閘門沉下去＝打開），控制台在旁邊 ----------
 export function buildEvSpillway(color = 0x7fd0ff) {
   const g = new THREE.Group();
   if (glbOr('device/spillway', g)) return g;
@@ -907,7 +907,7 @@ export function buildEvLaunchTower(color = 0xff9a40) {
   return g;
 }
 
-// ---------- Grid 086：直立收起的吊橋（tower：放下時往 +Z 倒），兩側的絞盤座，控制台在後方 ----------
+// ---------- Lattice-9：直立收起的吊橋（tower：放下時往 +Z 倒），兩側的絞盤座，控制台在後方 ----------
 export function buildEvDrawbridge(color = 0xffc060) {
   const g = new THREE.Group();
   if (glbOr('device/drawbridge', g)) return g;
@@ -1136,7 +1136,7 @@ export function buildEvDock(color = 0xffd060) {
   return g;
 }
 
-// ---------- 地下技研都市：防爆門（sink：打開時沉下去），控制台在旁邊；門後有補給箱與一群敵人 ----------
+// ---------- 地下研究特區：防爆門（sink：打開時沉下去），控制台在旁邊；門後有補給箱與一群敵人 ----------
 export function buildEvBlastDoor(color = 0xff6a6a) {
   const g = new THREE.Group();
   if (glbOr('device/blastdoor', g)) return g;

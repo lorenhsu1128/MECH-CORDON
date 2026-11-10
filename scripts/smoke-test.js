@@ -1827,7 +1827,7 @@ async function testWarmAsync(browser, base) {
   await ctx.close();
 }
 
-// 各地圖的特殊機制：水壩的閘門與坡道、Grid 086 的懸空坡道、洋上都市的虛空墜落、高空軌道沒有通道、地下的光照
+// 各地圖的特殊機制：水壩的閘門與坡道、Lattice-9 的懸空坡道、洋上都市的虛空墜落、高空軌道沒有通道、地下的光照
 async function mapMechanics(page, key) {
   if (key === 'dam') {
     const r = await page.evaluate((SC) => {
@@ -1861,7 +1861,7 @@ async function mapMechanics(page, key) {
     }, SC);
     check(
       r.l1 > 4 && r.l2 > 0 && r.lift && r.low < 12 * SC && r.mid > 14 * SC,
-      `Grid 086：第一層 ${r.l1}、第二層 ${r.l2} 塊平台；懸空坡道下方 ${r.low.toFixed(1)}、坡面上 ${r.mid.toFixed(1)}`,
+      `Lattice-9：第一層 ${r.l1}、第二層 ${r.l2} 塊平台；懸空坡道下方 ${r.low.toFixed(1)}、坡面上 ${r.mid.toFixed(1)}`,
     );
   } else if (key === 'xylem') {
     const r0 = await page.evaluate(() => {
@@ -1936,7 +1936,7 @@ async function mapMechanics(page, key) {
     check(!r.corridor, '高空軌道：沒有公路／鐵路');
   } else if (key === 'institute') {
     const r = await page.evaluate(() => ({ sun: window.__game.sun.intensity }));
-    check(r.sun < 0.6, `地下技研都市：光照較暗（太陽 ${r.sun.toFixed(2)}）`);
+    check(r.sun < 0.6, `地下研究特區：光照較暗（太陽 ${r.sun.toFixed(2)}）`);
   } else if (key === 'volcano') {
     // 熔岩：有熔岩面、熔岩的地方不能放東西、站在熔岩裡受傷
     const r = await page.evaluate(() => {
@@ -2160,7 +2160,7 @@ async function testLibrary(browser, base) {
   await page.selectOption('#gridCols', '3');
   await wait(800);
   check(await page.$eval('#gridSpin', (c) => c.checked), '改回 3 格時預設全部旋轉');
-  await page.click('.cell[data-id="mech/boss_juggernaut"]');
+  await page.click('.cell[data-id="mech/boss_monolith"]');
   check(
     await page.waitForSelector('#inspect:not([hidden])', { timeout: 10000 }).then(
       () => true,
@@ -2812,7 +2812,7 @@ async function testWorkshop(browser, base) {
   await page.click(elbow);
   await wait(300);
   check(
-    ((await page.textContent('#wsDetail')) || '').includes('所有使用「AR-011 MELANDER」手臂的機甲'),
+    ((await page.textContent('#wsDetail')) || '').includes('所有使用「AR-100 GRANITE」手臂的機甲'),
     '選取連接點後顯示影響範圍',
   );
   await page.fill('#wsDetail input[data-k="p"][data-i="1"]', '-3.9');
@@ -7796,7 +7796,7 @@ async function testCamOcclusion(browser, base) {
       um.visible = false;
       run(120);
       out.meshBack = mesh[0].material === orig;
-      // 可淡出的半透明材質（fadeMat）但沒登記成遮擋物（岩石、橋墩、技研都市的高塔、倒下的結構…）：以前被當成已經處理而不淡出
+      // 可淡出的半透明材質（fadeMat）但沒登記成遮擋物（岩石、橋墩、研究特區的高塔、倒下的結構…）：以前被當成已經處理而不淡出
       const tm = new THREE.MeshStandardMaterial({ color: 0x8a6a4a, transparent: true });
       um.material = tm;
       um.visible = true;
@@ -10022,7 +10022,7 @@ async function testChapter1(browser, base) {
       dv.filter((s) => s.endsWith(':1')).length >= 5,
     '沙丘的 4 種變體與地標（' + dv.join('、') + '）',
   );
-  // 精英區段：荒野是 RUST（劇情通訊）、礦坑是 PROSPECTOR
+  // 精英區段：荒野是 OXIDE（劇情通訊）、礦坑是 PROSPECTOR
   const el = await page.evaluate(() => {
     const g = window.__game;
     g.campEnd(false, true);
@@ -10043,12 +10043,12 @@ async function testChapter1(browser, base) {
   });
   check(
     el.r[0].startsWith('SIROCCO') &&
-      el.r[1].startsWith('RUST') &&
+      el.r[1].startsWith('OXIDE') &&
       el.r[2].startsWith('PROSPECTOR') &&
       el.rust &&
       el.pro &&
       el.sir,
-    '精英區段：沙丘是 SIROCCO、荒野是 RUST、礦坑是 PROSPECTOR，各自有通訊（' + el.r.join('、') + '）',
+    '精英區段：沙丘是 SIROCCO、荒野是 OXIDE、礦坑是 PROSPECTOR，各自有通訊（' + el.r.join('、') + '）',
   );
   // 模擬器：列出遇過的敵人與宿敵；模擬戰清除後回機庫
   await page.evaluate(() => {
@@ -10147,9 +10147,9 @@ async function testChapter1(browser, base) {
 }
 
 // 主線第 2 章：集散場（起重機砲台、叉架 MT、STEVEDORE）、水壩（閘門砲台、壩頂巡邏砲車、SLUICE）、
-// 水沒市街（潛航砲艇、汙染噴射 MT、MARSH）的專屬敵人、變體與地標；第 2 章的出擊、陣營抉擇出口與總覽圖的分歧
+// 淹沒城區（潛航砲艇、汙染噴射 MT、MARSH）的專屬敵人、變體與地標；第 2 章的出擊、陣營抉擇出口與總覽圖的分歧
 async function testChapter2(browser, base) {
-  console.log('第 2 章：集散場、水壩、水沒市街的專屬敵人與 AC、變體與地標、出擊、陣營抉擇');
+  console.log('第 2 章：集散場、水壩、淹沒城區的專屬敵人與 AC、變體與地標、出擊、陣營抉擇');
   const { ctx, page } = await newPage(browser, 'ch2');
   await page.goto(base + '?test');
   await waitVisible(page, 'title');
@@ -10423,7 +10423,7 @@ async function testChapter2(browser, base) {
     await page.waitForTimeout(1200);
     await page.screenshot({ path: path.join(SHOT_DIR, 'ch2-dam-' + v + '.png') });
   }
-  // 水沒市街：潛航砲艇、汙染噴射 MT、涉水變慢、MARSH 的潛行
+  // 淹沒城區：潛航砲艇、汙染噴射 MT、涉水變慢、MARSH 的潛行
   const fl = await page.evaluate(() => {
     const g = window.__game;
     g.campSortie().segs[1].theme = 'flooded';
@@ -10529,7 +10529,7 @@ async function testChapter2(browser, base) {
     '汙染噴射 MT：腐蝕區造成損傷並讓 ACS 回復變慢（' + Math.round(fl.acidHurt) + '）',
   );
   check(fl.wade < 1, '涉水：站在水裡移動變慢（×' + fl.wade + '）');
-  check(fl.marsh === 'MARSH' && fl.comm, '精英區段：水沒市街是 MARSH，有通訊');
+  check(fl.marsh === 'MARSH' && fl.comm, '精英區段：淹沒城區是 MARSH，有通訊');
   check(
     fl.sub && fl.sub.vis === 2 && fl.sub.noLock && fl.sub.hidden && fl.sub.k > 1,
     'MARSH：在水裡離目標遠時潛行（不能鎖定），水中不減速（×' + (fl.sub && fl.sub.k) + '）',
@@ -10549,7 +10549,7 @@ async function testChapter2(browser, base) {
   check(
     fv.slice(0, 4).every((s, i) => s.startsWith(['highway', 'canal', 'suburb', 'toxic'][i])) &&
       fv.filter((s) => s.endsWith(':1')).length >= 5,
-    '水沒市街的 4 種變體與地標（' + fv.join('、') + '）',
+    '淹沒城區的 4 種變體與地標（' + fv.join('、') + '）',
   );
   for (const v of ['highway', 'canal', 'suburb', 'toxic']) {
     await page.evaluate((v) => {
@@ -10715,10 +10715,10 @@ async function testChapter2(browser, base) {
   await ctx.close();
 }
 
-// 主線第 3 章：冰原（雪中潛伏 MT、冰面滑行砲車、WHITEOUT）、地下技研都市（實驗體、保全雷射網、SPECIMEN）的
+// 主線第 3 章：冰原（雪中潛伏 MT、冰面滑行砲車、WHITEOUT）、地下研究特區（實驗體、保全雷射網、SPECIMEN）的
 // 專屬敵人、變體與地標；第 3 章的出擊、跨主題下降、宿敵依抉擇再登場
 async function testChapter3(browser, base) {
-  console.log('第 3 章：冰原、地下技研都市的專屬敵人與 AC、變體與地標、出擊、宿敵再登場');
+  console.log('第 3 章：冰原、地下研究特區的專屬敵人與 AC、變體與地標、出擊、宿敵再登場');
   const { ctx, page } = await newPage(browser, 'ch3');
   await page.goto(base + '?test');
   await waitVisible(page, 'title');
@@ -10912,7 +10912,7 @@ async function testChapter3(browser, base) {
     await page.waitForTimeout(1200);
     await page.screenshot({ path: path.join(SHOT_DIR, 'ch3-snow-' + v + '.png') });
   }
-  // 地下技研都市：實驗體融合、保全雷射網的警報、SPECIMEN 的過載與硬直
+  // 地下研究特區：實驗體融合、保全雷射網的警報、SPECIMEN 的過載與硬直
   await enter('institute', 'tanks');
   const ins = await page.evaluate(() => {
     const g = window.__game,
@@ -11031,7 +11031,7 @@ async function testChapter3(browser, base) {
     g.state = 'play';
     return out;
   });
-  check(sp.name === 'SPECIMEN' && sp.comm, '精英區段：技研都市是 SPECIMEN，有通訊');
+  check(sp.name === 'SPECIMEN' && sp.comm, '精英區段：研究特區是 SPECIMEN，有通訊');
   check(
     sp.ov.ov && sp.ov.k > 1.4,
     'SPECIMEN：定期過載（速度 ×' + sp.ov.k.toFixed(2) + '，' + JSON.stringify(sp.ov) + '）',
@@ -11059,7 +11059,7 @@ async function testChapter3(browser, base) {
   check(
     iv.slice(0, 4).every((s, i) => s.startsWith(['core', 'cavern', 'tanks', 'entrance'][i])) &&
       iv.filter((s) => s.endsWith(':1')).length >= 5,
-    '地下技研都市的 4 種變體與地標（' + iv.join('、') + '）',
+    '地下研究特區的 4 種變體與地標（' + iv.join('、') + '）',
   );
   for (const v of ['core', 'cavern', 'tanks', 'entrance']) {
     await enter('institute', v);
@@ -11067,7 +11067,7 @@ async function testChapter3(browser, base) {
     await page.waitForTimeout(1200);
     await page.screenshot({ path: path.join(SHOT_DIR, 'ch3-institute-' + v + '.png') });
   }
-  // 第 3 章的出擊：終點 Boss、冰原 → 技研都市的轉場（交界接力、之後下降）
+  // 第 3 章的出擊：終點 Boss、冰原 → 研究特區的轉場（交界接力、之後下降）
   const c3 = await page.evaluate(() => {
     const g = window.__game;
     if (g.camp) g.campEnd(false, true);
@@ -11105,8 +11105,8 @@ async function testChapter3(browser, base) {
   await page.evaluate(() => window.__game.campEnd(false, true));
   c3.push('mode:' + modes.join(','));
   check(
-    c3.join(',') === 'c3s1:snow:STRIDER,c3s2:institute:MIRAGE,c3s3:institute:PULSAR,mode:relay,down',
-    '第 3 章的 3 個出擊與終點 Boss、冰原 → 技研都市（交界接力、之後下降）（' + c3.join('、') + '）',
+    c3.join(',') === 'c3s1:snow:TETRARCH,c3s2:institute:MIRAGE,c3s3:institute:PULSAR,mode:relay,down',
+    '第 3 章的 3 個出擊與終點 Boss、冰原 → 研究特區（交界接力、之後下降）（' + c3.join('、') + '）',
   );
   // 總覽圖：第 2 章任一路線完成後開放第 3 章
   const h3 = await page.evaluate(() => {
@@ -11146,10 +11146,10 @@ async function testChapter3(browser, base) {
   await ctx.close();
 }
 
-// 主線第 4 章：Grid 086（構造體爬行機、平台底部砲塔、SPIRE）、舊宇宙港（推進器試車台、舊式宇宙用 MT、COUNTDOWN）
+// 主線第 4 章：Lattice-9（構造體爬行機、平台底部砲塔、SPIRE）、舊宇宙港（推進器試車台、舊式宇宙用 MT、COUNTDOWN）
 // 的專屬敵人、變體與地標；第 4 章的出擊、抉擇 2、依抉擇的路線
 async function testChapter4(browser, base) {
-  console.log('第 4 章：Grid 086、舊宇宙港的專屬敵人與 AC、變體與地標、出擊、抉擇 2');
+  console.log('第 4 章：Lattice-9、舊宇宙港的專屬敵人與 AC、變體與地標、出擊、抉擇 2');
   const { ctx, page } = await newPage(browser, 'ch4');
   await page.goto(base + '?test');
   await waitVisible(page, 'title');
@@ -11238,7 +11238,7 @@ async function testChapter4(browser, base) {
     window.__step([e], 120);
     return { name: e && e.name, comm: log.includes('spire'), perch: !!e.aiState.perch };
   });
-  check(sp.name === 'SPIRE' && sp.comm && sp.perch, '精英區段：Grid 086 是 SPIRE（找高處的平台），有通訊');
+  check(sp.name === 'SPIRE' && sp.comm && sp.perch, '精英區段：Lattice-9 是 SPIRE（找高處的平台），有通訊');
   // 舊宇宙港：推進器試車台、舊式宇宙用 MT
   await enter('spaceport', 'runway');
   const spc = await page.evaluate(() => {
@@ -11312,7 +11312,7 @@ async function testChapter4(browser, base) {
   });
   check(
     vv.filter((s) => !s.includes('/-')).length === 8 && vv.filter((s) => s.endsWith(':1')).length >= 10,
-    'Grid 086 與舊宇宙港的各 4 種變體與地標（' + vv.join('、') + '）',
+    'Lattice-9 與舊宇宙港的各 4 種變體與地標（' + vv.join('、') + '）',
   );
   for (const [th, v] of [
     ['grid086', 'foundry'],
@@ -11571,7 +11571,7 @@ async function testChapter5(browser, base) {
     return out;
   });
   check(
-    c5.join(',') === 'c5s1:AEGIS,c5s2a:LEVIATHAN,c5s2b:VIPER,c5s3:IGUAZU,route:done/hidden/open/locked',
+    c5.join(',') === 'c5s1:AEGIS,c5s2a:LEVIATHAN,c5s2b:VIPER,c5s3:KESTREL,route:done/hidden/open/locked',
     '第 5 章的出擊與終點 Boss、依抉擇 2 的路線（' + c5.join('、') + '）',
   );
   await ctx.close();
@@ -14288,7 +14288,7 @@ async function testGarageUi(browser, base) {
   await page.mouse.move(tuB.x + tuB.width / 2, tuB.y + tuB.height / 2, { steps: 6 });
   await wait(250);
   const fast = await tipName();
-  check(/MG-014/.test(mgName) && fast === mgName, `游標停留才換卡片：快速掠過的格子不算（${fast}）`);
+  check(/MG-18/.test(mgName) && fast === mgName, `游標停留才換卡片：快速掠過的格子不算（${fast}）`);
   await page.click('#partList .part[data-pid="w_sg"]', { button: 'right' });
   await wait(200);
   const rt = await page.evaluate(() => {
@@ -14297,7 +14297,7 @@ async function testGarageUi(browser, base) {
     window.__game.tuneClose();
     return t;
   });
-  check(/SG-027/.test(rt), `零件格子按右鍵直接開調校（${rt}）`);
+  check(/SG-33/.test(rt), `零件格子按右鍵直接開調校（${rt}）`);
   // 零件品級：兩翼的部位格依裝備中那一件的品級（外框、標籤）；零件格子的裝備中那一格看裝備中的那一件
   const gq = await page.evaluate(() => {
     const g = window.__game,
@@ -19625,8 +19625,7 @@ async function testCycle2(browser, base) {
     return { out, log: log.includes('埋沒都市') };
   }, X);
   check(
-    bs.out.join(',') === 'c1x:JUGGERNAUT,c2x:CINDER,c3x:HELIOS,c4x:HALBERD,c5x:NULLIFIER,c6x:PULSAR' &&
-      bs.log,
+    bs.out.join(',') === 'c1x:MONOLITH,c2x:CINDER,c3x:HELIOS,c4x:HALBERD,c5x:NULLIFIER,c6x:PULSAR' && bs.log,
     '6 個周目限定委託的終點 Boss 與通訊（' + bs.out.join('、') + '）',
   );
   await ctx.close();
@@ -20346,7 +20345,7 @@ async function testWater(browser, base) {
     timeout: 30000,
   });
   await freezeLoop(page);
-  // 多重水壩（標準變體）出擊，玩家放在淺水（1.2～3 m）；__simRead 讀回模擬貼圖：{ mx 最大的 |高度|, nan }
+  // 階梯水壩（標準變體）出擊，玩家放在淺水（1.2～3 m）；__simRead 讀回模擬貼圖：{ mx 最大的 |高度|, nan }
   const start = (q) =>
     page.evaluate((q) => {
       const g = window.__game;
@@ -21850,7 +21849,7 @@ async function testVariants6(browser, base) {
   );
   check(
     F['institute:flooded'].wade > 0.6 && F['desert:drowned'].wade > 0.6,
-    '浸水的變體要涉水（技研都市 ' +
+    '浸水的變體要涉水（研究特區 ' +
       F['institute:flooded'].wade.toFixed(2) +
       ' m、礦坑 ' +
       F['desert:drowned'].wade.toFixed(2) +
@@ -22048,7 +22047,7 @@ async function testChapter6(browser, base) {
     return out;
   });
   check(
-    c6.join(',') === 'c6s1:7:SERAPHIM,c6s2:7:DOPPEL,c6s3:7:BALTEUS',
+    c6.join(',') === 'c6s1:7:SERAPHIM,c6s2:7:DOPPEL,c6s3:7:ARCHON',
     '第 6 章的 3 個出擊（各 7 段）與終點 Boss（' + c6.join('、') + '）',
   );
   // 主線擴充：c6s3 不再是終章、沒有抉擇；第 7、8 章的出擊與終點 Boss；c8s3 是終章、有最後的抉擇
@@ -29938,9 +29937,9 @@ async function testFoesB1(browser, base) {
   await lc.close();
 }
 
-// 地圖專屬敵人擴充（B2）：集散場的鉚釘槍 MT／電焊 MT、水壩的高壓水砲車／渦輪吸入機、水沒市街的電鰻無人機／漂流水雷浮標
+// 地圖專屬敵人擴充（B2）：集散場的鉚釘槍 MT／電焊 MT、水壩的高壓水砲車／渦輪吸入機、淹沒城區的電鰻無人機／漂流水雷浮標
 async function testFoesB2(browser, base) {
-  console.log('地圖專屬敵人擴充 B2：集散場、水壩、水沒市街的新敵人（行為、預警、模型）');
+  console.log('地圖專屬敵人擴充 B2：集散場、水壩、淹沒城區的新敵人（行為、預警、模型）');
   const { ctx, page } = await newPage(browser, 'foesb2');
   await page.goto(base + '?test');
   await waitVisible(page, 'title');
@@ -30280,7 +30279,7 @@ async function testFoesB2(browser, base) {
     `渦輪吸入機：打開前蓋吸入（addZone suction），正面受傷 ×1.6（${JSON.stringify(t2)}）`,
   );
   await shot('turbine-suck');
-  // ---- 水沒市街：電鰻無人機 ----
+  // ---- 淹沒城區：電鰻無人機 ----
   const e1 = await page.evaluate(() => {
     const T = window.__b2,
       g = window.__game;
@@ -30319,7 +30318,7 @@ async function testFoesB2(browser, base) {
     `電鰻無人機：放電（addZone electro，${JSON.stringify(e2)}）`,
   );
   await shot('eel-zap');
-  // ---- 水沒市街：漂流水雷浮標 ----
+  // ---- 淹沒城區：漂流水雷浮標 ----
   const b1 = await page.evaluate(() => {
     const T = window.__b2,
       g = window.__game,
@@ -31151,7 +31150,7 @@ async function testDestructCollapse(browser, base) {
   }
 }
 
-// 地圖物件的破壞 第 6 期：巨型結構的局部打穿——壩體的缺口與水流、Grid 086 的甲板格子、隧道口坍方、岩頂開洞、
+// 地圖物件的破壞 第 6 期：巨型結構的局部打穿——壩體的缺口與水流、Lattice-9 的甲板格子、隧道口坍方、岩頂開洞、
 // 平台外緣；出生點附近只受損（docs/destruction-design.md）
 async function testDestructSegs(browser, base) {
   console.log('地圖物件的破壞：局部打穿（壩體、甲板格子、隧道口、岩頂、平台外緣）');
@@ -31309,7 +31308,7 @@ async function testDestructSegs(browser, base) {
     } else if (map === 'grid086') {
       check(
         r.n > 0 && r.drop,
-        `Grid 086 的甲板格子（${r.n} 格）：整格掉下去、碎裂淡出消失、不留碰撞（${r.dropY}）`,
+        `Lattice-9 的甲板格子（${r.n} 格）：整格掉下去、碎裂淡出消失、不留碰撞（${r.dropY}）`,
       );
       check(
         r.cascade !== false,
@@ -32699,7 +32698,7 @@ async function testFoesC1(browser, base) {
   check(im2.dmg > 0, `冰錐迫擊砲：落點的目標受傷（${Math.round(im2.dmg)}）`);
   await shot('icemortar-wall', 300);
 
-  // ---- 技研都市：全像投影器 ----
+  // ---- 研究特區：全像投影器 ----
   await enter('institute', 'core');
   const ho = await ev(() => {
     const g = window.__game,
@@ -32744,7 +32743,7 @@ async function testFoesC1(browser, base) {
   });
   check(ho2.one, '全像投影器：假的打一下就消失，不給賞金、不算擊破');
   check(ho2.rest && ho2.left === 0, '全像投影器：本體被擊破時假敵人全部消失');
-  // ---- 技研都市：寄生纏附體 ----
+  // ---- 研究特區：寄生纏附體 ----
   const pa = await ev(() => {
     window.__clear();
     const e = window.__spawn('parasite', 6);
@@ -32784,7 +32783,7 @@ async function testFoesC1(browser, base) {
   });
   check(pa3.shaken && pa3.stag > 1 && !pa3.noLock, '寄生纏附體：被甩掉時彈開並硬直' + JSON.stringify(pa3));
 
-  // ---- Grid 086：重力錨 ----
+  // ---- Lattice-9：重力錨 ----
   await enter('grid086', 'catwalks');
   const an = await ev(() => {
     const e = window.__spawn('anchor', 24);
@@ -32816,7 +32815,7 @@ async function testFoesC1(browser, base) {
   );
   check(an2.nojump, '重力錨：重力圈裡的機體不能跳（nojump）');
   await shot('anchor-field', 300);
-  // ---- Grid 086：滑索突擊兵 ----
+  // ---- Lattice-9：滑索突擊兵 ----
   const zp = await ev(() => {
     window.__clear();
     const g = window.__game,

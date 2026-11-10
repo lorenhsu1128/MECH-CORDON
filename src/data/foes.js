@@ -1,5 +1,5 @@
-// 主題專屬敵人與專屬 AC（docs/campaign-design.md 第 6 節；第 1 章：荒野、沙丘、礦坑；第 2 章：集散場、水壩、水沒市街；
-// 第 3 章：冰原、地下技研都市；第 4 章：Grid 086、舊宇宙港；第 5 章：洋上都市；第 6 章：高空軌道）
+// 主題專屬敵人與專屬 AC（docs/campaign-design.md 第 6 節；第 1 章：荒野、沙丘、礦坑；第 2 章：集散場、水壩、淹沒城區；
+// 第 3 章：冰原、地下研究特區；第 4 章：Lattice-9、舊宇宙港；第 5 章：洋上都市；第 6 章：高空軌道）
 // 專屬敵人的欄位同 ENEMY_TYPES（spawnType 會先查 ENEMY_TYPES 再查這裡），另外：theme＝所屬主題、depth＝礦坑深層才出現、
 // foe＝行為（entities/mech-foe.js：scav 撿零件強化、junk 外殼、drill 鑽擊…）、max＝一波最多幾台、
 // spawnOnly＝不編進一般編成（由其他敵人產生，例如實驗體融合的大型個體）。主線的區段編成依主題混入；
@@ -126,7 +126,7 @@ export const FOES = {
     intro: '叉架步行機：舉著貨櫃當盾牌，正面打不太動——繞到側面、用近戰打掉貨櫃，或等它把貨櫃丟出來',
     gen: () => ({ ...HEAVY, rarm: 'w_mg' }),
   },
-  // ---- 多重水壩 ----
+  // ---- 階梯水壩 ----
   gategun: {
     theme: 'dam',
     foe: 'gategun',
@@ -170,7 +170,7 @@ export const FOES = {
     intro: '壩頂巡邏砲車：在壩頂居高臨下砲擊，爬上壩頂或躲進壩體的陰影',
     gen: () => ({ ...HEAVY, rarm: 'w_bz', rback: 'bw_gr' }),
   },
-  // ---- 汙染水沒市街 ----
+  // ---- 汙染淹沒城區 ----
   gunboat: {
     theme: 'flooded',
     foe: 'gunboat',
@@ -257,7 +257,7 @@ export const FOES = {
     intro: '冰面滑行砲車：繞著你高速掃射，在冰面上更快——預判它的路線',
     gen: () => ({ ...LIGHT, rarm: 'w_mg' }),
   },
-  // ---- 地下技研都市 ----
+  // ---- 地下研究特區 ----
   blob: {
     theme: 'institute',
     foe: 'blob',
@@ -324,7 +324,7 @@ export const FOES = {
     intro: '保全雷射網：旋轉的雷射柵欄，碰到會受傷並觸發警報叫來增援——先打掉柵欄柱',
     gen: () => ({ ...HEAVY, rarm: 'w_none' }),
   },
-  // ---- Grid 086 ----
+  // ---- Lattice-9 ----
   crawler: {
     theme: 'grid086',
     foe: 'crawler',
@@ -624,7 +624,7 @@ export const FOES = {
   },
   ...FOES_b1, // 地圖專屬敵人擴充 B1（data/foes-b1.js）
   ...FOES_b2, // 擴充：第 2 章的新敵人（foes-b2.js）
-  ...FOES_C1, // 擴充：冰原、技研都市、Grid 086（foes-c1.js）
+  ...FOES_C1, // 擴充：冰原、研究特區、Lattice-9（foes-c1.js）
   ...FOES_C2,
   ...FOES_E1,
   ...FOES_E2,
@@ -633,7 +633,7 @@ export const FOES = {
 export const ACES = {
   rust: {
     theme: 'wasteland',
-    name: 'RUST',
+    name: 'OXIDE',
     speaker: 'rust',
     pal: 'rust',
     ai: 'ac',
@@ -643,7 +643,7 @@ export const ACES = {
     stabMul: 1.5,
     speedMul: 1.05,
     randomAsm: true,
-    intro: '拾荒傭兵 RUST — 每次遇到的組裝都不一樣',
+    intro: '拾荒傭兵 OXIDE — 每次遇到的組裝都不一樣',
   },
   stevedore: {
     theme: 'industrial',
@@ -723,7 +723,7 @@ export const ACES = {
       rback: 'bw_ms',
       lback: 'bw_none',
     },
-    intro: '水沒市街的兩棲傭兵 MARSH — 在水裡不減速，潛在水中時無法鎖定',
+    intro: '淹沒城區的兩棲傭兵 MARSH — 在水裡不減速，潛在水中時無法鎖定',
   },
   whiteout: {
     theme: 'snow',
@@ -776,7 +776,7 @@ export const ACES = {
       rback: 'bw_ms',
       lback: 'bw_none',
     },
-    intro: '技研都市的強化人間 SPECIMEN — 定期過載（加速、火力上升），之後會硬直',
+    intro: '研究特區的強化人間 SPECIMEN — 定期過載（加速、火力上升），之後會硬直',
   },
   spire: {
     theme: 'grid086',

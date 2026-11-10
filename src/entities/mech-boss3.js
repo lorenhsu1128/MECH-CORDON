@@ -11,11 +11,11 @@ const V = (x, y, z) => new THREE.Vector3(x, y, z);
 
 // 種類（bossKind，沒有的用名稱開頭）→ { cd 冷卻秒數, name 招式名稱, fn(Boss, 目標) }
 const SPECIALS = {
-  JUGGERNAUT: { cd: 12, name: '砲擊連段', fn: (b, pl) => (b.b3Shock(26), b.b3Rain(pl, 6, 10, 0.5)) },
+  MONOLITH: { cd: 12, name: '砲擊連段', fn: (b, pl) => (b.b3Shock(26), b.b3Rain(pl, 6, 10, 0.5)) },
   mirror: { cd: 10, name: '適應過載', fn: (b, pl) => (b.b3Volley(pl, 3, 0.35), b.b3Mines(pl, 5, 9)) },
   flagship: { cd: 11, name: '艦砲齊射', fn: (b, pl) => b.b3Line(pl, 8, 4.5, 0.12) },
   interceptor: { cd: 12, name: '空雷封鎖', fn: (b, pl) => b.b3Mines(pl, 8, 10, true) },
-  STRIDER: { cd: 9, name: '十字雷射', fn: (b, pl) => b.b3Cross(pl) },
+  TETRARCH: { cd: 9, name: '十字雷射', fn: (b, pl) => b.b3Cross(pl) },
   railgun: { cd: 12, name: '散射砲', fn: (b, pl) => b.b3Fan(pl, 5, 0.22) },
   worm: { cd: 10, name: '地表崩塌', fn: (b, pl) => b.b3Erupt(pl, 5, 9) },
   funnel: { cd: 12, name: '光束牢籠', fn: (b, pl) => b.b3Cage(pl, 6, 16) },
@@ -34,7 +34,7 @@ const SPECIALS = {
   phantom: { cd: 14, name: '分身突襲', fn: (b) => (b.game.spawnHolos(b, 2), b.b3Ring(28)) },
   spider: { cd: 11, name: '震地', fn: (b, pl) => (b.b3Shocks(3, 0.8), b.b3Mines(pl, 4, 8)) },
   orbital: { cd: 9, name: '雙重光柱', fn: (b, pl) => b.b3Pillars(pl, 6, 12) },
-  BALTEUS: {
+  ARCHON: {
     cd: 10,
     name: '導彈牆',
     fn: (b, pl) => (b.b3Volley(pl, 4, 0.25, ['rback', 'lback']), b.b3Ring(32)),

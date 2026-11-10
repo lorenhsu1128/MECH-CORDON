@@ -10,7 +10,7 @@ export const PARTS = {
   head: [
     {
       id: 'h_std',
-      name: 'HD-011 MELANDER',
+      name: 'HD-100 GRANITE',
       defs: [110, 110, 110],
       ap: 900,
       weight: 340,
@@ -56,7 +56,7 @@ export const PARTS = {
   core: [
     {
       id: 'c_std',
-      name: 'BD-011 MELANDER',
+      name: 'BD-100 GRANITE',
       defs: [300, 300, 300],
       ap: 2900,
       weight: 2600,
@@ -89,7 +89,7 @@ export const PARTS = {
     },
     {
       id: 'c_nat',
-      name: 'BD-NACHTREIHER',
+      name: 'BD-WISP',
       defs: [230, 200, 330],
       ap: 2450,
       weight: 2100,
@@ -113,7 +113,7 @@ export const PARTS = {
   arms: [
     {
       id: 'a_std',
-      name: 'AR-011 MELANDER',
+      name: 'AR-100 GRANITE',
       defs: [110, 110, 110],
       ap: 2200,
       weight: 1900,
@@ -167,7 +167,7 @@ export const PARTS = {
   legs: [
     {
       id: 'l_bp',
-      name: 'LG-011 MELANDER 二足',
+      name: 'LG-100 GRANITE 二足',
       defs: [120, 120, 120],
       type: 'biped',
       ap: 3800,
@@ -186,7 +186,7 @@ export const PARTS = {
     },
     {
       id: 'l_rj',
-      name: 'LG-KASUAR 逆關節',
+      name: 'LG-JACKAL 逆關節',
       defs: [100, 120, 90],
       type: 'reverse',
       ap: 3300,
@@ -243,7 +243,7 @@ export const PARTS = {
     },
     {
       id: 'l_bp2',
-      name: 'LG-NACHTREIHER 輕二足',
+      name: 'LG-WISP 輕二足',
       defs: [90, 80, 140],
       type: 'biped',
       ap: 3000,
@@ -283,7 +283,7 @@ export const PARTS = {
   booster: [
     {
       id: 'b_std',
-      name: 'BST-G1 標準推進',
+      name: 'BST-100 標準推進',
       thrust: 1.0,
       qb: 62,
       qbCost: 170,
@@ -294,7 +294,7 @@ export const PARTS = {
     },
     {
       id: 'b_hi',
-      name: 'BST-G2 高推力',
+      name: 'BST-200 高推力',
       thrust: 1.2,
       qb: 74,
       qbCost: 210,
@@ -305,7 +305,7 @@ export const PARTS = {
     },
     {
       id: 'b_eff',
-      name: 'BST-FLUEGEL 高效',
+      name: 'BST-PINION 高效',
       thrust: 1.05,
       qb: 68,
       qbCost: 120,
@@ -318,7 +318,7 @@ export const PARTS = {
   generator: [
     {
       id: 'g_std',
-      name: 'GN-VP20 標準',
+      name: 'GN-C20 標準',
       enAdapt: 1.0,
       cap: 2600,
       output: 2400,
@@ -330,7 +330,7 @@ export const PARTS = {
     },
     {
       id: 'g_hi',
-      name: 'GN-VE20B 高輸出',
+      name: 'GN-C40H 高輸出',
       enAdapt: 1.05,
       cap: 3200,
       output: 3300,
@@ -342,7 +342,7 @@ export const PARTS = {
     },
     {
       id: 'g_fast',
-      name: 'GN-DF-GA 速充',
+      name: 'GN-QC 速充',
       enAdapt: 0.9,
       cap: 2200,
       output: 2500,
@@ -368,7 +368,7 @@ export const PARTS = {
   fcs: [
     {
       id: 'f_std',
-      name: 'FCS-ABBOT 標準',
+      name: 'FCS-LEDGER 標準',
       assist: [0.6, 0.6, 0.45],
       range: 48,
       lockSpeed: 1.0,
@@ -379,7 +379,7 @@ export const PARTS = {
     },
     {
       id: 'f_far',
-      name: 'FCS-OCELLUS 遠程',
+      name: 'FCS-SPYGLASS 遠程',
       assist: [0.35, 0.6, 0.8],
       range: 62,
       lockSpeed: 0.8,
@@ -390,7 +390,7 @@ export const PARTS = {
     },
     {
       id: 'f_near',
-      name: 'FCS-TALBOT 近距',
+      name: 'FCS-CLINCH 近距',
       assist: [0.85, 0.55, 0.25],
       range: 38,
       lockSpeed: 1.5,
@@ -437,7 +437,7 @@ export const PARTS = {
     { id: 'w_none', name: '（空）', type: 'none', weight: 0, en: 0, price: 0 },
     {
       id: 'w_rifle',
-      name: 'RF-024 突擊步槍',
+      name: 'RF-31 突擊步槍',
       ideal: 45,
       direct: 1.4,
       type: 'bullet',
@@ -460,7 +460,7 @@ export const PARTS = {
     },
     {
       id: 'w_mg',
-      name: 'MG-014 機槍',
+      name: 'MG-18 機槍',
       ideal: 30,
       direct: 1.3,
       type: 'bullet',
@@ -485,7 +485,7 @@ export const PARTS = {
     },
     {
       id: 'w_sg',
-      name: 'SG-027 霰彈槍',
+      name: 'SG-33 霰彈槍',
       ideal: 16,
       direct: 1.5,
       type: 'shotgun',
@@ -556,7 +556,7 @@ export const PARTS = {
     },
     {
       id: 'w_lr',
-      name: 'LR-036 雷射步槍',
+      name: 'LR-40 雷射步槍',
       direct: 1.5,
       type: 'laser',
       desc: '即時命中、貫穿：又準又痛，但幾乎沒有衝擊；長按蓄力',
@@ -578,7 +578,7 @@ export const PARTS = {
     },
     {
       id: 'w_blade',
-      name: 'PB-033 脈衝刀',
+      name: 'PB-37 脈衝刀',
       attr: 'en',
       direct: 1.8,
       type: 'melee',
@@ -1351,7 +1351,7 @@ export const PARTS = {
     },
     {
       id: 'w_hg',
-      name: 'HG-020 手槍',
+      name: 'HG-22 手槍',
       ideal: 26,
       direct: 1.6,
       type: 'bullet',

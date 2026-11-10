@@ -90,7 +90,7 @@
 - **屬性反應**（`mech-react.js` 的 `rxFire`）：過熱 `rxHot`（熱得扭動）、EMP 干擾 `rxJam`（強痙攣、垂頭）、破甲爆裂 `rxBurst`（被炸開），加在武器本身的受擊動作上。
 - **放大**：打中弱點（`wpTake`／`wpBossCrit` 設 `hrCrit`）、蓄力強力彈（投射物的 `pwk` → 目標的 `hrPw`）＝這一下的幅度 ×1.5（兩者都有 ×2.25）、秒數 ×1.25（`hrAdd` 的 `amp`，受擊動作的 `a`）。
 - **同步**：`hr` 事件多 `w`（指定幅度）與 `a`（放大），`NET_VERSION` 11.12。
-- **冒煙測試** `testHitReact`：三種屬性反應、弱點與強力彈的放大、客機的幅度；JUGGERNAUT、SANDWORM、HALBERD、BASTILLE、HELIOS、CINDER 一般被打是 0.3、破綻／打斷／失衡的大動作是 1、打斷時不重複放失衡的，部位被打會晃、結束後歸零。
+- **冒煙測試** `testHitReact`：三種屬性反應、弱點與強力彈的放大、客機的幅度；MONOLITH、SANDWORM、HALBERD、BASTILLE、HELIOS、CINDER 一般被打是 0.3、破綻／打斷／失衡的大動作是 1、打斷時不重複放失衡的，部位被打會晃、結束後歸零。
 
 ### 第 6 期（已實作）：受擊展示與調整
 
