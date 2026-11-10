@@ -404,7 +404,7 @@ SEG_TYPES.stealth = {
 - **同行的出擊** `WING_SORTIES`：c2s2、c3s1、c4s2、c5s1、c6s2（每章一個）；簡報的敵情多一列「僚機同行」（`wingBriefHtml`）。只有單人。
 - **生成**（`game/wing.js` 的 `wingSpawn`，`campEnterSeg` 的 `campSpawnType` 之後）：友軍 AC（team ally、不會離場、`a.wing`＝角色），補給與空戰區段不出。AP 延續到下一段（`wingCapture` 記在 `camp.wingHp`），倒地沒救的下一段以 50% 回來。
 - **指令**（動作 `wing`：Z 鍵、手把十字鍵左；設定的按鍵清單也有）：集中攻擊（打玩家鎖定的目標，預設）→ 自由攻擊 → 跟著我（待在 28 m×DS 內、不追遠的敵人）→ 守在這裡（守住下指令的位置）。`entities/mech-wing.js`：`updateAI` 選好目標後 `wingTarget`、要開始移動前 `wingMove`（離錨點太遠時先回去）。
-- **倒地與救援**：AP 歸零時 `wingDown`（不擊破、`downed`、敵人不再瞄準、無敵），站在旁邊（7 m×MS）3 秒救起來（AP 40%，`wingTick`）。2026-11-10 使用者回報 Boss 戰救不起來後改成：倒地的僚機腳下有綠色的救援圈（範圍＝`REVIVE_R` 7 m×MS 的水平距離，高度容許 `REVIVE_Y` 12 m×MS，跳起來、懸浮躲攻擊不中斷），圈本身兼進度條（從 12 點方向順時針填滿，`render/ground-marks.js` 的 `buildReviveRing`／`reviveRingSet`）；被打不會中斷；離開圈時進度每秒退回 `REVIVE_DECAY` 0.5 秒（以前一離開就歸零）；救起來要的時間 `REVIVE_T` 3 → 2 秒。
+- **倒地與救援**：AP 歸零時 `wingDown`（不擊破、`downed`、敵人不再瞄準、無敵），站在旁邊（7 m×MS）3 秒救起來（AP 40%，`wingTick`）。2026-11-10 使用者回報 Boss 戰救不起來後改成：倒地的僚機腳下有綠色的救援圈（範圍＝`REVIVE_R` 7 m×MS 的水平距離，高度容許 `REVIVE_Y` 12 m×MS，跳起來、懸浮躲攻擊不中斷），圈本身兼進度條（從 12 點方向順時針填滿，`render/ground-marks.js` 的 `buildReviveRing`／`reviveRingSet`）；被打不會中斷；離開圈時進度每秒退回 `REVIVE_DECAY` 0.2 秒（以前一離開就歸零）；救起來要的時間 `REVIVE_T` 3 → 2 秒。
 - **好感度** `save.story.bond[角色]`：救起來 +1、出擊完成時僚機還站著 +1、倒地沒救就離開 −1（−5～10）。通訊的條件 `wing`、`bondHi`（好感度 3 以上）；台詞：第一次的自我介紹（once）、區段開始、倒地、救起、出擊完成（好感度高時不同）。
 - 和原本的設計不同：雇用（委託板）在第 11 期、結局的台詞與第 3 周目的專屬委託在第 12～13 期（新章節）一起做；新台詞還沒有語音（語音要在有 CUDA 的電腦上用 VoxCPM2 產生，沒有語音的台詞照常顯示文字）。
 - **測試**：`testWing`。
