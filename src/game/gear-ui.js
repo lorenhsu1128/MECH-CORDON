@@ -47,14 +47,17 @@ const matTxt = (m) =>
 
 Object.assign(Game.prototype, {
   // ---------- 零件格子 ----------
-  // 格子的品級：背包裡最高的品級與件數
-  gearTileHtml(id) {
-    const { n, q } = gearTileInfo(this.save.inv, id);
-    if (!n) return { cls: '', html: '', style: '' };
+  // 格子的品級與件數：cur＝裝備中的那一件（null＝標準版；undefined＝不是裝備中的格子，看背包裡最高的品級）
+  gearTileHtml(id, cur) {
+    const { n, q: qMax } = gearTileInfo(this.save.inv, id);
+    if (!n && !(cur && cur.q)) return { cls: '', html: '', style: '' };
+    const q = cur !== undefined ? (cur ? cur.q : 0) : qMax;
+    const tip =
+      (cur !== undefined ? `裝備中「${GRADES[q].n}」；` : '') + `背包裡有 ${n} 件，最高「${GRADES[qMax].n}」`;
     return {
       cls: ` gq${q}`,
       style: `--gq:${GRADES[q].c}`,
-      html: `<i class="pQn" style="color:${GRADES[q].c}" title="背包裡有 ${n} 件，最高「${GRADES[q].n}」">${n}</i>`,
+      html: `<i class="pQn" style="--gq:${GRADES[q].c}" title="${tip}">${n}</i>`,
     };
   },
   // ---------- 小卡片 ----------

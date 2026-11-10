@@ -14286,6 +14286,40 @@ async function testGarageUi(browser, base) {
     return t;
   });
   check(/SG-027/.test(rt), `零件格子按右鍵直接開調校（${rt}）`);
+  // 零件品級：兩翼的部位格依裝備中那一件的品級（外框、標籤）；零件格子的裝備中那一格看裝備中的那一件
+  const gq = await page.evaluate(() => {
+    const g = window.__game,
+      GD = window.__gear,
+      a = g.save.asm;
+    const lo = GD.rollGear(a.head, 1, Math.random);
+    g.save.inv = [GD.rollGear(a.head, 4, Math.random), GD.rollGear(a.core, 2, Math.random), lo];
+    g.gearEquip('head', a.head, lo.u); // 裝上改良的頭部（背包裡另有傳說）
+    g.garageSlot = 'head';
+    g.gFlyOpen = true;
+    g.renderGarage();
+    const sl = (k) => document.querySelector(`#slots .slot[data-slot="${k}"]`);
+    const tile = document.querySelector('#partList .part.eq');
+    return {
+      head: sl('head').dataset.q,
+      headTag: (sl('head').querySelector('.sQ') || {}).textContent,
+      core: sl('core').dataset.q,
+      coreBd: getComputedStyle(sl('core').querySelector('.gThumb')).borderTopColor,
+      legs: sl('legs').dataset.q,
+      legsTag: !!sl('legs').querySelector('.sQ'),
+      tileQ: tile ? [...tile.classList].find((c) => /^gq\d$/.test(c)) : '',
+    };
+  });
+  check(
+    gq.head === '1' && gq.headTag === '改良' && gq.core === '2' && gq.coreBd === 'rgb(90, 168, 255)',
+    `部位格依裝備中那一件的品級：頭部 ${gq.headTag}、核心精製的外框 ${gq.coreBd}`,
+  );
+  check(
+    gq.legs === '0' && !gq.legsTag && gq.tileQ === 'gq1',
+    `標準版的部位格不標示；零件格子的裝備中那一格是裝備中的品級（${gq.tileQ}，背包裡另有傳說）`,
+  );
+  await page.click('#gTabs [data-tab="spec"]');
+  const opsSpec = await page.evaluate(() => getComputedStyle(document.getElementById('gOps')).display);
+  check(opsSpec === 'none', `規格頁收起右下的作戰卡片（${opsSpec}）`);
   // 設定頁：機體配色的色票
   await page.click('#gTabs [data-tab="set"]');
   await page.click('#gPal [data-pal="p3"]');
@@ -14303,6 +14337,25 @@ async function testGarageUi(browser, base) {
     ),
   }));
   check(ph.t === 'none' && ph.over, '手機橫式：兩翼只剩縮圖、都在畫面裡');
+  const ph2 = await page.evaluate(() => {
+    const g = window.__game;
+    g.garageSlot = 'head';
+    g.gFlyOpen = true;
+    g.renderGarage();
+    const r = {
+      bd: getComputedStyle(document.querySelector('#slots .slot[data-slot="core"] .gThumb')).borderTopColor,
+      ops: getComputedStyle(document.getElementById('gOps')).display,
+    };
+    g.garageTab('inv');
+    const b = document.getElementById('gInv').getBoundingClientRect();
+    r.inv = b.left >= 0 && b.right <= window.innerWidth;
+    g.garageTab('eq');
+    return r;
+  });
+  check(
+    ph2.bd === 'rgb(90, 168, 255)' && ph2.ops === 'none' && ph2.inv,
+    `手機橫式：縮圖外框是品級色（${ph2.bd}）、打開零件格子時收起作戰卡片、背包頁在畫面裡`,
+  );
   await page.screenshot({ path: path.join(SHOT_DIR, 'garage-ui-phone.png') });
   await ctx.close();
 }

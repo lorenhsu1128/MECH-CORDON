@@ -5118,6 +5118,64 @@ select:disabled option {
 #garage .slot.empty .gIco {
   color: var(--dim);
 }
+/* 部位格的品級（裝備中那一件，game/garage-ui.js 的 garageSlotsUi）：外框、底線、標籤；紫色以上角落亮點 */
+#garage .slot.gq .gThumb {
+  position: relative;
+  border-color: var(--gq);
+  box-shadow:
+    inset 0 -4px 0 var(--gq),
+    0 0 8px color-mix(in srgb, var(--gq) 40%, transparent);
+}
+#garage .slot.gq.sel .gThumb {
+  border-color: var(--acc);
+  box-shadow:
+    inset 0 -4px 0 var(--gq),
+    0 0 14px rgba(255, 176, 32, 0.35);
+}
+#garage .slot.gq3 .gThumb::after,
+#garage .slot.gq4 .gThumb::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gq);
+  box-shadow: 0 0 6px var(--gq);
+}
+#gWingR .slot.gq3 .gThumb::after,
+#gWingR .slot.gq4 .gThumb::after {
+  right: auto;
+  left: 3px;
+}
+.gSlotT .sQ {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--gq);
+  border: 1px solid var(--gq);
+  padding: 0 4px;
+  margin-left: 5px;
+  vertical-align: 1px;
+}
+#gWingR .gSlotT .sQ {
+  margin-left: 0;
+  margin-right: 5px;
+}
+#gWingR .gSlotT small {
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+  align-items: center;
+}
+#gWingL .gSlotT small {
+  display: flex;
+  align-items: center;
+}
+#gWingR .gSlotT small .sQ {
+  order: 2;
+}
 /* 零件格子＋小卡片 */
 #gFly {
   position: absolute;
@@ -5299,8 +5357,9 @@ select:disabled option {
 }
 .tDefs span {
   display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 4px;
+  grid-template-columns: auto auto;
+  justify-content: space-between;
+  gap: 2px 4px;
   align-items: center;
   font-size: 11px;
 }
@@ -5308,9 +5367,15 @@ select:disabled option {
   font-style: normal;
   color: var(--c);
 }
+.tDefs u {
+  grid-column: 1 / -1;
+  display: block;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+}
 .tDefs b {
   display: block;
-  height: 5px;
+  height: 100%;
   background: var(--c);
 }
 .tDefs em {
@@ -5648,6 +5713,17 @@ select:disabled option {
   font-size: 11px;
   color: var(--dim);
 }
+.sSub.sHead {
+  margin-top: 6px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  letter-spacing: 0.1em;
+}
+.sWq {
+  font-style: normal;
+  color: var(--gq);
+  border-bottom: 2px solid var(--gq);
+}
 .sHit {
   display: flex;
   gap: 12px;
@@ -5813,7 +5889,7 @@ select:disabled option {
     width: min(300px, 40vw);
     padding: 6px;
     gap: 5px;
-    max-height: calc(100% - 96px);
+    max-height: calc(100% - 116px); /* 停在下方的按鈕列與出擊鍵上面（可以捲動） */
   }
   #partList {
     gap: 3px;
@@ -5840,8 +5916,9 @@ select:disabled option {
     padding: 5px 8px;
     font-size: 10px;
   }
-  #garage.flyOn #gMeters {
-    display: none;
+  #garage.flyOn #gMeters,
+  #garage.flyOn #gOps {
+    display: none !important;
   }
   #gBottom {
     padding: 6px 8px;
@@ -5864,6 +5941,7 @@ select:disabled option {
     bottom: 48px;
     right: 6px;
     width: calc(100% - 12px);
+    box-sizing: border-box; /* 內距與外框算在寬度裡，否則比畫面寬、往左超出 */
     padding: 8px 10px;
   }
   #gSpecCharts {
@@ -7235,7 +7313,7 @@ body.vpad #subBar {
 
 /* 零件品級（game/gear-ui.js、docs/gear-rarity-design.md） */
 #garage .part[class*=' gq'] {
-  box-shadow: inset 0 -3px 0 var(--gq);
+  box-shadow: inset 0 -4px 0 var(--gq);
 }
 #garage .part.gq0 {
   box-shadow: none;
@@ -7244,6 +7322,12 @@ body.vpad #subBar {
   right: 3px;
   bottom: 12px;
   font-weight: bold;
+  font-size: 10px;
+  color: #10141a;
+  background: var(--gq);
+  padding: 1px 3px;
+  min-width: 9px;
+  text-align: center;
 }
 #garage .part.eq .pQn {
   right: 13px;
@@ -7336,6 +7420,9 @@ em.nw,
   font-style: normal;
 }
 #gInv .invMats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
   margin-bottom: 6px;
   font-size: 12px;
 }
@@ -7400,7 +7487,9 @@ em.nw,
   font-size: 11px;
 }
 /* 背包頁：右下的作戰卡片會蓋住清單，這一頁先收起來 */
-#garage[data-tab='inv'] #gOps {
+#garage[data-tab='inv'] #gOps,
+#garage[data-tab='spec'] #gOps,
+#garage[data-tab='set'] #gOps {
   display: none !important;
 }
 /* 平板：小卡片加了裝備清單變長，不要伸到下方的量表底下 */

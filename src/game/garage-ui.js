@@ -8,7 +8,7 @@ import { hexSvg } from '../render/garage-charts.js';
 import { PARTS, SLOTS, asmStats, jumpSpec, partById, usesAmmo } from '../data/parts.js';
 import { applyPilotStats } from '../data/pilot.js';
 import { tuneGroup, tuneLevels } from '../data/tune.js';
-import { GEAR_CAT } from '../data/gear.js';
+import { GEAR_CAT, GRADES } from '../data/gear.js';
 import { tuneFxTxt, tuneGrWith, tunedPart } from '../data/tune-view.js';
 import { escHtml } from '../core/html.js';
 import { partIcon, slotIcon } from '../render/garage-icons.js';
@@ -51,15 +51,25 @@ Object.assign(Game.prototype, {
   // ---------- 雙翼的部位格 ----------
   garageSlotsUi() {
     const asm = this.save.asm;
+    const gnow = this.gearNow(); // 裝備中的那一件（零件品級，gear.js）
     const make = (key) => {
       const [, label, cat] = SLOT_OF[key];
       const p = partById(cat, asm[key]);
       const b = document.createElement('button');
+      // 品級：裝備中那一件的品級（標準＝0 不標示），圖示外框與底線、標籤；紫色以上有進階詞條，角落加亮點
+      const g = cat !== 'consumable' && GEAR_CAT.has(p.id) ? gnow[key] || null : null;
+      const q = g ? g.q : 0;
       b.className =
-        'slot' + (this.garageSlot === key ? ' sel' : '') + (p.id.endsWith('_none') ? ' empty' : '');
+        'slot' +
+        (this.garageSlot === key ? ' sel' : '') +
+        (p.id.endsWith('_none') ? ' empty' : '') +
+        (q ? ` gq gq${q}` : '');
+      if (q) b.style.setProperty('--gq', GRADES[q].c);
       b.dataset.slot = key;
-      b.innerHTML = `<span class="gThumb" data-thumb="${key}:${p.id}">${slotIcon(cat, p)}</span><span class="gSlotT"><small>${label}</small><span>${escHtml(model(p))}</span></span>`;
-      b.title = `${label}：${p.name}`;
+      b.dataset.q = q;
+      const tag = q ? `<em class="sQ">${GRADES[q].n}</em>` : '';
+      b.innerHTML = `<span class="gThumb" data-thumb="${key}:${p.id}">${slotIcon(cat, p)}</span><span class="gSlotT"><small>${label}${tag}</small><span>${escHtml(model(p))}</span></span>`;
+      b.title = `${label}：${p.name}${q ? `（${GRADES[q].n}）` : ''}`;
       b.onclick = () => {
         if (this.garageSlot === key && this.gFlyOpen) this.gFlyOpen = false;
         else {
@@ -94,12 +104,16 @@ Object.assign(Game.prototype, {
       `<b>${label}</b><span class="dim">${cat === 'consumable' ? '持有後裝備' : `擁有 ${own}／全部 ${parts.length}`}</span>`;
     list.replaceChildren();
     S.items = S.items || {};
+    const gnow = cat !== 'consumable' ? this.gearNow() : {};
     for (const p of parts) {
       const eq = asm[key] === p.id;
       const owned = cat === 'consumable' || S.owned.includes(p.id);
       const d = document.createElement('button');
-      // 零件品級（gear-ui.js）：背包裡最高的品級與件數
-      const gt = cat !== 'consumable' ? this.gearTileHtml(p.id) : { cls: '', html: '', style: '' };
+      // 零件品級（gear-ui.js）：裝備中的格子＝裝備中那一件的品級，其他＝背包裡最高的品級；件數
+      const gt =
+        cat !== 'consumable'
+          ? this.gearTileHtml(p.id, eq ? gnow[key] || null : undefined)
+          : { cls: '', html: '', style: '' };
       d.className = 'part' + (eq ? ' eq' : '') + (owned ? '' : ' locked') + gt.cls;
       if (gt.style) d.style.cssText = gt.style;
       d.dataset.pid = p.id; // 全像預覽（hangar.js）與小卡片
@@ -320,7 +334,7 @@ Object.assign(Game.prototype, {
         const a = p.defs[i],
           b = (cur.defs || [])[i] || 0;
         const d = a - b;
-        return `<span style="--c:${ATTRS[k].color}"><i>${ATTRS[k].short}</i><b style="width:${clamp01(a / 2000) * 100}%"></b><em class="${eq || !d ? '' : d > 0 ? 'up' : 'dn'}">${a}</em></span>`;
+        return `<span style="--c:${ATTRS[k].color}"><i>${ATTRS[k].name}防禦</i><em class="${eq || !d ? '' : d > 0 ? 'up' : 'dn'}">${a}</em><u><b style="width:${(clamp01(a / 720) * 100).toFixed(0)}%"></b></u></span>`;
       }).join('')}</div>`;
     const attr =
       (cat === 'arm' || cat === 'back') && !['none', 'shield'].includes(p.type)
@@ -478,11 +492,18 @@ Object.assign(Game.prototype, {
     // 火力：每把武器的瞬間（淡）與持續（實心）DPS
     const fMax = Math.max(1, ...F.ws.map((w) => w.burst));
     const SN = { rarm: '右手', larm: '左手', rback: '右背', lback: '左背' };
+    const gnow = this.gearNow();
+    const qOf = (w) => (gnow[w.slot] && gnow[w.slot].id === w.id ? gnow[w.slot].q : 0);
+    const wName = (w) => {
+      const q = qOf(w);
+      const n = escHtml(model({ id: w.id, name: w.name }));
+      return q ? `<em class="sWq" style="--gq:${GRADES[q].c}" title="${GRADES[q].n}">${n}</em>` : n;
+    };
     const fire = F.ws.length
       ? F.ws
           .map(
             (w) =>
-              `<div class="sR fire"><span><i class="aDot" style="background:${ATTRS[w.attr].color}"></i>${SN[w.slot]}　${escHtml(model({ id: w.id, name: w.name }))}${tuneLevels((this.save.tune || {})[w.id]) ? `<em class="tuTag" title="調校過">調+${tuneLevels(this.save.tune[w.id])}</em>` : ''}</span><span class="sB"><u style="width:${((w.burst / fMax) * 100).toFixed(1)}%;background:${ATTRS[w.attr].color}"></u><b style="width:${((w.sus / fMax) * 100).toFixed(1)}%;background:${ATTRS[w.attr].color}"></b></span><span>${fmt(w.sus)}<em class="dim"> / ${fmt(w.burst)}</em></span></div>`,
+              `<div class="sR fire"><span><i class="aDot" style="background:${ATTRS[w.attr].color}"></i>${SN[w.slot]}　${wName(w)}${tuneLevels((this.save.tune || {})[w.id]) ? `<em class="tuTag" title="調校過">調+${tuneLevels(this.save.tune[w.id])}</em>` : ''}</span><span class="sB"><u style="width:${((w.burst / fMax) * 100).toFixed(1)}%;background:${ATTRS[w.attr].color}"></u><b style="width:${((w.sus / fMax) * 100).toFixed(1)}%;background:${ATTRS[w.attr].color}"></b></span><span>${fmt(w.sus)}<em class="dim"> / ${fmt(w.burst)}</em></span></div>`,
           )
           .join('') +
         `<div class="sSum"><span>合計　持續 <b>${fmt(F.sus)}</b>　瞬間 <b>${fmt(F.burst)}</b>　衝擊／秒 <b>${fmt(F.imp)}</b></span></div>`
@@ -510,7 +531,7 @@ Object.assign(Game.prototype, {
       bar('AP', ef.ap, B.apMax, fmt(ef.ap)) +
       bar('有效 AP', F.eap, B.armor[1], fmt(F.eap)) +
       bar('姿態穩定', ef.stab, B.stab[1], fmt(ef.stab)) +
-      `<div class="sSub">減傷</div>${defs}`;
+      `<div class="sSub sHead">減傷</div>${defs}`;
     const load =
       bar(
         '負重',
