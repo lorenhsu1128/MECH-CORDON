@@ -1,6 +1,6 @@
 # 改名：MECH CORDON（機戰封鎖線）
 
-> 狀態：進行中（2026-11-10 定案）。原因：舊名 RUBICON PROTOCOL 與文案沿用太多《機戰傭兵6》的專有名詞（作品名、角色、Boss、零件型號、地名、系統縮寫），改成自己的名稱。
+> 狀態：5 期全部完成（2026-11-10）。原因：舊名 RUBICON PROTOCOL 與文案沿用太多《機戰傭兵6》的專有名詞（作品名、角色、Boss、零件型號、地名、系統縮寫），改成自己的名稱。
 > 做法：分 5 期，每期測完各自提交。第 5 期（語音重產）最後處理：在那之前改過的台詞沒有語音（語音以台詞文字的雜湊找檔案）。
 
 ## 一、定案
@@ -47,3 +47,11 @@
 - 檔案格式：GLB 的原點節點 `rubicon_origin`、貼花 `extras.rubicon_decal` 照樣讀得到（新寫入的是 `mech_cordon_origin`、`mech_cordon_decal`）；匯入存檔、模型組、關卡、風格、眼動追蹤設定組合時舊格式照樣接受。
 - 伺服器：找不到 `mech-cordon-server.json`、`mech-cordon-cert/` 時讀舊的 `rubicon-server.json`、`rubicon-cert/`；環境變數 `MECH_CORDON_*` 沒設時看舊的 `RUBICON_*`；舊網址 `/rubicon-protocol.html` 照樣開遊戲。
 - 多人協定版本提高（新舊版本不互連）。
+
+## 四、實作紀錄
+
+- **第 1 期**（`93514dff`）：依序取代 `rubicon-protocol.html` → `mech-cordon.html`、`RUBICON PROTOCOL` → `MECH CORDON`、`RUBICON_` → `MECH_CORDON_`、`rubicon_` → `mech_cordon_`、`rubicon-` → `mech-cordon-`（外部版本庫網址 `lorenhsu1128/rubicon-*` 與劇情的「Rubicon Protocol」除外）；GLB 素材裡的產生器名稱一起改寫（改 JSON 區塊、重新補齊 4 的倍數）。之後加回的舊名稱（相容與 `game/legacy.js`）是刻意的，**不要再做一次全域取代**。協定 11.41。
+- **第 2 期**（`af26da2c`）：只改字串字面值（acorn 斷詞，正規表示式與巢狀模板字串才不會誤判）與 HTML 文字；新詞和中文相鄰時拿掉中間的空白。HTML 裡被換行拆開的句子（「組裝你的 AC」）要另外接起來，否則換行變成空格。字串整個就是 `'AC'` 的另外處理：機體的預設名稱 `MECH`、格納庫的貼圖 `MC-01`。通訊條件 `killedBy` 用「包含」比對，所以 `'步行機'` 一樣對得到「輕型步行機」。
+- **第 3 期**（`b1c13cb9`）：Boss 名稱的開頭在很多地方當鍵（專屬招式 `SPECIALS`、`BOSS_KIT`、部位、`gear-loot`、主線的 `boss`、`killedBy`），整個字一起取代；模型庫的 Boss 機甲槽位從名稱算（`boss_monolith`、`boss_kestrel`…）。內部 id（`nightfall`、`rust`、`iguazu`、主題 id）不變，存檔不用遷移。
+- **第 4 期**（`ca7fc135`）：「重新長滿」改成「重新湧回地表」；序章 Logo 的副標＝機戰封鎖線。
+- **第 5 期**：中文與日文各重產 ECHO 兩個聲音 76 句與其他角色 13 句（VoxCPM2，conda 環境 rubicon-voice）。語音以台詞文字的雜湊（`vkey`）找檔案，改過的台詞是新的鍵；固定鍵（`s_aceDown`、`s_waveAc`、`b_spot1`…）台詞改了鍵不變，要刪掉舊的 mp3 才會重產；建置會把資料夾裡全部的 mp3 打包，所以不再用到的鍵的 mp3 也刪掉。日文台詞（`lines-ja.json`）以「改名前的句子套同一組規則＝新句子」找回原本的翻譯，再換日文的名稱：機体、歩行機、ビーエーエル（BAL）、ラティス・ナイン、リーフホールド、深脈（しんみゃく）、封鎖線協定、改造パイロット、ケストレル、ブラント、オキサイド、モノリス、テトラーク、アルコン、残骸掘り；`@yomi` 補上新詞的讀音，`JA_DISP` 換成新的片假名。
