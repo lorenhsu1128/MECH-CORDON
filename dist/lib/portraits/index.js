@@ -1,1 +1,1 @@
-window.MECH_CORDON_PORTRAIT_IDS=[];
+window.MECH_CORDON_PORTRAIT_IDS=["echo"];

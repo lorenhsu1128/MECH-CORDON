@@ -1,0 +1,1664 @@
+{
+  "v": 1,
+  "id": "echo",
+  "name": "操作員 ECHO",
+  "status": "look",
+  "look": {
+    "zh": "【人設】軌道站的管制系統投射出來的「操作員」形象。二十多歲的年輕女性，冷靜、精準、乾冷的幽默。第 1 周目：完美得不真實——線條、對稱、配色都乾淨得過頭，偶爾露出一點「不是人」的地方。\n\n【臉】稍微成熟的現代動畫臉、細長而平靜的眼型、淡藍色眼睛（#7fc8ff），虹膜裡有很細的同心圓刻度（像鏡頭／掃描環），嘴角平時微微上揚。\n\n【髮型】黑色短髮到下巴，瀏海斜分、遮住一邊眉毛；內層挑染淡藍，越往髮尾越亮，髮尾有極淡的發光。左邊瀏海夾一枚細長的資料埠形狀髮夾：銀色細長金屬條、一排淡藍的接點（取代參考圖的普通髮夾）。\n\n【耳機】單耳的管制官耳機（右耳），細的麥克風桿；耳機外殼有淡藍的狀態燈。（麥克風桿離嘴巴遠一點，留給嘴型的框）\n\n【服裝】機能街頭風、黑白為底＋淡藍強調：\n- 白灰色的寬大管制外套（背面有帽子），從肩膀滑下來披著；袖口、拉鍊、肩線有淡藍的線條，左臂有小小的軌道站徽章（一個圓環＋一個點，不寫字）。\n- 內搭黑色無袖高領上衣，胸前有很淡的星圖／軌道線印花（取代參考圖的星空印花，改成「軌道與座標」）。\n- 黑色寬鬆工裝褲、淡藍的織帶與扣具，腰間掛一個「軌道站環形」的小掛飾（取代行星掛飾）。\n- 黑白配色的厚底運動鞋（全身圖才會看到）。\n\n【第 1 周目的「不真實」】只在設定上保留：髮尾與狀態燈的淡藍光、眼睛的刻度環。閃一格、露出介面這類效果由遊戲的程式做（第 6 期），主圖本身保持乾淨。\n\n【姿勢】\n- p1 平常：大腿以上，站著看鏡頭，一手扶著後腦／耳機（取參考圖的動作），另一手插口袋。\n- p2 通訊：胸像為主，一手按著耳機、稍微側頭，像在聽回報。\n- （之後的 p3、p4 和周目外觀到第 6 期再談）\n\n【表情】共用 8 種＋ECHO 的招牌（先列 6 個，合計 14）：\n- 淺笑（嘴角只動一邊的乾冷微笑，「照你的節奏來」）\n- 干擾（眼神失焦、表情空白，像訊號斷了一瞬間）\n- 專注（眼睛往旁邊的螢幕看、嘴唇抿著，在管制）\n- 溫柔（第 3 周目私人頻道的柔和微笑、眼神放鬆）\n- 猶豫（視線往下、欲言又止，「我不能替你選」）\n- 困惑（微微皺眉、側頭，第 2 周目被懷疑時）\n\n【不要出現】簽名、浮水印、文字、露肚（參考圖的短上衣改成正常長度）、行星圖案、紅色等陣營以外的強調色。\n\n【定稿紀錄】2026-11-11：p1 主圖＝候選 7 號（種子 72782376），髮夾以 Qwen 重畫成資料埠形狀；p2 通訊＝從 p1 以 Qwen 改姿勢（種子 33）、髮夾同樣重畫。耳機統一為右耳單耳式。",
+    "prompt": "1girl, solo, adult, slender, medium breasts, short hair, black hair, chin-length bob, swept bangs, hair over one eyebrow, colored inner hair, (pale blue inner hair:1.1), glowing hair tips, small silver rectangular hairclip, (pale blue eyes:1.1), (ringed eyes:0.7), calm, narrow eyes, light smile, single headset, earpiece on right ear, thin microphone boom, techwear, oversized white hooded jacket, off shoulder, jacket partially removed, pale blue trim, black sleeveless turtleneck, (constellation print:1.2), star chart print on shirt, black cargo pants, pale blue straps, belt, small metal ring pendant on belt, black and white color scheme, pale blue accents",
+    "neg": "navel, midriff, crop top, planet, saturn, long hair, ponytail, red, orange, yellow, green, pink, hat, glasses, microphone in front of mouth, large breasts, huge breasts, dark background, gradient background, halo, text, letters, mascot, stuffed toy, skull, keychain doll, (cyan:1.2), neon, over-ear headphones, headphones"
+  },
+  "refs": [
+    "ref_1.jpg"
+  ],
+  "extraExprs": [
+    {
+      "id": "wry",
+      "name": "淺笑",
+      "prompt": "Make the character give a dry, subtle one-sided smile: only one corner of the mouth is raised, the eyes stay calm.",
+      "tags": "smirk, light smile"
+    },
+    {
+      "id": "glitch",
+      "name": "干擾",
+      "prompt": "Make the character look blank for a moment: the eyes stay open and the same size, but the irises look dull and unfocused, staring straight ahead with no reflection highlights, and the face is completely expressionless with the mouth closed in a flat line. Keep both eyes clearly visible.",
+      "tags": "empty eyes, expressionless"
+    },
+    {
+      "id": "focus",
+      "name": "專注",
+      "prompt": "Make the character look focused, eyes looking to the side as if reading a screen, lips pressed together.",
+      "tags": "serious, looking to the side, closed mouth"
+    },
+    {
+      "id": "tender",
+      "name": "溫柔",
+      "prompt": "Make the character smile softly and warmly, with relaxed gentle eyes and slightly lowered eyelids.",
+      "tags": "gentle smile, half-closed eyes"
+    },
+    {
+      "id": "hesitate",
+      "name": "猶豫",
+      "prompt": "Make the character look hesitant: eyes looking down, lips slightly parted as if about to say something but holding back.",
+      "tags": "looking down, parted lips, worried"
+    },
+    {
+      "id": "puzzled",
+      "name": "困惑",
+      "prompt": "Make the character look puzzled, with slightly furrowed eyebrows and a questioning look.",
+      "tags": "confused, frown"
+    }
+  ],
+  "poses": [
+    {
+      "id": "p1",
+      "name": "平常",
+      "prompt": "cowboy shot, standing, looking at viewer, hand on own head, hand behind head, hand in pocket, white background, simple background",
+      "refine": 0.25,
+      "cands": [
+        {
+          "file": "p1_cand_1253863513.png",
+          "seed": 1253863513
+        },
+        {
+          "file": "p1_cand_774813164.png",
+          "seed": 774813164
+        },
+        {
+          "file": "p1_cand_621649027.png",
+          "seed": 621649027
+        },
+        {
+          "file": "p1_cand_1645202642.png",
+          "seed": 1645202642
+        },
+        {
+          "file": "p1_cand_1566602036.png",
+          "seed": 1566602036
+        },
+        {
+          "file": "p1_cand_18104188.png",
+          "seed": 18104188
+        },
+        {
+          "file": "p1_cand_956581578.png",
+          "seed": 956581578
+        },
+        {
+          "file": "p1_cand_1094269682.png",
+          "seed": 1094269682
+        },
+        {
+          "file": "p1_cand_1478332213.png",
+          "seed": 1478332213
+        },
+        {
+          "file": "p1_cand_662431501.png",
+          "seed": 662431501
+        },
+        {
+          "file": "p1_cand_1755663151.png",
+          "seed": 1755663151
+        },
+        {
+          "file": "p1_cand_790150593.png",
+          "seed": 790150593
+        },
+        {
+          "file": "p1_cand_1063659249.png",
+          "seed": 1063659249
+        },
+        {
+          "file": "p1_cand_72782376.png",
+          "seed": 72782376
+        },
+        {
+          "file": "p1_cand_1544534478.png",
+          "seed": 1544534478
+        },
+        {
+          "file": "p1_cand_1287403049.png",
+          "seed": 1287403049
+        },
+        {
+          "file": "p1_master_clip.png",
+          "seed": 72782376
+        }
+      ],
+      "master": "p1_master_clip.png",
+      "seed": 72782376,
+      "boxes": {
+        "face": [
+          335,
+          180,
+          215,
+          205
+        ],
+        "eyes": [
+          340,
+          225,
+          180,
+          70
+        ],
+        "mouth": [
+          392,
+          312,
+          72,
+          36
+        ]
+      },
+      "ex": {
+        "smile": {
+          "cands": [
+            "p1_smile_1778080075.png",
+            "p1_smile_1394518799.png",
+            "p1_smile_1200021242.png"
+          ],
+          "pick": "p1_smile_1778080075.png"
+        },
+        "laugh": {
+          "cands": [
+            "p1_laugh_1380596365.png",
+            "p1_laugh_834993224.png",
+            "p1_laugh_65232064.png"
+          ],
+          "pick": "p1_laugh_1380596365.png"
+        },
+        "angry": {
+          "cands": [
+            "p1_angry_1338609147.png",
+            "p1_angry_1805858383.png",
+            "p1_angry_1778916508.png"
+          ],
+          "pick": "p1_angry_1805858383.png"
+        },
+        "surprised": {
+          "cands": [
+            "p1_surprised_1689148106.png",
+            "p1_surprised_1548224677.png",
+            "p1_surprised_2093814920.png"
+          ],
+          "pick": "p1_surprised_1689148106.png"
+        },
+        "sad": {
+          "cands": [
+            "p1_sad_1252147668.png",
+            "p1_sad_649211681.png",
+            "p1_sad_348843249.png"
+          ],
+          "pick": "p1_sad_348843249.png"
+        },
+        "think": {
+          "cands": [
+            "p1_think_225527934.png",
+            "p1_think_1514812295.png",
+            "p1_think_800318449.png"
+          ],
+          "pick": "p1_think_225527934.png"
+        },
+        "smug": {
+          "cands": [
+            "p1_smug_501972688.png",
+            "p1_smug_1925492353.png",
+            "p1_smug_1285151303.png"
+          ],
+          "pick": "p1_smug_1925492353.png"
+        },
+        "wry": {
+          "cands": [
+            "p1_wry_339695956.png",
+            "p1_wry_1208457761.png",
+            "p1_wry_1478887176.png"
+          ],
+          "pick": "p1_wry_1208457761.png"
+        },
+        "focus": {
+          "cands": [
+            "p1_focus_1068653106.png",
+            "p1_focus_1865182094.png",
+            "p1_focus_55278247.png"
+          ],
+          "pick": "p1_focus_1865182094.png"
+        },
+        "tender": {
+          "cands": [
+            "p1_tender_1321476165.png",
+            "p1_tender_112169366.png",
+            "p1_tender_832427251.png"
+          ],
+          "pick": "p1_tender_112169366.png"
+        },
+        "hesitate": {
+          "cands": [
+            "p1_hesitate_1187026147.png",
+            "p1_hesitate_230197749.png",
+            "p1_hesitate_267238281.png"
+          ],
+          "pick": "p1_hesitate_230197749.png"
+        },
+        "puzzled": {
+          "cands": [
+            "p1_puzzled_488521790.png",
+            "p1_puzzled_1883797701.png",
+            "p1_puzzled_1783769870.png"
+          ],
+          "pick": "p1_puzzled_488521790.png"
+        },
+        "glitch": {
+          "cands": [
+            "p1_glitch_2062896487.png",
+            "p1_glitch_1036875419.png",
+            "p1_glitch_602762697.png"
+          ],
+          "pick": "p1_glitch_1036875419.png"
+        },
+        "neutral.e1": {
+          "cands": [
+            "p1_neutral_e1_1966240462.png",
+            "p1_neutral_e1_94487119.png"
+          ],
+          "pick": "p1_neutral_e1_94487119.png"
+        },
+        "neutral.e2": {
+          "cands": [
+            "p1_neutral_e2_571329957.png",
+            "p1_neutral_e2_342731367.png"
+          ],
+          "pick": "p1_neutral_e2_571329957.png"
+        },
+        "neutral.m1": {
+          "cands": [
+            "p1_neutral_m1_125183842.png",
+            "p1_neutral_m1_1954983887.png"
+          ],
+          "pick": "p1_neutral_m1_125183842.png"
+        },
+        "neutral.m2": {
+          "cands": [
+            "p1_neutral_m2_1331111545.png",
+            "p1_neutral_m2_1819778991.png"
+          ],
+          "pick": "p1_neutral_m2_1331111545.png"
+        },
+        "neutral.m3": {
+          "cands": [
+            "p1_neutral_m3_934031401.png",
+            "p1_neutral_m3_1856777834.png"
+          ],
+          "pick": "p1_neutral_m3_934031401.png"
+        },
+        "smile.e1": {
+          "cands": [
+            "p1_smile_e1_1735193980.png",
+            "p1_smile_e1_227086600.png"
+          ],
+          "pick": "p1_smile_e1_1735193980.png"
+        },
+        "smile.e2": {
+          "cands": [
+            "p1_smile_e2_1632639767.png",
+            "p1_smile_e2_1957470512.png"
+          ],
+          "pick": "p1_smile_e2_1632639767.png"
+        },
+        "smile.m1": {
+          "cands": [
+            "p1_smile_m1_1582187159.png",
+            "p1_smile_m1_1271259586.png"
+          ],
+          "pick": "p1_smile_m1_1582187159.png"
+        },
+        "smile.m2": {
+          "cands": [
+            "p1_smile_m2_557387881.png",
+            "p1_smile_m2_1445355385.png"
+          ],
+          "pick": "p1_smile_m2_1445355385.png"
+        },
+        "smile.m3": {
+          "cands": [
+            "p1_smile_m3_1047240594.png",
+            "p1_smile_m3_1772988163.png"
+          ],
+          "pick": "p1_smile_m3_1772988163.png"
+        },
+        "laugh.e1": {
+          "cands": [
+            "p1_laugh_e1_1985021251.png",
+            "p1_laugh_e1_177700906.png"
+          ],
+          "pick": "p1_laugh_e1_1985021251.png"
+        },
+        "laugh.e2": {
+          "cands": [
+            "p1_laugh_e2_723931823.png",
+            "p1_laugh_e2_1344895459.png"
+          ],
+          "pick": "p1_laugh_e2_723931823.png"
+        },
+        "laugh.m1": {
+          "cands": [
+            "p1_laugh_m1_1834073132.png",
+            "p1_laugh_m1_2125956999.png"
+          ],
+          "pick": "p1_laugh_m1_1834073132.png"
+        },
+        "laugh.m2": {
+          "cands": [
+            "p1_laugh_m2_885146958.png",
+            "p1_laugh_m2_1346804532.png"
+          ],
+          "pick": "p1_laugh_m2_885146958.png"
+        },
+        "laugh.m3": {
+          "cands": [
+            "p1_laugh_m3_688177051.png",
+            "p1_laugh_m3_957653376.png"
+          ],
+          "pick": "p1_laugh_m3_688177051.png"
+        },
+        "angry.e1": {
+          "cands": [
+            "p1_angry_e1_594734950.png",
+            "p1_angry_e1_1336568235.png"
+          ],
+          "pick": "p1_angry_e1_1336568235.png"
+        },
+        "angry.e2": {
+          "cands": [
+            "p1_angry_e2_1953489457.png",
+            "p1_angry_e2_1950428063.png"
+          ],
+          "pick": "p1_angry_e2_1953489457.png"
+        },
+        "angry.m1": {
+          "cands": [
+            "p1_angry_m1_1432906410.png",
+            "p1_angry_m1_624815880.png"
+          ],
+          "pick": "p1_angry_m1_1432906410.png"
+        },
+        "angry.m2": {
+          "cands": [
+            "p1_angry_m2_1067269535.png",
+            "p1_angry_m2_1881601237.png"
+          ],
+          "pick": "p1_angry_m2_1881601237.png"
+        },
+        "angry.m3": {
+          "cands": [
+            "p1_angry_m3_719534538.png",
+            "p1_angry_m3_759334639.png"
+          ],
+          "pick": "p1_angry_m3_719534538.png"
+        },
+        "surprised.e1": {
+          "cands": [
+            "p1_surprised_e1_1022018166.png",
+            "p1_surprised_e1_1329142973.png"
+          ],
+          "pick": "p1_surprised_e1_1329142973.png"
+        },
+        "surprised.e2": {
+          "cands": [
+            "p1_surprised_e2_712361651.png",
+            "p1_surprised_e2_829581736.png"
+          ],
+          "pick": "p1_surprised_e2_712361651.png"
+        },
+        "surprised.m1": {
+          "cands": [
+            "p1_surprised_m1_408128006.png",
+            "p1_surprised_m1_1583661550.png"
+          ],
+          "pick": "p1_surprised_m1_408128006.png"
+        },
+        "surprised.m2": {
+          "cands": [
+            "p1_surprised_m2_157677470.png",
+            "p1_surprised_m2_1585501715.png"
+          ],
+          "pick": "p1_surprised_m2_1585501715.png"
+        },
+        "surprised.m3": {
+          "cands": [
+            "p1_surprised_m3_1598651921.png",
+            "p1_surprised_m3_2143913212.png"
+          ],
+          "pick": "p1_surprised_m3_2143913212.png"
+        },
+        "sad.e1": {
+          "cands": [
+            "p1_sad_e1_1469910766.png",
+            "p1_sad_e1_1255857349.png"
+          ],
+          "pick": "p1_sad_e1_1469910766.png"
+        },
+        "sad.e2": {
+          "cands": [
+            "p1_sad_e2_166373161.png",
+            "p1_sad_e2_1698957900.png"
+          ],
+          "pick": "p1_sad_e2_166373161.png"
+        },
+        "sad.m1": {
+          "cands": [
+            "p1_sad_m1_1820424960.png",
+            "p1_sad_m1_1315882895.png"
+          ],
+          "pick": "p1_sad_m1_1820424960.png"
+        },
+        "sad.m2": {
+          "cands": [
+            "p1_sad_m2_1338113498.png",
+            "p1_sad_m2_1037435768.png"
+          ],
+          "pick": "p1_sad_m2_1338113498.png"
+        },
+        "sad.m3": {
+          "cands": [
+            "p1_sad_m3_1037191071.png",
+            "p1_sad_m3_554323778.png"
+          ],
+          "pick": "p1_sad_m3_554323778.png"
+        },
+        "think.e1": {
+          "cands": [
+            "p1_think_e1_1175038645.png",
+            "p1_think_e1_1465072992.png"
+          ],
+          "pick": "p1_think_e1_1465072992.png"
+        },
+        "think.e2": {
+          "cands": [
+            "p1_think_e2_1193518252.png",
+            "p1_think_e2_1347170883.png"
+          ],
+          "pick": "p1_think_e2_1193518252.png"
+        },
+        "think.m1": {
+          "cands": [
+            "p1_think_m1_403936879.png",
+            "p1_think_m1_925772798.png"
+          ],
+          "pick": "p1_think_m1_403936879.png"
+        },
+        "think.m2": {
+          "cands": [
+            "p1_think_m2_1732738704.png",
+            "p1_think_m2_1127398694.png"
+          ],
+          "pick": "p1_think_m2_1732738704.png"
+        },
+        "think.m3": {
+          "cands": [
+            "p1_think_m3_1328666070.png",
+            "p1_think_m3_2135427302.png"
+          ],
+          "pick": "p1_think_m3_2135427302.png"
+        },
+        "smug.e1": {
+          "cands": [
+            "p1_smug_e1_1968202378.png",
+            "p1_smug_e1_1719492056.png"
+          ],
+          "pick": "p1_smug_e1_1968202378.png"
+        },
+        "smug.e2": {
+          "cands": [
+            "p1_smug_e2_231071549.png",
+            "p1_smug_e2_1640421652.png"
+          ],
+          "pick": "p1_smug_e2_231071549.png"
+        },
+        "smug.m1": {
+          "cands": [
+            "p1_smug_m1_452600045.png",
+            "p1_smug_m1_113239803.png"
+          ],
+          "pick": "p1_smug_m1_452600045.png"
+        },
+        "smug.m2": {
+          "cands": [
+            "p1_smug_m2_2100022210.png",
+            "p1_smug_m2_339129311.png"
+          ],
+          "pick": "p1_smug_m2_339129311.png"
+        },
+        "smug.m3": {
+          "cands": [
+            "p1_smug_m3_1006346149.png",
+            "p1_smug_m3_1099734236.png"
+          ],
+          "pick": "p1_smug_m3_1099734236.png"
+        },
+        "wry.e1": {
+          "cands": [
+            "p1_wry_e1_1987144984.png",
+            "p1_wry_e1_187767417.png"
+          ],
+          "pick": "p1_wry_e1_1987144984.png"
+        },
+        "wry.e2": {
+          "cands": [
+            "p1_wry_e2_1589352775.png",
+            "p1_wry_e2_1213153595.png"
+          ],
+          "pick": "p1_wry_e2_1589352775.png"
+        },
+        "wry.m1": {
+          "cands": [
+            "p1_wry_m1_641779297.png",
+            "p1_wry_m1_1711800336.png"
+          ],
+          "pick": "p1_wry_m1_641779297.png"
+        },
+        "wry.m2": {
+          "cands": [
+            "p1_wry_m2_1831596122.png",
+            "p1_wry_m2_1222860167.png"
+          ],
+          "pick": "p1_wry_m2_1831596122.png"
+        },
+        "wry.m3": {
+          "cands": [
+            "p1_wry_m3_619921410.png",
+            "p1_wry_m3_49870301.png"
+          ],
+          "pick": "p1_wry_m3_49870301.png"
+        },
+        "glitch.e1": {
+          "cands": [
+            "p1_glitch_e1_2013106083.png",
+            "p1_glitch_e1_1136787053.png"
+          ],
+          "pick": "p1_glitch_e1_2013106083.png"
+        },
+        "glitch.e2": {
+          "cands": [
+            "p1_glitch_e2_1548014544.png",
+            "p1_glitch_e2_1202365616.png"
+          ],
+          "pick": "p1_glitch_e2_1548014544.png"
+        },
+        "glitch.m1": {
+          "cands": [
+            "p1_glitch_m1_949932358.png",
+            "p1_glitch_m1_25175549.png"
+          ],
+          "pick": "p1_glitch_m1_25175549.png"
+        },
+        "glitch.m2": {
+          "cands": [
+            "p1_glitch_m2_1083418099.png",
+            "p1_glitch_m2_152318864.png"
+          ],
+          "pick": "p1_glitch_m2_152318864.png"
+        },
+        "glitch.m3": {
+          "cands": [
+            "p1_glitch_m3_284738226.png",
+            "p1_glitch_m3_1195848381.png"
+          ],
+          "pick": "p1_glitch_m3_284738226.png"
+        },
+        "focus.e1": {
+          "cands": [
+            "p1_focus_e1_281186958.png",
+            "p1_focus_e1_1065935568.png"
+          ],
+          "pick": "p1_focus_e1_281186958.png"
+        },
+        "focus.e2": {
+          "cands": [
+            "p1_focus_e2_1266017992.png",
+            "p1_focus_e2_706574269.png"
+          ],
+          "pick": "p1_focus_e2_1266017992.png"
+        },
+        "focus.m1": {
+          "cands": [
+            "p1_focus_m1_1758549267.png",
+            "p1_focus_m1_580837568.png"
+          ],
+          "pick": "p1_focus_m1_580837568.png"
+        },
+        "focus.m2": {
+          "cands": [
+            "p1_focus_m2_1245209600.png",
+            "p1_focus_m2_751971208.png"
+          ],
+          "pick": "p1_focus_m2_751971208.png"
+        },
+        "focus.m3": {
+          "cands": [
+            "p1_focus_m3_511085553.png",
+            "p1_focus_m3_513937240.png"
+          ],
+          "pick": "p1_focus_m3_513937240.png"
+        },
+        "tender.e1": {
+          "cands": [
+            "p1_tender_e1_895726955.png",
+            "p1_tender_e1_576104723.png"
+          ],
+          "pick": "p1_tender_e1_895726955.png"
+        },
+        "tender.e2": {
+          "cands": [
+            "p1_tender_e2_165138237.png",
+            "p1_tender_e2_664080152.png"
+          ],
+          "pick": "p1_tender_e2_165138237.png"
+        },
+        "tender.m1": {
+          "cands": [
+            "p1_tender_m1_1690980757.png",
+            "p1_tender_m1_125125000.png"
+          ],
+          "pick": "p1_tender_m1_1690980757.png"
+        },
+        "tender.m2": {
+          "cands": [
+            "p1_tender_m2_1852776731.png",
+            "p1_tender_m2_1729130268.png"
+          ],
+          "pick": "p1_tender_m2_1852776731.png"
+        },
+        "tender.m3": {
+          "cands": [
+            "p1_tender_m3_1913623798.png",
+            "p1_tender_m3_1884715210.png"
+          ],
+          "pick": "p1_tender_m3_1913623798.png"
+        },
+        "hesitate.e1": {
+          "cands": [
+            "p1_hesitate_e1_1754953429.png",
+            "p1_hesitate_e1_393815583.png"
+          ],
+          "pick": "p1_hesitate_e1_1754953429.png"
+        },
+        "hesitate.e2": {
+          "cands": [
+            "p1_hesitate_e2_56957945.png",
+            "p1_hesitate_e2_380919301.png"
+          ],
+          "pick": "p1_hesitate_e2_56957945.png"
+        },
+        "hesitate.m1": {
+          "cands": [
+            "p1_hesitate_m1_1120271790.png",
+            "p1_hesitate_m1_131173799.png"
+          ],
+          "pick": "p1_hesitate_m1_1120271790.png"
+        },
+        "hesitate.m2": {
+          "cands": [
+            "p1_hesitate_m2_1160410368.png",
+            "p1_hesitate_m2_1843016448.png"
+          ],
+          "pick": "p1_hesitate_m2_1160410368.png"
+        },
+        "hesitate.m3": {
+          "cands": [
+            "p1_hesitate_m3_765956052.png",
+            "p1_hesitate_m3_731350743.png"
+          ],
+          "pick": "p1_hesitate_m3_765956052.png"
+        },
+        "puzzled.e1": {
+          "cands": [
+            "p1_puzzled_e1_495463991.png",
+            "p1_puzzled_e1_717279801.png"
+          ],
+          "pick": "p1_puzzled_e1_495463991.png"
+        },
+        "puzzled.e2": {
+          "cands": [
+            "p1_puzzled_e2_1051938835.png",
+            "p1_puzzled_e2_777991028.png"
+          ],
+          "pick": "p1_puzzled_e2_1051938835.png"
+        },
+        "puzzled.m1": {
+          "cands": [
+            "p1_puzzled_m1_115722028.png",
+            "p1_puzzled_m1_1734495903.png"
+          ],
+          "pick": "p1_puzzled_m1_115722028.png"
+        },
+        "puzzled.m2": {
+          "cands": [
+            "p1_puzzled_m2_1593665662.png",
+            "p1_puzzled_m2_1210369763.png"
+          ],
+          "pick": "p1_puzzled_m2_1210369763.png"
+        },
+        "puzzled.m3": {
+          "cands": [
+            "p1_puzzled_m3_80742436.png",
+            "p1_puzzled_m3_446019500.png"
+          ],
+          "pick": "p1_puzzled_m3_80742436.png"
+        }
+      }
+    },
+    {
+      "id": "p2",
+      "name": "通訊",
+      "prompt": "upper body, hand on headset, head tilt, looking to the side, listening, white background, simple background",
+      "refine": 0.25,
+      "cands": [
+        {
+          "file": "p2_master_clip.png",
+          "seed": 33
+        }
+      ],
+      "master": "p2_master_clip.png",
+      "seed": 33,
+      "boxes": {
+        "face": [
+          340,
+          190,
+          220,
+          195
+        ],
+        "eyes": [
+          345,
+          212,
+          190,
+          70
+        ],
+        "mouth": [
+          400,
+          310,
+          66,
+          34
+        ]
+      },
+      "ex": {
+        "smile": {
+          "cands": [
+            "p2_smile_779211441.png",
+            "p2_smile_810430999.png",
+            "p2_smile_559869566.png"
+          ],
+          "pick": "p2_smile_779211441.png"
+        },
+        "laugh": {
+          "cands": [
+            "p2_laugh_2104830936.png",
+            "p2_laugh_1588288261.png",
+            "p2_laugh_1730604169.png"
+          ],
+          "pick": "p2_laugh_2104830936.png"
+        },
+        "angry": {
+          "cands": [
+            "p2_angry_669613884.png",
+            "p2_angry_1546425145.png",
+            "p2_angry_1800751905.png"
+          ],
+          "pick": "p2_angry_1800751905.png"
+        },
+        "surprised": {
+          "cands": [
+            "p2_surprised_435502941.png",
+            "p2_surprised_1193346667.png",
+            "p2_surprised_1960637012.png"
+          ],
+          "pick": "p2_surprised_1960637012.png"
+        },
+        "sad": {
+          "cands": [
+            "p2_sad_1322257402.png",
+            "p2_sad_910444824.png",
+            "p2_sad_1442829658.png"
+          ],
+          "pick": "p2_sad_1322257402.png"
+        },
+        "think": {
+          "cands": [
+            "p2_think_13734854.png",
+            "p2_think_1429121280.png",
+            "p2_think_1923134798.png"
+          ],
+          "pick": "p2_think_13734854.png"
+        },
+        "smug": {
+          "cands": [
+            "p2_smug_790461457.png",
+            "p2_smug_2131795013.png",
+            "p2_smug_1016348889.png"
+          ],
+          "pick": "p2_smug_2131795013.png"
+        },
+        "wry": {
+          "cands": [
+            "p2_wry_1829327453.png",
+            "p2_wry_779248639.png",
+            "p2_wry_1036120061.png"
+          ],
+          "pick": "p2_wry_1036120061.png"
+        },
+        "glitch": {
+          "cands": [
+            "p2_glitch_647301994.png",
+            "p2_glitch_22795316.png",
+            "p2_glitch_1259785177.png"
+          ],
+          "pick": "p2_glitch_1259785177.png"
+        },
+        "focus": {
+          "cands": [
+            "p2_focus_367685567.png",
+            "p2_focus_283866012.png",
+            "p2_focus_1712862406.png"
+          ],
+          "pick": "p2_focus_1712862406.png"
+        },
+        "tender": {
+          "cands": [
+            "p2_tender_321930955.png",
+            "p2_tender_882079619.png",
+            "p2_tender_1791093914.png"
+          ],
+          "pick": "p2_tender_882079619.png"
+        },
+        "hesitate": {
+          "cands": [
+            "p2_hesitate_1102492223.png",
+            "p2_hesitate_1524020963.png",
+            "p2_hesitate_1931369168.png"
+          ],
+          "pick": "p2_hesitate_1524020963.png"
+        },
+        "puzzled": {
+          "cands": [
+            "p2_puzzled_577802007.png",
+            "p2_puzzled_716011255.png",
+            "p2_puzzled_410422817.png"
+          ],
+          "pick": "p2_puzzled_577802007.png"
+        },
+        "neutral.e1": {
+          "cands": [
+            "p2_neutral_e1_559127437.png",
+            "p2_neutral_e1_302367674.png"
+          ],
+          "pick": "p2_neutral_e1_559127437.png"
+        },
+        "neutral.e2": {
+          "cands": [
+            "p2_neutral_e2_955471383.png",
+            "p2_neutral_e2_1908943030.png"
+          ],
+          "pick": "p2_neutral_e2_955471383.png"
+        },
+        "neutral.m1": {
+          "cands": [
+            "p2_neutral_m1_1065806061.png",
+            "p2_neutral_m1_1514503208.png"
+          ],
+          "pick": "p2_neutral_m1_1065806061.png"
+        },
+        "neutral.m2": {
+          "cands": [
+            "p2_neutral_m2_815754410.png",
+            "p2_neutral_m2_1128726867.png"
+          ],
+          "pick": "p2_neutral_m2_815754410.png"
+        },
+        "neutral.m3": {
+          "cands": [
+            "p2_neutral_m3_1599019865.png",
+            "p2_neutral_m3_1789164269.png"
+          ],
+          "pick": "p2_neutral_m3_1789164269.png"
+        },
+        "smile.e1": {
+          "cands": [
+            "p2_smile_e1_246424438.png",
+            "p2_smile_e1_940678584.png"
+          ],
+          "pick": "p2_smile_e1_246424438.png"
+        },
+        "smile.e2": {
+          "cands": [
+            "p2_smile_e2_733912122.png",
+            "p2_smile_e2_1417012111.png"
+          ],
+          "pick": "p2_smile_e2_733912122.png"
+        },
+        "smile.m1": {
+          "cands": [
+            "p2_smile_m1_2116787971.png",
+            "p2_smile_m1_1447231992.png"
+          ],
+          "pick": "p2_smile_m1_2116787971.png"
+        },
+        "smile.m2": {
+          "cands": [
+            "p2_smile_m2_505924460.png",
+            "p2_smile_m2_2088646248.png"
+          ],
+          "pick": "p2_smile_m2_505924460.png"
+        },
+        "smile.m3": {
+          "cands": [
+            "p2_smile_m3_1254678097.png",
+            "p2_smile_m3_667319842.png"
+          ],
+          "pick": "p2_smile_m3_667319842.png"
+        },
+        "laugh.e1": {
+          "cands": [
+            "p2_laugh_e1_1149327699.png",
+            "p2_laugh_e1_55037888.png"
+          ],
+          "pick": "p2_laugh_e1_1149327699.png"
+        },
+        "laugh.e2": {
+          "cands": [
+            "p2_laugh_e2_1203365376.png",
+            "p2_laugh_e2_150148760.png"
+          ],
+          "pick": "p2_laugh_e2_1203365376.png"
+        },
+        "laugh.m1": {
+          "cands": [
+            "p2_laugh_m1_1817769030.png",
+            "p2_laugh_m1_1466184807.png"
+          ],
+          "pick": "p2_laugh_m1_1817769030.png"
+        },
+        "laugh.m2": {
+          "cands": [
+            "p2_laugh_m2_783144491.png",
+            "p2_laugh_m2_243303406.png"
+          ],
+          "pick": "p2_laugh_m2_783144491.png"
+        },
+        "laugh.m3": {
+          "cands": [
+            "p2_laugh_m3_116619085.png",
+            "p2_laugh_m3_879122296.png"
+          ],
+          "pick": "p2_laugh_m3_116619085.png"
+        },
+        "angry.e1": {
+          "cands": [
+            "p2_angry_e1_24762983.png",
+            "p2_angry_e1_754060339.png"
+          ],
+          "pick": "p2_angry_e1_24762983.png"
+        },
+        "angry.e2": {
+          "cands": [
+            "p2_angry_e2_589659933.png",
+            "p2_angry_e2_877235319.png"
+          ],
+          "pick": "p2_angry_e2_589659933.png"
+        },
+        "angry.m1": {
+          "cands": [
+            "p2_angry_m1_132987425.png",
+            "p2_angry_m1_1145058287.png"
+          ],
+          "pick": "p2_angry_m1_1145058287.png"
+        },
+        "angry.m2": {
+          "cands": [
+            "p2_angry_m2_487273149.png",
+            "p2_angry_m2_1874653549.png"
+          ],
+          "pick": "p2_angry_m2_487273149.png"
+        },
+        "angry.m3": {
+          "cands": [
+            "p2_angry_m3_785442488.png",
+            "p2_angry_m3_1434906921.png"
+          ],
+          "pick": "p2_angry_m3_1434906921.png"
+        },
+        "surprised.e1": {
+          "cands": [
+            "p2_surprised_e1_655173048.png",
+            "p2_surprised_e1_103569385.png"
+          ],
+          "pick": "p2_surprised_e1_655173048.png"
+        },
+        "surprised.e2": {
+          "cands": [
+            "p2_surprised_e2_1985473966.png",
+            "p2_surprised_e2_1252127605.png"
+          ],
+          "pick": "p2_surprised_e2_1252127605.png"
+        },
+        "surprised.m1": {
+          "cands": [
+            "p2_surprised_m1_853060636.png",
+            "p2_surprised_m1_1996184861.png"
+          ],
+          "pick": "p2_surprised_m1_853060636.png"
+        },
+        "surprised.m2": {
+          "cands": [
+            "p2_surprised_m2_1201228039.png",
+            "p2_surprised_m2_155029360.png"
+          ],
+          "pick": "p2_surprised_m2_155029360.png"
+        },
+        "surprised.m3": {
+          "cands": [
+            "p2_surprised_m3_885457140.png",
+            "p2_surprised_m3_68144755.png"
+          ],
+          "pick": "p2_surprised_m3_885457140.png"
+        },
+        "sad.e1": {
+          "cands": [
+            "p2_sad_e1_67627369.png",
+            "p2_sad_e1_871128423.png"
+          ],
+          "pick": "p2_sad_e1_67627369.png"
+        },
+        "sad.e2": {
+          "cands": [
+            "p2_sad_e2_215751798.png",
+            "p2_sad_e2_372168274.png"
+          ],
+          "pick": "p2_sad_e2_372168274.png"
+        },
+        "sad.m1": {
+          "cands": [
+            "p2_sad_m1_1745498341.png",
+            "p2_sad_m1_1763413806.png"
+          ],
+          "pick": "p2_sad_m1_1745498341.png"
+        },
+        "sad.m2": {
+          "cands": [
+            "p2_sad_m2_1811364309.png",
+            "p2_sad_m2_940410229.png"
+          ],
+          "pick": "p2_sad_m2_940410229.png"
+        },
+        "sad.m3": {
+          "cands": [
+            "p2_sad_m3_1926726978.png",
+            "p2_sad_m3_65357458.png"
+          ],
+          "pick": "p2_sad_m3_65357458.png"
+        },
+        "think.e1": {
+          "cands": [
+            "p2_think_e1_1785328182.png",
+            "p2_think_e1_555215505.png"
+          ],
+          "pick": "p2_think_e1_1785328182.png"
+        },
+        "think.e2": {
+          "cands": [
+            "p2_think_e2_980355042.png",
+            "p2_think_e2_476686695.png"
+          ],
+          "pick": "p2_think_e2_476686695.png"
+        },
+        "think.m1": {
+          "cands": [
+            "p2_think_m1_1362029358.png",
+            "p2_think_m1_462012589.png"
+          ],
+          "pick": "p2_think_m1_1362029358.png"
+        },
+        "think.m2": {
+          "cands": [
+            "p2_think_m2_874836989.png",
+            "p2_think_m2_161390924.png"
+          ],
+          "pick": "p2_think_m2_874836989.png"
+        },
+        "think.m3": {
+          "cands": [
+            "p2_think_m3_743160611.png",
+            "p2_think_m3_1475981028.png"
+          ],
+          "pick": "p2_think_m3_1475981028.png"
+        },
+        "smug.e1": {
+          "cands": [
+            "p2_smug_e1_1770163748.png",
+            "p2_smug_e1_1971967895.png"
+          ],
+          "pick": "p2_smug_e1_1770163748.png"
+        },
+        "smug.e2": {
+          "cands": [
+            "p2_smug_e2_1996327381.png",
+            "p2_smug_e2_1488478647.png"
+          ],
+          "pick": "p2_smug_e2_1996327381.png"
+        },
+        "smug.m1": {
+          "cands": [
+            "p2_smug_m1_1555048165.png",
+            "p2_smug_m1_367212067.png"
+          ],
+          "pick": "p2_smug_m1_1555048165.png"
+        },
+        "smug.m2": {
+          "cands": [
+            "p2_smug_m2_755368648.png",
+            "p2_smug_m2_1752975777.png"
+          ],
+          "pick": "p2_smug_m2_1752975777.png"
+        },
+        "smug.m3": {
+          "cands": [
+            "p2_smug_m3_648840391.png",
+            "p2_smug_m3_1953462133.png"
+          ],
+          "pick": "p2_smug_m3_1953462133.png"
+        },
+        "wry.e1": {
+          "cands": [
+            "p2_wry_e1_1000150994.png",
+            "p2_wry_e1_759226821.png"
+          ],
+          "pick": "p2_wry_e1_1000150994.png"
+        },
+        "wry.e2": {
+          "cands": [
+            "p2_wry_e2_965162590.png",
+            "p2_wry_e2_489597715.png"
+          ],
+          "pick": "p2_wry_e2_965162590.png"
+        },
+        "wry.m1": {
+          "cands": [
+            "p2_wry_m1_590192655.png",
+            "p2_wry_m1_2104712326.png"
+          ],
+          "pick": "p2_wry_m1_590192655.png"
+        },
+        "wry.m2": {
+          "cands": [
+            "p2_wry_m2_808096220.png",
+            "p2_wry_m2_136465802.png"
+          ],
+          "pick": "p2_wry_m2_136465802.png"
+        },
+        "wry.m3": {
+          "cands": [
+            "p2_wry_m3_1290328553.png",
+            "p2_wry_m3_518936500.png"
+          ],
+          "pick": "p2_wry_m3_518936500.png"
+        },
+        "glitch.e1": {
+          "cands": [
+            "p2_glitch_e1_631210991.png",
+            "p2_glitch_e1_608912958.png"
+          ],
+          "pick": "p2_glitch_e1_631210991.png"
+        },
+        "glitch.e2": {
+          "cands": [
+            "p2_glitch_e2_212126234.png",
+            "p2_glitch_e2_1364702707.png"
+          ],
+          "pick": "p2_glitch_e2_212126234.png"
+        },
+        "glitch.m1": {
+          "cands": [
+            "p2_glitch_m1_1220289578.png",
+            "p2_glitch_m1_1129893557.png"
+          ],
+          "pick": "p2_glitch_m1_1220289578.png"
+        },
+        "glitch.m2": {
+          "cands": [
+            "p2_glitch_m2_669732696.png",
+            "p2_glitch_m2_869656238.png"
+          ],
+          "pick": "p2_glitch_m2_669732696.png"
+        },
+        "glitch.m3": {
+          "cands": [
+            "p2_glitch_m3_971871067.png",
+            "p2_glitch_m3_2140069611.png"
+          ],
+          "pick": "p2_glitch_m3_971871067.png"
+        },
+        "focus.e1": {
+          "cands": [
+            "p2_focus_e1_1831349334.png",
+            "p2_focus_e1_1988784072.png"
+          ],
+          "pick": "p2_focus_e1_1831349334.png"
+        },
+        "focus.e2": {
+          "cands": [
+            "p2_focus_e2_2106524108.png",
+            "p2_focus_e2_811578998.png"
+          ],
+          "pick": "p2_focus_e2_811578998.png"
+        },
+        "focus.m1": {
+          "cands": [
+            "p2_focus_m1_1800888909.png",
+            "p2_focus_m1_1901367892.png"
+          ],
+          "pick": "p2_focus_m1_1800888909.png"
+        },
+        "focus.m2": {
+          "cands": [
+            "p2_focus_m2_1340004011.png",
+            "p2_focus_m2_348588884.png"
+          ],
+          "pick": "p2_focus_m2_1340004011.png"
+        },
+        "focus.m3": {
+          "cands": [
+            "p2_focus_m3_561477620.png",
+            "p2_focus_m3_1216037883.png"
+          ],
+          "pick": "p2_focus_m3_561477620.png"
+        },
+        "tender.e1": {
+          "cands": [
+            "p2_tender_e1_1969302584.png",
+            "p2_tender_e1_646441271.png"
+          ],
+          "pick": "p2_tender_e1_1969302584.png"
+        },
+        "tender.e2": {
+          "cands": [
+            "p2_tender_e2_2132752473.png",
+            "p2_tender_e2_1223129378.png"
+          ],
+          "pick": "p2_tender_e2_2132752473.png"
+        },
+        "tender.m1": {
+          "cands": [
+            "p2_tender_m1_1442365636.png",
+            "p2_tender_m1_1129303740.png"
+          ],
+          "pick": "p2_tender_m1_1129303740.png"
+        },
+        "tender.m2": {
+          "cands": [
+            "p2_tender_m2_1382142857.png",
+            "p2_tender_m2_475409690.png"
+          ],
+          "pick": "p2_tender_m2_1382142857.png"
+        },
+        "tender.m3": {
+          "cands": [
+            "p2_tender_m3_667013587.png",
+            "p2_tender_m3_950462726.png"
+          ],
+          "pick": "p2_tender_m3_667013587.png"
+        },
+        "hesitate.e1": {
+          "cands": [
+            "p2_hesitate_e1_335925270.png",
+            "p2_hesitate_e1_808799033.png"
+          ],
+          "pick": "p2_hesitate_e1_335925270.png"
+        },
+        "hesitate.e2": {
+          "cands": [
+            "p2_hesitate_e2_2140736951.png",
+            "p2_hesitate_e2_987689450.png"
+          ],
+          "pick": "p2_hesitate_e2_2140736951.png"
+        },
+        "hesitate.m1": {
+          "cands": [
+            "p2_hesitate_m1_782010583.png",
+            "p2_hesitate_m1_779166068.png"
+          ],
+          "pick": "p2_hesitate_m1_782010583.png"
+        },
+        "hesitate.m2": {
+          "cands": [
+            "p2_hesitate_m2_160144914.png",
+            "p2_hesitate_m2_685785350.png"
+          ],
+          "pick": "p2_hesitate_m2_160144914.png"
+        },
+        "hesitate.m3": {
+          "cands": [
+            "p2_hesitate_m3_1961226412.png",
+            "p2_hesitate_m3_426645642.png"
+          ],
+          "pick": "p2_hesitate_m3_1961226412.png"
+        },
+        "puzzled.e1": {
+          "cands": [
+            "p2_puzzled_e1_465729516.png",
+            "p2_puzzled_e1_743850845.png"
+          ],
+          "pick": "p2_puzzled_e1_465729516.png"
+        },
+        "puzzled.e2": {
+          "cands": [
+            "p2_puzzled_e2_129941344.png",
+            "p2_puzzled_e2_51728721.png"
+          ],
+          "pick": "p2_puzzled_e2_129941344.png"
+        },
+        "puzzled.m1": {
+          "cands": [
+            "p2_puzzled_m1_1956943840.png",
+            "p2_puzzled_m1_994800025.png"
+          ],
+          "pick": "p2_puzzled_m1_1956943840.png"
+        },
+        "puzzled.m2": {
+          "cands": [
+            "p2_puzzled_m2_964712684.png",
+            "p2_puzzled_m2_407859509.png"
+          ],
+          "pick": "p2_puzzled_m2_407859509.png"
+        },
+        "puzzled.m3": {
+          "cands": [
+            "p2_puzzled_m3_105118031.png",
+            "p2_puzzled_m3_572104312.png"
+          ],
+          "pick": "p2_puzzled_m3_572104312.png"
+        }
+      }
+    }
+  ],
+  "t": 1794392346474,
+  "pub": {
+    "t": 1794392236286,
+    "poses": [
+      {
+        "id": "p1",
+        "name": "平常",
+        "img": "p1.webp",
+        "boxes": {
+          "face": [
+            335,
+            180,
+            215,
+            205
+          ],
+          "eyes": [
+            340,
+            225,
+            180,
+            70
+          ],
+          "mouth": [
+            392,
+            312,
+            72,
+            36
+          ]
+        },
+        "ex": {
+          "neutral": {
+            "e1": "p1_neutral_e1.webp",
+            "e2": "p1_neutral_e2.webp",
+            "m1": "p1_neutral_m1.webp",
+            "m2": "p1_neutral_m2.webp",
+            "m3": "p1_neutral_m3.webp"
+          },
+          "smile": {
+            "f": "p1_smile_f.webp",
+            "e1": "p1_smile_e1.webp",
+            "e2": "p1_smile_e2.webp",
+            "m1": "p1_smile_m1.webp",
+            "m2": "p1_smile_m2.webp",
+            "m3": "p1_smile_m3.webp"
+          },
+          "laugh": {
+            "f": "p1_laugh_f.webp",
+            "e1": "p1_laugh_e1.webp",
+            "e2": "p1_laugh_e2.webp",
+            "m1": "p1_laugh_m1.webp",
+            "m2": "p1_laugh_m2.webp",
+            "m3": "p1_laugh_m3.webp"
+          },
+          "angry": {
+            "f": "p1_angry_f.webp",
+            "e1": "p1_angry_e1.webp",
+            "e2": "p1_angry_e2.webp",
+            "m1": "p1_angry_m1.webp",
+            "m2": "p1_angry_m2.webp",
+            "m3": "p1_angry_m3.webp"
+          },
+          "surprised": {
+            "f": "p1_surprised_f.webp",
+            "e1": "p1_surprised_e1.webp",
+            "e2": "p1_surprised_e2.webp",
+            "m1": "p1_surprised_m1.webp",
+            "m2": "p1_surprised_m2.webp",
+            "m3": "p1_surprised_m3.webp"
+          },
+          "sad": {
+            "f": "p1_sad_f.webp",
+            "e1": "p1_sad_e1.webp",
+            "e2": "p1_sad_e2.webp",
+            "m1": "p1_sad_m1.webp",
+            "m2": "p1_sad_m2.webp",
+            "m3": "p1_sad_m3.webp"
+          },
+          "think": {
+            "f": "p1_think_f.webp",
+            "e1": "p1_think_e1.webp",
+            "e2": "p1_think_e2.webp",
+            "m1": "p1_think_m1.webp",
+            "m2": "p1_think_m2.webp",
+            "m3": "p1_think_m3.webp"
+          },
+          "smug": {
+            "f": "p1_smug_f.webp",
+            "e1": "p1_smug_e1.webp",
+            "e2": "p1_smug_e2.webp",
+            "m1": "p1_smug_m1.webp",
+            "m2": "p1_smug_m2.webp",
+            "m3": "p1_smug_m3.webp"
+          },
+          "wry": {
+            "f": "p1_wry_f.webp",
+            "e1": "p1_wry_e1.webp",
+            "e2": "p1_wry_e2.webp",
+            "m1": "p1_wry_m1.webp",
+            "m2": "p1_wry_m2.webp",
+            "m3": "p1_wry_m3.webp"
+          },
+          "glitch": {
+            "f": "p1_glitch_f.webp",
+            "e1": "p1_glitch_e1.webp",
+            "e2": "p1_glitch_e2.webp",
+            "m1": "p1_glitch_m1.webp",
+            "m2": "p1_glitch_m2.webp",
+            "m3": "p1_glitch_m3.webp"
+          },
+          "focus": {
+            "f": "p1_focus_f.webp",
+            "e1": "p1_focus_e1.webp",
+            "e2": "p1_focus_e2.webp",
+            "m1": "p1_focus_m1.webp",
+            "m2": "p1_focus_m2.webp",
+            "m3": "p1_focus_m3.webp"
+          },
+          "tender": {
+            "f": "p1_tender_f.webp",
+            "e1": "p1_tender_e1.webp",
+            "e2": "p1_tender_e2.webp",
+            "m1": "p1_tender_m1.webp",
+            "m2": "p1_tender_m2.webp",
+            "m3": "p1_tender_m3.webp"
+          },
+          "hesitate": {
+            "f": "p1_hesitate_f.webp",
+            "e1": "p1_hesitate_e1.webp",
+            "e2": "p1_hesitate_e2.webp",
+            "m1": "p1_hesitate_m1.webp",
+            "m2": "p1_hesitate_m2.webp",
+            "m3": "p1_hesitate_m3.webp"
+          },
+          "puzzled": {
+            "f": "p1_puzzled_f.webp",
+            "e1": "p1_puzzled_e1.webp",
+            "e2": "p1_puzzled_e2.webp",
+            "m1": "p1_puzzled_m1.webp",
+            "m2": "p1_puzzled_m2.webp",
+            "m3": "p1_puzzled_m3.webp"
+          }
+        },
+        "w": 832,
+        "h": 1216
+      },
+      {
+        "id": "p2",
+        "name": "通訊",
+        "img": "p2.webp",
+        "boxes": {
+          "face": [
+            340,
+            190,
+            220,
+            195
+          ],
+          "eyes": [
+            345,
+            212,
+            190,
+            70
+          ],
+          "mouth": [
+            400,
+            310,
+            66,
+            34
+          ]
+        },
+        "ex": {
+          "neutral": {
+            "e1": "p2_neutral_e1.webp",
+            "e2": "p2_neutral_e2.webp",
+            "m1": "p2_neutral_m1.webp",
+            "m2": "p2_neutral_m2.webp",
+            "m3": "p2_neutral_m3.webp"
+          },
+          "smile": {
+            "f": "p2_smile_f.webp",
+            "e1": "p2_smile_e1.webp",
+            "e2": "p2_smile_e2.webp",
+            "m1": "p2_smile_m1.webp",
+            "m2": "p2_smile_m2.webp",
+            "m3": "p2_smile_m3.webp"
+          },
+          "laugh": {
+            "f": "p2_laugh_f.webp",
+            "e1": "p2_laugh_e1.webp",
+            "e2": "p2_laugh_e2.webp",
+            "m1": "p2_laugh_m1.webp",
+            "m2": "p2_laugh_m2.webp",
+            "m3": "p2_laugh_m3.webp"
+          },
+          "angry": {
+            "f": "p2_angry_f.webp",
+            "e1": "p2_angry_e1.webp",
+            "e2": "p2_angry_e2.webp",
+            "m1": "p2_angry_m1.webp",
+            "m2": "p2_angry_m2.webp",
+            "m3": "p2_angry_m3.webp"
+          },
+          "surprised": {
+            "f": "p2_surprised_f.webp",
+            "e1": "p2_surprised_e1.webp",
+            "e2": "p2_surprised_e2.webp",
+            "m1": "p2_surprised_m1.webp",
+            "m2": "p2_surprised_m2.webp",
+            "m3": "p2_surprised_m3.webp"
+          },
+          "sad": {
+            "f": "p2_sad_f.webp",
+            "e1": "p2_sad_e1.webp",
+            "e2": "p2_sad_e2.webp",
+            "m1": "p2_sad_m1.webp",
+            "m2": "p2_sad_m2.webp",
+            "m3": "p2_sad_m3.webp"
+          },
+          "think": {
+            "f": "p2_think_f.webp",
+            "e1": "p2_think_e1.webp",
+            "e2": "p2_think_e2.webp",
+            "m1": "p2_think_m1.webp",
+            "m2": "p2_think_m2.webp",
+            "m3": "p2_think_m3.webp"
+          },
+          "smug": {
+            "f": "p2_smug_f.webp",
+            "e1": "p2_smug_e1.webp",
+            "e2": "p2_smug_e2.webp",
+            "m1": "p2_smug_m1.webp",
+            "m2": "p2_smug_m2.webp",
+            "m3": "p2_smug_m3.webp"
+          },
+          "wry": {
+            "f": "p2_wry_f.webp",
+            "e1": "p2_wry_e1.webp",
+            "e2": "p2_wry_e2.webp",
+            "m1": "p2_wry_m1.webp",
+            "m2": "p2_wry_m2.webp",
+            "m3": "p2_wry_m3.webp"
+          },
+          "glitch": {
+            "f": "p2_glitch_f.webp",
+            "e1": "p2_glitch_e1.webp",
+            "e2": "p2_glitch_e2.webp",
+            "m1": "p2_glitch_m1.webp",
+            "m2": "p2_glitch_m2.webp",
+            "m3": "p2_glitch_m3.webp"
+          },
+          "focus": {
+            "f": "p2_focus_f.webp",
+            "e1": "p2_focus_e1.webp",
+            "e2": "p2_focus_e2.webp",
+            "m1": "p2_focus_m1.webp",
+            "m2": "p2_focus_m2.webp",
+            "m3": "p2_focus_m3.webp"
+          },
+          "tender": {
+            "f": "p2_tender_f.webp",
+            "e1": "p2_tender_e1.webp",
+            "e2": "p2_tender_e2.webp",
+            "m1": "p2_tender_m1.webp",
+            "m2": "p2_tender_m2.webp",
+            "m3": "p2_tender_m3.webp"
+          },
+          "hesitate": {
+            "f": "p2_hesitate_f.webp",
+            "e1": "p2_hesitate_e1.webp",
+            "e2": "p2_hesitate_e2.webp",
+            "m1": "p2_hesitate_m1.webp",
+            "m2": "p2_hesitate_m2.webp",
+            "m3": "p2_hesitate_m3.webp"
+          },
+          "puzzled": {
+            "f": "p2_puzzled_f.webp",
+            "e1": "p2_puzzled_e1.webp",
+            "e2": "p2_puzzled_e2.webp",
+            "m1": "p2_puzzled_m1.webp",
+            "m2": "p2_puzzled_m2.webp",
+            "m3": "p2_puzzled_m3.webp"
+          }
+        },
+        "w": 832,
+        "h": 1216
+      }
+    ]
+  }
+}
