@@ -775,10 +775,7 @@ BUILTIN_STYLES.push({
     tintHiK: 0.22,
     vignette: 0.12,
     chroma: 0.08,
-    comic: 0.9,
     slash: 1,
-    comicInk: '#16132a',
-    comicPaper: '#f6efe2',
   },
   // 依地圖（render-setup.js 的 styleThemed）：地圖原本的氣氛（熔岩、方舟的夕陽、軌道的高空、模擬訓練場＝絕區零的 VR 訓練室）
   byTheme: {
