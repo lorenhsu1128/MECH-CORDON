@@ -13,6 +13,7 @@ import { escHtml } from '../core/html.js';
 import { CINES } from '../data/cine/index.js';
 import { ACES, FOES } from '../data/foes.js';
 import { AC_ROSTER, ENEMY_TYPES } from '../data/enemies.js';
+import { lineExpr } from '../data/line-expr.js';
 import { SPEAKERS } from '../data/story.js';
 import { MechEntity } from '../entities/mech-entity.js';
 import { buildBossModel } from '../render/boss-models.js';
@@ -1176,6 +1177,9 @@ Object.assign(Game.prototype, {
     if (who) {
       c.commWho = who;
       c.commT = c.t;
+      // 通訊分割的立繪（game/portrait-ui.js）：先開始載入，表情依台詞
+      if (this.ptPlayer) this.ptPlayer(who, 'p2');
+      c.commEx = lineExpr(text);
     }
     if (who && who !== 'station') SFX.radio();
     c.subUntil = c.t + dur;
@@ -1554,11 +1558,36 @@ Object.assign(Game.prototype, {
     x.stroke();
     x.fillStyle = 'rgba(10,16,24,0.9)';
     x.fillRect(cx - R + 2 * s, cy - R + 2 * s, R * 2 - 4 * s, R * 2 - 4 * s);
-    x.fillStyle = S.color;
-    x.font = `700 ${44 * s}px sans-serif`;
-    x.textAlign = 'center';
-    x.textBaseline = 'middle';
-    x.fillText(S.mark, cx, cy + 2 * s);
+    const talking = c.subUntil && c.t < c.subUntil;
+    // 有立繪的角色：胸像（通訊姿勢、對口型），沒有的照舊畫字母
+    const P = this.ptPlayer ? this.ptPlayer(who, 'p2') : null;
+    if (P) {
+      const ex = c.commEx || {};
+      if (c.ptEx !== ex) {
+        c.ptEx = ex;
+        P.setExpr(ex.e || 'neutral');
+        if (ex.a) P.act(ex.a);
+      }
+      const lv = this.ptTalk(who, talking);
+      P.talkSim(lv === -1);
+      P.update(clamp(c.t - (c.ptT ?? c.t), 0, 0.1), lv > 0 ? lv : 0);
+      c.ptT = c.t;
+      const sz = Math.round(R * 2 - 4 * s);
+      const cv = (this.ptCineCv = this.ptCineCv || document.createElement('canvas'));
+      if (cv.width !== sz) cv.width = cv.height = sz;
+      const g2 = cv.getContext('2d');
+      g2.clearRect(0, 0, sz, sz);
+      P.draw(g2, sz, sz, { fit: 'bust' });
+      x.drawImage(cv, cx - R + 2 * s, cy - R + 2 * s);
+      x.fillStyle = 'rgba(0,0,0,0.18)';
+      for (let y = cy - R + 2 * s; y < cy + R - 2 * s; y += 3) x.fillRect(cx - R + 2 * s, y, sz, 1);
+    } else {
+      x.fillStyle = S.color;
+      x.font = `700 ${44 * s}px sans-serif`;
+      x.textAlign = 'center';
+      x.textBaseline = 'middle';
+      x.fillText(S.mark, cx, cy + 2 * s);
+    }
     x.font = `${14 * s}px "Share Tech Mono", "Noto Sans TC", sans-serif`;
     x.textAlign = 'left';
     x.textBaseline = 'alphabetic';
@@ -1567,7 +1596,6 @@ Object.assign(Game.prototype, {
     x.font = `${11 * s}px "Share Tech Mono", monospace`;
     x.fillText((S.note || '') + '　// SECURE CHANNEL', cx - R, cy + R + 40 * s);
     // 聲紋
-    const talking = c.subUntil && c.t < c.subUntil;
     const n = 28;
     for (let i = 0; i < n; i++) {
       const a = talking ? 0.2 + Math.abs(Math.sin(c.t * 13 + i * 1.7) * Math.sin(c.t * 5.3 + i * 0.6)) : 0.05;

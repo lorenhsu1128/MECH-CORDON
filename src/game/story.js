@@ -4,6 +4,7 @@ import { SFX } from '../audio/audio.js';
 import { escHtml } from '../core/html.js';
 import { SORTIES } from '../data/campaign.js';
 import { BRIEFINGS, CHAPTER_NAMES, CHAPTER_TEXT, PROLOGUE, pickLines } from '../data/story.js';
+import { lineExpr } from '../data/line-expr.js';
 import { storyQuote } from '../data/voice.js';
 import { Game } from './game.js';
 
@@ -97,6 +98,7 @@ Object.assign(Game.prototype, {
   },
   // 文字畫面（全畫面逐字）
   storyText(k, it) {
+    this.stKey = k;
     SFX.ui();
     this.commClear();
     const $ = (id) => document.getElementById(id);
@@ -132,13 +134,29 @@ Object.assign(Game.prototype, {
       const r = storyQuote(l);
       const a = pos;
       pos += l.length;
-      return { sp: r && r.sp, a: 1 + (a / all) * total, b: 1 + (pos / all) * total };
+      return { sp: r && r.sp, q: r && r.q, a: 1 + (a / all) * total, b: 1 + (pos / all) * total };
     });
     const t0 = performance.now();
     const sps = [...new Set(span.map((s) => s.sp).filter(Boolean))];
     for (const sp of sps) {
       if (tok !== this.stPortTok) return;
-      const first = span.find((s) => s.sp === sp).a;
+      const mine = span.map((s, i) => [s, i]).filter(([s]) => s.sp === sp);
+      const first = mine[0][0].a;
+      // 表情跟著正在說的那一句（data/line-expr.js）：語音正在唸的行（.speaking）＞逐字到的行＞最後一句
+      let cur = -1;
+      const pickLine = (t) => {
+        const ps = document.querySelectorAll('#stLines p');
+        const hit =
+          mine.find(([, i]) => ps[i] && ps[i].classList.contains('speaking')) ||
+          (this.storyTypeEnd > performance.now()
+            ? mine.find(([s]) => t >= s.a && t < s.b)
+            : mine[mine.length - 1]);
+        if (!hit || hit[1] === cur || !v) return;
+        cur = hit[1];
+        const x = lineExpr(hit[0].q);
+        v.P.setExpr(x.e);
+        if (x.a) v.P.act(x.a);
+      };
       const h = Math.round(Math.min(460, window.innerHeight * 0.78));
       let v = null;
       v = await this.ptView(box, sp, {
@@ -146,12 +164,15 @@ Object.assign(Game.prototype, {
         h,
         fit: 'full',
         cls: 'ptStory',
+        expr: lineExpr(mine[0][0].q).e,
+        priv: /^[pio]3/.test(this.stKey || ''),
         talk: () => {
           const t = (performance.now() - t0) / 1000;
           const typing =
             this.storyTypeEnd > performance.now() && span.some((s) => s.sp === sp && t >= s.a && t < s.b);
           const lv = this.ptTalk(sp, typing);
           if (v) {
+            pickLine(t);
             v.wrap.classList.toggle('idle', lv === null);
             // 逐字還沒到這個人的第一句台詞之前不出現
             v.wrap.classList.toggle('pre', this.storyTypeEnd > performance.now() && t < first);

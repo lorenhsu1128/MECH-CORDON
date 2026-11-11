@@ -23,6 +23,8 @@ import {
 import { levelOf, pointsAt, spentPoints } from '../data/pilot.js';
 import { VARIANTS } from '../world/variants.js';
 import { THEMES } from '../world/world.js';
+import { lineExpr } from '../data/line-expr.js';
+import { storyQuote } from '../data/voice.js';
 import { Game } from './game.js';
 
 // 區段類型的圖示（簡報的路線；null＝還沒決定）
@@ -296,6 +298,9 @@ Object.assign(Game.prototype, {
       fit: 'bust',
       replace: true,
       cls: 'ptBrief',
+      // ECHO 的私人委託：私人頻道（不閃格）、溫柔的表情
+      expr: cl === 'echo' ? 'tender' : undefined,
+      priv: cl === 'echo',
       talk: () => (this.briefSid === sid ? this.ptTalk(spk, performance.now() < this.briefTalkEnd) : null),
     });
     this.briefTalkEnd =
@@ -403,6 +408,23 @@ Object.assign(Game.prototype, {
     $('btnEpNext').textContent = `開始第 ${cyc + 1} 周目`;
     $('btnEpHub').textContent = mp ? '返回大廳' : '回到作戰室';
     this.tfxEpilogue(E.title, coda); // 文字演出：標題、逐字、真結局的結尾與片尾
+    // 立繪（game/portrait-ui.js）：ECHO 站在左邊，表情照結局裡她的第一句；真結局＝私人頻道（不閃格）
+    const pb = $('epPort');
+    pb.innerHTML = '';
+    pb.classList.remove('on');
+    const q = (coda ? E.full : [])
+      .concat(E.lines)
+      .map(storyQuote)
+      .find((r) => r && r.sp === 'echo');
+    const h = Math.round(Math.min(460, window.innerHeight * 0.78));
+    this.ptView(pb, 'echo', {
+      w: Math.round(h * 0.68),
+      h,
+      fit: 'full',
+      cls: 'ptStory',
+      expr: q ? lineExpr(q.q).e : 'sad',
+      priv: key === 'beyond',
+    }).then((v) => v && pb.classList.add('on'));
   },
   // 結局畫面的「回到機庫」：多人時回大廳
   epilogueBack() {
@@ -448,7 +470,20 @@ Object.assign(Game.prototype, {
         ? `<div class="echoMem"><b>片段 ${k}「${escHtml(M.title)}」</b>${M.lines.map((l) => `<p>${escHtml(l)}</p>`).join('')}</div>`
         : `<div class="echoMem locked"><b>片段 ${k}　？？？</b><p class="dim">完成 ECHO 的委託「${escHtml(sid ? SORTIES[sid].name : '')}」回收（第 3 周目）</p></div>`;
     }
-    document.getElementById('hubEchoList').innerHTML = h;
+    document.getElementById('hubEchoList').innerHTML =
+      '<div class="echoHead"><span class="cBadge"></span></div>' + h;
+    // 立繪：私人頻道的 ECHO（記憶片段全部回收時微笑）
+    const hd = document.querySelector('#hubEchoList .echoHead');
+    hd.appendChild(document.querySelector('#hubEchoList .echoNote'));
+    this.ptView(hd.querySelector('.cBadge'), 'echo', {
+      w: 72,
+      h: 84,
+      fit: 'bust',
+      replace: true,
+      cls: 'ptBrief',
+      expr: this.campMemN() >= MEM_N ? 'smile' : 'tender',
+      priv: true,
+    });
   },
   // 通訊紀錄：最近的在上面
   hubLog(open) {

@@ -14874,6 +14874,94 @@ async function testPortraits(browser, base) {
     face.face === 1 && face.badge === 1,
     `通訊紀錄：ECHO 換成小頭像、其他照舊（${JSON.stringify(face)}）`,
   );
+  // 台詞的表情（data/line-expr.js）：逐句指定、通訊事件的預設、即時插播
+  const ex = await page.evaluate(async () => {
+    const g = window.__game;
+    const exprOf = async (fn) => {
+      g.commClear();
+      fn();
+      const t0 = performance.now();
+      let v;
+      while (!(v = g.ptViews.find((v) => v.wrap.closest('#comm'))) && performance.now() - t0 < 5000)
+        await new Promise((r) => setTimeout(r, 50));
+      return v && v.P.expr;
+    };
+    const out = {};
+    out.glitch = await exprOf(() => g.commSay('echo', '抱歉，干擾。繼續。'));
+    out.live = await exprOf(() => g.commSay('echo', '敵方增援 3 機從 2 點鐘方向接近，距離 120 m。'));
+    out.ev = await exprOf(() => {
+      g.commQ = [['echo', '這句不在對照表裡', '', g.ptLineExpr('這句不在對照表裡', 'choice')]];
+      g.commNext();
+    });
+    g.commClear();
+    return out;
+  });
+  check(
+    ex.glitch === 'glitch' && ex.live === 'focus' && ex.ev === 'hesitate',
+    `表情：逐句指定、即時插播、事件的預設（${JSON.stringify(ex)}）`,
+  );
+  // 字幕條（系統提示）的小頭像
+  await page.evaluate(() => window.__game.subBar('導彈接近，注意閃避！', 'echo', 4, 'surprised'));
+  check(await until(() => document.querySelector('#subBar .sbFace')), '字幕條：ECHO 的小頭像');
+  // 第 2 周目：閃格會變成全像線框；第 3 周目的私人頻道不閃
+  const cyc = await page.evaluate(async () => {
+    const g = window.__game;
+    g.save.story = g.save.story || {};
+    const run = async (cycle, priv) => {
+      g.save.story.cycle = cycle;
+      g.commClear();
+      g.commSay('echo', '收到。我在這裡，照你的節奏來。前方三百公尺有兩台步行機，左右各一台，小心。');
+      await new Promise((r) => setTimeout(r, 300));
+      const v = g.ptViews.find((v) => v.wrap.closest('#comm'));
+      v.priv = priv;
+      // 每 40 ms 把下一次閃格的倒數歸零（閃格的間隔是亂數），數有幾次真的閃了、幾次變成線框
+      let wire = 0,
+        gl = 0;
+      for (let i = 0; i < 80; i++) {
+        v.gl = Math.min(v.gl, -0.001);
+        await new Promise((r) => setTimeout(r, 40));
+        if (v.wire > 0) wire++;
+        if (v.gl > 0) gl++;
+      }
+      return { wire, gl };
+    };
+    const out = { c2: await run(2, false), c3: await run(3, true) };
+    g.save.story.cycle = 1;
+    g.commClear();
+    return out;
+  });
+  check(cyc.c2.wire > 0, `第 2 周目：閃格會變成全像線框（${JSON.stringify(cyc.c2)}）`);
+  check(cyc.c3.wire === 0 && cyc.c3.gl === 0, `第 3 周目的私人頻道：不閃格（${JSON.stringify(cyc.c3)}）`);
+  // 結局畫面：ECHO 站在左邊
+  await page.evaluate(() => window.__game.openEpilogue('open'));
+  check(await until(() => document.querySelector('#epPort.on .ptView canvas')), '結局畫面：ECHO 的立繪');
+  await page.screenshot({ path: path.join(SHOT_DIR, 'portrait-epilogue.png') });
+  // 過場動畫的通訊分割：字母換成胸像
+  const cine = await page.evaluate(async () => {
+    const g = window.__game;
+    g.ptPlayer('echo', 'p2');
+    const t0 = performance.now();
+    while (!g.ptPlayer('echo', 'p2') && performance.now() - t0 < 5000)
+      await new Promise((r) => setTimeout(r, 50));
+    const c0 = g.cine;
+    g.cine = { t: 1, commWho: 'echo', commT: 0, subUntil: 4, commEx: { e: 'smile', a: 'nod' } };
+    const cv = document.createElement('canvas');
+    cv.width = 1280;
+    cv.height = 720;
+    const x = cv.getContext('2d');
+    g.cineCommOv(x, 1280, 720, 1);
+    g.cine = c0;
+    // 徽章框裡的顏色種類（字母只有兩三種顏色）
+    const d = x.getImageData(1280 * 0.11 - 40, 720 * 0.42 - 40, 80, 80).data;
+    const cols = new Set();
+    for (let i = 0; i < d.length; i += 4)
+      cols.add((d[i] >> 4) * 256 + (d[i + 1] >> 4) * 16 + (d[i + 2] >> 4));
+    return { cols: cols.size, expr: g.ptPlayer('echo', 'p2').expr };
+  });
+  check(
+    cine.cols > 40 && cine.expr === 'smile',
+    `過場的通訊分割：ECHO 的胸像與表情（${JSON.stringify(cine)}）`,
+  );
   await ctx.close();
 }
 

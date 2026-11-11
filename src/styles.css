@@ -7699,12 +7699,17 @@ em.nw,
 #storyScr {
   gap: 24px;
 }
-#stPort {
+#epilogue {
+  gap: 24px;
+}
+#stPort,
+#epPort {
   display: none;
   flex: none;
   align-self: center;
 }
-#stPort.on {
+#stPort.on,
+#epPort.on {
   display: block;
 }
 .ptStory {
@@ -7720,4 +7725,19 @@ em.nw,
 .ptStory.idle {
   opacity: 0.6;
   filter: drop-shadow(0 0 8px rgba(127, 200, 255, 0.08)) saturate(0.7);
+}
+/* 字幕條的小頭像（game/voice.js 的 subBar） */
+.sbFace {
+  width: calc(22px * var(--subK));
+  height: calc(22px * var(--subK));
+  vertical-align: middle;
+  margin: -3px 6px 0 -6px;
+  border-radius: 3px;
+  border: 1px solid #2a4458;
+}
+/* 作戰室「ECHO 的紀錄」的開頭：胸像＋條件說明 */
+.echoHead {
+  display: flex;
+  gap: 12px;
+  align-items: center;
 }

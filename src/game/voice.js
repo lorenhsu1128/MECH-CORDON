@@ -8,6 +8,7 @@
 //  字幕跟著語音：語音開始播才顯示、顯示到唸完（通訊框、過場字幕、系統提示與敵兵喊話的字幕條 #subBar）。
 //  音色：俯視與追尾＝輕微的無線電（帶通、一點點飽和），第一人稱＝駕駛艙內（乾淨）。多人各端依自己的設定播。
 // ============================================================
+import { lineExpr } from '../data/line-expr.js';
 import { Game } from './game.js';
 import { SFX } from '../audio/audio.js';
 import {
@@ -76,14 +77,15 @@ Object.assign(Game.prototype, {
     const z = this.ctrl && this.ctrl.subSize;
     document.body.dataset.sub = z === 's' || z === 'l' ? z : 'm';
   },
-  // 畫面下方中央的字幕條（系統提示、敵兵喊話）：最多兩行，各自顯示到唸完；who＝echo／grunt
-  subBar(text, who, dur) {
+  // 畫面下方中央的字幕條（系統提示、敵兵喊話）：最多兩行，各自顯示到唸完；who＝echo／grunt；
+  // ex＝表情（有立繪的角色在名字前面放小頭像，game/portrait-ui.js 的 ptFaceUrl）
+  subBar(text, who, dur, ex) {
     if (this.subLang() === 'off' || !text) return;
     const el = document.getElementById('subBar');
     if (!el) return;
     const now = performance.now();
     const rows = (this.subRows = (this.subRows || []).filter((r) => r.until > now && r.text !== text));
-    rows.push({ text, who, until: now + (dur + 0.4) * 1000 });
+    rows.push({ text, who, ex, until: now + (dur + 0.4) * 1000 });
     if (rows.length > 2) rows.shift();
     const draw = () => {
       const t = performance.now();
@@ -92,7 +94,8 @@ Object.assign(Game.prototype, {
         .map((r) => {
           const S = r.who === 'grunt' ? { name: '敵兵', color: '#ff6b6b' } : SPEAKERS[r.who] || SPEAKERS.echo;
           const nm = r.who === 'echo' ? 'ECHO' : this.subName(r.who, S.name);
-          return `<p><b style="color:${S.color}">${escHtml(nm)}</b>${escHtml(r.text)}</p>`;
+          const face = r.who !== 'grunt' && this.ptFaceUrl ? this.ptFaceUrl(r.who, r.ex, 28) : null;
+          return `<p>${face ? `<img class="sbFace" src="${face}" alt="">` : ''}<b style="color:${S.color}">${escHtml(nm)}</b>${escHtml(r.text)}</p>`;
         })
         .join('');
       el.classList.toggle('on', this.subRows.length > 0);
@@ -100,6 +103,7 @@ Object.assign(Game.prototype, {
       if (this.subRows.length)
         this.subBarTo = setTimeout(draw, Math.max(50, Math.min(...this.subRows.map((r) => r.until)) - t));
     };
+    this.ptFaceReady = () => this.subRows && this.subRows.length && draw(); // 小頭像畫好了：重畫一次
     draw();
   },
   subBarClear() {
@@ -288,7 +292,9 @@ Object.assign(Game.prototype, {
     this.voiceCd[id] = now;
     const { key, t } = this.cuePick(id);
     this.cueSay(id, key, C.p).then(
-      ([d, k]) => d && this.subBar(this.subText(k === key ? t : C.t[0], 'echo', k), 'echo', d),
+      ([d, k]) =>
+        d &&
+        this.subBar(this.subText(k === key ? t : C.t[0], 'echo', k), 'echo', d, lineExpr('', { cue: id }).e),
     );
   },
   // 依序播幾句（增援預告：方向＋敵對 AC＋最後一波）

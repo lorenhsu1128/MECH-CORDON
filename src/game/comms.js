@@ -4,6 +4,7 @@ import { revealDom, revealFinish } from '../render/textfx.js';
 import { SFX } from '../audio/audio.js';
 import { COMMS, SPEAKERS, speakerBadge } from '../data/story.js';
 import { escHtml } from '../core/html.js';
+import { lineExpr } from '../data/line-expr.js';
 import { Game } from './game.js';
 
 const COND = [
@@ -73,7 +74,10 @@ Object.assign(Game.prototype, {
     if (st.log.length > 200) st.log = st.log.slice(-200);
     this.writeSave();
     if (show) {
-      this.commQ = (this.commQ || []).concat(e.lines);
+      // 第 4 個元素＝表情與動作（data/line-expr.js）
+      this.commQ = (this.commQ || []).concat(
+        e.lines.map(([sp, t]) => [sp, t, '', lineExpr(t, { ev: event })]),
+      );
       if (!this.commBusy) this.commNext();
     }
     return e;
@@ -105,7 +109,7 @@ Object.assign(Game.prototype, {
     el.classList.toggle('rival', fx && rival);
     el.style.borderLeftColor = fx && S.faction ? S.color : '';
     el.classList.add('on');
-    // 立繪（game/portrait-ui.js）：徽章換成通訊姿勢的胸像，對口型；ln[3]＝表情（第 3 期補每句的表情）
+    // 立繪（game/portrait-ui.js）：徽章換成通訊姿勢的胸像，對口型；ln[3]＝表情與動作（data/line-expr.js）
     const badge = el.querySelector('.cBadge');
     const sm = this.state !== 'play' || matchMedia('(max-height: 540px)').matches;
     this.ptView(badge, sp, {
@@ -113,7 +117,9 @@ Object.assign(Game.prototype, {
       h: sm ? 60 : 88,
       fit: 'bust',
       pose: 'p2',
-      expr: ln[3],
+      expr: ln[3] && ln[3].e,
+      act: ln[3] && ln[3].a,
+      priv: this.ptPriv(),
       replace: true,
       cls: 'ptComm',
       talk: () => (this.commCur === ln ? this.ptTalk(sp, this.commTalkEnd > performance.now()) : null),
@@ -162,7 +168,7 @@ Object.assign(Game.prototype, {
   },
   // 即時的一句（增援預告等）：插到最前面立刻顯示，不寫進通訊紀錄
   commSay(sp, text, name) {
-    this.commQ = [[sp, text, name || '']].concat(this.commQ || []);
+    this.commQ = [[sp, text, name || '', lineExpr(text, { ev: 'live' })]].concat(this.commQ || []);
     this.commNext();
   },
   // 位置：任務中＝右下角（觸控時下方中央，styles.css），選單畫面與暫停＝右上角
