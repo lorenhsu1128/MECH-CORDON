@@ -10,7 +10,7 @@
 - **ECHO 是重點角色**，外觀依周目改變：第 1 周目完美得不真實（偶爾閃一格、露出軌道站的介面）→ 第 2 周目閃爍變多、局部線框 → 第 3 周目私人頻道是真實的樣子。表情最多、之後加分層動畫。
 - **宿敵和主要角色一樣完整**。
 - **每個角色開始量產之前都要和使用者確認外觀**：外觀設定卡 → 候選 → 角色設定圖 → 使用者確認 → 量產表情與姿勢。
-- 參考圖是別人的作品，不進 git（放在專案外的 `mech-cordon-chargen/refs/`），只取方向、不照原圖複製；簽名、浮水印、文字一律拿掉。對應：②星空藍＝ECHO、①眼鏡長髮＝WHITEOUT、③駕駛服＝SIROCCO、④粉髮熊玩偶＝WREN、⑤警示黃＝派克。
+- 參考圖在 `tools/charagen-refs/`（`<角色 id>_<編號>.jpg`，取的方向見那裡的 README.md）。它們是別人的作品：2026-11-11 使用者決定放進版本庫（版本庫是公開的，使用者知情）；只取方向、不照原圖複製，簽名、浮水印、文字一律拿掉。對應：星空藍＝ECHO（echo_1）、眼鏡長髮＝WHITEOUT、駕駛服＝SIROCCO、粉髮熊玩偶＝WREN、警示黃＝派克（veerwell_1）。
 
 ## 二、角色
 
@@ -116,9 +116,9 @@
 2. `npm run comfy:setup`：安裝 ComfyUI、Python 環境與模型（約 30 GB，要 NVIDIA 顯示卡；中斷重跑會續傳）。裝完 `npm run comfy:setup -- --check` 全部是「完成」（`zzz_noob` 是選用的，「未下載」沒關係）。顯示記憶體小於 12 GB 時 Qwen-Image-Edit 會更慢（模型一部分放在記憶體），可以在 manifest 換成比較小的量化版（Q3_K_M 約 9.9 GB）。
 3. **跑一次完整的 `npm test`，跑的時候不要開 ComfyUI**（原本那台 32 GB 記憶體，兩個一起跑就不夠）。有失敗先看是不是那 4 項、重跑確認。
 4. 產圖時：`npm run comfy`（ComfyUI），另一個終端機 `npm start`（伺服器；從專案執行＝開發模式，定稿直接寫進 `src/assets/characters/`）。角色產生器在伺服器網址的 `/charagen/`（標題畫面的「角色產生器」），命令列 `scripts/chargen.js char …`（`--server` 預設讀 `mech-cordon-server.json` 的 port）。第一次發佈時去背的 `BiRefNet_toonout` 由 ComfyUI-RMBG 自動從 Hugging Face 下載。
-5. 參考圖（不在 git 裡，原本那台的 `C:\Users\LOREN\Documents\_projects\mech-cordon-chargen\refs\_inbox\`，5 張）由使用者複製過來；做某個角色時在角色產生器「外觀」分頁上傳（存進 `server-models/charwork/<id>/`，不進 git）。對應見第一節。
+5. 參考圖在 `tools/charagen-refs/`（pull 就有）；做某個角色時在角色產生器「外觀」分頁上傳，或用 API 寫進候選資料夾（`PUT /api/chars/<id>/work/ref_1.jpg`，再把檔名加進 card 的 `refs`）。
 
-**下一步＝第 2 期 ECHO**：先寫外觀設定卡給使用者確認（參考圖②星空藍：黑短髮挑染藍、藍眼、星空印花、行星掛飾、寬大外套；改成 ECHO 自己的設計，代表色淡藍 #7fc8ff；第 1 周目的「完美得不真實」外觀），使用者確認後才產生候選 → 角色設定圖 → 再確認 → 量產 → 接上通訊框、簡報、全畫面劇情。
+**下一步＝第 2 期 ECHO**：先寫外觀設定卡給使用者確認（參考圖 `tools/charagen-refs/echo_1.jpg`：黑短髮挑染藍、藍眼、星空印花、行星掛飾、寬大外套；改成 ECHO 自己的設計，代表色淡藍 #7fc8ff；第 1 周目的「完美得不真實」外觀），使用者確認後才產生候選 → 角色設定圖 → 再確認 → 量產 → 接上通訊框、簡報、全畫面劇情。
 
 **注意**：
 - 每個角色量產前都要和使用者確認外觀（第一節）。
