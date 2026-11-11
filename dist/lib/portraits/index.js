@@ -1,0 +1,1 @@
+window.MECH_CORDON_PORTRAIT_IDS=[];

@@ -17,10 +17,11 @@ const env = (k) => process.env['MECH_CORDON_' + k] || process.env['RUBICON_' + k
 // 遊戲頁：打包成 exe 時讀同資料夾的 mech-cordon.html；開發時讀 npm run build 的產物
 const WEB_DIR = process.pkg ? BASE : path.join(__dirname, 'dist');
 const LIB_DIR = path.join(WEB_DIR, 'lib'); // 程式庫（同資料夾的 lib/）
-// 子專案的靜態網站（同資料夾的 apng/、paint/，在 /apng/、/paint/ 提供）
+// 子專案的靜態網站（同資料夾的 apng/、paint/、charagen/，在 /apng/、/paint/、/charagen/ 提供）
 const TOOL_DIRS = {
   apng: { dir: path.join(WEB_DIR, 'apng'), name: 'apng' }, // 文字動畫 APNG 產生器
   paint: { dir: path.join(WEB_DIR, 'paint'), name: 'paint' }, // 貼圖繪製（Mech Cordon Paint）
+  charagen: { dir: path.join(WEB_DIR, 'charagen'), name: 'charagen' }, // 角色產生器（docs/portrait-design.md）
 };
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -174,6 +175,15 @@ function readBody(req, limit) {
     req.on('error', () => res(null));
   });
 }
+// 角色產生器：ComfyUI 轉送與角色資料（server-chargen.js）
+const CHARGEN = require('./server-chargen.js')({
+  base: BASE,
+  modelsDir: MODELS_DIR,
+  env,
+  readBody,
+  writeAtomic,
+  log: (s) => log(s),
+});
 // 機甲三倍高改版：伺服器預設組裡的機甲區塊與武器（MECH_CATS）是舊尺度（機甲 3.24 m）做的，啟動時換成新尺度（9.72 m）一次：
 // GLB 的場景根節點乘 MECH_K（只改 JSON 區塊，Draco 壓縮的也可以）、關節設定的位置乘 MECH_K；manifest.mechK 記下做過
 const MECH_K = 3;
@@ -706,6 +716,7 @@ function startGame(port) {
     });
     const handler = (req, resp) => {
       const u = req.url.split('?')[0];
+      if (CHARGEN.handle(req, resp, u)) return;
       if (
         u.startsWith('/api/models/') ||
         u.startsWith('/api/sets/') ||
@@ -752,11 +763,11 @@ function startGame(port) {
           });
           fs.createReadStream(f).pipe(resp);
         }
-      } else if (/^\/(apng|paint)$/.test(u)) {
+      } else if (/^\/(apng|paint|charagen)$/.test(u)) {
         // 相對路徑（./css、./js）要以 /apng/ 為基準
         resp.writeHead(301, { Location: u + '/' });
         resp.end();
-      } else if (/^\/(apng|paint)\//.test(u)) {
+      } else if (/^\/(apng|paint|charagen)\//.test(u)) {
         // 子專案的靜態網站（APNG 產生器是原生 ES Modules）：依副檔名給 Content-Type
         const tool = TOOL_DIRS[u.split('/')[1]];
         let rel = '';
@@ -803,6 +814,7 @@ function startGame(port) {
     });
     const upgrade = (req, sock, head) => {
       const p = req.url.split('?')[0];
+      if (CHARGEN.upgrade(req, sock, head)) return;
       if (p === '/ws-models')
         return wssRev.handleUpgrade(req, sock, head, (ws) => wssRev.emit('connection', ws, req));
       if (p !== '/ws') return sock.destroy();

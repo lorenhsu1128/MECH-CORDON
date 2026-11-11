@@ -66,5 +66,52 @@ class MCAlignPaste:
         return (t(out), t(e))
 
 
-NODE_CLASS_MAPPINGS = {"MCAlignPaste": MCAlignPaste}
-NODE_DISPLAY_NAME_MAPPINGS = {"MCAlignPaste": "MECH CORDON：對齊並貼回"}
+class MCCropSave:
+    """裁一塊存成 WebP（發佈到遊戲的主圖與臉／眼／嘴小圖），回傳 ComfyUI 的輸出檔，用 /view 取回"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        i = {"default": 0, "min": 0, "max": 8192}
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "x": ("INT", i),
+                "y": ("INT", i),
+                "w": ("INT", i),  # 0＝整張
+                "h": ("INT", i),
+                "quality": ("INT", {"default": 88, "min": 1, "max": 100}),
+                "name": ("STRING", {"default": "crop"}),
+            },
+            # 去背的遮罩（1＝保留）：有給時存成有透明的 WebP
+            "optional": {"mask": ("MASK",)},
+        }
+
+    RETURN_TYPES = ()
+    OUTPUT_NODE = True
+    FUNCTION = "run"
+    CATEGORY = "mech_cordon"
+
+    def run(self, image, x, y, w, h, quality, name, mask=None):
+        import os
+        import re
+        from PIL import Image
+        import folder_paths
+
+        a = (np.clip(_np(image), 0, 1) * 255).round().astype(np.uint8)
+        if mask is not None:
+            m = mask[0].cpu().numpy().astype(np.float32)
+            if m.shape != a.shape[:2]:
+                m = cv2.resize(m, (a.shape[1], a.shape[0]), interpolation=cv2.INTER_LINEAR)
+            a = np.dstack([a, (np.clip(m, 0, 1) * 255).round().astype(np.uint8)])
+        if w > 0 and h > 0:
+            a = a[y : y + h, x : x + w]
+        sub = "chargen_pub"
+        d = os.path.join(folder_paths.get_output_directory(), sub)
+        os.makedirs(d, exist_ok=True)
+        fn = re.sub(r"[^a-zA-Z0-9_.-]", "_", name) + ".webp"
+        Image.fromarray(a).save(os.path.join(d, fn), "WEBP", quality=quality, method=6)
+        return {"ui": {"images": [{"filename": fn, "subfolder": sub, "type": "output"}]}}
+
+
+NODE_CLASS_MAPPINGS = {"MCAlignPaste": MCAlignPaste, "MCCropSave": MCCropSave}
+NODE_DISPLAY_NAME_MAPPINGS = {"MCAlignPaste": "MECH CORDON：對齊並貼回", "MCCropSave": "MECH CORDON：裁切存成 WebP"}

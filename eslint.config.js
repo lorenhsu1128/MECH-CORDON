@@ -15,6 +15,15 @@ module.exports = [
     languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.browser } },
   },
   {
+    // 角色產生器（docs/portrait-design.md）：原生 ES modules，瀏覽器與 Node（scripts/chargen.js）共用
+    files: ['mech_cordon_charagen/**/*.js'],
+    languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.browser } },
+  },
+  {
+    files: ['server-chargen.js'],
+    languageOptions: { ecmaVersion: 2022, sourceType: 'commonjs', globals: { ...globals.node } },
+  },
+  {
     // 遊戲原始碼：ES modules，由 esbuild 打包；THREE／Peer 等函式庫從 CDN 以全域變數載入
     files: ['src/**/*.js'],
     languageOptions: {

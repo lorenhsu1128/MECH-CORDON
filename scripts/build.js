@@ -210,6 +210,45 @@ function writeHangar() {
   writePack(FX_DIR, 'fx-assets.js', 'MECH_CORDON_FX', '粒子特效的圖集（src/assets/fx/）');
 }
 
+// 劇情角色的立繪（角色產生器發佈的 src/assets/characters/<id>/card.json＋WebP，docs/portrait-design.md）：
+// 每個角色一個 lib/portraits/<id>.js（window.MECH_CORDON_PORTRAITS[id] = { pub, img: { 檔名: data URL } }），
+// 遊戲第一次要顯示那個角色時才以 <script> 載入（直接開檔也能用）；lib/portraits/index.js 列出有哪些角色
+function writePortraits() {
+  const dir = path.join(SRC, 'assets', 'characters');
+  const out = path.join(LIB, 'portraits');
+  fs.rmSync(out, { recursive: true, force: true });
+  const ids = [];
+  if (fs.existsSync(dir))
+    for (const id of fs.readdirSync(dir)) {
+      let card;
+      try {
+        card = JSON.parse(fs.readFileSync(path.join(dir, id, 'card.json'), 'utf8'));
+      } catch (e) {
+        continue;
+      }
+      if (!card.pub || !card.pub.poses?.length) continue;
+      const img = {};
+      for (const P of card.pub.poses) {
+        const names = [P.img];
+        for (const ex of Object.values(P.ex)) names.push(...Object.values(ex));
+        for (const n of names) {
+          const f = path.join(dir, id, n);
+          if (fs.existsSync(f)) img[n] = 'data:image/webp;base64,' + fs.readFileSync(f).toString('base64');
+        }
+      }
+      fs.mkdirSync(out, { recursive: true });
+      const data = JSON.stringify({ name: card.name, pub: card.pub, img });
+      fs.writeFileSync(
+        path.join(out, id + '.js'),
+        `(window.MECH_CORDON_PORTRAITS=window.MECH_CORDON_PORTRAITS||{})[${JSON.stringify(id)}]=${data};\n`,
+      );
+      ids.push(id);
+    }
+  fs.mkdirSync(out, { recursive: true });
+  fs.writeFileSync(path.join(out, 'index.js'), `window.MECH_CORDON_PORTRAIT_IDS=${JSON.stringify(ids)};\n`);
+  if (ids.length) console.log(`[build] lib/portraits：${ids.join('、')}`);
+}
+
 const PAGES = [
   { name: '遊戲', dir: SRC, out: 'mech-cordon.html' },
   { name: '模型庫', dir: path.join(SRC, 'library'), out: 'model-library.html' },
@@ -401,6 +440,7 @@ async function writeGaze() {
 const SUBPROJECTS = [
   { src: 'mech_cordon_apng_gen', out: 'apng', dirs: ['css', 'js'] },
   { src: 'mech_cordon_paint', out: 'paint', dirs: ['css', 'js', 'lib'] },
+  { src: 'mech_cordon_charagen', out: 'charagen', dirs: ['css', 'js'] }, // 角色產生器（docs/portrait-design.md）
 ];
 function copySubprojects() {
   for (const p of SUBPROJECTS) {
@@ -437,6 +477,7 @@ async function main() {
   writeSounds();
   await writeGaze();
   copySubprojects();
+  writePortraits();
   copyServerDefault();
   copyCert();
   if (!watch) {

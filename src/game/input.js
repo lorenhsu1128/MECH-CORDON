@@ -726,6 +726,10 @@ Object.assign(Game.prototype, {
     const apng = document.getElementById('btnApng');
     if (window.MECH_CORDON_SERVER) apng.style.display = '';
     apng.onclick = () => window.open('/apng/', '_blank');
+    // 角色產生器（docs/portrait-design.md）：原生 ES Modules＋伺服器的 /api/comfy、/api/chars，只有從伺服器開啟時才能用
+    const cg = document.getElementById('btnCharagen');
+    if (window.MECH_CORDON_SERVER) cg.style.display = '';
+    cg.onclick = () => window.open('/charagen/', '_blank');
     // 貼圖繪製（Mech Cordon Paint）：一般 script，直接開檔也能用（同資料夾的 paint/）
     document.getElementById('btnPaint').onclick = () =>
       window.open(window.MECH_CORDON_SERVER ? '/paint/' : 'paint/index.html', '_blank');

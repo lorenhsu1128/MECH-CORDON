@@ -76,4 +76,50 @@
 | 速度 | 主圖約 9 秒；SDXL 局部重畫約 8 秒；Qwen 改圖 30～45 秒（12 GB 放不下，部分放在記憶體） |
 | 大小（WebP q88） | 主圖 76 KB、臉 7 KB、眼 3 KB、嘴 1 KB → 每個姿勢約 240 KB（10 表情 × 2 閉眼 × 3 嘴型），每個角色約 0.5 MB |
 
-**定案的流程**：主圖（NoobAI）→ 表情（Qwen、對齊、貼臉）→ 每個表情的半閉／閉眼（Qwen、只貼眼睛）與三種嘴型（Qwen 或 SDXL、只貼嘴巴）。遊戲裡疊三層：表情底圖＋眼睛小圖＋嘴巴小圖。待改：Qwen 改出來的臉比主圖稍微柔一點，第 1 期試在貼回前以 SDXL 低強度（約 0.3）重描臉部讓線條一致。
+**定案的流程**：主圖（NoobAI）→ 表情（Qwen、對齊、貼臉）→ 每個表情的半閉／閉眼（Qwen、只貼眼睛）與三種嘴型（Qwen 或 SDXL、只貼嘴巴）。遊戲裡疊三層：表情底圖＋眼睛小圖＋嘴巴小圖。第 1 期的調整：表情多一步 SDXL 重描臉部（0.25），嘴型改用 SDXL（見下面）。
+
+### 第 1 期
+
+**角色產生器**（子專案 `mech_cordon_charagen/`，原生 ES modules，建置時複製到 `dist/charagen/`，伺服器在 `/charagen/` 提供；標題畫面的「角色產生器」只在伺服器網址時顯示；網址 `#<角色 id>` 直接開那個角色）：
+- 7 個分頁：外觀（中文的外觀設定卡、給模型的英文標籤、不要出現的、招牌表情、參考圖）→ 主圖（姿勢的標籤、產生候選、點一張設成主圖；換主圖會清掉這個姿勢的表情與影格）→ 標框（拖曳畫臉、眼睛、嘴巴三個框）→ 表情 → 眨眼與嘴型 → 預覽 → 發佈。可以有多個姿勢。工作一次只跑一件、可以停止。
+- 狀態：外觀討論中（draft）→ 外觀已確認（look，才可以量產）→ 完成（done）。
+- 名單（`js/roster.js`）＝遊戲的說話者 id（`SPEAKERS`）；名單以外已經有資料的角色列在「其他」（測試用）。
+
+**資料**（`js/pipeline.js` 檔頭有 card 的完整格式）：
+- `card.json`＋發佈的 WebP 在定稿資料夾：開發模式（從專案執行 server.js、沒設 `MECH_CORDON_MODELS_DIR`）＝`src/assets/characters/<id>/`（進 git），否則 `server-models/characters/<id>/`。
+- 候選、選定的圖與參考圖在 `server-models/charwork/<id>/`（不進 git；參考圖是別人的作品）。換電腦時候選不會跟著走，定稿與 card（含種子）會。
+- 伺服器（`server-chargen.js`，server.js 載入）：`/api/comfy/…`＝轉送到本機的 ComfyUI（`MECH_CORDON_COMFY` 改網址，`/api/comfy/ws` 是 WebSocket），`/api/comfy-status`＝ComfyUI 有沒有在執行（一律 200），`/api/chars`、`/api/chars/<id>`（card）、`/api/chars/<id>/file/<檔名>`（定稿）、`/api/chars/<id>/work/<檔名>`（候選）。
+
+**生產流程**（網頁與命令列共用 `js/pipeline.js`）：
+- 主圖：NoobAI，提示詞＝外觀標籤＋姿勢標籤＋`STYLE`。
+- 表情：Qwen 對齊後貼臉，再以 SDXL **重描臉部**（`pose.refine`，預設 0.25：線條和主圖一致；0.35 以上會擦掉麥克風桿之類細的配件）。
+- 眨眼（e1 半閉、e2 閉眼）：Qwen 對齊後只貼眼睛。
+- 嘴型（m1 微開、m2 張開、m3 圓口）：**改用 SDXL**——嘴巴在整張圖上只有 30 px 左右，Qwen 改出來會糊、像一團顏色；SDXL 把嘴巴附近（嘴框的 4 倍）裁出來放大重畫、只貼回嘴巴，提示詞帶表情的標籤（`EXPRS[].tags`），所以微笑的張嘴還是笑的形狀。
+- 發佈：ComfyUI 裡一次做完——主圖用 BiRefNet 的動漫專用版（`BiRefNet_toonout`，ComfyUI-RMBG 的 `BiRefNetRMBG`，選用參數要全部給）去背成透明的 WebP，臉／眼／嘴裁成小圖（專案節點 `MCCropSave`，可以接遮罩），寫進定稿資料夾，`card.pub` 記下每個姿勢的尺寸、框與每個表情的小圖；定稿資料夾裡這一版沒有的舊檔刪掉。測試角色（1 姿勢、3 表情、9 個影格）共 185 KB。
+
+**立繪播放器**（`js/portrait.js`，角色產生器的預覽與遊戲共用）：`PortraitPack.load(pub, 檔名→網址)`、`new Portrait(pack, 姿勢)`；`setExpr`、`act`（點頭、搖頭、往前靠、往後縮、轉開、跳一下、被打中）、`update(dt, 音量)`（眨眼 2～6 秒一次、偶爾連眨；音量 → 嘴型，每個嘴型至少 0.07 秒）、`talkSim`（沒有語音時模擬說話）、`draw(ctx, 寬, 高, { fit })`：`full` 整張、`bust` 胸像（臉框寬的 1.7 倍、臉的中心在 36% 高）、`face` 臉（1.15 倍、置中；很扁的插入畫面以臉框的高度為準）。
+
+**遊戲**：建置的 `writePortraits` 把 `src/assets/characters/` 有發佈的角色打包成 `dist/lib/portraits/<id>.js`（`window.MECH_CORDON_PORTRAITS[id] = { name, pub, img: { 檔名: data URL } }`，直接開檔也能用）與 `index.js`（有哪些角色）；`src/render/portraits.js` 的 `Portraits.get(id)` 第一次用到時才載入（沒有＝null，照舊顯示字母徽章），播放器直接 import 角色產生器的 `portrait.js`（和文字演出直接用 APNG 產生器一樣）。接上對話是第 3 期。
+
+**命令列**（`scripts/chargen.js char <id> <指令>`：show／look／cand／master／box／var（`--autopick`）／pick／missing／publish；要執行中的 ComfyUI 與 mech-cordon-server，`--server` 預設讀 `mech-cordon-server.json` 的 port）。
+
+**冒煙測試**：伺服器段的 `testCharagen`（`/charagen/`、ComfyUI 沒開時 `/api/comfy` 回 502、角色資料 API 與檔名檢查、標題按鈕、名單、預覽的播放器畫出主圖與表情的臉）；測試伺服器的 `MECH_CORDON_COMFY` 指到沒人聽的 port。
+
+## 七、交接（2026-11-11，換到另一台電腦繼續）
+
+**進度**：第 0、1 期完成。第 1 期的完整 `npm test` 跑到 2092 項通過時，這台電腦記憶體不足被系統停掉（ComfyUI 同時佔著記憶體），當時有 4 項失敗、都在這期沒改到的地方（水波、HEARTH 打斷大招、方舟的甲板升降砲塔與甲板軌道砲兵），還沒重跑確認；伺服器段（含 `testCharagen`）單獨跑 30 項全過。**下一台電腦第一件事：跑一次完整的 `npm test` 確認。**
+
+**還沒有任何正式角色**：測試角色 test_op 只在這台的暫存資料夾，沒有進 git。`src/assets/characters/` 目前是空的。
+
+**下一步＝第 2 期 ECHO**：先寫外觀設定卡給使用者確認（參考圖②星空藍：黑短髮挑染藍、藍眼、星空印花、行星掛飾、寬大外套；改成 ECHO 自己的設計，代表色淡藍 #7fc8ff），確認後才產生候選。
+
+**沒有產圖環境的電腦能做的**：
+- 第 3 期的大部分：每句台詞補表情 `e` 與動作 `a`、把立繪接上各個對話畫面。可以先用假的角色資料開發（像冒煙測試的 `testCharagen` 用純色的 PNG 做一個 card.pub 放進 `src/assets/characters/<id>/`，但**不要提交假資料**）。
+- 外觀設定卡的討論與撰寫（`look.zh`／`look.prompt`）。
+- 第 7 期的軌道站波形、版面檢查。
+
+**要產圖時**有兩種做法：
+1. 那台電腦也裝：`npm run comfy:setup`（要 NVIDIA 顯示卡、約 30 GB），`npm run comfy` 啟動。
+2. 借用有顯示卡的電腦：那台執行 `npm run comfy -- --lan`（ComfyUI 聽區網），這台以環境變數 `MECH_CORDON_COMFY=http://<那台的 IP>:8188` 啟動伺服器（`npm start`），角色產生器與命令列（`--comfy=http://<那台的 IP>:8188`）就用那台的顯示卡，定稿照樣寫進這台的 `src/assets/characters/`。
+
+**不在 git 裡、要另外搬的**：參考圖（這台的 `C:\Users\LOREN\Documents\_projects\mech-cordon-chargen\refs\_inbox\`，5 張，對應見第一節）；候選圖（`server-models/charwork/`，還沒有正式角色的，不用搬）。

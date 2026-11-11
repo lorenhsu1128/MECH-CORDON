@@ -92,6 +92,8 @@ async function startGameServer(models = SERVER_MODELS, seed = path.join(WORK_DIR
       MECH_CORDON_CERT_DIR: path.join(WORK_DIR, 'cert'),
       MECH_CORDON_MODELS_DIR: models,
       MECH_CORDON_SEED_DIR: seed,
+      // 角色產生器的 ComfyUI 轉送：指到沒人聽的 port，測試「ComfyUI 沒有在執行」的回應
+      MECH_CORDON_COMFY: 'http://127.0.0.1:9',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -30459,6 +30461,147 @@ async function testFoesB2(browser, base) {
   await lib.ctx.close();
 }
 
+// 角色產生器（docs/portrait-design.md）：/charagen/、角色資料 API、ComfyUI 沒有在執行時的回應、標題按鈕、預覽的立繪播放器
+// （測試伺服器的 MECH_CORDON_COMFY 指到沒人聽的 port；角色資料在測試的 server-models/characters）
+function tinyPng(w, h, rgba) {
+  const zlib = require('zlib');
+  const crc = (b) => zlib.crc32(b) >>> 0;
+  const chunk = (type, data) => {
+    const t = Buffer.from(type);
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(data.length);
+    const c = Buffer.alloc(4);
+    c.writeUInt32BE(crc(Buffer.concat([t, data])));
+    return Buffer.concat([len, t, data, c]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(w, 0);
+  ihdr.writeUInt32BE(h, 4);
+  ihdr[8] = 8;
+  ihdr[9] = 6; // RGBA
+  const row = Buffer.concat([Buffer.from([0]), Buffer.alloc(w * 4).fill(Buffer.from(rgba))]);
+  const raw = Buffer.concat(Array.from({ length: h }, () => row));
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', ihdr),
+    chunk('IDAT', zlib.deflateSync(raw)),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
+}
+async function testCharagen(game, page) {
+  const u = game.url;
+  const r0 = await fetch(u + 'charagen', { redirect: 'manual' });
+  check(r0.status === 301 && r0.headers.get('location') === '/charagen/', '/charagen 轉到 /charagen/');
+  const js = await fetch(u + 'charagen/js/portrait.js');
+  check(
+    js.ok && /javascript/.test(js.headers.get('content-type') || ''),
+    '/charagen/ 的 ES Module 以 JavaScript 型別提供',
+  );
+  const cs = await fetch(u + 'api/comfy/system_stats');
+  check(
+    cs.status === 502 && /沒有在執行/.test((await cs.json()).error || ''),
+    'ComfyUI 沒有在執行時 /api/comfy 回 502 與說明',
+  );
+  const l0 = await (await fetch(u + 'api/chars')).json();
+  check(l0.dev === false && Array.isArray(l0.chars), '/api/chars：測試伺服器不是開發模式、有角色清單');
+  check((await fetch(u + 'api/chars/..%2fx')).status === 400, '角色 id 不正確時拒絕');
+  check(
+    (await fetch(u + 'api/chars/zz_test/file/..%2f..%2fserver.js', { method: 'PUT', body: 'x' })).status ===
+      400,
+    '角色的檔名不能跳出資料夾',
+  );
+  // 一個測試角色：主圖（紅）＋表情的臉（綠）＋閉眼（藍）＋張嘴（白），以 card.pub 描述
+  const W = 64,
+    H = 96;
+  const put = (name, buf) => fetch(u + 'api/chars/zz_test/file/' + name, { method: 'PUT', body: buf });
+  await put('p1.webp', tinyPng(W, H, [200, 40, 40, 255]));
+  await put('p1_smile_f.webp', tinyPng(20, 20, [40, 200, 40, 255]));
+  await put('p1_neutral_e2.webp', tinyPng(20, 8, [40, 40, 220, 255]));
+  await put('p1_neutral_m2.webp', tinyPng(8, 6, [250, 250, 250, 255]));
+  const boxes = { face: [22, 10, 20, 20], eyes: [22, 14, 20, 8], mouth: [28, 24, 8, 6] };
+  const card = {
+    v: 1,
+    id: 'zz_test',
+    name: '測試角色',
+    status: 'done',
+    look: { zh: '', prompt: '', neg: '' },
+    refs: [],
+    poses: [{ id: 'p1', name: '平常', boxes, ex: {}, cands: [] }],
+    pub: {
+      t: 1,
+      poses: [
+        {
+          id: 'p1',
+          name: '平常',
+          img: 'p1.webp',
+          w: W,
+          h: H,
+          boxes,
+          ex: {
+            neutral: { e2: 'p1_neutral_e2.webp', m2: 'p1_neutral_m2.webp' },
+            smile: { f: 'p1_smile_f.webp' },
+          },
+        },
+      ],
+    },
+  };
+  check(
+    (await fetch(u + 'api/chars/zz_test', { method: 'PUT', body: JSON.stringify(card) })).ok,
+    '角色資料：寫入 card.json',
+  );
+  const l1 = await (await fetch(u + 'api/chars')).json();
+  const files = await (await fetch(u + 'api/chars/zz_test/file')).json();
+  check(
+    l1.chars.some((c) => c.id === 'zz_test' && c.pub) && files.length === 5,
+    `角色資料：清單列出測試角色、定稿資料夾 5 個檔案（${files.length}）`,
+  );
+  check(
+    (await page.$eval('#btnCharagen', (b) => b.style.display)) === '',
+    '從伺服器開啟時標題畫面有「角色產生器」按鈕',
+  );
+  const [cg] = await Promise.all([page.waitForEvent('popup'), page.click('#btnCharagen')]);
+  watch(cg, 'charagen');
+  await cg.waitForSelector('#roster button', { timeout: 15000 }).catch(() => {});
+  const n = await cg.$$eval('#roster button', (b) => b.length);
+  check(n >= 25, `角色產生器列出劇情角色（${n} 個，含名單以外的測試角色）`);
+  check(
+    await cg
+      .waitForFunction(() => document.getElementById('comfySt').classList.contains('bad'), null, {
+        timeout: 8000,
+      })
+      .then(
+        () => true,
+        () => false,
+      ),
+    '角色產生器顯示「ComfyUI 沒有在執行」',
+  );
+  await cg.goto(u + 'charagen/#zz_test');
+  await cg.waitForSelector('#charPane:not(.hidden)', { timeout: 10000 }).catch(() => {});
+  await cg.click('[data-tab=preview]');
+  await cg.waitForSelector('#pvExpr button[data-e=smile]', { timeout: 10000 }).catch(() => {});
+  // 預覽：平常是紅色的主圖；微笑時臉的範圍換成綠色
+  const px = (sel, x, y) =>
+    cg.$eval(
+      sel,
+      (cv, [x, y]) =>
+        Array.from(
+          cv.getContext('2d').getImageData(Math.round(x * cv.width), Math.round(y * cv.height), 1, 1).data,
+        ),
+      [x, y],
+    );
+  await wait(400);
+  const full0 = await px('#pvFull', 0.5, 0.9);
+  check(full0[0] > 150 && full0[1] < 90, `預覽的對話立繪畫出主圖（${full0}）`);
+  await cg.click('#pvExpr button[data-e=smile]');
+  await cg.uncheck('#pvTalk');
+  await wait(400);
+  // 對話立繪是整張：臉框的中心＝(32/64, 20/96)
+  const face = await px('#pvFull', 32 / 64, 20 / 96);
+  check(face[1] > 150 && face[0] < 90, `預覽：微笑時臉換成表情的小圖（${face}）`);
+  await cg.screenshot({ path: path.join(SHOT_DIR, 'charagen.png') });
+  await cg.close();
+}
+
 // 區網伺服器：/health、注入、/models、/apng、/paint、渲染風格的分享（testServerModels 等共用同一個伺服器）
 async function testServerBasics(browser, game) {
   console.log('區網伺服器：啟動 server.js');
@@ -30542,6 +30685,7 @@ async function testServerBasics(browser, game) {
   );
   await wait(1500);
   await apng.screenshot({ path: path.join(SHOT_DIR, 'apng-tool.png') });
+  await testCharagen(game, page);
   // 渲染風格：上傳到伺服器 → 清單有它 → 刪除
   page.on('dialog', (d) => d.accept());
   await page.click('#btnStyleLab');
