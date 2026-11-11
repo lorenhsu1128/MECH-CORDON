@@ -44,6 +44,9 @@ const OV = arg('p', '')
         .map(([k, v]) => [k, /^[-d.]+$/.test(v) ? +v : v]),
     )
   : null;
+const EXTRA = arg('extra', '') ? arg('extra', '').split(',') : [];
+const COMIC = process.argv.includes('--comic');
+const extraShots = [];
 const W = +arg('w', 1280),
   H = +arg('h', 720);
 const EXE = [
@@ -70,12 +73,15 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const errs = [];
   const shots = [];
   for (const map of MAPS) {
+    // 地圖可以帶變體：dunes:night（夜間等）；檔名用 dunes_night
+    const [mapId, vari = 'base'] = map.split(':');
+    const mk = map.replace(':', '_');
     const ctx = await b.newContext({ viewport: { width: W, height: H } });
     const p = await ctx.newPage();
     p.on('pageerror', (e) => errs.push(`${map}: ${e}`));
     p.on('console', (m) => m.type() === 'error' && errs.push(`${map}: ${m.text()}`));
     await p.addInitScript(
-      ({ map }) => {
+      ({ mapId, vari }) => {
         let a = 7;
         Math.random = () => {
           a = (a + 0x6d2b79f5) >>> 0;
@@ -85,11 +91,11 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
           return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
         };
         if (!localStorage.getItem('mech_cordon_map')) {
-          localStorage.setItem('mech_cordon_map', map);
-          localStorage.setItem('mech_cordon_variant', 'base');
+          localStorage.setItem('mech_cordon_map', mapId);
+          localStorage.setItem('mech_cordon_variant', vari);
         }
       },
-      { map },
+      { mapId, vari },
     );
     await p.goto(url);
     await p.waitForFunction(
@@ -105,6 +111,27 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     await p.waitForFunction(() => document.getElementById('garage').offsetParent !== null, null, {
       timeout: 30000,
     });
+    // --extra=garage,hub：機甲庫與作戰室（只在第一張地圖拍；主迴圈照常跑）
+    if (map === MAPS[0]) {
+      for (const sc of EXTRA) {
+        if (sc === 'hub') {
+          await p.evaluate(() => window.__game.openHub());
+          await wait(4000);
+        }
+        for (const st of STYLES) {
+          await p.evaluate((st) => window.__game.styleUse('builtin', st), st);
+          await wait(1500);
+          const f = `${sc}-${st}.png`;
+          await p.screenshot({ path: path.join(OUT, f) });
+          extraShots.push(f);
+          console.log(f);
+        }
+        if (sc === 'hub') {
+          await p.evaluate(() => window.__game.openGarage());
+          await wait(2000);
+        }
+      }
+    }
     await p.evaluate(() => window.__game.styleUse('builtin', 'real'));
     await p.click('#btnSortie');
     await p.waitForFunction(() => document.getElementById('hudWrap').offsetParent !== null, null, {
@@ -240,10 +267,29 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
           { st, ov: st !== STYLES[0] ? OV : null },
         );
         await wait(400);
-        const f = `${map}-${view}-${st}.png`;
+        const f = `${mk}-${view}-${st}.png`;
         await p.screenshot({ path: path.join(OUT, f) });
-        shots.push({ map, view, st, f });
+        shots.push({ map: mk, view, st, f });
         console.log(f);
+        // --comic：漫畫的衝擊畫格（反色的第一拍、網點）。主迴圈停住，直接把開始時間設在過去再畫一格
+        if (COMIC && view === 'chase')
+          for (const [tag, ago] of [
+            ['inv', 0.02],
+            ['dots', 0.1],
+          ]) {
+            await p.evaluate((ago) => {
+              const g = window.__game;
+              g.comicPow = 1;
+              g.comicSeed = 11;
+              g.comicAt = performance.now() / 1000 - ago;
+              window.__pump(1 / 60);
+              g.comicAt = 0;
+            }, ago);
+            const fc = `${mk}-comic-${tag}-${st}.png`;
+            await p.screenshot({ path: path.join(OUT, fc) });
+            extraShots.push(fc);
+            console.log(fc);
+          }
       }
     }
     await ctx.close();
@@ -329,7 +375,10 @@ body{background:#111;color:#ddd;font:13px sans-serif;margin:12px}img{width:100%;
   h += `<h2>統計（中央區域）</h2><div>參考圖：${fmt(refStat)}</div>${STYLES.map((st) => `<div>${st}：${fmt(byStyle[st])}</div>`).join('')}`;
   if (refs.length)
     h += `<h2>參考圖</h2><div class="refs">${refs.map((f) => `<img src="${rel(f)}" title="${f}">`).join('')}</div>`;
-  for (const map of MAPS) {
+  if (extraShots.length)
+    h += `<h2>其他畫面</h2><div class="g">${extraShots.map((x) => `<div>${x}<img src="${x}"></div>`).join('')}</div>`;
+  for (const map0 of MAPS) {
+    const map = map0.replace(':', '_');
     h += `<h2>${map}</h2><div class="g">`;
     for (const view of VIEWS)
       h += `<div>${STYLES.map((st) => `<div>${view} / ${st}　<small>${fmt(statOf[`${map}-${view}-${st}.png`])}</small></div><img src="${map}-${view}-${st}.png">`).join('')}</div>`;

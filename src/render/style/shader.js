@@ -247,7 +247,13 @@ if ( stZ.w > 0.0 && stCat < 0.5 ) {
 }
 // 敵人的配色：亮的部分換成白殼、暗的部分換成深色身體，保留一點原本的色相（不同敵人不同色），高飽和的部分變霓虹色
 if ( stZ.z > 0.0 && stTeam > 0.5 ) {
-	vec3 c = diffuseColor.rgb;
+	// 白殼或身體由材質本身的顏色（材質色×頂點色，不含貼圖）決定，貼圖的明暗細節之後再乘回去：
+	// 直接看每個像素的話，GLB 灰階貼圖的細節會被推成黑白的斑塊
+	vec3 c = diffuse;
+	#if defined( USE_COLOR ) || defined( USE_COLOR_ALPHA )
+	c *= vColor.rgb;
+	#endif
+	float tf = clamp( dot( diffuseColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) ) / max( dot( c, vec3( 0.2126, 0.7152, 0.0722 ) ), 1e-3 ), 0.25, 1.5 );
 	float l = dot( c, vec3( 0.2126, 0.7152, 0.0722 ) );
 	float mx = max( c.r, max( c.g, c.b ) ), mn = min( c.r, min( c.g, c.b ) );
 	float sat = ( mx - mn ) / max( mx, 1e-4 );
@@ -257,7 +263,7 @@ if ( stZ.z > 0.0 && stTeam > 0.5 ) {
 	r *= mix( vec3( 1.0 ), hue, stZp.w * ( 1.0 - 0.6 * t ) );
 	float acc = smoothstep( 0.55, 0.8, sat ) * smoothstep( 0.04, 0.12, l );
 	r = mix( r, hue * hue * 0.9, acc );
-	diffuseColor.rgb = mix( c, r, stZ.z );
+	diffuseColor.rgb = mix( diffuseColor.rgb, r * mix( 1.0, tf, 0.75 ), stZ.z );
 }
 `;
 

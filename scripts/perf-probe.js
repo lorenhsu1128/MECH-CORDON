@@ -12,7 +12,7 @@
 //       --gp＝把 three.js 換成未壓縮版並記錄每次 getProgram 的原因（複製一份 dist 到系統暫存）、
 //       --learn＝帶入上一次記下的著色器變體（render/shader-warm.js 的學習式預熱，test-results/perf-warm.json），
 //       --sync＝著色器預熱照自動化測試的同步方式（預設和玩家的瀏覽器一樣走非同步），
-//       --variant＝主題變體、--full＝畫面設定全開（品質）、
+//       --variant＝主題變體、--style＝內建的渲染風格、--full＝畫面設定全開（品質）、
 //       --owner＝新編譯的著色器在編譯當下記下所屬的物件（走訪場景，會拖慢那一格）、
 //       --sortie＝主線的出擊（--seg＝從第幾段開始）、
 //       --long=25＝列出 CPU 超過幾 ms 的影格、--tag、--compare、--dist＝別的建置資料夾。
@@ -246,6 +246,12 @@ async function sampling(ctx, page) {
     if (!args.sync) await page.addInitScript(() => (window.__warmAsync = true));
     await page.addInitScript((map) => localStorage.setItem('mech_cordon_map', map), MAP);
     // --variant＝主題變體（'base'＝標準）；--full＝畫面設定全開（快速設定的「品質」：水面高、砲火華麗、機甲特效完整、殘影）
+    // --style＝內建的渲染風格（例如 zzz；docs/zzz-style-design.md）
+    if (args.style)
+      await page.addInitScript(
+        (id) => localStorage.setItem('mech_cordon_style', JSON.stringify({ sel: { k: 'builtin', id } })),
+        args.style,
+      );
     if (args.variant)
       await page.addInitScript((v) => localStorage.setItem('mech_cordon_variant', v), args.variant);
     if (args.full)

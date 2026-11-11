@@ -222,9 +222,10 @@ void main() {
 	if ( gC.x > 0.0 ) {
 		float lc = clamp( dot( c, vec3( 0.299, 0.587, 0.114 ) ), 0.0, 1.0 );
 		vec2 hq = mat2( 0.7071, - 0.7071, 0.7071, 0.7071 ) * sp / gC.z;
-		float hr = sqrt( 1.0 - lc ) * 0.66;
-		float hd = 1.0 - smoothstep( hr - 0.08, hr + 0.08, length( fract( hq ) - 0.5 ) );
-		float ink = max( hd, 1.0 - smoothstep( 0.12, 0.2, lc ) );
+		// 紙色為主：只有暗的地方有大的網點、很暗的地方是實心的墨
+		float hr = pow( 1.0 - lc, 1.8 ) * 0.62;
+		float hd = 1.0 - smoothstep( hr - 0.06, hr + 0.06, length( fract( hq ) - 0.5 ) );
+		float ink = max( hd, 1.0 - smoothstep( 0.05, 0.1, lc ) );
 		vec3 cm = mix( gP.rgb, gI.rgb, ink );
 		if ( gC.y > 0.5 ) cm = vec3( 1.0 ) - cm;
 		cm = mix( cm, c, smoothstep( 0.8, 0.97, lc ) * 0.7 );
