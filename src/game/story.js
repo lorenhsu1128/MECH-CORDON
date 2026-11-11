@@ -153,9 +153,7 @@ Object.assign(Game.prototype, {
             : mine[mine.length - 1]);
         if (!hit || hit[1] === cur || !v) return;
         cur = hit[1];
-        const x = lineExpr(hit[0].q);
-        v.P.setExpr(x.e);
-        if (x.a) v.P.act(x.a);
+        this.ptSetExpr(v, lineExpr(hit[0].q));
       };
       const h = Math.round(Math.min(460, window.innerHeight * 0.78));
       let v = null;

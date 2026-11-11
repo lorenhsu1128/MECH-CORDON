@@ -17,13 +17,15 @@ Object.assign(Game.prototype, {
   async ptView(host, sp, o = {}) {
     if (!host || !sp) return null;
     let pk;
+    // ECHO 的私人頻道：第 3 周目「真實的樣子」（echo_true，沒有時照舊用 echo）
+    const id = sp === 'echo' && o.priv && (await Portraits.has('echo_true')) ? 'echo_true' : sp;
     try {
-      pk = await Portraits.get(sp);
+      pk = await Portraits.get(id);
     } catch (e) {
       pk = null;
     }
     if (!pk || !host.isConnected) return null;
-    const P = new Portrait(pk, pk.pose(o.pose) ? o.pose : pk.pose('p1') ? 'p1' : undefined);
+    const P = new Portrait(pk, this.ptPose(id, o.expr, o.pose));
     if (o.expr) P.setExpr(o.expr);
     if (o.act) P.act(o.act);
     const wrap = document.createElement('span');
@@ -39,6 +41,8 @@ Object.assign(Game.prototype, {
     else host.appendChild(wrap);
     const v = {
       sp,
+      id,
+      kind: o.pose,
       P,
       cv,
       ctx: cv.getContext('2d'),
@@ -114,6 +118,20 @@ Object.assign(Game.prototype, {
       v.gl = hi ? 0.8 + Math.random() * 2.2 : 3 + Math.random() * 5;
       v.wire = 0; // 這一次閃格結束
     }
+  },
+  // 依表情挑姿勢：ECHO 專注的句子＝管制台 p4；真實的樣子的悲傷、猶豫、困惑＝坦白 p3；其他＝指定的（通訊框 p2）或 p1。
+  // 角色沒有那個姿勢時播放器退回第一個姿勢
+  ptPose(id, expr, want) {
+    if (id === 'echo' && expr === 'focus') return 'p4';
+    if (id === 'echo_true' && ['sad', 'hesitate', 'puzzled'].includes(expr)) return 'p3';
+    return want || 'p1';
+  },
+  // 換表情（同時依表情換姿勢、做動作）
+  ptSetExpr(v, x) {
+    if (!v || !x) return;
+    v.P.setPose(this.ptPose(v.id, x.e, v.kind));
+    v.P.setExpr(x.e);
+    if (x.a) v.P.act(x.a);
   },
   // 台詞的表情與動作（data/line-expr.js；ev＝通訊事件）
   ptLineExpr(text, ev) {

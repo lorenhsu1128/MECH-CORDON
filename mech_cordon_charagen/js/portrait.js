@@ -1,5 +1,6 @@
 // 立繪的播放器：角色產生器的預覽與遊戲（之後由 esbuild 打包進遊戲）共用，不依賴 DOM 以外的東西
-// 疊三層：表情底圖（主圖＋該表情的臉）→ 眼睛小圖（眨眼）→ 嘴巴小圖（對口型）；動作（呼吸、點頭、搖頭…）是畫的時候的變換
+// 疊三層：表情底圖（主圖＋該表情的臉）→ 眼睛小圖（眨眼）→ 嘴巴小圖（對口型）；動作（呼吸、點頭、搖頭…）是畫的時候的變換。
+// 有分層（pub 的 layers：後髮／身體／頭／前髮）時改用分層動畫（drawLayers）
 //   const pk = await PortraitPack.load(card.pub, (name) => 圖片網址);
 //   const p = new Portrait(pk, 'p1'); p.setExpr('smile'); p.act('nod');
 //   每格：p.update(dt, 音量 0～1)；p.draw(ctx, 畫布的寬, 高, { fit: 'bust' })
@@ -13,6 +14,7 @@ export class PortraitPack {
     for (const P of pub.poses) {
       names.add(P.img);
       for (const ex of Object.values(P.ex)) for (const f of Object.values(ex)) names.add(f);
+      for (const f of Object.values(P.layers || {})) names.add(f);
     }
     const imgs = {};
     await Promise.all(
@@ -31,6 +33,64 @@ export class PortraitPack {
   pose(id) {
     return this.pub.poses.find((p) => p.id === id) || this.pub.poses[0];
   }
+  // 分層動畫的四層（pub 的 layers，四張都載入了才用）：{ 層: { img, box 有像素的範圍 } }，第一次用到時量範圍
+  layers(P) {
+    if (!P.layers) return null;
+    if (P._L !== undefined) return P._L;
+    const L = {};
+    for (const g of ['hairb', 'body', 'head', 'hairf']) {
+      const im = this.imgs[P.layers[g]];
+      if (!im) return (P._L = null);
+      L[g] = { img: P.layers[g], box: alphaBox(im) };
+    }
+    return (P._L = L);
+  }
+  // 臉／眼／嘴的小圖只留「不動的時候看得到臉」的部分（頭那一層 − 前髮），所以前髮晃開時下面是補畫的額頭、不會有兩層頭髮
+  patchIn(P, L, name, box) {
+    const k = P.id + '|' + name;
+    const C = (this.masked = this.masked || {});
+    if (C[k]) return C[k];
+    const p = this.imgs[name];
+    if (!p) return null;
+    const [x, y, w, h] = box;
+    const c = canvas(w, h);
+    const g = c.getContext('2d');
+    g.drawImage(p, 0, 0, w, h);
+    g.globalCompositeOperation = 'destination-in';
+    g.drawImage(this.imgs[L.head.img], x, y, w, h, 0, 0, w, h);
+    g.globalCompositeOperation = 'destination-out';
+    g.drawImage(this.imgs[L.hairf.img], x, y, w, h, 0, 0, w, h);
+    return (C[k] = c);
+  }
+}
+
+function canvas(w, h) {
+  if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(w, h);
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  return c;
+}
+// 圖片裡不透明的範圍 [x, y, w, h]
+function alphaBox(im) {
+  const W = im.naturalWidth || im.width,
+    H = im.naturalHeight || im.height;
+  const g = canvas(W, H).getContext('2d', { willReadFrequently: true });
+  g.drawImage(im, 0, 0);
+  const d = g.getImageData(0, 0, W, H).data;
+  let x0 = W,
+    y0 = H,
+    x1 = -1,
+    y1 = -1;
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++)
+      if (d[(y * W + x) * 4 + 3] > 8) {
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+        if (y < y0) y0 = y;
+        if (y > y1) y1 = y;
+      }
+  return x1 < 0 ? [0, 0, 1, 1] : [x0, y0, x1 - x0 + 1, y1 - y0 + 1];
 }
 
 // 動作：時間長度與每個時間點的變換（dx、dy 以主圖高度為單位，s 縮放，r 旋轉弧度）
@@ -69,6 +129,7 @@ export class Portrait {
     this.lvl = 0;
     this.acts = [];
     this.sim = false; // 沒有語音時模擬說話（預覽用）
+    this.layersOn = true; // 有分層時用分層動畫（關掉＝主圖＋小圖）
     this.simT = 0;
   }
   setPose(id) {
@@ -177,16 +238,74 @@ export class Portrait {
     ctx.rotate(r);
     ctx.scale(s * sc, s * sc);
     ctx.translate(-(src[0] + src[2] / 2), -(src[1] + src[3]));
-    ctx.drawImage(im, 0, 0, W, H);
     const ex = P.ex[this.expr] || {};
-    const put = (name, box) => {
-      const p = name && this.pack.imgs[name];
-      if (p && box) ctx.drawImage(p, box[0], box[1], box[2], box[3]);
-    };
-    put(ex.f, P.boxes.face);
-    put(this.frame('eye'), P.boxes.eyes);
-    put(this.frame('mouth'), P.boxes.mouth);
+    const patches = [
+      [ex.f, P.boxes.face],
+      [this.frame('eye'), P.boxes.eyes],
+      [this.frame('mouth'), P.boxes.mouth],
+    ];
+    const L = this.layersOn && this.pack.layers(P);
+    if (L) this.drawLayers(ctx, P, L, patches);
+    else {
+      ctx.drawImage(im, 0, 0, W, H);
+      for (const [name, box] of patches) {
+        const p = name && this.pack.imgs[name];
+        if (p && box) ctx.drawImage(p, box[0], box[1], box[2], box[3]);
+      }
+    }
     ctx.restore();
     return { src, sc };
+  }
+  // 分層動畫（docs/portrait-design.md 第 6 期）：後髮 → 身體 → 頭（＋表情／眼／嘴的小圖，只貼在不動時看得到臉的地方）→ 前髮。
+  // 頭、頭髮繞脖子微微轉動；頭髮由上往下越來越晃（橫向切成細條、各自位移）。不動的時候四層疊起來＝主圖
+  drawLayers(ctx, P, L, patches) {
+    const t = this.t;
+    const face = P.boxes.face;
+    // 頭的轉動：繞脖子（臉框下緣再往下一點），很慢的兩個正弦相加；說話時跟著音量點一點
+    const piv = [face[0] + face[2] / 2, face[1] + face[3] * 1.12];
+    const th = Math.sin(t * 0.63) * 0.007 + Math.sin(t * 1.71 + 1) * 0.0025 + this.lvl * 0.006;
+    const headT = () => {
+      ctx.translate(piv[0], piv[1]);
+      ctx.rotate(th);
+      ctx.translate(-piv[0], -piv[1]);
+    };
+    // 頭轉動時頭髮跟著，另外再晃：振幅（主圖高度的比例）、速度、相位
+    const sway = (g, amp, spd, ph) => {
+      const im = this.pack.imgs[L[g].img];
+      const [bx, by, bw, bh] = L[g].box;
+      const H = P.h || im.height;
+      // 在原尺寸的暫存畫布上變形（條與條重疊 1 px），再整張畫上去：直接在縮放過的畫布上一條一條畫，條的邊緣會露出細縫
+      const m = Math.ceil(amp * H * 1.5) + 2;
+      const key = P.id + '|' + g;
+      const C = (this.swayCv = this.swayCv || {});
+      const off = (C[key] = C[key] || canvas(bw + m * 2, bh));
+      const o = off.getContext('2d');
+      o.clearRect(0, 0, off.width, off.height);
+      const step = 4;
+      for (let y = by; y < by + bh; y += step) {
+        const k = Math.pow((y - by) / bh, 1.6);
+        const dx =
+          k * amp * H * (Math.sin(t * spd + ph + y * 0.006) + 0.35 * Math.sin(t * spd * 2.3 + y * 0.013));
+        const h = Math.min(step + 1, by + bh - y);
+        o.drawImage(im, bx, y, bw, h, m + dx, y - by, bw, h);
+      }
+      ctx.drawImage(off, bx - m, by);
+    };
+    ctx.save();
+    headT();
+    sway('hairb', 0.0045, 1.3, 0);
+    ctx.restore();
+    const body = this.pack.imgs[L.body.img];
+    ctx.drawImage(body, 0, 0, P.w || body.width, P.h || body.height);
+    ctx.save();
+    headT();
+    const head = this.pack.imgs[L.head.img];
+    ctx.drawImage(head, 0, 0, P.w || head.width, P.h || head.height);
+    for (const [name, box] of patches) {
+      const p = name && box && this.pack.patchIn(P, L, name, box);
+      if (p) ctx.drawImage(p, box[0], box[1], box[2], box[3]);
+    }
+    sway('hairf', 0.003, 1.5, 0.8);
+    ctx.restore();
   }
 }
