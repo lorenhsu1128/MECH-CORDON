@@ -396,6 +396,7 @@ Object.assign(Game.prototype, {
             return `<div class="cLine">${speakerBadge(sp)}<div><b style="color:${S.color}">${escHtml(S.name)}</b><span>${escHtml(text)}</span></div></div>`;
           })
           .join('');
+        this.ptBadges(document.getElementById('cfComm'), 44);
         return true;
       }
       case 'cpick':

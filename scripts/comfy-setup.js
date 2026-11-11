@@ -52,7 +52,10 @@ async function ensureUv() {
   const tmp = path.join(RT, asset);
   fs.mkdirSync(path.join(RT, 'bin'), { recursive: true });
   await download(`https://github.com/astral-sh/uv/releases/latest/download/${asset}`, tmp, null, 'uv');
-  run('tar', ['-xf', tmp, '-C', path.join(RT, 'bin')]);
+  // Windows 一律用系統的 tar（bsdtar，認得 zip）：從 Git Bash 執行時 PATH 上先找到的是 GNU tar，
+  // 它把「C:」當成遠端主機、也解不開 zip
+  const tar = WIN ? path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe') : 'tar';
+  run(tar, ['-xf', tmp, '-C', path.join(RT, 'bin')]);
   fs.rmSync(tmp);
   // linux／mac 的壓縮檔裡多一層資料夾
   if (!fs.existsSync(local)) {

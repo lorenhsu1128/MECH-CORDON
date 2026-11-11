@@ -116,6 +116,55 @@ Object.assign(Game.prototype, {
     const end = this.tfxStory(it.title);
     this.storyTypeEnd = end ? performance.now() + end * 1000 : 0;
     this.voiceStory(it.lines, end || 0); // ECHO 的台詞（game/voice.js）
+    this.storyPortrait(it.lines, end || 0);
+  },
+  // 立繪（game/portrait-ui.js）：台詞裡第一個有立繪的角色站在左邊；逐字顯示到那個人的台詞時對口型（有語音時照音量），
+  // 其他時候稍微變暗
+  async storyPortrait(lines, total) {
+    const box = document.getElementById('stPort');
+    box.innerHTML = '';
+    box.classList.remove('on');
+    const tok = (this.stPortTok = (this.stPortTok || 0) + 1);
+    // 每一行的說話者與逐字的時間範圍（和 voiceStory 同樣以字數比例估計；tfxStory 的 delay 1 秒）
+    const all = lines.reduce((a, l) => a + l.length, 0) || 1;
+    let pos = 0;
+    const span = lines.map((l) => {
+      const r = storyQuote(l);
+      const a = pos;
+      pos += l.length;
+      return { sp: r && r.sp, a: 1 + (a / all) * total, b: 1 + (pos / all) * total };
+    });
+    const t0 = performance.now();
+    const sps = [...new Set(span.map((s) => s.sp).filter(Boolean))];
+    for (const sp of sps) {
+      if (tok !== this.stPortTok) return;
+      const first = span.find((s) => s.sp === sp).a;
+      const h = Math.round(Math.min(460, window.innerHeight * 0.78));
+      let v = null;
+      v = await this.ptView(box, sp, {
+        w: Math.round(h * 0.68),
+        h,
+        fit: 'full',
+        cls: 'ptStory',
+        talk: () => {
+          const t = (performance.now() - t0) / 1000;
+          const typing =
+            this.storyTypeEnd > performance.now() && span.some((s) => s.sp === sp && t >= s.a && t < s.b);
+          const lv = this.ptTalk(sp, typing);
+          if (v) {
+            v.wrap.classList.toggle('idle', lv === null);
+            // 逐字還沒到這個人的第一句台詞之前不出現
+            v.wrap.classList.toggle('pre', this.storyTypeEnd > performance.now() && t < first);
+          }
+          return lv;
+        },
+      });
+      if (v) {
+        if (tok !== this.stPortTok) return v.wrap.remove();
+        box.classList.add('on');
+        return;
+      }
+    }
   },
   // 「繼續」：逐字還沒完時先全部顯示
   storyContinue() {

@@ -288,6 +288,18 @@ Object.assign(Game.prototype, {
     this.showScreen('brief');
     $('brClient').innerHTML =
       `${speakerBadge(spk, 56)}<div><b style="color:${F.color}">${escHtml(who || F.name)}</b><span class="dim">${who ? escHtml(F.name) + '・' : ''}${escHtml(F.short)}・${escHtml(F.style)}</span></div>`;
+    // 立繪（game/portrait-ui.js）：說話的人有立繪時徽章換成胸像，簡報逐字的期間對口型
+    const sm = matchMedia('(max-height: 540px)').matches;
+    this.ptView($('brClient').querySelector('.cBadge'), spk, {
+      w: sm ? 64 : 112,
+      h: sm ? 76 : 132,
+      fit: 'bust',
+      replace: true,
+      cls: 'ptBrief',
+      talk: () => (this.briefSid === sid ? this.ptTalk(spk, performance.now() < this.briefTalkEnd) : null),
+    });
+    this.briefTalkEnd =
+      performance.now() + Math.min(7, 0.4 + pickLines(B.lines, ch).join('').length * 0.05) * 1000;
     $('brTitle').textContent = so.name;
     // 路線與抉擇的說明（guide.js）
     $('brInfo').innerHTML = this.guideNodeInfo(sid)
@@ -457,5 +469,6 @@ Object.assign(Game.prototype, {
           })
           .join('')
       : '<p class="dim">還沒有通訊紀錄。</p>';
+    this.ptBadges(document.getElementById('hubLogList')); // 有立繪的角色換成小頭像
   },
 });

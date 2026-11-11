@@ -1136,5 +1136,5 @@ export { COMMS } from './story-comms.js';
 // 說話者的頭像徽章（程式產生的 SVG）
 export function speakerBadge(id, size = 44) {
   const S = SPEAKERS[id] || SPEAKERS.echo;
-  return `<svg class="cBadge" width="${size}" height="${size}" viewBox="0 0 44 44"><rect x="1" y="1" width="42" height="42" rx="6" fill="#0c1218" stroke="${S.color}" stroke-width="2"/><path d="M6 38 L22 30 L38 38" stroke="${S.color}" stroke-opacity="0.35" stroke-width="6" fill="none"/><text x="22" y="27" text-anchor="middle" font-size="20" font-weight="700" fill="${S.color}" font-family="sans-serif">${escHtml(S.mark)}</text></svg>`;
+  return `<svg class="cBadge" data-sp="${escHtml(SPEAKERS[id] ? id : 'echo')}" width="${size}" height="${size}" viewBox="0 0 44 44"><rect x="1" y="1" width="42" height="42" rx="6" fill="#0c1218" stroke="${S.color}" stroke-width="2"/><path d="M6 38 L22 30 L38 38" stroke="${S.color}" stroke-opacity="0.35" stroke-width="6" fill="none"/><text x="22" y="27" text-anchor="middle" font-size="20" font-weight="700" fill="${S.color}" font-family="sans-serif">${escHtml(S.mark)}</text></svg>`;
 }
