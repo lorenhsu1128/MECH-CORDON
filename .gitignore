@@ -6,3 +6,4 @@ server-models/
 src/assets/voice-audition/ref/
 tools/comfyui/runtime/
 tools/comfyui/setup.log
+tools/comfyui/nodes/**/__pycache__/
