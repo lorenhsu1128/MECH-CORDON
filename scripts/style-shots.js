@@ -46,6 +46,7 @@ const OV = arg('p', '')
   : null;
 const EXTRA = arg('extra', '') ? arg('extra', '').split(',') : [];
 const COMIC = process.argv.includes('--comic');
+const BOOM = process.argv.includes('--boom');
 const extraShots = [];
 const W = +arg('w', 1280),
   H = +arg('h', 720);
@@ -81,7 +82,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     p.on('pageerror', (e) => errs.push(`${map}: ${e}`));
     p.on('console', (m) => m.type() === 'error' && errs.push(`${map}: ${m.text()}`));
     await p.addInitScript(
-      ({ mapId, vari }) => {
+      ({ mapId, vari, RENDER }) => {
         let a = 7;
         Math.random = () => {
           a = (a + 0x6d2b79f5) >>> 0;
@@ -93,9 +94,11 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
         if (!localStorage.getItem('mech_cordon_map')) {
           localStorage.setItem('mech_cordon_map', mapId);
           localStorage.setItem('mech_cordon_variant', vari);
+          // --render='{"mode":"classic","cm":false}'＝畫面模式（設定的「畫面模式」「色彩管理」）
+          if (RENDER) localStorage.setItem('mech_cordon_render', RENDER);
         }
       },
-      { mapId, vari },
+      { mapId, vari, RENDER: arg('render', '') },
     );
     await p.goto(url);
     await p.waitForFunction(
@@ -254,17 +257,38 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       }, view);
       for (const st of STYLES) {
         await p.evaluate(
-          ({ st, ov }) => {
+          ({ st, ov, boom }) => {
             const g = window.__game;
-            g.styleUse('builtin', st);
+            g.styleUse('builtin', st.split('@')[0]);
             // --p=鍵:值,…：試參數（不必重新建置），只套在第一個以外的風格（第一個當基準）
             if (ov) {
               Object.assign(g.styleP, ov);
               g.styleStructural(g.styleP);
             }
+            // --boom：前三台敵人身上的大爆炸＋擊破特效（看疊加的特效會不會一片純白）
+            if (boom) {
+              if (g.fx.clear) g.fx.clear();
+              const list = g.enemies.filter((e) => !e.dead).slice(0, 3);
+              for (const e of list) {
+                const c = e.center();
+                g.fx.explosion(c, 4 * (e.dk || 3), 0xffa040, true);
+                g.fx.killBurst(c, 1, true);
+              }
+              window.__pump(0.08);
+            }
             window.__pump(1 / 60);
           },
-          { st, ov: st !== STYLES[0] ? OV : null },
+          {
+            boom: BOOM,
+            st,
+            ov: STYLES.some((x) => x.includes('@'))
+              ? st.includes('@')
+                ? OV
+                : null
+              : st !== STYLES[0]
+                ? OV
+                : null,
+          },
         );
         await wait(400);
         const f = `${mk}-${view}-${st}.png`;
@@ -338,7 +362,9 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
         const avg = (arr, k) => arr.reduce((a, p) => a + p[k], 0) / arr.length;
         const lo = so.slice(0, q),
           hi = so.slice(n - q);
-        return { L, sd, S, dL: avg(lo, 0), dC: avg(lo, 2), hL: avg(hi, 0), hC: avg(hi, 2) };
+        // 過曝：亮度 0.96 以上（白色的模型、天空的太陽）
+        const clip = px.filter((p) => p[0] > 0.96).length / n;
+        return { L, sd, S, dL: avg(lo, 0), dC: avg(lo, 2), hL: avg(hi, 0), hC: avg(hi, 2), clip };
       },
       { b64, mime },
     );
@@ -350,7 +376,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   };
   const fmt = (m) =>
     m && m.L !== undefined
-      ? `亮度 ${m.L.toFixed(2)}、標準差 ${m.sd.toFixed(2)}、飽和度 ${m.S.toFixed(2)}、暗部 ${m.dL.toFixed(2)}（${m.dC >= 0 ? '+' : ''}${m.dC.toFixed(2)}）、亮部 ${m.hL.toFixed(2)}（${m.hC >= 0 ? '+' : ''}${m.hC.toFixed(2)}）`
+      ? `亮度 ${m.L.toFixed(2)}、標準差 ${m.sd.toFixed(2)}、飽和度 ${m.S.toFixed(2)}、暗部 ${m.dL.toFixed(2)}（${m.dC >= 0 ? '+' : ''}${m.dC.toFixed(2)}）、亮部 ${m.hL.toFixed(2)}（${m.hC >= 0 ? '+' : ''}${m.hC.toFixed(2)}）、過曝 ${(m.clip * 100).toFixed(1)}%`
       : '';
   const refStat = refFiles.length
     ? mean(await Promise.all(refFiles.map((x) => measure(path.join(refDir0, x)))))

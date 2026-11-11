@@ -317,6 +317,7 @@ const TM = () => ({
   linear: THREE.LinearToneMapping,
   reinhard: THREE.ReinhardToneMapping,
   cineon: THREE.CineonToneMapping,
+  neutral: THREE.NeutralToneMapping,
 });
 
 function quad(frag, uniforms) {
@@ -633,11 +634,13 @@ export class StylePipeline {
     const R = this.R,
       s = this.scene,
       c = this.ctx;
+    // Neutral（Khronos PBR Neutral）中間調和線性一樣、只壓亮部（爆炸等疊加的特效不會一片純白），所以照線性的補正
+    const linTm = P.toneMap === 'linear' || P.toneMap === 'neutral';
     // 線性色調映射不壓高光：依場景補正曝光（白色場景調暗、暗的場景調亮；World 主題的 linExp）
     R.toneMappingExposure =
       P.exposure *
-      (P.toneMap === 'linear' && c.sceneExp ? c.sceneExp() : 1) *
-      (THREE.ColorManagement.enabled ? (P.cmExp || 1) * (c.cmExp ? c.cmExp(P.toneMap === 'linear') : 1) : 1); // 色彩管理：配色變深，依風格與主題補回亮度
+      (linTm && c.sceneExp ? c.sceneExp() : 1) *
+      (THREE.ColorManagement.enabled ? (P.cmExp || 1) * (c.cmExp ? c.cmExp(linTm) : 1) : 1); // 色彩管理：配色變深，依風格與主題補回亮度
     const B = this.captureBase();
     const out = !c.indoor;
     if (out && s.fog && B.fog) {
