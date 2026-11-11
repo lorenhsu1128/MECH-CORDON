@@ -14819,7 +14819,7 @@ async function testPortraits(browser, base) {
     }
     return { pose: v.P.P.id, mouths: [...seen] };
   });
-  check(talk.pose === 'p2', `通訊框用通訊姿勢（${talk.pose}）`);
+  check(talk.pose === 'p4', `通訊框：即時插播是專注的表情，用管制台姿勢（${talk.pose}）`);
   check(talk.mouths.length >= 2, `說話中嘴型會動（${talk.mouths.join('、')}）`);
   await page.screenshot({ path: path.join(SHOT_DIR, 'portrait-comm.png') });
   // 沒有立繪的角色：照舊是字母徽章
@@ -14932,6 +14932,36 @@ async function testPortraits(browser, base) {
   });
   check(cyc.c2.wire > 0, `第 2 周目：閃格會變成全像線框（${JSON.stringify(cyc.c2)}）`);
   check(cyc.c3.wire === 0 && cyc.c3.gl === 0, `第 3 周目的私人頻道：不閃格（${JSON.stringify(cyc.c3)}）`);
+  // 姿勢依表情（專注＝管制台 p4）、私人頻道換成「真實的樣子」（echo_true）、分層動畫有載入四層
+  const pose = await page.evaluate(async () => {
+    const g = window.__game;
+    const view = async () => {
+      const t0 = performance.now();
+      let v;
+      while (!(v = g.ptViews.find((v) => v.wrap.closest('#comm'))) && performance.now() - t0 < 5000)
+        await new Promise((r) => setTimeout(r, 50));
+      return v;
+    };
+    const out = {};
+    g.commClear();
+    g.commSay('echo', '敵方增援 3 機從 2 點鐘方向接近，距離 120 m。');
+    let v = await view();
+    out.focus = v && v.P.P.id;
+    out.layers = !!(v && v.P.pack.layers(v.P.P));
+    g.commClear();
+    const c0 = g.camp;
+    g.camp = { sid: 'c1y' }; // ECHO 的私人委託出擊中
+    g.commSay('echo', '……你聽到了。那段求救，是我。');
+    v = await view();
+    out.priv = v && v.id;
+    out.privGlitch = v && v.priv;
+    g.camp = c0;
+    g.commClear();
+    return out;
+  });
+  check(pose.focus === 'p4', `專注的句子用管制台姿勢（${pose.focus}）`);
+  check(pose.layers, '分層動畫的四層有載入');
+  check(pose.priv === 'echo_true' && pose.privGlitch, `私人頻道換成「真實的樣子」、不閃格（${pose.priv}）`);
   // 結局畫面：ECHO 站在左邊
   await page.evaluate(() => window.__game.openEpilogue('open'));
   check(await until(() => document.querySelector('#epPort.on .ptView canvas')), '結局畫面：ECHO 的立繪');

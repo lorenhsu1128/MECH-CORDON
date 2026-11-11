@@ -2,11 +2,7 @@
   "comment": "角色產生器用的 ComfyUI：版本、外掛與模型都固定在這裡，npm run comfy:setup 照它安裝到 tools/comfyui/runtime/（不進 git）。改版本或加模型時改這個檔案，其他電腦 pull 之後再跑一次 setup 就同步。",
   "python": "3.12",
   "torchIndex": "https://download.pytorch.org/whl/cu128",
-  "torch": [
-    "torch==2.8.0",
-    "torchvision==0.23.0",
-    "torchaudio==2.8.0"
-  ],
+  "torch": ["torch==2.8.0", "torchvision==0.23.0", "torchaudio==2.8.0"],
   "comfyui": {
     "repo": "https://github.com/Comfy-Org/ComfyUI.git",
     "ref": "v0.45.1"
@@ -23,14 +19,14 @@
       "repo": "https://github.com/1038lab/ComfyUI-RMBG.git",
       "ref": "a66a5e641a54988d80ed6aad18946081c85f309e",
       "why": "去背（BiRefNet）",
-      "skipReqs": [
-        "groundingdino-py",
-        "segment-anything",
-        "decord",
-        "nobg",
-        "refiners",
-        "onnxruntime>"
-      ]
+      "skipReqs": ["groundingdino-py", "segment-anything", "decord", "nobg", "refiners", "onnxruntime>"]
+    },
+    {
+      "name": "ComfyUI-See-through",
+      "repo": "https://github.com/jtydhr88/ComfyUI-See-through.git",
+      "ref": "98d754bf04f668647919ab750eccb0e0640faa81",
+      "why": "立繪的分層（See-through，Apache-2.0；外掛 MIT）：一張圖拆成前髮、後髮、臉、身體…，給分層動畫用；模型（LayerDiff 3D、Marigold、LaMa）第一次執行時從 Hugging Face 自動下載",
+      "skipReqs": ["bitsandbytes"]
     }
   ],
   "models": [

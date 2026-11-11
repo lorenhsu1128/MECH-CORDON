@@ -11,6 +11,15 @@ export const ROSTER = [
     note: '你的作戰管制官；冷靜、精準、短句、乾冷的幽默。其實是軌道站的管制系統，外觀依周目改變',
   },
   {
+    id: 'echo_true',
+    name: 'ECHO（真實的樣子）',
+    tier: 0,
+    sex: 'f',
+    age: '年輕',
+    color: '#7fc8ff',
+    note: 'ECHO 第 3 周目私人頻道的外觀：卸下管制官（沒有耳機與刻度環、外套穿好、淡藍針織毛衣）；遊戲在私人頻道時用它取代 echo',
+  },
+  {
     id: 'castron',
     name: '霍斯特',
     tier: 1,

@@ -4,17 +4,22 @@
 //   v: 1, id, name, status: 'draft'（外觀討論中）| 'look'（外觀已確認，可以量產）| 'done',
 //   look: { zh: 外觀設定卡（中文，給人看）, prompt: 英文標籤（給模型）, neg },
 //   refs: [參考圖（候選資料夾的檔名）], extraExprs: [{ id, name, prompt }]（招牌表情）,
+//   layers: true（發佈時以 See-through 拆成四層，給分層動畫）,
 //   poses: [{
 //     id: 'p1', name: '平常', prompt: 姿勢的標籤, refine: 臉部重描強度（0＝不重描）,
 //     cands: [{ file, seed }], master: 選定的主圖, seed,
 //     boxes: { face: [x, y, w, h], eyes: [...], mouth: [...] },
 //     ex: { 'smile': { cands: [檔名], pick }, 'smile.e1': {...}, 'neutral.m2': {...} }   // 表情與影格
 //   }],
-//   pub: { t, poses: [{ id, name, w, h, img, boxes, ex: { neutral: { e1, e2, m1, m2, m3 }, smile: { f, e1, … } } }] }
+//   pub: { t, poses: [{ id, name, w, h, img, boxes, ex: { neutral: { e1, e2, m1, m2, m3 }, smile: { f, e1, … } },
+//          layers: { hairb, body, head, hairf }（有分層時：四張 WebP 的檔名） }] }
 // }
 // 候選與選定的圖都在候選資料夾（/api/chars/<id>/work），發佈的 WebP 在定稿資料夾（/api/chars/<id>/file）
 import * as W from './workflows.js';
 import { exprList, EYE_FRAMES, MOUTH_FRAMES, KEEP, KEEP_EYES, KEEP_MOUTH } from './expr.js';
+
+// 分層動畫的四層（由後往前；tools/comfyui/nodes 的 MCLayerGroups）
+export const LAYER_GROUPS = ['hairb', 'body', 'head', 'hairf'];
 
 export const POSE_DEFAULT = 'cowboy shot, standing, looking at viewer, white background, simple background';
 
@@ -246,6 +251,56 @@ export class Pipeline {
         },
       };
       await crop(pose.master, null, pose.id, ['bg', 1]);
+      // 分層動畫（card.layers，docs/portrait-design.md 第 6 期）：See-through 拆層 → MCLayerGroups 合併成
+      // 後髮／身體／頭／前髮四層（看得到的像素用原圖的顏色，疊起來＝原圖），遊戲的播放器讓頭髮擺動、頭部微轉、身體呼吸
+      if (card.layers) {
+        const m = await load(pose.master);
+        wf.stL = {
+          class_type: 'SeeThrough_LoadLayerDiffModel',
+          inputs: {
+            model: 'layerdifforg/seethroughv0.0.2_layerdiff3d',
+            cache_tag_embeds: true,
+            group_offload: false,
+          },
+        };
+        wf.stD = {
+          class_type: 'SeeThrough_LoadDepthModel',
+          inputs: { model: 'layerdifforg/seethroughv0.0.1_marigold' },
+        };
+        wf.stG = {
+          class_type: 'SeeThrough_GenerateLayers',
+          inputs: {
+            image: [m, 0],
+            layerdiff_model: ['stL', 0],
+            seed: 42,
+            resolution: 1280,
+            num_inference_steps: 30,
+          },
+        };
+        wf.stZ = {
+          class_type: 'SeeThrough_GenerateDepth',
+          inputs: { layers: ['stG', 0], depth_model: ['stD', 0], seed: 42 },
+        };
+        wf.stP = {
+          class_type: 'SeeThrough_PostProcess',
+          inputs: { layers_depth: ['stZ', 0], tblr_split: true, use_lama: true },
+        };
+        wf.stS = {
+          class_type: 'MCLayerGroups',
+          inputs: {
+            parts: ['stP', 0],
+            image: [m, 0],
+            mask: ['bg', 1],
+            quality,
+            name: `${card.id}_${pose.id}_L`,
+          },
+        };
+        P.layers = {};
+        for (const g of LAYER_GROUPS) {
+          files.push(`${pose.id}_L_${g}`);
+          P.layers[g] = `${pose.id}_L_${g}.webp`;
+        }
+      }
       for (const e of exprList(card)) {
         const ex = {};
         if (e.id !== 'neutral') {
@@ -261,7 +316,11 @@ export class Pipeline {
         P.ex[e.id] = ex;
       }
       this.log(`${card.name}／${pose.name}：發佈 ${k} 張`);
-      const imgs = await this.comfy.run(wf, { onProgress });
+      // 拆層第一次要下載 See-through 的模型（約 10 GB），之後每個姿勢也要一兩分鐘：等久一點
+      const imgs = await this.comfy.run(wf, {
+        onProgress,
+        ...(card.layers ? { timeout: 60 * 60 * 1000 } : {}),
+      });
       for (const im of imgs) {
         const name = im.filename.replace(new RegExp('^' + card.id + '_'), '');
         await this.store.putFile(card.id, name, await this.comfy.view(im));

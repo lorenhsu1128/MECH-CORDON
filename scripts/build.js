@@ -231,6 +231,7 @@ function writePortraits() {
       for (const P of card.pub.poses) {
         const names = [P.img];
         for (const ex of Object.values(P.ex)) names.push(...Object.values(ex));
+        if (P.layers) names.push(...Object.values(P.layers)); // 分層動畫的四層
         for (const n of names) {
           const f = path.join(dir, id, n);
           if (fs.existsSync(f)) img[n] = 'data:image/webp;base64,' + fs.readFileSync(f).toString('base64');
