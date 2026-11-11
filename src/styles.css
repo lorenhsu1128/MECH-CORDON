@@ -87,6 +87,23 @@ h1 small {
   font-weight: 600;
   margin-bottom: 10px;
 }
+/* 標題頁的 LOGO（src/assets/ui/logo.webp，建置時內嵌成 data URI） */
+#titleLogo {
+  margin: -6px 0 8px;
+  text-align: center;
+}
+#titleLogo img {
+  display: block;
+  width: 100%;
+  max-height: 34vh;
+  object-fit: contain;
+  margin: 0 auto 4px;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.55));
+  user-select: none;
+}
+#titleLogo small {
+  margin: 0;
+}
 h2 {
   font-size: 20px;
   margin: 0 0 10px;

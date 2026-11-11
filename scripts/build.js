@@ -360,7 +360,12 @@ async function writeHtml(page, js) {
     minify: !dev,
     charset: 'utf8',
   });
-  let html = t.html.replace(CSS_TAG, () => `<style>\n${css.code}</style>`); // 用函式避免 $ 被當成替換樣式
+  // HTML 骨架裡的圖片（src="assets/….webp|png"）內嵌成 data URI，維持單一 HTML 可以直接開檔（在插入 JS 之前做）
+  let html = t.html.replace(/src="(assets\/[^"]+\.(webp|png))"/g, (m, f, ext) => {
+    const b = fs.readFileSync(path.join(page.dir, f)).toString('base64');
+    return `src="data:image/${ext};base64,${b}"`;
+  });
+  html = html.replace(CSS_TAG, () => `<style>\n${css.code}</style>`); // 用函式避免 $ 被當成替換樣式
   html = html.replace(JS_TAG, () => `<script>\n${js}</script>`);
   fs.mkdirSync(DIST, { recursive: true });
   copyLibs(t.html);
