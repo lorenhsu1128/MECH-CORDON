@@ -313,6 +313,7 @@ Object.assign(Game.prototype, {
   fbKillLocal(n, big) {
     SFX.killConfirm(n, big);
     this.killStreak = { n, t: STREAK_T, pop: 1, big }; // HUD 的連殺計數
+    if (big) this.comicHit(1); // 漫畫的衝擊畫格（只有開了的渲染風格）
   },
   // 打出失衡的回饋
   fbBreak(t, from) {
@@ -320,6 +321,7 @@ Object.assign(Game.prototype, {
     if (from.isPlayer) {
       SFX.breakFx();
       this.popBreak(t);
+      this.comicHit(1);
       if (t.isBoss) {
         SFX.stinger(false); // Boss 的 BREAK：配樂的重音
         this.voiceCue('bossBreak');
@@ -333,6 +335,7 @@ Object.assign(Game.prototype, {
     if (e.k === 'kill') this.fbKillLocal(e.n, !!e.b);
     else if (e.k === 'break') {
       SFX.breakFx();
+      this.comicHit(1);
       const t = this.entById(e.i);
       if (t) this.popBreak(t);
     } else if (e.k === 'pqb') {
@@ -364,5 +367,6 @@ Object.assign(Game.prototype, {
     SFX.play('thrBurst', 1.2, 1.3, 0.04, 0.03, null, 'ui');
     this.popDamage(c.clone().add(new THREE.Vector3(0, 2 * p.dk, 0)), '完美迴避', false, true, false, 0, p.id);
     this.rumble(0.4, 0.9, 140);
+    if (p === this.player) this.comicHit(0.7);
   },
 });

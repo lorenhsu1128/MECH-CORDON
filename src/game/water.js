@@ -43,7 +43,7 @@ Object.assign(Game.prototype, {
       return;
     }
     if (W.simOn) this.waterSources(dt);
-    const P = this.lab ? this.lab.P : this.cine ? this.cine.P : this.styleP;
+    const P = this.styleThemed(this.lab ? this.lab.P : this.cine ? this.cine.P : this.styleP);
     W.update(dt, {
       cam: this.camera,
       focus: this.waterFocus(),

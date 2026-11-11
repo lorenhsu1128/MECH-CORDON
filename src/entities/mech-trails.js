@@ -38,12 +38,14 @@ Object.assign(MechEntity.prototype, {
       const sp = prev.distanceTo(_b) / dt;
       prev.copy(_b);
       const key = this.id + 'b' + s;
+      // 渲染風格的「刀光」（slash，docs/zzz-style-design.md）：顏色更飽和、更亮、留得更久
+      const sl = (g.styleP && g.styleP.slash) || 0;
       if (sp > BLADE_V * k)
         R.push(key, _a, _b, {
-          color: w.def.color || 0xbfe8ff,
-          opacity: 0.75,
-          life: 0.18,
-          max: 14,
+          color: sl > 0 ? slashColor(w.def.color || 0xbfe8ff, sl) : w.def.color || 0xbfe8ff,
+          opacity: 0.75 + 0.25 * sl,
+          life: 0.18 * (1 + 0.9 * sl),
+          max: 14 + Math.round(10 * sl),
           additive: true,
           edge: 0.15,
         });
@@ -123,3 +125,12 @@ Object.assign(MechEntity.prototype, {
     });
   },
 });
+
+// 刀光的顏色依風格加飽和、提亮（色相不變）
+const _hsl = { h: 0, s: 0, l: 0 };
+const _sc = new THREE.Color();
+function slashColor(hex, k) {
+  _sc.set(hex).getHSL(_hsl);
+  _sc.setHSL(_hsl.h, Math.min(1, _hsl.s + (1 - _hsl.s) * 0.85 * k), _hsl.l + (0.62 - _hsl.l) * 0.6 * k);
+  return _sc.getHex();
+}

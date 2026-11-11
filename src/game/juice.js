@@ -353,6 +353,23 @@ Object.assign(Game.prototype, {
     this.hitFlashK = Math.max(this.hitFlashK || 0, k);
     this.chromaK = Math.max(this.chromaK || 0, k);
   },
+  // 漫畫的衝擊畫格（渲染風格的 comic 參數大於 0 時才看得到；docs/zzz-style-design.md）：
+  // 打出失衡、擊破大型的敵人、完美迴避時。0.05 秒反色 → 網點的兩色 → 0.3 秒內淡出；用實際經過的時間（頓格時也照常）
+  comicHit(k = 1) {
+    if (!this.styleP || !(this.styleP.comic > 0)) return;
+    const now = performance.now() / 1000;
+    if (this.comicAt && now - this.comicAt < 0.5) return; // 不連續閃
+    this.comicAt = now;
+    this.comicPow = k;
+    this.comicSeed = Math.floor(Math.random() * 97);
+  },
+  comicState() {
+    if (!this.comicAt) return null;
+    const t = performance.now() / 1000 - this.comicAt;
+    if (t > 0.32 || t < 0) return null;
+    const k = this.comicPow * (t < 0.14 ? 1 : 1 - (t - 0.14) / 0.18);
+    return { k, inv: t < 0.05, seed: this.comicSeed };
+  },
   // 打出失衡：BREAK 字樣（疊在目標的名牌上方，鎖定中且鏡頭瞄準時在準星下方）
   popBreak(t) {
     this.pushPopup(t.center(), 'BREAK', false, true, false, 0, t.id);

@@ -105,7 +105,7 @@ const COMP_FRAG = /* glsl */ `
 uniform sampler2D tColor, tDepth, tAO;
 uniform vec2 px;
 uniform float cNear, cFar, useAO, aoK;
-uniform vec4 inkA, inkB, inkC, mbA;
+uniform vec4 inkA, inkB, inkC, mbA, rimA, rimB;
 uniform mat4 invVP, prevVP;
 varying vec2 vUv;
 float vz( vec2 uv ) { return - perspectiveDepthToViewZ( texture2D( tDepth, uv ).x, cNear, cFar ); }
@@ -132,6 +132,13 @@ void main() {
 		for ( int i = 0; i < 8; i ++ ) col += scol( vUv - vel * ( float( i ) / 7.0 - 0.5 ) );
 		col /= 8.0;
 	} else col = scol( vUv );
+	// 螢幕空間的邊緣光（機體類）：往光源方向偏移一點的像素是遠處（背景）＝向光的輪廓，加一條亮線
+	if ( rimA.w > 0.0 && isMech > 0.5 && z < cFar * 0.97 ) {
+		float zn = vz( vUv + rimA.xy * px * rimA.z );
+		float rr = smoothstep( rimB.w, rimB.w * 2.5, ( zn - z ) / z );
+		float fade = 1.0 - smoothstep( inkC.x, inkC.y, z );
+		col += rimB.rgb * rimA.w * rr * fade * ( 0.35 + 0.65 * clamp( dot( col, vec3( 0.333 ) ) * 2.0, 0.0, 1.0 ) );
+	}
 	if ( inkA.x > 0.0 && z < cFar * 0.97 ) {
 		float iz = 1.0 / z;
 		float eo = 0.0;
@@ -186,7 +193,7 @@ const GRADE_FRAG = /* glsl */ `
 uniform sampler2D tDiffuse;
 uniform vec2 px;
 uniform float time, aspect;
-uniform vec4 gA, gL, gH, gB;
+uniform vec4 gA, gL, gH, gB, gC, gI, gP;
 varying vec2 vUv;
 float h21( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) * 43758.5453 ); }
 float vn( vec2 p ) {
@@ -211,6 +218,22 @@ void main() {
 	vec2 v = ( vUv - 0.5 ) * vec2( aspect, 1.0 );
 	c *= 1.0 - gB.x * smoothstep( 0.25, 1.05, length( v ) * 1.15 );
 	vec2 sp = vUv / px;
+	// 漫畫的衝擊畫格（docs/zzz-style-design.md）：墨色與紙色的兩色＋45° 的網點，第一拍反色；很亮的部分（特效）保留原色
+	if ( gC.x > 0.0 ) {
+		float lc = clamp( dot( c, vec3( 0.299, 0.587, 0.114 ) ), 0.0, 1.0 );
+		vec2 hq = mat2( 0.7071, - 0.7071, 0.7071, 0.7071 ) * sp / gC.z;
+		float hr = sqrt( 1.0 - lc ) * 0.66;
+		float hd = 1.0 - smoothstep( hr - 0.08, hr + 0.08, length( fract( hq ) - 0.5 ) );
+		float ink = max( hd, 1.0 - smoothstep( 0.12, 0.2, lc ) );
+		vec3 cm = mix( gP.rgb, gI.rgb, ink );
+		if ( gC.y > 0.5 ) cm = vec3( 1.0 ) - cm;
+		cm = mix( cm, c, smoothstep( 0.8, 0.97, lc ) * 0.7 );
+		// 放射狀的速度線
+		float ang = atan( v.y, v.x );
+		float ray = step( 0.82, fract( sin( floor( ang * 38.0 + gC.w ) * 91.7 ) * 4375.5 ) ) * smoothstep( 0.32, 0.75, length( v ) );
+		cm = mix( cm, gC.y > 0.5 ? gP.rgb : gI.rgb, ray * 0.85 );
+		c = mix( c, cm, gC.x );
+	}
 	if ( gB.z > 0.0 ) c += ( h21( sp + fract( time ) * vec2( 113.1, 71.7 ) ) - 0.5 ) * gB.z * 0.14 * ( 1.0 - 0.5 * l );
 	if ( gB.w > 0.0 ) {
 		float p = vn( sp / 160.0 ) * 0.6 + vn( sp / 47.0 ) * 0.3 + vn( sp / 9.0 ) * 0.1;
@@ -414,6 +437,8 @@ export class StylePipeline {
       inkB: { value: new THREE.Vector4() },
       inkC: { value: new THREE.Vector4() },
       mbA: { value: new THREE.Vector4() },
+      rimA: { value: new THREE.Vector4() },
+      rimB: { value: new THREE.Vector4() },
       invVP: { value: new THREE.Matrix4() },
       prevVP: { value: new THREE.Matrix4() },
     });
@@ -426,6 +451,9 @@ export class StylePipeline {
       gL: { value: new THREE.Vector4() },
       gH: { value: new THREE.Vector4() },
       gB: { value: new THREE.Vector4() },
+      gC: { value: new THREE.Vector4() },
+      gI: { value: new THREE.Vector4() },
+      gP: { value: new THREE.Vector4() },
     });
     this.tonemap = quad(TONEMAP_FRAG, {
       tDiffuse: { value: null },
@@ -740,6 +768,16 @@ export class StylePipeline {
     u.inkB.value.set(ic.r, ic.g, ic.b, P.inkObj);
     const wk = this.wscale();
     u.inkC.value.set(P.inkNear * wk, Math.max(P.inkFar, P.inkNear + 1) * wk, P.inkEnv, 0);
+    // 螢幕空間的邊緣光：太陽方向投影到畫面上的方向（docs/zzz-style-design.md）
+    if (depth && P.srim > 0 && this.ctx.sunOff) {
+      const sd = this.ctx.sunOff.clone().normalize().transformDirection(cam.matrixWorldInverse);
+      const L = Math.hypot(sd.x, sd.y);
+      const dx = L > 0.05 ? sd.x / L : 0.6,
+        dy = L > 0.05 ? sd.y / L : 0.8;
+      u.rimA.value.set(dx, dy, P.srimW * pr, P.srim);
+      const rc = lin(P.srimColor);
+      u.rimB.value.set(rc.r, rc.g, rc.b, 0.06);
+    } else u.rimA.value.set(0, 0, 0, 0);
     const vp = new THREE.Matrix4().multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
     const mb = depth && P.mblur && P.mblurK > 0 && this.hasPrev && !(low && !low.mblur);
     u.mbA.value.set(mb ? P.mblurK * 1.2 : 0, P.mblurMech, 0, 0);
@@ -809,6 +847,15 @@ export class StylePipeline {
     g.gH.value.set(th.r, th.g, th.b, P.tintHiK);
     const cp = this.ctx && this.ctx.chromaPush ? this.ctx.chromaPush() : 0; // 受到重擊時的色差
     g.gB.value.set(P.vignette, Math.min(1, P.chroma + cp), P.grain, P.paper);
+    // 漫畫的衝擊畫格：ctx.comicPush() → { k 強度 0～1, inv 反色, seed }（game/juice.js 的 comicHit）
+    const cm = P.comic > 0 && this.ctx && this.ctx.comicPush ? this.ctx.comicPush() : null;
+    if (cm && cm.k > 0) {
+      const ci = srgb(P.comicInk),
+        cpp = srgb(P.comicPaper);
+      g.gC.value.set(cm.k * P.comic, cm.inv ? 1 : 0, 7 * this.R.getPixelRatio(), cm.seed || 0);
+      g.gI.value.set(ci.r, ci.g, ci.b, 0);
+      g.gP.value.set(cpp.r, cpp.g, cpp.b, 0);
+    } else g.gC.value.set(0, 0, 1, 0);
 
     if (this.fxaa && P.fxaa) {
       this.draw(this.grade, tmp);

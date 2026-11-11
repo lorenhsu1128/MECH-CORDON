@@ -19,6 +19,17 @@ export function tagStyle(root, cat = 1) {
   return root;
 }
 export const styleCat = (m) => CAT.get(m) || 0;
+// 敵人（MechEntity 的 team 是 enemy）的材質：渲染風格的「敵人配色」只換這些（玩家與友軍保留自己的配色）
+const TEAM = new WeakSet();
+export function tagTeam(root) {
+  if (!root) return root;
+  root.traverse((o) => {
+    const m = o.material;
+    if (!m) return;
+    for (const x of Array.isArray(m) ? m : [m]) TEAM.add(x);
+  });
+  return root;
+}
 // GLB 等美術畫好的貼圖（記在貼圖物件上，材質複製後仍共用同一張）：「貼圖細節」不把它混成平均色，
 // 因為它不是程式產生的磨損細節，而是部件的配色與分件線本身
 const AUTH = new WeakSet();
@@ -45,6 +56,10 @@ const blackTex = () => {
   return BLACK;
 };
 
+// 平面著色但有平滑法線的材質（地形）：渲染風格的「場景平滑」打開時改用頂點法線（docs/zzz-style-design.md）
+const SMOOTHABLE = new WeakSet();
+export const markSmoothable = (m) => m && SMOOTHABLE.add(m);
+let envSmooth = false;
 const V4 = (x, y, z, w) => ({ value: new THREE.Vector4(x, y, z, w) });
 // 全部材質共用同一組 uniform 物件（改 value 就全部生效）
 export const SU = {
@@ -57,6 +72,12 @@ export const SU = {
   stN: V4(1.6, 0, 1, 1), // 金屬反射強度、動畫金屬反光帶、亮面亮度、陰影濃度
   stF: V4(0, 2, 8, 0), // 高度霧濃度、高度、衰減、水彩地形
   stW: V4(0.08, 0, 0, 0), // 水彩筆觸大小
+  // 角色／場景分開（docs/zzz-style-design.md）：只有機體類用色階、陰影的冷色混入、敵人配色強度、場景配色強度
+  stZ: V4(0, 0, 0, 0),
+  stZc: V4(1, 1, 1, 0), // 陰影（間接光）的顏色、場景的暗部抬升
+  stZe: V4(1, 1, 1, 1), // 場景配色：一般顏色的飽和度、強調色的飽和度、強調色的門檻、明度壓縮
+  stZp: V4(0.9, 0.9, 0.9, 0.3), // 敵人配色：亮部（白殼）的顏色、保留原本色相的比例
+  stZn: V4(0.05, 0.06, 0.1, 0), // 敵人配色：暗部（身體）的顏色、發光的加強
   // 水面（fx/water/index.js 每格設定，docs/water-design.md）：水位、焦散開關、濕的岸邊的高度、有水面
   stWa: V4(-1e9, 0, 0, 0),
   stWb: V4(0, 0, 1, 0), // 焦散貼圖的視窗：中心 x、z、邊長、強度
@@ -106,12 +127,22 @@ export function setStyleUniforms(P, k = 1) {
   SU.stF.value.set(P.hfog, P.hfogH * k, P.hfogFall * k, P.water);
   fxStyle(P.fxCel); // 粒子特效的色階（fx/gpu.js）
   SU.stW.value.set(P.waterScale / k, 0, 0, 0);
+  const zc = lin(P.shTint),
+    zp = lin(P.foeHi),
+    zn = lin(P.foeLo);
+  SU.stZ.value.set(P.split, P.shTintK, P.foeK, P.envK);
+  envSmooth = P.envSmooth > 0.5;
+  SU.stZc.value.set(zc.r, zc.g, zc.b, P.envLift);
+  SU.stZe.value.set(P.envSat, P.envAccent, P.envAccTh, P.envComp);
+  SU.stZp.value.set(zp.r, zp.g, zp.b, P.foeHue);
+  SU.stZn.value.set(zn.r, zn.g, zn.b, P.foeGlow);
 }
 
 const PARS = /* glsl */ `
 uniform vec4 stA, stB, stC, stD, stE, stM, stN, stF, stW, stWa, stWb, stWc, stWd;
+uniform vec4 stZ, stZc, stZe, stZp, stZn;
 uniform sampler2D stCau, stCauT;
-uniform float stCat, stOpq, stAuth, stFlat;
+uniform float stCat, stOpq, stAuth, stFlat, stTeam;
 uniform vec4 stFxP[ 4 ], stFxC[ 4 ];
 #ifdef ST_DECAL
 uniform sampler2D stDecT, stDecW;
@@ -122,6 +153,8 @@ float stSh = 1.0;
 vec3 stLit = vec3( 0.0 );
 vec3 stSpec = vec3( 0.0 );
 float stKey = 0.0;
+// 這個材質用不用色階：角色／場景分開（stZ.x）時只有機體類（stCat）用
+float stTn() { return stA.x * ( stCat > 0.5 ? 1.0 : 1.0 - stZ.x ); }
 float stBand( float x ) {
 	float n = stA.y - 1.0;
 	float w = max( stA.w, 0.001 );
@@ -135,7 +168,7 @@ float stBand( float x ) {
 	return s / n;
 }
 void RE_Direct_Style( const in IncidentLight directLight, const in vec3 geometryPosition, const in vec3 geometryNormal, const in vec3 geometryViewDir, const in vec3 geometryClearcoatNormal, const in PhysicalMaterial material, inout ReflectedLight reflectedLight ) {
-	if ( stA.x < 0.5 ) {
+	if ( stTn() < 0.5 ) {
 		RE_Direct_Physical( directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );
 		stSh = 1.0;
 		return;
@@ -195,6 +228,39 @@ if ( stF.w > 0.0 && stCat < 0.5 ) {
 }
 `;
 
+const RECOLOR = /* glsl */ `
+#if defined( ST_SMOOTH ) && defined( USE_COLOR )
+if ( stSm > 0.5 ) diffuseColor.rgb = diffuseColor.rgb / max( vColor.rgb, vec3( 1e-3 ) ) * vStC2;
+#endif
+// 場景的配色（低、中飽和的顏色降飽和＝高級灰，高飽和的強調色保留；明度壓縮、暗部抬升）
+if ( stZ.w > 0.0 && stCat < 0.5 ) {
+	vec3 c = diffuseColor.rgb;
+	float l = dot( c, vec3( 0.2126, 0.7152, 0.0722 ) );
+	float mx = max( c.r, max( c.g, c.b ) ), mn = min( c.r, min( c.g, c.b ) );
+	float sat = ( mx - mn ) / max( mx, 1e-4 );
+	float acc = smoothstep( stZe.z, stZe.z + 0.2, sat );
+	vec3 r = mix( vec3( l ) + ( c - vec3( l ) ) * stZe.x, vec3( l ) + ( c - vec3( l ) ) * stZe.y, acc );
+	r = max( r, 0.0 );
+	r = mix( r, pow( r, vec3( 0.85 ) ) * 0.92, stZe.w );
+	r = r * ( 1.0 - stZc.w ) + stZc.w * 0.12 * stZc.rgb;
+	diffuseColor.rgb = mix( c, r, stZ.w );
+}
+// 敵人的配色：亮的部分換成白殼、暗的部分換成深色身體，保留一點原本的色相（不同敵人不同色），高飽和的部分變霓虹色
+if ( stZ.z > 0.0 && stTeam > 0.5 ) {
+	vec3 c = diffuseColor.rgb;
+	float l = dot( c, vec3( 0.2126, 0.7152, 0.0722 ) );
+	float mx = max( c.r, max( c.g, c.b ) ), mn = min( c.r, min( c.g, c.b ) );
+	float sat = ( mx - mn ) / max( mx, 1e-4 );
+	vec3 hue = c / max( mx, 1e-4 );
+	float t = smoothstep( 0.22, 0.5, sqrt( l ) );
+	vec3 r = mix( stZn.rgb, stZp.rgb, t );
+	r *= mix( vec3( 1.0 ), hue, stZp.w * ( 1.0 - 0.6 * t ) );
+	float acc = smoothstep( 0.55, 0.8, sat ) * smoothstep( 0.04, 0.12, l );
+	r = mix( r, hue * hue * 0.9, acc );
+	diffuseColor.rgb = mix( c, r, stZ.z );
+}
+`;
+
 const AFTER_METAL = /* glsl */ `
 float stMk = stM.x * stCat;
 if ( stMk > 0.0 ) {
@@ -237,11 +303,15 @@ const AFTER_MAPS = /* glsl */ `
 #endif
 #if defined( RE_IndirectDiffuse )
 	iblIrradiance *= stE.w;
+	// 陰影的冷色：照不到太陽的地方只剩間接光，把它染成冷色（絕區零的藍灰色陰影）
+	vec3 stShT = mix( vec3( 1.0 ), stZc.rgb, stZ.y );
+	irradiance *= stShT;
+	iblIrradiance *= stShT;
 #endif
 `;
 
 const TOON = /* glsl */ `
-if ( stA.x > 0.5 ) {
+if ( stTn() > 0.5 ) {
 	vec3 stV = normalize( vViewPosition );
 	vec3 stCol = stAlb * stLit;
 	#if defined( RE_IndirectDiffuse )
@@ -261,7 +331,8 @@ if ( stA.x > 0.5 ) {
 	}
 	outgoingLight = stCol + totalEmissiveRadiance;
 }
-if ( stCa > 0.0 ) outgoingLight += stAlb * stCa * ( stA.x > 0.5 ? step( 0.35, stCa ) * 0.9 : 1.0 );
+if ( stCa > 0.0 ) outgoingLight += stAlb * stCa * ( stTn() > 0.5 ? step( 0.35, stCa ) * 0.9 : 1.0 );
+if ( stTeam > 0.5 ) outgoingLight += totalEmissiveRadiance * stZn.w;
 `;
 
 const FOG = /* glsl */ `
@@ -298,7 +369,7 @@ export function installStyleShader() {
   const C = THREE.ShaderChunk;
   const begin = C.lights_fragment_begin.replace(
     /directLight\.color \*= (\( directLight\.visible && receiveShadow \) \? get\w+\([^;]*\) : 1\.0);/g,
-    'stSh = ( $1 ); directLight.color *= mix( mix( 1.0, stSh, stN.w ), 1.0, stA.x );',
+    'stSh = ( $1 ); directLight.color *= mix( mix( 1.0, stSh, stN.w ), 1.0, stTn() );',
   );
   // 特效的點光：只算漫射（照 three.js r128 非物理單位的點光：衰減＝(1－距離／範圍)^decay，漫射＝N·L×顏色×反照率），
   // 色階風格時照一般光源的色階加進 stLit；沒有高光
@@ -311,7 +382,7 @@ for ( int i = 0; i < 4; i ++ ) {
 		float stAt = pow( saturate( 1.0 - stLd / stFxP[ i ].w ), stFc.w );
 		if ( stAt > 0.0 ) {
 			float stNl = dot( geometryNormal, stLv / max( stLd, 0.001 ) );
-			if ( stA.x < 0.5 ) reflectedLight.directDiffuse += saturate( stNl ) * stFc.rgb * stAt * material.diffuseColor;
+			if ( stTn() < 0.5 ) reflectedLight.directDiffuse += saturate( stNl ) * stFc.rgb * stAt * material.diffuseColor;
 			else stLit += stFc.rgb * stAt * mix( stB.rgb, vec3( stN.z ), stBand( stNl * 0.5 + 0.5 ) );
 		}
 	}
@@ -356,6 +427,11 @@ for ( int i = 0; i < 4; i ++ ) {
           return CAT.get(mat) || 0;
         },
       },
+      stTeam: {
+        get value() {
+          return TEAM.has(mat) ? 1 : 0;
+        },
+      },
       stAuth: {
         get value() {
           return mat.map && AUTH.has(mat.map) ? 1 : 0;
@@ -363,7 +439,7 @@ for ( int i = 0; i < 4; i ++ ) {
       },
       stFlat: {
         get value() {
-          return mat._stFlat ? 1 : 0;
+          return mat._stFlat && !(envSmooth && SMOOTHABLE.has(mat)) ? 1 : 0;
         },
       },
       stOpq: {
@@ -399,6 +475,22 @@ for ( int i = 0; i < 4; i ++ ) {
     }
     let v = shader.vertexShader;
     v = 'varying vec3 vStW;\n' + v;
+    // 地形的平滑顏色（world.js 的 stCol2）：「場景平滑」時取代每個面的頂點色
+    const sm = SMOOTHABLE.has(mat);
+    if (sm) {
+      v = 'attribute vec3 stCol2;\nattribute vec3 stNrm2;\nvarying vec3 vStC2;\nuniform float stSm;\n' + v;
+      v = rep(v, '#include <color_vertex>', '#include <color_vertex>\nvStC2 = stCol2;');
+      v = rep(
+        v,
+        '#include <beginnormal_vertex>',
+        '#include <beginnormal_vertex>\nif ( stSm > 0.5 ) objectNormal = stNrm2;',
+      );
+      shader.uniforms.stSm = {
+        get value() {
+          return envSmooth ? 1 : 0;
+        },
+      };
+    }
     v = rep(
       v,
       '#include <project_vertex>',
@@ -407,13 +499,14 @@ for ( int i = 0; i < 4; i ++ ) {
     shader.vertexShader = v;
     let f = shader.fragmentShader;
     if (dec) f = '#define ST_DECAL\n' + f;
+    if (sm) f = '#define ST_SMOOTH\nvarying vec3 vStC2;\nuniform float stSm;\n' + f;
     f = rep(
       f,
       '#include <lights_physical_pars_fragment>',
       '#include <lights_physical_pars_fragment>\n' + PARS,
     );
     f = rep(f, '#include <map_fragment>', MAP);
-    f = rep(f, '#include <color_fragment>', '#include <color_fragment>\n' + AFTER_COLOR);
+    f = rep(f, '#include <color_fragment>', '#include <color_fragment>\n' + AFTER_COLOR + RECOLOR);
     f = rep(f, '#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\n' + AFTER_METAL);
     // 平面著色（stFlat）：同 three.js 的 FLAT_SHADED，以畫面上的導數算面法線（在算切線空間之前，法線貼圖照面法線擾動）
     f = rep(f, '#include <normal_fragment_begin>', nbegin);
@@ -431,6 +524,8 @@ for ( int i = 0; i < 4; i ++ ) {
     shader.fragmentShader = f;
   };
   proto.customProgramCacheKey = function () {
-    return hasDecal(this) ? 'mech-cordon-style-2d' : 'mech-cordon-style-2';
+    return (
+      (hasDecal(this) ? 'mech-cordon-style-2d' : 'mech-cordon-style-2') + (SMOOTHABLE.has(this) ? 's' : '')
+    );
   };
 }
