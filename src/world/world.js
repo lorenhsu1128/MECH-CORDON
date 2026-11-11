@@ -17,7 +17,7 @@ import {
 import { attrSig, mergeList, mergeStatic } from '../render/mesh-merge.js';
 import { isFine } from '../render/detail.js';
 import { isOutline } from '../render/geometry.js';
-import { styleCat, tagStyle } from '../render/style/shader.js';
+import { markSmoothable, styleCat, tagStyle } from '../render/style/shader.js';
 import { propHpFor, propMatOf } from '../data/destruct.js';
 import { buildWreck } from './prop-wreck.js';
 import { tessellate } from './prop-split.js';
@@ -678,6 +678,31 @@ export class World {
       }
     }
     ng.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    // 平滑的法線（另一個屬性 stNrm2；原本的 normal 照舊是面法線，SSAO 的法線等其他地方不變）：
+    // 渲染風格的「場景平滑」（絕區零）才用（style/shader.js，docs/zzz-style-design.md）
+    geo.computeVertexNormals();
+    ng.setAttribute('stNrm2', geo.toNonIndexed().attributes.normal);
+    // 平滑的顏色（每個頂點取周圍面的平均，沒有每個面的明暗跳動）：同樣只給「場景平滑」用
+    const vn = (this.cells + 1) * (this.cells + 1),
+      acc = new Float32Array(vn * 4),
+      idx = geo.index;
+    for (let t = 0; t < idx.count; t++) {
+      const v = idx.getX(t),
+        f = t - (t % 3);
+      acc[v * 4] += col[f * 3];
+      acc[v * 4 + 1] += col[f * 3 + 1];
+      acc[v * 4 + 2] += col[f * 3 + 2];
+      acc[v * 4 + 3]++;
+    }
+    const col2 = new Float32Array(col.length);
+    for (let t = 0; t < idx.count; t++) {
+      const v = idx.getX(t),
+        n = acc[v * 4 + 3] || 1;
+      col2[t * 3] = acc[v * 4] / n;
+      col2[t * 3 + 1] = acc[v * 4 + 1] / n;
+      col2[t * 3 + 2] = acc[v * 4 + 2] / n;
+    }
+    ng.setAttribute('stCol2', new THREE.BufferAttribute(col2, 3));
     if (keepMesh && this.terrainMesh) {
       this.terrainMesh.geometry.dispose();
       this.terrainMesh.geometry = ng;
@@ -695,6 +720,7 @@ export class World {
     );
     m.receiveShadow = true;
     m.castShadow = true;
+    markSmoothable(m.material);
     this.scene.add(m);
     this.meshes.push(m);
     this.terrainMesh = m;

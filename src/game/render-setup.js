@@ -95,6 +95,7 @@ Object.assign(Game.prototype, {
       },
       fogPush: () => this.camExtra || 0, // 鏡頭拉遠時霧往外推，機體附近保持清楚
       chromaPush: () => (this.chromaK || 0) * 0.7, // 受到重擊時的色差（game/juice.js）
+      comicPush: () => this.comicState(), // 漫畫的衝擊畫格（game/juice.js 的 comicHit）
       wscale: () => DS, // 機甲三倍高改版
       sceneTweak: (s) => this.water && this.water.fogTweak(s), // 水面下的霧（fx/water/index.js）
       heat: () => this.fx && { scene: this.fx.heatScene, on: this.fx.heatOn() }, // 熱扭曲（fx/effects.js，第 8.3 期）
@@ -108,6 +109,11 @@ Object.assign(Game.prototype, {
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75) * StyleStore.data.res);
   },
   // 重新讀取選用的渲染風格（任務中不換：只在標題、車庫、出擊前呼叫）
+  // 選用某個風格並立刻套用（截圖比較腳本 scripts/style-shots.js 在任務中切換用；一般的流程走設定畫面）
+  styleUse(k, id) {
+    StyleStore.select(k, id);
+    this.styleRefresh();
+  },
   styleRefresh() {
     this.styleP = StyleStore.current();
     this.styleStructural(this.styleP);
@@ -130,9 +136,25 @@ Object.assign(Game.prototype, {
     if (this.garagePipe) this.garagePipe.setSize(w, h);
     if (this.hubPipe) this.hubPipe.setSize(w, h);
   },
+  // 內建風格的依地圖覆寫（params.js 的 byTheme）：目前的主題、地下（有岩頂）、夜間（主題的 noTod）依序蓋上去
+  styleThemed(P) {
+    const B = P && P._byTheme;
+    const w = this.world;
+    if (!B || !w || !w.theme) return P;
+    const tags = [this.worldTheme];
+    if (w.theme.roof) tags.push('@roof');
+    if (w.theme.noTod) tags.push('@night');
+    const sig = tags.join(',');
+    const c = this.stThemed;
+    if (c && c.P === P && c.sig === sig) return c.out;
+    const out = Object.assign({}, P);
+    for (const t of tags) if (B[t]) Object.assign(out, B[t]);
+    this.stThemed = { P, sig, out };
+    return out;
+  },
   renderMain() {
     const lab = this.lab;
-    const P = lab ? lab.P : this.cine ? this.cine.P : this.styleP; // 過場動畫：風格＋過場的調色（game/cine.js）
+    const P = this.styleThemed(lab ? lab.P : this.cine ? this.cine.P : this.styleP); // 過場動畫：風格＋過場的調色（game/cine.js）
     const t = performance.now() / 1000;
     // 新地圖：整個場景的著色器先編好。第一格只顯示「準備中」並讓瀏覽器畫出來，下一格才預熱；
     // 非同步（warmAsyncOk）時背景編譯，完成前不畫場景、主迴圈也停住（loop 開頭看 warmBusy）。

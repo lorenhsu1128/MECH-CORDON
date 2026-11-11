@@ -15,16 +15,20 @@ float fbm( vec2 p ) {
 `;
 
 const SKY_FRAG = /* glsl */ `
-uniform vec3 horizon, top, sunDir;
-uniform float cloud, toon, time;
+uniform vec3 horizon, top, sunDir, sunCol, cShade;
+uniform float cloud, toon, time, glow, cscale;
 varying vec3 vDir;
 ${NOISE}
 void main() {
 	vec3 d = normalize( vDir );
 	float h = max( d.y, 0.0 );
 	vec3 col = mix( horizon, top, pow( smoothstep( 0.0, 0.65, h ), 0.85 ) );
+	// 太陽周圍的光（黃昏的天空：大範圍的暖色＋太陽的光暈；glow＝0 時和原本相同）
+	float sd = max( dot( d, normalize( sunDir ) ), 0.0 );
+	col += sunCol * ( pow( sd, 6.0 ) * 0.45 + pow( sd, 48.0 ) * 0.6 + pow( sd, 700.0 ) * 2.0 ) * glow;
 	if ( cloud > 0.0 && d.y > 0.01 ) {
 		vec2 uv = d.xz / ( d.y + 0.12 ) * 0.85 + time * vec2( 0.006, 0.003 );
+		uv *= cscale;
 		float n = fbm( uv * 1.3 );
 		float cov = 1.0 - cloud;
 		float m = smoothstep( cov * 0.85, cov * 0.85 + 0.16, n ) * smoothstep( 0.01, 0.16, d.y );
@@ -32,8 +36,9 @@ void main() {
 		float lit = clamp( ( n - fbm( ( uv + toSun ) * 1.3 ) ) * 5.0 + 0.62, 0.0, 1.0 );
 		lit = mix( lit, smoothstep( 0.45, 0.55, lit ) * 0.75 + 0.25 * lit, toon );
 		m = mix( m, smoothstep( 0.4, 0.6, m ), toon );
-		vec3 shadow = mix( top, vec3( 0.55, 0.58, 0.72 ), 0.55 );
-		vec3 cc = mix( shadow, vec3( 1.0, 0.985, 0.95 ), lit );
+		vec3 shadow = mix( mix( top, vec3( 0.55, 0.58, 0.72 ), 0.55 ), cShade, min( glow, 1.0 ) );
+		vec3 litC = mix( vec3( 1.0, 0.985, 0.95 ), sunCol * 1.15, min( glow, 1.0 ) * ( 0.35 + 0.65 * sd * sd ) );
+		vec3 cc = mix( shadow, litC, lit );
 		col = mix( col, cc, m );
 	}
 	gl_FragColor = vec4( col, 1.0 );
@@ -79,6 +84,10 @@ export class StyleAtmos {
         cloud: { value: 0 },
         toon: { value: 0 },
         time: { value: 0 },
+        glow: { value: 0 },
+        cscale: { value: 1 },
+        sunCol: { value: new THREE.Color(1, 0.8, 0.55) },
+        cShade: { value: new THREE.Color(0.5, 0.5, 0.65) },
       },
       vertexShader:
         'varying vec3 vDir; void main(){ vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }',
@@ -137,6 +146,10 @@ export class StyleAtmos {
       u.toon.value = P.skyToon;
       u.time.value = time;
       u.sunDir.value.copy(sunOff).normalize();
+      u.glow.value = P.skyGlow;
+      u.cscale.value = P.cloudSize > 0 ? 1 / P.cloudSize : 1;
+      toLinear(u.sunCol.value.set(P.skySun));
+      toLinear(u.cShade.value.set(P.skyShade));
     }
     this.dust.visible = P.dust > 0;
     if (P.dust > 0) {

@@ -90,6 +90,7 @@ import { nozzleWorld } from '../fx/thruster.js';
 import { measureBlades } from '../fx/trail.js';
 import { buildDrone, buildHeli, buildVehicle } from '../render/vehicle-models.js';
 import { buildBossModel } from '../render/boss-models.js';
+import { tagTeam } from '../render/style/shader.js';
 import { Projectile } from './projectile.js';
 import { RB_TYPES } from '../data/ranged.js';
 import { WP } from '../data/weak.js';
@@ -156,6 +157,7 @@ export class MechEntity {
               : this.buildRig();
     if (opts.modelKind) this.mergeModel(this.model);
     this.mesh = this.model.group;
+    if (this.team === 'enemy') tagTeam(this.mesh); // 敵人的配色（渲染風格的敵人配色，render/style/shader.js）
     game.scene.add(this.mesh);
     // 任務中才建立的機體（增援、友軍 AC、Boss 的部位、換模型）：材質與半透明版在背景編譯（render-setup.js）
     if (game.warmLate) game.warmLate(this.mesh);
@@ -465,6 +467,7 @@ export class MechEntity {
     }
     this.model = this.buildRig(true);
     this.mesh = this.model.group;
+    if (this.team === 'enemy') tagTeam(this.mesh);
     this.mesh.position.copy(old.position);
     this.mesh.rotation.copy(old.rotation);
     this.mesh.visible = vis;
@@ -2476,6 +2479,7 @@ export class MechEntity {
     }
     this.model = this.buildRig();
     this.mesh = this.model.group;
+    if (this.team === 'enemy') tagTeam(this.mesh);
     g.scene.add(this.mesh);
     if (g.warmLate) g.warmLate(this.mesh);
     this.dead = false;
