@@ -155,6 +155,7 @@ export function heatFacingK(p, dir, cam) {
   return 1 - t * t * (3 - 2 * t);
 }
 
+const _noEmis = new THREE.Color(0, 0, 0);
 export class Effects {
   constructor(scene) {
     this.scene = scene;
@@ -2331,6 +2332,14 @@ export class Effects {
   shatter(ent, world) {
     // 合併過的網格（render/mesh-merge.js 的 mergeRig）先還原成各關節底下的網格，才拆得成碎片
     if (ent.model.unmerge) ent.model.unmerge();
+    // 受擊閃光（mechFlash 的白色自發光）靠 animateMech 每格倒數關掉；擊碎之後不再更新，
+    // 最後一擊的閃光會一直留在碎片上（白色發亮的碎片），所以先關掉
+    const md = ent.model;
+    if (md.mats && md.flashT > 0) {
+      for (const mm of md.mats)
+        if (mm.emissive) mm.emissive.copy((mm.userData && mm.userData.emis0) || _noEmis);
+      md.flashT = 0;
+    }
     const root = ent.model.group;
     root.updateMatrixWorld(true);
     const center = ent.center();

@@ -91,6 +91,8 @@ export const SU = {
   stFxC: { value: [0, 1, 2, 3].map(() => new THREE.Vector4(0, 0, 0, 2)) },
 };
 export const FX_LIGHTS = 4;
+// 特效點光的強度倍率（渲染風格的 fxLight；絕區零調低，白色的碎片與地面不會被爆炸的火光照成一片白）
+let fxLightK = 1;
 // lights：最多 4 個 { position, color, intensity, distance, decay }（PointLight 或同樣欄位的物件）
 export function setFxLights(lights) {
   for (let i = 0; i < FX_LIGHTS; i++) {
@@ -102,7 +104,8 @@ export function setFxLights(lights) {
       continue;
     }
     P.set(L.position.x, L.position.y, L.position.z, L.distance);
-    C.set(L.color.r * L.intensity, L.color.g * L.intensity, L.color.b * L.intensity, L.decay);
+    const it = L.intensity * fxLightK;
+    C.set(L.color.r * it, L.color.g * it, L.color.b * it, L.decay);
   }
 }
 export const clearFxLights = () => setFxLights(null);
@@ -132,6 +135,7 @@ export function setStyleUniforms(P, k = 1) {
     zn = lin(P.foeLo);
   SU.stZ.value.set(P.split, P.shTintK, P.foeK, P.envK);
   envSmooth = P.envSmooth > 0.5;
+  fxLightK = P.fxLight >= 0 ? P.fxLight : 1;
   SU.stZc.value.set(zc.r, zc.g, zc.b, P.envLift);
   SU.stZe.value.set(P.envSat, P.envAccent, P.envAccTh, P.envComp);
   SU.stZp.value.set(zp.r, zp.g, zp.b, P.foeHue);
@@ -338,7 +342,13 @@ if ( stTn() > 0.5 ) {
 	outgoingLight = stCol + totalEmissiveRadiance;
 }
 if ( stCa > 0.0 ) outgoingLight += stAlb * stCa * ( stTn() > 0.5 ? step( 0.35, stCa ) * 0.9 : 1.0 );
-if ( stTeam > 0.5 ) outgoingLight += totalEmissiveRadiance * stZn.w;
+// 敵人的發光加強：只加強有顏色的發光（燈、核心）；受擊閃光是白色的自發光，不加強（否則白色的碎片很刺眼）
+if ( stTeam > 0.5 && stZn.w > 0.0 ) {
+	vec3 stE = totalEmissiveRadiance;
+	float stEm = max( stE.r, max( stE.g, stE.b ) );
+	float stEs = stEm > 1e-4 ? ( stEm - min( stE.r, min( stE.g, stE.b ) ) ) / stEm : 0.0;
+	outgoingLight += stE * stZn.w * smoothstep( 0.3, 0.6, stEs );
+}
 `;
 
 const FOG = /* glsl */ `

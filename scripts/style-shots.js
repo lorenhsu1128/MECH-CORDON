@@ -47,6 +47,7 @@ const OV = arg('p', '')
 const EXTRA = arg('extra', '') ? arg('extra', '').split(',') : [];
 const COMIC = process.argv.includes('--comic');
 const BOOM = process.argv.includes('--boom');
+const SHATTER = process.argv.includes('--shatter');
 const extraShots = [];
 const W = +arg('w', 1280),
   H = +arg('h', 720);
@@ -257,7 +258,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       }, view);
       for (const st of STYLES) {
         await p.evaluate(
-          ({ st, ov, boom }) => {
+          ({ st, ov, boom, shatter, BOOMT }) => {
             const g = window.__game;
             g.styleUse('builtin', st.split('@')[0]);
             // --p=鍵:值,…：試參數（不必重新建置），只套在第一個以外的風格（第一個當基準）
@@ -273,13 +274,20 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
                 const c = e.center();
                 g.fx.explosion(c, 4 * (e.dk || 3), 0xffa040, true);
                 g.fx.killBurst(c, 1, true);
+                // --shatter：先受擊閃光（mechFlash 的白色自發光）再擊碎（敵人被打碎的碎片）
+                if (shatter && e.model && e.model.group.parent) {
+                  if (e.model.mats) for (const m of e.model.mats) m.emissive && m.emissive.setScalar(0.9);
+                  g.fx.shatter(e, g.world);
+                }
               }
-              window.__pump(0.08);
+              window.__pump(BOOMT);
             }
             window.__pump(1 / 60);
           },
           {
-            boom: BOOM,
+            BOOMT: +arg('boomt', 0.08),
+            boom: BOOM || SHATTER,
+            shatter: SHATTER,
             st,
             ov: STYLES.some((x) => x.includes('@'))
               ? st.includes('@')

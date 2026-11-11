@@ -303,6 +303,7 @@ export const STYLE_GROUPS = [
       // 粒子特效（fx/gpu.js）：0＝柔和的粒子；越大越像動畫的特效（門檻溶解、3 階的顏色、硬邊）
       { k: 'fxCel', t: 'num', label: '粒子色階（動畫的特效）', min: 0, max: 1, step: 0.01 },
       { k: 'slash', t: 'num', label: '刀光（飽和、亮、留得久）', min: 0, max: 1, step: 0.01 },
+      { k: 'fxLight', t: 'num', label: '特效光源（爆炸的火光）', min: 0, max: 1.5, step: 0.01 },
       // 打出失衡、擊破大型敵人、完美迴避時的漫畫衝擊畫格（game/juice.js 的 comicHit）
       { k: 'comic', t: 'num', label: '漫畫的衝擊畫格', min: 0, max: 1, step: 0.01 },
       { k: 'comicInk', t: 'color', label: '衝擊畫格的墨色', when: (P) => P.comic > 0 },
@@ -414,6 +415,7 @@ const REAL = {
   foeHue: 0.35,
   foeGlow: 0,
   slash: 0,
+  fxLight: 1,
   cloudSize: 1,
   skyGlow: 0,
   skySun: '#ffc98a',
@@ -777,6 +779,7 @@ BUILTIN_STYLES.push({
     vignette: 0.12,
     chroma: 0.08,
     slash: 1,
+    fxLight: 0.4,
   },
   // 依地圖（render-setup.js 的 styleThemed）：地圖原本的氣氛（熔岩、方舟的夕陽、軌道的高空、模擬訓練場＝絕區零的 VR 訓練室）
   byTheme: {
