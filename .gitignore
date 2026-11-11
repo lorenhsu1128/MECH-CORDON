@@ -4,3 +4,5 @@ test-results/
 server-models/
 .tmp_blender/
 src/assets/voice-audition/ref/
+tools/comfyui/runtime/
+tools/comfyui/setup.log

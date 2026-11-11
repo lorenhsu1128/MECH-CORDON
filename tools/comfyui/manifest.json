@@ -1,0 +1,87 @@
+{
+  "comment": "角色產生器用的 ComfyUI：版本、外掛與模型都固定在這裡，npm run comfy:setup 照它安裝到 tools/comfyui/runtime/（不進 git）。改版本或加模型時改這個檔案，其他電腦 pull 之後再跑一次 setup 就同步。",
+  "python": "3.12",
+  "torchIndex": "https://download.pytorch.org/whl/cu128",
+  "torch": [
+    "torch==2.8.0",
+    "torchvision==0.23.0",
+    "torchaudio==2.8.0"
+  ],
+  "comfyui": {
+    "repo": "https://github.com/Comfy-Org/ComfyUI.git",
+    "ref": "v0.45.1"
+  },
+  "nodes": [
+    {
+      "name": "ComfyUI-GGUF",
+      "repo": "https://github.com/city96/ComfyUI-GGUF.git",
+      "ref": "6ea2651e7df66d7585f6ffee804b20e92fb38b8a",
+      "why": "讀 GGUF 量化的 Qwen-Image-Edit"
+    },
+    {
+      "name": "ComfyUI-RMBG",
+      "repo": "https://github.com/1038lab/ComfyUI-RMBG.git",
+      "ref": "a66a5e641a54988d80ed6aad18946081c85f309e",
+      "why": "去背（BiRefNet）",
+      "skipReqs": [
+        "groundingdino-py",
+        "segment-anything",
+        "decord",
+        "nobg",
+        "refiners",
+        "onnxruntime>"
+      ]
+    }
+  ],
+  "models": [
+    {
+      "id": "noobai11",
+      "dir": "checkpoints",
+      "file": "NoobAI-XL-v1.1.safetensors",
+      "url": "https://huggingface.co/Laxhar/noobai-XL-1.1/resolve/main/NoobAI-XL-v1.1.safetensors",
+      "sha256": "6681e8e4b134c81f16533acedb0d406d7e5e366e1624b4105178c64d00b05d51",
+      "why": "畫主圖的動漫底模（提示詞加 (zenless zone zero:0.6)）；授權 fair-ai-public-license-1.0-sd，不營利"
+    },
+    {
+      "id": "zzz_noob",
+      "dir": "loras",
+      "file": "zzz_style_noob_eps1.1.safetensors",
+      "url": "https://civitai.com/api/download/models/1242984",
+      "sha256": "1c8057813791c6b13f7741ee0b09781ffdc453b82c2ae90d47f70b1da67be0e1",
+      "why": "絕區零畫風 LoRA（NoobAI eps 1.1 用，觸發詞 zzzstyle）；civitai 要登入才能下載，設 CIVITAI_TOKEN 才裝",
+      "opt": true
+    },
+    {
+      "id": "qedit",
+      "dir": "unet",
+      "file": "qwen-image-edit-2511-Q4_K_M.gguf",
+      "url": "https://huggingface.co/unsloth/Qwen-Image-Edit-2511-GGUF/resolve/main/qwen-image-edit-2511-Q4_K_M.gguf",
+      "sha256": "07951f61941a81e236cbd4a9b6f250d49626b3ba518f260135bf2e01a87cf1c8",
+      "why": "改表情與姿勢（Qwen-Image-Edit-2511，Apache 2.0）"
+    },
+    {
+      "id": "qedit_te",
+      "dir": "text_encoders",
+      "file": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+      "url": "https://huggingface.co/Comfy-Org/Qwen-Image/resolve/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+      "sha256": "cb5636d852a0ea6a9075ab1bef496c0db7aef13c02350571e388aea959c5c0b4",
+      "why": "Qwen-Image-Edit 的文字編碼器"
+    },
+    {
+      "id": "qedit_vae",
+      "dir": "vae",
+      "file": "qwen_image_vae.safetensors",
+      "url": "https://huggingface.co/Comfy-Org/Qwen-Image/resolve/main/split_files/vae/qwen_image_vae.safetensors",
+      "sha256": "a70580f0213e67967ee9c95f05bb400e8fb08307e017a924bf3441223e023d1f",
+      "why": "Qwen-Image-Edit 的 VAE"
+    },
+    {
+      "id": "qedit_light",
+      "dir": "loras",
+      "file": "Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors",
+      "url": "https://huggingface.co/lightx2v/Qwen-Image-Edit-2511-Lightning/resolve/main/Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors",
+      "sha256": "22226e8d05d354bb356627d428809f5afd7819399b077238a2b70a82883a904f",
+      "why": "Qwen-Image-Edit 的 4 步加速"
+    }
+  ]
+}
