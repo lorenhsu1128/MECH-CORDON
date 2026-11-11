@@ -14773,6 +14773,110 @@ async function testVoiceLab(browser, base) {
   await ctx.close();
 }
 
+// 劇情角色的立繪（game/portrait-ui.js，docs/portrait-design.md）：通訊框的胸像與對口型、簡報、全畫面劇情、通訊紀錄的小頭像；
+// 沒有立繪的角色照舊是字母徽章
+async function testPortraits(browser, base) {
+  console.log('立繪：通訊框的胸像、對口型、簡報、劇情畫面、通訊紀錄的小頭像、沒有立繪的角色照舊');
+  const { ctx, page } = await newPage(browser, 'portraits');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  const until = (fn, ms = 15000) =>
+    page.waitForFunction(fn, null, { timeout: ms }).then(
+      () => true,
+      () => false,
+    );
+  // 畫布上有畫東西（不透明的像素比例）
+  const ink = (sel) =>
+    page.evaluate((sel) => {
+      const c = document.querySelector(sel);
+      if (!c) return 0;
+      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+      let n = 0;
+      for (let i = 3; i < d.length; i += 4) if (d[i] > 200) n++;
+      return n / (d.length / 4);
+    }, sel);
+  // 通訊框：任務中的大小、通訊姿勢 p2
+  await page.evaluate(() => {
+    const g = window.__game,
+      s0 = g.state;
+    g.state = 'play';
+    g.commSay('echo', '收到。我在這裡，照你的節奏來。前方三百公尺有兩台步行機。');
+    g.state = s0;
+  });
+  check(await until(() => document.querySelector('#comm .ptView canvas')), '通訊框：ECHO 的徽章換成胸像');
+  check(
+    (await ink('#comm .ptView canvas')) > 0.5,
+    `胸像有畫出來（${((await ink('#comm .ptView canvas')) * 100).toFixed(0)}%）`,
+  );
+  const talk = await page.evaluate(async () => {
+    const g = window.__game;
+    const v = g.ptViews.find((v) => v.wrap.closest('#comm'));
+    const seen = new Set();
+    const t0 = performance.now();
+    while (performance.now() - t0 < 1500) {
+      seen.add(v.P.mouth || '-');
+      await new Promise((r) => setTimeout(r, 30));
+    }
+    return { pose: v.P.P.id, mouths: [...seen] };
+  });
+  check(talk.pose === 'p2', `通訊框用通訊姿勢（${talk.pose}）`);
+  check(talk.mouths.length >= 2, `說話中嘴型會動（${talk.mouths.join('、')}）`);
+  await page.screenshot({ path: path.join(SHOT_DIR, 'portrait-comm.png') });
+  // 沒有立繪的角色：照舊是字母徽章
+  await page.evaluate(() => window.__game.commSay('castron', '照合約辦事。'));
+  await page.waitForTimeout(600);
+  check(
+    await page.evaluate(
+      () => !!document.querySelector('#comm .cBadge') && !document.querySelector('#comm .ptView'),
+    ),
+    '沒有立繪的角色照舊是字母徽章',
+  );
+  await page.evaluate(() => window.__game.commClear());
+  // 簡報：ECHO 的私人委託
+  await page.evaluate(() => window.__game.openBrief('c1y'));
+  check(await until(() => document.querySelector('#brClient .ptView canvas')), '簡報：委託方的徽章換成胸像');
+  check((await ink('#brClient .ptView canvas')) > 0.5, '簡報的胸像有畫出來');
+  await page.screenshot({ path: path.join(SHOT_DIR, 'portrait-brief.png') });
+  // 全畫面劇情：序章有 ECHO 的台詞
+  await page.evaluate(() => {
+    const g = window.__game;
+    g.storyText('p1', g.storyItem('p1'));
+  });
+  check(
+    await until(() => document.querySelector('#stPort.on .ptView canvas')),
+    '劇情畫面：ECHO 的立繪站在左邊',
+  );
+  await page.evaluate(() => window.__game.storyContinue()); // 逐字全部顯示
+  await page.waitForTimeout(700);
+  check(
+    await page.evaluate(() => !document.querySelector('#stPort .ptView').classList.contains('pre')),
+    '逐字顯示完之後立繪出現',
+  );
+  check((await ink('#stPort .ptView canvas')) > 0.15, '劇情畫面的立繪有畫出來（整張）');
+  await page.screenshot({ path: path.join(SHOT_DIR, 'portrait-story.png') });
+  // 通訊紀錄：ECHO 的小頭像
+  const face = await page.evaluate(async () => {
+    const root = document.createElement('div');
+    root.innerHTML = '<svg class="cBadge" data-sp="echo"></svg><svg class="cBadge" data-sp="castron"></svg>';
+    document.body.appendChild(root);
+    window.__game.ptBadges(root);
+    const t0 = performance.now();
+    while (!root.querySelector('.ptFace') && performance.now() - t0 < 5000)
+      await new Promise((r) => setTimeout(r, 50));
+    const out = {
+      face: root.querySelectorAll('.ptFace').length,
+      badge: root.querySelectorAll('.cBadge').length,
+    };
+    root.remove();
+    return out;
+  });
+  check(
+    face.face === 1 && face.badge === 1,
+    `通訊紀錄：ECHO 換成小頭像、其他照舊（${JSON.stringify(face)}）`,
+  );
+  await ctx.close();
+}
+
 // 任務配樂的試聽（game/bgm-lab.js）：標題按鈕、載入候選曲、播放與進度、勾選用途、複製結果、目前的配樂
 async function testBgmLab(browser, base) {
   console.log('配樂試聽：標題按鈕、載入候選曲、播放、勾選用途與評分保留、複製結果、目前的配樂');
@@ -32240,6 +32344,7 @@ const STEPS = [
   ['testAudio', (c) => testAudio(c.browser, c.base)],
   ['testAudio2', (c) => testAudio2(c.browser, c.base)],
   ['testVoiceLab', (c) => testVoiceLab(c.browser, c.base)],
+  ['testPortraits', (c) => testPortraits(c.browser, c.base)], // 劇情角色的立繪（docs/portrait-design.md）
   ['testBgmLab', (c) => testBgmLab(c.browser, c.base)],
   ['testJuice', (c) => testJuice(c.browser, c.base)],
   ['testFoesB1', (c) => testFoesB1(c.browser, c.base)],

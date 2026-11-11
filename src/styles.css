@@ -7655,3 +7655,69 @@ em.nw,
   color: #7fd27f;
   font-size: 12px;
 }
+
+/* ---------- 劇情角色的立繪（game/portrait-ui.js，docs/portrait-design.md） ---------- */
+.ptView {
+  flex: none;
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+.ptView canvas {
+  display: block;
+}
+/* 通訊框與簡報的胸像：暗色的框＋掃描線 */
+.ptComm,
+.ptBrief {
+  background: linear-gradient(180deg, #0f1c28, #070b10);
+  border: 1px solid #2a4458;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.ptComm::after,
+.ptBrief::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 3px);
+  mix-blend-mode: multiply;
+}
+.ptComm.ptEcho,
+.ptBrief.ptEcho {
+  border-color: #3c6f93;
+  box-shadow: 0 0 10px rgba(127, 200, 255, 0.25);
+}
+/* 通訊紀錄、失敗畫面的小頭像 */
+.ptFace {
+  border: 1px solid #2a4458;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #0c1218;
+}
+/* 劇情畫面：台詞裡第一個有立繪的角色站在左邊 */
+#storyScr {
+  gap: 24px;
+}
+#stPort {
+  display: none;
+  flex: none;
+  align-self: center;
+}
+#stPort.on {
+  display: block;
+}
+.ptStory {
+  filter: drop-shadow(0 0 18px rgba(127, 200, 255, 0.18));
+  transition:
+    filter 0.4s,
+    opacity 0.4s;
+}
+.ptStory.pre {
+  opacity: 0;
+  transform: translateX(-24px);
+}
+.ptStory.idle {
+  opacity: 0.6;
+  filter: drop-shadow(0 0 8px rgba(127, 200, 255, 0.08)) saturate(0.7);
+}

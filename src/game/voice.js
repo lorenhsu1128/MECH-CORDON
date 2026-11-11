@@ -42,6 +42,12 @@ function satCurve() {
 // 日文字幕的顯示寫法（lines-ja.json 是唸給 TTS 的寫法）
 const jaDisp = (t) => JA_DISP.reduce((a, [x, y]) => a.split(x).join(y), t);
 
+// 聲音資料夾 → 說話者（ECHO 的聲音資料夾是選的聲音名稱）
+function folderSp(f) {
+  const b = String(f || '').replace(/_ja$/, '');
+  return CAST_IDS.includes(b) ? b : 'echo';
+}
+
 Object.assign(Game.prototype, {
   // ---------- 字幕 ----------
   // 字幕的語言：zh／ja／off
@@ -198,9 +204,13 @@ Object.assign(Game.prototype, {
     head.connect(g);
     g.gain.value = 1;
     g.connect(SFX.voiceBus);
+    // 立繪的對口型（game/portrait-ui.js 的 voiceLevel）：分一路給量測音量
+    const an = c.createAnalyser();
+    an.fftSize = 512;
+    g.connect(an);
     s.start(t + 0.05);
     const dur = b.duration;
-    this.voiceCur = { s, g, prio, end: t + 0.05 + dur };
+    this.voiceCur = { s, g, an, prio, end: t + 0.05 + dur, sp: folderSp(folder) };
     s.onended = () => {
       if (this.voiceCur && this.voiceCur.s === s) this.voiceCur = null;
     };

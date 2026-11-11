@@ -105,6 +105,19 @@ Object.assign(Game.prototype, {
     el.classList.toggle('rival', fx && rival);
     el.style.borderLeftColor = fx && S.faction ? S.color : '';
     el.classList.add('on');
+    // 立繪（game/portrait-ui.js）：徽章換成通訊姿勢的胸像，對口型；ln[3]＝表情（第 3 期補每句的表情）
+    const badge = el.querySelector('.cBadge');
+    const sm = this.state !== 'play' || matchMedia('(max-height: 540px)').matches;
+    this.ptView(badge, sp, {
+      w: sm ? 52 : 76,
+      h: sm ? 60 : 88,
+      fit: 'bust',
+      pose: 'p2',
+      expr: ln[3],
+      replace: true,
+      cls: 'ptComm',
+      talk: () => (this.commCur === ln ? this.ptTalk(sp, this.commTalkEnd > performance.now()) : null),
+    });
     SFX.radio();
     let show = 1.8 + text.length * 0.09;
     this.commCur = ln;
@@ -117,8 +130,12 @@ Object.assign(Game.prototype, {
       span.style.visibility = '';
       el.classList.remove('subOff');
       this.commTypeEnd = fx ? performance.now() + revealDom(span, 'comm', { limit }) * 1000 : 0;
+      this.commTalkEnd = Math.max(
+        this.commTypeEnd,
+        performance.now() + Math.min(limit, text.length * 0.12) * 1000,
+      );
     };
-    this.commTypeEnd = 0;
+    this.commTypeEnd = this.commTalkEnd = 0;
     clearTimeout(this.commRevealTo);
     // 角色的語音（game/voice.js）：解碼完開始唸時字幕才出現，顯示時間至少到唸完
     const voiced = !!(this.voiceHas && this.voiceHas(text, sp));
@@ -161,11 +178,11 @@ Object.assign(Game.prototype, {
     if (this.commWait && sp && sp.style.visibility === 'hidden' && this.subLang() !== 'off') {
       this.commWait(0.01);
       this.commWait = null;
-      this.commTypeEnd = 0;
+      this.commTypeEnd = this.commTalkEnd = 0;
       return revealFinish(sp);
     }
     if (this.commTypeEnd > performance.now()) {
-      this.commTypeEnd = 0;
+      this.commTypeEnd = this.commTalkEnd = 0;
       return revealFinish(document.querySelector('#comm span'));
     }
     clearTimeout(this.commTo);

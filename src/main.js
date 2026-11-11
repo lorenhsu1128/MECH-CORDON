@@ -136,6 +136,7 @@ import './game/editor-pick.js';
 import './game/fx-ambient.js';
 import './game/water.js';
 import './game/voice.js';
+import './game/portrait-ui.js';
 import './game/bgm.js';
 import './game/gaze.js';
 import './game/gaze-tune.js';

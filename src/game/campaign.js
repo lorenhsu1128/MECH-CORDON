@@ -1374,6 +1374,7 @@ Object.assign(Game.prototype, {
           })
           .join('')
       : '';
+    this.ptBadges(document.getElementById('cfComm'), 44);
     if (this.campMp()) {
       c.lastFail = {
         t: 'cfail',
