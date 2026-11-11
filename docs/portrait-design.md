@@ -105,21 +105,22 @@
 
 **冒煙測試**：伺服器段的 `testCharagen`（`/charagen/`、ComfyUI 沒開時 `/api/comfy` 回 502、角色資料 API 與檔名檢查、標題按鈕、名單、預覽的播放器畫出主圖與表情的臉）；測試伺服器的 `MECH_CORDON_COMFY` 指到沒人聽的 port。
 
-## 七、交接（2026-11-11，換到另一台電腦繼續）
+## 七、交接（2026-11-11，換到另一台有顯示卡的電腦繼續，之後都在那台做）
 
-**進度**：第 0、1 期完成。第 1 期的完整 `npm test` 跑到 2092 項通過時，這台電腦記憶體不足被系統停掉（ComfyUI 同時佔著記憶體），當時有 4 項失敗、都在這期沒改到的地方（水波、HEARTH 打斷大招、方舟的甲板升降砲塔與甲板軌道砲兵），還沒重跑確認；伺服器段（含 `testCharagen`）單獨跑 30 項全過。**下一台電腦第一件事：跑一次完整的 `npm test` 確認。**
+**進度**：第 0、1 期完成（commit 883993a3）。第 1 期的完整 `npm test` 跑到 2092 項通過時，原本那台電腦記憶體不足被系統停掉（ComfyUI 同時佔著記憶體），當時 4 項失敗、都在這期沒改到的地方（水波、HEARTH 打斷大招、方舟的甲板升降砲塔與甲板軌道砲兵），還沒重跑確認；伺服器段（含 `testCharagen`）單獨跑 30 項全過。
 
-**還沒有任何正式角色**：測試角色 test_op 只在這台的暫存資料夾，沒有進 git。`src/assets/characters/` 目前是空的。
+**還沒有任何正式角色**：`src/assets/characters/` 是空的（測試角色 test_op 只在原本那台的暫存資料夾）。
 
-**下一步＝第 2 期 ECHO**：先寫外觀設定卡給使用者確認（參考圖②星空藍：黑短髮挑染藍、藍眼、星空印花、行星掛飾、寬大外套；改成 ECHO 自己的設計，代表色淡藍 #7fc8ff），確認後才產生候選。
+**新電腦的準備（照順序）**：
+1. `git pull`、`git lfs pull`、`npm install`。
+2. `npm run comfy:setup`：安裝 ComfyUI、Python 環境與模型（約 30 GB，要 NVIDIA 顯示卡；中斷重跑會續傳）。裝完 `npm run comfy:setup -- --check` 全部是「完成」（`zzz_noob` 是選用的，「未下載」沒關係）。顯示記憶體小於 12 GB 時 Qwen-Image-Edit 會更慢（模型一部分放在記憶體），可以在 manifest 換成比較小的量化版（Q3_K_M 約 9.9 GB）。
+3. **跑一次完整的 `npm test`，跑的時候不要開 ComfyUI**（原本那台 32 GB 記憶體，兩個一起跑就不夠）。有失敗先看是不是那 4 項、重跑確認。
+4. 產圖時：`npm run comfy`（ComfyUI），另一個終端機 `npm start`（伺服器；從專案執行＝開發模式，定稿直接寫進 `src/assets/characters/`）。角色產生器在伺服器網址的 `/charagen/`（標題畫面的「角色產生器」），命令列 `scripts/chargen.js char …`（`--server` 預設讀 `mech-cordon-server.json` 的 port）。第一次發佈時去背的 `BiRefNet_toonout` 由 ComfyUI-RMBG 自動從 Hugging Face 下載。
+5. 參考圖（不在 git 裡，原本那台的 `C:\Users\LOREN\Documents\_projects\mech-cordon-chargen\refs\_inbox\`，5 張）由使用者複製過來；做某個角色時在角色產生器「外觀」分頁上傳（存進 `server-models/charwork/<id>/`，不進 git）。對應見第一節。
 
-**沒有產圖環境的電腦能做的**：
-- 第 3 期的大部分：每句台詞補表情 `e` 與動作 `a`、把立繪接上各個對話畫面。可以先用假的角色資料開發（像冒煙測試的 `testCharagen` 用純色的 PNG 做一個 card.pub 放進 `src/assets/characters/<id>/`，但**不要提交假資料**）。
-- 外觀設定卡的討論與撰寫（`look.zh`／`look.prompt`）。
-- 第 7 期的軌道站波形、版面檢查。
+**下一步＝第 2 期 ECHO**：先寫外觀設定卡給使用者確認（參考圖②星空藍：黑短髮挑染藍、藍眼、星空印花、行星掛飾、寬大外套；改成 ECHO 自己的設計，代表色淡藍 #7fc8ff；第 1 周目的「完美得不真實」外觀），使用者確認後才產生候選 → 角色設定圖 → 再確認 → 量產 → 接上通訊框、簡報、全畫面劇情。
 
-**要產圖時**有兩種做法：
-1. 那台電腦也裝：`npm run comfy:setup`（要 NVIDIA 顯示卡、約 30 GB），`npm run comfy` 啟動。
-2. 借用有顯示卡的電腦：那台執行 `npm run comfy -- --lan`（ComfyUI 聽區網），這台以環境變數 `MECH_CORDON_COMFY=http://<那台的 IP>:8188` 啟動伺服器（`npm start`），角色產生器與命令列（`--comfy=http://<那台的 IP>:8188`）就用那台的顯示卡，定稿照樣寫進這台的 `src/assets/characters/`。
-
-**不在 git 裡、要另外搬的**：參考圖（這台的 `C:\Users\LOREN\Documents\_projects\mech-cordon-chargen\refs\_inbox\`，5 張，對應見第一節）；候選圖（`server-models/charwork/`，還沒有正式角色的，不用搬）。
+**注意**：
+- 每個角色量產前都要和使用者確認外觀（第一節）。
+- 產圖與測試不要同時跑（記憶體）。ComfyUI 不用時關掉。
+- 候選圖只在產生它的那台電腦（`server-models/charwork/`）；換電腦時定稿與 card（含種子）會跟著 git 走。
