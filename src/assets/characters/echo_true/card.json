@@ -55,11 +55,11 @@
       "refine": 0.25,
       "cands": [
         {
-          "file": "p1_master_edit22.png",
+          "file": "p1_master_edit22.webp",
           "seed": 22
         }
       ],
-      "master": "p1_master_edit22.png",
+      "master": "p1_master_edit22.webp",
       "seed": 22,
       "boxes": {
         "face": [
@@ -84,597 +84,597 @@
       "ex": {
         "smile": {
           "cands": [
-            "p1_smile_1914533901.png",
-            "p1_smile_2107569621.png",
-            "p1_smile_246261506.png"
+            "p1_smile_1914533901.webp",
+            "p1_smile_2107569621.webp",
+            "p1_smile_246261506.webp"
           ],
-          "pick": "p1_smile_1914533901.png"
+          "pick": "p1_smile_1914533901.webp"
         },
         "laugh": {
           "cands": [
-            "p1_laugh_1336039033.png",
-            "p1_laugh_652988623.png",
-            "p1_laugh_322999028.png"
+            "p1_laugh_1336039033.webp",
+            "p1_laugh_652988623.webp",
+            "p1_laugh_322999028.webp"
           ],
-          "pick": "p1_laugh_322999028.png"
+          "pick": "p1_laugh_322999028.webp"
         },
         "angry": {
           "cands": [
-            "p1_angry_1559097810.png",
-            "p1_angry_706562763.png",
-            "p1_angry_11539692.png"
+            "p1_angry_1559097810.webp",
+            "p1_angry_706562763.webp",
+            "p1_angry_11539692.webp"
           ],
-          "pick": "p1_angry_1559097810.png"
+          "pick": "p1_angry_1559097810.webp"
         },
         "surprised": {
           "cands": [
-            "p1_surprised_606506781.png",
-            "p1_surprised_37446733.png",
-            "p1_surprised_1132210890.png"
+            "p1_surprised_606506781.webp",
+            "p1_surprised_37446733.webp",
+            "p1_surprised_1132210890.webp"
           ],
-          "pick": "p1_surprised_1132210890.png"
+          "pick": "p1_surprised_1132210890.webp"
         },
         "sad": {
           "cands": [
-            "p1_sad_1554004283.png",
-            "p1_sad_1089780926.png",
-            "p1_sad_671327336.png"
+            "p1_sad_1554004283.webp",
+            "p1_sad_1089780926.webp",
+            "p1_sad_671327336.webp"
           ],
-          "pick": "p1_sad_671327336.png"
+          "pick": "p1_sad_671327336.webp"
         },
         "think": {
           "cands": [
-            "p1_think_543432337.png",
-            "p1_think_958009442.png",
-            "p1_think_640814206.png"
+            "p1_think_543432337.webp",
+            "p1_think_958009442.webp",
+            "p1_think_640814206.webp"
           ],
-          "pick": "p1_think_640814206.png"
+          "pick": "p1_think_640814206.webp"
         },
         "smug": {
           "cands": [
-            "p1_smug_1789465323.png",
-            "p1_smug_2106140002.png",
-            "p1_smug_1817650678.png"
+            "p1_smug_1789465323.webp",
+            "p1_smug_2106140002.webp",
+            "p1_smug_1817650678.webp"
           ],
-          "pick": "p1_smug_2106140002.png"
+          "pick": "p1_smug_2106140002.webp"
         },
         "wry": {
           "cands": [
-            "p1_wry_1304236216.png",
-            "p1_wry_1621757058.png",
-            "p1_wry_1972981937.png"
+            "p1_wry_1304236216.webp",
+            "p1_wry_1621757058.webp",
+            "p1_wry_1972981937.webp"
           ],
-          "pick": "p1_wry_1972981937.png"
+          "pick": "p1_wry_1972981937.webp"
         },
         "glitch": {
           "cands": [
-            "p1_glitch_916922951.png",
-            "p1_glitch_936648937.png",
-            "p1_glitch_1831323608.png"
+            "p1_glitch_916922951.webp",
+            "p1_glitch_936648937.webp",
+            "p1_glitch_1831323608.webp"
           ],
-          "pick": "p1_glitch_916922951.png"
+          "pick": "p1_glitch_916922951.webp"
         },
         "focus": {
           "cands": [
-            "p1_focus_1393012755.png",
-            "p1_focus_1867936418.png",
-            "p1_focus_104067700.png"
+            "p1_focus_1393012755.webp",
+            "p1_focus_1867936418.webp",
+            "p1_focus_104067700.webp"
           ],
-          "pick": "p1_focus_1867936418.png"
+          "pick": "p1_focus_1867936418.webp"
         },
         "tender": {
           "cands": [
-            "p1_tender_512985071.png",
-            "p1_tender_674613089.png",
-            "p1_tender_1144257509.png"
+            "p1_tender_512985071.webp",
+            "p1_tender_674613089.webp",
+            "p1_tender_1144257509.webp"
           ],
-          "pick": "p1_tender_674613089.png"
+          "pick": "p1_tender_674613089.webp"
         },
         "hesitate": {
           "cands": [
-            "p1_hesitate_399159031.png",
-            "p1_hesitate_520837017.png",
-            "p1_hesitate_1410587321.png"
+            "p1_hesitate_399159031.webp",
+            "p1_hesitate_520837017.webp",
+            "p1_hesitate_1410587321.webp"
           ],
-          "pick": "p1_hesitate_399159031.png"
+          "pick": "p1_hesitate_399159031.webp"
         },
         "puzzled": {
           "cands": [
-            "p1_puzzled_2137198952.png",
-            "p1_puzzled_1788141443.png",
-            "p1_puzzled_899327296.png"
+            "p1_puzzled_2137198952.webp",
+            "p1_puzzled_1788141443.webp",
+            "p1_puzzled_899327296.webp"
           ],
-          "pick": "p1_puzzled_899327296.png"
+          "pick": "p1_puzzled_899327296.webp"
         },
         "neutral.e1": {
           "cands": [
-            "p1_neutral_e1_1036455402.png",
-            "p1_neutral_e1_1945628350.png"
+            "p1_neutral_e1_1036455402.webp",
+            "p1_neutral_e1_1945628350.webp"
           ],
-          "pick": "p1_neutral_e1_1036455402.png"
+          "pick": "p1_neutral_e1_1036455402.webp"
         },
         "neutral.e2": {
           "cands": [
-            "p1_neutral_e2_364271031.png",
-            "p1_neutral_e2_1707494151.png"
+            "p1_neutral_e2_364271031.webp",
+            "p1_neutral_e2_1707494151.webp"
           ],
-          "pick": "p1_neutral_e2_364271031.png"
+          "pick": "p1_neutral_e2_364271031.webp"
         },
         "neutral.m1": {
           "cands": [
-            "p1_neutral_m1_1118738789.png",
-            "p1_neutral_m1_1923055531.png"
+            "p1_neutral_m1_1118738789.webp",
+            "p1_neutral_m1_1923055531.webp"
           ],
-          "pick": "p1_neutral_m1_1923055531.png"
+          "pick": "p1_neutral_m1_1923055531.webp"
         },
         "neutral.m2": {
           "cands": [
-            "p1_neutral_m2_578322980.png",
-            "p1_neutral_m2_1208416817.png"
+            "p1_neutral_m2_578322980.webp",
+            "p1_neutral_m2_1208416817.webp"
           ],
-          "pick": "p1_neutral_m2_1208416817.png"
+          "pick": "p1_neutral_m2_1208416817.webp"
         },
         "neutral.m3": {
           "cands": [
-            "p1_neutral_m3_1308659528.png",
-            "p1_neutral_m3_745721940.png"
+            "p1_neutral_m3_1308659528.webp",
+            "p1_neutral_m3_745721940.webp"
           ],
-          "pick": "p1_neutral_m3_1308659528.png"
+          "pick": "p1_neutral_m3_1308659528.webp"
         },
         "smile.e1": {
           "cands": [
-            "p1_smile_e1_289274854.png",
-            "p1_smile_e1_1164172784.png"
+            "p1_smile_e1_289274854.webp",
+            "p1_smile_e1_1164172784.webp"
           ],
-          "pick": "p1_smile_e1_289274854.png"
+          "pick": "p1_smile_e1_289274854.webp"
         },
         "smile.e2": {
           "cands": [
-            "p1_smile_e2_414818457.png",
-            "p1_smile_e2_1870431077.png"
+            "p1_smile_e2_414818457.webp",
+            "p1_smile_e2_1870431077.webp"
           ],
-          "pick": "p1_smile_e2_414818457.png"
+          "pick": "p1_smile_e2_414818457.webp"
         },
         "smile.m1": {
           "cands": [
-            "p1_smile_m1_1376228683.png",
-            "p1_smile_m1_121783924.png"
+            "p1_smile_m1_1376228683.webp",
+            "p1_smile_m1_121783924.webp"
           ],
-          "pick": "p1_smile_m1_1376228683.png"
+          "pick": "p1_smile_m1_1376228683.webp"
         },
         "smile.m2": {
           "cands": [
-            "p1_smile_m2_971085273.png",
-            "p1_smile_m2_368574550.png"
+            "p1_smile_m2_971085273.webp",
+            "p1_smile_m2_368574550.webp"
           ],
-          "pick": "p1_smile_m2_971085273.png"
+          "pick": "p1_smile_m2_971085273.webp"
         },
         "smile.m3": {
           "cands": [
-            "p1_smile_m3_1384284925.png",
-            "p1_smile_m3_1209334814.png"
+            "p1_smile_m3_1384284925.webp",
+            "p1_smile_m3_1209334814.webp"
           ],
-          "pick": "p1_smile_m3_1384284925.png"
+          "pick": "p1_smile_m3_1384284925.webp"
         },
         "laugh.e1": {
           "cands": [
-            "p1_laugh_e1_1865817835.png",
-            "p1_laugh_e1_901029157.png"
+            "p1_laugh_e1_1865817835.webp",
+            "p1_laugh_e1_901029157.webp"
           ],
-          "pick": "p1_laugh_e1_1865817835.png"
+          "pick": "p1_laugh_e1_1865817835.webp"
         },
         "laugh.e2": {
           "cands": [
-            "p1_laugh_e2_117333176.png",
-            "p1_laugh_e2_1959125903.png"
+            "p1_laugh_e2_117333176.webp",
+            "p1_laugh_e2_1959125903.webp"
           ],
-          "pick": "p1_laugh_e2_1959125903.png"
+          "pick": "p1_laugh_e2_1959125903.webp"
         },
         "laugh.m1": {
           "cands": [
-            "p1_laugh_m1_1973763599.png",
-            "p1_laugh_m1_344101419.png"
+            "p1_laugh_m1_1973763599.webp",
+            "p1_laugh_m1_344101419.webp"
           ],
-          "pick": "p1_laugh_m1_1973763599.png"
+          "pick": "p1_laugh_m1_1973763599.webp"
         },
         "laugh.m2": {
           "cands": [
-            "p1_laugh_m2_1192645964.png",
-            "p1_laugh_m2_665488872.png"
+            "p1_laugh_m2_1192645964.webp",
+            "p1_laugh_m2_665488872.webp"
           ],
-          "pick": "p1_laugh_m2_665488872.png"
+          "pick": "p1_laugh_m2_665488872.webp"
         },
         "laugh.m3": {
           "cands": [
-            "p1_laugh_m3_1657065220.png",
-            "p1_laugh_m3_613985731.png"
+            "p1_laugh_m3_1657065220.webp",
+            "p1_laugh_m3_613985731.webp"
           ],
-          "pick": "p1_laugh_m3_1657065220.png"
+          "pick": "p1_laugh_m3_1657065220.webp"
         },
         "angry.e1": {
           "cands": [
-            "p1_angry_e1_1388709417.png",
-            "p1_angry_e1_2091240981.png"
+            "p1_angry_e1_1388709417.webp",
+            "p1_angry_e1_2091240981.webp"
           ],
-          "pick": "p1_angry_e1_1388709417.png"
+          "pick": "p1_angry_e1_1388709417.webp"
         },
         "angry.e2": {
           "cands": [
-            "p1_angry_e2_5978972.png",
-            "p1_angry_e2_1234598762.png"
+            "p1_angry_e2_5978972.webp",
+            "p1_angry_e2_1234598762.webp"
           ],
-          "pick": "p1_angry_e2_5978972.png"
+          "pick": "p1_angry_e2_5978972.webp"
         },
         "angry.m1": {
           "cands": [
-            "p1_angry_m1_1503203104.png",
-            "p1_angry_m1_1687376105.png"
+            "p1_angry_m1_1503203104.webp",
+            "p1_angry_m1_1687376105.webp"
           ],
-          "pick": "p1_angry_m1_1503203104.png"
+          "pick": "p1_angry_m1_1503203104.webp"
         },
         "angry.m2": {
           "cands": [
-            "p1_angry_m2_65976701.png",
-            "p1_angry_m2_1951585062.png"
+            "p1_angry_m2_65976701.webp",
+            "p1_angry_m2_1951585062.webp"
           ],
-          "pick": "p1_angry_m2_1951585062.png"
+          "pick": "p1_angry_m2_1951585062.webp"
         },
         "angry.m3": {
           "cands": [
-            "p1_angry_m3_244137202.png",
-            "p1_angry_m3_1411506013.png"
+            "p1_angry_m3_244137202.webp",
+            "p1_angry_m3_1411506013.webp"
           ],
-          "pick": "p1_angry_m3_1411506013.png"
+          "pick": "p1_angry_m3_1411506013.webp"
         },
         "surprised.e1": {
           "cands": [
-            "p1_surprised_e1_9580212.png",
-            "p1_surprised_e1_809648073.png"
+            "p1_surprised_e1_9580212.webp",
+            "p1_surprised_e1_809648073.webp"
           ],
-          "pick": "p1_surprised_e1_9580212.png"
+          "pick": "p1_surprised_e1_9580212.webp"
         },
         "surprised.e2": {
           "cands": [
-            "p1_surprised_e2_1633283235.png",
-            "p1_surprised_e2_1852749950.png"
+            "p1_surprised_e2_1633283235.webp",
+            "p1_surprised_e2_1852749950.webp"
           ],
-          "pick": "p1_surprised_e2_1633283235.png"
+          "pick": "p1_surprised_e2_1633283235.webp"
         },
         "surprised.m1": {
           "cands": [
-            "p1_surprised_m1_46249243.png",
-            "p1_surprised_m1_43549916.png"
+            "p1_surprised_m1_46249243.webp",
+            "p1_surprised_m1_43549916.webp"
           ],
-          "pick": "p1_surprised_m1_46249243.png"
+          "pick": "p1_surprised_m1_46249243.webp"
         },
         "surprised.m2": {
           "cands": [
-            "p1_surprised_m2_469541431.png",
-            "p1_surprised_m2_1969554904.png"
+            "p1_surprised_m2_469541431.webp",
+            "p1_surprised_m2_1969554904.webp"
           ],
-          "pick": "p1_surprised_m2_1969554904.png"
+          "pick": "p1_surprised_m2_1969554904.webp"
         },
         "surprised.m3": {
           "cands": [
-            "p1_surprised_m3_451208168.png",
-            "p1_surprised_m3_394448112.png"
+            "p1_surprised_m3_451208168.webp",
+            "p1_surprised_m3_394448112.webp"
           ],
-          "pick": "p1_surprised_m3_451208168.png"
+          "pick": "p1_surprised_m3_451208168.webp"
         },
         "sad.e1": {
           "cands": [
-            "p1_sad_e1_2083780066.png",
-            "p1_sad_e1_1592567402.png"
+            "p1_sad_e1_2083780066.webp",
+            "p1_sad_e1_1592567402.webp"
           ],
-          "pick": "p1_sad_e1_2083780066.png"
+          "pick": "p1_sad_e1_2083780066.webp"
         },
         "sad.e2": {
           "cands": [
-            "p1_sad_e2_1153014988.png",
-            "p1_sad_e2_1639839735.png"
+            "p1_sad_e2_1153014988.webp",
+            "p1_sad_e2_1639839735.webp"
           ],
-          "pick": "p1_sad_e2_1153014988.png"
+          "pick": "p1_sad_e2_1153014988.webp"
         },
         "sad.m1": {
           "cands": [
-            "p1_sad_m1_138834266.png",
-            "p1_sad_m1_1314209871.png"
+            "p1_sad_m1_138834266.webp",
+            "p1_sad_m1_1314209871.webp"
           ],
-          "pick": "p1_sad_m1_1314209871.png"
+          "pick": "p1_sad_m1_1314209871.webp"
         },
         "sad.m2": {
           "cands": [
-            "p1_sad_m2_1320542993.png",
-            "p1_sad_m2_322589479.png"
+            "p1_sad_m2_1320542993.webp",
+            "p1_sad_m2_322589479.webp"
           ],
-          "pick": "p1_sad_m2_1320542993.png"
+          "pick": "p1_sad_m2_1320542993.webp"
         },
         "sad.m3": {
           "cands": [
-            "p1_sad_m3_677185771.png",
-            "p1_sad_m3_966474757.png"
+            "p1_sad_m3_677185771.webp",
+            "p1_sad_m3_966474757.webp"
           ],
-          "pick": "p1_sad_m3_677185771.png"
+          "pick": "p1_sad_m3_677185771.webp"
         },
         "think.e1": {
           "cands": [
-            "p1_think_e1_61454116.png",
-            "p1_think_e1_1866301354.png"
+            "p1_think_e1_61454116.webp",
+            "p1_think_e1_1866301354.webp"
           ],
-          "pick": "p1_think_e1_61454116.png"
+          "pick": "p1_think_e1_61454116.webp"
         },
         "think.e2": {
           "cands": [
-            "p1_think_e2_1294099523.png",
-            "p1_think_e2_1504337763.png"
+            "p1_think_e2_1294099523.webp",
+            "p1_think_e2_1504337763.webp"
           ],
-          "pick": "p1_think_e2_1294099523.png"
+          "pick": "p1_think_e2_1294099523.webp"
         },
         "think.m1": {
           "cands": [
-            "p1_think_m1_1733043800.png",
-            "p1_think_m1_8072829.png"
+            "p1_think_m1_1733043800.webp",
+            "p1_think_m1_8072829.webp"
           ],
-          "pick": "p1_think_m1_1733043800.png"
+          "pick": "p1_think_m1_1733043800.webp"
         },
         "think.m2": {
           "cands": [
-            "p1_think_m2_1323142739.png",
-            "p1_think_m2_1058861283.png"
+            "p1_think_m2_1323142739.webp",
+            "p1_think_m2_1058861283.webp"
           ],
-          "pick": "p1_think_m2_1323142739.png"
+          "pick": "p1_think_m2_1323142739.webp"
         },
         "think.m3": {
           "cands": [
-            "p1_think_m3_412593618.png",
-            "p1_think_m3_1224399838.png"
+            "p1_think_m3_412593618.webp",
+            "p1_think_m3_1224399838.webp"
           ],
-          "pick": "p1_think_m3_412593618.png"
+          "pick": "p1_think_m3_412593618.webp"
         },
         "smug.e1": {
           "cands": [
-            "p1_smug_e1_854544837.png",
-            "p1_smug_e1_953827461.png"
+            "p1_smug_e1_854544837.webp",
+            "p1_smug_e1_953827461.webp"
           ],
-          "pick": "p1_smug_e1_854544837.png"
+          "pick": "p1_smug_e1_854544837.webp"
         },
         "smug.e2": {
           "cands": [
-            "p1_smug_e2_376959288.png",
-            "p1_smug_e2_2059891112.png"
+            "p1_smug_e2_376959288.webp",
+            "p1_smug_e2_2059891112.webp"
           ],
-          "pick": "p1_smug_e2_376959288.png"
+          "pick": "p1_smug_e2_376959288.webp"
         },
         "smug.m1": {
           "cands": [
-            "p1_smug_m1_1596669799.png",
-            "p1_smug_m1_2144784052.png"
+            "p1_smug_m1_1596669799.webp",
+            "p1_smug_m1_2144784052.webp"
           ],
-          "pick": "p1_smug_m1_1596669799.png"
+          "pick": "p1_smug_m1_1596669799.webp"
         },
         "smug.m2": {
           "cands": [
-            "p1_smug_m2_1334693854.png",
-            "p1_smug_m2_66480487.png"
+            "p1_smug_m2_1334693854.webp",
+            "p1_smug_m2_66480487.webp"
           ],
-          "pick": "p1_smug_m2_66480487.png"
+          "pick": "p1_smug_m2_66480487.webp"
         },
         "smug.m3": {
           "cands": [
-            "p1_smug_m3_656585430.png",
-            "p1_smug_m3_416221560.png"
+            "p1_smug_m3_656585430.webp",
+            "p1_smug_m3_416221560.webp"
           ],
-          "pick": "p1_smug_m3_416221560.png"
+          "pick": "p1_smug_m3_416221560.webp"
         },
         "wry.e1": {
           "cands": [
-            "p1_wry_e1_939450384.png",
-            "p1_wry_e1_10123615.png"
+            "p1_wry_e1_939450384.webp",
+            "p1_wry_e1_10123615.webp"
           ],
-          "pick": "p1_wry_e1_939450384.png"
+          "pick": "p1_wry_e1_939450384.webp"
         },
         "wry.e2": {
           "cands": [
-            "p1_wry_e2_148115839.png",
-            "p1_wry_e2_731904839.png"
+            "p1_wry_e2_148115839.webp",
+            "p1_wry_e2_731904839.webp"
           ],
-          "pick": "p1_wry_e2_148115839.png"
+          "pick": "p1_wry_e2_148115839.webp"
         },
         "wry.m1": {
           "cands": [
-            "p1_wry_m1_1202382281.png",
-            "p1_wry_m1_1604181095.png"
+            "p1_wry_m1_1202382281.webp",
+            "p1_wry_m1_1604181095.webp"
           ],
-          "pick": "p1_wry_m1_1202382281.png"
+          "pick": "p1_wry_m1_1202382281.webp"
         },
         "wry.m2": {
           "cands": [
-            "p1_wry_m2_215051305.png",
-            "p1_wry_m2_740967422.png"
+            "p1_wry_m2_215051305.webp",
+            "p1_wry_m2_740967422.webp"
           ],
-          "pick": "p1_wry_m2_740967422.png"
+          "pick": "p1_wry_m2_740967422.webp"
         },
         "wry.m3": {
           "cands": [
-            "p1_wry_m3_844135461.png",
-            "p1_wry_m3_591043706.png"
+            "p1_wry_m3_844135461.webp",
+            "p1_wry_m3_591043706.webp"
           ],
-          "pick": "p1_wry_m3_844135461.png"
+          "pick": "p1_wry_m3_844135461.webp"
         },
         "glitch.e1": {
           "cands": [
-            "p1_glitch_e1_1618939106.png",
-            "p1_glitch_e1_427946165.png"
+            "p1_glitch_e1_1618939106.webp",
+            "p1_glitch_e1_427946165.webp"
           ],
-          "pick": "p1_glitch_e1_1618939106.png"
+          "pick": "p1_glitch_e1_1618939106.webp"
         },
         "glitch.e2": {
           "cands": [
-            "p1_glitch_e2_977940615.png",
-            "p1_glitch_e2_721899537.png"
+            "p1_glitch_e2_977940615.webp",
+            "p1_glitch_e2_721899537.webp"
           ],
-          "pick": "p1_glitch_e2_977940615.png"
+          "pick": "p1_glitch_e2_977940615.webp"
         },
         "glitch.m1": {
           "cands": [
-            "p1_glitch_m1_760708472.png",
-            "p1_glitch_m1_1812424660.png"
+            "p1_glitch_m1_760708472.webp",
+            "p1_glitch_m1_1812424660.webp"
           ],
-          "pick": "p1_glitch_m1_760708472.png"
+          "pick": "p1_glitch_m1_760708472.webp"
         },
         "glitch.m2": {
           "cands": [
-            "p1_glitch_m2_762064344.png",
-            "p1_glitch_m2_775085534.png"
+            "p1_glitch_m2_762064344.webp",
+            "p1_glitch_m2_775085534.webp"
           ],
-          "pick": "p1_glitch_m2_762064344.png"
+          "pick": "p1_glitch_m2_762064344.webp"
         },
         "glitch.m3": {
           "cands": [
-            "p1_glitch_m3_502547005.png",
-            "p1_glitch_m3_286026565.png"
+            "p1_glitch_m3_502547005.webp",
+            "p1_glitch_m3_286026565.webp"
           ],
-          "pick": "p1_glitch_m3_502547005.png"
+          "pick": "p1_glitch_m3_502547005.webp"
         },
         "focus.e1": {
           "cands": [
-            "p1_focus_e1_1157389456.png",
-            "p1_focus_e1_2119747415.png"
+            "p1_focus_e1_1157389456.webp",
+            "p1_focus_e1_2119747415.webp"
           ],
-          "pick": "p1_focus_e1_1157389456.png"
+          "pick": "p1_focus_e1_1157389456.webp"
         },
         "focus.e2": {
           "cands": [
-            "p1_focus_e2_648254776.png",
-            "p1_focus_e2_57623479.png"
+            "p1_focus_e2_648254776.webp",
+            "p1_focus_e2_57623479.webp"
           ],
-          "pick": "p1_focus_e2_648254776.png"
+          "pick": "p1_focus_e2_648254776.webp"
         },
         "focus.m1": {
           "cands": [
-            "p1_focus_m1_385325158.png",
-            "p1_focus_m1_1594606997.png"
+            "p1_focus_m1_385325158.webp",
+            "p1_focus_m1_1594606997.webp"
           ],
-          "pick": "p1_focus_m1_1594606997.png"
+          "pick": "p1_focus_m1_1594606997.webp"
         },
         "focus.m2": {
           "cands": [
-            "p1_focus_m2_151424897.png",
-            "p1_focus_m2_690353918.png"
+            "p1_focus_m2_151424897.webp",
+            "p1_focus_m2_690353918.webp"
           ],
-          "pick": "p1_focus_m2_151424897.png"
+          "pick": "p1_focus_m2_151424897.webp"
         },
         "focus.m3": {
           "cands": [
-            "p1_focus_m3_1281306584.png",
-            "p1_focus_m3_1821130003.png"
+            "p1_focus_m3_1281306584.webp",
+            "p1_focus_m3_1821130003.webp"
           ],
-          "pick": "p1_focus_m3_1821130003.png"
+          "pick": "p1_focus_m3_1821130003.webp"
         },
         "tender.e1": {
           "cands": [
-            "p1_tender_e1_136043345.png",
-            "p1_tender_e1_534471414.png"
+            "p1_tender_e1_136043345.webp",
+            "p1_tender_e1_534471414.webp"
           ],
-          "pick": "p1_tender_e1_136043345.png"
+          "pick": "p1_tender_e1_136043345.webp"
         },
         "tender.e2": {
           "cands": [
-            "p1_tender_e2_109691170.png",
-            "p1_tender_e2_1699884536.png"
+            "p1_tender_e2_109691170.webp",
+            "p1_tender_e2_1699884536.webp"
           ],
-          "pick": "p1_tender_e2_109691170.png"
+          "pick": "p1_tender_e2_109691170.webp"
         },
         "tender.m1": {
           "cands": [
-            "p1_tender_m1_487949053.png",
-            "p1_tender_m1_1318762093.png"
+            "p1_tender_m1_487949053.webp",
+            "p1_tender_m1_1318762093.webp"
           ],
-          "pick": "p1_tender_m1_487949053.png"
+          "pick": "p1_tender_m1_487949053.webp"
         },
         "tender.m2": {
           "cands": [
-            "p1_tender_m2_1493409813.png",
-            "p1_tender_m2_75594022.png"
+            "p1_tender_m2_1493409813.webp",
+            "p1_tender_m2_75594022.webp"
           ],
-          "pick": "p1_tender_m2_75594022.png"
+          "pick": "p1_tender_m2_75594022.webp"
         },
         "tender.m3": {
           "cands": [
-            "p1_tender_m3_851402206.png",
-            "p1_tender_m3_905568263.png"
+            "p1_tender_m3_851402206.webp",
+            "p1_tender_m3_905568263.webp"
           ],
-          "pick": "p1_tender_m3_905568263.png"
+          "pick": "p1_tender_m3_905568263.webp"
         },
         "hesitate.e1": {
           "cands": [
-            "p1_hesitate_e1_652159555.png",
-            "p1_hesitate_e1_2034219732.png"
+            "p1_hesitate_e1_652159555.webp",
+            "p1_hesitate_e1_2034219732.webp"
           ],
-          "pick": "p1_hesitate_e1_652159555.png"
+          "pick": "p1_hesitate_e1_652159555.webp"
         },
         "hesitate.e2": {
           "cands": [
-            "p1_hesitate_e2_1933917017.png",
-            "p1_hesitate_e2_1640396247.png"
+            "p1_hesitate_e2_1933917017.webp",
+            "p1_hesitate_e2_1640396247.webp"
           ],
-          "pick": "p1_hesitate_e2_1933917017.png"
+          "pick": "p1_hesitate_e2_1933917017.webp"
         },
         "hesitate.m1": {
           "cands": [
-            "p1_hesitate_m1_1978911182.png",
-            "p1_hesitate_m1_1902974922.png"
+            "p1_hesitate_m1_1978911182.webp",
+            "p1_hesitate_m1_1902974922.webp"
           ],
-          "pick": "p1_hesitate_m1_1978911182.png"
+          "pick": "p1_hesitate_m1_1978911182.webp"
         },
         "hesitate.m2": {
           "cands": [
-            "p1_hesitate_m2_1508279482.png",
-            "p1_hesitate_m2_266789281.png"
+            "p1_hesitate_m2_1508279482.webp",
+            "p1_hesitate_m2_266789281.webp"
           ],
-          "pick": "p1_hesitate_m2_1508279482.png"
+          "pick": "p1_hesitate_m2_1508279482.webp"
         },
         "hesitate.m3": {
           "cands": [
-            "p1_hesitate_m3_950687187.png",
-            "p1_hesitate_m3_210350199.png"
+            "p1_hesitate_m3_950687187.webp",
+            "p1_hesitate_m3_210350199.webp"
           ],
-          "pick": "p1_hesitate_m3_950687187.png"
+          "pick": "p1_hesitate_m3_950687187.webp"
         },
         "puzzled.e1": {
           "cands": [
-            "p1_puzzled_e1_1381426636.png",
-            "p1_puzzled_e1_14513084.png"
+            "p1_puzzled_e1_1381426636.webp",
+            "p1_puzzled_e1_14513084.webp"
           ],
-          "pick": "p1_puzzled_e1_1381426636.png"
+          "pick": "p1_puzzled_e1_1381426636.webp"
         },
         "puzzled.e2": {
           "cands": [
-            "p1_puzzled_e2_1343999749.png",
-            "p1_puzzled_e2_748226552.png"
+            "p1_puzzled_e2_1343999749.webp",
+            "p1_puzzled_e2_748226552.webp"
           ],
-          "pick": "p1_puzzled_e2_1343999749.png"
+          "pick": "p1_puzzled_e2_1343999749.webp"
         },
         "puzzled.m1": {
           "cands": [
-            "p1_puzzled_m1_600529086.png",
-            "p1_puzzled_m1_383424307.png"
+            "p1_puzzled_m1_600529086.webp",
+            "p1_puzzled_m1_383424307.webp"
           ],
-          "pick": "p1_puzzled_m1_600529086.png"
+          "pick": "p1_puzzled_m1_600529086.webp"
         },
         "puzzled.m2": {
           "cands": [
-            "p1_puzzled_m2_860489228.png",
-            "p1_puzzled_m2_841802031.png"
+            "p1_puzzled_m2_860489228.webp",
+            "p1_puzzled_m2_841802031.webp"
           ],
-          "pick": "p1_puzzled_m2_860489228.png"
+          "pick": "p1_puzzled_m2_860489228.webp"
         },
         "puzzled.m3": {
           "cands": [
-            "p1_puzzled_m3_929721708.png",
-            "p1_puzzled_m3_147795995.png"
+            "p1_puzzled_m3_929721708.webp",
+            "p1_puzzled_m3_147795995.webp"
           ],
-          "pick": "p1_puzzled_m3_147795995.png"
+          "pick": "p1_puzzled_m3_147795995.webp"
         }
       }
     },
@@ -685,11 +685,11 @@
       "refine": 0.25,
       "cands": [
         {
-          "file": "p3_master_edit41.png",
+          "file": "p3_master_edit41.webp",
           "seed": 41
         }
       ],
-      "master": "p3_master_edit41.png",
+      "master": "p3_master_edit41.webp",
       "seed": 41,
       "boxes": {
         "face": [
@@ -714,623 +714,623 @@
       "ex": {
         "smile": {
           "cands": [
-            "p3_smile_148564903.png",
-            "p3_smile_867410750.png",
-            "p3_smile_1292814828.png",
-            "p3_smile_1043846776.png",
-            "p3_smile_1645791600.png"
+            "p3_smile_148564903.webp",
+            "p3_smile_867410750.webp",
+            "p3_smile_1292814828.webp",
+            "p3_smile_1043846776.webp",
+            "p3_smile_1645791600.webp"
           ],
-          "pick": "p3_smile_148564903.png"
+          "pick": "p3_smile_148564903.webp"
         },
         "laugh": {
           "cands": [
-            "p3_laugh_1375721566.png",
-            "p3_laugh_657588855.png",
-            "p3_laugh_21831919.png",
-            "p3_laugh_132443063.png",
-            "p3_laugh_1726114566.png"
+            "p3_laugh_1375721566.webp",
+            "p3_laugh_657588855.webp",
+            "p3_laugh_21831919.webp",
+            "p3_laugh_132443063.webp",
+            "p3_laugh_1726114566.webp"
           ],
-          "pick": "p3_laugh_21831919.png"
+          "pick": "p3_laugh_21831919.webp"
         },
         "angry": {
           "cands": [
-            "p3_angry_313262185.png",
-            "p3_angry_1289102782.png",
-            "p3_angry_1199525170.png",
-            "p3_angry_1791497751.png",
-            "p3_angry_650642261.png"
+            "p3_angry_313262185.webp",
+            "p3_angry_1289102782.webp",
+            "p3_angry_1199525170.webp",
+            "p3_angry_1791497751.webp",
+            "p3_angry_650642261.webp"
           ],
-          "pick": "p3_angry_313262185.png"
+          "pick": "p3_angry_313262185.webp"
         },
         "surprised": {
           "cands": [
-            "p3_surprised_1580285355.png",
-            "p3_surprised_1926252247.png",
-            "p3_surprised_1176013781.png",
-            "p3_surprised_427327402.png",
-            "p3_surprised_733638696.png"
+            "p3_surprised_1580285355.webp",
+            "p3_surprised_1926252247.webp",
+            "p3_surprised_1176013781.webp",
+            "p3_surprised_427327402.webp",
+            "p3_surprised_733638696.webp"
           ],
-          "pick": "p3_surprised_1580285355.png"
+          "pick": "p3_surprised_1580285355.webp"
         },
         "sad": {
           "cands": [
-            "p3_sad_1273366526.png",
-            "p3_sad_1963118065.png",
-            "p3_sad_521372483.png",
-            "p3_sad_282049860.png",
-            "p3_sad_250219371.png"
+            "p3_sad_1273366526.webp",
+            "p3_sad_1963118065.webp",
+            "p3_sad_521372483.webp",
+            "p3_sad_282049860.webp",
+            "p3_sad_250219371.webp"
           ],
-          "pick": "p3_sad_1963118065.png"
+          "pick": "p3_sad_1963118065.webp"
         },
         "think": {
           "cands": [
-            "p3_think_658396570.png",
-            "p3_think_1403881943.png",
-            "p3_think_1917017613.png",
-            "p3_think_1972381655.png",
-            "p3_think_661673912.png"
+            "p3_think_658396570.webp",
+            "p3_think_1403881943.webp",
+            "p3_think_1917017613.webp",
+            "p3_think_1972381655.webp",
+            "p3_think_661673912.webp"
           ],
-          "pick": "p3_think_1403881943.png"
+          "pick": "p3_think_1403881943.webp"
         },
         "smug": {
           "cands": [
-            "p3_smug_1978932136.png",
-            "p3_smug_663673152.png",
-            "p3_smug_1864443002.png",
-            "p3_smug_1430384143.png",
-            "p3_smug_1236173431.png"
+            "p3_smug_1978932136.webp",
+            "p3_smug_663673152.webp",
+            "p3_smug_1864443002.webp",
+            "p3_smug_1430384143.webp",
+            "p3_smug_1236173431.webp"
           ],
-          "pick": "p3_smug_663673152.png"
+          "pick": "p3_smug_663673152.webp"
         },
         "wry": {
           "cands": [
-            "p3_wry_718385348.png",
-            "p3_wry_1901090153.png",
-            "p3_wry_1607005192.png",
-            "p3_wry_1806500078.png",
-            "p3_wry_566407943.png"
+            "p3_wry_718385348.webp",
+            "p3_wry_1901090153.webp",
+            "p3_wry_1607005192.webp",
+            "p3_wry_1806500078.webp",
+            "p3_wry_566407943.webp"
           ],
-          "pick": "p3_wry_1901090153.png"
+          "pick": "p3_wry_1901090153.webp"
         },
         "glitch": {
           "cands": [
-            "p3_glitch_306338169.png",
-            "p3_glitch_18726809.png",
-            "p3_glitch_490639388.png",
-            "p3_glitch_2113795951.png",
-            "p3_glitch_220458914.png"
+            "p3_glitch_306338169.webp",
+            "p3_glitch_18726809.webp",
+            "p3_glitch_490639388.webp",
+            "p3_glitch_2113795951.webp",
+            "p3_glitch_220458914.webp"
           ],
-          "pick": "p3_glitch_490639388.png"
+          "pick": "p3_glitch_490639388.webp"
         },
         "focus": {
           "cands": [
-            "p3_focus_252910630.png",
-            "p3_focus_1079922596.png",
-            "p3_focus_894609396.png",
-            "p3_focus_1259688311.png",
-            "p3_focus_898938087.png"
+            "p3_focus_252910630.webp",
+            "p3_focus_1079922596.webp",
+            "p3_focus_894609396.webp",
+            "p3_focus_1259688311.webp",
+            "p3_focus_898938087.webp"
           ],
-          "pick": "p3_focus_1079922596.png"
+          "pick": "p3_focus_1079922596.webp"
         },
         "tender": {
           "cands": [
-            "p3_tender_1051216279.png",
-            "p3_tender_690957893.png",
-            "p3_tender_1374294412.png",
-            "p3_tender_64971770.png",
-            "p3_tender_113983073.png"
+            "p3_tender_1051216279.webp",
+            "p3_tender_690957893.webp",
+            "p3_tender_1374294412.webp",
+            "p3_tender_64971770.webp",
+            "p3_tender_113983073.webp"
           ],
-          "pick": "p3_tender_690957893.png"
+          "pick": "p3_tender_690957893.webp"
         },
         "hesitate": {
           "cands": [
-            "p3_hesitate_1869313583.png",
-            "p3_hesitate_1067147266.png",
-            "p3_hesitate_448735636.png",
-            "p3_hesitate_1344919466.png",
-            "p3_hesitate_1219397948.png"
+            "p3_hesitate_1869313583.webp",
+            "p3_hesitate_1067147266.webp",
+            "p3_hesitate_448735636.webp",
+            "p3_hesitate_1344919466.webp",
+            "p3_hesitate_1219397948.webp"
           ],
-          "pick": "p3_hesitate_1067147266.png"
+          "pick": "p3_hesitate_1067147266.webp"
         },
         "puzzled": {
           "cands": [
-            "p3_puzzled_1646195086.png",
-            "p3_puzzled_1006449542.png",
-            "p3_puzzled_1322158126.png",
-            "p3_puzzled_280973584.png",
-            "p3_puzzled_2087640648.png"
+            "p3_puzzled_1646195086.webp",
+            "p3_puzzled_1006449542.webp",
+            "p3_puzzled_1322158126.webp",
+            "p3_puzzled_280973584.webp",
+            "p3_puzzled_2087640648.webp"
           ],
-          "pick": "p3_puzzled_1006449542.png"
+          "pick": "p3_puzzled_1006449542.webp"
         },
         "neutral.e1": {
           "cands": [
-            "p3_neutral_e1_1811481861.png",
-            "p3_neutral_e1_2103212584.png"
+            "p3_neutral_e1_1811481861.webp",
+            "p3_neutral_e1_2103212584.webp"
           ],
-          "pick": "p3_neutral_e1_1811481861.png"
+          "pick": "p3_neutral_e1_1811481861.webp"
         },
         "neutral.e2": {
           "cands": [
-            "p3_neutral_e2_845451593.png",
-            "p3_neutral_e2_465419689.png"
+            "p3_neutral_e2_845451593.webp",
+            "p3_neutral_e2_465419689.webp"
           ],
-          "pick": "p3_neutral_e2_845451593.png"
+          "pick": "p3_neutral_e2_845451593.webp"
         },
         "neutral.m1": {
           "cands": [
-            "p3_neutral_m1_293894512.png",
-            "p3_neutral_m1_1256238721.png"
+            "p3_neutral_m1_293894512.webp",
+            "p3_neutral_m1_1256238721.webp"
           ],
-          "pick": "p3_neutral_m1_293894512.png"
+          "pick": "p3_neutral_m1_293894512.webp"
         },
         "neutral.m2": {
           "cands": [
-            "p3_neutral_m2_1062426056.png",
-            "p3_neutral_m2_2002922501.png"
+            "p3_neutral_m2_1062426056.webp",
+            "p3_neutral_m2_2002922501.webp"
           ],
-          "pick": "p3_neutral_m2_1062426056.png"
+          "pick": "p3_neutral_m2_1062426056.webp"
         },
         "neutral.m3": {
           "cands": [
-            "p3_neutral_m3_2057259109.png",
-            "p3_neutral_m3_1294340993.png"
+            "p3_neutral_m3_2057259109.webp",
+            "p3_neutral_m3_1294340993.webp"
           ],
-          "pick": "p3_neutral_m3_1294340993.png"
+          "pick": "p3_neutral_m3_1294340993.webp"
         },
         "smile.e1": {
           "cands": [
-            "p3_smile_e1_739519543.png",
-            "p3_smile_e1_593993348.png"
+            "p3_smile_e1_739519543.webp",
+            "p3_smile_e1_593993348.webp"
           ],
-          "pick": "p3_smile_e1_739519543.png"
+          "pick": "p3_smile_e1_739519543.webp"
         },
         "smile.e2": {
           "cands": [
-            "p3_smile_e2_1713241042.png",
-            "p3_smile_e2_1668086604.png"
+            "p3_smile_e2_1713241042.webp",
+            "p3_smile_e2_1668086604.webp"
           ],
-          "pick": "p3_smile_e2_1713241042.png"
+          "pick": "p3_smile_e2_1713241042.webp"
         },
         "smile.m1": {
           "cands": [
-            "p3_smile_m1_1291231379.png",
-            "p3_smile_m1_145327694.png"
+            "p3_smile_m1_1291231379.webp",
+            "p3_smile_m1_145327694.webp"
           ],
-          "pick": "p3_smile_m1_1291231379.png"
+          "pick": "p3_smile_m1_1291231379.webp"
         },
         "smile.m2": {
           "cands": [
-            "p3_smile_m2_834486507.png",
-            "p3_smile_m2_2021569666.png"
+            "p3_smile_m2_834486507.webp",
+            "p3_smile_m2_2021569666.webp"
           ],
-          "pick": "p3_smile_m2_2021569666.png"
+          "pick": "p3_smile_m2_2021569666.webp"
         },
         "smile.m3": {
           "cands": [
-            "p3_smile_m3_1263782149.png",
-            "p3_smile_m3_1236060917.png"
+            "p3_smile_m3_1263782149.webp",
+            "p3_smile_m3_1236060917.webp"
           ],
-          "pick": "p3_smile_m3_1236060917.png"
+          "pick": "p3_smile_m3_1236060917.webp"
         },
         "laugh.e1": {
           "cands": [
-            "p3_laugh_e1_1757580244.png",
-            "p3_laugh_e1_160244817.png"
+            "p3_laugh_e1_1757580244.webp",
+            "p3_laugh_e1_160244817.webp"
           ],
-          "pick": "p3_laugh_e1_1757580244.png"
+          "pick": "p3_laugh_e1_1757580244.webp"
         },
         "laugh.e2": {
           "cands": [
-            "p3_laugh_e2_2088046394.png",
-            "p3_laugh_e2_891590529.png"
+            "p3_laugh_e2_2088046394.webp",
+            "p3_laugh_e2_891590529.webp"
           ],
-          "pick": "p3_laugh_e2_891590529.png"
+          "pick": "p3_laugh_e2_891590529.webp"
         },
         "laugh.m1": {
           "cands": [
-            "p3_laugh_m1_2092621675.png",
-            "p3_laugh_m1_1388182582.png"
+            "p3_laugh_m1_2092621675.webp",
+            "p3_laugh_m1_1388182582.webp"
           ],
-          "pick": "p3_laugh_m1_2092621675.png"
+          "pick": "p3_laugh_m1_2092621675.webp"
         },
         "laugh.m2": {
           "cands": [
-            "p3_laugh_m2_544754204.png",
-            "p3_laugh_m2_1375901761.png"
+            "p3_laugh_m2_544754204.webp",
+            "p3_laugh_m2_1375901761.webp"
           ],
-          "pick": "p3_laugh_m2_544754204.png"
+          "pick": "p3_laugh_m2_544754204.webp"
         },
         "laugh.m3": {
           "cands": [
-            "p3_laugh_m3_2000890890.png",
-            "p3_laugh_m3_2128055991.png"
+            "p3_laugh_m3_2000890890.webp",
+            "p3_laugh_m3_2128055991.webp"
           ],
-          "pick": "p3_laugh_m3_2000890890.png"
+          "pick": "p3_laugh_m3_2000890890.webp"
         },
         "angry.e1": {
           "cands": [
-            "p3_angry_e1_1577697967.png",
-            "p3_angry_e1_1845719197.png"
+            "p3_angry_e1_1577697967.webp",
+            "p3_angry_e1_1845719197.webp"
           ],
-          "pick": "p3_angry_e1_1577697967.png"
+          "pick": "p3_angry_e1_1577697967.webp"
         },
         "angry.e2": {
           "cands": [
-            "p3_angry_e2_940656400.png",
-            "p3_angry_e2_1376868104.png"
+            "p3_angry_e2_940656400.webp",
+            "p3_angry_e2_1376868104.webp"
           ],
-          "pick": "p3_angry_e2_940656400.png"
+          "pick": "p3_angry_e2_940656400.webp"
         },
         "angry.m1": {
           "cands": [
-            "p3_angry_m1_1464961658.png",
-            "p3_angry_m1_1492007867.png"
+            "p3_angry_m1_1464961658.webp",
+            "p3_angry_m1_1492007867.webp"
           ],
-          "pick": "p3_angry_m1_1464961658.png"
+          "pick": "p3_angry_m1_1464961658.webp"
         },
         "angry.m2": {
           "cands": [
-            "p3_angry_m2_921000050.png",
-            "p3_angry_m2_902686135.png"
+            "p3_angry_m2_921000050.webp",
+            "p3_angry_m2_902686135.webp"
           ],
-          "pick": "p3_angry_m2_902686135.png"
+          "pick": "p3_angry_m2_902686135.webp"
         },
         "angry.m3": {
           "cands": [
-            "p3_angry_m3_1921607907.png",
-            "p3_angry_m3_528612529.png"
+            "p3_angry_m3_1921607907.webp",
+            "p3_angry_m3_528612529.webp"
           ],
-          "pick": "p3_angry_m3_528612529.png"
+          "pick": "p3_angry_m3_528612529.webp"
         },
         "surprised.e1": {
           "cands": [
-            "p3_surprised_e1_333238269.png",
-            "p3_surprised_e1_854542973.png"
+            "p3_surprised_e1_333238269.webp",
+            "p3_surprised_e1_854542973.webp"
           ],
-          "pick": "p3_surprised_e1_333238269.png"
+          "pick": "p3_surprised_e1_333238269.webp"
         },
         "surprised.e2": {
           "cands": [
-            "p3_surprised_e2_543755010.png",
-            "p3_surprised_e2_590882147.png"
+            "p3_surprised_e2_543755010.webp",
+            "p3_surprised_e2_590882147.webp"
           ],
-          "pick": "p3_surprised_e2_543755010.png"
+          "pick": "p3_surprised_e2_543755010.webp"
         },
         "surprised.m1": {
           "cands": [
-            "p3_surprised_m1_669157449.png",
-            "p3_surprised_m1_506890037.png"
+            "p3_surprised_m1_669157449.webp",
+            "p3_surprised_m1_506890037.webp"
           ],
-          "pick": "p3_surprised_m1_669157449.png"
+          "pick": "p3_surprised_m1_669157449.webp"
         },
         "surprised.m2": {
           "cands": [
-            "p3_surprised_m2_1555507402.png",
-            "p3_surprised_m2_344478380.png"
+            "p3_surprised_m2_1555507402.webp",
+            "p3_surprised_m2_344478380.webp"
           ],
-          "pick": "p3_surprised_m2_1555507402.png"
+          "pick": "p3_surprised_m2_1555507402.webp"
         },
         "surprised.m3": {
           "cands": [
-            "p3_surprised_m3_2017692768.png",
-            "p3_surprised_m3_481598176.png"
+            "p3_surprised_m3_2017692768.webp",
+            "p3_surprised_m3_481598176.webp"
           ],
-          "pick": "p3_surprised_m3_2017692768.png"
+          "pick": "p3_surprised_m3_2017692768.webp"
         },
         "sad.e1": {
           "cands": [
-            "p3_sad_e1_101664965.png",
-            "p3_sad_e1_826537559.png"
+            "p3_sad_e1_101664965.webp",
+            "p3_sad_e1_826537559.webp"
           ],
-          "pick": "p3_sad_e1_101664965.png"
+          "pick": "p3_sad_e1_101664965.webp"
         },
         "sad.e2": {
           "cands": [
-            "p3_sad_e2_1166201061.png",
-            "p3_sad_e2_311585484.png"
+            "p3_sad_e2_1166201061.webp",
+            "p3_sad_e2_311585484.webp"
           ],
-          "pick": "p3_sad_e2_1166201061.png"
+          "pick": "p3_sad_e2_1166201061.webp"
         },
         "sad.m1": {
           "cands": [
-            "p3_sad_m1_2057664091.png",
-            "p3_sad_m1_1647571732.png"
+            "p3_sad_m1_2057664091.webp",
+            "p3_sad_m1_1647571732.webp"
           ],
-          "pick": "p3_sad_m1_2057664091.png"
+          "pick": "p3_sad_m1_2057664091.webp"
         },
         "sad.m2": {
           "cands": [
-            "p3_sad_m2_249580588.png",
-            "p3_sad_m2_253684423.png"
+            "p3_sad_m2_249580588.webp",
+            "p3_sad_m2_253684423.webp"
           ],
-          "pick": "p3_sad_m2_249580588.png"
+          "pick": "p3_sad_m2_249580588.webp"
         },
         "sad.m3": {
           "cands": [
-            "p3_sad_m3_145463314.png",
-            "p3_sad_m3_2083536119.png"
+            "p3_sad_m3_145463314.webp",
+            "p3_sad_m3_2083536119.webp"
           ],
-          "pick": "p3_sad_m3_145463314.png"
+          "pick": "p3_sad_m3_145463314.webp"
         },
         "think.e1": {
           "cands": [
-            "p3_think_e1_1943824142.png",
-            "p3_think_e1_1015513190.png"
+            "p3_think_e1_1943824142.webp",
+            "p3_think_e1_1015513190.webp"
           ],
-          "pick": "p3_think_e1_1015513190.png"
+          "pick": "p3_think_e1_1015513190.webp"
         },
         "think.e2": {
           "cands": [
-            "p3_think_e2_426788780.png",
-            "p3_think_e2_1782625357.png"
+            "p3_think_e2_426788780.webp",
+            "p3_think_e2_1782625357.webp"
           ],
-          "pick": "p3_think_e2_426788780.png"
+          "pick": "p3_think_e2_426788780.webp"
         },
         "think.m1": {
           "cands": [
-            "p3_think_m1_1969100253.png",
-            "p3_think_m1_315250203.png"
+            "p3_think_m1_1969100253.webp",
+            "p3_think_m1_315250203.webp"
           ],
-          "pick": "p3_think_m1_1969100253.png"
+          "pick": "p3_think_m1_1969100253.webp"
         },
         "think.m2": {
           "cands": [
-            "p3_think_m2_1847178259.png",
-            "p3_think_m2_1522026572.png"
+            "p3_think_m2_1847178259.webp",
+            "p3_think_m2_1522026572.webp"
           ],
-          "pick": "p3_think_m2_1847178259.png"
+          "pick": "p3_think_m2_1847178259.webp"
         },
         "think.m3": {
           "cands": [
-            "p3_think_m3_407738713.png",
-            "p3_think_m3_1680380493.png"
+            "p3_think_m3_407738713.webp",
+            "p3_think_m3_1680380493.webp"
           ],
-          "pick": "p3_think_m3_407738713.png"
+          "pick": "p3_think_m3_407738713.webp"
         },
         "smug.e1": {
           "cands": [
-            "p3_smug_e1_186414574.png",
-            "p3_smug_e1_711971466.png"
+            "p3_smug_e1_186414574.webp",
+            "p3_smug_e1_711971466.webp"
           ],
-          "pick": "p3_smug_e1_186414574.png"
+          "pick": "p3_smug_e1_186414574.webp"
         },
         "smug.e2": {
           "cands": [
-            "p3_smug_e2_853629479.png",
-            "p3_smug_e2_609180025.png"
+            "p3_smug_e2_853629479.webp",
+            "p3_smug_e2_609180025.webp"
           ],
-          "pick": "p3_smug_e2_853629479.png"
+          "pick": "p3_smug_e2_853629479.webp"
         },
         "smug.m1": {
           "cands": [
-            "p3_smug_m1_549303148.png",
-            "p3_smug_m1_1711497669.png"
+            "p3_smug_m1_549303148.webp",
+            "p3_smug_m1_1711497669.webp"
           ],
-          "pick": "p3_smug_m1_549303148.png"
+          "pick": "p3_smug_m1_549303148.webp"
         },
         "smug.m2": {
           "cands": [
-            "p3_smug_m2_741512405.png",
-            "p3_smug_m2_681332421.png"
+            "p3_smug_m2_741512405.webp",
+            "p3_smug_m2_681332421.webp"
           ],
-          "pick": "p3_smug_m2_681332421.png"
+          "pick": "p3_smug_m2_681332421.webp"
         },
         "smug.m3": {
           "cands": [
-            "p3_smug_m3_290928939.png",
-            "p3_smug_m3_362377304.png"
+            "p3_smug_m3_290928939.webp",
+            "p3_smug_m3_362377304.webp"
           ],
-          "pick": "p3_smug_m3_290928939.png"
+          "pick": "p3_smug_m3_290928939.webp"
         },
         "wry.e1": {
           "cands": [
-            "p3_wry_e1_868342638.png",
-            "p3_wry_e1_1294749142.png"
+            "p3_wry_e1_868342638.webp",
+            "p3_wry_e1_1294749142.webp"
           ],
-          "pick": "p3_wry_e1_868342638.png"
+          "pick": "p3_wry_e1_868342638.webp"
         },
         "wry.e2": {
           "cands": [
-            "p3_wry_e2_1072411266.png",
-            "p3_wry_e2_382824648.png"
+            "p3_wry_e2_1072411266.webp",
+            "p3_wry_e2_382824648.webp"
           ],
-          "pick": "p3_wry_e2_1072411266.png"
+          "pick": "p3_wry_e2_1072411266.webp"
         },
         "wry.m1": {
           "cands": [
-            "p3_wry_m1_1154531803.png",
-            "p3_wry_m1_1919918400.png"
+            "p3_wry_m1_1154531803.webp",
+            "p3_wry_m1_1919918400.webp"
           ],
-          "pick": "p3_wry_m1_1154531803.png"
+          "pick": "p3_wry_m1_1154531803.webp"
         },
         "wry.m2": {
           "cands": [
-            "p3_wry_m2_1855272880.png",
-            "p3_wry_m2_1973505746.png"
+            "p3_wry_m2_1855272880.webp",
+            "p3_wry_m2_1973505746.webp"
           ],
-          "pick": "p3_wry_m2_1855272880.png"
+          "pick": "p3_wry_m2_1855272880.webp"
         },
         "wry.m3": {
           "cands": [
-            "p3_wry_m3_615743103.png",
-            "p3_wry_m3_2083840090.png"
+            "p3_wry_m3_615743103.webp",
+            "p3_wry_m3_2083840090.webp"
           ],
-          "pick": "p3_wry_m3_615743103.png"
+          "pick": "p3_wry_m3_615743103.webp"
         },
         "glitch.e1": {
           "cands": [
-            "p3_glitch_e1_631333626.png",
-            "p3_glitch_e1_1242468903.png"
+            "p3_glitch_e1_631333626.webp",
+            "p3_glitch_e1_1242468903.webp"
           ],
-          "pick": "p3_glitch_e1_631333626.png"
+          "pick": "p3_glitch_e1_631333626.webp"
         },
         "glitch.e2": {
           "cands": [
-            "p3_glitch_e2_554106781.png",
-            "p3_glitch_e2_671903366.png"
+            "p3_glitch_e2_554106781.webp",
+            "p3_glitch_e2_671903366.webp"
           ],
-          "pick": "p3_glitch_e2_554106781.png"
+          "pick": "p3_glitch_e2_554106781.webp"
         },
         "glitch.m1": {
           "cands": [
-            "p3_glitch_m1_868119413.png",
-            "p3_glitch_m1_1205831608.png"
+            "p3_glitch_m1_868119413.webp",
+            "p3_glitch_m1_1205831608.webp"
           ],
-          "pick": "p3_glitch_m1_1205831608.png"
+          "pick": "p3_glitch_m1_1205831608.webp"
         },
         "glitch.m2": {
           "cands": [
-            "p3_glitch_m2_1382052940.png",
-            "p3_glitch_m2_642037095.png"
+            "p3_glitch_m2_1382052940.webp",
+            "p3_glitch_m2_642037095.webp"
           ],
-          "pick": "p3_glitch_m2_642037095.png"
+          "pick": "p3_glitch_m2_642037095.webp"
         },
         "glitch.m3": {
           "cands": [
-            "p3_glitch_m3_1158256482.png",
-            "p3_glitch_m3_94383565.png"
+            "p3_glitch_m3_1158256482.webp",
+            "p3_glitch_m3_94383565.webp"
           ],
-          "pick": "p3_glitch_m3_94383565.png"
+          "pick": "p3_glitch_m3_94383565.webp"
         },
         "focus.e1": {
           "cands": [
-            "p3_focus_e1_857969639.png",
-            "p3_focus_e1_1893333388.png"
+            "p3_focus_e1_857969639.webp",
+            "p3_focus_e1_1893333388.webp"
           ],
-          "pick": "p3_focus_e1_857969639.png"
+          "pick": "p3_focus_e1_857969639.webp"
         },
         "focus.e2": {
           "cands": [
-            "p3_focus_e2_857875425.png",
-            "p3_focus_e2_1978412140.png"
+            "p3_focus_e2_857875425.webp",
+            "p3_focus_e2_1978412140.webp"
           ],
-          "pick": "p3_focus_e2_857875425.png"
+          "pick": "p3_focus_e2_857875425.webp"
         },
         "focus.m1": {
           "cands": [
-            "p3_focus_m1_1211796253.png",
-            "p3_focus_m1_1473272532.png"
+            "p3_focus_m1_1211796253.webp",
+            "p3_focus_m1_1473272532.webp"
           ],
-          "pick": "p3_focus_m1_1473272532.png"
+          "pick": "p3_focus_m1_1473272532.webp"
         },
         "focus.m2": {
           "cands": [
-            "p3_focus_m2_1386593178.png",
-            "p3_focus_m2_578267726.png"
+            "p3_focus_m2_1386593178.webp",
+            "p3_focus_m2_578267726.webp"
           ],
-          "pick": "p3_focus_m2_1386593178.png"
+          "pick": "p3_focus_m2_1386593178.webp"
         },
         "focus.m3": {
           "cands": [
-            "p3_focus_m3_574750117.png",
-            "p3_focus_m3_1782746068.png"
+            "p3_focus_m3_574750117.webp",
+            "p3_focus_m3_1782746068.webp"
           ],
-          "pick": "p3_focus_m3_574750117.png"
+          "pick": "p3_focus_m3_574750117.webp"
         },
         "tender.e1": {
           "cands": [
-            "p3_tender_e1_14946705.png",
-            "p3_tender_e1_1510774625.png"
+            "p3_tender_e1_14946705.webp",
+            "p3_tender_e1_1510774625.webp"
           ],
-          "pick": "p3_tender_e1_14946705.png"
+          "pick": "p3_tender_e1_14946705.webp"
         },
         "tender.e2": {
           "cands": [
-            "p3_tender_e2_1783293537.png",
-            "p3_tender_e2_1046097436.png"
+            "p3_tender_e2_1783293537.webp",
+            "p3_tender_e2_1046097436.webp"
           ],
-          "pick": "p3_tender_e2_1783293537.png"
+          "pick": "p3_tender_e2_1783293537.webp"
         },
         "tender.m1": {
           "cands": [
-            "p3_tender_m1_816427977.png",
-            "p3_tender_m1_1017360996.png"
+            "p3_tender_m1_816427977.webp",
+            "p3_tender_m1_1017360996.webp"
           ],
-          "pick": "p3_tender_m1_816427977.png"
+          "pick": "p3_tender_m1_816427977.webp"
         },
         "tender.m2": {
           "cands": [
-            "p3_tender_m2_1031233890.png",
-            "p3_tender_m2_186493205.png"
+            "p3_tender_m2_1031233890.webp",
+            "p3_tender_m2_186493205.webp"
           ],
-          "pick": "p3_tender_m2_186493205.png"
+          "pick": "p3_tender_m2_186493205.webp"
         },
         "tender.m3": {
           "cands": [
-            "p3_tender_m3_108096096.png",
-            "p3_tender_m3_1780702158.png"
+            "p3_tender_m3_108096096.webp",
+            "p3_tender_m3_1780702158.webp"
           ],
-          "pick": "p3_tender_m3_1780702158.png"
+          "pick": "p3_tender_m3_1780702158.webp"
         },
         "hesitate.e1": {
           "cands": [
-            "p3_hesitate_e1_744115328.png",
-            "p3_hesitate_e1_442693304.png"
+            "p3_hesitate_e1_744115328.webp",
+            "p3_hesitate_e1_442693304.webp"
           ],
-          "pick": "p3_hesitate_e1_744115328.png"
+          "pick": "p3_hesitate_e1_744115328.webp"
         },
         "hesitate.e2": {
           "cands": [
-            "p3_hesitate_e2_2133335698.png",
-            "p3_hesitate_e2_1794883615.png"
+            "p3_hesitate_e2_2133335698.webp",
+            "p3_hesitate_e2_1794883615.webp"
           ],
-          "pick": "p3_hesitate_e2_2133335698.png"
+          "pick": "p3_hesitate_e2_2133335698.webp"
         },
         "hesitate.m1": {
           "cands": [
-            "p3_hesitate_m1_1984984775.png",
-            "p3_hesitate_m1_638077557.png"
+            "p3_hesitate_m1_1984984775.webp",
+            "p3_hesitate_m1_638077557.webp"
           ],
-          "pick": "p3_hesitate_m1_638077557.png"
+          "pick": "p3_hesitate_m1_638077557.webp"
         },
         "hesitate.m2": {
           "cands": [
-            "p3_hesitate_m2_1808410743.png",
-            "p3_hesitate_m2_1701839968.png"
+            "p3_hesitate_m2_1808410743.webp",
+            "p3_hesitate_m2_1701839968.webp"
           ],
-          "pick": "p3_hesitate_m2_1808410743.png"
+          "pick": "p3_hesitate_m2_1808410743.webp"
         },
         "hesitate.m3": {
           "cands": [
-            "p3_hesitate_m3_2004613289.png",
-            "p3_hesitate_m3_1247681200.png"
+            "p3_hesitate_m3_2004613289.webp",
+            "p3_hesitate_m3_1247681200.webp"
           ],
-          "pick": "p3_hesitate_m3_1247681200.png"
+          "pick": "p3_hesitate_m3_1247681200.webp"
         },
         "puzzled.e1": {
           "cands": [
-            "p3_puzzled_e1_861776924.png",
-            "p3_puzzled_e1_1935886356.png"
+            "p3_puzzled_e1_861776924.webp",
+            "p3_puzzled_e1_1935886356.webp"
           ],
-          "pick": "p3_puzzled_e1_861776924.png"
+          "pick": "p3_puzzled_e1_861776924.webp"
         },
         "puzzled.e2": {
           "cands": [
-            "p3_puzzled_e2_1839136091.png",
-            "p3_puzzled_e2_731780202.png"
+            "p3_puzzled_e2_1839136091.webp",
+            "p3_puzzled_e2_731780202.webp"
           ],
-          "pick": "p3_puzzled_e2_1839136091.png"
+          "pick": "p3_puzzled_e2_1839136091.webp"
         },
         "puzzled.m1": {
           "cands": [
-            "p3_puzzled_m1_1971548519.png",
-            "p3_puzzled_m1_162502319.png"
+            "p3_puzzled_m1_1971548519.webp",
+            "p3_puzzled_m1_162502319.webp"
           ],
-          "pick": "p3_puzzled_m1_162502319.png"
+          "pick": "p3_puzzled_m1_162502319.webp"
         },
         "puzzled.m2": {
           "cands": [
-            "p3_puzzled_m2_48348157.png",
-            "p3_puzzled_m2_740080718.png"
+            "p3_puzzled_m2_48348157.webp",
+            "p3_puzzled_m2_740080718.webp"
           ],
-          "pick": "p3_puzzled_m2_740080718.png"
+          "pick": "p3_puzzled_m2_740080718.webp"
         },
         "puzzled.m3": {
           "cands": [
-            "p3_puzzled_m3_308248697.png",
-            "p3_puzzled_m3_1852412832.png"
+            "p3_puzzled_m3_308248697.webp",
+            "p3_puzzled_m3_1852412832.webp"
           ],
-          "pick": "p3_puzzled_m3_308248697.png"
+          "pick": "p3_puzzled_m3_308248697.webp"
         }
       }
     }

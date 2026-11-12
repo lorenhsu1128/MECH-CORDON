@@ -1179,7 +1179,7 @@ Object.assign(Game.prototype, {
       c.commT = c.t;
       // 通訊分割的立繪（game/portrait-ui.js）：先開始載入，表情依台詞
       if (this.ptPlayer) this.ptPlayer(who, 'p2');
-      c.commEx = lineExpr(text);
+      c.commEx = lineExpr(text, { sp: who });
     }
     if (who && who !== 'station') SFX.radio();
     c.subUntil = c.t + dur;

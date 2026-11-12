@@ -77,7 +77,7 @@ Object.assign(Game.prototype, {
     if (show) {
       // 第 4 個元素＝表情與動作（data/line-expr.js）
       this.commQ = (this.commQ || []).concat(
-        e.lines.map(([sp, t]) => [sp, t, '', lineExpr(t, { ev: event })]),
+        e.lines.map(([sp, t]) => [sp, t, '', lineExpr(t, { ev: event, sp })]),
       );
       if (!this.commBusy) this.commNext();
     }
@@ -169,7 +169,7 @@ Object.assign(Game.prototype, {
   },
   // 即時的一句（增援預告等）：插到最前面立刻顯示，不寫進通訊紀錄
   commSay(sp, text, name) {
-    this.commQ = [[sp, text, name || '', lineExpr(text, { ev: 'live' })]].concat(this.commQ || []);
+    this.commQ = [[sp, text, name || '', lineExpr(text, { ev: 'live', sp })]].concat(this.commQ || []);
     this.commNext();
   },
   // 位置：任務中＝右下角（觸控時下方中央，styles.css），選單畫面與暫停＝右上角

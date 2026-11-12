@@ -15223,8 +15223,27 @@ async function testPortraits(browser, base) {
   check(talk.pose === 'p4', `通訊框：即時插播是專注的表情，用管制台姿勢（${talk.pose}）`);
   check(talk.mouths.length >= 2, `說話中嘴型會動（${talk.mouths.join('、')}）`);
   await page.screenshot({ path: path.join(SHOT_DIR, 'portrait-comm.png') });
-  // 沒有立繪的角色：照舊是字母徽章
-  await page.evaluate(() => window.__game.commSay('castron', '照合約辦事。'));
+  // 第 4 期的角色（委託方、僚機、教官）：通訊框的胸像、逐句指定的表情（教官的「認可」）
+  const cast = await page.evaluate(async () => {
+    const g = window.__game;
+    g.commClear();
+    g.commSay('instructor', '……完美。挑不出毛病。');
+    const t0 = performance.now();
+    let v;
+    while (
+      !(v = g.ptViews.find((v) => v.wrap.closest('#comm') && v.id === 'instructor')) &&
+      performance.now() - t0 < 8000
+    )
+      await new Promise((r) => setTimeout(r, 50));
+    return v ? { pose: v.P.P.id, expr: v.P.expr } : null;
+  });
+  check(
+    cast && cast.pose === 'p2' && cast.expr === 'approve',
+    `第 4 期：教官的通訊是胸像、通訊姿勢、招牌表情「認可」（${JSON.stringify(cast)}）`,
+  );
+  await page.evaluate(() => window.__game.commClear());
+  // 沒有立繪的角色（軌道站：之後也只有波形）：照舊是字母徽章
+  await page.evaluate(() => window.__game.commSay('station', '照合約辦事。'));
   await page.waitForTimeout(600);
   check(
     await page.evaluate(
@@ -15258,7 +15277,8 @@ async function testPortraits(browser, base) {
   // 通訊紀錄：ECHO 的小頭像
   const face = await page.evaluate(async () => {
     const root = document.createElement('div');
-    root.innerHTML = '<svg class="cBadge" data-sp="echo"></svg><svg class="cBadge" data-sp="castron"></svg>';
+    root.innerHTML =
+      '<svg class="cBadge" data-sp="echo"></svg><svg class="cBadge" data-sp="station"></svg><svg class="cBadge" data-sp="wren"></svg>';
     document.body.appendChild(root);
     window.__game.ptBadges(root);
     const t0 = performance.now();
@@ -15272,8 +15292,8 @@ async function testPortraits(browser, base) {
     return out;
   });
   check(
-    face.face === 1 && face.badge === 1,
-    `通訊紀錄：ECHO 換成小頭像、其他照舊（${JSON.stringify(face)}）`,
+    face.face === 2 && face.badge === 1,
+    `通訊紀錄：ECHO 與芮恩換成小頭像、軌道站照舊（${JSON.stringify(face)}）`,
   );
   // 台詞的表情（data/line-expr.js）：逐句指定、通訊事件的預設、即時插播
   const ex = await page.evaluate(async () => {
@@ -21282,6 +21302,7 @@ async function testGroundMarks(browser, base) {
     'game/support.js', // mortarShot／crateShot／layMine／addFlow 的本體
     'game/shockwave.js', // shockStart 的本體
     'game/boss-field.js', // 場地效果的本體（bfAround 等；招式寫 data/boss-kit.js）
+    'game/map-view', // 地圖預覽器的標示（Boss 擂台選中目標的圈），不是招式
   ];
   const srcAll = cat.moves.map((m) => m.src).join('\n');
   const miss = [];

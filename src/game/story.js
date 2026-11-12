@@ -153,7 +153,7 @@ Object.assign(Game.prototype, {
             : mine[mine.length - 1]);
         if (!hit || hit[1] === cur || !v) return;
         cur = hit[1];
-        this.ptSetExpr(v, lineExpr(hit[0].q));
+        this.ptSetExpr(v, lineExpr(hit[0].q, { sp }));
       };
       const h = Math.round(Math.min(460, window.innerHeight * 0.78));
       let v = null;
@@ -162,7 +162,7 @@ Object.assign(Game.prototype, {
         h,
         fit: 'full',
         cls: 'ptStory',
-        expr: lineExpr(mine[0][0].q).e,
+        expr: lineExpr(mine[0][0].q, { sp }).e,
         priv: /^[pio]3/.test(this.stKey || ''),
         talk: () => {
           const t = (performance.now() - t0) / 1000;
