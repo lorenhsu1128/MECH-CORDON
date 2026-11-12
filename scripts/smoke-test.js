@@ -7,7 +7,7 @@
 // 預設分段平行（scripts/smoke-jobs.js）：SMOKE_JOBS＝段數（1＝單一程序依序跑），耗時記在
 // test-results/smoke-times.json；SMOKE_ONLY 可以一起用
 'use strict';
-/* global window, document, localStorage, location, getComputedStyle, scrollTo, indexedDB, THREE, PointerEvent -- page.evaluate 的回呼在瀏覽器端執行 */
+/* global window, document, localStorage, location, getComputedStyle, scrollTo, indexedDB, THREE, PointerEvent, innerWidth, innerHeight -- page.evaluate 的回呼在瀏覽器端執行 */
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -1250,6 +1250,93 @@ async function testMapView(browser) {
   const paused = await page.evaluate(() => window.__game.mapv.paused);
   await page.keyboard.press('KeyP');
   check(mini && (await visible(page, 'mvPanel')) && paused, 'H 收起／展開面板、P 暫停');
+  // ---- 第 2 期：敵人 ----
+  await page.click('#mvBar [data-cam="free"]');
+  await page.click('#mvPanel [data-tab="foes"]');
+  await page.waitForFunction(() => window.__game.enemies.filter((e) => !e.dead).length >= 4, null, {
+    timeout: 20000,
+  });
+  const real = await page.evaluate(() => {
+    const g = window.__game;
+    return { n: g.enemies.filter((e) => !e.dead).length, mode: g.mapv.f.mode, ai: g.mapv.f.ai };
+  });
+  check(real.mode === 'real' && real.ai && real.n >= 4, `實戰編成：場上 ${real.n} 台、AI 行動`);
+  await page.click('#mvNext');
+  await wait(300);
+  const tg = await page.evaluate(() => {
+    const g = window.__game;
+    return { name: g.mapv.tgt && g.mapv.tgt.name, bar: document.getElementById('mvTgtName').textContent };
+  });
+  const info = await page.textContent('#mvTgtInfo');
+  check(
+    !!tg.name && tg.bar === tg.name && /三角形/.test(info) && /網格/.test(info),
+    `下一台：${tg.name}（資訊有網格、三角形）`,
+  );
+  await page.selectOption('#mvBody [data-fm="mode"]', 'gallery');
+  await ready();
+  const gal = await page.evaluate(() => {
+    const g = window.__game;
+    const L = g.mapvGalleryList();
+    const al = g.enemies.filter((e) => !e.dead);
+    return {
+      want: L.length,
+      n: al.filter((e) => e.mvGal).length,
+      ai: g.mapv.f.ai,
+      p0: al.map((e) => [e.pos.x, e.pos.z]),
+    };
+  });
+  await wait(1500);
+  const moved = await page.evaluate((p0) => {
+    const al = window.__game.enemies.filter((e) => !e.dead);
+    return Math.max(...al.map((e, i) => (p0[i] ? Math.hypot(e.pos.x - p0[i][0], e.pos.z - p0[i][1]) : 0)));
+  }, gal.p0);
+  check(
+    gal.n >= gal.want - 1 && gal.want >= 15 && !gal.ai && moved < 3,
+    `圖鑑排列：${gal.n}／${gal.want} 種各一台、AI 停住（最多移動 ${moved.toFixed(1)} m）`,
+  );
+  await page.screenshot({ path: path.join(SHOT_DIR, 'map-view-gallery.png') });
+  // 點畫面上的敵人選取
+  const sp = await page.evaluate(() => {
+    const g = window.__game;
+    g.mapvSetTgt(null);
+    // 畫面上看得到的（不在面板與效能顯示底下、沒有埋在雪裡）一般敵人
+    const W = innerWidth,
+      H = innerHeight;
+    let best = null;
+    for (const q of g.enemies) {
+      if (q.dead || !q.mvGal || q.opts.flying || !q.etype || !/^mt/.test(q.etype)) continue;
+      const s = g.proj(q.center());
+      if (s.x > 340 && s.x < W - 250 && s.y > 80 && s.y < H - 30) best = { x: s.x, y: s.y, name: q.name };
+    }
+    return best || { x: W / 2, y: H / 2, name: '—' };
+  });
+  await page.mouse.click(sp.x, sp.y);
+  await wait(300);
+  const picked = await page.evaluate(() => window.__game.mapv.tgt && window.__game.mapv.tgt.name);
+  check(!!picked, `點畫面上的敵人選取：${picked}（點的是 ${sp.name}）`);
+  // 遊戲的視角：操作玩家的機體、任務的 HUD
+  await page.click('#mvGameBtn');
+  await wait(800);
+  const gm = await page.evaluate(() => {
+    const g = window.__game;
+    return { game: g.mapv.game, cls: document.body.classList.contains('mvGame'), panel: g.mapv.panel };
+  });
+  check(
+    gm.game && gm.cls && !gm.panel && (await visible(page, 'hudWrap')),
+    '操作：玩家的機體、任務的 HUD、面板收起',
+  );
+  const p0 = await page.evaluate(() => window.__game.player.pos.clone());
+  await page.keyboard.down('KeyW');
+  await wait(900);
+  await page.keyboard.up('KeyW');
+  const p1 = await page.evaluate(() => window.__game.player.pos.clone());
+  check(Math.hypot(p1.x - p0.x, p1.z - p0.z) > 3, '操作：W 移動玩家的機體');
+  await page.click('#mvGameBtn');
+  await wait(300);
+  check(
+    !(await page.evaluate(() => window.__game.mapv.game)) && !(await visible(page, 'hudWrap')),
+    '再按「操作」回到觀看',
+  );
   // Esc → 暫停選單 → 離開
   await page.keyboard.press('Escape');
   check(await waitVisible(page, 'pause'), 'Esc 開暫停選單');
@@ -1265,6 +1352,32 @@ async function testMapView(browser) {
   );
   check(save0 === save1 && !(await page.evaluate(() => window.__game.mapv)), '離開後沒有寫存檔');
   await ctx.close();
+  // 手機橫式（觸控）：面板預設收起、操作時出現觸控按鈕
+  const tc = await browser.newContext({ viewport: { width: 844, height: 390 }, hasTouch: true });
+  const tp = await tc.newPage();
+  watch(tp, 'map-view-phone');
+  await tp.goto('file:///' + HTML.replace(/\\/g, '/') + '?test');
+  await waitVisible(tp, 'title');
+  await tp.tap('#btnMapView');
+  await tp.waitForFunction(
+    () => window.__game.mapv && window.__game.world && !window.__game.mapv.busy,
+    null,
+    {
+      timeout: 90000,
+    },
+  );
+  await wait(1500);
+  const ph0 = !(await visible(tp, 'mvPanel')) && (await visible(tp, 'mvBar'));
+  await tp.screenshot({ path: path.join(SHOT_DIR, 'map-view-phone.png') });
+  await tp.tap('#mvPanelBtn');
+  const ph1 = await visible(tp, 'mvPanel');
+  await tp.tap('#mvPanelBtn');
+  await tp.tap('#mvGameBtn');
+  await wait(600);
+  const vpad = await tp.evaluate(() => document.getElementById('vpad').classList.contains('on'));
+  await tp.screenshot({ path: path.join(SHOT_DIR, 'map-view-phone-game.png') });
+  check(ph0 && ph1 && vpad, '手機橫式：面板預設收起、點「面板」展開、操作時出現觸控按鈕');
+  await tc.close();
 }
 
 async function testStyleLab(browser) {

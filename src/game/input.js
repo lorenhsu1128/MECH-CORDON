@@ -621,7 +621,10 @@ Object.assign(Game.prototype, {
   updateVpad() {
     // 渲染風格實驗室的觀看模式不操作機體：不顯示虛擬按鈕
     const on =
-      this.vpadWanted() && this.state === 'play' && !(this.lab && this.lab.mode === 'watch') && !this.mapv;
+      this.vpadWanted() &&
+      this.state === 'play' &&
+      !(this.lab && this.lab.mode === 'watch') &&
+      !(this.mapv && !this.mapv.game);
     document.body.classList.toggle('touchDev', this.touchAvailable());
     if (this.vpadEl) this.vpadEl.classList.toggle('on', on);
     document.body.classList.toggle('vpad', on);
@@ -1108,7 +1111,7 @@ Object.assign(Game.prototype, {
       }
       if (this.state !== 'play') return;
       if (this.lab && this.labPointer('down', e)) return;
-      if (this.mapv) return; // 地圖預覽器：鏡頭的操作在 canvas 的 pointer events（map-view.js）
+      if (this.mapv && !this.mapv.game) return; // 地圖預覽器：鏡頭的操作在 canvas 的 pointer events（map-view.js）
       if (this.spectator) {
         if (this.specMode === 'free' && e.button === 0) {
           this.specDrag = { x: e.clientX, y: e.clientY };
@@ -1170,7 +1173,7 @@ Object.assign(Game.prototype, {
         if (this.lab && this.state === 'play') this.labPointer('wheel', e);
         if (this.spectator && this.state === 'play') {
           this.specZoom = clamp((this.specZoom || 1) * (e.deltaY > 0 ? 1.12 : 0.9), 0.5, 4);
-        } else if (this.mapv) {
+        } else if (this.mapv && !this.mapv.game) {
           // 地圖預覽器：滾輪在 canvas 上自己處理（map-view.js）
         } else if (this.state === 'play' && !this.lab && this.chase && this.player) {
           // 追尾：滾輪調整鏡頭距離

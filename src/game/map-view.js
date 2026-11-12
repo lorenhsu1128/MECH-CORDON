@@ -3,6 +3,7 @@
 //  檢視各地圖主題的地圖、地圖物件、敵人與特效搭不搭，同時看渲染效能。this.mapv 存在時 state 是 'play'，
 //  主迴圈改呼叫 mapvTick；不寫存檔、不給經驗與掉落（mission.js 的 onEnemyKilled／onPlayerDead 看 this.mapv）。
 //  第 1 期：選地圖（主題、變體、地標、種子、時間、天候、大小）、自由／環繞／全圖俯視鏡頭、基本效能面板、觸控操作
+//  第 2 期：敵人（map-view-foes.js）、AI 開關、電影鏡頭、遊戲的視角（操作一台無敵的玩家機體）
 // ============================================================
 import { SFX } from '../audio/audio.js';
 import { escHtml } from '../core/html.js';
@@ -22,7 +23,10 @@ const CAMS = [
   ['free', '自由', 'WASD 移動、拖曳旋轉、右鍵拖曳平移、滾輪縮放（觸控：單指旋轉、雙指縮放與平移）'],
   ['orbit', '環繞', '繞著中心點慢慢轉（拖曳改角度、滾輪縮放）'],
   ['top', '全圖', '從正上方看整張地圖（拖曳平移、滾輪縮放）'],
+  ['cinema', '電影', '自動環繞目標，每 8 秒換下一台'],
 ];
+const CIN_T = 8; // 電影鏡頭換目標的秒數
+const TAP_PX = 8; // 指標移動不到這麼多像素＝點一下（選取敵人）
 const TODS = [
   ['', '主題預設'],
   ['dawn', '黎明'],
@@ -76,6 +80,21 @@ Object.assign(Game.prototype, {
       speed: 1,
       panel: innerHeight > 540, // 手機橫式預設收起
       tab: 'map',
+      // 敵人（map-view-foes.js）：mode real 實戰編成／gallery 圖鑑排列／none；lv 等級；ai 行動；god 無敵；
+      // extras 據點與裝置等；all 不等玩家靠近全部生成；waves 增援；kinds 圖鑑的種類
+      f: {
+        mode: 'real',
+        lv: 6,
+        ai: true,
+        god: true,
+        extras: true,
+        all: true,
+        waves: false,
+        kinds: { theme: true, ace: true, gen: true },
+      },
+      tgt: null,
+      cinT: 0,
+      game: false, // 遊戲的視角：操作玩家的機體
       regenT: 0,
       busy: false,
       ptrs: new Map(), // 觸控／滑鼠的指標（雙指縮放平移）
@@ -100,7 +119,7 @@ Object.assign(Game.prototype, {
     this.camera.far = 400 * DS;
     this.camera.updateProjectionMatrix();
     for (const id of ['mvPanel', 'mvBar', 'mvStat', 'mvBusy']) $(id).hidden = true;
-    document.body.classList.remove('mapv', 'mvMini');
+    document.body.classList.remove('mapv', 'mvMini', 'mvGame');
     $('btnAbort').textContent = '放棄任務';
     this.styleRefresh();
     this.state = 'title';
@@ -180,6 +199,8 @@ Object.assign(Game.prototype, {
     });
     this.placeStart(this.player);
     this.players = [this.player];
+    V.tgt = null;
+    this.mapvSpawnFoes(); // 敵人（map-view-foes.js）
     this.levelName =
       '地圖預覽・' +
       w.theme.name +
@@ -194,9 +215,13 @@ Object.assign(Game.prototype, {
     this.camera.updateProjectionMatrix();
     // 鏡頭：中心點放在作戰區域中央
     const Z = w.zone;
-    V.F.pivot.set((Z[0] + Z[1]) / 2, 0, (Z[2] + Z[3]) / 2);
-    V.F.pivot.y = w.terrainHeight(V.F.pivot.x, V.F.pivot.z);
+    if (V.f.mode !== 'gallery') {
+      V.F.pivot.set((Z[0] + Z[1]) / 2, 0, (Z[2] + Z[3]) / 2);
+      V.F.pivot.y = w.terrainHeight(V.F.pivot.x, V.F.pivot.z);
+    }
     if (V.cam === 'top') this.mapvTopFit();
+    if (V.game) this.mapvSetGame(true);
+    if (V.tab === 'foes') this.mapvRenderTab();
     this.stylePipe.resetHistory();
     this.mapvSyncUi();
   },
@@ -235,33 +260,90 @@ Object.assign(Game.prototype, {
       if (V.regenT <= 0) this.mapvGenerate();
     }
     const step = V.paused || V.busy ? 0 : dt * V.speed;
-    const p = this.player;
-    if (step > 0 && this.world && p) {
-      this.missionT += step;
-      this.time += step;
-      p.hp = p.maxHp;
-      p.move(step, new THREE.Vector3(), false, false, false, null);
-      for (const e of this.enemies) if (!e.dead) e.updateAI(step);
-      for (let i = this.projectiles.length - 1; i >= 0; i--) {
-        const q = this.projectiles[i];
-        q.update(step);
-        if (q.dead) this.projectiles.splice(i, 1);
+    if (step > 0 && this.world && this.player) this.mapvSim(step);
+    if (this.world && this.player) {
+      if (V.game) {
+        this.updateCamera(dt);
+        SFX.setListener(this.player.center());
+        this.updateLoops();
+      } else {
+        this.lodTick();
+        this.mapvCamera(dt);
+        SFX.setListener(this.camera.position);
       }
-      this.updateMapExtras(step);
-      this.updateSupport(step);
-      this.updateHazards(step);
-      if (this.crowd) this.crowdTick(step);
-      this.fx.update(step);
-      this.tickPopups(step);
-    }
-    if (this.world) {
-      this.lodTick();
-      this.mapvCamera(dt);
-      SFX.setListener(this.camera.position);
       this.renderMain();
     }
-    this.hctx.clearRect(0, 0, innerWidth, innerHeight);
+    if (V.game && this.player) this.drawHud(dt);
+    else this.hctx.clearRect(0, 0, innerWidth, innerHeight);
+    // 目標被擊破：資訊與名稱更新
+    if (V.tgt && V.tgt.dead) this.mapvSetTgt(null);
+    if ((this.frames & 31) === 0) this.mapvTgtUi();
     this.mapvStats(t0);
+  },
+  // 遊戲邏輯一格（照主迴圈的任務中，沒有勝敗與存檔）：玩家與敵人無敵時每格補滿
+  mapvSim(step) {
+    const V = this.mapv,
+      f = V.f,
+      p = this.player;
+    this.missionT += step;
+    this.time += step;
+    p.hp = p.maxHp;
+    if (V.game && !p.dead && !p.downed) this.updatePlayer(step);
+    else p.move(step, new THREE.Vector3(), false, false, false, null);
+    this.updateMapExtras(step);
+    if (V.game) this.lodTick();
+    if (f.ai) this.aiDirectorTick(step);
+    const batch = this.aiBatchOn();
+    for (const e of this.enemies) {
+      if (e.dead) continue;
+      if (f.god) e.hp = e.maxHp;
+      if (f.ai) this.aiStep(e, step, batch);
+      else this.mapvIdle(e, step);
+    }
+    this.separateMechs(step);
+    for (const a of this.allies) if (!a.dead) this.aiStep(a, step, batch);
+    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+      const q = this.projectiles[i];
+      q.update(step);
+      if (q.dead) this.projectiles.splice(i, 1);
+    }
+    this.updateShocks(step);
+    this.updateSupport(step);
+    this.updateHazards(step);
+    this.lavaTick(step);
+    this.propCrushTick();
+    if (this.crowd) this.crowdTick(step);
+    this.fx.update(step);
+    this.tickPopups(step);
+    this.spawnQTick(); // 生成佇列：一格一台（全部生成、增援）
+    if (f.ai) {
+      this.encWakeTick(); // 遠處的敵群：玩家靠近才生成
+      if (f.waves && (this.waves.length || this.wavePend)) this.waveTick(step);
+      this.devTick(step); // 地圖互動裝置
+    }
+    this.devVisTick(step);
+  },
+  // 遊戲的視角：操作玩家的機體（俯視／追尾／第一人稱照設定，V 切換），HUD 與觸控按鈕照任務
+  mapvSetGame(on) {
+    const V = this.mapv;
+    V.game = !!on;
+    document.body.classList.toggle('mvGame', V.game);
+    V.ptrs.clear();
+    if (V.game) {
+      // 面板會蓋住任務的 HUD（左上的任務資訊）：進入時收起，要用再按「面板」
+      V.panel = false;
+      this.camZoom = this.camBase();
+      this.camCU = null;
+      this.camExtra = 0;
+      this.viewReset();
+      this.camSnap();
+      this.renderWeaponHud(true);
+    } else {
+      if (document.pointerLockElement) document.exitPointerLock();
+      V.F.pivot.copy(this.player.pos);
+    }
+    this.updateVpad();
+    this.mapvSyncUi();
   },
   // 鏡頭：自由／環繞／全圖都是繞著中心點（F）的球座標
   mapvCamera(dt) {
@@ -284,13 +366,26 @@ Object.assign(Game.prototype, {
       if (k.KeyD) F.pivot.z += fx * sp;
       if (k.KeyQ) F.yaw += dt * 1.2;
       if (k.KeyE) F.yaw -= dt * 1.2;
-    } else if (V.cam === 'orbit') F.yaw += dt * 0.15;
+    } else if (V.cam === 'orbit' || V.cam === 'cinema') F.yaw += dt * (V.cam === 'cinema' ? 0.22 : 0.15);
+    if (V.cam === 'cinema') {
+      V.cinT += dt;
+      if (!V.tgt || V.cinT > CIN_T) this.mapvCycle(1);
+    }
+    // 有目標時中心點跟著它（自由鏡頭按 WASD 移動＝放掉目標）
+    if (V.tgt && !V.tgt.dead) {
+      if (V.cam === 'free' && (k.KeyW || k.KeyA || k.KeyS || k.KeyD)) this.mapvSetTgt(null);
+      else if (V.cam !== 'top') {
+        const c = V.tgt.center();
+        F.pivot.x += (c.x - F.pivot.x) * Math.min(1, dt * 5);
+        F.pivot.z += (c.z - F.pivot.z) * Math.min(1, dt * 5);
+      }
+    }
     const half = w.size * 0.75;
     F.pivot.x = clamp(F.pivot.x, -half, half);
     F.pivot.z = clamp(F.pivot.z, -half, half);
     // 中心點貼著地面（全圖不跟：保持整張地圖在畫面裡）
-    if (V.cam !== 'top')
-      F.pivot.y += (w.groundAt(F.pivot.x, F.pivot.z, 1e4) + 2 * DS - F.pivot.y) * Math.min(1, dt * 6);
+    const gy = V.tgt && !V.tgt.dead ? V.tgt.center().y : w.groundAt(F.pivot.x, F.pivot.z, 1e4) + 2 * DS;
+    if (V.cam !== 'top') F.pivot.y += (gy - F.pivot.y) * Math.min(1, dt * 6);
     const cp = Math.cos(F.pitch);
     cam.position.set(
       F.pivot.x + Math.sin(F.yaw) * cp * F.dist,
@@ -314,13 +409,13 @@ Object.assign(Game.prototype, {
     }
     w.updateOcclusion(cam.position, F.pivot, dt);
     this.rangeRing.visible = false;
-    this.camFocus = null;
+    this.camFocus = V.tgt && !V.tgt.dead ? V.tgt : null;
   },
   // ---------- 輸入 ----------
   // 指標（滑鼠與觸控都走 pointer events，掛在 canvas 上）：單指／左鍵旋轉、右鍵或雙指平移、滾輪或雙指縮放
   mapvPointer(type, e) {
     const V = this.mapv;
-    if (!V || this.state !== 'play') return false;
+    if (!V || this.state !== 'play' || V.game) return false; // 遊戲的視角：照任務的輸入
     const F = V.F;
     if (type === 'wheel') {
       F.dist = clamp(
@@ -331,13 +426,26 @@ Object.assign(Game.prototype, {
       return true;
     }
     if (type === 'down') {
-      V.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, b: e.button });
+      // sx／sy：按下的位置；n：按下時已經有別的指標（雙指的一部分，放開不算點一下）
+      V.ptrs.set(e.pointerId, {
+        x: e.clientX,
+        y: e.clientY,
+        b: e.button,
+        sx: e.clientX,
+        sy: e.clientY,
+        n: V.ptrs.size,
+      });
       V.pinch = null;
       return true;
     }
     if (type === 'up') {
+      const P0 = V.ptrs.get(e.pointerId);
       V.ptrs.delete(e.pointerId);
       V.pinch = null;
+      // 點一下（沒有拖曳、不是雙指）：選取點到的敵人
+      const tap = P0 && !P0.n && !V.ptrs.size && P0.b === 0;
+      if (tap && Math.hypot(e.clientX - P0.sx, e.clientY - P0.sy) < TAP_PX)
+        this.mapvPick(e.clientX, e.clientY);
       return true;
     }
     const P = V.ptrs.get(e.pointerId);
@@ -347,6 +455,7 @@ Object.assign(Game.prototype, {
     P.x = e.clientX;
     P.y = e.clientY;
     if (V.ptrs.size >= 2) {
+      for (const q of V.ptrs.values()) q.n = 1; // 雙指之後放開不算點一下
       // 雙指：距離改變＝縮放，中點移動＝平移
       const [a, b] = [...V.ptrs.values()];
       const d = Math.hypot(a.x - b.x, a.y - b.y),
@@ -382,7 +491,13 @@ Object.assign(Game.prototype, {
     if (e.target && e.target.closest && e.target.closest('#mvPanel input, #mvPanel select, #mvBar select'))
       return e.code !== 'Escape';
     if (e.code === 'Escape') return false; // 暫停選單（離開）
-    if (e.code === 'KeyH') this.mapvTogglePanel();
+    if (e.code === 'KeyH') {
+      this.mapvTogglePanel();
+      return true;
+    }
+    if (V.game) return false; // 遊戲的視角：其他按鍵照任務
+    if (e.code === 'KeyN') this.mapvCycle(1);
+    else if (e.code === 'KeyB') this.mapvCycle(-1);
     else if (e.code === 'KeyP') this.mapvPause();
     else if (e.code === 'KeyG') this.mapvGenerate();
     else if (e.code === 'BracketLeft' || e.code === 'BracketRight') {
@@ -420,17 +535,21 @@ Object.assign(Game.prototype, {
       ]
         .map((s) => opt(s[0], s[1], V.speed))
         .join('')}</select></span>
+      <span class="mvseg"><button id="mvPrev" title="上一台（B）">◀</button><span id="mvTgtName" class="mvtgt">—</span><button id="mvNext" title="下一台（N）">▶</button><button id="mvGameBtn" title="操作一台無敵的玩家機體：俯視、追尾、第一人稱（V 切換）">操作</button></span>
       <span class="mvseg"><button id="mvRegen" title="同樣的參數重新產生（G）">重新產生</button><button id="mvShot" title="下載這一格的 PNG">截圖</button></span>
       <span class="mvseg"><button id="mvPanelBtn" title="收起／展開面板（H）">面板</button><button id="mvBack">返回</button></span>`;
     P.innerHTML = `
       <div class="mvhead"><b>地圖預覽</b><span id="mvName" class="dim"></span></div>
-      <div class="mvtabs" data-padtabs="button"><button data-tab="map">地圖</button></div>
+      <div class="mvtabs" data-padtabs="button"><button data-tab="map">地圖</button><button data-tab="foes">敵人</button></div>
       <div class="mvbody" id="mvBody"></div>`;
     S.innerHTML = `<div id="mvFps"></div><canvas id="mvSpark" width="200" height="40"></canvas><div id="mvNums"></div>`;
     for (const b of B.querySelectorAll('[data-cam]')) b.onclick = () => this.mapvSetCam(b.dataset.cam);
     $('mvPauseBtn').onclick = () => this.mapvPause();
     $('mvSpeed').onchange = (e) => (V.speed = Number(e.target.value) || 1);
     $('mvRegen').onclick = () => this.mapvGenerate();
+    $('mvPrev').onclick = () => this.mapvCycle(-1);
+    $('mvNext').onclick = () => this.mapvCycle(1);
+    $('mvGameBtn').onclick = () => this.mapvSetGame(!V.game);
     $('mvShot').onclick = () => (V.shot = true);
     $('mvPanelBtn').onclick = () => this.mapvTogglePanel();
     $('mvBack').onclick = () => this.exitMapView();
@@ -461,8 +580,13 @@ Object.assign(Game.prototype, {
     const body = $('mvBody');
     for (const b of $('mvPanel').querySelectorAll('[data-tab]'))
       b.classList.toggle('on', b.dataset.tab === V.tab);
-    if (V.tab === 'map') body.innerHTML = this.mapvMapHtml();
-    this.mapvBindTab();
+    if (V.tab === 'map') {
+      body.innerHTML = this.mapvMapHtml();
+      this.mapvBindTab();
+    } else if (V.tab === 'foes') {
+      body.innerHTML = this.mapvFoesHtml();
+      this.mapvBindFoes();
+    }
     this.mapvSyncUi();
   },
   mapvMapHtml() {
@@ -522,6 +646,8 @@ Object.assign(Game.prototype, {
     for (const b of $('mvBar').querySelectorAll('[data-cam]'))
       b.classList.toggle('on', b.dataset.cam === V.cam);
     $('mvPauseBtn').textContent = V.paused ? '▶' : '⏸';
+    $('mvGameBtn').classList.toggle('on', V.game);
+    for (const b of $('mvBar').querySelectorAll('[data-cam]')) b.disabled = V.game;
     $('mvPanelBtn').classList.toggle('on', V.panel);
     $('mvPanel').classList.toggle('mini', !V.panel);
     document.body.classList.toggle('mvMini', !V.panel);
@@ -582,7 +708,7 @@ Object.assign(Game.prototype, {
       ['幾何／貼圖', `${R.memory.geometries}／${R.memory.textures}`],
       ['記憶體', mem],
       ['實體', ents],
-      ['粒子', this.fx && this.fx.busyN ? this.fx.busyN() : '—'],
+      ['粒子', this.fx && this.fx.busyN ? Math.round(this.fx.busyN()) : '—'],
       ['解析度', `${Math.round(this.renderer.getPixelRatio() * 100)}%`],
     ]
       .map(([k, v]) => `<span>${k}</span><b>${v}</b>`)

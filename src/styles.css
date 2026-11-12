@@ -2415,6 +2415,73 @@ body.mapv #fps {
   margin-top: 8px;
   font-size: 11px;
 }
+#mvBar .mvtgt {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 4px;
+  color: var(--acc2);
+}
+#mvPanel .mvchks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin: 4px 0;
+}
+#mvPanel .mvchk {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+}
+#mvPanel .mvacts {
+  display: flex;
+  gap: 4px;
+  margin: 6px 0;
+}
+#mvPanel .mvsub {
+  color: var(--acc);
+  margin: 10px 0 4px;
+  border-top: 1px solid var(--line);
+  padding-top: 6px;
+  letter-spacing: 0.06em;
+}
+#mvPanel .mvinfo {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1px 8px;
+  font-size: 11px;
+}
+#mvPanel .mvinfo span {
+  color: var(--dim);
+}
+#mvPanel .mvinfo b {
+  font-weight: normal;
+  text-align: right;
+}
+#mvPanel .mvents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+#mvPanel .mvents button {
+  font-size: 11px;
+  padding: 3px 7px;
+  min-height: 28px;
+}
+#mvPanel .mvents i {
+  color: var(--dim);
+  font-style: normal;
+}
+/* 遊戲的視角：任務的 HUD 照常，面板與效能留著（可以收起） */
+body.mvGame #mvBar [data-cam] {
+  display: none; /* 操作時鏡頭照任務的視角（V 切換） */
+}
+body.mvGame #mvPanel {
+  bottom: auto;
+  max-height: 50vh;
+}
 #mvStat {
   top: 56px;
   right: 8px;
@@ -2501,6 +2568,14 @@ body.mapv #fps {
   }
   #mvNums {
     font-size: 10px;
+  }
+  /* 操作時效能只留 FPS（不蓋住觸控按鈕） */
+  body.mvGame #mvStat {
+    width: auto;
+  }
+  body.mvGame #mvSpark,
+  body.mvGame #mvNums {
+    display: none;
   }
 }
 /* 存檔畫面（game/save.js） */

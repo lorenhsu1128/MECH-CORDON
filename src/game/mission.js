@@ -643,7 +643,8 @@ Object.assign(Game.prototype, {
     // waveEdgePoint／spawnPoint 回傳的是 { x, z }：換成貼地的向量（撤離的增援傳的是這種）
     if (at && !at.isVector3) at = new THREE.Vector3(at.x, this.world.groundAt(at.x, at.z, 999), at.z);
     const d = ENEMY_TYPES[t] || FOES[t];
-    if (FOES[t] && this.simMark && !this.sim && !this.lv && !this.airMode) this.simMark('foes', t); // 遇過的專屬敵人（模擬器、自由出擊）
+    if (FOES[t] && this.simMark && !this.sim && !this.lv && !this.airMode && !this.mapv)
+      this.simMark('foes', t); // 遇過的專屬敵人（模擬器、自由出擊）
     // 新類型第一次出現：提示打法
     if (d.intro && !d.roster && !this.airMode) {
       if (!this.introSeen) this.introSeen = new Set();
