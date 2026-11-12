@@ -79,6 +79,14 @@ Object.assign(Game.prototype, {
       this.ctrl = { aim: 'mouse', moveRel: 'screen', holdFire: true, rumble: true, touch: 'auto' };
     }
   },
+  // 介面動畫（docs/zzz-ui-design.md）：body[data-uifx]＝full／simple／off，CSS 與轉場依它決定
+  applyUiFx() {
+    const v = ['simple', 'off'].includes(this.ctrl.uiFx) ? this.ctrl.uiFx : 'full';
+    document.body.dataset.uifx = v;
+  },
+  uiFx() {
+    return document.body.dataset.uifx || 'full';
+  },
   saveKeys() {
     try {
       localStorage.setItem('mech_cordon_keys', JSON.stringify(this.keymap));
@@ -718,6 +726,7 @@ Object.assign(Game.prototype, {
   bindInput() {
     this.down = {};
     this.loadKeys();
+    this.applyUiFx();
     this.setupTouch();
     this.setupFullscreen();
     document.getElementById('btnSettings').onclick = () => {
@@ -911,6 +920,11 @@ Object.assign(Game.prototype, {
     document.getElementById('ctrlCamCU').onchange = (e) => {
       this.ctrl.camCU = e.target.value;
       if (e.target.value === 'off') this.camCU = null;
+      this.saveKeys();
+    };
+    document.getElementById('ctrlUiFx').onchange = (e) => {
+      this.ctrl.uiFx = e.target.value;
+      this.applyUiFx();
       this.saveKeys();
     };
     document.getElementById('ctrlTfx').onchange = (e) => {

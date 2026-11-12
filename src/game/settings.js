@@ -22,7 +22,7 @@ const SET_TABS = {
 const PRESETS = {
   gfx: {
     name: '畫面品質',
-    tip: '一次調整解析度、水面、機甲特效、砲火特效、文字演出與殘影；效能＝比較慢的電腦、平板與手機',
+    tip: '一次調整解析度、水面、機甲特效、砲火特效、文字演出、介面動畫與殘影；效能＝比較慢的電腦、平板與手機',
     list: [
       [
         '效能',
@@ -32,6 +32,7 @@ const PRESETS = {
           ctrlMechFx: 'simple',
           ctrlFxLv: 'std',
           ctrlTfx: 'simple',
+          ctrlUiFx: 'simple',
           ctrlGhost: 'off',
         },
       ],
@@ -43,6 +44,7 @@ const PRESETS = {
           ctrlMechFx: 'full',
           ctrlFxLv: 'rich',
           ctrlTfx: 'full',
+          ctrlUiFx: 'full',
           ctrlGhost: 'on',
         },
       ],
@@ -54,6 +56,7 @@ const PRESETS = {
           ctrlMechFx: 'full',
           ctrlFxLv: 'rich',
           ctrlTfx: 'full',
+          ctrlUiFx: 'full',
           ctrlGhost: 'on',
         },
       ],
@@ -282,7 +285,7 @@ Object.assign(Game.prototype, {
         `<div class="krow ${isChanged(o) ? 'chg' : ''}" data-desc="${escHtml(d)}"${row && row.dataset.next ? ' data-next="1"' : ''}>` +
         `<span>${name}</span><select data-mirror="${escHtml(selr)}"${def !== null ? ` data-def="${escHtml(def)}"` : ''}${o.disabled ? ' disabled' : ''}>${o.innerHTML}</select></div>`;
     }
-    h += '<p class="dim" style="font-size:11px">其他設定在上方的分頁（手把：LB／RB 切換）。</p>';
+    h += '<p class="dim" style="font-size:11px">其他設定在左邊的分頁（手把：LB／RB 切換）。</p>';
     box.innerHTML = h;
     for (const s of box.querySelectorAll('select[data-mirror]')) {
       const o = document.querySelector(s.dataset.mirror);
@@ -377,6 +380,7 @@ Object.assign(Game.prototype, {
       $('ctrlColorMgmt').value = ro.cm === false ? '' : '1';
     }
     $('ctrlTfx').value = this.ctrl.tfx || 'full';
+    $('ctrlUiFx').value = this.ctrl.uiFx || 'full';
     $('ctrlCine').value = this.ctrl.cine || 'on';
     $('ctrlVoice').value = this.voiceId() || 'off';
     $('ctrlSub').value = this.subLang();

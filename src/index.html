@@ -6,7 +6,7 @@
     <title>MECH CORDON 機戰封鎖線</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
-      href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Noto+Sans+TC:wght@400;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Noto+Sans+TC:wght@400;500;700;900&family=Rubik:ital,wght@0,500;0,700;0,800;0,900;1,700;1,800;1,900&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./styles.css" />
@@ -837,7 +837,7 @@
             <section
               class="setPage"
               data-st="quick"
-              data-intro="最常改的設定與一鍵套用的組合；其他設定在上方的分頁"
+              data-intro="最常改的設定與一鍵套用的組合；其他設定在左邊的分頁"
             >
               <div id="setQuick"></div>
             </section>
@@ -1203,6 +1203,17 @@
                 ><select id="ctrlTfx" title="橫幅、訊息、簡報與結局的文字動畫（文字動畫 APNG 產生器的模板）">
                   <option value="full">完整（預設）</option>
                   <option value="simple">簡化（較低解析度、沒有光暈與模糊）</option>
+                  <option value="off">關閉</option>
+                </select>
+              </div>
+              <div class="krow">
+                <span>介面動畫</span
+                ><select
+                  id="ctrlUiFx"
+                  title="選單與介面的動畫：按鈕彈跳、分頁滑動、畫面轉場、電視與底片的轉場、大字定格；簡化＝只留淡入淡出，關閉＝全部直接切換"
+                >
+                  <option value="full">完整（預設）</option>
+                  <option value="simple">簡化（只留淡入淡出）</option>
                   <option value="off">關閉</option>
                 </select>
               </div>
