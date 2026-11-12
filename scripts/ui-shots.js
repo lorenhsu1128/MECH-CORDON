@@ -49,6 +49,33 @@ const SHOTS = {
   mp: show('mp'),
   levels: show('levels'),
   cineLib: show('cineLib'),
+  garage: async (page) => {
+    await page.evaluate(() => {
+      const g = window.__game;
+      g.ctrl.hangarFx = 'off';
+      g.save.coam = 500000;
+      g.openGarage();
+    });
+    await wait(2500);
+  },
+  'garage-legs': async (page) => {
+    await SHOTS.garage(page);
+    await page.click('#slots .slot[data-slot="legs"]');
+    await page.hover('#partList .part[data-pid="l_hv"]').catch(() => {});
+    await wait(500);
+  },
+  'garage-spec': async (page) => {
+    await SHOTS.garage(page);
+    await page.evaluate(() => document.querySelector('#gTabs [data-tab="spec"]')?.click());
+  },
+  'garage-set': async (page) => {
+    await SHOTS.garage(page);
+    await page.evaluate(() => document.querySelector('#gTabs [data-tab="set"]')?.click());
+  },
+  pilot: async (page) => {
+    await page.evaluate(() => window.__game.openPilot());
+    await wait(800);
+  },
 };
 
 (async () => {

@@ -8557,3 +8557,502 @@ button.zBack:hover {
 #levels select {
   border-radius: var(--rp);
 }
+
+/* ===== 絕區零式介面 B3：機甲庫（docs/zzz-ui-design.md） ===== */
+#garage {
+  --gGlass: rgba(14, 14, 16, 0.9);
+  --gEdge: #48494e;
+}
+#gTop {
+  height: 62px;
+  gap: 12px;
+  padding: 0 18px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0));
+}
+#gTitle {
+  align-items: center;
+  gap: 10px;
+}
+#gTitle h2 {
+  font: 900 16px/1 var(--fz);
+  letter-spacing: 0.06em;
+  background: #000;
+  border: 2px solid var(--gEdge);
+  border-radius: var(--rp);
+  padding: 7px 8px 7px 16px;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 0 0 2px var(--edge);
+}
+.gCtx {
+  font: italic 900 11.5px/1 var(--fd);
+  padding: 4px 10px;
+  border-radius: var(--rp);
+  color: var(--accInk);
+  background: var(--acc2);
+  margin-left: 8px;
+}
+.gCtx.hub,
+.gCtx.trans {
+  background: var(--focus);
+}
+.gCtx.mp {
+  background: var(--acc);
+}
+#gTitle .coam,
+#hubHead .coam {
+  font: 800 14px/1 var(--fd);
+  color: var(--ink);
+  background: #000;
+  border: 2px solid var(--gEdge);
+  border-radius: var(--rp);
+  padding: 7px 14px;
+  box-shadow: 0 0 0 2px var(--edge);
+}
+#gTitle .coam span,
+#hubHead .coam span {
+  color: var(--focus);
+}
+#missionCard {
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: var(--rp);
+  padding: 7px 14px;
+  font-weight: 700;
+}
+#missionCard b {
+  font: italic 900 12px/1 var(--fd);
+  color: var(--acc);
+}
+/* 分頁：分段膠囊（選中黃綠） */
+#gTabs {
+  background: #000;
+  border: 2px solid var(--gEdge);
+  border-radius: var(--rp);
+  padding: 3px;
+  gap: 2px;
+  box-shadow: 0 0 0 2px var(--edge);
+}
+#gTabs button {
+  border: 0;
+  box-shadow: none;
+  border-radius: var(--rp);
+  padding: 6px 16px;
+  font: 900 13.5px/1.2 var(--fz);
+  color: #d9d8d2;
+  background: transparent;
+}
+#gTabs button:hover {
+  background: var(--focus);
+  color: var(--accInk);
+}
+#gTabs button.on {
+  background: var(--acc);
+  color: var(--accInk);
+}
+/* 部位格：斜的縮圖卡＋黑膠囊的名稱 */
+#garage .slot,
+#garage .slot:hover {
+  border: 0;
+  box-shadow: none;
+  background: none;
+  border-radius: 0;
+  color: var(--ink);
+  gap: 0;
+  transform: none;
+}
+#garage .slot .gThumb {
+  width: 60px;
+  height: 56px;
+  border-radius: 9px;
+  transform: skewX(-9deg);
+  background: linear-gradient(160deg, #3a3c41, #141517);
+  border: 2px solid var(--gEdge);
+  box-shadow: 0 0 0 2px var(--edge);
+  position: relative;
+  z-index: 1;
+}
+#garage .slot .gThumb > * {
+  transform: skewX(9deg);
+}
+.gSlotT {
+  background: #000;
+  border: 2px solid var(--gEdge);
+  border-radius: var(--rp);
+  padding: 4px 14px 4px 18px;
+  margin-left: -10px;
+  min-width: 118px;
+  font: 800 13.5px/1.2 var(--fd);
+  text-shadow: none;
+}
+#gWingR .gSlotT {
+  padding: 4px 18px 4px 14px;
+  margin: 0 -10px 0 0;
+}
+.gSlotT small {
+  color: var(--dim);
+  font: 700 10.5px/1.2 var(--fz);
+}
+#garage .slot:hover .gThumb,
+#garage .slot.padFocus .gThumb {
+  border-color: var(--focus);
+}
+#garage .slot:hover .gSlotT {
+  border-color: var(--focus);
+}
+#garage .slot.sel .gThumb {
+  border-color: var(--acc);
+  box-shadow:
+    0 0 0 2px var(--edge),
+    0 0 14px rgba(205, 235, 42, 0.4);
+}
+#garage .slot.sel .gSlotT {
+  background: var(--acc);
+  border-color: var(--edge);
+  color: var(--accInk);
+}
+#garage .slot.sel .gSlotT small,
+#garage .slot.sel .gSlotT span {
+  color: var(--accInk);
+}
+#garage .slot.gq .gThumb {
+  border-color: var(--gq);
+  box-shadow:
+    0 0 0 2px var(--edge),
+    inset 0 -5px 0 var(--gq);
+}
+.gSlotT .sQ {
+  border-radius: 4px;
+  font: italic 900 9.5px/1.4 var(--fd);
+  background: var(--gq);
+  color: #000;
+  border: 0;
+}
+body[data-uifx='full'] #garage.on .gWing .slot {
+  animation: zSlideIn 0.3s cubic-bezier(0.2, 1.3, 0.4, 1) backwards;
+}
+body[data-uifx='full'] #garage.on #gWingL .slot {
+  animation-name: zSlideInL;
+}
+@keyframes zSlideInL {
+  from {
+    opacity: 0;
+    transform: translateX(-18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+body[data-uifx='full'] #garage.on .gWing .slot:nth-child(2) {
+  animation-delay: 0.03s;
+}
+body[data-uifx='full'] #garage.on .gWing .slot:nth-child(3) {
+  animation-delay: 0.06s;
+}
+body[data-uifx='full'] #garage.on .gWing .slot:nth-child(4) {
+  animation-delay: 0.09s;
+}
+body[data-uifx='full'] #garage.on .gWing .slot:nth-child(5) {
+  animation-delay: 0.12s;
+}
+body[data-uifx='full'] #garage.on .gWing .slot:nth-child(n + 6) {
+  animation-delay: 0.15s;
+}
+/* 零件格子與小卡片：雙層面板 */
+#gFly,
+#gMeters,
+.gPage,
+#gCamp {
+  background: var(--panel);
+  border: 2px solid var(--gEdge);
+  border-radius: var(--rpanel);
+  box-shadow:
+    0 0 0 3px var(--edge),
+    0 12px 30px rgba(0, 0, 0, 0.5);
+}
+body[data-uifx='full'] #gFly.on {
+  animation: zPop 0.22s cubic-bezier(0.2, 1.3, 0.4, 1);
+}
+#gFlyHead {
+  font: 900 14px/1.3 var(--fz);
+}
+#garage .part {
+  border: 2px solid var(--gEdge);
+  border-radius: 10px;
+  background: linear-gradient(160deg, #303237, #121315);
+  box-shadow: 0 0 0 1.5px var(--edge);
+}
+#garage .part:hover,
+#garage .part.padFocus {
+  border-color: var(--focus);
+  background: linear-gradient(160deg, #4a4630, #17160f);
+  color: var(--ink);
+  transform: translateY(-2px);
+}
+#garage .part.eq {
+  border-color: var(--acc);
+  box-shadow:
+    0 0 0 1.5px var(--edge),
+    0 0 10px rgba(205, 235, 42, 0.35);
+}
+#garage .part .pM {
+  font: 700 9px/1.2 var(--fd);
+  color: #cfcec7;
+}
+#garage .part .pPr,
+#garage .part .pN {
+  color: var(--focus);
+  font-weight: 800;
+}
+#gTip {
+  border-top: 0;
+  background: #000;
+  border-radius: 12px;
+  padding: 9px 10px;
+}
+/* 量表 */
+#gMeters {
+  border-radius: 14px;
+  padding: 10px 16px;
+}
+.gM > div:first-child {
+  font-weight: 700;
+}
+.gM > div:first-child span:last-child {
+  font: 800 12px/1.2 var(--fd);
+}
+.gMb {
+  height: 6px;
+  border-radius: var(--rp);
+  overflow: hidden;
+  background: #000;
+}
+.gMb b {
+  border-radius: var(--rp);
+}
+/* 底部 */
+#gBottom {
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0));
+}
+#gActions .gSub button {
+  background: #000;
+  font-size: 12.5px;
+}
+#gActions .gMain > .primary {
+  font: italic 900 20px/1 var(--fd);
+  letter-spacing: 0.18em;
+  padding: 15px 34px;
+  min-width: 240px;
+  border-width: 2.5px;
+  box-shadow:
+    0 0 0 3px var(--edge),
+    0 6px 0 3px var(--edge);
+}
+#gActions .gMain > .primary:hover {
+  transform: translateY(-2px);
+}
+#gCamp {
+  padding: 12px;
+}
+.gPage {
+  padding: 16px 18px;
+}
+.gPageH h2 {
+  font: 900 18px/1.3 var(--fz);
+}
+@media (max-height: 540px) {
+  #gTop {
+    height: 40px;
+  }
+  #gTitle h2,
+  #gTitle .coam {
+    font-size: 12px;
+    padding: 4px 6px 4px 10px;
+  }
+  #gTitle .coam {
+    padding: 4px 10px;
+  }
+  .gCtx {
+    font-size: 9.5px;
+    padding: 3px 7px;
+  }
+  #gTabs {
+    padding: 2px;
+  }
+  #gTabs button {
+    padding: 3px 9px;
+    font-size: 11.5px;
+  }
+  #garage .slot .gThumb {
+    width: 40px;
+    height: 37px;
+    border-radius: 7px;
+  }
+  #gActions .gMain > .primary {
+    min-width: 110px;
+    padding: 8px 16px;
+    font-size: 14px;
+    box-shadow: 0 0 0 2px var(--edge);
+  }
+  #gActions .gSub button {
+    padding: 3px 8px;
+    font-size: 10.5px;
+  }
+  #gMeters {
+    border-radius: 10px;
+    padding: 5px 9px;
+  }
+  #gFly,
+  .gPage {
+    border-radius: 12px;
+  }
+}
+@media (max-height: 540px) {
+  #gFly {
+    max-height: calc(100% - 132px);
+  }
+}
+/* 規格頁的圖表框 */
+.sC {
+  border: 2px solid var(--gEdge);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.35);
+}
+.sC.hexC {
+  background: none;
+}
+.sC h3 {
+  font: 900 12.5px/1.3 var(--fz);
+}
+
+/* ===== 絕區零式介面 B3：駕駛員（docs/pilot-ui.md） ===== */
+#pilot {
+  background:
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0 10px, transparent 10px 20px),
+    radial-gradient(120% 90% at 30% 30%, #1c1d21 0%, #0b0b0d 72%);
+}
+#pilotHead {
+  background: rgba(0, 0, 0, 0.75);
+  border-bottom: 2px solid var(--line);
+  box-shadow: 0 3px 0 var(--edge);
+}
+#pilotHead h2 {
+  background: #000;
+  border: 2px solid var(--line);
+  border-radius: var(--rp);
+  padding: 6px 18px;
+  font-size: 16px;
+}
+.pModes {
+  background: #000;
+  border: 2px solid var(--line);
+  border-radius: var(--rp);
+  padding: 3px;
+  gap: 2px;
+}
+.pModes button {
+  border: 0;
+  box-shadow: none;
+  font: italic 900 13px/1 var(--fd);
+  padding: 7px 14px;
+}
+.pModes button.sel {
+  background: var(--acc);
+  color: var(--accInk);
+}
+/* 技能節點：像玩具按鍵一樣有厚度（下方的實心陰影＋上亮下暗） */
+.pNode {
+  border: 2.5px solid #000;
+  background: radial-gradient(circle at 50% 30%, #4a4c52, #1b1c1f 70%);
+  box-shadow:
+    inset 0 -5px 0 rgba(0, 0, 0, 0.45),
+    0 4px 0 #000,
+    0 0 0 2px #3b3c41;
+  color: #c9c8c2;
+}
+.pNode.t3 {
+  border-color: #000;
+  box-shadow:
+    inset 0 -5px 0 rgba(0, 0, 0, 0.45),
+    0 4px 0 #000,
+    0 0 0 3px #b48a32;
+}
+.pNode.t4 {
+  border-color: #000;
+  box-shadow:
+    inset 0 -5px 0 rgba(0, 0, 0, 0.45),
+    0 4px 0 #000,
+    0 0 0 3px #ffd060,
+    0 0 0 6px rgba(255, 208, 96, 0.35);
+  color: #ffe08a;
+}
+.pNode.on {
+  color: #111;
+  border-color: #000;
+  background: radial-gradient(circle at 50% 30%, #e6ff6a, #a8c414 75%);
+}
+.pNode.on .pRk {
+  color: var(--acc);
+}
+.pNode.max {
+  color: #111;
+  background: radial-gradient(circle at 50% 30%, #fff1a6, #f2b81c 75%);
+  box-shadow:
+    inset 0 -5px 0 rgba(0, 0, 0, 0.25),
+    0 4px 0 #000,
+    0 0 0 2px #000,
+    0 0 16px rgba(255, 210, 26, 0.5);
+}
+.pNode:hover,
+.pNode.sel {
+  border-color: var(--focus);
+}
+.pNode.sel {
+  outline: 3px solid var(--focus);
+  outline-offset: 6px;
+}
+.pNode:active {
+  transform: translateY(3px);
+}
+.pRk {
+  font: 800 11px/1 var(--fd);
+}
+#pInfo {
+  background: var(--panel);
+  border: 2px solid var(--line);
+  border-radius: var(--rpanel);
+  box-shadow: 0 0 0 3px var(--edge);
+  border-left: 2px solid var(--line);
+}
+#pInfo.t3 {
+  border-color: #b48a32;
+}
+#pSide {
+  background: rgba(0, 0, 0, 0.55);
+  border-left: 2px solid var(--line);
+}
+.pBox {
+  background: var(--panel);
+  border: 2px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 0 0 2px var(--edge);
+  padding: 10px 12px;
+}
+.pBox h3 {
+  font: 900 14px/1.3 var(--fz);
+}
+.pPreset {
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: #000;
+  overflow: hidden;
+}
+.pPreset .pLoad,
+.pPreset .pNew {
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+}
+.pPN {
+  font: 800 10px/1.2 var(--fd);
+}
