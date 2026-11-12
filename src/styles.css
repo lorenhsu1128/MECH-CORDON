@@ -10079,3 +10079,91 @@ body[data-uifx='full'] #stComic.in b {
     text-shadow: 4px 4px 0 #000;
   }
 }
+
+/* ===== 絕區零式介面 C4：擊破 Boss 的大字定格（Game.zFinish） ===== */
+body.zFinOn #gl {
+  filter: grayscale(1) contrast(1.6) brightness(1.08);
+  transition: filter 0.08s;
+}
+#zFin {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: none;
+  z-index: 45;
+  overflow: hidden;
+}
+#zFin.on {
+  display: block;
+  animation: zFinOut 1.15s linear forwards;
+}
+/* 兩道紅色的斜切斬痕 */
+#zFin i {
+  position: absolute;
+  left: -20%;
+  right: -20%;
+  height: 34px;
+  background: #f01818;
+  box-shadow:
+    0 0 0 5px #000,
+    0 0 40px rgba(240, 24, 24, 0.7);
+  transform-origin: left center;
+}
+#zFin i:first-child {
+  top: 38%;
+  transform: rotate(-14deg) scaleX(0);
+  animation: zSlash 0.18s cubic-bezier(0.2, 1, 0.3, 1) 0.05s forwards;
+}
+#zFin i:nth-child(2) {
+  top: 56%;
+  height: 14px;
+  transform: rotate(-14deg) scaleX(0);
+  animation: zSlash 0.18s cubic-bezier(0.2, 1, 0.3, 1) 0.14s forwards;
+}
+#zFin b {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%) rotate(-8deg);
+  font: italic 900 clamp(64px, 11vw, 190px) / 1 var(--fd);
+  color: #fff;
+  -webkit-text-stroke: 6px #000;
+  paint-order: stroke;
+  text-shadow:
+    10px 10px 0 #000,
+    16px 16px 0 #f01818;
+  white-space: nowrap;
+  animation: zFinWord 0.32s cubic-bezier(0.2, 1.6, 0.4, 1) 0.12s backwards;
+}
+@keyframes zSlash {
+  to {
+    transform: rotate(-14deg) scaleX(1);
+  }
+}
+@keyframes zFinWord {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(-8deg) scale(2.2);
+  }
+}
+@keyframes zFinOut {
+  0%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@media (max-height: 540px) {
+  #zFin b {
+    font-size: 58px;
+    -webkit-text-stroke: 3px #000;
+    text-shadow:
+      5px 5px 0 #000,
+      8px 8px 0 #f01818;
+  }
+  #zFin i {
+    height: 18px;
+  }
+}

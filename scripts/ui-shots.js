@@ -111,6 +111,11 @@ const SHOTS = {
     });
     await wait(1700);
   },
+  finish: async (page) => {
+    await hudShot(page, 'top');
+    // 截圖在 0.7 秒後（定格約 1.1 秒）
+    await page.evaluate(() => window.__game.zFinish());
+  },
   'hud-top': async (page) => hudShot(page, 'top'),
   'hud-chase': async (page) => hudShot(page, 'chase'),
   'hud-fp': async (page) => hudShot(page, 'fp'),

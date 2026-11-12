@@ -509,7 +509,31 @@ Object.assign(Game.prototype, {
   },
   // 橫幅：Boss 登場（WARNING）與擊破
   // o：文字演出 { k, m, s }（開著時改用 game/textfx.js）
+  // 絕區零式（docs/zzz-ui-design.md C4）：擊破 Boss 的大字定格——畫面變黑白高對比、紅色的斜切斬痕、粗斜體的大字，約 1.1 秒。
+  // 只是外觀（不改遊戲時間；頓格由呼叫端的 hitStop 決定）；介面動畫完整時才播
+  zFinish(word = 'DESTROYED') {
+    if ((this.uiFx ? this.uiFx() : 'full') !== 'full') return;
+    let el = document.getElementById('zFin');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'zFin';
+      el.innerHTML = '<i></i><i></i><b></b>';
+      document.getElementById('hudWrap').appendChild(el);
+    }
+    el.querySelector('b').textContent = word;
+    document.body.classList.remove('zFinOn');
+    el.className = '';
+    void el.offsetWidth;
+    el.className = 'on';
+    document.body.classList.add('zFinOn');
+    clearTimeout(this.zFinT);
+    this.zFinT = setTimeout(() => {
+      el.className = '';
+      document.body.classList.remove('zFinOn');
+    }, 1150);
+  },
   showBanner(txt, sub, col = '#ff4030', dur = 2.6, o) {
+    if (o && o.k === 'kill' && /DESTROYED/.test(txt)) this.zFinish();
     if (o && this.tfx(o.k, o.m || txt, o.s != null ? o.s : sub)) return;
     this.banner = { txt, sub, col, t: dur, max: dur };
   },
