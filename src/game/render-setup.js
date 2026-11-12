@@ -144,6 +144,7 @@ Object.assign(Game.prototype, {
     const tags = [this.worldTheme];
     if (w.theme.roof) tags.push('@roof');
     if (w.theme.noTod) tags.push('@night');
+    if (w.variantKey) tags.push(this.worldTheme + '/' + w.variantKey); // 依變體（最後套用：天候暗的變體另外補亮）
     const sig = tags.join(',');
     const c = this.stThemed;
     if (c && c.P === P && c.sig === sig) return c.out;

@@ -1,7 +1,7 @@
 // 渲染風格：選擇與儲存（localStorage mech_cordon_style）、我的預設、伺服器上分享的風格（/api/styles）
 // 內容：{ sel: { k: 'builtin'|'mine'|'server', id }, metal, res, mine: [{ id, name, base, params }],
 //         server: { id: { name, author, params } }（伺服器清單的快取，伺服器暫時連不上時仍可使用）}
-import { BUILTIN_STYLES, builtinParams, normalizeStyle } from './params.js';
+import { BUILTIN_STYLES, DEFAULT_STYLE, builtinParams, normalizeStyle } from './params.js';
 
 const KEY = 'mech_cordon_style';
 const read = () => {
@@ -17,7 +17,7 @@ export const StyleStore = {
   load() {
     const o = read();
     this.d = {
-      sel: o.sel && typeof o.sel.id === 'string' ? o.sel : { k: 'builtin', id: 'real' },
+      sel: o.sel && typeof o.sel.id === 'string' ? o.sel : { k: 'builtin', id: DEFAULT_STYLE },
       metal: !!o.metal,
       res: typeof o.res === 'number' ? Math.min(1, Math.max(0.5, o.res)) : 1,
       mine: Array.isArray(o.mine) ? o.mine.filter((m) => m && typeof m.id === 'string') : [],
@@ -65,7 +65,7 @@ export const StyleStore = {
   // 遊戲實際使用的參數：選中的風格＋金屬開關
   current() {
     const d = this.data;
-    const P = this.paramsOf(d.sel.k, d.sel.id) || builtinParams('real');
+    const P = this.paramsOf(d.sel.k, d.sel.id) || builtinParams(DEFAULT_STYLE);
     P.metal = d.metal;
     return P;
   },
@@ -99,7 +99,7 @@ export const StyleStore = {
   removeMine(id) {
     const d = this.data;
     d.mine = d.mine.filter((x) => x.id !== id);
-    if (d.sel.k === 'mine' && d.sel.id === id) d.sel = { k: 'builtin', id: 'real' };
+    if (d.sel.k === 'mine' && d.sel.id === id) d.sel = { k: 'builtin', id: DEFAULT_STYLE };
     this.save();
   },
   // 匯出／匯入（JSON 檔）
@@ -154,7 +154,7 @@ export const StyleStore = {
     }
     delete this.data.server[id];
     const d = this.data;
-    if (d.sel.k === 'server' && d.sel.id === id) d.sel = { k: 'builtin', id: 'real' };
+    if (d.sel.k === 'server' && d.sel.id === id) d.sel = { k: 'builtin', id: DEFAULT_STYLE };
     this.save();
   },
 };

@@ -10,7 +10,7 @@ import { MechEntity } from '../entities/mech-entity.js';
 import { PALETTES } from '../render/materials.js';
 import { animateMech, buildMech } from '../render/mech-model.js';
 import { IK, IK_ITEMS, setIK } from '../render/mech-ik.js';
-import { STYLE_GROUPS, STYLE_ITEMS, normalizeStyle } from '../render/style/params.js';
+import { DEFAULT_STYLE, STYLE_GROUPS, STYLE_ITEMS, normalizeStyle } from '../render/style/params.js';
 import { StyleStore } from '../render/style/store.js';
 import { THEMES, World } from '../world/world.js';
 import { Game } from './game.js';
@@ -909,7 +909,7 @@ Object.assign(Game.prototype, {
       const lab = L();
       if (lab.src.k !== 'mine' || !confirm(`刪除「${StyleStore.nameOf('mine', lab.src.id)}」？`)) return;
       StyleStore.removeMine(lab.src.id);
-      lab.src = { k: 'builtin', id: 'real' };
+      lab.src = { k: 'builtin', id: DEFAULT_STYLE };
       lab.dirty = true;
       this.labRenderChoices();
       this.labSyncUi();
@@ -971,7 +971,7 @@ Object.assign(Game.prototype, {
         return;
       try {
         await StyleStore.removeServer(lab.src.id);
-        lab.src = { k: 'builtin', id: 'real' };
+        lab.src = { k: 'builtin', id: DEFAULT_STYLE };
         lab.dirty = true;
         this.labRenderChoices();
         this.labSyncUi();

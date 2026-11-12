@@ -425,6 +425,8 @@ const REAL = {
   comicPaper: '#f4efe4',
 };
 export const STYLE_DEFAULTS = REAL;
+// 遊戲預設的渲染風格（沒有選過的玩家、找不到選中的風格時）：絕區零（2026-11-12 使用者定案，docs/zzz-style-design.md）
+export const DEFAULT_STYLE = 'zzz';
 
 // 內建預設：寫實、機戰傭兵 6、2000 年代 Gundam 動畫、宮崎駿／吉卜力、鳥山明 SAND LAND
 export const BUILTIN_STYLES = [
@@ -700,7 +702,7 @@ BUILTIN_STYLES.push({
     shade: '#8a93c0',
     shadeK: 1.1,
     litK: 0.92,
-    ambient: 0.5,
+    ambient: 0.7,
     spec: 0.3,
     specSize: 0.3,
     specSoft: 0.01,
@@ -729,16 +731,16 @@ BUILTIN_STYLES.push({
     inkEnv: 0,
     hull: 0,
     sunAz: 200,
-    sunEl: 28,
+    sunEl: 42,
     sunK: 1.6,
     sunWarm: 0.55,
-    hemiK: 0.75,
+    hemiK: 1,
     shTint: '#7f9ad6',
-    shTintK: 0.85,
+    shTintK: 0.6,
     shadowType: 'soft',
     shadowK: 0.85,
     toneMap: 'neutral',
-    exposure: 0.52,
+    exposure: 0.78,
     cmExp: 0.95,
     cmSat: 0.9,
     envK: 1,
@@ -783,6 +785,8 @@ BUILTIN_STYLES.push({
   },
   // 依地圖（render-setup.js 的 styleThemed）：地圖原本的氣氛（熔岩、方舟的夕陽、軌道的高空、模擬訓練場＝絕區零的 VR 訓練室）
   byTheme: {
+    // 地下（有岩頂）：沒有天空的光，暗部再抬一點、陰影的冷色淡一點（地圖亮度 0.40 以上，docs/brightness-design.md）
+    '@roof': { bright: 0.08, shTintK: 0.4 },
     grid: {
       sky: 'grad',
       skyTop: '#3f7465',
@@ -811,11 +815,11 @@ BUILTIN_STYLES.push({
       shTint: '#c49484',
       tintLo: '#4a2a28',
       tintLoK: 0.4,
-      exposure: 0.88,
+      exposure: 1.32,
     },
-    institute: { shTint: '#b498b0', tintLo: '#3a2840', tintLoK: 0.45, exposure: 0.82 },
-    grid086: { shTint: '#a8aed0', tintLoK: 0.4, exposure: 0.66 },
-    wasteland: { shTint: '#aaa4c0', tintLoK: 0.45, exposure: 0.62 },
+    institute: { shTint: '#b498b0', tintLo: '#3a2840', tintLoK: 0.45, exposure: 0.62 },
+    grid086: { shTint: '#a8aed0', tintLoK: 0.4, exposure: 0.99 },
+    wasteland: { shTint: '#aaa4c0', tintLoK: 0.45, exposure: 1.1 },
     ark: {
       skyTop: '#6a6aa8',
       skySun: '#ffa060',
@@ -827,10 +831,19 @@ BUILTIN_STYLES.push({
       shTint: '#b8a0b8',
       tintLo: '#4a3448',
       tintLoK: 0.45,
-      exposure: 0.64,
+      exposure: 0.96,
     },
     orbit: { skyTop: '#2a5fb8', cloud: 0.3, fogColorK: 0.05, skyGlow: 0.5, sunWarm: 0.25 },
-    snow: { exposure: 0.6, shTint: '#9fb6e6', skyGlow: 0.6 },
+    xylem: { exposure: 1.05, shTintK: 0.45 },
+    // 依變體（主題/變體，最後套用）：天候或夜間比同主題暗很多的變體（地圖亮度 0.40 以上）
+    'xylem/squall': { exposure: 1.6 },
+    'xylem/night': { exposure: 1.55 },
+    'xylem/open': { exposure: 1.2 },
+    'dam/storm': { exposure: 0.88 },
+    'volcano/night': { exposure: 1.15 },
+    'desert/tunnels': { exposure: 1 },
+    'desert/vein': { exposure: 0.85 },
+    snow: { exposure: 0.9, shTint: '#9fb6e6', skyGlow: 0.6 },
     '@night': {
       skyTop: '#16224a',
       skySun: '#9fb8ff',
@@ -840,7 +853,7 @@ BUILTIN_STYLES.push({
       sunWarm: -0.35,
       fogColor: '#2a3458',
       fogColorK: 0.4,
-      exposure: 0.62,
+      exposure: 0.93,
       tintHi: '#c8d8ff',
     },
   },

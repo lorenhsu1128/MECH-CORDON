@@ -136,7 +136,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
         }
       }
     }
-    await p.evaluate(() => window.__game.styleUse('builtin', 'real'));
+    await p.evaluate(() => window.__game.styleUse('builtin', 'zzz')); // 出擊用遊戲預設的絕區零（各風格的截圖在下面逐一切換）
     await p.click('#btnSortie');
     await p.waitForFunction(() => document.getElementById('hudWrap').offsetParent !== null, null, {
       timeout: 60000,

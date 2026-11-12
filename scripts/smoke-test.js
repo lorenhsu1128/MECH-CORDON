@@ -21709,8 +21709,10 @@ async function testFx(browser, base) {
     window.__pump(0.25);
     out.pause = fx.time - t1;
     g.state = 'play';
-    // 渲染風格的色階：所有系統共用一個 uniform，寫實＝0
-    out.cel = G.gl.uniforms.uCel === G.sm.uniforms.uCel && G.gl.uniforms.uCel.value === 0;
+    // 渲染風格的色階：所有系統共用一個 uniform，值＝目前風格的 fxCel（遊戲預設的絕區零 0.6、寫實 0）
+    out.cel =
+      G.gl.uniforms.uCel === G.sm.uniforms.uCel &&
+      Math.abs(G.gl.uniforms.uCel.value - (g.styleThemed(g.styleP).fxCel || 0)) < 1e-6;
     // 第 2～4 期：QB 的噴發（boost 由假變真）、蓄力、電弧、星光、地圖的持續特效
     fx.clear();
     const T = fx.thruster.sys;
@@ -22047,7 +22049,7 @@ async function testFx(browser, base) {
     r.run > 0.1 && r.run <= 0.2501 && r.uTime && r.pause === 0, // 頓格、慢動作時比實際推進的時間少
     `特效時鐘照遊戲時間前進、暫停時不動（${r.run.toFixed(2)}／${r.pause}）`,
   );
-  check(r.cel && r.noAO, '渲染風格的色階共用、寫實時為 0；不進 SSAO 與遮擋淡出');
+  check(r.cel && r.noAO, '渲染風格的色階共用、等於目前風格的 fxCel；不進 SSAO 與遮擋淡出');
   check(r.soft, '第 8.1 期：軟粒子可用、粒子網格在第二次算繪的圖層');
   check(
     Object.values(r.amb6).every((n) => n > 0) && r.rays > 0 && r.raysBack === 0,
