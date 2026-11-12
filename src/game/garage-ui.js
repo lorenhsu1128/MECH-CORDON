@@ -27,6 +27,17 @@ const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const model = (p) => (p.id.endsWith('_none') ? '—' : String(p.name).split(/[ \u3000]/)[0]);
 const _v = new THREE.Vector3();
 
+// 機體配色 → 介面的主題色（絕區零式：每台機甲有自己的顏色；白＝標題 LOGO 的紅）
+const PAL_THEME = {
+  white: '#f01818',
+  player: '#cdeb2a',
+  ally: '#3fd06a',
+  enemy: '#e0c070',
+  p3: '#ff8a1f',
+  p4: '#b34dff',
+  castron: '#d8903a',
+};
+
 Object.assign(Game.prototype, {
   // ---------- 一次性的設定 ----------
   garageUiInit() {
@@ -87,6 +98,32 @@ Object.assign(Game.prototype, {
       R = document.getElementById('gWingR');
     L.replaceChildren(...WING_L.map(make));
     R.replaceChildren(...WING_R.map(make));
+    this.garagePoster();
+  },
+  // 絕區零式（docs/zzz-ui-design.md C1）：主題色＝機體配色的代表色，左邊的斜海報直寫選中部位（沒有選＝核心）的型號
+  garagePoster() {
+    const g = document.getElementById('garage');
+    let el = document.getElementById('gPoster');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'gPoster';
+      el.innerHTML = '<b></b><small></small>';
+      g.prepend(el);
+    }
+    const col = PAL_THEME[this.myPalKey ? this.myPalKey() : 'white'] || PAL_THEME.white;
+    g.style.setProperty('--theme', col);
+    const key = this.garageSlot && SLOT_OF[this.garageSlot] ? this.garageSlot : 'core';
+    const [, label, cat] = SLOT_OF[key];
+    const p = partById(cat, this.save.asm[key]);
+    const txt = model(p);
+    if (el.dataset.k !== key + txt) {
+      el.dataset.k = key + txt;
+      el.querySelector('b').textContent = txt;
+      el.querySelector('small').textContent = label;
+      el.classList.remove('flip');
+      void el.offsetWidth;
+      el.classList.add('flip');
+    }
   },
   // ---------- 零件格子 ----------
   garageFlyUi() {

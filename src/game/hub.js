@@ -288,6 +288,9 @@ Object.assign(Game.prototype, {
     this.briefSid = sid;
     this.state = 'brief';
     this.showScreen('brief');
+    // 絕區零式（docs/zzz-ui-design.md C1）：委託方的顏色當簡報的主題色（頂帶、直寫的委託方名稱）
+    $('brief').style.setProperty('--theme', F.color);
+    $('brief').querySelector('.brBox').dataset.client = F.short;
     $('brClient').innerHTML =
       `${speakerBadge(spk, 56)}<div><b style="color:${F.color}">${escHtml(who || F.name)}</b><span class="dim">${who ? escHtml(F.name) + '・' : ''}${escHtml(F.short)}・${escHtml(F.style)}</span></div>`;
     // 立繪（game/portrait-ui.js）：說話的人有立繪時徽章換成胸像，簡報逐字的期間對口型

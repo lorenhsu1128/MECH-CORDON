@@ -220,4 +220,10 @@
     - APNG 產生器加字型 Rubik，以及「街頭」模板 `streetStart`／`streetClear`／`streetKill`／`streetDone`／`streetWarn`／`streetGood`／`streetInfo`：粗斜體白字＋黑粗描邊＋硬陰影＋黃黑（警告是紅黑）警戒膠帶，登場是 slam。
     - 遊戲的 `CUES` 的 start、warning、clear、kill、done、good、info 改用它們。
     - 其他演出（Boss 型態、狂暴、宿敵、最後一波、ECHO、記憶、抉擇、過場的字卡）照舊。
+- **C1（2026-11-12）**：主題色接管。
+  - 機甲庫：
+    - 機體配色對到一個主題色（`garage-ui.js` 的 `PAL_THEME`，白＝LOGO 的紅），寫在 `#garage` 的 `--theme`。
+    - 左邊一條斜 7° 的海報 `#gPoster`（`garagePoster`）：主題色底、右側底片孔、直寫選中部位（沒選＝核心）的型號；換部位時重新滑入。
+    - 零件格子與規格頁的頂帶也用主題色；規格、背包、設定頁時海報變淡。
+  - 簡報：委託方的顏色寫在 `#brief` 的 `--theme`（`openBrief`）：面板頂帶，加上淡淡直寫的委託方英文名（`.brBox` 的 `data-client`）。
 

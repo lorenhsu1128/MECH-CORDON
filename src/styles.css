@@ -9755,3 +9755,102 @@ body[data-uifx='full'] #comm.on {
     border-width: 1.5px;
   }
 }
+
+/* ===== 絕區零式介面 C1：主題色接管（docs/zzz-ui-design.md） ===== */
+/* 機甲庫左邊的斜海報：機體配色的主題色、上下的底片孔、直寫選中部位的型號（換部位時翻一下） */
+#gPoster {
+  position: absolute;
+  left: -2vw;
+  top: -4%;
+  bottom: -4%;
+  width: clamp(110px, 11vw, 190px);
+  transform: skewX(-7deg);
+  background:
+    repeating-linear-gradient(0deg, #000 0 10px, transparent 10px 24px) right 6px top 0 / 9px 100% no-repeat,
+    repeating-linear-gradient(135deg, rgba(0, 0, 0, 0.12) 0 12px, transparent 12px 24px),
+    var(--theme, var(--red));
+  box-shadow:
+    4px 0 0 #000,
+    10px 0 30px rgba(0, 0, 0, 0.45);
+  opacity: 0.92;
+  pointer-events: none;
+  overflow: hidden;
+}
+#gPoster b {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(-90deg) skewX(7deg);
+  font: italic 900 clamp(40px, 5vw, 92px) / 1 var(--fd);
+  color: #000;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+#gPoster small {
+  display: none;
+  position: absolute;
+  left: 50%;
+  bottom: 7%;
+  transform: translateX(-50%) skewX(7deg);
+  font: 900 13px/1 var(--fz);
+  color: #000;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: var(--rp);
+  padding: 4px 12px;
+  white-space: nowrap;
+}
+body[data-uifx='full'] #gPoster.flip b {
+  animation: zPosterIn 0.35s cubic-bezier(0.2, 1.3, 0.4, 1);
+}
+@keyframes zPosterIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -38%) rotate(-90deg) skewX(7deg);
+  }
+}
+#garage[data-tab='spec'] #gPoster,
+#garage[data-tab='set'] #gPoster,
+#garage[data-tab='inv'] #gPoster {
+  opacity: 0.4;
+}
+#gFly,
+.gPage {
+  background:
+    linear-gradient(var(--theme, var(--acc)) 0 0) top / 100% 5px no-repeat,
+    var(--panel);
+}
+@media (max-height: 540px) {
+  #gPoster {
+    width: 78px;
+    left: -14px;
+  }
+  #gPoster b {
+    font-size: 34px;
+  }
+  #gPoster small {
+    display: none;
+  }
+}
+/* 簡報：委託方顏色的頂帶，面板右側直寫委託方的名稱 */
+#brief .brBox {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    linear-gradient(var(--theme, var(--acc)) 0 0) top / 100% 6px no-repeat,
+    var(--panel);
+}
+#brief .brBox::after {
+  content: attr(data-client);
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%) rotate(90deg);
+  transform-origin: center;
+  font: italic 900 72px/1 var(--fd);
+  color: var(--theme, var(--acc));
+  opacity: 0.07;
+  z-index: -1;
+  white-space: nowrap;
+  pointer-events: none;
+}
