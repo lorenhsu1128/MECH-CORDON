@@ -7,7 +7,7 @@
 // 預設分段平行（scripts/smoke-jobs.js）：SMOKE_JOBS＝段數（1＝單一程序依序跑），耗時記在
 // test-results/smoke-times.json；SMOKE_ONLY 可以一起用
 'use strict';
-/* global window, document, localStorage, location, getComputedStyle, scrollTo, indexedDB, THREE -- page.evaluate 的回呼在瀏覽器端執行 */
+/* global window, document, localStorage, location, getComputedStyle, scrollTo, indexedDB, THREE, PointerEvent -- page.evaluate 的回呼在瀏覽器端執行 */
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -1119,6 +1119,151 @@ async function testLabDemo(browser) {
     return { mode: g.lab.mode, n: g.enemies.length, panel: !document.getElementById('labDemo').hidden };
   });
   check(back.mode === 'watch' && back.n >= 3 && !back.panel, `回到觀看：重新建立戰場（紅隊 ${back.n} 台）`);
+  await ctx.close();
+}
+
+// 地圖預覽器（docs/map-viewer-design.md）：標題按鈕開啟、換主題／變體／種子／大小重新產生、鏡頭（自由、全圖）、
+// 滑鼠拖曳與滾輪、觸控的雙指縮放、效能面板、暫停選單離開、不寫存檔
+async function testMapView(browser) {
+  console.log('地圖預覽器：選地圖、重新產生、鏡頭、觸控、效能面板、離開');
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 760 } });
+  const page = await ctx.newPage();
+  watch(page, 'map-view');
+  await page.goto('file:///' + HTML.replace(/\\/g, '/') + '?test');
+  await waitVisible(page, 'title');
+  const save0 = await page.evaluate(() =>
+    JSON.stringify(
+      Object.keys(localStorage)
+        .filter((k) => /save/.test(k))
+        .map((k) => [k, localStorage.getItem(k)]),
+    ),
+  );
+  await page.click('#btnMapView');
+  const ready = () =>
+    page.waitForFunction(
+      () => {
+        const g = window.__game;
+        return g.mapv && g.world && !g.mapv.busy && !(g.mapv.regenT > 0) && !g.warmBusy;
+      },
+      null,
+      { timeout: 90000 },
+    );
+  await ready();
+  await wait(800);
+  const st = await page.evaluate(() => {
+    const g = window.__game;
+    return { state: g.state, theme: g.worldTheme, players: g.players.length, size: g.world.size };
+  });
+  check(
+    st.state === 'play' && st.theme === 'industrial' && st.players === 1,
+    `標題「地圖預覽」開啟：${st.theme}、${Math.round(st.size)} m`,
+  );
+  check(
+    (await visible(page, 'mvPanel')) &&
+      (await visible(page, 'mvBar')) &&
+      (await visible(page, 'mvStat')) &&
+      !(await visible(page, 'hudWrap')),
+    '面板、上方列、效能顯示；不顯示任務的 HUD',
+  );
+  await page.selectOption('#mvBody [data-p="theme"]', 'snow');
+  await ready();
+  const nv = await page.$$eval('#mvBody [data-p="variant"] option', (o) => o.map((x) => x.value));
+  check(
+    (await page.evaluate(() => window.__game.worldTheme)) === 'snow' && nv.length > 1,
+    `換主題（冰原）重新產生、變體清單 ${nv.length - 1} 種`,
+  );
+  await page.selectOption('#mvBody [data-p="variant"]', nv[1]);
+  await ready();
+  check((await page.evaluate(() => window.__game.world.variantKey)) === nv[1], `換變體：${nv[1]}`);
+  const s0 = await page.evaluate(() => window.__game.world.seed);
+  await page.click('#mvBody [data-seed="1"]');
+  await ready();
+  check((await page.evaluate(() => window.__game.world.seed)) === s0 + 1, '種子的下一個');
+  await page.selectOption('#mvBody [data-p="size"]', 'std');
+  await ready();
+  const sz = await page.evaluate(() => window.__game.world.size);
+  check(sz < st.size, `大小改成標準：${Math.round(sz)} m`);
+  await page.screenshot({ path: path.join(SHOT_DIR, 'map-view.png') });
+  // 滑鼠：拖曳旋轉、滾輪縮放
+  const F0 = await page.evaluate(() => ({ ...window.__game.mapv.F, pivot: null }));
+  await page.mouse.move(700, 400);
+  await page.mouse.down();
+  await page.mouse.move(800, 430, { steps: 5 });
+  await page.mouse.up();
+  await page.mouse.wheel(0, 300);
+  await wait(300);
+  const F1 = await page.evaluate(() => ({ ...window.__game.mapv.F, pivot: null }));
+  check(Math.abs(F1.yaw - F0.yaw) > 0.1 && F1.dist > F0.dist, '滑鼠：拖曳旋轉、滾輪拉遠');
+  // 觸控：雙指張開＝拉近
+  const d1 = await page.evaluate(() => {
+    const g = window.__game,
+      cv = g.canvas;
+    const ev = (type, id, x, y) =>
+      cv.dispatchEvent(
+        new PointerEvent(type, {
+          pointerId: id,
+          pointerType: 'touch',
+          clientX: x,
+          clientY: y,
+          bubbles: true,
+          isPrimary: id === 11,
+        }),
+      );
+    const d0 = g.mapv.F.dist;
+    ev('pointerdown', 11, 600, 400);
+    ev('pointerdown', 12, 700, 400);
+    for (let i = 1; i <= 5; i++) {
+      ev('pointermove', 11, 600 - i * 20, 400);
+      ev('pointermove', 12, 700 + i * 20, 400);
+    }
+    ev('pointerup', 11, 500, 400);
+    ev('pointerup', 12, 800, 400);
+    return [d0, g.mapv.F.dist, g.mapv.ptrs.size];
+  });
+  check(
+    d1[1] < d1[0] * 0.8 && d1[2] === 0,
+    `觸控：雙指張開拉近（${Math.round(d1[0])} → ${Math.round(d1[1])}）`,
+  );
+  await page.click('#mvBar [data-cam="top"]');
+  await wait(1200);
+  const top = await page.evaluate(() => {
+    const g = window.__game;
+    return {
+      cam: g.mapv.cam,
+      pitch: g.mapv.F.pitch,
+      y: g.camera.position.y - g.mapv.F.pivot.y,
+      size: g.world.size,
+    };
+  });
+  check(top.cam === 'top' && top.pitch > 1.4 && top.y > top.size * 0.8, '全圖：從正上方看整張地圖');
+  await page.screenshot({ path: path.join(SHOT_DIR, 'map-view-top.png') });
+  const fps = await page.evaluate(() => [
+    document.getElementById('mvFps').textContent,
+    document.getElementById('mvNums').textContent,
+  ]);
+  check(/\d+ FPS/.test(fps[0]) && /繪製/.test(fps[1]) && /三角形/.test(fps[1]), `效能：${fps[0]}`);
+  // 面板收起（H）、暫停（P）
+  await page.keyboard.press('KeyH');
+  const mini = !(await visible(page, 'mvPanel'));
+  await page.keyboard.press('KeyH');
+  await page.keyboard.press('KeyP');
+  const paused = await page.evaluate(() => window.__game.mapv.paused);
+  await page.keyboard.press('KeyP');
+  check(mini && (await visible(page, 'mvPanel')) && paused, 'H 收起／展開面板、P 暫停');
+  // Esc → 暫停選單 → 離開
+  await page.keyboard.press('Escape');
+  check(await waitVisible(page, 'pause'), 'Esc 開暫停選單');
+  check((await page.textContent('#btnAbort')).includes('離開地圖預覽'), '暫停選單的按鈕是「離開地圖預覽」');
+  await page.click('#btnAbort');
+  check(await waitVisible(page, 'title'), '回到標題');
+  const save1 = await page.evaluate(() =>
+    JSON.stringify(
+      Object.keys(localStorage)
+        .filter((k) => /save/.test(k))
+        .map((k) => [k, localStorage.getItem(k)]),
+    ),
+  );
+  check(save0 === save1 && !(await page.evaluate(() => window.__game.mapv)), '離開後沒有寫存檔');
   await ctx.close();
 }
 
@@ -32395,6 +32540,7 @@ const STEPS = [
   ['testLabDemo', (c) => testLabDemo(c.browser)],
   ['testHangar', (c) => testHangar(c.browser)],
   ['testStyleLab', (c) => testStyleLab(c.browser)],
+  ['testMapView', (c) => testMapView(c.browser)], // 地圖預覽器（docs/map-viewer-design.md）
   // 每個內建風格 × 13 個主題要量很久，主題分成 3 組（SMOKE_ONLY=testStyleThemes 一樣跑全部）
   ...[1, 2, 3].map((i) => [
     'testStyleThemes:' + i,

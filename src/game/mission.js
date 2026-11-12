@@ -891,7 +891,7 @@ Object.assign(Game.prototype, {
     return e;
   },
   onEnemyKilled(e, from) {
-    if (this.lab || this.cine) return; // 渲染風格實驗室的模擬戰鬥、過場動畫：不計入存檔
+    if (this.lab || this.cine || this.mapv) return; // 渲染風格實驗室的模擬戰鬥、過場動畫、地圖預覽器：不計入存檔
     if (this.range) {
       this.fbKill(e, from); // 靶場：只有擊破音與連殺，不計入存檔
       return this.rangeKilled(e);
@@ -976,7 +976,7 @@ Object.assign(Game.prototype, {
     }
   },
   onPlayerDead() {
-    if (this.lab || this.cine) return; // 實驗室：由 labTick 重新空降（過場動畫不會倒下）
+    if (this.lab || this.cine || this.mapv) return; // 實驗室：由 labTick 重新空降（過場動畫不會倒下；地圖預覽器無敵）
     if (this.range) return this.rangePlayerDead(); // 靶場：重新出場
     if (this.tut) return; // 近戰訓練：不會被擊破（tutSaveEnt）
     if (this.sim) {

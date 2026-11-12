@@ -408,7 +408,7 @@ export class Game {
     for (const b of document.querySelectorAll('.rangeOnly')) b.style.display = this.range ? '' : 'none';
     for (const b of document.querySelectorAll('.tutOnly')) b.style.display = this.tut ? '' : 'none';
     // 自訂關卡的試玩：暫停選單的「放棄任務」＝回編輯器
-    if (id === 'pause' && !this.lab)
+    if (id === 'pause' && !this.lab && !this.mapv)
       document.getElementById('btnAbort').textContent =
         this.lv && this.lv.test
           ? '回編輯器'
@@ -538,6 +538,10 @@ export class Game {
     // play
     if (this.lab) {
       this.labTick(dt); // 渲染風格實驗室的模擬戰鬥（game/style-lab.js）
+      return;
+    }
+    if (this.mapv) {
+      this.mapvTick(dt); // 地圖預覽器（game/map-view.js）
       return;
     }
     if (this.freezeT > 0) {

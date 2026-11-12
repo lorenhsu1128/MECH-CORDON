@@ -620,7 +620,8 @@ Object.assign(Game.prototype, {
   },
   updateVpad() {
     // 渲染風格實驗室的觀看模式不操作機體：不顯示虛擬按鈕
-    const on = this.vpadWanted() && this.state === 'play' && !(this.lab && this.lab.mode === 'watch');
+    const on =
+      this.vpadWanted() && this.state === 'play' && !(this.lab && this.lab.mode === 'watch') && !this.mapv;
     document.body.classList.toggle('touchDev', this.touchAvailable());
     if (this.vpadEl) this.vpadEl.classList.toggle('on', on);
     document.body.classList.toggle('vpad', on);
@@ -735,6 +736,7 @@ Object.assign(Game.prototype, {
       window.open(window.MECH_CORDON_SERVER ? '/paint/' : 'paint/index.html', '_blank');
     document.getElementById('btnLmReload').onclick = () => this.lmRefresh(true);
     document.getElementById('btnStyleLab').onclick = () => this.openLab();
+    document.getElementById('btnMapView').onclick = () => this.openMapView();
     document.getElementById('btnCineLib').onclick = () => this.openCineLib();
     document.getElementById('btnVoiceLab').onclick = () => this.openVoiceLab();
     document.getElementById('btnBgmLab').onclick = () => this.openBgmLab();
@@ -1013,6 +1015,7 @@ Object.assign(Game.prototype, {
         return;
       }
       if (this.lab && this.labKey(e)) return;
+      if (this.mapv && this.state === 'play' && this.mapvKey(e)) return; // 地圖預覽器（map-view.js）
       if (this.range && this.rangeKey(e.code)) return; // 靶場：T 設定、Y 重置
       this.keys[e.code] = true;
       this.down[e.code] = true;
@@ -1105,6 +1108,7 @@ Object.assign(Game.prototype, {
       }
       if (this.state !== 'play') return;
       if (this.lab && this.labPointer('down', e)) return;
+      if (this.mapv) return; // 地圖預覽器：鏡頭的操作在 canvas 的 pointer events（map-view.js）
       if (this.spectator) {
         if (this.specMode === 'free' && e.button === 0) {
           this.specDrag = { x: e.clientX, y: e.clientY };
@@ -1166,6 +1170,8 @@ Object.assign(Game.prototype, {
         if (this.lab && this.state === 'play') this.labPointer('wheel', e);
         if (this.spectator && this.state === 'play') {
           this.specZoom = clamp((this.specZoom || 1) * (e.deltaY > 0 ? 1.12 : 0.9), 0.5, 4);
+        } else if (this.mapv) {
+          // 地圖預覽器：滾輪在 canvas 上自己處理（map-view.js）
         } else if (this.state === 'play' && !this.lab && this.chase && this.player) {
           // 追尾：滾輪調整鏡頭距離
           this.chaseUser = clamp((this.chaseUser || 1) * (e.deltaY > 0 ? 1.08 : 0.93), 0.7, 1.6);
@@ -1381,6 +1387,7 @@ Object.assign(Game.prototype, {
       if (this.range) return this.rangeExit();
       if (this.tut) return this.tutExit(); // 近戰訓練：回模擬器
       if (this.lab) return this.exitLab();
+      if (this.mapv) return this.exitMapView(); // 地圖預覽器（map-view.js）
       if (this.camp && !this.campMp()) return this.campRetreat(); // 單人：撤退到紀錄點（不刪紀錄點）
       if (this.camp) return this.campEnd(false, true); // 多人時 campEnd 會通知客機
       if (this.sim) return this.simEnd(false);

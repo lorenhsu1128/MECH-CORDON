@@ -19,7 +19,7 @@ Object.assign(Game.prototype, {
     this.lootRun = { mats: {}, parts: [], gear: [], lost: 0 };
   },
   lootOn() {
-    return !(this.pvp || this.lv || this.tut || this.lab || this.range || this.sim || this.cine);
+    return !(this.pvp || this.lv || this.tut || this.lab || this.range || this.sim || this.cine || this.mapv);
   },
   // 擊破（onEnemyKilled，房主／單機）
   lootKilled(e) {
