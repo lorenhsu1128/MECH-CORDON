@@ -58,13 +58,8 @@ Object.assign(MechEntity.prototype, {
         emitPreset(fx.g, 'enOut', _p, { S: k });
       }
     }
-    // ---------- 包 2：地面互動（滑行的腳底；腳步與落地在 mechStep／trailsTick） ----------
-    if (full && near && legged && this.grounded && m.an && (m.an.gW > 0.5 || qb) && Math.random() < dt * 14) {
-      const L = m.legs[Math.floor(Math.random() * m.legs.length)];
-      L.foot.getWorldPosition(_p);
-      _p.y = this.pos.y + 0.05 * k;
-      this.mvSurf(_p, 0.35, 0.8);
-    }
+    // ---------- 包 2：地面互動（滑行的沿路揚塵在 trailsTick 的 groundTrail；腳步與落地在 mechStep／trailsTick） ----------
+    this.mvCol = flameCol; // 滑行氣流的顏色（mech-trails.js）
     // ---------- 包 3：射擊與近戰 ----------
     if (full) {
       if (near) this.mvHeat(dt, V, k);
