@@ -474,7 +474,13 @@ Object.assign(Game.prototype, {
         c.globalAlpha = clamp(q.life, 0, 1);
         c.lineWidth = 3;
         c.strokeStyle = 'rgba(0,0,0,.7)';
-        const by = document.body.classList.contains('vpad') ? (innerHeight < 540 ? 150 : 200) : 110;
+        // 觸控：接在左上狀態欄（#hudBottom）下面，不疊在它的下緣
+        let by = 110;
+        if (document.body.classList.contains('vpad')) {
+          const hb = document.getElementById('hudBottom');
+          const b = hb && hb.offsetParent ? hb.getBoundingClientRect().bottom : 0;
+          by = b ? b + 40 : innerHeight < 540 ? 150 : 200;
+        }
         c.strokeText(q.txt, 18, by + i * 20 - (2.2 - q.life) * 10);
         c.fillStyle = '#ffb020';
         c.fillText(q.txt, 18, by + i * 20 - (2.2 - q.life) * 10);

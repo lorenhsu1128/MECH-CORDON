@@ -25,8 +25,14 @@ Object.assign(Game.prototype, {
     const hi = r + 1 < SY.RANKS.length ? SY.RANKS[r + 1][0] : SY.MAX;
     const k = clamp((s.pts - lo) / Math.max(1, hi - lo), 0, 1);
     const touch = document.body.classList.contains('vpad');
-    const x = W - (touch ? 150 : 110),
-      y = H * (touch ? 0.3 : 0.36);
+    const x = W - (touch ? 150 : 110);
+    let y = H * (touch ? 0.3 : 0.36);
+    // 觸控：右上的武器欄（矮的平板會排到 H×0.3 以下）之下，「STYLE」字不被蓋住
+    if (touch) {
+      const w = document.getElementById('weapons');
+      const b = w && w.offsetParent ? w.getBoundingClientRect().bottom : 0;
+      if (b) y = Math.max(y, b + (name.length > 1 ? 54 : 60));
+    }
     c.save();
     c.textAlign = 'center';
     c.shadowColor = 'rgba(0,0,0,.85)';

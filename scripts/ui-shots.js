@@ -72,6 +72,17 @@ const SHOTS = {
     await SHOTS.garage(page);
     await page.evaluate(() => document.querySelector('#gTabs [data-tab="set"]')?.click());
   },
+  // 從作戰室進來的機甲庫（主線整備）：火控與消耗品的零件格子（小卡片比較高）
+  'garage-hub-fcs': async (page) => {
+    await hubGarage(page);
+    await page.click('#slots .slot[data-slot="fcs"]').catch(() => {});
+    await wait(600);
+  },
+  'garage-hub-item': async (page) => {
+    await hubGarage(page);
+    await page.click('#slots .slot[data-slot="c2"]').catch(() => {});
+    await wait(600);
+  },
   // 主線的轉場整備（機甲庫＋整備面板＋零件格子）
   'garage-camp': async (page) => {
     await page.evaluate(() => {
@@ -153,6 +164,16 @@ const SHOTS = {
   },
 };
 
+async function hubGarage(page) {
+  await page.evaluate(() => {
+    const g = window.__game;
+    g.ctrl.hangarFx = 'off';
+    g.save.coam = 500000;
+    g.save.items = { ...(g.save.items || {}), cs_strike: 5, cs_ally: 2 };
+    g.hubGarage();
+  });
+  await wait(2500);
+}
 async function hudShot(page, view, level = 1) {
   await page.evaluate(
     ([view, level]) => {

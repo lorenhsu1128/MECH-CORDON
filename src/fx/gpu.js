@@ -230,6 +230,8 @@ void main() {
   // 加色的部分被霧淡掉，遮蔽的部分混霧色
   rgb = rgb * (1.0 - ff) + fogColor * ff * vOcc;
 #endif
+  // 行動裝置的顯示卡算出 NaN 時丟掉這個像素（否則後處理的 Bloom 會把它擴散成一大塊黑）
+  if (any(isnan(rgb)) || isnan(a) || any(isinf(rgb))) discard;
   gl_FragColor = vec4(rgb * a, a * vOcc);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>

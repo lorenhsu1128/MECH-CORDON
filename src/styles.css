@@ -5716,7 +5716,8 @@ input[type='range'] {
 #gFly {
   position: absolute;
   display: none;
-  width: 336px;
+  box-sizing: border-box; /* garageFlyPlace 設的 max-height 要含內距與邊框，否則會伸到量表底下 */
+  width: 358px; /* 336 的內容＋內距與邊框 */
   padding: 10px;
   background: var(--gGlass);
   border: 1px solid var(--gEdge);
@@ -6422,7 +6423,7 @@ input[type='range'] {
     display: none;
   }
   #gFly {
-    width: min(300px, 40vw);
+    width: min(314px, calc(40vw + 14px));
     padding: 6px;
     gap: 5px;
     max-height: calc(100% - 116px); /* 停在下方的按鈕列與出擊鍵上面（可以捲動） */
@@ -10454,5 +10455,17 @@ body[data-uifx='full'] #garage .slot.sel .gThumb::before {
     margin-top: 2px;
     padding: 7px 14px;
     font-size: 14px;
+  }
+}
+/* 觸控：鎖定資訊在左上的狀態欄與右上的武器欄之間，一行放不下時截斷，不換成兩行疊到敵軍標記上 */
+body.vpad #lockHint {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: calc(100vw - 460px);
+}
+@media (max-height: 540px) {
+  body.vpad #lockHint {
+    max-width: calc(100vw - 380px);
   }
 }

@@ -862,6 +862,8 @@ void main() {
   // 加色的部分被霧淡掉，遮蔽的部分混霧色
   rgb = rgb * (1.0 - ff) + fogColor * ff * vOcc;
 #endif
+  // 行動裝置的顯示卡算出 NaN 時丟掉這個像素（否則後處理的 Bloom 會把它擴散成一大塊黑）
+  if (any(isnan(rgb)) || isnan(a) || any(isinf(rgb))) discard;
   gl_FragColor = vec4(rgb * a, a * vOcc);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
@@ -1582,6 +1584,8 @@ void main() {
 		float amt = clamp( max( eo, ei ) * inkA.x * fade * mix( inkC.z, 1.0, isMech ), 0.0, 1.0 );
 		col = mix( col, mix( inkB.rgb, col * 0.28, inkB.w ), amt );
 	}
+	// 平板／手機的顯示卡偶爾算出 NaN／無限大（例如粒子）：Bloom 縮小模糊會把它擴散成一大塊黑，這裡先清掉
+	if ( any( isnan( col ) ) || any( isinf( col ) ) ) col = vec3( 0.0 );
 	gl_FragColor = vec4( col, c0.a );
 }
 `,kF=`
@@ -1594,6 +1598,8 @@ varying vec2 vUv;
 ${THREE.ShaderChunk.tonemapping_pars_fragment}
 void main() {
 	vec3 c = texture2D( tDiffuse, vUv ).rgb;
+	// NaN／無限大（行動裝置的顯示卡、半浮點溢位）先清掉，否則 Bloom 會把它擴散成一大塊黑
+	if ( any( isnan( c ) ) || any( isinf( c ) ) ) c = vec3( 0.0 );
 	// 沒有東西擋住的像素（天空的球、背景色：不寫深度）照經典不做色調映射與曝光（r128 的天空著色器沒有色調映射）
 	if ( useDepth == 1 && texture2D( tDepth, vUv ).x >= 0.99999 ) {
 		gl_FragColor = vec4( c, 1.0 );
