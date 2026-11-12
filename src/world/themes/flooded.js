@@ -744,6 +744,7 @@ function buildProps(w) {
 }
 
 export const FLOODED = {
+  lightFloor: { sky: 0xb4c0b8, amb: 0x96a29a, sunI: 1.4, hemiI: 2.2 }, // 最低亮度（World.applyLight，docs/brightness-design.md）
   name: '汙染淹沒城區',
   ground: 0x55594f,
   slope: 0x44483f,

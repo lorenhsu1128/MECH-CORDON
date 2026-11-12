@@ -365,6 +365,7 @@ export function volcanoOff(w, x, z) {
 }
 
 export const VOLCANO = {
+  lightFloor: { sky: 0xc89a80, amb: 0xb08a76, fog: 0x7a5a4a, sunI: 2.1, hemiI: 3.45 }, // 最低亮度（World.applyLight，docs/brightness-design.md）
   name: '火山熔爐帶',
   ground: 0x3a302c,
   slope: 0x2a2220,

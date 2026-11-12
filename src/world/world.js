@@ -364,6 +364,19 @@ const CM_EXP = {
   ark: 2.3,
 };
 for (const k in CM_EXP) THEMES[k].cmExp = CM_EXP[k];
+// 換色調但亮度不低於參考色（docs/brightness-design.md：夜間的變體、主線的黃昏與夜間保留色調、亮度照白天）：
+// 整個顏色等比放大到最大的通道和參考色一樣（HSV 的明度），色相與飽和度不變（HSL 的明度拉到 1 會變成純白）
+function keepLC(c, ref) {
+  const m = Math.max(c.r, c.g, c.b),
+    mr = Math.max(ref.r, ref.g, ref.b);
+  if (m > 1e-4 && m < mr) c.multiplyScalar(mr / m);
+  else if (m <= 1e-4) c.setRGB(mr, mr, mr);
+  return c;
+}
+function keepL(hex, refHex) {
+  if (hex === undefined || refHex === undefined) return hex;
+  return keepLC(new THREE.Color(hex), new THREE.Color(refHex)).getHex();
+}
 // 色彩管理＋線性色調映射（賽璐璐類風格）時再乘上：線性不壓暗部，暗色的主題地面會接近全黑
 const CM_LIN_EXP = { institute: 1.5, grid086: 1.15 };
 for (const k in CM_LIN_EXP) THEMES[k].cmLinExp = CM_LIN_EXP[k];
@@ -1213,7 +1226,36 @@ export class World {
   }
   // 把主題的天空、霧、光源套到遊戲場景（任務、客機開局、實驗室共用）
   applyLight(g) {
-    const T = this.theme;
+    const T0 = this.theme;
+    // 夜間的變體（nightV，docs/brightness-design.md）：保留色調，亮度照這個主題白天的（光的強度取較大的、天空／霧／
+    // 地面反光色／陽光的顏色保留色相、明度不低於白天）
+    const B = THEMES[this.themeKey] || T0;
+    let T = T0.nightV
+      ? {
+          ...T0,
+          sky: keepL(T0.sky, B.sky),
+          fog: keepL(T0.fog, B.fog),
+          amb: keepL(T0.amb, B.amb),
+          sun: keepL(T0.sun, B.sun),
+          sunI: Math.max(T0.sunI !== undefined ? T0.sunI : 1, B.sunI !== undefined ? B.sunI : 1),
+          hemiI: Math.max(T0.hemiI !== undefined ? T0.hemiI : 1, B.hemiI !== undefined ? B.hemiI : 1),
+          fogFar: Math.max(T0.fogFar || 0, (B.fogFar || 190) * DS), // T0 已經乘過 DS（scaleTheme），THEMES 的沒有
+        }
+      : T0;
+    // 最低亮度（lightFloor，docs/brightness-design.md）：偏暗的主題與變體（地下的岩頂看不到天空、環境光的顏色＝天空色
+    // 接近黑色）——天空／地面反光／霧／陽光的顏色保留色相、亮度不低於下限，陽光與環境光的強度不低於下限。
+    // 變體繼承主題的下限（停電區、浸水區一起拉上來），變體也可以自己訂
+    const F = T.lightFloor;
+    if (F)
+      T = {
+        ...T,
+        sky: F.sky !== undefined ? keepL(T.sky, F.sky) : T.sky,
+        fog: F.fog !== undefined ? keepL(T.fog, F.fog) : T.fog,
+        amb: F.amb !== undefined ? keepL(T.amb, F.amb) : T.amb,
+        sun: F.sun !== undefined ? keepL(T.sun, F.sun) : T.sun,
+        sunI: Math.max(T.sunI !== undefined ? T.sunI : 1, F.sunI || 0),
+        hemiI: Math.max(T.hemiI !== undefined ? T.hemiI : 1, F.hemiI || 0),
+      };
     g.scene.background = new THREE.Color(T.sky);
     g.scene.fog = new THREE.Fog(T.fog, T.fogNear || 60 * DS, T.fogFar || 190 * DS);
     g.sun.color.set(T.sun);
@@ -1221,13 +1263,15 @@ export class World {
     g.hemi.color.set(T.sky);
     g.hemi.groundColor.set(T.amb);
     g.hemi.intensity = 0.48 * (T.hemiI !== undefined ? T.hemiI : 1);
-    // 主線：時間與深度（有岩頂的地下不受時間影響）
+    // 主線：時間與深度（有岩頂的地下不受時間影響）。黃昏與夜間（2026-11-12 改版 B2）：只換色調（天空、霧、光色往
+    // 那個時間的顏色靠、明度不變），光的強度與霧的距離照白天；黎明照舊（稍暗一點）
     const TOD = {
-      dusk: { sun: 0xffa060, sky: 0xc8805a, k: 0.45, si: 0.8, hi: 0.85, ff: 0.9 },
-      night: { sun: 0x8090c8, sky: 0x141a28, k: 0.8, si: 0.3, hi: 0.5, ff: 0.75 },
-      dawn: { sun: 0xffc8a0, sky: 0xd8a8a0, k: 0.35, si: 0.75, hi: 0.85, ff: 0.95 },
+      dusk: { sun: 0xffa060, sky: 0xc8805a, k: 0.45, sk: 0.6, keep: true, si: 1, hi: 1, ff: 1 },
+      night: { sun: 0x9ab0ff, sky: 0x3050a0, k: 0.55, sk: 0.55, keep: true, si: 1, hi: 1, ff: 1 },
+      dawn: { sun: 0xffc8a0, sky: 0xd8a8a0, k: 0.35, sk: 0.7, si: 0.75, hi: 0.85, ff: 0.95 },
     }[T.roof || T.noTod ? '' : this.tod]; // noTod：本身就是夜間的變體
-    const dk = clamp(this.depth * 0.18, 0, 0.6);
+    // 垂直下降的深度：每層暗 5%、最多 15%（以前 18%／60%，地下的主題太暗）
+    const dk = clamp(this.depth * 0.05, 0, 0.15);
     if (TOD || dk) {
       const sky = new THREE.Color(T.sky),
         fog = new THREE.Color(T.fog);
@@ -1235,9 +1279,17 @@ export class World {
         hi = g.hemi.intensity,
         ff = T.fogFar || 190 * DS;
       if (TOD) {
+        const sky0 = sky.clone(),
+          fog0 = fog.clone(),
+          sun0 = g.sun.color.clone();
         sky.lerp(new THREE.Color(TOD.sky), TOD.k);
         fog.lerp(new THREE.Color(TOD.sky), TOD.k * 0.85);
-        g.sun.color.lerp(new THREE.Color(TOD.sun), 0.7);
+        g.sun.color.lerp(new THREE.Color(TOD.sun), TOD.sk);
+        if (TOD.keep) {
+          keepLC(sky, sky0);
+          keepLC(fog, fog0);
+          keepLC(g.sun.color, sun0);
+        }
         si *= TOD.si;
         hi *= TOD.hi;
         ff *= TOD.ff;

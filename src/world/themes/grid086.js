@@ -613,6 +613,7 @@ function buildProps(w) {
 }
 
 export const GRID086 = {
+  lightFloor: { sky: 0xc8b8a8, amb: 0xb0a090, sunI: 1.65, hemiI: 2.9 }, // 最低亮度（World.applyLight，docs/brightness-design.md）
   name: '巨型構造體 Lattice-9',
   ground: 0x3d3a37,
   slope: 0x2e2c2a,

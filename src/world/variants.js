@@ -1563,6 +1563,7 @@ function rockPiles(w, n, color = 0x5a524a) {
 // 夜間的變體共用的光線（noTod：主線的時間不再疊加上去）
 const NIGHT = {
   noTod: true,
+  nightV: true, // 夜間的變體：保留色調、亮度照白天（World.applyLight，docs/brightness-design.md）
   sky: 0x0c1220,
   fog: 0x18202e,
   sun: 0x8aa0d8,
@@ -1930,7 +1931,15 @@ export const VARIANTS = {
     },
     nightside: {
       name: '軌道夜側',
-      theme: { sky: 0x0a1428, fog: 0x1a2a48, sun: 0x8ab0ff, sunI: 0.5, hemiI: 0.6, fogFar: 220 },
+      theme: {
+        nightV: true,
+        sky: 0x0a1428,
+        fog: 0x1a2a48,
+        sun: 0x8ab0ff,
+        sunI: 0.5,
+        hemiI: 0.6,
+        fogFar: 220,
+      },
     },
     debris: {
       name: '殘骸帶',
@@ -2058,6 +2067,7 @@ export const VARIANTS = {
     deep: {
       name: '構造體底層',
       theme: {
+        lightFloor: { sky: 0xb8a898, amb: 0xa09080, fog: 0x4a4440, sunI: 1.3, hemiI: 2.2 }, // 最低亮度（World.applyLight，docs/brightness-design.md）
         roof: { y: 30, color: 0x2a2622, bump: 4 },
         sunI: 0.35,
         hemiI: 0.6,
@@ -2163,6 +2173,7 @@ export const VARIANTS = {
     hangar: {
       name: '地下機庫',
       theme: {
+        lightFloor: { sky: 0x747a82, amb: 0x646a72, fog: 0x5a6068, sunI: 0.7, hemiI: 1.0 }, // 最低亮度（World.applyLight，docs/brightness-design.md）
         roof: { y: 20, color: 0x3a3c40, bump: 2 },
         sunI: 0.45,
         hemiI: 0.75,
@@ -2374,7 +2385,7 @@ export const VARIANTS = {
       name: '浸水區',
       theme: {
         featureKinds: ['platforms', 'bunkers'],
-        water: { level: 0.3, color: 0x3a1e22, opacity: 0.9 },
+        water: { level: 0.3, color: 0x544648, opacity: 0.9 }, // 水色調亮（docs/brightness-design.md）
         fog: 0x2a1418,
       },
       // 整片泡在水裡（水深約 1 m，涉水變慢；平台上是乾的）
@@ -3033,6 +3044,7 @@ export const VARIANTS = {
     tunnels: {
       name: '坑道網',
       theme: {
+        lightFloor: { sky: 0xa89a8e, amb: 0x98887c, fog: 0x5a5048, sunI: 0.95, hemiI: 1.45 }, // 最低亮度（World.applyLight，docs/brightness-design.md）
         featureKinds: ['bunkers'],
         corridor: { p: 0, kinds: [] },
         roof: { y: 17, color: 0x2e2620, bump: 5 },
@@ -3100,6 +3112,7 @@ export const VARIANTS = {
     vein: {
       name: '地下礦脈',
       theme: {
+        lightFloor: { sky: 0xa89a8e, amb: 0x98887c, fog: 0x5a5048, sunI: 0.95, hemiI: 1.45 }, // 最低亮度（World.applyLight，docs/brightness-design.md）
         featureKinds: ['bunkers', 'trench'],
         corridor: { p: 0, kinds: [] },
         roof: { y: 22, color: 0x1e1a22, bump: 9 },
@@ -3165,10 +3178,11 @@ export const VARIANTS = {
     drowned: {
       name: '浸水坑道',
       theme: {
+        lightFloor: { sky: 0x847668, amb: 0x74665a, fog: 0x5a5048, sunI: 0.62, hemiI: 0.95 }, // 最低亮度（World.applyLight，docs/brightness-design.md）
         featureKinds: ['bunkers', 'platforms'],
         corridor: { p: 0, kinds: [] },
         roof: { y: 19, color: 0x26221e, bump: 6 },
-        water: { level: 0.2, color: 0x2a3a3a, opacity: 0.9 },
+        water: { level: 0.2, color: 0x4a6464, opacity: 0.9 }, // 水色調亮（docs/brightness-design.md）
         sunI: 0.4,
         hemiI: 0.65,
         fogNear: 22,
@@ -3232,7 +3246,10 @@ VARIANTS.volcano = {
   },
   foundry: {
     name: '熔爐工廠',
-    theme: { featureKinds: ['bunkers', 'overpass'] },
+    theme: {
+      featureKinds: ['bunkers', 'overpass'],
+      lightFloor: { sky: 0xc89a80, amb: 0xb08a76, fog: 0x7a5a4a, sunI: 2.8, hemiI: 4.6 }, // 最低亮度（World.applyLight，docs/brightness-design.md）
+    },
     // 多兩座熔爐塔與兩棟廠房
     build(w) {
       for (let k = 0; k < 2; k++) {
@@ -3258,7 +3275,12 @@ VARIANTS.volcano = {
   },
   obsidian: {
     name: '黑曜石原',
-    theme: { ground: 0x1e1a1c, slope: 0x161214, featureKinds: ['bunkers', 'platforms'] },
+    theme: {
+      ground: 0x332c2e, // 接近純黑調成深灰黑（docs/brightness-design.md）
+      slope: 0x282224,
+      featureKinds: ['bunkers', 'platforms'],
+      lightFloor: { sky: 0xc89a80, amb: 0xb08a76, fog: 0x7a5a4a, sunI: 2.4, hemiI: 4.0 }, // 最低亮度（World.applyLight，docs/brightness-design.md）
+    },
     // 台地壓平、熔岩河照舊；散布黑曜石的尖柱（不可破壞的掩體）
     terrain: () => (x, z, h) => (h > 0 ? h * 0.45 : h),
     build(w) {
@@ -3298,7 +3320,12 @@ VARIANTS.ark = {
   },
   engine: {
     name: '機關區',
-    theme: { sky: 0x7a3a22, fog: 0x7a4430, sun: 0xffa060 },
+    theme: {
+      sky: 0x7a3a22,
+      fog: 0x7a4430,
+      sun: 0xffa060,
+      lightFloor: { sky: 0xb08070, amb: 0xa08070, sunI: 2.1, hemiI: 3.3 }, // 最低亮度（World.applyLight，docs/brightness-design.md）
+    },
     // 排氣煙囪林立（可破壞的高掩體）
     build(w) {
       w.scatter(w.cnt(8, 12), 9, (x, z, y) => {

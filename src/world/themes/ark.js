@@ -281,6 +281,7 @@ function buildProps(w) {
 }
 
 export const ARK = {
+  lightFloor: { sky: 0xa88878, amb: 0x9a8478, sunI: 1.45, hemiI: 2.15 }, // 最低亮度（World.applyLight，docs/brightness-design.md）
   name: '移動要塞「方舟」',
   ground: 0x4a4e52,
   slope: 0x3a3e42,

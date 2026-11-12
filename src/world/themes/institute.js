@@ -498,6 +498,7 @@ function buildProps(w) {
 }
 
 export const INSTITUTE = {
+  lightFloor: { sky: 0xc0a0a8, amb: 0xb09098, fog: 0x6a5054, sun: 0xffc0a0, sunI: 2.1, hemiI: 3.6 }, // 最低亮度（World.applyLight，docs/brightness-design.md）
   name: '地下研究特區',
   ground: 0x3a3434,
   slope: 0x2c2828,

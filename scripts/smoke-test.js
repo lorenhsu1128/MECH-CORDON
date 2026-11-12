@@ -2323,8 +2323,13 @@ async function mapMechanics(page, key) {
     const r = await page.evaluate(() => ({ corridor: !!window.__game.world.corridor }));
     check(!r.corridor, '高空軌道：沒有公路／鐵路');
   } else if (key === 'institute') {
-    const r = await page.evaluate(() => ({ sun: window.__game.sun.intensity }));
-    check(r.sun < 0.6, `地下研究特區：光照較暗（太陽 ${r.sun.toFixed(2)}）`);
+    // 2026-11-12 起地下的主題有最低亮度（docs/brightness-design.md）：岩頂下照樣看得清楚
+    const r = await page.evaluate(() => ({
+      sun: window.__game.sun.intensity,
+      roof: !!window.__game.world.theme.roof,
+      floor: !!window.__game.world.theme.lightFloor,
+    }));
+    check(r.roof && r.floor && r.sun >= 1, `地下研究特區：有岩頂、最低亮度（太陽 ${r.sun.toFixed(2)}）`);
   } else if (key === 'volcano') {
     // 熔岩：有熔岩面、熔岩的地方不能放東西、站在熔岩裡受傷
     const r = await page.evaluate(() => {
@@ -10215,11 +10220,15 @@ async function testCampaign2(browser, base) {
         off: w.offLimits(sp.x, sp.z),
       });
     }
-    const w0 = new W(g.scene, 'wasteland', 77, 3, null, { tod: 'night' });
-    g.world.dispose();
-    g.world = w0;
-    w0.applyLight(g);
-    const night = g.sun.intensity;
+    // 夜間（docs/brightness-design.md 的 B2）：光的強度照白天，只換色調（陽光偏藍）
+    const light = (tod) => {
+      const w = new W(g.scene, 'wasteland', 77, 3, null, { tod });
+      g.world.dispose();
+      g.world = w;
+      w.applyLight(g);
+      return { si: g.sun.intensity, hi: g.hemi.intensity, b: g.sun.color.b - g.sun.color.r };
+    };
+    const night = { day: light(''), night: light('night') };
     g.world.dispose();
     g.world = null;
     g.state = 'title';
@@ -10235,7 +10244,13 @@ async function testCampaign2(browser, base) {
   );
   const tun = vs.out.find((o) => o.v === 'tunnels');
   check(tun.roof && !tun.off, '坑道網：有岩頂、生成點不在岩壁上');
-  check(vs.night < 0.5, '夜間的光線變暗（太陽強度 ' + vs.night.toFixed(2) + '）');
+  const nt = vs.night;
+  check(
+    Math.abs(nt.night.si - nt.day.si) < 0.01 &&
+      Math.abs(nt.night.hi - nt.day.hi) < 0.01 &&
+      nt.night.b > nt.day.b + 0.05,
+    `夜間：光的強度照白天（太陽 ${nt.night.si.toFixed(2)}）、陽光偏藍`,
+  );
   // 自由出擊：車庫選的主題變體（截圖：廢工廠群、坑道網）
   for (const [th, v, tod] of [
     ['wasteland', 'factory', 'dusk'],
