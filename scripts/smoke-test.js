@@ -18332,6 +18332,40 @@ async function testArk(browser, base) {
         else solid++;
       }
       const sp = w.spawnPoint(new THREE.Vector3(), []);
+      // 甲板的各層（docs/ark-redesign.md）：地形的高度種類、上層甲板、坡道、船體的牆
+      const lv = new Set();
+      for (let x = -w.lim; x <= w.lim; x += 5)
+        for (let z = -w.lim; z <= w.lim; z += 5) {
+          const y = w.terrainHeight(x, z);
+          if (y > -40) lv.add(Math.round(y));
+        }
+      // 第一條坡道：沿坡道往上，地面高度一路升到上一層
+      const rp = (w.ramps || [])[0];
+      let rampOk = false;
+      if (rp) {
+        const ax = rp.side[0],
+          az = rp.side[1];
+        const lo = w.groundAt(
+          rp.x + (ax * rp.len) / 2 - ax * 1,
+          rp.z + (az * rp.len) / 2 - az * 1,
+          rp.y0 + 1,
+        );
+        const hi = w.groundAt(
+          rp.x - (ax * rp.len) / 2 + ax * 1,
+          rp.z - (az * rp.len) / 2 + az * 1,
+          rp.y1 + 1,
+        );
+        rampOk = Math.abs(lo - rp.y0) < 2.5 && Math.abs(hi - rp.y1) < 2.5;
+      }
+      // 牆擋得住：從低的一側往牆走會被推回
+      const wall = w.obstacles.find((o) => o.hull && o.top - o.y > 8 && o.w < 12);
+      let wallOk = false;
+      if (wall) {
+        const g = w.groundAt(wall.x, wall.z, wall.top + 0.5);
+        wallOk =
+          Math.abs(g - wall.top) < 0.1 &&
+          w.collide(wall.x - wall.w / 2 - 2, wall.z, wall.y + 0.5, 3)[0] < wall.x - wall.w / 2;
+      }
       out.vars[v || 'base'] = {
         ok: Number.isFinite(w.terrainHeight(10, 10)),
         vd,
@@ -18339,6 +18373,14 @@ async function testArk(browser, base) {
         spawnOk: !w.isVoid(sp.x, sp.z),
         kinds,
         key: w.variantKey || '',
+        levels: [...lv].sort((a, b) => a - b),
+        decks: w.obstacles.filter((o) => o.deck && !o.ledge).length,
+        ledges: w.obstacles.filter((o) => o.ledge).length,
+        ramps: (w.ramps || []).length,
+        walls: w.obstacles.filter((o) => o.hull).length,
+        rampOk,
+        wallOk,
+        deco: (w.meshes || []).filter((m) => m.userData && m.userData.cat === 'struct').length,
       };
       if (v && w.variantKey !== v) out.bad.push(v);
     }
@@ -18353,13 +18395,12 @@ async function testArk(browser, base) {
     const w = g.world;
     const p = g.player;
     p.hp = p.maxHp = 1e7;
-    const spot = w.spawnPoint(new THREE.Vector3(), []);
+    // 艦首的中央是開闊的擂台（主砲座之間的上層甲板在 z＝−0.12 lim，避開它）
+    const spot = { x: 0, z: w.lim * 0.2 };
     p.pos.set(spot.x, w.groundAt(spot.x, spot.z, 50), spot.z);
     p.vel.set(0, 0, 0);
-    const near = (dx) => {
-      const q = w.spawnPoint(p.pos, [], { x: p.pos.x + dx, z: p.pos.z }, 4);
-      return new THREE.Vector3(q.x, w.groundAt(q.x, q.z, 50), q.z);
-    };
+    // 擂台是平的主甲板：直接放在玩家的側邊（不用隨機的 spawnPoint，結果才穩定）
+    const near = (dx) => new THREE.Vector3(p.pos.x + dx, w.groundAt(p.pos.x + dx, p.pos.z, 50), p.pos.z);
     out.foes = {};
     for (const [k, dx] of [
       ['popturret', 30],
@@ -18423,17 +18464,37 @@ async function testArk(browser, base) {
   });
   const V = r.vars;
   check(
-    Object.values(V).every((v) => v.ok && v.vd > 0 && v.solid > 0 && v.spawnOk) && !r.bad.length,
-    `方舟的標準＋6 種變體都能生成、有甲板與虛空、出生點在甲板上（` +
+    Object.entries(V).every(
+      ([k, v]) => v.ok && (k === 'hangar' ? v.vd === 0 : v.vd > 0) && v.solid > 0 && v.spawnOk,
+    ) && !r.bad.length,
+    `方舟的標準＋6 種變體都能生成、船邊外是虛空（艦內機庫沒有）、出生點在甲板上（` +
       Object.entries(V)
         .map(([k, v]) => `${k} ${v.solid}/${v.vd}`)
         .join('、') +
       '）',
   );
-  check(V.fore.solid > V.flank.solid, `前甲板的甲板比側舷大（${V.fore.solid} > ${V.flank.solid}）`);
   check(
-    (V.base.kinds.hatch || 0) + (V.base.kinds.arkcrate || 0) > 0,
-    '主題自己的物件（' + JSON.stringify(V.base.kinds) + '）',
+    Object.entries(V).every(([k, v]) => v.decks > 0 && v.ramps > 0 && v.walls > 0 && v.rampOk && v.wallOk),
+    '多層甲板：上層甲板、坡道（沿坡道上到上一層）、各層邊緣的牆（站得上去、擋得住）（' +
+      Object.entries(V)
+        .map(
+          ([k, v]) =>
+            `${k} 甲板 ${v.decks}／坡道 ${v.ramps}${v.rampOk ? '' : '✗'}／牆 ${v.walls}${v.wallOk ? '' : '✗'}`,
+        )
+        .join('、') +
+      '）',
+  );
+  check(
+    [-10, 0, 15, 30].every((y) => V.base.levels.includes(y)),
+    '中央艦體的各層：舷側 −10、主甲板 0、中央脊 +15、上層建築 +30（' + V.base.levels.join('、') + '）',
+  );
+  check(V.flank.levels.includes(-26), '側舷：沿船身的壕溝 −26（' + V.flank.levels.join('、') + '）');
+  check(V.base.ledges > 0 && V.flank.ledges > 0, `船側的下層平台（${V.base.ledges}、${V.flank.ledges}）`);
+  check(V.fore.solid < V.base.solid, `艦首往前變窄（甲板 ${V.fore.solid} < ${V.base.solid}）`);
+  check(V.hangar.walls >= 4 && V.hangar.deco > 0, `艦內維修機庫：四面的牆與維修架（${V.hangar.walls}）`);
+  check(
+    (V.base.kinds.hatch || 0) + (V.base.kinds.arkcrate || 0) > 0 && (V.base.kinds.tlaser || 0) > 0,
+    '主題自己的物件與渦輪雷射砲塔（' + JSON.stringify(V.base.kinds) + '）',
   );
   check((V.engine.kinds.exhaust || 0) > (V.base.kinds.exhaust || 0), '機關區：排氣煙囪比標準多');
   check(Object.values(r.lms).every(Boolean), '6 個地標都能放（' + Object.keys(r.lms).join('、') + '）');
@@ -18445,7 +18506,7 @@ async function testArk(browser, base) {
     );
   check(
     F.popturret.hid > 60 && F.popturret.vis.includes('2') && F.popturret.hurt > 0,
-    `甲板升降砲塔：降下時不能鎖定（${F.popturret.hid} 格）、升起射擊`,
+    `甲板升降砲塔：降下時不能鎖定（${F.popturret.hid} 格）、升起射擊（狀態 ${F.popturret.vis}、傷害 ${F.popturret.hurt}）`,
   );
   check(r.popUnder === 0, '甲板升降砲塔：降下時無敵');
   check(

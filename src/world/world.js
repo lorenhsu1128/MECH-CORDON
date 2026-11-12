@@ -616,18 +616,19 @@ export class World {
         h = this.featureHeight(x, z, h);
         this.h[j * (this.cells + 1) + i] = h;
       }
-    // smooth a little
+    // smooth a little（方舟的船體不平滑：甲板各層的邊緣要俐落，docs/ark-redesign.md）
     const s = new Float32Array(this.h);
-    for (let j = 1; j < this.cells; j++)
-      for (let i = 1; i < this.cells; i++) {
-        s[j * (this.cells + 1) + i] =
-          (this.hAt(i, j) * 4 +
-            this.hAt(i - 1, j) +
-            this.hAt(i + 1, j) +
-            this.hAt(i, j - 1) +
-            this.hAt(i, j + 1)) /
-          8;
-      }
+    if (!T.noSmooth)
+      for (let j = 1; j < this.cells; j++)
+        for (let i = 1; i < this.cells; i++) {
+          s[j * (this.cells + 1) + i] =
+            (this.hAt(i, j) * 4 +
+              this.hAt(i - 1, j) +
+              this.hAt(i + 1, j) +
+              this.hAt(i, j - 1) +
+              this.hAt(i, j + 1)) /
+            8;
+        }
     this.h = s;
     // 自訂關卡：整張高度圖（存的是平滑後的最終值）
     const LH = this.lvl && this.lvl.h;

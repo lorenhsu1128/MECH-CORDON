@@ -56,6 +56,17 @@ const KINDS = {
     opacity: 0.5,
     color: 0x6a625a,
   },
+  // 方舟的甲板（docs/ark-redesign.md）：要塞往 −Z 前進，灰塵與火山灰被相對風吹向艦尾（+Z），比一般的火山灰快
+  arkwind: {
+    n: 1600,
+    box: 60,
+    size: 0.055,
+    fall: 0.3,
+    wind: [0.6, 0, 14],
+    sway: 0.35,
+    opacity: 0.45,
+    color: 0x8a8078,
+  },
   // 深脈的紅色光點：緩緩上升、加色混合
   coral: {
     n: 1300,

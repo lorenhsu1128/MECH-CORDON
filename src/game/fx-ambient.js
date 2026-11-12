@@ -24,6 +24,7 @@ const SPOTS = {
   fuelsphere: { k: 'vent', rate: 3.5 }, // 宇宙港的燃料槽：低溫燃料的冷凝蒸氣
   radiator: { k: 'vent', rate: 2 }, // 高空軌道的散熱板
   dock: { k: 'vent', rate: 1.2 },
+  exhaust: { k: 'chimney', rate: 2.5 }, // 方舟的排氣煙囪：煙被相對風吹向艦尾
 };
 const MAX_SPOTS = 16;
 // 天氣和地面的互動（第 8.5 期）：每秒幾次、離注視點多遠以內（公尺 × 尺度）
@@ -32,6 +33,7 @@ const WEATHER_FX = {
   sand: { kind: 'band', rate: 55, r: 32, a: 0.4 },
   dust: { kind: 'band', rate: 20, r: 32, a: 0.24 },
   snow: { kind: 'drift', rate: 14, r: 30 },
+  arkwind: { kind: 'band', rate: 26, r: 34, a: 0.18 }, // 方舟的甲板：貼著甲板往艦尾流的灰帶
 };
 const NEAR = 160; // 離鏡頭多遠以內才產生（公尺 × 尺度）
 

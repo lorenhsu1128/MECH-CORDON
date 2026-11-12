@@ -24,13 +24,7 @@ import { D, vcMat } from '../render/detail.js';
 import * as K from '../render/dev-kit.js';
 import { CAR, FLOODED, buildBentLamp, buildRuinTower, buildWreckCar } from './themes/flooded.js';
 import { SMELTER, buildFoundryHall, buildSmelter } from './themes/volcano.js';
-import {
-  CRATE as ARK_CRATE,
-  MAIN_GUN as ARK_GUN,
-  buildArkCrate,
-  buildExhaust as buildArkExhaust,
-  buildMainGun as buildArkGun,
-} from './themes/ark.js';
+import { buildExhaust as buildArkExhaust, planArk } from './themes/ark.js';
 import { planIslands } from './themes/xylem.js';
 import { buildCavePillar, buildCoralTank, buildLab } from './themes/institute.js';
 import { buildChimney, buildScrapHeap, buildShack } from './themes/grid086.js';
@@ -3303,61 +3297,43 @@ VARIANTS.volcano = {
     theme: { ...NIGHT, sky: 0x1a0c08, fog: 0x2a1208, sun: 0xff9a60, sunI: 0.42, hemiI: 0.55, fogFar: 170 },
   },
 };
-// 移動要塞「方舟」（主線第 8 章，world/themes/ark.js）：甲板分區的配置不同（planIslands）、天候與追加的結構
-const ARK_H = 0.5;
+// 移動要塞「方舟」（主線第 8 章，world/themes/ark.js；docs/ark-redesign.md）：變體是船上不同的位置
+// （艦首、艦尾機關區、側舷的壕溝、艦內維修機庫），火山灰暴與夜航用標準的中央艦體
 VARIANTS.ark = {
   fore: {
-    name: '前甲板',
-    // 很大的主甲板（主砲塔多一座）＋少數小分區
-    theme: {
-      planTerrain: (w) =>
-        planIslands(w, { h: ARK_H, deep: -50, central: 84, n: [2, 4], size: [22, 30], span: 34, gap: 12 }),
-    },
-    build(w) {
-      const r = ARK_GUN.r;
-      place(w, buildArkGun(), [-r, r, -r - 22, r], 1.5 * G, [{ c: [0, 0], r, h: ARK_GUN.h }], 0);
-    },
+    name: '艦首',
+    // 船身往前分段變窄、中央開闊、兩側與艦首的主砲座
+    theme: { planTerrain: planArk('fore') },
   },
   engine: {
-    name: '機關區',
+    name: '艦尾機關區',
     theme: {
+      planTerrain: planArk('engine'),
       sky: 0x7a3a22,
       fog: 0x7a4430,
-      sun: 0xffa060,
+      sun: 0xffb080,
       lightFloor: { sky: 0xb08070, amb: 0xa08070, sunI: 2.1, hemiI: 3.3 }, // 最低亮度（World.applyLight，docs/brightness-design.md）
     },
-    // 排氣煙囪林立（可破壞的高掩體）
+    // 反應爐艙的排氣煙囪林立（可破壞的高掩體）
     build(w) {
       w.scatter(w.cnt(8, 12), 9, (x, z, y) => {
-        w.addSmall(buildArkExhaust(), x, y, z, { r: 2.6, h: 14 }, 'exhaust', 4200, 0x22262a);
+        w.addSmall(buildArkExhaust(), x, y, z, { r: 2.6, h: 14 }, 'exhaust', 4200, 0x2a2e33);
       });
     },
   },
   flank: {
     name: '側舷',
-    // 細碎的甲板分區、長橋
-    theme: {
-      planTerrain: (w) =>
-        planIslands(w, { h: ARK_H, deep: -50, central: 40, n: [8, 11], size: [18, 26], span: 44, gap: 14 }),
-    },
+    // 沿船身的壕溝（上面有橫跨的走道）、壕溝邊與舷側的渦輪雷射砲塔
+    theme: { planTerrain: planArk('flank') },
   },
   hangar: {
-    name: '機庫甲板',
-    // 貨櫃特別多（低掩體）
-    build(w) {
-      w.scatter(w.cnt(10, 14), 7, (x, z, y) => {
-        const color = pick([0x8a2a22, 0x3a5a6a, 0x6a6a3a]);
-        const g = buildArkCrate(color);
-        const rot = rnd(0, 1) < 0.5;
-        if (rot) g.rotation.y = Math.PI / 2;
-        const [a, h, b] = ARK_CRATE;
-        w.addSmall(g, x, y, z, { w: rot ? b : a, h, d: rot ? a : b }, 'arkcrate', 1400, color);
-      });
-    },
+    name: '艦內維修機庫',
+    // 四面有牆、不蓋頂；沿長邊的維修架與裝飾的機甲（world/themes/ark-hangar.js）
+    theme: { planTerrain: planArk('hangar'), weather: 'ash' },
   },
   storm: {
     name: '火山灰暴',
-    theme: { sky: 0x3a2620, fog: 0x3a2a24, fogNear: 25, fogFar: 125, sunI: 0.5, hemiI: 0.65 },
+    theme: { sky: 0x3a2620, fog: 0x3a2a24, fogNear: 25, fogFar: 125, sunI: 0.5, hemiI: 0.65, weather: 'ash' },
   },
   night: {
     name: '夜航',

@@ -15,6 +15,7 @@ import { MeleeAnim } from '../render/melee-anim.js';
 import { setModelProvider } from '../render/model-provider.js';
 import { SFX } from '../audio/audio.js';
 import { partById } from '../data/parts.js';
+import { setArkMechSource } from '../world/themes/ark-hangar.js';
 
 const $ = (id) => document.getElementById(id);
 // 伺服器預設組改變（/ws-models 通知）時可以馬上在背景重新讀取的畫面（任務中不讀，回到這些畫面才讀）
@@ -94,6 +95,8 @@ Object.assign(Game.prototype, {
     LocalModels.allow = () => !(this.net && this.net.role);
     MeleeAnim.allowLocal = LocalModels.allow; // 模型庫動作編輯器的近戰動作：只在單人時用
     LocalModels.applyJoints();
+    // 方舟「艦內維修機庫」的裝飾機甲：和電腦的 AC 一樣的模型來源（docs/ark-redesign.md）
+    setArkMechSource(() => this.mechSource({ team: 'enemy' }));
     setModelProvider((slot, pal, unique) => {
       if (!onServer()) return LocalModels.model(slot, pal, unique);
       if (!setScoped(slot)) {
