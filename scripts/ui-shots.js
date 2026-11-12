@@ -72,6 +72,36 @@ const SHOTS = {
     await SHOTS.garage(page);
     await page.evaluate(() => document.querySelector('#gTabs [data-tab="set"]')?.click());
   },
+  hub: async (page) => {
+    await page.evaluate(() => {
+      const g = window.__game;
+      const st = g.campStory();
+      st.done = { c1s1: 1, c1s2: 1, c2s1: 1 };
+      g.openHub();
+    });
+    await page
+      .waitForFunction(() => window.__game.hubQ && window.__game.hubQ.length === 0, null, { timeout: 30000 })
+      .catch(() => {});
+    await wait(1500);
+  },
+  brief: async (page) => {
+    await SHOTS.hub(page);
+    await page.evaluate(() => window.__game.openBrief('c2s2'));
+    await wait(1200);
+  },
+  result: async (page) => {
+    await page.evaluate(() => {
+      const g = window.__game;
+      document.getElementById('rTitle').textContent = '任務完成';
+      document.getElementById('rRank').textContent = 'S';
+      document.getElementById('resultGrid').innerHTML =
+        '<div class="stat"><span>擊破</span><span>24</span></div><div class="stat"><span>經過時間</span><span>06:42</span></div><div class="stat"><span>獲得 SP</span><span>+18,400</span></div>';
+      g.showScreen('result');
+    });
+    await wait(1500);
+  },
+  campFail: show('campFail'),
+  campTrans: show('campTrans'),
   pilot: async (page) => {
     await page.evaluate(() => window.__game.openPilot());
     await wait(800);

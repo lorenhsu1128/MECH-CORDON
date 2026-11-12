@@ -9056,3 +9056,351 @@ body[data-uifx='full'] #gFly.on {
 .pPN {
   font: 800 10px/1.2 var(--fd);
 }
+
+/* ===== 絕區零式介面 B4：作戰室、簡報、模組三選一、轉場、失敗、結果（docs/zzz-ui-design.md） ===== */
+/* 作戰室上方：標題、章節、SP 都是黑膠囊 */
+#hubHead {
+  align-items: center;
+  gap: 10px;
+  text-shadow: none;
+}
+#hubHead h2 {
+  font: 900 16px/1 var(--fz);
+  background: #000;
+  border: 2px solid var(--line);
+  border-radius: var(--rp);
+  padding: 7px 8px 7px 16px;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 0 0 2px var(--edge);
+}
+#hubChapter {
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: var(--rp);
+  padding: 7px 14px;
+  color: #e4e3dc;
+  font-weight: 700;
+  font-size: 13px;
+}
+#hubHead .coam {
+  font: 800 14px/1 var(--fd);
+}
+.hubCap {
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: var(--rp);
+  padding: 4px 12px;
+  color: #d9d8d2;
+}
+/* 場景裡的設施：黑膠囊標籤，游標停留亮黃 */
+.hubSpot {
+  background: rgba(0, 0, 0, 0.82);
+  border: 2px solid var(--line);
+  border-radius: var(--rp);
+  box-shadow: 0 0 0 2px var(--edge);
+  padding: 5px 10px;
+  font: 900 12.5px/1.25 var(--fz);
+  color: var(--ink);
+}
+.hubSpot small.hot {
+  color: var(--focus);
+}
+.hubSpot:hover,
+.hubSpot.padFocus {
+  background: var(--focus);
+  border-color: var(--edge);
+  color: var(--accInk);
+}
+.hubSpot:hover small,
+.hubSpot.padFocus small {
+  color: #333;
+}
+/* 下方圖示列：手機選單式的圓形圖示＋小字（像絕區零的手機） */
+#hubDock {
+  background: rgba(0, 0, 0, 0.82);
+  border: 2px solid var(--line);
+  border-radius: 22px;
+  box-shadow:
+    0 0 0 3px var(--edge),
+    0 10px 28px rgba(0, 0, 0, 0.5);
+  padding: 8px 10px 6px;
+  gap: 4px;
+}
+#hubDock button {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  border-radius: 14px;
+  min-width: 70px;
+  font: 800 11px/1.2 var(--fz);
+  color: #dddcd6;
+}
+#hubDock .hdI {
+  width: 40px;
+  height: 40px;
+  padding: 8px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: #1d1e21;
+  border: 2px solid var(--line);
+  box-shadow: 0 0 0 2px var(--edge);
+}
+#hubDock button:hover {
+  background: transparent;
+  color: var(--focus);
+}
+#hubDock button:hover .hdI {
+  background: var(--focus);
+  border-color: var(--edge);
+  color: var(--accInk);
+}
+#hubDock button.zBack .hdI {
+  border-color: var(--red);
+  color: #ff8a80;
+}
+#hubDock button.zBack::before {
+  content: none;
+}
+.hdN {
+  background: var(--red);
+  border: 2px solid #000;
+  font-weight: 900;
+}
+/* 簡報：左側的面板 */
+#brief {
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.72) 40%, rgba(0, 0, 0, 0) 62%);
+}
+#brief .brBox {
+  background: var(--panel);
+  border: 2px solid var(--line);
+  border-radius: var(--rpanel);
+  box-shadow:
+    0 0 0 3px var(--edge),
+    0 14px 40px rgba(0, 0, 0, 0.5);
+  padding: 16px 18px;
+}
+body[data-uifx='full'] #brief.on .brBox {
+  animation: zSlideInL 0.3s cubic-bezier(0.2, 1.3, 0.4, 1);
+}
+#brClient b {
+  font: 900 16px/1.3 var(--fz);
+  color: var(--org);
+}
+#brTitle {
+  font: 900 22px/1.3 var(--fz);
+  color: var(--acc);
+}
+#brGoal {
+  background: #000;
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+.brSeg {
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #1d1e21;
+  box-shadow: 0 0 0 1.5px var(--edge);
+}
+.brSeg.first {
+  border-color: var(--acc);
+}
+/* 模組三選一：委託方顏色的卡片，頂端是那個顏色的帶子，選擇鍵是膠囊 */
+#modPick {
+  background:
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0 10px, transparent 10px 20px),
+    rgba(0, 0, 0, 0.86);
+}
+#modPick h2 {
+  font: italic 900 26px/1.2 var(--fz);
+  color: var(--acc);
+  -webkit-text-stroke: 1px #000;
+  text-shadow: 3px 3px 0 #000;
+}
+.mpCard {
+  border-width: 3px;
+  border-radius: 18px;
+  background:
+    linear-gradient(var(--mc, #555) 0 0) top / 100% 8px no-repeat,
+    linear-gradient(170deg, #26272b, #131416);
+  box-shadow:
+    0 0 0 3px var(--edge),
+    0 12px 30px rgba(0, 0, 0, 0.55);
+  padding: 18px 14px 14px;
+  transform: skewX(-3deg);
+}
+.mpCard > * {
+  transform: skewX(3deg);
+}
+.mpCard b {
+  font: 900 18px/1.3 var(--fz);
+}
+.mpTag {
+  font: italic 900 12px/1.2 var(--fd);
+}
+.mpCard button {
+  background: var(--mc, var(--acc));
+  color: #000;
+  border-color: var(--edge);
+  font-weight: 900;
+}
+.mpCard:hover {
+  transform: skewX(-3deg) translateY(-4px);
+}
+body[data-uifx='full'] #modPick.on .mpCard {
+  animation: zCardIn 0.35s cubic-bezier(0.2, 1.3, 0.4, 1) backwards;
+}
+body[data-uifx='full'] #modPick.on .mpCard:nth-child(2) {
+  animation-delay: 0.06s;
+}
+body[data-uifx='full'] #modPick.on .mpCard:nth-child(3) {
+  animation-delay: 0.12s;
+}
+body[data-uifx='full'] #modPick.on .mpCard:nth-child(4) {
+  animation-delay: 0.18s;
+}
+@keyframes zCardIn {
+  from {
+    opacity: 0;
+    transform: skewX(-3deg) translateY(30px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: skewX(-3deg);
+  }
+}
+.modChip {
+  border-radius: var(--rp);
+  padding: 1px 8px;
+  font-weight: 700;
+}
+/* 轉場、失敗：粗斜體的大標題、警戒膠帶 */
+#campTrans,
+#campFail {
+  background:
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.022) 0 10px, transparent 10px 20px),
+    radial-gradient(ellipse at center, rgba(28, 29, 33, 0.92), rgba(0, 0, 0, 0.98));
+}
+.ctBox {
+  background: var(--panel);
+  border: 2px solid var(--line);
+  border-radius: var(--rpanel);
+  box-shadow:
+    0 0 0 3px var(--edge),
+    0 14px 40px rgba(0, 0, 0, 0.5);
+  padding: 22px 22px 18px;
+}
+#ctTitle,
+#cfTitle {
+  font: italic 900 34px/1.15 var(--fz);
+  letter-spacing: 0.06em;
+  -webkit-text-stroke: 1.5px #000;
+  paint-order: stroke;
+  text-shadow: 3px 3px 0 #000;
+}
+#cfTitle {
+  color: var(--red);
+}
+#campFail .ctBox {
+  border-color: var(--red2);
+  background:
+    linear-gradient(var(--red) 0 0) top / 100% 6px no-repeat,
+    var(--panel);
+}
+.ctBarW {
+  height: 8px;
+  border-radius: var(--rp);
+  background: #000;
+  border: 2px solid var(--line);
+}
+#ctBar {
+  border-radius: var(--rp);
+  background: var(--hazard);
+  background-size: 25px 25px;
+}
+/* 結果：評價是等級色的粗斜體大字 */
+#result .panel {
+  min-width: min(420px, 92vw);
+}
+#rTitle {
+  font: italic 900 30px/1.2 var(--fz);
+}
+.rank {
+  font: italic 900 96px/1 var(--fd);
+  color: var(--org);
+  -webkit-text-stroke: 3px #000;
+  paint-order: stroke;
+  text-shadow: 5px 5px 0 #000;
+  margin: 4px 0 10px;
+}
+body[data-uifx='full'] #result.on .rank {
+  animation: zStamp 0.45s cubic-bezier(0.2, 1.6, 0.4, 1) 0.15s backwards;
+}
+@keyframes zStamp {
+  from {
+    opacity: 0;
+    transform: scale(2.4) rotate(-12deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+#resultGrid {
+  background: #000;
+  border-radius: 14px;
+  padding: 10px 16px;
+}
+#resultGrid span:nth-child(even) {
+  font: 800 14px/1.4 var(--fd);
+}
+@media (max-height: 540px) {
+  #hubDock .hdI {
+    width: 30px;
+    height: 30px;
+    padding: 5px;
+  }
+  #hubDock button {
+    min-width: 50px;
+    font-size: 9.5px;
+  }
+  #hubHead h2,
+  #hubHead .coam {
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+  #hubChapter {
+    font-size: 11px;
+    padding: 4px 9px;
+  }
+  .rank {
+    font-size: 64px;
+  }
+  #ctTitle,
+  #cfTitle {
+    font-size: 24px;
+  }
+}
+/* 戰略桌的委託標籤：黑膠囊，可以接的加粗、游標停留亮黃 */
+.hubNode .hnT {
+  border-radius: var(--rp);
+  border-width: 2px;
+  background: rgba(0, 0, 0, 0.85);
+  padding: 3px 11px;
+  font-weight: 900;
+}
+.hubNode.open .hnT {
+  box-shadow:
+    0 0 0 2px #000,
+    0 0 14px rgba(205, 235, 42, 0.4);
+}
+.hubNode:hover .hnT,
+.hubNode.hot .hnT,
+.hubNode.padFocus .hnT {
+  background: var(--focus);
+  color: var(--accInk);
+  border-color: #000;
+}
+@media (max-height: 540px) {
+  .hubCap {
+    display: none;
+  }
+}

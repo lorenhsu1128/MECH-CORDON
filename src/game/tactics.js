@@ -164,8 +164,8 @@ Object.assign(Game.prototype, {
       .join('');
     // 傳說模組：金框、★、沒有等級（data/modules.js 的 legend）
     if (M.legend)
-      return `<div class="mpCard legend" style="border-color:#ffd060"><div class="mpTag" style="color:#ffd060">★ 傳說模組　${escHtml(tag)}</div><b>${escHtml(M.name)}</b><div class="mpTip">${escHtml(M.desc)}</div><div class="dim">改變規則、不能升級；最多持有 ${LEGEND_MAX} 個。持有兩家的傳說時共鳴：之後的三選一變成四選一</div><button data-i="${i}"${price && this.save.coam < price ? ' disabled' : ''}>${escHtml(btn)}${price ? `（${price.toLocaleString()} SP）` : ''}</button></div>`;
-    return `<div class="mpCard" style="border-color:${col}"><div class="mpTag" style="color:${col}">${escHtml(tag)}${o.lv > 1 ? `　強化 Lv${o.lv - 1} → Lv${o.lv}` : '　新'}</div><b>${escHtml(M.name)} Lv${o.lv}</b><div class="mpTip">${escHtml(MOD_TIPS[o.id] || M.desc)}</div><div class="dim">${vals}</div>${fit ? `<div class="mpFit${fit.bad ? ' bad' : ''}">${escHtml(fit.txt)}</div>` : ''}<button data-i="${i}"${price && this.save.coam < price ? ' disabled' : ''}>${escHtml(btn)}${price ? `（${price.toLocaleString()} SP）` : ''}</button></div>`;
+      return `<div class="mpCard legend" style="border-color:#ffd060;--mc:#ffd060"><div class="mpTag" style="color:#ffd060">★ 傳說模組　${escHtml(tag)}</div><b>${escHtml(M.name)}</b><div class="mpTip">${escHtml(M.desc)}</div><div class="dim">改變規則、不能升級；最多持有 ${LEGEND_MAX} 個。持有兩家的傳說時共鳴：之後的三選一變成四選一</div><button data-i="${i}"${price && this.save.coam < price ? ' disabled' : ''}>${escHtml(btn)}${price ? `（${price.toLocaleString()} SP）` : ''}</button></div>`;
+    return `<div class="mpCard" style="border-color:${col};--mc:${col}"><div class="mpTag" style="color:${col}">${escHtml(tag)}${o.lv > 1 ? `　強化 Lv${o.lv - 1} → Lv${o.lv}` : '　新'}</div><b>${escHtml(M.name)} Lv${o.lv}</b><div class="mpTip">${escHtml(MOD_TIPS[o.id] || M.desc)}</div><div class="dim">${vals}</div>${fit ? `<div class="mpFit${fit.bad ? ' bad' : ''}">${escHtml(fit.txt)}</div>` : ''}<button data-i="${i}"${price && this.save.coam < price ? ' disabled' : ''}>${escHtml(btn)}${price ? `（${price.toLocaleString()} SP）` : ''}</button></div>`;
   },
   campTakeMod(o) {
     if (!o) return this.campClosePick();
