@@ -173,9 +173,12 @@ Object.assign(Game.prototype, {
     const cw = noRet && vp ? Math.min(300, W * 0.36) : Math.min(420, W * 0.5),
       cx = W / 2,
       cy = noRet && vp ? H - 18 : vp ? 52 : 28;
-    c.fillStyle = 'rgba(8,12,18,.5)';
-    c.fillRect(cx - cw / 2, cy - 10, cw, 20);
-    c.strokeStyle = '#ffb020';
+    // 絕區零式：黑色膠囊的羅盤、黃綠的中心線
+    c.fillStyle = 'rgba(0,0,0,.72)';
+    c.beginPath();
+    c.roundRect(cx - cw / 2, cy - 11, cw, 22, 11);
+    c.fill();
+    c.strokeStyle = '#cdeb2a';
     c.lineWidth = 2;
     c.beginPath();
     c.moveTo(cx, cy - 12);
@@ -189,7 +192,7 @@ Object.assign(Game.prototype, {
       const x = cx - (rel / (Math.PI / 2)) * (cw / 2) * 0.5;
       if (Math.abs(x - cx) < cw / 2 - 8) {
         c.fillStyle = '#e6edf3';
-        c.font = 'bold 11px Chakra Petch';
+        c.font = 'italic 900 11px Rubik';
         c.textAlign = 'center';
         c.fillText(names[k], x, cy + 4);
       }
@@ -290,7 +293,7 @@ Object.assign(Game.prototype, {
     c.lineTo(W / 2, H / 2 + 22);
     c.stroke();
     if (!this.plocked && !this.touchActive && !this.padActive && !this.spectator) {
-      c.font = 'bold 13px Chakra Petch';
+      c.font = 'bold 13px Rubik, Noto Sans TC';
       c.textAlign = 'center';
       c.fillStyle = '#ffb020';
       c.fillText('點擊畫面鎖定滑鼠以轉動視角（Esc 釋放）', W / 2, H / 2 + 48);

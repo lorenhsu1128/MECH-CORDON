@@ -465,10 +465,10 @@ Object.assign(Game.prototype, {
       else txt = wp.reloadT > 0 ? 'RELOAD' : String(wp.mag);
       const low = usesAmmo(d) && wp.ammo <= 0 && wp.mag <= 0;
       c.textAlign = al;
-      c.font = 'bold 15px Chakra Petch';
+      c.font = 'bold 15px Rubik, Noto Sans TC';
       c.fillStyle = low ? '#ff5a5a' : wp.reloadT > 0 ? amber : '#e6edf3';
       c.fillText(txt, x, y);
-      c.font = '10px Chakra Petch';
+      c.font = '10px Rubik, Noto Sans TC';
       c.fillStyle = 'rgba(230,237,243,.65)';
       const sub = usesAmmo(d) ? '×' + wp.ammo : '';
       c.fillText(d.name.split(' ')[0] + (sub ? '  ' + sub : ''), x, y + 13);
@@ -508,7 +508,7 @@ Object.assign(Game.prototype, {
       const ty = cy - bx.hh - 30,
         tw = Math.min(200, bx.hw * 1.4);
       c.textAlign = 'center';
-      c.font = 'bold 12px Chakra Petch';
+      c.font = 'bold 12px Rubik, Noto Sans TC';
       c.fillStyle = amber;
       c.fillText(`${lk.name || ''}  ${Math.round(lk.pos.distanceTo(p.pos))} m`, cx, ty);
       const hp = clamp(lk.hp / (lk.maxHp || 1), 0, 1);
@@ -524,12 +524,12 @@ Object.assign(Game.prototype, {
     }
     if (this.assistOn()) {
       c.textAlign = 'center';
-      c.font = 'bold 11px Chakra Petch';
+      c.font = 'bold 11px Rubik, Noto Sans TC';
       c.fillStyle = amber;
       c.fillText('TARGET ASSIST', cx, cy + bx.hh + 38);
     }
     if (!this.plocked && !this.touchActive && !this.padActive && !this.spectator) {
-      c.font = 'bold 13px Chakra Petch';
+      c.font = 'bold 13px Rubik, Noto Sans TC';
       c.textAlign = 'center';
       c.fillStyle = amber;
       c.fillText('點擊畫面鎖定滑鼠以轉動視角（Esc 釋放）', cx, cy + bx.hh + 58);

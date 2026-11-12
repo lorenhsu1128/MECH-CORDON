@@ -9404,3 +9404,196 @@ body[data-uifx='full'] #result.on .rank {
     display: none;
   }
 }
+
+/* ===== 絕區零式介面 B5：戰鬥 HUD（docs/zzz-ui-design.md） ===== */
+/* 電腦（不是觸控）：狀態欄在左上（黑色圓角塊＋斜切的條），任務資訊接在下面（hud.js 每 16 格排位置） */
+body:not(.vpad) #hudBottom {
+  top: 14px;
+  bottom: auto;
+  left: 16px;
+  width: min(360px, 40vw);
+}
+#hudBottom {
+  background: rgba(0, 0, 0, 0.78);
+  border: 2px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 0 0 2px var(--edge);
+  padding: 12px 12px 6px;
+}
+#hudBottom .bar {
+  height: 9px;
+  border: 0;
+  border-radius: var(--rp);
+  background: #2a2b2f;
+  overflow: visible;
+  margin: 19px 0 3px;
+}
+#hudBottom .bar > i {
+  border-radius: var(--rp) 0 0 var(--rp);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+}
+#hudBottom .bar > i#hpBar {
+  background: linear-gradient(90deg, #3fd06a, var(--acc));
+}
+#hudBottom .bar label {
+  font: italic 900 11px/1 var(--fd);
+  color: #cfcec7;
+  letter-spacing: 0.08em;
+}
+#hudBottom .bar span {
+  font: 800 12.5px/1 var(--fd);
+}
+#kits {
+  font-weight: 800;
+  color: #cfcec7;
+}
+#kits b {
+  color: var(--acc);
+}
+#hudTop {
+  background: rgba(0, 0, 0, 0.62);
+  border: 0;
+  border-left: 0;
+  border-radius: 14px;
+  padding: 7px 12px;
+  font-weight: 700;
+}
+#hudTop b {
+  font: italic 900 14px/1.3 var(--fz);
+  color: var(--acc);
+}
+body:not(.vpad) #hudTop {
+  left: 16px;
+  max-width: min(360px, 40vw);
+}
+/* Boss 血條：右上（俯視以外的視角上方中間是羅盤），黑膠囊＋斜切的紅橘條 */
+#bossBar {
+  left: auto;
+  right: 16px;
+  top: 14px;
+  transform: none;
+  width: min(520px, 40vw);
+  background: rgba(0, 0, 0, 0.78);
+  border: 2px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 0 0 2px var(--edge);
+  padding: 8px 12px 9px;
+}
+#bossBar .name {
+  font: italic 900 14px/1.2 var(--fd);
+  letter-spacing: 0.06em;
+  text-align: left;
+  color: #ff6b5e;
+}
+#bossBar .bar {
+  height: 11px;
+  border: 0;
+  border-radius: var(--rp);
+  background: #2a2b2f;
+  margin: 4px 0 2px;
+}
+#bossBar .bar > i {
+  background: linear-gradient(90deg, #ff2d2d, var(--org));
+  border-radius: var(--rp) 0 0 var(--rp);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+}
+#bossAf,
+#bossTier .lab {
+  text-align: left;
+}
+/* 武器：右下的膠囊卡片（左右手、背部、消耗品），裝填條在底下 */
+.wslot {
+  background: rgba(0, 0, 0, 0.78);
+  border: 2px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 0 0 1.5px var(--edge);
+  padding: 6px 12px 7px;
+}
+.wslot b {
+  font: 800 10.5px/1.3 var(--fd);
+  color: #b8b7b1;
+}
+.wslot em {
+  font: italic 900 18px/1.1 var(--fd);
+}
+.wslot .k {
+  font: 800 10px/1 var(--fd);
+  color: var(--focus);
+  background: #000;
+  border-radius: 6px;
+  padding: 2px 5px;
+  top: 5px;
+  right: 7px;
+}
+.wslot .rl {
+  background: var(--acc);
+  height: 4px;
+  border-radius: var(--rp);
+}
+#lockHint {
+  background: rgba(0, 0, 0, 0.72);
+  border-radius: var(--rp);
+  padding: 4px 14px;
+  font: 800 11.5px/1.3 var(--fd);
+}
+/* 追尾、第一人稱、空域：準星旁邊已經畫了四把武器的彈數，右下的武器欄縮小、淡一點 */
+body:not(.vpad)[data-view='chase'] #weapons,
+body:not(.vpad)[data-view='fp'] #weapons,
+body:not(.vpad)[data-view='air'] #weapons {
+  width: min(270px, 40vw);
+  opacity: 0.85;
+}
+body:not(.vpad)[data-view='chase'] .wslot em,
+body:not(.vpad)[data-view='fp'] .wslot em,
+body:not(.vpad)[data-view='air'] .wslot em {
+  font-size: 14px;
+}
+/* 觸控：位置照舊（任務資訊、狀態欄在左上，武器在右上），只換樣式並縮小 */
+body.vpad #hudBottom {
+  border-radius: 12px;
+  padding: 9px 8px 2px;
+}
+body.vpad #bossBar {
+  right: 10px;
+  width: min(300px, 38vw);
+  padding: 5px 9px 6px;
+  border-radius: 12px;
+}
+body.vpad .wslot {
+  border-radius: 10px;
+  padding: 2px 7px;
+}
+body.vpad .wslot em {
+  font-size: 12px;
+}
+#kits {
+  margin-bottom: 2px;
+}
+.wslot em {
+  white-space: nowrap;
+}
+body.vpad .wslot b {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-height: 540px) {
+  body.vpad .wslot em {
+    font-size: 11px;
+  }
+  body.vpad #hudBottom {
+    padding: 7px 6px 2px;
+  }
+}
+.wslot b {
+  padding-right: 62px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body.vpad .wslot .k {
+  display: none;
+}
+body.vpad .wslot b {
+  padding-right: 0;
+}

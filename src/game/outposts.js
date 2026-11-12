@@ -221,7 +221,7 @@ Object.assign(Game.prototype, {
       const s = this.proj(top);
       const dist = Math.round(k.pos.distanceTo(p.pos));
       c.save();
-      c.font = 'bold 12px Chakra Petch';
+      c.font = 'bold 12px Rubik, Noto Sans TC';
       c.textAlign = 'center';
       c.lineWidth = 3;
       c.strokeStyle = 'rgba(0,0,0,.7)';

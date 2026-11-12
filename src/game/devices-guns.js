@@ -500,7 +500,7 @@ Object.assign(Game.prototype, {
         w = 220;
       c.fillStyle = 'rgba(0,0,0,.45)';
       c.fillRect(W / 2 - w / 2 - 8, y - 30, w + 16, 52);
-      c.font = 'bold 13px Chakra Petch';
+      c.font = 'bold 13px Rubik, Noto Sans TC';
       c.fillStyle = '#' + d.def.color.toString(16).padStart(6, '0');
       c.fillText(`${d.def.name}　${this.devKeyLabel()} 離開`, W / 2, y - 14);
       const bar = (yy, k, col) => {
@@ -511,13 +511,13 @@ Object.assign(Game.prototype, {
       };
       bar(y - 6, d.hp / d.def.hp, '#7ee081');
       bar(y + 4, d.ohT > 0 ? 1 : d.heat, d.ohT > 0 ? '#ff5040' : '#ffb040');
-      c.font = 'bold 10px Chakra Petch';
+      c.font = 'bold 10px Rubik, Noto Sans TC';
       c.fillStyle = '#c8d0d8';
       c.fillText(d.ohT > 0 ? 'OVERHEAT' : '耐久／熱量', W / 2, y + 20);
     }
     if (p.hw) {
       const Hd = HEAVY_WEAPONS[p.hw.k];
-      c.font = 'bold 13px Chakra Petch';
+      c.font = 'bold 13px Rubik, Noto Sans TC';
       c.textAlign = 'right';
       const t = `重武器 ${Hd.name}　${p.hw.ammo}／${Hd.ammo}`;
       c.strokeText(t, W - 20, H - 200);

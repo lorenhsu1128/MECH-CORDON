@@ -405,7 +405,7 @@ Object.assign(Game.prototype, {
       .slice()
       .sort((a, b) => this.pvpScoreOf(b) - this.pvpScoreOf(a) || (b.kills || 0) - (a.kills || 0));
     c.fillRect(x0, y0, 300, 20 + list.length * 16);
-    c.font = 'bold 11px Chakra Petch';
+    c.font = 'bold 11px Rubik, Noto Sans TC';
     c.textAlign = 'left';
     c.fillStyle = '#ffb020';
     const tl = Math.max(0, this.pvpTime || 0);
@@ -429,7 +429,7 @@ Object.assign(Game.prototype, {
       c.textAlign = 'left';
     });
     if (p && p.dead && p.respawnT !== undefined) {
-      c.font = 'bold 22px Chakra Petch';
+      c.font = 'bold 22px Rubik, Noto Sans TC';
       c.textAlign = 'center';
       c.fillStyle = '#ffb020';
       c.fillText(`${Math.ceil(p.respawnT)} 秒後重生`, W / 2, H * 0.32);

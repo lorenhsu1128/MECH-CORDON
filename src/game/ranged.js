@@ -43,7 +43,7 @@ Object.assign(Game.prototype, {
     const s = this.proj(L.center().setY(L.pos.y - 0.5 * L.dk));
     if (!s.in || s.x < 0 || s.x > W || s.y < 0 || s.y > H) return;
     c.save();
-    c.font = 'bold 11px Chakra Petch';
+    c.font = 'bold 11px Rubik, Noto Sans TC';
     c.textAlign = 'center';
     let x = s.x - (items.length - 1) * 26;
     for (const [txt, col, k] of items) {
@@ -75,7 +75,7 @@ Object.assign(Game.prototype, {
         c.fillStyle = gr;
         c.fillRect(rx, ry, rw, rh);
       }
-      c.font = 'bold 16px Chakra Petch';
+      c.font = 'bold 16px Rubik, Noto Sans TC';
       c.textAlign = 'center';
       c.fillStyle = `rgba(160,230,255,${0.5 + 0.5 * a})`;
       c.shadowColor = 'rgba(0,0,0,.8)';
@@ -100,7 +100,7 @@ Object.assign(Game.prototype, {
       c.arc(s.x, s.y, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k);
       c.stroke();
       if (k >= 1) {
-        c.font = 'bold 11px Chakra Petch';
+        c.font = 'bold 11px Rubik, Noto Sans TC';
         c.textAlign = 'center';
         c.fillStyle = '#7fe8ff';
         c.fillText('ORBIT', s.x, s.y + r + 13);

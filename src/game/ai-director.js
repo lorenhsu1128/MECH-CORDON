@@ -219,7 +219,7 @@ Object.assign(Game.prototype, {
       const k = 1 + 0.18 * Math.abs(Math.sin(this.time * 14));
       c.save();
       c.textAlign = 'center';
-      c.font = `bold ${Math.round(44 * k)}px Chakra Petch`;
+      c.font = `bold ${Math.round(44 * k)}px Rubik, Noto Sans TC`;
       c.lineWidth = 5;
       c.strokeStyle = 'rgba(0,0,0,.8)';
       c.shadowColor = '#ff2a1a';
@@ -253,7 +253,7 @@ Object.assign(Game.prototype, {
       col = '#ff3a2a';
     }
     if (mark) {
-      c.font = 'bold 22px Chakra Petch';
+      c.font = 'bold 22px Rubik, Noto Sans TC';
       const y = s.y - 16 - (mark === '!' ? Math.max(0, 0.25 - (now - e._awSpot)) * 30 : 0);
       c.strokeText(mark, s.x, y);
       c.fillStyle = col;
@@ -273,7 +273,7 @@ Object.assign(Game.prototype, {
       c.fill();
     }
     if (vuln) {
-      c.font = 'bold 11px Chakra Petch';
+      c.font = 'bold 11px Rubik, Noto Sans TC';
       c.strokeText('OVERHEAT', s.x, s.y - 4);
       c.fillStyle = '#ffb040';
       c.fillText('OVERHEAT', s.x, s.y - 4);

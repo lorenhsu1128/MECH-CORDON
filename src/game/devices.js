@@ -490,7 +490,7 @@ Object.assign(Game.prototype, {
     if (!devs.length) return;
     const radar = this.devRadarOn();
     c.save();
-    c.font = 'bold 12px Chakra Petch';
+    c.font = 'bold 12px Rubik, Noto Sans TC';
     c.textAlign = 'center';
     c.lineWidth = 3;
     c.strokeStyle = 'rgba(0,0,0,.7)';
@@ -596,7 +596,7 @@ Object.assign(Game.prototype, {
         ? `${key} 按住 ${d.def.verb}${d.kind === 'hwpick' ? this.hwName(d) : d.def.name}`
         : `${key} 按住 ${d.def.verb}（剩 ${Math.round(d.val * 100)}%）`;
       const y = H * 0.72;
-      c.font = 'bold 15px Chakra Petch';
+      c.font = 'bold 15px Rubik, Noto Sans TC';
       c.strokeText(txt, W / 2, y);
       c.fillStyle = hex(d.def.color);
       c.fillText(txt, W / 2, y);

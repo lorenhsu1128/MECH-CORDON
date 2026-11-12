@@ -219,7 +219,7 @@ Object.assign(Game.prototype, {
       .map((k) => AFFIXES[k].icon + AFFIXES[k].name)
       .join(' ');
     c.save();
-    c.font = 'bold 12px Chakra Petch';
+    c.font = 'bold 12px Rubik, Noto Sans TC';
     c.textAlign = 'center';
     c.lineWidth = 3;
     c.strokeStyle = 'rgba(0,0,0,.75)';

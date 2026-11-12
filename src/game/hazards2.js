@@ -696,7 +696,7 @@ Object.assign(Game.prototype, {
         c.lineWidth = 1.5;
         c.strokeRect(s.x - 12, s.y - 12, 24, 24);
         c.fillStyle = '#ffb020';
-        c.font = 'bold 11px Chakra Petch';
+        c.font = 'bold 11px Rubik, Noto Sans TC';
         c.textAlign = 'left';
         c.fillText(pr.tgt.name + '  ' + Math.round(pr.pos.distanceTo(p.pos)) + 'm', s.x + 16, s.y - 6);
       }

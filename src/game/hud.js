@@ -64,7 +64,7 @@ Object.assign(Game.prototype, {
         Math.PI * 1.1 + Math.PI * 0.8 * clamp(e.hp / e.maxHp, 0, 1),
       );
       c.stroke();
-      c.font = '11px Chakra Petch';
+      c.font = '11px Rubik, Noto Sans TC';
       c.fillStyle = 'rgba(255,255,255,.8)';
       c.textAlign = 'center';
       c.fillText(e.name, s.x, s.y - r - 14);
@@ -77,7 +77,7 @@ Object.assign(Game.prototype, {
       const foc = q === p;
       c.fillStyle = foc ? 'rgba(255,176,32,.25)' : 'rgba(8,12,18,.55)';
       c.fillRect(16, y - 14, this.specDetail ? 300 : 190, this.specDetail ? 62 : 32);
-      c.font = 'bold 13px Chakra Petch';
+      c.font = 'bold 13px Rubik, Noto Sans TC';
       c.fillStyle = col;
       c.fillText(
         (foc ? '▶ ' : '') +
@@ -91,7 +91,7 @@ Object.assign(Game.prototype, {
       c.fillStyle = q.downed ? '#ff4d4d' : col;
       c.fillRect(22, y + 5, 170 * clamp(q.hp / q.maxHp, 0, 1), 6);
       if (this.specDetail) {
-        c.font = '10px Chakra Petch';
+        c.font = '10px Rubik, Noto Sans TC';
         c.fillStyle = '#cfd6e0';
         const w = q.weapons;
         const wl = ['rarm', 'larm', 'rback', 'lback']
@@ -117,7 +117,7 @@ Object.assign(Game.prototype, {
       y += this.specDetail ? 72 : 40;
       const s = this.proj(q.center());
       if (s.in && !q.dead) {
-        c.font = 'bold 12px Chakra Petch';
+        c.font = 'bold 12px Rubik, Noto Sans TC';
         c.textAlign = 'center';
         c.fillStyle = col;
         c.fillText(q.name, s.x, s.y - 40);
@@ -447,7 +447,14 @@ Object.assign(Game.prototype, {
       const ht = document.getElementById('hudTop'),
         hb = document.getElementById('hudBottom');
       const vp = document.body.classList.contains('vpad');
+      // 絕區零式 HUD（docs/zzz-ui-design.md B5）：視角寫在 body[data-view]，CSS 依它排位置；
+      // 電腦：狀態欄在左上、任務資訊接在它下面；觸控：任務資訊在上、狀態欄接在下面（照舊）
+      const view = this.airMode ? 'air' : this.chase ? 'chase' : this.fp ? 'fp' : 'top';
+      if (document.body.dataset.view !== view) document.body.dataset.view = view;
       hb.style.top = vp ? ht.offsetTop + ht.offsetHeight + 4 + 'px' : '';
+      ht.style.top = vp ? '' : hb.offsetTop + hb.offsetHeight + 8 + 'px';
+      const tp = document.getElementById('tutPanel');
+      if (tp) tp.style.top = vp ? '' : ht.offsetTop + ht.offsetHeight + 10 + 'px';
       // 靶場面板接在狀態欄下面
       const rp = document.getElementById('rangePanel');
       if (rp) rp.style.top = vp && this.range ? hb.offsetTop + hb.offsetHeight + 6 + 'px' : '';
@@ -456,7 +463,7 @@ Object.assign(Game.prototype, {
     this.goalTick(dt); // 過關條件（goals.js）
     if (this.bountyPops.length) {
       c.textAlign = 'left';
-      c.font = (innerHeight < 540 ? 'bold 11px' : 'bold 16px') + ' Chakra Petch';
+      c.font = (innerHeight < 540 ? 'bold 11px' : 'bold 16px') + ' Rubik, Noto Sans TC';
       for (let i = this.bountyPops.length - 1; i >= 0; i--) {
         const q = this.bountyPops[i];
         q.life -= dt;
@@ -487,7 +494,7 @@ Object.assign(Game.prototype, {
       c.fillRect(s.x - 30, s.y - 44, 60, 6);
       c.fillStyle = '#ffd070';
       c.fillRect(s.x - 30, s.y - 44, 60 * clamp(v.hp / v.maxHp, 0, 1), 6);
-      c.font = 'bold 11px Chakra Petch';
+      c.font = 'bold 11px Rubik, Noto Sans TC';
       c.textAlign = 'center';
       c.fillStyle = '#ffd070';
       c.fillText(v.name + ' — 擊破可獲補給', s.x, s.y - 50);
@@ -497,7 +504,7 @@ Object.assign(Game.prototype, {
       const s = this.proj(pk.pos);
       if (!s.in) continue;
       const d = PICKUP_DEFS[pk.kind];
-      c.font = 'bold 11px Chakra Petch';
+      c.font = 'bold 11px Rubik, Noto Sans TC';
       c.textAlign = 'center';
       c.fillStyle = '#' + d.color.toString(16).padStart(6, '0');
       c.fillText(d.name + (pk.life < 10 ? ` ${Math.ceil(pk.life)}s` : ''), s.x, s.y - 26);
@@ -512,7 +519,7 @@ Object.assign(Game.prototype, {
     // 隊友列表與方位箭頭
     if (this.net && this.net.role && this.players && this.players.length > 1) {
       let y = document.body.classList.contains('vpad') ? (innerHeight < 540 ? 170 : 250) : 170;
-      c.font = 'bold 12px Chakra Petch';
+      c.font = 'bold 12px Rubik, Noto Sans TC';
       c.textAlign = 'left';
       for (const q of this.players) {
         if (q === p) continue;
@@ -570,7 +577,7 @@ Object.assign(Game.prototype, {
           c.stroke();
           c.fill();
           c.restore();
-          c.font = 'bold 11px Chakra Petch';
+          c.font = 'bold 11px Rubik, Noto Sans TC';
           c.textAlign = 'center';
           c.fillStyle = col;
           c.fillText(
@@ -602,7 +609,7 @@ Object.assign(Game.prototype, {
           c.stroke();
           c.setLineDash([]);
           const s2 = this.proj(q.center());
-          c.font = 'bold 14px Chakra Petch';
+          c.font = 'bold 14px Rubik, Noto Sans TC';
           c.textAlign = 'center';
           c.fillStyle = inR ? '#7ee081' : 'rgba(126,224,129,.7)';
           c.fillText(
@@ -615,7 +622,7 @@ Object.assign(Game.prototype, {
         }
       }
       if (p.downed) {
-        c.font = 'bold 22px Chakra Petch';
+        c.font = 'bold 22px Rubik, Noto Sans TC';
         c.textAlign = 'center';
         c.fillStyle = '#ff4d4d';
         c.fillText(`倒地 — 等待救援 ${Math.ceil(p.downT)}s`, W / 2, H * 0.3);
@@ -646,7 +653,7 @@ Object.assign(Game.prototype, {
     }
     if (p.melee.active) {
       const d = p.weapons[p.melee.slot].def;
-      c.font = 'bold 22px Chakra Petch';
+      c.font = 'bold 22px Rubik, Noto Sans TC';
       c.textAlign = 'center';
       c.lineWidth = 4;
       c.strokeStyle = 'rgba(0,0,0,.7)';
@@ -713,7 +720,7 @@ Object.assign(Game.prototype, {
       c.arc(s.x, s.y + R, R, -Math.PI * 0.85, -Math.PI * 0.85 + Math.PI * 0.7 * clamp(a.hp / a.maxHp, 0, 1));
       c.stroke();
       c.fillStyle = '#80ffb0';
-      c.font = '11px Chakra Petch';
+      c.font = '11px Rubik, Noto Sans TC';
       c.textAlign = 'center';
       // 友軍 AC 顯示剩下的秒數；防衛目標（allyT 極大）只顯示名字
       const left = a.allyT < 1e6 ? ' ' + Math.max(0, Math.ceil(a.allyT)) + 's' : '';
@@ -775,7 +782,7 @@ Object.assign(Game.prototype, {
         {
           const dist = Math.round(e.pos.distanceTo(p.pos));
           const label = `${e.name} ${dist}m`;
-          c.font = 'bold 12px Chakra Petch';
+          c.font = 'bold 12px Rubik, Noto Sans TC';
           c.textAlign = 'center';
           const lx = clamp(ax, 70, W - 70),
             ly = ay + (ay < H / 2 ? 32 : -22);
@@ -809,7 +816,7 @@ Object.assign(Game.prototype, {
       c.stroke();
       if (e.staggerT > 0) {
         c.fillStyle = '#ff2a2a';
-        c.font = 'bold 11px Chakra Petch';
+        c.font = 'bold 11px Rubik, Noto Sans TC';
         c.textAlign = 'center';
         c.fillText('STAGGER', s.x, s.y - 4);
       }
@@ -879,14 +886,14 @@ Object.assign(Game.prototype, {
           c.restore();
         }
         c.fillStyle = '#ffb020';
-        c.font = 'bold 13px Chakra Petch';
+        c.font = 'bold 13px Rubik, Noto Sans TC';
         c.textAlign = 'left';
         c.fillText(e.name + '  ' + Math.round(e.pos.distanceTo(p.pos)) + 'm', cs.x + bx + 8, cs.y - bx + 12);
         // 零件品級：身上最高的品級（gear-loot.js）
         const gq = this.gearMaxQ(e);
         if (gq) {
           c.fillStyle = GRADES[gq].c;
-          c.font = 'bold 11px Chakra Petch';
+          c.font = 'bold 11px Rubik, Noto Sans TC';
           c.fillText('◆ ' + GRADES[gq].n + '裝備', cs.x + bx + 8, cs.y - bx + 27);
         }
         c.restore();

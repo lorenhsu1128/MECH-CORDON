@@ -102,12 +102,36 @@ const SHOTS = {
   },
   campFail: show('campFail'),
   campTrans: show('campTrans'),
+  // 任務中的 HUD（視角：top／chase／fp；boss＝Boss 關）
+  'hud-top': async (page) => hudShot(page, 'top'),
+  'hud-chase': async (page) => hudShot(page, 'chase'),
+  'hud-fp': async (page) => hudShot(page, 'fp'),
+  'hud-boss': async (page) => hudShot(page, 'top', 3),
   pilot: async (page) => {
     await page.evaluate(() => window.__game.openPilot());
     await wait(800);
   },
 };
 
+async function hudShot(page, view, level = 1) {
+  await page.evaluate(
+    ([view, level]) => {
+      const g = window.__game;
+      g.save.level = level;
+      g.startMission();
+      g.player.hp = g.player.maxHp * 0.72;
+      g.setView(view, true);
+    },
+    [view, level],
+  );
+  await wait(5000);
+  // 開場的過關條件卡片收起來之後
+  await page.evaluate(() => {
+    const g = window.__game;
+    if (g.player.lock == null && g.enemies[0]) g.player.lock = g.enemies[0];
+  });
+  await wait(1500);
+}
 (async () => {
   const args = process.argv.slice(2);
   const opt = Object.fromEntries(args.filter((a) => a.startsWith('--')).map((a) => a.slice(2).split('=')));
@@ -127,7 +151,9 @@ const SHOTS = {
         }
         const page = await ctx.newPage();
         const errs = [];
-        page.on('pageerror', (e) => errs.push(e.message));
+        page.on('pageerror', (e) =>
+          errs.push(e.message + ' @ ' + (e.stack || '').split(String.fromCharCode(10)).slice(1, 3).join(' ')),
+        );
         await page.goto('file:///' + HTML.replace(/\\/g, '/') + '?test');
         await page.waitForFunction(() => document.getElementById('title')?.classList.contains('on'), null, {
           timeout: 20000,

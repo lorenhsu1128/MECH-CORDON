@@ -272,7 +272,7 @@ Object.assign(Game.prototype, {
     }
     if (!this.encMarks || !this.encMarks.length) return;
     c.save();
-    c.font = 'bold 11px Chakra Petch';
+    c.font = 'bold 11px Rubik, Noto Sans TC';
     c.textAlign = 'center';
     c.lineWidth = 3;
     c.strokeStyle = 'rgba(0,0,0,.7)';

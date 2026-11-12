@@ -461,7 +461,7 @@ Object.assign(Game.prototype, {
         c.fillRect(s.x - w / 2, s.y - 62, w * clamp(v.gauge, 0, 1), 5);
         c.fillStyle = '#ff7030';
         c.fillRect(s.x - w / 2, s.y - 56, w * clamp(1 - v.chg, 0, 1), 2);
-        c.font = 'bold 11px Chakra Petch';
+        c.font = 'bold 11px Rubik, Noto Sans TC';
         c.textAlign = 'center';
         c.fillStyle = '#ffd0a0';
         c.fillText('打斷！', s.x, s.y - 68);
@@ -488,7 +488,7 @@ Object.assign(Game.prototype, {
       if (!s.in) continue;
       c.save();
       c.textAlign = 'center';
-      c.font = 'bold 14px Chakra Petch';
+      c.font = 'bold 14px Rubik, Noto Sans TC';
       c.fillStyle = '#7fc8ff';
       c.shadowColor = 'rgba(0,0,0,.9)';
       c.shadowBlur = 6;
@@ -511,7 +511,7 @@ Object.assign(Game.prototype, {
         c.lineTo(s.x - 11, s.y);
         c.closePath();
         c.stroke();
-        c.font = 'bold 11px Chakra Petch';
+        c.font = 'bold 11px Rubik, Noto Sans TC';
         c.textAlign = 'center';
         c.fillStyle = '#ffe070';
         c.fillText(e.name, s.x, s.y - 16);
@@ -542,7 +542,7 @@ Object.assign(Game.prototype, {
           y = H * (touch ? 0.3 : 0.36) + (touch ? -12 : -62);
         c.save();
         c.textAlign = touch ? 'right' : 'center';
-        c.font = 'bold 11px Chakra Petch';
+        c.font = 'bold 11px Rubik, Noto Sans TC';
         c.fillStyle = '#ffd040';
         c.shadowColor = 'rgba(0,0,0,.85)';
         c.shadowBlur = 5;

@@ -253,7 +253,7 @@ Object.assign(Game.prototype, {
       const s = this.proj(d.pos.clone().setY(d.pos.y + 3 * MS));
       if (!s.in) continue;
       const t = `${GRADES[d.g.q].n}・${gearPart(d.g.id).name}`;
-      c.font = 'bold 13px Chakra Petch';
+      c.font = 'bold 13px Rubik, Noto Sans TC';
       c.textAlign = 'center';
       c.lineWidth = 3;
       c.strokeStyle = 'rgba(0,0,0,.75)';

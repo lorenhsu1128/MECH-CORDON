@@ -40,7 +40,7 @@ const STREAK_NAMES = [
   [3, '三連殺'],
   [2, '雙殺'],
 ];
-const font = (px) => `bold ${Math.round(px)}px Chakra Petch`;
+const font = (px) => `bold ${Math.round(px)}px Rubik, Noto Sans TC`;
 
 Object.assign(Game.prototype, {
   // 連鎖的鋸齒電弧：從 c 連到最近的一台，再依序跳到離上一台最近的（最多 8 台；fx.bolt 會轉送給客機）

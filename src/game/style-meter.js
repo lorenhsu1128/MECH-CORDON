@@ -31,7 +31,7 @@ Object.assign(Game.prototype, {
     c.textAlign = 'center';
     c.shadowColor = 'rgba(0,0,0,.85)';
     c.shadowBlur = 6;
-    c.font = `italic 900 ${name.length > 1 ? 40 : 48}px Chakra Petch`;
+    c.font = `italic 900 ${name.length > 1 ? 40 : 48}px Rubik, Noto Sans TC`;
     c.fillStyle = col;
     c.fillText(name, x, y);
     c.shadowBlur = 0;
@@ -39,7 +39,7 @@ Object.assign(Game.prototype, {
     c.fillRect(x - 46, y + 8, 92, 5);
     c.fillStyle = col;
     c.fillRect(x - 46, y + 8, 92 * k, 5);
-    c.font = 'bold 11px Chakra Petch';
+    c.font = 'bold 11px Rubik, Noto Sans TC';
     c.fillStyle = 'rgba(255,255,255,.75)';
     c.fillText('STYLE', x, y - (name.length > 1 ? 38 : 44));
     let ly = y + 28;

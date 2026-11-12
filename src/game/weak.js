@@ -25,7 +25,7 @@ Object.assign(Game.prototype, {
       const s = this.proj(L.center().setY(L.pos.y + ((L.model && L.model.height) || 3)));
       if (s.in) {
         c.save();
-        c.font = 'bold 12px Chakra Petch';
+        c.font = 'bold 12px Rubik, Noto Sans TC';
         c.textAlign = 'center';
         c.fillStyle = `rgba(255,210,64,${0.65 + 0.35 * Math.sin(t * 14)})`;
         c.shadowColor = 'rgba(0,0,0,.8)';
@@ -80,7 +80,7 @@ Object.assign(Game.prototype, {
       c.beginPath();
       c.arc(best.s.x, best.s.y, 13, 0, Math.PI * 2);
       c.stroke();
-      c.font = 'bold 11px Chakra Petch';
+      c.font = 'bold 11px Rubik, Noto Sans TC';
       c.textAlign = 'center';
       c.fillStyle = '#ffd040';
       c.fillText(WP_KINDS[best.k].name, best.s.x, best.s.y + 26);

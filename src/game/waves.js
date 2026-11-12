@@ -257,7 +257,7 @@ Object.assign(Game.prototype, {
       c.fillStyle = col;
       c.strokeStyle = 'rgba(0,0,0,.7)';
       c.lineWidth = 3;
-      c.font = 'bold 12px Chakra Petch';
+      c.font = 'bold 12px Rubik, Noto Sans TC';
       c.textAlign = 'center';
       if (!s.in || s.x < 0 || s.x > W || s.y < 0 || s.y > H) {
         const cx = W / 2,
