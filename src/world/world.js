@@ -505,6 +505,7 @@ export class World {
     withRng(seed * 97 + 41, () => {
       for (const o of buildBackdrop(this) || []) {
         o.userData.noFade = true; // 鏡頭遮擋不淡出（fadeMeshes）
+        o.userData.cat = 'far'; // 地圖預覽器的場景分類（game/map-view-perf.js）
         scene.add(o);
         this.meshes.push(o);
       }
@@ -1487,6 +1488,7 @@ export class World {
     const g = L.build();
     const y = spot.lo - (L.sink || 0);
     g.position.y = y;
+    g.userData.cat = 'lm'; // 地圖預覽器的場景分類（game/map-view-perf.js）
     for (const o of this.addBig(
       g,
       spot,
@@ -2666,6 +2668,7 @@ export class World {
     if (!buckets.size) return;
     const root = (this.pillarG = new THREE.Group());
     root.userData.noFade = true;
+    root.userData.cat = 'prop'; // 地圖預覽器的場景分類（game/map-view-perf.js）
     this.scene.add(root);
     this.meshes.push(root); // dispose 時一起拿掉（noFade：不做遮擋的淡出）
     this.pillarHide = [];
@@ -2772,6 +2775,7 @@ export class World {
     }
     const root = (this.poolG = new THREE.Group());
     root.userData.noFade = true;
+    root.userData.cat = 'prop'; // 地圖預覽器的場景分類（game/map-view-perf.js）
     this.scene.add(root);
     this.meshes.push(root);
     this.pool = new Map(); // 群組 → { items, props, in, no }

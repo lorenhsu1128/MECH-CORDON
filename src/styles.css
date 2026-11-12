@@ -2453,6 +2453,77 @@ body.mapv #fps {
   max-width: 190px;
   accent-color: var(--acc);
 }
+#mvPanel .mvthumbs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+#mvPanel .mvthumbs button {
+  padding: 0;
+  min-height: 0;
+  line-height: 0;
+}
+#mvPanel .mvthumbs img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  display: block;
+}
+#mvPanel .mvsegs {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 2px 6px;
+  align-items: center;
+  font-size: 11px;
+}
+#mvPanel .mvsegs i {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+}
+#mvPanel .mvsegs i b {
+  display: block;
+  height: 100%;
+}
+#mvPanel .mvsegs em {
+  font-style: normal;
+  text-align: right;
+  min-width: 34px;
+}
+#mvPanel .mvcats {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+#mvPanel .mvcats th,
+#mvPanel .mvcats td {
+  padding: 2px 4px;
+  text-align: right;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+#mvPanel .mvcats th:first-child,
+#mvPanel .mvcats td:first-child {
+  text-align: left;
+}
+#mvPanel .mvcats td i {
+  color: var(--dim);
+  font-style: normal;
+}
+#mvPanel .mvcats tr.sum td {
+  color: var(--acc);
+}
+#mvPanel .mvcats input {
+  width: 18px;
+  height: 18px;
+}
+#mvPanel .mvhitch {
+  font-size: 11px;
+  line-height: 1.6;
+  max-height: 160px;
+  overflow-y: auto;
+}
+#mvPanel .mvhitch b {
+  color: #ff7a7a;
+  font-weight: normal;
+}
 #mvPanel .mvsub {
   color: var(--acc);
   margin: 10px 0 4px;

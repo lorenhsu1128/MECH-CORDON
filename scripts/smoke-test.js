@@ -1411,6 +1411,60 @@ async function testMapView(browser) {
     (await page.evaluate(() => window.__game.state)) === 'play' && (await visible(page, 'mvPanel')),
     '關掉設定、繼續回到預覽器',
   );
+  // ---- 第 4 期：效能分析、縮圖歷史、重現主線出擊 ----
+  await page.selectOption('#mvBody [data-fv="style"]', '');
+  await page.selectOption('#mvBody [data-fv="cmpSel"]', '');
+  await page.click('#mvBar [data-cam="top"]');
+  await page.click('#mvPanel [data-tab="perf"]');
+  await page.waitForFunction(() => !!(window.__game.mapv.pf.cats && window.__game.mapv.pf.seg), null, {
+    timeout: 10000,
+  });
+  const pf0 = await page.evaluate(() => {
+    const g = window.__game,
+      pf = g.mapv.pf;
+    return { cats: pf.cats, seg: pf.seg, calls: g.renderer.info.render.calls };
+  });
+  check(
+    pf0.cats.terrain.n > 0 && pf0.cats.prop.all > 0 && pf0.cats.boss.all > 0 && pf0.seg.ren > 0,
+    `效能：分段（算繪 ${pf0.seg.ren.toFixed(1)} ms）、場景分類（地形 ${pf0.cats.terrain.n}、地圖物件 ${pf0.cats.prop.n}／${pf0.cats.prop.all}、Boss ${pf0.cats.boss.all}）`,
+  );
+  await page.check('#mvCats [data-hide="prop"]');
+  await page.check('#mvCats [data-hide="terrain"]');
+  await wait(600);
+  const pf1 = await page.evaluate(() => {
+    const g = window.__game;
+    const tm = g.world.terrainMesh;
+    return { calls: g.renderer.info.render.calls, tv: tm.visible };
+  });
+  check(
+    pf1.calls < pf0.calls && pf1.tv,
+    `隱藏地圖物件與地形：繪製 ${pf0.calls} → ${pf1.calls}（只在算繪時藏，算完還原）`,
+  );
+  await page.screenshot({ path: path.join(SHOT_DIR, 'map-view-perf.png') });
+  await page.uncheck('#mvCats [data-hide="prop"]');
+  await page.uncheck('#mvCats [data-hide="terrain"]');
+  const rep = await page.evaluate(() => window.__game.mapvReportText());
+  check(
+    /場景分類/.test(rep) && /地圖物件/.test(rep) && /FPS/.test(rep),
+    '報告的文字（地圖、FPS、分段、場景分類、卡頓）',
+  );
+  // 重現主線出擊
+  await page.click('#mvPanel [data-tab="map"]');
+  await page.selectOption('#mvBody [data-p="sortie"]', 'c2s2');
+  await ready();
+  await wait(1500);
+  const so = await page.evaluate(() => {
+    const g = window.__game;
+    return { name: g.levelName, theme: g.worldTheme, info: g.mapv.sInfo, hist: g.mapv.hist.length };
+  });
+  check(
+    so.info && so.info.seg === 0 && /第 1 段/.test(so.name) && so.hist >= 1,
+    `重現主線出擊：${so.name}（縮圖 ${so.hist} 張）`,
+  );
+  const th = await page.$$('#mvThumbs [data-h]');
+  check(th.length === so.hist, '看過的地圖縮圖排在地圖分頁');
+  await page.selectOption('#mvBody [data-p="sortie"]', '');
+  await ready();
   // Esc → 暫停選單 → 離開
   await page.keyboard.press('Escape');
   check(await waitVisible(page, 'pause'), 'Esc 開暫停選單');

@@ -39,7 +39,14 @@ Object.assign(Game.prototype, {
     this.encGroups = null;
     this.guardPend = null;
     this.spawnQ = [];
-    if (f.mode === 'real') {
+    if (f.mode === 'real' && V.sBoss) {
+      // 重現主線出擊的 Boss 區段：那一隻 Boss（刁鑽度照自由出擊）
+      const sc = enemyScale(f.lv, 1);
+      this.isBossLevel = true;
+      this.spawnBossDef(V.sBoss, sc.hp, sc.dmg);
+      $('bossBar').style.display = 'block';
+      $('bossName').textContent = V.sBoss.name;
+    } else if (f.mode === 'real') {
       const L = f.lv;
       const sc = enemyScale(L, 1);
       this.scaleHp = sc.hp;

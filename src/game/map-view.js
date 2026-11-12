@@ -5,10 +5,13 @@
 //  第 1 期：選地圖（主題、變體、地標、種子、時間、天候、大小）、自由／環繞／全圖俯視鏡頭、基本效能面板、觸控操作
 //  第 2 期：敵人（map-view-foes.js）、AI 開關、電影鏡頭、遊戲的視角（操作一台無敵的玩家機體）
 //  第 3 期：Boss 擂台、友軍、渲染風格切換與左右比較（map-view-boss.js）
+//  第 4 期：效能的分段、卡頓、場景分類與隱藏、顯示卡時間、匯出（map-view-perf.js）；縮圖歷史；重現主線出擊
 // ============================================================
 import { SFX } from '../audio/audio.js';
 import { escHtml } from '../core/html.js';
-import { clamp } from '../core/math.js';
+import { clamp, makeRng } from '../core/math.js';
+import { SEG_TYPES, SORTIES, sortieBoss } from '../data/campaign.js';
+import { planSortie } from '../data/campaign-plan.js';
 import { DS } from '../core/scale.js';
 import { MechEntity } from '../entities/mech-entity.js';
 import { landmarkKeys, LANDMARKS } from '../world/landmarks.js';
@@ -74,7 +77,11 @@ Object.assign(Game.prototype, {
         tod: pref.tod || '',
         weather: pref.weather || '',
         size: pref.size || 'big',
+        sortie: SORTIES[pref.sortie] ? pref.sortie : '', // 重現主線出擊：出擊 id、第幾段、區段類型
+        seg: pref.seg | 0,
+        stype: pref.stype || '',
       },
+      hist: [], // 縮圖歷史：{ p 參數, url 縮圖 }
       cam: 'free',
       F: { yaw: 0.7, pitch: 0.75, dist: 120 * DS, pivot: new THREE.Vector3() },
       paused: false,
@@ -112,6 +119,7 @@ Object.assign(Game.prototype, {
       await this.lmRefresh();
     } catch (e) {}
     if (!this.mapv) return;
+    this.mapvPerfReset(); // 效能分析（map-view-perf.js）
     this.renderer.info.autoReset = false;
     document.body.classList.add('mapv');
     $('btnAbort').textContent = '離開地圖預覽';
@@ -169,24 +177,48 @@ Object.assign(Game.prototype, {
     const vs = VARIANTS[p.theme] || {};
     if (p.variant && !vs[p.variant]) p.variant = '';
     if (p.landmark && !(LANDMARKS[p.theme] || {})[p.landmark]) p.landmark = '';
-    // Boss 擂台：Boss 關的開闊地圖；這隻 Boss 不排在這個主題時換一個（主題的 bossBan、武裝列車要鐵路）
-    const boss = V.f.mode === 'boss';
-    const bd = boss ? this.mapvBossDef() : null;
-    const theme = boss ? this.mapvBossTheme(p.theme) : p.theme;
-    const big = p.size === 'big' && !boss;
-    this.world = new World(this.scene, theme, p.seed, 3, null, {
-      variant: theme === p.theme ? p.variant || undefined : undefined,
-      landmark: theme === p.theme ? p.landmark || undefined : undefined,
-      tod: p.tod || undefined,
-      weather: p.weather || undefined,
-      big: big ? 1 : undefined,
-      edge: big ? 1 : undefined,
-      open: p.size === 'open' || boss ? 1 : undefined,
-      rail: bd && bd.rail ? 1 : undefined,
-    });
+    // 重現主線出擊：照 planSortie 排出這一段的變體、地標、時間、天候、作戰區域（campSegWorld 同主線）
+    const so = p.sortie ? SORTIES[p.sortie] : null;
+    V.sBoss = null;
+    let theme, seed, W;
+    if (so) {
+      const i = Math.max(0, Math.min(so.segs.length - 1, p.seg | 0));
+      const seg = so.segs[i];
+      const type =
+        seg.pool.includes(p.stype) && p.stype !== 'air'
+          ? p.stype
+          : seg.pool.find((t) => t !== 'air') || 'battle';
+      const plan = planSortie(so, makeRng(p.seed));
+      theme = seg.theme;
+      seed = p.seed + i * 7919;
+      W = this.campSegWorld(so, i, type, plan[i], {});
+      if (type === 'boss') V.sBoss = sortieBoss(seg, type); // 實戰編成時生成這一段的 Boss（map-view-foes.js）
+      V.sInfo = { name: so.name, seg: i, type, plan: plan[i] };
+    } else {
+      // Boss 擂台：Boss 關的開闊地圖；這隻 Boss 不排在這個主題時換一個（主題的 bossBan、武裝列車要鐵路）
+      const boss = V.f.mode === 'boss';
+      const bd = boss ? this.mapvBossDef() : null;
+      theme = boss ? this.mapvBossTheme(p.theme) : p.theme;
+      seed = p.seed;
+      const big = p.size === 'big' && !boss;
+      W = {
+        variant: theme === p.theme ? p.variant || undefined : undefined,
+        landmark: theme === p.theme ? p.landmark || undefined : undefined,
+        tod: p.tod || undefined,
+        weather: p.weather || undefined,
+        big: big ? 1 : undefined,
+        edge: big ? 1 : undefined,
+        open: p.size === 'open' || boss ? 1 : undefined,
+        rail: bd && bd.rail ? 1 : undefined,
+      };
+      V.sInfo = null;
+    }
+    this.world = new World(this.scene, theme, seed, 3, null, W);
     const w = this.world;
-    this.worldSeed = p.seed;
+    this.worldSeed = seed;
     this.worldTheme = theme;
+    V.thumbT = 20; // 縮圖：畫面穩定後（預熱完、約 20 格）拍一張
+    V.genAt = performance.now(); // 卡頓紀錄：這之後幾秒的卡頓算新地圖的（map-view-perf.js）
     w.applyLight(this);
     this.sun.position.set(40, 80, 30);
     this.isClient = false;
@@ -219,6 +251,7 @@ Object.assign(Game.prototype, {
     this.mapvSpawnAllies(); // 友軍（map-view-boss.js）
     this.levelName =
       '地圖預覽・' +
+      (V.sInfo ? V.sInfo.name + ` 第 ${V.sInfo.seg + 1} 段・` : '') +
       w.theme.name +
       (w.variantKey ? '・' + this.variantName(theme, w.variantKey) : '') +
       (w.landmark ? '・' + w.landmark.name : '');
@@ -276,7 +309,11 @@ Object.assign(Game.prototype, {
       if (V.regenT <= 0) this.mapvGenerate();
     }
     const step = V.paused || V.busy ? 0 : dt * V.speed;
+    const A = V.pf.acc;
+    let t1 = performance.now();
     if (step > 0 && this.world && this.player) this.mapvSim(step);
+    let t2 = performance.now();
+    A.sim += t2 - t1;
     if (this.world && this.player) {
       if (V.game) {
         this.updateCamera(dt);
@@ -287,10 +324,23 @@ Object.assign(Game.prototype, {
         this.mapvCamera(dt);
         SFX.setListener(this.camera.position);
       }
+      // 效能（map-view-perf.js）：隱藏的類別先藏起來、顯示卡時間的查詢包住算繪
+      const hid = this.mapvHideBegin();
+      t1 = performance.now();
+      this.mapvGpuBegin();
       this.renderMain();
+      this.mapvGpuEnd();
+      t2 = performance.now();
+      A.ren += t2 - t1;
+      this.mapvHideEnd(hid);
     }
+    t1 = performance.now();
     if (V.game && this.player) this.drawHud(dt);
     else this.hctx.clearRect(0, 0, innerWidth, innerHeight);
+    A.hud += performance.now() - t1;
+    A.n++;
+    this.mapvPerfTick(dt);
+    this.mapvThumbTick();
     // 目標被擊破：資訊與名稱更新
     if (V.tgt && V.tgt.dead) this.mapvSetTgt(null);
     if ((this.frames & 31) === 0) this.mapvTgtUi();
@@ -313,6 +363,7 @@ Object.assign(Game.prototype, {
     const batch = this.aiBatchOn();
     // Boss：三個型態、換型態的增援、狂暴（bosses.js）；AI 停住時不換型態
     if (f.ai && this.bosses && this.bosses.length) this.bossPhaseTick(step);
+    const tA = performance.now();
     for (const e of this.enemies) {
       if (e.dead) continue;
       // 無敵：一般敵人每格補滿；Boss 不補（要看型態），只保留一點不會被擊破
@@ -326,6 +377,7 @@ Object.assign(Game.prototype, {
         a.hp = a.maxHp;
         this.aiStep(a, step, batch);
       }
+    V.pf.acc.ai += performance.now() - tA;
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const q = this.projectiles[i];
       q.update(step);
@@ -337,7 +389,9 @@ Object.assign(Game.prototype, {
     this.lavaTick(step);
     this.propCrushTick();
     if (this.crowd) this.crowdTick(step);
+    const tF = performance.now();
     this.fx.update(step);
+    V.pf.acc.fx += performance.now() - tF;
     this.tickPopups(step);
     this.spawnQTick(); // 生成佇列：一格一台（全部生成、增援）
     if (f.ai) {
@@ -567,7 +621,7 @@ Object.assign(Game.prototype, {
       <span class="mvseg"><button id="mvPanelBtn" title="收起／展開面板（H）">面板</button><button id="mvBack">返回</button></span>`;
     P.innerHTML = `
       <div class="mvhead"><b>地圖預覽</b><span id="mvName" class="dim"></span></div>
-      <div class="mvtabs" data-padtabs="button"><button data-tab="map">地圖</button><button data-tab="foes">敵人</button><button data-tab="view">畫面</button></div>
+      <div class="mvtabs" data-padtabs="button"><button data-tab="map">地圖</button><button data-tab="foes">敵人</button><button data-tab="view">畫面</button><button data-tab="perf">效能</button></div>
       <div class="mvbody" id="mvBody"></div>`;
     S.innerHTML = `<div id="mvFps"></div><canvas id="mvSpark" width="200" height="40"></canvas><div id="mvNums"></div>`;
     for (const b of B.querySelectorAll('[data-cam]')) b.onclick = () => this.mapvSetCam(b.dataset.cam);
@@ -610,12 +664,16 @@ Object.assign(Game.prototype, {
     if (V.tab === 'map') {
       body.innerHTML = this.mapvMapHtml();
       this.mapvBindTab();
+      this.mapvThumbsUi();
     } else if (V.tab === 'foes') {
       body.innerHTML = this.mapvFoesHtml();
       this.mapvBindFoes();
     } else if (V.tab === 'view') {
       body.innerHTML = this.mapvViewHtml();
       this.mapvBindView();
+    } else if (V.tab === 'perf') {
+      body.innerHTML = this.mapvPerfHtml();
+      this.mapvBindPerf();
     }
     this.mapvSyncUi();
   },
@@ -634,15 +692,94 @@ Object.assign(Game.prototype, {
     const lms = landmarkKeys(p.theme);
     const landmarks =
       opt('', '無', p.landmark) + lms.map((k) => opt(k, LANDMARKS[p.theme][k].name, p.landmark)).join('');
-    return `
-      <div class="mvrow"><span>主題</span><select data-p="theme">${themes}</select></div>
+    // 重現主線出擊：出擊、第幾段、區段類型（地圖照主線的排程，種子決定）
+    const sorties =
+      opt('', '不重現（自己選）', p.sortie) +
+      Object.keys(SORTIES)
+        .filter((k) => k !== 'fr' && SORTIES[k].segs)
+        .map((k) => opt(k, k + ' ' + SORTIES[k].name, p.sortie))
+        .join('');
+    const so = p.sortie ? SORTIES[p.sortie] : null;
+    const seg = so ? so.segs[Math.min(so.segs.length - 1, p.seg | 0)] : null;
+    const seed = `<div class="mvrow"><span>種子</span><span class="mvctl"><button data-seed="-1" title="上一個（[）">◀</button><input type="number" data-p="seed" min="1" step="1" value="${p.seed}" /><button data-seed="1" title="下一個（]）">▶</button><button data-seed="r" title="隨機">亂數</button></span></div>`;
+    const own = so
+      ? `<div class="mvrow"><span>第幾段</span><select data-p="seg">${so.segs.map((s, i) => opt(i, `第 ${i + 1} 段・${(THEMES[s.theme] || {}).name || s.theme}`, p.seg)).join('')}</select></div>
+      <div class="mvrow"><span>區段類型</span><select data-p="stype">${seg.pool
+        .filter((t) => t !== 'air')
+        .map((t) => opt(t, (SEG_TYPES[t] || {}).name || t, p.stype || seg.pool[0]))
+        .join('')}</select></div>
+      ${seed}
+      <div class="mvnote">變體、地標、時間、天候、作戰區域照主線的排程（同一個種子＝同一張地圖）；Boss 區段在實戰編成時生成那一隻 Boss。</div>`
+      : `<div class="mvrow"><span>主題</span><select data-p="theme">${themes}</select></div>
       <div class="mvrow"><span>變體</span><select data-p="variant">${variants}</select></div>
       <div class="mvrow"><span>地標</span><select data-p="landmark">${landmarks}</select></div>
-      <div class="mvrow"><span>種子</span><span class="mvctl"><button data-seed="-1" title="上一個（[）">◀</button><input type="number" data-p="seed" min="1" step="1" value="${p.seed}" /><button data-seed="1" title="下一個（]）">▶</button><button data-seed="r" title="隨機">亂數</button></span></div>
+      ${seed}
       <div class="mvrow"><span>時間</span><select data-p="tod">${TODS.map((t) => opt(t[0], t[1], p.tod)).join('')}</select></div>
       <div class="mvrow"><span>天候</span><select data-p="weather">${WEATHERS.map((t) => opt(t[0], t[1], p.weather)).join('')}</select></div>
-      <div class="mvrow"><span>大小</span><select data-p="size">${SIZES.map((t) => opt(t[0], t[1], p.size)).join('')}</select></div>
-      <div class="mvnote" id="mvInfo"></div>`;
+      <div class="mvrow"><span>大小</span><select data-p="size">${SIZES.map((t) => opt(t[0], t[1], p.size)).join('')}</select></div>`;
+    return `
+      <div class="mvrow"><span>主線出擊</span><select data-p="sortie">${sorties}</select></div>
+      ${own}
+      <div class="mvnote" id="mvInfo"></div>
+      <div class="mvsub">看過的地圖</div>
+      <div class="mvthumbs" id="mvThumbs"></div>`;
+  },
+  // ---------- 縮圖歷史 ----------
+  // 產生地圖後畫面穩定（預熱完、約 20 格）拍一張小圖，最多 8 張；點一下回到那張地圖的參數
+  mapvThumbTick() {
+    const V = this.mapv;
+    if (!(V.thumbT > 0) || V.busy || this.warmBusy || !this.world) return;
+    if (--V.thumbT > 0) return;
+    try {
+      const c = document.createElement('canvas');
+      c.width = 160;
+      c.height = 90;
+      const src = this.canvas;
+      const k = Math.min(src.width / 16, src.height / 9);
+      c.getContext('2d').drawImage(
+        src,
+        (src.width - k * 16) / 2,
+        (src.height - k * 9) / 2,
+        k * 16,
+        k * 9,
+        0,
+        0,
+        160,
+        90,
+      );
+      const key = JSON.stringify(V.p);
+      V.hist = V.hist.filter((h) => h.key !== key);
+      V.hist.unshift({
+        key,
+        p: { ...V.p },
+        url: c.toDataURL('image/jpeg', 0.7),
+        name: this.levelName.replace('地圖預覽・', ''),
+      });
+      if (V.hist.length > 8) V.hist.length = 8;
+      this.mapvThumbsUi();
+    } catch (e) {}
+  },
+  mapvThumbsUi() {
+    const box = $('mvThumbs');
+    if (!box) return;
+    const V = this.mapv;
+    box.innerHTML = V.hist.length
+      ? V.hist
+          .map(
+            (h, i) =>
+              `<button data-h="${i}" title="${escHtml(h.name + '・種子 ' + h.p.seed)}"><img src="${h.url}" alt="" /></button>`,
+          )
+          .join('')
+      : '<span class="dim">產生過的地圖會留在這裡</span>';
+    for (const b of box.querySelectorAll('[data-h]'))
+      b.onclick = () => {
+        const h = V.hist[Number(b.dataset.h)];
+        if (!h) return;
+        V.p = { ...h.p };
+        this.mapvSavePref();
+        this.mapvRenderTab();
+        this.mapvGenerate();
+      };
   },
   mapvBindTab() {
     const V = this.mapv;
@@ -652,10 +789,16 @@ Object.assign(Game.prototype, {
         const k = el.dataset.p;
         let v = el.value;
         if (k === 'seed') v = Math.max(1, Math.floor(Number(v) || 1));
+        if (k === 'seg') v = Number(v) || 0;
         V.p[k] = v;
         if (k === 'theme') {
           V.p.variant = '';
           V.p.landmark = '';
+          this.mapvRenderTab();
+        }
+        if (k === 'sortie' || k === 'seg') {
+          if (k === 'sortie') V.p.seg = 0;
+          V.p.stype = '';
           this.mapvRenderTab();
         }
         this.mapvQueue();
@@ -710,6 +853,7 @@ Object.assign(Game.prototype, {
     S.dtMax = Math.max(S.dtMax, ft);
     S.spark[S.sparkI] = ft;
     S.sparkI = (S.sparkI + 1) % SPARK_N;
+    if (!V.busy) this.mapvHitch(ft); // 卡頓紀錄（map-view-perf.js）
     if (V.shot) {
       V.shot = false;
       this.canvas.toBlob((b) => {
@@ -723,7 +867,9 @@ Object.assign(Game.prototype, {
     }
     if (S.t < 500) return;
     const fps = (S.frames * 1000) / S.t;
+    S.lastFps = fps;
     const R = this.renderer.info;
+    const G = V.pf && V.pf.gpu;
     const mem = performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) + ' MB' : '—';
     const ents = this.enemies.length + this.allies.length + (this.players ? this.players.length : 0);
     const fpsEl = $('mvFps');
@@ -732,6 +878,7 @@ Object.assign(Game.prototype, {
     $('mvNums').innerHTML = [
       ['每格', `${(S.t / S.frames).toFixed(1)} ms（最差 ${S.dtMax.toFixed(0)}）`],
       ['CPU', `${(S.cpu / S.frames).toFixed(1)} ms（最差 ${S.cpuMax.toFixed(0)}）`],
+      ['顯示卡', G && G.on && G.ms !== null ? `${G.ms.toFixed(1)} ms` : G && !G.on ? '不支援' : '—'],
       ['繪製', R.render.calls],
       ['三角形', `${(R.render.triangles / 1000).toFixed(0)}k`],
       ['著色器', R.programs ? R.programs.length : '—'],
