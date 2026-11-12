@@ -10167,3 +10167,27 @@ body.zFinOn #gl {
     height: 18px;
   }
 }
+
+/* ===== 絕區零式介面 C5：戰略桌的委託節點是小圓圈（game/hub-holo.js） ===== */
+.hubNode .hnI.hnZ {
+  width: 24px;
+  height: 24px;
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.8));
+  transition: transform 0.12s;
+}
+.hubNode.open .hnI.hnZ {
+  width: 32px;
+  height: 32px;
+  filter: drop-shadow(0 2px 0 #000) drop-shadow(0 0 8px rgba(205, 235, 42, 0.6));
+}
+body[data-uifx='full'] .hubNode.open .hnI.hnZ {
+  animation: zNodePulse 1.4s ease-in-out infinite;
+}
+@keyframes zNodePulse {
+  50% {
+    transform: scale(1.12);
+  }
+}
+.hubNode:hover .hnI.hnZ {
+  transform: scale(1.2);
+}

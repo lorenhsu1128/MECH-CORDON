@@ -544,7 +544,11 @@ Object.assign(Game.prototype, {
       el.className = `hubNode ${s}`;
       el.dataset.sid = sid;
       el.innerHTML =
-        `<svg viewBox="0 0 20 20" class="hnI" aria-hidden="true"><title>${escHtml(tip.join('\n'))}</title><circle cx="10" cy="10" r="7" fill="#0c1218" stroke="${col}" stroke-width="2"/><text x="10" y="13.5" text-anchor="middle" font-size="9" fill="${col}">${s === 'done' ? '✓' : s === 'open' ? '!' : '×'}</text></svg>` +
+        // 絕區零式（docs/zzz-ui-design.md C5）：節點是小圓圈——粗黑外框、狀態色的環、中間的記號；可以接的整顆亮起
+        `<svg viewBox="0 0 24 24" class="hnI hnZ" aria-hidden="true"><title>${escHtml(tip.join('\n'))}</title>` +
+        `<circle cx="12" cy="12" r="8" fill="${s === 'open' ? col : '#17181b'}" stroke="${col}" stroke-width="2.2"${s === 'locked' ? ' stroke-dasharray="3 2"' : ''}/>` +
+        `<circle cx="12" cy="12" r="10" fill="none" stroke="#000" stroke-width="2.4"/>` +
+        `<text x="12" y="16" text-anchor="middle" font-size="11" font-weight="900" font-style="italic" fill="${s === 'open' ? '#000' : col}">${s === 'done' ? '✓' : s === 'open' ? '!' : '·'}</text></svg>` +
         `<span class="hnT" style="color:${col}">${chs ? '<i class="hnF">⚑</i>' : ''}${escHtml(name)}</span>`;
       el.onclick = () => this.hubNodeClick(sid);
       el.onpointerenter = () => (this.hubHover = sid);
