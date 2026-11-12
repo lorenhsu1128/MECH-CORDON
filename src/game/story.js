@@ -104,6 +104,21 @@ Object.assign(Game.prototype, {
     const $ = (id) => document.getElementById(id);
     this.state = 'story';
     this.showScreen('storyScr');
+    // 絕區零式（docs/zzz-ui-design.md C3）：背景是三格斜切的漫畫分鏡，顏色依章節；大字是章節號
+    {
+      const m = /^([pio])(\d)(?:_(\d))?$/.exec(k) || [];
+      const ch = +m[3] || 0;
+      const HUE = [210, 35, 195, 200, 280, 185, 225, 15, 0];
+      const scr = $('storyScr');
+      scr.style.setProperty('--stHue', HUE[ch] ?? 210);
+      scr.dataset.kind = m[1] || 'p';
+      $('stComic').querySelector('b').textContent =
+        m[1] === 'p' ? 'PROLOGUE' : m[1] === 'o' ? 'END' : 'CH.' + ch;
+      const c = $('stComic');
+      c.classList.remove('in');
+      void c.offsetWidth;
+      c.classList.add('in');
+    }
     $('stSub').textContent = it.sub;
     $('stTitle').textContent = it.title;
     // 角色的台詞（「名字：「…」」）用不同的顏色

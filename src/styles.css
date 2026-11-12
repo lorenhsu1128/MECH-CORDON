@@ -9984,3 +9984,98 @@ body[data-uifx='full'] #gPoster.flip b {
     display: none;
   }
 }
+
+/* ===== 絕區零式介面 C3：劇情畫面的漫畫分鏡（game/story.js 的 storyText） ===== */
+#storyScr {
+  position: relative;
+}
+#stComic {
+  position: absolute;
+  inset: 30px 0;
+  display: flex;
+  pointer-events: none;
+  overflow: hidden;
+}
+#stComic i {
+  flex: 1;
+  margin-left: -5%;
+  clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%);
+  background:
+    radial-gradient(circle, rgba(0, 0, 0, 0.35) 1.6px, transparent 2.2px) 0 0 / 10px 10px,
+    linear-gradient(160deg, hsl(var(--stHue, 210) 40% 30%), hsl(var(--stHue, 210) 45% 9%));
+  position: relative;
+  opacity: 0.55;
+}
+#stComic i:first-child {
+  margin-left: -4%;
+}
+#stComic i:nth-child(2) {
+  background:
+    radial-gradient(circle, rgba(0, 0, 0, 0.35) 1.6px, transparent 2.2px) 0 0 / 10px 10px,
+    linear-gradient(200deg, hsl(calc(var(--stHue, 210) + 25) 40% 26%), hsl(var(--stHue, 210) 40% 7%));
+}
+#stComic i:nth-child(3) {
+  margin-right: -4%;
+  background:
+    radial-gradient(circle, rgba(0, 0, 0, 0.35) 1.6px, transparent 2.2px) 0 0 / 10px 10px,
+    linear-gradient(170deg, hsl(calc(var(--stHue, 210) - 25) 40% 28%), hsl(var(--stHue, 210) 45% 8%));
+}
+/* 分格之間的白色邊框（畫在斜線上） */
+#stComic i::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-left: 6px solid #f3f2ed;
+  transform: skewX(-6deg);
+  transform-origin: bottom left;
+  opacity: 0.9;
+}
+#stComic b {
+  position: absolute;
+  right: 3vw;
+  bottom: 4vh;
+  font: italic 900 clamp(70px, 13vw, 210px) / 0.9 var(--fd);
+  color: hsl(var(--stHue, 210) 70% 60%);
+  -webkit-text-stroke: 4px #000;
+  paint-order: stroke;
+  text-shadow: 8px 8px 0 #000;
+  opacity: 0.35;
+  transform: rotate(-6deg);
+  white-space: nowrap;
+}
+#storyScr[data-kind='o'] #stComic i {
+  filter: grayscale(0.6);
+}
+body[data-uifx='full'] #stComic.in i {
+  animation: zPanelIn 0.42s cubic-bezier(0.2, 1.2, 0.4, 1) backwards;
+}
+body[data-uifx='full'] #stComic.in i:nth-child(2) {
+  animation-delay: 0.08s;
+}
+body[data-uifx='full'] #stComic.in i:nth-child(3) {
+  animation-delay: 0.16s;
+}
+body[data-uifx='full'] #stComic.in b {
+  animation: zStamp 0.5s cubic-bezier(0.2, 1.6, 0.4, 1) 0.3s backwards;
+}
+@keyframes zPanelIn {
+  from {
+    opacity: 0;
+    transform: translateY(-40px);
+  }
+}
+#storyScr > #stPort,
+#storyScr > .brBox {
+  position: relative;
+  z-index: 1;
+}
+@media (max-height: 540px) {
+  #stComic {
+    inset: 14px 0;
+  }
+  #stComic b {
+    font-size: 64px;
+    -webkit-text-stroke: 2px #000;
+    text-shadow: 4px 4px 0 #000;
+  }
+}
