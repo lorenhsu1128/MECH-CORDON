@@ -1439,7 +1439,7 @@ select {
 }
 /* 技能樹：欄＝分支，列＝標題、T1、T2 門檻、T2、T3 門檻、T3 */
 #pTree {
-  --nd: clamp(48px, 6.6vh, 80px);
+  --nd: clamp(40px, min(6.6vh, 4.2vw), 80px); /* 窄的畫面（平板）也依寬度縮小，12 個節點一排不互相碰到 */
   position: relative;
   flex: 1;
   overflow: auto;
@@ -10266,5 +10266,193 @@ body[data-uifx='full'] #garage .slot.sel .gThumb::before {
 @media (prefers-reduced-motion: reduce) {
   #garage .slot.sel .gThumb::before {
     animation: none;
+  }
+}
+
+/* ===== 平板等中等高度（541～900 px，例如 1000×626）：右翼 8 個部位格放得下、不疊到作戰卡與轉場整備面板 ===== */
+/* 圓盤大小依畫面高度：右翼 8 格放在上方列（70 px）與下方的作戰卡／出擊鍵（--wingRes）之間 */
+@media (min-height: 541px) and (max-height: 900px) {
+  #garage {
+    --wingRes: 160px;
+    --disc: clamp(34px, calc((100vh - 70px - var(--wingRes)) / 8 - 12px), 60px);
+  }
+  #garage.gTrans {
+    --wingRes: 250px;
+  }
+  .gWing {
+    gap: 12px;
+  }
+  #garage .slot .gThumb {
+    width: var(--disc);
+    height: var(--disc);
+  }
+  #garage .slot .gThumb::before {
+    inset: -5px;
+  }
+  .gSlotT {
+    padding: 2px 12px 2px 14px;
+    min-width: 104px;
+    font-size: 12px;
+    line-height: 1.15;
+  }
+  #gWingR .gSlotT {
+    padding: 2px 14px 2px 12px;
+  }
+  .gSlotT small {
+    font-size: 9.5px;
+    line-height: 1.1;
+  }
+  /* 轉場整備面板：按鈕排成一列、模組清單限高可捲動 */
+  #gCamp {
+    max-width: min(420px, 46vw);
+    padding: 8px 10px;
+    gap: 4px;
+  }
+  #gCamp .gCampBtns {
+    flex-wrap: nowrap;
+  }
+  #gCamp .gCampBtns button {
+    width: auto;
+    flex: 1 1 0;
+    margin-top: 0;
+    padding: 5px 6px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  #gCamp .gCampMods {
+    max-height: 52px;
+    overflow: auto;
+  }
+  #gCamp .gCampMods .modChip {
+    font-size: 10.5px;
+  }
+  #gCamp > .primary {
+    margin-top: 2px;
+    padding: 10px 20px;
+  }
+}
+/* 簡報：面板不要被畫面高度壓扁（overflow: hidden 時下方的按鈕會被切掉），超出時整個畫面捲動 */
+#brief .brBox {
+  flex: none;
+  box-sizing: border-box; /* 寬 100%（手機）時內距算在裡面，不超出右邊 */
+}
+/* 作戰室：窄一點的畫面（平板）上方中央的提示會疊到左上的「出擊進行中」，改放在下方圖示列上面 */
+@media (max-width: 1300px) and (min-height: 541px) {
+  .hubCap {
+    top: auto;
+    bottom: 132px;
+    max-width: calc(100vw - 32px);
+  }
+}
+/* 觸控：Boss 血條放回上方中間（右上是視角／暫停鍵與武器欄，平板上會疊到）；第一人稱的羅盤在上方中間，血條接在它下面 */
+@media (min-height: 541px) {
+  body.vpad #bossBar {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    top: calc(12px + env(safe-area-inset-top, 0px));
+    width: min(360px, 34vw);
+  }
+  body.vpad[data-view='fp'] #bossBar {
+    top: calc(76px + env(safe-area-inset-top, 0px));
+  }
+}
+/* 標題：內容一律疊在背景（警戒膠帶）上面 */
+#title .tLeft,
+#title .tRight {
+  z-index: 1;
+}
+/* 標題：平板等中等高度，主選單的膠囊縮小，工具列不要被切到下面 */
+@media (min-height: 541px) and (max-height: 820px) {
+  #ui #title.on {
+    padding: 2.5vh 3.5vw;
+  }
+  #titleLogo img {
+    max-height: 44vh;
+  }
+  #title .tIntro {
+    font-size: 13px;
+    margin-top: 8px;
+  }
+  #title .touchHelp {
+    font-size: 11.5px;
+  }
+  #title .tMain {
+    gap: 8px;
+  }
+  #title .tMain button {
+    font-size: 16px;
+    padding: 10px 22px;
+  }
+  #title .tMain #btnStory {
+    font-size: 19px;
+    padding: 13px 22px;
+  }
+  #title .tTools {
+    margin-top: 12px;
+    padding: 7px 10px 9px;
+  }
+  #title .tTools h4 {
+    margin-bottom: 6px;
+  }
+  #title .tToolBtns {
+    gap: 6px;
+  }
+  #title .tToolBtns button {
+    font-size: 11.5px;
+    padding: 5px 11px;
+  }
+  .zBackdrop::after {
+    bottom: 5%;
+  }
+}
+/* 機甲庫：窄一點的畫面（平板）量表靠左，不鑽到右下的作戰卡／轉場整備面板底下 */
+@media (max-width: 1300px) and (min-height: 541px) {
+  #gMeters {
+    left: 16px;
+    right: calc(min(300px, 44vw) + 40px);
+    width: auto;
+    min-width: 0;
+    transform: none;
+  }
+  #garage.gTrans #gMeters {
+    right: calc(min(420px, 46vw) + 40px);
+  }
+}
+/* 機甲庫的設定頁：「機體配色」不要被色票擠成兩行 */
+#gPal > span:first-child {
+  white-space: nowrap;
+  flex: none;
+}
+/* 手機橫式：轉場整備面板讓開右翼的圓盤，按鈕排成一列 */
+@media (max-height: 540px) {
+  #garage.gTrans #gActions .gMain {
+    margin-right: 52px;
+  }
+  #gCamp {
+    max-width: min(300px, 40vw);
+    padding: 6px 8px;
+    gap: 3px;
+  }
+  #gCamp .gCampBtns {
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+  #gCamp .gCampBtns button {
+    width: auto;
+    flex: 1 1 0;
+    margin-top: 0;
+    padding: 3px 4px;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+  #gCamp .gCampMods {
+    max-height: 34px;
+    overflow: auto;
+  }
+  #gCamp > .primary {
+    margin-top: 2px;
+    padding: 7px 14px;
+    font-size: 14px;
   }
 }

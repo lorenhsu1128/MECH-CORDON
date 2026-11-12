@@ -9,6 +9,12 @@ import { Game } from './game.js';
 Object.assign(Game.prototype, {
   // 追尾與第一人稱鎖住滑鼠；選單（模組三選一、抉擇說明卡、確認視窗、靶場設定…）打開時要放開，
   // 否則看不到游標、要先按 Esc 才能點（多人的三選一不暫停，state 仍是 play，所以也看疊加視窗）
+  // 觸控的第一人稱：雷達接在右上的武器欄下面（矮一點的平板上，放在畫面中間會疊到跳躍／肩部鍵）
+  fpRadarY(H, R) {
+    const w = document.getElementById('weapons');
+    const b = w && w.offsetParent ? w.getBoundingClientRect().bottom : 0;
+    return b ? Math.min(H / 2, b + R + 14) : H / 2;
+  },
   fpMenuOpen() {
     const on = (id) => {
       const el = document.getElementById(id);
@@ -213,7 +219,7 @@ Object.assign(Game.prototype, {
     // 雷達（半徑 60 m）；追尾視角的觸控版面放在左側中間（右側是按鈕）
     const R = noRet && vp ? Math.min(48, H * 0.12) : 62,
       rx = vp ? (noRet ? R + 14 : W - 90) : 96,
-      ry = vp ? (noRet ? H * 0.47 : H / 2) : H - 330;
+      ry = vp ? (noRet ? H * 0.47 : this.fpRadarY(H, R)) : H - 330;
     c.fillStyle = 'rgba(8,12,18,.55)';
     c.beginPath();
     c.arc(rx, ry, R, 0, Math.PI * 2);

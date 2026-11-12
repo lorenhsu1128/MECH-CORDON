@@ -876,6 +876,13 @@ Object.assign(Game.prototype, {
     this.hubScene.updateMatrixWorld();
     const W = innerWidth,
       H = innerHeight;
+    const avoid = [],
+      placed = [];
+    for (const id of ['hubTopL', 'comm']) {
+      const el = document.getElementById(id);
+      const r = el && el.offsetParent && el.getBoundingClientRect();
+      if (r && r.width && r.height && getComputedStyle(el).visibility !== 'hidden') avoid.push(r);
+    }
     // edge＝貼著畫面邊緣（設施的標籤：場景裡的位置在畫面外時，停在邊上）
     const place = (el, p, edge) => {
       _v.copy(p).project(cam);
@@ -884,6 +891,17 @@ Object.assign(Game.prototype, {
       if (edge) {
         x = clamp(x, 78, W - 78);
         y = clamp(y, 96, H - 110);
+        // 不要躲在左上的「出擊進行中」與通訊框底下（平板等窄一點的畫面會疊到）：移到它們下方
+        for (const r of avoid)
+          if (x > r.left - 70 && x < r.right + 70 && y < r.bottom + 46) y = r.bottom + 46;
+        // 設施的標籤彼此不重疊：碰到先排好的就往下移（標籤寬 140、上緣在 y−40）
+        const h = el.offsetHeight || 40;
+        for (let k = 0; k < 6; k++) {
+          const hit = placed.find((q) => Math.abs(q.x - x) < 144 && Math.abs(q.y - y) < Math.max(h, q.h) + 4);
+          if (!hit) break;
+          y = hit.y + hit.h + 6;
+        }
+        placed.push({ x, y, h });
       }
       el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
       el.style.visibility = _v.z < 1 ? '' : 'hidden';

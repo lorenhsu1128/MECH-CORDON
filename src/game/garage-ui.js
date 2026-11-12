@@ -225,9 +225,23 @@ Object.assign(Game.prototype, {
     const right = fly.classList.contains('right');
     fly.style.left = right ? '' : wing.right + 12 + 'px';
     fly.style.right = right ? innerWidth - wing.left + 12 + 'px' : '';
+    let bottom = innerHeight - (document.getElementById('gBottom').offsetHeight || 60) - 8;
+    // 量表（以及作戰卡、轉場整備面板）在零件格子的正下方時，停在它們上面（平板等矮一點的畫面會疊到）
+    fly.style.maxHeight = '';
+    const fr = fly.getBoundingClientRect();
+    for (const id of ['gMeters', 'gOps', 'gCamp']) {
+      const el = document.getElementById(id);
+      if (!el || !el.offsetParent || getComputedStyle(el).display === 'none') continue;
+      const m = el.getBoundingClientRect();
+      if (m.width && m.right > fr.left && m.left < fr.right) bottom = Math.min(bottom, m.top - 8);
+    }
+    const top0 = 64;
+    if (fly.offsetHeight > bottom - top0) fly.style.maxHeight = Math.max(160, bottom - top0) + 'px';
     const h = fly.offsetHeight;
-    const bottom = innerHeight - (document.getElementById('gBottom').offsetHeight || 60) - 8;
-    fly.style.top = Math.max(64, Math.min(r.top - 6, bottom - h)) + 'px';
+    const top = Math.max(top0, Math.min(r.top - 6, bottom - h));
+    fly.style.top = top + 'px';
+    // 之後內容才變高（縮圖、小卡片）時在框裡捲動，不往下伸到量表底下
+    fly.style.maxHeight = Math.max(160, bottom - top) + 'px';
   },
   // 零件格子的箭頭：換上後的主要數值（武器＝持續 DPS、其他＝有效 AP）變好或變差
   garageTileDelta(slot, cat, p) {

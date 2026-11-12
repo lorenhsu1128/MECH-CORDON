@@ -1244,6 +1244,8 @@ Object.assign(Game.prototype, {
       $('mcDesc').textContent = '在這裡組裝與換裝。完成後按「返回作戰室」，從戰區總覽圖選委託出擊。';
     }
     box.style.display = inG ? '' : 'none';
+    // 轉場整備面板比作戰卡高：右翼的部位格依它縮小（styles.css 的 --wingRes）
+    document.getElementById('garage').classList.toggle('gTrans', inG);
     if (!inG) return;
     const cl = this.campIsClient();
     const T = cl ? this.campC.trans || {} : null;

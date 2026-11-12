@@ -72,6 +72,19 @@ const SHOTS = {
     await SHOTS.garage(page);
     await page.evaluate(() => document.querySelector('#gTabs [data-tab="set"]')?.click());
   },
+  // 主線的轉場整備（機甲庫＋整備面板＋零件格子）
+  'garage-camp': async (page) => {
+    await page.evaluate(() => {
+      const g = window.__game;
+      g.ctrl.hangarFx = 'off';
+      g.save.coam = 500000;
+      g.campBegin('c1s1');
+      g.campGarage();
+    });
+    await wait(2500);
+    await page.click('#slots .slot[data-slot="gen"]').catch(() => {});
+    await wait(500);
+  },
   hub: async (page) => {
     await page.evaluate(() => {
       const g = window.__game;
@@ -169,7 +182,12 @@ async function hudShot(page, view, level = 1) {
   const browser = await launch();
   try {
     for (const sz of sizes) {
-      const ctx = await browser.newContext(SIZES[sz]);
+      // 自訂大小：寬x高（觸控、2 倍像素），例如 1000x626
+      const m = /^(\d+)x(\d+)$/.exec(sz);
+      const conf = m
+        ? { viewport: { width: +m[1], height: +m[2] }, hasTouch: true, deviceScaleFactor: 2 }
+        : SIZES[sz];
+      const ctx = await browser.newContext(conf);
       for (const name of names) {
         const fn = SHOTS[name];
         if (!fn) {
