@@ -87,7 +87,7 @@
 
 **資料**（`js/pipeline.js` 檔頭有 card 的完整格式）：
 - `card.json`＋發佈的 WebP 在定稿資料夾：開發模式（從專案執行 server.js、沒設 `MECH_CORDON_MODELS_DIR`）＝`src/assets/characters/<id>/`（進 git），否則 `server-models/characters/<id>/`。
-- 候選、選定的圖與參考圖在 `server-models/charwork/<id>/`（不進 git；參考圖是別人的作品）。換電腦時候選不會跟著走，定稿與 card（含種子）會。
+- 候選、選定的圖與參考圖在 `tools/charwork/<id>/`（開發模式；2026-11-12 使用者決定用一般 git 提交，否則別台電腦的角色產生器是破圖；以前的 `server-models/charwork/` 在伺服器啟動時自動搬過去）。exe 版照舊在 `server-models/charwork/`。產生新的候選後要 commit＋push。
 - 伺服器（`server-chargen.js`，server.js 載入）：`/api/comfy/…`＝轉送到本機的 ComfyUI（`MECH_CORDON_COMFY` 改網址，`/api/comfy/ws` 是 WebSocket），`/api/comfy-status`＝ComfyUI 有沒有在執行（一律 200），`/api/chars`、`/api/chars/<id>`（card）、`/api/chars/<id>/file/<檔名>`（定稿）、`/api/chars/<id>/work/<檔名>`（候選）。
 
 **生產流程**（網頁與命令列共用 `js/pipeline.js`）：
@@ -186,4 +186,4 @@
 **注意**：
 - 每個角色量產前都要和使用者確認外觀（第一節）。
 - 產圖與測試不要同時跑（記憶體）。ComfyUI 不用時關掉。
-- 候選圖只在產生它的那台電腦（`server-models/charwork/`）；換電腦時定稿與 card（含種子）會跟著 git 走。
+- 候選圖在 `tools/charwork/`，跟著 git 走（產生之後記得 commit＋push）。

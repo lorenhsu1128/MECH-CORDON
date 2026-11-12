@@ -3,7 +3,8 @@
 //   /api/comfy/ws 是 WebSocket。區網的其他電腦也能用這台的顯示卡
 // - /api/chars…：角色資料。定稿（card.json＋發佈的 WebP）在 CHARS_DIR/<id>/，候選與參考圖在 WORK_DIR/<id>/
 //   開發模式（從專案執行、沒有用 MECH_CORDON_MODELS_DIR 指定別的資料夾）：定稿直接寫進 src/assets/characters/（commit 之後
-//   別台電腦 pull 就有），候選與參考圖放 server-models/charwork/（不進 git：參考圖是別人的作品）
+//   別台電腦 pull 就有），候選與參考圖放 tools/charwork/（2026-11-12 使用者決定進 git，換電腦才不會破圖；
+//   舊的 server-models/charwork/ 在啟動時搬過去）
 'use strict';
 const http = require('http'),
   fs = require('fs'),
@@ -14,7 +15,30 @@ module.exports = function chargen({ base, modelsDir, env, readBody, writeAtomic,
   const COMFY = new URL(env('COMFY') || 'http://127.0.0.1:8188');
   const DEV = !process.pkg && !env('MODELS_DIR');
   const CHARS_DIR = DEV ? path.join(base, 'src', 'assets', 'characters') : path.join(modelsDir, 'characters');
-  const WORK_DIR = path.join(modelsDir, 'charwork');
+  const WORK_DIR = DEV ? path.join(base, 'tools', 'charwork') : path.join(modelsDir, 'charwork');
+  // 開發模式：舊位置（server-models/charwork/）的候選圖搬進版本庫（已有同名檔案的不覆蓋）
+  if (DEV) {
+    const old = path.join(modelsDir, 'charwork');
+    const move = (a, b) => {
+      for (const f of fs.readdirSync(a, { withFileTypes: true })) {
+        const pa = path.join(a, f.name),
+          pb = path.join(b, f.name);
+        if (f.isDirectory()) {
+          fs.mkdirSync(pb, { recursive: true });
+          move(pa, pb);
+        } else if (!fs.existsSync(pb)) fs.renameSync(pa, pb);
+      }
+    };
+    try {
+      if (fs.existsSync(old)) {
+        fs.mkdirSync(WORK_DIR, { recursive: true });
+        move(old, WORK_DIR);
+        log(`[charagen] 候選圖搬到 ${WORK_DIR}（舊的資料夾 ${old} 可以刪掉）`);
+      }
+    } catch (e) {
+      log(`[charagen] 搬移候選圖失敗：${e.message}`);
+    }
+  }
   const ID_RE = /^[a-z][a-z0-9_]{0,31}$/;
   const FILE_RE = /^[a-z0-9_][a-z0-9_.-]{0,95}\.(webp|png|jpg|jpeg|json)$/i;
   const MAX_IMG = 24 * 1024 * 1024;
