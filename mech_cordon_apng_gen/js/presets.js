@@ -182,10 +182,40 @@ const EVA_ALERT = {
   deco: { type: 'band', color: '#b00012', opacity: 0.88, pad: 0.35, soft: 0.1, sideFade: 0.2, anim: 'grow', dur: 0.35 }
 };
 
+// 街頭潮流（絕區零式的遊戲介面，MECH CORDON 的任務橫幅與訊息用）：粗斜體、白字黑粗描邊、硬陰影、黃黑警戒膠帶
+const STREET = {
+  fontId: 'rubik', weight: 900, italic: true, fontSize: 132, letterSpacing: 0.04,
+  subFontId: 'rubik', subWeight: 800, subSize: 0.24, subLetterSpacing: 0.3, subGap: 0.4,
+  fill: { type: 'solid', color: '#ffffff' }, stroke: { on: true, width: 9, color: '#000000' }, stroke2: { on: false },
+  shadow: { on: true, color: '#000000', opacity: 1, blur: 0, x: 7, y: 7 },
+  deco: { type: 'tape', pad: 0.3, tapeColor: '#fcc800', tapeStripe: '#111111', tapeSize: 26, tapeSpeed: 140, tapeBlink: 0, anim: 'grow', dur: 0.35 },
+  inFx: 'slam', inDur: 0.4, inStagger: 0.03, inPower: 1.2, hold: 1.3, outFx: 'fade', outDur: 0.3, subFx: 'fade', subDelay: -0.1
+};
+const STREET_GOOD = {
+  ...STREET, fill: { type: 'solid', color: '#cdeb2a' },
+  deco: { type: 'none' }, inFx: 'pop', fontSize: 110, hold: 1.1
+};
+const STREET_INFO = {
+  ...STREET, fontSize: 92, stroke: { on: true, width: 7, color: '#000000' }, shadow: { on: true, color: '#000000', opacity: 1, blur: 0, x: 5, y: 5 },
+  deco: { type: 'none' }, inFx: 'slide', inDir: 'lr', inDur: 0.3, hold: 1.2
+};
+const STREET_WARN = {
+  ...STREET, fill: { type: 'solid', color: '#ff3b30' }, stroke: { on: true, width: 9, color: '#000000' },
+  deco: { type: 'tape', pad: 0.3, tapeColor: '#f01818', tapeStripe: '#111111', tapeSize: 26, tapeSpeed: 200, tapeBlink: 0.3, anim: 'grow', dur: 0.3 },
+  holdFx: 'shake', holdPower: 0.5
+};
+
 const msg = (id, group, label, text, subText, patch, extra = {}) => ({ id, group, label, text, subText, patch, ...extra });
 
 export const TEMPLATES = {
   message: [
+    msg('streetStart', 'combat', L('街頭・作戰開始', 'Street: Mission Start'), '作戰開始', 'MISSION START', STREET),
+    msg('streetClear', 'combat', L('街頭・區域清除', 'Street: Area Clear'), '區域清除', 'AREA CLEAR', STREET),
+    msg('streetKill', 'combat', L('街頭・擊破', 'Street: Destroyed'), '擊破', 'DESTROYED', { ...STREET, loop: 'once' }),
+    msg('streetDone', 'combat', L('街頭・任務完成', 'Street: Mission Complete'), '任務完成', 'MISSION COMPLETE', { ...STREET, fontSize: 140 }),
+    msg('streetWarn', 'combat', L('街頭・警告', 'Street: Warning'), '警告', 'WARNING', STREET_WARN),
+    msg('streetGood', 'combat', L('街頭・好消息', 'Street: Good'), '回收完成', 'GOT IT', { ...STREET_GOOD, loop: 'once' }),
+    msg('streetInfo', 'combat', L('街頭・訊息', 'Street: Info'), '前往出口', 'NEXT', STREET_INFO),
     msg('battle', 'combat', L('戰鬥開始', 'Battle Start'), '戰鬥開始', 'BATTLE START', BATTLE),
     msg('battleEnd', 'combat', L('戰鬥結束', 'Battle End'), '戰鬥結束', 'BATTLE END', { ...BATTLE, inFx: 'fade', inStagger: 0.05, outFx: 'fade' }),
     msg('victory', 'combat', L('勝利', 'Victory'), '勝利', 'VICTORY', { ...ROUND, fontId: 'noto-serif-tc', fontSize: 150, subFontId: 'cinzel', inFx: 'flash', holdFx: 'glow' }),

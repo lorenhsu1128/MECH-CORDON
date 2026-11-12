@@ -67,6 +67,7 @@ const CATALOG = [
   F('cormorant-garamond', 'Cormorant Garamond', [400, 700], 'latin', 'noto-serif-tc'),
   F('im-fell-english', 'IM Fell English', [400], 'latin', 'noto-serif-tc'),
   F('unifrakturmaguntia', 'UnifrakturMaguntia', [400], 'latin', 'noto-serif-tc'),
+  F('rubik', 'Rubik', [500, 700, 800, 900], 'latin', 'noto-sans-tc'),
   F('bebas-neue', 'Bebas Neue', [400], 'latin', 'noto-sans-tc'),
   F('oswald', 'Oswald', [400, 700], 'latin', 'noto-sans-tc'),
   F('montserrat', 'Montserrat', [400, 700, 900], 'latin', 'noto-sans-tc'),

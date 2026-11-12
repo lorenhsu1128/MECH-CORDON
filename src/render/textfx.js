@@ -16,25 +16,20 @@ const preset = (id) => (STYLE_PRESETS.find((p) => p.id === id) || {}).patch || {
 // hd：畫布高度對應的模板像素（越大字越小）；size：再乘的字級
 export const CUES = {
   // ---- 提案 1：戰鬥演出 ----
-  start: { mode: 'message', tpl: 'battle', slot: 'banner', hd: 330 },
+  // 絕區零式介面（docs/zzz-ui-design.md B6）：作戰開始、清除、擊破、完成、警告、中央訊息改用產生器的「街頭」模板
+  start: { mode: 'message', tpl: 'streetStart', slot: 'banner', hd: 400 },
   seg: { mode: 'caption', tpl: 'cinema', slot: 'banner', hd: 300, patch: { anchor: 'mc', align: 'center' } },
-  warning: { mode: 'message', tpl: 'emergency', slot: 'banner', hd: 330 },
+  warning: { mode: 'message', tpl: 'streetWarn', slot: 'banner', hd: 330 },
   phase: { mode: 'message', tpl: 'evaBerserk', slot: 'banner', hd: 400 },
   enrage: { mode: 'message', tpl: 'evaLimit', slot: 'banner', hd: 330, patch: { loop: 'once' } },
   ace: { mode: 'message', tpl: 'incident', slot: 'banner', hd: 330 },
   lastwave: { mode: 'message', tpl: 'evaAngel', slot: 'banner', hd: 330 },
-  clear: { mode: 'message', tpl: 'battleEnd', slot: 'banner', hd: 330, patch: preset('silver') },
-  kill: { mode: 'message', tpl: 'victory', slot: 'banner', hd: 360, patch: { loop: 'once' } },
-  done: { mode: 'message', tpl: 'missionClear', slot: 'banner', hd: 360 },
+  clear: { mode: 'message', tpl: 'streetClear', slot: 'banner', hd: 400 },
+  kill: { mode: 'message', tpl: 'streetKill', slot: 'banner', hd: 420, patch: { loop: 'once' } },
+  done: { mode: 'message', tpl: 'streetDone', slot: 'banner', hd: 400 },
   // ---- 提案 2：中央訊息的種類 ----
-  info: { mode: 'message', tpl: 'simple', slot: 'msg', hd: 260 },
-  good: {
-    mode: 'message',
-    tpl: 'coc7Regular',
-    slot: 'msg',
-    hd: 300,
-    patch: { ...preset('gold'), loop: 'once' },
-  },
+  info: { mode: 'message', tpl: 'streetInfo', slot: 'msg', hd: 280 },
+  good: { mode: 'message', tpl: 'streetGood', slot: 'msg', hd: 300, patch: { loop: 'once' } },
   // 警告：常常出現（失衡、AC 擊破、Boss 招式），拿掉滿版的紅色色帶與顫抖、字小一點、不墊暗色帶，
   // 只留模板的字型與登場／退場，字改成紅色系＋深色描邊
   warn: {

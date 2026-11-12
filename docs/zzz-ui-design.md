@@ -206,4 +206,18 @@
   - 第一人稱與追尾的羅盤改成黑膠囊、黃綠中心線。
   - 畫布 HUD 的字型從 Chakra Petch 改成 Rubik＋Noto Sans TC（`game/*.js` 的 `c.font`）。
   - `scripts/ui-shots.js` 多了 hud-top、hud-chase、hud-fp、hud-boss。
+- **B6（2026-11-12）**：對話、通訊、劇情、字幕、過關條件、文字演出。
+  - 通訊框：黑色圓角＋雙層邊，說話者名字是框頂的名牌，頭像是圓形，完整動畫時彈出。失敗畫面的通訊同樣式。
+  - 通訊紀錄的每一列改圓角黑底。
+  - 過關條件卡：雙層面板，頂端黃綠帶，標題粗斜體。
+  - 字幕：黑膠囊。
+  - 劇情畫面與結局：
+    - 上下有底片的片孔（`#storyScr`／`#epilogue` 的背景）。
+    - 文字放在雙層面板，標題是粗斜體黃綠＋黑描邊，角色的台詞改暖黃。
+    - 立繪框改圓角。
+  - 教學與靶場面板改雙層圓角（教學頂端紫帶、靶場頂端青帶）。
+  - 文字演出：
+    - APNG 產生器加字型 Rubik，以及「街頭」模板 `streetStart`／`streetClear`／`streetKill`／`streetDone`／`streetWarn`／`streetGood`／`streetInfo`：粗斜體白字＋黑粗描邊＋硬陰影＋黃黑（警告是紅黑）警戒膠帶，登場是 slam。
+    - 遊戲的 `CUES` 的 start、warning、clear、kill、done、good、info 改用它們。
+    - 其他演出（Boss 型態、狂暴、宿敵、最後一波、ECHO、記憶、抉擇、過場的字卡）照舊。
 

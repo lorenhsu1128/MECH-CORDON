@@ -103,10 +103,32 @@ const SHOTS = {
   campFail: show('campFail'),
   campTrans: show('campTrans'),
   // 任務中的 HUD（視角：top／chase／fp；boss＝Boss 關）
+  banner: async (page) => {
+    await page.evaluate(() => {
+      const g = window.__game;
+      g.save.level = 1;
+      g.startMission();
+    });
+    await wait(1700);
+  },
   'hud-top': async (page) => hudShot(page, 'top'),
   'hud-chase': async (page) => hudShot(page, 'chase'),
   'hud-fp': async (page) => hudShot(page, 'fp'),
   'hud-boss': async (page) => hudShot(page, 'top', 3),
+  comm: async (page) => {
+    await hudShot(page, 'top');
+    await page.evaluate(() =>
+      window.__game.commSay('veerwell', '目標在水壩的閘門下面。今晚之前把它拿下來，報酬加倍。', '派克'),
+    );
+    await wait(1800);
+  },
+  story: async (page) => {
+    await page.evaluate(() => {
+      const g = window.__game;
+      g.storyText('i1_2', g.storyItem('i1_2'));
+    });
+    await wait(2500);
+  },
   pilot: async (page) => {
     await page.evaluate(() => window.__game.openPilot());
     await wait(800);

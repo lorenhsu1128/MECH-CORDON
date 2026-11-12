@@ -9597,3 +9597,161 @@ body.vpad .wslot .k {
 body.vpad .wslot b {
   padding-right: 0;
 }
+
+/* ===== 絕區零式介面 B6：對話、通訊、劇情、字幕、過關條件（docs/zzz-ui-design.md） ===== */
+/* 通訊框：半透明黑框＋細灰邊、圓角，說話者的名字是框頂的小名牌（照角色顏色），關鍵的字橘色 */
+#comm {
+  background: rgba(0, 0, 0, 0.86);
+  border: 2px solid var(--line);
+  border-left: 2px solid var(--line);
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 2px var(--edge),
+    0 10px 26px rgba(0, 0, 0, 0.5);
+  padding: 12px 14px 10px;
+}
+#comm b,
+#cfComm b {
+  display: inline-block;
+  font: 900 12px/1.4 var(--fz);
+  background: #000;
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  padding: 1px 10px;
+  margin: -24px 0 4px;
+  position: relative;
+}
+#comm span,
+#cfComm span {
+  font-weight: 700;
+  font-size: 13.5px;
+}
+#cfComm .cLine {
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 14px;
+  padding: 16px 12px 8px;
+}
+.cBadge {
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: 0 0 0 2px var(--edge);
+}
+body[data-uifx='full'] #comm.on {
+  animation: zCommIn 0.28s cubic-bezier(0.2, 1.3, 0.4, 1);
+}
+@keyframes zCommIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.hubLogRow {
+  border-bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 12px;
+  padding: 8px 12px;
+  margin: 5px 0;
+}
+/* 過關條件卡：雙層面板、頂端黃綠帶、標題粗斜體 */
+#goalCard {
+  background:
+    linear-gradient(var(--acc) 0 0) top / 100% 5px no-repeat,
+    rgba(14, 14, 16, 0.92);
+  border: 2px solid var(--line);
+  border-top: 2px solid var(--line);
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 2.5px var(--edge),
+    0 12px 30px rgba(0, 0, 0, 0.5);
+  padding: 14px 20px 12px;
+}
+#goalCard .gcH,
+#goalCard .gcH2 {
+  font: italic 900 13px/1.3 var(--fz);
+  letter-spacing: 0.2em;
+}
+#goalCard .gcWin li {
+  font: 900 18px/1.4 var(--fz);
+}
+/* 字幕：黑膠囊 */
+#subBar p {
+  background: rgba(0, 0, 0, 0.78);
+  border-radius: var(--rp);
+  padding: 4px 16px;
+  font-weight: 700;
+}
+#subBar b {
+  font-family: var(--fd);
+  font-weight: 900;
+}
+/* 劇情畫面與結局：底片框（上下的片孔）＋雙層面板＋名牌 */
+#storyScr,
+#epilogue {
+  background:
+    repeating-linear-gradient(90deg, #000 0 18px, #1c1c1f 18px 40px) top / 100% 14px no-repeat,
+    repeating-linear-gradient(90deg, #000 0 18px, #1c1c1f 18px 40px) bottom / 100% 14px no-repeat,
+    linear-gradient(#000 0 0) top / 100% 30px no-repeat,
+    linear-gradient(#000 0 0) bottom / 100% 30px no-repeat,
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0 10px, transparent 10px 20px),
+    radial-gradient(ellipse at 50% 35%, #232428, #050506 80%);
+}
+#storyScr .brBox,
+#epilogue .brBox {
+  background: rgba(0, 0, 0, 0.82);
+  border: 2px solid var(--line);
+  border-radius: var(--rpanel);
+  box-shadow:
+    0 0 0 3px var(--edge),
+    0 14px 40px rgba(0, 0, 0, 0.5);
+  padding: 18px 22px;
+}
+#stTitle,
+#epTitle {
+  font: italic 900 30px/1.2 var(--fz);
+  color: var(--acc);
+  -webkit-text-stroke: 1px #000;
+  text-shadow: 3px 3px 0 #000;
+}
+#stLines p {
+  font-weight: 700;
+}
+#stLines p.say {
+  color: #ffd27a;
+}
+.ptFace {
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: #000;
+}
+/* 教學面板、靶場面板：雙層面板（教學頂端紫色帶、靶場頂端青色帶） */
+#tutPanel,
+#rangePanel {
+  background: rgba(10, 10, 12, 0.88);
+  border: 2px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 0 0 2px var(--edge);
+}
+#tutPanel {
+  border-top: 2px solid var(--line);
+  background:
+    linear-gradient(#c8a0ff 0 0) top / 100% 4px no-repeat,
+    rgba(10, 10, 12, 0.88);
+  padding: 10px 14px 12px;
+}
+#rangePanel {
+  border-left: 2px solid var(--line);
+  background:
+    linear-gradient(var(--acc2) 0 0) top / 100% 4px no-repeat,
+    rgba(10, 10, 12, 0.88);
+}
+@media (max-height: 540px) {
+  #tutPanel {
+    padding: 6px 7px 5px;
+    border-radius: 12px;
+    border-width: 1.5px;
+  }
+}
