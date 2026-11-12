@@ -21,6 +21,7 @@ const GAL_GAP = 11 * MS; // 圖鑑排列的間距（公尺）
 const MODES = [
   ['real', '實戰編成'],
   ['gallery', '圖鑑排列'],
+  ['boss', 'Boss 擂台'],
   ['none', '不生成'],
 ];
 
@@ -54,6 +55,7 @@ Object.assign(Game.prototype, {
       }
       if (f.all) this.mapvWakeAll();
     } else if (f.mode === 'gallery') this.mapvGallery();
+    else if (f.mode === 'boss') this.mapvSpawnBoss(); // map-view-boss.js
   },
   // 遠處的敵群與據點守衛：不等玩家靠近，全部排進生成佇列（spawnQTick 一格一台）
   mapvWakeAll() {
@@ -284,9 +286,12 @@ Object.assign(Game.prototype, {
       <div class="mvchks">${chk('extras', '據點、裝置、小人、車輛')}${chk('all', '全部生成', '遠處的敵群與據點守衛不等玩家靠近就生成')}${chk('waves', '增援波次', '場上的敵人變少時派出下一波（AI 要開著）')}</div>`
           : f.mode === 'gallery'
             ? `<div class="mvchks">${kchk('theme', '這個主題的專屬敵人')}${kchk('ace', '專屬 AC')}${kchk('gen', '一般敵人')}</div>`
-            : ''
+            : f.mode === 'boss'
+              ? this.mapvBossHtml()
+              : ''
       }
-      <div class="mvchks">${chk('ai', 'AI 行動', '關掉時原地不動（只播待機動作）')}${chk('god', '敵人無敵')}</div>
+      <div class="mvchks">${chk('ai', 'AI 行動', '關掉時原地不動（只播待機動作）')}${chk('god', '敵人無敵', 'Boss 不補 AP（要看型態），只是不會被擊破')}</div>
+      <div class="mvrow"><span>友軍</span><select data-fm="allies" title="藍隊的具名 AC，和敵人交戰（看子彈、爆炸與特效）">${[0, 1, 2, 3, 4].map((n) => opt(n, n ? n + ' 台' : '無', f.allies)).join('')}</select></div>
       <div class="mvacts"><button id="mvRespawn" title="同一張地圖重新產生敵人">重新生成</button></div>
       <div class="mvsub">選取的目標</div>
       <div class="mvinfo" id="mvTgtInfo"></div>
@@ -302,9 +307,10 @@ Object.assign(Game.prototype, {
       el.onchange = () => {
         const k = el.dataset.fm;
         if (k === 'lv') f.lv = Math.max(1, Math.min(60, Math.floor(Number(el.value) || 1)));
+        else if (k === 'allies') f.allies = Number(el.value) || 0;
         else {
           f.mode = el.value;
-          f.ai = f.mode === 'real'; // 圖鑑排列預設停住 AI
+          f.ai = f.mode !== 'gallery'; // 圖鑑排列預設停住 AI
         }
         regen();
       };
@@ -328,6 +334,7 @@ Object.assign(Game.prototype, {
         regen();
       };
     $('mvRespawn').onclick = regen;
+    if (f.mode === 'boss') this.mapvBindBoss();
     for (const b of body.querySelectorAll('[data-g]'))
       b.onclick = () => {
         const L = (this.mapvGroups || [])[Number(b.dataset.g)] || [];

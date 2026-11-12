@@ -63,6 +63,7 @@ Object.assign(Game.prototype, {
   // 觸發事件：挑一則、記錄、排進右下角的播放佇列（show＝false 時只記錄並回傳，失敗畫面自己顯示）
   campComm(event, ctx = {}, show = true) {
     if (this.camp && this.camp.free) return null; // 自由出擊不播主線的通訊（docs/free-sortie-design.md）
+    if (this.mapv) return null; // 地圖預覽器：不播（播過的會寫進存檔的通訊紀錄）
     const e = this.commPick(event, ctx);
     if (!e) return null;
     const st = this.save.story || (this.save.story = {});

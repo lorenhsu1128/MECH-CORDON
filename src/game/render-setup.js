@@ -200,7 +200,11 @@ Object.assign(Game.prototype, {
     this.propDmgTick(); // 地圖物件的受損效果（game/destruct.js）
     this.waterTick(); // 水面與雲海（game/water.js）：模擬、焦散、平面反射
     if (this.fx) this.fx.lightTick(this.camera, this.camTarget); // 火光（fx/effects.js，第 8.2 期）
-    if (this.post.enabled && this.post.ok) this.stylePipe.render(P, t, lab && lab.cmp ? lab.cmpArg() : null);
+    // 左右比較：渲染風格實驗室、地圖預覽器（game/map-view-boss.js）
+    const mv = this.mapv;
+    const cmp =
+      lab && lab.cmp ? lab.cmpArg() : mv && mv.cmp ? { P: this.styleThemed(mv.cmp), split: mv.split } : null;
+    if (this.post.enabled && this.post.ok) this.stylePipe.render(P, t, cmp);
     else this.stylePipe.renderPlain(P, t);
     this.waterAfter();
   },

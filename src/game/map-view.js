@@ -4,6 +4,7 @@
 //  主迴圈改呼叫 mapvTick；不寫存檔、不給經驗與掉落（mission.js 的 onEnemyKilled／onPlayerDead 看 this.mapv）。
 //  第 1 期：選地圖（主題、變體、地標、種子、時間、天候、大小）、自由／環繞／全圖俯視鏡頭、基本效能面板、觸控操作
 //  第 2 期：敵人（map-view-foes.js）、AI 開關、電影鏡頭、遊戲的視角（操作一台無敵的玩家機體）
+//  第 3 期：Boss 擂台、友軍、渲染風格切換與左右比較（map-view-boss.js）
 // ============================================================
 import { SFX } from '../audio/audio.js';
 import { escHtml } from '../core/html.js';
@@ -91,7 +92,14 @@ Object.assign(Game.prototype, {
         all: true,
         waves: false,
         kinds: { theme: true, ace: true, gen: true },
+        boss: 0, // Boss 擂台（map-view-boss.js）：BOSS_DEFS 的索引、刁鑽度（'auto'＝依自由出擊）
+        tier: 'auto',
+        allies: 0, // 友軍（藍隊的具名 AC）
       },
+      style: '', // 預覽器自己的渲染風格（'k:id'，空字串＝遊戲目前的）、左右比較
+      cmpSel: '',
+      cmp: null,
+      split: 0.5,
       tgt: null,
       cinT: 0,
       game: false, // 遊戲的視角：操作玩家的機體
@@ -157,22 +165,28 @@ Object.assign(Game.prototype, {
     const V = this.mapv,
       p = V.p;
     this.clearMission();
-    this.styleRefresh();
+    this.mapvApplyStyle(); // 預覽器自己的渲染風格（map-view-boss.js）
     const vs = VARIANTS[p.theme] || {};
     if (p.variant && !vs[p.variant]) p.variant = '';
     if (p.landmark && !(LANDMARKS[p.theme] || {})[p.landmark]) p.landmark = '';
-    this.world = new World(this.scene, p.theme, p.seed, 3, null, {
-      variant: p.variant || undefined,
-      landmark: p.landmark || undefined,
+    // Boss 擂台：Boss 關的開闊地圖；這隻 Boss 不排在這個主題時換一個（主題的 bossBan、武裝列車要鐵路）
+    const boss = V.f.mode === 'boss';
+    const bd = boss ? this.mapvBossDef() : null;
+    const theme = boss ? this.mapvBossTheme(p.theme) : p.theme;
+    const big = p.size === 'big' && !boss;
+    this.world = new World(this.scene, theme, p.seed, 3, null, {
+      variant: theme === p.theme ? p.variant || undefined : undefined,
+      landmark: theme === p.theme ? p.landmark || undefined : undefined,
       tod: p.tod || undefined,
       weather: p.weather || undefined,
-      big: p.size === 'big' ? 1 : undefined,
-      edge: p.size === 'big' ? 1 : undefined,
-      open: p.size === 'open' ? 1 : undefined,
+      big: big ? 1 : undefined,
+      edge: big ? 1 : undefined,
+      open: p.size === 'open' || boss ? 1 : undefined,
+      rail: bd && bd.rail ? 1 : undefined,
     });
     const w = this.world;
     this.worldSeed = p.seed;
-    this.worldTheme = p.theme;
+    this.worldTheme = theme;
     w.applyLight(this);
     this.sun.position.set(40, 80, 30);
     this.isClient = false;
@@ -200,11 +214,13 @@ Object.assign(Game.prototype, {
     this.placeStart(this.player);
     this.players = [this.player];
     V.tgt = null;
+    $('bossBar').style.display = 'none'; // Boss 擂台時 mapvSpawnBoss 打開
     this.mapvSpawnFoes(); // 敵人（map-view-foes.js）
+    this.mapvSpawnAllies(); // 友軍（map-view-boss.js）
     this.levelName =
       '地圖預覽・' +
       w.theme.name +
-      (w.variantKey ? '・' + this.variantName(p.theme, w.variantKey) : '') +
+      (w.variantKey ? '・' + this.variantName(theme, w.variantKey) : '') +
       (w.landmark ? '・' + w.landmark.name : '');
     this.state = 'play';
     this.showScreen('');
@@ -278,6 +294,7 @@ Object.assign(Game.prototype, {
     // 目標被擊破：資訊與名稱更新
     if (V.tgt && V.tgt.dead) this.mapvSetTgt(null);
     if ((this.frames & 31) === 0) this.mapvTgtUi();
+    if ((this.frames & 15) === 0 && V.tab === 'foes' && V.f.mode === 'boss') this.mapvBossUi();
     this.mapvStats(t0);
   },
   // 遊戲邏輯一格（照主迴圈的任務中，沒有勝敗與存檔）：玩家與敵人無敵時每格補滿
@@ -294,14 +311,21 @@ Object.assign(Game.prototype, {
     if (V.game) this.lodTick();
     if (f.ai) this.aiDirectorTick(step);
     const batch = this.aiBatchOn();
+    // Boss：三個型態、換型態的增援、狂暴（bosses.js）；AI 停住時不換型態
+    if (f.ai && this.bosses && this.bosses.length) this.bossPhaseTick(step);
     for (const e of this.enemies) {
       if (e.dead) continue;
-      if (f.god) e.hp = e.maxHp;
+      // 無敵：一般敵人每格補滿；Boss 不補（要看型態），只保留一點不會被擊破
+      if (f.god) e.hp = e.isBoss ? Math.max(e.hp, e.maxHp * 0.02) : e.maxHp;
       if (f.ai) this.aiStep(e, step, batch);
       else this.mapvIdle(e, step);
     }
     this.separateMechs(step);
-    for (const a of this.allies) if (!a.dead) this.aiStep(a, step, batch);
+    for (const a of this.allies)
+      if (!a.dead) {
+        a.hp = a.maxHp;
+        this.aiStep(a, step, batch);
+      }
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const q = this.projectiles[i];
       q.update(step);
@@ -326,11 +350,13 @@ Object.assign(Game.prototype, {
   // 遊戲的視角：操作玩家的機體（俯視／追尾／第一人稱照設定，V 切換），HUD 與觸控按鈕照任務
   mapvSetGame(on) {
     const V = this.mapv;
+    const was = V.game;
     V.game = !!on;
     document.body.classList.toggle('mvGame', V.game);
     V.ptrs.clear();
     if (V.game) {
-      // 面板會蓋住任務的 HUD（左上的任務資訊）：進入時收起，要用再按「面板」
+      // 面板會蓋住任務的 HUD（左上的任務資訊）：進入時收起，要用再按「面板」；離開時恢復
+      if (!was) V.panel0 = V.panel;
       V.panel = false;
       this.camZoom = this.camBase();
       this.camCU = null;
@@ -341,6 +367,7 @@ Object.assign(Game.prototype, {
     } else {
       if (document.pointerLockElement) document.exitPointerLock();
       V.F.pivot.copy(this.player.pos);
+      if (was && V.panel0 !== undefined) V.panel = V.panel0;
     }
     this.updateVpad();
     this.mapvSyncUi();
@@ -540,7 +567,7 @@ Object.assign(Game.prototype, {
       <span class="mvseg"><button id="mvPanelBtn" title="收起／展開面板（H）">面板</button><button id="mvBack">返回</button></span>`;
     P.innerHTML = `
       <div class="mvhead"><b>地圖預覽</b><span id="mvName" class="dim"></span></div>
-      <div class="mvtabs" data-padtabs="button"><button data-tab="map">地圖</button><button data-tab="foes">敵人</button></div>
+      <div class="mvtabs" data-padtabs="button"><button data-tab="map">地圖</button><button data-tab="foes">敵人</button><button data-tab="view">畫面</button></div>
       <div class="mvbody" id="mvBody"></div>`;
     S.innerHTML = `<div id="mvFps"></div><canvas id="mvSpark" width="200" height="40"></canvas><div id="mvNums"></div>`;
     for (const b of B.querySelectorAll('[data-cam]')) b.onclick = () => this.mapvSetCam(b.dataset.cam);
@@ -586,6 +613,9 @@ Object.assign(Game.prototype, {
     } else if (V.tab === 'foes') {
       body.innerHTML = this.mapvFoesHtml();
       this.mapvBindFoes();
+    } else if (V.tab === 'view') {
+      body.innerHTML = this.mapvViewHtml();
+      this.mapvBindView();
     }
     this.mapvSyncUi();
   },

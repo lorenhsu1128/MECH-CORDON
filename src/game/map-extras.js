@@ -70,6 +70,7 @@ Object.assign(Game.prototype, {
     this.propDamage(p, dmg, impact, at, from, attr, wid);
   },
   spawnPickup(kind, pos, id) {
+    if (this.mapv && kind !== 'ammo') return null; // 地圖預覽器：撿到的素材、COAM 會寫存檔，不掉落（彈藥箱照常）
     const pk = new Pickup(this, kind, pos, id);
     this.pickups.push(pk);
     if (this.net.role === 'host')
@@ -133,7 +134,7 @@ Object.assign(Game.prototype, {
   },
   // 擊破敵人時掉落彈藥箱（房主／單機）：敵對 AC 一定掉，其他 18%；有玩家彈藥剩不到三成時機率加倍
   dropAmmo(e) {
-    if (this.pvp || this.lab || this.cine || !this.world || e.isBoss) return;
+    if (this.pvp || this.lab || this.cine || this.mapv || !this.world || e.isBoss) return;
     if (['objective', 'part', 'holo', 'convoy'].includes(e.ai)) return;
     const low = this.playersAlive().some((p) => {
       const ws = Object.values(p.weapons || {}).filter((w) => w && w.def && w.def.ammo > 0);

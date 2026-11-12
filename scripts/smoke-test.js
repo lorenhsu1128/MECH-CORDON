@@ -1337,6 +1337,80 @@ async function testMapView(browser) {
     !(await page.evaluate(() => window.__game.mapv.game)) && !(await visible(page, 'hudWrap')),
     '再按「操作」回到觀看',
   );
+  // ---- 第 3 期：Boss 擂台、友軍、畫面 ----
+  await page.selectOption('#mvBody [data-fm="mode"]', 'boss');
+  await ready();
+  await page.selectOption('#mvBody [data-fb="boss"]', '2'); // AEGIS（有部位：護盾發生器、艦砲）
+  await ready();
+  await wait(1200);
+  const bst = () =>
+    page.evaluate(() => {
+      const g = window.__game,
+        b = g.boss,
+        s = b.bt || {};
+      return {
+        name: b.name,
+        ph: b.bossPhase(),
+        stag: b.staggerT,
+        ch: s.ch ? s.ch.name : null,
+        parts: g.enemies.filter((e) => !e.dead && e.opts.parent === b.id && e !== b).length,
+        tier: b.bossTier(),
+        open: !!g.world.opt.open,
+      };
+    });
+  const b0 = await bst();
+  check(
+    b0.ph === 1 && b0.parts > 0 && b0.tier > 0 && b0.open,
+    `Boss 擂台：${b0.name}、部位 ${b0.parts}、刁鑽度 ${b0.tier}、開闊地圖`,
+  );
+  await page.click('[data-ba="phase"]');
+  await wait(800);
+  const b1 = await bst();
+  await page.click('[data-ba="big"]');
+  await wait(800);
+  const b2 = await bst();
+  check(b1.ph === 2 && !!b2.ch, `下一型態（${b1.ph}）、大招開始蓄力（${b2.ch}）`);
+  await page.screenshot({ path: path.join(SHOT_DIR, 'map-view-boss.png') });
+  await page.click('[data-ba="interrupt"]');
+  await wait(200);
+  const b3 = await bst();
+  await page.click('[data-ba="full"]');
+  await page.click('[data-ba="stag"]');
+  await wait(200);
+  const b4 = await bst();
+  await page.click('[data-ba="part"]');
+  await wait(200);
+  const b5 = await bst();
+  check(
+    !b3.ch && b3.stag > 2 && b4.ph === 1 && b4.stag > 0 && b5.parts === b4.parts - 1,
+    `打斷大招（失衡 ${b3.stag.toFixed(1)} 秒）、回滿、打出失衡、打壞部位（${b4.parts} → ${b5.parts}）`,
+  );
+  await page.selectOption('#mvBody [data-fm="allies"]', '2');
+  await ready();
+  check((await page.evaluate(() => window.__game.allies.filter((a) => !a.dead).length)) === 2, '友軍 2 台');
+  // 畫面：風格只在預覽器換、左右比較
+  const styleSel = () =>
+    page.evaluate(() =>
+      JSON.stringify(JSON.parse(localStorage.getItem('mech_cordon_style') || '{}').sel || null),
+    );
+  const sel0 = await styleSel();
+  await page.click('#mvPanel [data-tab="view"]');
+  await page.selectOption('#mvBody [data-fv="style"]', 'builtin:ghibli');
+  await page.selectOption('#mvBody [data-fv="cmpSel"]', 'builtin:gundam');
+  await wait(800);
+  const vcmp = await page.evaluate(() => !!window.__game.mapv.cmp);
+  check(vcmp && (await styleSel()) === sel0, '畫面：換風格與左右比較（不改遊戲選的風格）');
+  await page.screenshot({ path: path.join(SHOT_DIR, 'map-view-compare.png') });
+  await page.click('#mvSettings');
+  check(await waitVisible(page, 'settings'), '「完整的畫面設定…」開啟設定');
+  await page.keyboard.press('Escape');
+  await waitVisible(page, 'pause');
+  await page.click('#btnResume');
+  await wait(300);
+  check(
+    (await page.evaluate(() => window.__game.state)) === 'play' && (await visible(page, 'mvPanel')),
+    '關掉設定、繼續回到預覽器',
+  );
   // Esc → 暫停選單 → 離開
   await page.keyboard.press('Escape');
   check(await waitVisible(page, 'pause'), 'Esc 開暫停選單');

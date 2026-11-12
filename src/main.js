@@ -46,6 +46,7 @@ import './game/style-lab.js';
 import './game/lab-demo.js';
 import './game/map-view.js';
 import './game/map-view-foes.js';
+import './game/map-view-boss.js';
 import './game/fullscreen.js';
 import './game/campaign.js';
 import './game/comms.js';

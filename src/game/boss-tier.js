@@ -65,6 +65,13 @@ Object.assign(Game.prototype, {
     return Math.max(0.6, Math.min(1.3, 0.6 + 0.7 * (this.bossPw || 0)));
   },
   tierIntro(key, txt) {
+    // 地圖預覽器：只記在這次預覽裡（不寫存檔）
+    if (this.mapv) {
+      const m = this.mapv.intro || (this.mapv.intro = {});
+      if (!m[key]) this.flashAlert(txt);
+      m[key] = 1;
+      return;
+    }
     const S = this.save;
     if (!S) return;
     const seen = S.tierSeen || (S.tierSeen = {});

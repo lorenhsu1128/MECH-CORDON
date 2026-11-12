@@ -2440,6 +2440,19 @@ body.mapv #fps {
   gap: 4px;
   margin: 6px 0;
 }
+#mvPanel .mvgrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+#mvPanel .mvinfo1 {
+  font-size: 11px;
+  line-height: 1.6;
+}
+#mvPanel input[type='range'] {
+  flex: 1;
+  max-width: 190px;
+  accent-color: var(--acc);
+}
 #mvPanel .mvsub {
   color: var(--acc);
   margin: 10px 0 4px;

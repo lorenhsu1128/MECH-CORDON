@@ -59,6 +59,7 @@ Object.assign(Game.prototype, {
   },
   useConsumable(slot) {
     if (this.lab) return this.flashMsg('渲染風格實驗室不能使用消耗品', 0xff8a8a, 1);
+    if (this.mapv) return this.flashMsg('地圖預覽器不能使用消耗品', 0xff8a8a, 1); // 消耗品的數量在存檔裡
     const p = this.player;
     if (!p || p.dead || p.downed || this.state !== 'play') return;
     if (this.pvp && this.save.asm[slot] === 'cs_ally') {
