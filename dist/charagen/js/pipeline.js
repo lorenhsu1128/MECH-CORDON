@@ -87,7 +87,7 @@ export class Pipeline {
     const out = [];
     for (const seed of list) {
       this.log(`${card.name}／${pose.name}：主圖候選（種子 ${seed}）`);
-      const name = `${pid}_cand_${seed}.png`;
+      const name = `${pid}_cand_${seed}.webp`;
       await this.runSave(
         card,
         W.txt2img({ prompt: this.prompt(card, pose), neg: card.look.neg, seed, prefix: 'chargen/cand' }),
@@ -136,7 +136,7 @@ export class Pipeline {
     const out = [];
     for (const seed of list) {
       this.log(`${card.name}／${pose.name}：${key}（種子 ${seed}）`);
-      const name = `${pid}_${key.replace('.', '_')}_${seed}.png`;
+      const name = `${pid}_${key.replace('.', '_')}_${seed}.webp`;
       if (fid && fid[0] === 'm') {
         // 嘴型：嘴巴在整張圖上只有 30 px 左右，Qwen 改出來會糊（第 1 期的測試）→ SDXL 把附近裁出來放大重畫、只貼回嘴巴
         const [x, y, w, h] = box;

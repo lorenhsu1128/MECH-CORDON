@@ -30,15 +30,30 @@ module.exports = function chargen({ base, modelsDir, env, readBody, writeAtomic,
       }
     };
     try {
-      if (fs.existsSync(old)) {
+      if (fs.existsSync(old) && !fs.existsSync(WORK_DIR + '/.moved')) {
         fs.mkdirSync(WORK_DIR, { recursive: true });
         move(old, WORK_DIR);
+        fs.writeFileSync(path.join(WORK_DIR, '.moved'), '');
         log(`[charagen] 候選圖搬到 ${WORK_DIR}（舊的資料夾 ${old} 可以刪掉）`);
       }
     } catch (e) {
       log(`[charagen] 搬移候選圖失敗：${e.message}`);
     }
   }
+  // 候選資料夾的圖一律存 WebP（2026-11-12 使用者定案：進 git 的檔案小一點）。開發模式才轉（sharp 是開發用的套件，exe 版沒有）
+  let sharp = null;
+  if (DEV)
+    try {
+      const req = require; // 不寫死字面的 require：打包 exe 時 pkg 不會去收 sharp 的原生檔
+      sharp = req('sharp');
+    } catch (e) {
+      log('[charagen] 沒有 sharp（npm install），候選圖照原格式存');
+    }
+  const isPngJpg = (b) =>
+    b.length > 4 && ((b[0] === 0x89 && b[1] === 0x50) || (b[0] === 0xff && b[1] === 0xd8));
+  const toWebp = async (b) =>
+    sharp && isPngJpg(b) ? sharp(b).webp({ quality: 92, alphaQuality: 100, effort: 5 }).toBuffer() : b;
+  let converting = false;
   const ID_RE = /^[a-z][a-z0-9_]{0,31}$/;
   const FILE_RE = /^[a-z0-9_][a-z0-9_.-]{0,95}\.(webp|png|jpg|jpeg|json)$/i;
   const MAX_IMG = 24 * 1024 * 1024;
@@ -146,8 +161,9 @@ module.exports = function chargen({ base, modelsDir, env, readBody, writeAtomic,
     const f = path.join(dir, name);
     if (req.method === 'GET' || req.method === 'HEAD') return sendFile(req, resp, f);
     if (req.method === 'PUT') {
-      const body = await readBody(req, MAX_IMG);
+      let body = await readBody(req, MAX_IMG);
       if (!body) return bad(resp, '檔案太大', 413);
+      if (dir.startsWith(WORK_DIR) && /\.webp$/i.test(name)) body = await toWebp(body);
       writeAtomic(f, body);
       return json(resp, { ok: true, size: body.length });
     }
@@ -160,6 +176,7 @@ module.exports = function chargen({ base, modelsDir, env, readBody, writeAtomic,
 
   async function api(req, resp, u) {
     let m;
+    if (converting) return bad(resp, '候選圖正在轉成 WebP，請稍等（看伺服器的訊息）', 503);
     if (u === '/api/chars') {
       if (req.method !== 'GET') return bad(resp, '不支援的操作', 405);
       return json(resp, { dev: DEV, chars: listChars() });
@@ -197,6 +214,65 @@ module.exports = function chargen({ base, modelsDir, env, readBody, writeAtomic,
     }
     return false;
   }
+
+  // 候選資料夾裡舊的 PNG／JPG 轉成 WebP，角色卡（card.json）裡的檔名一起改
+  async function convertOld() {
+    if (!sharp || !fs.existsSync(WORK_DIR)) return;
+    const ids = fs
+      .readdirSync(WORK_DIR)
+      .filter((d) => ID_RE.test(d) && fs.statSync(path.join(WORK_DIR, d)).isDirectory());
+    const todo = ids.filter((id) =>
+      fs.readdirSync(path.join(WORK_DIR, id)).some((f) => /\.(png|jpe?g)$/i.test(f)),
+    );
+    if (!todo.length) return;
+    converting = true;
+    try {
+      for (const id of todo) {
+        const dir = path.join(WORK_DIR, id);
+        const map = new Map();
+        const list = fs.readdirSync(dir).filter((f) => /\.(png|jpe?g)$/i.test(f));
+        log(`[charagen] ${id}：${list.length} 張候選圖轉成 WebP…`);
+        let before = 0,
+          after = 0;
+        for (const f of list) {
+          const nf = f.replace(/\.(png|jpe?g)$/i, '.webp');
+          if (fs.existsSync(path.join(dir, nf))) continue; // 同名的 WebP 已經有了：不動，原檔留著
+          try {
+            const b = fs.readFileSync(path.join(dir, f));
+            const w = await toWebp(b);
+            if (w === b) continue;
+            writeAtomic(path.join(dir, nf), w);
+            fs.rmSync(path.join(dir, f));
+            map.set(f, nf);
+            before += b.length;
+            after += w.length;
+          } catch (e) {
+            log(`[charagen] ${id}/${f} 轉檔失敗：${e.message}`);
+          }
+        }
+        // 角色卡：字串值剛好是改過的檔名才換
+        const cp = cardPath(id);
+        if (map.size && fs.existsSync(cp)) {
+          const fix = (v) =>
+            typeof v === 'string'
+              ? map.get(v) || v
+              : Array.isArray(v)
+                ? v.map(fix)
+                : v && typeof v === 'object'
+                  ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, fix(x)]))
+                  : v;
+          const txt = fs.readFileSync(cp, 'utf8');
+          writeAtomic(cp, JSON.stringify(fix(JSON.parse(txt)), null, 2) + '\n');
+        }
+        log(
+          `[charagen] ${id}：轉了 ${map.size} 張（${(before / 1048576).toFixed(1)} MB → ${(after / 1048576).toFixed(1)} MB）`,
+        );
+      }
+    } finally {
+      converting = false;
+    }
+  }
+  if (DEV) convertOld().catch((e) => log('[charagen] 轉成 WebP 失敗：' + e.message));
 
   log(`[charagen] 角色資料：${CHARS_DIR}；候選：${WORK_DIR}；ComfyUI：${COMFY.href}`);
   return {

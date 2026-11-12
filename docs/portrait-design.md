@@ -87,7 +87,7 @@
 
 **資料**（`js/pipeline.js` 檔頭有 card 的完整格式）：
 - `card.json`＋發佈的 WebP 在定稿資料夾：開發模式（從專案執行 server.js、沒設 `MECH_CORDON_MODELS_DIR`）＝`src/assets/characters/<id>/`（進 git），否則 `server-models/characters/<id>/`。
-- 候選、選定的圖與參考圖在 `tools/charwork/<id>/`（開發模式；2026-11-12 使用者決定用一般 git 提交，否則別台電腦的角色產生器是破圖；以前的 `server-models/charwork/` 在伺服器啟動時自動搬過去）。exe 版照舊在 `server-models/charwork/`。產生新的候選後要 commit＋push。
+- 候選、選定的圖與參考圖在 `tools/charwork/<id>/`（開發模式；2026-11-12 使用者決定用一般 git 提交，否則別台電腦的角色產生器是破圖；以前的 `server-models/charwork/` 在伺服器啟動時自動搬過去）。exe 版照舊在 `server-models/charwork/`。**一律存 WebP**（2026-11-12 使用者定案）：開發模式的伺服器在存進候選資料夾時以 `sharp`（devDependency）把 PNG／JPG 轉成 WebP（品質 92、透明度無損），網頁與命令列產生的候選、上傳的參考圖檔名都是 `.webp`；啟動時把候選資料夾裡舊的 PNG／JPG 轉掉並改 card.json 裡的檔名（轉換中 `/api/chars` 回 503）。送給 ComfyUI 的圖照舊改名 .png 上傳（ComfyUI 依內容讀）。產生新的候選後要 commit＋push。
 - 伺服器（`server-chargen.js`，server.js 載入）：`/api/comfy/…`＝轉送到本機的 ComfyUI（`MECH_CORDON_COMFY` 改網址，`/api/comfy/ws` 是 WebSocket），`/api/comfy-status`＝ComfyUI 有沒有在執行（一律 200），`/api/chars`、`/api/chars/<id>`（card）、`/api/chars/<id>/file/<檔名>`（定稿）、`/api/chars/<id>/work/<檔名>`（候選）。
 
 **生產流程**（網頁與命令列共用 `js/pipeline.js`）：

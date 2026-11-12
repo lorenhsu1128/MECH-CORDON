@@ -216,8 +216,8 @@ $('lookSave').onclick = async () => {
 };
 $('refFile').onchange = async () => {
   for (const f of $('refFile').files) {
-    const ext = (f.name.split('.').pop() || 'png').toLowerCase().replace('jpeg', 'jpg');
-    const name = `ref_${Date.now().toString(36)}.${/^(png|jpg|webp)$/.test(ext) ? ext : 'png'}`;
+    // 伺服器把 PNG／JPG 轉成 WebP（docs/portrait-design.md）
+    const name = `ref_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}.webp`;
     await store.putWork(ST.card.id, name, new Uint8Array(await f.arrayBuffer()));
     ST.card.refs.push(name);
   }
