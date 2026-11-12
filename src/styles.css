@@ -9854,3 +9854,133 @@ body[data-uifx='full'] #gPoster.flip b {
   white-space: nowrap;
   pointer-events: none;
 }
+
+/* ===== 絕區零式介面 C2：電視轉台的畫面轉場（Game.zTvSwitch） ===== */
+#zTv {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  pointer-events: none;
+  display: none;
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.35) 0 2px, transparent 2px 4px),
+    var(--noise) 0 0 / 192px 192px,
+    #111;
+}
+#zTv.on,
+#zTv.fade {
+  display: block;
+}
+#zTv.on {
+  animation:
+    zTvOut 0.46s linear forwards,
+    zTvNoise 0.46s steps(6) forwards;
+}
+#zTv.fade {
+  background: #000;
+  animation: zTvFade 0.22s ease-out forwards;
+}
+#zTv.fade i,
+#zTv.fade b {
+  display: none;
+}
+/* 亮線：畫面收成一條橫線後打開 */
+#zTv i {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 4px;
+  margin-top: -2px;
+  background: #fff;
+  box-shadow:
+    0 0 18px 6px rgba(255, 255, 255, 0.7),
+    0 0 60px 18px rgba(205, 235, 42, 0.35);
+  opacity: 0;
+}
+#zTv.on i {
+  animation: zTvLine 0.46s ease-out forwards;
+}
+#zTv b {
+  position: absolute;
+  right: 5vw;
+  top: 6vh;
+  font: italic 900 clamp(28px, 4vw, 54px) / 1 var(--fd);
+  color: var(--acc);
+  -webkit-text-stroke: 2px #000;
+  paint-order: stroke;
+  text-shadow: 4px 4px 0 #000;
+}
+#zTv.on b {
+  animation: zTvCh 0.46s steps(1, end) forwards;
+}
+@keyframes zTvNoise {
+  to {
+    background-position:
+      0 0,
+      137px 61px,
+      0 0;
+  }
+}
+@keyframes zTvOut {
+  0% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+  45% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+  60% {
+    opacity: 1;
+    clip-path: inset(30% 0 30% 0);
+  }
+  75% {
+    opacity: 0.85;
+    clip-path: inset(48% 0 48% 0);
+  }
+  100% {
+    opacity: 0;
+    clip-path: inset(50% 0 50% 0);
+  }
+}
+@keyframes zTvLine {
+  0%,
+  40% {
+    opacity: 0;
+    transform: scaleX(1);
+  }
+  55% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(0.05);
+  }
+}
+@keyframes zTvCh {
+  0% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 0;
+  }
+}
+@keyframes zTvFade {
+  from {
+    opacity: 0.85;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #zTv.on {
+    animation: zTvFade 0.22s ease-out forwards;
+  }
+  #zTv.on i,
+  #zTv.on b {
+    display: none;
+  }
+}

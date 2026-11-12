@@ -397,7 +397,43 @@ export class Game {
       if (!b.classList.contains('primary') && /^(返回|回標題|回作戰室|關閉)/.test(b.textContent.trim()))
         b.classList.add('zBack');
   }
+  // 絕區零式（docs/zzz-ui-design.md C2）：選單畫面之間切換時的電視轉台（雜訊、掃描線、頻道號）；只是外觀、不擋點擊。
+  // 介面動畫「簡化」＝黑色淡出，「關閉」＝不播；自動化測試（webdriver）不播，要看時設 window.__zTv
+  zTvSwitch(id) {
+    const fx = this.uiFx ? this.uiFx() : 'full';
+    if (fx === 'off' || (navigator.webdriver && !window.__zTv)) return;
+    let el = document.getElementById('zTv');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'zTv';
+      el.innerHTML = '<i></i><b></b>';
+      // 雜訊貼圖（一次）
+      const cv = document.createElement('canvas');
+      cv.width = cv.height = 96;
+      const x = cv.getContext('2d'),
+        im = x.createImageData(96, 96);
+      for (let i = 0; i < im.data.length; i += 4) {
+        const v = (Math.random() * 255) | 0;
+        im.data[i] = im.data[i + 1] = im.data[i + 2] = v;
+        im.data[i + 3] = 255;
+      }
+      x.putImageData(im, 0, 0);
+      el.style.setProperty('--noise', `url(${cv.toDataURL()})`);
+      document.body.appendChild(el);
+    }
+    this.zTvCh = ((this.zTvCh || 6) % 99) + 1;
+    el.querySelector('b').textContent = 'CH ' + String(this.zTvCh).padStart(2, '0');
+    el.className = '';
+    void el.offsetWidth;
+    el.className = fx === 'simple' ? 'fade' : 'on';
+    clearTimeout(this.zTvT);
+    this.zTvT = setTimeout(() => (el.className = ''), 520);
+  }
   showScreen(id) {
+    const prevScr = this.scrNow;
+    this.scrNow = id;
+    // 選單之間（或從任務回到選單）才播；進任務、同一個畫面不播
+    if (id && prevScr !== id && prevScr !== undefined) this.zTvSwitch(id);
     for (const s of document.querySelectorAll('#ui .screen')) s.classList.toggle('on', s.id === id);
     document.getElementById('hudWrap').style.display = id === '' ? 'block' : 'none';
     if (id !== '' && this.hudC) {
