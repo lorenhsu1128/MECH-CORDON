@@ -104,23 +104,6 @@ h1 small {
   color: var(--acc);
   margin-bottom: 10px;
 }
-/* 標題頁的 LOGO（src/assets/ui/logo.webp，建置時內嵌成 data URI） */
-#titleLogo {
-  margin: -6px 0 8px;
-  text-align: center;
-}
-#titleLogo img {
-  display: block;
-  width: 100%;
-  max-height: 34vh;
-  object-fit: contain;
-  margin: 0 auto 4px;
-  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.55));
-  user-select: none;
-}
-#titleLogo small {
-  margin: 0;
-}
 h2 {
   font: 900 21px/1.3 var(--fz);
   margin: 0 0 10px;
@@ -212,7 +195,7 @@ table.keys td {
   top: 14px;
   font-size: 13px;
   line-height: 1.5;
-  background: rgba(8, 12, 18, 0.55);
+  background: rgba(10, 10, 12, 0.55);
   padding: 6px 10px;
   border-left: 2px solid var(--acc);
 }
@@ -229,7 +212,7 @@ table.keys td {
   left: 16px;
   bottom: 16px;
   width: min(420px, 60vw);
-  background: rgba(8, 12, 18, 0.5);
+  background: rgba(10, 10, 12, 0.5);
   padding: 14px 10px 6px;
 }
 .bar {
@@ -563,7 +546,7 @@ table.keys td {
   font-size: 11px;
   color: var(--ink);
   letter-spacing: 0.12em;
-  background: rgba(8, 12, 18, 0.5);
+  background: rgba(10, 10, 12, 0.5);
   padding: 3px 10px;
 }
 
@@ -672,7 +655,7 @@ body.rsfire #vbAttack {
 body.rsfire #vsR {
   opacity: 0.8;
   border-color: var(--acc);
-  background: rgba(255, 176, 32, 0.16);
+  background: rgba(205, 235, 42, 0.16);
 }
 body.rsfire #vsR.act {
   opacity: 1;
@@ -730,7 +713,7 @@ body.rstick #vbUse {
   height: 84px;
   font-size: 15px;
   border-color: var(--acc);
-  background: rgba(255, 176, 32, 0.25);
+  background: rgba(205, 235, 42, 0.25);
 }
 .vbtn.sm {
   width: 52px;
@@ -738,7 +721,7 @@ body.rstick #vbUse {
   font-size: 11px;
 }
 .vbtn.act {
-  background: rgba(255, 176, 32, 0.6);
+  background: rgba(205, 235, 42, 0.6);
   border-color: #fff;
 }
 .vbtn.melee {
@@ -785,7 +768,7 @@ body.vpad #hudTop {
   font-size: 11px;
   line-height: 1.35;
   padding: 4px 8px;
-  background: rgba(8, 12, 18, 0.45);
+  background: rgba(10, 10, 12, 0.45);
 }
 body.vpad #hudTop b {
   font-size: 12px;
@@ -796,7 +779,7 @@ body.vpad #hudBottom {
   left: 10px;
   width: 200px;
   padding: 10px 8px 2px;
-  background: rgba(8, 12, 18, 0.4);
+  background: rgba(10, 10, 12, 0.4);
 }
 body.vpad #hudBottom .bar {
   height: 6px;
@@ -840,7 +823,7 @@ body.vpad #lockHint {
   left: 50%;
   font-size: 10px;
   padding: 2px 8px;
-  background: rgba(8, 12, 18, 0.4);
+  background: rgba(10, 10, 12, 0.4);
 }
 body.vpad #bossBar {
   top: calc(40px + env(safe-area-inset-top, 0px));
@@ -1441,7 +1424,7 @@ select {
 }
 #pPts.has b {
   color: var(--acc);
-  text-shadow: 0 0 12px rgba(255, 176, 32, 0.45);
+  text-shadow: 0 0 12px rgba(205, 235, 42, 0.45);
 }
 #pilotBody {
   flex: 1;
@@ -1540,7 +1523,7 @@ select {
   white-space: nowrap;
 }
 .pGate.ok {
-  border-top-color: rgba(255, 176, 32, 0.45);
+  border-top-color: rgba(205, 235, 42, 0.45);
 }
 .pGate.ok span {
   color: var(--acc);
@@ -1622,7 +1605,7 @@ select {
 }
 .pNode.on {
   color: var(--acc);
-  border-color: rgba(255, 176, 32, 0.6);
+  border-color: rgba(205, 235, 42, 0.6);
   background: radial-gradient(circle at 50% 35%, #3d2f10, #17130a);
 }
 .pNode.on .pRk {
@@ -1631,7 +1614,7 @@ select {
 .pNode.max {
   background: radial-gradient(circle at 50% 35%, #6e5216, #2a1f08);
   color: #ffd98a;
-  box-shadow: 0 0 14px rgba(255, 176, 32, 0.35);
+  box-shadow: 0 0 14px rgba(205, 235, 42, 0.35);
 }
 .pNode.locked {
   opacity: 0.4;
@@ -1660,7 +1643,7 @@ select {
 @keyframes pPop {
   0% {
     transform: scale(1.25);
-    box-shadow: 0 0 26px rgba(255, 176, 32, 0.9);
+    box-shadow: 0 0 26px rgba(205, 235, 42, 0.9);
   }
   100% {
     transform: scale(1);
@@ -1889,7 +1872,7 @@ select {
   display: none;
 }
 .pPreset .pLoad:hover {
-  background: rgba(255, 176, 32, 0.08);
+  background: rgba(205, 235, 42, 0.08);
 }
 .pPN {
   font:
@@ -2221,7 +2204,7 @@ select {
 }
 .lslot .mtag {
   font-size: 11px;
-  color: var(--dim, #8a97a6);
+  color: var(--dim, var(--dim));
 }
 
 /* ---------- 渲染風格實驗室（game/style-lab.js）---------- */
@@ -2935,7 +2918,7 @@ body.mvGame #mvPanel {
   text-overflow: ellipsis;
 }
 .hubCap.warn {
-  color: #ffb070;
+  color: var(--org);
 }
 /* 進行中的出擊與持有的模組（左上） */
 #hubTopL {
@@ -2989,7 +2972,7 @@ body.mvGame #mvPanel {
   background: var(--acc);
 }
 .hubPips i.cur {
-  background: rgba(255, 176, 32, 0.4);
+  background: rgba(205, 235, 42, 0.4);
 }
 .hubActB {
   display: flex;
@@ -3066,7 +3049,7 @@ body.mvGame #mvPanel {
 }
 .hubNode.open .hnT {
   font-size: 14px;
-  box-shadow: 0 0 14px rgba(255, 176, 32, 0.35);
+  box-shadow: 0 0 14px rgba(205, 235, 42, 0.35);
 }
 .hubNode:hover .hnT,
 .hubNode.hot .hnT,
@@ -3219,7 +3202,7 @@ body.mvGame #mvPanel {
 #rangeLogBox {
   position: absolute;
   inset: 40px max(16px, calc(50% - 320px));
-  background: rgba(8, 12, 18, 0.97);
+  background: rgba(10, 10, 12, 0.97);
   border: 1px solid #2a3946;
   padding: 12px;
   display: flex;
@@ -3447,7 +3430,7 @@ body.mvGame #mvPanel {
   right: 16px;
   bottom: 196px;
   width: min(420px, calc(100vw - 32px));
-  background: rgba(8, 12, 18, 0.86);
+  background: rgba(10, 10, 12, 0.86);
   border-left: 3px solid var(--acc);
   padding: 8px 10px;
   pointer-events: none;
@@ -3748,7 +3731,7 @@ body.touchDev #cineSkip span::after {
 #simMenu,
 #record,
 #rangeMenu {
-  background: radial-gradient(ellipse at 30% 20%, #142030, #070a0e 75%);
+  background: radial-gradient(ellipse at 30% 20%, #142030, #0b0b0d 75%);
   align-items: center;
   justify-content: center;
   justify-content: safe center;
@@ -3814,7 +3797,7 @@ body.touchDev #cineSkip span::after {
   color: #7ee081;
 }
 .mpFit.bad {
-  color: #ffb070;
+  color: var(--org);
 }
 #mpDuo {
   max-width: 760px;
@@ -3912,7 +3895,7 @@ body.touchDev #cineSkip span::after {
   width: 260px;
   max-height: calc(100% - 240px);
   overflow: hidden;
-  background: rgba(8, 12, 18, 0.82);
+  background: rgba(10, 10, 12, 0.82);
   border: 1px solid #2a3946;
   border-left: 3px solid #7fc8ff;
   padding: 8px 10px;
@@ -4008,11 +3991,11 @@ body.touchDev #cineSkip span::after {
   border: 1px solid #2a3946;
 }
 #rangePanel .rpWeak {
-  color: #ffb070;
+  color: var(--org);
   font-weight: normal;
 }
 #rangePanel .rpSub {
-  color: #8a97a6;
+  color: var(--dim);
   font-size: 11px;
   line-height: 1.3;
 }
@@ -4023,9 +4006,6 @@ body.touchDev #cineSkip span::after {
   display: none;
   font-size: 13px;
   line-height: 1.6;
-}
-body.touchDev #title .touchHelp {
-  display: block;
 }
 body.touchDev #title table.keys {
   display: none;
@@ -4340,7 +4320,7 @@ body.vpad #rangePanel {
 .edSide button.on,
 .trTop button.on {
   border-color: var(--acc);
-  background: rgba(255, 176, 32, 0.2);
+  background: rgba(205, 235, 42, 0.2);
   color: var(--acc);
 }
 #lvSearch {
@@ -4354,7 +4334,7 @@ body.vpad #rangePanel {
 #editor textarea {
   font: inherit;
   font-size: 13px;
-  background: #0b0f15;
+  background: #0b0b0d;
   color: var(--ink);
   border: 1px solid var(--line);
   padding: 5px 7px;
@@ -4382,7 +4362,7 @@ body.vpad #rangePanel {
   width: 160px;
   height: 90px;
   flex-shrink: 0;
-  background: #070a0e;
+  background: #0b0b0d;
   border: 1px solid var(--line);
 }
 .lvThumb img {
@@ -4685,7 +4665,7 @@ body.touchDev .edBar button {
   bottom: 30px;
   left: 276px;
   right: 258px;
-  background: rgba(10, 14, 20, 0.95);
+  background: rgba(10, 10, 12, 0.95);
   border: 1px solid var(--line);
   display: flex;
   flex-direction: column;
@@ -4930,9 +4910,9 @@ body.edPicking #edTrig {
   z-index: 10001;
   display: none;
   padding: 5px 10px;
-  background: rgba(8, 12, 18, 0.78);
+  background: rgba(10, 10, 12, 0.78);
   border: 1px solid var(--line);
-  color: #e6edf3;
+  color: var(--ink);
   font-size: 12px;
   pointer-events: none;
 }
@@ -4983,7 +4963,7 @@ body[data-uifx='simple'] #ui .screen.center.on > .panel {
   min-width: min(360px, 86vw);
   max-width: min(520px, 90vw);
   padding: 12px 20px 12px;
-  background: linear-gradient(180deg, rgba(10, 16, 24, 0.86), rgba(8, 12, 18, 0.72));
+  background: linear-gradient(180deg, rgba(10, 16, 24, 0.86), rgba(10, 10, 12, 0.72));
   border-top: 2px solid var(--acc);
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
@@ -5101,12 +5081,12 @@ body[data-uifx='simple'] #ui .screen.center.on > .panel {
   line-height: 1.6;
 }
 .vlLines b {
-  color: #ffb070;
+  color: var(--org);
 }
 #vlList h3 {
   margin: 14px 0 0;
   font-size: 15px;
-  color: #ffb070;
+  color: var(--org);
 }
 .vlDesc {
   margin: 2px 0 6px;
@@ -5133,7 +5113,7 @@ body[data-uifx='simple'] #ui .screen.center.on > .panel {
   padding: 4px 8px;
 }
 .vlBtns button.on {
-  background: #ffb070;
+  background: var(--org);
   color: #111;
 }
 .vlCand input {
@@ -5157,7 +5137,7 @@ body[data-uifx='simple'] #ui .screen.center.on > .panel {
 #clList h3 {
   margin: 10px 0 2px;
   font-size: 14px;
-  color: #ffb070;
+  color: var(--org);
 }
 .clItem {
   display: grid;
@@ -5175,7 +5155,7 @@ body[data-uifx='simple'] #ui .screen.center.on > .panel {
   align-self: center;
   font-style: normal;
   font-size: 12px;
-  color: #9fb0c0;
+  color: var(--dim);
   white-space: nowrap;
 }
 .clItem code {
@@ -5196,7 +5176,7 @@ body[data-uifx='simple'] #ui .screen.center.on > .panel {
   z-index: 6;
   pointer-events: auto;
   padding: 6px 10px;
-  background: rgba(8, 12, 18, 0.72);
+  background: rgba(10, 10, 12, 0.72);
   border: 1px solid rgba(232, 238, 244, 0.2);
   opacity: 0.55;
   transition: opacity 0.2s;
@@ -5218,7 +5198,7 @@ body[data-uifx='simple'] #ui .screen.center.on > .panel {
 }
 #cineCtl #clTime {
   font-family: 'Share Tech Mono', monospace;
-  color: #9fb0c0;
+  color: var(--dim);
   white-space: nowrap;
 }
 #clBar {
@@ -5666,7 +5646,7 @@ input[type='range'] {
 }
 #garage .slot.sel .gThumb {
   border-color: var(--acc);
-  box-shadow: 0 0 14px rgba(255, 176, 32, 0.35);
+  box-shadow: 0 0 14px rgba(205, 235, 42, 0.35);
 }
 #garage .slot.sel .gSlotT span {
   color: var(--acc);
@@ -5686,7 +5666,7 @@ input[type='range'] {
   border-color: var(--acc);
   box-shadow:
     inset 0 -4px 0 var(--gq),
-    0 0 14px rgba(255, 176, 32, 0.35);
+    0 0 14px rgba(205, 235, 42, 0.35);
 }
 #garage .slot.gq3 .gThumb::after,
 #garage .slot.gq4 .gThumb::after {
@@ -5978,10 +5958,10 @@ input[type='range'] {
   stroke-width: 0.6;
 }
 .hexSvg .hxCur.gain {
-  fill: rgba(255, 176, 32, 0.85);
+  fill: rgba(205, 235, 42, 0.85);
   stroke: #ffd27a;
   stroke-width: 1;
-  filter: drop-shadow(0 0 2px rgba(255, 176, 32, 0.8));
+  filter: drop-shadow(0 0 2px rgba(205, 235, 42, 0.8));
 }
 #pHex .hxL {
   font-size: 9px;
@@ -5990,7 +5970,7 @@ input[type='range'] {
   font-size: 6px;
 }
 .hexSvg .hxCur {
-  fill: rgba(255, 176, 32, 0.25);
+  fill: rgba(205, 235, 42, 0.25);
   stroke: var(--acc);
   stroke-width: 0.8;
 }
@@ -6402,7 +6382,7 @@ input[type='range'] {
 }
 .gSw.on {
   border-color: var(--acc);
-  background: rgba(255, 176, 32, 0.12);
+  background: rgba(205, 235, 42, 0.12);
 }
 /* 機甲庫：手機橫式等矮螢幕（兩翼只剩縮圖、零件格子打開時量表收起、六角圖在規格頁） */
 @media (max-height: 540px) {
@@ -6517,7 +6497,7 @@ input[type='range'] {
   width: clamp(300px, 30vw, 420px);
   max-height: calc(100% - 108px - 190px);
   overflow: hidden auto;
-  background: rgba(8, 12, 18, 0.86);
+  background: rgba(10, 10, 12, 0.86);
   border: 1px solid #2a3946;
   border-top: 3px solid #c8a0ff;
   padding: 8px 12px 10px;
@@ -6565,7 +6545,7 @@ input[type='range'] {
   display: inline-block;
   padding: 0 6px;
   margin: 0 2px;
-  border: 1px solid #8a97a6;
+  border: 1px solid var(--dim);
   border-bottom-width: 3px;
   border-radius: 4px;
   background: #1a2430;
@@ -6746,7 +6726,7 @@ input[type='range'] {
     left: max(8px, env(safe-area-inset-left, 0px));
     width: min(300px, 36vw);
     max-height: calc(100% - 128px - 132px);
-    background: rgba(8, 12, 18, 0.78);
+    background: rgba(10, 10, 12, 0.78);
     font-size: 11px;
     line-height: 1.35;
     padding: 4px 7px 5px;
@@ -7156,7 +7136,7 @@ body.vpad #subBar {
 #gtTabs button.on,
 #gazeTune .gtSide button.on {
   border-color: var(--acc);
-  background: rgba(255, 176, 32, 0.2);
+  background: rgba(205, 235, 42, 0.2);
   color: var(--acc);
 }
 /* 左邊固定的即時追蹤欄＋右邊的分頁 */
@@ -7212,7 +7192,7 @@ body.vpad #subBar {
   padding-top: 6px;
   font-size: 12px;
   line-height: 1.5;
-  color: #b9c6d3;
+  color: #cfcec7;
 }
 #gazeTune .gtSl {
   display: flex;
@@ -7319,7 +7299,7 @@ body.vpad #subBar {
   max-width: min(420px, 60%);
 }
 #gazeTune .gtPre.cur {
-  background: rgba(255, 176, 32, 0.08);
+  background: rgba(205, 235, 42, 0.08);
 }
 #gazeTune .gtPre em {
   color: var(--acc);
@@ -7393,7 +7373,7 @@ body.vpad #subBar {
 #blFill {
   width: 0;
   height: 100%;
-  background: #ffb070;
+  background: var(--org);
 }
 .blRow {
   display: flex;
@@ -7411,7 +7391,7 @@ body.vpad #subBar {
   padding: 6px 0;
 }
 .blPlay.on {
-  color: #ffb070;
+  color: var(--org);
 }
 .blInfo {
   flex: 1 1 380px;
@@ -7424,7 +7404,7 @@ body.vpad #subBar {
 }
 .blSug {
   margin-left: 8px;
-  color: #ffb070;
+  color: var(--org);
 }
 .blPick {
   display: flex;
@@ -7449,7 +7429,7 @@ body.vpad #subBar {
 #blList h3 {
   margin: 16px 0 6px;
   font-size: 15px;
-  color: #ffb070;
+  color: var(--org);
 }
 .blCur {
   display: flex;
@@ -7457,7 +7437,7 @@ body.vpad #subBar {
   gap: 6px;
 }
 .blCur button.on {
-  color: #ffb070;
+  color: var(--org);
 }
 
 /* 零件調校（game/tune-ui.js；主線擴充 E2） */
@@ -7471,7 +7451,7 @@ body.vpad #subBar {
   max-height: calc(100vh - 150px); /* 下方留給量表（升級按鈕的預覽） */
   box-sizing: border-box;
   overflow-y: auto;
-  background: rgba(10, 14, 20, 0.95);
+  background: rgba(10, 10, 12, 0.95);
   border: 1px solid var(--acc, #ffb020);
   padding: 14px 16px;
   z-index: 40;
@@ -7571,7 +7551,7 @@ body.vpad #subBar {
 }
 #hubFacTabs button.on {
   border-color: var(--acc);
-  background: rgba(255, 176, 32, 0.2);
+  background: rgba(205, 235, 42, 0.2);
   color: var(--acc);
 }
 #hubFacTabs small {
@@ -7582,14 +7562,14 @@ body.vpad #subBar {
   flex: 1;
 }
 #hubBoardList .boardJob {
-  border-color: #ffb070;
+  border-color: var(--org);
   background: rgba(255, 176, 112, 0.05);
 }
 #hubFacBox .boardBusy {
   color: #ff8a50;
 }
 #hubFacBox .boardRule {
-  color: #ffb070;
+  color: var(--org);
   margin: 4px 0;
 }
 #hubFacBox .boardBtns {
@@ -7601,7 +7581,7 @@ body.vpad #subBar {
 
 /* 自由出擊的作戰設定（game/free-ops.js、docs/free-sortie-design.md） */
 #freeOps {
-  background: radial-gradient(ellipse at 30% 20%, #142030, #070a0e 75%);
+  background: radial-gradient(ellipse at 30% 20%, #142030, #0b0b0d 75%);
   align-items: center;
   justify-content: center;
   justify-content: safe center;
@@ -7671,7 +7651,7 @@ body.vpad #subBar {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  background: rgba(8, 12, 18, 0.6);
+  background: rgba(10, 10, 12, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.08);
   padding: 10px;
   font-size: 13px;
@@ -7700,13 +7680,13 @@ body.vpad #subBar {
   padding: 8px 12px;
   text-align: left;
   background: var(--gGlass);
-  border: 1px solid rgba(255, 176, 32, 0.45);
+  border: 1px solid rgba(205, 235, 42, 0.45);
   border-left: 4px solid var(--acc);
   letter-spacing: 0;
 }
 #btnFreeOps:hover,
 #btnFreeOps.padFocus {
-  background: rgba(255, 176, 32, 0.14);
+  background: rgba(205, 235, 42, 0.14);
   border-color: var(--acc);
 }
 .gOpsK {
@@ -8258,4 +8238,322 @@ em.nw,
   display: flex;
   gap: 12px;
   align-items: center;
+}
+
+/* ===== 絕區零式介面 B2（docs/zzz-ui-design.md）：選單畫面的背景與標題 ===== */
+/* 共用背景：斜條紋＋淡出的巨大英文字＋LOGO 的警戒膠帶（.zBackdrop 放在畫面的第一個子元素） */
+.zBackdrop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.022) 0 10px, transparent 10px 20px),
+    radial-gradient(120% 90% at 80% 20%, #1d1e22 0%, #0b0b0d 70%);
+}
+.zBackdrop span {
+  position: absolute;
+  left: -2vw;
+  font: italic 900 clamp(90px, 17vw, 300px) / 0.9 var(--fd);
+  color: rgba(255, 255, 255, 0.035);
+  white-space: nowrap;
+  letter-spacing: -0.02em;
+}
+.zBackdrop span:first-child {
+  top: 6%;
+}
+.zBackdrop span:nth-child(2) {
+  bottom: -4%;
+  left: 18vw;
+  color: rgba(205, 235, 42, 0.035);
+}
+.zBackdrop::after {
+  content: 'CAUTION ・ KEEP OUT ・ CAUTION ・ KEEP OUT ・ CAUTION ・ KEEP OUT ・ CAUTION ・ KEEP OUT ・ CAUTION ・ KEEP OUT';
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  bottom: 13%;
+  transform: rotate(-4deg);
+  padding: 5px 0;
+  background: #fcc800;
+  color: #111;
+  font: italic 900 13px/1 var(--fd);
+  letter-spacing: 0.3em;
+  white-space: nowrap;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 3px #111,
+    0 8px 20px rgba(0, 0, 0, 0.5);
+  opacity: 0.85;
+}
+body[data-uifx='full'] .zBackdrop span:first-child {
+  animation: zDrift 40s linear infinite alternate;
+}
+@keyframes zDrift {
+  to {
+    transform: translateX(-6vw);
+  }
+}
+
+/* 標題：LOGO 在左、主選單（大膠囊）在右、工具在下方的小膠囊；操作說明是按鈕打開的面板 */
+#ui #title.on {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+  align-items: center;
+  gap: 2vw;
+  padding: 3vh 4vw;
+  overflow-y: auto;
+}
+#title .tLeft,
+#title .tRight {
+  position: relative;
+  min-width: 0;
+}
+#titleLogo {
+  margin: 0;
+  text-align: left;
+}
+#titleLogo img {
+  width: 100%;
+  max-width: 760px;
+  max-height: 52vh;
+  margin: 0 0 8px;
+  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.7));
+}
+#titleLogo small {
+  display: inline-block;
+  background: #000;
+  border: 2px solid var(--line);
+  border-radius: var(--rp);
+  padding: 6px 16px;
+  letter-spacing: 0.2em;
+}
+#title .tIntro {
+  max-width: 560px;
+  margin-top: 14px;
+  color: #cfcec7;
+  font-weight: 500;
+}
+#title .touchHelp {
+  display: none;
+  max-width: 560px;
+  font-size: 12.5px;
+  color: var(--dim);
+}
+#title .tMain {
+  display: grid;
+  gap: 12px;
+}
+#title .tMain button {
+  font: 900 20px/1.2 var(--fz);
+  padding: 15px 28px;
+  text-align: left;
+  position: relative;
+  border-width: 2.5px;
+  box-shadow: 0 0 0 3px var(--edge);
+}
+#title .tMain button::after {
+  content: '▶';
+  position: absolute;
+  right: 22px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  opacity: 0.55;
+}
+#title .tMain button:hover:not(:disabled) {
+  transform: translateX(-6px);
+}
+#title .tMain #btnStory {
+  font-size: 24px;
+  padding: 19px 28px;
+}
+#title .tTools {
+  margin-top: 20px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 2px solid var(--line);
+  border-radius: 16px;
+  padding: 10px 12px 12px;
+}
+#title .tTools h4 {
+  margin: 0 0 8px 4px;
+  font: 900 12px/1 var(--fz);
+  color: var(--dim);
+  letter-spacing: 0.1em;
+}
+#title .tToolBtns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+#title .tToolBtns button {
+  font-size: 12.5px;
+  padding: 6px 13px;
+}
+#titleHelp {
+  display: none;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(860px, 94vw);
+  max-height: 90%;
+  overflow: auto;
+  z-index: 5;
+}
+#titleHelp.on {
+  display: block;
+}
+body[data-uifx='full'] #titleHelp.on {
+  animation: zPop 0.26s cubic-bezier(0.2, 1.3, 0.4, 1);
+}
+#titleHelp table.keys td {
+  padding: 5px 14px 5px 0;
+  font-size: 13.5px;
+}
+#titleHelp p.dim {
+  font-size: 11.5px;
+}
+body.touchDev #title .touchHelp {
+  display: block;
+}
+@media (max-width: 900px), (max-height: 540px) {
+  #ui #title.on {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    padding: 2vh 2.5vw;
+    gap: 14px;
+  }
+  #titleLogo img {
+    max-height: 46vh;
+  }
+  #titleLogo small {
+    font-size: 10px;
+    padding: 4px 10px;
+  }
+  #title .tIntro {
+    font-size: 12px;
+    margin-top: 6px;
+  }
+  #title .tMain {
+    gap: 7px;
+  }
+  #title .tMain button,
+  #title .tMain #btnStory {
+    font-size: 15px;
+    padding: 8px 18px;
+  }
+  #title .tTools {
+    margin-top: 10px;
+    padding: 6px 8px 8px;
+  }
+  #title .tToolBtns {
+    gap: 5px;
+  }
+  #title .tToolBtns button {
+    font-size: 11px;
+    padding: 4px 10px;
+  }
+  #title .tTools h4 {
+    display: none;
+  }
+}
+@media (max-height: 540px) {
+  #title .touchHelp {
+    display: none !important;
+  }
+  .zBackdrop::after {
+    bottom: 6%;
+    font-size: 10px;
+  }
+}
+@media (max-aspect-ratio: 1/1) {
+  #ui #title.on {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 選單畫面的共用背景（class="zBg"）：斜條紋、淡出的大字與警戒膠帶（SVG）、暗角 */
+#ui .screen.zBg {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1600' height='900' viewBox='0 0 1600 900' preserveAspectRatio='xMidYMid slice'%3E%3Ctext x='-40' y='300' font-family='Arial Black,Arial,sans-serif' font-weight='900' font-style='italic' font-size='300' fill='%23ffffff' fill-opacity='0.035'%3EMECH%3C/text%3E%3Ctext x='380' y='880' font-family='Arial Black,Arial,sans-serif' font-weight='900' font-style='italic' font-size='300' fill='%23cdeb2a' fill-opacity='0.03'%3ECORDON%3C/text%3E%3Cg transform='rotate(-4 800 760)'%3E%3Crect x='-200' y='740' width='2000' height='26' fill='%23fcc800' fill-opacity='0.55' stroke='%23111' stroke-width='5'/%3E%3C/g%3E%3C/svg%3E")
+      center / cover no-repeat,
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.022) 0 10px, transparent 10px 20px),
+    radial-gradient(120% 90% at 75% 20%, #1d1e22 0%, #0b0b0d 72%);
+}
+/* 面板的標題：左邊一小段黃綠斜條＋粗字 */
+#ui .screen.zBg .panel > h2:first-child,
+#ui .screen.zBg .brBox > h2:first-child {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 22px;
+}
+#ui .screen.zBg .panel > h2:first-child::before,
+#ui .screen.zBg .brBox > h2:first-child::before {
+  content: '';
+  width: 8px;
+  height: 22px;
+  background: var(--acc);
+  transform: skewX(-18deg);
+  box-shadow: 0 0 0 2px var(--edge);
+}
+/* 返回鍵：紅框＋↩（Game.zTagBack 依文字標記） */
+button.zBack {
+  border-color: var(--red);
+  color: #ff8a80;
+}
+button.zBack::before {
+  content: '↩ ';
+  font-weight: 900;
+}
+button.zBack:hover {
+  background: var(--red);
+  border-color: var(--edge);
+  color: #fff;
+}
+/* 卡片類：存檔槽、自訂關卡、大廳的玩家格、過場清單 */
+.saveCard,
+.lvItem,
+.lslot {
+  border: 2px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel2);
+  box-shadow: 0 0 0 2px var(--edge);
+}
+.saveCard {
+  padding: 12px 14px;
+}
+.saveCard.cur,
+.lvItem.focus {
+  border-color: var(--acc);
+  box-shadow:
+    0 0 0 2px var(--edge),
+    inset 6px 0 0 var(--acc);
+}
+.saveCard.ask {
+  border-color: var(--red);
+}
+.saveCard .saveHead b {
+  font: 900 15px/1.3 var(--fz);
+}
+.lvThumb {
+  border-radius: 10px;
+  border: 2px solid var(--edge);
+  overflow: hidden;
+}
+.lslot {
+  padding: 9px 12px;
+}
+.clItem {
+  border-radius: 12px;
+  padding: 8px 16px;
+}
+#clList h3,
+#vlList h3 {
+  color: var(--org);
+  font: 900 15px/1.3 var(--fz);
+}
+#levels input,
+#levels select {
+  border-radius: var(--rp);
 }

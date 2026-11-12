@@ -390,6 +390,13 @@ export class Game {
     this.hudC.style.height = h + 'px';
     this.hctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
   }
+  zTagBack() {
+    for (const b of document.querySelectorAll(
+      '#ui .screen.on button:not(.zBack), #uiModal button:not(.zBack)',
+    ))
+      if (!b.classList.contains('primary') && /^(返回|回標題|回作戰室|關閉)/.test(b.textContent.trim()))
+        b.classList.add('zBack');
+  }
   showScreen(id) {
     for (const s of document.querySelectorAll('#ui .screen')) s.classList.toggle('on', s.id === id);
     document.getElementById('hudWrap').style.display = id === '' ? 'block' : 'none';
@@ -405,6 +412,11 @@ export class Game {
     // 結果畫面的標題與評價（文字演出；內容在 showScreen 前後設定，所以等這段程式跑完）
     if (id === 'result' && this.tfxResult) Promise.resolve().then(() => this.tfxResult());
     if (id === 'title' && this.renderContinue) this.renderContinue();
+    // 絕區零式介面：返回類的按鈕（文字是「返回…」「回標題」「關閉」）改成紅框的返回鍵；內容是程式產生的，稍後再標一次
+    if (id) {
+      this.zTagBack();
+      setTimeout(() => this.zTagBack(), 120);
+    }
     for (const b of document.querySelectorAll('.rangeOnly')) b.style.display = this.range ? '' : 'none';
     for (const b of document.querySelectorAll('.tutOnly')) b.style.display = this.tut ? '' : 'none';
     // 自訂關卡的試玩：暫停選單的「放棄任務」＝回編輯器

@@ -729,6 +729,11 @@ Object.assign(Game.prototype, {
     this.applyUiFx();
     this.setupTouch();
     this.setupFullscreen();
+    // 標題的操作說明（絕區零式的標題：說明改成按鈕打開的面板）
+    document.getElementById('btnTitleHelp').onclick = () =>
+      document.getElementById('titleHelp').classList.add('on');
+    document.getElementById('btnTitleHelpClose').onclick = () =>
+      document.getElementById('titleHelp').classList.remove('on');
     document.getElementById('btnSettings').onclick = () => {
       SFX.init();
       this.openSettings('title');
