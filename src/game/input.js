@@ -1298,7 +1298,7 @@ Object.assign(Game.prototype, {
       this.showScreen('title');
     };
     $('btnBriefGo').onclick = () => this.briefGo();
-    $('btnBriefGarage').onclick = () => this.hubGarage();
+    $('btnBriefGarage').onclick = () => this.hubGarage(this.briefSid);
     $('btnBriefBack').onclick = () => this.openHub();
     $('mpSkip').onclick = () => this.campClosePick();
     $('btnCampGo').onclick = () => this.campGo();
@@ -1348,7 +1348,13 @@ Object.assign(Game.prototype, {
       this.renderGarage();
     };
     $('btnToTitle').onclick = () => {
-      if (this.fromHub) return this.openHub();
+      if (this.fromHub) {
+        // 從簡報進來的：回到同一份簡報（作戰室的場景照常建立，openHub 先播還沒看過的劇情時不接簡報）
+        const b = this.garageBrief;
+        this.openHub();
+        if (b && this.state === 'hub') this.openBrief(b);
+        return;
+      }
       if (this.fromLevels) {
         this.fromLevels = false;
         return this.openLevels();

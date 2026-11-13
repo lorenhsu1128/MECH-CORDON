@@ -195,6 +195,7 @@ Object.assign(Game.prototype, {
     SFX.ui();
     this.camp = null;
     this.fromHub = false;
+    this.garageBrief = null;
     if (this.storyHubCheck()) return; // 還沒看過的序章與章節開場（game/story.js）
     this.state = 'hub';
     this.showScreen('hub');
@@ -375,9 +376,11 @@ Object.assign(Game.prototype, {
     this.campBegin(sid);
   },
   // 車庫（從機庫進入時，左下的按鈕變成「返回機庫」）
-  hubGarage() {
+  // brief＝從簡報的「先去機甲庫整備」進來的出擊 id：返回時回到同一份簡報（不再跳回作戰室的總覽）
+  hubGarage(brief = null) {
     SFX.ui();
     this.fromHub = true;
+    this.garageBrief = brief;
     this.openGarage();
   },
   // ---------- 結局與周目 ----------

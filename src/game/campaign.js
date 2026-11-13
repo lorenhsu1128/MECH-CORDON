@@ -1220,9 +1220,10 @@ Object.assign(Game.prototype, {
     const mode = mp ? 'mp' : inG ? 'trans' : hub ? 'hub' : lvg ? 'lv' : 'free';
     const ctx = $('gCtx');
     if (ctx) {
+      const free = !!(this.camp && this.camp.free);
       ctx.textContent = {
         mp: '多人',
-        trans: '主線・轉場整備',
+        trans: free ? '自由出擊・轉場整備' : '主線・轉場整備',
         hub: '主線整備',
         lv: '自訂關卡整備',
         free: '自由出擊',
@@ -1230,7 +1231,13 @@ Object.assign(Game.prototype, {
       ctx.className = 'gCtx ' + mode;
     }
     $('btnCamp').style.display = mode === 'free' ? '' : 'none';
-    $('btnToTitle').textContent = hub ? '返回作戰室' : lvg ? '返回關卡選單' : '回標題';
+    $('btnToTitle').textContent = hub
+      ? this.garageBrief
+        ? '返回簡報'
+        : '返回作戰室'
+      : lvg
+        ? '返回關卡選單'
+        : '回標題';
     $('btnToTitle').classList.toggle('primary', hub || lvg);
     // 返回作戰室／關卡選單是這時的主要按鈕：放到右下（docs/garage-ui.md），其他時候是底部列的小按鈕
     const tt = $('btnToTitle');
@@ -1241,7 +1248,9 @@ Object.assign(Game.prototype, {
     $('gMap').style.display = inG || hub || lvg ? 'none' : ''; // 主線的地圖由出擊決定
     if (hub) {
       $('mcTitle').textContent = '主線整備';
-      $('mcDesc').textContent = '在這裡組裝與換裝。完成後按「返回作戰室」，從戰區總覽圖選委託出擊。';
+      $('mcDesc').textContent = this.garageBrief
+        ? '在這裡組裝與換裝。完成後按「返回簡報」，回到剛才的委託出擊。'
+        : '在這裡組裝與換裝。完成後按「返回作戰室」，從戰區總覽圖選委託出擊。';
     }
     box.style.display = inG ? '' : 'none';
     // 轉場整備面板比作戰卡高：右翼的部位格依它縮小（styles.css 的 --wingRes）
@@ -1249,7 +1258,8 @@ Object.assign(Game.prototype, {
     if (!inG) return;
     const cl = this.campIsClient();
     const T = cl ? this.campC.trans || {} : null;
-    $('mcTitle').textContent = `主線出擊｜${cl ? T.so || '' : this.campSortie().name}`;
+    $('mcTitle').textContent =
+      `${this.camp && this.camp.free ? '自由出擊' : '主線出擊'}｜${cl ? T.so || '' : this.campSortie().name}`;
     $('mcDesc').textContent =
       `轉場整備中：${cl ? T.next || '' : `下一個是區段 ${this.camp.seg + 1}／${this.campSortie().segs.length}【${SEG_TYPES[this.campSegType()].name}】${this.campSegName()}`}。換裝時 AP 依比例換算，換上的武器沿用該武器槽的剩餘彈藥比例。`;
     const cost = this.campCosts();
