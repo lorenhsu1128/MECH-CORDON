@@ -80,6 +80,8 @@ Object.assign(Game.prototype, {
         e.lines.map(([sp, t]) => [sp, t, '', lineExpr(t, { ev: event, sp })]),
       );
       if (!this.commBusy) this.commNext();
+      // 宿敵的登場與擊破：插入畫面（game/portrait-ui.js）
+      if (event === 'segStart' || event === 'aceDown') this.ptCutInAce(e, event);
     }
     return e;
   },

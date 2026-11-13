@@ -3,11 +3,14 @@
 // 畫布由自己的 requestAnimationFrame 更新（選單畫面也要動），離開畫面（不在 DOM 裡）就拿掉。
 import { SFX } from '../audio/audio.js';
 import { lineExpr } from '../data/line-expr.js';
-import { BRIEFINGS } from '../data/story.js';
+import { BRIEFINGS, SPEAKERS } from '../data/story.js';
+import { escHtml } from '../core/html.js';
 import { Portrait, Portraits } from '../render/portraits.js';
 import { Game } from './game.js';
 
 const DPR_MAX = 2;
+// 立繪清單先載入（插入畫面要同步知道有沒有立繪）
+if (typeof document !== 'undefined') Portraits.ids();
 
 Object.assign(Game.prototype, {
   // 把 host 換成 sp 的立繪。o：{ w, h 畫布的 CSS 尺寸, fit 'bust'／'face'／'full', pose, expr, act 一開始的動作,
@@ -192,6 +195,61 @@ Object.assign(Game.prototype, {
     const c = this.voiceCur;
     if (c && c.sp === sp && SFX.ctx && SFX.ctx.currentTime < c.end + 0.1) return this.voiceLevel(sp);
     return fallback ? -1 : null;
+  },
+  // 插入畫面（機戰式，docs/portrait-design.md 第 5 期）：斜的色帶＋胸像滑入＋名字與一句台詞，約 2 秒、不暫停。
+  // o：{ tag 小標, name 名字（預設＝說話者）, line 台詞, expr, color, side 'r'／'l' }。設定 ctrl.cutin 'off'、
+  // 過場動畫、地圖預覽器、沒有立繪＝不顯示（回傳 false，呼叫端照原本的畫面）。後來的取代前一個
+  ptCutIn(sp, o = {}) {
+    if ((this.ctrl && this.ctrl.cutin) === 'off' || this.cine || this.mapv || !sp) return false;
+    const S = SPEAKERS[sp] || {};
+    const ui = document.getElementById('ui');
+    if (!ui || !Portraits.known(sp)) return false;
+    const old = document.getElementById('ptCut');
+    if (old) old.remove();
+    const el = document.createElement('div');
+    el.id = 'ptCut';
+    el.className = 'side' + (o.side === 'l' ? 'L' : 'R');
+    el.style.setProperty('--c', o.color || S.color || '#7fc8ff');
+    const nm = o.name || S.name || sp;
+    el.innerHTML =
+      `<div class="ptcBand"></div><span class="ptcHost"></span><div class="ptcTxt">` +
+      (o.tag ? `<small>${escHtml(o.tag)}</small>` : '') +
+      `<b>${escHtml(nm)}</b>` +
+      (o.line ? `<p>${escHtml(o.line)}</p>` : '') +
+      `</div>`;
+    ui.appendChild(el);
+    const small = innerHeight < 540;
+    const t0 = performance.now();
+    this.ptView(el.querySelector('.ptcHost'), sp, {
+      w: small ? 150 : 250,
+      h: small ? 170 : 290,
+      fit: 'bust',
+      expr: o.expr,
+      act: o.act || 'lean',
+      cls: 'ptComm ptCutV',
+      // 台詞的語音在唸就對口型，沒有語音時前 1.2 秒模擬說話
+      talk: () => this.ptTalk(sp, !!o.line && performance.now() - t0 < 1200),
+    });
+    clearTimeout(this.ptCutTo);
+    this.ptCutTo = setTimeout(() => el.classList.add('out'), 1900);
+    setTimeout(() => el.remove(), 2400);
+    return true;
+  },
+  // 宿敵 AC 的通訊（segStart 的登場、aceDown 的擊破）：第一句宿敵自己說的台詞做插入畫面
+  ptCutInAce(e, event) {
+    const ace = e && e.ace;
+    if (!ace || typeof ace !== 'string') return;
+    const ln = e.lines.find(([sp]) => sp === ace);
+    if (!ln) return;
+    const down = event === 'aceDown';
+    const x = lineExpr(ln[1], { ev: event, sp: ace });
+    this.ptCutIn(ace, {
+      tag: down ? 'DEFEATED — 擊破' : 'RIVAL — 宿敵',
+      line: ln[1],
+      expr: x.e || (down ? 'sad' : 'angry'),
+      act: down ? 'back' : x.a,
+      side: down ? 'l' : 'r',
+    });
   },
   // 小頭像（通訊紀錄、失敗畫面的通訊）：容器裡的 .cBadge[data-sp] 換成臉
   ptBadges(root, size = 30) {

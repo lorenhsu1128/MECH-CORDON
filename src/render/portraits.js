@@ -27,6 +27,12 @@ export const Portraits = {
   async has(id) {
     return (await this.ids()).has(id);
   },
+  // 同步的版本（插入畫面）：清單還沒載入＝false（順便開始載入）
+  known(id) {
+    this.ids();
+    const s = window.MECH_CORDON_PORTRAIT_IDS;
+    return !!(s && s.includes(id));
+  },
   get(id) {
     if (!loaded.has(id))
       loaded.set(

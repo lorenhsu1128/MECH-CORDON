@@ -5,7 +5,7 @@ import { CHOICES, EXIT_REWARDS, SORTIES } from '../data/campaign.js';
 import { ACES } from '../data/foes.js';
 import { MODULES, MOD_TIPS, modFit, modsSumText } from '../data/modules.js';
 import { asmParts } from '../data/parts.js';
-import { BRIEFINGS, FACTIONS } from '../data/story.js';
+import { BRIEFINGS, FACTIONS, SPEAKERS } from '../data/story.js';
 import { Game } from './game.js';
 
 const sortieShort = (sid) => SORTIES[sid].name.split(' — ')[1] || SORTIES[sid].name;
@@ -95,7 +95,9 @@ Object.assign(Game.prototype, {
           rows.push(`<div class="dim">之後再登場的宿敵：${escHtml(I.aces.join('、'))}</div>`);
         if (I.ending) rows.push('<div class="mpFit bad">這個選擇決定結局</div>');
         else rows.push('<div class="mpFit bad">另一條路線的出擊在這一周目不會出現</div>');
-        return `<div class="mpCard" style="border-color:${col}"><div class="mpTag" style="color:${col}">${escHtml(I.F.short)}</div><b>${escHtml(o.name)}</b>${rows.join('')}</div>`;
+        // 委託方的胸像（有立繪時；docs/portrait-design.md 第 5 期的抉擇出口）
+        const pt = SPEAKERS[o.faction] ? `<span class="mpPt" data-sp="${escHtml(o.faction)}"></span>` : '';
+        return `<div class="mpCard" style="border-color:${col}">${pt}<div class="mpTag" style="color:${col}">${escHtml(I.F.short)}</div><b>${escHtml(o.name)}</b>${rows.join('')}</div>`;
       })
       .join('');
     // 第 3 周目但真結局的條件不夠：鎖住的第三條路（客機看不到房主的進度，不顯示）
@@ -105,6 +107,8 @@ Object.assign(Game.prototype, {
       $('mpCards').innerHTML +=
         `<div class="mpCard locked"><div class="mpTag">？？？</div><b>${escHtml(lockOpt.name)}</b><div class="mpTip">第三條路還沒有打開</div><div class="dim">需要完成全部紫色委託（目前 ${T.n}／${T.need}，哪一周目完成的都算）</div></div>`;
     }
+    for (const h of $('mpCards').querySelectorAll('.mpPt'))
+      this.ptView(h, h.dataset.sp, { w: 72, h: 84, fit: 'bust', cls: 'ptComm', expr: 'think' });
     $('mpDuo').innerHTML = '';
     $('mpSkip').textContent = '了解，前往選擇';
     $('mpSkip').style.display = '';

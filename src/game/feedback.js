@@ -265,7 +265,17 @@ Object.assign(Game.prototype, {
       SFX.cue('phase');
       this.voiceCue('bossPhase');
       this.camShake = Math.max(this.camShake, 0.25);
-      this.showBanner(ph >= 3 ? '最終型態' : '第二型態', b.name, '#ff4030', 2.2, { k: 'phase' });
+      // 插入畫面（ECHO 的胸像＋Boss 的名字）；關掉或沒有立繪時照舊是橫幅
+      const phName = ph >= 3 ? '最終型態' : '第二型態';
+      if (
+        !this.ptCutIn('echo', {
+          tag: `WARNING — ${phName}`,
+          name: b.name,
+          expr: 'surprised',
+          color: '#ff4030',
+        })
+      )
+        this.showBanner(phName, b.name, '#ff4030', 2.2, { k: 'phase' });
     }
   },
   // 腳步（MechEntity.ikGait 每半個步伐呼叫）：玩家與聽得到的距離內的機體

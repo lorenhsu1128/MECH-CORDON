@@ -101,7 +101,13 @@ export class Comfy {
           res();
         }
       };
+      // ComfyUI 中途掛掉（例如顯示卡驅動重置）時連線會斷：馬上失敗，不要空等 15 分鐘
+      ws.onclose = () => {
+        clearTimeout(to);
+        rej(new Error('ComfyUI 連線中斷（程序可能掛掉了）'));
+      };
     });
+    done.catch(() => {}); // 送出工作之前就斷線時，先不要變成未處理的拒絕（下面 await done 照樣會拋出）
     try {
       const r = await this.json('/prompt', {
         method: 'POST',

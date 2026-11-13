@@ -7,7 +7,7 @@
 //   node scripts/chargen.js char <id> cand [--pose=p1] [--n=4 | --seeds=1,2]
 //   node scripts/chargen.js char <id> master --file=<候選檔名> [--pose=p1]
 //   node scripts/chargen.js char <id> box [--pose=p1] [--face=x,y,w,h] [--eyes=…] [--mouth=…]
-//   node scripts/chargen.js char <id> var --key=smile[,angry,smile.e1…] [--n=2] [--pose=p1] [--autopick（沒選的自動選第一張）]
+//   node scripts/chargen.js char <id> var --key=smile[,angry,smile.e1…] [--n=2] [--pose=p1] [--autopick（沒選的自動選第一張）] [--extra=加在指示後面的文字]
 //   node scripts/chargen.js char <id> pick --key=smile --file=<檔名> [--pose=p1]
 //   node scripts/chargen.js char <id> missing [--n=2] [--pose=p1]   產生所有還沒選的表情與影格
 //   node scripts/chargen.js char <id> publish
@@ -103,6 +103,7 @@ async function charCmd(a, comfy) {
       const names = await pipe.variant(card, pid, key, {
         n: a.n || 2,
         seeds: a.seeds ? nums(a.seeds) : null,
+        extra: a.extra || '',
       });
       if (a.autopick && !pose.ex[key].pick) pose.ex[key].pick = names[0];
       await save();

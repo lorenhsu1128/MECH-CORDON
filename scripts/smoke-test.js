@@ -15413,6 +15413,51 @@ async function testPortraits(browser, base) {
     cine.cols > 40 && cine.expr === 'smile',
     `過場的通訊分割：ECHO 的胸像與表情（${JSON.stringify(cine)}）`,
   );
+  // 插入畫面（第 5 期）：宿敵的登場（第一句宿敵自己的台詞、招牌表情）、設定關閉時不顯示
+  const cut = await page.evaluate(async () => {
+    const g = window.__game; // 不切到 'play'：沒有玩家機體時主迴圈會照任務中更新而讀到空的 player
+    g.ctrl.cutin = 'on';
+    g.ptCutInAce(
+      {
+        ace: 'stevedore',
+        lines: [
+          ['echo', '具名機甲「STEVEDORE」。'],
+          ['stevedore', '霍斯特老頭說你是自己人。自己人不打自己人。'],
+        ],
+      },
+      'segStart',
+    );
+    const el = document.getElementById('ptCut');
+    for (let i = 0; i < 60 && !(el && el.querySelector('canvas')); i++)
+      await new Promise((r) => setTimeout(r, 50));
+    await new Promise((r) => setTimeout(r, 400));
+    const cv = el && el.querySelector('canvas');
+    let ink = 0;
+    if (cv) {
+      const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+      for (let i = 3; i < d.length; i += 4) if (d[i] > 200) ink++;
+      ink /= d.length / 4;
+    }
+    const v = (g.ptViews || []).find((v) => v.wrap.closest('#ptCut'));
+    const r = {
+      name: el && el.querySelector('b').textContent,
+      line: el && el.querySelector('p').textContent,
+      ink: +ink.toFixed(2),
+      expr: v && v.P.expr,
+    };
+    g.ctrl.cutin = 'off';
+    r.off = g.ptCutIn('stevedore', { tag: 'x' });
+    g.ctrl.cutin = 'on';
+    return r;
+  });
+  check(
+    cut.name === 'STEVEDORE' &&
+      /自己人/.test(cut.line) &&
+      cut.ink > 0.3 &&
+      cut.expr === 'hearty' &&
+      cut.off === false,
+    `插入畫面：宿敵登場的胸像、名字、台詞、招牌表情；設定關閉時不顯示（${JSON.stringify(cut)}）`,
+  );
   await ctx.close();
 }
 
@@ -15917,9 +15962,10 @@ async function testBossPower(browser, base) {
     out.adds = adds.length - (n0 - 1);
     out.addAc = adds.some((e) => e.ai === 'ac' || e.isBoss);
     out.tempo2 = b.bossTempo();
-    g.updateLoops(); // 換型態的提示與橫幅（feedback.js）
+    g.updateLoops(); // 換型態的提示與橫幅（feedback.js；ECHO 有立繪時改成插入畫面 #ptCut）
     const tb = g.textfx && g.textfx.items.find((x) => x.cue === 'phase');
-    out.banner = tb ? tb.s.text : g.banner && g.banner.txt;
+    const cut = document.querySelector('#ptCut small');
+    out.banner = tb ? tb.s.text : (g.banner && g.banner.txt) || (cut && cut.textContent);
     out.shocks = (g.shocks || []).length;
     // 同一個型態不會再派一次
     g.bossPhaseTick(0.016);

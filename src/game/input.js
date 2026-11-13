@@ -964,6 +964,10 @@ Object.assign(Game.prototype, {
       this.ctrl.cine = e.target.value;
       this.saveKeys();
     };
+    document.getElementById('ctrlCutin').onchange = (e) => {
+      this.ctrl.cutin = e.target.value; // 插入畫面（game/portrait-ui.js 的 ptCutIn）
+      this.saveKeys();
+    };
     document.getElementById('ctrlVoice').onchange = (e) => {
       this.ctrl.voice = e.target.value; // ECHO 的聲音（game/voice.js）：gentle／ai／off
       this.voiceStop();

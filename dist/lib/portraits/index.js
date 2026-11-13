@@ -1,1 +1,1 @@
-window.MECH_CORDON_PORTRAIT_IDS=["aetheric","basalt","castron","echo","echo_true","instructor","mira","sancta","veerwell","wren"];
+window.MECH_CORDON_PORTRAIT_IDS=["aetheric","basalt","castron","countdown","echo","echo_true","iguazu","instructor","keel","kiln","marsh","mira","prospector","rust","sancta","sirocco","sluice","specimen","spire","stevedore","undertow","veerwell","volta","whiteout","wren","zenith"];
