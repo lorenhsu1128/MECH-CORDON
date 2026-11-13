@@ -1,5 +1,7 @@
 // 角色語音的台詞收集（docs/audio-design.md）：node scripts/voice-lines.js
-// 收集 → src/assets/voice/lines.json（{ 說話者: { 鍵: { t 台詞, k 情境 } } }），之後跑 scripts/voice-gen.py 產生語音檔。
+// 收集 → src/assets/voice/lines.json（{ 說話者: { 鍵: { t 台詞, k 情境, e 表情 } } }），之後跑 scripts/voice-gen.py 產生語音檔。
+// 表情（e）＝data/line-expr.js 的 lineExpr（和遊戲顯示立繪時相同；平常 neutral 不寫），voice-gen.py 依它加上語氣（語音 v2，
+// docs/cine-redesign-design.md）。
 // 情境決定產生時的語氣：sys 系統提示、alarm 緊急的系統提示、comm 通訊、story 劇情畫面、cine 過場動畫、
 // private 第 3 周目的私人頻道、end 結局與記憶片段、bark 敵兵的喊話（shout 大喊／low 壓低聲音）。
 //   1. data/story-comms.js 的通訊（[說話者, 台詞]）
@@ -68,11 +70,13 @@ function strLits(s) {
 async function main() {
   const { vkey, storyQuote, VOICE_CUES, cueKey, LINE_POOLS, CAST_IDS, CAST_NEW, BARKS } =
     await imp('data/voice.js');
+  const { lineExpr } = await imp('data/line-expr.js');
   const SPK = new Set(['echo', ...CAST_IDS, ...(CAST_NEW || [])]);
   const lines = {};
   const n = {};
   const PRIV = /R-07|私人頻道/;
-  const add = (sp, t, k, src) => {
+  // o＝lineExpr 的 { ev 通訊事件, cue 系統提示 }
+  const add = (sp, t, k, src, o = {}) => {
     if (!SPK.has(sp)) return;
     t = String(t).trim();
     // 沒有字的（「……」這種停頓）不唸
@@ -81,24 +85,27 @@ async function main() {
     if (sp === 'echo' && PRIV.test(t)) k = 'private';
     const L = (lines[sp] = lines[sp] || {});
     // 同一句出現在不同地方時，劇情的情境優先
-    if (!L[key] || L[key].k === 'comm') L[key] = { t, k };
+    if (!L[key] || L[key].k === 'comm') {
+      const e = lineExpr(t, { ...o, sp }).e;
+      L[key] = e && e !== 'neutral' ? { t, k, e } : { t, k };
+    }
     n[src] = (n[src] || 0) + 1;
   };
   // 1. 通訊（lines 的項目可以是 [說話者, 台詞] 或依抉擇的物件）
   const { COMMS } = await imp('data/story-comms.js');
-  const each = (L) => {
+  const each = (L, ev) => {
     if (Array.isArray(L) && L.length === 2 && typeof L[0] === 'string' && typeof L[1] === 'string')
-      add(L[0], L[1], 'comm', '通訊');
-    else if (Array.isArray(L)) L.forEach(each);
-    else if (L && typeof L === 'object') for (const k in L) each(L[k]);
+      add(L[0], L[1], 'comm', '通訊', { ev });
+    else if (Array.isArray(L)) L.forEach((x) => each(x, ev));
+    else if (L && typeof L === 'object') for (const k in L) each(L[k], ev);
   };
-  for (const c of COMMS) each(c.lines);
+  for (const c of COMMS) each(c.lines, c.event);
   // 2. 程式裡的 commSay('<說話者>', …)：呼叫裡的單引號字串都收（三元運算、陣列挑一句）
   walkFiles(SRC, (p) => {
     const s = fs.readFileSync(p, 'utf8');
     for (const m of s.matchAll(/commSay\(\s*'([a-z]+)'/g)) {
       const body = callBody(s, m.index + 'commSay'.length);
-      for (const q of strLits(body)) if (/[一-鿿]/.test(q)) add(m[1], q, 'comm', '程式');
+      for (const q of strLits(body)) if (/[一-鿿]/.test(q)) add(m[1], q, 'comm', '程式', { ev: 'live' });
     }
   });
   // 教官的「第 n 課，課名。開始。」（tutorial.js 的 tutStart，第 2 課起）
@@ -127,12 +134,17 @@ async function main() {
   // 4. 系統提示（優先度 3＝緊急）與敵兵的喊話
   lines.echo = lines.echo || {};
   for (const id in VOICE_CUES)
-    VOICE_CUES[id].t.forEach(
-      (t, i) => (lines.echo[cueKey(id, i)] = { t, k: VOICE_CUES[id].p >= 3 ? 'alarm' : 'sys' }),
-    );
+    VOICE_CUES[id].t.forEach((t, i) => {
+      const e = lineExpr(t, { cue: id }).e;
+      lines.echo[cueKey(id, i)] = {
+        t,
+        k: VOICE_CUES[id].p >= 3 ? 'alarm' : 'sys',
+        ...(e !== 'neutral' ? { e } : {}),
+      };
+    });
   // 程式裡輪流挑的台詞（LINE_POOLS，鍵＝vkey）
   for (const id in LINE_POOLS)
-    for (const t of LINE_POOLS[id].t) add(LINE_POOLS[id].sp, t, 'comm', '輪流的台詞');
+    for (const t of LINE_POOLS[id].t) add(LINE_POOLS[id].sp, t, 'comm', '輪流的台詞', { ev: 'live' });
   lines.grunt = {};
   for (const ev in BARKS)
     BARKS[ev].forEach((t, i) => (lines.grunt[`b_${ev}${i}`] = { t, k: ev === 'search' ? 'low' : 'shout' }));

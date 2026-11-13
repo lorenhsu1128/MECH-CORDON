@@ -1,0 +1,99 @@
+{
+ "castron": {
+  "p3_q3l": 11,
+  "p4_q3r": 22,
+  "p5_slam": 11,
+  "p6_point": 33,
+  "p7_back": 11,
+  "p8_watch": 22,
+  "p9_neck": 22,
+  "p10_laugh": 11
+ },
+ "aetheric": {
+  "p3_q3l": 11,
+  "p4_q3r": 11,
+  "p5_lean": 22,
+  "p6_note": 11,
+  "p7_chin": 11,
+  "p8_back": 11,
+  "p9_offer": 22,
+  "p10_glasses": "aetheric_r:11"
+ },
+ "veerwell": {
+  "p3_q3l": 22,
+  "p4_q3r": 11,
+  "p5_wink": 11,
+  "p6_tap": 11,
+  "p7_cold": 11,
+  "p8_relax": 11,
+  "p9_money": 22,
+  "p10_back": 11
+ },
+ "sancta": {
+  "p3_q3l": 22,
+  "p4_q3r": 11,
+  "p5_write": 11,
+  "p6_tags": 11,
+  "p7_wary": 11,
+  "p8_stop": 11,
+  "p9_smile": 22,
+  "p10_fist": 11
+ },
+ "mira": {
+  "p3_q3l": 11,
+  "p4_q3r": 11,
+  "p5_drop": 22,
+  "p6_shh": 11,
+  "p7_peek": 11,
+  "p8_glasses": 22,
+  "p9_bow": 22,
+  "p10_note": 22
+ },
+ "echo": {
+  "p3_q3l": "echo_r:22",
+  "p5_q3r": "echo_r:11",
+  "p6_cross": "echo_r:22",
+  "p7_listen": "echo_r:11",
+  "p8_hesitate": "echo_r:11",
+  "p9_puzzled": "echo_r:11",
+  "p10_reach": "echo_r:11"
+ },
+ "echo_true": {
+  "p4_q3l": 22,
+  "p5_q3r": 11,
+  "p6_behind": 22,
+  "p7_star": 11,
+  "p8_reach": 11,
+  "p9_down": 22
+ },
+ "instructor": {
+  "p3_q3l": 22,
+  "p4_q3r": 11,
+  "p5_shout": 22,
+  "p6_approve": 11,
+  "p7_tablet": 11,
+  "p8_back": 11,
+  "p9_glove": 22,
+  "p10_halt": 11
+ },
+ "basalt": {
+  "p3_q3l": 11,
+  "p4_q3r": 22,
+  "p5_sip": 11,
+  "p6_thumb": 22,
+  "p7_weary": 22,
+  "p8_hand": 22,
+  "p9_laugh": 22,
+  "p10_serious": 11
+ },
+ "wren": {
+  "p3_q3l": 11,
+  "p4_q3r": 11,
+  "p6_bear": 22,
+  "p5_salute": "wren_r:11",
+  "p7_cheer": "wren_r:11",
+  "p8_tear": "wren_r:22",
+  "p9_bow": "wren_r:11",
+  "p10_point": "wren_r:22"
+ }
+}

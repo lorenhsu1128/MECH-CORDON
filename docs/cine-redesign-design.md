@@ -429,3 +429,30 @@ YouTube 影片，720p，換鏡偵測後抽格，拼成縮圖表看。縮圖表�
 | 0:58–1:04 | 固定插畫             | 通訊切斷後的辦公室，霍斯特一個人摸著後頸，桌上一張舊的礦工合照。單色的暗橘                                | 沒有台詞，只有配樂（情緒的出口，暗示他知道些什麼）                                                                                                                                                                                                                                                                                                                  |
 | 1:04–1:24 | 3D 機甲              | 主角的機甲空降荒野 → BASTILLE 的砲擊預警 → 快速推進閃開 → 駕駛艙插入：ECHO 的全像 → 反白線稿的衝擊畫格    | ECHO：「目標在礦坑深處。照你的節奏來。」                                                                                                                                                                                                                                                                                                                            |
 | 1:24–1:28 | PV 式章名卡          | 赭紅與黑的色塊、BASTILLE 的剪影、大字                                                                     | 「CHAPTER 1　南部荒野」                                                                                                                                                                                                                                                                                                                                             |
+
+### 第 0.5 期：宿敵以外全部角色的立繪 v2 與語音 v2（進行中，2026-11-13 交接）
+
+**範圍與使用者的決定**：宿敵以外的角色（委託方 5 位 castron／aetheric／veerwell／sancta／mira、ECHO 兩個外觀 echo／echo_true、教官 instructor、僚機 basalt／wren）各做姿勢、表情、眨眼、對口型、拆層，再重做語音。外觀直接照現有的 p1 主圖（「你直接看之前產的圖，不用再確認」）；Claude 自己挑圖、一路做完。產圖（ComfyUI）與產語音不能同時跑；可以直接 taskkill；跑完測試要關掉無頭瀏覽器；ComfyUI 要定期重啟（記憶體會漲）；使用者要每 10 分鐘回報一次進度。
+
+**已完成**
+
+- **姿勢**：每位 p3～p10（ECHO 是 p3、p5～p10，它的 p4 是現有的管制台；echo_true 是 p4～p9，它的 p3 是坦白），從 p1 以 Qwen-Image-Edit 改（每個姿勢 2～3 個種子），p3／p4 都是 3/4 側（面向左／右）。選定的種子在 `tools/portrait-v2/picks.json`、臉／眼／嘴框在 `B.json`、姿勢名稱在 `names.json`，都已登記進各角色的 card.json（主圖是工作檔 `<姿勢>_cand_<種子>.webp`）。重畫過的：ECHO 全部（第一版臉上有圓圈的瑕疵，外觀描述加上 clean cheeks）、薩奇 p10 摘眼鏡（第一版眼鏡沒摘）、芮恩 p5／p7～p10（第一版描述寫成黑外套，**芮恩的外套以 p1 為準：白色外套＋黑兜帽與內裡**；設定卡 look 寫的「黑色連帽外套」和定稿 p1 不一致）、霍斯特 p6。
+- **表情、眨眼、嘴型**（`tools/portrait-v2/expr_run.mjs`，2026-11-13 07:12～19:04）：3/4 側的姿勢做全部表情＋每個表情的眨眼 e1／e2 與嘴型 m1～m3，其他姿勢只做平常（主圖本身的臉）的眨眼與嘴型；嘴巴本來就張開或被擋住的姿勢不做嘴型（`NO_MOUTH`：castron p5／p10、aetheric p5、veerwell p5／p6／p8、sancta p8、mira p5／p7、instructor p5、basalt p5／p9、wren p5／p7）。10 位共 1519 項全部選定（每項 1 張、自動選），逐項核對過沒有缺。抽查：大部分到位；近全側臉（霍斯特 p3）的表情在臉框邊緣有淡淡的重影；ECHO／芮恩眨眼的中間格有點淡；米拉 p4 慌張的眼鏡框有點雙線；**米拉 p4 等姿勢圖的頭髮外緣有灰色階梯狀的色塊（Qwen 改姿勢時就有）**，要在發佈去背後檢查，還在就清掉。
+- **工作檔進 git**：伺服器改版後候選與工作檔放 `tools/charwork/<角色>/`（新版伺服器啟動時把 `server-models/charwork/` 搬過去，已搬完）。
+- **語音的準備**（還沒產生）：`scripts/voice-lines.js` 以 `data/line-expr.js` 的 `lineExpr` 替每句台詞標上表情 `e`（neutral 不寫），`src/assets/voice/lines.json` 已重新產生（1434 句）；`scripts/voice-gen.py` 加了 `EXPR_STYLE`（表情 → 語氣指示），機械語音（station）與敵兵（grunt*）不加；日文版保留 `e`。**2026-11-13 遠端的 `data/line-expr.js` 加了 141 行（宿敵等），產語音前要先重跑 `node scripts/voice-lines.js`**。
+
+**未完成（照順序）**
+
+1. **拆層＋發佈**：8 位的 card 要 `layers: true`（echo／echo_true 已經是）再 `node scripts/chargen.js char <id> publish`（`tools/portrait-v2/publish_all.sh`）。basalt 已經打開 `layers`，發佈到 p1（60 張）時中斷，要從頭重發。**卡住的問題**：2026-11-13 19:08 起兩次發佈 basalt，都停在 See-through 的 `GenerateLayers`「Text encoded, text encoders offloaded to CPU」之後，顯示卡 100% 但功耗只有約 60 W、進度條不動、`/interrupt` 停不下來（文件記的正常速度是一個姿勢 1～2 分鐘）。這兩次的 ComfyUI 都是用 WMI（`Invoke-CimMethod Win32_Process Create`，為了不被 Claude Code 在記憶體緊時連帶停掉）開的，懷疑 WMI 開的程序拿到的是系統預設的環境變數，缺了 See-through 需要的東西（表情用的 Qwen／SDXL 在同樣的方式下都正常）；用一般方式（`npm run comfy`）開的那一次跑到同一步前就被中斷，還沒有結論。**先用 `npm run comfy` 正常開 ComfyUI 試一個姿勢**：能跑就是環境的問題（要背景執行就用 WMI 時帶上使用者的環境變數，或用其他方式），還是卡就查 See-through（模型快取、torch 版本、顯示卡驅動）。
+2. 發佈後檢查去背的輪廓（灰色色塊）、看幾張拆層的四層；必要時重做重影明顯的表情（`chargen.js char <id> var --pose= --key= --n=2` 再 `pick`）。
+3. `npm run build`（更新 `dist/lib/portraits/<id>.js`），看遊戲裡通訊框、簡報、全畫面劇情的截圖。
+4. **語音**（關掉 ComfyUI 之後才跑，conda 環境 `rubicon-voice`）：先 `node scripts/voice-lines.js`；只重做有 `e` 的台詞：`python scripts/voice-gen.py --voice <聲音> --only=<有 e 的鍵> --force`，聲音 gentle、ai、castron、aetheric、veerwell、sancta、mira、instructor、basalt、wren（宿敵與敵兵的語音要不要也照表情重做，還沒問使用者）；再加 `--lang ja` 跑一次日文。大笑偶爾拖太長：長度超過台詞字數估計的 1.6 倍就重抽。
+5. 收尾：更新這一節與 `docs/portrait-design.md`；`npm run lint`、`format:check`、`npm test`（跑完關掉無頭瀏覽器）；commit＋push（card、`tools/charwork`、`src/assets/characters`、語音、`dist`）。
+
+**這次學到的（換台電腦也適用）**
+
+- ComfyUI 做表情時記憶體大約 15～24 GB（Qwen 與 SDXL 兩個模型），會隨模型切換上下；`/free`（`{"unload_models":true,"free_memory":true}`）可以卸下模型，比整個重啟快。Windows 的 `FreePhysicalMemory` 不算待命快取，看可用記憶體要用 `\Memory\Available MBytes`。
+- Claude Code 在記憶體緊時會停掉它的背景工作連同整個程序樹；ComfyUI 若是從那裡面開的會一起被停，批次腳本又沒檢查就會把剩下的全部當成失敗跑過去。批次要檢查 ComfyUI 還在、失敗重試、連續失敗就停。
+- 等待其他程序結束不要用「命令列含某字串」比對（查詢自己的命令列也含那個字串，會永遠等）；停程序時同樣會比對到下指令的 shell 自己——比對字串寫在 .ps1 檔裡再執行。從 node 的 `execFileSync` 呼叫會開 ComfyUI 的腳本時，輸出不能接管線（新開的 ComfyUI 會繼承管線，`execFileSync` 一直等到 ComfyUI 關掉）。
+- 數新圖時不要 `find` 整個 `tools/comfyui/runtime`（含模型，一次 5 分多）。
+- 輔助腳本在 `tools/portrait-v2/`（README 有說明；腳本裡的路徑是原本那台電腦的暫存資料夾，要改）。

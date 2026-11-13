@@ -949,9 +949,1167 @@
           "pick": "p2_mourn_m3_1318664221.webp"
         }
       }
+    },
+    {
+      "id": "p3",
+      "name": "3/4 側（面向左）",
+      "prompt": "v2 姿勢（Qwen-Image-Edit 從 p1 改）：p3_q3l",
+      "refine": 0.25,
+      "cands": [
+        {
+          "file": "p3_cand_22.webp",
+          "seed": 22
+        }
+      ],
+      "master": "p3_cand_22.webp",
+      "seed": 22,
+      "boxes": {
+        "face": [
+          275,
+          140,
+          165,
+          190
+        ],
+        "eyes": [
+          280,
+          160,
+          115,
+          50
+        ],
+        "mouth": [
+          298,
+          262,
+          56,
+          32
+        ]
+      },
+      "ex": {
+        "smile": {
+          "cands": [
+            "p3_smile_245693002.webp"
+          ],
+          "pick": "p3_smile_245693002.webp"
+        },
+        "laugh": {
+          "cands": [
+            "p3_laugh_2065518856.webp"
+          ],
+          "pick": "p3_laugh_2065518856.webp"
+        },
+        "angry": {
+          "cands": [
+            "p3_angry_1032266640.webp"
+          ],
+          "pick": "p3_angry_1032266640.webp"
+        },
+        "surprised": {
+          "cands": [
+            "p3_surprised_526620083.webp"
+          ],
+          "pick": "p3_surprised_526620083.webp"
+        },
+        "sad": {
+          "cands": [
+            "p3_sad_784979480.webp"
+          ],
+          "pick": "p3_sad_784979480.webp"
+        },
+        "think": {
+          "cands": [
+            "p3_think_1607322076.webp"
+          ],
+          "pick": "p3_think_1607322076.webp"
+        },
+        "smug": {
+          "cands": [
+            "p3_smug_717662348.webp"
+          ],
+          "pick": "p3_smug_717662348.webp"
+        },
+        "wary": {
+          "cands": [
+            "p3_wary_146775836.webp"
+          ],
+          "pick": "p3_wary_146775836.webp"
+        },
+        "mourn": {
+          "cands": [
+            "p3_mourn_831644455.webp"
+          ],
+          "pick": "p3_mourn_831644455.webp"
+        },
+        "neutral.e1": {
+          "cands": [
+            "p3_neutral_e1_1118859767.webp"
+          ],
+          "pick": "p3_neutral_e1_1118859767.webp"
+        },
+        "neutral.e2": {
+          "cands": [
+            "p3_neutral_e2_965084565.webp"
+          ],
+          "pick": "p3_neutral_e2_965084565.webp"
+        },
+        "neutral.m1": {
+          "cands": [
+            "p3_neutral_m1_1981033242.webp"
+          ],
+          "pick": "p3_neutral_m1_1981033242.webp"
+        },
+        "neutral.m2": {
+          "cands": [
+            "p3_neutral_m2_2081431072.webp"
+          ],
+          "pick": "p3_neutral_m2_2081431072.webp"
+        },
+        "neutral.m3": {
+          "cands": [
+            "p3_neutral_m3_818542777.webp"
+          ],
+          "pick": "p3_neutral_m3_818542777.webp"
+        },
+        "smile.e1": {
+          "cands": [
+            "p3_smile_e1_1619459160.webp"
+          ],
+          "pick": "p3_smile_e1_1619459160.webp"
+        },
+        "smile.e2": {
+          "cands": [
+            "p3_smile_e2_229393595.webp"
+          ],
+          "pick": "p3_smile_e2_229393595.webp"
+        },
+        "smile.m1": {
+          "cands": [
+            "p3_smile_m1_1418661747.webp"
+          ],
+          "pick": "p3_smile_m1_1418661747.webp"
+        },
+        "smile.m2": {
+          "cands": [
+            "p3_smile_m2_974519494.webp"
+          ],
+          "pick": "p3_smile_m2_974519494.webp"
+        },
+        "smile.m3": {
+          "cands": [
+            "p3_smile_m3_1339088541.webp"
+          ],
+          "pick": "p3_smile_m3_1339088541.webp"
+        },
+        "laugh.e1": {
+          "cands": [
+            "p3_laugh_e1_2021466951.webp"
+          ],
+          "pick": "p3_laugh_e1_2021466951.webp"
+        },
+        "laugh.e2": {
+          "cands": [
+            "p3_laugh_e2_1060470289.webp"
+          ],
+          "pick": "p3_laugh_e2_1060470289.webp"
+        },
+        "laugh.m1": {
+          "cands": [
+            "p3_laugh_m1_1199206144.webp"
+          ],
+          "pick": "p3_laugh_m1_1199206144.webp"
+        },
+        "laugh.m2": {
+          "cands": [
+            "p3_laugh_m2_122192126.webp"
+          ],
+          "pick": "p3_laugh_m2_122192126.webp"
+        },
+        "laugh.m3": {
+          "cands": [
+            "p3_laugh_m3_1965169258.webp"
+          ],
+          "pick": "p3_laugh_m3_1965169258.webp"
+        },
+        "angry.e1": {
+          "cands": [
+            "p3_angry_e1_1290559318.webp"
+          ],
+          "pick": "p3_angry_e1_1290559318.webp"
+        },
+        "angry.e2": {
+          "cands": [
+            "p3_angry_e2_972295672.webp"
+          ],
+          "pick": "p3_angry_e2_972295672.webp"
+        },
+        "angry.m1": {
+          "cands": [
+            "p3_angry_m1_894514560.webp"
+          ],
+          "pick": "p3_angry_m1_894514560.webp"
+        },
+        "angry.m2": {
+          "cands": [
+            "p3_angry_m2_618060368.webp"
+          ],
+          "pick": "p3_angry_m2_618060368.webp"
+        },
+        "angry.m3": {
+          "cands": [
+            "p3_angry_m3_38339367.webp"
+          ],
+          "pick": "p3_angry_m3_38339367.webp"
+        },
+        "surprised.e1": {
+          "cands": [
+            "p3_surprised_e1_745071637.webp"
+          ],
+          "pick": "p3_surprised_e1_745071637.webp"
+        },
+        "surprised.e2": {
+          "cands": [
+            "p3_surprised_e2_1418427753.webp"
+          ],
+          "pick": "p3_surprised_e2_1418427753.webp"
+        },
+        "surprised.m1": {
+          "cands": [
+            "p3_surprised_m1_864110024.webp"
+          ],
+          "pick": "p3_surprised_m1_864110024.webp"
+        },
+        "surprised.m2": {
+          "cands": [
+            "p3_surprised_m2_1606107505.webp"
+          ],
+          "pick": "p3_surprised_m2_1606107505.webp"
+        },
+        "surprised.m3": {
+          "cands": [
+            "p3_surprised_m3_602887583.webp"
+          ],
+          "pick": "p3_surprised_m3_602887583.webp"
+        },
+        "sad.e1": {
+          "cands": [
+            "p3_sad_e1_2111151619.webp"
+          ],
+          "pick": "p3_sad_e1_2111151619.webp"
+        },
+        "sad.e2": {
+          "cands": [
+            "p3_sad_e2_1427317526.webp"
+          ],
+          "pick": "p3_sad_e2_1427317526.webp"
+        },
+        "sad.m1": {
+          "cands": [
+            "p3_sad_m1_1428278769.webp"
+          ],
+          "pick": "p3_sad_m1_1428278769.webp"
+        },
+        "sad.m2": {
+          "cands": [
+            "p3_sad_m2_883358064.webp"
+          ],
+          "pick": "p3_sad_m2_883358064.webp"
+        },
+        "sad.m3": {
+          "cands": [
+            "p3_sad_m3_1369161056.webp"
+          ],
+          "pick": "p3_sad_m3_1369161056.webp"
+        },
+        "think.e1": {
+          "cands": [
+            "p3_think_e1_272058090.webp"
+          ],
+          "pick": "p3_think_e1_272058090.webp"
+        },
+        "think.e2": {
+          "cands": [
+            "p3_think_e2_628583625.webp"
+          ],
+          "pick": "p3_think_e2_628583625.webp"
+        },
+        "think.m1": {
+          "cands": [
+            "p3_think_m1_281000011.webp"
+          ],
+          "pick": "p3_think_m1_281000011.webp"
+        },
+        "think.m2": {
+          "cands": [
+            "p3_think_m2_2082702007.webp"
+          ],
+          "pick": "p3_think_m2_2082702007.webp"
+        },
+        "think.m3": {
+          "cands": [
+            "p3_think_m3_972506442.webp"
+          ],
+          "pick": "p3_think_m3_972506442.webp"
+        },
+        "smug.e1": {
+          "cands": [
+            "p3_smug_e1_1860909398.webp"
+          ],
+          "pick": "p3_smug_e1_1860909398.webp"
+        },
+        "smug.e2": {
+          "cands": [
+            "p3_smug_e2_1731548768.webp"
+          ],
+          "pick": "p3_smug_e2_1731548768.webp"
+        },
+        "smug.m1": {
+          "cands": [
+            "p3_smug_m1_1180380319.webp"
+          ],
+          "pick": "p3_smug_m1_1180380319.webp"
+        },
+        "smug.m2": {
+          "cands": [
+            "p3_smug_m2_538066690.webp"
+          ],
+          "pick": "p3_smug_m2_538066690.webp"
+        },
+        "smug.m3": {
+          "cands": [
+            "p3_smug_m3_632137868.webp"
+          ],
+          "pick": "p3_smug_m3_632137868.webp"
+        },
+        "wary.e1": {
+          "cands": [
+            "p3_wary_e1_1619680478.webp"
+          ],
+          "pick": "p3_wary_e1_1619680478.webp"
+        },
+        "wary.e2": {
+          "cands": [
+            "p3_wary_e2_2035658104.webp"
+          ],
+          "pick": "p3_wary_e2_2035658104.webp"
+        },
+        "wary.m1": {
+          "cands": [
+            "p3_wary_m1_209853226.webp"
+          ],
+          "pick": "p3_wary_m1_209853226.webp"
+        },
+        "wary.m2": {
+          "cands": [
+            "p3_wary_m2_588291245.webp"
+          ],
+          "pick": "p3_wary_m2_588291245.webp"
+        },
+        "wary.m3": {
+          "cands": [
+            "p3_wary_m3_607560727.webp"
+          ],
+          "pick": "p3_wary_m3_607560727.webp"
+        },
+        "mourn.e1": {
+          "cands": [
+            "p3_mourn_e1_1641821748.webp"
+          ],
+          "pick": "p3_mourn_e1_1641821748.webp"
+        },
+        "mourn.e2": {
+          "cands": [
+            "p3_mourn_e2_386963819.webp"
+          ],
+          "pick": "p3_mourn_e2_386963819.webp"
+        },
+        "mourn.m1": {
+          "cands": [
+            "p3_mourn_m1_66398442.webp"
+          ],
+          "pick": "p3_mourn_m1_66398442.webp"
+        },
+        "mourn.m2": {
+          "cands": [
+            "p3_mourn_m2_2134318039.webp"
+          ],
+          "pick": "p3_mourn_m2_2134318039.webp"
+        },
+        "mourn.m3": {
+          "cands": [
+            "p3_mourn_m3_2062950924.webp"
+          ],
+          "pick": "p3_mourn_m3_2062950924.webp"
+        }
+      }
+    },
+    {
+      "id": "p4",
+      "name": "3/4 側（面向右）",
+      "prompt": "v2 姿勢（Qwen-Image-Edit 從 p1 改）：p4_q3r",
+      "refine": 0.25,
+      "cands": [
+        {
+          "file": "p4_cand_11.webp",
+          "seed": 11
+        }
+      ],
+      "master": "p4_cand_11.webp",
+      "seed": 11,
+      "boxes": {
+        "face": [
+          390,
+          140,
+          160,
+          195
+        ],
+        "eyes": [
+          420,
+          160,
+          120,
+          50
+        ],
+        "mouth": [
+          478,
+          265,
+          56,
+          32
+        ]
+      },
+      "ex": {
+        "smile": {
+          "cands": [
+            "p4_smile_580830108.webp"
+          ],
+          "pick": "p4_smile_580830108.webp"
+        },
+        "laugh": {
+          "cands": [
+            "p4_laugh_713966256.webp"
+          ],
+          "pick": "p4_laugh_713966256.webp"
+        },
+        "angry": {
+          "cands": [
+            "p4_angry_2081847069.webp"
+          ],
+          "pick": "p4_angry_2081847069.webp"
+        },
+        "surprised": {
+          "cands": [
+            "p4_surprised_2087425109.webp"
+          ],
+          "pick": "p4_surprised_2087425109.webp"
+        },
+        "sad": {
+          "cands": [
+            "p4_sad_922833774.webp"
+          ],
+          "pick": "p4_sad_922833774.webp"
+        },
+        "think": {
+          "cands": [
+            "p4_think_530600617.webp"
+          ],
+          "pick": "p4_think_530600617.webp"
+        },
+        "smug": {
+          "cands": [
+            "p4_smug_1566759915.webp"
+          ],
+          "pick": "p4_smug_1566759915.webp"
+        },
+        "wary": {
+          "cands": [
+            "p4_wary_1356383371.webp"
+          ],
+          "pick": "p4_wary_1356383371.webp"
+        },
+        "mourn": {
+          "cands": [
+            "p4_mourn_2115772720.webp"
+          ],
+          "pick": "p4_mourn_2115772720.webp"
+        },
+        "neutral.e1": {
+          "cands": [
+            "p4_neutral_e1_1683625365.webp"
+          ],
+          "pick": "p4_neutral_e1_1683625365.webp"
+        },
+        "neutral.e2": {
+          "cands": [
+            "p4_neutral_e2_788082793.webp"
+          ],
+          "pick": "p4_neutral_e2_788082793.webp"
+        },
+        "neutral.m1": {
+          "cands": [
+            "p4_neutral_m1_38707601.webp"
+          ],
+          "pick": "p4_neutral_m1_38707601.webp"
+        },
+        "neutral.m2": {
+          "cands": [
+            "p4_neutral_m2_2055017389.webp"
+          ],
+          "pick": "p4_neutral_m2_2055017389.webp"
+        },
+        "neutral.m3": {
+          "cands": [
+            "p4_neutral_m3_1259494935.webp"
+          ],
+          "pick": "p4_neutral_m3_1259494935.webp"
+        },
+        "smile.e1": {
+          "cands": [
+            "p4_smile_e1_1195104923.webp"
+          ],
+          "pick": "p4_smile_e1_1195104923.webp"
+        },
+        "smile.e2": {
+          "cands": [
+            "p4_smile_e2_2005609207.webp"
+          ],
+          "pick": "p4_smile_e2_2005609207.webp"
+        },
+        "smile.m1": {
+          "cands": [
+            "p4_smile_m1_2089792408.webp"
+          ],
+          "pick": "p4_smile_m1_2089792408.webp"
+        },
+        "smile.m2": {
+          "cands": [
+            "p4_smile_m2_1721411035.webp"
+          ],
+          "pick": "p4_smile_m2_1721411035.webp"
+        },
+        "smile.m3": {
+          "cands": [
+            "p4_smile_m3_780417385.webp"
+          ],
+          "pick": "p4_smile_m3_780417385.webp"
+        },
+        "laugh.e1": {
+          "cands": [
+            "p4_laugh_e1_1368458100.webp"
+          ],
+          "pick": "p4_laugh_e1_1368458100.webp"
+        },
+        "laugh.e2": {
+          "cands": [
+            "p4_laugh_e2_425026965.webp"
+          ],
+          "pick": "p4_laugh_e2_425026965.webp"
+        },
+        "laugh.m1": {
+          "cands": [
+            "p4_laugh_m1_1030848747.webp"
+          ],
+          "pick": "p4_laugh_m1_1030848747.webp"
+        },
+        "laugh.m2": {
+          "cands": [
+            "p4_laugh_m2_239532628.webp"
+          ],
+          "pick": "p4_laugh_m2_239532628.webp"
+        },
+        "laugh.m3": {
+          "cands": [
+            "p4_laugh_m3_1493121751.webp"
+          ],
+          "pick": "p4_laugh_m3_1493121751.webp"
+        },
+        "angry.e1": {
+          "cands": [
+            "p4_angry_e1_1325443635.webp"
+          ],
+          "pick": "p4_angry_e1_1325443635.webp"
+        },
+        "angry.e2": {
+          "cands": [
+            "p4_angry_e2_2056942223.webp"
+          ],
+          "pick": "p4_angry_e2_2056942223.webp"
+        },
+        "angry.m1": {
+          "cands": [
+            "p4_angry_m1_2011096802.webp"
+          ],
+          "pick": "p4_angry_m1_2011096802.webp"
+        },
+        "angry.m2": {
+          "cands": [
+            "p4_angry_m2_1690935507.webp"
+          ],
+          "pick": "p4_angry_m2_1690935507.webp"
+        },
+        "angry.m3": {
+          "cands": [
+            "p4_angry_m3_1954458574.webp"
+          ],
+          "pick": "p4_angry_m3_1954458574.webp"
+        },
+        "surprised.e1": {
+          "cands": [
+            "p4_surprised_e1_1564923547.webp"
+          ],
+          "pick": "p4_surprised_e1_1564923547.webp"
+        },
+        "surprised.e2": {
+          "cands": [
+            "p4_surprised_e2_868316469.webp"
+          ],
+          "pick": "p4_surprised_e2_868316469.webp"
+        },
+        "surprised.m1": {
+          "cands": [
+            "p4_surprised_m1_1899416255.webp"
+          ],
+          "pick": "p4_surprised_m1_1899416255.webp"
+        },
+        "surprised.m2": {
+          "cands": [
+            "p4_surprised_m2_1906181047.webp"
+          ],
+          "pick": "p4_surprised_m2_1906181047.webp"
+        },
+        "surprised.m3": {
+          "cands": [
+            "p4_surprised_m3_761421147.webp"
+          ],
+          "pick": "p4_surprised_m3_761421147.webp"
+        },
+        "sad.e1": {
+          "cands": [
+            "p4_sad_e1_1718735477.webp"
+          ],
+          "pick": "p4_sad_e1_1718735477.webp"
+        },
+        "sad.e2": {
+          "cands": [
+            "p4_sad_e2_276408758.webp"
+          ],
+          "pick": "p4_sad_e2_276408758.webp"
+        },
+        "sad.m1": {
+          "cands": [
+            "p4_sad_m1_15009005.webp"
+          ],
+          "pick": "p4_sad_m1_15009005.webp"
+        },
+        "sad.m2": {
+          "cands": [
+            "p4_sad_m2_1347422706.webp"
+          ],
+          "pick": "p4_sad_m2_1347422706.webp"
+        },
+        "sad.m3": {
+          "cands": [
+            "p4_sad_m3_1333591614.webp"
+          ],
+          "pick": "p4_sad_m3_1333591614.webp"
+        },
+        "think.e1": {
+          "cands": [
+            "p4_think_e1_292731932.webp"
+          ],
+          "pick": "p4_think_e1_292731932.webp"
+        },
+        "think.e2": {
+          "cands": [
+            "p4_think_e2_695852014.webp"
+          ],
+          "pick": "p4_think_e2_695852014.webp"
+        },
+        "think.m1": {
+          "cands": [
+            "p4_think_m1_51694966.webp"
+          ],
+          "pick": "p4_think_m1_51694966.webp"
+        },
+        "think.m2": {
+          "cands": [
+            "p4_think_m2_1522004449.webp"
+          ],
+          "pick": "p4_think_m2_1522004449.webp"
+        },
+        "think.m3": {
+          "cands": [
+            "p4_think_m3_1574129241.webp"
+          ],
+          "pick": "p4_think_m3_1574129241.webp"
+        },
+        "smug.e1": {
+          "cands": [
+            "p4_smug_e1_622886607.webp"
+          ],
+          "pick": "p4_smug_e1_622886607.webp"
+        },
+        "smug.e2": {
+          "cands": [
+            "p4_smug_e2_984427140.webp"
+          ],
+          "pick": "p4_smug_e2_984427140.webp"
+        },
+        "smug.m1": {
+          "cands": [
+            "p4_smug_m1_655032177.webp"
+          ],
+          "pick": "p4_smug_m1_655032177.webp"
+        },
+        "smug.m2": {
+          "cands": [
+            "p4_smug_m2_1183002038.webp"
+          ],
+          "pick": "p4_smug_m2_1183002038.webp"
+        },
+        "smug.m3": {
+          "cands": [
+            "p4_smug_m3_1150947658.webp"
+          ],
+          "pick": "p4_smug_m3_1150947658.webp"
+        },
+        "wary.e1": {
+          "cands": [
+            "p4_wary_e1_637663855.webp"
+          ],
+          "pick": "p4_wary_e1_637663855.webp"
+        },
+        "wary.e2": {
+          "cands": [
+            "p4_wary_e2_1098319886.webp"
+          ],
+          "pick": "p4_wary_e2_1098319886.webp"
+        },
+        "wary.m1": {
+          "cands": [
+            "p4_wary_m1_1488852351.webp"
+          ],
+          "pick": "p4_wary_m1_1488852351.webp"
+        },
+        "wary.m2": {
+          "cands": [
+            "p4_wary_m2_542023283.webp"
+          ],
+          "pick": "p4_wary_m2_542023283.webp"
+        },
+        "wary.m3": {
+          "cands": [
+            "p4_wary_m3_431653058.webp"
+          ],
+          "pick": "p4_wary_m3_431653058.webp"
+        },
+        "mourn.e1": {
+          "cands": [
+            "p4_mourn_e1_177273190.webp"
+          ],
+          "pick": "p4_mourn_e1_177273190.webp"
+        },
+        "mourn.e2": {
+          "cands": [
+            "p4_mourn_e2_1104880604.webp"
+          ],
+          "pick": "p4_mourn_e2_1104880604.webp"
+        },
+        "mourn.m1": {
+          "cands": [
+            "p4_mourn_m1_1525888953.webp"
+          ],
+          "pick": "p4_mourn_m1_1525888953.webp"
+        },
+        "mourn.m2": {
+          "cands": [
+            "p4_mourn_m2_1972885469.webp"
+          ],
+          "pick": "p4_mourn_m2_1972885469.webp"
+        },
+        "mourn.m3": {
+          "cands": [
+            "p4_mourn_m3_2124906403.webp"
+          ],
+          "pick": "p4_mourn_m3_2124906403.webp"
+        }
+      }
+    },
+    {
+      "id": "p5",
+      "name": "低頭寫名字",
+      "prompt": "v2 姿勢（Qwen-Image-Edit 從 p1 改）：p5_write",
+      "refine": 0.25,
+      "cands": [
+        {
+          "file": "p5_cand_11.webp",
+          "seed": 11
+        }
+      ],
+      "master": "p5_cand_11.webp",
+      "seed": 11,
+      "boxes": {
+        "face": [
+          320,
+          185,
+          220,
+          190
+        ],
+        "eyes": [
+          370,
+          200,
+          180,
+          62
+        ],
+        "mouth": [
+          408,
+          312,
+          62,
+          34
+        ]
+      },
+      "ex": {
+        "neutral.e1": {
+          "cands": [
+            "p5_neutral_e1_19530429.webp"
+          ],
+          "pick": "p5_neutral_e1_19530429.webp"
+        },
+        "neutral.e2": {
+          "cands": [
+            "p5_neutral_e2_1064012751.webp"
+          ],
+          "pick": "p5_neutral_e2_1064012751.webp"
+        },
+        "neutral.m1": {
+          "cands": [
+            "p5_neutral_m1_344424789.webp"
+          ],
+          "pick": "p5_neutral_m1_344424789.webp"
+        },
+        "neutral.m2": {
+          "cands": [
+            "p5_neutral_m2_1858541450.webp"
+          ],
+          "pick": "p5_neutral_m2_1858541450.webp"
+        },
+        "neutral.m3": {
+          "cands": [
+            "p5_neutral_m3_43945969.webp"
+          ],
+          "pick": "p5_neutral_m3_43945969.webp"
+        }
+      }
+    },
+    {
+      "id": "p6",
+      "name": "握著名牌哀悼",
+      "prompt": "v2 姿勢（Qwen-Image-Edit 從 p1 改）：p6_tags",
+      "refine": 0.25,
+      "cands": [
+        {
+          "file": "p6_cand_11.webp",
+          "seed": 11
+        }
+      ],
+      "master": "p6_cand_11.webp",
+      "seed": 11,
+      "boxes": {
+        "face": [
+          340,
+          195,
+          210,
+          185
+        ],
+        "eyes": [
+          370,
+          210,
+          185,
+          60
+        ],
+        "mouth": [
+          415,
+          305,
+          62,
+          32
+        ]
+      },
+      "ex": {
+        "neutral.e1": {
+          "cands": [
+            "p6_neutral_e1_253396221.webp"
+          ],
+          "pick": "p6_neutral_e1_253396221.webp"
+        },
+        "neutral.e2": {
+          "cands": [
+            "p6_neutral_e2_656720081.webp"
+          ],
+          "pick": "p6_neutral_e2_656720081.webp"
+        },
+        "neutral.m1": {
+          "cands": [
+            "p6_neutral_m1_534600303.webp"
+          ],
+          "pick": "p6_neutral_m1_534600303.webp"
+        },
+        "neutral.m2": {
+          "cands": [
+            "p6_neutral_m2_463307590.webp"
+          ],
+          "pick": "p6_neutral_m2_463307590.webp"
+        },
+        "neutral.m3": {
+          "cands": [
+            "p6_neutral_m3_744752976.webp"
+          ],
+          "pick": "p6_neutral_m3_744752976.webp"
+        }
+      }
+    },
+    {
+      "id": "p7",
+      "name": "抱胸戒備",
+      "prompt": "v2 姿勢（Qwen-Image-Edit 從 p1 改）：p7_wary",
+      "refine": 0.25,
+      "cands": [
+        {
+          "file": "p7_cand_11.webp",
+          "seed": 11
+        }
+      ],
+      "master": "p7_cand_11.webp",
+      "seed": 11,
+      "boxes": {
+        "face": [
+          300,
+          150,
+          220,
+          190
+        ],
+        "eyes": [
+          320,
+          165,
+          185,
+          60
+        ],
+        "mouth": [
+          365,
+          270,
+          64,
+          32
+        ]
+      },
+      "ex": {
+        "neutral.e1": {
+          "cands": [
+            "p7_neutral_e1_718190317.webp"
+          ],
+          "pick": "p7_neutral_e1_718190317.webp"
+        },
+        "neutral.e2": {
+          "cands": [
+            "p7_neutral_e2_590814409.webp"
+          ],
+          "pick": "p7_neutral_e2_590814409.webp"
+        },
+        "neutral.m1": {
+          "cands": [
+            "p7_neutral_m1_1865897677.webp"
+          ],
+          "pick": "p7_neutral_m1_1865897677.webp"
+        },
+        "neutral.m2": {
+          "cands": [
+            "p7_neutral_m2_783004101.webp"
+          ],
+          "pick": "p7_neutral_m2_783004101.webp"
+        },
+        "neutral.m3": {
+          "cands": [
+            "p7_neutral_m3_2023081842.webp"
+          ],
+          "pick": "p7_neutral_m3_2023081842.webp"
+        }
+      }
+    },
+    {
+      "id": "p8",
+      "name": "伸手制止",
+      "prompt": "v2 姿勢（Qwen-Image-Edit 從 p1 改）：p8_stop",
+      "refine": 0.25,
+      "cands": [
+        {
+          "file": "p8_cand_11.webp",
+          "seed": 11
+        }
+      ],
+      "master": "p8_cand_11.webp",
+      "seed": 11,
+      "boxes": {
+        "face": [
+          295,
+          145,
+          215,
+          190
+        ],
+        "eyes": [
+          315,
+          163,
+          185,
+          60
+        ],
+        "mouth": [
+          365,
+          255,
+          64,
+          42
+        ]
+      },
+      "ex": {
+        "neutral.e1": {
+          "cands": [
+            "p8_neutral_e1_1677930839.webp"
+          ],
+          "pick": "p8_neutral_e1_1677930839.webp"
+        },
+        "neutral.e2": {
+          "cands": [
+            "p8_neutral_e2_1183167666.webp"
+          ],
+          "pick": "p8_neutral_e2_1183167666.webp"
+        }
+      }
+    },
+    {
+      "id": "p9",
+      "name": "疲倦的微笑",
+      "prompt": "v2 姿勢（Qwen-Image-Edit 從 p1 改）：p9_smile",
+      "refine": 0.25,
+      "cands": [
+        {
+          "file": "p9_cand_22.webp",
+          "seed": 22
+        }
+      ],
+      "master": "p9_cand_22.webp",
+      "seed": 22,
+      "boxes": {
+        "face": [
+          290,
+          145,
+          215,
+          190
+        ],
+        "eyes": [
+          310,
+          165,
+          185,
+          55
+        ],
+        "mouth": [
+          335,
+          240,
+          105,
+          38
+        ]
+      },
+      "ex": {
+        "neutral.e1": {
+          "cands": [
+            "p9_neutral_e1_1693827386.webp"
+          ],
+          "pick": "p9_neutral_e1_1693827386.webp"
+        },
+        "neutral.e2": {
+          "cands": [
+            "p9_neutral_e2_1276908654.webp"
+          ],
+          "pick": "p9_neutral_e2_1276908654.webp"
+        },
+        "neutral.m1": {
+          "cands": [
+            "p9_neutral_m1_532929134.webp"
+          ],
+          "pick": "p9_neutral_m1_532929134.webp"
+        },
+        "neutral.m2": {
+          "cands": [
+            "p9_neutral_m2_431389844.webp"
+          ],
+          "pick": "p9_neutral_m2_431389844.webp"
+        },
+        "neutral.m3": {
+          "cands": [
+            "p9_neutral_m3_2075630587.webp"
+          ],
+          "pick": "p9_neutral_m3_2075630587.webp"
+        }
+      }
+    },
+    {
+      "id": "p10",
+      "name": "握拳",
+      "prompt": "v2 姿勢（Qwen-Image-Edit 從 p1 改）：p10_fist",
+      "refine": 0.25,
+      "cands": [
+        {
+          "file": "p10_cand_11.webp",
+          "seed": 11
+        }
+      ],
+      "master": "p10_cand_11.webp",
+      "seed": 11,
+      "boxes": {
+        "face": [
+          290,
+          145,
+          215,
+          190
+        ],
+        "eyes": [
+          310,
+          163,
+          185,
+          55
+        ],
+        "mouth": [
+          358,
+          262,
+          76,
+          36
+        ]
+      },
+      "ex": {
+        "neutral.e1": {
+          "cands": [
+            "p10_neutral_e1_2117763388.webp"
+          ],
+          "pick": "p10_neutral_e1_2117763388.webp"
+        },
+        "neutral.e2": {
+          "cands": [
+            "p10_neutral_e2_1388477897.webp"
+          ],
+          "pick": "p10_neutral_e2_1388477897.webp"
+        },
+        "neutral.m1": {
+          "cands": [
+            "p10_neutral_m1_1028205347.webp"
+          ],
+          "pick": "p10_neutral_m1_1028205347.webp"
+        },
+        "neutral.m2": {
+          "cands": [
+            "p10_neutral_m2_1487346286.webp"
+          ],
+          "pick": "p10_neutral_m2_1487346286.webp"
+        },
+        "neutral.m3": {
+          "cands": [
+            "p10_neutral_m3_1863315733.webp"
+          ],
+          "pick": "p10_neutral_m3_1863315733.webp"
+        }
+      }
     }
   ],
-  "t": 1794452915759,
+  "t": 1794541327966,
   "pub": {
     "t": 1794452891774,
     "poses": [

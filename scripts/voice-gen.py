@@ -111,6 +111,40 @@ STYLE = {
     'shout': '大聲喊叫、急促',
     'low': '警戒、壓低聲音',
 }
+# 表情 → 語氣指示（語音 v2：docs/cine-redesign-design.md，2026-11-12 使用者定案照表情的語氣）。表情是 lines.json 的 e
+# （voice-lines.js 以 data/line-expr.js 的 lineExpr 標上；平常 neutral 沒有 e、不加）；角色的招牌表情也在這裡
+EXPR_STYLE = {
+    'smile': '帶著笑意、輕鬆',
+    'laugh': '放聲大笑著說',
+    'angry': '憤怒、咬牙切齒',
+    'surprised': '吃驚、急促、提高音量',
+    'sad': '沉重、低聲、說得很慢',
+    'think': '思考中、慢慢說、停頓',
+    'smug': '得意、帶點不屑',
+    'scorn': '不屑、冷笑',
+    'guilt': '心虛、低聲、斷斷續續、不敢直說',
+    'scheme': '壓低聲音、得意、帶著算計的笑',
+    'intrigued': '感興趣、語調上揚、著迷',
+    'clinical': '冷靜、平板、像在念觀察紀錄',
+    'wink': '俏皮、輕快',
+    'cold': '冰冷、沒有感情、語速放慢',
+    'wary': '戒備、不信任、語氣冷淡',
+    'mourn': '哀傷、低聲、說得很慢',
+    'nervous': '緊張、聲音發抖、小聲',
+    'panic': '慌張、急促、聲音發抖',
+    'wry': '淡淡的乾笑、冷幽默',
+    'glitch': '斷斷續續、平板',
+    'focus': '專注、簡潔、冷靜',
+    'tender': '溫柔、輕聲、帶著感情',
+    'hesitate': '猶豫、欲言又止、說得很慢',
+    'puzzled': '困惑、語調上揚',
+    'shout': '大聲喝令',
+    'approve': '平靜、帶一點認可',
+    'easy': '從容、悠閒',
+    'weary': '疲倦、嘆氣',
+    'resolve': '堅定、有力',
+}
+
 # 全大寫的英文字照字母唸（AP、AC…）；4 個字母以上的是名字（ECHO、OXIDE、SIROCCO…），改成一般的大小寫讓它照單字唸
 SPELL = {'COAM', 'EMP', 'ACS', 'QB'}
 WORDS = {'KEY': 'Key'}
@@ -152,6 +186,10 @@ def style_of(v, line):
     st = STYLE.get(line['k'], '')
     if st:
         parts.append(st)
+    # 機械語音與敵兵不加表情的語氣
+    ex = EXPR_STYLE.get(line.get('e', ''), '') if v != 'station' and not v.startswith('grunt') else ''
+    if ex:
+        parts.append(ex)
     if '！' in line['t'] and line['k'] not in ('alarm', 'private', 'shout'):
         parts.append('語氣有力')
     return '、'.join(parts)
@@ -431,7 +469,7 @@ def main():
             for k in list(L):
                 t = ja.get(sp, {}).get(k)
                 if t:
-                    L[k] = {'t': t, 'k': L[k]['k']}
+                    L[k] = {**L[k], 't': t}
                 else:
                     del L[k]
                     miss += 1
