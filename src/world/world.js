@@ -2366,8 +2366,26 @@ export class World {
     const tc = this.terrainHeight(x, z);
     if (y > tc + 0.5) return y;
     g.updateMatrixWorld(true);
-    const b = _decorBox.setFromObject(g);
+    let b = _decorBox.setFromObject(g);
     if (b.isEmpty()) return y;
+    // 長而矮的（卡車、貨櫃、護欄、貨物艙…）順著坡度傾斜，最多約 20°；高的（塔、燈桿）不傾斜
+    const bw = b.max.x - b.min.x,
+      bd = b.max.z - b.min.z,
+      bh = b.max.y - b.min.y;
+    if (Math.max(bw, bd) > 6 && bh < Math.max(bw, bd) * 0.5) {
+      const cx = (b.min.x + b.max.x) / 2,
+        cz = (b.min.z + b.max.z) / 2,
+        ax = bw * 0.42,
+        az = bd * 0.42;
+      const sx = (this.terrainHeight(cx + ax, cz) - this.terrainHeight(cx - ax, cz)) / (2 * ax),
+        sz = (this.terrainHeight(cx, cz + az) - this.terrainHeight(cx, cz - az)) / (2 * az);
+      const q = new THREE.Quaternion().setFromEuler(
+        new THREE.Euler(-Math.atan(clamp(sz, -0.36, 0.36)), 0, Math.atan(clamp(sx, -0.36, 0.36))),
+      );
+      g.quaternion.premultiply(q);
+      g.updateMatrixWorld(true);
+      b = _decorBox.setFromObject(g);
+    }
     const lo = this.footMin(
       (b.min.x + b.max.x) / 2,
       (b.min.z + b.max.z) / 2,
