@@ -31451,7 +31451,9 @@ const LIB_FILE = () => 'file:///' + LIBRARY.split(path.sep).join('/');
 // 伺服器啟動時自動匯入伺服器預設組的內建來源（dist/server-default/，server.js 的 seedDefaults）
 async function testServerSeed() {
   console.log('伺服器預設組的自動匯入：第一次匯入、刪掉不補回、來源更新與移除');
-  const src = path.join(ROOT, 'dist', 'server-default');
+  // 2026-11-13 起地圖物件先改用程式模型（GLB 搬到 src/assets/server-default-off/）：內建來源沒有 GLB 時用那一份測
+  let src = path.join(ROOT, 'dist', 'server-default');
+  if (!fs.existsSync(path.join(src, 'prop'))) src = path.join(ROOT, 'src', 'assets', 'server-default-off');
   if (!fs.existsSync(src)) return check(false, '找不到 dist/server-default');
   const base = path.join(WORK_DIR, 'seed-test');
   const seed = path.join(base, 'seed'),
