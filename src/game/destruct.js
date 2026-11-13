@@ -943,6 +943,11 @@ Object.assign(Game.prototype, {
       piv.attach(grp);
       riders.push(r);
     }
+    // 已經掉下來、落在這片甲板上、還在淡出的甲板（交叉的兩座橋：上面那座先掉在下面這座上）：跟著一起掉
+    // （以前留在半空直到淡出完；2026-11-13）
+    for (const q of w.props || [])
+      if (q !== b && q.body && q.landed && !q.gone && q.piv && q.piv.parent === this.scene && onTop(q.shape))
+        piv.attach(q.piv);
     const tilt = (b.idx % 2 ? 1 : -1) * Math.min(0.05, 1.2 / Math.max(1, W, D));
     const place = (f) => {
       piv.position.y = bb.min.y - drop * f;
