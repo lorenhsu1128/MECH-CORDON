@@ -60,12 +60,8 @@ const sideK = (k) => (k === 'l' ? 1 : -1); // 機體轉了 180°：右手在世�
 Object.assign(Game.prototype, {
   // 依機甲庫的場合決定場景（campGarageUi 的 mode）
   hangarKind() {
-    const mp = !!(this.net && this.net.role);
-    const inG = !!((this.camp && this.camp.inGarage) || (this.campC && this.campC.inGarage));
-    if (mp) return 'multi';
-    if (inG) return 'field';
-    if (this.fromHub) return 'ship';
-    return 'base';
+    const m = this.garageMode(); // nav.js
+    return m === 'mp' ? 'multi' : m === 'trans' ? 'field' : m === 'hub' ? 'ship' : 'base';
   },
   hangarFx() {
     const v = this.ctrl && this.ctrl.hangarFx;

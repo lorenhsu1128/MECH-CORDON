@@ -29,8 +29,7 @@ Object.assign(Game.prototype, {
       if (f) this.lvImportFile(f);
     };
     $('btnLvGarage').onclick = () => {
-      this.fromLevels = true;
-      this.fromHub = false;
+      this.navSet('garage', 'levels'); // 返回關卡選單（nav.js）
       this.openGarage();
     };
     for (const b of document.querySelectorAll('#levels [data-lt]'))

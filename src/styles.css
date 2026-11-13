@@ -8515,18 +8515,26 @@ body[data-uifx='full'] .zBackdrop span:first-child {
   font-size: 24px;
   padding: 19px 28px;
 }
-#title .tTools {
-  margin-top: 20px;
-  background: rgba(0, 0, 0, 0.55);
-  border: 2px solid var(--line);
-  border-radius: 16px;
-  padding: 10px 12px 12px;
+/* 工具與其他（標題的面板，docs/nav-design.md）：同操作說明，置中的面板 */
+#titleTools {
+  display: none;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(620px, 94vw);
+  max-height: 90%;
+  overflow: auto;
+  z-index: 5;
 }
-#title .tTools h4 {
-  margin: 0 0 8px 4px;
-  font: 900 12px/1 var(--fz);
-  color: var(--dim);
-  letter-spacing: 0.1em;
+#titleTools.on {
+  display: block;
+}
+body[data-uifx='full'] #titleTools.on {
+  animation: zPop 0.26s cubic-bezier(0.2, 1.3, 0.4, 1);
+}
+#titleTools .row {
+  margin-top: 14px;
 }
 #title .tToolBtns {
   display: flex;
@@ -8589,19 +8597,12 @@ body.touchDev #title .touchHelp {
     font-size: 15px;
     padding: 8px 18px;
   }
-  #title .tTools {
-    margin-top: 10px;
-    padding: 6px 8px 8px;
-  }
   #title .tToolBtns {
     gap: 5px;
   }
   #title .tToolBtns button {
     font-size: 11px;
     padding: 4px 10px;
-  }
-  #title .tTools h4 {
-    display: none;
   }
 }
 @media (max-height: 540px) {
@@ -10534,13 +10535,6 @@ body[data-uifx='full'] #garage .slot.sel .gThumb::before {
   #title .tMain #btnStory {
     font-size: 19px;
     padding: 13px 22px;
-  }
-  #title .tTools {
-    margin-top: 12px;
-    padding: 7px 10px 9px;
-  }
-  #title .tTools h4 {
-    margin-bottom: 6px;
   }
   #title .tToolBtns {
     gap: 6px;

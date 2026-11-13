@@ -74,7 +74,7 @@ const greenNums = (t) => escHtml(t).replace(/([+−-]?\d+(?:\.\d+)?(?:%| 秒)?)/
 Object.assign(Game.prototype, {
   openPilot() {
     this.pilotMode = this.pilotCtxMode();
-    document.getElementById('btnPilotBack').textContent = this.pilotFromHub ? '返回作戰室' : '返回機甲庫';
+    document.getElementById('btnPilotBack').textContent = this.navLabel('pilot'); // nav.js
     this.pilotBindUi();
     this.showScreen('pilot');
     this.pSel = this.pSel || 'g_dmg';
@@ -83,10 +83,7 @@ Object.assign(Game.prototype, {
   },
   closePilot() {
     this.pilotHoldStop();
-    if (this.pilotFromHub) {
-      this.pilotFromHub = false;
-      return this.openHub(); // 從主線機庫開的
-    }
+    if (this.navOf('pilot').to === 'hub') return this.openHub(); // 從作戰室開的（nav.js）
     this.showScreen('garage');
     this.renderGarage();
   },

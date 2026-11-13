@@ -556,6 +556,10 @@ Object.assign(Game.prototype, {
     if (this.settingsFrom === 'pause') {
       this.state = 'pause';
       this.showScreen('pause');
+    } else if (this.settingsFrom === 'hub') {
+      this.openHub(); // 作戰室的返回路徑照舊（nav.js）
+    } else if (this.settingsFrom === 'garage') {
+      this.openGarage(); // 機甲庫的場合與返回路徑照舊（nav.js）
     } else {
       this.state = 'title';
       this.showScreen('title');

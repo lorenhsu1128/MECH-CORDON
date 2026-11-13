@@ -99,9 +99,7 @@ Object.assign(Game.prototype, {
   garageOpsUi() {
     const el = document.getElementById('gOps');
     if (!el) return;
-    const mp = !!(this.net && this.net.role);
-    const inG = !!(this.camp && this.camp.inGarage);
-    const show = !mp && !inG && !this.fromHub && !this.fromLevels;
+    const show = this.garageMode() === 'free'; // nav.js
     el.style.display = show ? '' : 'none';
     // 機甲庫設定頁的地圖選單照舊（＝「戰鬥（依等級）」的地圖，作戰設定裡也能選）
     if (!show) return;

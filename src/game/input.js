@@ -734,6 +734,11 @@ Object.assign(Game.prototype, {
       document.getElementById('titleHelp').classList.add('on');
     document.getElementById('btnTitleHelpClose').onclick = () =>
       document.getElementById('titleHelp').classList.remove('on');
+    // 工具與其他（docs/nav-design.md）：面板裡的按鈕照舊各自開啟；開了別的畫面再回標題時面板收起
+    document.getElementById('btnTitleTools').onclick = () =>
+      document.getElementById('titleTools').classList.add('on');
+    document.getElementById('btnTitleToolsClose').onclick = () =>
+      document.getElementById('titleTools').classList.remove('on');
     document.getElementById('btnSettings').onclick = () => {
       SFX.init();
       this.openSettings('title');
@@ -1234,10 +1239,16 @@ Object.assign(Game.prototype, {
         });
     };
     // 主線任務模式（game/campaign.js）
-    $('btnCamp').onclick = () => this.state === 'garage' && this.openHub();
+    // 自由出擊的機甲庫 →「前往作戰室」：作戰室的返回改成回機甲庫（nav.js）
+    $('btnCamp').onclick = () => {
+      if (this.state !== 'garage') return;
+      this.navSet('hub', 'freeGarage');
+      this.openHub();
+    };
     $('btnStory').onclick = () => {
       SFX.init();
       this.useSlot(this.saveSlot);
+      this.navSet('hub', 'title');
       this.openHub();
     };
     // 機庫據點與簡報（game/hub.js）
@@ -1245,7 +1256,7 @@ Object.assign(Game.prototype, {
     $('btnHubDrop').onclick = () => this.campDrop();
     $('btnHubGarage').onclick = () => this.hubGarage();
     $('btnHubPilot').onclick = () => {
-      this.pilotFromHub = true;
+      this.navSet('pilot', 'hub');
       this.openPilot();
     };
     $('btnHubLog').onclick = () => this.hubLog(true);
@@ -1291,11 +1302,16 @@ Object.assign(Game.prototype, {
       const card = b && b.closest('[data-slot]');
       if (card) this.hubSaveAct(card.dataset.slot === 'bk' ? 'bk' : Number(card.dataset.slot), b.dataset.act);
     };
-    $('btnHubBack').onclick = () => {
-      // 作戰室的「回標題」（自由出擊從標題進機甲庫，兩邊不再互相繞）
+    // 作戰室的返回：照進來的地方（標題或自由出擊的機甲庫；nav.js）
+    $('btnHubBack').onclick = () => this.navGo('hub');
+    // 作戰室與機甲庫的「設定」：關掉時回到原本的畫面（settings.js 的 closeSettings）
+    $('btnHubSettings').onclick = () => {
       SFX.ui();
-      this.state = 'title';
-      this.showScreen('title');
+      this.openSettings('hub');
+    };
+    $('btnGarageSettings').onclick = () => {
+      SFX.ui();
+      this.openSettings('garage');
     };
     $('btnBriefGo').onclick = () => this.briefGo();
     $('btnBriefGarage').onclick = () => this.hubGarage(this.briefSid);
@@ -1347,21 +1363,8 @@ Object.assign(Game.prototype, {
       this.randomAsm();
       this.renderGarage();
     };
-    $('btnToTitle').onclick = () => {
-      if (this.fromHub) {
-        // 從簡報進來的：回到同一份簡報（作戰室的場景照常建立，openHub 先播還沒看過的劇情時不接簡報）
-        const b = this.garageBrief;
-        this.openHub();
-        if (b && this.state === 'hub') this.openBrief(b);
-        return;
-      }
-      if (this.fromLevels) {
-        this.fromLevels = false;
-        return this.openLevels();
-      }
-      this.state = 'title';
-      this.showScreen('title');
-    };
+    // 機甲庫的返回：照進來的地方（nav.js：標題、作戰室、簡報、關卡選單、轉場畫面、失敗畫面）
+    $('btnToTitle').onclick = () => this.navGo('garage');
     $('btnResultOk').onclick = () => {
       // 自訂關卡：回關卡選單（多人回大廳）
       if (this.lvResultBack) {
@@ -1380,6 +1383,14 @@ Object.assign(Game.prototype, {
       }
       if (this.campResultHub) {
         this.campResultHub = false;
+        // 模擬戰、作戰紀錄的重打：回到那個設施的清單（作戰室的場景照常建立）
+        const rn = this.resultNav;
+        this.resultNav = null;
+        if (rn === 'sim' || rn === 'record') {
+          this.openHub();
+          if (this.state === 'hub') rn === 'sim' ? this.openSim() : this.openRecord();
+          return;
+        }
         // 整章完成：先播章末（game/story.js）
         if (this.storyOutro) {
           const ch = this.storyOutro;
@@ -1389,7 +1400,7 @@ Object.assign(Game.prototype, {
         return this.openHub();
       }
       if (this.net && this.net.role) this.mpBackToLobby();
-      else this.openGarage();
+      else this.openFreeGarage(); // 自由出擊的結果（nav.js：機甲庫的返回＝標題）
     };
     $('btnResume').onclick = () => {
       if (this.net && this.net.role && this.state === 'play') {

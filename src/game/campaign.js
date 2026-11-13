@@ -1203,6 +1203,8 @@ Object.assign(Game.prototype, {
     if (this.campIsClient()) return this.campClientGarage();
     if (!this.camp) return;
     SFX.ui();
+    // 返回：回到轉場畫面或失敗／撤退畫面，不出擊（nav.js）
+    this.navSet('garage', this.state === 'campfail' ? 'campfail' : 'camptrans');
     this.camp.inGarage = true;
     this.openGarage();
   },
@@ -1213,11 +1215,12 @@ Object.assign(Game.prototype, {
     const $ = (id) => document.getElementById(id);
     const box = $('gCamp');
     if (!box) return;
-    const mp = !!(this.net && this.net.role);
-    const inG = !!((this.camp && this.camp.inGarage) || (this.campC && this.campC.inGarage));
-    const hub = !!(!mp && !inG && this.fromHub); // classList.toggle 的第二個參數是 undefined 時會變成切換
-    const lvg = !!(!mp && !inG && !hub && this.fromLevels); // 從自訂關卡選單來的整備
-    const mode = mp ? 'mp' : inG ? 'trans' : hub ? 'hub' : lvg ? 'lv' : 'free';
+    // 場合與返回鍵照返回路徑（nav.js 的 garageMode／navLabel）
+    const mode = this.garageMode();
+    // 轉場整備（多人時場合是 mp，但整備面板照樣要顯示：客機的 campC.inGarage 也算）
+    const inG = !!((this.camp && this.camp.inGarage) || (this.campC && this.campC.inGarage)),
+      hub = mode === 'hub',
+      lvg = mode === 'lv';
     const ctx = $('gCtx');
     if (ctx) {
       const free = !!(this.camp && this.camp.free);
@@ -1231,26 +1234,22 @@ Object.assign(Game.prototype, {
       ctx.className = 'gCtx ' + mode;
     }
     $('btnCamp').style.display = mode === 'free' ? '' : 'none';
-    $('btnToTitle').textContent = hub
-      ? this.garageBrief
-        ? '返回簡報'
-        : '返回作戰室'
-      : lvg
-        ? '返回關卡選單'
-        : '回標題';
-    $('btnToTitle').classList.toggle('primary', hub || lvg);
-    // 返回作戰室／關卡選單是這時的主要按鈕：放到右下（docs/garage-ui.md），其他時候是底部列的小按鈕
     const tt = $('btnToTitle');
+    tt.textContent = this.navLabel('garage');
+    tt.classList.toggle('primary', hub || lvg);
+    // 返回作戰室／簡報／關卡選單是這時的主要按鈕：放到右下（docs/garage-ui.md），其他時候是底部列的小按鈕
     const ttBox = document.querySelector(hub || lvg ? '#gActions .gMain' : '#gActions .gSub');
     if (ttBox && tt.parentElement !== ttBox) ttBox.appendChild(tt);
     if (inG || hub || lvg) $('btnSortie').style.display = 'none';
-    if (inG) $('btnToTitle').style.display = 'none';
+    // 轉場整備：單人可以返回轉場畫面（不出擊）；多人（含客機）照舊只有「繼續作戰」
+    if (inG) tt.style.display = mode === 'mp' || this.campMp() || this.campIsClient() ? 'none' : '';
     $('gMap').style.display = inG || hub || lvg ? 'none' : ''; // 主線的地圖由出擊決定
     if (hub) {
       $('mcTitle').textContent = '主線整備';
-      $('mcDesc').textContent = this.garageBrief
-        ? '在這裡組裝與換裝。完成後按「返回簡報」，回到剛才的委託出擊。'
-        : '在這裡組裝與換裝。完成後按「返回作戰室」，從戰區總覽圖選委託出擊。';
+      $('mcDesc').textContent =
+        this.navOf('garage').to === 'brief'
+          ? '在這裡組裝與換裝。完成後按「返回簡報」，回到剛才的委託出擊。'
+          : '在這裡組裝與換裝。完成後按「返回作戰室」，從戰區總覽圖選委託出擊。';
     }
     box.style.display = inG ? '' : 'none';
     // 轉場整備面板比作戰卡高：右翼的部位格依它縮小（styles.css 的 --wingRes）
@@ -1570,7 +1569,16 @@ Object.assign(Game.prototype, {
     $('resultGrid').innerHTML = rows
       .map((r) => `<span class="dim">${escHtml(r[0])}</span><span>${escHtml(r[1])}</span>`)
       .join('');
-    $('btnResultOk').textContent = mp ? '返回大廳' : free ? '返回機甲庫' : '返回作戰室';
+    // 作戰紀錄的重打：結果之後回作戰紀錄的清單（input.js 的 btnResultOk）
+    const rec = !mp && !free && c.replay;
+    this.resultNav = rec ? 'record' : null;
+    $('btnResultOk').textContent = mp
+      ? '返回大廳'
+      : free
+        ? '返回機甲庫'
+        : rec
+          ? '返回作戰紀錄'
+          : '返回作戰室';
     this.showScreen('result');
     if (mp) {
       // 多人：經驗依每位玩家、作戰完成報酬各自入帳（clientEnd）

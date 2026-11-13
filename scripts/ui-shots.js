@@ -20,6 +20,10 @@ const show = (id) => async (page) => {
 // 每個畫面：怎麼打開（page 已在標題畫面）
 const SHOTS = {
   title: async () => {},
+  // 標題的「工具與其他」面板（docs/nav-design.md）
+  'title-tools': async (page) => {
+    await page.click('#btnTitleTools');
+  },
   settings: async (page) => {
     await page.click('#btnSettings');
   },

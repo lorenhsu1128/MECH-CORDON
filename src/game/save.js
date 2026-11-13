@@ -182,7 +182,7 @@ Object.assign(Game.prototype, {
   },
   renderSaves() {
     const ask = this.saveAsk;
-    const html = SLOTS.map((i) => {
+    let html = SLOTS.map((i) => {
       const s = this.readSlot(i);
       const cur = i === this.saveSlot ? ' cur' : '';
       const head = `<div class="saveHead"><b>存檔 ${i}</b>${i === this.saveSlot ? '<span class="dim">（目前）</span>' : ''}</div>`;
@@ -198,12 +198,21 @@ Object.assign(Game.prototype, {
       if (!s)
         return `<div class="saveCard empty${cur}" data-slot="${i}">${head}<p class="dim">（空）</p><div class="row">
           <button class="primary" data-act="new">新的傭兵生涯</button><button data-act="imp">匯入</button></div></div>`;
-      const info = this.saveInfo(s);
-      return `<div class="saveCard${cur}" data-slot="${i}">${head}<p>${info.map(escHtml).join(' ｜ ')}</p>
-        <p class="dim" style="font-size: 12px">最後遊玩 ${escHtml(fmtTime(s.t))}</p><div class="row">
-        <button class="primary" data-act="cont">繼續</button><button data-act="exp">匯出</button
-        ><button data-act="imp">匯入</button><button data-act="del">刪除</button></div></div>`;
+      // 摘要同作戰室的存檔終端（slotSummary）；入口：主線（作戰室）、自由出擊（機甲庫）
+      const info = this.slotSummary(s)
+        .map((t) => `<p>${escHtml(t)}</p>`)
+        .join('');
+      return `<div class="saveCard${cur}" data-slot="${i}">${head}${info}<div class="row">
+        <button class="primary" data-act="story">主線</button><button data-act="cont">自由出擊</button
+        ><button data-act="exp">匯出</button><button data-act="imp">匯入</button><button data-act="del">刪除</button></div></div>`;
     }).join('');
+    // 抉擇前備份（同作戰室的存檔終端）：每個存檔最近一份
+    for (const i of SLOTS) {
+      const bk = this.readBackup(i);
+      if (!bk) continue;
+      const so = SORTIES[bk.sid];
+      html += `<div class="saveCard bk" data-slot="bk${i}"><div class="saveHead"><b>抉擇前備份</b><span class="dim">（存檔 ${i}）</span></div><p>接下「${escHtml(so ? so.name : bk.sid)}」之前的進度</p><p class="dim" style="font-size: 12px">${escHtml(fmtTime(bk.t))}</p><div class="row"><button data-act="bk">讀回</button></div></div>`;
+    }
     document.getElementById('saveSlots').innerHTML = html;
   },
   saveAction(i, act) {
@@ -211,13 +220,38 @@ Object.assign(Game.prototype, {
     const ask = this.saveAsk;
     if (act === 'cont') {
       this.useSlot(i);
-      return this.openGarage();
+      return this.openFreeGarage(); // nav.js：返回標題
+    }
+    if (act === 'story') {
+      this.useSlot(i);
+      this.navSet('hub', 'title');
+      return this.openHub();
+    }
+    // 抉擇前備份的讀回（i＝存檔編號）：讀回到那個存檔、改用它
+    if (act === 'bk') {
+      const bk = this.readBackup(i);
+      if (!bk) return;
+      const so = SORTIES[bk.sid];
+      return this.uiConfirm(
+        `讀回接下「${so ? so.name : bk.sid}」之前的備份（${fmtTime(bk.t)}）？存檔 ${i} 目前的進度會被它取代。`,
+        () => {
+          try {
+            localStorage.setItem(slotKey(i), JSON.stringify(bk.save));
+          } catch (e) {
+            return this.savesMsg('寫入失敗（瀏覽器儲存空間不足或被停用）', true);
+          }
+          this.useSlot(i);
+          this.savesMsg(`已讀回存檔 ${i} 的抉擇前備份`);
+          this.renderSaves();
+        },
+        '讀回',
+      );
     }
     if (act === 'new') {
       this.useSlot(i);
       this.save = this.newSave();
       this.writeSave();
-      return this.openGarage();
+      return this.openFreeGarage();
     }
     if (act === 'exp') return this.exportSave(i);
     if (act === 'imp') {
@@ -352,8 +386,12 @@ Object.assign(Game.prototype, {
         so = ck && SORTIES[ck.sid];
       if (so) out.push(`出擊中：${so.name}（區段 ${ck.seg + 1}／${so.segs.length}）`);
     }
+    const L = s.level || 1;
     out.push(
-      `SP ${s.coam.toLocaleString()} ｜ 駕駛員 Lv${levelOf(s.pilot.pve.xp)} ｜ 最後遊玩 ${fmtTime(s.t)}`,
+      `自由出擊：任務 ${String(L).padStart(2, '0')}${isBossLevel(L) ? '（決戰）' : ''} ｜ 擊破 ${s.kills || 0}${s.bosses ? `（魔王 ${s.bosses}）` : ''}`,
+    );
+    out.push(
+      `SP ${s.coam.toLocaleString()} ｜ 駕駛員 PvE Lv${levelOf(s.pilot.pve.xp)}／PvP Lv${levelOf(s.pilot.pvp.xp)} ｜ 最後遊玩 ${fmtTime(s.t)}`,
     );
     return out;
   },
@@ -491,12 +529,12 @@ Object.assign(Game.prototype, {
     $('btnContinue').onclick = () => {
       SFX.init();
       this.useSlot(this.saveSlot);
-      this.openGarage();
+      this.openFreeGarage(); // nav.js：返回標題
     };
     $('saveSlots').onclick = (e) => {
       const b = e.target.closest('button[data-act]');
       const card = b && b.closest('[data-slot]');
-      if (card) this.saveAction(Number(card.dataset.slot), b.dataset.act);
+      if (card) this.saveAction(Number(String(card.dataset.slot).replace('bk', '')), b.dataset.act); // 備份卡片：bk<編號>
     };
     $('saveImportFile').onchange = (e) => this.importFile(e.target.files[0]);
     $('btnSavesBack').onclick = () => {

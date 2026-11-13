@@ -163,6 +163,14 @@ const visible = (page, id) =>
     return !!el && getComputedStyle(el).display !== 'none' && el.offsetParent !== null;
   }, id);
 
+// 標題的「工具與其他」面板裡的按鈕（docs/nav-design.md）：先打開面板再點
+async function titleTool(page, sel, tap = false) {
+  await page.evaluate(() => document.getElementById('titleTools')?.classList.add('on'));
+  const r = await (tap ? page.tap(sel) : page.click(sel));
+  // 點完收起面板（「重新載入本地模型」這類不離開標題的，面板不會擋住之後要點的按鈕）
+  await page.evaluate(() => document.getElementById('titleTools')?.classList.remove('on'));
+  return r;
+}
 async function waitVisible(page, id, ms = 10000) {
   const t0 = Date.now();
   while (Date.now() - t0 < ms) {
@@ -342,7 +350,7 @@ async function testPaint(browser) {
   watch(game, 'paint-title');
   await game.goto('file:///' + HTML.replace(/\\/g, '/'));
   await waitVisible(game, 'title');
-  const [tool] = await Promise.all([game.waitForEvent('popup'), game.click('#btnPaint')]);
+  const [tool] = await Promise.all([game.waitForEvent('popup'), titleTool(game, '#btnPaint')]);
   watch(tool, 'paint-tool');
   check(
     await tool
@@ -356,7 +364,7 @@ async function testPaint(browser) {
   check(await tool.isHidden('#libGroup'), '不是從模型庫開啟時不顯示「存回模型庫」');
   await tool.close();
   // 標題「模型庫」開新分頁 →「回遊戲」關掉模型庫分頁，遊戲仍在標題
-  const [lib] = await Promise.all([game.waitForEvent('popup'), game.click('#btnLibrary')]);
+  const [lib] = await Promise.all([game.waitForEvent('popup'), titleTool(game, '#btnLibrary')]);
   watch(lib, 'library-back');
   await lib.waitForSelector('.cell');
   await Promise.all([lib.waitForEvent('close', { timeout: 5000 }).catch(() => {}), lib.click('#btnBack')]);
@@ -532,7 +540,7 @@ async function testStyleThemes(browser, part = 1, parts = 1) {
   await seededRandom(page);
   await page.goto('file:///' + HTML.replace(/\\/g, '/') + '?test');
   await waitVisible(page, 'title');
-  await page.click('#btnStyleLab');
+  await titleTool(page, '#btnStyleLab');
   await waitVisible(page, 'labPanel', 15000);
   // 固定的地形種子與鏡頭、暫停模擬，每次量到的畫面相同。換戰區之前就先暫停：以前戰區建好之後才暫停，
   // 中間兩隊已經打了幾格（依實際時間），停在畫面上的爆炸、雷射與砲口閃光讓過曝的比例在 0～40% 之間跳動；
@@ -835,8 +843,8 @@ async function testHangar(browser) {
   // 依場合換場景（運輸艦、野戰、多人）
   const kinds = [];
   for (const [k, setup] of [
-    ['ship', 'g.fromHub = true'],
-    ['field', 'g.fromHub = false; g.hangarKind = () => "field"'],
+    ['ship', 'g.navSet("garage", "hub")'],
+    ['field', 'g.navSet("garage", "title"); g.hangarKind = () => "field"'],
     ['multi', 'g.hangarKind = () => "multi"'],
   ]) {
     const r = await page.evaluate(
@@ -985,7 +993,7 @@ async function testLabDemo(browser) {
   page.on('dialog', (d) => d.accept());
   await page.goto('file:///' + HTML.replace(/\\/g, '/') + '?test');
   await waitVisible(page, 'title');
-  await page.click('#btnStyleLab');
+  await titleTool(page, '#btnStyleLab');
   check(await waitVisible(page, 'labPanel', 15000), '開啟實驗室');
   await wait(1500);
   await page.click('#labDemoBtn');
@@ -1138,7 +1146,7 @@ async function testMapView(browser) {
         .map((k) => [k, localStorage.getItem(k)]),
     ),
   );
-  await page.click('#btnMapView');
+  await titleTool(page, '#btnMapView');
   const ready = () =>
     page.waitForFunction(
       () => {
@@ -1486,7 +1494,7 @@ async function testMapView(browser) {
   watch(tp, 'map-view-phone');
   await tp.goto('file:///' + HTML.replace(/\\/g, '/') + '?test');
   await waitVisible(tp, 'title');
-  await tp.tap('#btnMapView');
+  await titleTool(tp, '#btnMapView', true);
   await tp.waitForFunction(
     () => window.__game.mapv && window.__game.world && !window.__game.mapv.busy,
     null,
@@ -1523,7 +1531,7 @@ async function testStyleLab(browser) {
   const save0 = await page.evaluate(() =>
     localStorage.getItem('mech_cordon_save_' + (localStorage.getItem('mech_cordon_save_cur') || 1)),
   );
-  await page.click('#btnStyleLab');
+  await titleTool(page, '#btnStyleLab');
   check(await waitVisible(page, 'labPanel', 15000), '標題「渲染風格」開啟實驗室面板');
   await wait(2500);
   const st = await page.evaluate(() => {
@@ -4474,7 +4482,7 @@ async function testLocalModels(browser, base) {
   const { ctx, page } = await newPage(browser, 'local-models');
   await page.goto(base);
   check(await waitVisible(page, 'title'), '標題畫面顯示');
-  await page.click('#btnLmReload');
+  await titleTool(page, '#btnLmReload');
   // 結果在讀完伺服器預設組之後才出現（不是固定時間），等到它出現
   await page
     .waitForFunction(() => /沒有開啟/.test(document.getElementById('lmLoad').textContent), null, {
@@ -4584,7 +4592,7 @@ async function testLocalModels(browser, base) {
   await page.click('#btnSettingsBack');
   await waitVisible(page, 'title');
   // 標題畫面的重新載入：顯示進度與結果
-  await page.click('#btnLmReload');
+  await titleTool(page, '#btnLmReload');
   await wait(400);
   const ov = await lmOverlay(page);
   check(ov.includes('套用 GLB 12 個'), `重新載入本地模型顯示結果（${ov.slice(0, 60)}）`);
@@ -10499,7 +10507,7 @@ async function testChapter1(browser, base) {
     .catch(() => false);
   check(simClear && (await waitVisible(page, 'result', 3000)), '模擬戰清除後顯示結果');
   await page.click('#btnResultOk');
-  check(await waitVisible(page, 'hub'), '模擬戰結果返回機庫');
+  check(await waitVisible(page, 'simMenu'), '模擬戰結果返回模擬器（docs/nav-design.md）');
   // 教官考核：通過解鎖零件
   const ins = await page.evaluate(async () => {
     const g = window.__game;
@@ -14566,6 +14574,180 @@ async function testHubSave(browser, base) {
 }
 
 // 機甲庫的換裝介面（docs/garage-ui.md）：雙翼的部位格、零件格子與小卡片、標註線、六角圖與量表、零件縮圖、規格頁、設定頁、手把的 Y
+// 進出各功能的返回路徑（docs/nav-design.md）：機甲庫依進來的地方顯示場合與返回鍵、返回回到來的地方；作戰室從標題或
+// 自由出擊的機甲庫進來；簡報的整備回到簡報；轉場整備與撤退後的整備可以返回；作戰室與機甲庫的設定；模擬戰回模擬器；
+// 標題的「工具與其他」；存檔畫面的摘要與主線入口
+async function testNavFlow(browser, base) {
+  console.log('返回路徑：機甲庫、作戰室、簡報、轉場整備、設定、模擬器、標題的工具、存檔畫面');
+  const { ctx, page } = await newPage(browser, 'nav-flow');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await page.evaluate(() => {
+    const g = window.__game;
+    g.ctrl.hangarFx = 'off';
+    g.ctrl.cine = 'off';
+    g.save.coam = 9e6;
+    const st = g.campStory();
+    st.done = { c1s1: 1, c1s2: 1 };
+    st.storySeen = Object.assign(st.storySeen || {}, { p1: 1, i1_1: 1, i1_2: 1 });
+    g.storyTest = false;
+    g.autoPickMod = true;
+    g.writeSave();
+    g.renderContinue();
+  });
+  const snap = () =>
+    page.evaluate(() => {
+      const g = window.__game;
+      const $ = (id) => document.getElementById(id);
+      const vis = (id) =>
+        !!$(id) && $(id).offsetParent !== null && getComputedStyle($(id)).display !== 'none';
+      return {
+        st: g.state,
+        ctx: $('gCtx') ? $('gCtx').textContent : '',
+        back: vis('btnToTitle') ? $('btnToTitle').textContent : '',
+        sortie: vis('btnSortie'),
+        hubBack: $('btnHubBack').querySelector('.hdT').textContent,
+      };
+    });
+  const click = async (id, ms = 400) => {
+    await page.evaluate((id) => document.getElementById(id).click(), id);
+    await wait(ms);
+  };
+  const waitPlay = () =>
+    page.waitForFunction(
+      () => {
+        const g = window.__game;
+        return g.state === 'play' && !g.warmBusy && g.warmWorld === g.world;
+      },
+      null,
+      { timeout: 90000 },
+    );
+  // 自由出擊 ⇄ 作戰室
+  await click('btnContinue');
+  let s = await snap();
+  check(
+    s.st === 'garage' && s.ctx === '自由出擊' && s.back === '返回標題' && s.sortie,
+    `標題→自由出擊的機甲庫（${s.ctx}／${s.back}）`,
+  );
+  await click('btnCamp');
+  s = await snap();
+  check(s.st === 'hub' && s.hubBack === '返回機甲庫', `機甲庫→作戰室：返回鍵是「${s.hubBack}」`);
+  await click('btnHubGarage');
+  s = await snap();
+  check(
+    s.ctx === '主線整備' && s.back === '返回作戰室' && !s.sortie,
+    `作戰室→機甲庫：主線整備、${s.back}、沒有出擊`,
+  );
+  await click('btnToTitle');
+  await click('btnHubBack');
+  s = await snap();
+  check(
+    s.st === 'garage' && s.ctx === '自由出擊' && s.back === '返回標題',
+    '作戰室「返回機甲庫」回到自由出擊的機甲庫（返回鍵又是返回標題）',
+  );
+  await click('btnToTitle');
+  await click('btnStory');
+  s = await snap();
+  check(s.st === 'hub' && s.hubBack === '返回標題', '標題→主線：作戰室的返回鍵是「返回標題」');
+  // 駕駛員與設定：回到開啟的地方
+  await click('btnHubPilot');
+  const pb = await page.textContent('#btnPilotBack');
+  await click('btnPilotBack');
+  s = await snap();
+  check(pb === '返回作戰室' && s.st === 'hub', '作戰室→駕駛員→返回作戰室');
+  await click('btnHubSettings');
+  const set1 = await snap();
+  await click('btnSettingsBack');
+  s = await snap();
+  check(set1.st === 'settings' && s.st === 'hub', '作戰室→設定→回到作戰室');
+  await click('btnHubGarage');
+  await click('btnPilot');
+  const pb2 = await page.textContent('#btnPilotBack');
+  await click('btnPilotBack');
+  await click('btnGarageSettings');
+  await click('btnSettingsBack');
+  s = await snap();
+  check(
+    pb2 === '返回機甲庫' && s.st === 'garage' && s.ctx === '主線整備' && s.back === '返回作戰室',
+    '機甲庫→駕駛員／設定→回到同一個場合的機甲庫',
+  );
+  check(
+    (await page.textContent('#gTabs [data-tab="set"]')).trim() === '機體設定',
+    '機甲庫的分頁叫「機體設定」（遊戲設定是底部的「設定」）',
+  );
+  // 簡報的整備
+  await click('btnToTitle');
+  await page.evaluate(() => window.__game.openBrief('c2s1'));
+  await wait(400);
+  await click('btnBriefGarage');
+  s = await snap();
+  check(s.back === '返回簡報', `簡報→機甲庫：${s.back}`);
+  await click('btnToTitle');
+  s = await snap();
+  check(s.st === 'brief', '「返回簡報」回到同一份簡報');
+  // 轉場整備：返回轉場畫面；撤退後的整備：返回撤退畫面
+  await click('btnBriefGo');
+  await click('btnCampGarage');
+  s = await snap();
+  check(s.ctx === '主線・轉場整備' && s.back === '返回轉場畫面', `轉場→整備：${s.ctx}／${s.back}`);
+  await click('btnToTitle');
+  s = await snap();
+  const ctb = await page.evaluate(() => getComputedStyle(document.getElementById('ctBtns')).visibility);
+  check(
+    s.st === 'camptrans' && ctb === 'visible',
+    '轉場整備「返回轉場畫面」：回到轉場畫面、按鈕直接顯示（不出擊）',
+  );
+  await click('btnCampGo');
+  await waitPlay();
+  await click('btnAbort');
+  await click('btnCampFailGarage');
+  s = await snap();
+  check(s.back === '返回', '撤退→整備：有返回鍵');
+  await click('btnToTitle');
+  s = await snap();
+  check(s.st === 'campfail', '撤退後的整備「返回」：回到撤退畫面');
+  await click('btnCampQuit');
+  await page.evaluate(() => document.querySelector('#uiModal button.primary')?.click());
+  await wait(500);
+  await click('btnResultOk');
+  // 模擬戰：結果之後回模擬器
+  await page.evaluate(() => {
+    const g = window.__game;
+    g.openSim();
+    g.simStart('instructor');
+  });
+  await waitPlay();
+  await click('btnAbort', 800);
+  const rok = await page.textContent('#btnResultOk');
+  await click('btnResultOk');
+  s = await snap();
+  check(rok === '返回模擬器' && s.st === 'sim', `模擬戰結束：「${rok}」回到模擬器`);
+  // 標題的工具與其他
+  await click('btnSimBack');
+  await click('btnHubBack');
+  const tool0 = await visible(page, 'btnLibrary');
+  await click('btnTitleTools');
+  const tool1 = await visible(page, 'btnLibrary');
+  await click('btnTitleToolsClose');
+  check(
+    !tool0 && tool1 && (await visible(page, 'btnFullscreen')),
+    '標題：工具收進「工具與其他」面板、全螢幕留在主選單',
+  );
+  // 存檔畫面：同存檔終端的摘要、主線與自由出擊的入口
+  await click('btnSaves');
+  const card = await page.textContent('#saveSlots [data-slot="1"]');
+  check(
+    /第 2 章/.test(card) && /自由出擊：任務/.test(card) && /SP 9,000,000/.test(card),
+    '存檔畫面的摘要（主線章節、自由出擊、SP）',
+  );
+  await click('btnSaves');
+  await page.evaluate(() => document.querySelector('#saveSlots [data-slot="1"] [data-act="story"]').click());
+  await wait(500);
+  s = await snap();
+  check(s.st === 'hub' && s.hubBack === '返回標題', '存檔畫面「主線」進作戰室（返回鍵是返回標題）');
+  await ctx.close();
+}
+
 async function testGarageUi(browser, base) {
   console.log('機甲庫的換裝介面：雙翼、零件格子、小卡片、標註線、六角圖、量表、零件縮圖、規格頁、設定頁');
   const { ctx, page } = await newPage(browser, 'garage-ui');
@@ -15141,7 +15323,7 @@ async function testVoiceLab(browser, base) {
   const { ctx, page } = await newPage(browser, 'voicelab');
   await page.goto(base + '?test');
   await waitVisible(page, 'title');
-  await page.click('#btnVoiceLab');
+  await titleTool(page, '#btnVoiceLab');
   await waitVisible(page, 'voiceLab');
   await page.waitForFunction(() => document.querySelectorAll('.vlCand').length > 0, null, { timeout: 30000 });
   const r = await page.evaluate(async () => {
@@ -15467,7 +15649,7 @@ async function testBgmLab(browser, base) {
   const { ctx, page } = await newPage(browser, 'bgmlab');
   await page.goto(base + '?test');
   await waitVisible(page, 'title');
-  await page.click('#btnBgmLab');
+  await titleTool(page, '#btnBgmLab');
   await waitVisible(page, 'bgmLab');
   await page.waitForFunction(() => document.querySelectorAll('.blRow').length > 0, null, { timeout: 60000 });
   const r = await page.evaluate(async () => {
@@ -22496,7 +22678,7 @@ async function testCine(browser, base) {
     g.showScreen('title');
   });
   // 過場動畫劇場：標題按鈕、依周目與抉擇的清單、選前演出改在代替的地圖上播、暫停、下一鏡、返回清單
-  await page.click('#btnCineLib');
+  await titleTool(page, '#btnCineLib');
   const lib = await page.evaluate(() => {
     const g = window.__game;
     return { st: g.state, n: g.clibItems.length, ks: g.clibItems.map((i) => i.k) };
@@ -31312,7 +31494,7 @@ async function testCharagen(game, page) {
     (await page.$eval('#btnCharagen', (b) => b.style.display)) === '',
     '從伺服器開啟時標題畫面有「角色產生器」按鈕',
   );
-  const [cg] = await Promise.all([page.waitForEvent('popup'), page.click('#btnCharagen')]);
+  const [cg] = await Promise.all([page.waitForEvent('popup'), titleTool(page, '#btnCharagen')]);
   watch(cg, 'charagen');
   await cg.waitForSelector('#roster button', { timeout: 15000 }).catch(() => {});
   const n = await cg.$$eval('#roster button', (b) => b.length);
@@ -31398,7 +31580,7 @@ async function testServerBasics(browser, game) {
   const lib = await fetch(game.url + 'models');
   check(lib.ok && (await lib.text()).includes('模型庫'), '/models 提供模型庫頁面');
   await waitVisible(page, 'title');
-  const [popup] = await Promise.all([page.waitForEvent('popup'), page.click('#btnLibrary')]);
+  const [popup] = await Promise.all([page.waitForEvent('popup'), titleTool(page, '#btnLibrary')]);
   check(
     await popup.waitForSelector('.cell', { timeout: 15000 }).then(
       () => true,
@@ -31427,7 +31609,7 @@ async function testServerBasics(browser, game) {
       (await ph.text()).includes('Mech Cordon Paint'),
     '/paint/ 提供貼圖繪製與它的程式庫',
   );
-  const [apng] = await Promise.all([page.waitForEvent('popup'), page.click('#btnApng')]);
+  const [apng] = await Promise.all([page.waitForEvent('popup'), titleTool(page, '#btnApng')]);
   watch(apng, 'apng');
   check(
     await apng.waitForSelector('#templateStrip > *', { timeout: 15000 }).then(
@@ -31441,7 +31623,7 @@ async function testServerBasics(browser, game) {
   await testCharagen(game, page);
   // 渲染風格：上傳到伺服器 → 清單有它 → 刪除
   page.on('dialog', (d) => d.accept());
-  await page.click('#btnStyleLab');
+  await titleTool(page, '#btnStyleLab');
   await waitVisible(page, 'labPanel', 15000);
   await page.selectOption('#labStyle', 'builtin:ghibli');
   await page.fill('#labName', '區網分享風格');
@@ -32768,7 +32950,7 @@ async function testLegacy(browser, base) {
     await page.evaluate(() => document.getElementById('btnLegacy').classList.contains('hasOld')),
     '標題的「轉換舊存檔」有舊資料的標記',
   );
-  await page.click('#btnLegacy');
+  await titleTool(page, '#btnLegacy');
   check(await waitVisible(page, 'legacy'), '開啟轉換舊存檔的畫面');
   await page
     .waitForFunction(
@@ -32868,7 +33050,7 @@ async function testLegacy(browser, base) {
     '重新整理後照常載入（存檔槽可用）',
   );
   // 刪除舊資料
-  await page.click('#btnLegacy');
+  await titleTool(page, '#btnLegacy');
   await waitVisible(page, 'legacy');
   await page.click('#btnLegacyDel');
   await page.click('#uiModal button.primary');
@@ -32989,6 +33171,7 @@ const STEPS = [
   ['testGuide', (c) => testGuide(c.browser, c.base)],
   ['testRange', (c) => testRange(c.browser, c.base)],
   ['testGarageUi', (c) => testGarageUi(c.browser, c.base)],
+  ['testNavFlow', (c) => testNavFlow(c.browser, c.base)], // 返回路徑（docs/nav-design.md）
   ['testHubUi', (c) => testHubUi(c.browser, c.base)],
   ['testHubSave', (c) => testHubSave(c.browser, c.base)],
   ['testAttrs', (c) => testAttrs(c.browser, c.base)],

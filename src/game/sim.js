@@ -226,8 +226,9 @@ Object.assign(Game.prototype, {
     $('resultGrid').innerHTML = rows
       .map((r) => `<span class="dim">${escHtml(r[0])}</span><span>${escHtml(r[1])}</span>`)
       .join('');
-    $('btnResultOk').textContent = '返回作戰室';
+    $('btnResultOk').textContent = '返回模擬器';
     this.campResultHub = true;
+    this.resultNav = 'sim'; // input.js 的 btnResultOk：回到模擬器的清單
     this.showScreen('result');
   },
   // OXIDE：每次出現的組裝都不同（從具名 AC 的組裝挑一套，再換一把右手武器）

@@ -194,11 +194,12 @@ Object.assign(Game.prototype, {
   openHub() {
     SFX.ui();
     this.camp = null;
-    this.fromHub = false;
-    this.garageBrief = null;
     if (this.storyHubCheck()) return; // 還沒看過的序章與章節開場（game/story.js）
     this.state = 'hub';
     this.showScreen('hub');
+    // 下方圖示列的返回：從標題來＝返回標題、從自由出擊的機甲庫來＝返回機甲庫（nav.js）
+    const hb = document.querySelector('#btnHubBack .hdT');
+    if (hb) hb.textContent = this.navLabel('hub');
     this.hubDrawn = false; // 這次進來還沒畫過（hub-holo.js 的 hubWarm：背景編譯中顯示「作戰室準備中」）
     this.renderHub();
     // 窗外的機體用伺服器預設組（或自己的模型組）：讀一次（有變動才解析，hub-holo.js 的 hubMechSync 會換上）
@@ -379,8 +380,7 @@ Object.assign(Game.prototype, {
   // brief＝從簡報的「先去機甲庫整備」進來的出擊 id：返回時回到同一份簡報（不再跳回作戰室的總覽）
   hubGarage(brief = null) {
     SFX.ui();
-    this.fromHub = true;
-    this.garageBrief = brief;
+    this.navSet('garage', brief ? 'brief' : 'hub', brief); // 返回路徑（nav.js）
     this.openGarage();
   },
   // ---------- 結局與周目 ----------

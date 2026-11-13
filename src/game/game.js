@@ -435,6 +435,9 @@ export class Game {
     // 選單之間（或從任務回到選單）才播；進任務、同一個畫面不播
     if (id && prevScr !== id && prevScr !== undefined) this.zTvSwitch(id);
     for (const s of document.querySelectorAll('#ui .screen')) s.classList.toggle('on', s.id === id);
+    // 離開標題時收起標題的面板（工具與其他、操作說明）
+    if (id !== 'title')
+      for (const k of ['titleTools', 'titleHelp']) document.getElementById(k)?.classList.remove('on');
     document.getElementById('hudWrap').style.display = id === '' ? 'block' : 'none';
     if (id !== '' && this.hudC) {
       // 換到選單畫面：重設 HUD 畫布（清掉任務 HUD 的殘影與繪圖狀態）

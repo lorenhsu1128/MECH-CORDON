@@ -190,6 +190,7 @@ Object.assign(Game.prototype, {
     $('btnSortie').disabled = warn.length > 0;
     $('btnPilot').onclick = () => {
       SFX.ui();
+      this.navSet('pilot', 'garage');
       this.openPilot();
     };
     const mp = !!(this.net && this.net.role);

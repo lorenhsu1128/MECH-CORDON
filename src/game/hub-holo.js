@@ -113,13 +113,14 @@ const DEF_CAM = { yaw: 0, pitch: 0.56, dist: 12.6 };
 const HUB_SPOTS = [
   ['garage', '機甲庫', 'btnHubGarage'],
   ['pilot', '駕駛員', 'btnHubPilot'],
-  ['fac', '委託方・獨立委託', 'btnHubFac'],
-  ['log', '通訊台', 'btnHubLog'],
-  ['echo', 'ECHO 的終端', 'btnHubEcho'],
+  // 名稱和下方圖示列相同（docs/nav-design.md：同一個設施只有一個名字）
+  ['fac', '委託方', 'btnHubFac'],
+  ['log', '通訊紀錄', 'btnHubLog'],
+  ['echo', 'ECHO 的紀錄', 'btnHubEcho'],
   ['story', '章節回顧', 'btnHubStory'],
-  ['sim', '模擬艙', 'btnHubSim'],
+  ['sim', '模擬器', 'btnHubSim'],
   ['record', '作戰紀錄', 'btnHubRecord'],
-  ['save', '存檔終端', 'btnHubSave'],
+  ['save', '存檔', 'btnHubSave'],
 ];
 const _v = new THREE.Vector3();
 const _white = new THREE.Color(0xffffff);
