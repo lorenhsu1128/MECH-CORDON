@@ -388,6 +388,7 @@ AIRSPACE.cmExp = 1.78; // 色彩管理的曝光補正（同高空軌道：天空
 // 合併池、地形裝飾的合併依區域分格：格子邊長＝limOut／POOL_CELL（場地 ±limOut：每邊 2×POOL_CELL 格）。
 // 2026-11-13 從 2 改成 4（4×4 → 8×8 格）：一格太大時畫面外的部分照畫（每道算繪 45～90 萬個三角形）
 const POOL_CELL = 4;
+const WRECK_TILT = 0.44; // 殘骸順著坡度傾斜的上限（約 25°）
 const _decorBox = new THREE.Box3();
 // 材質的外觀（合併池與地形裝飾的合併用：同樣外觀的不同材質物件可以合併）
 function propMatSig(m) {
@@ -1708,6 +1709,7 @@ export class World {
   // kind 有值時可破壞（regProp）
   addSmall(g, x, y, z, shape, kind, hp, color) {
     g.position.set(x, y, z);
+    y = this.settleDown(g, x, y, z, shape.h);
     this.scene.add(g);
     this.meshes.push(g);
     const mats = propMats(g) || fadeMatsOf(g);
@@ -1771,6 +1773,30 @@ export class World {
     // 每格的陰影卻要畫一次（貨運調度場的側線整張圖 250 萬個三角形；2026-11-13）
     m.updateMatrixWorld(true);
     const hb = _decorBox.setFromObject(m);
+    // 貼地的長條（鐵軌、管線…）順著坡度傾斜：以前放在中心的地面高度，地面起伏時一端懸空（貨運調度場的側線最多 5.8 m；2026-11-13）
+    if (
+      !hb.isEmpty() &&
+      hb.max.y - hb.min.y < 0.8 &&
+      Math.max(hb.max.x - hb.min.x, hb.max.z - hb.min.z) > 3
+    ) {
+      const c = hb.getCenter(new THREE.Vector3());
+      const tc = this.terrainHeight(c.x, c.z);
+      if (Math.abs(hb.min.y - tc) < 0.8) {
+        const ax = (hb.max.x - hb.min.x) * 0.45,
+          az = (hb.max.z - hb.min.z) * 0.45;
+        const sx =
+            ax > 0.5 ? (this.terrainHeight(c.x + ax, c.z) - this.terrainHeight(c.x - ax, c.z)) / (2 * ax) : 0,
+          sz =
+            az > 0.5 ? (this.terrainHeight(c.x, c.z + az) - this.terrainHeight(c.x, c.z - az)) / (2 * az) : 0;
+        // 先轉成世界的傾斜再乘上原本的朝向（只繞 Y 轉的長條）
+        const q = new THREE.Quaternion().setFromEuler(
+          new THREE.Euler(-Math.atan(clamp(sz, -0.6, 0.6)), 0, Math.atan(clamp(sx, -0.6, 0.6))),
+        );
+        m.quaternion.premultiply(q);
+        m.updateMatrixWorld(true);
+        _decorBox.setFromObject(m);
+      }
+    }
     if (!hb.isEmpty() && hb.max.y - hb.min.y < 0.6)
       m.traverse((o) => {
         if (o.isMesh) o.castShadow = false;
@@ -2332,6 +2358,36 @@ export class World {
     this.obstacles.push(ob);
     this.occluders.push(ob);
     return ob;
+  }
+  // 放在地形上的物件貼地（2026-11-13）：以前一律放在中心的地面高度（往下埋一點），斜坡上下坡那一側懸空（岩柱、砂岩、
+  // 儲槽…最多 10 m 以上）。量外框底下最低的地面，比原本的底部低就往下移（最多高度的 40%，不會整個埋掉）；
+  // 放在甲板、平台上的（底部比中心的地形高）不動。不用亂數。回傳新的 y
+  settleDown(g, x, y, z, h) {
+    const tc = this.terrainHeight(x, z);
+    if (y > tc + 0.5) return y;
+    g.updateMatrixWorld(true);
+    const b = _decorBox.setFromObject(g);
+    if (b.isEmpty()) return y;
+    const lo = this.footMin(
+      (b.min.x + b.max.x) / 2,
+      (b.min.z + b.max.z) / 2,
+      (b.max.x - b.min.x) * 0.9,
+      (b.max.z - b.min.z) * 0.9,
+    );
+    const base = b.min.y;
+    const H = h || b.max.y - b.min.y;
+    const dy = Math.min(base - lo, Math.max(0.5, H * 0.4));
+    if (!(dy > 0.3)) return y;
+    g.position.y -= dy;
+    g.updateMatrixWorld(true);
+    return y - dy;
+  }
+  // 長方形範圍（中心、寬、深）底下最低的地形高度（四角、邊的中點與中心；不用亂數）
+  footMin(x, z, w, d) {
+    let m = Infinity;
+    for (const u of [-0.5, -0.25, 0, 0.25, 0.5])
+      for (const v of [-0.5, 0, 0.5]) m = Math.min(m, this.terrainHeight(x + u * w, z + v * d));
+    return m;
   }
   addPillar(x, z, r, y0, y1, m) {
     const h = y1 - y0;
@@ -3232,6 +3288,34 @@ export class World {
       const g = this.groundAt(cx + (sh.x1 - sh.x0) * u, cz + (sh.z1 - sh.z0) * v, sh.y0 + STEP_H);
       if (g < gy && g >= gC - lim) gy = g;
     }
+    // 長條的殘骸（防風牆、卡車、倒下的路燈與桅杆…）順著坡度傾斜（以前整塊放在同一個高度：斜坡上一端懸空 2～10 m；
+    // 2026-11-13）。用殘骸模型自己的外框量兩端（倒下的桿子會伸出原本物件的範圍）；原本在平台、甲板上的：
+    // 量到邊緣外（掉下去）的點不算，免得翻下去
+    wr.group.updateMatrixWorld(true);
+    const wb = _decorBox.setFromObject(wr.group);
+    if (!p.body && !wb.isEmpty() && Math.max(wb.max.x - wb.min.x, wb.max.z - wb.min.z) > 4) {
+      const onBox = gC > this.terrainHeight(cx, cz) + 0.3;
+      const gAt = (x, z) => {
+        const g = this.groundAt(x, z, sh.y0 + STEP_H);
+        return onBox && g < gC - lim ? gC : g;
+      };
+      const x0 = cx + wb.min.x * 0.85,
+        x1 = cx + wb.max.x * 0.85,
+        z0 = cz + wb.min.z * 0.85,
+        z1 = cz + wb.max.z * 0.85;
+      const gx0 = gAt(x0, cz),
+        gx1 = gAt(x1, cz),
+        gz0 = gAt(cx, z0),
+        gz1 = gAt(cx, z1);
+      const T = WRECK_TILT;
+      const sx = x1 - x0 > 1 ? (gx1 - gx0) / (x1 - x0) : 0,
+        sz = z1 - z0 > 1 ? (gz1 - gz0) / (z1 - z0) : 0;
+      wr.group.rotation.set(-clamp(Math.atan(sz), -T, T), 0, clamp(Math.atan(sx), -T, T));
+      // 原點（中心）的高度：兩條地面線在中心的高度（偏一邊的模型照比例內插），不高過中心的地面
+      const lx = x1 - x0 > 1 ? gx0 + (gx1 - gx0) * ((cx - x0) / (x1 - x0)) : gC,
+        lz = z1 - z0 > 1 ? gz0 + (gz1 - gz0) * ((cz - z0) / (z1 - z0)) : gC;
+      gy = Math.min(gC, (lx + lz) / 2);
+    }
     wr.group.position.set(cx, gy, cz);
     this.scene.add(wr.group);
     this.meshes.push(wr.group); // 擋住鏡頭時淡出（fadeMeshes；殘骸不再受傷，但不能一直擋住視野）
@@ -3412,16 +3496,20 @@ export class World {
           const y0 = this.terrainHeight(x, z);
           const h = rnd(5, 6.5) * G;
           this.addDeck(x, z, w, d, y0 + h, 0.8 * G, false, mats);
+          // 柱子各自從腳下的地面蓋起（以前一律從中心的地面高度：斜坡上低的那一側整根懸空；2026-11-13）
           for (const sx of [-1, 1])
-            for (const sz of [-1, 1])
+            for (const sz of [-1, 1]) {
+              const px = x + sx * (w / 2 - G),
+                pz = z + sz * (d / 2 - G);
               this.addPillar(
-                x + sx * (w / 2 - G),
-                z + sz * (d / 2 - G),
+                px,
+                pz,
                 0.5 * G,
-                y0 - 0.5 * G,
+                this.terrainHeight(px, pz) - 0.5 * G,
                 y0 + h - 0.8 * G,
                 mats.pillar,
               );
+            }
           // one side wall for cover
           const side = RNG() < 0.5;
           const wm = mats.pillar.clone();
@@ -3430,12 +3518,14 @@ export class World {
             wd = side ? 0.8 * G : d - 2 * G;
           const wx = x + (side ? 0 : (w / 2 - 0.4 * G) * (RNG() < 0.5 ? 1 : -1)),
             wz = z + (side ? (d / 2 - 0.4 * G) * (RNG() < 0.5 ? 1 : -1) : 0);
-          const wh = h - 0.8 * G;
+          // 牆的底部＝整面牆底下最低的地面再往下埋一點（以前從中心的地面高度：斜坡上懸空，打壞後的殘骸也浮著）；頂部照舊
+          const wb = this.footMin(wx, wz, ww, wd) - 0.3 * G;
+          const wh = y0 + h - 0.8 * G - wb;
           let wall;
           if (T.props) {
             wall = buildThemeWall(T.props, ww, wh, wd);
-            wall.position.set(wx, y0 + wh / 2, wz);
-          } else wall = box(ww, wh, wd, wm, wx, y0 + wh / 2, wz);
+            wall.position.set(wx, wb + wh / 2, wz);
+          } else wall = box(ww, wh, wd, wm, wx, wb + wh / 2, wz);
           this.scene.add(wall);
           this.meshes.push(wall);
           const bb = new THREE.Box3().setFromObject(wall);
@@ -3479,11 +3569,15 @@ export class World {
           const m2 = pm.clone();
           m2.transparent = true;
           const sk = 0.5 * G; // 埋進地面
+          // 底部＝整個平台底下最低的地面再埋 sk（以前從中心的地面高度：斜坡上低的一側懸空；2026-11-13），頂部照舊
+          const top = y0 + h - sk,
+            bot = Math.min(y0, this.footMin(x, z, w, d)) - sk,
+            ph = top - bot;
           let g;
           if (T.props) {
-            g = buildThemePlatform(T.props, w, h, d);
-            g.position.set(x, y0 - sk, z);
-          } else g = box(w, h, d, m2, x, y0 + h / 2 - sk, z);
+            g = buildThemePlatform(T.props, w, ph, d);
+            g.position.set(x, bot, z);
+          } else g = box(w, ph, d, m2, x, bot + ph / 2, z);
           this.scene.add(g);
           this.meshes.push(g);
           const ob = {
@@ -3492,13 +3586,13 @@ export class World {
             z,
             w,
             d,
-            top: y0 + h - sk,
-            y: y0 - sk,
+            top,
+            y: bot,
             group: g,
             mats: T.props ? propMats(g) || fadeMatsOf(g) : [m2],
             box: new THREE.Box3(
-              new THREE.Vector3(x - w / 2, y0 - sk, z - d / 2),
-              new THREE.Vector3(x + w / 2, y0 + h - sk, z + d / 2),
+              new THREE.Vector3(x - w / 2, bot, z - d / 2),
+              new THREE.Vector3(x + w / 2, top, z + d / 2),
             ),
           };
           this.obstacles.push(ob);
@@ -3515,10 +3609,15 @@ export class World {
             rz = z + side[1] * (d / 2 + rl / 2);
           const rw = side[0] ? rl : 6 * G,
             rd = side[1] ? rl : 6 * G;
+          // 坡道的腳＝低端那一點的地面（以前用平台中心的地面高度：斜坡上坡道的腳懸空；2026-11-13）
+          const ry0 =
+            Math.min(this.terrainHeight(rx + (side[0] * rl) / 2, rz + (side[1] * rl) / 2), top - 0.5 * G) -
+            sk;
+          const ra = Math.atan2(top - ry0, rl);
           const rg = T.props ? buildThemeRamp(T.props, rw, rd) : box(rw, 0.4 * G, rd, pm, 0, 0, 0);
-          rg.position.set(rx, y0 + h / 2 - 0.7 * G, rz);
-          rg.rotation.z = side[0] ? -side[0] * Math.atan2(h - sk, rl) : 0;
-          rg.rotation.x = side[1] ? side[1] * Math.atan2(h - sk, rl) : 0;
+          rg.position.set(rx, (ry0 + top) / 2 - 0.2 * G, rz);
+          rg.rotation.z = side[0] ? -side[0] * ra : 0;
+          rg.rotation.x = side[1] ? side[1] * ra : 0;
           this.scene.add(rg);
           this.meshes.push(rg);
           this.ramps = this.ramps || [];
@@ -3528,8 +3627,8 @@ export class World {
             w: rw,
             d: rd,
             side,
-            y0: y0 - sk,
-            y1: y0 + h - sk,
+            y0: ry0,
+            y1: top,
             len: rl,
             mesh: rg,
           });

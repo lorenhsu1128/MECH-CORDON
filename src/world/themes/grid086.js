@@ -518,7 +518,11 @@ function buildStructures(w) {
   tryRamp(L2, L2, Y1, Y2, true, Math.max(2, w.cnt(1, 2)));
   w.ramps = w.ramps || [];
   for (const r of ramps) {
-    const y0 = r.y0 === null ? w.terrainHeight(r.x, r.z) - 0.4 : r.y0;
+    // 地面層的坡道：腳＝低端（離平台遠的那一頭）的地面（以前用坡道中心的地面高度：斜坡上懸空或陷進去；2026-11-13）
+    const y0 =
+      r.y0 === null
+        ? w.terrainHeight(r.x + (r.side[0] * r.len) / 2, r.z + (r.side[1] * r.len) / 2) - 0.4
+        : r.y0;
     const rg = buildGridRamp(r.side[0] ? r.len : RAMP_W, r.side[0] ? RAMP_W : r.len);
     const a = Math.atan2(r.y1 - y0, r.len);
     rg.position.set(r.x, (y0 + r.y1) / 2 - 0.25, r.z);
