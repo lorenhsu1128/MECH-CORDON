@@ -456,3 +456,4 @@ YouTube 影片，720p，換鏡偵測後抽格，拼成縮圖表看。縮圖表�
 - 等待其他程序結束不要用「命令列含某字串」比對（查詢自己的命令列也含那個字串，會永遠等）；停程序時同樣會比對到下指令的 shell 自己——比對字串寫在 .ps1 檔裡再執行。從 node 的 `execFileSync` 呼叫會開 ComfyUI 的腳本時，輸出不能接管線（新開的 ComfyUI 會繼承管線，`execFileSync` 一直等到 ComfyUI 關掉）。
 - 數新圖時不要 `find` 整個 `tools/comfyui/runtime`（含模型，一次 5 分多）。
 - 輔助腳本在 `tools/portrait-v2/`（README 有說明；腳本裡的路徑是原本那台電腦的暫存資料夾，要改）。
+- 提案時參考的《絕區零》過場、PV 截圖與總表在 `tools/cine-refs/`（README 有來源影片）；改姿勢的全部候選、選圖與標框的圖在 `tools/portrait-v2/candidates`、`sheets`。
