@@ -1,0 +1,385 @@
+<title>機戰封鎖線過場改版提案</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,500;0,700;0,900;1,700;1,900&family=Noto+Sans+TC:wght@400;700;900&display=swap">
+<style>
+/* 版面：遊戲介面的延伸——深色底、雙層圓角面板、黃綠選中色；每個方案＝左邊 16:9 的示意畫面＋右邊說明，窄螢幕疊成一欄 */
+:root {
+  --bg: #151418;
+  --panel: #1f1e24;
+  --panel2: #2a2930;
+  --line: #3a3942;
+  --fg: #f1efe9;
+  --mute: #a9a6ad;
+  --lime: #cdeb2a;
+  --warn: #fcc800;
+  --red: #f01818;
+  --ink: #0b0b0d;
+  --display: 'Rubik', 'Noto Sans TC', system-ui, sans-serif;
+  --body: 'Noto Sans TC', 'Rubik', system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.7; margin: 0; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 40px 80px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 56px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; line-height: 1.25; }
+h1 { font-size: clamp(30px, 5vw, 52px); font-weight: 900; font-style: italic; letter-spacing: .01em; }
+h2 { font-size: clamp(22px, 3vw, 30px); font-weight: 900; font-style: italic; }
+h3 { font-size: 17px; font-weight: 900; }
+p { margin: 0; }
+.eyebrow { display: inline-block; font: 700 12px var(--display); letter-spacing: .14em; color: var(--ink); background: var(--lime); padding: 3px 12px; border-radius: 99px; }
+.lede { color: var(--mute); max-width: 68ch; }
+header { display: grid; gap: 14px; }
+.tape { height: 10px; border-radius: 3px; background: repeating-linear-gradient(-45deg, var(--warn) 0 14px, var(--ink) 14px 28px); max-width: 260px; }
+
+/* 觀察 */
+.fmt { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+.fmt3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.card { background: var(--panel); border: 3px solid var(--ink); outline: 1px solid var(--line); outline-offset: -7px; border-radius: 18px; padding: 20px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.card .k { font: 900 italic 13px var(--display); color: var(--lime); letter-spacing: .06em; }
+.card p { color: var(--mute); font-size: 14px; }
+
+/* 方案 */
+.opt { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 860px) { .opt { grid-template-columns: 1fr; } }
+.opt-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.letter { font: 900 italic 34px/1 var(--display); color: var(--ink); background: var(--fg); width: 52px; height: 52px; display: grid; place-items: center; border-radius: 14px; transform: rotate(-6deg); flex: none; }
+.rec { font: 900 12px var(--display); color: var(--ink); background: var(--warn); border-radius: 99px; padding: 2px 10px; }
+.info { display: grid; gap: 12px; min-width: 0; }
+.info dl { margin: 0; display: grid; gap: 10px; }
+.info dt { font: 700 12px var(--display); letter-spacing: .12em; color: var(--mute); }
+.info dd { margin: 0; font-size: 14px; }
+.pc { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 480px) { .pc { grid-template-columns: 1fr; } }
+.pc div { background: var(--panel); border-radius: 12px; padding: 10px 12px; font-size: 13px; }
+.pc b { display: block; font: 900 12px var(--display); margin-bottom: 2px; }
+.pc .plus b { color: var(--lime); }
+.pc .minus b { color: #ff7a6a; }
+
+/* 示意畫面共用 */
+.screen { position: relative; aspect-ratio: 16 / 9; max-width: 100%; border-radius: 14px; overflow: hidden; background: var(--ink); border: 3px solid var(--ink); outline: 1px solid var(--line); container-type: inline-size; }
+.screen img { max-width: none; }
+.cap { margin-top: 8px; font-size: 12px; color: var(--mute); }
+.box { position: absolute; background: rgba(8, 8, 10, .92); color: #fff; font-size: 2.2cqw; line-height: 1.45; padding: .6em .8em; border-radius: 3px; max-width: 34cqw; font-weight: 700; }
+.box.tail::after { content: ''; position: absolute; left: 1.4em; bottom: -.7em; border: .5em solid transparent; border-top-color: rgba(8, 8, 10, .92); border-bottom: 0; }
+.halftone { position: absolute; inset: 0; background-image: radial-gradient(rgba(0, 0, 0, .35) 22%, transparent 24%); background-size: 1.1cqw 1.1cqw; mix-blend-mode: multiply; pointer-events: none; }
+
+/* A：動態漫畫 */
+.film { position: absolute; inset: 0; background: #0d0d10; }
+.film::before, .film::after { content: ''; position: absolute; left: 0; right: 0; height: 5.2%; background: repeating-linear-gradient(90deg, transparent 0 1.6cqw, #2a2a30 1.6cqw 3.4cqw); background-size: 3.4cqw 45%; background-repeat: repeat-x; background-position: 0 50%; }
+.film::before { top: 0; } .film::after { bottom: 0; }
+.page { position: absolute; inset: 7% 6%; }
+.pn { position: absolute; top: 0; bottom: 0; overflow: hidden; border: .45cqw solid #0d0d10; background: #222; }
+.pn1 { left: 0; width: 46%; clip-path: polygon(0 0, 100% 0, 84% 100%, 0 100%); }
+.pn2 { left: 38%; width: 36%; clip-path: polygon(22% 0, 100% 0, 78% 100%, 0 100%); background: #e8e2d6; }
+.pn3 { left: 66%; width: 34%; clip-path: polygon(24% 0, 100% 0, 100% 100%, 0 100%); background: #cfe3ef; }
+.pn1 img { width: 210%; position: absolute; left: -62%; top: -8%; }
+.pn2 img { width: 150%; position: absolute; left: -12%; top: -6%; }
+.pn3 img { width: 150%; position: absolute; left: -4%; top: -4%; }
+.sfx { position: absolute; font: 900 italic 7.5cqw/1 var(--display); color: var(--warn); -webkit-text-stroke: .5cqw var(--ink); paint-order: stroke fill; transform: rotate(-12deg); text-shadow: .6cqw .6cqw 0 var(--ink); }
+.nav { position: absolute; top: 50%; transform: translateY(-50%); font: 700 1.5cqw var(--display); color: #8a8890; }
+.nav.l { left: 1.2%; } .nav.r { right: 1.2%; }
+
+/* C：對話分格 */
+.bgblur { position: absolute; inset: -4%; width: 108%; height: 108%; object-fit: cover; filter: blur(6px) saturate(.8) brightness(.8); }
+.slot { position: absolute; top: 0; bottom: 0; overflow: hidden; }
+.slot img { position: absolute; width: 100%; left: 0; top: 4%; }
+.s1 { left: 6%; width: 44%; clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%); }
+.s2 { left: 50%; width: 44%; clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%); }
+.s1 img { width: 92%; left: 6%; }
+.s2 img { width: 96%; left: 4%; }
+.slot.dim img { filter: brightness(.55) saturate(.7); }
+.cut { position: absolute; top: -2%; bottom: -2%; left: 49.4%; width: .5cqw; background: var(--ink); transform: skewX(-4.6deg); }
+.dlg { position: absolute; left: 12%; right: 12%; bottom: 5%; background: rgba(10, 10, 12, .82); border: 1px solid rgba(255, 255, 255, .25); border-radius: 1cqw; padding: 2.2cqw 3cqw 1.6cqw; font-size: 2.2cqw; font-weight: 700; }
+.dlg .nm { position: absolute; top: -1.4cqw; left: 50%; transform: translateX(-50%); font: 900 1.7cqw var(--display); color: #ffb060; background: #0d0d10; border: 1px solid rgba(255, 255, 255, .25); border-radius: 99px; padding: .1cqw 1.6cqw; white-space: nowrap; }
+.dlg em { color: #ff9a2e; font-style: normal; }
+
+/* D：PV 式 */
+.pv { position: absolute; inset: 0; background: #e6007e; overflow: hidden; }
+.pv .c1 { position: absolute; width: 58cqw; height: 58cqw; border-radius: 50%; background: linear-gradient(160deg, #ffb300, #ff5a1f); right: -10cqw; top: -18cqw; }
+.pv .c2 { position: absolute; width: 26cqw; height: 26cqw; border-radius: 50%; background: #18b6f0; left: 6cqw; bottom: -10cqw; }
+.pv .tri { position: absolute; width: 0; height: 0; border-left: 9cqw solid transparent; border-right: 9cqw solid transparent; border-bottom: 15cqw solid #fff36b; left: 34cqw; top: 6cqw; transform: rotate(18deg); }
+.pv .dots { position: absolute; inset: 0; background-image: radial-gradient(rgba(255, 255, 255, .7) 1px, transparent 1.6px); background-size: 3cqw 3cqw; }
+.pv .big { position: absolute; z-index: 2; left: 3%; top: 18%; font: 900 italic 21cqw/0.86 var(--display); color: #fff; letter-spacing: -.02em; }
+.pv .sil { position: absolute; height: 96%; bottom: -14%; right: 6%; filter: brightness(0) invert(1); }
+.pv .face { position: absolute; height: 100%; bottom: -40%; right: 6%; clip-path: inset(0 0 55% 0); }
+.pv .msg { position: absolute; z-index: 3; left: 4%; bottom: 10%; background: #111; color: #fff; font: 900 italic 2.6cqw var(--display); padding: .6cqw 2cqw; border-radius: 99px; transform: rotate(-4deg); border: .35cqw solid #fff; }
+.pv .msg span { color: var(--lime); }
+.pv .tag { position: absolute; left: 4%; top: 7%; font: 900 2cqw var(--display); color: #111; background: #fff; padding: .2cqw 1.4cqw; border-radius: 99px; }
+
+/* E：雙色調 */
+.duo { position: absolute; inset: 0; background: #2b0f6b; overflow: hidden; }
+.dp { position: absolute; top: 0; bottom: 0; overflow: hidden; }
+.dp img { position: absolute; filter: grayscale(1) contrast(1.6) brightness(1.05); mix-blend-mode: screen; }
+.dp1 { left: 0; width: 58%; clip-path: polygon(0 0, 100% 0, 78% 100%, 0 100%); background: #5b18d6; }
+.dp1 img { width: 230%; left: -64%; top: -14%; }
+.dp2 { left: 44%; right: 0; clip-path: polygon(24% 0, 100% 0, 100% 100%, 0 100%); background: #0b3a26; }
+.dp2 img { width: 520%; left: -205%; top: -62%; }
+.dp1::after, .dp2::after { content: ''; position: absolute; inset: 0; mix-blend-mode: multiply; }
+.dp1::after { background: #b6ff3a; }
+.dp2::after { background: #6cffd0; }
+.shard { position: absolute; background: #f2ffe0; clip-path: polygon(0 40%, 100% 0, 70% 100%); width: 9cqw; height: 6cqw; }
+.ray { position: absolute; left: 50%; top: -10%; width: 3cqw; height: 130%; background: linear-gradient(#ffffff, transparent); transform: rotate(24deg); opacity: .7; mix-blend-mode: screen; }
+
+/* B：時間軸 */
+.strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 640px) { .strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.mini { display: grid; gap: 6px; }
+.mini .screen { border-radius: 10px; }
+.mini .lab { font: 900 italic 12px var(--display); }
+.mini .lab span { color: var(--mute); font-style: normal; font-weight: 700; }
+.still img.bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: sepia(.4) hue-rotate(-20deg) saturate(1.5) brightness(.9); }
+.still .narr { position: absolute; left: 6%; bottom: 10%; font-size: 4.6cqw; font-weight: 700; color: #fff; text-shadow: 0 0 1cqw #000; }
+.mini .pn1 img { width: 230%; } .mini .box { font-size: 4.4cqw; max-width: 60cqw; }
+.mini .dlg { font-size: 4.4cqw; padding: 3cqw 3cqw 2cqw; left: 6%; right: 6%; } .mini .dlg .nm { font-size: 3.4cqw; top: -2.6cqw; }
+.d3 img.bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cockpit { position: absolute; right: 0; top: 0; bottom: 0; width: 42%; clip-path: polygon(22% 0, 100% 0, 100% 100%, 0 100%); background: linear-gradient(180deg, #13212a, #0c1418); overflow: hidden; border-left: 3px solid var(--lime); }
+.cockpit img { position: absolute; width: 150%; left: -8%; top: -2%; }
+.cockpit::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(160, 255, 220, .08) 0 1px, transparent 1px 3px); }
+.impact { position: absolute; inset: 0; background: #fff8ec; display: grid; place-items: center; }
+.impact img { position: absolute; width: 100%; height: 100%; object-fit: cover; filter: grayscale(1) invert(1) contrast(3) brightness(1.2); mix-blend-mode: multiply; opacity: .9; }
+.impact .x { position: absolute; width: 140%; height: 2.2cqw; background: #e8231c; transform: rotate(26deg); box-shadow: 0 0 2cqw #ff6040; }
+.impact .x.b { transform: rotate(-26deg); }
+
+/* 表格 */
+.tbl { overflow-x: auto; border-radius: 16px; border: 3px solid var(--ink); outline: 1px solid var(--line); outline-offset: -7px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 14px; }
+th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 700 12px var(--display); letter-spacing: .12em; color: var(--mute); }
+tr:last-child td { border-bottom: 0; }
+td.fmtc { font: 900 italic 15px var(--display); color: var(--lime); white-space: nowrap; }
+
+.qs { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; counter-reset: q; }
+.q { background: var(--panel); border-radius: 16px; padding: 18px 20px; display: grid; gap: 6px; border: 3px solid var(--ink); outline: 1px solid var(--line); outline-offset: -7px; }
+.q h3::before { counter-increment: q; content: counter(q); display: inline-grid; place-items: center; width: 26px; height: 26px; margin-right: 10px; border-radius: 50%; background: var(--warn); color: var(--ink); font-size: 14px; font-style: normal; vertical-align: 2px; }
+.q p { color: var(--mute); font-size: 14px; }
+.src { font-size: 13px; color: var(--mute); display: grid; gap: 4px; }
+.src a { color: var(--lime); }
+section { display: grid; gap: 22px; }
+@media (prefers-reduced-motion: no-preference) {
+  .sfx { animation: pop 2.6s ease-in-out infinite; }
+  @keyframes pop { 0%, 70%, 100% { transform: rotate(-12deg) scale(1); } 76% { transform: rotate(-12deg) scale(1.12); } }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">CUTSCENE REDESIGN · 提案</span>
+    <h1>過場動畫改版：讓角色上場演戲</h1>
+    <p class="lede">現在的 26 段過場（第 1 周目約 19 分鐘）全是 3D：機甲、地圖，加上臉藏在剪影裡的低面數人物，角色只在通訊小窗露臉，約 160 句字幕裡只有 42 句有語音。以下是看完《絕區零》的過場、PV 與官方幕後介紹之後整理的五個方案，每個方案都用遊戲裡現成的立繪與 3D 截圖拼了一張示意畫面。</p>
+    <div class="tape" aria-hidden="true"></div>
+  </header>
+
+  <section>
+    <h2>絕區零怎麼說故事</h2>
+    <p class="lede">官方的說法是「沒有一種格式什麼都做得好」，所以幾分鐘就換一種，每種只做自己擅長的事。</p>
+    <div class="fmt">
+      <div class="card"><span class="k">對話場景</span><h3>主線分量最多</h3><p>半身角色站在模糊的 3D 背景前，二到三人用斜線切開同框，下方是黑色對話框。說話的人有手勢與表情，沒說話的人也會小動作。</p></div>
+      <div class="card"><span class="k">動態漫畫</span><h3>交代事件</h3><p>底片外框，玩家按鍵翻頁。一頁一到三格斜切的上色插畫，黑底方框的對話、CLICK／POW 狀聲詞、「!」爆炸框。</p></div>
+      <div class="card"><span class="k">固定插畫</span><h3>情緒與氣氛</h3><p>一張大圖慢慢推近。官方認為情緒戲用它比完整動畫更有力；顏色本身就在說故事（憤怒用火紅、憂鬱用單色）。</p></div>
+      <div class="card"><span class="k">3D 過場</span><h3>只用在高潮</h3><p>激烈戰鬥、重大轉折。轉場用資料毀損的故障、反白線稿的衝擊畫格、十字星光，接著直接進入可以玩的部分。</p></div>
+      <div class="card"><span class="k">PV 與短片</span><h3>官方宣傳的兩種極端</h3><p>角色展示片：洋紅、橘、青的平面色塊加單色剪影與巨大斜體字，跟著節拍換。2D 短片：只用二到三色，極端特寫、碎玻璃格。</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>五個方案</h2>
+
+    <article class="opt">
+      <div>
+        <div class="screen" role="img" aria-label="方案 A 示意：底片外框裡三格斜切的漫畫，左格是機甲中彈，中格是霍斯特說話，右格是 ECHO 的反應">
+          <div class="film"></div>
+          <div class="page">
+            <div class="pn pn1"><img src="{{dam}}" alt=""><div class="halftone"></div></div>
+            <div class="pn pn2"><img src="{{castron}}" alt=""><div class="halftone"></div></div>
+            <div class="pn pn3"><img src="{{echo}}" alt=""><div class="halftone"></div></div>
+          </div>
+          <div class="sfx" style="left:13%;top:52%">轟！</div>
+          <div class="box tail" style="left:40%;top:11%">水壩要完整的。<br>別給我炸穿了。</div>
+          <div class="box tail" style="left:70%;top:66%">……他從一開始<br>就沒打算付尾款。</div>
+          <span class="nav l">◀ LT</span><span class="nav r">RT ▶</span>
+        </div>
+        <p class="cap">示意：底片外框、三格斜切、黑框對話、狀聲詞大字。左格是遊戲的 3D 畫面套網點。</p>
+      </div>
+      <div class="info">
+        <div class="opt-head"><span class="letter">A</span><h3>動態漫畫</h3></div>
+        <dl>
+          <div><dt>做法</dt><dd>每段過場是幾頁漫畫：斜切分格依序落下，鏡頭在格間平移推近。格子裡放三種東西：用立繪為參考新產生的角色插畫、即時算繪的 3D 機甲（套描線與網點）、會眨眼對口型的立繪。</dd></div>
+          <div><dt>角色演出</dt><dd>每一格是一個表演的瞬間（拍桌、回頭、抱胸），頭髮、呼吸、說話用分層做小動作。</dd></div>
+          <div><dt>素材</dt><dd>每段 8～15 張插畫，全部約 250 張。</dd></div>
+        </dl>
+        <div class="pc"><div class="plus"><b>好</b>最像絕區零主線；台詞再多也不拖；畫得出 3D 做不到的表情。</div><div class="minus"><b>難</b>插畫要逐張挑；多人同框要合成；戰鬥的爽快感比 3D 弱。</div></div>
+      </div>
+    </article>
+
+    <article class="opt">
+      <div>
+        <div class="strip">
+          <div class="mini"><div class="screen still"><img class="bg" src="{{vista}}" alt=""><div class="narr">南部荒野，第 ██ 週期。</div></div><span class="lab">1 固定插畫 <span>氣氛</span></span></div>
+          <div class="mini"><div class="screen"><div class="film"></div><div class="page"><div class="pn pn1" style="width:60%"><img src="{{dam}}" alt=""><div class="halftone"></div></div><div class="pn pn3" style="left:48%;width:52%"><img src="{{veerwell}}" alt=""></div></div><div class="box tail" style="left:56%;top:12%">報價翻倍，<br>今晚就走。</div></div><span class="lab">2 動態漫畫 <span>事件</span></span></div>
+          <div class="mini"><div class="screen"><img class="bgblur" src="{{station}}" alt=""><div class="slot s1"><img src="{{castron}}" alt=""></div><div class="slot s2 dim"><img src="{{aetheric}}" alt=""></div><div class="cut"></div><div class="dlg"><span class="nm">霍斯特</span>條件就這樣。</div></div><span class="lab">3 對話分格 <span>人物</span></span></div>
+          <div class="mini"><div class="screen d3"><img class="bg" src="{{snow}}" alt=""><div class="cockpit"><img src="{{wren}}" alt=""></div></div><span class="lab">4 3D 高潮 <span>駕駛艙插入</span></span></div>
+        </div>
+        <p class="cap">示意：同一段過場依序用四種格式。最後一格是 3D 戰鬥中切進駕駛艙的角色（芮恩），對口型喊話。</p>
+      </div>
+      <div class="info">
+        <div class="opt-head"><span class="letter">B</span><h3>三段式混合（官方的分工）</h3><span class="rec">建議</span></div>
+        <dl>
+          <div><dt>做法</dt><dd>依照每一場戲要做的事挑格式：固定插畫定氣氛 → 漫畫交代事件 → 對話分格交代人物 → 3D 機甲當高潮。現在的 3D 過場（地圖、機甲、Boss 的運鏡）大多可以改造再用。</dd></div>
+          <div><dt>3D 段落加上</dt><dd>駕駛艙的角色插入（畫面切一半，宿敵或僚機在駕駛座上喊話）、反白線稿的衝擊畫格、斬擊換色、黑白＋單色定格。</dd></div>
+          <div><dt>素材</dt><dd>每段 4～10 張插畫＋1～3 個 3D 段落，全部約 180 張。</dd></div>
+        </dl>
+        <div class="pc"><div class="plus"><b>好</b>情緒、劇情、動作各用最擅長的格式；舊的 3D 不用丟。</div><div class="minus"><b>難</b>要新做的東西最多：漫畫舞台、插畫流程、插入畫面。</div></div>
+      </div>
+    </article>
+
+    <article class="opt">
+      <div>
+        <div class="screen" role="img" aria-label="方案 C 示意：軌道站模糊的背景前，霍斯特與薩奇各在一格斜切的畫面裡，霍斯特正在說話">
+          <img class="bgblur" src="{{station}}" alt="">
+          <div class="slot s1"><img src="{{castron}}" alt=""></div>
+          <div class="slot s2 dim"><img src="{{aetheric}}" alt=""></div>
+          <div class="cut"></div>
+          <div class="dlg"><span class="nm">霍斯特</span>博士，妳的人上週在水壩下游撿走了什麼，<em>我們都看到了</em>。</div>
+        </div>
+        <p class="cap">示意：背景是即時的 3D 場景（淺景深），兩人各一格，沒說話的變暗。立繪 v2 有 3/4 側的姿勢後，兩個人可以面對面說話。</p>
+      </div>
+      <div class="info">
+        <div class="opt-head"><span class="letter">C</span><h3>對話分格（絕區零的對話場景）</h3></div>
+        <dl>
+          <div><dt>做法</dt><dd>照絕區零主線分量最多的對話場景，3D 角色換成我們的分層立繪。背景是即時 3D（作戰室、駕駛艙、戰場），機甲在後面動；兩三個人時斜切成兩三格。</dd></div>
+          <div><dt>角色演出</dt><dd>照台詞的表情、動作、對口型，姿勢照台詞換；換說話的人時那一格往前、其他格變暗；頭髮與頭有一點視差。</dd></div>
+          <div><dt>素材</dt><dd>不用插畫，用立繪 v2（每人 8～12 個姿勢、正面與 3/4 側）。</dd></div>
+        </dl>
+        <div class="pc"><div class="plus"><b>好</b>最快、最省，和絕區零的對話最像；作戰室與簡報也能用。</div><div class="minus"><b>難</b>不能走路、打鬥；一直用會像視覺小說。</div></div>
+      </div>
+    </article>
+
+    <article class="opt">
+      <div>
+        <div class="screen" role="img" aria-label="方案 D 示意：洋紅底色上的大圓與三角，芮恩的白色剪影與巨大的 WREN 字樣，下方是 NEW MESSAGE 通知">
+          <div class="pv"><div class="dots"></div><div class="c1"></div><div class="c2"></div><div class="tri"></div>
+            <div class="big">WREN</div>
+            <img class="sil" src="{{wren}}" alt="">
+            <span class="tag">僚機 · 薄荷綠</span>
+            <div class="msg"><span>NEW MESSAGE!</span>　前輩，我準備好了！</div>
+          </div>
+        </div>
+        <p class="cap">示意：平面色塊、白色剪影、巨大斜體字、通訊通知，跟著節拍每一拍換一種配色。</p>
+      </div>
+      <div class="info">
+        <div class="opt-head"><span class="letter">D</span><h3>PV／MV 式</h3></div>
+        <dl>
+          <div><dt>做法</dt><dd>配樂卡點的剪輯：平面色塊、單色剪影、大字、3D 畫面換成灰階＋單色、衝擊畫格、資料毀損的故障。</dd></div>
+          <div><dt>適合</dt><dd>序章、章節開場、宿敵登場、周目的開頭。不適合長對話與悲傷的戲。</dd></div>
+          <div><dt>素材</dt><dd>現有立繪與 3D，配樂要選節奏明確的曲子。</dd></div>
+        </dl>
+        <div class="pc"><div class="plus"><b>好</b>最有絕區零 PV 的味道，素材少、效果強。</div><div class="minus"><b>難</b>整個主線都這樣會很吵、很累。</div></div>
+      </div>
+    </article>
+
+    <article class="opt">
+      <div>
+        <div class="screen" role="img" aria-label="方案 E 示意：紫色與綠色的雙色調畫面，左邊是 ECHO 的上半身，右邊斜切的格子是她眼睛的極近特寫">
+          <div class="duo">
+            <div class="dp dp1"><img src="{{echo}}" alt=""></div>
+            <div class="dp dp2"><img src="{{echo}}" alt=""></div>
+            <div class="ray"></div>
+            <div class="shard" style="left:47%;top:12%"></div>
+            <div class="shard" style="left:40%;top:70%;transform:rotate(140deg) scale(.7)"></div>
+          </div>
+        </div>
+        <p class="cap">示意：只用二到三色、極近的眼睛特寫、斜切與碎片。</p>
+      </div>
+      <div class="info">
+        <div class="opt-head"><span class="letter">E</span><h3>2D 短片風（雙色調的有限動畫）</h3></div>
+        <dl>
+          <div><dt>做法</dt><dd>二到三色的雙色調插畫，每個動作 2～4 張影格，配合程式的變形、換色與碎片轉場，時機跟著配樂。</dd></div>
+          <div><dt>適合</dt><dd>ECHO 的記憶片段、真結局、第 3 周目的私人頻道。</dd></div>
+          <div><dt>素材</dt><dd>每段 20～40 張影格，只做少數幾段。</dd></div>
+        </dl>
+        <div class="pc"><div class="plus"><b>好</b>最有作者感、最強烈。</div><div class="minus"><b>難</b>AI 產生連續影格很難一致，大量做的品質不穩。</div></div>
+      </div>
+    </article>
+  </section>
+
+  <section>
+    <h2>官方過場團隊怎麼做</h2>
+    <p class="lede">用瀏覽器找到官方幕後節目 ZTALK 與動畫師 New Frame Plus 的分析，讀了字幕全文。下面是對我們有用的部分。</p>
+    <div class="fmt">
+      <div class="card"><span class="k">插一張圖當出口</span><h3>長對話中的固定插畫</h3><p>很長的對話玩家坐不住。在情緒衝上來的地方插一張大圖，讓情緒有出口，同時把對話放在圖上當過渡。</p></div>
+      <div class="card"><span class="k">顏色</span><h3>單色控制整個畫面</h3><p>沉重的戲用單色（雨果），復仇用燒不熄的火色加破碎的形狀（伊索德）。漫畫格的場景反而要樸素，只為劇情服務。</p></div>
+      <div class="card"><span class="k">分鏡</span><h3>用軸線安排優劣勢</h3><p>先排好每個人的位置再決定鏡頭。轉折之前鏡頭慢慢越軸，拍到翻盤的關鍵物，讓觀眾隱約感到要變了。</p></div>
+      <div class="card"><span class="k">催淚</span><h3>長鋪陳＋一個觸發事件</h3><p>先讓角色以為對方要醒了（手指動了一下），下一秒倒下不再回應，眼淚在這裡落下。</p></div>
+      <div class="card"><span class="k">登場</span><h3>先出代表物，再出本人</h3><p>先是青冥鳥，然後手與符咒，最後才是儀玄。宿敵登場可以先出機甲的武器與塗裝，再出駕駛。</p></div>
+      <div class="card"><span class="k">鬆緊</span><h3>緊張之後一個好笑的小動作</h3><p>一打五之後主角默默喝口水收尾，後來變成迷因。過場裡也放節奏很快的按鍵互動。</p></div>
+    </div>
+    <div class="card" style="border-color:#5a1a14">
+      <span class="k" style="color:#ff7a6a">要避開的問題（New Frame Plus）</span>
+      <h3>絕區零的對話與過場「動作過度」</h3>
+      <p>待機時軀幹也在飄，看起來沒有重量。每撮頭髮都在晃，變成雜訊。平常的一句話也配誇張動作、連擺好幾個可愛姿勢。對話場景很保守、過場突然很誇張，像換了一個人。大家用同樣誇張的方式動，個性反而被抹平。</p>
+      <p style="color:var(--fg)">我們的做法：每個角色一張「個性表」，對話、漫畫、3D 都照它動；待機只動頭、頭髮與眨眼，身體不飄；姿勢只在台詞需要時換。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>立繪與語音重新產生</h2>
+    <p class="lede">現在的立繪是為通訊框設計的（每人 2 個姿勢、正面）。過場要演戲，所以照過場的需要重新訂規格。</p>
+    <div class="fmt3">
+      <div class="card"><span class="k">立繪 v2</span><h3>演技表</h3><p>每人 8～12 個依個性挑的姿勢（霍斯特：抱胸、拍桌、指人、轉身背對）。正面＋左右 3/4 側，對話時兩個人可以面對面。半身為主，全身與特寫給漫畫用。14 個表情、眨眼、嘴型，全部拆層。換姿勢用「保持＋兩格過渡」，不滑動。</p></div>
+      <div class="card"><span class="k">角色個性表</span><h3>決定怎麼動</h3><p>輕或重、快或慢、吵或靜；待機幅度、換姿勢的頻率、慣用的手勢。同一個角色在對話、漫畫、3D 裡都照同一張表。</p></div>
+      <div class="card"><span class="k">語音 v2</span><h3>照表情配語氣</h3><p>每句台詞已經有表情，新語音照它決定平靜、激動、低語、喊叫、悲傷。比較現在的 VoxCPM2 與 IndexTTS2（聲音與情緒分開控制、可以指定每句長度，對齊節拍與翻頁），做試聽頁讓你挑。中文與日文都要。</p></div>
+    </div>
+    <p class="lede">宿敵 16 位直接用新規格做。先拿一個角色（霍斯特）試做演技表與語音的試聽頁，你看過再量產。</p>
+  </section>
+
+  <section>
+    <h2>建議的組合</h2>
+    <p class="lede">以 B 為主體，依段落混用。每段都是全語音（中文／日文，旁白也配音），可以略過，也照舊列在過場劇場。</p>
+    <div class="tbl"><table>
+      <thead><tr><th>段落</th><th>格式</th><th>內容</th></tr></thead>
+      <tbody>
+        <tr><td>序章</td><td class="fmtc">D＋B</td><td>PV 式的世界介紹（四家委託方的色塊與剪影）→ 墜落、甦醒用 3D → ECHO 第一次通訊用對話分格，在駕駛艙裡</td></tr>
+        <tr><td>各章開場</td><td class="fmtc">B</td><td>固定插畫 → 委託方與 ECHO 的對話分格 → 漫畫 → 3D 機甲高潮，宿敵登場用 D 的名牌大字</td></tr>
+        <tr><td>各章章末</td><td class="fmtc">A＋C</td><td>漫畫講事件的後果，對話分格講人物之間的關係</td></tr>
+        <tr><td>抉擇（選前）</td><td class="fmtc">C</td><td>在目前的戰場上，兩邊委託方左右對峙、輪流說話</td></tr>
+        <tr><td>抉擇（選後）</td><td class="fmtc">A</td><td>代價的漫畫蒙太奇</td></tr>
+        <tr><td>宿敵登場與擊破</td><td class="fmtc">D 插入</td><td>任務中的插入畫面，和立繪第 5 期（宿敵 16 位）一起做</td></tr>
+        <tr><td>記憶片段、真結局</td><td class="fmtc">E</td><td>只有這幾段</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>3D 段落的新演出</h2>
+    <div class="fmt3">
+      <div class="mini"><div class="screen d3"><img class="bg" src="{{snow}}" alt=""><div class="cockpit"><img src="{{wren}}" alt=""></div></div><span class="lab">駕駛艙插入 <span>角色在 3D 戰鬥中喊話</span></span></div>
+      <div class="mini"><div class="screen"><div class="impact"><img src="{{dam}}" alt=""><div class="x"></div><div class="x b"></div></div></div><span class="lab">衝擊畫格 <span>反白線稿＋X 形閃光，一兩格就切回</span></span></div>
+      <div class="mini"><div class="screen"><div class="pv" style="background:#18b6f0"><div class="dots"></div><div class="big" style="font-size:15cqw;top:30%">SIROCCO</div><span class="tag">宿敵 · 沙丘</span></div></div><span class="lab">宿敵名牌 <span>色塊＋大字，宿敵立繪做好後放進來</span></span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>要和你決定的事</h2>
+    <div class="qs">
+      <div class="q"><h3>選哪個方案</h3><p>建議 B 為主體、依段落混用 C、D、E；也可以只挑其中幾種。</p></div>
+      <div class="q"><h3>主角要不要露臉</h3><p>絕區零的主角在對話格裡有臉。我們的主角是玩家、從沒露過臉：維持只出現手、頭盔、背影，或做一個有臉的主角。</p></div>
+      <div class="q"><h3>舊的 3D 過場怎麼處理</h3><p>全部重做，或把現有的 3D 段落（地圖、機甲、Boss 運鏡）改造成新過場的高潮段落。</p></div>
+      <div class="q"><h3>劇情要不要擴寫</h3><p>對話分格和漫畫會讓台詞變多；現在每段約 6～8 句。</p></div>
+      <div class="q"><h3>立繪與語音的新規格</h3><p>姿勢數、角度、情緒的種類、語音模型。先試做一個角色給你看再量產。</p></div>
+      <div class="q"><h3>長度</h3><p>維持每段 30～70 秒，或加長（絕區零的主線過場常常好幾分鐘）。</p></div>
+      <div class="q"><h3>怎麼前進</h3><p>跟著語音自動播放（像影片），或像絕區零那樣按鍵翻頁、換下一句；也可以加「自動播放」設定，預設開。</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>參考來源</h2>
+    <div class="src">
+      <p>官方幕後節目：<a href="https://www.youtube.com/watch?v=RC4XoA7dhf0">ZTALK〈Behind the Scenes of Zenless Zone Zero's Story〉</a>；動畫分析：<a href="https://www.youtube.com/watch?v=1yH4Qz23FqM">New Frame Plus〈The Overanimation of Zenless Zone Zero〉</a>；語音模型：<a href="https://dev.to/czmilo/indextts2-comprehensive-review-in-depth-analysis-of-2025s-most-powerful-emotional-speech-1m9e">IndexTTS2 的介紹</a></p>
+      <p>官方影片（YouTube）：<a href="https://www.youtube.com/watch?v=wwKD0yZQC3g">珍・杜 角色短片〈驚魂之夜〉</a>、<a href="https://www.youtube.com/watch?v=Mfxj_EQvM6I">艾蓮 角色預告</a>、<a href="https://www.youtube.com/watch?v=loVwUjniVW8">艾蓮 角色展示</a>、<a href="https://www.youtube.com/watch?v=_060b8OX_tY">PlayStation 預告</a></p>
+      <p>實機：<a href="https://www.youtube.com/watch?v=Yy_rlkz4BLQ">主線全部過場的合集</a>（看前 25 分鐘）</p>
+      <p>官方幕後節目 ZTALK 的報導：<a href="https://www.icy-veins.com/zenless-zone-zero/news/how-zenless-zone-zero-build-its-storytelling-and-cutscenes/">Icy Veins〈How Zenless Zone Zero Build Its Storytelling and Cutscenes〉</a>；評論：<a href="https://beebom.com/zenless-zone-zero-review">Beebom</a>、<a href="https://gamesradar.com/zenless-zone-zero-guide">GamesRadar</a></p>
+      <p>示意畫面裡的角色、機甲與場景都是本作自己的素材（立繪與過場截圖）；台詞是示意用的。</p>
+    </div>
+  </section>
+</div>
