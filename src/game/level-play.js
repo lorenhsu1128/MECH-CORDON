@@ -85,6 +85,7 @@ Object.assign(Game.prototype, {
     this.styleRefresh();
     this.world = new World(this.scene, B.theme, B.seed, B.level, null, levelWorldOpt(L));
     applyLevelProps(this.world, L);
+    this.world.mergeLevelPlay(); // 產生器的物件與裝飾合併（擺的物件不合併；world.js）
     this.isClient = false;
     this.net.spawnReg = {};
     this.mpStats = {};
@@ -1263,6 +1264,7 @@ Object.assign(Game.prototype, {
     if (!d.lvh || !this.lvFull) return;
     const L = segOf(this.lvFull, d.lvSeg || 0);
     applyLevelProps(this.world, L);
+    this.world.mergeLevelPlay();
     this.lv = this.lvState(L, d.lvSeg || 0, {});
     this.lvBuildMarks(false);
     if (d.lvName) this.levelName = d.lvName;

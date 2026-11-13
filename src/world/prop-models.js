@@ -82,7 +82,7 @@ const nonIdx = (g) => {
   const o = g.toNonIndexed();
   if (g.parameters) {
     o.parameters = g.parameters;
-    o.userData.ptype = g.type;
+    o.userData.ptype = g.userData.ptype || g.type; // 標成別的種類的（沙袋）不做精緻化升級
   }
   return o;
 };
@@ -3404,7 +3404,13 @@ function themeWall0(style, w, h, d) {
           k.ob(L / n - 0.08, h / rows - 0.05, T, at, -h / 2 + (h / rows) * (r + 0.5), 0); // 外框同原本的方塊
           k.geo(
             m,
-            unitGeo('sandbag', () => new THREE.CylinderGeometry(0.42, 0.5, 1, 4, 1).rotateY(Math.PI / 4)),
+            unitGeo('sandbag', () => {
+              // 四邊形的沙袋照原樣（不做精緻化的圓柱升級：一面 34×17 m 的牆有近千顆，升級後每面 15 萬個三角形；
+              // 2026-11-13，docs/perf-threejs-upgrade.md 第十三節）
+              const sg = new THREE.CylinderGeometry(0.42, 0.5, 1, 4, 1).rotateY(Math.PI / 4);
+              sg.userData.ptype = 'sandbag';
+              return sg;
+            }),
             at,
             -h / 2 + (h / rows) * (r + 0.5),
             0,

@@ -388,6 +388,7 @@ AIRSPACE.cmExp = 1.78; // 色彩管理的曝光補正（同高空軌道：天空
 // 合併池、地形裝飾的合併依區域分格：格子邊長＝limOut／POOL_CELL（場地 ±limOut：每邊 2×POOL_CELL 格）。
 // 2026-11-13 從 2 改成 4（4×4 → 8×8 格）：一格太大時畫面外的部分照畫（每道算繪 45～90 萬個三角形）
 const POOL_CELL = 4;
+const _decorBox = new THREE.Box3();
 // 材質的外觀（合併池與地形裝飾的合併用：同樣外觀的不同材質物件可以合併）
 function propMatSig(m) {
   return isOutline(m)
@@ -1766,6 +1767,14 @@ export class World {
       if (o.isMesh && !Array.isArray(o.material) && o.geometry && o.geometry.groups.length)
         o.geometry.clearGroups();
     });
+    // 貼地的裝飾（鐵軌、地上的廢鐵、標線…，高不到 0.6 m）不投影：俯視看不到這麼矮的影子，
+    // 每格的陰影卻要畫一次（貨運調度場的側線整張圖 250 萬個三角形；2026-11-13）
+    m.updateMatrixWorld(true);
+    const hb = _decorBox.setFromObject(m);
+    if (!hb.isEmpty() && hb.max.y - hb.min.y < 0.6)
+      m.traverse((o) => {
+        if (o.isMesh) o.castShadow = false;
+      });
     this.decorG.add(m);
   }
   // 純裝飾的廢鐵（不碰撞）
@@ -2727,9 +2736,10 @@ export class World {
   // Lattice-9 的甲板格子的支柱（一張大地圖幾百根、一根一個網格，主線的大地圖每格多幾百次繪製；2026-11-07）：
   // 依區域（4×4 格）與材質合併成少數幾個網格，原本的網格隱藏、不在 meshes 裡（不做鏡頭遮擋的淡出）。
   // 某一根損毀時 propUnmerge 把它在合併網格裡的頂點縮成一點（不畫），原本的網格顯示回來，之後照原本的做法切開、隱藏
-  mergeGridPillars() {
+  mergeGridPillars(ex = null) {
     const P = (this.props || []).filter(
-      (p) => p.ob && p.ob.seg === 'grid' && p.ob.kind === 'circle' && p.ob.group,
+      (p) =>
+        p.ob && p.ob.seg === 'grid' && p.ob.kind === 'circle' && p.ob.group && !(ex && ex.has(p.ob.group)),
     );
     if (P.length < 8) return;
     const cell = this.limOut / POOL_CELL;
@@ -2796,7 +2806,7 @@ export class World {
   // 少數幾個網格，原本的網格隱藏（群組照常顯示：依距離切換的小細節 fineReg 不合併）。要動到某一個物件的外觀時
   // 「拿出來」（poolOut：它在合併網格裡的頂點縮成一點、原本的網格顯示），之後照原本的做法淡出、閃光、受損：
   // 鏡頭遮擋淡回不透明、沒有受損時放回去（poolIn）；受損、損毀、倒塌之後一直在外面（propUnmerge）
-  mergeProps() {
+  mergeProps(ex = null) {
     const cell = this.limOut / POOL_CELL;
     const buckets = new Map();
     const sig = propMatSig;
@@ -2807,7 +2817,7 @@ export class World {
     // 承重柱與結構本體（2026-11-13 起也合併：受損、損毀、倒塌之前都會 propUnmerge 拿出來；研究特區的橋墩一格上千次繪製）
     for (const p of this.props || []) {
       const g = p.ob && p.ob.group;
-      if (!g || p.dead || p.pillarMerge || segG.has(g)) continue;
+      if (!g || p.dead || p.pillarMerge || segG.has(g) || (ex && ex.has(g))) continue;
       if (!g.parent || !g.visible || g === this.decorG || g === this.pillarG) continue;
       let L = byG.get(g);
       if (!L) byG.set(g, (L = []));
@@ -2817,6 +2827,7 @@ export class World {
     for (const o of this.obstacles) {
       const g = o.group;
       if (o.prop || o.kind !== 'circle' || o.top === undefined || !g || byG.has(g) || segG.has(g)) continue;
+      if (ex && ex.has(g)) continue;
       if (!g.parent || !g.visible || g === this.decorG || g === this.pillarG) continue;
       byG.set(g, []);
     }
@@ -2880,6 +2891,21 @@ export class World {
       }
     }
     this.poolOutSet = new Set();
+  }
+  // 自訂關卡的遊玩（不是編輯器；2026-11-13）：建圖時不合併（編輯器要切換產生器物件的顯示），遊玩時擺好物件之後
+  // 才合併產生器放的物件、甲板格子的支柱與地形裝飾。玩家擺的物件（level/build.js 的 lvProps：觸發器會顯示／隱藏）不合併。
+  // 已移除的產生器物件是隱藏的，合併時略過
+  mergeLevelPlay() {
+    if (!this.lvl || this.lvMerged) return;
+    this.lvMerged = true;
+    const ex = new Set((this.lvProps || []).map((r) => r.group).filter(Boolean));
+    mergeStatic(this.decorG, new Set(), true, {
+      cell: this.limOut / POOL_CELL,
+      cellTris: 50000,
+      matKey: propMatSig,
+    });
+    this.mergeGridPillars(ex);
+    this.mergeProps(ex);
   }
   // 拿出來：合併網格裡縮成一點、原本的網格顯示
   poolOut(g, no) {
