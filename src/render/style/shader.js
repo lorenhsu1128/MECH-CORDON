@@ -411,9 +411,13 @@ for ( int i = 0; i < 4; i ++ ) {
     NB_AT < 0
       ? nb0
       : nb0.slice(0, NB_AT) +
-        'if ( stFlat > 0.5 ) normal = normalize( cross( dFdx( vViewPosition ), dFdy( vViewPosition ) ) );\n' +
+        'if ( stFlat > 0.5 ) { vec3 stFn = normalize( cross( dFdx( vViewPosition ), dFdy( vViewPosition ) ) ); if ( ! any( isnan( stFn ) ) ) normal = stFn; }\n' +
         nb0.slice(NB_AT);
-  const nmaps = C.normal_fragment_maps.replace('mapN.xy *= normalScale;', 'mapN.xy *= normalScale * stE.z;');
+  // 法線貼圖：行動裝置的顯示卡在導數很小時切線的縮放會變成無限大、法線變 NaN（整個物件黑掉，
+  // 2026-11-13 平板的暴風雪地圖），這時改用沒有擾動的法線
+  const nmaps =
+    C.normal_fragment_maps.replace('mapN.xy *= normalScale;', 'mapN.xy *= normalScale * stE.z;') +
+    '\nif ( any( isnan( normal ) ) || any( isinf( normal ) ) ) normal = nonPerturbedNormal;\n';
   const proto = THREE.MeshStandardMaterial.prototype;
   // 平面著色改成每個材質的 uniform（stFlat），不再是編譯時的 FLAT_SHADED：平面與平滑共用同一個程式，
   // 著色器的變體約少一半（每個變體在 Windows 上要編譯 0.2～0.4 秒，docs/perf-threejs-upgrade.md）。
@@ -535,7 +539,7 @@ for ( int i = 0; i < 4; i ++ ) {
     f = rep(
       f,
       '#include <dithering_fragment>',
-      '#include <dithering_fragment>\ngl_FragColor.a = mix( gl_FragColor.a, 1.0 - 0.5 * stCat, stOpq );',
+      '#include <dithering_fragment>\nif ( any( isnan( gl_FragColor ) ) || any( isinf( gl_FragColor.rgb ) ) ) gl_FragColor = vec4( diffuseColor.rgb * 0.6, 1.0 );\ngl_FragColor.a = mix( gl_FragColor.a, 1.0 - 0.5 * stCat, stOpq );',
     );
     shader.fragmentShader = f;
   };
