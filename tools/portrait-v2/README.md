@@ -19,3 +19,9 @@
 | `kill_gen.ps1` | 停掉 chargen 的 node 與 ComfyUI（比對字串寫在檔案裡，不會比對到下指令的 shell 自己） |
 | `sheet.js`／`grid.js`／`zoom.js`／`z.sh`／`v.sh`／`setb.js` | 候選比較圖、標框用的格線圖與放大圖（`ZS` 環境變數改放大範圍）、寫框、畫框檢查 |
 | `qc.js` | 表情抽查：裁臉框，主圖＋指定的表情並排 |
+
+**圖檔**
+
+- `candidates/<角色或重畫資料夾>/<姿勢>/edit_<種子>.webp`：Qwen 改姿勢的全部候選（原本在 git 忽略的 `tools/comfyui/runtime/work/v2/`，PNG 轉 WebP q92）。`*_r` 是重畫的（echo_r、aetheric_r、wren_r）；選了哪一張看 `picks.json`，選定的那張另外存成 `tools/charwork/<角色>/<姿勢>_cand_<種子>.webp`（設定卡的主圖）。
+- `sheets/`：選圖與標框時看的圖——`sh_<角色>.jpg` 候選比較、`g_*.jpg` 格線圖、`z*.jpg` 臉部放大、`v_<角色>.jpg` 框的檢查、`qc*.jpg` 表情抽查（`*.boxes.json` 是畫框用的資料）。
+- `trial/`：第 0 期霍斯特試做的成果頁原始檔（`build.js` 產生 `castron-trial.html`；線上版 https://claude.ai/artifact/Kwb4TyiEZaBhGrpZGa7Hup）。

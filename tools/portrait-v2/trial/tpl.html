@@ -1,0 +1,114 @@
+<title>霍斯特試做</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,700;0,900;1,900&family=Noto+Sans+TC:wght@400;700;900&display=swap">
+<style>
+/* 版面：和過場改版提案同一套深色介面；姿勢是一排排的候選，語音是一句一列的左右對照 */
+:root {
+  --bg: #151418; --panel: #1f1e24; --line: #3a3942; --fg: #f1efe9; --mute: #a9a6ad;
+  --lime: #cdeb2a; --orange: #d8903a; --ink: #0b0b0d; --paper: #f4f2ee;
+  --display: 'Rubik', 'Noto Sans TC', system-ui, sans-serif; --body: 'Noto Sans TC', 'Rubik', system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.7; margin: 0; }
+.wrap { max-width: 1200px; margin: 0 auto; padding-block: 36px 72px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 44px; }
+h1, h2, h3 { font-family: var(--display); margin: 0; line-height: 1.25; text-wrap: balance; }
+h1 { font: 900 italic clamp(28px, 4.6vw, 46px)/1.15 var(--display); }
+h2 { font: 900 italic clamp(21px, 3vw, 28px)/1.2 var(--display); }
+p { margin: 0; }
+.eyebrow { justify-self: start; font: 700 12px var(--display); letter-spacing: .14em; color: var(--ink); background: var(--orange); padding: 3px 12px; border-radius: 99px; }
+.lede { color: var(--mute); max-width: 70ch; }
+header, section { display: grid; gap: 16px; }
+.poses { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.pose { background: var(--panel); border: 3px solid var(--ink); outline: 1px solid var(--line); outline-offset: -7px; border-radius: 16px; padding: 14px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.pose h3 { font-size: 15px; display: flex; gap: 8px; align-items: center; }
+.pose h3 span { font: 900 12px var(--display); color: var(--ink); background: var(--lime); border-radius: 99px; padding: 1px 9px; }
+.row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+figure { margin: 0; display: grid; gap: 4px; }
+figure img { width: 100%; aspect-ratio: 832 / 1216; object-fit: cover; object-position: top; border-radius: 10px; background: var(--paper); }
+figcaption { font-size: 12px; color: var(--mute); }
+figcaption b { color: var(--ink); background: var(--lime); border-radius: 99px; padding: 0 8px; font-size: 11px; }
+figure.pick img { outline: 3px solid var(--lime); outline-offset: 2px; }
+.miss { color: var(--mute); font-size: 13px; }
+.tbl { overflow-x: auto; border-radius: 16px; border: 3px solid var(--ink); outline: 1px solid var(--line); outline-offset: -7px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; min-width: 600px; font-size: 14px; }
+th, td { text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 700 12px var(--display); letter-spacing: .12em; color: var(--mute); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 900; color: var(--orange); white-space: nowrap; }
+.line { background: var(--panel); border-radius: 16px; padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 16px; border: 3px solid var(--ink); outline: 1px solid var(--line); outline-offset: -7px; }
+@media (max-width: 760px) { .line { grid-template-columns: 1fr; } }
+.lt b { font: 900 italic 14px var(--display); color: var(--lime); }
+.cmp { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 520px) { .cmp { grid-template-columns: 1fr; } }
+.cmp > div { display: grid; gap: 6px; align-content: start; min-width: 0; }
+.cmp small { color: var(--mute); font-size: 12px; }
+.tag { justify-self: start; font: 900 12px var(--display); border-radius: 99px; padding: 1px 10px; }
+.tag.old { background: #3a3942; color: var(--fg); }
+.tag.new { background: var(--lime); color: var(--ink); }
+audio { width: 100%; height: 36px; }
+.ask { background: var(--panel); border-radius: 16px; padding: 18px 20px; display: grid; gap: 8px; border: 3px solid var(--ink); outline: 1px solid var(--line); outline-offset: -7px; }
+.ask li { margin-block: 4px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">第 0 期 · 霍斯特</span>
+    <h1>立繪 v2 與語音 v2 的試做</h1>
+    <p class="lede">過場改版的第 0 期：用卡斯特隆的霍斯特試做新的「演技表」（過場要用的姿勢）、角色個性表，以及照表情配語氣的語音。新姿勢都是從現有的 p1 主圖以 Qwen-Image-Edit 改出來的，每個姿勢兩個候選；還沒做表情、眨眼與去背。</p>
+  </header>
+
+  <section>
+    <h2>演技表（10 個姿勢）</h2>
+    <p class="lede">p3／p4 是 3/4 側，對話分格時讓霍斯特和對方面對面。其他依他的個性挑：拍桌、指人、看錶（在算成本）、摸後頸（愧疚，全劇只出現幾次）。</p>
+    <div class="poses">{{POSES}}</div>
+  </section>
+
+  <section>
+    <h2>角色個性表</h2>
+    <p class="lede">對話分格、漫畫、3D 都照這張表動，避開絕區零那種「每句都很誇張、身體一直飄」的問題。</p>
+    <div class="tbl"><table>
+      <thead><tr><th>項目</th><th>設定</th><th>演出上的意思</th></tr></thead>
+      <tbody>
+        <tr><td>重量</td><td>重</td><td>換姿勢時先頓一下再到位，不彈跳</td></tr>
+        <tr><td>速度</td><td>中慢</td><td>一句話最多換一次姿勢；拍桌這種大動作只在情緒最高的那句</td></tr>
+        <tr><td>音量</td><td>大</td><td>平常就有底氣；壓低聲音反而是他在算計或心虛</td></tr>
+        <tr><td>待機</td><td>頭微動、偶爾看錶</td><td>身體不飄；眨眼 3～6 秒一次（比 ECHO 慢）</td></tr>
+        <tr><td>慣用手勢</td><td>抱胸、指人、看錶</td><td>抱胸＝談生意的防備；看錶＝在算成本；摸後頸＝愧疚</td></tr>
+        <tr><td>對比</td><td>豪爽 ↔ 愧疚</td><td>大部分的戲豪爽；愧疚的戲要收：不換姿勢、聲音放低、視線移開</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>語音：固定語氣 vs 照表情的語氣</h2>
+    <p class="lede">同一句台詞、同一個聲音（VoxCPM2＋霍斯特現有的參考音檔），左邊是現在的做法（每句都是「粗聲、豪爽」），右邊照台詞的表情加上語氣指示。每種各產生兩次。</p>
+    <p class="lede">量測（長度、音量、聽寫）的初步結果：差別最明顯的是「愧疚」——照表情的版本長 5.6～6.4 秒、舊版 4.8～5.0 秒，有放慢、停頓。「生氣」「驚訝」兩種版本的長度與音量幾乎一樣，語氣指示可能沒什麼作用，要用耳朵確認。「大笑」照表情的第 2 次拖到 12 秒、舊版第 2 次沒笑出來。全部 24 段的字都唸對（聽寫把「尾款」聽成別的字，四段都一樣，可能是聽寫的問題）。</p>
+    {{VOICE}}
+  </section>
+
+  <section>
+    <h2>試寫的分鏡：第 1 章開場〈荒野的鐘聲〉約 85 秒</h2>
+    <p class="lede">照定案的格式與長度，把現在的 6 句旁白擴寫成這樣。主角不露臉，別人對主角說話時看著鏡頭。</p>
+    <div class="tbl"><table>
+      <thead><tr><th>時間</th><th>格式</th><th>畫面</th><th>台詞與聲音</th></tr></thead>
+      <tbody>
+        <tr><td>0:00</td><td>固定插畫</td><td>夜裡的荒野，沙裡半埋的舊天線頂端亮起紅光。整張只用赭紅一色，慢慢推近</td><td>ECHO（旁白）：「南部荒野。三天前，這座天線自己醒了。」遠處像鐘的嗡鳴</td></tr>
+        <tr><td>0:10</td><td>動態漫畫</td><td>一頁三格：砲兵陣地 BASTILLE 抬起砲管（3D 進格、網點）→ 補給車隊被炸翻 → 工人的剪影抬頭看</td><td>「轟」；工頭：「補給線……斷了！」</td></tr>
+        <tr><td>0:24</td><td>對話分格</td><td>卡斯特隆的辦公室，窗外是礦場的燈。霍斯特一格看鏡頭；ECHO 從右邊加入，兩人面對面</td><td>霍斯特（看錶）：「我是卡斯特隆的霍斯特。客套話就免了。」（抱胸）「礦坑那座陣地，是我們幾十年前封存的資產。它自己醒了。」ECHO：「天線的訊號和陣地甦醒，只差了四秒。」霍斯特（3/4 側）：「……妳的系統管得太多了。」（指人）「從荒野推到礦坑，把它拆了。打得越深，拿得越多。」（算計）「你是新登錄的？檔案上什麼都沒有。……也好，乾淨的人好辦事。」</td></tr>
+        <tr><td>0:58</td><td>固定插畫</td><td>通訊切斷後，霍斯特一個人摸著後頸，桌上一張舊的礦工合照。單色的暗橘</td><td>沒有台詞，只有配樂（情緒的出口，暗示他知道些什麼）</td></tr>
+        <tr><td>1:04</td><td>3D 機甲</td><td>主角的機甲空降荒野 → 砲擊預警 → 快速推進閃開 → 駕駛艙插入 ECHO 的全像 → 反白線稿的衝擊畫格</td><td>ECHO：「目標在礦坑深處。照你的節奏來。」</td></tr>
+        <tr><td>1:24</td><td>PV 式章名卡</td><td>赭紅與黑的色塊、BASTILLE 的剪影、大字</td><td>「CHAPTER 1　南部荒野」</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="ask">
+    <h2>想請你看的地方</h2>
+    <ul>
+      <li>每個姿勢挑哪一張（或哪個要重畫、姿勢要換掉）。</li>
+      <li>右邊「照表情的語氣」有沒有比較像在演戲；哪幾句還不夠。</li>
+      <li>個性表的方向對不對。之後每個角色都會有一張。</li>
+    </ul>
+  </section>
+</div>
