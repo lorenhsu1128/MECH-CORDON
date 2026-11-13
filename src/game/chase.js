@@ -284,16 +284,8 @@ Object.assign(Game.prototype, {
     this.camTarget.copy(ent.pos);
     this.camExtra = 14 * this.camK(); // 霧往外推（看得比俯視遠）
     const sc = ent.pos.clone().addScaledVector(fwd, 22 * this.camK());
-    this.sun.position.copy(sc).add(this.sunOff);
-    this.sun.target.position.copy(sc);
-    const shc = this.sun.shadow.camera;
-    if (shc.right !== 80 * this.camK()) {
-      shc.left = -80 * this.camK();
-      shc.right = 80 * this.camK();
-      shc.top = 80 * this.camK();
-      shc.bottom = -80 * this.camK();
-      shc.updateProjectionMatrix();
-    }
+    sc.y = ent.pos.y;
+    this.sunFit(sc, 80 * this.camK(), 90 * this.camK()); // 陰影範圍貼合畫面（camera.js）：地平線方向的陰影最遠 270 m（再近的話遠處大甲板底下會亮一條）
     const c = ent.center();
     const pts = [c, c.clone().setY(ent.pos.y + h * 0.95), c.clone().setY(ent.pos.y + 0.4 * MS)];
     // 擋住的物件淡出；鏡頭離機體很近，不顯示透視輪廓（機體自己的零件互相遮住也會變成輪廓）

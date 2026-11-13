@@ -44,8 +44,91 @@ const XRAY_MAT = new THREE.MeshBasicMaterial({
 // 蒙皮網格（render/mesh-merge.js 合併的機體）用的版本：同一副骨架（r128 的材質不能蒙皮與一般共用）
 const XRAY_SKIN = XRAY_MAT.clone();
 XRAY_SKIN.skinning = true;
+// 陰影範圍貼合畫面（2026-11-13，docs/perf-threejs-upgrade.md 第十二節）：以前陰影鏡頭是以注視點為中心、邊長 420～750 m 的
+// 正方形（幾乎整張地圖），畫面外的物件全部要畫進陰影貼圖（平板上研究特區一格 800 多次繪製）。改成量鏡頭四個角落的射線打到
+// 機體附近高度（低、高兩個平面）的範圍，換到太陽的座標（陰影鏡頭的左右／上下軸）取外框＋外圍。畫面外的高物件投進畫面的影子：
+// 平行光的影子沿光線方向，接收點與投影物在太陽座標的 XY 相同，所以只要涵蓋畫面裡的接收點就夠了。
+// 抖動：範圍以 SH_STEP 為一級往上取整、中心對齊陰影貼圖的像素
+const SH_LO = -6, // 接收面：機體高度往下／往上（×DS 公尺）
+  SH_HI = 14,
+  SH_PAD = 8, // 外圍（×DS）
+  SH_STEP = 6, // 範圍的級距（×DS）
+  SH_MIN = 24; // 最小的半邊長（×DS）
+const _shV = new THREE.Vector3(),
+  _shU = new THREE.Vector3(),
+  _shW = new THREE.Vector3(),
+  _shD = new THREE.Vector3(),
+  _shUp = new THREE.Vector3(0, 1, 0);
+const SH_CORNERS = [
+  [-1, -1],
+  [1, -1],
+  [-1, 1],
+  [1, 1],
+];
 
 Object.assign(Game.prototype, {
+  // 太陽與陰影鏡頭：c＝原本的中心（注視點），maxExt＝原本的半邊長（上限，不會比以前大），capD＝射線最遠多遠（追尾、第一人稱的地平線）
+  sunFit(c, maxExt, capD) {
+    const sun = this.sun,
+      sc = sun.shadow.camera,
+      cam = this.camera;
+    let ext = maxExt,
+      cx = c.x,
+      cz = c.z;
+    const off = this.sunOff;
+    if (this.ctrl.shadowFit !== false && off.lengthSq() > 1e-6) {
+      cam.updateMatrixWorld();
+      // 太陽座標的軸（同 three.js 陰影鏡頭的 lookAt：x＝up×dir、y＝dir×x）
+      _shD.copy(off).normalize();
+      _shU.crossVectors(_shUp, _shD);
+      if (_shU.lengthSq() < 1e-6) _shU.set(1, 0, 0);
+      _shU.normalize();
+      _shW.crossVectors(_shD, _shU);
+      let a0 = 1e9,
+        a1 = -1e9,
+        b0 = 1e9,
+        b1 = -1e9;
+      const cp = cam.position;
+      const put = (x, y, z) => {
+        const a = x * _shU.x + y * _shU.y + z * _shU.z,
+          b = x * _shW.x + y * _shW.y + z * _shW.z;
+        if (a < a0) a0 = a;
+        if (a > a1) a1 = a;
+        if (b < b0) b0 = b;
+        if (b > b1) b1 = b;
+      };
+      put(cp.x, cp.y, cp.z);
+      for (const [nx, ny] of SH_CORNERS) {
+        _shV.set(nx, ny, 0.5).unproject(cam).sub(cp).normalize();
+        for (const h of [SH_LO, SH_HI]) {
+          const y = c.y + h * DS;
+          let t = Math.abs(_shV.y) > 1e-4 ? (y - cp.y) / _shV.y : capD;
+          if (!(t > 0) || t > capD) t = capD;
+          put(cp.x + _shV.x * t, cp.y + _shV.y * t, cp.z + _shV.z * t);
+        }
+      }
+      const step = SH_STEP * DS;
+      const e = Math.max(a1 - a0, b1 - b0) / 2 + SH_PAD * DS;
+      ext = Math.min(maxExt, Math.max(SH_MIN * DS, Math.ceil(e / step) * step));
+      // 中心：太陽座標的中點對齊陰影貼圖的像素，換回世界座標（沿光線方向的深度用原本的中心）
+      const tx = (2 * ext) / (sun.shadow.mapSize.x || 2048);
+      const am = Math.round((a0 + a1) / 2 / tx) * tx,
+        bm = Math.round((b0 + b1) / 2 / tx) * tx;
+      const dd = c.x * _shD.x + c.y * _shD.y + c.z * _shD.z;
+      _shV.copy(_shU).multiplyScalar(am).addScaledVector(_shW, bm).addScaledVector(_shD, dd);
+      cx = _shV.x;
+      cz = _shV.z;
+      sun.target.position.copy(_shV);
+    } else sun.target.position.set(cx, c.y, cz);
+    sun.position.copy(sun.target.position).add(off);
+    if (sc.right !== ext) {
+      sc.left = -ext;
+      sc.right = ext;
+      sc.top = ext;
+      sc.bottom = -ext;
+      sc.updateProjectionMatrix();
+    }
+  },
   camK() {
     return DS;
   },
@@ -310,8 +393,7 @@ Object.assign(Game.prototype, {
       const off = this.camOff().clone().multiplyScalar(this.camZoom);
       this.camera.position.lerp(this.camTarget.clone().add(off), Math.min(1, dt * 10));
       this.camera.lookAt(this.camTarget.x, this.camTarget.y, this.camTarget.z);
-      this.sun.position.copy(this.camTarget).add(this.sunOff);
-      this.sun.target.position.copy(this.camTarget);
+      this.sunFit(this.camTarget, 70 * this.camK() * Math.max(1, this.camZoom), 160 * DS);
       this.world.updateOcclusion(this.camera.position, this.camTarget, dt);
       this.rangeRing.visible = false;
       return;
@@ -335,8 +417,7 @@ Object.assign(Game.prototype, {
         const off = this.camOff().clone().multiplyScalar(this.camZoom);
         this.camera.position.lerp(this.camTarget.clone().add(off), Math.min(1, dt * 4));
         this.camera.lookAt(this.camTarget.x, this.camTarget.y, this.camTarget.z);
-        this.sun.position.copy(this.camTarget).add(this.sunOff);
-        this.sun.target.position.copy(this.camTarget);
+        this.sunFit(this.camTarget, 70 * this.camK() * Math.max(1, this.camZoom), 160 * DS);
         this.world.updateOcclusion(this.camera.position, this.camTarget, dt);
         this.rangeRing.visible = false;
         return;
@@ -447,17 +528,7 @@ Object.assign(Game.prototype, {
     }
     this.camKickTick(this.camera.position, dt, (cuW ? 0.5 : this.camZoom) * this.camK()); // 近戰命中的鏡頭推動（juice.js）
     this.camera.lookAt(look.x, look.y, look.z);
-    this.sun.position.copy(this.camTarget).add(this.sunOff);
-    this.sun.target.position.copy(this.camTarget);
-    const sc = this.sun.shadow.camera;
-    const ext = 70 * this.camK() * Math.max(1, this.camZoom);
-    if (sc.right !== ext) {
-      sc.left = -ext;
-      sc.right = ext;
-      sc.top = ext;
-      sc.bottom = -ext;
-      sc.updateProjectionMatrix();
-    }
+    this.sunFit(this.camTarget, 70 * this.camK() * Math.max(1, this.camZoom), 160 * DS);
     // 頭、中心、腳都檢查；還是被擋住（物件或地形）時顯示機體的透視輪廓
     const c = p.center(),
       h = p.model.height || 4;

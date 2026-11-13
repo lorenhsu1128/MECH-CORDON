@@ -395,6 +395,7 @@ export function makeSkeleton(root, bones, syncs) {
 // restore() 還原成原本的網格；detach 為 true 時記下全部的合併（整台還原）。
 // opts.names：有名稱的網格也合併（機甲與載具：GLB 的網格都有名稱，遊戲端不靠名稱找網格）。
 // opts.only：只合併這些網格（Set；再合併時只動建模時就有的網格，之後掛上去的特效、盾牌等不動）。
+// opts.matKey：材質的分組鍵（預設 uuid；地形裝飾用外觀的簽名，外觀相同的不同材質物件合併成一個、用第一個的材質）。
 // opts.skinCache：材質複本的快取（Map），再合併時沿用同一個複本（迷彩、適應裝甲記下的材質照樣有效）。
 // opts.cell：三角形超過 opts.cellTris（預設 5 萬）的合併再依世界座標的 XZ 方格（邊長 cell）分開（地圖的小物件：
 // 合併成橫跨整張地圖的網格時視錐剔除永遠剔不掉、陰影也要整張畫；小的照舊一個，不增加繪製次數；
@@ -415,7 +416,7 @@ export function mergeStatic(root, moving, detach = new Set(), opts = {}) {
     if (!mergeable(o, root, moving, names) || (opts.only && !opts.only.has(o))) return;
     const a = anchorOf(o);
     const key = [
-      o.material.uuid,
+      opts.matKey ? opts.matKey(o.material) : o.material.uuid,
       attrSig(o.geometry),
       +o.castShadow,
       +o.receiveShadow,

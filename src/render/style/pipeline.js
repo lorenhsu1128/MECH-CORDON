@@ -561,6 +561,8 @@ export class StylePipeline {
       ? new THREE.UnrealBloomPass(new THREE.Vector2(4, 4), 0.45, 0.4, 0.9)
       : null;
     this.low = null; // 低特效（setLowFx）
+    // SSAO 的法線從場景的深度貼圖重建（不再重畫整個場景一次；2026-11-13 遊戲的主管線預設開，機甲庫與作戰室照舊畫法線）
+    this.nrmDepth = !!ctx.nrmDepth;
     this.hullOff = false; // true＝暫時不畫描邊外殼
     this.prevVP = new THREE.Matrix4();
     this.hasPrev = false;
@@ -741,7 +743,7 @@ export class StylePipeline {
       S.kernelRadius = b.kernelRadius * this.wscale();
       S.minDistance = b.minDistance;
       S.maxDistance = b.maxDistance;
-      const fromDepth = low && low.ssao === 'depth' && this.rtScene.depthTexture;
+      const fromDepth = (low ? low.ssao === 'depth' : this.nrmDepth) && this.rtScene.depthTexture;
       if (fromDepth) {
         const n = this.nrm.m.uniforms;
         n.tDepth.value = this.rtScene.depthTexture;

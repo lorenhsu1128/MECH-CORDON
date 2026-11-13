@@ -385,6 +385,44 @@ for (const k in CM_LIN_EXP) THEMES[k].cmLinExp = CM_LIN_EXP[k];
 Object.defineProperty(THEMES, 'airspace', { value: AIRSPACE, enumerable: false });
 AIRSPACE.cmExp = 1.78; // 色彩管理的曝光補正（同高空軌道：天空占大部分畫面）
 
+// 合併池、地形裝飾的合併依區域分格：格子邊長＝limOut／POOL_CELL（場地 ±limOut：每邊 2×POOL_CELL 格）。
+// 2026-11-13 從 2 改成 4（4×4 → 8×8 格）：一格太大時畫面外的部分照畫（每道算繪 45～90 萬個三角形）
+const POOL_CELL = 4;
+// 材質的外觀（合併池與地形裝飾的合併用：同樣外觀的不同材質物件可以合併）
+function propMatSig(m) {
+  return isOutline(m)
+    ? 'outline:' + m.uuid
+    : [
+        m.type,
+        m.color ? m.color.getHexString() : '',
+        m.emissive ? m.emissive.getHexString() : '',
+        m.emissiveIntensity,
+        m.roughness,
+        m.metalness,
+        m.map ? m.map.uuid : '',
+        m.normalMap ? m.normalMap.uuid : '',
+        m.roughnessMap ? m.roughnessMap.uuid : '',
+        m.metalnessMap ? m.metalnessMap.uuid : '',
+        m.emissiveMap ? m.emissiveMap.uuid : '',
+        m.aoMap ? m.aoMap.uuid : '',
+        m.alphaMap ? m.alphaMap.uuid : '',
+        m.envMap ? m.envMap.uuid : '',
+        m.envMapIntensity,
+        m.vertexColors,
+        m.side,
+        m._stFlat,
+        m.transparent,
+        m.opacity,
+        m.alphaTest,
+        m.depthWrite,
+        m.polygonOffset,
+        m.polygonOffsetFactor,
+        m.visible,
+        styleCat(m),
+        m.customProgramCacheKey ? m.customProgramCacheKey() : '',
+      ].join(',');
+}
+
 export class World {
   constructor(scene, theme, seed, level, feat, opt = {}) {
     this.scene = scene;
@@ -497,7 +535,11 @@ export class World {
       if (opt.entry) this.addEntry(opt.entry);
       if (LV) this.levelGenItems(ob0, me0);
       else if (!opt.sample)
-        mergeStatic(this.decorG, new Set(), true, { cell: this.limOut / 2, cellTris: 50000 }); // 很大的合併分成 4×4 格（視錐剔除剔得掉）
+        mergeStatic(this.decorG, new Set(), true, {
+          cell: this.limOut / POOL_CELL,
+          cellTris: 50000,
+          matKey: propMatSig,
+        }); // 很大的合併分成 8×8 格（視錐剔除剔得掉）；同外觀的不同材質物件也合併
     });
     // 只取樣地形與障礙物（作戰室的全像戰略桌，game/hub-holo.js）：生成到這裡就夠了，之後的登記、合併、遠景、天氣都不呼叫地圖的亂數
     if (opt.sample) return;
@@ -2690,7 +2732,7 @@ export class World {
       (p) => p.ob && p.ob.seg === 'grid' && p.ob.kind === 'circle' && p.ob.group,
     );
     if (P.length < 8) return;
-    const cell = this.limOut / 2;
+    const cell = this.limOut / POOL_CELL;
     const buckets = new Map();
     for (const p of P) {
       const g = p.ob.group;
@@ -2755,49 +2797,28 @@ export class World {
   // 「拿出來」（poolOut：它在合併網格裡的頂點縮成一點、原本的網格顯示），之後照原本的做法淡出、閃光、受損：
   // 鏡頭遮擋淡回不透明、沒有受損時放回去（poolIn）；受損、損毀、倒塌之後一直在外面（propUnmerge）
   mergeProps() {
-    const cell = this.limOut / 2;
+    const cell = this.limOut / POOL_CELL;
     const buckets = new Map();
-    const sig = (m) =>
-      isOutline(m)
-        ? 'outline:' + m.uuid
-        : [
-            m.type,
-            m.color ? m.color.getHexString() : '',
-            m.emissive ? m.emissive.getHexString() : '',
-            m.emissiveIntensity,
-            m.roughness,
-            m.metalness,
-            m.map ? m.map.uuid : '',
-            m.normalMap ? m.normalMap.uuid : '',
-            m.roughnessMap ? m.roughnessMap.uuid : '',
-            m.metalnessMap ? m.metalnessMap.uuid : '',
-            m.emissiveMap ? m.emissiveMap.uuid : '',
-            m.aoMap ? m.aoMap.uuid : '',
-            m.alphaMap ? m.alphaMap.uuid : '',
-            m.envMap ? m.envMap.uuid : '',
-            m.envMapIntensity,
-            m.vertexColors,
-            m.side,
-            m._stFlat,
-            m.transparent,
-            m.opacity,
-            m.alphaTest,
-            m.depthWrite,
-            m.polygonOffset,
-            m.polygonOffsetFactor,
-            m.visible,
-            styleCat(m),
-            m.customProgramCacheKey ? m.customProgramCacheKey() : '',
-          ].join(',');
+    const sig = propMatSig;
     const byG = new Map();
+    // 巨型結構的局部打穿（p.seg）的群組不合併（壩體、隧道口、平台外緣：切開的是整段共用的網格）
+    const segG = new Set();
+    for (const p of this.props || []) if (p.seg && !p.grid && p.ob && p.ob.group) segG.add(p.ob.group);
+    // 承重柱與結構本體（2026-11-13 起也合併：受損、損毀、倒塌之前都會 propUnmerge 拿出來；研究特區的橋墩一格上千次繪製）
     for (const p of this.props || []) {
       const g = p.ob && p.ob.group;
-      if (!g || p.dead || p.pillarMerge || p.support || (p.body && p.mode !== 'drop') || (p.seg && !p.grid))
-        continue;
+      if (!g || p.dead || p.pillarMerge || segG.has(g)) continue;
       if (!g.parent || !g.visible || g === this.decorG || g === this.pillarG) continue;
       let L = byG.get(g);
       if (!L) byG.set(g, (L = []));
       L.push(p);
+    }
+    // 打不壞的圓柱（支柱林、甲板下沒登記的支柱：有頂的圓柱障礙物、不是物件）：只會被鏡頭遮擋拿出來淡出
+    for (const o of this.obstacles) {
+      const g = o.group;
+      if (o.prop || o.kind !== 'circle' || o.top === undefined || !g || byG.has(g) || segG.has(g)) continue;
+      if (!g.parent || !g.visible || g === this.decorG || g === this.pillarG) continue;
+      byG.set(g, []);
     }
     for (const [g, props] of byG) {
       g.updateMatrixWorld(true);

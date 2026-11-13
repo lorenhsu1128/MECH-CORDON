@@ -166,8 +166,7 @@ Object.assign(Game.prototype, {
     this.camera.position.copy(eye);
     this.camera.lookAt(eye.clone().add(look));
     this.camTarget.copy(ent.pos);
-    this.sun.position.copy(ent.pos).add(this.sunOff);
-    this.sun.target.position.copy(ent.pos);
+    this.sunFit(ent.pos, 70 * DS, 90 * DS); // 陰影範圍貼合畫面（camera.js）：地平線方向的陰影最遠 270 m
     this.fpHide(ent);
     this.rangeRing.visible = false;
   },

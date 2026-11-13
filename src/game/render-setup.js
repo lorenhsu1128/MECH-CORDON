@@ -81,6 +81,7 @@ Object.assign(Game.prototype, {
     this.applyRes();
     manualShadows(this.renderer); // 陰影貼圖每格只畫一次：loop 開頭設 needsUpdate（SSAO 的法線不再觸發）
     this.stylePipe = new StylePipeline(this.renderer, {
+      nrmDepth: true, // SSAO 的法線從深度重建，省掉整個場景的第三次算繪（docs/perf-threejs-upgrade.md 第十二節）
       scene: this.scene,
       camera: this.camera,
       sun: this.sun,
