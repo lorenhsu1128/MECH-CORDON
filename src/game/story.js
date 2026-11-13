@@ -8,7 +8,7 @@ import { lineExpr } from '../data/line-expr.js';
 import { storyQuote } from '../data/voice.js';
 import { Game } from './game.js';
 
-const NUM = ['', '一', '二', '三', '四', '五', '六'];
+const NUM = ['', '一', '二', '三', '四', '五', '六', '七', '八']; // 主線擴充的第 7、8 章（熔爐、方舟）
 
 Object.assign(Game.prototype, {
   // 自動播放：多人不播；冒煙測試（?test）設 storyTest 才播
