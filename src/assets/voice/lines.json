@@ -490,42 +490,42 @@
   "h1eu8f1l": {
    "t": "十、九、八……奇怪，我好像數過這個倒數很多次了。",
    "k": "comm",
-   "e": "focus"
+   "e": "think"
   },
   "h1gwkvsb": {
    "t": "十、九、八——你好啊！我是維爾威的發射技師！這座港我拆過三次、裝過四次！",
    "k": "comm",
-   "e": "focus"
+   "e": "thrill"
   },
   "h1nvhru6": {
    "t": "倒數重新開始。",
    "k": "comm",
-   "e": "focus"
+   "e": "count"
   },
   "h1oif9s3": {
    "t": "三、二、一——砰！",
    "k": "comm",
-   "e": "focus"
+   "e": "thrill"
   },
   "h1xyjuvl": {
    "t": "零。",
    "k": "comm",
-   "e": "think"
+   "e": "count"
   },
   "h5g5a0s": {
    "t": "十、九、八——又是你！上次的倒數還沒數完喔！",
    "k": "comm",
-   "e": "focus"
+   "e": "count"
   },
   "h9m67cl": {
    "t": "這次的目標是船，不是你。不過，順便一起也可以！",
    "k": "comm",
-   "e": "focus"
+   "e": "thrill"
   },
   "hqru0se": {
    "t": "倒數……還沒結束喔。",
    "k": "comm",
-   "e": "wry"
+   "e": "thrill"
   }
  },
  "echo": {
@@ -4960,260 +4960,320 @@
  "grunt": {
   "b_allyDown0": {
    "t": "我們的人被擊毀了！",
-   "k": "shout"
+   "k": "shout",
+   "e": "shout"
   },
   "b_allyDown1": {
    "t": "失去一台！",
-   "k": "shout"
+   "k": "shout",
+   "e": "shout"
   },
   "b_allyDown2": {
    "t": "該死，他被幹掉了！",
-   "k": "shout"
+   "k": "shout",
+   "e": "shout"
   },
   "b_allyDown3": {
    "t": "有人倒了！",
-   "k": "shout"
+   "k": "shout",
+   "e": "shout"
   },
   "b_allyDown4": {
    "t": "隊友被打爆了！",
-   "k": "shout"
+   "k": "shout",
+   "e": "shout"
   },
   "b_allyDown5": {
    "t": "又少一台！",
-   "k": "shout"
+   "k": "shout",
+   "e": "shout"
   },
   "b_allyDown6": {
    "t": "不會吧，他掛了！",
-   "k": "shout"
+   "k": "shout",
+   "e": "shout"
   },
   "b_allyDown7": {
    "t": "失去聯絡，他被擊毀了！",
-   "k": "shout"
+   "k": "shout",
+   "e": "shout"
   },
   "b_allyDown8": {
    "t": "我們損失一台了！",
-   "k": "shout"
+   "k": "shout",
+   "e": "shout"
   },
   "b_allyDown9": {
    "t": "可惡，誰去補位！",
-   "k": "shout"
+   "k": "shout",
+   "e": "shout"
   },
   "b_attack0": {
    "t": "開火！開火！",
-   "k": "shout"
+   "k": "shout",
+   "e": "shout"
   },
   "b_attack1": {
    "t": "壓制他！別讓他抬頭！",
-   "k": "shout"
+   "k": "shout",
+   "e": "shout"
   },
   "b_attack2": {
    "t": "上！別讓他喘氣！",
-   "k": "shout"
+   "k": "shout",
+   "e": "shout"
   },
   "b_attack3": {
    "t": "打！給我打！",
-   "k": "shout"
+   "k": "shout",
+   "e": "shout"
   },
   "b_attack4": {
    "t": "集中火力！",
-   "k": "shout"
+   "k": "shout",
+   "e": "shout"
   },
   "b_attack5": {
    "t": "包圍他！",
-   "k": "shout"
+   "k": "shout",
+   "e": "shout"
   },
   "b_attack6": {
    "t": "不要停，繼續射！",
-   "k": "shout"
+   "k": "shout",
+   "e": "shout"
   },
   "b_attack7": {
    "t": "輪到我了，衝！",
-   "k": "shout"
+   "k": "shout",
+   "e": "shout"
   },
   "b_attack8": {
    "t": "一起上！",
-   "k": "shout"
+   "k": "shout",
+   "e": "shout"
   },
   "b_attack9": {
    "t": "掩護我，我上了！",
-   "k": "shout"
+   "k": "shout",
+   "e": "shout"
   },
   "b_cmdDown0": {
    "t": "指揮官倒了！",
-   "k": "shout"
+   "k": "shout",
+   "e": "panic"
   },
   "b_cmdDown1": {
    "t": "沒有指揮了，怎麼辦？",
-   "k": "shout"
+   "k": "shout",
+   "e": "panic"
   },
   "b_cmdDown2": {
    "t": "指揮官失聯！",
-   "k": "shout"
+   "k": "shout",
+   "e": "panic"
   },
   "b_cmdDown3": {
    "t": "隊長被打掉了！",
-   "k": "shout"
+   "k": "shout",
+   "e": "panic"
   },
   "b_cmdDown4": {
    "t": "指揮官陣亡！",
-   "k": "shout"
+   "k": "shout",
+   "e": "panic"
   },
   "b_cmdDown5": {
    "t": "現在誰下命令？",
-   "k": "shout"
+   "k": "shout",
+   "e": "panic"
   },
   "b_cmdDown6": {
    "t": "長官！長官回話啊！",
-   "k": "shout"
+   "k": "shout",
+   "e": "panic"
   },
   "b_cmdDown7": {
    "t": "指揮鏈斷了！",
-   "k": "shout"
+   "k": "shout",
+   "e": "panic"
   },
   "b_cmdDown8": {
    "t": "隊長不見了，要撤嗎？",
-   "k": "shout"
+   "k": "shout",
+   "e": "panic"
   },
   "b_cmdDown9": {
    "t": "指揮官被擊毀，各自為戰！",
-   "k": "shout"
+   "k": "shout",
+   "e": "panic"
   },
   "b_hurt0": {
    "t": "我被打中了！",
-   "k": "shout"
+   "k": "shout",
+   "e": "panic"
   },
   "b_hurt1": {
    "t": "機體受損！",
-   "k": "shout"
+   "k": "shout",
+   "e": "panic"
   },
   "b_hurt2": {
    "t": "可惡，裝甲撐不住了！",
-   "k": "shout"
+   "k": "shout",
+   "e": "panic"
   },
   "b_hurt3": {
    "t": "靠，好痛！",
-   "k": "shout"
+   "k": "shout",
+   "e": "panic"
   },
   "b_hurt4": {
    "t": "中彈了！",
-   "k": "shout"
+   "k": "shout",
+   "e": "panic"
   },
   "b_hurt5": {
    "t": "我這台快不行了！",
-   "k": "shout"
+   "k": "shout",
+   "e": "panic"
   },
   "b_hurt6": {
    "t": "被打到了，掩護我！",
-   "k": "shout"
+   "k": "shout",
+   "e": "panic"
   },
   "b_hurt7": {
    "t": "裝甲破了！",
-   "k": "shout"
+   "k": "shout",
+   "e": "panic"
   },
   "b_hurt8": {
    "t": "該死，傷得很重！",
-   "k": "shout"
+   "k": "shout",
+   "e": "panic"
   },
   "b_hurt9": {
    "t": "唉唷，被擊中了！",
-   "k": "shout"
+   "k": "shout",
+   "e": "panic"
   },
   "b_search0": {
    "t": "人跑到哪去了？",
-   "k": "low"
+   "k": "low",
+   "e": "think"
   },
   "b_search1": {
    "t": "目標消失，繼續搜索。",
-   "k": "low"
+   "k": "low",
+   "e": "think"
   },
   "b_search2": {
    "t": "散開，把他找出來。",
-   "k": "low"
+   "k": "low",
+   "e": "think"
   },
   "b_search3": {
    "t": "奇怪，剛剛還在這啊。",
-   "k": "low"
+   "k": "low",
+   "e": "think"
   },
   "b_search4": {
    "t": "他躲起來了，仔細找。",
-   "k": "low"
+   "k": "low",
+   "e": "think"
   },
   "b_search5": {
    "t": "沒看到人……繼續找。",
-   "k": "low"
+   "k": "low",
+   "e": "think"
   },
   "b_search6": {
    "t": "一定還在附近。",
-   "k": "low"
+   "k": "low",
+   "e": "think"
   },
   "b_search7": {
    "t": "跟丟了，分頭找。",
-   "k": "low"
+   "k": "low",
+   "e": "think"
   },
   "b_search8": {
    "t": "小心，他可能在埋伏。",
-   "k": "low"
+   "k": "low",
+   "e": "think"
   },
   "b_search9": {
    "t": "這邊沒有，換個地方找。",
-   "k": "low"
+   "k": "low",
+   "e": "think"
   },
   "b_spot0": {
    "t": "發現目標！",
-   "k": "shout"
+   "k": "shout",
+   "e": "surprised"
   },
   "b_spot1": {
    "t": "敵方機甲，就在那裡！",
-   "k": "shout"
+   "k": "shout",
+   "e": "surprised"
   },
   "b_spot2": {
    "t": "接觸！目標出現！",
-   "k": "shout"
+   "k": "shout",
+   "e": "surprised"
   },
   "b_spot3": {
    "t": "找到了！在那邊！",
-   "k": "shout"
+   "k": "shout",
+   "e": "surprised"
   },
   "b_spot4": {
    "t": "有敵人！注意！",
-   "k": "shout"
+   "k": "shout",
+   "e": "surprised"
   },
   "b_spot5": {
    "t": "看到他了！",
-   "k": "shout"
+   "k": "shout",
+   "e": "surprised"
   },
   "b_spot6": {
    "t": "目標確認，準備交戰！",
-   "k": "shout"
+   "k": "shout",
+   "e": "surprised"
   },
   "b_spot7": {
    "t": "在那裡！全員注意！",
-   "k": "shout"
+   "k": "shout",
+   "e": "surprised"
   },
   "b_spot8": {
    "t": "是傭兵！來了！",
-   "k": "shout"
+   "k": "shout",
+   "e": "surprised"
   },
   "b_spot9": {
    "t": "敵機出現，回報位置！",
-   "k": "shout"
+   "k": "shout",
+   "e": "surprised"
   }
  },
  "iguazu": {
   "h15wjrl7": {
    "t": "說來奇怪，這張委託單的委託方欄位是空的。",
    "k": "comm",
-   "e": "focus"
+   "e": "quizzical"
   },
   "h18nrnaz": {
    "t": "哈囉，傳說中的傭兵！",
    "k": "comm",
-   "e": "focus"
+   "e": "cocky"
   },
   "h1v8664c": {
    "t": "「每次」？他們用的是這個詞？",
    "k": "comm",
-   "e": "focus"
+   "e": "quizzical"
   }
  },
  "instructor": {
@@ -5643,79 +5703,81 @@
   "h1udcq8i": {
    "t": "登艦者。……不，是鑰匙。你終於來了。",
    "k": "comm",
-   "e": "focus"
+   "e": "solemn"
   },
   "h51hymp": {
    "t": "……中樞在等你。我守的從來都不是船，是那個按鈕。",
    "k": "comm",
-   "e": "wry"
+   "e": "vow"
   },
   "hu78suj": {
    "t": "方舟不會停。",
-   "k": "cine"
+   "k": "cine",
+   "e": "vow"
   }
  },
  "kiln": {
   "h1frqyfu": {
    "t": "霍斯特少爺派你來的？……熔爐不歡迎客人。",
    "k": "comm",
-   "e": "focus"
+   "e": "hard"
   },
   "hqmxfvq": {
    "t": "熱嗎？這裡一直都這麼熱。",
-   "k": "cine"
+   "k": "cine",
+   "e": "hard"
   },
   "hu6nox3": {
    "t": "……熔爐會一直燒下去。不管誰贏。",
    "k": "comm",
-   "e": "wry"
+   "e": "hard"
   }
  },
  "marsh": {
   "h19c2bxx": {
    "t": "別這樣看我。我每一次都輸給你，我知道。",
    "k": "comm",
-   "e": "focus"
+   "e": "sad"
   },
   "h1ajffsx": {
    "t": "研究所的白袍子出了雙倍的錢請我斷後。你拿的是單倍吧？真可憐。",
    "k": "comm",
-   "e": "focus"
+   "e": "sneer"
   },
   "h1j8sxn1": {
    "t": "我說過吧？在你看不到的地方咬你。",
    "k": "comm",
-   "e": "focus"
+   "e": "creep"
   },
   "h1nqlohp": {
    "t": "又來泡水了？",
    "k": "comm",
-   "e": "focus"
+   "e": "sneer"
   },
   "h5g75cv": {
    "t": "這座研究所的白袍子說，你是他們的財產。有意思吧？",
    "k": "comm",
-   "e": "focus"
+   "e": "creep"
   },
   "hko6jtp": {
    "t": "喲，卡斯特隆的乖狗狗。主人叫你來咬人？",
    "k": "comm",
-   "e": "focus"
+   "e": "sneer"
   },
   "hln68aa": {
    "t": "沉到底吧。",
    "k": "comm",
-   "e": "think"
+   "e": "creep"
   },
   "hpt95re": {
    "t": "聖域也請傭兵了？這世界越來越有趣了。……喂，你看起來好眼熟。",
    "k": "comm",
-   "e": "focus"
+   "e": "surprised"
   },
   "hsxds4": {
    "t": "……下次在你看不到的地方咬你。",
    "k": "comm",
-   "e": "wry"
+   "e": "creep"
   }
  },
  "mira": {
@@ -5779,89 +5841,89 @@
   "h1mnfmdk": {
    "t": "還敢下來？坑道裡沒有地方讓你跑。",
    "k": "comm",
-   "e": "focus"
+   "e": "grudge"
   },
   "h1npki59": {
    "t": "陣地醒來那天，我整隊礦工就埋在這下面。卡斯特隆連一句道歉都沒有。",
    "k": "comm",
-   "e": "focus"
+   "e": "grieve"
   },
   "h1o9osu2": {
    "t": "礦坑不歡迎外人。",
    "k": "comm",
-   "e": "think"
+   "e": "grudge"
   },
   "h1xp0fyt": {
    "t": "卡斯特隆的狗，要上天了？我的礦工隊埋在地下。你憑什麼上去？",
    "k": "comm",
-   "e": "focus"
+   "e": "grudge"
   },
   "h4frppr": {
    "t": "滾出去，或是埋在這裡陪他們。",
    "k": "comm",
-   "e": "focus"
+   "e": "grudge"
   },
   "h7b0ton": {
    "t": "……替那些人挖墳的，原來是你。我記住了。",
    "k": "comm",
-   "e": "wry"
+   "e": "grieve"
   },
   "hnz3og": {
    "t": "卡斯特隆的狗？還是維爾威的？……都一樣。",
    "k": "comm",
-   "e": "focus"
+   "e": "smug"
   },
   "hu13tqi": {
    "t": "我的帳本上有你的名字，寫了好幾次。每一次都是「虧損」。",
    "k": "comm",
-   "e": "focus"
+   "e": "sad"
   }
  },
  "rust": {
   "h11paq22": {
    "t": "……奇怪。我好像拆過你的機體？不，是你拆過我的。好幾次。",
    "k": "comm",
-   "e": "focus"
+   "e": "think"
   },
   "h136po1g": {
    "t": "喲！卡斯特隆付我一大筆錢，要我把你的零件帶回去。",
    "k": "comm",
-   "e": "focus"
+   "e": "laugh"
   },
   "h14rptl1": {
    "t": "……他們說要「完整」的。奇怪的要求，對吧？",
    "k": "comm",
-   "e": "focus"
+   "e": "smug"
   },
   "h182bitm": {
    "t": "你那台機體的零件……看起來挺值錢的嘛。",
    "k": "comm",
-   "e": "focus"
+   "e": "greedy"
   },
   "h1lnioga": {
    "t": "哈！你的零件我收下了。",
    "k": "comm",
-   "e": "think"
+   "e": "laugh"
   },
   "h1n95z4b": {
    "t": "喂喂喂，新來的？這片荒野的廢鐵都是我的！",
    "k": "comm",
-   "e": "focus"
+   "e": "taunt"
   },
   "hcyvtis": {
    "t": "可惡，天線的帳我記下了！",
    "k": "comm",
-   "e": "wry"
+   "e": "angry"
   },
   "hobbse": {
    "t": "尤其是那座舊天線——我追它的訊號追了三天，你別想插隊。",
    "k": "comm",
-   "e": "focus"
+   "e": "smug"
   },
   "hrxrtw0": {
    "t": "又是你！上次的帳還沒算完。",
    "k": "comm",
-   "e": "focus"
+   "e": "angry"
   }
  },
  "sancta": {
@@ -6158,204 +6220,208 @@
   "h1qlcn9u": {
    "t": "……你的刀路，好像在哪裡見過。",
    "k": "comm",
-   "e": "wry"
+   "e": "surprised"
   },
   "h1rzidok": {
    "t": "我醒來的時候在沙丘上，隊伍不見了。可是我記得他們最後說的話：「R-07 又來了」。",
    "k": "comm",
-   "e": "focus"
+   "e": "sad"
   },
   "h1uydd6j": {
    "t": "……你是來找調查隊的？我就是他們的護衛。",
    "k": "comm",
-   "e": "focus"
+   "e": "think"
   },
   "h2x5bxg": {
    "t": "又見面了。這次你的刀快一點了嗎？",
    "k": "comm",
-   "e": "focus"
+   "e": "eager"
   },
   "h60uak5": {
    "t": "不回頭也好。我很久沒遇到值得出刀的對手了。",
    "k": "comm",
-   "e": "focus"
+   "e": "eager"
   },
   "hjs1g9z": {
    "t": "……這裡是艾瑟立克的調查範圍。回頭。",
    "k": "comm",
-   "e": "focus"
+   "e": "proud"
   },
   "ho4h6ll": {
    "t": "太慢了。",
    "k": "comm",
-   "e": "think"
+   "e": "proud"
   },
   "htuxrol": {
    "t": "這陣風我吹過。你閃避的方向……我記得。",
    "k": "comm",
-   "e": "focus"
+   "e": "think"
   }
  },
  "sluice": {
   "h16gtv6": {
    "t": "水壩守備隊。這裡不屬於任何一家公司。",
    "k": "comm",
-   "e": "focus"
+   "e": "stern"
   },
   "h1gaxref": {
    "t": "沉下去吧。",
    "k": "comm",
-   "e": "think"
+   "e": "angry"
   },
   "h1mncyts": {
    "t": "不管你選哪邊，下游都會被犧牲。我只是想讓你知道。",
    "k": "comm",
-   "e": "hesitate"
+   "e": "letdown"
   },
   "h1p7mg1s": {
    "t": "下游有三座城鎮靠這座水壩過冬。不管你替誰工作，都別碰閘門。",
    "k": "comm",
-   "e": "focus"
+   "e": "stern"
   },
   "h8kmubd": {
    "t": "下游的城鎮已經沒了。我只剩下這份工作。",
    "k": "comm",
-   "e": "focus"
+   "e": "sad"
   },
   "hdj440g": {
    "t": "下游的城鎮……我守過好幾次。一次都沒守住。",
    "k": "comm",
-   "e": "focus"
+   "e": "letdown"
   },
   "hi0hzhg": {
    "t": "維爾威付錢讓我來。我收了。",
    "k": "comm",
-   "e": "focus"
+   "e": "stern"
   },
   "hiah8a0": {
    "t": "這座水壩後面住著三座城鎮。誰都別想碰它。",
-   "k": "cine"
+   "k": "cine",
+   "e": "stern"
   },
   "hq8g65e": {
    "t": "又回來了？水位已經漲上來了。",
    "k": "comm",
-   "e": "focus"
+   "e": "stern"
   },
   "hwvq46b": {
    "t": "……你們這些傭兵，從來不看下游。",
    "k": "comm",
-   "e": "wry"
+   "e": "letdown"
   }
  },
  "specimen": {
   "h15r47co": {
    "t": "……你來了。你終於來了。這裡的牆上有你的編號，我每天都看著它。",
    "k": "comm",
-   "e": "focus"
+   "e": "manic"
   },
   "h174qajy": {
    "t": "為什麼是你？我才是先被做出來的那個！",
    "k": "comm",
-   "e": "focus"
+   "e": "envy"
   },
   "h1ikpuwe": {
    "t": "核心讀了你的資料。它認得你。……為什麼被選上的是你？",
-   "k": "cine"
+   "k": "cine",
+   "e": "envy"
   },
   "h1jhke8c": {
    "t": "上面有東西在叫你的名字。我想知道，它會不會也叫我的。",
    "k": "comm",
-   "e": "focus"
+   "e": "think"
   },
   "h1m0obmh": {
    "t": "……又是你贏。每一次，都是你。",
    "k": "comm",
-   "e": "wry"
+   "e": "envy"
   },
   "h1qoktwu": {
    "t": "……可是站不認得我。它只叫你的名字。",
    "k": "comm",
-   "e": "focus"
+   "e": "sad"
   },
   "h1vc5ank": {
    "t": "你也開始記得了嗎？好痛吧。我一直都記得。",
    "k": "comm",
-   "e": "focus"
+   "e": "manic"
   },
   "h42h59p": {
    "t": "我也上來了。維爾威說，只要我先到中樞，鑰匙就會是我。",
    "k": "comm",
-   "e": "focus"
+   "e": "smile"
   },
   "h9dixro": {
    "t": "……家人？抱歉，我不知道為什麼會覺得你是我的家人。",
    "k": "comm",
-   "e": "focus"
+   "e": "surprised"
   },
   "hgfccmf": {
    "t": "你把核心毀了。……可是我還記得。為什麼被選上的是你？",
-   "k": "cine"
+   "k": "cine",
+   "e": "envy"
   },
   "huio7rj": {
    "t": "這次的數值一定會更好。",
    "k": "comm",
-   "e": "focus"
+   "e": "manic"
   },
   "hxuo2rl": {
    "t": "維爾威答應我，只要打倒你，就讓我上軌道。",
    "k": "comm",
-   "e": "focus"
+   "e": "manic"
   },
   "hy97e10": {
    "t": "測試結束。",
    "k": "comm",
-   "e": "think"
+   "e": "smug"
   }
  },
  "spire": {
   "h15i9ljt": {
    "t": "這裡是我的家。闖進來的，就從最高的地方摔下去。",
-   "k": "cine"
+   "k": "cine",
+   "e": "boast"
   },
   "h1d3h8yt": {
    "t": "你還在下面嗎？",
    "k": "comm",
-   "e": "focus"
+   "e": "boast"
   },
   "h1l8bbad": {
    "t": "……你們這些公司的狗，總有一天會把整座構造體賣掉。",
    "k": "comm",
-   "e": "wry"
+   "e": "angry"
   },
   "h1mruzee": {
    "t": "住在你們燒過的那片灰上！",
    "k": "comm",
-   "e": "focus"
+   "e": "rage"
   },
   "h1u6a5k3": {
    "t": "我在構造體的牆上刻過記號，每次都刻一條。現在已經刻滿了。",
    "k": "comm",
-   "e": "focus"
+   "e": "think"
   },
   "h1vt0ja8": {
    "t": "高度就是一切。",
    "k": "comm",
-   "e": "think"
+   "e": "boast"
   },
   "h6ydqlz": {
    "t": "維爾威把我的構造體變成了電廠。你知道我的人現在住在哪嗎？",
    "k": "comm",
-   "e": "focus"
+   "e": "rage"
   },
   "hn9foi5": {
    "t": "哈！又一個爬不上來的地面人！這座構造體是掘骸者的家，維爾威連一張租約都沒給過！",
    "k": "comm",
-   "e": "focus"
+   "e": "boast"
   },
   "hzuopm9": {
    "t": "想往下？先往上看我！",
    "k": "comm",
-   "e": "focus"
+   "e": "boast"
   }
  },
  "station": {
@@ -6419,107 +6485,109 @@
   "h12bjxac": {
    "t": "……不聽？那就讓你嚐嚐碼頭的貨櫃有多重！",
    "k": "comm",
-   "e": "focus"
+   "e": "betrayed"
   },
   "h12gb0jc": {
    "t": "喂，傭兵！你替研究所那些白袍子打工？",
    "k": "comm",
-   "e": "focus"
+   "e": "hearty"
   },
   "h172jklg": {
    "t": "嘖。下次見面，希望你站在對的那邊。",
    "k": "comm",
-   "e": "wry"
+   "e": "sad"
   },
   "h19b92no": {
    "t": "霍斯特老頭說你是自己人。我還替你擔保過！",
    "k": "comm",
-   "e": "focus"
+   "e": "betrayed"
   },
   "h1d6vpbj": {
    "t": "又一筆退貨。這次換更重的砲彈。",
    "k": "comm",
-   "e": "focus"
+   "e": "smug"
   },
   "h1d84cq5": {
    "t": "霍斯特老頭每次都說你是自己人。每一次。",
    "k": "comm",
-   "e": "focus"
+   "e": "sad"
   },
   "h1oefy5c": {
    "t": "霍斯特老頭說你是自己人。自己人不打自己人。",
    "k": "comm",
-   "e": "focus"
+   "e": "hearty"
   },
   "h1qk6l5g": {
    "t": "……叛徒。霍斯特老頭會替我討回來。",
    "k": "comm",
-   "e": "wry"
+   "e": "betrayed"
   },
   "h1tzsooj": {
    "t": "叛徒，我從工業帶一路追到這裡。",
    "k": "comm",
-   "e": "focus"
+   "e": "angry"
   },
   "h1vhdelg": {
    "t": "霍斯特老頭叫我別殺你，只把你帶回去。……我才不管。",
    "k": "comm",
-   "e": "focus"
+   "e": "angry"
   },
   "h1x8jdor": {
    "t": "叛徒。我會親手把你拆了。",
-   "k": "cine"
+   "k": "cine",
+   "e": "betrayed"
   },
   "hpvgfw": {
    "t": "簽收完成。",
    "k": "comm",
-   "e": "think"
+   "e": "smug"
   },
   "hzvayaj": {
    "t": "叛徒！這台貨櫃起重機就是你的墓碑！",
    "k": "comm",
-   "e": "focus"
+   "e": "betrayed"
   }
  },
  "undertow": {
   "h156jk8p": {
    "t": "……又是外來的。電纜是我們的祖先拉的，你們每個人都想把它拔走。",
    "k": "comm",
-   "e": "focus"
+   "e": "distant"
   },
   "h16coor4": {
    "t": "海會記得你。",
    "k": "comm",
-   "e": "wry"
+   "e": "guard"
   },
   "h1aaedoe": {
    "t": "我們的祖先拉電纜，是為了逃。不是為了讓你們上去搶。",
    "k": "comm",
-   "e": "focus"
+   "e": "guard"
   },
   "h1gaxref": {
    "t": "沉下去吧。",
    "k": "comm",
-   "e": "think"
+   "e": "guard"
   },
   "h1itfln0": {
    "t": "這座都市，不是誰的旗子。滾出去。",
-   "k": "cine"
+   "k": "cine",
+   "e": "guard"
   },
   "hatrnv8": {
    "t": "海浪每一次都會回來。你也是。",
    "k": "comm",
-   "e": "focus"
+   "e": "distant"
   },
   "hhexree": {
    "t": "電纜被你們拔了一半。我跟著它爬上來，就是為了把你推下去。",
    "k": "comm",
-   "e": "focus"
+   "e": "angry"
   },
   "hx0u4jx": {
    "t": "潮水又來了。",
    "k": "comm",
-   "e": "focus"
+   "e": "distant"
   }
  },
  "veerwell": {
@@ -6745,68 +6813,68 @@
   "h193om3": {
    "t": "報酬倒是很清楚：四家各付四分之一。",
    "k": "comm",
-   "e": "focus"
+   "e": "provoke"
   },
   "h1h9ad3m": {
    "t": "我們接到委託，要在這裡擋你一下。",
    "k": "comm",
-   "e": "focus"
+   "e": "tongue"
   },
   "hqxjr6d": {
    "t": "哇，跟資料上的一模一樣。他們說你每次都會贏。",
    "k": "comm",
-   "e": "focus"
+   "e": "provoke"
   }
  },
  "whiteout": {
   "h163p30e": {
    "t": "……又是你。我從下游走來的，在主壩的新聞上看過你的標誌。",
    "k": "comm",
-   "e": "focus"
+   "e": "icy"
   },
   "h167gn88": {
    "t": "雪又變大了。",
-   "k": "comm",
-   "e": "focus"
+   "k": "comm"
   },
   "h1dseyfs": {
    "t": "一發就夠了。",
    "k": "comm",
-   "e": "think"
+   "e": "aim"
   },
   "h1jf6kwq": {
    "t": "冰原、構造體，現在是天上。",
    "k": "comm",
-   "e": "focus"
+   "e": "icy"
   },
   "h1rquoh1": {
    "t": "每次你往上走一步，地上就多一片灰。這是最後一次了。",
    "k": "comm",
-   "e": "focus"
+   "e": "angry"
   },
   "h71fs0l": {
    "t": "……你救不了他們。你只會讓更多人走進雪裡。",
    "k": "comm",
-   "e": "wry"
+   "e": "sad"
   },
   "h7yldx7": {
    "t": "冰原上的腳印，有一些是我不記得走過的。是你的嗎？",
    "k": "comm",
-   "e": "focus"
+   "e": "think"
   },
   "hdur79u": {
    "t": "冰原之後是這裡。你走到哪裡，難民就跟到哪裡。",
    "k": "comm",
-   "e": "focus"
+   "e": "icy"
   },
   "hpt6frq": {
    "t": "這一次，我不會讓你過去。",
    "k": "comm",
-   "e": "focus"
+   "e": "aim"
   },
   "hr63cjw": {
    "t": "營地的人是我在守。你來，是要拿走什麼？",
-   "k": "cine"
+   "k": "cine",
+   "e": "icy"
   }
  },
  "wren": {
@@ -6885,101 +6953,106 @@
   "h11wlyh1": {
    "t": "……下次見。你會記得的，總有一天。",
    "k": "comm",
-   "e": "wry"
+   "e": "mercy"
   },
   "h131e6ap": {
    "t": "你終於看得到第三扇門了。",
    "k": "comm",
-   "e": "focus"
+   "e": "smile"
   },
   "h177vjd": {
    "t": "地面是給弱者站的。",
    "k": "comm",
-   "e": "focus"
+   "e": "smug"
   },
   "h1a481tr": {
    "t": "不要交出去。也不要讓它掉下去。不管你選哪一個，都一樣。",
    "k": "comm",
-   "e": "focus"
+   "e": "weary"
   },
   "h1n0gsx": {
    "t": "又見面了。我是上一個。我走到這裡，然後就醒在荒野了。我花了很久才想起來。",
    "k": "comm",
-   "e": "focus"
+   "e": "weary"
   },
   "h1py816e": {
    "t": "……又是你。",
-   "k": "cine"
+   "k": "cine",
+   "e": "weary"
   },
   "h2jdf55": {
    "t": "停下來，KEY-07。",
-   "k": "comm",
-   "e": "focus"
+   "k": "comm"
   },
   "h4yzt09": {
    "t": "……熔岩的那一頭見。",
    "k": "comm",
-   "e": "wry"
+   "e": "mercy"
   },
   "h6c0x79": {
    "t": "再飛高一點。",
    "k": "comm",
-   "e": "focus"
+   "e": "smile"
   },
   "h6w4090": {
    "t": "你看不到天空。",
    "k": "comm",
-   "e": "think"
+   "e": "sad"
   },
   "h9276d0": {
    "t": "那就看清楚，是誰把你丟下來的。",
-   "k": "cine"
+   "k": "cine",
+   "e": "angry"
   },
   "hatrc4x": {
    "t": "這裡不是終點。站只是一個發射器——按下按鈕的地方在地上。",
    "k": "comm",
-   "e": "focus"
+   "e": "think"
   },
   "hcij716": {
    "t": "去吧。這次不用打倒我——不過，我還是想再跟你飛一次。",
    "k": "comm",
-   "e": "focus"
+   "e": "mercy"
   },
   "hdm4cva": {
    "t": "……這次，連她也站在你那邊。",
-   "k": "cine"
+   "k": "cine",
+   "e": "mercy"
   },
   "hibs8u1": {
    "t": "先打倒我吧。答案在熔岩的那一頭。",
    "k": "comm",
-   "e": "focus"
+   "e": "weary"
   },
   "hprgtxg": {
    "t": "你又來了。這一次，你看得到第三扇門嗎？",
    "k": "comm",
-   "e": "focus"
+   "e": "smile"
   },
   "hprpsn1": {
    "t": "我是上一個。上一個被叫到這裡的人。",
    "k": "comm",
-   "e": "focus"
+   "e": "weary"
   },
   "hq68mo4": {
    "t": "這一次，你能走到哪裡？",
-   "k": "cine"
+   "k": "cine",
+   "e": "think"
   },
   "hs8wy2b": {
    "t": "……你也開始記得了。",
-   "k": "cine"
+   "k": "cine",
+   "e": "sad"
   },
   "hu0ff6s": {
    "t": "……可是你現在還看不到第三扇門吧。那就先打倒我。",
    "k": "comm",
-   "e": "focus"
+   "e": "weary"
   },
   "hyi7oh7": {
    "t": "那就去吧。別回頭。",
-   "k": "cine"
+   "k": "cine",
+   "e": "mercy"
   }
  }
 }

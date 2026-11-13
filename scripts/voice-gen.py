@@ -186,8 +186,8 @@ def style_of(v, line):
     st = STYLE.get(line['k'], '')
     if st:
         parts.append(st)
-    # 機械語音與敵兵不加表情的語氣
-    ex = EXPR_STYLE.get(line.get('e', ''), '') if v != 'station' and not v.startswith('grunt') else ''
+    # 機械語音不加表情的語氣（敵兵照喊話事件的表情：voice-lines.js 的 BARK_EXPR）
+    ex = EXPR_STYLE.get(line.get('e', ''), '') if v != 'station' else ''
     if ex:
         parts.append(ex)
     if '！' in line['t'] and line['k'] not in ('alarm', 'private', 'shout'):
@@ -309,6 +309,10 @@ def asr_score(asr, w, sr, text):
     # 長度不合理（每秒少於 1.5 或多於 9 個字）的扣分
     cps = len(norm(text)) / max(len(w) / sr, 0.1)
     if cps < 1.5 or cps > (15 if JA else 9):
+        r -= 0.3
+    # 拖太長（大笑、哭腔常常拖到兩倍）：超過台詞長度估計的 1.6 倍扣分（語音 v2）
+    est = 0.6 + len(norm(text)) / (7.0 if JA else 4.2)
+    if len(w) / sr > 1.6 * est:
         r -= 0.3
     return r, got
 

@@ -145,9 +145,25 @@ async function main() {
   // 程式裡輪流挑的台詞（LINE_POOLS，鍵＝vkey）
   for (const id in LINE_POOLS)
     for (const t of LINE_POOLS[id].t) add(LINE_POOLS[id].sp, t, 'comm', '輪流的台詞', { ev: 'live' });
+  // 喊話的表情＝game/voice.js 的 BARK_EXPR（字幕條的小頭像；語音 v2 照它加語氣）
+  const BARK_EXPR = {
+    spot: 'surprised',
+    search: 'think',
+    attack: 'shout',
+    hurt: 'panic',
+    allyDown: 'shout',
+    cmdDown: 'panic',
+  };
   lines.grunt = {};
   for (const ev in BARKS)
-    BARKS[ev].forEach((t, i) => (lines.grunt[`b_${ev}${i}`] = { t, k: ev === 'search' ? 'low' : 'shout' }));
+    BARKS[ev].forEach(
+      (t, i) =>
+        (lines.grunt[`b_${ev}${i}`] = {
+          t,
+          k: ev === 'search' ? 'low' : 'shout',
+          ...(BARK_EXPR[ev] ? { e: BARK_EXPR[ev] } : {}),
+        }),
+    );
   // 5. 過場動畫
   const { CINES } = await imp('data/cine/index.js');
   const { CHOICES } = await imp('data/campaign.js');
