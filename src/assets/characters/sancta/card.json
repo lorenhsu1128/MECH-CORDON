@@ -2109,9 +2109,9 @@
       }
     }
   ],
-  "t": 1794541327966,
+  "t": 1794582035919,
   "pub": {
-    "t": 1794452891774,
+    "t": 1794579316604,
     "poses": [
       {
         "id": "p1",
@@ -2217,6 +2217,12 @@
             "m2": "p1_mourn_m2.webp",
             "m3": "p1_mourn_m3.webp"
           }
+        },
+        "layers": {
+          "hairb": "p1_L_hairb.webp",
+          "body": "p1_L_body.webp",
+          "head": "p1_L_head.webp",
+          "hairf": "p1_L_hairf.webp"
         },
         "w": 832,
         "h": 1216
@@ -2326,9 +2332,493 @@
             "m3": "p2_mourn_m3.webp"
           }
         },
+        "layers": {
+          "hairb": "p2_L_hairb.webp",
+          "body": "p2_L_body.webp",
+          "head": "p2_L_head.webp",
+          "hairf": "p2_L_hairf.webp"
+        },
+        "w": 832,
+        "h": 1216
+      },
+      {
+        "id": "p3",
+        "name": "3/4 側（面向左）",
+        "img": "p3.webp",
+        "boxes": {
+          "face": [
+            275,
+            140,
+            165,
+            190
+          ],
+          "eyes": [
+            280,
+            160,
+            115,
+            50
+          ],
+          "mouth": [
+            298,
+            262,
+            56,
+            32
+          ]
+        },
+        "ex": {
+          "neutral": {
+            "e1": "p3_neutral_e1.webp",
+            "e2": "p3_neutral_e2.webp",
+            "m1": "p3_neutral_m1.webp",
+            "m2": "p3_neutral_m2.webp",
+            "m3": "p3_neutral_m3.webp"
+          },
+          "smile": {
+            "f": "p3_smile_f.webp",
+            "e1": "p3_smile_e1.webp",
+            "e2": "p3_smile_e2.webp",
+            "m1": "p3_smile_m1.webp",
+            "m2": "p3_smile_m2.webp",
+            "m3": "p3_smile_m3.webp"
+          },
+          "laugh": {
+            "f": "p3_laugh_f.webp",
+            "e1": "p3_laugh_e1.webp",
+            "e2": "p3_laugh_e2.webp",
+            "m1": "p3_laugh_m1.webp",
+            "m2": "p3_laugh_m2.webp",
+            "m3": "p3_laugh_m3.webp"
+          },
+          "angry": {
+            "f": "p3_angry_f.webp",
+            "e1": "p3_angry_e1.webp",
+            "e2": "p3_angry_e2.webp",
+            "m1": "p3_angry_m1.webp",
+            "m2": "p3_angry_m2.webp",
+            "m3": "p3_angry_m3.webp"
+          },
+          "surprised": {
+            "f": "p3_surprised_f.webp",
+            "e1": "p3_surprised_e1.webp",
+            "e2": "p3_surprised_e2.webp",
+            "m1": "p3_surprised_m1.webp",
+            "m2": "p3_surprised_m2.webp",
+            "m3": "p3_surprised_m3.webp"
+          },
+          "sad": {
+            "f": "p3_sad_f.webp",
+            "e1": "p3_sad_e1.webp",
+            "e2": "p3_sad_e2.webp",
+            "m1": "p3_sad_m1.webp",
+            "m2": "p3_sad_m2.webp",
+            "m3": "p3_sad_m3.webp"
+          },
+          "think": {
+            "f": "p3_think_f.webp",
+            "e1": "p3_think_e1.webp",
+            "e2": "p3_think_e2.webp",
+            "m1": "p3_think_m1.webp",
+            "m2": "p3_think_m2.webp",
+            "m3": "p3_think_m3.webp"
+          },
+          "smug": {
+            "f": "p3_smug_f.webp",
+            "e1": "p3_smug_e1.webp",
+            "e2": "p3_smug_e2.webp",
+            "m1": "p3_smug_m1.webp",
+            "m2": "p3_smug_m2.webp",
+            "m3": "p3_smug_m3.webp"
+          },
+          "wary": {
+            "f": "p3_wary_f.webp",
+            "e1": "p3_wary_e1.webp",
+            "e2": "p3_wary_e2.webp",
+            "m1": "p3_wary_m1.webp",
+            "m2": "p3_wary_m2.webp",
+            "m3": "p3_wary_m3.webp"
+          },
+          "mourn": {
+            "f": "p3_mourn_f.webp",
+            "e1": "p3_mourn_e1.webp",
+            "e2": "p3_mourn_e2.webp",
+            "m1": "p3_mourn_m1.webp",
+            "m2": "p3_mourn_m2.webp",
+            "m3": "p3_mourn_m3.webp"
+          }
+        },
+        "layers": {
+          "hairb": "p3_L_hairb.webp",
+          "body": "p3_L_body.webp",
+          "head": "p3_L_head.webp",
+          "hairf": "p3_L_hairf.webp"
+        },
+        "w": 832,
+        "h": 1216
+      },
+      {
+        "id": "p4",
+        "name": "3/4 側（面向右）",
+        "img": "p4.webp",
+        "boxes": {
+          "face": [
+            390,
+            140,
+            160,
+            195
+          ],
+          "eyes": [
+            420,
+            160,
+            120,
+            50
+          ],
+          "mouth": [
+            478,
+            265,
+            56,
+            32
+          ]
+        },
+        "ex": {
+          "neutral": {
+            "e1": "p4_neutral_e1.webp",
+            "e2": "p4_neutral_e2.webp",
+            "m1": "p4_neutral_m1.webp",
+            "m2": "p4_neutral_m2.webp",
+            "m3": "p4_neutral_m3.webp"
+          },
+          "smile": {
+            "f": "p4_smile_f.webp",
+            "e1": "p4_smile_e1.webp",
+            "e2": "p4_smile_e2.webp",
+            "m1": "p4_smile_m1.webp",
+            "m2": "p4_smile_m2.webp",
+            "m3": "p4_smile_m3.webp"
+          },
+          "laugh": {
+            "f": "p4_laugh_f.webp",
+            "e1": "p4_laugh_e1.webp",
+            "e2": "p4_laugh_e2.webp",
+            "m1": "p4_laugh_m1.webp",
+            "m2": "p4_laugh_m2.webp",
+            "m3": "p4_laugh_m3.webp"
+          },
+          "angry": {
+            "f": "p4_angry_f.webp",
+            "e1": "p4_angry_e1.webp",
+            "e2": "p4_angry_e2.webp",
+            "m1": "p4_angry_m1.webp",
+            "m2": "p4_angry_m2.webp",
+            "m3": "p4_angry_m3.webp"
+          },
+          "surprised": {
+            "f": "p4_surprised_f.webp",
+            "e1": "p4_surprised_e1.webp",
+            "e2": "p4_surprised_e2.webp",
+            "m1": "p4_surprised_m1.webp",
+            "m2": "p4_surprised_m2.webp",
+            "m3": "p4_surprised_m3.webp"
+          },
+          "sad": {
+            "f": "p4_sad_f.webp",
+            "e1": "p4_sad_e1.webp",
+            "e2": "p4_sad_e2.webp",
+            "m1": "p4_sad_m1.webp",
+            "m2": "p4_sad_m2.webp",
+            "m3": "p4_sad_m3.webp"
+          },
+          "think": {
+            "f": "p4_think_f.webp",
+            "e1": "p4_think_e1.webp",
+            "e2": "p4_think_e2.webp",
+            "m1": "p4_think_m1.webp",
+            "m2": "p4_think_m2.webp",
+            "m3": "p4_think_m3.webp"
+          },
+          "smug": {
+            "f": "p4_smug_f.webp",
+            "e1": "p4_smug_e1.webp",
+            "e2": "p4_smug_e2.webp",
+            "m1": "p4_smug_m1.webp",
+            "m2": "p4_smug_m2.webp",
+            "m3": "p4_smug_m3.webp"
+          },
+          "wary": {
+            "f": "p4_wary_f.webp",
+            "e1": "p4_wary_e1.webp",
+            "e2": "p4_wary_e2.webp",
+            "m1": "p4_wary_m1.webp",
+            "m2": "p4_wary_m2.webp",
+            "m3": "p4_wary_m3.webp"
+          },
+          "mourn": {
+            "f": "p4_mourn_f.webp",
+            "e1": "p4_mourn_e1.webp",
+            "e2": "p4_mourn_e2.webp",
+            "m1": "p4_mourn_m1.webp",
+            "m2": "p4_mourn_m2.webp",
+            "m3": "p4_mourn_m3.webp"
+          }
+        },
+        "layers": {
+          "hairb": "p4_L_hairb.webp",
+          "body": "p4_L_body.webp",
+          "head": "p4_L_head.webp",
+          "hairf": "p4_L_hairf.webp"
+        },
+        "w": 832,
+        "h": 1216
+      },
+      {
+        "id": "p5",
+        "name": "低頭寫名字",
+        "img": "p5.webp",
+        "boxes": {
+          "face": [
+            320,
+            185,
+            220,
+            190
+          ],
+          "eyes": [
+            370,
+            200,
+            180,
+            62
+          ],
+          "mouth": [
+            408,
+            312,
+            62,
+            34
+          ]
+        },
+        "ex": {
+          "neutral": {
+            "e1": "p5_neutral_e1.webp",
+            "e2": "p5_neutral_e2.webp",
+            "m1": "p5_neutral_m1.webp",
+            "m2": "p5_neutral_m2.webp",
+            "m3": "p5_neutral_m3.webp"
+          }
+        },
+        "layers": {
+          "hairb": "p5_L_hairb.webp",
+          "body": "p5_L_body.webp",
+          "head": "p5_L_head.webp",
+          "hairf": "p5_L_hairf.webp"
+        },
+        "w": 832,
+        "h": 1216
+      },
+      {
+        "id": "p6",
+        "name": "握著名牌哀悼",
+        "img": "p6.webp",
+        "boxes": {
+          "face": [
+            340,
+            195,
+            210,
+            185
+          ],
+          "eyes": [
+            370,
+            210,
+            185,
+            60
+          ],
+          "mouth": [
+            415,
+            305,
+            62,
+            32
+          ]
+        },
+        "ex": {
+          "neutral": {
+            "e1": "p6_neutral_e1.webp",
+            "e2": "p6_neutral_e2.webp",
+            "m1": "p6_neutral_m1.webp",
+            "m2": "p6_neutral_m2.webp",
+            "m3": "p6_neutral_m3.webp"
+          }
+        },
+        "layers": {
+          "hairb": "p6_L_hairb.webp",
+          "body": "p6_L_body.webp",
+          "head": "p6_L_head.webp",
+          "hairf": "p6_L_hairf.webp"
+        },
+        "w": 832,
+        "h": 1216
+      },
+      {
+        "id": "p7",
+        "name": "抱胸戒備",
+        "img": "p7.webp",
+        "boxes": {
+          "face": [
+            300,
+            150,
+            220,
+            190
+          ],
+          "eyes": [
+            320,
+            165,
+            185,
+            60
+          ],
+          "mouth": [
+            365,
+            270,
+            64,
+            32
+          ]
+        },
+        "ex": {
+          "neutral": {
+            "e1": "p7_neutral_e1.webp",
+            "e2": "p7_neutral_e2.webp",
+            "m1": "p7_neutral_m1.webp",
+            "m2": "p7_neutral_m2.webp",
+            "m3": "p7_neutral_m3.webp"
+          }
+        },
+        "layers": {
+          "hairb": "p7_L_hairb.webp",
+          "body": "p7_L_body.webp",
+          "head": "p7_L_head.webp",
+          "hairf": "p7_L_hairf.webp"
+        },
+        "w": 832,
+        "h": 1216
+      },
+      {
+        "id": "p8",
+        "name": "伸手制止",
+        "img": "p8.webp",
+        "boxes": {
+          "face": [
+            295,
+            145,
+            215,
+            190
+          ],
+          "eyes": [
+            315,
+            163,
+            185,
+            60
+          ],
+          "mouth": [
+            365,
+            255,
+            64,
+            42
+          ]
+        },
+        "ex": {
+          "neutral": {
+            "e1": "p8_neutral_e1.webp",
+            "e2": "p8_neutral_e2.webp"
+          }
+        },
+        "layers": {
+          "hairb": "p8_L_hairb.webp",
+          "body": "p8_L_body.webp",
+          "head": "p8_L_head.webp",
+          "hairf": "p8_L_hairf.webp"
+        },
+        "w": 832,
+        "h": 1216
+      },
+      {
+        "id": "p9",
+        "name": "疲倦的微笑",
+        "img": "p9.webp",
+        "boxes": {
+          "face": [
+            290,
+            145,
+            215,
+            190
+          ],
+          "eyes": [
+            310,
+            165,
+            185,
+            55
+          ],
+          "mouth": [
+            335,
+            240,
+            105,
+            38
+          ]
+        },
+        "ex": {
+          "neutral": {
+            "e1": "p9_neutral_e1.webp",
+            "e2": "p9_neutral_e2.webp",
+            "m1": "p9_neutral_m1.webp",
+            "m2": "p9_neutral_m2.webp",
+            "m3": "p9_neutral_m3.webp"
+          }
+        },
+        "layers": {
+          "hairb": "p9_L_hairb.webp",
+          "body": "p9_L_body.webp",
+          "head": "p9_L_head.webp",
+          "hairf": "p9_L_hairf.webp"
+        },
+        "w": 832,
+        "h": 1216
+      },
+      {
+        "id": "p10",
+        "name": "握拳",
+        "img": "p10.webp",
+        "boxes": {
+          "face": [
+            290,
+            145,
+            215,
+            190
+          ],
+          "eyes": [
+            310,
+            163,
+            185,
+            55
+          ],
+          "mouth": [
+            358,
+            262,
+            76,
+            36
+          ]
+        },
+        "ex": {
+          "neutral": {
+            "e1": "p10_neutral_e1.webp",
+            "e2": "p10_neutral_e2.webp",
+            "m1": "p10_neutral_m1.webp",
+            "m2": "p10_neutral_m2.webp",
+            "m3": "p10_neutral_m3.webp"
+          }
+        },
+        "layers": {
+          "hairb": "p10_L_hairb.webp",
+          "body": "p10_L_body.webp",
+          "head": "p10_L_head.webp",
+          "hairf": "p10_L_hairf.webp"
+        },
         "w": 832,
         "h": 1216
       }
     ]
-  }
+  },
+  "layers": true
 }

@@ -430,7 +430,7 @@ YouTube 影片，720p，換鏡偵測後抽格，拼成縮圖表看。縮圖表�
 | 1:04–1:24 | 3D 機甲              | 主角的機甲空降荒野 → BASTILLE 的砲擊預警 → 快速推進閃開 → 駕駛艙插入：ECHO 的全像 → 反白線稿的衝擊畫格    | ECHO：「目標在礦坑深處。照你的節奏來。」                                                                                                                                                                                                                                                                                                                            |
 | 1:24–1:28 | PV 式章名卡          | 赭紅與黑的色塊、BASTILLE 的剪影、大字                                                                     | 「CHAPTER 1　南部荒野」                                                                                                                                                                                                                                                                                                                                             |
 
-### 第 0.5 期：宿敵以外全部角色的立繪 v2 與語音 v2（進行中，2026-11-13 交接）
+### 第 0.5 期：宿敵以外全部角色的立繪 v2 與語音 v2（2026-11-14：立繪與中文語音完成，日文語音進行中）
 
 **範圍與使用者的決定**：宿敵以外的角色（委託方 5 位 castron／aetheric／veerwell／sancta／mira、ECHO 兩個外觀 echo／echo_true、教官 instructor、僚機 basalt／wren）各做姿勢、表情、眨眼、對口型、拆層，再重做語音。外觀直接照現有的 p1 主圖（「你直接看之前產的圖，不用再確認」）；Claude 自己挑圖、一路做完。產圖（ComfyUI）與產語音不能同時跑；可以直接 taskkill；跑完測試要關掉無頭瀏覽器；ComfyUI 要定期重啟（記憶體會漲）；使用者要每 10 分鐘回報一次進度。
 
@@ -441,13 +441,19 @@ YouTube 影片，720p，換鏡偵測後抽格，拼成縮圖表看。縮圖表�
 - **工作檔進 git**：伺服器改版後候選與工作檔放 `tools/charwork/<角色>/`（新版伺服器啟動時把 `server-models/charwork/` 搬過去，已搬完）。
 - **語音的準備**（還沒產生）：`scripts/voice-lines.js` 以 `data/line-expr.js` 的 `lineExpr` 替每句台詞標上表情 `e`（neutral 不寫），`src/assets/voice/lines.json` 已重新產生（1434 句）；`scripts/voice-gen.py` 加了 `EXPR_STYLE`（表情 → 語氣指示），機械語音（station）與敵兵（grunt*）不加；日文版保留 `e`。**2026-11-13 遠端的 `data/line-expr.js` 加了 141 行（宿敵等），產語音前要先重跑 `node scripts/voice-lines.js`**。
 
-**未完成（照順序）**
+**2026-11-13～14 接手完成（另一台電腦）**
 
-1. **拆層＋發佈**：8 位的 card 要 `layers: true`（echo／echo_true 已經是）再 `node scripts/chargen.js char <id> publish`（`tools/portrait-v2/publish_all.sh`）。basalt 已經打開 `layers`，發佈到 p1（60 張）時中斷，要從頭重發。**卡住的問題**：2026-11-13 19:08 起兩次發佈 basalt，都停在 See-through 的 `GenerateLayers`「Text encoded, text encoders offloaded to CPU」之後，顯示卡 100% 但功耗只有約 60 W、進度條不動、`/interrupt` 停不下來（文件記的正常速度是一個姿勢 1～2 分鐘）。這兩次的 ComfyUI 都是用 WMI（`Invoke-CimMethod Win32_Process Create`，為了不被 Claude Code 在記憶體緊時連帶停掉）開的，懷疑 WMI 開的程序拿到的是系統預設的環境變數，缺了 See-through 需要的東西（表情用的 Qwen／SDXL 在同樣的方式下都正常）；用一般方式（`npm run comfy`）開的那一次跑到同一步前就被中斷，還沒有結論。**先用 `npm run comfy` 正常開 ComfyUI 試一個姿勢**：能跑就是環境的問題（要背景執行就用 WMI 時帶上使用者的環境變數，或用其他方式），還是卡就查 See-through（模型快取、torch 版本、顯示卡驅動）。
-2. 發佈後檢查去背的輪廓（灰色色塊）、看幾張拆層的四層；必要時重做重影明顯的表情（`chargen.js char <id> var --pose= --key= --n=2` 再 `pick`）。
-3. `npm run build`（更新 `dist/lib/portraits/<id>.js`），看遊戲裡通訊框、簡報、全畫面劇情的截圖。
-4. **語音**（關掉 ComfyUI 之後才跑，conda 環境 `rubicon-voice`）：先 `node scripts/voice-lines.js`；只重做有 `e` 的台詞：`python scripts/voice-gen.py --voice <聲音> --only=<有 e 的鍵> --force`，聲音 gentle、ai、castron、aetheric、veerwell、sancta、mira、instructor、basalt、wren（宿敵與敵兵的語音要不要也照表情重做，還沒問使用者）；再加 `--lang ja` 跑一次日文。大笑偶爾拖太長：長度超過台詞字數估計的 1.6 倍就重抽。
-5. 收尾：更新這一節與 `docs/portrait-design.md`；`npm run lint`、`format:check`、`npm test`（跑完關掉無頭瀏覽器）；commit＋push（card、`tools/charwork`、`src/assets/characters`、語音、`dist`）。
+1. **拆層＋發佈**：10 位全部 `layers: true` 並 `chargen.js char <id> publish`（每位 22～45 分鐘，共約 6 小時）。**See-through 卡住的原因確定是 WMI 開的 ComfyUI**：改用一般方式（`npm run comfy`，或 PowerShell 的 `Start-Process`，會帶使用者的環境變數）開，同一步顯示卡 100%、功耗約 590 W，一個姿勢約 2～4 分鐘就過了。
+2. **檢查**：每位抽 4 個姿勢看四層與疊回去（綠底）、10 位全部姿勢的主圖放綠底看去背——都正常。只有教官 p5（喝令）左下大衣縫隙留一塊白底（約 75×53），直接把發佈出來的 `p5.webp` 與 `p5_L_body.webp` 那一塊接近白色的像素改成透明（**重新發佈教官會蓋回來，要再清一次**）。已知的小問題（不影響顯示，沒有重做）：米拉 p4 頭髮左緣幾點灰色殘點與頭髮裡一小塊偏暗（Qwen 改姿勢時就有）；ECHO p1 的後髮層長出多餘的細長髮絲（幾乎被身體擋住，腰側有很淡的細線）；黑髮的教官 p5／p9、各角色的身體層常帶一點頭頂頭髮的輪廓（分層動畫時頭頂那一小塊不跟著頭動）。巴索 p1、派克 p1 背後的黑色裂紋／條碼裝飾是 v1 主圖就有的設計。
+3. **建置與截圖**：`npm run build` 後任務中的通訊框（霍斯特、巴索、芮恩、米拉、教官、諾拉）都是 v2 的通訊姿勢，沒有頁面錯誤。新姿勢 p3～p10 遊戲還沒用到（第 1 期的 2D 舞台才用）。
+4. **語音（中文，已提交）**：重跑 `voice-lines.js`（1434 句、1266 句有表情）；照使用者的決定**宿敵與敵兵也照表情重做**——敵兵的喊話照事件標表情（`voice-lines.js` 的 `BARK_EXPR`，和 `game/voice.js` 的同名表相同），`voice-gen.py` 不再把敵兵排除在表情語氣之外（機械語音 station 照舊不加）；挑 take 時超過台詞長度估計（0.6 秒＋每秒 4.2 字，日文 7 字）1.6 倍的扣分。29 個聲音、2251 項，重抽後剩 24 句相似度偏低，看過都是轉寫的問題（英文名字、「具名」→「巨鳴」這類同音字、單字「零」），語音本身沒問題。抽查 38 句的長度都在 1.6 倍內。
+5. **語音（日文，進行中）**：同樣的 29 個聲音 `--lang ja`，跑完重抽 report.txt 再提交。
+
+**這台電腦（RTX 5090、128 GB）另外學到的**
+
+- **產圖與產語音可以同時跑**（使用者 2026-11-14 同意試；顯示卡記憶體合計 20～26 GB／32 GB，系統可用記憶體一直在 90 GB 以上，兩邊速度都正常）。ComfyUI 每位角色前重開一次就不會漲上去。
+- 語音的 conda 環境 `rubicon-voice`：RTX 5090（sm_120）要 `torch==2.8.0`＋`torchaudio==2.8.0` 的 cu128 版（cu124 不支援），`triton-windows<3.5`。VoxCPM 的 torch.compile 在 Windows 會在 `_StaticCudaLauncher` 出 `OverflowError: Python int too large to convert to C long`：設環境變數 `TORCHINDUCTOR_USE_STATIC_CUDA_LAUNCHER=0` 就好（暖機後一句約 1.2～1.5 秒）。Hugging Face 下載卡在某個檔案不動時設 `HF_HUB_DISABLE_XET=1` 重下。
+- sharp 讀檔會讓 Windows 鎖住那個檔案，同一個程序要寫回同一個檔時先 `fs.readFileSync` 再交給 sharp。
 
 **這次學到的（換台電腦也適用）**
 

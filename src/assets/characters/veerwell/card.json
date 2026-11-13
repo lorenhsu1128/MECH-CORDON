@@ -2073,9 +2073,9 @@
       }
     }
   ],
-  "t": 1794537422685,
+  "t": 1794579273729,
   "pub": {
-    "t": 1794452866915,
+    "t": 1794577005053,
     "poses": [
       {
         "id": "p1",
@@ -2181,6 +2181,12 @@
             "m2": "p1_cold_m2.webp",
             "m3": "p1_cold_m3.webp"
           }
+        },
+        "layers": {
+          "hairb": "p1_L_hairb.webp",
+          "body": "p1_L_body.webp",
+          "head": "p1_L_head.webp",
+          "hairf": "p1_L_hairf.webp"
         },
         "w": 832,
         "h": 1216
@@ -2290,9 +2296,487 @@
             "m3": "p2_cold_m3.webp"
           }
         },
+        "layers": {
+          "hairb": "p2_L_hairb.webp",
+          "body": "p2_L_body.webp",
+          "head": "p2_L_head.webp",
+          "hairf": "p2_L_hairf.webp"
+        },
+        "w": 832,
+        "h": 1216
+      },
+      {
+        "id": "p3",
+        "name": "3/4 側（面向左）",
+        "img": "p3.webp",
+        "boxes": {
+          "face": [
+            285,
+            180,
+            180,
+            185
+          ],
+          "eyes": [
+            280,
+            200,
+            140,
+            70
+          ],
+          "mouth": [
+            322,
+            296,
+            74,
+            38
+          ]
+        },
+        "ex": {
+          "neutral": {
+            "e1": "p3_neutral_e1.webp",
+            "e2": "p3_neutral_e2.webp",
+            "m1": "p3_neutral_m1.webp",
+            "m2": "p3_neutral_m2.webp",
+            "m3": "p3_neutral_m3.webp"
+          },
+          "smile": {
+            "f": "p3_smile_f.webp",
+            "e1": "p3_smile_e1.webp",
+            "e2": "p3_smile_e2.webp",
+            "m1": "p3_smile_m1.webp",
+            "m2": "p3_smile_m2.webp",
+            "m3": "p3_smile_m3.webp"
+          },
+          "laugh": {
+            "f": "p3_laugh_f.webp",
+            "e1": "p3_laugh_e1.webp",
+            "e2": "p3_laugh_e2.webp",
+            "m1": "p3_laugh_m1.webp",
+            "m2": "p3_laugh_m2.webp",
+            "m3": "p3_laugh_m3.webp"
+          },
+          "angry": {
+            "f": "p3_angry_f.webp",
+            "e1": "p3_angry_e1.webp",
+            "e2": "p3_angry_e2.webp",
+            "m1": "p3_angry_m1.webp",
+            "m2": "p3_angry_m2.webp",
+            "m3": "p3_angry_m3.webp"
+          },
+          "surprised": {
+            "f": "p3_surprised_f.webp",
+            "e1": "p3_surprised_e1.webp",
+            "e2": "p3_surprised_e2.webp",
+            "m1": "p3_surprised_m1.webp",
+            "m2": "p3_surprised_m2.webp",
+            "m3": "p3_surprised_m3.webp"
+          },
+          "sad": {
+            "f": "p3_sad_f.webp",
+            "e1": "p3_sad_e1.webp",
+            "e2": "p3_sad_e2.webp",
+            "m1": "p3_sad_m1.webp",
+            "m2": "p3_sad_m2.webp",
+            "m3": "p3_sad_m3.webp"
+          },
+          "think": {
+            "f": "p3_think_f.webp",
+            "e1": "p3_think_e1.webp",
+            "e2": "p3_think_e2.webp",
+            "m1": "p3_think_m1.webp",
+            "m2": "p3_think_m2.webp",
+            "m3": "p3_think_m3.webp"
+          },
+          "smug": {
+            "f": "p3_smug_f.webp",
+            "e1": "p3_smug_e1.webp",
+            "e2": "p3_smug_e2.webp",
+            "m1": "p3_smug_m1.webp",
+            "m2": "p3_smug_m2.webp",
+            "m3": "p3_smug_m3.webp"
+          },
+          "wink": {
+            "f": "p3_wink_f.webp",
+            "e1": "p3_wink_e1.webp",
+            "e2": "p3_wink_e2.webp",
+            "m1": "p3_wink_m1.webp",
+            "m2": "p3_wink_m2.webp",
+            "m3": "p3_wink_m3.webp"
+          },
+          "cold": {
+            "f": "p3_cold_f.webp",
+            "e1": "p3_cold_e1.webp",
+            "e2": "p3_cold_e2.webp",
+            "m1": "p3_cold_m1.webp",
+            "m2": "p3_cold_m2.webp",
+            "m3": "p3_cold_m3.webp"
+          }
+        },
+        "layers": {
+          "hairb": "p3_L_hairb.webp",
+          "body": "p3_L_body.webp",
+          "head": "p3_L_head.webp",
+          "hairf": "p3_L_hairf.webp"
+        },
+        "w": 832,
+        "h": 1216
+      },
+      {
+        "id": "p4",
+        "name": "3/4 側（面向右）",
+        "img": "p4.webp",
+        "boxes": {
+          "face": [
+            430,
+            190,
+            165,
+            180
+          ],
+          "eyes": [
+            440,
+            205,
+            110,
+            60
+          ],
+          "mouth": [
+            488,
+            298,
+            62,
+            36
+          ]
+        },
+        "ex": {
+          "neutral": {
+            "e1": "p4_neutral_e1.webp",
+            "e2": "p4_neutral_e2.webp",
+            "m1": "p4_neutral_m1.webp",
+            "m2": "p4_neutral_m2.webp",
+            "m3": "p4_neutral_m3.webp"
+          },
+          "smile": {
+            "f": "p4_smile_f.webp",
+            "e1": "p4_smile_e1.webp",
+            "e2": "p4_smile_e2.webp",
+            "m1": "p4_smile_m1.webp",
+            "m2": "p4_smile_m2.webp",
+            "m3": "p4_smile_m3.webp"
+          },
+          "laugh": {
+            "f": "p4_laugh_f.webp",
+            "e1": "p4_laugh_e1.webp",
+            "e2": "p4_laugh_e2.webp",
+            "m1": "p4_laugh_m1.webp",
+            "m2": "p4_laugh_m2.webp",
+            "m3": "p4_laugh_m3.webp"
+          },
+          "angry": {
+            "f": "p4_angry_f.webp",
+            "e1": "p4_angry_e1.webp",
+            "e2": "p4_angry_e2.webp",
+            "m1": "p4_angry_m1.webp",
+            "m2": "p4_angry_m2.webp",
+            "m3": "p4_angry_m3.webp"
+          },
+          "surprised": {
+            "f": "p4_surprised_f.webp",
+            "e1": "p4_surprised_e1.webp",
+            "e2": "p4_surprised_e2.webp",
+            "m1": "p4_surprised_m1.webp",
+            "m2": "p4_surprised_m2.webp",
+            "m3": "p4_surprised_m3.webp"
+          },
+          "sad": {
+            "f": "p4_sad_f.webp",
+            "e1": "p4_sad_e1.webp",
+            "e2": "p4_sad_e2.webp",
+            "m1": "p4_sad_m1.webp",
+            "m2": "p4_sad_m2.webp",
+            "m3": "p4_sad_m3.webp"
+          },
+          "think": {
+            "f": "p4_think_f.webp",
+            "e1": "p4_think_e1.webp",
+            "e2": "p4_think_e2.webp",
+            "m1": "p4_think_m1.webp",
+            "m2": "p4_think_m2.webp",
+            "m3": "p4_think_m3.webp"
+          },
+          "smug": {
+            "f": "p4_smug_f.webp",
+            "e1": "p4_smug_e1.webp",
+            "e2": "p4_smug_e2.webp",
+            "m1": "p4_smug_m1.webp",
+            "m2": "p4_smug_m2.webp",
+            "m3": "p4_smug_m3.webp"
+          },
+          "wink": {
+            "f": "p4_wink_f.webp",
+            "e1": "p4_wink_e1.webp",
+            "e2": "p4_wink_e2.webp",
+            "m1": "p4_wink_m1.webp",
+            "m2": "p4_wink_m2.webp",
+            "m3": "p4_wink_m3.webp"
+          },
+          "cold": {
+            "f": "p4_cold_f.webp",
+            "e1": "p4_cold_e1.webp",
+            "e2": "p4_cold_e2.webp",
+            "m1": "p4_cold_m1.webp",
+            "m2": "p4_cold_m2.webp",
+            "m3": "p4_cold_m3.webp"
+          }
+        },
+        "layers": {
+          "hairb": "p4_L_hairb.webp",
+          "body": "p4_L_body.webp",
+          "head": "p4_L_head.webp",
+          "hairf": "p4_L_hairf.webp"
+        },
+        "w": 832,
+        "h": 1216
+      },
+      {
+        "id": "p5",
+        "name": "眨眼比 YA",
+        "img": "p5.webp",
+        "boxes": {
+          "face": [
+            345,
+            215,
+            215,
+            185
+          ],
+          "eyes": [
+            355,
+            235,
+            190,
+            70
+          ],
+          "mouth": [
+            418,
+            312,
+            72,
+            44
+          ]
+        },
+        "ex": {
+          "neutral": {
+            "e1": "p5_neutral_e1.webp",
+            "e2": "p5_neutral_e2.webp"
+          }
+        },
+        "layers": {
+          "hairb": "p5_L_hairb.webp",
+          "body": "p5_L_body.webp",
+          "head": "p5_L_head.webp",
+          "hairf": "p5_L_hairf.webp"
+        },
+        "w": 832,
+        "h": 1216
+      },
+      {
+        "id": "p6",
+        "name": "敲碼錶",
+        "img": "p6.webp",
+        "boxes": {
+          "face": [
+            340,
+            205,
+            215,
+            185
+          ],
+          "eyes": [
+            350,
+            225,
+            190,
+            75
+          ],
+          "mouth": [
+            425,
+            312,
+            64,
+            46
+          ]
+        },
+        "ex": {
+          "neutral": {
+            "e1": "p6_neutral_e1.webp",
+            "e2": "p6_neutral_e2.webp"
+          }
+        },
+        "layers": {
+          "hairb": "p6_L_hairb.webp",
+          "body": "p6_L_body.webp",
+          "head": "p6_L_head.webp",
+          "hairf": "p6_L_hairf.webp"
+        },
+        "w": 832,
+        "h": 1216
+      },
+      {
+        "id": "p7",
+        "name": "抱胸冷眼",
+        "img": "p7.webp",
+        "boxes": {
+          "face": [
+            340,
+            205,
+            205,
+            185
+          ],
+          "eyes": [
+            355,
+            232,
+            180,
+            70
+          ],
+          "mouth": [
+            428,
+            330,
+            66,
+            36
+          ]
+        },
+        "ex": {
+          "neutral": {
+            "e1": "p7_neutral_e1.webp",
+            "e2": "p7_neutral_e2.webp",
+            "m1": "p7_neutral_m1.webp",
+            "m2": "p7_neutral_m2.webp",
+            "m3": "p7_neutral_m3.webp"
+          }
+        },
+        "layers": {
+          "hairb": "p7_L_hairb.webp",
+          "body": "p7_L_body.webp",
+          "head": "p7_L_head.webp",
+          "hairf": "p7_L_hairf.webp"
+        },
+        "w": 832,
+        "h": 1216
+      },
+      {
+        "id": "p8",
+        "name": "雙手抱頭",
+        "img": "p8.webp",
+        "boxes": {
+          "face": [
+            340,
+            215,
+            215,
+            185
+          ],
+          "eyes": [
+            345,
+            230,
+            195,
+            75
+          ],
+          "mouth": [
+            415,
+            310,
+            80,
+            56
+          ]
+        },
+        "ex": {
+          "neutral": {
+            "e1": "p8_neutral_e1.webp",
+            "e2": "p8_neutral_e2.webp"
+          }
+        },
+        "layers": {
+          "hairb": "p8_L_hairb.webp",
+          "body": "p8_L_body.webp",
+          "head": "p8_L_head.webp",
+          "hairf": "p8_L_hairf.webp"
+        },
+        "w": 832,
+        "h": 1216
+      },
+      {
+        "id": "p9",
+        "name": "比錢",
+        "img": "p9.webp",
+        "boxes": {
+          "face": [
+            340,
+            210,
+            210,
+            175
+          ],
+          "eyes": [
+            350,
+            230,
+            190,
+            70
+          ],
+          "mouth": [
+            420,
+            318,
+            82,
+            38
+          ]
+        },
+        "ex": {
+          "neutral": {
+            "e1": "p9_neutral_e1.webp",
+            "e2": "p9_neutral_e2.webp",
+            "m1": "p9_neutral_m1.webp",
+            "m2": "p9_neutral_m2.webp",
+            "m3": "p9_neutral_m3.webp"
+          }
+        },
+        "layers": {
+          "hairb": "p9_L_hairb.webp",
+          "body": "p9_L_body.webp",
+          "head": "p9_L_head.webp",
+          "hairf": "p9_L_hairf.webp"
+        },
+        "w": 832,
+        "h": 1216
+      },
+      {
+        "id": "p10",
+        "name": "背對回頭",
+        "img": "p10.webp",
+        "boxes": {
+          "face": [
+            290,
+            195,
+            200,
+            175
+          ],
+          "eyes": [
+            300,
+            222,
+            160,
+            65
+          ],
+          "mouth": [
+            350,
+            312,
+            64,
+            34
+          ]
+        },
+        "ex": {
+          "neutral": {
+            "e1": "p10_neutral_e1.webp",
+            "e2": "p10_neutral_e2.webp",
+            "m1": "p10_neutral_m1.webp",
+            "m2": "p10_neutral_m2.webp",
+            "m3": "p10_neutral_m3.webp"
+          }
+        },
+        "layers": {
+          "hairb": "p10_L_hairb.webp",
+          "body": "p10_L_body.webp",
+          "head": "p10_L_head.webp",
+          "hairf": "p10_L_hairf.webp"
+        },
         "w": 832,
         "h": 1216
       }
     ]
-  }
+  },
+  "layers": true
 }
