@@ -92,8 +92,10 @@ Object.assign(Game.prototype, {
       this.subRows = (this.subRows || []).filter((r) => r.until > t);
       el.innerHTML = this.subRows
         .map((r) => {
-          const S = r.who === 'grunt' ? { name: '敵兵', color: '#ff6b6b' } : SPEAKERS[r.who] || SPEAKERS.echo;
-          const nm = r.who === 'echo' ? 'ECHO' : this.subName(r.who, S.name);
+          // 敵兵（grunt1～3＝三個聲音、各自的立繪）：名字一律「敵兵」、紅色
+          const grunt = /^grunt/.test(r.who);
+          const S = grunt ? { name: '敵兵', color: '#ff6b6b' } : SPEAKERS[r.who] || SPEAKERS.echo;
+          const nm = r.who === 'echo' ? 'ECHO' : this.subName(grunt ? 'grunt' : r.who, S.name);
           const face = r.who !== 'grunt' && this.ptFaceUrl ? this.ptFaceUrl(r.who, r.ex, 28) : null;
           return `<p>${face ? `<img class="sbFace" src="${face}" alt="">` : ''}<b style="color:${S.color}">${escHtml(nm)}</b>${escHtml(r.text)}</p>`;
         })
@@ -398,7 +400,16 @@ Object.assign(Game.prototype, {
     const me = this.player;
     const m = /^b_([a-zA-Z]+)(\d+)$/.exec(k);
     if (m && me && !me.dead && pos && me.pos.distanceTo(pos) < 40 * (me.dk || 1) && BARKS[m[1]])
-      this.subBar(this.subText(BARKS[m[1]][+m[2]], 'grunt', k), 'grunt', b.duration);
+      this.subBar(this.subText(BARKS[m[1]][+m[2]], 'grunt', k), folder, b.duration, BARK_EXPR[m[1]]);
   },
 });
+// 喊話的表情（字幕條的小頭像，敵兵的立繪 grunt1～3）
+const BARK_EXPR = {
+  spot: 'surprised',
+  search: 'think',
+  attack: 'shout',
+  hurt: 'panic',
+  allyDown: 'shout',
+  cmdDown: 'panic',
+};
 const BARK_CD = { spot: 5, search: 9, attack: 7, hurt: 4, allyDown: 5, cmdDown: 8 };

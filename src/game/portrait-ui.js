@@ -5,7 +5,7 @@ import { SFX } from '../audio/audio.js';
 import { lineExpr } from '../data/line-expr.js';
 import { BRIEFINGS, SPEAKERS } from '../data/story.js';
 import { escHtml } from '../core/html.js';
-import { Portrait, Portraits } from '../render/portraits.js';
+import { Portrait, Portraits, drawStationWave } from '../render/portraits.js';
 import { Game } from './game.js';
 
 const DPR_MAX = 2;
@@ -19,6 +19,7 @@ Object.assign(Game.prototype, {
   // 回傳 Promise<view|null>（沒有立繪或 host 已經不在畫面上＝null）
   async ptView(host, sp, o = {}) {
     if (!host || !sp) return null;
+    if (sp === 'station') return this.ptWaveView(host, o);
     let pk;
     // ECHO 的私人頻道：第 3 周目「真實的樣子」（echo_true，沒有時照舊用 echo）
     const id = sp === 'echo' && o.priv && (await Portraits.has('echo_true')) ? 'echo_true' : sp;
@@ -66,6 +67,42 @@ Object.assign(Game.prototype, {
     }
     return v;
   },
+  // 軌道站（機械語音，不畫臉）：同樣的畫布與更新，畫的是聲波（render/portraits.js 的 drawStationWave）
+  ptWaveView(host, o) {
+    if (!host.isConnected) return null;
+    const wrap = document.createElement('span');
+    wrap.className = 'ptView ptWave' + (o.cls ? ' ' + o.cls : '');
+    const cv = document.createElement('canvas');
+    const dpr = Math.min(DPR_MAX, window.devicePixelRatio || 1);
+    cv.width = Math.round(o.w * dpr);
+    cv.height = Math.round(o.h * dpr);
+    cv.style.width = o.w + 'px';
+    cv.style.height = o.h + 'px';
+    wrap.appendChild(cv);
+    if (o.replace) host.replaceWith(wrap);
+    else host.appendChild(wrap);
+    const v = {
+      sp: 'station',
+      id: 'station',
+      wave: true,
+      cv,
+      ctx: cv.getContext('2d'),
+      wrap,
+      talk: o.talk,
+      t: 0,
+      lv: 0,
+    };
+    if (o.still) {
+      this.ptDraw(v, 0);
+      return v;
+    }
+    (this.ptViews = this.ptViews || []).push(v);
+    if (!this.ptRaf) {
+      this.ptLast = performance.now();
+      this.ptRaf = requestAnimationFrame(() => this.ptTick());
+    }
+    return v;
+  },
   ptTick() {
     const now = performance.now();
     const dt = Math.min(0.1, (now - this.ptLast) / 1000);
@@ -79,6 +116,16 @@ Object.assign(Game.prototype, {
     this.ptRaf = this.ptViews.length ? requestAnimationFrame(() => this.ptTick()) : 0;
   },
   ptDraw(v, dt) {
+    if (v.wave) {
+      // 有語音＝照音量；說話中但沒有語音＝模擬起伏；不說話＝慢慢歸零
+      const raw = v.talk ? v.talk() : null;
+      v.t += dt;
+      const want =
+        raw === -1 ? 0.35 + 0.35 * Math.abs(Math.sin(v.t * 7.3) * Math.sin(v.t * 2.9)) : raw > 0 ? raw : 0;
+      v.lv += (want - v.lv) * Math.min(1, dt * 14);
+      drawStationWave(v.ctx, v.cv.width, v.cv.height, v.t, v.lv);
+      return;
+    }
     const { P, cv, ctx } = v;
     const lv = v.talk ? v.talk() : null;
     // 有語音＝照音量；說話中但沒有語音（-1）＝模擬說話
@@ -156,6 +203,12 @@ Object.assign(Game.prototype, {
     const C = (this.ptFaces = this.ptFaces || {});
     if (k in C) return C[k];
     C[k] = null;
+    if (sp === 'station') {
+      const cv = document.createElement('canvas');
+      cv.width = cv.height = size * 2;
+      drawStationWave(cv.getContext('2d'), cv.width, cv.height, 1.3, 0.45);
+      return (C[k] = cv.toDataURL('image/png'));
+    }
     Portraits.get(sp).then((pk) => {
       if (!pk) return;
       const P = new Portrait(pk, 'p1');

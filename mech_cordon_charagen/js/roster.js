@@ -235,6 +235,33 @@ export const ROSTER = [
     color: '#ff5040',
     note: '方舟的守衛；莊重、平靜，像在念誓詞',
   },
+  {
+    id: 'grunt1',
+    name: '敵兵（老兵）',
+    tier: 3,
+    sex: 'm',
+    age: '四十多歲',
+    color: '#ff6b6b',
+    note: '敵方步行機的駕駛員（無線電喊話的聲音 grunt1）；低沉粗啞、經驗老到',
+  },
+  {
+    id: 'grunt2',
+    name: '敵兵（新兵）',
+    tier: 3,
+    sex: 'm',
+    age: '二十多歲',
+    color: '#ff6b6b',
+    note: '敵方步行機的駕駛員（grunt2）；年輕、有點緊張、語速快',
+  },
+  {
+    id: 'grunt3',
+    name: '敵兵（女兵）',
+    tier: 3,
+    sex: 'f',
+    age: '二十多歲',
+    color: '#ff6b6b',
+    note: '敵方步行機的駕駛員（grunt3）；幹練、聲音清亮',
+  },
 ];
 export const TIER_NAMES = ['重點', '主要', '宿敵', '其他'];
 export const rosterOf = (id) => ROSTER.find((r) => r.id === id);

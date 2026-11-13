@@ -15424,8 +15424,8 @@ async function testPortraits(browser, base) {
     `第 4 期：教官的通訊是胸像、通訊姿勢、招牌表情「認可」（${JSON.stringify(cast)}）`,
   );
   await page.evaluate(() => window.__game.commClear());
-  // 沒有立繪的角色（軌道站：之後也只有波形）：照舊是字母徽章
-  await page.evaluate(() => window.__game.commSay('station', '照合約辦事。'));
+  // 沒有立繪的角色（敵方的通訊 enemy）：照舊是字母徽章
+  await page.evaluate(() => window.__game.commSay('enemy', '照合約辦事。'));
   await page.waitForTimeout(600);
   check(
     await page.evaluate(
@@ -15434,6 +15434,51 @@ async function testPortraits(browser, base) {
     '沒有立繪的角色照舊是字母徽章',
   );
   await page.evaluate(() => window.__game.commClear());
+  // 第 7 期：軌道站的機械語音不畫臉，畫聲波；說話中的振幅比安靜時大
+  const wave = await page.evaluate(async () => {
+    const g = window.__game;
+    g.commSay('station', '認證要求。KEY-07。請前往中樞。');
+    const t0 = performance.now();
+    let v;
+    while (
+      !(v = (g.ptViews || []).find((v) => v.wave && v.wrap.closest('#comm'))) &&
+      performance.now() - t0 < 3000
+    )
+      await new Promise((r) => setTimeout(r, 50));
+    if (!v) return null;
+    let talk = 0;
+    for (let i = 0; i < 12; i++) {
+      await new Promise((r) => setTimeout(r, 50));
+      talk = Math.max(talk, v.lv);
+    }
+    const d = v.ctx.getImageData(0, 0, v.cv.width, v.cv.height).data;
+    let lit = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 300) lit++;
+    const out = { talk: +talk.toFixed(2), lit: +(lit / (d.length / 4)).toFixed(3) };
+    g.commClear();
+    return out;
+  });
+  check(
+    wave && wave.talk > 0.2 && wave.lit > 0.005,
+    `第 7 期：軌道站的通訊是聲波、說話時起伏（${JSON.stringify(wave)}）`,
+  );
+  // 第 7 期：敵兵的無線電喊話（grunt1～3 各自的立繪）在字幕條放小頭像，名字一律「敵兵」
+  const bark = await page.evaluate(async () => {
+    const g = window.__game;
+    g.subBarClear();
+    g.subBar('發現目標！', 'grunt2', 3, 'surprised');
+    const t0 = performance.now();
+    while (!document.querySelector('#subBar img.sbFace') && performance.now() - t0 < 5000)
+      await new Promise((r) => setTimeout(r, 50));
+    const el = document.querySelector('#subBar');
+    const out = {
+      face: !!el.querySelector('img.sbFace'),
+      name: el.querySelector('b') && el.querySelector('b').textContent,
+    };
+    g.subBarClear();
+    return out;
+  });
+  check(bark.face && bark.name === '敵兵', `第 7 期：敵兵喊話的字幕條有小頭像（${JSON.stringify(bark)}）`);
   // 簡報：ECHO 的私人委託
   await page.evaluate(() => window.__game.openBrief('c1y'));
   check(await until(() => document.querySelector('#brClient .ptView canvas')), '簡報：委託方的徽章換成胸像');
@@ -15464,18 +15509,19 @@ async function testPortraits(browser, base) {
     document.body.appendChild(root);
     window.__game.ptBadges(root);
     const t0 = performance.now();
-    while (!root.querySelector('.ptFace') && performance.now() - t0 < 5000)
+    while (root.querySelector('.cBadge') && performance.now() - t0 < 5000)
       await new Promise((r) => setTimeout(r, 50));
     const out = {
       face: root.querySelectorAll('.ptFace').length,
       badge: root.querySelectorAll('.cBadge').length,
+      wave: root.querySelectorAll('.ptWave').length,
     };
     root.remove();
     return out;
   });
   check(
-    face.face === 2 && face.badge === 1,
-    `通訊紀錄：ECHO 與芮恩換成小頭像、軌道站照舊（${JSON.stringify(face)}）`,
+    face.face === 3 && face.badge === 0 && face.wave === 1,
+    `通訊紀錄：ECHO 與芮恩換成小頭像、軌道站換成聲波（${JSON.stringify(face)}）`,
   );
   // 台詞的表情（data/line-expr.js）：逐句指定、通訊事件的預設、即時插播
   const ex = await page.evaluate(async () => {

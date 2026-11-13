@@ -8,6 +8,7 @@
 import { SFX } from '../audio/audio.js';
 import { usesAmmo } from '../data/parts.js';
 import { clamp, lerp } from '../core/math.js';
+import { drawStationWave } from '../render/portraits.js';
 import { DS, MB, MS } from '../core/scale.js';
 import { escHtml } from '../core/html.js';
 import { CINES } from '../data/cine/index.js';
@@ -1581,6 +1582,16 @@ Object.assign(Game.prototype, {
       x.drawImage(cv, cx - R + 2 * s, cy - R + 2 * s);
       x.fillStyle = 'rgba(0,0,0,0.18)';
       for (let y = cy - R + 2 * s; y < cy + R - 2 * s; y += 3) x.fillRect(cx - R + 2 * s, y, sz, 1);
+    } else if (who === 'station') {
+      // 軌道站的機械語音：不畫臉，畫聲波（render/portraits.js）
+      const sz = Math.round(R * 2 - 4 * s);
+      const cv = (this.ptCineCv = this.ptCineCv || document.createElement('canvas'));
+      if (cv.width !== sz) cv.width = cv.height = sz;
+      const lv = this.ptTalk ? this.ptTalk(who, talking) : null;
+      const amp =
+        lv === -1 ? 0.35 + 0.35 * Math.abs(Math.sin(c.t * 7.3) * Math.sin(c.t * 2.9)) : lv > 0 ? lv : 0;
+      drawStationWave(cv.getContext('2d'), sz, sz, c.t, amp, S.color);
+      x.drawImage(cv, cx - R + 2 * s, cy - R + 2 * s);
     } else {
       x.fillStyle = S.color;
       x.font = `700 ${44 * s}px sans-serif`;

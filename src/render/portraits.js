@@ -49,3 +49,58 @@ export const Portraits = {
     return loaded.get(id);
   },
 };
+
+// 軌道站的機械語音：不畫臉，畫聲波（docs/portrait-design.md 第 7 期）。通訊框、通訊紀錄的小頭像、過場的通訊分割共用。
+// lv＝音量 0～1（沒說話＝0，只剩微弱的底噪），t＝秒（動畫用），color＝線的顏色
+export function drawStationWave(x, W, H, t, lv, color = '#e8eef4') {
+  x.save();
+  x.fillStyle = '#070b12';
+  x.fillRect(0, 0, W, H);
+  const cx = W / 2,
+    cy = H / 2,
+    m = Math.min(W, H);
+  // 背後的同心圓（◎）與刻度
+  x.strokeStyle = color;
+  x.globalAlpha = 0.16;
+  x.lineWidth = Math.max(1, m / 90);
+  for (const r of [0.42, 0.3]) {
+    x.beginPath();
+    x.arc(cx, cy, m * r, 0, Math.PI * 2);
+    x.stroke();
+  }
+  x.globalAlpha = 0.1;
+  for (let i = 0; i < 24; i++) {
+    const a = (i / 24) * Math.PI * 2 + t * 0.15;
+    x.beginPath();
+    x.moveTo(cx + Math.cos(a) * m * 0.44, cy + Math.sin(a) * m * 0.44);
+    x.lineTo(cx + Math.cos(a) * m * 0.48, cy + Math.sin(a) * m * 0.48);
+    x.stroke();
+  }
+  // 聲波：幾個正弦相加，振幅跟著音量；中間大、兩端收
+  const amp = H * (0.03 + 0.32 * Math.min(1, lv));
+  const line = (alpha, width, ph) => {
+    x.globalAlpha = alpha;
+    x.lineWidth = width;
+    x.beginPath();
+    const n = 64;
+    for (let i = 0; i <= n; i++) {
+      const u = i / n,
+        env = Math.sin(u * Math.PI);
+      const y =
+        Math.sin(u * 19 + t * 11 + ph) * 0.55 +
+        Math.sin(u * 37 - t * 17 + ph * 2) * 0.3 +
+        Math.sin(u * 7 + t * 5) * 0.15;
+      const px = W * 0.06 + u * W * 0.88,
+        py = cy + y * amp * env;
+      if (i) x.lineTo(px, py);
+      else x.moveTo(px, py);
+    }
+    x.stroke();
+  };
+  x.strokeStyle = color;
+  x.shadowColor = color;
+  x.shadowBlur = m / 14;
+  line(0.35, Math.max(1, m / 60), 1.7);
+  line(0.95, Math.max(1, m / 40), 0);
+  x.restore();
+}
