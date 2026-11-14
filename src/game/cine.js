@@ -29,6 +29,7 @@ import { buildAethericLab, tickAethericLab } from '../render/cine-lab.js';
 import { buildSanctaStation } from '../render/cine-sancta.js';
 import { buildVeerwellDispatch, tickVeerwellDispatch } from '../render/cine-veerwell.js';
 import { buildCouncilChamber, tickCouncilChamber } from '../render/cine-council.js';
+import { buildOrbitCore, tickOrbitCore } from '../render/cine-core.js';
 import { revealDom } from '../render/textfx.js';
 import { World } from '../world/world.js';
 import { CINE_GRADE } from './constants.js';
@@ -45,6 +46,7 @@ const ROOMS = {
   sancta: [buildSanctaStation, () => {}],
   veerwell: [buildVeerwellDispatch, tickVeerwellDispatch],
   council: [buildCouncilChamber, tickCouncilChamber],
+  core: [buildOrbitCore, tickOrbitCore],
 };
 const SKIP_HOLD = 0.8; // 長按幾秒略過
 if (/[?&]test\b/.test(location.search)) window.__CINES = CINES; // 測試：放臨時的劇本
