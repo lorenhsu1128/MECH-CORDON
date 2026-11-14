@@ -694,5 +694,5 @@ YouTube 影片，720p，換鏡偵測後抽格，拼成縮圖表看。縮圖表�
 
 ### 剩下的卡頓（2026-11-14）
 
-- **第 6 章章末 23 秒（228 ms → 62 ms）**：四家的格子一起出現時，立繪第一次畫出來才解碼圖片、量分層的範圍（`alphaBox` 的 `getImageData`）、做臉部的遮罩。`cine2dPreload` 之後 `cine2dWarmPortraits` 把劇本用到的每個「角色＋姿勢」在離屏畫一次；臉部遮罩的快取改放在立繪套件上（`mech_cordon_charagen/js/portrait.js` 的 `patchIn`：以前每個 `Portrait` 各做一次，過場每換一鏡就重算）。
+- **第 6 章章末 23 秒（228 ms → 62 ms）**：四家的格子一起出現時，立繪第一次畫出來才解碼圖片、量分層的範圍（`alphaBox` 的 `getImageData`）、做臉部的遮罩。`cine2dPreload` 之後 `cine2dWarmPortraits` 把劇本用到的每個「角色＋姿勢」在離屏畫一次（臉部遮罩的快取本來就在立繪套件上，所以畫過一次之後每個演員共用）。
 - **第 1 章開場 14.8 秒（184 ms → 73 ms）**：運輸 MT 被打爆時 `fx.shatter` 先 `unmerge()`，合併前的網格那一版材質沒有編過。`cineWarmSet` 的 `transpWarm` 只走訪場景的根（`set.root`），演員的機甲不在底下；改成每個演員的模型也各做一次 `transpWarm`（`RIG_SRC` 的合併前網格與半透明版）。準備時間多約 1.3 秒。
