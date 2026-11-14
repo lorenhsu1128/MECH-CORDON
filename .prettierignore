@@ -4,3 +4,5 @@ test-results/
 src/assets/
 package-lock.json
 scripts/vendor/
+# 配樂產生器（server-bgmgen.js）寫的歌曲設定
+scripts/bgm_songs/*.json

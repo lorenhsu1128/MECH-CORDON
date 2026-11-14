@@ -213,6 +213,13 @@
               AI 配樂試聽
             </button>
             <button
+              id="btnBgmGen"
+              title="AI 配樂的整套流程：編輯每章每種區段類型的歌（歌名、聲線、歌詞…）、在伺服器的顯示卡上產生、評分挑選、試聽、打包"
+              style="display: none"
+            >
+              配樂產生器
+            </button>
+            <button
               id="btnLmReload"
               title="單人模式使用模型庫存在這個瀏覽器的 GLB 與關節設定（在設定的「遊戲與進階」開啟）"
             >
@@ -441,6 +448,18 @@
           <div id="vlList"></div>
           <pre id="vlOut" class="dim"></pre>
           <div class="row"><button id="btnVlBack">返回標題</button></div>
+        </div>
+      </div>
+      <div id="bgmGen" class="screen center zBg">
+        <div class="brBox bgBox">
+          <h2>配樂產生器</h2>
+          <p class="dim">
+            AI 配樂（ACE-Step 1.5，絕區零 × 尼爾
+            自動人形的日文歌）：每章每種區段類型一首。在這裡編輯歌曲、在伺服器那台電腦的顯示卡上產生候選、自動評分挑選、產生平時版、打包，再建置放進遊戲。試聽完成的配樂在「AI
+            配樂試聽」。
+          </p>
+          <div id="bgBody"></div>
+          <div class="row"><button id="btnBgBack">返回標題</button></div>
         </div>
       </div>
       <div id="bgmLab" class="screen center zBg">

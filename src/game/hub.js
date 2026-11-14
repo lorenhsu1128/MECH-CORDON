@@ -295,8 +295,17 @@ Object.assign(Game.prototype, {
     $('brief').querySelector('.brBox').dataset.client = F.short;
     $('brClient').innerHTML =
       `${speakerBadge(spk, 56)}<div><b style="color:${F.color}">${escHtml(who || F.name)}</b><span class="dim">${who ? escHtml(F.name) + '・' : ''}${escHtml(F.short)}・${escHtml(F.style)}</span></div>`;
-    // 立繪（game/portrait-ui.js）：說話的人有立繪時徽章換成胸像，簡報逐字的期間對口型
+    // 這次要唸的句子（依抉擇；紫色委託依上一周目多一句，BRIEFINGS 的 prev）
+    const pv = this.campPrev();
+    const extra = Object.keys(B.prev || {})
+      .map((k) => B.prev[k][pv[k]])
+      .filter(Boolean);
+    const lines = pickLines(B.lines, ch).concat(extra);
+    // 立繪（game/portrait-ui.js）：說話的人有立繪時徽章換成胸像，唸的時候對口型、表情跟著每一句換（voice.js 的 voiceBrief）
     const sm = matchMedia('(max-height: 540px)').matches;
+    const x0 = lineExpr(lines[0] || '', { sp: spk });
+    this.briefView = null;
+    this.briefTalkEnd = 0;
     this.ptView($('brClient').querySelector('.cBadge'), spk, {
       w: sm ? 64 : 112,
       h: sm ? 76 : 132,
@@ -304,27 +313,19 @@ Object.assign(Game.prototype, {
       replace: true,
       cls: 'ptBrief',
       // ECHO 的私人委託：私人頻道（不閃格）、溫柔的表情
-      expr: cl === 'echo' ? 'tender' : undefined,
+      expr: cl === 'echo' && x0.e === 'neutral' ? 'tender' : x0.e,
       priv: cl === 'echo',
       talk: () => (this.briefSid === sid ? this.ptTalk(spk, performance.now() < this.briefTalkEnd) : null),
+    }).then((v) => {
+      if (this.briefSid === sid) this.briefView = v;
     });
-    this.briefTalkEnd =
-      performance.now() + Math.min(7, 0.4 + pickLines(B.lines, ch).join('').length * 0.05) * 1000;
     $('brTitle').textContent = so.name;
     // 路線與抉擇的說明（guide.js）
     $('brInfo').innerHTML = this.guideNodeInfo(sid)
       .slice(1)
       .map((t) => `<div>${escHtml(t)}</div>`)
       .join('');
-    // 紫色委託：依上一周目的抉擇多一句（BRIEFINGS 的 prev）
-    const pv = this.campPrev();
-    const extra = Object.keys(B.prev || {})
-      .map((k) => B.prev[k][pv[k]])
-      .filter(Boolean);
-    $('brLines').innerHTML = pickLines(B.lines, ch)
-      .concat(extra)
-      .map((l) => `<p>${escHtml(l)}</p>`)
-      .join('');
+    $('brLines').innerHTML = lines.map((l) => `<p>${escHtml(l)}</p>`).join('');
     $('brGoal').textContent = '作戰目標：' + B.goal;
     // 路線：每個區段一個圖示（第一段的類型已經預排好；其他的固定類型照寫，會抽的是「?」），換主題時換底色
     const pre = this.hubPrePlan(sid);
@@ -356,7 +357,8 @@ Object.assign(Game.prototype, {
     $('brRoute').innerHTML = route;
     $('brReward').textContent =
       `完成報酬 ${so.reward.toLocaleString()} SP（另有區段報酬）　完成次數 ${this.campStory().done[sid] || 0}`;
-    this.tfxBrief(cl === 'echo'); // 文字演出：系統日誌樣式逐字（點一下全部顯示）
+    this.tfxBrief(cl === 'echo'); // 文字演出：系統日誌樣式逐字（點一下全部顯示；語音照常唸下去）
+    this.voiceBrief(sid, lines, spk); // 語音：每次打開都唸（voice.js）
     this.hubBriefShow(sid); // 背景：第一段地形的全像（hub-holo.js）
   },
   // 從簡報出擊：有別的出擊進行中時先確認

@@ -3277,7 +3277,21 @@ body.mvGame #mvPanel {
 }
 #brLines p {
   margin: 0 0 8px;
+  padding-left: 8px;
+  border-left: 3px solid transparent;
   line-height: 1.7;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+/* 正在唸的那一行（voice.js 的 voiceBrief）：逐字的字自己有顏色，所以用左邊的色條＋淡淡的底色標出來 */
+#brLines p.speaking {
+  border-left-color: var(--theme, var(--acc));
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--theme, #7fc8ff) 18%, transparent),
+    transparent 85%
+  );
 }
 #brGoal {
   font-weight: 700;
@@ -7420,6 +7434,16 @@ body.vpad #subBar {
 .blPlay.on {
   color: var(--org);
 }
+/* AI 配樂試聽：交戰／平時／副歌三個按鈕 */
+.blBtns {
+  display: flex;
+  gap: 4px;
+}
+.blBtns .blPlay {
+  width: auto;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
 .blInfo {
   flex: 1 1 380px;
   font-size: 13px;
@@ -10621,4 +10645,84 @@ body.vpad #lockHint {
   body.vpad #lockHint {
     max-width: calc(100vw - 380px);
   }
+}
+
+/* 配樂產生器（game/bgm-gen-ui.js） */
+.bgBox {
+  max-width: 1200px;
+}
+#bgTop {
+  margin: 6px 0;
+}
+.bgLine {
+  margin: 4px 0;
+  font-size: 13px;
+}
+.bgOk {
+  color: var(--acc);
+}
+.bgBad,
+.bgRun {
+  color: var(--org);
+}
+#bgLog {
+  max-height: 180px;
+  overflow: auto;
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 6px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+#bgOpts {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.bgSong {
+  padding: 8px 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.bgHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  font-size: 13px;
+}
+.bgCands {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 4px;
+  font-size: 12px;
+}
+.bgCand.on {
+  color: var(--acc);
+}
+.bgPlay.on {
+  color: var(--org);
+}
+.bgEditBox {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.bgEditBox textarea,
+.bgEditBox input {
+  width: 100%;
+  box-sizing: border-box;
+}
+.bgEditBox label {
+  display: block;
+  margin: 6px 0;
+  font-size: 12px;
+}
+.bgGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0 10px;
+}
+#bgeCap {
+  font-size: 11px;
+  margin: 4px 0;
 }

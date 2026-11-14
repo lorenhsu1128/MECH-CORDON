@@ -432,6 +432,11 @@ export class Game {
   showScreen(id) {
     const prevScr = this.scrNow;
     this.scrNow = id;
+    // 離開簡報：停掉簡報的語音（voice.js 的 voiceBrief）
+    if (id !== 'brief' && this.briefVoiceOn) {
+      this.briefVoiceOn = false;
+      this.voiceStop();
+    }
     // 選單之間（或從任務回到選單）才播；進任務、同一個畫面不播
     if (id && prevScr !== id && prevScr !== undefined) this.zTvSwitch(id);
     for (const s of document.querySelectorAll('#ui .screen')) s.classList.toggle('on', s.id === id);
@@ -555,6 +560,7 @@ export class Game {
       this.state === 'cinelib' ||
       this.state === 'voicelab' ||
       this.state === 'bgmlab' ||
+      this.state === 'bgmgen' ||
       this.state === 'campfail' ||
       this.state === 'rangemenu' ||
       this.state === 'levels' ||

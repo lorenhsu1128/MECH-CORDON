@@ -12,3 +12,4 @@ tools/charwork/.moved
 tools/voicelab/
 tools/acestep/
 .cache/acestep/
+dist/lib/bgm-cand*.js

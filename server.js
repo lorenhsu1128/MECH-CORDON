@@ -184,6 +184,8 @@ const CHARGEN = require('./server-chargen.js')({
   writeAtomic,
   log: (s) => log(s),
 });
+// 配樂產生器：AI 配樂的歌曲設定、產生、試聽（server-bgmgen.js，只在開發模式）
+const BGMGEN = require('./server-bgmgen.js')({ base: BASE, env, readBody, writeAtomic, log: (s) => log(s) });
 // 機甲三倍高改版：伺服器預設組裡的機甲區塊與武器（MECH_CATS）是舊尺度（機甲 3.24 m）做的，啟動時換成新尺度（9.72 m）一次：
 // GLB 的場景根節點乘 MECH_K（只改 JSON 區塊，Draco 壓縮的也可以）、關節設定的位置乘 MECH_K；manifest.mechK 記下做過
 const MECH_K = 3;
@@ -717,6 +719,7 @@ function startGame(port) {
     const handler = (req, resp) => {
       const u = req.url.split('?')[0];
       if (CHARGEN.handle(req, resp, u)) return;
+      if (BGMGEN.handle(req, resp, u)) return;
       if (
         u.startsWith('/api/models/') ||
         u.startsWith('/api/sets/') ||

@@ -764,6 +764,10 @@ Object.assign(Game.prototype, {
     document.getElementById('btnVoiceLab').onclick = () => this.openVoiceLab();
     document.getElementById('btnBgmLab').onclick = () => this.openBgmLab();
     document.getElementById('btnBgmAi').onclick = () => this.openBgmLab(true);
+    // 配樂產生器（game/bgm-gen-ui.js）：伺服器的 /api/bgm，只有從伺服器開啟時才顯示
+    const bg = document.getElementById('btnBgmGen');
+    if (window.MECH_CORDON_SERVER) bg.style.display = '';
+    bg.onclick = () => this.openBgmGen();
     // 從模型庫回來（分頁重新取得焦點）：停在標題或車庫時重新讀取本地模型（沒變動就不解析）
     const back = () => {
       if (document.hidden || (this.net && this.net.role)) return;

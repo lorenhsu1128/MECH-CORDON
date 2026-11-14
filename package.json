@@ -12,14 +12,17 @@
     "pretest": "npm run build",
     "test": "node scripts/smoke-test.js",
     "publish:server": "node scripts/publish-server-set.js",
-    "lint": "eslint server.js server-chargen.js eslint.config.js scripts src mech_cordon_charagen",
-    "format": "prettier --write src scripts server.js server-chargen.js eslint.config.js mech_cordon_charagen",
-    "format:check": "prettier --check src scripts server.js server-chargen.js eslint.config.js mech_cordon_charagen",
+    "lint": "eslint server.js server-chargen.js server-bgmgen.js eslint.config.js scripts src mech_cordon_charagen",
+    "format": "prettier --write src scripts server.js server-chargen.js server-bgmgen.js eslint.config.js mech_cordon_charagen",
+    "format:check": "prettier --check src scripts server.js server-chargen.js server-bgmgen.js eslint.config.js mech_cordon_charagen",
     "build:exe": "npm run build && pkg server.js -t node22-win-x64 -o dist/mech-cordon-server.exe",
     "comfy:setup": "node scripts/comfy-setup.js",
     "comfy": "node scripts/comfy-start.js",
     "bgm:setup": "node scripts/bgm-setup.js",
-    "bgm:gen": "node scripts/bgm-gen-run.js"
+    "bgm:gen": "node scripts/bgm-gen-run.js",
+    "bgm:score": "node scripts/bgm-gen-run.js --score",
+    "bgm:pack": "node scripts/bgm-gen-run.js --pack",
+    "bgm:all": "node scripts/bgm-gen-run.js --all"
   },
   "dependencies": {
     "qrcode-generator": "^1.4.4",
