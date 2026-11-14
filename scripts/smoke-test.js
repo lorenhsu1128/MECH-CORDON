@@ -22669,16 +22669,29 @@ async function testCine(browser, base) {
     const C = window.__CINES;
     const ms = [1, 2, 3, 4, 5, 6, 7, 8].map((k) => C['m' + k]({ cycle: 3 }));
     const e = C.e_beyond({ cycle: 3, full: true });
-    const post = C.x_c2_castron({ cycle: 1, choices: {} });
+    // 選後（過場改版第 9 期重做，data/cine/aftermath.js）：7 段整段都是漫畫頁（每一鏡都是 2D 舞台）
+    const posts = [
+      'c2_castron',
+      'c2_aetheric',
+      'c4_veerwell',
+      'c4_sancta',
+      'c6_open',
+      'c6_seal',
+      'c6_beyond',
+    ].map((k) => C['x_' + k]({ cycle: 3, choices: {} }));
     return {
       m: ms.filter((d) => d && d.shots[0].st && d.shots[0].st.fps).length,
       e: !!(e && e.shots[0].st),
-      grabs: (post.grabs || []).length,
+      post: posts.filter((d) => d.shots.every((s) => s.st)).length,
+      panels: posts.reduce(
+        (a, d) => a + d.shots.reduce((b, s) => b + s.st.els.filter((x) => x.k === 'panel').length, 0),
+        0,
+      ),
     };
   });
   check(
-    mem.m === 8 && mem.e && mem.grabs >= 2,
-    `記憶片段 8 段與真結局是 2D 短片（${mem.m}、${mem.e}）、選後的漫畫頁擷取 ${mem.grabs} 格`,
+    mem.m === 8 && mem.e && mem.post === 7 && mem.panels >= 18,
+    `記憶片段 8 段與真結局是 2D 短片（${mem.m}、${mem.e}）；選後 ${mem.post} 段整段是漫畫頁（${mem.panels} 格）`,
   );
   // 故事畫面：第一次進作戰室播序章的過場動畫；略過時改顯示序章的文字畫面，之後接第 1 章開場的過場動畫
   await page.evaluate(() => {

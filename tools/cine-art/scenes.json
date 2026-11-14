@@ -81,5 +81,172 @@
     "prompt": "no humans, scenery, indoors, dark control room of a giant ship, a single large red button on a console in the center, spotlight, cables, monitors, ominous, wide shot",
     "neg": "people, text",
     "pick": 393735932
+  },
+  "x2_gate": {
+    "ch": "x",
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, night, giant concrete dam, huge steel floodgates slamming shut, water stopped, spray, floodlights, dramatic low angle",
+    "neg": "text, letters, watermark",
+    "pick": 352417498
+  },
+  "x2_dry": {
+    "ch": "x",
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, winter, dried up riverbed with cracked mud below a dam, a small town with dark windows along the river bank, grey sky, desolate",
+    "neg": "text, letters, watermark",
+    "pick": 950231827
+  },
+  "x2_lights": {
+    "ch": "x",
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, night, industrial district seen from above, factories and smokestacks, rows of orange lights turning on, steam, wide shot",
+    "neg": "text, letters, watermark",
+    "pick": 16786800
+  },
+  "x2_hall": {
+    "ch": "x",
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, indoors, company banquet hall at night, long tables with food and bottles, orange company banners without text, warm lights, wide shot",
+    "neg": "text, letters, watermark",
+    "pick": 945352472
+  },
+  "x2_feast": {
+    "ch": "x",
+    "bg": "x2_hall",
+    "char": {
+      "id": "castron",
+      "pose": "p10"
+    },
+    "edit": "Place the man from image 2 into the banquet hall of image 1, standing in the center, laughing loudly with his hands on his hips, cowboy shot. Keep his face, grey hair, orange work jacket and clothes exactly the same as image 2. Keep the hall, tables and lights of image 1. Warm light. Anime illustration style, thick outlines, cel shading.",
+    "pick": 559618059
+  },
+  "x2_refugees": {
+    "ch": "x",
+    "w": 1344,
+    "h": 768,
+    "prompt": "snowy plain, a long line of tiny distant silhouettes of people carrying backpacks walking west into the snowfield, overcast sky, cold, wide shot, from behind",
+    "neg": "text, faces, close-up",
+    "pick": 822035105
+  },
+  "x2_cooling": {
+    "ch": "x",
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, night, a dam reservoir turned into a glowing blue cooling pool, pipes and cables running to a white high-tech research facility, cold blue light, wide shot",
+    "neg": "text, letters, watermark",
+    "pick": 619029855
+  },
+  "x2_wanted": {
+    "ch": "x",
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, night, rainy narrow alley in an industrial town, a wall covered with many identical wanted posters with a blank silhouette, puddles, orange street light",
+    "neg": "text, letters, watermark",
+    "pick": 424199179
+  },
+  "x2_sakki": {
+    "ch": "x",
+    "bg": "m_lab",
+    "bgCh": "m",
+    "char": {
+      "id": "aetheric",
+      "pose": "p6"
+    },
+    "edit": "Place the woman from image 2 into the laboratory of image 1, standing on the left side, cowboy shot, coldly writing a report on her tablet, calm smile. Keep her face, hair, glasses, lab coat and clothes exactly the same as image 2. Keep the laboratory of image 1. Cold blue light. Anime illustration style, thick outlines, cel shading.",
+    "pick": 662383809
+  },
+  "x4_launch": {
+    "ch": "x",
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, dusk, a tall white space rocket lifting off from a launch pad, enormous column of fire and white smoke billowing at the base, launch tower, dramatic low angle, wide shot",
+    "neg": "text, letters, watermark",
+    "pick": 127248945
+  },
+  "x4_ash": {
+    "ch": "x",
+    "w": 1344,
+    "h": 768,
+    "prompt": "a burned down settlement covered in grey ash, smoke rising, tiny distant silhouettes of people searching the ruins, holding paper notes, dawn, wide shot",
+    "neg": "text, faces, close-up",
+    "pick": 844559197
+  },
+  "x4_pressroom": {
+    "ch": "x",
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, indoors, press conference stage with a podium and many microphones, camera flashes, large screen behind showing a rocket launch, green accent lights, wide shot",
+    "neg": "text, letters, watermark",
+    "pick": 813471013
+  },
+  "x4_press": {
+    "ch": "x",
+    "bg": "x4_pressroom",
+    "char": {
+      "id": "veerwell",
+      "pose": "p5"
+    },
+    "edit": "Place the young woman from image 2 into the press conference of image 1, standing at the podium in the center, cowboy shot, winking and making a peace sign at the cameras. Keep her face, blonde hair, headphones, green jacket and clothes exactly the same as image 2. Keep the stage, microphones and camera flashes of image 1. Anime illustration style, thick outlines, cel shading.",
+    "pick": 963567853
+  },
+  "x4_gate": {
+    "ch": "x",
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, night, snow, huge closed steel gates of a launch facility, barricades, lanterns, guard post, quiet, wide shot",
+    "neg": "text, letters, watermark",
+    "pick": 429068207
+  },
+  "x4_planes": {
+    "ch": "x",
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, dawn, many cargo transport aircraft flying east in a long line over the sea, orange sky, wide shot",
+    "neg": "text, letters, watermark",
+    "pick": 632542301
+  },
+  "x6_core": {
+    "ch": "x",
+    "w": 1344,
+    "h": 768,
+    "prompt": "the bright white core chamber of an orbital station, four tiny silhouettes of people walking toward a glowing terminal at the far end, cold light, symmetrical, wide shot",
+    "neg": "text, faces, close-up",
+    "pick": 833080619
+  },
+  "x6_signal": {
+    "ch": "x",
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, view of a planet from orbit at night, a huge red pulse wave spreading across the planet surface from one point, red signal lines, stars, ominous",
+    "neg": "text, letters, watermark",
+    "pick": 884645328
+  },
+  "x6_fall": {
+    "ch": "x",
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, a huge ring-shaped space station on fire falling down through the sky like a meteor, long blazing fiery trail, breaking into pieces, sea of clouds below, sunset, wide shot",
+    "neg": "text, letters, watermark",
+    "pick": 249913510
+  },
+  "x6_sky": {
+    "ch": "x",
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, dawn, quiet empty sky over desert dunes, a few faint meteor streaks fading, calm, peaceful, wide shot",
+    "neg": "text, letters, watermark",
+    "pick": 21356398
+  },
+  "x6_thrust": {
+    "ch": "x",
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, space, an orbital station with many large thrusters igniting one after another, blue engine flames, planet below, stars, dramatic",
+    "neg": "text, letters, watermark",
+    "pick": 27912468
   }
 }
