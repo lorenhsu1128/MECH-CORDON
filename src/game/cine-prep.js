@@ -5,7 +5,8 @@
 //    全部演員一起編好著色器、畫一次上傳資源（shaderWarm＋warmPrime），演員之後移除（著色器程式留在快取裡）
 //  - 記憶體允許時場景常駐（一張地圖約 100～350 MB），換鏡頭只切換顯示（game/cine.js 的 cineUseSet）；
 //    觸控裝置（記憶體 8 GB 以下）最多 2 個、其他依 JS 記憶體的上限；超過的只預熱、建完就釋放
-//  - 沒有常駐的場景在換鏡頭時建（cineHoldBuild）：建之前暫停 AudioContext（配樂、語音、時鐘一起停），
+//  - 沒有常駐的場景在播放中提前建（cineAheadTick：前面的場景用完、沒有新台詞要開始的時候，不暫停音訊）；
+//    來不及時才在換鏡頭時建（cineHoldBuild）：建之前暫停 AudioContext（配樂、語音、時鐘一起停），
 //    建好、預熱完再繼續，畫面停在上一格、不顯示任何訊息
 //  - 之後不會再用到的場景立刻釋放（cineSetGc）；台詞的語音先解碼（game/voice.js 的 voicePreload）
 import { SFX } from '../audio/audio.js';
@@ -16,6 +17,8 @@ import { Game } from './game.js';
 
 const $ = (id) => document.getElementById(id);
 const frame = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
+// 觸控裝置同時常駐的地圖數
+const CINE_TOUCH_WORLDS = 2;
 const has3d = (S) => S && (S.k === 'world' || S.k === 'space' || S.k === 'room');
 
 Object.assign(Game.prototype, {
@@ -34,11 +37,16 @@ Object.assign(Game.prototype, {
     });
     return [...m.values()];
   },
-  // 還能不能再多常駐一個場景
-  cineResOk(c) {
+  // 常駐的場景放不放得下：觸控裝置（記憶體 8 GB 以下或不回報，例如 iPad）只限制地圖（world，一張 100～350 MB），
+  // 室內與太空很小、不佔名額；其他依 JS 記憶體的上限。add＝還要再加的場景（還沒放進 c.sets）
+  cineResOk(c, add) {
     const touch = document.body.classList.contains('touchDev');
     const dm = navigator.deviceMemory || 0;
-    if (touch && !(dm >= 8) && c.sets.size >= 2) return false;
+    if (touch && !(dm >= 8)) {
+      let n = add && add.k === 'world' ? 1 : 0;
+      for (const s of c.sets.values()) if (s.spec && s.spec.k === 'world') n++;
+      if (n > CINE_TOUCH_WORLDS) return false;
+    }
     const pm = performance.memory;
     if (pm && pm.jsHeapSizeLimit && pm.usedJSHeapSize > pm.jsHeapSizeLimit * 0.55) return false;
     return true;
@@ -135,6 +143,74 @@ Object.assign(Game.prototype, {
     }
     if (this.cine !== c) return;
     this.cineClearSet(c); // 演員移除、場景藏起來
+  },
+  // 播放中提前建下一個沒有常駐的場景（平板只常駐 2 張地圖；以前換到那一鏡才暫停 AudioContext 建，配樂與語音一起停）：
+  // 前面的場景用完被釋放、放得下時，挑「接下來 1.5 秒沒有新的台詞開始」的時候建（建地圖的那一格畫面會停一下，
+  // 但不暫停音訊——已經在播的配樂與語音照常；離要用不到 2 秒就不挑時機），建好先上傳顯示卡。每格由 cineTick 呼叫
+  cineAheadTick(c) {
+    if (c.ahead || c.hold || c.paused || !c.started || c.live) return;
+    const shots = c.def.shots;
+    let need = null;
+    for (let i = Math.max(0, c.shot + 1); i < shots.length; i++) {
+      const S = this.cineSetSpec(c, shots[i].set);
+      if (!has3d(S)) continue;
+      const key = JSON.stringify(S);
+      if (key === c.setKey || c.sets.has(key)) continue;
+      need = { i, S, key };
+      break;
+    }
+    if (!need || !this.cineResOk(c, need.S)) return;
+    const lead = shots[need.i].at - c.t;
+    if (lead > 2 && !this.cineQuiet(c, c.t, 1.5)) return;
+    this.cineAheadBuild(c, need);
+  },
+  // [t, t＋w] 之間沒有新的台詞開始
+  cineQuiet(c, t, w) {
+    if (!c.subAt) {
+      c.subAt = [];
+      for (const sh of c.def.shots)
+        for (const ev of sh.ev || []) if (ev.sub) c.subAt.push(sh.at + (ev.t || 0));
+    }
+    return !c.subAt.some((x) => x >= t - 0.05 && x <= t + w);
+  },
+  async cineAheadBuild(c, need) {
+    c.ahead = true;
+    try {
+      const set = this.cineMakeSet(c, need.S);
+      if (set.root) set.root.visible = false;
+      if (this.cine !== c) return this.cineSetFree(set);
+      c.sets.set(need.key, set);
+      c.aheadN = (c.aheadN || 0) + 1; // 測試：提前建了幾個
+      await frame();
+      if (this.cine !== c || !c.sets.has(need.key)) return;
+      this.cineUploadSet(set);
+    } catch (err) {
+      /* 建不起來：換到那一鏡時照舊暫停建（cineHoldBuild） */
+    } finally {
+      c.ahead = false;
+    }
+  },
+  // 只畫這個場景一次到小的渲染目標：幾何與貼圖上傳顯示卡（著色器在開頭的預先準備已經編好；霧照這個場景的種類，
+  // 程式的鍵才對得上——其他東西先藏起來，光源不藏（光源的數量也在鍵裡））
+  cineUploadSet(set) {
+    if (!set.root) return;
+    const s = this.scene,
+      fog0 = s.fog;
+    const hid = [];
+    for (const o of s.children)
+      if (o !== set.root && !o.isLight && o.visible) {
+        o.visible = false;
+        hid.push(o);
+      }
+    set.root.visible = true;
+    s.fog = set.spec.k === 'world' ? (this.cineFogStub ||= new THREE.Fog(0, 1, 2)) : null;
+    try {
+      this.warmPrime();
+    } finally {
+      set.root.visible = false;
+      for (const o of hid) o.visible = true;
+      s.fog = fog0;
+    }
   },
   // 換到這一鏡時要不要先停下來建場景
   cineNeedHold(c, sh) {

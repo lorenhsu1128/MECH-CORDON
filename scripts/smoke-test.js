@@ -22622,6 +22622,33 @@ async function testCine(browser, base) {
     seen.n >= 12,
     `序章：換場景時建地圖也不會卡住整段（播到 ${seen.n} 個鏡頭；測試以 6 倍速，換場景時會跳過幾個）`,
   );
+  // 平板的常駐上限（game/cine-prep.js 的 cineResOk）：觸控裝置、不回報記憶體時只限制地圖 2 張，室內與太空不佔名額
+  const res = await page.evaluate(() => {
+    const g = window.__game;
+    const had = document.body.classList.contains('touchDev');
+    document.body.classList.add('touchDev');
+    const set = (k) => ({ spec: { k } });
+    const c = {
+      sets: new Map([
+        ['a', set('world')],
+        ['b', set('room')],
+        ['c', set('room')],
+        ['d', set('space')],
+      ]),
+    };
+    const r = [g.cineResOk(c, { k: 'world' }), g.cineResOk(c, { k: 'room' })];
+    c.sets.set('e', set('world'));
+    r.push(g.cineResOk(c, { k: 'world' }), g.cineResOk(c, { k: 'room' }), g.cineResOk(c));
+    if (!had) document.body.classList.remove('touchDev');
+    return r.join();
+  });
+  check(
+    res ===
+      (await page.evaluate(() =>
+        navigator.deviceMemory >= 8 ? 'true,true,true,true,true' : 'true,true,false,true,true',
+      )),
+    `平板的常駐上限：地圖最多 2 張、室內與太空不佔名額（${res}）`,
+  );
   // 各個段落的截圖（跳到指定秒數）
   await page.evaluate(() => {
     const g = window.__game;

@@ -627,6 +627,7 @@ Object.assign(Game.prototype, {
     if (c.set && c.set.room) tickHubRoom(c.set.room, dt, t); // 室內的燈條、轉動的東西
     if (c.set && c.set.office) c.set.officeTick(c.set.office, t);
     this.cineOverlay(S, lt, dt);
+    this.cineAheadTick(c); // 下一個沒有常駐的場景提前建（game/cine-prep.js）
     if (c.lib) this.cineLibTick(c);
     SFX.setListenerCam(this.camera);
     // 各章的掛勾（game/cine-c<章>.js）：S.hook＝每格（'tick'），S.render＝取代一般的渲染（分割畫面、電視牆…）
