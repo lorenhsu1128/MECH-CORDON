@@ -22717,8 +22717,8 @@ async function testCine(browser, base) {
   const talks = await page.evaluate(() => {
     const C = window.__CINES;
     // 3D 動畫化做好的章（docs/cine-redesign-design.md 第十節）不在這裡，下面另外檢查
-    const ANIME = ['i1_2', 'o1_2', 'i1_3', 'o1_3'];
-    const keys = ['o1_1', 'o1_4', 'o1_5', 'o1_6', 'o1_7'].concat(['i1_4', 'i1_5', 'i1_6', 'i1_7', 'i1_8']);
+    const ANIME = ['i1_2', 'o1_2', 'i1_3', 'o1_3', 'i1_4', 'o1_4'];
+    const keys = ['o1_1', 'o1_5', 'o1_6', 'o1_7'].concat(['i1_5', 'i1_6', 'i1_7', 'i1_8']);
     // 第一鏡的立繪演員（在格子裡或直接疊在 3D 上）
     const who = (d) => {
       const els = d.shots[0].st.els;
@@ -22741,7 +22741,10 @@ async function testCine(browser, base) {
     });
     // 3D 動畫化的段：有 3D 場景、有新建的室內（委託方）、有疊在 3D 上的格子
     const anime = ANIME.filter((k) =>
-      [{ c2: 'castron' }, { c2: 'aetheric' }].every((ch) => {
+      [
+        { c2: 'castron', c4: 'veerwell' },
+        { c2: 'aetheric', c4: 'sancta' },
+      ].every((ch) => {
         const d = C[k]({ cycle: 1, choices: ch });
         const sets = d.shots.map((s) => (s.set || {}).k);
         return (
@@ -22765,11 +22768,11 @@ async function testCine(browser, base) {
     };
   });
   check(
-    talks.n === 10 &&
-      talks.anime === 4 &&
+    talks.n === 8 &&
+      talks.anime === 6 &&
       talks.c2.join() === 'castron,aetheric' &&
       talks.c4.join() === 'veerwell,sancta',
-    `各章重製：10 段新格式（${talks.n}）、4 段 3D 動畫化（${talks.anime}：3D 場景、委託方的室內、疊在 3D 上的格子）、第 2／4 章章末依抉擇換人（${talks.c2.join('、')}／${talks.c4.join('、')}）`,
+    `各章重製：8 段新格式（${talks.n}）、6 段 3D 動畫化（${talks.anime}：3D 場景、委託方的室內、疊在 3D 上的格子）、第 2／4 章章末依抉擇換人（${talks.c2.join('、')}／${talks.c4.join('、')}）`,
   );
   // 記憶片段與真結局（過場改版第 10 期，data/cine/memory.js）：雙色調的 2D 短片；選後的最後是代價的漫畫頁
   const mem = await page.evaluate(() => {
