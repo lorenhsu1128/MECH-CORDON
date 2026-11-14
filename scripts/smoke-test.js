@@ -22667,7 +22667,8 @@ async function testCine(browser, base) {
   await page.keyboard.up('Escape');
   const sk = await page.evaluate(() => ({ cine: !!window.__game.cine, state: window.__game.state }));
   check(!sk.cine, '長按 Esc 略過過場動畫');
-  // 2D 舞台（過場改版第 1 期，game/cine-2d.js）：第 1 章開場的漫畫頁（3D 進格子、定格）與對話分格（立繪演員、氣泡）
+  // 2D 舞台（game/cine-2d.js）：第 1 章開場（3D 動畫化的試做）的漫畫頁疊在 3D 上、格子裡各有自己的 3D 鏡頭；
+  // 霍斯特的辦公室是 3D 的室內（room）＋立繪，對白用字幕條（不出氣泡）
   await page.evaluate(() => {
     const g = window.__game;
     g.cineTest = 1;
@@ -22676,7 +22677,7 @@ async function testCine(browser, base) {
   await page.waitForFunction(() => window.__game.cine && window.__game.cine.started, null, {
     timeout: 30000,
   });
-  await page.waitForFunction(() => window.__game.cine.t > 16.4, null, { timeout: 30000 });
+  await page.waitForFunction(() => window.__game.cine.t > 22.6, null, { timeout: 30000 });
   const page2d = await page.evaluate(() => {
     const c = window.__game.cine;
     return {
@@ -22690,30 +22691,25 @@ async function testCine(browser, base) {
     page2d.st && page2d.page === 'c1page' && page2d.cams >= 2,
     `2D 舞台：漫畫頁的格子各有自己的 3D 鏡頭、同時即時（${page2d.cams} 格）`,
   );
-  await page.evaluate(() => window.__game.cineSeek(35.5));
-  await page.waitForFunction(() => window.__game.cine && window.__game.cine.t > 37.2, null, {
+  await page.evaluate(() => window.__game.cineSeek(24.2));
+  await page.waitForFunction(() => window.__game.cine && window.__game.cine.t > 26.2, null, {
     timeout: 30000,
   });
   const talk = await page.evaluate(() => {
     const c = window.__game.cine;
     const acts = c.s2 ? [...c.s2.act.values()] : [];
-    const cv = document.getElementById('cine2d');
-    const px = cv.getContext('2d').getImageData(cv.width >> 1, cv.height >> 1, 1, 1).data[3];
     return {
+      set: c.set && c.set.spec.k,
+      room: !!(c.set && c.set.root && c.set.root.visible),
       who: acts.filter((a) => a.P).map((a) => a.who),
       bub: c.bub && c.bub.who,
       sub: document.getElementById('cineSub').classList.contains('on'),
-      px,
     };
   });
   await page.screenshot({ path: path.join(SHOT_DIR, 'cine-2d-talk.png') });
   check(
-    talk.who.includes('castron') &&
-      talk.who.includes('echo') &&
-      talk.bub === 'echo' &&
-      !talk.sub &&
-      talk.px > 0,
-    `2D 舞台：對話分格的立繪演員（${talk.who.join('、')}）、說話的人的氣泡取代字幕條（${talk.bub}）`,
+    talk.set === 'room' && talk.room && talk.who.includes('castron') && !talk.bub && talk.sub,
+    `3D 動畫化：霍斯特在 3D 的辦公室（${talk.set}）、立繪疊在上面（${talk.who.join('、')}）、對白用字幕條（氣泡 ${talk.bub}）`,
   );
   await page.evaluate(() => window.__game.cineEnd(true));
   // 各章重製（過場改版第 5～8 期，data/cine/chfilm.js）：第 1～7 章章末、第 2～8 章開場整段都是 2D 舞台（新格式），

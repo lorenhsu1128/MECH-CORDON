@@ -16,13 +16,14 @@ import { CINES } from '../data/cine/index.js';
 import { ACES, FOES } from '../data/foes.js';
 import { AC_ROSTER, ENEMY_TYPES } from '../data/enemies.js';
 import { lineExpr } from '../data/line-expr.js';
-import { SPEAKERS } from '../data/story.js';
+import { FACTIONS, SPEAKERS } from '../data/story.js';
 import { MechEntity } from '../entities/mech-entity.js';
 import { buildBossModel } from '../render/boss-models.js';
 import { loadHangarAssets, loadPeopleAssets } from '../render/hangar-assets.js';
 import { SPACE_SUN, buildCrashSite, buildPod, buildSpaceSet } from '../render/cine-sets.js';
 import { PALETTES } from '../render/materials.js';
 import { buildMech } from '../render/mech-model.js';
+import { buildHubRoom, hubRoomRich, tickHubRoom } from '../render/hub-room.js';
 import { revealDom } from '../render/textfx.js';
 import { World } from '../world/world.js';
 import { CINE_GRADE } from './constants.js';
@@ -297,7 +298,7 @@ Object.assign(Game.prototype, {
       spec: S,
       anchor: new THREE.Vector3(),
       extra: [],
-      k: S.k === 'black' ? 1 : DS,
+      k: S.k === 'black' || S.k === 'room' ? 1 : DS, // 室內（room）照公尺寫，不乘倍率
       root: null,
     };
     if (S.k === 'space') {
@@ -306,6 +307,21 @@ Object.assign(Game.prototype, {
       set.space = buildSpaceSet(set.root);
       set.space.station.group.scale.multiplyScalar(set.k); // 軌道站跟著放大（劇本的 st 座標照舊）
       if (S.coral != null) set.space.pu.coral.value = S.coral;
+    } else if (S.k === 'room') {
+      // 室內：作戰室的指揮室模型（render/hub-room.js），當委託方的辦公室、指揮室；原點＝桌子的中心
+      set.root = new THREE.Group();
+      this.scene.add(set.root);
+      const R = (set.room = buildHubRoom(Object.values(FACTIONS).map((f) => [f.color, f.short[0], f.short])));
+      if (S.echo === false) R.echo.visible = false;
+      // 設施的招牌（機甲庫、存檔…）：借用成別的地方時藏起來
+      if (S.signs === false)
+        R.root.traverse((o) => {
+          const m = o.material;
+          if (o.isMesh && m && !Array.isArray(m) && m.map && m.map.userData && m.map.userData.sign)
+            o.visible = false;
+        });
+      hubRoomRich(R);
+      set.root.add(R.root);
     } else if (S.k === 'world') {
       set.root = new THREE.Group();
       this.scene.add(set.root);
@@ -367,6 +383,19 @@ Object.assign(Game.prototype, {
       cam.far = 9000 * set.k;
       SFX.ambStop();
       SFX.setReverb(3.5, 0.18);
+    } else if (S.k === 'room') {
+      // 室內：窗外是夜色（S.sky），主光（S.key 顏色、S.keyI）、補光弱；殘響短
+      this.scene.background = new THREE.Color(S.sky || 0x05070b);
+      this.scene.fog = null;
+      this.hemi.color.set(S.hemi || 0x7080a0);
+      this.hemi.groundColor.set(0x0c0a08);
+      this.hemi.intensity = S.hemiI ?? 0.35;
+      this.sun.color.set(S.key || 0xffb070);
+      this.sun.intensity = S.keyI ?? 1.1;
+      cam.near = 0.05;
+      cam.far = 200;
+      SFX.ambStop();
+      SFX.setReverb(0.8, 0.12);
     } else if (S.k === 'world') {
       const w = (this.world = set.world);
       this.worldTheme = S.theme;
@@ -553,11 +582,25 @@ Object.assign(Game.prototype, {
       c.slow -= dt;
       if (c.slow <= 0) c.slowK = 1;
     }
-    const sdt = c.paused ? 0 : Math.min(dt, 0.05) * c.slowK;
-    this.cineActors(sdt, t);
-    this.cineSim(sdt);
+    let sdt = c.paused ? 0 : Math.min(dt, 0.05) * c.slowK;
+    // 一拍二（S.koma＝每個姿勢停幾格，以 24 格／秒算）：演員、模擬、特效累積到一格才一起前進，
+    // 鏡頭照常每格移動——日本動畫的「3D 但像手繪」的關鍵（docs/cinematics.md 的「動畫的鏡頭」）
+    let step = true;
+    if (S.koma && sdt > 0) {
+      c.komaAcc = (c.komaAcc || 0) + sdt;
+      if (c.komaAcc < S.koma / 24) step = false;
+      else {
+        sdt = Math.min(c.komaAcc, 0.15);
+        c.komaAcc = 0;
+      }
+    }
+    if (step) {
+      this.cineActors(sdt, t);
+      this.cineSim(sdt);
+    }
     this.cineCamera(S, lt, c.paused ? 0 : dt);
     if (c.set && c.set.space) c.set.space.update(t, this.camera);
+    if (c.set && c.set.room) tickHubRoom(c.set.room, dt, t); // 室內的燈條、轉動的東西
     this.cineOverlay(S, lt, dt);
     if (c.lib) this.cineLibTick(c);
     SFX.setListenerCam(this.camera);

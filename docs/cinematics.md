@@ -24,6 +24,8 @@
 
 ## 劇本格式（`data/cine/*.js`）
 
+- **3D 動畫化**（2026-11-14，docs/cine-redesign-design.md 第十節）：鏡頭的 `koma`（一拍二：每個姿勢停幾格，以 24 格／秒算，演員與特效一格一格跳、鏡頭照常）；場景 `room`（指揮室模型當室內，`echo`／`signs` 為 false 時藏全像與招牌）；`lines` 的 `kind: 'reticle'`（瞄準鏡）；立繪演員 `noBub`（對白用字幕條）。逐鏡截圖 `node scripts/cine-shots.js <鍵>`。
+
 產生器 `(ctx: { cycle, choices }) => { title, dur, lb, music, shots }`，目錄在 `data/cine/index.js`（鍵和故事畫面相同）。
 
 - `music`：`[{ at, track, vol, off, fadeIn, fadeOut: [開始秒, 長度] }]`，曲名＝`src/assets/music/<曲名>.mp3`。

@@ -16,7 +16,7 @@ import { Game } from './game.js';
 
 const $ = (id) => document.getElementById(id);
 const frame = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
-const has3d = (S) => S && (S.k === 'world' || S.k === 'space');
+const has3d = (S) => S && (S.k === 'world' || S.k === 'space' || S.k === 'room');
 
 Object.assign(Game.prototype, {
   // 這一段過場要的 3D 場景：[{ key, spec, first, last, shots }]，依第一次出現的順序

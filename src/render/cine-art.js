@@ -208,7 +208,54 @@ function speed(x, w, h, t, o) {
   x.restore();
 }
 
-export const CINE_ART = { office, desk, cockpit, focus, speed };
+// 瞄準鏡（動畫的主觀鏡頭）：外圈暗角、圓框、十字線與刻度、中央的小框；o.color、o.r（半徑比例）、o.lock 0～1（鎖定時框變紅並縮小）
+function reticle(x, w, h, t, o) {
+  const cx = w / 2,
+    cy = h / 2,
+    R = Math.min(w, h) * (o.r || 0.42);
+  const col = o.color || 'rgba(255,90,60,0.9)';
+  x.save();
+  // 圓框外面塗黑（瞄準鏡的視野）
+  x.fillStyle = 'rgba(0,0,0,0.88)';
+  x.beginPath();
+  x.rect(-w, -h, w * 3, h * 3);
+  x.arc(cx, cy, R, 0, Math.PI * 2, true);
+  x.fill('evenodd');
+  x.strokeStyle = col;
+  x.lineWidth = 3;
+  x.beginPath();
+  x.arc(cx, cy, R, 0, Math.PI * 2);
+  x.stroke();
+  x.lineWidth = 2;
+  x.beginPath();
+  x.moveTo(cx - R, cy);
+  x.lineTo(cx - R * 0.12, cy);
+  x.moveTo(cx + R * 0.12, cy);
+  x.lineTo(cx + R, cy);
+  x.moveTo(cx, cy - R);
+  x.lineTo(cx, cy - R * 0.12);
+  x.moveTo(cx, cy + R * 0.12);
+  x.lineTo(cx, cy + R);
+  x.stroke();
+  for (let i = -8; i <= 8; i++) {
+    if (!i) continue;
+    const L = i % 4 ? 8 : 18;
+    x.beginPath();
+    x.moveTo(cx + i * R * 0.1, cy - L / 2);
+    x.lineTo(cx + i * R * 0.1, cy + L / 2);
+    x.moveTo(cx - L / 2, cy + i * R * 0.1);
+    x.lineTo(cx + L / 2, cy + i * R * 0.1);
+    x.stroke();
+  }
+  const k = o.lock || 0,
+    b = R * (0.22 - 0.1 * k);
+  x.strokeStyle = k > 0.5 && Math.floor(t * 8) % 2 ? '#ffffff' : col;
+  x.lineWidth = 3;
+  x.strokeRect(cx - b, cy - b, b * 2, b * 2);
+  x.restore();
+}
+
+export const CINE_ART = { office, desk, cockpit, focus, speed, reticle };
 
 // 畫一張程式插畫到 (0,0)～(w,h)；沒有這個名字＝畫一塊灰色（劇本寫錯時看得出來）
 export function drawArt(x, name, w, h, t, o = {}) {

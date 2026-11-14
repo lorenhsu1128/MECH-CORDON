@@ -79,6 +79,7 @@ npm run bgm:setup    # AI 配樂：固定版本的 ACE-Step 1.5（MIT）、模�
 npm run bgm:all -- [--from=1] [--to=8]  # AI 配樂（也可以用標題「工具與其他」的「配樂產生器」操作，server-bgmgen.js 的 /api/bgm，只在開發模式；交接 docs/bgm-handoff.md）：每章每種區段類型一首日文歌（scripts/bgm_songs/ 的歌詞與編曲）→ 產生候選 → 自動評分挑選 → 平時版 → src/assets/bgm-ai/c<章>/（之後 npm run build；單獨的步驟 bgm:gen／bgm:score／bgm:pack；跨電腦同步 bgm:sync：候選以 mp3 放進進 git 的 tools/bgm-work/；docs/audio-design.md 的「AI 配樂」）
 python scripts/voice-audition.py  # ECHO 的語音試聽：VoxCPM2 的聲音設計產生候選 → src/assets/voice-audition/（要 CUDA 版 PyTorch、voxcpm）
 node scripts/voice-lines.js && python scripts/voice-gen.py  # ECHO 的語音：收集台詞 → VoxCPM2 以參考音檔克隆兩個聲音（每句 2 次、faster-whisper 挑最像的）→ src/assets/voice/<聲音>/（改了台詞要重跑；--retry 重挑 report.txt；--lang ja＝日文語音，台詞 lines-ja.json → <聲音>_ja/）
+node scripts/cine-shots.js i1_1 [--t=2,11.2]  # 過場動畫的逐鏡截圖與總表 test-results/cine/<鍵>-sheet.png（要先 npm run build；docs/cine-redesign-design.md 的「3D 動畫化」）
 node scripts/cine-art.js gen <id> --n=3  # 過場的場景插畫（tools/cine-art/scenes.json；sheet 看候選、pick <id> <種子> 選定 → src/assets/cine-art/；要先 npm run comfy；角色產生器的「場景插畫」分頁也可以）
 python scripts/cine-beats.py  # 過場配樂的拍點表 → src/data/cine/beats.js（librosa；換了配樂要重跑；劇本以 beatAt／snapBeat 卡點）
 npm run publish:server  # 伺服器預設組的來源發佈到執行中的伺服器：內建的玩家預設機甲（src/assets/player-mech/）＋地圖物件等其他槽位（src/assets/server-default/）（--host、--src 只發佈一個資料夾、--force 全部重傳、--keep 不移除多的機甲區塊）

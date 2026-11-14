@@ -327,7 +327,7 @@ function uiTex(kind, col, seed = 1, w = 256, h = 160) {
 }
 // 文字的看板（模板字）
 function signTex(lines, col, w = 512, h = 96, bg = null) {
-  return canvasTex(w, h, (c) => {
+  const t = canvasTex(w, h, (c) => {
     if (bg) {
       c.fillStyle = bg;
       c.fillRect(0, 0, w, h);
@@ -340,6 +340,8 @@ function signTex(lines, col, w = 512, h = 96, bg = null) {
       c.fillText(t, w / 2, y * h);
     });
   });
+  t.userData.sign = true; // 過場借用這個房間當別的地方時把招牌藏起來（game/cine.js 的 room 場景）
+  return t;
 }
 
 // ---------- 合併 ----------
