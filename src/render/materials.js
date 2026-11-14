@@ -498,6 +498,27 @@ export const PALETTES = {
     visor: 0xffa040,
     glow: 0xff7a20,
   },
+  // 過場特寫用（KEEL／KILN 的配色太深，色彩管理下近景整台變黑）：同色相、亮一階
+  keel_lit: {
+    main: 0x6a7280,
+    main2: 0x464c56,
+    main3: 0xb03a2e,
+    sub: 0x2e3238,
+    acc: 0xe8b030,
+    joint: 0x40444a,
+    visor: 0xff5040,
+    glow: 0xff5040,
+  },
+  kiln_lit: {
+    main: 0x6e5040,
+    main2: 0x463228,
+    main3: 0xa05a34,
+    sub: 0x2e221c,
+    acc: 0xff7a20,
+    joint: 0x443630,
+    visor: 0xffa040,
+    glow: 0xff7a20,
+  },
   undertow: {
     main: 0x2a4a66,
     main2: 0x1a2a3a,
