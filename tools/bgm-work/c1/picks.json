@@ -1,0 +1,14 @@
+{
+ "battle": "battle__f1",
+ "boss": "boss__f0",
+ "breakthrough": "breakthrough__f1",
+ "chase": "chase__f1",
+ "defend": "defend__f1",
+ "destroy": "destroy__f0",
+ "elite": "elite__f0",
+ "escort": "escort__f1",
+ "extract": "extract__f1",
+ "intel": "intel__f1",
+ "supply": "supply__f1",
+ "theme": "theme__f0"
+}

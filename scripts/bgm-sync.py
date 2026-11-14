@@ -85,6 +85,9 @@ def imp(opt):
                 continue
             subprocess.run([FF, '-v', 'quiet', '-y', '-i', os.path.join(src, f), '-ar', '48000', '-ac', '2', wav],
                            check=True)
+            # 解回的 wav 沿用 mp3 的時間：否則 export 以為 wav 比較新，把同一首再轉一次 mp3（每轉一次音質掉一點）
+            t = os.path.getmtime(os.path.join(src, f))
+            os.utime(wav, (t, t))
             shutil.copy2(os.path.join(src, f[:-4] + '.json'), os.path.join(dst, f[:-4] + '.json'))
             n += 1
         for j in ('scores.json', 'picks.json'):

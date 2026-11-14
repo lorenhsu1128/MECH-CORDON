@@ -2,6 +2,7 @@
 
 用法：npm run bgm:setup（每台電腦一次：固定版本的 ACE-Step 與模型裝到 gitignore 的 tools/acestep/），
   npm run bgm:gen -- --ch=1 [--stage=fight|calm] [--songs=theme,battle] [--n=2]
+  --i0=<k>：候選從第 k 個開始（低分重做：刪掉的候選不再用同一個種子）
   --stage=fight（預設）：每首用文字產生 n 個交戰版的候選 <類型>__f<i>.wav
   --stage=calm：照 scripts/bgm-pick.py 挑好的 picks.json，以選中的交戰版 cover 出平時版 <類型>__calm.wav
     （同一首、同速度與段落，編制變輕、人聲變哼唱：動態配樂換強度時從同一個位置交叉淡化）
@@ -170,7 +171,7 @@ def main():
         print(f'== 第 {ch} 章 {typ} {sp["title"]}（{sp["voice"]}）', flush=True)
         if stage == 'fight':
             # 補給只有平時版：直接用平靜的編曲產生
-            for i in range(n):
+            for i in range(int(opt.get('i0', 0)), n):  # --i0：重做低分的候選時從新的編號（新的種子）開始
                 kw = dict(caption=caption_of(sp, ch), seed=ch * 100000 + hash_typ(typ) * 100 + i * 7, **common)
                 if opt.get('ref'):
                     kw['reference_audio'] = opt['ref']
