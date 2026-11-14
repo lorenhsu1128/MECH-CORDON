@@ -4,7 +4,14 @@
 // → PV 式章名卡。2D 的部分是鏡頭的 st（game/cine-2d.js）；3D 的地圖整段都是同一張荒野（不重建）。
 // 主角不露臉；別人對主角說話時看著鏡頭。
 import { WASTE, WEST, SCOPE, bare, sub } from './ch1.js';
+import { snapBeat } from './beats.js';
 import { timeline } from './kit.js';
+
+// 卡點（第 3 期）：漫畫頁從過場的第 10 秒開始，格子落下、狀聲詞蓋章對齊配樂（cine_c1）的拍點
+const PAGE_AT = 10;
+// 章名卡從第 82 秒開始：大字蓋章在拍點上
+const cb = (t) => +(snapBeat('cine_c1', 82 + t) - 82).toFixed(3);
+const pb = (t) => +(snapBeat('cine_c1', PAGE_AT + t) - PAGE_AT).toFixed(3);
 
 // 砲兵陣地 BASTILLE 在北邊的台地上（局部 x 60～90、z ≤ −50，高 16 m），卡斯特隆的車隊沿 z ≈ −27 由東往西
 const GUN = [67, 21, -50],
@@ -76,10 +83,19 @@ const PAGE = {
       k: 'panel',
       id: 'p1',
       q: P1,
-      t0: 0.05,
+      t0: pb(0.05),
       in: 'drop',
       live: true,
-      snap: 4.5,
+      // 自己的鏡頭（第 3 期）：後面兩格落下後還是即時的（砲口的煙繼續飄）
+      cam: {
+        fov: 30,
+        hand: 0.02,
+        ease: 'lin',
+        keys: [
+          { t: 0, p: [64, 2.5, -34], l: [68, 18, -52] },
+          { t: 14, p: [65.5, 2, -36], l: [68, 21, -52], fov: 24 },
+        ],
+      },
       flt: 'contrast(1.25) saturate(0.7)',
       dots: 0.35,
       vig: 0.5,
@@ -89,11 +105,19 @@ const PAGE = {
       k: 'panel',
       id: 'p2',
       q: P2,
-      t0: 4.65,
+      t0: pb(4.65),
       in: 'drop',
       rot0: -0.05,
       live: true,
-      snap: 9.15,
+      cam: {
+        fov: 40,
+        hand: 0.04,
+        ease: 'lin',
+        keys: [
+          { t: 4.6, p: { g: [72, -9], h: 5 }, l: { g: [74, -27], h: 1 } },
+          { t: 14, p: { g: [72, -11], h: 6 }, l: { g: [64, -27], h: 2 } },
+        ],
+      },
       focus: [0.5, 0.55],
       flt: 'contrast(1.3) saturate(0.8)',
       dots: 0.25,
@@ -106,7 +130,7 @@ const PAGE = {
       color: '#ffe0a0',
       stroke: '#2a0a00',
       rot: -0.12,
-      t0: 5.75,
+      t0: pb(5.75),
       in: 'stamp',
       t1: 9.4,
     },
@@ -114,8 +138,8 @@ const PAGE = {
       k: 'lines',
       kind: 'focus',
       q: [921, 40, 629, 820],
-      t0: 5.7,
-      t1: 6.6,
+      t0: pb(5.75) - 0.05,
+      t1: pb(5.75) + 0.9,
       color: 'rgba(255,240,200,0.9)',
       r: 0.28,
       n: 70,
@@ -125,7 +149,7 @@ const PAGE = {
       k: 'panel',
       id: 'p3',
       q: P3,
-      t0: 9.3,
+      t0: pb(9.3),
       in: 'left',
       live: true,
       flt: 'contrast(1.35) saturate(0.6)',
@@ -156,6 +180,7 @@ const TALK = {
       k: 'panel',
       q: [0, 0, 1600, 900],
       bd: 0,
+      img: 'c1/c1_office',
       art: 'office',
       kb: [
         { t: 0, z: 1.04, x: 0 },
@@ -241,6 +266,13 @@ export function ch1Intro() {
             k: 'panel',
             q: [0, 0, 1600, 900],
             bd: 0,
+            // 場景插畫（第 2 期）；沒有插畫時用 3D 的天線代替
+            img: 'c1/c1_antenna',
+            focus: [0.3, 0.8],
+            kb: [
+              { t: 0, z: 1.35 },
+              { t: 10, z: 1.6 },
+            ],
             live: true,
             tone: OCHRE,
             dots: 0.32,
@@ -316,9 +348,9 @@ export function ch1Intro() {
       ev: [
         { t: 0.3, sfx: 'thud1', vol: 0.5, rate: 0.75 },
         { t: 0.3, fx: 'warnLine', at: GUN, to: { a: 'cv2' }, color: 0xff3020, life: 0.9 },
-        { t: 1.1, boom: { a: 'cv2' }, big: true, kill: true },
-        { t: 1.15, a: 'cv2', die: true },
-        { t: 1.2, fx: 'smoke', at: { a: 'cv2', at: 'base' }, r: 3, life: 7, rise: 9 },
+        { t: pb(5.75) - 4.6, boom: { a: 'cv2' }, big: true, kill: true },
+        { t: pb(5.75) - 4.55, a: 'cv2', die: true },
+        { t: pb(5.75) - 4.5, fx: 'smoke', at: { a: 'cv2', at: 'base' }, r: 3, life: 7, rise: 9 },
         { t: 1.8, boom: { a: 'cv1' }, big: true, kill: true },
         { t: 1.85, a: 'cv1', die: true },
         { t: 2.4, boom: { a: 'cv3' }, big: true, kill: true },
@@ -406,12 +438,25 @@ export function ch1Intro() {
             k: 'panel',
             q: [0, 0, 1600, 900],
             bd: 0,
+            // 場景插畫（Qwen 把霍斯特的 p9 擺進辦公桌旁）；沒有插畫時用程式畫的桌子＋立繪
+            img: 'c1/c1_alone',
+            focus: [0.35, 0.5],
             art: 'desk',
             ao: { px: 0.8 },
             tone: '#a0602a',
             dots: 0.22,
             vig: 0.75,
-            kids: [{ k: 'actor', who: 'castron', pose: 'p9', at: [560, 1250], h: 1200, noBub: true }],
+            kids: [
+              {
+                k: 'actor',
+                who: 'castron',
+                pose: 'p9',
+                at: [560, 1250],
+                h: 1200,
+                noBub: true,
+                unless: 'c1/c1_alone',
+              },
+            ],
           },
         ],
       },
@@ -659,7 +704,7 @@ export function ch1Intro() {
             al: 'left',
             color: '#f4ece0',
             stroke: null,
-            t0: 0.8,
+            t0: cb(0.8),
             in: 'stamp',
             ls: 18,
           },
@@ -675,8 +720,8 @@ export function ch1Intro() {
       },
       ev: [
         { t: 0.2, sfx: 'heavy', vol: 0.9, rate: 0.45 },
-        { t: 0.8, sfx: 'thud1', vol: 0.8, rate: 0.6 },
-        { t: 0.85, shake: 0.2 },
+        { t: cb(0.8), sfx: 'thud1', vol: 0.8, rate: 0.6 },
+        { t: cb(0.8) + 0.05, shake: 0.2 },
       ],
     },
     4.5,

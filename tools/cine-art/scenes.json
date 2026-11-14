@@ -1,0 +1,37 @@
+{
+  "c1_antenna": {
+    "ch": 1,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, night, desert wasteland, an old rusty radio antenna tower half buried in sand, broken satellite dish, glowing red warning light on top, red light beam shooting up into the starry sky, sand dunes, distant mesa, dramatic low angle, wide shot",
+    "neg": "people, building, city, text",
+    "tone": "#c0602c",
+    "pick": 576418316
+  },
+  "c1_office": {
+    "ch": 1,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, indoors, night, industrial company office, large window, outside the window a mining site at night with many orange lights and headframes, dark room, warm lamp light, wooden desk, filing cabinets, wide shot",
+    "neg": "people, text, sunlight",
+    "pick": 515907196
+  },
+  "c1_desk": {
+    "ch": 1,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, indoors, night, dark office, close-up of a wooden desk, a desk lamp, an old framed photograph of five miners wearing helmets standing on the desk, papers, a window with orange mine lights in the background, moody lighting",
+    "neg": "people, text",
+    "pick": 49161419
+  },
+  "c1_alone": {
+    "ch": 1,
+    "bg": "c1_desk",
+    "char": {
+      "id": "castron",
+      "pose": "p9"
+    },
+    "edit": "Place the man from image 2 into the dark office of image 1, standing alone on the left side of the picture beside the desk, cowboy shot, rubbing the back of his neck with one hand, eyes looking down at the old orange miner helmet on the desk with a guilty, troubled expression. Keep his face, grey hair, orange work jacket and clothes exactly the same as image 2. Keep the room, desk, lamp, window and the helmet of image 1. Warm lamp light on his face, night. Anime illustration style, thick outlines, cel shading.",
+    "pick": 311383087
+  }
+}

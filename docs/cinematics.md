@@ -42,13 +42,15 @@
   - `bg`：顏色／`{ grad: [上, 下] }`／`{ art: 程式插畫, ...參數 }`；沒有＝透明（看得到 3D）。
   - `pg.keys`：`[{ t, x, y, z, r }]` 整頁的鏡頭（在格子之間平移、推近；x、y 是舞台座標的中心）。`shake`：`[[t, 強度, 秒], …]`。
 - 元素（`els`，依序畫；共通的 `t0` 出現、`t1` 收掉、`in`：drop 落下／up／left／right 滑入／stamp 蓋章／pop／fade、`ind` 出場秒數、`a` 透明度、`gco` 混合模式）：
-  - `panel`：`q`＝[x, y, w, h] 或點陣列（斜切的格子），`bd` 白邊寬（0＝沒有框）、`fill`、`art`＋`ao`＋`kb`（程式插畫與推近）、`live`（即時的 3D：渲染器的畫布 cover 對齊格子，`focus` 對準哪一點、`lz`、`zoom`；`snap`＝這個時間定格，之後 3D 鏡頭可以去拍別的格子）、`flt`（canvas 濾鏡：`grayscale(1) contrast(6) invert(1)`＝反白線稿的衝擊畫格）、`tone`（單色：保留亮度換成這個顏色）、`dots`（網點）、`vig`（暗角）、`kids`（裁在格子裡的子元素）。
+  - `panel`：`q`＝[x, y, w, h] 或點陣列（斜切的格子），`bd` 白邊寬（0＝沒有框）、`fill`、`art`＋`ao`＋`kb`（程式插畫與推近）、`live`（即時的 3D：渲染器的畫布 cover 對齊格子，`focus` 對準哪一點、`lz`、`zoom`；`snap`＝這個時間定格，之後 3D 鏡頭可以去拍別的格子；`cam`＝這一格自己的鏡頭（和鏡頭的 `cam` 同樣的寫法，keys 的時間＝這一頁的時間）：每一格換成自己的鏡頭各畫一次 3D 再複製進格子，所以一頁好幾格可以同時是即時的——一格多畫一次整個場景，同時即時的格子以 2～3 格為限）、`flt`（canvas 濾鏡：`grayscale(1) contrast(6) invert(1)`＝反白線稿的衝擊畫格）、`tone`（單色：保留亮度換成這個顏色）、`dots`（網點）、`vig`（暗角）、`kids`（裁在格子裡的子元素）。
   - `actor`：立繪演員（`render/portraits.js`，分層動畫、眨眼、對口型）。`who`、`pose`、`expr`、`at`＝[中心 x, 主圖底部 y]、`h`＝主圖高度（832×1216 的比例）、`mirror`、`dim`（沒說話的人變暗）、`tone`、`holo`（全像：加色、掃描線、閃爍）、`s`＝`[{ t, pose, expr, act, at, h, dim, mv }]`。換姿勢＝保持＋兩格模糊的過渡格（各 1/12 秒），之後依角色個性表（`data/cine/persona.js`：heavy 先頓一下、light 彈一下）到位。3/4 側的姿勢（p3／p4）有全部表情，其他姿勢只有平常的臉（姿勢本身就是演技）。
   - 氣泡：字幕（`ev` 的 `sub`＋`who`）的說話者是舞台上的演員時，字幕條不顯示、改成他頭旁邊的氣泡（語音、字幕語言、「字幕不顯示」照舊；`bub`＝相對臉的位移、`bubW` 寬、`bubSide`、`noBub`）；說話的演員對口型（語音的音量，沒有語音時模擬）。`bubble` 元素＝沒有語音的氣泡（`s`、`name`、`color`、`at`、`tail`、`w`）。
   - `text`：狀聲詞與大字（`s`、`at`、`size`、`color`、`stroke`（null＝不描邊）、`font` sfx／title／mono、`al`、`rot`、`ls` 字距、`sub`）；`in: 'stamp'` 之後抖一下。
   - `block`：PV 的色塊（`q`、`color`、`in: 'wipe'` 由左往右展開；`live` 也可以，例：`gco: 'multiply'`＋`flt: 'grayscale(1) contrast(14) brightness(1.5)'`＝把 3D 變成剪影乘上底色）。
+  - **場景插畫** `img: '<章>/<id>'`（第 2 期，`scripts/cine-art.js` 或角色產生器的「場景插畫」分頁產生，`src/assets/cine-art/<章>/<id>.webp` → `dist/lib/cine-art-<章>.js`，`cinePlay` 時和立繪一起載入）：`panel`、`art` 元素與 `bg` 都可以寫，cover 對齊（`focus`＝圖的哪一點對準中心，`kb` 推近）。插畫優先：有圖時不畫同一格的 `art` 與 `live`（它們是沒有圖時的代替）；立繪演員的 `unless: '<章>/<id>'`＝那張插畫載入了就不畫（插畫裡已經有這個角色）。
   - `art`：程式插畫（`render/cine-art.js`：office 夜裡的辦公室、desk 辦公桌與舊合照、cockpit 駕駛艙（擋風窗挖空透出 3D）、focus 集中線、speed 速度線）；第 2 期的場景插畫完成後換成產生的圖。
   - `lines`：集中線／速度線（`kind`、`q`、`color`、`n`、`r`）。
+- **卡點**：`data/cine/beats.js`（`python scripts/cine-beats.py` 以 librosa 量每首配樂的拍點，曲子換了要重跑）的 `beatAt(曲名, 第幾拍, off, at)`／`snapBeat(曲名, 秒, off, at)`：劇本把格子落下、蓋章、爆炸對齊拍點（例：第 1 章開場的 `pb(t)`＝漫畫頁第 t 秒之後最近的拍點）。
 - 立繪在 `cinePlay` 等配樂時一起載入（`cine2dPreload`）。第 1 章開場（`data/cine/ch1-intro.js`）是第一段用它的劇本。
 
 ## 序章（`data/cine/prologue.js`，約 2 分 12 秒）

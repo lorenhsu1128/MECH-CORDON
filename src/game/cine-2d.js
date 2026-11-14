@@ -202,7 +202,10 @@ Object.assign(Game.prototype, {
       c.s2 = { si: c.shot, page: st.page || null, act: new Map(), snap: new Map() };
     const s2 = c.s2;
     s2.si = c.shot;
+    const shotLt = lt;
     lt = c.t - p0;
+    // 自己有鏡頭的格子（cam）：每一格各畫一次 3D、複製下來，所以同一頁好幾格可以同時是即時的
+    this.cine2dCams(S, st, shotLt, lt);
     s2.dt = c.paused ? 0 : dt;
     s2.lt = lt;
     s2.dur = (c.def.shots[c.shot + 1] ? c.def.shots[c.shot + 1].at : c.def.dur) - S.at;
@@ -372,12 +375,54 @@ Object.assign(Game.prototype, {
       x.stroke();
     }
   },
+  // 格子自己的鏡頭（第 3 期）：live 的格子有 cam（和鏡頭的 cam 同樣的寫法，keys 的時間＝這一頁的時間）時，
+  // 換成那個鏡頭畫一次 3D（渲染風格的管線照舊），複製到這一格的畫布 s2.lc；畫完再換回這一鏡的鏡頭。
+  // 只畫看得到、還沒定格的格子；一格多畫一次整個場景，所以一頁同時即時的格子不要太多（2～3 格）
+  cine2dCams(S, st, shotLt, lt) {
+    const c = this.cine,
+      s2 = c.s2;
+    const list = [];
+    const walk = (els) => {
+      for (const e of els || []) {
+        if (e.k === 'panel' && e.live && e.cam && lt >= (e.t0 || 0) && !(e.t1 != null && lt > e.t1 + 0.2))
+          if (!(e.snap != null && lt >= e.snap && s2.snap.has(e.id || JSON.stringify(e.q)))) list.push(e);
+        if (e.kids) walk(e.kids);
+      }
+    };
+    walk(st.els);
+    if (!list.length || !this.renderer) return;
+    const src = this.renderer.domElement;
+    s2.lc = s2.lc || new Map();
+    const look = c.look.clone();
+    for (const e of list) {
+      c.cut = true;
+      this.cineCamera({ cam: { snap: true, ...e.cam } }, lt, 0);
+      this.stylePipe.resetHistory();
+      this.renderMain();
+      const key = e.id || JSON.stringify(e.q);
+      let cv = s2.lc.get(key);
+      if (!cv) s2.lc.set(key, (cv = document.createElement('canvas')));
+      if (cv.width !== src.width || cv.height !== src.height) {
+        cv.width = src.width;
+        cv.height = src.height;
+      }
+      cv.getContext('2d').drawImage(src, 0, 0);
+    }
+    // 換回這一鏡的鏡頭（下一格的追焦從原本的注視點接著走）
+    c.look.copy(look);
+    c.cut = false;
+    this.cineCamera(S, shotLt, 0);
+    c.look.copy(look);
+    this.stylePipe.resetHistory();
+    // 渲染器的畫布換回這一鏡的畫面（沒有自己鏡頭的 live 格子與透明的背景用它）
+    this.renderMain();
+  },
   // 即時的 3D 畫面放進格子：渲染器的畫布（這一格剛畫好）cover 對齊格子的外框；focus＝畫面的哪一點對準格子中心
   // snap：格子的時間到了就定格（之後 3D 鏡頭可以去拍別的格子）
   cine2dLive(x, e, lt, bx, by, bw, bh) {
     const s2 = this.cine.s2;
-    let src = this.renderer && this.renderer.domElement;
     const key = e.id || JSON.stringify(e.q);
+    let src = (s2.lc && s2.lc.get(key)) || (this.renderer && this.renderer.domElement);
     if (e.snap != null && lt >= e.snap) {
       let im = s2.snap.get(key);
       if (!im && src && src.width) {
@@ -418,6 +463,8 @@ Object.assign(Game.prototype, {
       });
     }
     if (!A.P) return;
+    // unless：那張插畫載入了就不畫（插畫裡已經有這個角色；沒有插畫時才用立繪代替）
+    if (e.unless && this.cineImgs && this.cineImgs[e.unless] && this.cineImgs[e.unless].im) return;
     const P = A.P;
     const per = PERSONA[e.who] || PERSONA_DEF;
     // 時間軸：到 lt 為止的姿勢、表情、位置（每格重算，跳時間也一致）

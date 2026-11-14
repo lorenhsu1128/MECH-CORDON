@@ -157,6 +157,15 @@ $('poseName').onchange = async () => {
 
 function render() {
   const C = ST.card;
+  if (ST.tab === 'scene') {
+    // 場景插畫不屬於哪一個角色
+    document
+      .querySelectorAll('#tabs button')
+      .forEach((b) => b.classList.toggle('on', b.dataset.tab === ST.tab));
+    document.querySelectorAll('.tab').forEach((d) => d.classList.toggle('hidden', d.id !== 't-scene'));
+    document.querySelector('.poseBar').classList.add('hidden');
+    return renderScene();
+  }
   if (!C) return;
   document
     .querySelectorAll('#tabs button')
@@ -516,6 +525,109 @@ $('pubGo').onclick = () =>
     await pipe.publish(ST.card, { onProgress });
     toast('已發佈');
   });
+
+// ---- 場景插畫（過場的 2D 舞台，docs/cine-redesign-design.md 第 2 期；和 scripts/cine-art.js 同一份資料）----
+const SC = { data: null };
+async function renderScene() {
+  try {
+    SC.data = await (await fetch('/api/cineart')).json();
+  } catch (e) {
+    SC.data = null;
+  }
+  const D = SC.data;
+  if (!D || !D.scenes) return ($('scList').innerHTML = '<p class="dim">讀不到場景插畫（只在開發模式）</p>');
+  $('scList').innerHTML = Object.entries(D.scenes)
+    .map(([id, S]) => {
+      const cands = (D.cands[id] || []).sort();
+      const kind = S.char
+        ? `角色 ${esc(S.char.id)}／${esc(S.char.pose || 'p1')} ＋ 背景 ${esc(S.bg)}`
+        : '文字生圖';
+      return `<div class="scItem" data-id="${esc(id)}">
+        <h3>${esc(id)} <small class="dim">第 ${S.ch} 章　${kind}${S.pick ? '　選定 ' + S.pick : ''}${S.tone ? '　單色 ' + esc(S.tone) : ''}</small></h3>
+        <textarea data-f="${S.char ? 'edit' : 'prompt'}" rows="3" style="width:100%">${esc(S.char ? S.edit : S.prompt)}</textarea>
+        <p><button data-job="1" data-gen="${esc(id)}">產生</button> <input type="number" value="2" min="1" max="8" style="width:4em" data-n />
+        ${S.pick ? `<a href="/api/cineart/out/c${S.ch}/${esc(id)}.webp?${Date.now()}" target="_blank">看選定的</a>` : ''}</p>
+        <div class="scCands">${cands
+          .map(
+            (f) =>
+              `<figure class="${S.pick && f === S.pick + '.png' ? 'sel' : ''}"><img src="/api/cineart/work/${esc(id)}/${f}" loading="lazy" style="width:320px" />
+              <figcaption>${f.replace('.png', '')} <button data-pick="${f.replace('.png', '')}">選定</button></figcaption></figure>`,
+          )
+          .join('')}</div></div>`;
+    })
+    .join('');
+  for (const box of $('scList').querySelectorAll('.scItem')) {
+    const id = box.dataset.id;
+    const ta = box.querySelector('textarea');
+    ta.onchange = async () => {
+      SC.data.scenes[id][ta.dataset.f] = ta.value;
+      await fetch('/api/cineart', { method: 'PUT', body: JSON.stringify(SC.data.scenes) });
+    };
+    box.querySelector('[data-gen]').onclick = () =>
+      job('場景插畫 ' + id, () => sceneGen(id, +box.querySelector('[data-n]').value || 2));
+    for (const b of box.querySelectorAll('[data-pick]'))
+      b.onclick = () =>
+        job('選定 ' + id, async () => {
+          const r = await fetch(`/api/cineart/pick/${id}/${b.dataset.pick}`, { method: 'POST' });
+          if (!r.ok) throw new Error((await r.json()).error || '選定失敗');
+          toast('已選定（重新建置後遊戲就有）');
+        });
+  }
+}
+// 圖片網址 → PNG（透明的地方鋪灰底：Qwen 不吃透明）
+async function pngOf(url, bg) {
+  const im = new Image();
+  im.src = url;
+  await im.decode();
+  const c = document.createElement('canvas');
+  c.width = im.naturalWidth;
+  c.height = im.naturalHeight;
+  const g = c.getContext('2d');
+  if (bg) {
+    g.fillStyle = bg;
+    g.fillRect(0, 0, c.width, c.height);
+  }
+  g.drawImage(im, 0, 0);
+  return new Promise((res) => c.toBlob(res, 'image/png'));
+}
+async function sceneGen(id, n) {
+  const W = await import('./workflows.js');
+  const S = SC.data.scenes[id];
+  let build;
+  if (S.char) {
+    const B = SC.data.scenes[S.bg];
+    if (!B || !B.pick) throw new Error('先選定背景 ' + S.bg);
+    const bg = await comfy.upload(
+      await pngOf(`/api/cineart/out/c${B.ch}/${S.bg}.webp`),
+      `cineart_${S.bg}.png`,
+    );
+    const pose = S.char.pose || 'p1';
+    const ch = await comfy.upload(
+      await pngOf(`/api/chars/${S.char.id}/file/${pose}.webp`, '#9a9a9a'),
+      `cineart_${S.char.id}_${pose}.png`,
+    );
+    build = (seed) =>
+      W.qwenEdit({ images: [bg, ch], prompt: S.edit, seed, steps: S.steps || 4, prefix: 'cineart/' + id });
+  } else
+    build = (seed) =>
+      W.txt2img({
+        prompt: [S.prompt, W.STYLE].join(', '),
+        neg: S.neg || '',
+        seed,
+        w: S.w || 1344,
+        h: S.h || 768,
+        steps: S.steps || 30,
+        cfg: S.cfg || 5.5,
+        prefix: 'cineart/' + id,
+      });
+  for (let i = 0; i < n && !ST.stop; i++) {
+    const seed = Math.floor(Math.random() * 1e9);
+    const out = await comfy.run(build(seed));
+    const buf = await comfy.view(out[out.length - 1]);
+    await fetch(`/api/cineart/work/${id}/${seed}.png`, { method: 'PUT', body: buf });
+    toast(`${id}：種子 ${seed}`);
+  }
+}
 
 // ---- 啟動 ----
 if (new URLSearchParams(location.search).has('from')) $('back').href = '/';

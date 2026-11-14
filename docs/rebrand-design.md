@@ -5,22 +5,22 @@
 
 ## 一、定案
 
-| 項目 | 舊 | 新 |
-|---|---|---|
-| 遊戲名稱 | RUBICON PROTOCOL | **MECH CORDON**（中文：**機戰封鎖線**） |
-| 程式與檔案裡的 rubicon | `rubicon_*`、`rubicon-*`、`RUBICON_*` | `mech_cordon_*`、`mech-cordon-*`、`MECH_CORDON_*`（全部改，舊資料用標題的「轉換舊存檔」） |
-| 發佈檔 | `rubicon-protocol.html`、`rubicon-server.exe`、`rubicon-cert/` | `mech-cordon.html`、`mech-cordon-server.exe`、`mech-cordon-cert/` |
-| 分享檔的副檔名 | `.rubicon-set`、`.rubicon-level` | `.mech-cordon-set`、`.mech-cordon-level`（舊副檔名照樣能匯入） |
-| 劇情的協定 | 盧比孔協定（Rubicon Protocol） | 封鎖線協定（Cordon Protocol） |
-| 核心資源 | Coral | 深脈（Deepvein）；顏色維持紅色 |
-| 主角 | 編號 621 的強化人類 | 登錄號 R-07（強化人間計畫 → 鑰匙計畫） |
-| AC | AC（具名 AC、敵對 AC） | 機甲／MECH（具名機甲、敵對機甲、HOSTILE MECH、ALLY-MECH）；日文語音唸「機体」 |
-| MT | MT | 步行機／WALKER（「重踏機甲」改成「重踏步行機」，避免和機甲混淆） |
-| COAM | COAM | SP（結算點） |
-| ACS | ACS | BAL（平衡系統） |
-| 脈衝裝甲 | 脈衝裝甲 | 斥力裝甲 |
-| 渲染風格 | 機戰傭兵 6 | 重裝寫實（其他風格的名稱不改） |
-| 追尾視角的說明 | 機戰傭兵6 式 | 背後視角 |
+| 項目                   | 舊                                                             | 新                                                                                        |
+| ---------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| 遊戲名稱               | RUBICON PROTOCOL                                               | **MECH CORDON**（中文：**機戰封鎖線**）                                                   |
+| 程式與檔案裡的 rubicon | `rubicon_*`、`rubicon-*`、`RUBICON_*`                          | `mech_cordon_*`、`mech-cordon-*`、`MECH_CORDON_*`（全部改，舊資料用標題的「轉換舊存檔」） |
+| 發佈檔                 | `rubicon-protocol.html`、`rubicon-server.exe`、`rubicon-cert/` | `mech-cordon.html`、`mech-cordon-server.exe`、`mech-cordon-cert/`                         |
+| 分享檔的副檔名         | `.rubicon-set`、`.rubicon-level`                               | `.mech-cordon-set`、`.mech-cordon-level`（舊副檔名照樣能匯入）                            |
+| 劇情的協定             | 盧比孔協定（Rubicon Protocol）                                 | 封鎖線協定（Cordon Protocol）                                                             |
+| 核心資源               | Coral                                                          | 深脈（Deepvein）；顏色維持紅色                                                            |
+| 主角                   | 編號 621 的強化人類                                            | 登錄號 R-07（強化人間計畫 → 鑰匙計畫）                                                    |
+| AC                     | AC（具名 AC、敵對 AC）                                         | 機甲／MECH（具名機甲、敵對機甲、HOSTILE MECH、ALLY-MECH）；日文語音唸「機体」             |
+| MT                     | MT                                                             | 步行機／WALKER（「重踏機甲」改成「重踏步行機」，避免和機甲混淆）                          |
+| COAM                   | COAM                                                           | SP（結算點）                                                                              |
+| ACS                    | ACS                                                            | BAL（平衡系統）                                                                           |
+| 脈衝裝甲               | 脈衝裝甲                                                       | 斥力裝甲                                                                                  |
+| 渲染風格               | 機戰傭兵 6                                                     | 重裝寫實（其他風格的名稱不改）                                                            |
+| 追尾視角的說明         | 機戰傭兵6 式                                                   | 背後視角                                                                                  |
 
 不改的通用詞：AP、EN、QB（快速推進）、突擊推進、失衡、FCS、發電機、委託、周目、傭兵、封鎖。
 

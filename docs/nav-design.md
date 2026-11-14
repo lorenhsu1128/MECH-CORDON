@@ -19,16 +19,16 @@
 - 畫面：`garage` 機甲庫、`hub` 作戰室、`pilot` 駕駛員（設定照舊用 `settingsFrom`：title／pause／hub／garage）。
 - 目的地與文字：
 
-| 目的地 | 文字 | 去哪裡 |
-|---|---|---|
-| title | 返回標題 | 標題 |
-| hub | 返回作戰室 | `openHub`（作戰室自己的返回路徑照舊） |
-| brief | 返回簡報 | `openHub` 再 `openBrief(出擊 id)` |
-| freeGarage | 返回機甲庫 | 自由出擊的機甲庫（`openFreeGarage`：機甲庫的返回重設成標題） |
-| garage | 返回機甲庫 | `openGarage`（機甲庫自己的返回路徑照舊） |
-| levels | 返回關卡選單 | 自訂關卡選單 |
-| camptrans | 返回轉場畫面 | 轉場畫面（不出擊，按鈕直接顯示） |
-| campfail | 返回 | 失敗／撤退畫面 |
+| 目的地     | 文字         | 去哪裡                                                       |
+| ---------- | ------------ | ------------------------------------------------------------ |
+| title      | 返回標題     | 標題                                                         |
+| hub        | 返回作戰室   | `openHub`（作戰室自己的返回路徑照舊）                        |
+| brief      | 返回簡報     | `openHub` 再 `openBrief(出擊 id)`                            |
+| freeGarage | 返回機甲庫   | 自由出擊的機甲庫（`openFreeGarage`：機甲庫的返回重設成標題） |
+| garage     | 返回機甲庫   | `openGarage`（機甲庫自己的返回路徑照舊）                     |
+| levels     | 返回關卡選單 | 自訂關卡選單                                                 |
+| camptrans  | 返回轉場畫面 | 轉場畫面（不出擊，按鈕直接顯示）                             |
+| campfail   | 返回         | 失敗／撤退畫面                                               |
 
 - **機甲庫的場合**（`garageMode`）：多人 mp → 轉場整備 trans（`camp.inGarage`）→ 返回目的地是 hub／brief＝主線整備 hub → levels＝自訂關卡整備 lv → 其他＝自由出擊 free。按鈕的顯示（`campaign.js` 的 `campGarageUi`）、作戰卡（`free-ops.js` 的 `garageOpsUi`）、格納庫的場景（`hangar.js` 的 `hangarKind`）都照它。
 - **誰設定**：標題的「自由出擊」、存檔畫面的「自由出擊／新的傭兵生涯」、自由出擊的結果＝`openFreeGarage`（返回標題）；作戰室的「機甲庫」＝hub；簡報的「先去機甲庫整備」＝brief；自訂關卡的「機甲庫（整備）」＝levels；轉場畫面與失敗畫面的「進機甲庫整備」＝camptrans／campfail；作戰室：標題的「主線」與存檔畫面的「主線」＝title，自由出擊機甲庫的「前往作戰室」＝freeGarage；駕駛員：作戰室＝hub、機甲庫＝garage。靶場、作戰設定、駕駛員、設定回到機甲庫時不改它的返回路徑。

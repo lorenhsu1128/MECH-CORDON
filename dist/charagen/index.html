@@ -44,6 +44,7 @@
             <button data-tab="frames">5 眨眼與嘴型</button>
             <button data-tab="preview">6 預覽</button>
             <button data-tab="publish">7 發佈</button>
+            <button data-tab="scene">場景插畫</button>
           </nav>
           <div class="poseBar">
             姿勢
@@ -175,6 +176,16 @@
               >
             </p>
             <div id="pubInfo"></div>
+          </div>
+
+          <div class="tab hidden" id="t-scene">
+            <p class="dim">
+              過場的場景插畫（不屬於哪一個角色；定義在 tools/cine-art/scenes.json，命令列
+              scripts/cine-art.js）： 沒有角色的用文字生圖（寬幅），有角色的以選定的背景為圖 1、角色的主圖為圖
+              2，用 Qwen 照指示擺進去。 選定的寫進 src/assets/cine-art/&lt;章&gt;/，重新建置後過場的 2D 舞台以
+              img: '&lt;章&gt;/&lt;id&gt;' 使用。只在開發模式。
+            </p>
+            <div id="scList"></div>
           </div>
         </div>
       </section>

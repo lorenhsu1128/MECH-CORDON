@@ -355,3 +355,21 @@ th {
   text-align: left;
   font-size: 12px;
 }
+
+/* 場景插畫分頁 */
+.scItem {
+  border-top: 1px solid #333;
+  padding: 8px 0 14px;
+}
+.scCands {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.scCands figure {
+  margin: 0;
+  border: 3px solid transparent;
+}
+.scCands figure.sel {
+  border-color: #c6f04a;
+}

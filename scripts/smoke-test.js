@@ -22562,12 +22562,16 @@ async function testCine(browser, base) {
   await page.waitForFunction(() => window.__game.cine.t > 16.4, null, { timeout: 30000 });
   const page2d = await page.evaluate(() => {
     const c = window.__game.cine;
-    return { st: !!c.def.shots[c.shot].st, snaps: c.s2 ? c.s2.snap.size : 0, page: c.s2 && c.s2.page };
+    return {
+      st: !!c.def.shots[c.shot].st,
+      cams: c.s2 && c.s2.lc ? c.s2.lc.size : 0,
+      page: c.s2 && c.s2.page,
+    };
   });
   await page.screenshot({ path: path.join(SHOT_DIR, 'cine-2d-page.png') });
   check(
-    page2d.st && page2d.page === 'c1page' && page2d.snaps >= 1,
-    `2D 舞台：漫畫頁的格子（第一格的 3D 已定格：${page2d.snaps} 格）`,
+    page2d.st && page2d.page === 'c1page' && page2d.cams >= 2,
+    `2D 舞台：漫畫頁的格子各有自己的 3D 鏡頭、同時即時（${page2d.cams} 格）`,
   );
   await page.evaluate(() => window.__game.cineSeek(35.5));
   await page.waitForFunction(() => window.__game.cine && window.__game.cine.t > 37.2, null, {

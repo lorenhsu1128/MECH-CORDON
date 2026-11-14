@@ -174,6 +174,62 @@ module.exports = function chargen({ base, modelsDir, env, readBody, writeAtomic,
     return bad(resp, '不支援的操作', 405);
   }
 
+  // 過場的場景插畫（docs/cine-redesign-design.md 第 2 期；角色產生器的「場景插畫」分頁，和 scripts/cine-art.js 同一份資料）：
+  // 只在開發模式（定義 tools/cine-art/scenes.json、候選在 ComfyUI 的工作資料夾、選定的寫進 src/assets/cine-art/）
+  const ART_DEF = path.join(base, 'tools', 'cine-art', 'scenes.json');
+  const ART_WORK = path.join(base, 'tools', 'comfyui', 'runtime', 'work', 'cine-art');
+  const ART_OUT = path.join(base, 'src', 'assets', 'cine-art');
+  async function artApi(req, resp, u) {
+    if (!DEV) return bad(resp, '場景插畫只在開發模式（從專案執行 server.js）', 404);
+    let m;
+    const scenes = () => JSON.parse(fs.readFileSync(ART_DEF, 'utf8'));
+    if (u === '/api/cineart') {
+      if (req.method === 'GET') {
+        const S = fs.existsSync(ART_DEF) ? scenes() : {};
+        const cands = {};
+        for (const id of Object.keys(S)) {
+          const d = path.join(ART_WORK, id);
+          cands[id] = fs.existsSync(d) ? fs.readdirSync(d).filter((f) => /^\d+\.png$/.test(f)) : [];
+        }
+        return json(resp, { scenes: S, cands });
+      }
+      if (req.method === 'PUT') {
+        const body = await readBody(req, 1024 * 1024);
+        let d;
+        try {
+          d = JSON.parse(body.toString('utf8'));
+        } catch (e) {
+          return bad(resp, '不是 JSON');
+        }
+        writeAtomic(ART_DEF, JSON.stringify(d, null, 2) + '\n');
+        return json(resp, { ok: true });
+      }
+      return bad(resp, '不支援的操作', 405);
+    }
+    if ((m = /^\/api\/cineart\/(work|out)\/([a-z0-9_]+)\/(.*)$/.exec(u))) {
+      const dir = path.join(m[1] === 'work' ? ART_WORK : ART_OUT, m[2]);
+      if (m[1] === 'out' && req.method !== 'GET') return bad(resp, '不支援的操作', 405);
+      return files(req, resp, dir, decodeURIComponent(m[3]));
+    }
+    // 選定：候選 → src/assets/cine-art/c<章>/<id>.webp（寬最多 1600；tone＝單色）
+    if ((m = /^\/api\/cineart\/pick\/([a-z0-9_]+)\/(\d+)$/.exec(u)) && req.method === 'POST') {
+      if (!sharp) return bad(resp, '沒有 sharp（npm install）');
+      const all = scenes();
+      const S = all[m[1]];
+      const src = path.join(ART_WORK, m[1], m[2] + '.png');
+      if (!S || !fs.existsSync(src)) return bad(resp, '沒有這個候選', 404);
+      let p = sharp(fs.readFileSync(src)).resize({ width: 1600, withoutEnlargement: true });
+      if (S.tone) p = p.grayscale().tint(S.tone);
+      const d = path.join(ART_OUT, 'c' + S.ch);
+      fs.mkdirSync(d, { recursive: true });
+      writeAtomic(path.join(d, m[1] + '.webp'), await p.webp({ quality: 84 }).toBuffer());
+      S.pick = Number(m[2]);
+      writeAtomic(ART_DEF, JSON.stringify(all, null, 2) + '\n');
+      return json(resp, { ok: true });
+    }
+    return bad(resp, '不認得的場景插畫 API', 404);
+  }
+
   async function api(req, resp, u) {
     let m;
     if (converting) return bad(resp, '候選圖正在轉成 WebP，請稍等（看伺服器的訊息）', 503);
@@ -296,6 +352,14 @@ module.exports = function chargen({ base, modelsDir, env, readBody, writeAtomic,
       }
       if (u.startsWith('/api/comfy/') || u === '/api/comfy') {
         proxy(req, resp, req.url.slice('/api/comfy'.length) || '/');
+        return true;
+      }
+      if (u === '/api/cineart' || u.startsWith('/api/cineart/')) {
+        artApi(req, resp, u).catch((e) => {
+          log('場景插畫 API 錯誤：' + e.message);
+          if (!resp.headersSent) resp.writeHead(500, { 'Content-Type': 'application/json' });
+          resp.end(JSON.stringify({ error: e.message }));
+        });
         return true;
       }
       if (u === '/api/chars' || u.startsWith('/api/chars/')) {
