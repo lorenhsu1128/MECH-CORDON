@@ -668,6 +668,7 @@ export function prologueCine(ctx) {
   const damG = { sunAz: 220, sunEl: 20, tintLo: '#284860', tintLoK: 0.35, contrast: 1.12 };
   shots.push({
     at: 78,
+    koma: 2, // 動作鏡頭一拍二（3D 動畫化，docs/cine-redesign-design.md 第十節）
     set: dam,
     grade: damG,
     actors: [
@@ -710,6 +711,7 @@ export function prologueCine(ctx) {
   });
   shots.push({
     at: 80.6,
+    koma: 2, // 動作鏡頭一拍二（3D 動畫化，docs/cine-redesign-design.md 第十節）
     set: dam,
     grade: damG,
     cam: {
@@ -731,6 +733,7 @@ export function prologueCine(ctx) {
   });
   shots.push({
     at: 83,
+    koma: 2, // 動作鏡頭一拍二（3D 動畫化，docs/cine-redesign-design.md 第十節）
     set: dam,
     grade: { ...damG, contrast: 1.2 },
     actors: [
@@ -797,6 +800,7 @@ export function prologueCine(ctx) {
   };
   shots.push({
     at: 86,
+    koma: 2, // 動作鏡頭一拍二（3D 動畫化，docs/cine-redesign-design.md 第十節）
     set: rail,
     grade: railG,
     fi: 0.2,
@@ -844,6 +848,7 @@ export function prologueCine(ctx) {
   });
   shots.push({
     at: 89.9,
+    koma: 2, // 動作鏡頭一拍二（3D 動畫化，docs/cine-redesign-design.md 第十節）
     set: rail,
     grade: railG,
     cam: {
@@ -871,6 +876,7 @@ export function prologueCine(ctx) {
   const snowG = { sunAz: 140, sunEl: 14, tintLo: '#2a4860', tintLoK: 0.4, contrast: 1.15, dust: 0.5 };
   shots.push({
     at: 93.8,
+    koma: 2, // 動作鏡頭一拍二（3D 動畫化，docs/cine-redesign-design.md 第十節）
     set: snow,
     grade: snowG,
     actors: [
@@ -933,6 +939,7 @@ export function prologueCine(ctx) {
   };
   shots.push({
     at: 97,
+    koma: 2, // 動作鏡頭一拍二（3D 動畫化，docs/cine-redesign-design.md 第十節）
     set: snow,
     grade: { ...snowG, contrast: 1.22, chroma: 0.35, bloom: 1.15 },
     ov: 'lock',
@@ -968,6 +975,7 @@ export function prologueCine(ctx) {
   // 1:39.6 反打：從 SPECIMEN 的背後看兩台交叉射擊，導彈命中的慢動作
   shots.push({
     at: 99.6,
+    koma: 2, // 動作鏡頭一拍二（3D 動畫化，docs/cine-redesign-design.md 第十節）
     set: snow,
     grade: { ...snowG, contrast: 1.25, chroma: 0.4, bloom: 1.25, tintHi: '#ffb070', tintHiK: 0.3 },
     ov: 'lock',
@@ -1000,6 +1008,7 @@ export function prologueCine(ctx) {
   });
   shots.push({
     at: 102.2,
+    koma: 2, // 動作鏡頭一拍二（3D 動畫化，docs/cine-redesign-design.md 第十節）
     set: snow,
     grade: { ...snowG, bloom: 1.2 },
     cam: {
