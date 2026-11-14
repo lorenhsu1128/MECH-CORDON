@@ -147,6 +147,58 @@ ENDS = {
             'thrusters ignite, ends in quiet release and stillness',
             curve=[(0, 17, .35), (17, 29, .55), (29, 42, .4), (42, 49, .5)]),
 }
+# 序章與第 2、4 章的抉擇演出（2026-11-15 看過 cine-shots.js p1、x_c2_pre、x_c2_castron／aetheric、x_c4_pre、
+# x_c4_veerwell／sancta 的逐鏡截圖）：p1＝序章（三個周目共用；音色沿用第 1 章，接得上第 1 章的開場）、
+# q<章>＝抉擇的選前（兩位委託方對峙 → 接回戰場的倒數）、x1～x4＝選後（卡斯特隆、艾瑟立克、維爾威、聖域）
+EXTRA = {
+    'p1': dict(ch=1, dur=134, bpm=92,
+               mood='a cold orbital station ends a cycle and launches a drop pod to the planet, a fiery reentry, four '
+               'powers fighting over one fuel, a nameless mercenary wakes to an AI voice, then war, epic sci-fi prologue',
+               arc='near silent cold signal intro, slow ominous build as the station launches the pod, a fiery rise '
+               'during reentry, a rhythmic driving section introducing four factions, a hush for the awakening, then '
+               'a huge explosive hit and relentless battle action, a brief silence, a dark menacing rival, and a grand '
+               'title climax',
+               curve=[(0, 14, .2), (14, 30, .35), (30, 39, .5), (39, 47, .75), (47, 51, .4), (51, 66, .65),
+                      (66, 70, .35), (70, 76, .25), (76, 79, 1), (79, 106, .9), (106, 111, .15), (111, 120, .55),
+                      (120, 131, 1)]),
+    'q2': dict(ch=2, dur=31, bpm=100,
+               mood='a tense standoff between a blunt industrial boss and a cool smiling scientist, a contract against '
+               'power, the mercenary must choose a side, a countdown',
+               arc='a sharp dramatic hit at the start, then a low tense ticking underscore under the dialogue, rising '
+               'urgency at the end into a countdown',
+               curve=[(0, 3, .75), (3, 24, .3), (24, 29, .7)]),
+    'q4': dict(ch=4, dur=29, bpm=96,
+               mood='a cheeky merchant pushing for a rocket launch against a quiet refugee guardian, the sky versus the '
+               'people behind the door, the mercenary must choose, a countdown',
+               arc='a sharp dramatic hit at the start, then a low tense ticking underscore under the dialogue, rising '
+               'urgency at the end into a countdown',
+               curve=[(0, 3, .75), (3, 22, .3), (22, 27, .7)]),
+    'x1': dict(ch=2, dur=42, bpm=74,
+               mood='floodgates slam shut one by one, the river runs dry, factory lights come on and a boss toasts at a '
+               'feast, then a bitter winter, thousands of refugees walking west into the snow, hollow victory, guilt',
+               arc='a heavy slam at the start, then cold and uneasy, a hollow warm glow for the feast, then bleak and '
+               'mournful as refugees walk into the snow, ending on a heavy unresolved chord',
+               curve=[(0, 6, .85), (6, 11, .4), (11, 23, .55), (23, 30, .3), (30, 36, .45), (36, 40, .6)]),
+    'x2': dict(ch=2, dur=41, bpm=78,
+               mood='betrayal, the dam power diverted to a cold research lab, a scientist calmly noting the result, wanted '
+               'posters everywhere, a furious rival vows revenge, refugees walking into the snow, guilt and menace',
+               arc='cold clinical pulse, sly and eerie for the laboratory, rising threat with a heavy angry hit for the '
+               'rival, then mournful for the refugees, ending dark and unresolved',
+               curve=[(0, 6, .5), (6, 11, .35), (11, 19, .4), (19, 24, .55), (24, 29, .85), (29, 34, .35),
+                      (34, 38, .55)]),
+    'x3': dict(ch=4, dur=30, bpm=96,
+               mood='a triumphant press conference, a rocket roars into the sky, its exhaust sweeps the settlements, '
+               'people searching for names in the ash, a quiet grieving guardian, a hollow triumph',
+               arc='bright and triumphant at first, a huge roaring hit at the launch, then the music drains away, sparse '
+               'and grieving, ending sad and quiet',
+               curve=[(0, 9, .6), (9, 14, .95), (14, 19, .3), (19, 23, .25), (23, 27, .45)]),
+    'x4': dict(ch=4, dur=33, bpm=80,
+               mood='a heavy gate clangs shut and the launch pad falls silent, refugees guard the door in turns, a '
+               'tearful thank you, transport planes leaving east, a sulking merchant, bittersweet relief',
+               arc='a heavy metallic hit at the start, then warm and quiet, tender and grateful, a gentle bittersweet '
+               'lift as the planes leave, ending calm and hopeful',
+               curve=[(0, 6, .7), (6, 12, .4), (12, 17, .35), (17, 23, .5), (23, 27, .4), (27, 31, .55)]),
+}
 # 合唱、人聲類的音色換掉（對白時會打架）
 NO_VOX = [('celestial choir', 'airy celestial synth pads'), ('full orchestra and choir', 'full orchestra'),
           ('choir', 'airy pads')]
@@ -155,7 +207,7 @@ HEAD = 'instrumental cinematic anime film score, no vocals'
 
 # 段落的鍵：i<章>＝開場、o<章>＝章末（OUTROS）、e1～e4＝第 8 章的結尾（ENDS）；曲名 cine_<鍵>，候選 <鍵>__f<i>
 SCENES = {**{f'i{k}': v for k, v in INTROS.items()}, **{f'o{k}': v for k, v in OUTROS.items()},
-          **{f'e{k}': v for k, v in ENDS.items()}}
+          **{f'e{k}': v for k, v in ENDS.items()}, **EXTRA}
 
 
 def caption(sid, pal):
@@ -167,8 +219,8 @@ def caption(sid, pal):
 def chapters(opt):
     # --ch=i1,o2（只寫數字＝開場）
     if not opt.get('ch'):
-        return sorted(SCENES, key=lambda k: ('ioe'.index(k[0]), int(k[1:])))
-    return [c if c[:1] in 'ioe' else 'i' + c for c in opt['ch'].split(',')]
+        return sorted(SCENES, key=lambda k: ('ioepqx'.index(k[0]), int(k[1:])))
+    return [c if c[:1] in 'ioepqx' else 'i' + c for c in opt['ch'].split(',')]
 
 
 def gen(opt):
@@ -193,11 +245,11 @@ def gen(opt):
                 continue
             if dit is None:
                 dit, lm = G.init()
-            print(f'== 第 {ch} 章{ {"i": "開場", "o": "章末", "e": "結尾" + sid[1:]}[sid[0]]} 候選 {i}（{it["dur"]} 秒、{it["bpm"]} BPM、{key}）', flush=True)
+            print(f'== 第 {ch} 章{ {"i": "開場", "o": "章末", "e": "結尾" + sid[1:], "p": "序章", "q": "抉擇選前", "x": "抉擇選後" + sid[1:]}[sid[0]]} 候選 {i}（{it["dur"]} 秒、{it["bpm"]} BPM、{key}）', flush=True)
             G.run(dit, lm, OUT, name, dict(ch=ch, type='cine_' + sid, cand=i, bpm=it['bpm'], key=key),
                   caption=cap, lyrics='[Instrumental]', instrumental=True, vocal_language='unknown',
                   bpm=it['bpm'], keyscale=key, timesignature='4', duration=it['dur'],
-                  seed=ch * 1000 + 777 + i * 31 + 500 + {'i': 0, 'o': 300, 'e': 400 + int(sid[1:]) * 50}[sid[0]])
+                  seed=ch * 1000 + 777 + i * 31 + 500 + {'i': 0, 'o': 300, 'e': 400 + int(sid[1:]) * 50, 'p': 650, 'q': 700, 'x': 750 + int(sid[1:]) * 50}[sid[0]])
 
 
 def tot(s):
@@ -215,7 +267,7 @@ def score(opt):
     exec(compile(src, spec.origin, 'exec'), S)
     sp, pp = os.path.join(OUT, 'scores.json'), os.path.join(OUT, 'picks.json')
     scores = json.load(open(sp, encoding='utf8')) if os.path.exists(sp) else {}
-    names = sorted(f[:-4] for f in os.listdir(OUT) if re.fullmatch(r'[ioe]\d+__f\d+\.wav', f))
+    names = sorted(f[:-4] for f in os.listdir(OUT) if re.fullmatch(r'[ioepqx]\d+__f\d+\.wav', f))
     names = [n for n in names if n.split('__')[0] in chapters(opt)]
     M = None
     for n in names:

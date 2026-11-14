@@ -7,7 +7,7 @@
 - 運鏡、節奏、構圖參考《機戰傭兵6》的劇情預告片（`test-results/ACVI_storyboard_frames` 的影格分析），內容是本作的世界觀（訊號、R-07、ECHO、四家委託方、軌道站的回收程序），不照抄原作的台詞、造型與 Logo。
 - 遊戲內即時演算：用遊戲的機甲（玩家的組裝與模型組）、地圖主題、渲染風格、特效與音效；不錄影片，HTML 不變大。
 - 字幕＋無線電音效（不做語音），配樂用 CC-BY 的曲子（Gregor Quendel「Cinematic Trailer Music Collection」，`src/assets/music/CREDITS.txt`）。
-- **開場、章末與第 8 章結尾的配樂**（2026-11-14）：照每段的畫面用 AI（ACE-Step）新做的純器樂 `cine_i1`～`cine_i8`（開場）、`cine_o1`～`cine_o7`（章末）、`cine_e1`～`cine_e4`（最後抉擇的開門／封印／彼岸與真結局短片），打包時照每段的能量曲線推拉音量；做法與分數見 `docs/audio-design.md` 的「過場動畫的開場、章末與結尾配樂」，產生 `scripts/cine-intro-music.py`（`npm run cine:music`）。序章與第 2、4 章抉擇的演出照舊用 CC-BY 的曲子。
+- **開場、章末與第 8 章結尾的配樂**（2026-11-14）：照每段的畫面用 AI（ACE-Step）新做的純器樂 `cine_i1`～`cine_i8`（開場）、`cine_o1`～`cine_o7`（章末）、`cine_e1`～`cine_e4`（最後抉擇的開門／封印／彼岸與真結局短片），打包時照每段的能量曲線推拉音量；做法與分數見 `docs/audio-design.md` 的「過場動畫的開場、章末與結尾配樂」，產生 `scripts/cine-intro-music.py`（`npm run cine:music`）。2026-11-15 起序章 `cine_p1`、第 2、4 章抉擇的選前 `cine_q2`／`cine_q4` 與選後 `cine_x1`～`cine_x4` 也換成照畫面做的 AI 配樂；第 6 章最後抉擇的選前與其他短片照舊用 CC-BY 的曲子。
 
 ## 播放流程
 

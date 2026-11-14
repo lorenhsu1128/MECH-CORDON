@@ -360,6 +360,8 @@ function liveShot(opts) {
     ],
   };
 }
+// 第 2、4 章的選前照畫面做的配樂（scripts/cine-intro-music.py 的 q2、q4）；其他沿用 cine_tension
+const PRE_MUSIC = { c2: 'cine_q2', c4: 'cine_q4' };
 export function choicePreAnime(id, ctx = {}) {
   const TK = TALKS['pre_' + id];
   const opts = (ctx.opts || []).map((o, i) => ({ ...o, ex: i }));
@@ -378,7 +380,9 @@ export function choicePreAnime(id, ctx = {}) {
   dropAll(T);
   return T.def({
     title: '抉擇',
-    music: [{ at: 0, track: 'cine_tension', vol: 0.8, fadeIn: 0.8, fadeOut: [T.at - 2.5, 2.5] }],
+    music: [
+      { at: 0, track: PRE_MUSIC[id] || 'cine_tension', vol: 0.8, fadeIn: 0.8, fadeOut: [T.at - 2.5, 2.5] },
+    ],
   });
 }
 
@@ -574,7 +578,7 @@ const CAST_C = '#d8903a',
 // 抉擇 1：主壩交給卡斯特隆
 export const c2CastronAnime = () =>
   montage({
-    music: ['cine_c2', 30],
+    music: ['cine_x1', 0], // 抉擇的選後（scripts/cine-intro-music.py）
     color: CAST_C,
     card: ['你守住了合約。', 'CONTRACT FULFILLED'],
     shots: [
@@ -604,7 +608,7 @@ export const c2CastronAnime = () =>
 // 抉擇 1：主壩交給艾瑟立克（背叛卡斯特隆）
 export const c2AethericAnime = () =>
   montage({
-    music: ['cine_c2', 30],
+    music: ['cine_x2', 0],
     color: AETH_C,
     card: ['你背叛了委託方。', 'CONTRACT BROKEN'],
     shots: [
@@ -662,7 +666,7 @@ export const c2AethericAnime = () =>
 // 抉擇 2：發射設施交給維爾威
 export const c4VeerwellAnime = () =>
   montage({
-    music: ['cine_c4', 20],
+    music: ['cine_x3', 0],
     color: VEER_C,
     card: ['人類回到了天空。', 'LAUNCH AUTHORIZED'],
     shots: [
@@ -683,7 +687,7 @@ export const c4VeerwellAnime = () =>
 // 抉擇 2：發射設施交給聖域
 export const c4SanctaAnime = () =>
   montage({
-    music: ['cine_c4', 20],
+    music: ['cine_x4', 0],
     color: SANC_C,
     card: ['發射台沉默了。', 'LAUNCH SEALED'],
     shots: [

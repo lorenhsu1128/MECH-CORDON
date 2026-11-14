@@ -1,6 +1,6 @@
 // 序章的過場動畫（game/cine.js 播放；運鏡參考 AC6 的預告片，內容是本作的世界觀，劇本 docs/story-script.md 的序章）
-// 時間對齊配樂 cine_suspense（0:22 起伏、0:30 重拍、0:45.8 最強的一擊、0:50～1:09 每兩秒一下的脈動、1:18 第二次高潮）
-// 與 cine_ident（1:46 開始：+4.4 秒、+13.1 秒兩記鋼琴重音）。
+// 配樂 cine_p1（scripts/cine-intro-music.py 的 p1，2026-11-15 照這些鏡頭的畫面做；以前對齊的是 cine_suspense 與 cine_ident 的重音，
+// 鏡頭時間沒改，新曲子打包時照能量曲線推拉音量：信號、投放、再入、四方勢力、甦醒、1:16 的爆炸與戰鬥、1:46 的黑畫面、宿敵、LOGO）。
 // 鏡頭的 at／dur 是秒；ev、s 的 t 是該鏡頭（演員：出場那一鏡）開始後的秒數。點的寫法見 game/cine.js 的 cinePt。
 
 // 各周目不同的文字
@@ -1144,10 +1144,8 @@ export function prologueCine(ctx) {
     title: '序章',
     dur: 131.6,
     lb: 2.39,
-    music: [
-      { at: 0, track: 'cine_suspense', vol: 1 },
-      { at: 106, track: 'cine_ident', vol: 1 },
-    ],
+    // 照畫面做的序章配樂（scripts/cine-intro-music.py 的 p1，2026-11-15）
+    music: [{ at: 0, track: 'cine_p1', vol: 1, fadeOut: [129, 2.5] }],
     shots,
   };
 }
