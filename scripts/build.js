@@ -475,6 +475,30 @@ function copyServerDefault() {
   if (fs.existsSync(src)) fs.cpSync(src, out, { recursive: true });
 }
 
+// 過場的場景插畫（docs/cine-redesign-design.md 第 2 期：scripts/cine-art.js 產生、選定的 src/assets/cine-art/<章>/<id>.webp）：
+// 每章一個 lib/cine-art-<章>.js（window.MECH_CORDON_CINE_ART[章] = { id: data URL }），第一次播那一章用到插畫的過場才載入
+function writeCineArt() {
+  const dir = path.join(SRC, 'assets', 'cine-art');
+  if (!fs.existsSync(dir)) return;
+  const done = [];
+  for (const ch of fs.readdirSync(dir)) {
+    const d = path.join(dir, ch);
+    if (!fs.statSync(d).isDirectory()) continue;
+    const img = {};
+    for (const n of fs.readdirSync(d))
+      if (n.endsWith('.webp'))
+        img[n.slice(0, -5)] = 'data:image/webp;base64,' + fs.readFileSync(path.join(d, n)).toString('base64');
+    if (!Object.keys(img).length) continue;
+    fs.mkdirSync(LIB, { recursive: true });
+    fs.writeFileSync(
+      path.join(LIB, `cine-art-${ch}.js`),
+      `(window.MECH_CORDON_CINE_ART=window.MECH_CORDON_CINE_ART||{})[${JSON.stringify(ch)}]=${JSON.stringify(img)};\n`,
+    );
+    done.push(`${ch}（${Object.keys(img).length} 張）`);
+  }
+  if (done.length) console.log(`[build] lib/cine-art：${done.join('、')}`);
+}
+
 async function main() {
   if (!watch) fs.rmSync(LIB, { recursive: true, force: true }); // 重新複製，移除不再使用的程式庫
   writeDraco();
@@ -484,6 +508,7 @@ async function main() {
   await writeGaze();
   copySubprojects();
   writePortraits();
+  writeCineArt();
   copyServerDefault();
   copyCert();
   if (!watch) {

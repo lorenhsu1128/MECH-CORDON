@@ -113,7 +113,7 @@ Object.assign(Game.prototype, {
     $('cineLoad').classList.add('on');
     // 配樂與字型：最多等 4 秒（沒有配樂也照樣播）
     // 人物（lib/people-assets.js 與格納庫的素材）：和配樂一起等；沒等到時人物改用程式的小人
-    const ppl = Promise.all([loadPeopleAssets(), loadHangarAssets()]);
+    const ppl = Promise.all([loadPeopleAssets(), loadHangarAssets(), this.cine2dPreload(def)]);
     const load = Promise.all([this.cineMusicLoad(), ppl]).then(async ([has]) => {
       if (!has) return false;
       const names = [...new Set(def.music.map((m) => m.track))];
@@ -171,6 +171,8 @@ Object.assign(Game.prototype, {
   cineStartReset(c) {
     // 跳時間：清掉字幕、機器文字與字卡
     c.subUntil = c.sysUntil = 0;
+    c.bub = null;
+    c.s2 = null;
     $('cineSub').classList.remove('on');
     if (this.voiceStop) this.voiceStop();
     $('cineSys').innerHTML = '';
@@ -205,6 +207,7 @@ Object.assign(Game.prototype, {
     this.cineClearSet(c);
     this.textfx && this.textfx.clear((x) => x.opt && x.opt.cine);
     this.cineUi(false);
+    this.cine2dClear();
     const cam = this.camera;
     cam.fov = c.cam0.fov;
     cam.near = c.cam0.near;
@@ -501,6 +504,8 @@ Object.assign(Game.prototype, {
     const R = S.render && this['cineRender_' + S.render];
     if (R) R.call(this, S, lt, dt);
     else this.renderMain();
+    // 2D 舞台（game/cine-2d.js）：在 3D 之後畫，live 的格子拿得到這一格的畫面
+    this.cine2dDraw(S, lt, dt);
   },
   // 鏡頭的掛勾：S.hook 可以是字串或陣列，呼叫 this['cineHook_' + 名稱](S, phase, lt, dt)；phase＝enter／tick／exit
   cineHookCall(S, phase, lt, dt) {
@@ -1174,7 +1179,10 @@ Object.assign(Game.prototype, {
     const nm = voiced && this.subName ? this.subName(who, name) : name;
     el.innerHTML = `${nm ? `<b style="color:${S.color}">${escHtml(nm)}</b>` : ''}<span>${escHtml(shown)}</span>`;
     el.classList.toggle('radio', !!voiced);
-    el.classList.toggle('on', !(voiced && sub === 'off'));
+    // 說話的人在 2D 舞台上：字幕改成他旁邊的氣泡（game/cine-2d.js），字幕條不顯示
+    const bub = this.cine2dBubble(who, text);
+    if (bub) c.bub.hide = voiced && sub === 'off';
+    el.classList.toggle('on', !bub && !(voiced && sub === 'off'));
     if (who) {
       c.commWho = who;
       c.commT = c.t;
@@ -1189,7 +1197,10 @@ Object.assign(Game.prototype, {
     if (who && this.voiceSay)
       this.voiceSay(text, who).then((d) => {
         if (this.cine !== c || c.subTok !== tok) return;
-        if (!d) return el.classList.add('on');
+        if (!d) {
+          if (bub) return (c.bub.hide = false);
+          return el.classList.add('on');
+        }
         c.subUntil = Math.max(c.subUntil, c.t + d + 0.3);
       });
     else if (who === 'station') SFX.play('glitch', 0.3, 0.6, 0.02, 0.1, null, 'ui');

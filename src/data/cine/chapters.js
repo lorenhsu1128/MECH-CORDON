@@ -2,7 +2,8 @@
 // 每一句配一個鏡頭（beat）：鏡頭由各章的 BEATS 依序取用（句子比鏡頭多時重複最後一個），同一個場景的鏡頭沿用同一張地圖。
 // 角色的台詞（「名字：「…」」）變成無線電字幕，其他是旁白。
 import { CHAPTER_NAMES, CHAPTER_TEXT, pickLines } from '../story.js';
-import { ch1Intro, ch1Outro } from './ch1.js';
+import { ch1Outro } from './ch1.js';
+import { ch1Intro } from './ch1-intro.js';
 import { ch2Intro, ch2Outro } from './ch2.js';
 import { ch3Intro, ch3Outro } from './ch3.js';
 import { ch4Intro, ch4Outro } from './ch4.js';

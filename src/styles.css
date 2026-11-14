@@ -3567,6 +3567,13 @@ body.mvGame #mvPanel {
   position: absolute;
   pointer-events: none;
 }
+/* 過場的 2D 舞台（game/cine-2d.js）：3D 之上、淡入淡出之下 */
+#cine2d {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
 #cineFade {
   inset: 0;
   background: #000;

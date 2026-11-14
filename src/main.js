@@ -56,6 +56,7 @@ import './game/hub.js';
 import './game/hub-holo.js';
 import './game/story.js';
 import './game/cine.js';
+import './game/cine-2d.js';
 import './game/cine-lib.js';
 import './game/voice-lab.js';
 import './game/bgm-lab.js';

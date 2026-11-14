@@ -33,12 +33,30 @@
   - `grade`：這一鏡的調色（渲染風格的參數，疊在玩家選的風格＋過場的基本調色 `CINE_GRADE` 上；景深 `dof` 也在這裡）。
   - `fi`／`fo`：淡入／淡出秒數，`fc` 顏色，`fade`：整鏡蓋黑（後面在建地圖）。`ov`：疊加畫面（signal 訊號波形、boot 駕駛艙開機、speed 突入的速度線、scan 監視器掃描線、lock 機戰傭兵6 式的戰鬥 HUD：準星、鎖定框套住鏡頭的 `lock` 指定的演員、目標的 AP／ACS、彈數與 EN）。`lb: false` 不要遮幅。`sun`：太空場景的太陽方向。
 
+## 2D 舞台（過場改版第 1 期，`game/cine-2d.js`，docs/cine-redesign-design.md）
+
+鏡頭多一個欄位 `st`：畫在 `#cine2d`（3D 畫面之上、淡入淡出的黑幕與遮幅之下），座標是 1600×900 的舞台（cover 對齊畫面：寬螢幕裁上下、窄螢幕裁左右）。每一格只由鏡頭的時間決定（暫停、跳時間一致），立繪自己的眨眼與呼吸用 dt。在 `renderMain` 之後畫，所以 live 的格子拿得到這一格的 3D 畫面。2D 的鏡頭通常寫 `lb: false`（漫畫頁要滿版）。
+
+- `st`：`{ page, bg, pg, shake, els }`
+  - `page`：同一頁的名字。連續幾鏡的 `st.page` 相同時共用舞台（定格的格子、立繪演員都留著），元素的時間從這一頁的第一鏡算——一頁三格就是三個鏡頭（各拍各的 3D）共用同一個 `st` 物件。
+  - `bg`：顏色／`{ grad: [上, 下] }`／`{ art: 程式插畫, ...參數 }`；沒有＝透明（看得到 3D）。
+  - `pg.keys`：`[{ t, x, y, z, r }]` 整頁的鏡頭（在格子之間平移、推近；x、y 是舞台座標的中心）。`shake`：`[[t, 強度, 秒], …]`。
+- 元素（`els`，依序畫；共通的 `t0` 出現、`t1` 收掉、`in`：drop 落下／up／left／right 滑入／stamp 蓋章／pop／fade、`ind` 出場秒數、`a` 透明度、`gco` 混合模式）：
+  - `panel`：`q`＝[x, y, w, h] 或點陣列（斜切的格子），`bd` 白邊寬（0＝沒有框）、`fill`、`art`＋`ao`＋`kb`（程式插畫與推近）、`live`（即時的 3D：渲染器的畫布 cover 對齊格子，`focus` 對準哪一點、`lz`、`zoom`；`snap`＝這個時間定格，之後 3D 鏡頭可以去拍別的格子）、`flt`（canvas 濾鏡：`grayscale(1) contrast(6) invert(1)`＝反白線稿的衝擊畫格）、`tone`（單色：保留亮度換成這個顏色）、`dots`（網點）、`vig`（暗角）、`kids`（裁在格子裡的子元素）。
+  - `actor`：立繪演員（`render/portraits.js`，分層動畫、眨眼、對口型）。`who`、`pose`、`expr`、`at`＝[中心 x, 主圖底部 y]、`h`＝主圖高度（832×1216 的比例）、`mirror`、`dim`（沒說話的人變暗）、`tone`、`holo`（全像：加色、掃描線、閃爍）、`s`＝`[{ t, pose, expr, act, at, h, dim, mv }]`。換姿勢＝保持＋兩格模糊的過渡格（各 1/12 秒），之後依角色個性表（`data/cine/persona.js`：heavy 先頓一下、light 彈一下）到位。3/4 側的姿勢（p3／p4）有全部表情，其他姿勢只有平常的臉（姿勢本身就是演技）。
+  - 氣泡：字幕（`ev` 的 `sub`＋`who`）的說話者是舞台上的演員時，字幕條不顯示、改成他頭旁邊的氣泡（語音、字幕語言、「字幕不顯示」照舊；`bub`＝相對臉的位移、`bubW` 寬、`bubSide`、`noBub`）；說話的演員對口型（語音的音量，沒有語音時模擬）。`bubble` 元素＝沒有語音的氣泡（`s`、`name`、`color`、`at`、`tail`、`w`）。
+  - `text`：狀聲詞與大字（`s`、`at`、`size`、`color`、`stroke`（null＝不描邊）、`font` sfx／title／mono、`al`、`rot`、`ls` 字距、`sub`）；`in: 'stamp'` 之後抖一下。
+  - `block`：PV 的色塊（`q`、`color`、`in: 'wipe'` 由左往右展開；`live` 也可以，例：`gco: 'multiply'`＋`flt: 'grayscale(1) contrast(14) brightness(1.5)'`＝把 3D 變成剪影乘上底色）。
+  - `art`：程式插畫（`render/cine-art.js`：office 夜裡的辦公室、desk 辦公桌與舊合照、cockpit 駕駛艙（擋風窗挖空透出 3D）、focus 集中線、speed 速度線）；第 2 期的場景插畫完成後換成產生的圖。
+  - `lines`：集中線／速度線（`kind`、`q`、`color`、`n`、`r`）。
+- 立繪在 `cinePlay` 等配樂時一起載入（`cine2dPreload`）。第 1 章開場（`data/cine/ch1-intro.js`）是第一段用它的劇本。
+
 ## 序章（`data/cine/prologue.js`，約 2 分 12 秒）
 
 | 時間 | 段落   | 內容                                                                                                                                                                                                                                                                                       |
 | ---- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 0:00 | 訊號   | 黑畫面、紅色波形、三張字卡                                                                                                                                                                                                                                                                 |
-| 0:13 | 軌道   | 行星（夜側的深脈紅色脈絡）、碎片帶、太陽能環、斜插的軌道電纜；機器文字「CYCLE ████ TERMINATED」                                                                                                                                                                                         |
+| 0:13 | 軌道   | 行星（夜側的深脈紅色脈絡）、碎片帶、太陽能環、斜插的軌道電纜；機器文字「CYCLE ████ TERMINATED」                                                                                                                                                                                            |
 | 0:22 | 軌道站 | 外殼的推軌、艙口的燈轉紅；軌道站語音「第 ██ 週期，終了」「投放程序，開始」                                                                                                                                                                                                                 |
 | 0:30 | 投放   | 夾爪鬆開、推進器點火；「投放座標：南部荒野」                                                                                                                                                                                                                                               |
 | 0:34 | 墜落   | 從上方看空降艙墜向雲層                                                                                                                                                                                                                                                                     |
@@ -48,13 +66,14 @@
 | 1:09 | 甦醒   | 駕駛艙開機（HUD 逐塊亮起）→ 墜落現場、機體站起來；ECHO 第一次通訊                                                                                                                                                                                                                          |
 | 1:18 | 蒙太奇 | 水壩（MT 部隊、SLUICE）→ 夜間鐵路（武裝列車 IRON CITADEL）→ 冰原（巨型鑽地蟲；SPECIMEN 的追尾視角對射：右肩後方的鏡頭、鎖定框與 HUD、快速推進閃避、導彈命中的慢動作與失衡）；越剪越快、閃白轉場                                                                                            |
 | 1:45 | ZENITH | 黑畫面後紅色天空下的 ZENITH 特寫（配樂換成鋼琴的 ident）                                                                                                                                                                                                                                   |
-| 1:59 | 收尾   | 紅色天空下的剪影、Logo「MECH CORDON」、ECHO「照你的節奏來」                                                                                                                                                                                                                           |
+| 1:59 | 收尾   | 紅色天空下的剪影、Logo「MECH CORDON」、ECHO「照你的節奏來」                                                                                                                                                                                                                                |
 
 周目差別（`TXT`）：字卡、機器文字、開機的登錄號、ECHO 與 ZENITH 的台詞、最後一句（第 2 周目沒有「照你的節奏來」，改成旁白；第 3 周目「這一次，照我們的節奏來」）。
 
 ## 各章開場／章末與抉擇演出（`data/cine/ch1.js`～`ch6.js`、`kit.js`）
 
 - **第二版（每章一種導演風格，`docs/cinematics-storyboard.md`）**：第 1 章西部對決、第 2 章分割畫面、第 3 章恐怖片（監視器、熱感應）、第 4 章垂直一鏡到底＋倒數、第 5 章電視牆與新聞轉播、第 6 章寂靜與駕駛艙視角；各章配樂 `cine_c1`～`cine_c6`（2026-11-06 起是多種樂器合奏的曲子：Alex-Productions「Hearts Of Iron」「Reset」、Alexander Nakarada「Curiosity」、Punch Deck「100 Seconds」、Scott Buckley「Hyperion」「Aphelion」，CC-BY；以前的 Kevin MacLeod 使用者覺得像 MIDI。`scripts/cine-music-prep.py` 從原曲剪一段，劇本的 `off` 從那一段的開頭算；第 6 章的最後的抉擇（`cine_tension`）、交出、墜落（`cine_c6` 的後段）也補上配樂，所有過場動畫都有配樂）。各章專用的效果在 `game/cine-c<章>.js`（Game 的 mixin，名稱以 `c<章>` 開頭）：鏡頭的 `hook`（`cineHook_<名稱>(S, phase, lt, dt)`，phase＝enter／tick／exit；換鏡、`cineSeek` 與結束時呼叫 exit，掛勾建的東西放進 `set.extra` 或在 exit 清掉）、`ov`（字串或陣列，`cineOv_<名稱>(x, W, H, lt, S)` 畫在疊加畫布）、`render`（`cineRender_<名稱>(S, lt, dt)` 取代這一格的 renderMain：第 2 章的分割畫面 `c2split` 以 scissor 畫兩次、第 5 章的電視牆以多個 RenderTarget 合成）。演員的蹲低／站起（`crouch`、`rise`）每格先拿掉上一格加的量，所以暫停時不會累加。
+- **第 1 章開場**（過場改版第 1 期，`data/cine/ch1-intro.js`，約 86 秒）：照 docs/cine-redesign-design.md 第 0 期的分鏡台本——赭紅單色＋網點的天線（固定插畫的代替）→ 一頁三格的動態漫畫（砲台、車隊被炸、工人的剪影，3D 進格子後定格、「轟」）→ 夜裡辦公室的對話分格（霍斯特看錶／抱胸／3/4 側面對 ECHO／指人／算計，ECHO 從右邊斜切的格子加入，氣泡）→ 霍斯特一個人摸後頸的暗橘單色插畫 → 3D 機甲（突擊推進、BASTILLE 的砲擊預警、快速推進、駕駛艙裡 ECHO 的全像、反白線稿的衝擊畫格）→ PV 式章名卡（赭紅與黑的色塊、BASTILLE 的剪影）。舊的西部對決版（OXIDE 的對決）已經拿掉（git 歷史裡有）。
 - 每章的專屬分鏡在 `ch<章>.js`（`chapters.js` 的 `BESPOKE`；沒有專屬分鏡的才用下面的模板）。鏡頭組件 `kit.js`：`timeline`（同一張地圖連續的鏡頭自動移除上一鏡的演員，`keep` 保留）、`black` 黑底字卡／機器文字、`vista` 空景（crane／pan／push／fly／low）、`comm` 通訊分割（`ov: 'comm'`：左側徽章、名字、聲紋；`badge` 讓旁白也掛委託方）、`rival` 宿敵登場、`boss` Boss 登場、`hero` 主角（walk／boost／hover／kneel）、`shootout` 追尾視角對射兩鏡（`ov: 'lock'`）、`chapterCard`、`cut` 代價快切、`choicePre`／`choicePost` 抉擇演出。
 - 抉擇演出：鍵 `x_<抉擇>_pre`（選前，`cinePlay(..., { live: true })`：場景 `{ k: 'live' }`＝目前的戰場，原點與演員 `player`＝玩家，`{ ex: i }`＝第 i 個出口，`ov: 'choice'` 畫倒數條與出口名牌；模擬暫停，播完回到原本的 state）、`x_<抉擇>_<選項>`（選後的代價蒙太奇，播完到轉場畫面）。接在 `campaign.js` 的 `campChoiceCine`（抉擇出口出現時、`campLeave`）；多人、劇情動畫關閉時不播。
 

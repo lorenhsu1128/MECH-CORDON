@@ -22550,6 +22550,51 @@ async function testCine(browser, base) {
   await page.keyboard.up('Escape');
   const sk = await page.evaluate(() => ({ cine: !!window.__game.cine, state: window.__game.state }));
   check(!sk.cine, '長按 Esc 略過過場動畫');
+  // 2D 舞台（過場改版第 1 期，game/cine-2d.js）：第 1 章開場的漫畫頁（3D 進格子、定格）與對話分格（立繪演員、氣泡）
+  await page.evaluate(() => {
+    const g = window.__game;
+    g.cineTest = 1;
+    g.cinePlay('i1_1', () => {}, { at: 10 });
+  });
+  await page.waitForFunction(() => window.__game.cine && window.__game.cine.started, null, {
+    timeout: 30000,
+  });
+  await page.waitForFunction(() => window.__game.cine.t > 16.4, null, { timeout: 30000 });
+  const page2d = await page.evaluate(() => {
+    const c = window.__game.cine;
+    return { st: !!c.def.shots[c.shot].st, snaps: c.s2 ? c.s2.snap.size : 0, page: c.s2 && c.s2.page };
+  });
+  await page.screenshot({ path: path.join(SHOT_DIR, 'cine-2d-page.png') });
+  check(
+    page2d.st && page2d.page === 'c1page' && page2d.snaps >= 1,
+    `2D 舞台：漫畫頁的格子（第一格的 3D 已定格：${page2d.snaps} 格）`,
+  );
+  await page.evaluate(() => window.__game.cineSeek(35.5));
+  await page.waitForFunction(() => window.__game.cine && window.__game.cine.t > 37.2, null, {
+    timeout: 30000,
+  });
+  const talk = await page.evaluate(() => {
+    const c = window.__game.cine;
+    const acts = c.s2 ? [...c.s2.act.values()] : [];
+    const cv = document.getElementById('cine2d');
+    const px = cv.getContext('2d').getImageData(cv.width >> 1, cv.height >> 1, 1, 1).data[3];
+    return {
+      who: acts.filter((a) => a.P).map((a) => a.who),
+      bub: c.bub && c.bub.who,
+      sub: document.getElementById('cineSub').classList.contains('on'),
+      px,
+    };
+  });
+  await page.screenshot({ path: path.join(SHOT_DIR, 'cine-2d-talk.png') });
+  check(
+    talk.who.includes('castron') &&
+      talk.who.includes('echo') &&
+      talk.bub === 'echo' &&
+      !talk.sub &&
+      talk.px > 0,
+    `2D 舞台：對話分格的立繪演員（${talk.who.join('、')}）、說話的人的氣泡取代字幕條（${talk.bub}）`,
+  );
+  await page.evaluate(() => window.__game.cineEnd(true));
   // 故事畫面：第一次進作戰室播序章的過場動畫；略過時改顯示序章的文字畫面，之後接第 1 章開場的過場動畫
   await page.evaluate(() => {
     const g = window.__game;
