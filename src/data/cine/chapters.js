@@ -3,6 +3,7 @@
 import { ch1Intro } from './ch1-intro.js';
 import { chapterFilm } from './chfilm.js';
 import { ch2Intro, ch2Outro } from './ch2-anime.js';
+import { ch3Intro } from './ch3-anime.js';
 
 // kind：'intro'｜'outro'
 export function chapterCine(ch, kind, ctx) {
@@ -10,5 +11,6 @@ export function chapterCine(ch, kind, ctx) {
   // 3D 動畫化（docs/cine-redesign-design.md 第十節）：做好的章換成新的
   if (ch === 2 && kind === 'intro') return ch2Intro(ctx);
   if (ch === 2 && kind === 'outro') return ch2Outro(ctx);
+  if (ch === 3 && kind === 'intro') return ch3Intro(ctx);
   return chapterFilm(ch, kind, ctx);
 }

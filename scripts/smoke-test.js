@@ -22717,9 +22717,8 @@ async function testCine(browser, base) {
   const talks = await page.evaluate(() => {
     const C = window.__CINES;
     // 3D 動畫化做好的章（docs/cine-redesign-design.md 第十節）不在這裡，下面另外檢查
-    const ANIME = ['i1_2', 'o1_2'];
+    const ANIME = ['i1_2', 'o1_2', 'i1_3'];
     const keys = ['o1_1', 'o1_3', 'o1_4', 'o1_5', 'o1_6', 'o1_7'].concat([
-      'i1_3',
       'i1_4',
       'i1_5',
       'i1_6',
@@ -22772,11 +22771,11 @@ async function testCine(browser, base) {
     };
   });
   check(
-    talks.n === 12 &&
-      talks.anime === 2 &&
+    talks.n === 11 &&
+      talks.anime === 3 &&
       talks.c2.join() === 'castron,aetheric' &&
       talks.c4.join() === 'veerwell,sancta',
-    `各章重製：12 段新格式（${talks.n}）、2 段 3D 動畫化（${talks.anime}：3D 場景、委託方的室內、疊在 3D 上的格子）、第 2／4 章章末依抉擇換人（${talks.c2.join('、')}／${talks.c4.join('、')}）`,
+    `各章重製：11 段新格式（${talks.n}）、3 段 3D 動畫化（${talks.anime}：3D 場景、委託方的室內、疊在 3D 上的格子）、第 2／4 章章末依抉擇換人（${talks.c2.join('、')}／${talks.c4.join('、')}）`,
   );
   // 記憶片段與真結局（過場改版第 10 期，data/cine/memory.js）：雙色調的 2D 短片；選後的最後是代價的漫畫頁
   const mem = await page.evaluate(() => {

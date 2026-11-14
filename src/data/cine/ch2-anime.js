@@ -21,6 +21,7 @@ import {
   SPEED,
   faceY,
   placeLines,
+  dropAll,
 } from './anime.js';
 
 const ORANGE = '#d8903a',
@@ -739,6 +740,7 @@ export function ch2Intro(ctx) {
     [TALK0 + 23.3, TK[3][1], 5, TK[3][0]],
     [TALK0 + 29.2, T0[4], 5.2, null],
   ]);
+  dropAll(T);
   return T.def({
     title: '第二章　開場',
     music: [{ at: 0, track: 'cine_c2', vol: 0.8, fadeIn: 1, fadeOut: [T.at - 2.5, 2.5] }],
@@ -1105,6 +1107,7 @@ export function ch2Outro(ctx) {
     [46.2, T0[5], 3.2, 'echo'],
     [49.6, T0[6], 5, null],
   ]);
+  dropAll(T);
   return T.def({
     title: '第二章　章末',
     music: [{ at: 0, track: 'cine_c2', off: 60, vol: 0.8, fadeIn: 1, fadeOut: [T.at - 3, 3] }],
