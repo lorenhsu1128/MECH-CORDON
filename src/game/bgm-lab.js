@@ -84,7 +84,11 @@ Object.assign(Game.prototype, {
     if (B.idx) return this.blabRender();
     $('blList').innerHTML = '<p class="dim">載入試聽曲（約 28 MB）…</p>';
     if (!this.blabLoading)
-      this.blabLoading = loadScript('lib/bgm-audition.js', () => !!window.MECH_CORDON_BGM_AUD).then((ok) => {
+      // 伺服器給 lib/ 的檔案 1 小時快取：試聽曲常常更新（AI 配樂），從伺服器開時網址帶時間、一律拿最新的
+      this.blabLoading = loadScript(
+        'lib/bgm-audition.js' + (location.protocol.startsWith('http') ? '?t=' + Date.now() : ''),
+        () => !!window.MECH_CORDON_BGM_AUD,
+      ).then((ok) => {
         this.blabLoading = null;
         return ok;
       });
