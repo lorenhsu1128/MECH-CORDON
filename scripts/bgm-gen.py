@@ -30,6 +30,9 @@ C = bgm_songs.common()
 
 DIT = os.environ.get('BGM_DIT', 'acestep-v15-sft')
 LM = os.environ.get('BGM_LM', 'acestep-5Hz-lm-1.7B')
+# 用不到的模型移回主記憶體（ACE-Step 的 gpu_config 對 16 GB 以下的顯示卡預設開）：不開時 12 GB 的卡擠不下、
+# 溢出到共用記憶體，每首慢一倍（2026-11-14 RTX 4070：120 秒的歌 110 → 240 秒）。只搬位置，結果不變。BGM_OFFLOAD=0/1 強制
+OFFLOAD = os.environ.get('BGM_OFFLOAD')
 DUR = {'theme': 150}  # 其他 120 秒
 COVER_CALM = 0.4  # 平時版的 cover 強度（越小越自由）
 
@@ -59,12 +62,17 @@ def init():
     from acestep.handler import AceStepHandler
     from acestep.llm_inference import LLMHandler
 
+    import torch
+
     ck = prep()
+    off = OFFLOAD == '1' if OFFLOAD in ('0', '1') else torch.cuda.get_device_properties(0).total_memory < 16 * 1024**3
+    print('模型移回主記憶體：', off, flush=True)
     dit = AceStepHandler()
-    msg, ok = dit.initialize_service(project_root=os.path.join(ACE, 'src'), config_path=DIT, device='cuda')
+    msg, ok = dit.initialize_service(project_root=os.path.join(ACE, 'src'), config_path=DIT, device='cuda',
+                                     offload_to_cpu=off)
     print('DiT：', ok, msg[:200], flush=True)
     lm = LLMHandler()
-    msg, ok = lm.initialize(checkpoint_dir=str(ck), lm_model_path=LM, backend='pt', device='cuda')
+    msg, ok = lm.initialize(checkpoint_dir=str(ck), lm_model_path=LM, backend='pt', device='cuda', offload_to_cpu=off)
     print('LM：', ok, msg[:200], flush=True)
     return dit, lm
 
@@ -76,6 +84,8 @@ def run(dit, lm, out, name, meta, **kw):
     wav = os.path.join(out, name + '.wav')
     if os.path.exists(wav):
         return wav
+    if os.path.exists(os.path.join(out, name + '.dropped')):
+        return None  # 低分刪掉的候選：同一個種子會產生一樣的歌，不重做（重做用新的編號 --i0）
     seed = kw.pop('seed')
     sft = 'turbo' not in DIT
     p = GenerationParams(
