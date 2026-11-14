@@ -5,7 +5,20 @@ import { CHAPTER_TEXT, pickLines } from '../story.js';
 import { snapBeat } from './beats.js';
 import { W, timeline } from './kit.js';
 import { TALKS } from './talks.js';
-import { ACT, FOCUS, LIVE, LOC, PANEL, ROOM_GRADE, SPEED, faceY, placeLines, dropAll } from './anime.js';
+import {
+  ACT,
+  FOCUS,
+  LIVE,
+  LOC,
+  OFFICE,
+  PANEL,
+  PARKED,
+  ROOM_GRADE,
+  SPEED,
+  dropAll,
+  faceY,
+  placeLines,
+} from './anime.js';
 
 const ICE = '#8ec8f0';
 // 白天的暴風雪（冰原）
@@ -49,6 +62,14 @@ const STG = {
   tintLoK: 0.45,
 };
 const NORA = (o) => ACT('sancta', o);
+const HORST = (o) => ACT('castron', o);
+const SAKKI = (o) => ACT('aetheric', o);
+const OFFG = { ...ROOM_GRADE, tintHi: '#ffb070', tintHiK: 0.4, tintLo: '#101826', tintLoK: 0.5 };
+// 駕駛艙（擋風窗外是 3D）＋ECHO 的全像
+const COCKPIT = (pose, s) => [
+  { k: 'art', art: 'cockpit', q: [-40, -20, 1680, 940] },
+  { k: 'actor', who: 'echo', pose, at: [1360, 1060], h: 740, in: 'fade', holo: '#7fc8ff', noBub: true, s },
+];
 
 export function ch3Intro(ctx) {
   const T0 = pickLines(CHAPTER_TEXT[3].intro, (ctx && ctx.choices) || {});
@@ -524,5 +545,349 @@ export function ch3Intro(ctx) {
   return T.def({
     title: '第三章　開場',
     music: [{ at: 0, track: 'cine_c3', vol: 0.8, fadeIn: 1, fadeOut: [T.at - 2.5, 2.5] }],
+  });
+}
+
+// ---------- 章末：研究所熄燈、塗掉名字的檔案、軌道站的座標、維爾威先飛 ----------
+// 場景：研究特區（institute，地下）、維爾威的調度室（room veerwell，render/cine-veerwell.js）、霍斯特的辦公室
+const INST = W('institute', { seed: 6321, clear: 12 });
+const DISPATCH = {
+  k: 'room',
+  kind: 'veerwell',
+  sky: 0x040810,
+  key: 0xe0f0ff,
+  keyI: 1.2,
+  hemi: 0xa0b0c0,
+  hemiG: 0x505050,
+  hemiI: 1.0,
+  far: 400,
+};
+const DSG = { ...ROOM_GRADE, temp: 0.55, tintHi: '#c8ffd0', tintHiK: 0.25, tintLo: '#081018', tintLoK: 0.5 };
+const INSTG = {
+  sunAz: 150,
+  sunEl: 50,
+  temp: 0.6,
+  contrast: 1.35,
+  sat: 0.55,
+  tintHi: '#c0e0ff',
+  tintHiK: 0.3,
+  tintLo: '#06080e',
+  tintLoK: 0.55,
+  grain: 0.4,
+  vignette: 0.65,
+  exposure: 0.85,
+  bloom: 1.2,
+};
+const PIKE = (o) => ACT('veerwell', o);
+// 熄燈：黑色的塊一段一段疊上去
+const DARKEN = (ts) =>
+  ts.map((t0) => ({
+    k: 'block',
+    q: [-200, -200, 2000, 1300],
+    color: '#000',
+    a: 0.28,
+    t0,
+    in: 'fade',
+    ind: 0.15,
+  }));
+
+export function ch3Outro(ctx) {
+  const T0 = pickLines(CHAPTER_TEXT[3].outro, (ctx && ctx.choices) || {});
+  const TK = TALKS.outro_3.lines;
+  const T = timeline();
+  // 研究所的燈一盞一盞熄滅
+  T.add(
+    {
+      set: INST,
+      grade: INSTG,
+      lb: false,
+      fi: 1,
+      st: { els: DARKEN([2.0, 3.0, 4.0]) },
+      cam: {
+        fov: 46,
+        ease: 'lin',
+        keys: [
+          { t: 0, p: { g: [-10, 12], h: 3 }, l: { g: [6, -10], h: 2 } },
+          { t: 6, p: { g: [-8, 10], h: 3.2 }, l: { g: [6, -10], h: 2.2 } },
+        ],
+      },
+      ev: [
+        { t: 2.0, sfx: 'thud1', vol: 0.3, rate: 0.5 },
+        { t: 3.0, sfx: 'thud1', vol: 0.3, rate: 0.45 },
+        { t: 4.0, sfx: 'thud1', vol: 0.3, rate: 0.4 },
+      ],
+    },
+    6,
+  );
+  // 名字被塗掉的檔案 → 週期的數字（紅）
+  T.add(
+    {
+      set: INST,
+      grade: { ...INSTG, exposure: 0.5 },
+      lb: false,
+      st: {
+        els: [
+          PANEL(
+            [
+              [380, 100],
+              [1220, 100],
+              [1220, 800],
+              [380, 800],
+            ],
+            {
+              img: 'c3/c3o_file',
+              in: 'fade',
+              ind: 0.6,
+              dots: 0.25,
+              tone: '#7a8aa0',
+              kb: [
+                { t: 0, z: 1.05 },
+                { t: 13, z: 1.3 },
+              ],
+            },
+          ),
+          {
+            k: 'text',
+            s: 'NAME: ████████████',
+            at: [800, 760],
+            size: 34,
+            font: 'mono',
+            color: '#e8eef6',
+            stroke: '#000',
+            sw: 4,
+            t0: 1.6,
+            in: 'fade',
+            ls: 4,
+          },
+          {
+            k: 'block',
+            q: [380, 100, 840, 700],
+            color: '#a02818',
+            a: 0.55,
+            gco: 'multiply',
+            t0: 6.2,
+            in: 'fade',
+            ind: 0.3,
+          },
+          {
+            k: 'text',
+            s: 'CYCLE: 1,0██,7██',
+            at: [800, 470],
+            size: 72,
+            font: 'mono',
+            color: '#ff5a3a',
+            stroke: '#200000',
+            sw: 6,
+            t0: 6.6,
+            in: 'stamp',
+            ls: 6,
+          },
+        ],
+      },
+      cam: { fov: 40, keys: [{ t: 0, p: { g: [-4, 6], h: 2 }, l: { g: [4, -6], h: 2 } }] },
+      ev: [
+        { t: 0.2, sfx: 'glitch', vol: 0.3, rate: 0.7 },
+        { t: 6.6, sfx: 'glitch', vol: 0.45, rate: 0.5 },
+        { t: 6.65, shake: 0.25 },
+      ],
+    },
+    13,
+  );
+  // 調度室的顯示牆：軌道站的座標
+  T.add(
+    {
+      set: DISPATCH,
+      grade: DSG,
+      lb: false,
+      fi: 0.2,
+      cam: {
+        fov: 46,
+        ease: 'lin',
+        keys: [
+          { t: 0, p: [0.5, 1.6, -0.6], l: [0.6, 1.9, 4.5] },
+          { t: 6, p: [0.7, 1.7, 1.4], l: [1.2, 2.2, 4.5], fov: 36 },
+        ],
+      },
+    },
+    6,
+  );
+  // 卡斯特隆（窗邊、背對）＋艾瑟立克（薩奇的格子）：沒有任何反應
+  T.add(
+    {
+      set: OFFICE,
+      grade: OFFG,
+      lb: false,
+      actors: [PARKED('stevedore')],
+      st: {
+        els: [
+          HORST({ pose: 'p7', at: [600, 1240], h: 1180, dim: 0.3 }),
+          PANEL(
+            [
+              [1060, 80],
+              [1540, 80],
+              [1540, 820],
+              [1000, 820],
+            ],
+            {
+              t0: 2.2,
+              fill: '#061420',
+              kids: [SAKKI({ pose: 'p9', at: [1290, 1320], h: 1300, in: null, dim: 0.2 })],
+            },
+          ),
+        ],
+      },
+      cam: {
+        fov: 42,
+        dof: 1,
+        focus: 1.4,
+        range: 0.7,
+        ease: 'lin',
+        keys: [
+          { t: 0, p: [-1.8, 1.7, 2.6], l: [1.6, 2.6, -8] },
+          { t: 6, p: [-1.4, 1.7, 2.0], l: [1.6, 2.8, -8] },
+        ],
+      },
+    },
+    6,
+  );
+  // 維爾威的運輸機往北飛：調度室的窗外＋往北走的難民的格子
+  T.add(
+    {
+      set: DISPATCH,
+      grade: DSG,
+      lb: false,
+      st: {
+        els: [
+          PANEL(
+            [
+              [60, 470],
+              [640, 470],
+              [600, 850],
+              [60, 850],
+            ],
+            { img: 'cx/x2_refugees', t0: 3.2, in: 'left', dots: 0.3, tone: '#6080a0' },
+          ),
+        ],
+      },
+      cam: {
+        fov: 56,
+        ease: 'lin',
+        keys: [
+          { t: 0, p: [1.5, 1.6, -3.0], l: [-1, 1.4, -12] },
+          { t: 9, p: [1.2, 1.65, -3.4], l: [-1.5, 1.8, -12] },
+        ],
+      },
+      ev: [{ t: 0.5, sfx: 'boostUp', vol: 0.35, rate: 0.5 }],
+    },
+    9,
+  );
+  // 派克（調度室，景深）
+  const TALK0 = T.at;
+  T.add(
+    {
+      set: DISPATCH,
+      grade: DSG,
+      lb: false,
+      st: { els: [PIKE({ pose: 'p3', at: [560, 1240], h: 1180 })] }, // p1 的立繪帶著沒去掉的背景（之後重新產生）
+      cam: {
+        fov: 42,
+        dof: 1,
+        focus: 1.2,
+        range: 0.6,
+        ease: 'lin',
+        keys: [
+          { t: 0, p: [1.6, 1.65, 3.4], l: [-0.8, 1.3, -5] },
+          { t: 6, p: [1.1, 1.65, 2.6], l: [-0.8, 1.3, -5] },
+        ],
+      },
+    },
+    6,
+  );
+  // ECHO（駕駛艙，擋風窗外是研究特區）
+  T.add(
+    {
+      set: INST,
+      grade: INSTG,
+      lb: false,
+      actors: [{ id: 'hc', k: 'hero', p: [0, 8], yaw: 180 }],
+      st: { els: COCKPIT('p3') },
+      cam: {
+        fov: 62,
+        hand: 0.03,
+        keys: [
+          { t: 0, p: { a: 'hc', at: 'head', o: [0, 0.4, 0] }, l: { g: [0, -20], h: 3 } },
+          { t: 4.5, p: { a: 'hc', at: 'head', o: [0, 0.4, 0] }, l: { g: [2, -20], h: 3.2 } },
+        ],
+      },
+      ev: [{ t: 0.05, sfx: 'glitch', vol: 0.3, rate: 0.9 }],
+    },
+    4.5,
+  );
+  // 派克的近景（變焦衝擊）
+  T.add(
+    {
+      set: DISPATCH,
+      grade: { ...DSG, contrast: 1.36 },
+      lb: false,
+      st: {
+        els: [
+          PIKE({ pose: 'p9', at: [720, 1820], h: 1900, in: null }),
+          FOCUS(0, 0.35, 'rgba(200,255,200,0.3)'),
+        ],
+      },
+      cam: {
+        fov: 34,
+        dof: 1,
+        focus: 0.9,
+        range: 0.4,
+        ease: 'out',
+        keys: [
+          { t: 0, p: [0.9, 1.6, 1.8], l: [-1.4, 1.4, -5], fov: 40 },
+          { t: 0.35, p: [0.9, 1.6, 1.5], l: [-1.4, 1.4, -5], fov: 30 },
+          { t: 4.5, p: [0.85, 1.6, 1.35], l: [-1.4, 1.42, -5], fov: 29 },
+        ],
+      },
+    },
+    4.5,
+  );
+  // ECHO 的三句（駕駛艙）、淡出
+  T.add(
+    {
+      set: INST,
+      grade: { ...INSTG, exposure: 0.75 },
+      lb: false,
+      fo: 1.5,
+      actors: [{ id: 'hc2', k: 'hero', p: [0, 8], yaw: 180, s: [{ t: 0, lower: true }] }],
+      st: { els: COCKPIT('p8', [{ t: 9, pose: 'p9' }]) },
+      cam: {
+        fov: 62,
+        hand: 0.03,
+        keys: [
+          { t: 0, p: { a: 'hc2', at: 'head', o: [0, 0.4, 0] }, l: { g: [-2, -20], h: 3 } },
+          { t: 17, p: { a: 'hc2', at: 'head', o: [0, 0.4, 0] }, l: { g: [-4, -20], h: 2.6 } },
+        ],
+      },
+    },
+    17,
+  );
+
+  placeLines(T, [
+    [0.8, T0[0], 4.8, null],
+    [6.4, T0[1], 5.4, null],
+    [12.6, T0[2], 6, null],
+    [19.4, T0[3], 5.4, null],
+    [25.4, T0[4], 5.4, null],
+    [31.4, T0[5], 8.4, null],
+    [TALK0 + 0.4, TK[0][1], 5.4, TK[0][0]],
+    [TALK0 + 6.3, TK[1][1], 4.0, TK[1][0]],
+    [TALK0 + 10.8, TK[2][1], 4.0, TK[2][0]],
+    [TALK0 + 15.2, TK[3][1], 3.6, TK[3][0]],
+    [TALK0 + 19.6, T0[6], 5.4, 'echo'],
+    [TALK0 + 26.0, T0[7], 4.0, 'echo'],
+  ]);
+  dropAll(T);
+  return T.def({
+    title: '第三章　章末',
+    music: [{ at: 0, track: 'cine_suspense', vol: 0.8, fadeIn: 1, fadeOut: [T.at - 3, 3] }],
   });
 }
