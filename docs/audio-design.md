@@ -228,7 +228,7 @@
 - 模型：**ACE-Step 1.5**（MIT，模型說明寫明產出可以商用；會唱歌詞；12 GB 顯示卡跑 2B 的 sft＋1.7B 語言模型，每首 120 秒約 2.5 分鐘）。比較過 Stable Audio 3（純配樂、不會唱）、Magenta RealTime 2（即時伴奏）、YuE／DiffRhythm（流行歌）、MusicGen／LeVo 2（不能商用）。不拿任何既有的歌曲或原聲帶訓練 LoRA（侵權疑慮），只用曲風描述。
 - **定案（2026-11-14 使用者）**：人聲是**日文的空靈女聲**，兩種聲線參考超時空要塞 F 的兩位女主角（只描述聲線特徵，不用她們的錄音或名字）：歌姬型（有力、低音帶沙啞的搖滾天后）與少女型（清亮、甜、高音、透明感），二重唱；**每章一首主題歌、每章每種區段類型各一首**（第 1 章 12、第 2 章 13、第 3 章 14、第 4～6 章 15（多空戰）、第 7、8 章 14，共 112 首）；人聲照建議（平時版只有哼唱、交戰版唱主歌與副歌）；**Boss 的最終型態切到這一章主題歌的副歌**（超時空要塞式）；歌詞由開發者寫（日文、主歌每句句尾押同一個韻、副歌兩兩押韻），劇情上這些歌是 ECHO 從軌道站送到地面的「訊號」，各章的主題歌照劇情接下去（第 1 章「忘れても何度でも」→ 第 6 章的坦白「ずっと騙してた」→ 第 8 章二重唱「もう忘れない」）；挑歌由開發者用數據挑（使用者不逐一聽）。
 - 參考動漫歌曲的寫法（不模仿任何既有的旋律或歌手）：主歌 → 導歌 → 副歌、王道進行（IV–V–iii–vi）的苦甜感、最後一次副歌前升調、副歌的記憶點重複兩次。
-- **歌曲設定**：`scripts/bgm_songs/common.py`（共同曲風 `BASE`、聲線 `VOICE`、各類型的編曲 `ARR`、平時版 `CALM`、各章的音色 `PALETTE`、各類型的聲線 `VOICE_OF` 與速度 `BPM_OF`；描述最多 512 字）、`c<章>.py`（調、每首的日文歌名、中文名、歌詞，可以覆寫 voice／bpm／key）。日文發音的測試：漢字與全假名的歌詞吻合度差不多（0.93／0.92），所以歌詞直接寫漢字。
+- **歌曲設定**（JSON，Python 與伺服器共用；`scripts/bgm_songs/__init__.py` 讀）：`scripts/bgm_songs/common.json`（共同曲風 `BASE`、聲線 `VOICE`、各類型的編曲 `ARR`、平時版 `CALM`、各章的音色 `PALETTE`、各類型的聲線 `VOICE_OF` 與速度 `BPM_OF`；描述最多 512 字）、`c<章>.json`（調 `key`、`songs`＝每首的日文歌名、中文名、歌詞，可以覆寫 voice／bpm／key／arr／dur）。日文發音的測試：漢字與全假名的歌詞吻合度差不多（0.93／0.92），所以歌詞直接寫漢字。
 - 安裝：`npm run bgm:setup`（`scripts/bgm-setup.js`：ACE-Step 固定在 `REF` 這個 commit，clone 到 `tools/acestep/src/`、`uv sync --frozen`、模型下載到 `tools/acestep/checkpoints/`；評分環境 `tools/acestep/score-venv`（PyTorch 固定成同一個 CUDA 版：`uv run --with` 會把 PyTorch 換成 CPU 版）；整個 `tools/acestep/` 在 gitignore，其他電腦 pull 之後跑一次就能產生）。
 - **流程**：`npm run bgm:all -- [--from=1] [--to=8] [--n=2]`（`scripts/bgm-gen-run.js`）每章依序：
   1. `scripts/bgm-gen.py --stage=fight`：每首用文字產生 n 個交戰版候選 `tools/acestep/out/c<章>/<類型>__f<i>.wav`（補給、主題歌、Boss 只有這一版）。
@@ -238,3 +238,15 @@
   已經有的檔案都略過，中斷後重跑接著做；單獨的步驟 `npm run bgm:gen`／`bgm:score`／`bgm:pack`。顯示卡記憶體不夠時設 `BGM_DIT=acestep-v15-turbo`、`BGM_LM=acestep-5Hz-lm-0.6B`。
 - **建置與遊戲**：`scripts/build.js` 把每章寫成 `lib/bgm-c<章>.js`（`window.MECH_CORDON_BGM_C<章>`，約 25 MB），`game/bgm.js` 的 `bgmCtx` 決定章（主線＝出擊的章；其他依地圖主題對應 `REGIONS` 的章；空戰在第 4～6 章以外用第 5 章）與類型（主線＝目前區段、客機看 `campC.view.type`、其他＝battle／Boss 關 boss），`bgmLoadCh` 進任務時載入那一章；強度 0／1＝平時版（沒有平時版的用交戰版）、2＝交戰版、3＝Boss 曲、4＝Boss 最終型態（`bossPhase() >= 3`）＝主題歌從 `chorus` 開始；同一首的平時版↔交戰版從同一個位置接下去（`bgmAiPick`）；主線換區段類型時重新決定。沒有那一章的檔案或類型時用舊的配樂（`SETS`，`lib/bgm-assets.js`）。
 - 試聽：標題「工具與其他」的「AI 配樂試聽」（`openBgmLab(true)` → `blabAiRender`：選章、每首的交戰／平時／副歌、評分與備註，「複製評分」）；下面的「產生中的曲子」（`blabCandRender`）是 `scripts/bgm-preview.py` 每產生一首就寫進 `dist/lib/bgm-cand-c<章>.js` 的全部候選（不用重新建置、不進 git；`bgm:all` 會在背景一起跑，建置清掉後一分鐘內補回），標出挑中的與分數。原本的「配樂試聽」只列外部的候選曲。
+
+### 配樂產生器（2026-11-14）
+
+使用者：「這次配樂用到的功能請仔細轉成配樂產生器，放到工具選單內」。標題「工具與其他」的「配樂產生器」（`game/bgm-gen-ui.js`，state `bgmgen`，`#bgmGen`；只在從伺服器網址開啟時顯示），伺服器端 `server-bgmgen.js`（`/api/bgm/…`，只在開發模式：從專案執行 server.js、沒有設 `MECH_CORDON_MODELS_DIR`；其他情況回 `{ dev: false }`、畫面顯示說明）：
+
+- **狀態**（每 3 秒更新）：安裝了沒有（沒有時「安裝」＝`bgm-setup.js`）、顯示卡（`nvidia-smi`：記憶體、使用率）、目前的工作與經過時間、「停止」（整個程序樹）、工作記錄（`tools/acestep/job.log` 的最後 80 行，拿掉進度條與顏色）。
+- **工作**（同時只跑一個，`POST /api/bgm/run`）：一次跑完這章、從這章跑到第 8 章、產生候選（每首的候選數 1～4）、評分挑選、產生平時版、打包、建置；每首的「只產生這首」。工作結束時跑一次 `bgm-preview.py` 補齊試聽檔。
+- **每首歌**：歌名、聲線、速度、調、有沒有平時版、有沒有打包；每個候選的試聽（`GET /api/bgm/audio`＝`tools/acestep/preview/` 的 mp3）、分數（總分、歌詞吻合度、美感）、★ 挑中、「設為挑選」（`POST /api/bgm/pick`：換了挑選時刪掉舊的平時版）、「刪除」（`POST /api/bgm/drop`，確認視窗）；平時版的試聽。
+- **編輯**：一首歌的日文歌名、中文名、聲線、速度、調、長度、編曲（空白＝類型的預設）、歌詞，下面即時顯示送給模型的描述與字數（`PUT /api/bgm/song`，驗證後寫 `c<章>.json`）；「共用設定」直接編輯 `common.json` 的 JSON（`PUT /api/bgm/common`）。
+- 冒煙測試：`server` 步驟檢查非開發模式的伺服器回 `dev: false`、畫面顯示說明（產生要顯示卡，自動化測試不跑）。
+- 交接：`docs/bgm-handoff.md`（2026-11-14 這台暫停，改由 RTX 4070 的電腦接著產生）。
+

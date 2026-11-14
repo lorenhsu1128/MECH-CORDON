@@ -1,0 +1,79 @@
+{
+ "_doc": "第 8 章　方舟（移動要塞）：終點與起點、最後的抉擇、兩個聲音的二重唱（主題歌與 Boss 都是二重唱）。\n\nECHO 的訊號唱完整首：「忘れても何度でも」到這裡變成「もう忘れない」。宿敵：KEEL。",
+ "ch": 8,
+ "key": "D minor",
+ "songs": {
+  "theme": {
+   "title": "カノン・オブ・アーク",
+   "zh": "方舟的卡農",
+   "voice": "duet",
+   "lyrics": "[Intro - full orchestra and piano]\n\n[Verse 1]\n巡る時の 終わりの場所で\n同じ空を 見上げていた\n砂も雨も 雪も星も\n全部ここへ 繋がっていた\n\n[Pre-Chorus]\n何度 君を 失くしても\n何度 名前を 忘れても\n\n[Chorus]\n歌え 歌え 二つの声で\n届け 届け 最後の空へ\nもう忘れない 君のこと\nここから始まる 本当の明日\n\n[Verse 2]\n鋼の船が 海を渡る\n長い旅路の 終わりが見える\n\n[Pre-Chorus]\n何度 君を 失くしても\n何度 名前を 忘れても\n\n[Chorus]\n歌え 歌え 二つの声で\n届け 届け 最後の空へ\nもう忘れない 君のこと\nここから始まる 本当の明日\n\n[Bridge - duet harmony]\nありがとう 見つけてくれて\nありがとう 呼び続けてくれて\n\n[Final Chorus - key change]\n歌え 歌え 二つの声で\n届け 届け 最後の空へ\nもう忘れない 君のこと\nここから始まる 本当の明日\n\n[Outro]\nただいま おかえり"
+  },
+  "battle": {
+   "title": "アーク・ブレイカー",
+   "zh": "方舟破壞者",
+   "lyrics": "[Intro - full breakbeat and orchestra]\n\n[Verse 1]\n巨大な甲板 風が吠える\n砲火の雨が 空を焦がす\nすべての旅が ここに集まる\n最後の戦い 幕が上がる\n\n[Pre-Chorus]\n迷わない もう二度と\n止まらない この先も\n\n[Chorus]\n撃ち抜け 方舟の 心臓まで\n燃やせ 燃やせ 運命の 果てまで\n繰り返しは もういらない\nこの一瞬を 生き抜きたい\n\n[Instrumental Break - drum and bass drop]\n\n[Chorus]\n撃ち抜け 方舟の 心臓まで\n燃やせ 燃やせ 運命の 果てまで\n繰り返しは もういらない\nこの一瞬を 生き抜きたい\n\n[Outro]"
+  },
+  "front": {
+   "title": "最後の戦線",
+   "zh": "最後的戰線",
+   "lyrics": "[Intro - war drums and full choir]\n\n[Verse 1]\nすべての仲間 ここに並ぶ\n砂も海も 越えて来た\n旗を掲げて 甲板を進む\n最後の線を 今越える\n\n[Pre-Chorus]\n声を ひとつに 叫ぼう\n明日を この手で 掴もう\n\n[Chorus]\n進め 進め 方舟の先へ\n響け 響け 鬨の声高く\n倒れた旗も もう一度\n掲げて行こう 何度でも\n\n[Instrumental Break - choir]\n\n[Chorus]\n進め 進め 方舟の先へ\n響け 響け 鬨の声高く\n倒れた旗も もう一度\n掲げて行こう 何度でも\n\n[Outro - drums]"
+  },
+  "elite": {
+   "title": "竜骨",
+   "zh": "龍骨",
+   "lyrics": "[Intro - distorted guitar riff]\n\n[Verse 1]\n方舟の底 竜骨が軋む\n最後の番人 静かに笑む\n長い旅路の 意味を問う\n刃と刃で 答えを語る\n\n[Pre-Chorus]\n譲れない 最後の夢\n退けない 最後の道\n\n[Chorus]\n来いよ 最後の ライバル\n燃やし尽くせ 魂の ファイナル\n勝者だけが 明日へ行ける\n負けた夢まで 背負って駆ける\n\n[Guitar Solo]\n\n[Chorus]\n来いよ 最後の ライバル\n燃やし尽くせ 魂の ファイナル\n勝者だけが 明日へ行ける\n負けた夢まで 背負って駆ける\n\n[Outro - guitar]"
+  },
+  "destroy": {
+   "title": "動力炉停止",
+   "zh": "動力爐停止",
+   "lyrics": "[Intro - heavy bass and engines]\n\n[Verse 1]\n方舟の奥 炉が脈打つ\n巻き戻しの 歯車が回る\n永遠の檻 ここで終わる\n最後の鍵を この手で握る\n\n[Pre-Chorus]\n動力 停止 三 二 一\n\n[Chorus - drop]\n止めろ 止めろ 循環の炉を\n壊せ 壊せ 永遠の檻を\nもう二度と 戻さない\nこの世界を 終わらせない\n\n[Drop - heavy bass]\n\n[Chorus - drop]\n止めろ 止めろ 循環の炉を\n壊せ 壊せ 永遠の檻を\nもう二度と 戻さない\nこの世界を 終わらせない\n\n[Outro]"
+  },
+  "colossus": {
+   "title": "方舟の守護神",
+   "zh": "方舟守護神",
+   "lyrics": "[Intro - choir and taiko]\n\n[Verse 1]\n甲板を割って 巨神が立つ\n最後の扉 その身で塞ぐ\n鋼の拳 空を打つ\n世界の終わり 告げる鐘が鳴る\n\n[Pre-Chorus]\n怯むな ここまで来た\n心臓を 撃ち抜け\n\n[Chorus]\n倒れろ 倒れろ 最後の巨神\n止まれ 止まれ 運命の進軍\nどんなに 高い 壁だって\nこの手で 越えて 見せるって\n\n[Instrumental Break - choir and heavy bass]\n\n[Chorus]\n倒れろ 倒れろ 最後の巨神\n止まれ 止まれ 運命の進軍\nどんなに 高い 壁だって\nこの手で 越えて 見せるって\n\n[Outro - choir]"
+  },
+  "defend": {
+   "title": "帰る場所",
+   "zh": "歸處",
+   "lyrics": "[Intro - piano]\n\n[Verse 1]\n長い旅の 終わりの部屋で\nみんなの声を 数えて\n揺れる甲板 足で感じて\nそれでもここを 守っていて\n\n[Pre-Chorus]\n大丈夫 帰ってくる\nここが みんなの 帰る場所\n\n[Chorus]\n守りたい 守りたい この場所を\n離さない 離さない 繋いだ手を\nどんなに 遠く 離れても\n必ず 帰るよ 何度でも\n\n[Instrumental Break]\n\n[Chorus]\n守りたい 守りたい この場所を\n離さない 離さない 繋いだ手を\nどんなに 遠く 離れても\n必ず 帰るよ 何度でも\n\n[Outro]"
+  },
+  "escort": {
+   "title": "最後の積荷",
+   "zh": "最後的貨物",
+   "lyrics": "[Intro - funky bass]\n\n[Verse 1]\n最後の荷物 大事に抱いて\n甲板の上 ゆっくり歩いて\n砂も海も 思い出にして\n新しい朝へ 運んで\n\n[Pre-Chorus]\n歌いながら 行こう\nみんな一緒に 帰ろう\n\n[Chorus]\n運べ 運べ 未来の種を\n繋げ 繋げ 約束の糸を\n誰も 置いて 行かないで\n最後の 一歩まで 一緒にいて\n\n[Instrumental Break]\n\n[Chorus]\n運べ 運べ 未来の種を\n繋げ 繋げ 約束の糸を\n誰も 置いて 行かないで\n最後の 一歩まで 一緒にいて\n\n[Outro]"
+  },
+  "extract": {
+   "title": "離艦",
+   "zh": "離艦",
+   "lyrics": "[Intro - alarms and ticking hi-hats]\n\n[Verse 1]\n方舟が 傾き始める\n甲板の端 炎が迫る\n迎えの翼 空に見える\nあと少しだけ 踏みとどまる\n\n[Pre-Chorus]\n離艦まで あと少し\n\n[Chorus]\n跳んで 跳んで 光の中へ\n帰ろう 帰ろう みんなの空へ\n沈む 前に\n君の そばに\n\n[Instrumental Break]\n\n[Chorus]\n跳んで 跳んで 光の中へ\n帰ろう 帰ろう みんなの空へ\n沈む 前に\n君の そばに\n\n[Outro]"
+  },
+  "breakthrough": {
+   "title": "最終突破",
+   "zh": "最終突破",
+   "lyrics": "[Intro - fast drum and bass]\n\n[Hook]\n抜けろ 抜けろ 最後の扉\n走れ 走れ 明日の方へ\n\n[Instrumental]\n\n[Verse - chopped vocal]\nリミット 解除\n迷わず 行け\n\n[Hook]\n抜けろ 抜けろ 最後の扉\n走れ 走れ 明日の方へ\n\n[Drop]\n\n[Hook]\n抜けろ 抜けろ 最後の扉\n走れ 走れ 明日の方へ\n\n[Outro]"
+  },
+  "chase": {
+   "title": "終わりを追え",
+   "zh": "追向終點",
+   "lyrics": "[Intro - racing breakbeat]\n\n[Hook]\n逃がさない 最後の鍵を\n追いかけろ 終わりの先を\n\n[Verse - chopped vocal]\n全速 前進\n振り向くな\n\n[Instrumental]\n\n[Hook]\n逃がさない 最後の鍵を\n追いかけろ 終わりの先を\n\n[Drop - funk guitar]\n\n[Hook]\n逃がさない 最後の鍵を\n追いかけろ 終わりの先を\n\n[Outro]"
+  },
+  "intel": {
+   "title": "認証",
+   "zh": "認證",
+   "lyrics": "[Intro - rhodes piano and soft data noise]\n\n[Verse 1 - whispered]\n最後の端末 光が灯る\n君の名前を 静かに呼ぶ\n鍵はずっと 君だった\n私はずっと 待っていた\n\n[Chorus - breathy]\n選んで 選んで 最後の答え\n終わらせても 始めても\nどちらでも 君の味方\n最後まで そばにいるから\n\n[Instrumental]\n\n[Chorus - breathy]\n選んで 選んで 最後の答え\n終わらせても 始めても\nどちらでも 君の味方\n最後まで そばにいるから\n\n[Outro - whispered]"
+  },
+  "supply": {
+   "title": "旅の終わりの子守唄",
+   "zh": "旅途終點的搖籃曲",
+   "lyrics": "[Intro - soft piano]\n\n[Verse 1 - soft]\n甲板の上 寝転んで\n長い旅を 振り返って\n砂も雨も 雪も星も\n全部胸に しまって\n\n[Chorus - humming]\nラララ 旅の子守唄\nラララ 君と私の歌\n\n[Instrumental]\n\n[Chorus - humming]\nラララ 旅の子守唄\nラララ 君と私の歌\n\n[Outro - humming]"
+  },
+  "boss": {
+   "title": "終焉と開闢",
+   "zh": "終焉與開闢",
+   "voice": "duet",
+   "lyrics": "[Intro - full choir and orchestra]\n\n[Verse 1]\nすべての始まり すべての終わり\n巡る輪の 中心で\n最後の王が 待っている\n時の鎖を 握っている\n\n[Pre-Chorus]\n二つの声を 重ねて\n最後の空へ 歌って\n\n[Chorus]\n断ち切れ 断ち切れ 時の鎖を\n解き放て 解き放て 囚われた夢を\n終わりの先に 光がある\n二人なら 何度でも 歩いて行ける\n\n[Instrumental Break - choir and drum and bass]\n\n[Chorus]\n断ち切れ 断ち切れ 時の鎖を\n解き放て 解き放て 囚われた夢を\n終わりの先に 光がある\n二人なら 何度でも 歩いて行ける\n\n[Outro - choir]"
+  }
+ }
+}

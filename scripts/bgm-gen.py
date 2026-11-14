@@ -7,10 +7,10 @@
     （同一首、同速度與段落，編制變輕、人聲變哼唱：動態配樂換強度時從同一個位置交叉淡化）
   --prep 只下載模型。測試用：--tag=名稱（檔名加後綴）、--kana（歌詞換成全平假名）、--voice=girl|diva|duet、
   --ref=<音檔>（音色參考）。顯示卡的記憶體不夠時設 BGM_DIT=acestep-v15-turbo、BGM_LM=acestep-5Hz-lm-0.6B。
-歌曲的設定在 scripts/bgm_songs/（common.py 的聲線、編曲、音色；c<章>.py 的歌名、調、歌詞）。
+歌曲的設定在 scripts/bgm_songs/（common.json 的聲線、編曲、音色；c<章>.json 的歌名、調、歌詞），
+標題的「配樂產生器」（伺服器的 /api/bgm）也是編輯這些檔案、呼叫這支程式。
 已經有的檔案略過，所以中斷後重跑接著做。docs/audio-design.md 的「AI 配樂」。
 """
-import importlib
 import json
 import os
 import sys
@@ -23,7 +23,9 @@ os.environ.setdefault('ACESTEP_CHECKPOINTS_DIR', os.path.join(ACE, 'checkpoints'
 sys.path.insert(0, os.path.join(ACE, 'src'))
 sys.path.insert(0, os.path.dirname(__file__))
 
-from bgm_songs import common as C  # noqa: E402
+import bgm_songs  # noqa: E402
+
+C = bgm_songs.common()
 
 DIT = os.environ.get('BGM_DIT', 'acestep-v15-sft')
 LM = os.environ.get('BGM_LM', 'acestep-5Hz-lm-1.7B')
@@ -114,22 +116,22 @@ def to_kana(text):
 
 def song_spec(ch, mod, typ):
     """一首歌的產生參數：描述（編曲＋章的音色＋聲線＋共同曲風）、速度、調、歌詞"""
-    s = mod.SONGS[typ]
-    voice = s.get('voice', C.VOICE_OF[typ])
+    s = mod['songs'][typ]
+    voice = s.get('voice') or C['VOICE_OF'][typ]
     return dict(
         title=s['title'],
         zh=s['zh'],
         voice=voice,
-        bpm=s.get('bpm', C.BPM_OF[typ]),
-        key=s.get('key', mod.KEY),
-        arr=s.get('arr', C.ARR[typ]),
+        bpm=int(s.get('bpm') or C['BPM_OF'][typ]),
+        key=s.get('key') or mod['key'],
+        arr=s.get('arr') or C['ARR'][typ],
         lyrics=s['lyrics'],
         dur=s.get('dur', DUR.get(typ, 120)),
     )
 
 
 def caption_of(sp, ch, calm=False):
-    parts = [C.CALM if calm else sp['arr'], C.PALETTE[ch], C.VOICE[sp['voice']], C.BASE]
+    parts = [C['CALM'] if calm else sp['arr'], C['PALETTE'][ch], C['VOICE'][sp['voice']], C['BASE']]
     return ', '.join(parts)[:512]
 
 
@@ -142,8 +144,8 @@ def main():
     stage = opt.get('stage', 'fight')
     n = int(opt.get('n', 2))
     tag = ('_' + opt['tag']) if opt.get('tag') else ''
-    mod = importlib.import_module(f'bgm_songs.c{ch}')
-    want = opt['songs'].split(',') if opt.get('songs') else list(mod.SONGS)
+    mod = bgm_songs.chapter(ch)
+    want = opt['songs'].split(',') if opt.get('songs') else list(mod['songs'])
     out = os.path.join(OUT, f'c{ch}')
     os.makedirs(out, exist_ok=True)
     picks = {}

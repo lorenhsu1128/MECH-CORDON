@@ -560,6 +560,7 @@ export class Game {
       this.state === 'cinelib' ||
       this.state === 'voicelab' ||
       this.state === 'bgmlab' ||
+      this.state === 'bgmgen' ||
       this.state === 'campfail' ||
       this.state === 'rangemenu' ||
       this.state === 'levels' ||

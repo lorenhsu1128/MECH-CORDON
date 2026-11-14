@@ -31727,6 +31727,21 @@ async function testCharagen(game, page) {
     (await page.$eval('#btnCharagen', (b) => b.style.display)) === '',
     '從伺服器開啟時標題畫面有「角色產生器」按鈕',
   );
+  // 配樂產生器（server-bgmgen.js）：只在開發模式開放；測試的伺服器用 MECH_CORDON_MODELS_DIR，所以回 dev:false、畫面顯示說明
+  const bgs = await (await fetch(u + 'api/bgm/state')).json();
+  await titleTool(page, '#btnBgmGen');
+  await waitVisible(page, 'bgmGen');
+  const bgTxt = await page
+    .waitForFunction(() => /沒有開放/.test(document.getElementById('bgBody').textContent), null, {
+      timeout: 15000,
+    })
+    .then(
+      () => true,
+      () => false,
+    );
+  check(bgs.dev === false && bgTxt, '配樂產生器：非開發模式的伺服器回 dev:false、畫面顯示說明');
+  await page.click('#btnBgBack');
+  await waitVisible(page, 'title');
   const [cg] = await Promise.all([page.waitForEvent('popup'), titleTool(page, '#btnCharagen')]);
   watch(cg, 'charagen');
   await cg.waitForSelector('#roster button', { timeout: 15000 }).catch(() => {});

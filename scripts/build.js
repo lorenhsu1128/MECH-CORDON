@@ -217,6 +217,11 @@ function writeSounds() {
     path.join(LIB, 'bgm-ai.js'),
     `// AI 配樂有哪些章，由 scripts/build.js 產生\nwindow.MECH_CORDON_BGM_AI_CH = ${JSON.stringify(aiCh)};\n`,
   );
+  // 產生中的候選（scripts/bgm-preview.py 會覆寫）：先寫一個空的，AI 配樂試聽不會 404（這些檔案不進 git）
+  fs.writeFileSync(
+    path.join(LIB, 'bgm-cand.js'),
+    '// AI 配樂產生中的候選有哪些章（scripts/bgm-preview.py 覆寫）\nwindow.MECH_CORDON_BGM_CAND = {};\n',
+  );
   // ECHO 的語音：每個聲音一個檔案（src/assets/voice/<聲音>/ → lib/voice-<聲音>.js），只載入設定選的那個
   const vdir = path.join(SRC, 'assets', 'voice');
   if (fs.existsSync(vdir))

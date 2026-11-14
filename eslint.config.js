@@ -20,7 +20,7 @@ module.exports = [
     languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.browser } },
   },
   {
-    files: ['server-chargen.js'],
+    files: ['server-chargen.js', 'server-bgmgen.js'],
     languageOptions: { ecmaVersion: 2022, sourceType: 'commonjs', globals: { ...globals.node } },
   },
   {

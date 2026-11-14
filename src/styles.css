@@ -10646,3 +10646,83 @@ body.vpad #lockHint {
     max-width: calc(100vw - 380px);
   }
 }
+
+/* 配樂產生器（game/bgm-gen-ui.js） */
+.bgBox {
+  max-width: 1200px;
+}
+#bgTop {
+  margin: 6px 0;
+}
+.bgLine {
+  margin: 4px 0;
+  font-size: 13px;
+}
+.bgOk {
+  color: var(--acc);
+}
+.bgBad,
+.bgRun {
+  color: var(--org);
+}
+#bgLog {
+  max-height: 180px;
+  overflow: auto;
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 6px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+#bgOpts {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.bgSong {
+  padding: 8px 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.bgHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  font-size: 13px;
+}
+.bgCands {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 4px;
+  font-size: 12px;
+}
+.bgCand.on {
+  color: var(--acc);
+}
+.bgPlay.on {
+  color: var(--org);
+}
+.bgEditBox {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.bgEditBox textarea,
+.bgEditBox input {
+  width: 100%;
+  box-sizing: border-box;
+}
+.bgEditBox label {
+  display: block;
+  margin: 6px 0;
+  font-size: 12px;
+}
+.bgGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0 10px;
+}
+#bgeCap {
+  font-size: 11px;
+  margin: 4px 0;
+}
