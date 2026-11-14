@@ -3,6 +3,7 @@
 用法：python scripts/bgm-sync.py export|import [--ch=<章>]（評分環境 tools/acestep/score-venv；npm run bgm:sync -- export|import）
 - export：out/c<章>/ 的每個候選與平時版（<類型>__f<i>、<類型>__calm 的 wav＋json）轉成 320 kbps mp3 放進 bgm-work/c<章>/，
   scores.json、picks.json 一起複製。commit 之後別台電腦 pull 就有（產生很久，換電腦接著做時不用重做）。
+- 低分刪掉的候選留下的 <名稱>.dropped（scripts/bgm-gen.py 看到就不用同一個種子重做）兩邊都照抄。
 - import：bgm-work/ 有、out/ 沒有的解回 wav（48 kHz 立體聲），json 照抄；scores.json、picks.json 合併（out/ 已經有的不蓋掉）。
   之後 bgm-gen.py 看到檔案已經有就略過，AI 配樂試聽的「產生中的曲子」也列得出來。
 npm run bgm:all 開始時 import、每一步之後 export。
@@ -69,6 +70,10 @@ def export(opt):
         for j in ('scores.json', 'picks.json'):
             if os.path.exists(os.path.join(src, j)):
                 shutil.copy2(os.path.join(src, j), os.path.join(dst, j))
+        # 低分刪掉的候選的標記（bgm-gen.py 看到就不用同一個種子重做）：別台重跑時才不會產生回同一首低分的歌
+        for f in os.listdir(src):
+            if f.endswith('.dropped'):
+                shutil.copy2(os.path.join(src, f), os.path.join(dst, f))
     print(f'同步匯出：{n} 首轉成 mp3（tools/bgm-work/）')
 
 
@@ -92,6 +97,9 @@ def imp(opt):
             os.utime(wav, (t, t))
             shutil.copy2(os.path.join(src, f[:-4] + '.json'), os.path.join(dst, f[:-4] + '.json'))
             n += 1
+        for f in os.listdir(src):
+            if f.endswith('.dropped') and not os.path.exists(os.path.join(dst, f)):
+                shutil.copy2(os.path.join(src, f), os.path.join(dst, f))
         for j in ('scores.json', 'picks.json'):
             a = load(os.path.join(src, j))
             if not a:

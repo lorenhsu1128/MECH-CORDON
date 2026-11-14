@@ -2,8 +2,8 @@
 
 用法：npm run bgm:setup（每台電腦一次：固定版本的 ACE-Step 與模型裝到 gitignore 的 tools/acestep/），
   npm run bgm:gen -- --ch=1 [--stage=fight|calm] [--songs=theme,battle] [--n=2]
-  --i0=<k>：候選從第 k 個開始（低分重做：刪掉的候選不再用同一個種子）
-  --stage=fight（預設）：每首用文字產生 n 個交戰版的候選 <類型>__f<i>.wav
+  --stage=fight（預設）：每首用文字產生 n 個交戰版的候選 <類型>__f<i>.wav；刪掉的候選留下 <名稱>.dropped，
+    之後跳過它、往後補一個新的編號（新的種子；同一個種子會產生一樣的歌）。--i0=<k>：候選從第 k 個開始
   --stage=calm：照 scripts/bgm-pick.py 挑好的 picks.json，以選中的交戰版 cover 出平時版 <類型>__calm.wav
     （同一首、同速度與段落，編制變輕、人聲變哼唱：動態配樂換強度時從同一個位置交叉淡化）
   --prep 只下載模型。測試用：--tag=名稱（檔名加後綴）、--kana（歌詞換成全平假名）、--voice=girl|diva|duet、
@@ -181,11 +181,20 @@ def main():
         print(f'== 第 {ch} 章 {typ} {sp["title"]}（{sp["voice"]}）', flush=True)
         if stage == 'fight':
             # 補給只有平時版：直接用平靜的編曲產生
-            for i in range(int(opt.get('i0', 0)), n):  # --i0：重做低分的候選時從新的編號（新的種子）開始
+            # 每首補到 n 個候選（--i0 起算）：刪掉的候選（<名稱>.dropped，低分重做或配樂產生器的「刪除」）跳過、
+            # 往後換下一個編號＝新的種子，同一個種子會產生一樣的歌
+            i, k, i0 = int(opt.get('i0', 0)), 0, int(opt.get('i0', 0))
+            while k < n - i0:
+                name = f'{typ}__f{i}{tag}'
+                if os.path.exists(os.path.join(out, name + '.dropped')):
+                    i += 1
+                    continue
                 kw = dict(caption=caption_of(sp, ch), seed=ch * 100000 + hash_typ(typ) * 100 + i * 7, **common)
                 if opt.get('ref'):
                     kw['reference_audio'] = opt['ref']
-                run(dit, lm, out, f'{typ}__f{i}{tag}', dict(meta, ver='fight', cand=i), **kw)
+                run(dit, lm, out, name, dict(meta, ver='fight', cand=i), **kw)
+                i += 1
+                k += 1
         elif stage == 'calm':
             src = picks.get(typ)
             if not src or typ in ('supply', 'boss', 'theme'):

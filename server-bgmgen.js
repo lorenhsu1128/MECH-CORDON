@@ -7,7 +7,7 @@
 // - POST /api/bgm/run { mode, ch, from, to, songs, n }：mode＝all／fight／score／calm／pack／build／setup／sync，同時只跑一個
 //   （sync＝把 git 裡的 tools/bgm-work/ 解回 tools/acestep/out/；啟動時也自動做一次）
 // - POST /api/bgm/stop：結束目前的工作（整個程序樹）
-// - POST /api/bgm/pick { ch, type, name }：手動改挑選（picks.json）；POST /api/bgm/drop { ch, name }：刪掉一個候選（重新產生用）
+// - POST /api/bgm/pick { ch, type, name }：手動改挑選（picks.json）；POST /api/bgm/drop { ch, name }：刪掉一個候選（留下 .dropped，之後「只產生這首」補一個新的種子）
 // - GET  /api/bgm/audio?ch=<章>&name=<候選>：試聽用的 mp3（tools/acestep/preview/，scripts/bgm-preview.py 轉的）
 'use strict';
 const fs = require('fs'),
@@ -345,6 +345,8 @@ module.exports = function bgmgen({ base, env, readBody, writeAtomic, log }) {
           if (!b || !chOk(b.ch) || !nameOk(b.name)) return json(resp, { error: '參數不對' }, 400);
           const dir = path.join(OUT, `c${b.ch}`);
           for (const x of ['.wav', '.json']) fs.rmSync(path.join(dir, b.name + x), { force: true });
+          // 留下標記：bgm-gen.py 補候選時跳過這個編號、換新的種子（同一個種子會產生一樣的歌）
+          if (/__f\d+$/.test(b.name)) fs.writeFileSync(path.join(dir, b.name + '.dropped'), '');
           fs.rmSync(path.join(PRE, `c${b.ch}`, b.name + '.mp3'), { force: true });
           for (const f of ['scores.json', 'picks.json']) {
             const d = readJson(path.join(dir, f));
