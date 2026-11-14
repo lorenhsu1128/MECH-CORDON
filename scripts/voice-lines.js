@@ -9,7 +9,7 @@
 //   3. data/story.js 的序章、章節開場／章末、結局、回收程序、記憶片段裡「名字：「……」」的句子（data/voice.js 的 storyQuote）
 //   4. data/voice.js 的系統提示（ECHO，每種 10 句，鍵＝cueKey：s_<id>、s_<id>_<n>）、輪流的台詞（LINE_POOLS，鍵＝vkey）
 //      與敵兵的喊話（grunt，鍵＝b_<事件><編號>）
-//   5. data/cine/ 的過場動畫的字幕（每個周目 × 抉擇的組合都產生一次）
+//   5. data/cine/ 的過場動畫的字幕（每個周目 × 抉擇的組合都產生一次；沒有說話者的旁白＝narr）
 //   6. data/tutorial.js、tutorial-ranged.js 的教官提示（say）
 // 只收 echo 與 data/voice.js 的 CAST_IDS（有語音的角色）；鍵＝data/voice.js 的 vkey(台詞)，遊戲播放時用同一個函式找語音。
 const fs = require('fs');
@@ -176,7 +176,10 @@ async function main() {
         const d = CINES[k]({ cycle, choices });
         if (d)
           for (const sh of d.shots)
-            for (const e of sh.ev || []) if (e.who && e.sub) add(e.who, e.sub, 'cine', '過場');
+            for (const e of sh.ev || [])
+              if (e.who && e.sub) add(e.who, e.sub, 'cine', '過場');
+              // 沒有說話者的字幕＝旁白（過場改版第 11 期：另一個聲音 narr）
+              else if (!e.who && e.sub) add('narr', e.sub, 'cine', '過場旁白');
       }
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
   const sorted = {};
