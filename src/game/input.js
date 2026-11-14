@@ -763,6 +763,7 @@ Object.assign(Game.prototype, {
     document.getElementById('btnCineLib').onclick = () => this.openCineLib();
     document.getElementById('btnVoiceLab').onclick = () => this.openVoiceLab();
     document.getElementById('btnBgmLab').onclick = () => this.openBgmLab();
+    document.getElementById('btnBgmAi').onclick = () => this.openBgmLab(true);
     // 從模型庫回來（分頁重新取得焦點）：停在標題或車庫時重新讀取本地模型（沒變動就不解析）
     const back = () => {
       if (document.hidden || (this.net && this.net.role)) return;
