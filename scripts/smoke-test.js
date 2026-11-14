@@ -22966,6 +22966,8 @@ async function testCine(browser, base) {
     g.player.pos.copy(e.pos);
     return window.__pump(10, () => !!g.cine);
   });
+  // 選後的演出要先建 3D 的地點（3D 動畫化）：恢復主迴圈讓預先準備跑完
+  await thawLoop(page);
   const post = await page
     .waitForFunction(() => window.__game.cine && window.__game.cine.started && window.__game.cine.key, null, {
       timeout: 20000,
@@ -22975,14 +22977,11 @@ async function testCine(browser, base) {
       (h) => h.jsonValue(),
       () => null,
     );
-  await page.evaluate(() => {
-    window.__game.cineSeek(5);
-    window.__pump(1.2);
-  });
+  await page.evaluate(() => window.__game.cineSeek(5));
+  await page.waitForTimeout(1200);
   await page.screenshot({ path: path.join(SHOT_DIR, 'cine-choice-post.png') });
   await page.evaluate(() => window.__game.cineEnd(true));
   const tr = await waitVisible(page, 'campTrans', 8000);
-  await thawLoop(page);
   if (postT < 0) console.log('    （走進出口 10 秒遊戲時間內沒有播出選後的演出）');
   check(post === 'x_c2_castron' && tr, `抉擇演出（選後）：代價的蒙太奇之後到轉場畫面（${post}）`);
   await page.evaluate(() => {
@@ -23021,11 +23020,14 @@ async function testCine(browser, base) {
     const t0 = g.cine.t;
     await new Promise((r) => setTimeout(r, 600));
     const still = Math.abs(g.cine.t - t0) < 0.01;
-    g.cineLibShot(1);
+    // 最後一鏡＝代替的戰場（前面是兩邊委託方的正反打）
+    g.cineLibShot(g.cine.def.shots.length - 1 - g.cine.shot);
     await new Promise((r) => setTimeout(r, 300));
     return {
       still,
-      shot: g.cine.shot,
+      // 暫停中 cine.shot 要下一格才更新：以目前的時間找所在的鏡頭
+      shot: g.cine.def.shots.findLastIndex((x) => x.at <= g.cine.t),
+      last: g.cine.def.shots.length - 1,
       hero: !!(g.cine.actors.get('player') && g.cine.actors.get('player').e),
       ex: (g.cine.set.exits || []).length,
       ctl: getComputedStyle(document.getElementById('cineCtl')).display !== 'none',
@@ -23034,7 +23036,7 @@ async function testCine(browser, base) {
   await page.click('#clStop');
   const back2 = await page.evaluate(() => window.__game.state);
   check(
-    lp.still && lp.shot === 1 && lp.hero && lp.ex === 2 && lp.ctl && back2 === 'cinelib',
+    lp.still && lp.shot === lp.last && lp.hero && lp.ex === 2 && lp.ctl && back2 === 'cinelib',
     `過場動畫劇場：代替的戰場（主角、${lp.ex} 個出口）、暫停、下一鏡、返回清單（${back2}）`,
   );
   await ctx.close();

@@ -359,50 +359,6 @@ const FILMS = {
   }),
 };
 
-// ---------- 抉擇的選前（第 9 期重做）：兩邊委託方左右對峙（talks.js 的 pre_<抉擇>，在目前的戰場上播、舞台蓋住畫面）
-// → 目前的戰場：從主角身後看向出口的光柱、倒數（ov: 'choice'）。ctx.opts＝出口（game/campaign.js 的 campChoiceCine）
-export function choicePreFilm(id, ctx = {}) {
-  const T = TALKS['pre_' + id];
-  const opts = (ctx.opts || []).map((o, i) => ({ ...o, ex: i }));
-  const live = { k: 'live' };
-  return film({
-    key: 'pre' + id,
-    title: '抉擇',
-    music: ['cine_tension', 0],
-    cycle: ctx.cycle,
-    blocks: [
-      { talk: T },
-      {
-        live: {
-          set: live,
-          grade: { sat: 0.35, temp: -0.45, contrast: 1.15, vignette: 0.6, tintLo: '#20385a', tintLoK: 0.5 },
-          ov: 'choice',
-          opts,
-          cam: {
-            fov: 50,
-            hand: 0.05,
-            ease: 'lin',
-            keys: [
-              { t: 0, p: { a: 'player', at: 'head', o: [0, 2, 9], loc: true }, l: { ex: 0, o: [0, 3, 0] } },
-              {
-                t: 4,
-                p: { a: 'player', at: 'head', o: [0, 3, 11], loc: true },
-                l: { ex: Math.max(0, opts.length - 1), o: [0, 3, 0] },
-              },
-            ],
-          },
-          ev: [
-            { t: 0, sfx: 'alarmBig', vol: 0.4, rate: 0.7 },
-            ...opts.map((o, i) => ({ t: 0.2 + i * 0.3, fx: 'pillar', at: { ex: i }, r: 4, color: o.hex })),
-            { t: 0.3, card: '抉擇', s: 'DECISION', style: 'name', dur: 3.2 },
-          ],
-        },
-        dur: 4,
-      },
-    ],
-  });
-}
-
 // chapters.js 的 chapterCine 呼叫：kind＝'intro'｜'outro'；沒有這一段＝null
 export function chapterFilm(ch, kind, ctx = {}) {
   const f = FILMS[`${kind}_${ch}`];

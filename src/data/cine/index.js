@@ -2,17 +2,17 @@
 // 值是產生器 (ctx：{ cycle, choices }) => 劇本（沒有內容時回傳 null）。播放在 game/cine.js
 import { chapterCine } from './chapters.js';
 import {
-  c2AethericPost,
-  c2CastronPost,
-  c4SanctaPost,
-  c4VeerwellPost,
-  c6BeyondPost,
-  c6OpenPost,
-  c6SealPost,
-} from './aftermath.js';
+  c2AethericAnime,
+  c2CastronAnime,
+  c4SanctaAnime,
+  c4VeerwellAnime,
+  c6BeyondAnime,
+  c6OpenAnime,
+  c6SealAnime,
+  choicePreAnime,
+} from './choice-anime.js';
 import { memoryCine, trueEndCine } from './memory.js';
 import { prologueCine } from './prologue.js';
-import { choicePreFilm } from './chfilm.js';
 
 export const CINES = {};
 for (let cyc = 1; cyc <= 3; cyc++) {
@@ -25,19 +25,19 @@ for (let cyc = 1; cyc <= 3; cyc++) {
 }
 
 // 抉擇演出：x_<抉擇>_pre（選前，在目前的戰場上播）、x_<抉擇>_<選項>（選後的代價）
-// 過場改版第 9 期：選前的最前面是兩邊委託方的對峙（talks.js 的 pre_<抉擇>）；選後整段是代價的漫畫蒙太奇（aftermath.js）
-const pre = (id) => (ctx) => choicePreFilm(id, ctx);
+// 3D 動畫化（docs/cine-redesign-design.md 第十節）：選前＝兩邊的委託方在各自的室內正反打、選後＝3D 的地點＋插畫格
+const pre = (id) => (ctx) => choicePreAnime(id, ctx);
 Object.assign(CINES, {
   x_c2_pre: pre('c2'),
-  x_c2_castron: c2CastronPost,
-  x_c2_aetheric: c2AethericPost,
+  x_c2_castron: c2CastronAnime,
+  x_c2_aetheric: c2AethericAnime,
   x_c4_pre: pre('c4'),
-  x_c4_veerwell: c4VeerwellPost,
-  x_c4_sancta: c4SanctaPost,
+  x_c4_veerwell: c4VeerwellAnime,
+  x_c4_sancta: c4SanctaAnime,
   x_c6_pre: pre('c6'),
-  x_c6_open: c6OpenPost,
-  x_c6_seal: c6SealPost,
-  x_c6_beyond: c6BeyondPost,
+  x_c6_open: c6OpenAnime,
+  x_c6_seal: c6SealAnime,
+  x_c6_beyond: c6BeyondAnime,
 });
 
 // 過場改版第 10 期：ECHO 的記憶片段 m1～m8 與真結局 e_beyond（方案 E 的雙色調 2D 短片，data/cine/memory.js）

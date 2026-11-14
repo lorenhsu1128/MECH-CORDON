@@ -156,3 +156,81 @@ export function dropAll(T) {
   }
   return T;
 }
+
+// 四家委託方的室內與調色（第 2～7 章各自定義過同樣的值；抉擇演出等新的段落從這裡拿）
+export const OFFG = { ...ROOM_GRADE, tintHi: '#ffb070', tintHiK: 0.4, tintLo: '#101826', tintLoK: 0.5 };
+export const LABG = {
+  ...ROOM_GRADE,
+  temp: 0.62,
+  tintHi: '#d8f4ff',
+  tintHiK: 0.35,
+  tintLo: '#0a1622',
+  tintLoK: 0.5,
+};
+export const DISPATCH = {
+  k: 'room',
+  kind: 'veerwell',
+  sky: 0x040810,
+  key: 0xe0f0ff,
+  keyI: 1.2,
+  hemi: 0xa0b0c0,
+  hemiG: 0x505050,
+  hemiI: 1.0,
+  far: 400,
+};
+export const DSG = {
+  ...ROOM_GRADE,
+  temp: 0.55,
+  tintHi: '#c8ffd0',
+  tintHiK: 0.25,
+  tintLo: '#081018',
+  tintLoK: 0.5,
+};
+export const STATION = {
+  k: 'room',
+  kind: 'sancta',
+  sky: 0x060918,
+  key: 0xffc080,
+  keyI: 1.4,
+  hemi: 0xffe0b0,
+  hemiG: 0x8a6040,
+  hemiI: 1.0,
+};
+export const STG = {
+  ...ROOM_GRADE,
+  sunEl: 60,
+  exposure: 1.2,
+  temp: 0.3,
+  tintHi: '#ffc890',
+  tintHiK: 0.35,
+  tintLo: '#141020',
+  tintLoK: 0.45,
+};
+export const CORE = {
+  k: 'room',
+  kind: 'core',
+  sky: 0x010204,
+  key: 0xe0f0ff,
+  keyI: 1.1,
+  hemi: 0x8aa8b8,
+  hemiG: 0x303030,
+  hemiI: 0.9,
+  far: 600,
+};
+export const COREG = {
+  ...ROOM_GRADE,
+  sunEl: 70,
+  temp: 0.6,
+  tintHi: '#c8e4ff',
+  tintHiK: 0.3,
+  tintLo: '#04060c',
+  tintLoK: 0.55,
+  contrast: 1.38,
+};
+// 委託方在自己的室內：[場景, 調色, 近景的鏡頭位置, 看的點, 演員]（第 6 章的四家近景量出來的）
+export const CLIENT_ROOM = {
+  castron: [OFFICE, OFFG, [0.9, 1.6, 1.6], [-1.4, 1.4, -4], () => [PARKED('stevedore')]],
+  aetheric: [LAB, LABG, [-1.2, 1.7, 2.6], [1.2, 1.8, -3], () => []],
+  veerwell: [DISPATCH, DSG, [0.9, 1.6, 1.8], [-1.4, 1.4, -5], () => []],
+  sancta: [STATION, STG, [0.8, 1.55, 2.8], [-1.6, 1.3, -4], () => []],
+};
