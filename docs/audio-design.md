@@ -219,3 +219,13 @@
 - **日文**：`lines-ja.json` 補上這 169 句的翻譯（寫法照上面的「翻譯的寫法」；HALBERD＝ハルバード、CERBERUS＝ケルベロス、ARCHON＝アルコン、SPECIMEN＝スペシメン、MIRAGE＝ミラージュ），`'@yomi'` 加了方舟＝はこぶね、主ダム、誘導塔、中枢等唸法。
 - **播放**（`game/voice.js` 的 `voiceBrief(sid, 句子, 說話者)`，`openBrief` 最後呼叫）：0.4 秒後一句唸完接下一句（間隔 0.35 秒）；正在唸的那一行 `#brLines p.speaking`（左邊委託方顏色的色條＋淡淡的底色，逐字的字有自己的顏色所以不改字色）；立繪 `briefView` 照那一句的 `lineExpr` 換表情（ECHO 的私人委託沒指定時用 tender）；對口型照語音的音量。`voicePlay` 的 kind 'brief' 不加無線電濾波；優先度 3，作戰室的通訊（2）在唸簡報時只顯示字。點一下文字只是把逐字全部顯示，語音照常唸下去。沒有語音（設定關掉、載不到）時照字數估計的時間換句，對口型用模擬的（`briefTalkEnd`）。離開簡報（`showScreen` 換到別的畫面）時 `voiceStop`。
 - **冒煙測試** `testStory`：打開 c1s1 的簡報，第一句亮起、立繪的表情是那一句的（smug）、離開簡報就停。
+
+### AI 配樂（2026-11-14）
+
+- 使用者要用本地 AI 模型自己產生配樂，曲風是**絕區零 × 尼爾 自動人形的融合**：尼爾的憂傷旋律、鋼琴與弦樂、懸掛和弦、自創語言的空靈女聲 × 絕區零的碎拍、Drum & Bass、放克 bass、都市夜晚的律動。
+- 模型：**ACE-Step 1.5**（MIT，模型說明寫明產出可以商用；會唱歌詞，所以做得出尼爾式的人聲；12 GB 顯示卡跑 2B 的 sft＋1.7B 語言模型）。比較過 Stable Audio 3（純配樂、不會唱）、Magenta RealTime 2（即時伴奏）、YuE／DiffRhythm（流行歌）、MusicGen／LeVo 2（不能商用）。不拿這兩款的原聲帶訓練 LoRA（侵權疑慮），只用曲風描述；歌詞是自己編的無意義音節。
+- 安裝：`npm run bgm:setup`（`scripts/bgm-setup.js`：ACE-Step 固定在 `REF` 這個 commit，clone 到 `tools/acestep/src/`、`uv sync --frozen`、模型下載到 `tools/acestep/checkpoints/`；整個 `tools/acestep/` 在 gitignore，其他電腦 pull 之後跑一次就能產生）。
+- 產生：`npm run bgm:gen -- [主題,…] [--n=2] [--only=t2m|cover]`（`scripts/bgm-gen-run.js` → `scripts/bgm-gen.py`）：每個主題（`THEMES`：曲名、BPM、調、歌詞）先以文字產生交戰版（`n` 個種子），再以它為來源 cover 出同一主題的探索／警戒／Boss 版（`COVER_K` 的強度），另外每一級直接用文字產生一首比較；已經有的檔案略過，所以中斷後重跑接著做。結果經 `scripts/bgm-ai-pack.py` 轉成 `src/assets/bgm-audition/ai_*.mp3`（index.json 的 ai_ 項目整批換掉），在標題「工具與其他」的「AI 配樂試聽」聽（`openBgmLab(true)`：同一個試聽頁只列 ai_ 的曲子；原本的「配樂試聽」只列外部的候選曲）。顯示卡記憶體不夠時設 `BGM_DIT=acestep-v15-turbo`、`BGM_LM=acestep-5Hz-lm-0.6B`。
+- 選定的曲子之後照原本的流程：`scripts/bgm-prep.py` 的 `TRACKS` 剪成循環、`game/bgm.js` 的 `SETS`。
+
+- **過場的旁白**（2026-11-14，docs/cine-redesign-design.md 第 11 期）：過場裡沒有說話者的字幕由另一個聲音 `narr`（四十多歲的男性、紀錄片的口吻）唸，中文與日文；`data/voice.js` 的 `CAST_IDS`、`voice-gen.py` 的 `CAST`、`voice-lines.js` 收集時沒有說話者的過場字幕＝narr，遊戲 `game/cine.js` 的 `cineSub`。

@@ -15706,16 +15706,25 @@ async function testBgmLab(browser, base) {
       while (!f() && performance.now() - t0 < ms) await new Promise((r) => setTimeout(r, 100));
       return f();
     };
-    const out = { rows: document.querySelectorAll('.blRow').length, n: I.length };
+    // 「配樂試聽」只列外部的候選曲，AI 產生的（ai_）在「AI 配樂試聽」
+    const ext = I.filter((c) => !c.id.startsWith('ai_'));
+    const out = {
+      rows: document.querySelectorAll('.blRow').length,
+      n: ext.length,
+      nAi: I.length - ext.length,
+    };
     out.missing = I.filter((c) => !A[c.id]).length;
-    out.lic = I.filter((c) => !/^(CC0|CC-BY [34]\.0)$/.test(c.lic)).map((c) => c.id);
+    // AI 產生的（ai_，scripts/bgm-gen.py，模型 MIT）不是外部素材，不檢查 CC 授權
+    out.lic = I.filter((c) => !c.id.startsWith('ai_') && !/^(CC0|CC-BY [34]\.0)$/.test(c.lic)).map(
+      (c) => c.id,
+    );
     document.querySelector('.blPlay').click();
     out.playing = await wait(() => document.querySelector('.blPlay.on'));
     await new Promise((r) => setTimeout(r, 600));
     out.fill = parseFloat(document.getElementById('blFill').style.width) || 0;
     document.getElementById('blStop').click();
     out.stopped = !document.querySelector('.blPlay.on');
-    const id = I[0].id;
+    const id = ext[0].id;
     for (const v of ['combat', 'boss']) {
       const x = document.querySelector(`input[data-u="${id}"][value="${v}"]`);
       x.checked = true;
@@ -15735,7 +15744,7 @@ async function testBgmLab(browser, base) {
   await page.screenshot({ path: path.join(SHOT_DIR, 'bgm-lab.png') });
   check(r.rows === r.n && r.n >= 20, `候選曲 ${r.rows}／${r.n}`);
   check(r.missing === 0, `每首都有試聽片段（缺 ${r.missing}）`);
-  check(r.lic.length === 0, `授權都是 CC0／CC-BY（${r.lic.join('、')}）`);
+  check(r.lic.length === 0, `外部候選曲的授權都是 CC0／CC-BY（${r.lic.join('、')}）`);
   check(r.playing && r.fill > 0, `點一下播放、進度條前進（${r.fill.toFixed(1)}%）`);
   check(r.stopped, '停止');
   check(
@@ -15744,6 +15753,27 @@ async function testBgmLab(browser, base) {
   );
   check(/【交戰】\n.*（/.test(r.copy) && /【Boss】\n.*5 星/.test(r.copy), '複製結果依用途整理');
   check(r.cur, '目前的配樂可以播放比較');
+  await page.click('#btnBlBack');
+  await waitVisible(page, 'title');
+  // 「AI 配樂試聽」：只列 AI 產生的曲子（scripts/bgm-gen.py），可以播放
+  await titleTool(page, '#btnBgmAi');
+  await waitVisible(page, 'bgmLab');
+  const a = await page.evaluate(async () => {
+    const rows = [...document.querySelectorAll('.blRow')].map((e) => e.dataset.c);
+    const b = document.querySelector('.blPlay');
+    if (b) b.click();
+    const t0 = performance.now();
+    while (b && !document.querySelector('.blPlay.on') && performance.now() - t0 < 8000)
+      await new Promise((r) => setTimeout(r, 100));
+    const playing = !!document.querySelector('.blPlay.on');
+    document.getElementById('blStop').click();
+    return { rows, playing, title: document.getElementById('blTitle').textContent };
+  });
+  check(
+    a.title === 'AI 配樂試聽' && a.rows.length === r.nAi && a.rows.every((id) => id.startsWith('ai_')),
+    `AI 配樂試聽只列 AI 產生的曲子（${a.rows.length}／${r.nAi}）`,
+  );
+  check(!r.nAi || a.playing, 'AI 產生的曲子可以播放');
   await page.click('#btnBlBack');
   await waitVisible(page, 'title');
   await ctx.close();
@@ -22480,7 +22510,9 @@ async function testCine(browser, base) {
   // 劇本：3 個周目 × 序章、6 章開場、5 章章末都產生得出來；依抉擇的章末不同
   const defs = await page.evaluate(() => {
     const g = window.__game;
-    const all = [1, 2, 3].map((c) => g.cineDefs({ cycle: c }).filter((d) => d.k.slice(1, 2) === String(c)));
+    const all = [1, 2, 3].map((c) =>
+      g.cineDefs({ cycle: c }).filter((d) => /^[pio]\d/.test(d.k) && d.k.slice(1, 2) === String(c)),
+    );
     const o2c = g.cineDefs({ choices: { c2: 'castron' } }).find((d) => d.k === 'o1_2');
     const o2a = g.cineDefs({ choices: { c2: 'aetheric' } }).find((d) => d.k === 'o1_2');
     return { all, o2c, o2a };
@@ -22624,6 +22656,55 @@ async function testCine(browser, base) {
     `2D 舞台：對話分格的立繪演員（${talk.who.join('、')}）、說話的人的氣泡取代字幕條（${talk.bub}）`,
   );
   await page.evaluate(() => window.__game.cineEnd(true));
+  // 對話分格（過場改版第 5～8 期，data/cine/talks.js）：第 1～7 章章末、第 2～8 章開場的最前面；第 2、4 章章末依抉擇換人
+  const talks = await page.evaluate(() => {
+    const C = window.__CINES;
+    const keys = ['o1_1', 'o1_2', 'o1_3', 'o1_4', 'o1_5', 'o1_6', 'o1_7'].concat([
+      'i1_2',
+      'i1_3',
+      'i1_4',
+      'i1_5',
+      'i1_6',
+      'i1_7',
+      'i1_8',
+    ]);
+    const who = (d) => d.shots[0].st.els[0].kids.find((e) => e.k === 'actor').who;
+    const ok = keys.filter((k) => {
+      const d = C[k]({ cycle: 1, choices: {} });
+      return d && d.shots[0].st && d.shots[1].at > 10;
+    });
+    return {
+      n: ok.length,
+      c2: [
+        who(C.o1_2({ cycle: 1, choices: { c2: 'castron' } })),
+        who(C.o1_2({ cycle: 1, choices: { c2: 'aetheric' } })),
+      ],
+      c4: [
+        who(C.o1_4({ cycle: 1, choices: { c4: 'veerwell' } })),
+        who(C.o1_4({ cycle: 1, choices: { c4: 'sancta' } })),
+      ],
+    };
+  });
+  check(
+    talks.n === 14 && talks.c2.join() === 'castron,aetheric' && talks.c4.join() === 'veerwell,sancta',
+    `對話分格：14 段過場的最前面（${talks.n}）、第 2／4 章章末依抉擇換人（${talks.c2.join('、')}／${talks.c4.join('、')}）`,
+  );
+  // 記憶片段與真結局（過場改版第 10 期，data/cine/memory.js）：雙色調的 2D 短片；選後的最後是代價的漫畫頁
+  const mem = await page.evaluate(() => {
+    const C = window.__CINES;
+    const ms = [1, 2, 3, 4, 5, 6, 7, 8].map((k) => C['m' + k]({ cycle: 3 }));
+    const e = C.e_beyond({ cycle: 3, full: true });
+    const post = C.x_c2_castron({ cycle: 1, choices: {} });
+    return {
+      m: ms.filter((d) => d && d.shots[0].st && d.shots[0].st.fps).length,
+      e: !!(e && e.shots[0].st),
+      grabs: (post.grabs || []).length,
+    };
+  });
+  check(
+    mem.m === 8 && mem.e && mem.grabs >= 2,
+    `記憶片段 8 段與真結局是 2D 短片（${mem.m}、${mem.e}）、選後的漫畫頁擷取 ${mem.grabs} 格`,
+  );
   // 故事畫面：第一次進作戰室播序章的過場動畫；略過時改顯示序章的文字畫面，之後接第 1 章開場的過場動畫
   await page.evaluate(() => {
     const g = window.__game;
@@ -22696,7 +22777,8 @@ async function testCine(browser, base) {
   await page.waitForFunction(() => window.__game.cine && window.__game.cine.started, null, {
     timeout: 30000,
   });
-  await page.evaluate(() => window.__game.cineSeek(9));
+  // 最前面是對話分格（氣泡，過場改版第 5 期）：跳到後面 3D 段落的第 9 秒看字幕條
+  await page.evaluate(() => window.__game.cineSeek(window.__game.cine.def.shots[1].at + 9));
   await page.waitForTimeout(900);
   const ph = await page.evaluate(() => {
     const s = document.getElementById('cineSub').getBoundingClientRect();

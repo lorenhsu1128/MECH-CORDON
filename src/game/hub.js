@@ -475,11 +475,20 @@ Object.assign(Game.prototype, {
       const M = MEMORIES[k];
       const sid = Object.keys(SORTIES).find((s) => SORTIES[s].memory === +k);
       h += mem[k]
-        ? `<div class="echoMem"><b>片段 ${k}「${escHtml(M.title)}」</b>${M.lines.map((l) => `<p>${escHtml(l)}</p>`).join('')}</div>`
+        ? `<div class="echoMem"><b>片段 ${k}「${escHtml(M.title)}」</b><button class="echoPlay" data-mem="${k}">播放記憶</button>${M.lines.map((l) => `<p>${escHtml(l)}</p>`).join('')}</div>`
         : `<div class="echoMem locked"><b>片段 ${k}　？？？</b><p class="dim">完成 ECHO 的委託「${escHtml(sid ? SORTIES[sid].name : '')}」回收（第 3 周目）</p></div>`;
     }
     document.getElementById('hubEchoList').innerHTML =
       '<div class="echoHead"><span class="cBadge"></span></div>' + h;
+    // 播放記憶：雙色調的 2D 短片（過場改版第 10 期，data/cine/memory.js），播完回到這裡
+    for (const btn of document.querySelectorAll('#hubEchoList .echoPlay'))
+      btn.onclick = () => {
+        this.hubEcho(false);
+        this.cinePlay('m' + btn.dataset.mem, () => {
+          this.openHub();
+          this.hubEcho(true);
+        });
+      };
     // 立繪：私人頻道的 ECHO（記憶片段全部回收時微笑）
     const hd = document.querySelector('#hubEchoList .echoHead');
     hd.appendChild(document.querySelector('#hubEchoList .echoNote'));

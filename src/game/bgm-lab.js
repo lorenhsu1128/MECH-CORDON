@@ -62,12 +62,19 @@ function loadScript(src, ok) {
 const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
 Object.assign(Game.prototype, {
-  openBgmLab() {
+  // ai＝只列 AI 產生的曲子（標題的「AI 配樂試聽」，scripts/bgm-gen.py 的 ai_*）；否則只列外部的候選曲
+  openBgmLab(ai = false) {
     SFX.ui();
     SFX.init();
     this.state = 'bgmlab';
     this.showScreen('bgmLab');
     const B = (this.blab = this.blab || { filter: '', buf: {}, notes: loadNotes() });
+    B.ai = !!ai;
+    if (!$('blIntro').dataset.org) $('blIntro').dataset.org = $('blIntro').innerHTML;
+    $('blTitle').textContent = ai ? 'AI 配樂試聽' : '配樂試聽';
+    $('blIntro').innerHTML = ai
+      ? '本地 AI（ACE-Step 1.5）產生的配樂，曲風是絕區零 × 尼爾 自動人形的融合：憂傷的鋼琴與弦樂、自創語言的空靈女聲 × 碎拍、Drum & Bass、放克 bass。每首是完整的 2 分鐘。可以勾選用途、打星與寫備註，按「複製勾選結果」貼給開發者；最下面可以播目前遊戲的配樂比較。'
+      : $('blIntro').dataset.org;
     $('btnBlBack').onclick = () => {
       SFX.ui('back');
       this.blabStop();
@@ -77,7 +84,11 @@ Object.assign(Game.prototype, {
     if (B.idx) return this.blabRender();
     $('blList').innerHTML = '<p class="dim">載入試聽曲（約 28 MB）…</p>';
     if (!this.blabLoading)
-      this.blabLoading = loadScript('lib/bgm-audition.js', () => !!window.MECH_CORDON_BGM_AUD).then((ok) => {
+      // 伺服器給 lib/ 的檔案 1 小時快取：試聽曲常常更新（AI 配樂），從伺服器開時網址帶時間、一律拿最新的
+      this.blabLoading = loadScript(
+        'lib/bgm-audition.js' + (location.protocol.startsWith('http') ? '?t=' + Date.now() : ''),
+        () => !!window.MECH_CORDON_BGM_AUD,
+      ).then((ok) => {
         this.blabLoading = null;
         return ok;
       });
@@ -102,6 +113,7 @@ Object.assign(Game.prototype, {
       <span id="blNow" class="dim"></span></div>
       <div id="blBar" title="點一下跳到那裡"><div id="blFill"></div></div>`;
     for (const c of B.idx) {
+      if (c.id.startsWith('ai_') !== !!B.ai) continue;
       if (B.filter && !c.use.includes(B.filter)) continue;
       const n = B.notes[c.id] || {};
       const u = n.u || [];

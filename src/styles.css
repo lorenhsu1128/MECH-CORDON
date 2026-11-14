@@ -3905,6 +3905,12 @@ body.touchDev #cineSkip span::after {
   margin: 6px 0;
   background: rgba(255, 208, 96, 0.05);
 }
+/* 播放記憶（過場改版第 10 期）*/
+.echoMem .echoPlay {
+  margin-left: 10px;
+  padding: 2px 10px;
+  font-size: 12px;
+}
 .echoMem p {
   margin: 4px 0;
   font-size: 13px;

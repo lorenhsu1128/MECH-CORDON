@@ -1203,6 +1203,12 @@ Object.assign(Game.prototype, {
         }
         c.subUntil = Math.max(c.subUntil, c.t + d + 0.3);
       });
+    // 旁白（沒有說話者）：另一個聲音 narr 唸（過場改版第 11 期；設定「其他角色的語音」關掉時不唸，字幕照舊一律繁中）
+    else if (!who && this.voiceSay)
+      this.voiceSay(text, 'narr').then((d) => {
+        if (this.cine !== c || c.subTok !== tok || !d) return;
+        c.subUntil = Math.max(c.subUntil, c.t + d + 0.3);
+      });
     else if (who === 'station') SFX.play('glitch', 0.3, 0.6, 0.02, 0.1, null, 'ui');
   },
   // 字卡（文字演出）：style＝card（黑底的電影字距）、logo、chapter、name（宿敵名牌，左下）、loc（地點，左上）

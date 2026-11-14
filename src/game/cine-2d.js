@@ -158,7 +158,11 @@ Object.assign(Game.prototype, {
     const c = this.cine;
     if (!c || !who) return false;
     const S = c.def.shots[c.shot];
-    if (!S || !S.st || !this.cine2dFind(S.st.els, (e) => e.k === 'actor' && e.who === who && !e.noBub))
+    if (
+      !S ||
+      !S.st ||
+      !this.cine2dFind(S.st.els, (e) => e.k === 'actor' && (e.sp || e.who) === who && !e.noBub)
+    )
       return false;
     c.bub = { who, text, t0: c.t, tok: c.subTok + 1 };
     return true;
@@ -186,9 +190,28 @@ Object.assign(Game.prototype, {
     const x = cv.getContext('2d');
     x.setTransform(1, 0, 0, 1, 0, 0);
     x.clearRect(0, 0, cv.width, cv.height);
+    // 擷取畫面（劇本的 def.grabs＝[過場的秒數…]）：那一秒的 3D 畫面先存起來，後面的漫畫頁以 grab: 秒數 放進格子
+    // （選後的「代價的漫畫頁」）；跳時間跳過了就沒有那一張（格子畫底色）
+    if (c.def.grabs && this.renderer) {
+      const G = (c.grabs = c.grabs || {});
+      for (const g of c.def.grabs)
+        if (!G[g] && c.t >= g && c.t < g + 0.5) {
+          const src = this.renderer.domElement;
+          const cv = document.createElement('canvas');
+          cv.width = Math.min(src.width, 1280);
+          cv.height = Math.round((cv.width * src.height) / src.width);
+          cv.getContext('2d').drawImage(src, 0, 0, cv.width, cv.height);
+          G[g] = cv;
+        }
+    }
     const st = S && S.st;
     if (!st) {
       if (c.s2) c.s2 = null;
+      // 氣泡的台詞還沒唸完就換到沒有舞台的鏡頭：剩下的改用字幕條
+      if (c.bub && !c.bub.hide && !c.bub.out && c.subUntil && c.t < c.subUntil && c.bub.tok === c.subTok) {
+        c.bub.out = true;
+        $('cineSub').classList.add('on');
+      }
       return;
     }
     // 同一頁（st.page 相同）連續的鏡頭共用舞台：定格的格子、立繪演員都留著，元素的時間從這一頁的第一鏡算
@@ -204,6 +227,8 @@ Object.assign(Game.prototype, {
     s2.si = c.shot;
     const shotLt = lt;
     lt = c.t - p0;
+    // 有限動畫（方案 E 的 2D 短片）：st.fps＝元素的時間一格一格跳（例如 8 格／秒）
+    if (st.fps) lt = Math.floor(lt * st.fps) / st.fps;
     // 自己有鏡頭的格子（cam）：每一格各畫一次 3D、複製下來，所以同一頁好幾格可以同時是即時的
     this.cine2dCams(S, st, shotLt, lt);
     s2.dt = c.paused ? 0 : dt;
@@ -423,6 +448,7 @@ Object.assign(Game.prototype, {
     const s2 = this.cine.s2;
     const key = e.id || JSON.stringify(e.q);
     let src = (s2.lc && s2.lc.get(key)) || (this.renderer && this.renderer.domElement);
+    if (e.grab != null) src = this.cine.grabs && this.cine.grabs[e.grab]; // 前面擷取的畫面
     if (e.snap != null && lt >= e.snap) {
       let im = s2.snap.get(key);
       if (!im && src && src.width) {
@@ -456,7 +482,7 @@ Object.assign(Game.prototype, {
     const id = e.id || e.who;
     let A = s2.act.get(id);
     if (!A) {
-      A = { P: null, fired: new Set(), who: e.who };
+      A = { P: null, fired: new Set(), who: e.who, sp: e.sp || e.who }; // sp＝說話者（echo_true 的立繪說 echo 的台詞）
       s2.act.set(id, A);
       Portraits.get(e.who).then((pk) => {
         if (pk && !A.P) A.P = new Portrait(pk, e.pose || 'p1');
@@ -506,8 +532,8 @@ Object.assign(Game.prototype, {
     }
     // 說話：字幕的氣泡是他、或語音是他 → 對口型
     const c = this.cine;
-    const talking = !!(c.bub && c.bub.who === e.who && c.subUntil && c.t < c.subUntil);
-    const lv = this.ptTalk ? this.ptTalk(e.who, talking) : null;
+    const talking = !!(c.bub && c.bub.who === (e.sp || e.who) && c.subUntil && c.t < c.subUntil);
+    const lv = this.ptTalk ? this.ptTalk(e.sp || e.who, talking) : null;
     P.talkSim(lv === -1);
     P.update(s2.dt, lv > 0 ? lv : 0);
     // 換姿勢：保持＋兩格模糊的過渡格（各 1/12 秒），之後依角色個性到位
@@ -580,11 +606,19 @@ Object.assign(Game.prototype, {
       g.fillStyle = `rgba(0,0,0,${e.sil})`;
       g.fillRect(0, 0, cw, ch);
     } else if (e.tone) {
+      // 單色：先留一份原本的形狀當遮罩（分層的立繪有四層，不能逐層用 destination-in，會只剩四層重疊的地方）
+      const mk = (A.mask =
+        A.mask && A.mask.width === cw && A.mask.height === ch ? A.mask : document.createElement('canvas'));
+      if (mk.width !== cw) mk.width = cw;
+      if (mk.height !== ch) mk.height = ch;
+      const mg = mk.getContext('2d');
+      mg.clearRect(0, 0, cw, ch);
+      mg.drawImage(off, 0, 0);
       g.globalCompositeOperation = 'color';
       g.fillStyle = e.tone;
       g.fillRect(0, 0, cw, ch);
       g.globalCompositeOperation = 'destination-in';
-      A.P.draw(g, cw, ch, { fit: 'full', mirror: !!e.mirror });
+      g.drawImage(mk, 0, 0);
     } else if (e.holo) {
       g.fillStyle = e.holo;
       g.globalAlpha = 0.55;
@@ -613,11 +647,14 @@ Object.assign(Game.prototype, {
   cine2dBubbleDraw(x, lt) {
     const c = this.cine;
     const B = c.bub;
-    const A = [...c.s2.act.values()].find((a) => a.who === B.who && a.box);
+    const A = [...c.s2.act.values()].find((a) => a.sp === B.who && a.box);
     let at,
       tail = null,
       side = 1;
-    const spec = this.cine2dFind(c.def.shots[c.shot].st.els, (e) => e.k === 'actor' && e.who === B.who);
+    const spec = this.cine2dFind(
+      c.def.shots[c.shot].st.els,
+      (e) => e.k === 'actor' && (e.sp || e.who) === B.who,
+    );
     if (A && A.box && A.P) {
       const f = A.P.P.boxes.face || [IMG_W * 0.3, IMG_H * 0.12, IMG_W * 0.4, IMG_H * 0.22];
       const s = A.box.h / IMG_H;

@@ -1,5 +1,70 @@
 [
  {
+  "id": "ai_ash_alert_t",
+  "title": "【AI】灰燼的祈禱・警戒",
+  "artist": "ACE-Step 1.5（本地產生）",
+  "lic": "AI 產生（模型 MIT）",
+  "url": "https://github.com/ace-step/ACE-Step-1.5",
+  "use": [
+   "alert"
+  ],
+  "desc": "絕區零 × 尼爾 的融合：文字直接產生，172 BPM、D minor，種子 3000",
+  "dur": 120,
+  "at": 0
+ },
+ {
+  "id": "ai_ash_boss_t",
+  "title": "【AI】灰燼的祈禱・Boss",
+  "artist": "ACE-Step 1.5（本地產生）",
+  "lic": "AI 產生（模型 MIT）",
+  "url": "https://github.com/ace-step/ACE-Step-1.5",
+  "use": [
+   "boss"
+  ],
+  "desc": "絕區零 × 尼爾 的融合：文字直接產生，172 BPM、D minor，種子 3000",
+  "dur": 120,
+  "at": 0
+ },
+ {
+  "id": "ai_ash_combat_0",
+  "title": "【AI】灰燼的祈禱・交戰 0",
+  "artist": "ACE-Step 1.5（本地產生）",
+  "lic": "AI 產生（模型 MIT）",
+  "url": "https://github.com/ace-step/ACE-Step-1.5",
+  "use": [
+   "combat"
+  ],
+  "desc": "絕區零 × 尼爾 的融合：文字直接產生，172 BPM、D minor，種子 1000",
+  "dur": 120,
+  "at": 0
+ },
+ {
+  "id": "ai_ash_combat_1",
+  "title": "【AI】灰燼的祈禱・交戰 1",
+  "artist": "ACE-Step 1.5（本地產生）",
+  "lic": "AI 產生（模型 MIT）",
+  "url": "https://github.com/ace-step/ACE-Step-1.5",
+  "use": [
+   "combat"
+  ],
+  "desc": "絕區零 × 尼爾 的融合：文字直接產生，172 BPM、D minor，種子 1037",
+  "dur": 120,
+  "at": 0
+ },
+ {
+  "id": "ai_ash_explore_t",
+  "title": "【AI】灰燼的祈禱・探索",
+  "artist": "ACE-Step 1.5（本地產生）",
+  "lic": "AI 產生（模型 MIT）",
+  "url": "https://github.com/ace-step/ACE-Step-1.5",
+  "use": [
+   "explore"
+  ],
+  "desc": "絕區零 × 尼爾 的融合：文字直接產生，172 BPM、D minor，種子 3000",
+  "dur": 120,
+  "at": 0
+ },
+ {
   "id": "sb_simulacra",
   "title": "Simulacra",
   "artist": "Scott Buckley",

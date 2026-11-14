@@ -10,3 +10,5 @@ tools/comfyui/nodes/**/__pycache__/
 # 候選圖搬過的標記（各台電腦自己的；進 git 的話別台不會搬自己的 server-models/charwork）
 tools/charwork/.moved
 tools/voicelab/
+tools/acestep/
+.cache/acestep/

@@ -1,0 +1,1 @@
+narr（日文） 的語音：VoxCPM2（OpenBMB，https://github.com/OpenBMB/VoxCPM，Apache-2.0）以 src/assets/voice/ref/narr_ja.flac 克隆，scripts/voice-gen.py 產生。AI 合成語音，不是任何配音員的聲音。

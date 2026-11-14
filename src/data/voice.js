@@ -38,6 +38,7 @@ export const CAST_IDS = [
   'wren',
   'kiln',
   'keel',
+  'narr', // 過場的旁白（過場改版第 11 期：沒有說話者的字幕；game/cine.js 的 cineSub）
 ];
 // 序章與章節畫面裡的名字 → 說話者
 const STORY_NAMES = {

@@ -9,7 +9,7 @@
 //   3. data/story.js 的序章、章節開場／章末、結局、回收程序、記憶片段裡「名字：「……」」的句子（data/voice.js 的 storyQuote）
 //   4. data/voice.js 的系統提示（ECHO，每種 10 句，鍵＝cueKey：s_<id>、s_<id>_<n>）、輪流的台詞（LINE_POOLS，鍵＝vkey）
 //      與敵兵的喊話（grunt，鍵＝b_<事件><編號>）
-//   5. data/cine/ 的過場動畫的字幕（每個周目 × 抉擇的組合都產生一次）
+//   5. data/cine/ 的過場動畫的字幕（每個周目 × 抉擇的組合都產生一次；沒有說話者的旁白＝narr）
 //   6. data/tutorial.js、tutorial-ranged.js 的教官提示（say）
 //   7. data/story.js 的簡報（BRIEFINGS 的 lines 與 prev；說話者＝speaker 或依抉擇的委託方 briefClient，每個抉擇的組合都展開；
 //      ECHO 的私人委託＝private）
@@ -178,7 +178,10 @@ async function main() {
         const d = CINES[k]({ cycle, choices });
         if (d)
           for (const sh of d.shots)
-            for (const e of sh.ev || []) if (e.who && e.sub) add(e.who, e.sub, 'cine', '過場');
+            for (const e of sh.ev || [])
+              if (e.who && e.sub) add(e.who, e.sub, 'cine', '過場');
+              // 沒有說話者的字幕＝旁白（過場改版第 11 期：另一個聲音 narr）
+              else if (!e.who && e.sub) add('narr', e.sub, 'cine', '過場旁白');
       }
   // 7. 簡報（game/hub.js 的 openBrief：每次打開都唸，voice.js 的 voiceBrief）
   for (const sid in story.BRIEFINGS) {

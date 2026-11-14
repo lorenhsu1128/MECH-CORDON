@@ -4,6 +4,7 @@
 import { CHAPTER_NAMES, CHAPTER_TEXT, pickLines } from '../story.js';
 import { ch1Outro } from './ch1.js';
 import { ch1Intro } from './ch1-intro.js';
+import { withTalk } from './talks.js';
 import { ch2Intro, ch2Outro } from './ch2.js';
 import { ch3Intro, ch3Outro } from './ch3.js';
 import { ch4Intro, ch4Outro } from './ch4.js';
@@ -448,7 +449,8 @@ const BESPOKE = {
 // kind：'intro'｜'outro'
 export function chapterCine(ch, kind, ctx) {
   const B = BESPOKE[ch] && BESPOKE[ch][kind];
-  if (B) return B(ctx);
+  // 過場改版第 5～8 期：最前面接上委託方與 ECHO 的對話分格（data/cine/talks.js）
+  if (B) return withTalk(B(ctx), kind + '_' + ch, ctx);
   const T = CHAPTER_TEXT[ch];
   const lines = pickLines(T && T[kind], ctx.choices || {});
   const beats = (BEATS[ch] && BEATS[ch][kind]) || [];

@@ -33,5 +33,53 @@
     },
     "edit": "Place the man from image 2 into the dark office of image 1, standing alone on the left side of the picture beside the desk, cowboy shot, rubbing the back of his neck with one hand, eyes looking down at the old orange miner helmet on the desk with a guilty, troubled expression. Keep his face, grey hair, orange work jacket and clothes exactly the same as image 2. Keep the room, desk, lamp, window and the helmet of image 1. Warm lamp light on his face, night. Anime illustration style, thick outlines, cel shading.",
     "pick": 311383087
+  },
+  "m_lab": {
+    "ch": "m",
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, indoors, night, clean high-tech research laboratory, white and blue, glass walls, holographic monitors, specimen tanks glowing blue, cold lighting, wide shot",
+    "neg": "people, text",
+    "pick": 690378916
+  },
+  "m_dispatch": {
+    "ch": "m",
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, indoors, logistics dispatch control room overlooking an airfield with cargo aircraft and helicopters, many screens with maps, green accent lights, evening, wide shot",
+    "neg": "people, text",
+    "pick": 441067416
+  },
+  "m_shelter": {
+    "ch": "m",
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, indoors, refugee shelter inside a large tent, cots, blankets, lanterns, medical supplies, a wall covered with paper notes of names, warm dim light, snow outside the entrance, wide shot",
+    "neg": "people, text",
+    "pick": 245430158
+  },
+  "m_station": {
+    "ch": "m",
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, space station interior, long empty corridor with large windows, a planet visible outside, cold white light, quiet, lonely, wide shot",
+    "neg": "people, text",
+    "pick": 765998382
+  },
+  "m_forge": {
+    "ch": "m",
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, giant industrial forge inside a volcano, rivers of glowing lava, huge machinery, sparks, orange light, smoke, wide shot",
+    "neg": "people, text",
+    "pick": 174696768
+  },
+  "m_button": {
+    "ch": "m",
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, indoors, dark control room of a giant ship, a single large red button on a console in the center, spotlight, cables, monitors, ominous, wide shot",
+    "neg": "people, text",
+    "pick": 393735932
   }
 }

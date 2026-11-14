@@ -2,6 +2,7 @@
 import { SFX } from '../audio/audio.js';
 import { clamp } from '../core/math.js';
 import { LUNGE_K, meleeKeyDir } from '../data/melee.js';
+import { MEM_N } from '../data/story.js';
 import { StyleStore } from '../render/style/store.js';
 import { Game } from './game.js';
 
@@ -762,6 +763,7 @@ Object.assign(Game.prototype, {
     document.getElementById('btnCineLib').onclick = () => this.openCineLib();
     document.getElementById('btnVoiceLab').onclick = () => this.openVoiceLab();
     document.getElementById('btnBgmLab').onclick = () => this.openBgmLab();
+    document.getElementById('btnBgmAi').onclick = () => this.openBgmLab(true);
     // 從模型庫回來（分頁重新取得焦點）：停在標題或車庫時重新讀取本地模型（沒變動就不解析）
     const back = () => {
       if (document.hidden || (this.net && this.net.role)) return;
@@ -1379,6 +1381,11 @@ Object.assign(Game.prototype, {
         const k = this.campEnding;
         this.campEnding = null;
         this.campResultHub = false;
+        // 真結局：結局畫面之前先播 ECHO 的雙色調短片（過場改版第 10 期，data/cine/memory.js）
+        if (k === 'beyond' && this.cineAllowed() && this.storyAuto() && !this.cine)
+          return this.cinePlay('e_beyond', () => this.openEpilogue(k), {
+            ctx: { full: this.campMemN() >= MEM_N },
+          });
         return this.openEpilogue(k);
       }
       if (this.campResultHub) {
