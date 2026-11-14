@@ -22455,7 +22455,9 @@ async function testCine(browser, base) {
   // 劇本：3 個周目 × 序章、6 章開場、5 章章末都產生得出來；依抉擇的章末不同
   const defs = await page.evaluate(() => {
     const g = window.__game;
-    const all = [1, 2, 3].map((c) => g.cineDefs({ cycle: c }).filter((d) => d.k.slice(1, 2) === String(c)));
+    const all = [1, 2, 3].map((c) =>
+      g.cineDefs({ cycle: c }).filter((d) => /^[pio]\d/.test(d.k) && d.k.slice(1, 2) === String(c)),
+    );
     const o2c = g.cineDefs({ choices: { c2: 'castron' } }).find((d) => d.k === 'o1_2');
     const o2a = g.cineDefs({ choices: { c2: 'aetheric' } }).find((d) => d.k === 'o1_2');
     return { all, o2c, o2a };
@@ -22599,6 +22601,55 @@ async function testCine(browser, base) {
     `2D 舞台：對話分格的立繪演員（${talk.who.join('、')}）、說話的人的氣泡取代字幕條（${talk.bub}）`,
   );
   await page.evaluate(() => window.__game.cineEnd(true));
+  // 對話分格（過場改版第 5～8 期，data/cine/talks.js）：第 1～7 章章末、第 2～8 章開場的最前面；第 2、4 章章末依抉擇換人
+  const talks = await page.evaluate(() => {
+    const C = window.__CINES;
+    const keys = ['o1_1', 'o1_2', 'o1_3', 'o1_4', 'o1_5', 'o1_6', 'o1_7'].concat([
+      'i1_2',
+      'i1_3',
+      'i1_4',
+      'i1_5',
+      'i1_6',
+      'i1_7',
+      'i1_8',
+    ]);
+    const who = (d) => d.shots[0].st.els[0].kids.find((e) => e.k === 'actor').who;
+    const ok = keys.filter((k) => {
+      const d = C[k]({ cycle: 1, choices: {} });
+      return d && d.shots[0].st && d.shots[1].at > 10;
+    });
+    return {
+      n: ok.length,
+      c2: [
+        who(C.o1_2({ cycle: 1, choices: { c2: 'castron' } })),
+        who(C.o1_2({ cycle: 1, choices: { c2: 'aetheric' } })),
+      ],
+      c4: [
+        who(C.o1_4({ cycle: 1, choices: { c4: 'veerwell' } })),
+        who(C.o1_4({ cycle: 1, choices: { c4: 'sancta' } })),
+      ],
+    };
+  });
+  check(
+    talks.n === 14 && talks.c2.join() === 'castron,aetheric' && talks.c4.join() === 'veerwell,sancta',
+    `對話分格：14 段過場的最前面（${talks.n}）、第 2／4 章章末依抉擇換人（${talks.c2.join('、')}／${talks.c4.join('、')}）`,
+  );
+  // 記憶片段與真結局（過場改版第 10 期，data/cine/memory.js）：雙色調的 2D 短片；選後的最後是代價的漫畫頁
+  const mem = await page.evaluate(() => {
+    const C = window.__CINES;
+    const ms = [1, 2, 3, 4, 5, 6, 7, 8].map((k) => C['m' + k]({ cycle: 3 }));
+    const e = C.e_beyond({ cycle: 3, full: true });
+    const post = C.x_c2_castron({ cycle: 1, choices: {} });
+    return {
+      m: ms.filter((d) => d && d.shots[0].st && d.shots[0].st.fps).length,
+      e: !!(e && e.shots[0].st),
+      grabs: (post.grabs || []).length,
+    };
+  });
+  check(
+    mem.m === 8 && mem.e && mem.grabs >= 2,
+    `記憶片段 8 段與真結局是 2D 短片（${mem.m}、${mem.e}）、選後的漫畫頁擷取 ${mem.grabs} 格`,
+  );
   // 故事畫面：第一次進作戰室播序章的過場動畫；略過時改顯示序章的文字畫面，之後接第 1 章開場的過場動畫
   await page.evaluate(() => {
     const g = window.__game;
@@ -22671,7 +22722,8 @@ async function testCine(browser, base) {
   await page.waitForFunction(() => window.__game.cine && window.__game.cine.started, null, {
     timeout: 30000,
   });
-  await page.evaluate(() => window.__game.cineSeek(9));
+  // 最前面是對話分格（氣泡，過場改版第 5 期）：跳到後面 3D 段落的第 9 秒看字幕條
+  await page.evaluate(() => window.__game.cineSeek(window.__game.cine.def.shots[1].at + 9));
   await page.waitForTimeout(900);
   const ph = await page.evaluate(() => {
     const s = document.getElementById('cineSub').getBoundingClientRect();

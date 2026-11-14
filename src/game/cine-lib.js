@@ -135,6 +135,13 @@ Object.assign(Game.prototype, {
       }
       story(`o${cyc}_${ch}`, g);
     }
+    // 第 3 周目：ECHO 的記憶片段與真結局（過場改版第 10 期）
+    if (cyc === 3) {
+      for (let k = 1; k <= 8; k++)
+        if (CINES['m' + k])
+          out.push({ k: 'm' + k, group: 'ECHO 的記憶', ctx: { cycle: 3 }, title: `片段 ${k}` });
+      out.push({ k: 'e_beyond', group: 'ECHO 的記憶', ctx: { cycle: 3, full: true }, title: '真結局：彼岸' });
+    }
     return out;
   },
   cineLibList() {
@@ -227,7 +234,9 @@ Object.assign(Game.prototype, {
   cineStandIn(c, set) {
     const A = this.cineAddActor({ id: 'player', k: 'hero', p: [0, 0], yaw: 0 }, 0);
     if (A && A.e) A.e.fpFace = false;
-    const opts = (c.def.shots[0] && c.def.shots[0].opts) || [];
+    // 出口：第一個帶 opts 的鏡頭（選前的最前面是對峙的對話分格，沒有 opts）
+    const s0 = c.def.shots.find((s) => s.opts);
+    const opts = (s0 && s0.opts) || [];
     const n = opts.length;
     set.exits = opts.map((o, i) => {
       const pos = this.cinePt({ g: [(i - (n - 1) / 2) * 16, -34] });

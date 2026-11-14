@@ -190,6 +190,20 @@ Object.assign(Game.prototype, {
     const x = cv.getContext('2d');
     x.setTransform(1, 0, 0, 1, 0, 0);
     x.clearRect(0, 0, cv.width, cv.height);
+    // 擷取畫面（劇本的 def.grabs＝[過場的秒數…]）：那一秒的 3D 畫面先存起來，後面的漫畫頁以 grab: 秒數 放進格子
+    // （選後的「代價的漫畫頁」）；跳時間跳過了就沒有那一張（格子畫底色）
+    if (c.def.grabs && this.renderer) {
+      const G = (c.grabs = c.grabs || {});
+      for (const g of c.def.grabs)
+        if (!G[g] && c.t >= g && c.t < g + 0.5) {
+          const src = this.renderer.domElement;
+          const cv = document.createElement('canvas');
+          cv.width = Math.min(src.width, 1280);
+          cv.height = Math.round((cv.width * src.height) / src.width);
+          cv.getContext('2d').drawImage(src, 0, 0, cv.width, cv.height);
+          G[g] = cv;
+        }
+    }
     const st = S && S.st;
     if (!st) {
       if (c.s2) c.s2 = null;
@@ -213,6 +227,8 @@ Object.assign(Game.prototype, {
     s2.si = c.shot;
     const shotLt = lt;
     lt = c.t - p0;
+    // 有限動畫（方案 E 的 2D 短片）：st.fps＝元素的時間一格一格跳（例如 8 格／秒）
+    if (st.fps) lt = Math.floor(lt * st.fps) / st.fps;
     // 自己有鏡頭的格子（cam）：每一格各畫一次 3D、複製下來，所以同一頁好幾格可以同時是即時的
     this.cine2dCams(S, st, shotLt, lt);
     s2.dt = c.paused ? 0 : dt;
@@ -432,6 +448,7 @@ Object.assign(Game.prototype, {
     const s2 = this.cine.s2;
     const key = e.id || JSON.stringify(e.q);
     let src = (s2.lc && s2.lc.get(key)) || (this.renderer && this.renderer.domElement);
+    if (e.grab != null) src = this.cine.grabs && this.cine.grabs[e.grab]; // 前面擷取的畫面
     if (e.snap != null && lt >= e.snap) {
       let im = s2.snap.get(key);
       if (!im && src && src.width) {
@@ -589,11 +606,19 @@ Object.assign(Game.prototype, {
       g.fillStyle = `rgba(0,0,0,${e.sil})`;
       g.fillRect(0, 0, cw, ch);
     } else if (e.tone) {
+      // 單色：先留一份原本的形狀當遮罩（分層的立繪有四層，不能逐層用 destination-in，會只剩四層重疊的地方）
+      const mk = (A.mask =
+        A.mask && A.mask.width === cw && A.mask.height === ch ? A.mask : document.createElement('canvas'));
+      if (mk.width !== cw) mk.width = cw;
+      if (mk.height !== ch) mk.height = ch;
+      const mg = mk.getContext('2d');
+      mg.clearRect(0, 0, cw, ch);
+      mg.drawImage(off, 0, 0);
       g.globalCompositeOperation = 'color';
       g.fillStyle = e.tone;
       g.fillRect(0, 0, cw, ch);
       g.globalCompositeOperation = 'destination-in';
-      A.P.draw(g, cw, ch, { fit: 'full', mirror: !!e.mirror });
+      g.drawImage(mk, 0, 0);
     } else if (e.holo) {
       g.fillStyle = e.holo;
       g.globalAlpha = 0.55;
