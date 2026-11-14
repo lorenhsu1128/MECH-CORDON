@@ -254,6 +254,8 @@ Object.assign(Game.prototype, {
   // 第 si 鏡之後不會再用到的常駐場景釋放（劇場往回跳時由 cineHoldBuild 重建）
   cineSetGc(c, si) {
     if (!c.lastUse) return;
+    // 劇場（會往回跳、拖時間軸）：開頭全部常駐得下時不釋放，往回跳也不用重建（重建要暫停音訊）
+    if (c.lib && c.prepInfo && c.prepInfo.kept === c.prepInfo.sets) return;
     for (const [key, set] of [...c.sets]) {
       if (set === c.set) continue;
       const last = c.lastUse.get(key);
