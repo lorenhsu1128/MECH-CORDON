@@ -2,9 +2,13 @@
 // 第 1 章開場＝ch1-intro.js（第 1 期的試做），其他全部＝chfilm.js 的新格式（舊的 3D 演出已經拿掉）。
 import { ch1Intro } from './ch1-intro.js';
 import { chapterFilm } from './chfilm.js';
+import { ch2Intro, ch2Outro } from './ch2-anime.js';
 
 // kind：'intro'｜'outro'
 export function chapterCine(ch, kind, ctx) {
   if (ch === 1 && kind === 'intro') return ch1Intro(ctx);
+  // 3D 動畫化（docs/cine-redesign-design.md 第十節）：做好的章換成新的
+  if (ch === 2 && kind === 'intro') return ch2Intro(ctx);
+  if (ch === 2 && kind === 'outro') return ch2Outro(ctx);
   return chapterFilm(ch, kind, ctx);
 }

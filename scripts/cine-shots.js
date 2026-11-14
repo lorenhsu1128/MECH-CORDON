@@ -3,6 +3,7 @@
 //   node scripts/cine-shots.js i1_1                 每一鏡一張
 //   node scripts/cine-shots.js i1_1 --t=2,11.2,30    指定秒數
 //   node scripts/cine-shots.js i1_1 --size=1280x720 --cols=4
+//   node scripts/cine-shots.js o1_2 --ctx='{"choices":{"c2":"aetheric"}}'   依抉擇的段落（劇本的 ctx）
 // 直接開 dist/mech-cordon.html（file://），要先 npm run build。
 const { chromium } = require('playwright-core');
 /* global window -- page.evaluate 的回呼在瀏覽器端執行 */
@@ -43,13 +44,16 @@ const BROWSERS = [
     await page.waitForFunction(() => window.__game && window.__game.state === 'title', null, {
       timeout: 60000,
     });
-    const info = await page.evaluate(async (key) => {
-      const g = window.__game;
-      g.cineTest = 1;
-      g.cinePlay(key, () => {});
-      while (!(g.cine && g.cine.started)) await new Promise((r) => setTimeout(r, 100));
-      return { shots: g.cine.def.shots.map((s) => s.at), dur: g.cine.def.dur };
-    }, key);
+    const info = await page.evaluate(
+      async ([key, ctx]) => {
+        const g = window.__game;
+        g.cineTest = 1;
+        g.cinePlay(key, () => {}, ctx ? { ctx } : {});
+        while (!(g.cine && g.cine.started)) await new Promise((r) => setTimeout(r, 100));
+        return { shots: g.cine.def.shots.map((s) => s.at), dur: g.cine.def.dur };
+      },
+      [key, opt.ctx ? JSON.parse(opt.ctx) : null],
+    );
     const ends = [...info.shots.slice(1), info.dur];
     const times = opt.t
       ? opt.t.split(',').map(Number)
@@ -67,7 +71,7 @@ const BROWSERS = [
       });
       await page.evaluate(() => (window.__game.cine.paused = true));
       await page.waitForTimeout(150);
-      const f = path.join(OUT, `${key}-${t.toFixed(1).padStart(5, '0')}.png`);
+      const f = path.join(OUT, `${key}${opt.ctx ? '-ctx' : ''}-${t.toFixed(1).padStart(5, '0')}.png`);
       await page.screenshot({ path: f });
       files.push([t, f]);
       console.log(`${t.toFixed(1)} 秒 → ${path.relative(process.cwd(), f)}`);
@@ -89,7 +93,7 @@ const BROWSERS = [
           .join('') +
         '</body>',
     );
-    const out = path.join(OUT, `${key}-sheet.png`);
+    const out = path.join(OUT, `${key}${opt.ctx ? '-ctx' : ''}-sheet.png`);
     await sheet.screenshot({ path: out, fullPage: true });
     console.log('總表：' + path.relative(process.cwd(), out));
   } finally {

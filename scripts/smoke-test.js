@@ -22716,8 +22716,9 @@ async function testCine(browser, base) {
   // 每段有對話分格（兩格面對面的立繪）；第 2、4 章章末依抉擇換人
   const talks = await page.evaluate(() => {
     const C = window.__CINES;
-    const keys = ['o1_1', 'o1_2', 'o1_3', 'o1_4', 'o1_5', 'o1_6', 'o1_7'].concat([
-      'i1_2',
+    // 3D 動畫化做好的章（docs/cine-redesign-design.md 第十節）不在這裡，下面另外檢查
+    const ANIME = ['i1_2', 'o1_2'];
+    const keys = ['o1_1', 'o1_3', 'o1_4', 'o1_5', 'o1_6', 'o1_7'].concat([
       'i1_3',
       'i1_4',
       'i1_5',
@@ -22725,7 +22726,12 @@ async function testCine(browser, base) {
       'i1_7',
       'i1_8',
     ]);
-    const who = (d) => d.shots[0].st.els[0].kids.find((e) => e.k === 'actor').who;
+    // 第一鏡的立繪演員（在格子裡或直接疊在 3D 上）
+    const who = (d) => {
+      const els = d.shots[0].st.els;
+      const top = els.find((e) => e.k === 'actor');
+      return top ? top.who : els[0].kids.find((e) => e.k === 'actor').who;
+    };
     const ok = keys.filter((k) => {
       const d = C[k]({ cycle: 1, choices: {} });
       // 整段都是 2D 舞台、有對話分格、有漫畫頁
@@ -22740,8 +22746,21 @@ async function testCine(browser, base) {
         );
       return d && d.shots.every((s) => s.st) && talk && d.shots.some((s) => s.st.page);
     });
+    // 3D 動畫化的段：有 3D 場景、有新建的室內（委託方）、有疊在 3D 上的格子
+    const anime = ANIME.filter((k) =>
+      [{ c2: 'castron' }, { c2: 'aetheric' }].every((ch) => {
+        const d = C[k]({ cycle: 1, choices: ch });
+        const sets = d.shots.map((s) => (s.set || {}).k);
+        return (
+          sets.includes('world') &&
+          d.shots.some((s) => s.set && s.set.k === 'room' && s.set.kind) &&
+          d.shots.some((s) => s.st && !s.st.bg && s.st.els.some((e) => e.k === 'panel'))
+        );
+      }),
+    );
     return {
       n: ok.length,
+      anime: anime.length,
       c2: [
         who(C.o1_2({ cycle: 1, choices: { c2: 'castron' } })),
         who(C.o1_2({ cycle: 1, choices: { c2: 'aetheric' } })),
@@ -22753,8 +22772,11 @@ async function testCine(browser, base) {
     };
   });
   check(
-    talks.n === 14 && talks.c2.join() === 'castron,aetheric' && talks.c4.join() === 'veerwell,sancta',
-    `各章重製：14 段整段是新格式、有對話分格與漫畫頁（${talks.n}）、第 2／4 章章末依抉擇換人（${talks.c2.join('、')}／${talks.c4.join('、')}）`,
+    talks.n === 12 &&
+      talks.anime === 2 &&
+      talks.c2.join() === 'castron,aetheric' &&
+      talks.c4.join() === 'veerwell,sancta',
+    `各章重製：12 段新格式（${talks.n}）、2 段 3D 動畫化（${talks.anime}：3D 場景、委託方的室內、疊在 3D 上的格子）、第 2／4 章章末依抉擇換人（${talks.c2.join('、')}／${talks.c4.join('、')}）`,
   );
   // 記憶片段與真結局（過場改版第 10 期，data/cine/memory.js）：雙色調的 2D 短片；選後的最後是代價的漫畫頁
   const mem = await page.evaluate(() => {

@@ -25,6 +25,7 @@ import { PALETTES } from '../render/materials.js';
 import { animateMech, buildMech } from '../render/mech-model.js';
 import { buildHubRoom, hubRoomRich, tickHubRoom } from '../render/hub-room.js';
 import { buildCastronOffice, tickCastronOffice } from '../render/cine-office.js';
+import { buildAethericLab, tickAethericLab } from '../render/cine-lab.js';
 import { revealDom } from '../render/textfx.js';
 import { World } from '../world/world.js';
 import { CINE_GRADE } from './constants.js';
@@ -34,6 +35,11 @@ const $ = (id) => document.getElementById(id);
 const V = (a) => new THREE.Vector3(a[0], a[1], a[2]);
 const smooth = (x) => x * x * (3 - 2 * x);
 const D2R = Math.PI / 180;
+// 新建的室內場景（room 的 kind）：[建模, 每格]
+const ROOMS = {
+  castron: [buildCastronOffice, tickCastronOffice],
+  aetheric: [buildAethericLab, tickAethericLab],
+};
 const SKIP_HOLD = 0.8; // 長按幾秒略過
 if (/[?&]test\b/.test(location.search)) window.__CINES = CINES; // 測試：放臨時的劇本
 
@@ -312,9 +318,11 @@ Object.assign(Game.prototype, {
       // 室內：作戰室的指揮室模型（render/hub-room.js），當委託方的辦公室、指揮室；原點＝桌子的中心
       set.root = new THREE.Group();
       this.scene.add(set.root);
-      if (S.kind === 'castron') {
-        // 霍斯特的辦公室（render/cine-office.js）：程式模型、共用的倒角幾何不釋放
-        set.office = buildCastronOffice();
+      const RB = ROOMS[S.kind];
+      if (RB) {
+        // 新建的室內（render/cine-office.js 霍斯特的辦公室、cine-lab.js 艾瑟立克的研究所）：程式模型、共用的倒角幾何不釋放
+        set.office = RB[0]();
+        set.officeTick = RB[1];
         set.keepGeo = true;
         set.root.add(set.office);
         return set;
@@ -609,7 +617,7 @@ Object.assign(Game.prototype, {
     this.cineCamera(S, lt, c.paused ? 0 : dt);
     if (c.set && c.set.space) c.set.space.update(t, this.camera);
     if (c.set && c.set.room) tickHubRoom(c.set.room, dt, t); // 室內的燈條、轉動的東西
-    if (c.set && c.set.office) tickCastronOffice(c.set.office, t);
+    if (c.set && c.set.office) c.set.officeTick(c.set.office, t);
     this.cineOverlay(S, lt, dt);
     if (c.lib) this.cineLibTick(c);
     SFX.setListenerCam(this.camera);
