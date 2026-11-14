@@ -49,6 +49,23 @@ function sh(cmd, a) {
   if (args.includes('--score')) return score(rest);
   if (args.includes('--pack')) return pack(rest);
   if (args.includes('--all')) {
+    // 即時試聽：每產生一首就放進 AI 配樂試聽的「產生中的曲子」（scripts/bgm-preview.py，跑完寫 done 讓它結束）
+    const done = path.join(DIR, 'out', 'done');
+    fs.mkdirSync(path.dirname(done), { recursive: true });
+    fs.rmSync(done, { force: true });
+    const prev = require('child_process').spawn(
+      SPY,
+      [path.join(ROOT, 'scripts', 'bgm-preview.py'), '--loop'],
+      {
+        cwd: ROOT,
+        stdio: 'ignore',
+        env: ENV,
+      },
+    );
+    process.on('exit', () => {
+      fs.writeFileSync(done, '');
+      prev.kill();
+    });
     const from = +(opt.from || 1),
       to = +(opt.to || 8),
       n = opt.n || '2';

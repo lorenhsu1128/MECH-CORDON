@@ -237,4 +237,4 @@
   4. `scripts/bgm-ai-pack.py`：RMS 響度正規化、峰值限制、頭尾 0.4 秒淡入淡出（循環的接縫）、96 kbps → `src/assets/bgm-ai/c<章>/<類型>.mp3`、`<類型>_calm.mp3`、`index.json`（歌名、聲線、速度、調、長度、副歌時間、有沒有平時版、挑中的候選與分數）。
   已經有的檔案都略過，中斷後重跑接著做；單獨的步驟 `npm run bgm:gen`／`bgm:score`／`bgm:pack`。顯示卡記憶體不夠時設 `BGM_DIT=acestep-v15-turbo`、`BGM_LM=acestep-5Hz-lm-0.6B`。
 - **建置與遊戲**：`scripts/build.js` 把每章寫成 `lib/bgm-c<章>.js`（`window.MECH_CORDON_BGM_C<章>`，約 25 MB），`game/bgm.js` 的 `bgmCtx` 決定章（主線＝出擊的章；其他依地圖主題對應 `REGIONS` 的章；空戰在第 4～6 章以外用第 5 章）與類型（主線＝目前區段、客機看 `campC.view.type`、其他＝battle／Boss 關 boss），`bgmLoadCh` 進任務時載入那一章；強度 0／1＝平時版（沒有平時版的用交戰版）、2＝交戰版、3＝Boss 曲、4＝Boss 最終型態（`bossPhase() >= 3`）＝主題歌從 `chorus` 開始；同一首的平時版↔交戰版從同一個位置接下去（`bgmAiPick`）；主線換區段類型時重新決定。沒有那一章的檔案或類型時用舊的配樂（`SETS`，`lib/bgm-assets.js`）。
-- 試聽：標題「工具與其他」的「AI 配樂試聽」（`openBgmLab(true)` → `blabAiRender`：選章、每首的交戰／平時／副歌、評分與備註，「複製評分」）；原本的「配樂試聽」只列外部的候選曲。
+- 試聽：標題「工具與其他」的「AI 配樂試聽」（`openBgmLab(true)` → `blabAiRender`：選章、每首的交戰／平時／副歌、評分與備註，「複製評分」）；下面的「產生中的曲子」（`blabCandRender`）是 `scripts/bgm-preview.py` 每產生一首就寫進 `dist/lib/bgm-cand-c<章>.js` 的全部候選（不用重新建置、不進 git；`bgm:all` 會在背景一起跑，建置清掉後一分鐘內補回），標出挑中的與分數。原本的「配樂試聽」只列外部的候選曲。
