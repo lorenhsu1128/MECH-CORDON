@@ -76,6 +76,8 @@ def imp(opt):
     n = 0
     for ch in chapters(WORK, opt):
         src, dst = os.path.join(WORK, f'c{ch}'), os.path.join(OUT, f'c{ch}')
+        if not os.path.isdir(src):
+            continue  # 這一章別台還沒做過（--ch 指定時 chapters() 不檢查資料夾在不在）
         os.makedirs(dst, exist_ok=True)
         for f in sorted(os.listdir(src)):
             if not f.endswith('.mp3') or not NAME.fullmatch(f[:-4]):
