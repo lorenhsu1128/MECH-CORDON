@@ -97,6 +97,9 @@ Object.assign(Game.prototype, {
     // 半透明版（鏡頭遮擋的淡出、碎塊）＋第一個場景時：任務中記下的變體與能量特效（render-setup.js 的 shaderWarm 也加這些）
     const ex = new THREE.Group();
     ex.add(transpWarm(set.root || this.scene));
+    // 演員（MechEntity）不在場景的根底下：它們合併前的網格（擊破碎裂時 unmerge 拿回來的那一版）與半透明版另外加
+    // （第 1 章開場 14.8 秒，運輸 MT 被打爆時現場編譯 0.15 秒）
+    for (const a of c.actors.values()) if (a && a.e && a.e.mesh) ex.add(transpWarm(a.e.mesh));
     if (!c.warmEx) {
       c.warmEx = true;
       ex.add(warmGroup([]));

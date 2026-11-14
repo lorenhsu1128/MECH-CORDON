@@ -79,10 +79,15 @@ Object.assign(Game.prototype, {
   // 場景插畫（img：'<章>/<id>'，第 2 期 scripts/cine-art.js 產生）：載入那一章的 lib/cine-art-<章>.js、解碼成圖片
   cine2dPreload(def) {
     const ids = new Set(),
-      imgs = new Set();
+      imgs = new Set(),
+      poses = new Set();
     const walk = (els) => {
       for (const e of els || []) {
-        if (e.k === 'actor' && e.who) ids.add(e.who);
+        if (e.k === 'actor' && e.who) {
+          ids.add(e.who);
+          poses.add(e.who + '|' + (e.pose || 'p1'));
+          for (const s of e.s || []) if (s.pose) poses.add(e.who + '|' + s.pose);
+        }
         if (e.img) imgs.add(e.img);
         if (e.kids) walk(e.kids);
       }
@@ -95,7 +100,26 @@ Object.assign(Game.prototype, {
     return Promise.all([
       ...[...ids].map((id) => Portraits.get(id).catch(() => null)),
       ...[...imgs].map((r) => this.cine2dLoadImg(r)),
-    ]);
+    ]).then(() => this.cine2dWarmPortraits(poses));
+  },
+  // 用到的每個「角色＋姿勢」先在離屏畫一次：圖片解碼、分層的範圍（alphaBox）、臉部的遮罩都在準備時做掉，
+  // 否則第一次出現的那一格要 0.1～0.2 秒（第 6 章章末四家的格子一起出現時 228 ms）
+  async cine2dWarmPortraits(poses) {
+    const cv = document.createElement('canvas');
+    cv.width = 192;
+    cv.height = 256;
+    const x = cv.getContext('2d');
+    for (const k of poses) {
+      const [who, pose] = k.split('|');
+      const pk = await Portraits.get(who).catch(() => null);
+      if (!pk) continue;
+      try {
+        const P = new Portrait(pk, pose);
+        P.draw(x, cv.width, cv.height);
+      } catch {
+        // 畫不出來就算了（播放時照舊）
+      }
+    }
   },
   cine2dLoadImg(ref) {
     const C = (this.cineImgs = this.cineImgs || {});

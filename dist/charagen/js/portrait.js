@@ -48,7 +48,8 @@ export class PortraitPack {
   // 臉／眼／嘴的小圖只留「不動的時候看得到臉」的部分（頭那一層 − 前髮），所以前髮晃開時下面是補畫的額頭、不會有兩層頭髮
   patchIn(P, L, name, box) {
     const k = P.id + '|' + name;
-    const C = (this.masked = this.masked || {});
+    // 快取放在立繪套件上（同一個角色的每個演員共用；以前每個 Portrait 各做一次，過場換鏡頭時重算）
+    const C = (this.pack.masked = this.pack.masked || {});
     if (C[k]) return C[k];
     const p = this.imgs[name];
     if (!p) return null;
