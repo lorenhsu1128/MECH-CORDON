@@ -18,6 +18,7 @@ const MODE_NAME = {
   pack: '打包',
   build: '建置',
   setup: '安裝',
+  sync: '同步',
 };
 const ago = (ms) => {
   const s = Math.max(0, Math.round(ms / 1000));
@@ -127,6 +128,7 @@ Object.assign(Game.prototype, {
       <button data-run="calm"${dis}>產生平時版</button>
       <button data-run="pack"${dis}>打包</button>
       <button data-run="build"${dis} title="npm run build：打包好的配樂放進遊戲（lib/bgm-c<章>.js）">建置</button>
+      <button data-run="sync"${dis} title="git pull 之後按：把別台電腦做好、進 git 的候選（tools/bgm-work/）還原到這台">同步</button>
       <button id="bgCommon">共用設定</button>`;
     if ($('bgOpts').dataset.sig !== opts) {
       $('bgOpts').innerHTML = opts;
@@ -197,7 +199,7 @@ Object.assign(Game.prototype, {
   bggArgs(j) {
     const a = j.args || {};
     if (j.mode === 'all') return a.from === a.to ? `第 ${a.from} 章` : `第 ${a.from}～${a.to} 章`;
-    if (j.mode === 'build' || j.mode === 'setup') return '';
+    if (j.mode === 'build' || j.mode === 'setup' || j.mode === 'sync') return '';
     return `第 ${a.ch} 章${a.songs ? '：' + a.songs.split(',').map(typeName).join('、') : ''}`;
   },
   bggRun(kind, songs) {

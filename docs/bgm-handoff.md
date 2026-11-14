@@ -5,7 +5,8 @@
 ## 現況
 
 - **完成**：112 首的規劃與日文歌詞（`scripts/bgm_songs/c1.json`～`c8.json`，共用設定 `common.json`）、產生／評分／平時版／打包的工具、遊戲端的選曲（`game/bgm.js`）、AI 配樂試聽（依章、產生中的曲子）、配樂產生器（標題「工具與其他」）。全部已 push。
-- **還沒做**：音樂本身。原本那台（RTX 5070 Ti Laptop，12 GB）做到第 1 章的 7 個候選就暫停了；候選檔在 gitignore 的 `tools/acestep/out/`，**沒有進 git，接手的電腦從第 1 章重新開始**（種子固定，結果會很接近）。
+- **還沒做**：音樂本身。原本那台（RTX 5070 Ti Laptop，12 GB）做到第 1 章的 7 個候選（主題歌 2、戰鬥 2、精英 2、破壞 1）就暫停了。
+- **跨電腦同步**：產生的候選（wav，在 gitignore 的 `tools/acestep/out/`）以 320 kbps mp3 放進**會 commit 的 `tools/bgm-work/`**（`scripts/bgm-sync.py`、`npm run bgm:sync -- export|import`）。`npm run bgm:all` 開始時先匯入（別台做過的不重做）、每一步之後匯出；伺服器（`npm start`）啟動時也自動匯入一次，配樂產生器的「同步」按鈕是 git pull 之後手動匯入。所以那 7 首 pull 下來之後就看得到、也不會重做。**每做完一章 commit 時把 `tools/bgm-work` 一起加進去**。
 - 遊戲現在沒有 AI 配樂的章就用舊的配樂（`lib/bgm-assets.js`），所以中途 commit 不會壞。
 
 ## 第一次在這台電腦上
@@ -39,7 +40,7 @@ npm run bgm:setup      # 約 15 GB：ACE-Step（固定版本）＋Python 3.12＋
 git pull
 npm run build                                  # lib/bgm-c<章>.js 與章節清單 lib/bgm-ai.js
 SMOKE_ONLY=testBgmLab,testAudio2 node scripts/smoke-test.js
-git add src/assets/bgm-ai dist && git commit -m "AI 配樂：第 N 章（…）" && git push
+git add src/assets/bgm-ai tools/bgm-work dist && git commit -m "AI 配樂：第 N 章（…）" && git push
 ```
 
 （Node 不在 PATH 時：Git Bash 先 `export PATH="/c/Program Files/nodejs:$PATH"`。`.git/index.lock` 卡住時刪掉它。）

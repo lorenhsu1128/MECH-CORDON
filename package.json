@@ -22,7 +22,8 @@
     "bgm:gen": "node scripts/bgm-gen-run.js",
     "bgm:score": "node scripts/bgm-gen-run.js --score",
     "bgm:pack": "node scripts/bgm-gen-run.js --pack",
-    "bgm:all": "node scripts/bgm-gen-run.js --all"
+    "bgm:all": "node scripts/bgm-gen-run.js --all",
+    "bgm:sync": "node scripts/bgm-gen-run.js --sync"
   },
   "dependencies": {
     "qrcode-generator": "^1.4.4",

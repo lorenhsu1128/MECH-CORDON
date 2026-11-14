@@ -4,7 +4,8 @@
 // scripts/bgm-*.js／*.py 與 npm run bgm:setup 裝在 tools/acestep/ 的環境；其他情況回 { dev: false }。
 // - GET  /api/bgm/state?ch=<章>：安裝狀態、顯示卡、工作的狀態與記錄、各章的歌曲設定與產生結果（候選、分數、挑選、平時版、打包）
 // - PUT  /api/bgm/song { ch, type, song }、PUT /api/bgm/common { common }：改 scripts/bgm_songs/ 的 JSON
-// - POST /api/bgm/run { mode, ch, from, to, songs, n }：mode＝all／fight／score／calm／pack／build／setup，同時只跑一個
+// - POST /api/bgm/run { mode, ch, from, to, songs, n }：mode＝all／fight／score／calm／pack／build／setup／sync，同時只跑一個
+//   （sync＝把 git 裡的 tools/bgm-work/ 解回 tools/acestep/out/；啟動時也自動做一次）
 // - POST /api/bgm/stop：結束目前的工作（整個程序樹）
 // - POST /api/bgm/pick { ch, type, name }：手動改挑選（picks.json）；POST /api/bgm/drop { ch, name }：刪掉一個候選（重新產生用）
 // - GET  /api/bgm/audio?ch=<章>&name=<候選>：試聽用的 mp3（tools/acestep/preview/，scripts/bgm-preview.py 轉的）
@@ -142,6 +143,7 @@ module.exports = function bgmgen({ base, env, readBody, writeAtomic, log }) {
       ]);
     else if (mode === 'score') cmd = run(['--score', `--ch=${a.ch}`]);
     else if (mode === 'pack') cmd = run(['--pack', `--ch=${a.ch}`]);
+    else if (mode === 'sync') cmd = run(['--sync', 'import']);
     else if (mode === 'build') cmd = [node, [path.join(base, 'scripts', 'build.js')]];
     else if (mode === 'setup') cmd = [node, [path.join(base, 'scripts', 'bgm-setup.js')]];
     else return null;
@@ -196,6 +198,23 @@ module.exports = function bgmgen({ base, env, readBody, writeAtomic, log }) {
     if (s.arr && s.arr.trim()) out.arr = s.arr.trim();
     if (s.dur && +s.dur >= 30 && +s.dur <= 300) out.dur = Math.round(+s.dur);
     return out;
+  }
+
+  // 啟動時：別台電腦做過、git pull 下來的候選（tools/bgm-work/）解回 tools/acestep/out/，再補齊試聽檔
+  if (DEV && fs.existsSync(SPY) && fs.existsSync(path.join(base, 'tools', 'bgm-work'))) {
+    const p = spawn(SPY, [path.join(base, 'scripts', 'bgm-sync.py'), 'import'], {
+      cwd: base,
+      stdio: 'ignore',
+      env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1' },
+      windowsHide: true,
+    });
+    p.on('exit', () =>
+      spawn(SPY, [path.join(base, 'scripts', 'bgm-preview.py')], {
+        cwd: base,
+        stdio: 'ignore',
+        windowsHide: true,
+      }),
+    );
   }
 
   return {
@@ -291,7 +310,7 @@ module.exports = function bgmgen({ base, env, readBody, writeAtomic, log }) {
           };
           if (['fight', 'calm', 'score', 'pack'].includes(mode) && !chOk(a.ch))
             return json(resp, { error: '章不對' }, 400);
-          if (mode !== 'setup' && mode !== 'build' && !fs.existsSync(path.join(ACE, 'src', '.venv')))
+          if (!['setup', 'build', 'sync'].includes(mode) && !fs.existsSync(path.join(ACE, 'src', '.venv')))
             return json(resp, { error: '還沒安裝（先按「安裝」或 npm run bgm:setup）' }, 400);
           const j = startJob(mode, a);
           if (!j) return json(resp, { error: '不認得的工作' }, 400);

@@ -76,7 +76,7 @@ node scripts/model-shots.js vehicle/tank prop/car  # 模型庫檢視窗的近拍
 python scripts/sfx-prep.py <素材包資料夾>  # 音效素材的切割與轉檔 → src/assets/sfx2/（來源見 CREDITS.txt）
 python scripts/bgm-prep.py <曲子資料夾>  # 任務中的配樂剪成循環 → src/assets/bgm/（曲目與授權在腳本的 TRACKS；候選的試聽片段用 scripts/bgm-audition.py）
 npm run bgm:setup    # AI 配樂：固定版本的 ACE-Step 1.5（MIT）、模型與評分環境裝到 gitignore 的 tools/acestep/（每台電腦 pull 之後一次；要 git、NVIDIA 顯示卡，uv 沒有時自動下載）
-npm run bgm:all -- [--from=1] [--to=8]  # AI 配樂（也可以用標題「工具與其他」的「配樂產生器」操作，server-bgmgen.js 的 /api/bgm，只在開發模式；交接 docs/bgm-handoff.md）：每章每種區段類型一首日文歌（scripts/bgm_songs/ 的歌詞與編曲）→ 產生候選 → 自動評分挑選 → 平時版 → src/assets/bgm-ai/c<章>/（之後 npm run build；單獨的步驟 bgm:gen／bgm:score／bgm:pack；docs/audio-design.md 的「AI 配樂」）
+npm run bgm:all -- [--from=1] [--to=8]  # AI 配樂（也可以用標題「工具與其他」的「配樂產生器」操作，server-bgmgen.js 的 /api/bgm，只在開發模式；交接 docs/bgm-handoff.md）：每章每種區段類型一首日文歌（scripts/bgm_songs/ 的歌詞與編曲）→ 產生候選 → 自動評分挑選 → 平時版 → src/assets/bgm-ai/c<章>/（之後 npm run build；單獨的步驟 bgm:gen／bgm:score／bgm:pack；跨電腦同步 bgm:sync：候選以 mp3 放進進 git 的 tools/bgm-work/；docs/audio-design.md 的「AI 配樂」）
 python scripts/voice-audition.py  # ECHO 的語音試聽：VoxCPM2 的聲音設計產生候選 → src/assets/voice-audition/（要 CUDA 版 PyTorch、voxcpm）
 node scripts/voice-lines.js && python scripts/voice-gen.py  # ECHO 的語音：收集台詞 → VoxCPM2 以參考音檔克隆兩個聲音（每句 2 次、faster-whisper 挑最像的）→ src/assets/voice/<聲音>/（改了台詞要重跑；--retry 重挑 report.txt；--lang ja＝日文語音，台詞 lines-ja.json → <聲音>_ja/）
 node scripts/cine-art.js gen <id> --n=3  # 過場的場景插畫（tools/cine-art/scenes.json；sheet 看候選、pick <id> <種子> 選定 → src/assets/cine-art/；要先 npm run comfy；角色產生器的「場景插畫」分頁也可以）

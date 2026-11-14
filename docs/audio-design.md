@@ -249,4 +249,5 @@
 - **編輯**：一首歌的日文歌名、中文名、聲線、速度、調、長度、編曲（空白＝類型的預設）、歌詞，下面即時顯示送給模型的描述與字數（`PUT /api/bgm/song`，驗證後寫 `c<章>.json`）；「共用設定」直接編輯 `common.json` 的 JSON（`PUT /api/bgm/common`）。
 - 冒煙測試：`server` 步驟檢查非開發模式的伺服器回 `dev: false`、畫面顯示說明（產生要顯示卡，自動化測試不跑）。
 - 交接：`docs/bgm-handoff.md`（2026-11-14 這台暫停，改由 RTX 4070 的電腦接著產生）。
+- **跨電腦同步**（`scripts/bgm-sync.py`，`npm run bgm:sync -- export|import`）：候選與平時版的 wav 以 320 kbps mp3 放進進 git 的 `tools/bgm-work/c<章>/`（連同 json、scores.json、picks.json；配樂產生器刪掉的候選也一起刪），別台電腦匯入時解回 48 kHz 的 wav、分數與挑選合併（自己已經有的不蓋）。`bgm:all` 開始時匯入、每一步之後匯出；伺服器啟動時自動匯入並補齊試聽檔；配樂產生器的「同步」按鈕。
 
