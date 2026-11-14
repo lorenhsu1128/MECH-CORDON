@@ -11,7 +11,7 @@ import {
   c6SealAnime,
   choicePreAnime,
 } from './choice-anime.js';
-import { memoryCine, trueEndCine } from './memory.js';
+import { memoryAnime, trueEndAnime } from './memory-anime.js';
 import { prologueCine } from './prologue.js';
 
 export const CINES = {};
@@ -40,6 +40,6 @@ Object.assign(CINES, {
   x_c6_beyond: c6BeyondAnime,
 });
 
-// 過場改版第 10 期：ECHO 的記憶片段 m1～m8 與真結局 e_beyond（方案 E 的雙色調 2D 短片，data/cine/memory.js）
-for (let k = 1; k <= 8; k++) CINES['m' + k] = () => memoryCine(k);
-CINES.e_beyond = (ctx) => trueEndCine(ctx);
+// 3D 動畫化：每一片一個 3D 的地點，畫面調成雙色調（data/cine/memory-anime.js）
+for (let k = 1; k <= 8; k++) CINES['m' + k] = () => memoryAnime(k);
+CINES.e_beyond = (ctx) => trueEndAnime(ctx);

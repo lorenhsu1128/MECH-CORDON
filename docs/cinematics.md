@@ -90,7 +90,7 @@
 - **其他章的開場與章末**：`data/cine/chfilm.js` 的 `FILMS`（`chapters.js` 的 `chapterCine` 分派），用 `data/cine/film.js` 的段落組成：開場＝B（地點的固定插畫＋地名 → 局勢的漫畫頁 → 委託方與 ECHO 的對話分格 → 宿敵登場的 PV → PV 章名卡），章末＝A＋C（對話分格 → 後果的漫畫頁 → ECHO 的通訊）。台詞＝`data/story.js` 的 `CHAPTER_TEXT`（依抉擇 `pickLines`；還沒抉擇時用第一個選項），旁白是 narr 的語音、角色的台詞是立繪＋氣泡；插畫在 `src/assets/cine-art/c<章>/`（第 2 期的流程產生）。
 - **film.js 的段落**：`page`（漫畫頁：2～4 格，格子落在配樂的拍點上，頁面鏡頭跟著說話的格子；格＝插畫或立繪＋一句，`out` 說完就斷訊變黑）、`still`（整張的固定插畫＋旁白，`loc` 地名）、`talk`（talks.js 的對話分格）、`echo`（ECHO 的通訊，第 3 周目是 echo_true）、`rival`（宿敵的 PV 名牌）、`title`（PV 章名卡）、`card`（黑底大字卡）、`live`（照原樣的 3D 鏡頭）。新增一段過場時照這個寫。
 - **抉擇演出**：選前 `x_<抉擇>_pre`＝`choice-anime.js` 的 `choicePreAnime`：兩邊委託方的立繪從左右撞進來 → 各自在自己的室內正反打（`talks.js` 的 `pre_c2`／`pre_c4`／`pre_c6`；ZENITH 在方舟的甲板）→ 目前的戰場上從主角身後看向出口的光柱與倒數（`cinePlay(..., { live: true })`：場景 `{ k: 'live' }`、演員 `player`、`{ ex: i }`＝第 i 個出口、`ov: 'choice'`；過場劇場在代替的地圖上由 `cineStandIn` 擺主角與出口）。選後 `x_<抉擇>_<選項>`＝`choice-anime.js` 的代價蒙太奇（3D 的地點或委託方的室內＋插畫格，一鏡一句）＋大字卡，播完到轉場畫面（選後要先建 3D 的地點，在任務中播也一樣預先準備）。接在 `campaign.js` 的 `campChoiceCine`；多人、劇情動畫關閉時不播。
-- **記憶片段與真結局**：`data/cine/memory.js`（雙色調的 2D 短片）。
+- **記憶片段與真結局**：`data/cine/memory-anime.js`：每一片一個相關的 3D 地點（荒野的天線、水壩、研究所、宇宙港、辦公室、中樞、熔爐帶、方舟；真結局＝高空軌道），3D 一拍三；舞台以 `LIVE` 把 3D 拷貝進來、灰階後乘上亮色（舞台底色）、再以暗色濾色＝雙色調；ECHO 真實的樣子（echo_true）的雙色調立繪與單色的插畫格疊在上面。
 - 章節回顧（`storyUnlocked`）：看過的＋依進度開放的（序章、到目前章節的開場、完成的章的章末、以前周目的全部）。改台詞改 `data/story.js`（文字畫面與過場動畫共用；句數改了要一起看 `chfilm.js` 用到第幾句）。
 - `kit.js` 只剩小工具（`W`、`timeline`、`lineDur`、`parseLine`）。
 

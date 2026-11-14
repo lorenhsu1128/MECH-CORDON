@@ -22788,12 +22788,17 @@ async function testCine(browser, base) {
       talks.c4.join() === 'veerwell,sancta',
     `各章重製：1 段新格式（${talks.n}）、13 段 3D 動畫化（${talks.anime}：3D 場景、委託方的室內、疊在 3D 上的格子）、第 2／4 章章末依抉擇換人（${talks.c2.join('、')}／${talks.c4.join('、')}）`,
   );
-  // 記憶片段與真結局（過場改版第 10 期，data/cine/memory.js）：雙色調的 2D 短片；選後的最後是代價的漫畫頁
+  // 記憶片段與真結局（3D 動畫化，data/cine/memory-anime.js）：每一片一個 3D 的地點、拷貝進舞台做雙色調、一拍三；
+  // 選後（data/cine/choice-anime.js）：7 段都有 3D 的地點（或委託方的室內）＋插畫格
   const mem = await page.evaluate(() => {
     const C = window.__CINES;
+    const is3d = (s) => s.set && (s.set.k === 'world' || s.set.k === 'room');
+    const duo = (d) =>
+      d &&
+      d.shots.some(is3d) &&
+      d.shots.filter(is3d).every((s) => s.koma === 3 && s.st.els.some((x) => x.live && x.gco === 'multiply'));
     const ms = [1, 2, 3, 4, 5, 6, 7, 8].map((k) => C['m' + k]({ cycle: 3 }));
     const e = C.e_beyond({ cycle: 3, full: true });
-    // 選後（過場改版第 9 期重做，data/cine/aftermath.js）：7 段整段都是漫畫頁（每一鏡都是 2D 舞台）
     const posts = [
       'c2_castron',
       'c2_aetheric',
@@ -22804,9 +22809,9 @@ async function testCine(browser, base) {
       'c6_beyond',
     ].map((k) => C['x_' + k]({ cycle: 3, choices: {} }));
     return {
-      m: ms.filter((d) => d && d.shots[0].st && d.shots[0].st.fps).length,
-      e: !!(e && e.shots[0].st),
-      post: posts.filter((d) => d.shots.every((s) => s.st)).length,
+      m: ms.filter(duo).length,
+      e: duo(e),
+      post: posts.filter((d) => d.shots.every((s) => s.st) && d.shots.some(is3d)).length,
       panels: posts.reduce(
         (a, d) => a + d.shots.reduce((b, s) => b + s.st.els.filter((x) => x.k === 'panel').length, 0),
         0,
@@ -22815,7 +22820,7 @@ async function testCine(browser, base) {
   });
   check(
     mem.m === 8 && mem.e && mem.post === 7 && mem.panels >= 18,
-    `記憶片段 8 段與真結局是 2D 短片（${mem.m}、${mem.e}）；選後 ${mem.post} 段整段是漫畫頁（${mem.panels} 格）`,
+    `記憶片段 8 段與真結局：3D 的地點＋雙色調、一拍三（${mem.m}、${mem.e}）；選後 ${mem.post} 段：3D 的地點＋插畫格（${mem.panels} 格）`,
   );
   // 故事畫面：第一次進作戰室播序章的過場動畫；略過時改顯示序章的文字畫面，之後接第 1 章開場的過場動畫
   await page.evaluate(() => {

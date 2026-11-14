@@ -1389,7 +1389,7 @@ Object.assign(Game.prototype, {
         const k = this.campEnding;
         this.campEnding = null;
         this.campResultHub = false;
-        // 真結局：結局畫面之前先播 ECHO 的雙色調短片（過場改版第 10 期，data/cine/memory.js）
+        // 真結局：結局畫面之前先播 ECHO 的雙色調短片（data/cine/memory-anime.js：3D 的地點＋雙色調）
         if (k === 'beyond' && this.cineAllowed() && this.storyAuto() && !this.cine)
           return this.cinePlay('e_beyond', () => this.openEpilogue(k), {
             ctx: { full: this.campMemN() >= MEM_N },

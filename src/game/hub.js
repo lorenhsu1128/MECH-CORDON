@@ -480,7 +480,7 @@ Object.assign(Game.prototype, {
     }
     document.getElementById('hubEchoList').innerHTML =
       '<div class="echoHead"><span class="cBadge"></span></div>' + h;
-    // 播放記憶：雙色調的 2D 短片（過場改版第 10 期，data/cine/memory.js），播完回到這裡
+    // 播放記憶：雙色調的 2D 短片（data/cine/memory-anime.js：3D 的地點＋雙色調），播完回到這裡
     for (const btn of document.querySelectorAll('#hubEchoList .echoPlay'))
       btn.onclick = () => {
         this.hubEcho(false);
