@@ -1,6 +1,6 @@
 // 第 3 章的開場（3D 動畫化，docs/cine-redesign-design.md 第十節）：照第 2 章的做法。
 // 場景：白天暴風雪的冰原（snow）、聖域在冰原邊緣的救援站（room sancta，render/cine-sancta.js）。
-// 台詞＝CHAPTER_TEXT[3].intro（旁白）與 talks.js 的 intro_3（諾拉與 ECHO）；配樂 cine_c3。
+// 台詞＝CHAPTER_TEXT[3].intro（旁白）與 talks.js 的 intro_3（諾拉與 ECHO）；配樂：開場 cine_i3、章末 cine_o3（AI 做的過場配樂，scripts/cine-intro-music.py）。
 import { CHAPTER_TEXT, pickLines } from '../story.js';
 import { snapBeat } from './beats.js';
 import { W, timeline } from './kit.js';
@@ -449,7 +449,7 @@ export function ch3Intro(ctx) {
   );
   // PV 式章名卡：冰原的剪影（乘上冰藍）
   const TT = T.at;
-  const cb = (t) => +(snapBeat('cine_c3', TT + t) - TT).toFixed(3);
+  const cb = (t) => +(snapBeat('cine_i3', TT + t) - TT).toFixed(3);
   T.add(
     {
       set: SNOWD,
@@ -544,7 +544,7 @@ export function ch3Intro(ctx) {
   dropAll(T);
   return T.def({
     title: '第三章　開場',
-    music: [{ at: 0, track: 'cine_c3', vol: 0.8, fadeIn: 1, fadeOut: [T.at - 2.5, 2.5] }],
+    music: [{ at: 0, track: 'cine_i3', vol: 0.8, fadeIn: 1, fadeOut: [T.at - 2.5, 2.5] }],
   });
 }
 
@@ -888,6 +888,6 @@ export function ch3Outro(ctx) {
   dropAll(T);
   return T.def({
     title: '第三章　章末',
-    music: [{ at: 0, track: 'cine_suspense', vol: 0.8, fadeIn: 1, fadeOut: [T.at - 3, 3] }],
+    music: [{ at: 0, track: 'cine_o3', vol: 0.8, fadeIn: 1, fadeOut: [T.at - 3, 3] }],
   });
 }

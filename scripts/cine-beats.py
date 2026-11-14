@@ -7,9 +7,11 @@ src/data/cine/beats.js（{ 曲名: { bpm, beats: [秒…] } }）；劇本用 dat
   python scripts/cine-beats.py            # 全部的曲子
   python scripts/cine-beats.py cine_c1    # 只量一首
 
-要 librosa（語音的 conda 環境 rubicon-voice 有）。曲子換了要重跑。
+要 librosa（語音的 conda 環境 rubicon-voice、AI 配樂的評分環境 tools/acestep/score-venv 都有）。曲子換了要重跑，
+之後 npx prettier --write src/data/cine/beats.js（npm run format:check 會檢查）。
 """
 import json
+import re
 import os
 import sys
 
@@ -35,7 +37,11 @@ def main():
         # 保留沒有重量的曲子
         txt = open(OUT, encoding='utf-8').read()
         s = txt.index('= ') + 2
-        data = json.loads(txt[s:txt.rindex(';')])
+        obj = txt[s:txt.index('};', s) + 1]
+        # 表會被 Prettier 排版（npm run format）：鍵沒有引號、結尾有逗號 → 換回 JSON 再讀
+        obj = re.sub(r'([{,]\s*)([A-Za-z_]\w*)\s*:', r'\1"\2":', obj)
+        obj = re.sub(r',(\s*[}\]])', r'\1', obj)
+        data = json.loads(obj)
     for n in names:
         data[n] = measure(n)
         print(f"{n}：{data[n]['bpm']} BPM、{len(data[n]['beats'])} 拍", flush=True)

@@ -448,6 +448,6 @@ export function trueEndAnime(ctx = {}) {
     tag: 'TRUE ENDING',
     look: LOOK.end,
     lines: lines.concat(ctx.full ? E.full : []),
-    music: 'cine_ident',
+    music: 'cine_e4', // 第 8 章的結尾（scripts/cine-intro-music.py）
   });
 }

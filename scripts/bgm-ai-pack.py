@@ -84,4 +84,5 @@ def main():
                      'original Japanese lyrics in scripts/bgm_songs/.\n')
 
 
-main()
+if __name__ == '__main__':  # scripts/cine-intro-music.py 會引用 load／write
+    main()

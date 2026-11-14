@@ -1,6 +1,6 @@
 // 第 4 章的開場與章末（3D 動畫化，docs/cine-redesign-design.md 第十節）。
 // 場景：Lattice-9（grid086，多層平台的巨型構造體）、舊宇宙港（spaceport）、維爾威的調度室（room veerwell）、
-// 聖域的救援站（room sancta）、霍斯特的辦公室（room castron）。配樂 cine_c5（開場 0 秒起、章末 60 秒起）。
+// 聖域的救援站（room sancta）、霍斯特的辦公室（room castron）。配樂：開場 cine_i4、章末 cine_o4（AI 做的過場配樂，scripts/cine-intro-music.py）。
 import { CHAPTER_TEXT, pickLines } from '../story.js';
 import { snapBeat } from './beats.js';
 import { W, timeline } from './kit.js';
@@ -488,7 +488,7 @@ export function ch4Intro(ctx) {
   );
   // 章名卡：構造體的剪影
   const TT = T.at;
-  const cb = (t) => +(snapBeat('cine_c5', TT + t) - TT).toFixed(3);
+  const cb = (t) => +(snapBeat('cine_i4', TT + t) - TT).toFixed(3);
   T.add(
     {
       set: LAT,
@@ -584,7 +584,7 @@ export function ch4Intro(ctx) {
   dropAll(T);
   return T.def({
     title: '第四章　開場',
-    music: [{ at: 0, track: 'cine_c5', vol: 0.8, fadeIn: 1, fadeOut: [T.at - 2.5, 2.5] }],
+    music: [{ at: 0, track: 'cine_i4', vol: 0.8, fadeIn: 1, fadeOut: [T.at - 2.5, 2.5] }],
   });
 }
 
@@ -829,6 +829,6 @@ export function ch4Outro(ctx) {
   dropAll(T);
   return T.def({
     title: '第四章　章末',
-    music: [{ at: 0, track: 'cine_c5', off: 60, vol: 0.8, fadeIn: 1, fadeOut: [T.at - 3, 3] }],
+    music: [{ at: 0, track: 'cine_o4', vol: 0.8, fadeIn: 1, fadeOut: [T.at - 3, 3] }],
   });
 }

@@ -1,6 +1,6 @@
 // 第 5 章的開場與章末（3D 動畫化，docs/cine-redesign-design.md 第十節）。
 // 場景：洋上都市 Reefhold（xylem）、霍斯特的辦公室、四家的會議室（room council，render/cine-council.js）、艾瑟立克的研究所。
-// 配樂 cine_c5（開場 0 秒起、章末 55 秒起）。
+// 配樂：開場 cine_i5、章末 cine_o5（AI 做的過場配樂，scripts/cine-intro-music.py）。
 import { CHAPTER_TEXT, pickLines } from '../story.js';
 import { snapBeat } from './beats.js';
 import { W, timeline } from './kit.js';
@@ -471,7 +471,7 @@ export function ch5Intro(ctx) {
     2.5,
   );
   const TT = T.at;
-  const cb = (t) => +(snapBeat('cine_c5', TT + t) - TT).toFixed(3);
+  const cb = (t) => +(snapBeat('cine_i5', TT + t) - TT).toFixed(3);
   T.add(
     {
       set: REEF,
@@ -566,7 +566,7 @@ export function ch5Intro(ctx) {
   dropAll(T);
   return T.def({
     title: '第五章　開場',
-    music: [{ at: 0, track: 'cine_c5', vol: 0.8, fadeIn: 1, fadeOut: [T.at - 2.5, 2.5] }],
+    music: [{ at: 0, track: 'cine_i5', vol: 0.8, fadeIn: 1, fadeOut: [T.at - 2.5, 2.5] }],
   });
 }
 
@@ -835,6 +835,6 @@ export function ch5Outro(ctx) {
   dropAll(T);
   return T.def({
     title: '第五章　章末',
-    music: [{ at: 0, track: 'cine_c5', off: 55, vol: 0.8, fadeIn: 1, fadeOut: [T.at - 3, 3] }],
+    music: [{ at: 0, track: 'cine_o5', vol: 0.8, fadeIn: 1, fadeOut: [T.at - 3, 3] }],
   });
 }

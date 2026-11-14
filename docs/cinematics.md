@@ -7,6 +7,7 @@
 - 運鏡、節奏、構圖參考《機戰傭兵6》的劇情預告片（`test-results/ACVI_storyboard_frames` 的影格分析），內容是本作的世界觀（訊號、R-07、ECHO、四家委託方、軌道站的回收程序），不照抄原作的台詞、造型與 Logo。
 - 遊戲內即時演算：用遊戲的機甲（玩家的組裝與模型組）、地圖主題、渲染風格、特效與音效；不錄影片，HTML 不變大。
 - 字幕＋無線電音效（不做語音），配樂用 CC-BY 的曲子（Gregor Quendel「Cinematic Trailer Music Collection」，`src/assets/music/CREDITS.txt`）。
+- **開場、章末與第 8 章結尾的配樂**（2026-11-14）：照每段的畫面用 AI（ACE-Step）新做的純器樂 `cine_i1`～`cine_i8`（開場）、`cine_o1`～`cine_o7`（章末）、`cine_e1`～`cine_e4`（最後抉擇的開門／封印／彼岸與真結局短片），打包時照每段的能量曲線推拉音量；做法與分數見 `docs/audio-design.md` 的「過場動畫的開場、章末與結尾配樂」，產生 `scripts/cine-intro-music.py`（`npm run cine:music`）。序章與第 2、4 章抉擇的演出照舊用 CC-BY 的曲子。
 
 ## 播放流程
 
@@ -20,7 +21,7 @@
   - 量測（這台筆電的 AMD Radeon 880M、序章 11 個場景）：準備約 18 秒，常駐約 1.9～2.3 GB；播放中最大的卡頓從 1 秒以上（加上跳格）降到約 0.15～0.2 秒（水壩的動態物件、一個機甲材質變體第一次出現，之後再處理）。
   - **劇本與掛勾不要加 three.js 的點光源**：點光源一出現或消失，整個場景的著色器都要重新編譯（第 1 章的天線燈與營火以前就是，一次 0.9～1.2 秒）；照亮周圍用 `fx.glow`（特效點光）。
 - **過場動畫劇場**（`game/cine-lib.js`，標題的「過場動畫」，`state 'cinelib'`）：依周目與三個抉擇的選擇列出全部過場動畫（序章、各章開場／章末、抉擇的選前與選後），不寫存檔、不看「劇情動畫」設定。播放時（`cine.lib`）上方有控制列：暫停（空白鍵／P；暫停時時間與模擬都不動、配樂停止，繼續時從那一秒重新排配樂）、±5 秒（←／→）、上一鏡／下一鏡（Shift＋←／→、[ ]）、時間軸拖曳、H 隱藏、「返回清單」或長按 Esc；勾「連續播放」時播完接下一段。抉擇的選前演出原本在目前的戰場上播（`k: 'live'`），劇場改在那個抉擇的地圖（c2 水壩、c4 宇宙港、c6 荒野）上由 `cineStandIn` 擺主角與出口（`set.exits`，`cinePt` 的 `ex` 先看它）。
-- 配樂不內嵌在遊戲的 HTML：建置產生 `dist/lib/cine-music.js`（`window.MECH_CORDON_MUSIC`，約 19 MB），第一次播過場動畫時以 `<script>` 載入（`cineMusicLoad`），最多等 6 秒，載不到也照樣播。
+- 配樂不內嵌在遊戲的 HTML：建置產生 `dist/lib/cine-music.js`（`window.MECH_CORDON_MUSIC`，約 37 MB），第一次播過場動畫時以 `<script>` 載入（`cineMusicLoad`），最多等 6 秒，載不到也照樣播。
 
 ## 劇本格式（`data/cine/*.js`）
 

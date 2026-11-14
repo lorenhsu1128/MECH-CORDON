@@ -1,6 +1,6 @@
 // 第 1 章開場〈荒野的鐘聲〉（3D 動畫化的試做，2026-11-14；docs/cine-redesign-design.md 的「3D 動畫化」）。
 // 使用者的定案：日本動畫的感覺、3D 與 2D 漫畫混合（3D 上疊漫畫、漫畫格嵌 3D）、動作鏡頭一拍二（koma）、
-// 對白用字幕（立繪不出氣泡）。台詞、語音、配樂（cine_c1）與卡點照第 1 期的版本，鏡頭全部重拍：
+// 對白用字幕（立繪不出氣泡）。台詞與語音照第 1 期的版本，配樂換成 AI 做的開場配樂（cine_i1，scripts/cine-intro-music.py）、卡點跟著它的拍點，鏡頭全部重拍：
 //   0:00 吊臂鏡頭降到半埋的天線 → 信號燈的特寫 → 插畫的格子滑進來
 //   0:10 砲台的仰角（一拍二）→ 瞄準鏡的主觀 → 反白的衝擊畫格 → 燃燒的車隊上疊一頁漫畫（三格各有自己的 3D 鏡頭）
 //   0:24 霍斯特的辦公室（3D 室內＋立繪、景深）與插入鏡頭（陣地、駕駛艙的 ECHO、往礦坑的航拍、眼睛的特寫格）
@@ -12,10 +12,10 @@ import { WASTE, WEST, SCOPE, bare, sub } from './ch1.js';
 import { snapBeat } from './beats.js';
 import { timeline } from './kit.js';
 
-// 卡點：章名卡從第 82 秒開始；漫畫頁從 PAGE_AT 開始，格子落下、狀聲詞蓋章對齊配樂（cine_c1）的拍點
+// 卡點：章名卡從第 82 秒開始；漫畫頁從 PAGE_AT 開始，格子落下、狀聲詞蓋章對齊配樂（cine_i1）的拍點
 const PAGE_AT = 13.95;
-const cb = (t) => +(snapBeat('cine_c1', 82 + t) - 82).toFixed(3);
-const pb = (t) => +(snapBeat('cine_c1', PAGE_AT + t) - PAGE_AT).toFixed(3);
+const cb = (t) => +(snapBeat('cine_i1', 82 + t) - 82).toFixed(3);
+const pb = (t) => +(snapBeat('cine_i1', PAGE_AT + t) - PAGE_AT).toFixed(3);
 
 // 砲兵陣地 BASTILLE 在北邊的台地上（局部 x 60～90、z ≤ −50，高 16 m），卡斯特隆的車隊沿 z ≈ −27 由東往西
 const GUN = [67, 21, -50],
@@ -1067,6 +1067,6 @@ export function ch1Intro() {
   }
   return bare(T).def({
     title: '第一章　開場',
-    music: [{ at: 0, track: 'cine_c1', vol: 0.85, fadeIn: 2, fadeOut: [T.at - 3, 3] }],
+    music: [{ at: 0, track: 'cine_i1', vol: 0.85, fadeIn: 2, fadeOut: [T.at - 3, 3] }],
   });
 }

@@ -1,6 +1,6 @@
 // 第 6 章的開場與章末（3D 動畫化，docs/cine-redesign-design.md 第十節）。
 // 場景：高空軌道（orbit）、四家委託方的室內（辦公室、研究所、調度室、救援站）、軌道站的中樞（room core，render/cine-core.js）。
-// 配樂 cine_c6（開場 0 秒起、章末 120 秒起）。
+// 配樂：開場 cine_i6、章末 cine_o6（AI 做的過場配樂，scripts/cine-intro-music.py）。
 import { CHAPTER_TEXT, pickLines } from '../story.js';
 import { snapBeat } from './beats.js';
 import { W, timeline } from './kit.js';
@@ -350,7 +350,7 @@ export function ch6Intro(ctx) {
   );
   // 章名卡（旁白：只有 ECHO 什麼都沒說）
   const TT = T.at;
-  const cb = (t) => +(snapBeat('cine_c6', TT + t) - TT).toFixed(3);
+  const cb = (t) => +(snapBeat('cine_i6', TT + t) - TT).toFixed(3);
   T.add(
     {
       set: ORB,
@@ -447,7 +447,7 @@ export function ch6Intro(ctx) {
   dropAll(T);
   return T.def({
     title: '第六章　開場',
-    music: [{ at: 0, track: 'cine_c6', vol: 0.8, fadeIn: 1, fadeOut: [T.at - 2.5, 2.5] }],
+    music: [{ at: 0, track: 'cine_i6', vol: 0.8, fadeIn: 1, fadeOut: [T.at - 2.5, 2.5] }],
   });
 }
 
@@ -722,6 +722,6 @@ export function ch6Outro(ctx) {
   dropAll(T);
   return T.def({
     title: '第六章　章末',
-    music: [{ at: 0, track: 'cine_c6', off: 120, vol: 0.8, fadeIn: 1, fadeOut: [T.at - 3, 3] }],
+    music: [{ at: 0, track: 'cine_o6', vol: 0.8, fadeIn: 1, fadeOut: [T.at - 3, 3] }],
   });
 }

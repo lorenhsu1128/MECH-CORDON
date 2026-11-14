@@ -216,4 +216,5 @@ def hash_typ(t):
     return sum(ord(c) * (i + 1) for i, c in enumerate(t)) % 997
 
 
-main()
+if __name__ == '__main__':  # scripts/cine-intro-music.py 會引用這裡的 init／run
+    main()

@@ -710,7 +710,7 @@ export const c4SanctaAnime = () =>
 // 最後的抉擇：交出軌道站
 export const c6OpenAnime = () =>
   montage({
-    music: ['cine_c6', 40],
+    music: ['cine_e1', 0], // 第 8 章的結尾（scripts/cine-intro-music.py）
     color: '#e8eef4',
     card: ['這顆星球有一段訊號。', 'PROTOCOL EXECUTED'],
     shots: [
@@ -730,7 +730,7 @@ export const c6OpenAnime = () =>
 // 最後的抉擇：讓軌道站墜落
 export const c6SealAnime = () =>
   montage({
-    music: ['cine_c6', 40],
+    music: ['cine_e2', 0], // 第 8 章的結尾（scripts/cine-intro-music.py）
     color: '#ffb070',
     card: ['天空，安靜了。', 'SILENT SKY'],
     shots: [
@@ -760,7 +760,7 @@ export const c6SealAnime = () =>
 // 最後的抉擇：第三扇門（真結局）。四家各在自己的室內喊住你（一句一句斷訊）→ ECHO「我們走吧」→ 站離開
 export const c6BeyondAnime = () =>
   montage({
-    music: ['cine_c6', 40],
+    music: ['cine_e3', 0], // 第 8 章的結尾（scripts/cine-intro-music.py）
     color: '#ffd7a0',
     card: ['這一次，照我們的節奏來。', 'BEYOND'],
     shots: [

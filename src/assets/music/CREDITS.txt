@@ -14,3 +14,5 @@ cine_c3.mp3 = "Curiosity" by Alexander Nakarada - CC-BY 4.0 (0:47-3:17) https://
 cine_c4.mp3 = "100 Seconds" by Punch Deck - CC-BY 3.0 (0:00-1:41) https://www.free-stock-music.com/artist.punch-deck.html
 cine_c5.mp3 = "Hyperion" by Scott Buckley - CC-BY 4.0 (1:05-3:35) https://www.scottbuckley.com.au/library/
 cine_c6.mp3 = "Aphelion" by Scott Buckley - CC-BY 4.0 (1:48-5:48) https://www.scottbuckley.com.au/library/
+
+Chapter opening / ending cutscene music (cine_i1～cine_i8 = chapter 1～8 opening, cine_o1～cine_o7 = chapter 1～7 ending): generated for this project with ACE-Step 1.5 (MIT License, outputs may be used commercially; https://github.com/ace-step/ACE-Step-1.5) by scripts/cine-intro-music.py — instrumental, made to fit each cutscene's content; no existing songs or soundtracks were used as references.

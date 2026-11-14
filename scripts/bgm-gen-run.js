@@ -3,6 +3,7 @@
 //   npm run bgm:gen -- --ch=<章> [--stage=fight|calm] [--songs=類型,…] [--n=2]   只產生（ACE-Step 的環境）
 //   npm run bgm:score -- --ch=<章> [--files=…]   只評分與挑選（評分環境 tools/acestep/score-venv）
 //   npm run bgm:pack -- [--ch=<章>]   只打包成 src/assets/bgm-ai/c<章>/（之後 npm run build）
+//   npm run cine:music -- gen|score|pack [--ch=<章>,…]   每章開場的過場配樂（scripts/cine-intro-music.py）
 //   npm run bgm:sync -- export|import [--ch=<章>]   跨電腦同步：tools/acestep/out/ ⇄ 進 git 的 tools/bgm-work/（mp3）
 const fs = require('fs');
 const path = require('path');
@@ -48,7 +49,14 @@ function sh(cmd, a) {
   const pack = (a) => sh(SPY, [path.join(ROOT, 'scripts', 'bgm-ai-pack.py'), ...a]);
   // 跨電腦同步（scripts/bgm-sync.py）：tools/acestep/out/ ⇄ 進 git 的 tools/bgm-work/
   const sync = (a) => sh(SPY, [path.join(ROOT, 'scripts', 'bgm-sync.py'), ...a]);
-  const rest = args.filter((a) => !['--score', '--pack', '--sync', '--all'].includes(a));
+  const rest = args.filter((a) => !['--score', '--pack', '--sync', '--all', '--cine'].includes(a));
+  // 每章開場的過場配樂（scripts/cine-intro-music.py）：gen 在 ACE-Step 的環境，score／pack 在評分環境
+  if (args.includes('--cine')) {
+    const py = path.join(ROOT, 'scripts', 'cine-intro-music.py');
+    if (rest[0] === 'gen')
+      return sh(uv, ['run', '--project', SRC, '--with', 'pykakasi', 'python', py, ...rest]);
+    return sh(SPY, [py, ...rest]);
+  }
   if (args.includes('--score')) return score(rest);
   if (args.includes('--pack')) return pack(rest);
   if (args.includes('--sync')) return sync(rest);

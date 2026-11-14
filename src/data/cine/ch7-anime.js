@@ -1,6 +1,6 @@
 // 第 7 章的開場與章末、第 8 章的開場（3D 動畫化，docs/cine-redesign-design.md 第十節）。
 // 場景：火山熔爐帶（volcano）、移動要塞方舟的甲板（ark）、霍斯特的辦公室、維爾威的調度室、聖域的救援站。
-// 配樂：第 7 章開場 cine_drive 0 秒起、第 7 章章末 cine_c6 60 秒起、第 8 章開場 cine_c6 150 秒起。
+// 配樂：第 7、8 章開場 cine_i7／cine_i8、第 7 章章末 cine_o7（AI 做的過場配樂，scripts/cine-intro-music.py）。
 import { CHAPTER_TEXT, pickLines } from '../story.js';
 import { snapBeat } from './beats.js';
 import { W, timeline } from './kit.js';
@@ -477,7 +477,7 @@ export function ch7Intro(ctx) {
   );
   T.add(rivalShot(VOLC, FORGE, 'kiln', 'kiln', 'KILN', '熔爐的守衛', LAVA), 5);
   T.add(boostShot(VOLC, FORGE), 2.5);
-  T.add(titleShot(VOLC, FORGE, 'cine_drive', T.at, 7, '熔爐', 'THE FORGE', LAVA), 5);
+  T.add(titleShot(VOLC, FORGE, 'cine_i7', T.at, 7, '熔爐', 'THE FORGE', LAVA), 5);
   placeLines(T, [
     [1.0, T0[0], 5.4, null],
     [7.4, T0[1], 5.4, null],
@@ -492,7 +492,7 @@ export function ch7Intro(ctx) {
   dropAll(T);
   return T.def({
     title: '第七章　開場',
-    music: [{ at: 0, track: 'cine_drive', vol: 0.8, fadeIn: 1, fadeOut: [T.at - 2.5, 2.5] }],
+    music: [{ at: 0, track: 'cine_i7', vol: 0.8, fadeIn: 1, fadeOut: [T.at - 2.5, 2.5] }],
   });
 }
 
@@ -635,7 +635,7 @@ export function ch7Outro(ctx) {
   dropAll(T);
   return T.def({
     title: '第七章　章末',
-    music: [{ at: 0, track: 'cine_c6', off: 60, vol: 0.8, fadeIn: 1, fadeOut: [T.at - 3, 3] }],
+    music: [{ at: 0, track: 'cine_o7', vol: 0.8, fadeIn: 1, fadeOut: [T.at - 3, 3] }],
   });
 }
 
@@ -770,7 +770,7 @@ export function ch8Intro(ctx) {
   );
   T.add(rivalShot(ARK, ARKG, 'keel', 'keel', 'KEEL', '方舟的守衛', SAND), 5);
   T.add(boostShot(ARK, ARKG), 2.5);
-  T.add(titleShot(ARK, ARKG, 'cine_c6', T.at + 150, 8, '方舟', 'THE ARK', SAND), 5);
+  T.add(titleShot(ARK, ARKG, 'cine_i8', T.at, 8, '方舟', 'THE ARK', SAND), 5);
   placeLines(T, [
     [1.0, T0[0], 5.4, null],
     [7.4, T0[1], 5.4, null],
@@ -784,6 +784,6 @@ export function ch8Intro(ctx) {
   dropAll(T);
   return T.def({
     title: '第八章　開場',
-    music: [{ at: 0, track: 'cine_c6', off: 150, vol: 0.8, fadeIn: 1, fadeOut: [T.at - 2.5, 2.5] }],
+    music: [{ at: 0, track: 'cine_i8', vol: 0.8, fadeIn: 1, fadeOut: [T.at - 2.5, 2.5] }],
   });
 }

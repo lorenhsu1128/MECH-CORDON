@@ -49,7 +49,7 @@ const four = (lines, poses = ['p1', 'p1', 'p1', 'p1'], quote = false) =>
 const FILMS = {
   // ---------- 第 1 章 章末 ----------
   outro_1: (T, ctx) => ({
-    music: ['cine_c1', 60],
+    music: ['cine_o1', 0],
     blocks: [
       talkOf('outro_1', ctx),
       { still: { img: 'c1/c1o_core', tone: '#c0602c', lines: [L(T[0])] } },

@@ -1,6 +1,6 @@
 // 第 2 章的開場與章末（3D 動畫化，docs/cine-redesign-design.md 第十節）：照第 1 章開場的試做的做法——
 // 3D 與 2D 漫畫混合、動作鏡頭一拍二、對白用字幕條、立繪疊在 3D 的室內（景深、視差）。
-// 台詞＝CHAPTER_TEXT（旁白）與 talks.js 的對話（語音以台詞的字為鍵，所以字要一樣）；配樂 cine_c2。
+// 台詞＝CHAPTER_TEXT（旁白）與 talks.js 的對話（語音以台詞的字為鍵，所以字要一樣）；配樂：開場 cine_i2、章末 cine_o2（AI 做的過場配樂，scripts/cine-intro-music.py）。
 // 場景：開場＝集散場（industrial）、水壩（dam）、艾瑟立克的研究所（room aetheric）＋霍斯特的辦公室（room castron，窗外停著
 // STEVEDORE）；章末＝依抉擇 c2。
 import { CHAPTER_TEXT, pickLines } from '../story.js';
@@ -61,7 +61,7 @@ export function ch2Intro(ctx) {
   const T0 = pickLines(CHAPTER_TEXT[2].intro, (ctx && ctx.choices) || {});
   const TK = TALKS.intro_2.lines;
   const T = timeline();
-  const B = (t) => +snapBeat('cine_c2', t).toFixed(3);
+  const B = (t) => +snapBeat('cine_i2', t).toFixed(3);
 
   // 0:00 集散場的建立鏡頭（吊臂鏡頭降下）＋地點字卡；4.6 秒地區的插畫格滑進來
   T.add(
@@ -227,7 +227,7 @@ export function ch2Intro(ctx) {
     0.35,
   );
   const PG = T.at; // 漫畫頁從這裡開始（卡點用）
-  const pb = (t) => +(snapBeat('cine_c2', PG + t) - PG).toFixed(3);
+  const pb = (t) => +(snapBeat('cine_i2', PG + t) - PG).toFixed(3);
   T.add(
     {
       set: DAM,
@@ -646,7 +646,7 @@ export function ch2Intro(ctx) {
   );
   // PV 式章名卡：水壩與電磁砲台的剪影（3D 的天空變白、剪影變黑，乘上橘色）
   const TT = T.at;
-  const cb = (t) => +(snapBeat('cine_c2', TT + t) - TT).toFixed(3);
+  const cb = (t) => +(snapBeat('cine_i2', TT + t) - TT).toFixed(3);
   T.add(
     {
       set: DAM,
@@ -743,7 +743,7 @@ export function ch2Intro(ctx) {
   dropAll(T);
   return T.def({
     title: '第二章　開場',
-    music: [{ at: 0, track: 'cine_c2', vol: 0.8, fadeIn: 1, fadeOut: [T.at - 2.5, 2.5] }],
+    music: [{ at: 0, track: 'cine_i2', vol: 0.8, fadeIn: 1, fadeOut: [T.at - 2.5, 2.5] }],
   });
 }
 
@@ -1110,6 +1110,6 @@ export function ch2Outro(ctx) {
   dropAll(T);
   return T.def({
     title: '第二章　章末',
-    music: [{ at: 0, track: 'cine_c2', off: 60, vol: 0.8, fadeIn: 1, fadeOut: [T.at - 3, 3] }],
+    music: [{ at: 0, track: 'cine_o2', vol: 0.8, fadeIn: 1, fadeOut: [T.at - 3, 3] }],
   });
 }
