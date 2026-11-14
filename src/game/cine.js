@@ -26,6 +26,7 @@ import { animateMech, buildMech } from '../render/mech-model.js';
 import { buildHubRoom, hubRoomRich, tickHubRoom } from '../render/hub-room.js';
 import { buildCastronOffice, tickCastronOffice } from '../render/cine-office.js';
 import { buildAethericLab, tickAethericLab } from '../render/cine-lab.js';
+import { buildSanctaStation } from '../render/cine-sancta.js';
 import { revealDom } from '../render/textfx.js';
 import { World } from '../world/world.js';
 import { CINE_GRADE } from './constants.js';
@@ -39,6 +40,7 @@ const D2R = Math.PI / 180;
 const ROOMS = {
   castron: [buildCastronOffice, tickCastronOffice],
   aetheric: [buildAethericLab, tickAethericLab],
+  sancta: [buildSanctaStation, () => {}],
 };
 const SKIP_HOLD = 0.8; // 長按幾秒略過
 if (/[?&]test\b/.test(location.search)) window.__CINES = CINES; // 測試：放臨時的劇本
@@ -404,7 +406,7 @@ Object.assign(Game.prototype, {
       this.scene.background = new THREE.Color(S.sky || 0x05070b);
       this.scene.fog = null;
       this.hemi.color.set(S.hemi || 0x7080a0);
-      this.hemi.groundColor.set(0x0c0a08);
+      this.hemi.groundColor.set(S.hemiG ?? 0x0c0a08); // 地面色：朝下的面（帳篷的內側、天花板）吃到的補光
       this.hemi.intensity = S.hemiI ?? 0.35;
       this.sun.color.set(S.key || 0xffb070);
       this.sun.intensity = S.keyI ?? 1.1;

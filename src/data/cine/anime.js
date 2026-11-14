@@ -131,3 +131,28 @@ export const PARKED = (ace, o = {}) => ({
   scale: 3,
   ...o,
 });
+
+// 同一個場景前面所有鏡頭的演員，不屬於這一鏡（也不是 keep 的同一組）的都移除（timeline 只移除上一鏡的）；
+// 劇場跳鏡頭、換場景後回來也不會留下別鏡的演員。T.def 之前呼叫
+export function dropAll(T) {
+  let key = '',
+    seen = new Set(),
+    group = new Set();
+  for (const s of T.shots) {
+    const k = JSON.stringify(s.set || { k: 'black' });
+    if (k !== key) {
+      key = k;
+      seen = new Set();
+      group = new Set();
+    }
+    const own = (s.actors || []).map((a) => a.id);
+    if (!s.keep) group = new Set();
+    const drop = [...seen].filter((id) => !group.has(id) && !own.includes(id));
+    if (drop.length) s.drop = drop;
+    for (const id of own) {
+      seen.add(id);
+      group.add(id);
+    }
+  }
+  return T;
+}
