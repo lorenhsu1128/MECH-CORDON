@@ -15772,7 +15772,7 @@ async function testBgmLab(browser, base) {
   await page.waitForFunction(
     () =>
       document.querySelectorAll('#blAi .blRow').length > 0 ||
-      /還沒產生/.test(document.getElementById('blAi').textContent),
+      /還沒完成/.test(document.getElementById('blAi').textContent),
     null,
     { timeout: 60000 },
   );
