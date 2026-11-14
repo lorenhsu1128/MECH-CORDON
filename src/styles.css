@@ -7434,6 +7434,16 @@ body.vpad #subBar {
 .blPlay.on {
   color: var(--org);
 }
+/* AI 配樂試聽：交戰／平時／副歌三個按鈕 */
+.blBtns {
+  display: flex;
+  gap: 4px;
+}
+.blBtns .blPlay {
+  width: auto;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
 .blInfo {
   flex: 1 1 380px;
   font-size: 13px;

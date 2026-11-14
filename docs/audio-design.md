@@ -220,12 +220,21 @@
 - **播放**（`game/voice.js` 的 `voiceBrief(sid, 句子, 說話者)`，`openBrief` 最後呼叫）：0.4 秒後一句唸完接下一句（間隔 0.35 秒）；正在唸的那一行 `#brLines p.speaking`（左邊委託方顏色的色條＋淡淡的底色，逐字的字有自己的顏色所以不改字色）；立繪 `briefView` 照那一句的 `lineExpr` 換表情（ECHO 的私人委託沒指定時用 tender）；對口型照語音的音量。`voicePlay` 的 kind 'brief' 不加無線電濾波；優先度 3，作戰室的通訊（2）在唸簡報時只顯示字。點一下文字只是把逐字全部顯示，語音照常唸下去。沒有語音（設定關掉、載不到）時照字數估計的時間換句，對口型用模擬的（`briefTalkEnd`）。離開簡報（`showScreen` 換到別的畫面）時 `voiceStop`。
 - **冒煙測試** `testStory`：打開 c1s1 的簡報，第一句亮起、立繪的表情是那一句的（smug）、離開簡報就停。
 
+- **過場的旁白**（2026-11-14，docs/cine-redesign-design.md 第 11 期）：過場裡沒有說話者的字幕由另一個聲音 `narr`（四十多歲的男性、紀錄片的口吻）唸，中文與日文；`data/voice.js` 的 `CAST_IDS`、`voice-gen.py` 的 `CAST`、`voice-lines.js` 收集時沒有說話者的過場字幕＝narr，遊戲 `game/cine.js` 的 `cineSub`。
+
 ### AI 配樂（2026-11-14）
 
-- 使用者要用本地 AI 模型自己產生配樂，曲風是**絕區零 × 尼爾 自動人形的融合**：尼爾的憂傷旋律、鋼琴與弦樂、懸掛和弦、自創語言的空靈女聲 × 絕區零的碎拍、Drum & Bass、放克 bass、都市夜晚的律動。
-- 模型：**ACE-Step 1.5**（MIT，模型說明寫明產出可以商用；會唱歌詞，所以做得出尼爾式的人聲；12 GB 顯示卡跑 2B 的 sft＋1.7B 語言模型）。比較過 Stable Audio 3（純配樂、不會唱）、Magenta RealTime 2（即時伴奏）、YuE／DiffRhythm（流行歌）、MusicGen／LeVo 2（不能商用）。不拿這兩款的原聲帶訓練 LoRA（侵權疑慮），只用曲風描述；歌詞是自己編的無意義音節。
-- 安裝：`npm run bgm:setup`（`scripts/bgm-setup.js`：ACE-Step 固定在 `REF` 這個 commit，clone 到 `tools/acestep/src/`、`uv sync --frozen`、模型下載到 `tools/acestep/checkpoints/`；整個 `tools/acestep/` 在 gitignore，其他電腦 pull 之後跑一次就能產生）。
-- 產生：`npm run bgm:gen -- [主題,…] [--n=2] [--only=t2m|cover]`（`scripts/bgm-gen-run.js` → `scripts/bgm-gen.py`）：每個主題（`THEMES`：曲名、BPM、調、歌詞）先以文字產生交戰版（`n` 個種子），再以它為來源 cover 出同一主題的探索／警戒／Boss 版（`COVER_K` 的強度），另外每一級直接用文字產生一首比較；已經有的檔案略過，所以中斷後重跑接著做。結果經 `scripts/bgm-ai-pack.py` 轉成 `src/assets/bgm-audition/ai_*.mp3`（index.json 的 ai_ 項目整批換掉），在標題「工具與其他」的「AI 配樂試聽」聽（`openBgmLab(true)`：同一個試聽頁只列 ai_ 的曲子；原本的「配樂試聽」只列外部的候選曲）。顯示卡記憶體不夠時設 `BGM_DIT=acestep-v15-turbo`、`BGM_LM=acestep-5Hz-lm-0.6B`。
-- 選定的曲子之後照原本的流程：`scripts/bgm-prep.py` 的 `TRACKS` 剪成循環、`game/bgm.js` 的 `SETS`。
-
-- **過場的旁白**（2026-11-14，docs/cine-redesign-design.md 第 11 期）：過場裡沒有說話者的字幕由另一個聲音 `narr`（四十多歲的男性、紀錄片的口吻）唸，中文與日文；`data/voice.js` 的 `CAST_IDS`、`voice-gen.py` 的 `CAST`、`voice-lines.js` 收集時沒有說話者的過場字幕＝narr，遊戲 `game/cine.js` 的 `cineSub`。
+- 使用者要用本地 AI 模型自己產生配樂，曲風是**絕區零 × 尼爾 自動人形的融合**：尼爾的憂傷旋律、鋼琴與弦樂、懸掛和弦、空靈的女聲 × 絕區零的碎拍、Drum & Bass、放克 bass、都市夜晚的律動。第一版（自創語言的歌詞、三個主題的試做）使用者聽過後定案方向，改成下面的版本。
+- 模型：**ACE-Step 1.5**（MIT，模型說明寫明產出可以商用；會唱歌詞；12 GB 顯示卡跑 2B 的 sft＋1.7B 語言模型，每首 120 秒約 2.5 分鐘）。比較過 Stable Audio 3（純配樂、不會唱）、Magenta RealTime 2（即時伴奏）、YuE／DiffRhythm（流行歌）、MusicGen／LeVo 2（不能商用）。不拿任何既有的歌曲或原聲帶訓練 LoRA（侵權疑慮），只用曲風描述。
+- **定案（2026-11-14 使用者）**：人聲是**日文的空靈女聲**，兩種聲線參考超時空要塞 F 的兩位女主角（只描述聲線特徵，不用她們的錄音或名字）：歌姬型（有力、低音帶沙啞的搖滾天后）與少女型（清亮、甜、高音、透明感），二重唱；**每章一首主題歌、每章每種區段類型各一首**（第 1 章 12、第 2 章 13、第 3 章 14、第 4～6 章 15（多空戰）、第 7、8 章 14，共 112 首）；人聲照建議（平時版只有哼唱、交戰版唱主歌與副歌）；**Boss 的最終型態切到這一章主題歌的副歌**（超時空要塞式）；歌詞由開發者寫（日文、主歌每句句尾押同一個韻、副歌兩兩押韻），劇情上這些歌是 ECHO 從軌道站送到地面的「訊號」，各章的主題歌照劇情接下去（第 1 章「忘れても何度でも」→ 第 6 章的坦白「ずっと騙してた」→ 第 8 章二重唱「もう忘れない」）；挑歌由開發者用數據挑（使用者不逐一聽）。
+- 參考動漫歌曲的寫法（不模仿任何既有的旋律或歌手）：主歌 → 導歌 → 副歌、王道進行（IV–V–iii–vi）的苦甜感、最後一次副歌前升調、副歌的記憶點重複兩次。
+- **歌曲設定**：`scripts/bgm_songs/common.py`（共同曲風 `BASE`、聲線 `VOICE`、各類型的編曲 `ARR`、平時版 `CALM`、各章的音色 `PALETTE`、各類型的聲線 `VOICE_OF` 與速度 `BPM_OF`；描述最多 512 字）、`c<章>.py`（調、每首的日文歌名、中文名、歌詞，可以覆寫 voice／bpm／key）。日文發音的測試：漢字與全假名的歌詞吻合度差不多（0.93／0.92），所以歌詞直接寫漢字。
+- 安裝：`npm run bgm:setup`（`scripts/bgm-setup.js`：ACE-Step 固定在 `REF` 這個 commit，clone 到 `tools/acestep/src/`、`uv sync --frozen`、模型下載到 `tools/acestep/checkpoints/`；評分環境 `tools/acestep/score-venv`（PyTorch 固定成同一個 CUDA 版：`uv run --with` 會把 PyTorch 換成 CPU 版）；整個 `tools/acestep/` 在 gitignore，其他電腦 pull 之後跑一次就能產生）。
+- **流程**：`npm run bgm:all -- [--from=1] [--to=8] [--n=2]`（`scripts/bgm-gen-run.js`）每章依序：
+  1. `scripts/bgm-gen.py --stage=fight`：每首用文字產生 n 個交戰版候選 `tools/acestep/out/c<章>/<類型>__f<i>.wav`（補給、主題歌、Boss 只有這一版）。
+  2. `scripts/bgm-score.py`（開發者聽不到，用數據挑）：Demucs 分出人聲 → Whisper large-v3-turbo 日文聽寫和歌詞比對（歌詞吻合度）、副歌第一句出現的時間 `chorus_at`、人聲音高（聲線對不對）、Meta audiobox-aesthetics 的 PQ／CE（音樂美感）、削波與靜音段；總分＝0.4 歌詞＋0.4 美感＋0.2 聲線（突破、追擊的人聲只有切片，歌詞權重降低），每種類型挑總分最高的寫進 `picks.json`。
+  3. `--stage=calm`：以挑中的交戰版 cover（強度 0.4）出平時版 `<類型>__calm.wav`：同一首、同速度與段落，編制變輕、人聲變哼唱。
+  4. `scripts/bgm-ai-pack.py`：RMS 響度正規化、峰值限制、頭尾 0.4 秒淡入淡出（循環的接縫）、96 kbps → `src/assets/bgm-ai/c<章>/<類型>.mp3`、`<類型>_calm.mp3`、`index.json`（歌名、聲線、速度、調、長度、副歌時間、有沒有平時版、挑中的候選與分數）。
+  已經有的檔案都略過，中斷後重跑接著做；單獨的步驟 `npm run bgm:gen`／`bgm:score`／`bgm:pack`。顯示卡記憶體不夠時設 `BGM_DIT=acestep-v15-turbo`、`BGM_LM=acestep-5Hz-lm-0.6B`。
+- **建置與遊戲**：`scripts/build.js` 把每章寫成 `lib/bgm-c<章>.js`（`window.MECH_CORDON_BGM_C<章>`，約 25 MB），`game/bgm.js` 的 `bgmCtx` 決定章（主線＝出擊的章；其他依地圖主題對應 `REGIONS` 的章；空戰在第 4～6 章以外用第 5 章）與類型（主線＝目前區段、客機看 `campC.view.type`、其他＝battle／Boss 關 boss），`bgmLoadCh` 進任務時載入那一章；強度 0／1＝平時版（沒有平時版的用交戰版）、2＝交戰版、3＝Boss 曲、4＝Boss 最終型態（`bossPhase() >= 3`）＝主題歌從 `chorus` 開始；同一首的平時版↔交戰版從同一個位置接下去（`bgmAiPick`）；主線換區段類型時重新決定。沒有那一章的檔案或類型時用舊的配樂（`SETS`，`lib/bgm-assets.js`）。
+- 試聽：標題「工具與其他」的「AI 配樂試聽」（`openBgmLab(true)` → `blabAiRender`：選章、每首的交戰／平時／副歌、評分與備註，「複製評分」）；原本的「配樂試聽」只列外部的候選曲。

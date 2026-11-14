@@ -19,7 +19,10 @@
     "comfy:setup": "node scripts/comfy-setup.js",
     "comfy": "node scripts/comfy-start.js",
     "bgm:setup": "node scripts/bgm-setup.js",
-    "bgm:gen": "node scripts/bgm-gen-run.js"
+    "bgm:gen": "node scripts/bgm-gen-run.js",
+    "bgm:score": "node scripts/bgm-gen-run.js --score",
+    "bgm:pack": "node scripts/bgm-gen-run.js --pack",
+    "bgm:all": "node scripts/bgm-gen-run.js --all"
   },
   "dependencies": {
     "qrcode-generator": "^1.4.4",

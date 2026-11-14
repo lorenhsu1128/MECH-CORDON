@@ -12,6 +12,16 @@ const { spawnSync } = require('child_process');
 
 const REPO = 'https://github.com/ace-step/ACE-Step-1.5.git';
 const REF = 'ca1e85fe9430179831e6bc6be790c332190a3866';
+const SCORE_PKGS = [
+  'demucs',
+  'pykakasi',
+  'librosa',
+  'audiobox_aesthetics',
+  'transformers>=4.51,<4.58',
+  'soundfile',
+  'accelerate',
+  'imageio-ffmpeg',
+];
 
 const ROOT = path.join(__dirname, '..');
 const DIR = path.join(ROOT, 'tools', 'acestep');
@@ -107,6 +117,23 @@ async function main() {
       cwd: ROOT,
     });
     stamp.models = true;
+    fs.writeFileSync(STAMP, JSON.stringify(stamp, null, 2));
+  }
+  // 4. 評分環境（scripts/bgm-score.py：Demucs、Whisper、audiobox-aesthetics；PyTorch 固定成和 ACE-Step 相同的 CUDA 版，
+  //    放在 ACE-Step 的環境外：uv run --with 會把 PyTorch 換成最新的 CPU 版）
+  const SV = path.join(DIR, 'score-venv');
+  const SPY = path.join(SV, WIN ? 'Scripts/python.exe' : 'bin/python');
+  if (stamp.score !== SCORE_PKGS.join(' ')) {
+    if (!fs.existsSync(SPY)) run(uv, ['venv', SV, '--python', '3.12']);
+    const torch = ['torch==2.7.1+cu128', 'torchaudio==2.7.1+cu128'];
+    const idx = [
+      '--extra-index-url',
+      'https://download.pytorch.org/whl/cu128',
+      '--index-strategy',
+      'unsafe-best-match',
+    ];
+    run(uv, ['pip', 'install', '--python', SPY, ...torch, ...SCORE_PKGS, ...idx]);
+    stamp.score = SCORE_PKGS.join(' ');
     fs.writeFileSync(STAMP, JSON.stringify(stamp, null, 2));
   }
   console.log('完成。產生配樂：npm run bgm:gen -- [主題,…] [--n=2]');

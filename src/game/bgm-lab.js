@@ -6,6 +6,7 @@
 import { SFX } from '../audio/audio.js';
 import { escHtml } from '../core/html.js';
 import { Game } from './game.js';
+import { SEG_TYPES } from '../data/campaign.js';
 
 const $ = (id) => document.getElementById(id);
 const KEY = 'mech_cordon_bgm_aud';
@@ -59,10 +60,24 @@ function loadScript(src, ok) {
     document.head.appendChild(s);
   });
 }
+// AI 配樂（lib/bgm-c<章>.js，scripts/bgm-gen.py）：每章的類型順序與名稱
+const AI_TYPES = [
+  'theme',
+  'battle',
+  'front',
+  'elite',
+  'destroy',
+  'colossus',
+  'defend',
+  'escort',
+  'extract',
+].concat(['breakthrough', 'chase', 'intel', 'supply', 'boss', 'air']);
+const VOICE_NAME = { girl: '少女型', diva: '歌姬型', duet: '二重唱' };
+const aiTypeName = (t) => (t === 'theme' ? '主題歌' : SEG_TYPES[t] ? SEG_TYPES[t].name : t);
 const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
 Object.assign(Game.prototype, {
-  // ai＝只列 AI 產生的曲子（標題的「AI 配樂試聽」，scripts/bgm-gen.py 的 ai_*）；否則只列外部的候選曲
+  // ai＝標題的「AI 配樂試聽」：依章列出遊戲用的 AI 配樂（lib/bgm-c<章>.js）；否則是外部的候選曲（lib/bgm-audition.js）
   openBgmLab(ai = false) {
     SFX.ui();
     SFX.init();
@@ -73,7 +88,7 @@ Object.assign(Game.prototype, {
     if (!$('blIntro').dataset.org) $('blIntro').dataset.org = $('blIntro').innerHTML;
     $('blTitle').textContent = ai ? 'AI 配樂試聽' : '配樂試聽';
     $('blIntro').innerHTML = ai
-      ? '本地 AI（ACE-Step 1.5）產生的配樂，曲風是絕區零 × 尼爾 自動人形的融合：憂傷的鋼琴與弦樂、自創語言的空靈女聲 × 碎拍、Drum & Bass、放克 bass。每首是完整的 2 分鐘。可以勾選用途、打星與寫備註，按「複製勾選結果」貼給開發者；最下面可以播目前遊戲的配樂比較。'
+      ? '本地 AI（ACE-Step 1.5）產生的任務配樂：每章每種區段類型一首日文歌，曲風是絕區零 × 尼爾 自動人形（憂傷的鋼琴與弦樂、空靈的女聲 × 碎拍、Drum &amp; Bass、放克 bass），聲線有歌姬型、少女型與二重唱。每首有交戰版與平時版（探索、警戒時播，同一首、同速度）；Boss 的最終型態會切到主題歌的副歌。可以打星與寫備註，按「複製評分」貼給開發者。'
       : $('blIntro').dataset.org;
     $('btnBlBack').onclick = () => {
       SFX.ui('back');
@@ -81,6 +96,7 @@ Object.assign(Game.prototype, {
       this.state = 'title';
       this.showScreen('title');
     };
+    if (ai) return this.blabAiRender();
     if (B.idx) return this.blabRender();
     $('blList').innerHTML = '<p class="dim">載入試聽曲（約 28 MB）…</p>';
     if (!this.blabLoading)
@@ -261,12 +277,112 @@ Object.assign(Game.prototype, {
     };
     tick();
   },
+  // AI 配樂：選一章，載入 lib/bgm-c<章>.js，列出每種類型的歌（交戰版、平時版、主題歌的副歌）
+  async blabAiRender() {
+    const B = this.blab;
+    B.aiCh = B.aiCh || 1;
+    const ch = B.aiCh;
+    const h = `<div class="row" id="blOpts"><label>章 <select id="blCh">${[1, 2, 3, 4, 5, 6, 7, 8]
+      .map((c) => `<option value="${c}"${c === ch ? ' selected' : ''}>第 ${c} 章</option>`)
+      .join('')}</select></label>
+      <button id="blStop">停止</button>
+      <button id="blCopy" title="把評分與備註整理成文字並複製">複製評分</button>
+      <span id="blNow" class="dim"></span></div>
+      <div id="blBar" title="點一下跳到那裡"><div id="blFill"></div></div><div id="blAi"><p class="dim">載入第 ${ch} 章的配樂…</p></div>`;
+    $('blList').innerHTML = h;
+    $('blCh').onchange = (e) => {
+      this.blabStop();
+      B.aiCh = +e.target.value;
+      this.blabAiRender();
+    };
+    $('blStop').onclick = () => this.blabStop();
+    $('blCopy').onclick = () => this.blabAiCopy();
+    $('blBar').onclick = (e) => {
+      const cur = B.cur;
+      if (!cur) return;
+      const r = $('blBar').getBoundingClientRect();
+      this.blabStart(cur.key, cur.buf, ((e.clientX - r.left) / r.width) * cur.buf.duration);
+    };
+    const k = 'MECH_CORDON_BGM_C' + ch;
+    const ok = await this.bgmLoadCh(ch); // game/bgm.js：先看 lib/bgm-ai.js 有沒有這一章
+    if (this.state !== 'bgmlab' || B.aiCh !== ch || !B.ai) return;
+    const P = window[k],
+      I = ok && P && P['@index'];
+    if (!I) {
+      $('blAi').innerHTML = `<p class="dim">第 ${ch} 章的配樂還沒產生（npm run bgm:gen -- --ch=${ch}）。</p>`;
+      return;
+    }
+    B.aiNames = {};
+    let rows = '';
+    for (const t of AI_TYPES) {
+      const c = I[t];
+      if (!c) continue;
+      const id = `aic${ch}_${t}`;
+      const n = B.notes[id] || {};
+      B.aiNames[id] = `${c.title}（${aiTypeName(t)}・交戰版）`;
+      B.aiNames[id + '_calm'] = `${c.title}（${aiTypeName(t)}・平時版）`;
+      B.aiNames[id + '_chorus'] = `${c.title}（主題歌・副歌）`;
+      const btn = (key, lbl, tip) =>
+        `<button class="blPlay" data-p="${key}" data-lbl="${lbl}" title="${tip}">▶ ${lbl}</button>`;
+      const btns =
+        btn(id, t === 'supply' || t === 'theme' || t === 'boss' ? '播放' : '交戰', '播放（完整的歌）') +
+        (c.calm ? btn(id + '_calm', '平時', '探索、警戒時播的平時版') : '') +
+        (t === 'theme' && c.chorus ? btn(id + '_chorus', '副歌', 'Boss 最終型態從這裡開始播') : '');
+      const info = `${escHtml(c.zh)}・${VOICE_NAME[c.voice] || c.voice}・${c.bpm} BPM・${escHtml(c.key)}・${fmt(c.dur)}`;
+      const stars = ['', '1', '2', '3', '4', '5']
+        .map(
+          (s) =>
+            `<option value="${s}"${String(n.r || '') === s ? ' selected' : ''}>${s ? '★'.repeat(+s) : '評分'}</option>`,
+        )
+        .join('');
+      rows += `<div class="blRow" data-c="${id}"><div class="blBtns">${btns}</div>
+        <div class="blInfo"><b>【${escHtml(aiTypeName(t))}】${escHtml(c.title)}</b> <span class="dim">— ${info}</span></div>
+        <div class="blPick"><select data-r="${id}" title="評分">${stars}</select>
+          <input data-n="${id}" placeholder="備註" value="${escHtml(n.t || '')}" /></div></div>`;
+    }
+    $('blAi').innerHTML = rows;
+    for (const b of $('blAi').querySelectorAll('button[data-p]')) {
+      const key = b.dataset.p;
+      const t = key.slice(`aic${ch}_`.length).replace(/_chorus$/, '');
+      b.onclick = async () => {
+        if (key.endsWith('_chorus')) {
+          await this.blabToggle(key, () => P.theme);
+          if (B.cur && B.cur.key === key) this.blabStart(key, B.cur.buf, I.theme.chorus || 0);
+        } else this.blabToggle(key, () => P[t]);
+      };
+    }
+    for (const s of $('blAi').querySelectorAll('select[data-r]'))
+      s.onchange = () => this.blabNote(s.dataset.r, 'r', s.value);
+    for (const s of $('blAi').querySelectorAll('input[data-n]'))
+      s.onchange = () => this.blabNote(s.dataset.n, 't', s.value.trim());
+    this.blabMark();
+  },
+  blabAiCopy() {
+    const B = this.blab;
+    const rows = ['AI 配樂的評分'];
+    for (const [id, n] of Object.entries(B.notes)) {
+      const m = id.match(/^aic(\d)_(\w+)$/);
+      if (!m || !(n.r || n.t)) continue;
+      rows.push(
+        `  第 ${m[1]} 章【${aiTypeName(m[2])}】${n.r ? '　' + n.r + ' 星' : ''}${n.t ? '｜' + n.t : ''}`,
+      );
+    }
+    if (rows.length === 1) rows.push('（還沒有評分或備註）');
+    const txt = rows.join('\n');
+    $('blOut').textContent = txt;
+    if (navigator.clipboard)
+      navigator.clipboard.writeText(txt).then(
+        () => ($('blOut').textContent = '已複製到剪貼簿：\n' + txt),
+        () => {},
+      );
+  },
   blabName(key) {
+    if (this.blab.aiNames && this.blab.aiNames[key]) return this.blab.aiNames[key];
     if (key.startsWith('cur:')) {
       const r = CURRENT.find((x) => x[0] === key.slice(4));
       return '目前：' + (r ? r[1] : key);
     }
-    const c = this.blab.idx.find((x) => x.id === key);
+    const c = (this.blab.idx || []).find((x) => x.id === key);
     return c ? c.title : key;
   },
   blabMark() {
@@ -276,7 +392,7 @@ Object.assign(Game.prototype, {
     for (const b of $('blList').querySelectorAll('button[data-p], button[data-cur]')) {
       const on = b.dataset.p ? b.dataset.p === k : 'cur:' + b.dataset.cur === k;
       b.classList.toggle('on', on);
-      if (b.dataset.p) b.textContent = on ? '■' : '▶';
+      if (b.dataset.p) b.textContent = (on ? '■' : '▶') + (b.dataset.lbl ? ' ' + b.dataset.lbl : '');
     }
     for (const r of $('blList').querySelectorAll('.blRow')) r.classList.toggle('on', r.dataset.c === k);
   },

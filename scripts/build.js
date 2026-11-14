@@ -192,6 +192,31 @@ function writeSounds() {
     'MECH_CORDON_BGM_AUD',
     '任務配樂的候選試聽（src/assets/bgm-audition/，scripts/bgm-audition.py）',
   );
+  // AI 配樂（scripts/bgm-gen.py → scripts/bgm-ai-pack.py）：每章一個檔案（src/assets/bgm-ai/c<章>/ → lib/bgm-c<章>.js），
+  // 進到那一章的任務才載入（game/bgm.js 的 bgmLoadCh）
+  const adir = path.join(SRC, 'assets', 'bgm-ai');
+  const aiCh = {};
+  if (fs.existsSync(adir))
+    for (const d of fs.readdirSync(adir))
+      if (/^c\d+$/.test(d) && fs.existsSync(path.join(adir, d, 'index.json'))) {
+        // 版本＝index.json 的雜湊（每章重新產生時會變）：遊戲載入時帶在網址上，不吃伺服器 1 小時的快取
+        aiCh[+d.slice(1)] = require('crypto')
+          .createHash('sha1')
+          .update(fs.readFileSync(path.join(adir, d, 'index.json')))
+          .digest('hex')
+          .slice(0, 10);
+        writeAudio(
+          path.join(adir, d),
+          `bgm-${d}.js`,
+          `MECH_CORDON_BGM_${d.toUpperCase()}`,
+          `第 ${d.slice(1)} 章的任務配樂（AI 產生，src/assets/bgm-ai/${d}/，scripts/bgm-gen.py）`,
+        );
+      }
+  // 有哪些章與版本（遊戲先載這個小檔案，沒有的章不去載、不會 404）
+  fs.writeFileSync(
+    path.join(LIB, 'bgm-ai.js'),
+    `// AI 配樂有哪些章，由 scripts/build.js 產生\nwindow.MECH_CORDON_BGM_AI_CH = ${JSON.stringify(aiCh)};\n`,
+  );
   // ECHO 的語音：每個聲音一個檔案（src/assets/voice/<聲音>/ → lib/voice-<聲音>.js），只載入設定選的那個
   const vdir = path.join(SRC, 'assets', 'voice');
   if (fs.existsSync(vdir))

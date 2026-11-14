@@ -15755,25 +15755,56 @@ async function testBgmLab(browser, base) {
   check(r.cur, '目前的配樂可以播放比較');
   await page.click('#btnBlBack');
   await waitVisible(page, 'title');
-  // 「AI 配樂試聽」：只列 AI 產生的曲子（scripts/bgm-gen.py），可以播放
+  // 「AI 配樂試聽」：依章列出遊戲用的 AI 配樂（lib/bgm-c<章>.js，scripts/bgm-gen.py），交戰版與平時版可以播放
+  const nCh1 = (() => {
+    try {
+      return Object.keys(
+        JSON.parse(
+          fs.readFileSync(path.join(__dirname, '..', 'src', 'assets', 'bgm-ai', 'c1', 'index.json'), 'utf8'),
+        ),
+      ).length;
+    } catch (e) {
+      return 0;
+    }
+  })();
   await titleTool(page, '#btnBgmAi');
   await waitVisible(page, 'bgmLab');
+  await page.waitForFunction(
+    () =>
+      document.querySelectorAll('#blAi .blRow').length > 0 ||
+      /還沒產生/.test(document.getElementById('blAi').textContent),
+    null,
+    { timeout: 60000 },
+  );
   const a = await page.evaluate(async () => {
-    const rows = [...document.querySelectorAll('.blRow')].map((e) => e.dataset.c);
-    const b = document.querySelector('.blPlay');
-    if (b) b.click();
-    const t0 = performance.now();
-    while (b && !document.querySelector('.blPlay.on') && performance.now() - t0 < 8000)
-      await new Promise((r) => setTimeout(r, 100));
-    const playing = !!document.querySelector('.blPlay.on');
-    document.getElementById('blStop').click();
-    return { rows, playing, title: document.getElementById('blTitle').textContent };
+    const rows = [...document.querySelectorAll('#blAi .blRow')].map((e) => e.dataset.c);
+    const play = async (sel) => {
+      const b = document.querySelector(sel);
+      if (!b) return null;
+      b.click();
+      const t0 = performance.now();
+      while (!b.classList.contains('on') && performance.now() - t0 < 15000)
+        await new Promise((r) => setTimeout(r, 100));
+      const on = b.classList.contains('on');
+      document.getElementById('blStop').click();
+      return on;
+    };
+    return {
+      rows,
+      fight: await play('#blAi button[data-p="aic1_battle"]'),
+      calm: await play('#blAi button[data-p="aic1_battle_calm"]'),
+      title: document.getElementById('blTitle').textContent,
+      ext: document.querySelectorAll('.blRow[data-c^="ai_"], .blRow[data-c^="sb_"]').length,
+    };
   });
   check(
-    a.title === 'AI 配樂試聽' && a.rows.length === r.nAi && a.rows.every((id) => id.startsWith('ai_')),
-    `AI 配樂試聽只列 AI 產生的曲子（${a.rows.length}／${r.nAi}）`,
+    a.title === 'AI 配樂試聽' &&
+      a.rows.length === nCh1 &&
+      a.rows.every((id) => id.startsWith('aic1_')) &&
+      !a.ext,
+    `AI 配樂試聽列出第 1 章的配樂（${a.rows.length}／${nCh1}）`,
   );
-  check(!r.nAi || a.playing, 'AI 產生的曲子可以播放');
+  check(!nCh1 || (a.fight && a.calm), `交戰版與平時版可以播放（${a.fight}、${a.calm}）`);
   await page.click('#btnBlBack');
   await waitVisible(page, 'title');
   await ctx.close();
