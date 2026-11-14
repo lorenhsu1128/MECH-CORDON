@@ -2782,6 +2782,15 @@ export function animateMech(m, dt, st) {
     an.chkN = 9 + Math.random() * 10;
     an.idleT = 0;
   }
+  // 過場的小動作（st.gest，game/cine.js）：chk＝馬上舉槍檢查一次；low＝{ l, r } 武器垂下（0～1，慢慢過去）
+  const GS = st.gest;
+  if (GS && GS.chk) {
+    an.chk = 1.8;
+    an.idleT = 0;
+    GS.chk = false;
+  }
+  an.lowS = an.lowS || { l: 0, r: 0 };
+  for (const k of ['l', 'r']) an.lowS[k] = lerp(an.lowS[k], (GS && GS.low && GS.low[k]) || 0, ek(3.5));
   if (an.chk > 0) an.chk = calm || an.chk < 1.7 ? an.chk - dt : 0;
   const chkW = an.chk > 0 ? Math.sin((1 - an.chk / 1.8) * Math.PI) : 0;
   an.relax = an.relax || { l: 0, r: 0 };
@@ -3245,6 +3254,9 @@ export function animateMech(m, dt, st) {
     const ck = kk === 'r' ? an.relax.r : 0; // 檢查武器：右手把槍舉到面前
     up += 0.55 * ck;
     foreT += 0.45 * ck;
+    const lw = an.lowS ? an.lowS[kk] : 0; // 過場：武器垂下（手臂放低、前臂往下）
+    up -= 0.75 * lw;
+    foreT -= 0.4 * lw;
     // 刀與大劍平時的架式（BLADE_GRIP）：刀放低、刀尖往前上方；大劍扛在肩上（手腕往後倒，BLADE_REST）
     if (a.grip && !(ML && ML.side === side)) {
       const big = a.grip.userData.big;

@@ -417,10 +417,17 @@ function upperBody(rig, ctx, sc) {
     upd(rig.torso);
   }
   // ===== 頭：看向瞄準點（區域角度上限：偏航 ±1.0、俯仰 ±0.5）=====
-  W.head = smooth(W.head, on('head') && !ctx.knock ? 1 - ((rig.an && rig.an.rh) || 0) : 0, dt, 6);
+  // 過場的 headPt：頭看的點和瞄準分開（檢查武器時也照樣看）
+  const hp = ctx.headPt || aim;
+  W.head = smooth(
+    W.head,
+    on('head') && !ctx.knock ? 1 - (ctx.headPt ? 0 : (rig.an && rig.an.rh) || 0) : 0,
+    dt,
+    6,
+  );
   if (rig.head && W.head > 0.002) {
     const h = rig.head;
-    const [yaw, pitch] = lookAngles(h, aim);
+    const [yaw, pitch] = lookAngles(h, hp);
     h.rotation.y = lerp(h.rotation.y, clamp(yaw, -1.0, 1.0), W.head);
     h.rotation.x = lerp(h.rotation.x, clamp(pitch, -0.5, 0.5), W.head);
     upd(h);
@@ -472,9 +479,10 @@ function upperBody(rig, ctx, sc) {
     const rl = rig.an
       ? Math.max((rig.an.rl && rig.an.rl[k]) || 0, (rig.an.relax && rig.an.relax[k]) || 0)
       : 0;
+    const low = (rig.an && rig.an.lowS && rig.an.lowS[k]) || 0; // 過場：武器垂下時不瞄準
     const want =
       on('arms') && ctx.guns[k] === 'gun' && !ctx.melee && !ctx.knock
-        ? (ctx.boost && !firing ? 0.35 : 1) * (1 - 0.8 * rl)
+        ? (ctx.boost && !firing ? 0.35 : 1) * (1 - 0.8 * rl) * (1 - low)
         : 0;
     W.arm[k] = smooth(W.arm[k], want, dt, 8);
     if (W.arm[k] <= 0.002) continue;

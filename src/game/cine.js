@@ -24,6 +24,7 @@ import { SPACE_SUN, buildCrashSite, buildPod, buildSpaceSet } from '../render/ci
 import { PALETTES } from '../render/materials.js';
 import { buildMech } from '../render/mech-model.js';
 import { buildHubRoom, hubRoomRich, tickHubRoom } from '../render/hub-room.js';
+import { buildCastronOffice, tickCastronOffice } from '../render/cine-office.js';
 import { revealDom } from '../render/textfx.js';
 import { World } from '../world/world.js';
 import { CINE_GRADE } from './constants.js';
@@ -311,6 +312,13 @@ Object.assign(Game.prototype, {
       // 室內：作戰室的指揮室模型（render/hub-room.js），當委託方的辦公室、指揮室；原點＝桌子的中心
       set.root = new THREE.Group();
       this.scene.add(set.root);
+      if (S.kind === 'castron') {
+        // 霍斯特的辦公室（render/cine-office.js）：程式模型、共用的倒角幾何不釋放
+        set.office = buildCastronOffice();
+        set.keepGeo = true;
+        set.root.add(set.office);
+        return set;
+      }
       const R = (set.room = buildHubRoom(Object.values(FACTIONS).map((f) => [f.color, f.short[0], f.short])));
       if (S.echo === false) R.echo.visible = false;
       // 設施的招牌（機甲庫、存檔…）：借用成別的地方時藏起來
@@ -393,7 +401,7 @@ Object.assign(Game.prototype, {
       this.sun.color.set(S.key || 0xffb070);
       this.sun.intensity = S.keyI ?? 1.1;
       cam.near = 0.05;
-      cam.far = 200;
+      cam.far = S.far || 200;
       SFX.ambStop();
       SFX.setReverb(0.8, 0.12);
     } else if (S.k === 'world') {
@@ -601,6 +609,7 @@ Object.assign(Game.prototype, {
     this.cineCamera(S, lt, c.paused ? 0 : dt);
     if (c.set && c.set.space) c.set.space.update(t, this.camera);
     if (c.set && c.set.room) tickHubRoom(c.set.room, dt, t); // 室內的燈條、轉動的東西
+    if (c.set && c.set.office) tickCastronOffice(c.set.office, t);
     this.cineOverlay(S, lt, dt);
     if (c.lib) this.cineLibTick(c);
     SFX.setListenerCam(this.camera);
@@ -859,6 +868,19 @@ Object.assign(Game.prototype, {
     if (st.rise) A.rise = { t0: A.lt || 0, d: st.rise }; // 從蹲低／埋在坑裡站起來
     if (st.crouch !== undefined) A.crouch = st.crouch; // 蹲低（休息、跪坐）
     if (st.hide !== undefined) (A.e ? A.e.mesh : A.obj).visible = !st.hide;
+    // 小動作（3D 動畫化第 4 期）：look＝頭看哪裡（演員 id／點／null＝跟著瞄準）、scan＝頭左右張望（幅度弧度，0＝停）、
+    // lower＝武器垂下（true／'l'／'r'／false）、chk＝舉槍檢查一次（render/mech-model.js 的 gest、mech-ik.js 的 headPt）
+    if (e) {
+      if (st.look !== undefined) P.look = st.look;
+      if (st.scan !== undefined) P.scan = st.scan ? { a: st.scan, t0: A.lt || 0, per: st.per || 3.2 } : null;
+      const G = (e.cineGest = e.cineGest || { low: { l: 0, r: 0 }, chk: false });
+      if (st.lower !== undefined) {
+        const v = st.lower;
+        G.low.l = v === true || v === 'l' ? 1 : v === 'r' ? G.low.l : 0;
+        G.low.r = v === true || v === 'r' ? 1 : v === 'l' ? G.low.r : 0;
+      }
+      if (st.chk) G.chk = true;
+    }
   },
   cineMelee(A, slot) {
     const e = A.e,
@@ -927,6 +949,22 @@ Object.assign(Game.prototype, {
     const ap = this.cineAimPt(P.aim);
     if (ap) e.setAim(ap);
     else if (wish.lengthSq() > 0) e.aimYaw = Math.atan2(-wish.x, -wish.z);
+    // 頭看的點（look／scan）：沒有時跟著瞄準
+    if (P.look != null || P.scan) {
+      let hp = P.look != null ? this.cineAimPt(P.look) : null;
+      const c0 = e.center();
+      if (!hp)
+        hp = c0
+          .clone()
+          .add(new THREE.Vector3(-Math.sin(e.yaw), 0, -Math.cos(e.yaw)).multiplyScalar(30 * e.dk));
+      if (P.scan) {
+        const a = P.scan.a * Math.sin(((lt - P.scan.t0) / P.scan.per) * Math.PI * 2);
+        hp.sub(c0)
+          .applyAxisAngle(new THREE.Vector3(0, 1, 0), a)
+          .add(c0);
+      }
+      e.cineHead = hp;
+    } else e.cineHead = null;
     // 先拿掉上一格加的蹲低與前傾（move 沒有重設網格時——例如暫停——才不會一格一格累加）
     if (A.pose) {
       e.mesh.position.y += A.pose[0];

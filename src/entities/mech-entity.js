@@ -275,6 +275,7 @@ export class MechEntity {
       knockF: this.knockF,
       knockX: this.knockX,
       persona: this.animPersonaOf(),
+      gest: this.cineGest || null, // 過場的小動作（game/cine.js 的 cineDo：垂下武器、舉槍檢查）
       ...this.animWeapons(),
     };
   }
@@ -3390,6 +3391,7 @@ export class MechEntity {
       meleePt: mt ? mt.center() : null,
       aim,
       armAim: this.armAimPoint(aim),
+      headPt: this.cineHead || null, // 過場：頭看的點（和瞄準分開，game/cine.js 的 look／scan）
       guns: { l: kind('larm'), r: kind('rarm') },
       backs: { l: kind('lback') === 'gun', r: kind('rback') === 'gun' },
       recoil: this.recoil,

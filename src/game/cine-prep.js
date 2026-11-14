@@ -192,9 +192,10 @@ Object.assign(Game.prototype, {
     if (set.space) set.space.dispose();
     if (set.root) {
       this.scene.remove(set.root);
-      set.root.traverse((o) => {
-        if (o.geometry && !o.geometry.parameters) o.geometry.dispose();
-      });
+      if (!set.keepGeo)
+        set.root.traverse((o) => {
+          if (o.geometry && !o.geometry.parameters) o.geometry.dispose();
+        });
     }
   },
   cineSetsDispose(c) {

@@ -239,6 +239,22 @@ Object.assign(Game.prototype, {
     s2.k = k * dpr;
     s2.ox = ((W - VW * k) / 2) * dpr;
     s2.oy = ((H - VH * k) / 2) * dpr;
+    // 視差（3D 動畫化）：這一鏡開始時鏡頭看的點，之後在畫面上移動了多少（舞台單位）；疊在 3D 上的立繪跟著移一小部分，
+    // 背景移得多、人物幾乎不動（多層次）。黑畫面與沒有 3D 場景時沒有
+    s2.par = null;
+    if (c.set && c.set.root && c.started) {
+      const pr = (v) => {
+        const q = v.clone().project(this.camera);
+        return [((q.x * 0.5 + 0.5) * W) / k, ((-q.y * 0.5 + 0.5) * H) / k];
+      };
+      if (s2.parSi !== c.shot) {
+        s2.parSi = c.shot;
+        s2.par0 = c.look.clone();
+        s2.parB = pr(s2.par0);
+      }
+      const p = pr(s2.par0);
+      if (Number.isFinite(p[0]) && Number.isFinite(p[1])) s2.par = [p[0] - s2.parB[0], p[1] - s2.parB[1]];
+    }
     x.setTransform(s2.k, 0, 0, s2.k, s2.ox, s2.oy);
     // 整頁的鏡頭（在格子之間平移、推近）：pg.keys＝[{ t, x, y, z, r }]（舞台座標的中心、倍率、旋轉）
     const pg = st.pg && keyAt(st.pg.keys, lt);
@@ -363,7 +379,10 @@ Object.assign(Game.prototype, {
       x.restore();
     }
     if (e.live && !hasImg) this.cine2dLive(x, e, lt, bx, by, bw, bh); // 有插畫時不畫 3D（插畫優先，3D 是沒有圖時的代替）
+    const s2n = this.cine.s2;
+    s2n.nest = (s2n.nest || 0) + 1; // 格子裡的元素：不套視差（cine2d_actor）
     for (const kid of e.kids || []) this.cine2dEl(x, kid, lt);
+    s2n.nest--;
     // 單色（保留亮度、換成這個顏色）、網點、反白
     if (e.tone) {
       x.globalCompositeOperation = 'color';
@@ -565,6 +584,12 @@ Object.assign(Game.prototype, {
     }
     // 待機：輕的角色多晃一點
     sy += Math.sin(this.cine.t * 1.3 + (e.at ? e.at[0] : 0)) * h * 0.0015 * per.idle;
+    // 視差：疊在 3D 上的立繪（不在格子裡）跟著背景移一小部分（par＝倍率，預設 0.12；0＝不動）
+    const pk = e.par ?? (s2.nest ? 0 : 0.12);
+    if (pk && s2.par && !e.holo) {
+      sx += clamp(s2.par[0] * pk, -120, 120);
+      sy += clamp(s2.par[1] * pk, -80, 80);
+    }
     const w = (h * IMG_W) / IMG_H;
     const cx = at[0] + sx,
       by = at[1] + sy;

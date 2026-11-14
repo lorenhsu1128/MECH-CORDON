@@ -41,18 +41,23 @@ const convoy = [
   pal: 'castron',
 }));
 // 霍斯特的辦公室：作戰室的指揮室模型（render/hub-room.js）、夜裡、暖色的檯燈
+// 霍斯特的辦公室（render/cine-office.js）：落地窗外是夜裡的工業城市；原點＝地板中央，辦公桌在 z −2.3、窗在 z −4
 const OFFICE = {
   k: 'room',
-  echo: false,
-  signs: false,
-  sky: 0x060910,
-  key: 0xffa45a,
-  keyI: 1.05,
-  hemi: 0x5a6a8a,
-  hemiI: 0.3,
+  kind: 'castron',
+  sky: 0x070a12,
+  key: 0xffb070,
+  keyI: 1.5,
+  hemi: 0x6a7a9a,
+  hemiI: 0.9,
+  far: 500,
 };
 const ROOMG = {
   ...WEST,
+  sunAz: 150, // 主光從右上方斜照（檯燈與嵌燈的方向）；荒野的 WEST 是貼著地平線的夕陽
+  sunEl: 50,
+  sunK: 1.1,
+  exposure: 1.15,
   temp: 0.35,
   fogK: 0,
   dust: 0,
@@ -475,8 +480,8 @@ export function ch1Intro() {
         focus: 1.2,
         range: 0.6,
         keys: [
-          { t: 0, p: [1.8, 1.75, 5.2], l: [-1.5, 1.6, -6] },
-          { t: 5, p: [1.2, 1.7, 4.2], l: [-1.5, 1.6, -6] },
+          { t: 0, p: [1.7, 1.7, 2.8], l: [-0.6, 1.35, -4] },
+          { t: 5, p: [1.1, 1.65, 1.9], l: [-0.6, 1.35, -4] },
         ],
       },
       ev: [{ t: 0.1, sfx: 'door', vol: 0.25, rate: 0.8 }],
@@ -593,9 +598,9 @@ export function ch1Intro() {
         range: 0.4,
         ease: 'out',
         keys: [
-          { t: 0, p: [0.4, 1.7, 3.2], l: [-2, 1.7, -6], fov: 40 },
-          { t: 0.35, p: [0.4, 1.7, 2.9], l: [-2, 1.7, -6], fov: 30 },
-          { t: 4, p: [0.35, 1.7, 2.75], l: [-2, 1.7, -6], fov: 29 },
+          { t: 0, p: [0.9, 1.6, 1.6], l: [-1.4, 1.4, -4], fov: 40 },
+          { t: 0.35, p: [0.9, 1.6, 1.3], l: [-1.4, 1.4, -4], fov: 30 },
+          { t: 4, p: [0.85, 1.6, 1.15], l: [-1.4, 1.42, -4], fov: 29 },
         ],
       },
       ev: [{ t: 0, sfx: 'thud1', vol: 0.3, rate: 1.2 }],
@@ -670,8 +675,8 @@ export function ch1Intro() {
         range: 0.5,
         ease: 'lin',
         keys: [
-          { t: 0, p: [0.2, 1.7, 4.6], l: [0.2, 1.65, -6] },
-          { t: 7.5, p: [0.2, 1.7, 3.6], l: [0.2, 1.65, -6] },
+          { t: 0, p: [0.15, 1.6, 2.6], l: [0.1, 1.45, -4] },
+          { t: 7.5, p: [0.15, 1.6, 1.7], l: [0.1, 1.45, -4] },
         ],
       },
       ev: [{ t: 5.6, sfx: 'thud1', vol: 0.4, rate: 0.8 }],
@@ -711,8 +716,8 @@ export function ch1Intro() {
         fov: 50,
         ease: 'lin',
         keys: [
-          { t: 0, p: [3.5, 3.2, 5.6], l: [-1, 1.4, -2] },
-          { t: 6, p: [4.2, 3.6, 5.8], l: [-1, 1.4, -2] },
+          { t: 0, p: [3.4, 2.4, 3.3], l: [-0.6, 1.0, -2.6] },
+          { t: 6, p: [3.9, 2.6, 3.6], l: [-0.6, 1.0, -2.6] },
         ],
       },
       ev: [{ t: 0.2, sfx: 'distant', vol: 0.2, rate: 0.5 }],
@@ -726,9 +731,11 @@ export function ch1Intro() {
     k: 'hero',
     p: [0, 46],
     yaw: 0,
+    // 小動作：推進時武器垂下、頭轉向台地上的陣地；1.3 秒舉槍；之後頭跟著瞄準
     s: [
-      { t: 0, go: [6, -22], ab: true },
-      { t: 4.4, ab: false },
+      { t: 0, go: [6, -22], ab: true, lower: true, look: 'gun1' },
+      { t: 1.3, lower: false },
+      { t: 4.4, ab: false, look: null },
     ],
   };
   // 仰角：推進中的 R-07 從鏡頭上方掠過（一拍二）
