@@ -88,7 +88,7 @@ Object.assign(Game.prototype, {
     if (!$('blIntro').dataset.org) $('blIntro').dataset.org = $('blIntro').innerHTML;
     $('blTitle').textContent = ai ? 'AI 配樂試聽' : '配樂試聽';
     $('blIntro').innerHTML = ai
-      ? '本地 AI（ACE-Step 1.5）產生的任務配樂：每章每種區段類型一首日文歌，曲風是絕區零 × 尼爾 自動人形（憂傷的鋼琴與弦樂、空靈的女聲 × 碎拍、Drum &amp; Bass、放克 bass），聲線有歌姬型、少女型與二重唱。每首有交戰版與平時版（探索、警戒時播，同一首、同速度）；Boss 的最終型態會切到主題歌的副歌。可以打星與寫備註，按「複製評分」貼給開發者。'
+      ? '本地 AI（ACE-Step 1.5）產生的任務配樂：每章每種區段類型一首日文歌，曲風是絕區零 × 尼爾 自動人形（憂傷的鋼琴與弦樂、空靈的女聲 × 碎拍、Drum &amp; Bass、放克 bass），聲線有歌姬型、少女型與二重唱。每首有交戰版與輕快版（探索、警戒時播，同樣的歌詞、速度與調）；Boss 的最終型態會切到主題歌的副歌。可以打星與寫備註，按「複製評分」貼給開發者。'
       : $('blIntro').dataset.org;
     $('btnBlBack').onclick = () => {
       SFX.ui('back');
@@ -277,7 +277,7 @@ Object.assign(Game.prototype, {
     };
     tick();
   },
-  // AI 配樂：選一章，載入 lib/bgm-c<章>.js，列出每種類型的歌（交戰版、平時版、主題歌的副歌）
+  // AI 配樂：選一章，載入 lib/bgm-c<章>.js，列出每種類型的歌（交戰版、輕快版、主題歌的副歌）
   async blabAiRender() {
     const B = this.blab;
     B.aiCh = B.aiCh || 1;
@@ -322,13 +322,13 @@ Object.assign(Game.prototype, {
       const id = `aic${ch}_${t}`;
       const n = B.notes[id] || {};
       B.aiNames[id] = `${c.title}（${aiTypeName(t)}・交戰版）`;
-      B.aiNames[id + '_calm'] = `${c.title}（${aiTypeName(t)}・平時版）`;
+      B.aiNames[id + '_calm'] = `${c.title}（${aiTypeName(t)}・輕快版）`;
       B.aiNames[id + '_chorus'] = `${c.title}（主題歌・副歌）`;
       const btn = (key, lbl, tip) =>
         `<button class="blPlay" data-p="${key}" data-lbl="${lbl}" title="${tip}">▶ ${lbl}</button>`;
       const btns =
         btn(id, t === 'supply' || t === 'theme' || t === 'boss' ? '播放' : '交戰', '播放（完整的歌）') +
-        (c.calm ? btn(id + '_calm', '平時', '探索、警戒時播的平時版') : '') +
+        (c.calm ? btn(id + '_calm', '輕快', '探索、警戒時播的輕快版') : '') +
         (t === 'theme' && c.chorus ? btn(id + '_chorus', '副歌', 'Boss 最終型態從這裡開始播') : '');
       const info = `${escHtml(c.zh)}・${VOICE_NAME[c.voice] || c.voice}・${c.bpm} BPM・${escHtml(c.key)}・${fmt(c.dur)}`;
       const stars = ['', '1', '2', '3', '4', '5']
@@ -359,7 +359,7 @@ Object.assign(Game.prototype, {
       s.onchange = () => this.blabNote(s.dataset.n, 't', s.value.trim());
     this.blabMark();
   },
-  // 產生中的曲子（scripts/bgm-preview.py 每產生一首就更新 lib/bgm-cand-c<章>.js）：每一個候選與平時版，挑中的標出來。
+  // 產生中的曲子（scripts/bgm-preview.py 每產生一首就更新 lib/bgm-cand-c<章>.js）：每一個候選與輕快版，挑中的標出來。
   // 每次都重新載入（網址帶時間），按「重新整理」看新產生的
   async blabCandRender(ch) {
     const B = this.blab;
@@ -384,7 +384,7 @@ Object.assign(Game.prototype, {
       let rows = '';
       for (const c of list) {
         const key = `cand${ch}_${c.id}`;
-        const lbl = c.ver === 'calm' ? '平時版' : '候選 ' + (+c.cand.slice(1) + 1);
+        const lbl = c.ver === 'calm' ? '輕快版' : '候選 ' + (+c.cand.slice(1) + 1);
         B.aiNames[key] = `${c.title}（${aiTypeName(c.type)}・${lbl}）`;
         const sc =
           c.score != null

@@ -15755,7 +15755,7 @@ async function testBgmLab(browser, base) {
   check(r.cur, '目前的配樂可以播放比較');
   await page.click('#btnBlBack');
   await waitVisible(page, 'title');
-  // 「AI 配樂試聽」：依章列出遊戲用的 AI 配樂（lib/bgm-c<章>.js，scripts/bgm-gen.py），交戰版與平時版可以播放
+  // 「AI 配樂試聽」：依章列出遊戲用的 AI 配樂（lib/bgm-c<章>.js，scripts/bgm-gen.py），交戰版與輕快版可以播放
   const nCh1 = (() => {
     try {
       return Object.keys(
@@ -15804,7 +15804,7 @@ async function testBgmLab(browser, base) {
       !a.ext,
     `AI 配樂試聽列出第 1 章的配樂（${a.rows.length}／${nCh1}）`,
   );
-  check(!nCh1 || (a.fight && a.calm), `交戰版與平時版可以播放（${a.fight}、${a.calm}）`);
+  check(!nCh1 || (a.fight && a.calm), `交戰版與輕快版可以播放（${a.fight}、${a.calm}）`);
   await page.click('#btnBlBack');
   await waitVisible(page, 'title');
   await ctx.close();

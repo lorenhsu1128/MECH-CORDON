@@ -1,6 +1,6 @@
 """AI 配樂的歌曲設定（JSON，scripts/bgm-gen.py 與伺服器的配樂產生器 /api/bgm 共用）。
 
-common.json：共同曲風、聲線、各類型的編曲、平時版、各章的音色、各類型的預設聲線與速度。
+common.json：共同曲風、聲線、各類型的編曲、輕快版、各章的音色、各類型的預設聲線與速度。
 c<章>.json：{ ch, key（這一章的調）, songs: { 類型: { title 日文歌名, zh 中文名, lyrics 歌詞（[段落] 標記）,
   可以覆寫 voice／bpm／key／arr／dur } } }。歌詞寫日文漢字（主歌每句句尾押同一個韻、副歌兩兩押韻）。
 """

@@ -4,8 +4,8 @@
   npm run bgm:gen -- --ch=1 [--stage=fight|calm] [--songs=theme,battle] [--n=2]
   --stage=fight（預設）：每首用文字產生 n 個交戰版的候選 <類型>__f<i>.wav；刪掉的候選留下 <名稱>.dropped，
     之後跳過它、往後補一個新的編號（新的種子；同一個種子會產生一樣的歌）。--i0=<k>：候選從第 k 個開始
-  --stage=calm：照 scripts/bgm-pick.py 挑好的 picks.json，以選中的交戰版 cover 出平時版 <類型>__calm.wav
-    （同一首、同速度與段落，編制變輕、人聲變哼唱：動態配樂換強度時從同一個位置交叉淡化）
+  --stage=calm：輕快版 <類型>__calm.wav（程式裡沿用 calm）：同樣的歌詞、速度、調，用 common.json 的 CALM（輕快的編曲、
+    清楚唱歌詞）直接產生（不 cover 交戰版：cover 出來的音質很差）。--calmtry=<k> 換種子重做
   --prep 只下載模型。測試用：--tag=名稱（檔名加後綴）、--kana（歌詞換成全平假名）、--voice=girl|diva|duet、
   --ref=<音檔>（音色參考）。顯示卡的記憶體不夠時設 BGM_DIT=acestep-v15-turbo、BGM_LM=acestep-5Hz-lm-0.6B。
 歌曲的設定在 scripts/bgm_songs/（common.json 的聲線、編曲、音色；c<章>.json 的歌名、調、歌詞），
@@ -34,7 +34,10 @@ LM = os.environ.get('BGM_LM', 'acestep-5Hz-lm-1.7B')
 # 溢出到共用記憶體，每首慢一倍（2026-11-14 RTX 4070：120 秒的歌 110 → 240 秒）。只搬位置，結果不變。BGM_OFFLOAD=0/1 強制
 OFFLOAD = os.environ.get('BGM_OFFLOAD')
 DUR = {'theme': 150}  # 其他 120 秒
-COVER_CALM = 0.4  # 平時版的 cover 強度（越小越自由）
+# 輕快版（程式裡沿用 calm）的 cover 強度：0＝不 cover，直接用文字（common.json 的 CALM＋歌詞）產生。
+# 2026-11-14 以前用交戰版 cover 0.4 出「平時版」（安靜、哼唱），使用者聽了像壞掉的檔案、人聲糊在一起：
+# audiobox 的 CE 從交戰版的 7.5 掉到 3.5～4.7、Whisper 聽寫出幻覺；cover 0.55／0.7 一樣壞，不 cover 時 CE 7.5～7.8
+COVER_CALM = 0
 
 
 def prep():
@@ -142,7 +145,8 @@ def song_spec(ch, mod, typ):
 
 
 def caption_of(sp, ch, calm=False):
-    parts = [C['CALM'] if calm else sp['arr'], C['PALETTE'][ch], C['VOICE'][sp['voice']], C['BASE']]
+    parts = [(calm if isinstance(calm, str) else C['CALM']) if calm else sp['arr'], C['PALETTE'][ch], C['VOICE'][sp['voice']],
+             C['BASE']]
     return ', '.join(parts)[:512]
 
 
@@ -180,7 +184,7 @@ def main():
         meta = dict(ch=ch, type=typ, title=sp['title'], zh=sp['zh'], voice=sp['voice'], bpm=sp['bpm'], key=sp['key'])
         print(f'== 第 {ch} 章 {typ} {sp["title"]}（{sp["voice"]}）', flush=True)
         if stage == 'fight':
-            # 補給只有平時版：直接用平靜的編曲產生
+            # 補給只有一個版本：直接用平靜的編曲產生
             # 每首補到 n 個候選（--i0 起算）：刪掉的候選（<名稱>.dropped，低分重做或配樂產生器的「刪除」）跳過、
             # 往後換下一個編號＝新的種子，同一個種子會產生一樣的歌
             i, k, i0 = int(opt.get('i0', 0)), 0, int(opt.get('i0', 0))
@@ -198,10 +202,14 @@ def main():
         elif stage == 'calm':
             src = picks.get(typ)
             if not src or typ in ('supply', 'boss', 'theme'):
-                continue  # 補給本身就是平時、Boss 與主題歌只有一個版本
-            run(dit, lm, out, f'{typ}__calm', dict(meta, ver='calm', src=src),
-                task_type='cover', src_audio=os.path.join(out, src + '.wav'), audio_cover_strength=COVER_CALM,
-                caption=caption_of(sp, ch, calm=True), seed=ch * 100000 + hash_typ(typ) * 100 + 99, **common)
+                continue  # 補給本身就是平靜的編曲、Boss 與主題歌只有一個版本
+            # --cover=<強度>（0＝不 cover，直接用文字產生）、--calmcap=<描述>（取代 common.json 的 CALM）、--tag、
+            # --calmtry=<k>（換種子重做：分數太低的輕快版）
+            cov = float(opt.get('cover', COVER_CALM))
+            cap = caption_of(sp, ch, calm=opt.get('calmcap') or True)
+            kw = dict(task_type='cover', src_audio=os.path.join(out, src + '.wav'), audio_cover_strength=cov) if cov else {}
+            run(dit, lm, out, f'{typ}__calm{tag}', dict(meta, ver='calm', src=src, cover=cov),
+                caption=cap, seed=ch * 100000 + hash_typ(typ) * 100 + 99 + int(opt.get('calmtry', 0)) * 13, **kw, **common)
 
 
 def hash_typ(t):

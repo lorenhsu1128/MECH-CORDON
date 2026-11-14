@@ -1,7 +1,7 @@
 """AI 配樂產生中的即時試聽：tools/acestep/out/c<章>/*.wav（每產生一首）→ dist/lib/bgm-cand-c<章>.js
 
 用法：python scripts/bgm-preview.py [--loop]（評分環境 tools/acestep/score-venv 的 python；npm run bgm:all 會在背景一起跑）
-每一首候選（<類型>__f<i>、平時版 <類型>__calm）轉成 64 kbps 的 mp3（tools/acestep/preview/，已轉過的略過），
+每一首候選（<類型>__f<i>、輕快版 <類型>__calm）轉成 64 kbps 的 mp3（tools/acestep/preview/，已轉過的略過），
 寫成 dist/lib/bgm-cand-c<章>.js（window.MECH_CORDON_BGM_CAND_C<章>＝{ '@index': [...], id: base64 }）與章節清單
 dist/lib/bgm-cand.js，標題的「AI 配樂試聽」的「產生中的曲子」區讀它們（網址帶時間，不吃快取）。不用重新建置；
 這些檔案不進 git（.gitignore），正式的配樂是 bgm-ai-pack.py 打包、建置的 lib/bgm-c<章>.js。

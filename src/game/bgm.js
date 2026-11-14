@@ -22,8 +22,8 @@ const SETS = [
 ];
 const AIR_SET = ['air1', 'air2', 'air3'];
 // AI 配樂（docs/audio-design.md 的「AI 配樂」）：每章每種區段類型一首（lib/bgm-c<章>.js，進到那一章才載入）。
-// 探索／警戒＝平時版（<類型>_calm，同一首、同速度），交戰＝交戰版，Boss＝這一章的 Boss 曲，
-// Boss 最終型態（強度 4）＝這一章主題歌的副歌（超時空要塞式）。同一首的平時版↔交戰版從同一個位置交叉淡化。
+// 探索／警戒＝輕快版（<類型>_calm，同樣的歌詞、速度與調），交戰＝交戰版，Boss＝這一章的 Boss 曲，
+// Boss 最終型態（強度 4）＝這一章主題歌的副歌（超時空要塞式）。同一首的輕快版↔交戰版從同一個位置交叉淡化。
 // 沒有那一章的檔案或那種類型時用上面的 SETS。
 const CH_OF_THEME = {};
 for (const r of REGIONS) for (const t of r.themes) CH_OF_THEME[t] = r.chapter;
@@ -191,7 +191,7 @@ Object.assign(Game.prototype, {
     else if (key === 'air') name = I.air ? 'air' : t;
     else if (t) name = key === 2 || !I[t].calm ? t : t + '_calm';
     if (!name || !P[name]) return null;
-    // 同一首的平時版↔交戰版：從目前播放的位置接下去
+    // 同一首的輕快版↔交戰版：從目前播放的位置接下去
     const cur = B.cur;
     if (off === null && cur && cur.ai && cur.base === name.replace(/_calm$/, '') && cur.dur)
       off = (SFX.ctx.currentTime - cur.t0) % cur.dur;

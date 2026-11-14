@@ -1,8 +1,8 @@
 """AI 配樂（scripts/bgm-gen.py 產生、scripts/bgm-score.py 挑好的）→ 遊戲用的 src/assets/bgm-ai/c<章>/
 
 用法：npm run bgm:gen -- --ch=<章> 的最後一步會自動跑（或 python scripts/bgm-ai-pack.py --ch=<章>，要 numpy 與 imageio-ffmpeg）
-每種類型：挑中的交戰版 → <類型>.mp3、平時版 → <類型>_calm.mp3；index.json 記歌名、聲線、長度、副歌的時間（Boss 最終型態
-切到主題歌的副歌用）、有沒有平時版。響度照 RMS 正規化（每首差不多大聲）、峰值限制、頭尾 0.4 秒淡入淡出（循環的接縫）、
+每種類型：挑中的交戰版 → <類型>.mp3、輕快版 → <類型>_calm.mp3；index.json 記歌名、聲線、長度、副歌的時間（Boss 最終型態
+切到主題歌的副歌用）、有沒有輕快版。響度照 RMS 正規化（每首差不多大聲）、峰值限制、頭尾 0.4 秒淡入淡出（循環的接縫）、
 44.1 kHz 立體聲 96 kbps。建置時每章寫成一個 lib/bgm-c<章>.js（window.MECH_CORDON_BGM_C<章>），進到那一章的任務才載入。
 """
 import json
@@ -76,7 +76,7 @@ def main():
                 'pick': name,
                 'score': s.get('total'),
             }
-            print(f'第 {ch} 章 {typ:13s} {meta["title"]}  {dur} 秒' + ('（含平時版）' if has_calm else ''))
+            print(f'第 {ch} 章 {typ:13s} {meta["title"]}  {dur} 秒' + ('（含輕快版）' if has_calm else ''))
         with open(os.path.join(dst, 'index.json'), 'w', encoding='utf8', newline='\n') as fp:
             json.dump(idx, fp, ensure_ascii=False, indent=1)
         with open(os.path.join(dst, 'CREDITS.txt'), 'w', encoding='utf8', newline='\n') as fp:

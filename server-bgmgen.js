@@ -2,7 +2,7 @@
 // 標題「工具與其他」的「配樂產生器」（game/bgm-gen-ui.js）用它編輯歌曲設定、在這台的顯示卡上產生配樂、試聽候選、改挑選。
 // 只在開發模式（從專案執行 server.js、沒有用 MECH_CORDON_MODELS_DIR 指定別的資料夾）提供：要用專案裡的
 // scripts/bgm-*.js／*.py 與 npm run bgm:setup 裝在 tools/acestep/ 的環境；其他情況回 { dev: false }。
-// - GET  /api/bgm/state?ch=<章>：安裝狀態、顯示卡、工作的狀態與記錄、各章的歌曲設定與產生結果（候選、分數、挑選、平時版、打包）
+// - GET  /api/bgm/state?ch=<章>：安裝狀態、顯示卡、工作的狀態與記錄、各章的歌曲設定與產生結果（候選、分數、挑選、輕快版、打包）
 // - PUT  /api/bgm/song { ch, type, song }、PUT /api/bgm/common { common }：改 scripts/bgm_songs/ 的 JSON
 // - POST /api/bgm/run { mode, ch, from, to, songs, n }：mode＝all／fight／score／calm／pack／build／setup／sync，同時只跑一個
 //   （sync＝把 git 裡的 tools/bgm-work/ 解回 tools/acestep/out/；啟動時也自動做一次）
@@ -93,7 +93,7 @@ module.exports = function bgmgen({ base, env, readBody, writeAtomic, log }) {
     }
   }
 
-  // 一章的產生結果：每種類型的候選（分數、歌詞吻合度、挑選）、平時版、打包
+  // 一章的產生結果：每種類型的候選（分數、歌詞吻合度、挑選）、輕快版、打包
   function chapterOut(ch) {
     const dir = path.join(OUT, `c${ch}`);
     const scores = readJson(path.join(dir, 'scores.json'), {});
@@ -332,7 +332,7 @@ module.exports = function bgmgen({ base, env, readBody, writeAtomic, log }) {
             return json(resp, { error: '沒有這個候選' }, 404);
           const f = path.join(dir, 'picks.json');
           const p = readJson(f, {});
-          // 換了挑選：舊的平時版是從舊的交戰版改編的，刪掉讓「平時版」重新產生
+          // 換了挑選：刪掉舊的輕快版，讓「產生輕快版」重新產生
           if (p[b.type] !== b.name)
             for (const x of ['.wav', '.json'])
               fs.rmSync(path.join(dir, b.type + '__calm' + x), { force: true });

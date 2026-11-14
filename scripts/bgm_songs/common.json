@@ -1,5 +1,5 @@
 {
- "_doc": "AI 配樂的共用設定（scripts/bgm-gen.py 與伺服器的配樂產生器共用；docs/audio-design.md 的「AI 配樂」）：BASE 共同曲風、VOICE 聲線、ARR 各類型的編曲（交戰版）、CALM 平時版、PALETTE 各章的音色、VOICE_OF／BPM_OF 各類型的預設聲線與速度。描述（編曲＋音色＋聲線＋共同曲風）最多 512 字。",
+ "_doc": "AI 配樂的共用設定（scripts/bgm-gen.py 與伺服器的配樂產生器共用；docs/audio-design.md 的「AI 配樂」）：BASE 共同曲風、VOICE 聲線、ARR 各類型的編曲（交戰版）、CALM 輕快版、PALETTE 各章的音色、VOICE_OF／BPM_OF 各類型的預設聲線與速度。描述（編曲＋音色＋聲線＋共同曲風）最多 512 字。",
  "BASE": "Japanese anime song, J-pop royal road progression, bittersweet melancholic yet uplifting, sorrowful piano and strings fused with breakbeat groove, ethereal reverb, upfront vocal",
  "VOICE": {
   "girl": "bright clear high-pitched young female vocal, sweet airy translucent tone, innocent yet ethereal, Japanese lyrics",
@@ -23,7 +23,7 @@
   "boss": "climactic boss battle anime song, hybrid orchestral electronic, choir, distorted bass, fast drum and bass",
   "air": "soaring sky battle anime song, fast uplifting trance and drum and bass, wide strings, flight and freedom"
  },
- "CALM": "quiet ambient version, soft piano and warm pads, gentle humming vocal, sparse light percussion, no heavy drums, calm and spacious",
+ "CALM": "light bouncy upbeat version, funky city-pop groove, electric piano, clean guitar, light drums, clear lead vocal",
  "PALETTE": {
   "1": "desert wind, dusty acoustic guitar, warm analog synth, ochre sunset wasteland",
   "2": "industrial metallic percussion, rain, city pop electric piano, funk, rusty factory",

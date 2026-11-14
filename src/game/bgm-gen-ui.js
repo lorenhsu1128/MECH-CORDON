@@ -1,6 +1,6 @@
 // Game：配樂產生器（標題「工具與其他」的「配樂產生器」，state 'bgmgen'；docs/audio-design.md 的「配樂產生器」）。
 // AI 配樂（每章每種區段類型一首日文歌）的整套流程做成一個畫面：歌曲設定（歌名、聲線、速度、調、編曲、歌詞）與共用設定的編輯、
-// 在伺服器那台電腦的顯示卡上產生候選／評分挑選／平時版／打包／建置、看工作的記錄與顯示卡、試聽每個候選、手動改挑選或刪掉重做。
+// 在伺服器那台電腦的顯示卡上產生候選／評分挑選／輕快版／打包／建置、看工作的記錄與顯示卡、試聽每個候選、手動改挑選或刪掉重做。
 // 全部經過伺服器的 /api/bgm（server-bgmgen.js，只在開發模式：從專案執行 server.js）；直接開檔或一般的伺服器只顯示說明。
 import { SFX } from '../audio/audio.js';
 import { escHtml } from '../core/html.js';
@@ -14,7 +14,7 @@ const MODE_NAME = {
   all: '一次跑完',
   fight: '產生候選',
   score: '評分挑選',
-  calm: '產生平時版',
+  calm: '產生輕快版',
   pack: '打包',
   build: '建置',
   setup: '安裝',
@@ -121,11 +121,11 @@ Object.assign(Game.prototype, {
       .join('');
     const opts = `<label>章 <select id="bgCh">${chOpt}</select></label>
       <label>每首的候選 <select id="bgN">${[1, 2, 3, 4].map((n) => `<option${n === G.n ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
-      <button data-run="all1"${dis} title="這一章：產生候選 → 評分挑選 → 平時版 → 打包">一次跑完這章</button>
+      <button data-run="all1"${dis} title="這一章：產生候選 → 評分挑選 → 輕快版 → 打包">一次跑完這章</button>
       <button data-run="allTo"${dis} title="從這一章做到第 8 章">從這章跑到第 8 章</button>
       <button data-run="fight"${dis}>產生候選</button>
       <button data-run="score"${dis}>評分挑選</button>
-      <button data-run="calm"${dis}>產生平時版</button>
+      <button data-run="calm"${dis}>產生輕快版</button>
       <button data-run="pack"${dis}>打包</button>
       <button data-run="build"${dis} title="npm run build：打包好的配樂放進遊戲（lib/bgm-c<章>.js）">建置</button>
       <button data-run="sync"${dis} title="git pull 之後按：把別台電腦做好、進 git 的候選（tools/bgm-work/）還原到這台">同步</button>
@@ -171,9 +171,9 @@ Object.assign(Game.prototype, {
         })
         .join('');
       h += `<div class="bgSong" data-t="${t}"><div class="bgHead"><b>【${escHtml(typeName(t))}】${escHtml(sg.title)}</b>
-        <span class="dim">${escHtml(sg.zh)}・${VOICE_NAME[voice] || voice}・${sg.bpm || s.common.BPM_OF[t]} BPM・${escHtml(sg.key || C.key)}${o.calm ? '・有平時版' : ''}${C.packed && C.packed[t] ? '・已打包' : ''}</span>
+        <span class="dim">${escHtml(sg.zh)}・${VOICE_NAME[voice] || voice}・${sg.bpm || s.common.BPM_OF[t]} BPM・${escHtml(sg.key || C.key)}${o.calm ? '・有輕快版' : ''}${C.packed && C.packed[t] ? '・已打包' : ''}</span>
         <button data-edit="${t}">編輯</button> <button data-one="${t}"${dis}>只產生這首</button>
-        ${o.calm ? `<button class="bgPlay" data-a="${t}__calm">▶ 平時版</button>` : ''}</div>
+        ${o.calm ? `<button class="bgPlay" data-a="${t}__calm">▶ 輕快版</button>` : ''}</div>
         <div class="bgCands">${cands || '<span class="dim">還沒有候選</span>'}</div></div>`;
     }
     $('bgSongs').innerHTML = h;
@@ -301,7 +301,7 @@ Object.assign(Game.prototype, {
     };
     $('bgEdit').scrollIntoView({ block: 'start' });
   },
-  // 共用設定（common.json）：共同曲風、聲線、各類型的編曲與預設、平時版、各章的音色；JSON 直接編輯
+  // 共用設定（common.json）：共同曲風、聲線、各類型的編曲與預設、輕快版、各章的音色；JSON 直接編輯
   bggCommon() {
     const G = this.bgg,
       cm = G.s.common;
@@ -309,7 +309,7 @@ Object.assign(Game.prototype, {
     const o = {};
     for (const k of ['BASE', 'VOICE', 'ARR', 'CALM', 'PALETTE', 'VOICE_OF', 'BPM_OF']) o[k] = cm[k];
     $('bgEdit').innerHTML = `<div class="bgEditBox"><h3>共用設定</h3>
-      <p class="dim">BASE＝每首都加的共同曲風；VOICE＝聲線的描述；ARR＝各類型交戰版的編曲；CALM＝平時版；PALETTE＝各章的音色；VOICE_OF／BPM_OF＝各類型的預設聲線與速度。送給模型的描述＝編曲＋章的音色＋聲線＋BASE，最多 512 字。</p>
+      <p class="dim">BASE＝每首都加的共同曲風；VOICE＝聲線的描述；ARR＝各類型交戰版的編曲；CALM＝輕快版；PALETTE＝各章的音色；VOICE_OF／BPM_OF＝各類型的預設聲線與速度。送給模型的描述＝編曲＋章的音色＋聲線＋BASE，最多 512 字。</p>
       <textarea id="bgcJson" rows="24">${escHtml(JSON.stringify(o, null, 1))}</textarea>
       <div class="row"><button id="bgcSave">儲存</button><button id="bgcCancel">取消</button></div></div>`;
     $('bgcCancel').onclick = () => {

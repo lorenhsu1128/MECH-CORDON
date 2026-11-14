@@ -1,7 +1,7 @@
 """AI 配樂的跨電腦同步：tools/acestep/out/（gitignore，wav）⇄ tools/bgm-work/（進 git，320 kbps mp3）
 
 用法：python scripts/bgm-sync.py export|import [--ch=<章>]（評分環境 tools/acestep/score-venv；npm run bgm:sync -- export|import）
-- export：out/c<章>/ 的每個候選與平時版（<類型>__f<i>、<類型>__calm 的 wav＋json）轉成 320 kbps mp3 放進 bgm-work/c<章>/，
+- export：out/c<章>/ 的每個候選與輕快版（<類型>__f<i>、<類型>__calm 的 wav＋json）轉成 320 kbps mp3 放進 bgm-work/c<章>/，
   scores.json、picks.json 一起複製。commit 之後別台電腦 pull 就有（產生很久，換電腦接著做時不用重做）。
 - 低分刪掉的候選留下的 <名稱>.dropped（scripts/bgm-gen.py 看到就不用同一個種子重做）兩邊都照抄。
 - import：bgm-work/ 有、out/ 沒有的解回 wav（48 kHz 立體聲），json 照抄；scores.json、picks.json 合併（out/ 已經有的不蓋掉）。

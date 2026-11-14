@@ -1,5 +1,5 @@
 // AI 配樂（docs/audio-design.md 的「AI 配樂」）的執行入口，用 npm run bgm:setup 裝好的環境：
-//   npm run bgm:all -- [--from=1] [--to=8] [--n=2]   每章：產生交戰版候選 → 評分挑選 → 平時版 → 打包（中斷後重跑接著做）
+//   npm run bgm:all -- [--from=1] [--to=8] [--n=2]   每章：產生交戰版候選 → 評分挑選 → 輕快版 → 打包（中斷後重跑接著做）
 //   npm run bgm:gen -- --ch=<章> [--stage=fight|calm] [--songs=類型,…] [--n=2]   只產生（ACE-Step 的環境）
 //   npm run bgm:score -- --ch=<章> [--files=…]   只評分與挑選（評分環境 tools/acestep/score-venv）
 //   npm run bgm:pack -- [--ch=<章>]   只打包成 src/assets/bgm-ai/c<章>/（之後 npm run build）
@@ -81,7 +81,7 @@ function sh(cmd, a) {
       console.log(`\n===== 第 ${ch} 章：評分與挑選 =====`);
       score([`--ch=${ch}`]);
       sync(['export', `--ch=${ch}`]);
-      console.log(`\n===== 第 ${ch} 章：平時版 =====`);
+      console.log(`\n===== 第 ${ch} 章：輕快版 =====`);
       gen([`--ch=${ch}`, '--stage=calm']);
       sync(['export', `--ch=${ch}`]);
       console.log(`\n===== 第 ${ch} 章：打包 =====`);
