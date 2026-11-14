@@ -333,6 +333,53 @@ export function buildCastronOffice() {
   }
   root.userData.flames = out.children.filter((o) => o.geometry && o.geometry.type === 'ConeGeometry');
 
+  // ===== 窗外的機甲停機坪（低一層，y −4）：甲板、邊緣燈、探照燈塔、半座吊臂；具名 AC 停在上面（劇本的模型演員）=====
+  const pad = new THREE.Group();
+  root.add(pad);
+  const PY = -4; // 甲板的頂面
+  box(22, 0.6, 18, std(0x4a4e54, 0.7, 0.4), 0, PY - 0.3, -15, 0, 0.05, pad);
+  // 甲板的標線（黃色的 H 與外框）
+  const lineM = std(0xd8a030, 0.6, 0.1, { emissive: 0x3a2808 });
+  for (const [w, d, x, z] of [
+    [0.3, 6, -2, -14],
+    [0.3, 6, 2, -14],
+    [4, 0.3, 0, -14],
+    [12, 0.15, 0, -9],
+    [12, 0.15, 0, -19],
+    [0.15, 10, -6, -14],
+    [0.15, 10, 6, -14],
+  ])
+    box(w, 0.02, d, lineM, x, PY + 0.01, z, 0, 0.005, pad);
+  // 邊緣的燈（發光）
+  const padG = glow(0xff9a40, 1.6);
+  for (let i = 0; i < 9; i++)
+    for (const [x, z] of [
+      [-10.6 + i * 2.65, -6.3],
+      [-10.6 + i * 2.65, -23.7],
+    ])
+      add(new THREE.SphereGeometry(0.12, 8, 6), padG, x, PY + 0.15, z, 0, pad);
+  // 探照燈塔（兩座，燈頭朝著機體）
+  for (const sx of [-1, 1]) {
+    const x = sx * 9.5;
+    box(0.4, 9, 0.4, M.steel, x, PY + 4.5, -21, 0, 0.03, pad);
+    const head = box(1.2, 0.7, 0.6, M.dark, x - sx * 0.3, PY + 9, -20.6, sx * 0.6, 0.05, pad);
+    add(new THREE.PlaneGeometry(1.0, 0.5), glow(0xfff0d0, 2.4), x - sx * 0.6, PY + 9, -20.25, sx * 0.6, pad);
+    void head;
+  }
+  // 半座吊臂（停機坪邊的維修吊臂）
+  const crane = new THREE.Group();
+  crane.position.set(-8, PY, -11);
+  pad.add(crane);
+  box(0.6, 12, 0.6, std(0xc8902a, 0.6, 0.3), 0, 6, 0, 0, 0.04, crane);
+  const boom = box(8, 0.5, 0.5, std(0xc8902a, 0.6, 0.3), 3.6, 11.6, 0, 0, 0.04, crane);
+  boom.rotation.z = -0.08;
+  const hook = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 4, 6), M.steel);
+  hook.position.set(7, 9.4, 0);
+  crane.add(hook);
+  pad.traverse((o) => {
+    if (o.isMesh) o.castShadow = o.receiveShadow = true;
+  });
+
   // ===== 辦公桌（窗前，霍斯特在桌子前面）=====
   const desk = new THREE.Group();
   desk.position.set(0, 0, -2.3);

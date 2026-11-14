@@ -22,7 +22,7 @@ import { buildBossModel } from '../render/boss-models.js';
 import { loadHangarAssets, loadPeopleAssets } from '../render/hangar-assets.js';
 import { SPACE_SUN, buildCrashSite, buildPod, buildSpaceSet } from '../render/cine-sets.js';
 import { PALETTES } from '../render/materials.js';
-import { buildMech } from '../render/mech-model.js';
+import { animateMech, buildMech } from '../render/mech-model.js';
 import { buildHubRoom, hubRoomRich, tickHubRoom } from '../render/hub-room.js';
 import { buildCastronOffice, tickCastronOffice } from '../render/cine-office.js';
 import { revealDom } from '../render/textfx.js';
@@ -659,6 +659,8 @@ Object.assign(Game.prototype, {
     }
     for (const spec of S.actors || []) if (!c.actors.has(spec.id)) this.cineAddActor(spec, S.at);
     c.P = { ...this.styleP, ...CINE_GRADE, ...(c.def.grade || {}), ...(S.grade || {}) };
+    // 室內（room）：天空用場景的背景色（窗外的夜色），不畫風格的天空與雲
+    if (S.set && S.set.k === 'room') Object.assign(c.P, { sky: 'theme', dust: 0, fogColorK: 0, hfog: 0 });
     if (S.set && S.set.k === 'space') {
       Object.assign(c.P, { sky: 'theme', dust: 0, fogColorK: 0, hfog: 0, ssao: 0 });
       // 太陽方向可以每一鏡不同（S.sun）
@@ -735,10 +737,17 @@ Object.assign(Game.prototype, {
           obj.add(m.group);
         });
       } else {
+        // ace：具名 AC 的組裝與配色（data/foes.js 的 ACES；每次組裝不同的 OXIDE 在同一段過場裡固定一組）
+        const R = spec.ace && ACES[spec.ace];
+        let asm = spec.asm;
+        if (!asm && R) {
+          c.aceAsm = c.aceAsm || {};
+          asm = R.asm || (c.aceAsm[spec.ace] = c.aceAsm[spec.ace] || this.foeRandomAsm());
+        }
         const m = spec.mech
           ? buildMech(
-              spec.asm || this.save.asm,
-              PALETTES[spec.pal] || PALETTES.player,
+              asm || this.save.asm,
+              PALETTES[spec.pal || (R && R.pal)] || PALETTES.player,
               ((spec.scale || 1) * (parent ? 1 : c.set.k)) / MB, // 機甲的建模尺寸是新尺度
               {
                 // 玩家配色＝玩家的機甲，其他（AEGIS、委託方的代表機、宿敵）照電腦 AC 的規則用內建預設機甲
@@ -1004,6 +1013,16 @@ Object.assign(Game.prototype, {
   cineModel(A, lt, dt) {
     const k = A.spec.keys;
     const obj = A.obj;
+    // 機甲的模型演員（停著的機體）：動作層的待機（重心晃動、偶爾舉槍檢查）
+    if (A.spec.mech && A.rig && dt > 0)
+      animateMech(A.rig, dt, {
+        moving: false,
+        grounded: true,
+        hover: false,
+        boost: false,
+        aimPitch: A.spec.aimPitch || 0,
+        t: lt,
+      });
     if (k && k.length) {
       let i = 0;
       while (i < k.length - 1 && k[i + 1].t <= lt) i++;

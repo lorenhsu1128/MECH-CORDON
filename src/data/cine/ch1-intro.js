@@ -52,6 +52,8 @@ const OFFICE = {
   hemiI: 0.9,
   far: 500,
 };
+// 窗外停機坪上的 OXIDE（第 1 章的具名 AC：荒野的拾荒傭兵，之後被卡斯特隆雇用）；模型演員、停著待機
+const PARKED = { id: 'oxide', k: 'model', mech: true, ace: 'rust', p: [3.2, -4, -14], yaw: 165, scale: 3 };
 const ROOMG = {
   ...WEST,
   sunAz: 150, // 主光從右上方斜照（檯燈與嵌燈的方向）；荒野的 WEST 是貼著地平線的夕陽
@@ -457,13 +459,34 @@ export function ch1Intro() {
   );
 
   // ---------- 0:24 霍斯特 ----------
+  // 辦公室的第一鏡：從窗邊仰望停機坪上的 OXIDE（探照燈、城市的燈），慢慢推近
+  T.add(
+    {
+      set: OFFICE,
+      actors: [PARKED],
+      grade: { ...ROOMG, exposure: 1.05 },
+      lb: false,
+      fi: 0.25,
+      cam: {
+        fov: 40,
+        ease: 'lin',
+        keys: [
+          { t: 0, p: [1.2, 1.3, -3.4], l: [3.2, 6.2, -14] },
+          { t: 1.6, p: [1.25, 1.25, -3.6], l: [3.2, 6.6, -14], fov: 36 },
+        ],
+      },
+      ev: [{ t: 0.1, sfx: 'door', vol: 0.25, rate: 0.8 }],
+    },
+    1.6,
+  );
   // 辦公室：立繪疊在 3D 的室內（景深），鏡頭慢慢推近（多層次：背景移得多、人物不動）
   T.add(
     {
       set: OFFICE,
+      actors: [PARKED],
+      keep: true,
       grade: ROOMG,
       lb: false,
-      fi: 0.25,
       st: {
         els: [
           HORST({
@@ -480,13 +503,12 @@ export function ch1Intro() {
         focus: 1.2,
         range: 0.6,
         keys: [
-          { t: 0, p: [1.7, 1.7, 2.8], l: [-0.6, 1.35, -4] },
-          { t: 5, p: [1.1, 1.65, 1.9], l: [-0.6, 1.35, -4] },
+          { t: 0, p: [1.6, 1.7, 2.6], l: [-0.6, 1.35, -4] },
+          { t: 3.4, p: [1.1, 1.65, 1.9], l: [-0.6, 1.35, -4] },
         ],
       },
-      ev: [{ t: 0.1, sfx: 'door', vol: 0.25, rate: 0.8 }],
     },
-    5,
+    3.4,
   );
   // 插入：台地上的陣地（3D），右邊滑進霍斯特的臉的格子（漫畫格嵌立繪）
   T.add(
@@ -574,6 +596,7 @@ export function ch1Intro() {
   T.add(
     {
       set: OFFICE,
+      actors: [PARKED],
       grade: { ...ROOMG, contrast: 1.38 },
       lb: false,
       st: {
@@ -648,6 +671,7 @@ export function ch1Intro() {
   T.add(
     {
       set: OFFICE,
+      actors: [PARKED],
       grade: ROOMG,
       lb: false,
       st: {
@@ -687,6 +711,7 @@ export function ch1Intro() {
   T.add(
     {
       set: OFFICE,
+      actors: [PARKED],
       grade: { ...ROOMG, exposure: 0.62, sat: 0.6 },
       lb: false,
       fo: 0.5,
