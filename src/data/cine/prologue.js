@@ -237,6 +237,101 @@ const VISTAS = [
     s: '有一座沒有人提起的站。',
   },
 ];
+// PV 式的世界介紹（過場改版第 4 期，docs/cine-redesign-design.md 第五節「序章 D＋B」）：每張空景的一側
+// 斜切的委託方色塊＋代表人的剪影（立繪 v2，2D 舞台的 actor 變成全黑）＋大字；左右輪流，軌道站沒有人只有字
+const PV = [
+  { who: 'castron', color: '#d8903a' },
+  { who: 'aetheric', color: '#5ab8ff' },
+  { who: 'veerwell', color: '#9be070' },
+  { who: 'sancta', color: '#e0d070' },
+  { who: null, color: '#e8eef4' },
+];
+function pvStage(v, i) {
+  const P = PV[i];
+  const R = i % 2 === 0; // 右側
+  const q = R
+    ? [
+        [1010, -10],
+        [1610, -10],
+        [1610, 910],
+        [830, 910],
+      ]
+    : [
+        [-10, -10],
+        [590, -10],
+        [770, 910],
+        [-10, 910],
+      ];
+  // 大字放在斜線旁的 3D 那一側（白字黑邊；色塊上是剪影，放那裡會被蓋住），遮幅 2.39 之內
+  const tx = R ? 860 : 750,
+    al = R ? 'right' : 'left';
+  return {
+    els: [
+      { k: 'block', q, color: P.color, in: 'wipe', ind: 0.22, a: 0.94 },
+      // 細的黑色斜線（色塊的邊）
+      {
+        k: 'block',
+        q: R
+          ? [
+              [990, -10],
+              [1004, -10],
+              [824, 910],
+              [810, 910],
+            ]
+          : [
+              [596, -10],
+              [610, -10],
+              [790, 910],
+              [776, 910],
+            ],
+        color: '#0a0a0a',
+        in: 'wipe',
+        ind: 0.22,
+      },
+      ...(P.who
+        ? [
+            {
+              k: 'actor',
+              who: P.who,
+              pose: 'p1',
+              at: [R ? 1290 : 310, 1000],
+              h: 940,
+              in: R ? 'right' : 'left',
+              ind: 0.35,
+              dim: 0.93,
+              noBub: true,
+            },
+          ]
+        : []),
+      {
+        k: 'text',
+        s: v.name,
+        at: [tx, 560],
+        size: 62,
+        al,
+        color: '#ffffff',
+        stroke: '#0a0a0a',
+        sw: 10,
+        t0: 0.25,
+        in: R ? 'right' : 'left',
+        ls: 6,
+      },
+      {
+        k: 'text',
+        s: v.s,
+        at: [tx, 630],
+        size: 40,
+        al,
+        color: '#ffffff',
+        stroke: '#0a0a0a',
+        sw: 8,
+        t0: 0.5,
+        in: 'fade',
+        ls: 4,
+      },
+    ],
+  };
+}
 
 export function prologueCine(ctx) {
   const T = TXT[ctx.cycle] || TXT[1];
@@ -422,11 +517,8 @@ export function prologueCine(ctx) {
         keys: v.cam.map(([t, p, l]) => ({ t, p, l })),
         ease: 'lin',
       },
-      ev: [
-        { t: 0.25, card: v.name, s: v.s, style: 'loc', dur: 2.3 },
-        { t: 0, sfx: i % 2 ? 'thud2' : 'thud1', vol: 0.5, rate: 0.6 },
-        ...(v.ev || []),
-      ],
+      st: pvStage(v, i),
+      ev: [{ t: 0, sfx: i % 2 ? 'thud2' : 'thud1', vol: 0.5, rate: 0.6 }, ...(v.ev || [])],
       actors: v.actors || [],
     });
     at += 3;
@@ -501,18 +593,38 @@ export function prologueCine(ctx) {
     ],
   });
   // ---- 1:12 墜落現場：機體從坑裡站起來 ----
+  // ECHO 的第一次通訊（過場改版第 4 期：駕駛艙裡，擋風窗外是黎明的墜落現場，右下是 ECHO 的全像立繪與氣泡；
+  // 第 3 周目的私人頻道是她「真實的樣子」echo_true）
   shots.push({
     at: 72.2,
     set: crash,
     grade: dawn,
     fi: 0.5,
+    lb: false,
+    st: {
+      els: [
+        { k: 'art', art: 'cockpit', q: [-40, -20, 1680, 940] },
+        {
+          k: 'actor',
+          who: ctx.cycle >= 3 ? 'echo_true' : 'echo',
+          sp: 'echo',
+          pose: ctx.cycle >= 3 ? 'p3' : 'p2',
+          at: [1360, 1060],
+          h: 740,
+          in: 'fade',
+          ind: 0.5,
+          holo: ctx.cycle >= 3 ? '#ffd7a0' : '#7fc8ff',
+          bub: [-460, 40],
+          bubW: 520,
+        },
+      ],
+    },
     cam: {
-      fov: 34,
-      hand: 0.12,
-      dof: 0.6,
+      fov: 62,
+      hand: 0.1,
       keys: [
-        { t: 0, p: [-9, 1.0, 12], l: { a: 'hero', at: 'head', o: [0, -1, 0] } },
-        { t: 3, p: [-6.5, 1.4, 8.5], l: { a: 'hero', at: 'head' } },
+        { t: 0, p: { a: 'hero', at: 'head', o: [0, 0.4, 0] }, l: [-40, 4, -60] },
+        { t: 3, p: { a: 'hero', at: 'head', o: [0, 0.4, 0] }, l: [-40, 6, -60] },
       ],
     },
     ev: [
