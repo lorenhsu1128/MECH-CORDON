@@ -10,12 +10,9 @@ import {
   c6OpenPost,
   c6SealPost,
 } from './aftermath.js';
-import { c2Pre } from './ch2.js';
-import { c4Pre } from './ch4.js';
-import { c6Pre } from './ch6.js';
 import { memoryCine, trueEndCine } from './memory.js';
 import { prologueCine } from './prologue.js';
-import { withTalk } from './talks.js';
+import { choicePreFilm } from './chfilm.js';
 
 export const CINES = {};
 for (let cyc = 1; cyc <= 3; cyc++) {
@@ -29,15 +26,15 @@ for (let cyc = 1; cyc <= 3; cyc++) {
 
 // 抉擇演出：x_<抉擇>_pre（選前，在目前的戰場上播）、x_<抉擇>_<選項>（選後的代價）
 // 過場改版第 9 期：選前的最前面是兩邊委託方的對峙（talks.js 的 pre_<抉擇>）；選後整段是代價的漫畫蒙太奇（aftermath.js）
-const pre = (f, k) => (ctx) => withTalk(f(ctx), k, ctx);
+const pre = (id) => (ctx) => choicePreFilm(id, ctx);
 Object.assign(CINES, {
-  x_c2_pre: pre(c2Pre, 'pre_c2'),
+  x_c2_pre: pre('c2'),
   x_c2_castron: c2CastronPost,
   x_c2_aetheric: c2AethericPost,
-  x_c4_pre: pre(c4Pre, 'pre_c4'),
+  x_c4_pre: pre('c4'),
   x_c4_veerwell: c4VeerwellPost,
   x_c4_sancta: c4SanctaPost,
-  x_c6_pre: pre(c6Pre, 'pre_c6'),
+  x_c6_pre: pre('c6'),
   x_c6_open: c6OpenPost,
   x_c6_seal: c6SealPost,
   x_c6_beyond: c6BeyondPost,

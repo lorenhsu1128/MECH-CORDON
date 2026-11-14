@@ -22687,7 +22687,8 @@ async function testCine(browser, base) {
     `2D 舞台：對話分格的立繪演員（${talk.who.join('、')}）、說話的人的氣泡取代字幕條（${talk.bub}）`,
   );
   await page.evaluate(() => window.__game.cineEnd(true));
-  // 對話分格（過場改版第 5～8 期，data/cine/talks.js）：第 1～7 章章末、第 2～8 章開場的最前面；第 2、4 章章末依抉擇換人
+  // 各章重製（過場改版第 5～8 期，data/cine/chfilm.js）：第 1～7 章章末、第 2～8 章開場整段都是 2D 舞台（新格式），
+  // 每段有對話分格（兩格面對面的立繪）；第 2、4 章章末依抉擇換人
   const talks = await page.evaluate(() => {
     const C = window.__CINES;
     const keys = ['o1_1', 'o1_2', 'o1_3', 'o1_4', 'o1_5', 'o1_6', 'o1_7'].concat([
@@ -22702,7 +22703,17 @@ async function testCine(browser, base) {
     const who = (d) => d.shots[0].st.els[0].kids.find((e) => e.k === 'actor').who;
     const ok = keys.filter((k) => {
       const d = C[k]({ cycle: 1, choices: {} });
-      return d && d.shots[0].st && d.shots[1].at > 10;
+      // 整段都是 2D 舞台、有對話分格、有漫畫頁
+      const talk =
+        d &&
+        d.shots.some(
+          (s) =>
+            s.st &&
+            s.st.els[0].kids &&
+            s.st.els[0].kids.some((e) => e.k === 'actor') &&
+            s.st.els.length === 2,
+        );
+      return d && d.shots.every((s) => s.st) && talk && d.shots.some((s) => s.st.page);
     });
     return {
       n: ok.length,
@@ -22718,7 +22729,7 @@ async function testCine(browser, base) {
   });
   check(
     talks.n === 14 && talks.c2.join() === 'castron,aetheric' && talks.c4.join() === 'veerwell,sancta',
-    `對話分格：14 段過場的最前面（${talks.n}）、第 2／4 章章末依抉擇換人（${talks.c2.join('、')}／${talks.c4.join('、')}）`,
+    `各章重製：14 段整段是新格式、有對話分格與漫畫頁（${talks.n}）、第 2／4 章章末依抉擇換人（${talks.c2.join('、')}／${talks.c4.join('、')}）`,
   );
   // 記憶片段與真結局（過場改版第 10 期，data/cine/memory.js）：雙色調的 2D 短片；選後的最後是代價的漫畫頁
   const mem = await page.evaluate(() => {

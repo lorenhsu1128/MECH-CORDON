@@ -74,25 +74,17 @@
 
 周目差別（`TXT`）：字卡、機器文字、開機的登錄號、ECHO 與 ZENITH 的台詞、最後一句（第 2 周目沒有「照你的節奏來」，改成旁白；第 3 周目「這一次，照我們的節奏來」）。
 
-## 各章開場／章末與抉擇演出（`data/cine/ch1.js`～`ch6.js`、`kit.js`）
+## 各章開場／章末與抉擇演出（過場改版，docs/cine-redesign-design.md）
 
-- **第二版（每章一種導演風格，`docs/cinematics-storyboard.md`）**：第 1 章西部對決、第 2 章分割畫面、第 3 章恐怖片（監視器、熱感應）、第 4 章垂直一鏡到底＋倒數、第 5 章電視牆與新聞轉播、第 6 章寂靜與駕駛艙視角；各章配樂 `cine_c1`～`cine_c6`（2026-11-06 起是多種樂器合奏的曲子：Alex-Productions「Hearts Of Iron」「Reset」、Alexander Nakarada「Curiosity」、Punch Deck「100 Seconds」、Scott Buckley「Hyperion」「Aphelion」，CC-BY；以前的 Kevin MacLeod 使用者覺得像 MIDI。`scripts/cine-music-prep.py` 從原曲剪一段，劇本的 `off` 從那一段的開頭算；第 6 章的最後的抉擇（`cine_tension`）、交出、墜落（`cine_c6` 的後段）也補上配樂，所有過場動畫都有配樂）。各章專用的效果在 `game/cine-c<章>.js`（Game 的 mixin，名稱以 `c<章>` 開頭）：鏡頭的 `hook`（`cineHook_<名稱>(S, phase, lt, dt)`，phase＝enter／tick／exit；換鏡、`cineSeek` 與結束時呼叫 exit，掛勾建的東西放進 `set.extra` 或在 exit 清掉）、`ov`（字串或陣列，`cineOv_<名稱>(x, W, H, lt, S)` 畫在疊加畫布）、`render`（`cineRender_<名稱>(S, lt, dt)` 取代這一格的 renderMain：第 2 章的分割畫面 `c2split` 以 scissor 畫兩次、第 5 章的電視牆以多個 RenderTarget 合成）。演員的蹲低／站起（`crouch`、`rise`）每格先拿掉上一格加的量，所以暫停時不會累加。
-- **第 1 章開場**（過場改版第 1 期，`data/cine/ch1-intro.js`，約 86 秒）：照 docs/cine-redesign-design.md 第 0 期的分鏡台本——赭紅單色＋網點的天線（固定插畫的代替）→ 一頁三格的動態漫畫（砲台、車隊被炸、工人的剪影，3D 進格子後定格、「轟」）→ 夜裡辦公室的對話分格（霍斯特看錶／抱胸／3/4 側面對 ECHO／指人／算計，ECHO 從右邊斜切的格子加入，氣泡）→ 霍斯特一個人摸後頸的暗橘單色插畫 → 3D 機甲（突擊推進、BASTILLE 的砲擊預警、快速推進、駕駛艙裡 ECHO 的全像、反白線稿的衝擊畫格）→ PV 式章名卡（赭紅與黑的色塊、BASTILLE 的剪影）。舊的西部對決版（OXIDE 的對決）已經拿掉（git 歷史裡有）。
-- **抉擇與記憶**（過場改版第 9、10 期）：選前演出的最前面是兩邊委託方的對峙（`talks.js` 的 `pre_c2`／`pre_c4`／`pre_c6`），選後整段是代價的漫畫蒙太奇（`data/cine/aftermath.js` 的 `montage`：每頁 2～4 格的場景插畫、一格一句、拍點、最後的大字卡；舊的選後演出已刪掉）；ECHO 的記憶片段 `m1`～`m8` 與真結局 `e_beyond` 是雙色調的 2D 短片（`data/cine/memory.js`，舞台的 `fps` 有限動畫），從作戰室「ECHO 的紀錄」的「播放記憶」、過場劇場、真結局的結果畫面之後播。
-- **對話分格**（過場改版第 5～8 期，`data/cine/talks.js`）：第 1～7 章的章末與第 2～8 章的開場，最前面都接一場委託方與 ECHO 的對話分格（`withTalk`：後面的鏡頭與配樂整段往後移；依抉擇換人的用 `choice`）；`talkShot(o)` 可以給其他劇本用。
-- 每章的專屬分鏡在 `ch<章>.js`（`chapters.js` 的 `BESPOKE`；沒有專屬分鏡的才用下面的模板）。鏡頭組件 `kit.js`：`timeline`（同一張地圖連續的鏡頭自動移除上一鏡的演員，`keep` 保留）、`black` 黑底字卡／機器文字、`vista` 空景（crane／pan／push／fly／low）、`comm` 通訊分割（`ov: 'comm'`：左側徽章、名字、聲紋；`badge` 讓旁白也掛委託方）、`rival` 宿敵登場、`boss` Boss 登場、`hero` 主角（walk／boost／hover／kneel）、`shootout` 追尾視角對射兩鏡（`ov: 'lock'`）、`chapterCard`、`cut` 代價快切、`choicePre`／`choicePost` 抉擇演出。
-- 抉擇演出：鍵 `x_<抉擇>_pre`（選前，`cinePlay(..., { live: true })`：場景 `{ k: 'live' }`＝目前的戰場，原點與演員 `player`＝玩家，`{ ex: i }`＝第 i 個出口，`ov: 'choice'` 畫倒數條與出口名牌；模擬暫停，播完回到原本的 state）、`x_<抉擇>_<選項>`（選後的代價蒙太奇，`aftermath.js`，播完到轉場畫面）。接在 `campaign.js` 的 `campChoiceCine`（抉擇出口出現時、`campLeave`）；多人、劇情動畫關閉時不播。
+**全部重製成新格式**（2026-11-14 使用者：「這專案是重製過場動畫」——舊的第二版 3D 演出（每章一種導演風格，`ch2.js`～`ch7.js`、`game/cine-c2.js`～`cine-c6.js`、模板 `BEATS`）都已刪掉，不在舊演出前後加東西）：
 
-- **主線擴充**（2026-11-08，`data/cine/ch7.js`，`docs/campaign-expansion-design.md`）：第 6 章的章末＝轉折（空的中樞 → 機械文字「認證終端：不在此處／所在地：方舟」→ 委託方的頻道沉默 → 最後一鏡切到夜裡發光的熔岩、「方舟 THE ARK」），第 7 章 熔爐 的開場（火與鐵的工業片：飛越熔岩河、ANVIL 登場、霍斯特的通訊、KILN 登場與追尾對射、章名卡）與章末（方舟起航、GANTRY、依抉擇 2 的派克／諾拉、突擊推進追上去、切到方舟），第 8 章 方舟 的開場（飛越甲板、COLOSSUS 仰拍、KEEL 登場與對射、章名卡；第 8 章沒有章末，接結局畫面）。都用 `kit.js` 的組件，沒有自己的 `game/cine-c<章>.js` 效果；配樂沿用 `cine_drive`／`cine_tension`。最後的抉擇的選前演出 `x_c6_pre` 照舊在目前的戰場（方舟）上播。過場動畫劇場的「最後的抉擇」改列在第 8 章。
-
-### 舊的模板（`data/cine/chapters.js`）
-
-- 台詞就是 `CHAPTER_TEXT`（依抉擇 `pickLines`，所以第 2、4 章的章末依抉擇不同），一句一個鏡頭，長度依字數（3.4～7 秒）。
-- 每章的 `BEATS[章].intro／outro` 是鏡頭清單，依序配給每一句（句子比鏡頭多時重複最後一個）：`vista`（空景：crane 升起／pan 橫移／push 推近／fly 低空飛越）、`hero`（主角：walk／boost／hover）、`fight`（主角對一群敵人）、`boss`（Boss 模型登場）、`rival`（宿敵的特寫＋名牌）、`comm`（安靜的鏡頭＋掃描線，委託方的通訊）。
-- 開場：黑底 CHAPTER 字卡 → 台詞 → 章名卡（主角的鏡頭）；章末：黑底章名字卡 → 台詞 → 淡出。配樂：開場 `cine_drive`、章末 `cine_tension`。
-- 逐章重做的分鏡提案在 `docs/cinematics-storyboard.md`。
-- 章節回顧（`storyUnlocked`）：看過的＋依進度開放的（序章、到目前章節的開場、完成的章的章末、以前周目的全部），劇本改版前的舊存檔也看得到。
-- 改台詞只要改 `data/story.js`（文字畫面與過場動畫共用）；換鏡頭改 `BEATS`。
+- **第 1 章開場**：`data/cine/ch1-intro.js`（第 1 期的試做，約 86 秒）：赭紅單色的天線插畫 → 一頁三格的動態漫畫（3D 進格子、各格自己的鏡頭）→ 夜裡辦公室的對話分格（霍斯特與 ECHO）→ 霍斯特一個人的插畫 → 3D 機甲（突擊推進、砲擊預警、駕駛艙裡 ECHO 的全像、反白的衝擊畫格）→ PV 式章名卡。場景與調色在 `ch1.js`，效果在 `game/cine-c1.js`。
+- **其他章的開場與章末**：`data/cine/chfilm.js` 的 `FILMS`（`chapters.js` 的 `chapterCine` 分派），用 `data/cine/film.js` 的段落組成：開場＝B（地點的固定插畫＋地名 → 局勢的漫畫頁 → 委託方與 ECHO 的對話分格 → 宿敵登場的 PV → PV 章名卡），章末＝A＋C（對話分格 → 後果的漫畫頁 → ECHO 的通訊）。台詞＝`data/story.js` 的 `CHAPTER_TEXT`（依抉擇 `pickLines`；還沒抉擇時用第一個選項），旁白是 narr 的語音、角色的台詞是立繪＋氣泡；插畫在 `src/assets/cine-art/c<章>/`（第 2 期的流程產生）。
+- **film.js 的段落**：`page`（漫畫頁：2～4 格，格子落在配樂的拍點上，頁面鏡頭跟著說話的格子；格＝插畫或立繪＋一句，`out` 說完就斷訊變黑）、`still`（整張的固定插畫＋旁白，`loc` 地名）、`talk`（talks.js 的對話分格）、`echo`（ECHO 的通訊，第 3 周目是 echo_true）、`rival`（宿敵的 PV 名牌）、`title`（PV 章名卡）、`card`（黑底大字卡）、`live`（照原樣的 3D 鏡頭）。新增一段過場時照這個寫。
+- **抉擇演出**：選前 `x_<抉擇>_pre`＝`chfilm.js` 的 `choicePreFilm`：兩邊委託方左右對峙（`talks.js` 的 `pre_c2`／`pre_c4`／`pre_c6`）→ 目前的戰場上從主角身後看向出口的光柱與倒數（`cinePlay(..., { live: true })`：場景 `{ k: 'live' }`、演員 `player`、`{ ex: i }`＝第 i 個出口、`ov: 'choice'`；過場劇場在代替的地圖上由 `cineStandIn` 擺主角與出口）。選後 `x_<抉擇>_<選項>`＝`aftermath.js` 的代價漫畫蒙太奇＋大字卡，播完到轉場畫面。接在 `campaign.js` 的 `campChoiceCine`；多人、劇情動畫關閉時不播。
+- **記憶片段與真結局**：`data/cine/memory.js`（雙色調的 2D 短片）。
+- 章節回顧（`storyUnlocked`）：看過的＋依進度開放的（序章、到目前章節的開場、完成的章的章末、以前周目的全部）。改台詞改 `data/story.js`（文字畫面與過場動畫共用；句數改了要一起看 `chfilm.js` 用到第幾句）。
+- `kit.js` 只剩小工具（`W`、`timeline`、`lineDur`、`parseLine`）。
 
 ## 測試與調整
 

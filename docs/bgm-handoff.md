@@ -50,15 +50,15 @@ git add src/assets/bgm-ai tools/bgm-work dist && git commit -m "AI 配樂：第 
 
 ## 顯示卡與問題
 
-| 狀況 | 處理 |
-|---|---|
+| 狀況                                   | 處理                                                                                                                                    |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | 顯示卡記憶體不夠（CUDA out of memory） | 設 `BGM_DIT=acestep-v15-turbo`、`BGM_LM=acestep-5Hz-lm-0.6B` 再跑（品質會差一點；turbo 要另外下載，`npm run bgm:gen -- --prep` 先下載） |
-| `UnicodeEncodeError: 'cp950'` | 執行腳本已經設 `PYTHONIOENCODING=utf-8`；自己直接跑 python 時也要設 |
-| 評分環境的 PyTorch 變成 CPU 版 | 不要用 `uv run --with` 加評分套件；用 `tools/acestep/score-venv`（`bgm:setup` 建的，PyTorch 固定 2.7.1+cu128） |
-| Hugging Face 的 symlink／hf_xet 警告 | 可以忽略 |
-| 某一首的分數很低（歌詞吻合度 < 0.6） | 配樂產生器裡刪掉那個候選 →「只產生這首」補一個新的 →「評分挑選」→「產生平時版」→「打包」 |
-| 想自己改挑選 | 配樂產生器的「設為挑選」（會刪掉舊的平時版）→「產生平時版」→「打包」 |
-| 改歌詞 | 配樂產生器的「編輯」（寫 `scripts/bgm_songs/c<章>.json`，要 commit）→ 刪掉舊的候選 → 重新產生 |
+| `UnicodeEncodeError: 'cp950'`          | 執行腳本已經設 `PYTHONIOENCODING=utf-8`；自己直接跑 python 時也要設                                                                     |
+| 評分環境的 PyTorch 變成 CPU 版         | 不要用 `uv run --with` 加評分套件；用 `tools/acestep/score-venv`（`bgm:setup` 建的，PyTorch 固定 2.7.1+cu128）                          |
+| Hugging Face 的 symlink／hf_xet 警告   | 可以忽略                                                                                                                                |
+| 某一首的分數很低（歌詞吻合度 < 0.6）   | 配樂產生器裡刪掉那個候選 →「只產生這首」補一個新的 →「評分挑選」→「產生平時版」→「打包」                                                |
+| 想自己改挑選                           | 配樂產生器的「設為挑選」（會刪掉舊的平時版）→「產生平時版」→「打包」                                                                    |
+| 改歌詞                                 | 配樂產生器的「編輯」（寫 `scripts/bgm_songs/c<章>.json`，要 commit）→ 刪掉舊的候選 → 重新產生                                           |
 
 ## 自動挑選怎麼算
 

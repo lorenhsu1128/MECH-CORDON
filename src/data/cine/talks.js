@@ -1,6 +1,6 @@
 // 各章開場與章末的對話分格（過場改版第 5～8 期，docs/cine-redesign-design.md）：委託方與 ECHO（或兩位委託方）面對面，
 // 照第五節的組合（開場＝B 的「委託方與 ECHO 的對話分格」、章末＝C「對話分格講人物之間的關係」）。
-// 接在每一段過場的最前面（chapters.js 的 chapterCine 呼叫 withTalk），後面的 3D 段落與配樂整段往後移。
+// film.js 的 talk 段落（chfilm.js 的各章、選前的對峙 pre_<抉擇>）用 talkShot 產生畫面。
 // 台詞的表情在 data/line-expr.js，語音照語音 v2 產生（voice-lines.js 會收集過場的字幕）。
 import { lineExpr } from '../line-expr.js';
 import { lineDur } from './kit.js';
@@ -325,25 +325,3 @@ export const TALKS = {
     ],
   },
 };
-
-// 劇本的最前面接上這一段的對話分格：後面的鏡頭、配樂整段往後移；對話的時候配樂小聲地墊一首
-export function withTalk(def, key, ctx = {}) {
-  let T = TALKS[key];
-  if (!def || !T) return def;
-  if (T.choice) T = T[(ctx.choices || {})[T.choice]] || T[Object.keys(T).find((k) => k !== 'choice')];
-  const [shot, d] = talkShot({ ...T, cycle: ctx.cycle || 1 });
-  const D = +d.toFixed(2);
-  return {
-    ...def,
-    dur: def.dur + D,
-    shots: [{ ...shot, at: 0 }, ...def.shots.map((s) => ({ ...s, at: s.at + D }))],
-    music: [
-      { at: 0, track: 'cine_suspense', vol: 0.32, fadeIn: 1, fadeOut: [D - 1.6, 1.4] },
-      ...def.music.map((m) => ({
-        ...m,
-        at: m.at + D,
-        ...(m.fadeOut ? { fadeOut: [m.fadeOut[0] + D, m.fadeOut[1]] } : {}),
-      })),
-    ],
-  };
-}

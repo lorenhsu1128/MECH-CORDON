@@ -248,5 +248,301 @@
     "prompt": "no humans, scenery, space, an orbital station with many large thrusters igniting one after another, blue engine flames, planet below, stars, dramatic",
     "neg": "text, letters, watermark",
     "pick": 27912468
+  },
+  "c1o_core": {
+    "ch": 1,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, night, desert, a glowing antenna core device in an open armored case on the ground, red light, sand, stars, close-up of the device",
+    "neg": "text, letters, watermark",
+    "pick": 195827612
+  },
+  "c1o_night": {
+    "ch": 1,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, night, desert dunes, a small campfire, a giant mecha robot kneeling in the dark beside it, starry sky, quiet, wide shot",
+    "neg": "text, letters, watermark",
+    "pick": 729804153
+  },
+  "c2i_region": {
+    "ch": 2,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, industrial belt panorama, cargo container yard with huge cranes, a giant stepped dam in the distance, a flooded old city with half sunken buildings, overcast, wide shot",
+    "neg": "text, letters, watermark",
+    "pick": 984344826
+  },
+  "c2i_railgun": {
+    "ch": 2,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, a huge electromagnetic railgun battery installed on a cliff in a dam valley, glowing blue coils, river below, dusk, dramatic low angle",
+    "neg": "text, letters, watermark",
+    "pick": 164394340
+  },
+  "c2o_convoy": {
+    "ch": 2,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, a long convoy of white research trucks with blue lights driving west on a road into a snowy plain, dusk, wide shot",
+    "neg": "text, letters, watermark",
+    "pick": 57348057
+  },
+  "c2o_camp": {
+    "ch": 2,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, night, blizzard, a refugee camp of tents in the snow, all lights out, a lone radio mast with a dead red light, cold, silent",
+    "neg": "text, letters, watermark",
+    "pick": 156434743
+  },
+  "c3i_region": {
+    "ch": 3,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, a vast frozen snowfield with a frozen lake, a blizzard, the dark entrance of a hidden research facility half buried in ice in the distance, cold blue, wide shot",
+    "neg": "text, letters, watermark",
+    "pick": 520616025
+  },
+  "c3i_camp": {
+    "ch": 3,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, a refugee tent camp at the edge of a snowfield in a blizzard, torn tents, abandoned supplies, no lights, eerie",
+    "neg": "text, letters, watermark",
+    "pick": 735016064
+  },
+  "c3i_lab": {
+    "ch": 3,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, a heavy blast door of an underground research facility in an ice wall, frost, faint blue warning lights, ominous",
+    "neg": "text, letters, watermark",
+    "pick": 637942756
+  },
+  "c3o_lights": {
+    "ch": 3,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, night, an underground research facility seen from inside, rows of lights turning off one after another down a long corridor, darkness",
+    "neg": "text, letters, watermark",
+    "pick": 340501381
+  },
+  "c3o_file": {
+    "ch": 3,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, close-up of a computer monitor in a dark lab showing a personnel file with a black redacted bar instead of the name, cold light",
+    "neg": "watermark, readable text",
+    "pick": 815010677
+  },
+  "c3o_coords": {
+    "ch": 3,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, a holographic display in a dark room showing a planet with an orbital station marked by a glowing circle, coordinate lines, blue light",
+    "neg": "text, letters, watermark",
+    "pick": 106610077
+  },
+  "c3o_north": {
+    "ch": 3,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, a snowfield at dawn, cargo transport aircraft flying north overhead, below them a long line of tiny distant refugees walking north",
+    "neg": "text, letters, watermark, faces, close-up",
+    "pick": 65127336
+  },
+  "c4i_region": {
+    "ch": 4,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, a gigantic lattice megastructure made of steel frames and platforms stretching into the sky, an old spaceport with launch towers behind it, hazy, epic wide shot",
+    "neg": "text, letters, watermark",
+    "pick": 120085729
+  },
+  "c4i_port": {
+    "ch": 4,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, an old spaceport at dusk, launch towers and a rusty rocket on the pad, the only launch site left, quiet, wide shot",
+    "neg": "text, letters, watermark",
+    "pick": 425528521
+  },
+  "c4i_scav": {
+    "ch": 4,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, scavenger fortress built on the platforms of a giant steel lattice structure, makeshift walls, junk turrets, banners, smoke",
+    "neg": "text, letters, watermark",
+    "pick": 273374538
+  },
+  "c4i_up": {
+    "ch": 4,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, extreme low angle looking straight up a gigantic steel lattice tower into the bright sky, clouds, dizzying",
+    "neg": "text, letters, watermark",
+    "pick": 60370794
+  },
+  "c4o_cable": {
+    "ch": 4,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, a giant cable rising from the ocean straight up into the sky toward orbit, a sea city at its base, dusk, wide shot",
+    "neg": "text, letters, watermark",
+    "pick": 788266193
+  },
+  "c4o_coast": {
+    "ch": 4,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, night, a city built on the sea on the horizon with many lights, dark ocean, many aircraft lights flying toward it, wide shot",
+    "neg": "text, letters, watermark",
+    "pick": 793410612
+  },
+  "c4o_letter": {
+    "ch": 4,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, close-up of a sealed private letter with an orange wax seal on a wooden desk in a dark office, lamp light",
+    "neg": "watermark, readable text",
+    "pick": 419983876
+  },
+  "c5i_region": {
+    "ch": 5,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, Reefhold, a city built on platforms on the open ocean, bridges between blocks, a gigantic cable rising from the sea to the sky, daytime, wide shot",
+    "neg": "text, letters, watermark",
+    "pick": 536430613
+  },
+  "c5i_fleet": {
+    "ch": 5,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, many military ships, landing craft and cargo aircraft arriving at a sea city from all directions, waves, dramatic, wide shot",
+    "neg": "text, letters, watermark",
+    "pick": 833097038
+  },
+  "c5i_flags": {
+    "ch": 5,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, flags of different colors planted on rooftops of a sea city, orange, green and yellow flags, wind, overcast",
+    "neg": "text, letters, watermark",
+    "pick": 866389056
+  },
+  "c5i_barricade": {
+    "ch": 5,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, barricades made of containers and boats set up between buildings of a sea city by residents, sandbags, makeshift, tense",
+    "neg": "text, letters, watermark",
+    "pick": 697070604
+  },
+  "c5i_famous": {
+    "ch": 5,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, a giant billboard screen in a city at night showing the silhouette of a mecha robot, crowds of lights below, rain",
+    "neg": "text, letters, watermark",
+    "pick": 120834726
+  },
+  "c5i_why": {
+    "ch": 5,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, night, a giant mecha robot standing alone on a rooftop of a sea city looking at the sky, lonely, moonlight",
+    "neg": "text, letters, watermark",
+    "pick": 773946943
+  },
+  "c5o_count": {
+    "ch": 5,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, night, a huge red countdown hologram floating in the sky above a sea city, red light reflecting on the ocean, ominous",
+    "neg": "text, letters, watermark",
+    "pick": 716136800
+  },
+  "c5o_table": {
+    "ch": 5,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, indoors, a dark executive conference room, a single round wooden table with exactly four leather chairs, four folders on the table, one hanging lamp above, night city window behind, moody",
+    "neg": "text, letters, watermark",
+    "pick": 757447267
+  },
+  "c6i_region": {
+    "ch": 6,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, a gigantic old ring-shaped orbital space station with solar panels floating in space above a sea of white clouds, sunlight, the curve of the planet below, epic wide shot",
+    "neg": "text, letters, watermark",
+    "pick": 628641789
+  },
+  "c6o_empty": {
+    "ch": 6,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, an empty circular core chamber of a space station, no throne, no console, a single glowing line of light floating in the center, cold white, lonely",
+    "neg": "text, letters, watermark",
+    "pick": 538189116
+  },
+  "c7i_region": {
+    "ch": 7,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, a volcanic forge region, the ground split open, rivers of glowing lava flowing like rivers, smoke and ash, giant industrial machinery, wide shot",
+    "neg": "text, letters, watermark",
+    "pick": 130693979
+  },
+  "c7i_ark": {
+    "ch": 7,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, a gigantic mobile fortress ship larger than a city resting in the middle of a lava river, towers and decks, orange glow, epic wide shot",
+    "neg": "text, letters, watermark",
+    "pick": 487001141
+  },
+  "c7i_memory": {
+    "ch": 7,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, inside a ship, a dark archive hall with rows of glowing server pillars storing memories, blue lights, mysterious",
+    "neg": "text, letters, watermark",
+    "pick": 748930964
+  },
+  "c7i_elevator": {
+    "ch": 7,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, the base of a gigantic space elevator rising into the sky, a giant ship climbing a ramp toward it, lava below, dramatic",
+    "neg": "text, letters, watermark",
+    "pick": 536114777
+  },
+  "c7o_launch": {
+    "ch": 7,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, a gigantic fortress ship smashing through the steel gates of a dock and moving out onto a lava river, sparks, debris, dramatic",
+    "neg": "text, letters, watermark",
+    "pick": 353834642
+  },
+  "c8i_deck": {
+    "ch": 8,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, the enormous deck of a moving fortress ship, wider than a desert, gun turrets and towers in the distance, wind, overcast, wide shot",
+    "neg": "text, letters, watermark",
+    "pick": 500215312
+  },
+  "c8i_wake": {
+    "ch": 8,
+    "w": 1344,
+    "h": 768,
+    "prompt": "no humans, scenery, aerial view behind a gigantic moving fortress ship, its path leaving a scorched destroyed trail across the land, smoke, nothing left",
+    "neg": "text, letters, watermark",
+    "pick": 82084737
   }
 }

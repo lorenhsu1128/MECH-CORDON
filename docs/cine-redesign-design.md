@@ -555,3 +555,12 @@ YouTube 影片，720p，換鏡偵測後抽格，拼成縮圖表看。縮圖表�
 - **收尾**：ComfyUI 與語音程式都關了；文件（本檔、docs/cinematics.md、CLAUDE.md）更新。
 
 **之後可以再做的**（不在這次的分期裡）：各章的 3D 段落本身還是第二版的分鏡（這次是在前面加對話分格、選後加漫畫頁）；需要更多場景插畫時照第 2 期的流程產生；第 2 周目的米拉、宿敵的對話分格還沒有。
+
+### 重製：各章的開場與章末、抉擇的選前（2026-11-14）
+
+第 5～8 期原本只在舊的 3D 演出前面加對話分格，選前也只在前面加對峙；使用者指出「這專案是重製過場動畫」，所以這些全部整段重做，舊的演出刪掉：
+
+- **新的組件 `data/cine/film.js`**：段落 `page`／`still`／`talk`／`echo`／`rival`／`title`／`card`／`live`（說明在 docs/cinematics.md），拍點對齊配樂。選後的 `aftermath.js` 也改用它。
+- **各章（`data/cine/chfilm.js`）**：第 1～7 章章末、第 2～8 章開場共 14 段，開場＝地點的插畫 → 局勢的漫畫頁 → 對話分格 → 宿敵 PV（STEVEDORE、WHITEOUT、SPIRE、UNDERTOW、ZENITH、KILN、KEEL）→ PV 章名卡；章末＝對話分格 → 後果的漫畫頁 → ECHO。每段 47～81 秒。台詞照 `CHAPTER_TEXT`，旁白的語音（narr）補了 8 句、第 6 章開場「因為你最強／最合適／最紅／我不知道」改由四位委託方自己說。插畫另外產生 37 張（`src/assets/cine-art/c1`～`c8`）。
+- **選前（`choicePreFilm`）**：兩邊委託方對峙 → 目前的戰場上出口的光柱與倒數。
+- **刪掉**：`ch2.js`～`ch7.js`、`game/cine-c2.js`～`cine-c6.js`、`chapters.js` 的模板、`kit.js` 的舊鏡頭組件、`talks.js` 的 `withTalk` 用法（對話分格現在是 film 的段落）。第 1 章開場（第 1 期，`ch1-intro.js`）與序章（第 4 期）照舊。
