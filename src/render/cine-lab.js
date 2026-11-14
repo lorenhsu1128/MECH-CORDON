@@ -3,6 +3,8 @@
 // 遠方的主壩亮著燈），+X 是伺服器機櫃（閃爍的指示燈），−X 是全像桌（核心的波形）與機械臂；冷白的牆板、青色的燈條。
 // 光只用場景原本的太陽／半球光，發光的都是材質（不加點光源）。
 import { D } from './detail.js';
+import { bakeStatic } from './cine-kit.js';
+import { buildLabDetail } from './cine-lab-detail.js';
 
 const W = 12,
   DEP = 10,
@@ -281,7 +283,10 @@ export function buildAethericLab() {
     add(new THREE.PlaneGeometry(0.66, 0.38), M.holo, x, 1.05, -4.08, 0);
   }
   root.userData.lab = { core, rings, holo, a1 };
-  return root;
+  // 細節層（天花板、牆面、地板、封存艙的零件、實驗台、白板、樣本櫃、門與置物櫃；cine-lab-detail.js，自己合併烘焙）
+  root.add(buildLabDetail());
+  // 不透明的靜態零件合併烘焙（核心、環、全像、機械臂會動，不合併）
+  return bakeStatic(root, [core, ...rings, holo, a1, root.children[root.children.length - 1]]);
 }
 
 // 每格：核心脈動、環轉動、全像閃爍、機械臂慢慢擺

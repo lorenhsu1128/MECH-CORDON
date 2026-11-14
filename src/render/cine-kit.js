@@ -143,3 +143,48 @@ export class SceneKit {
     return this.root;
   }
 }
+
+// 舊的場景（沒有用 SceneKit 建的辦公室、研究所）補上合併烘焙：root 底下不透明的標準材質網格，
+// 依「投不投射陰影」分成兩組（房間的殼不投射）合併烘焙（遮蔽、凸邊、髒污的頂點色，和 SceneKit 的 done 相同）；
+// skip 裡的物件與它們底下的網格（會動的）不動，透明、發光（MeshBasic）的也不動。
+export function bakeStatic(root, skip = []) {
+  root.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(root.matrixWorld).invert();
+  const no = new Set(skip.filter(Boolean));
+  const groups = { cast: new THREE.Group(), flat: new THREE.Group() };
+  const rm = [];
+  const walk = (o) => {
+    if (no.has(o)) return;
+    if (o.isMesh) {
+      const m = o.material;
+      if (
+        !o.isInstancedMesh &&
+        !o.isSkinnedMesh &&
+        m &&
+        !Array.isArray(m) &&
+        m.isMeshStandardMaterial &&
+        !m.transparent &&
+        !m.map
+      ) {
+        const c = new THREE.Mesh(o.geometry, m);
+        new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld).decompose(c.position, c.quaternion, c.scale);
+        (o.castShadow ? groups.cast : groups.flat).add(c);
+        rm.push(o);
+      }
+    }
+    for (const k of o.children.slice()) walk(k);
+  };
+  walk(root);
+  for (const o of rm) o.parent.remove(o);
+  for (const [k, g] of Object.entries(groups)) {
+    if (!g.children.length) continue;
+    root.add(g);
+    bakeGroup(g);
+    g.traverse((m) => {
+      if (!m.isMesh) return;
+      m.castShadow = k === 'cast';
+      m.receiveShadow = true;
+    });
+  }
+  return root;
+}

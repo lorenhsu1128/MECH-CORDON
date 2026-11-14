@@ -4,6 +4,7 @@
 // 光源只用場景原本的太陽／半球光（game/cine.js 的 room 場景照參數設），檯燈、螢幕、嵌燈、窗外的燈都是發光材質（不加點光源，
 // 否則整個場景的著色器要重新編譯，game/cine-prep.js）。
 import { D } from './detail.js';
+import { bakeStatic } from './cine-kit.js';
 
 const W = 10, // 寬（X）
   DEP = 8, // 深（Z）
@@ -551,7 +552,8 @@ export function buildCastronOffice() {
   }
   // 窗邊的地毯
   box(3.6, 0.01, 2.6, std(0x7a4430, 0.95, 0), 0, 0.005, -1.4, 0, 0.002);
-  return root;
+  // 不透明的靜態零件合併烘焙（遮蔽、凸邊、髒污；窗外的火焰會動但是 MeshBasic，本來就不合併）
+  return bakeStatic(root);
 }
 
 // 每格：燃燒塔的火焰跳動
