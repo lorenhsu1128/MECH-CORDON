@@ -1,0 +1,1 @@
+Chapter 8 mission music: generated locally with ACE-Step 1.5 (MIT) by scripts/bgm-gen.py; original Japanese lyrics in scripts/bgm_songs/.
