@@ -15706,16 +15706,25 @@ async function testBgmLab(browser, base) {
       while (!f() && performance.now() - t0 < ms) await new Promise((r) => setTimeout(r, 100));
       return f();
     };
-    const out = { rows: document.querySelectorAll('.blRow').length, n: I.length };
+    // 「配樂試聽」只列外部的候選曲，AI 產生的（ai_）在「AI 配樂試聽」
+    const ext = I.filter((c) => !c.id.startsWith('ai_'));
+    const out = {
+      rows: document.querySelectorAll('.blRow').length,
+      n: ext.length,
+      nAi: I.length - ext.length,
+    };
     out.missing = I.filter((c) => !A[c.id]).length;
-    out.lic = I.filter((c) => !/^(CC0|CC-BY [34]\.0)$/.test(c.lic)).map((c) => c.id);
+    // AI 產生的（ai_，scripts/bgm-gen.py，模型 MIT）不是外部素材，不檢查 CC 授權
+    out.lic = I.filter((c) => !c.id.startsWith('ai_') && !/^(CC0|CC-BY [34]\.0)$/.test(c.lic)).map(
+      (c) => c.id,
+    );
     document.querySelector('.blPlay').click();
     out.playing = await wait(() => document.querySelector('.blPlay.on'));
     await new Promise((r) => setTimeout(r, 600));
     out.fill = parseFloat(document.getElementById('blFill').style.width) || 0;
     document.getElementById('blStop').click();
     out.stopped = !document.querySelector('.blPlay.on');
-    const id = I[0].id;
+    const id = ext[0].id;
     for (const v of ['combat', 'boss']) {
       const x = document.querySelector(`input[data-u="${id}"][value="${v}"]`);
       x.checked = true;
@@ -15735,7 +15744,7 @@ async function testBgmLab(browser, base) {
   await page.screenshot({ path: path.join(SHOT_DIR, 'bgm-lab.png') });
   check(r.rows === r.n && r.n >= 20, `候選曲 ${r.rows}／${r.n}`);
   check(r.missing === 0, `每首都有試聽片段（缺 ${r.missing}）`);
-  check(r.lic.length === 0, `授權都是 CC0／CC-BY（${r.lic.join('、')}）`);
+  check(r.lic.length === 0, `外部候選曲的授權都是 CC0／CC-BY（${r.lic.join('、')}）`);
   check(r.playing && r.fill > 0, `點一下播放、進度條前進（${r.fill.toFixed(1)}%）`);
   check(r.stopped, '停止');
   check(
@@ -15744,6 +15753,27 @@ async function testBgmLab(browser, base) {
   );
   check(/【交戰】\n.*（/.test(r.copy) && /【Boss】\n.*5 星/.test(r.copy), '複製結果依用途整理');
   check(r.cur, '目前的配樂可以播放比較');
+  await page.click('#btnBlBack');
+  await waitVisible(page, 'title');
+  // 「AI 配樂試聽」：只列 AI 產生的曲子（scripts/bgm-gen.py），可以播放
+  await titleTool(page, '#btnBgmAi');
+  await waitVisible(page, 'bgmLab');
+  const a = await page.evaluate(async () => {
+    const rows = [...document.querySelectorAll('.blRow')].map((e) => e.dataset.c);
+    const b = document.querySelector('.blPlay');
+    if (b) b.click();
+    const t0 = performance.now();
+    while (b && !document.querySelector('.blPlay.on') && performance.now() - t0 < 8000)
+      await new Promise((r) => setTimeout(r, 100));
+    const playing = !!document.querySelector('.blPlay.on');
+    document.getElementById('blStop').click();
+    return { rows, playing, title: document.getElementById('blTitle').textContent };
+  });
+  check(
+    a.title === 'AI 配樂試聽' && a.rows.length === r.nAi && a.rows.every((id) => id.startsWith('ai_')),
+    `AI 配樂試聽只列 AI 產生的曲子（${a.rows.length}／${r.nAi}）`,
+  );
+  check(!r.nAi || a.playing, 'AI 產生的曲子可以播放');
   await page.click('#btnBlBack');
   await waitVisible(page, 'title');
   await ctx.close();

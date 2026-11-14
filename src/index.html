@@ -207,6 +207,12 @@
               配樂試聽
             </button>
             <button
+              id="btnBgmAi"
+              title="試聽本地 AI（ACE-Step 1.5）產生的配樂：絕區零 × 尼爾 自動人形的融合曲風（npm run bgm:gen 產生）"
+            >
+              AI 配樂試聽
+            </button>
+            <button
               id="btnLmReload"
               title="單人模式使用模型庫存在這個瀏覽器的 GLB 與關節設定（在設定的「遊戲與進階」開啟）"
             >
@@ -439,8 +445,8 @@
       </div>
       <div id="bgmLab" class="screen center zBg">
         <div class="brBox">
-          <h2>配樂試聽</h2>
-          <p class="dim">
+          <h2 id="blTitle">配樂試聽</h2>
+          <p class="dim" id="blIntro">
             任務中配樂的候選曲（CC0／CC-BY，多種樂器合奏的管弦、混合交響、金屬、電子）。每首是依建議用途挑的
             60
             秒片段。勾選這首要用在哪一級（探索／警戒／交戰／Boss／空域），可以打星與寫備註；結果存在這個瀏覽器，按「複製勾選結果」貼給開發者。
