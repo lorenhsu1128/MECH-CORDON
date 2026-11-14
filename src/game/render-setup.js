@@ -162,7 +162,8 @@ Object.assign(Game.prototype, {
     // 非同步（warmAsyncOk）時背景編譯，完成前不畫場景、主迴圈也停住（loop 開頭看 warmBusy）。
     // 關卡編輯器（挑底圖時一直重建地圖）不預熱，照 three.js 原本的第一次畫到才編譯
     if (this.warmBusy) return;
-    if (this.world && this.warmWorld !== this.world && this.state !== 'editor') {
+    // 過場動畫（game/cine-prep.js）：場景在開頭的載入畫面已經預熱，播放中不顯示「戰場準備中」、不停住
+    if (this.world && this.warmWorld !== this.world && this.state !== 'editor' && !this.cine) {
       if (this.warmNote !== this.world) {
         this.warmNote = this.world;
         this.warmMsg(true);

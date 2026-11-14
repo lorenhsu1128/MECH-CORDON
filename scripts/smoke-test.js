@@ -22563,10 +22563,24 @@ async function testCine(browser, base) {
     window.__cineEnd = null;
     window.__cineShots = new Set();
     g.cinePlay('p1', (skipped) => (window.__cineEnd = skipped ? 'skip' : 'done'));
-    window.__cineIv = setInterval(() => g.cine && window.__cineShots.add(g.cine.shot), 50);
+    // 過場的預先準備（game/cine-prep.js）：播放中不出現「戰場準備中」；對白時配樂壓低（audio.js 的 musDuckG）
+    window.__cineWarm = 0;
+    window.__cineDuck = 1;
+    window.__cineBoost = 1;
+    window.__cineIv = setInterval(() => {
+      if (!g.cine) return;
+      window.__cineShots.add(g.cine.shot);
+      const wm = document.getElementById('warmMsg');
+      if (g.cine.started && wm && wm.style.display !== 'none') window.__cineWarm++;
+      const S = window.__sfx;
+      if (S && S.musDuckG) window.__cineDuck = Math.min(window.__cineDuck, S.musDuckG.gain.value);
+      if (S && S.voiceBoost) window.__cineBoost = Math.max(window.__cineBoost, S.voiceBoost.gain.value);
+      if (g.cine.prepInfo) window.__cinePrep = g.cine.prepInfo;
+    }, 50);
   });
+  // 序章有 10 張地圖：開頭的預先準備（game/cine-prep.js）約 20 秒
   await page.waitForFunction(() => window.__game.cine && window.__game.cine.started, null, {
-    timeout: 30000,
+    timeout: 120000,
   });
   const mus = await page.evaluate(() => ({
     lib: !!window.MECH_CORDON_MUSIC,
@@ -22589,6 +22603,21 @@ async function testCine(browser, base) {
     return { n: window.__cineShots.size, end: window.__cineEnd, state: window.__game.state };
   });
   check(ended && seen.end === 'done', `序章播到結束（經過 ${seen.n} 個鏡頭）`);
+  const prep = await page.evaluate(() => ({
+    warm: window.__cineWarm,
+    duck: window.__cineDuck,
+    boost: window.__cineBoost,
+    p: window.__cinePrep,
+    after: window.__sfx ? window.__sfx.voiceBoostK : 1,
+  }));
+  check(
+    prep.warm === 0 && prep.p && prep.p.sets >= 6,
+    `序章：3D 場景在開頭先準備好（${prep.p ? prep.p.sets : 0} 個、常駐 ${prep.p ? prep.p.kept : 0} 個），播放中沒有出現「戰場準備中」`,
+  );
+  check(
+    prep.duck < 0.6 && prep.boost > 1.2 && prep.after < 1.05,
+    `過場的對白：配樂壓到 ${prep.duck.toFixed(2)} 倍、語音 ×${prep.boost.toFixed(2)}，結束後恢復`,
+  );
   check(
     seen.n >= 12,
     `序章：換場景時建地圖也不會卡住整段（播到 ${seen.n} 個鏡頭；測試以 6 倍速，換場景時會跳過幾個）`,

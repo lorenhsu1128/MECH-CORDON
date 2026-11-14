@@ -1,8 +1,9 @@
 // Game：過場動畫（開場、各章的開場／章末；劇本資料在 data/cine/）。遊戲內即時演算：
-//  - 時間軸以配樂的 AudioContext 時間為準（換場景卡住時畫面跳過去，聲音不斷）
+//  - 時間軸以配樂的 AudioContext 時間為準；3D 場景在開頭的載入畫面先建好並預熱（game/cine-prep.js），
+//    來不及常駐的在換鏡頭時建，期間暫停音訊時鐘（畫面與聲音不脫節），不顯示「戰場準備中」
 //  - 鏡頭（關鍵影格、跟拍、環繞、手持晃動、震動、變焦）、演員（遊戲的機甲實體，照劇本走位與開火，或交給 AI）、
 //    模型演員（空降艙、Boss 模型、列車…照關鍵影格移動）、事件（音效、特效、字幕、字卡、閃白、慢動作）
-//  - 場景：black（黑畫面）、space（render/cine-sets.js 的太空）、world（遊戲的地圖主題，換場景時重建）
+//  - 場景：black（黑畫面）、space（render/cine-sets.js 的太空）、world（遊戲的地圖主題；各建在自己的群組裡常駐，換場景只切換顯示）
 //  - 畫面：渲染風格＋過場的調色與景深、遮幅（2.39:1）、字幕、文字演出的字卡、HUD 畫布上的光暈與疊加效果
 // state 'cine'；長按 Esc／Enter／空白鍵／手把 A、B、Start（觸控長按畫面）略過。多人不播。
 import { SFX } from '../audio/audio.js';
@@ -24,14 +25,13 @@ import { PALETTES } from '../render/materials.js';
 import { buildMech } from '../render/mech-model.js';
 import { revealDom } from '../render/textfx.js';
 import { World } from '../world/world.js';
+import { CINE_GRADE } from './constants.js';
 import { Game } from './game.js';
 
 const $ = (id) => document.getElementById(id);
 const V = (a) => new THREE.Vector3(a[0], a[1], a[2]);
 const smooth = (x) => x * x * (3 - 2 * x);
 const D2R = Math.PI / 180;
-// 過場的調色（疊在玩家選的渲染風格上）：暗角、底片顆粒、色差、動態模糊、Bloom 下限
-const CINE_GRADE = { vignette: 0.42, grain: 0.16, chroma: 0.18, mblur: true, mblurK: 0.18, mblurMech: 0.35 };
 const SKIP_HOLD = 0.8; // 長按幾秒略過
 if (/[?&]test\b/.test(location.search)) window.__CINES = CINES; // 測試：放臨時的劇本
 
@@ -69,6 +69,8 @@ Object.assign(Game.prototype, {
     if (!make) return done && done();
     SFX.init();
     if (SFX.ctx && SFX.ctx.state === 'suspended') SFX.ctx.resume();
+    // 對白的清晰度（game/voice.js 的 voiceMix）：過場中語音提高
+    if (this.voiceMix) SFX.setVoiceBoost(this.voiceMix().boost);
     this.commClear && this.commClear();
     // live：在目前的戰場上拍（抉擇演出）：不清掉任務、遊戲暫停，播完回到原本的狀態
     if (!opt.live) this.clearMission();
@@ -89,6 +91,8 @@ Object.assign(Game.prototype, {
       shot: -1,
       setKey: '',
       set: null,
+      sets: new Map(), // 常駐的 3D 場景（鍵＝場景的 JSON；game/cine-prep.js）
+      hold: false, // 換鏡頭時建場景中：時鐘停住
       actors: new Map(),
       fired: new Set(),
       shake: 0,
@@ -122,6 +126,7 @@ Object.assign(Game.prototype, {
     });
     // 等太久（電腦慢、網路慢）就先開始播；配樂好了再從目前的時間接上
     load.then((has) => {
+      c.musReady = has;
       if (has && this.cine === c && c.started && !c.musicOk) {
         c.musicOk = true;
         this.cineMusic(c.t);
@@ -132,8 +137,11 @@ Object.assign(Game.prototype, {
       new Promise((r) => setTimeout(() => r(false), this.cineTest ? 1500 : 6000)),
     ]);
     if (this.cine !== c) return; // 等待中被略過
+    // 3D 場景與演員先建好、預熱，台詞的語音先解碼（game/cine-prep.js）
+    await this.cinePrep(c);
+    if (this.cine !== c) return;
     $('cineLoad').classList.remove('on');
-    c.musicOk = ok;
+    c.musicOk = ok || !!c.musReady;
     this.cineStartClock(c.t);
   },
   // 從第 t 秒開始：配樂依 ctx 時間排程
@@ -201,10 +209,14 @@ Object.assign(Game.prototype, {
     if (c.shot >= 0) this.cineHookCall(c.def.shots[c.shot], 'exit');
     this.cine = null;
     SFX.musicStop(skipped ? 0.25 : 1.2);
+    SFX.musicDuckReset();
+    SFX.setVoiceBoost(1);
+    if (c.hold && SFX.ctx && SFX.ctx.state === 'suspended') SFX.ctx.resume();
     if (skipped && this.voiceStop) this.voiceStop();
     SFX.loopSet('cine', 'engineLoop', 0);
     if (!c.live) SFX.stopLoops();
     this.cineClearSet(c);
+    this.cineSetsDispose(c); // 常駐的場景（game/cine-prep.js）
     this.textfx && this.textfx.clear((x) => x.opt && x.opt.cine);
     this.cineUi(false);
     this.cine2dClear();
@@ -245,24 +257,92 @@ Object.assign(Game.prototype, {
   cineClearSet(c) {
     for (const a of c.actors.values()) if (!a.live) this.cineDropActor(a);
     c.actors.clear();
-    if (c.set && c.set.space) c.set.space.dispose();
-    if (c.set && c.set.extra) for (const o of c.set.extra) this.scene.remove(o);
+    const set = c.set;
+    if (set && set.extra) for (const o of set.extra) this.scene.remove(o);
+    if (set) set.extra = [];
+    if (set && set.root) set.root.visible = false; // 常駐的場景：只藏起來（game/cine-prep.js）
+    // 不是常駐的（已經從 c.sets 拿掉）：整個釋放
+    if (set && set.root && c.sets.get(set.key) !== set) this.cineSetFree(set);
     c.set = null;
     c.setKey = '';
     if (c.live) return; // 目前的戰場：任務保留
+    this.world = null; // 常駐的地圖不讓 clearMission 釋放
     this.clearMission();
-    this.world = null;
+  },
+  // 劇場播選前演出（沒有目前的戰場）：換成那個抉擇的地圖，主角與出口由 cineStandIn 擺
+  cineSetSpec(c, S) {
+    S = S || { k: 'black' };
+    if (S.k === 'live' && !c.live)
+      return { k: 'world', theme: c.stand || 'industrial', clear: 30, standIn: true };
+    return S;
   },
   cineBuildSet(c, S) {
-    // 劇場播選前演出（沒有目前的戰場）：換成那個抉擇的地圖，主角與出口由 cineStandIn 擺
-    if (S.k === 'live' && !c.live)
-      S = { k: 'world', theme: c.stand || 'industrial', clear: 30, standIn: true };
+    S = this.cineSetSpec(c, S);
     const key = JSON.stringify(S);
     if (key === c.setKey && c.set) return;
     this.cineClearSet(c);
-    c.setKey = key;
+    let set = c.sets.get(key);
+    if (!set) {
+      set = this.cineMakeSet(c, S);
+      if (set.root) c.sets.set(key, set);
+    }
+    this.cineUseSet(c, set);
+  },
+  // 建場景的幾何（地圖、太空），放在自己的群組 root 裡；光線、鏡頭、聲音在 cineUseSet
+  cineMakeSet(c, S) {
+    const key = JSON.stringify(S);
     // k：劇本座標的倍率（三倍高改版：劇本照舊尺度寫；目前的戰場 live 也是）
-    const set = (c.set = { spec: S, anchor: new THREE.Vector3(), extra: [], k: S.k === 'black' ? 1 : DS });
+    const set = {
+      key,
+      spec: S,
+      anchor: new THREE.Vector3(),
+      extra: [],
+      k: S.k === 'black' ? 1 : DS,
+      root: null,
+    };
+    if (S.k === 'space') {
+      set.root = new THREE.Group();
+      this.scene.add(set.root);
+      set.space = buildSpaceSet(set.root);
+      set.space.station.group.scale.multiplyScalar(set.k); // 軌道站跟著放大（劇本的 st 座標照舊）
+      if (S.coral != null) set.space.pu.coral.value = S.coral;
+    } else if (S.k === 'world') {
+      set.root = new THREE.Group();
+      this.scene.add(set.root);
+      // World 的 scene 參數是這個群組：地圖的網格、水面、天氣都在裡面，換場景時整個藏起來
+      const w = (set.world = new World(set.root, S.theme, S.seed || 7001, 3, null, {
+        variant: S.variant || undefined,
+        tod: S.tod || '',
+        rail: !!S.rail,
+        road: !!S.road,
+        zone: 'full',
+        noMerge: true, // 常駐好幾張地圖：地圖物件不合併（world.js）
+      }));
+      // 鐵路對齊：原點放在鐵路上、局部 +X 沿著鐵路
+      if (S.align === 'rail' && w.corridor) {
+        const p = w.corridorPoint(-w.trackS * 0.25, 0),
+          d = w.corridorDir(-w.trackS * 0.25);
+        set.anchor.copy(p);
+        set.yaw = Math.atan2(-d.y, d.x); // d 是 XZ 平面的 Vector2（y＝z）
+      } else {
+        const k = set.k;
+        const a = this.cineSpot(
+          w,
+          (S.anchor || [0, 0]).map((v) => v * k),
+          (S.clear || 22) * k,
+        );
+        set.anchor.set(a.x, w.terrainHeight(a.x, a.z), a.z);
+      }
+    }
+    return set;
+  },
+  // 切換到這個場景：顯示它的群組（其他的藏起來）、光線、鏡頭、聲音、演員要用的任務狀態
+  cineUseSet(c, set) {
+    for (const s of c.sets.values()) if (s.root) s.root.visible = s === set;
+    if (set.root) set.root.visible = true;
+    c.set = set;
+    c.setKey = set.key;
+    const S = set.spec;
     const cam = this.camera;
     if (S.k === 'live') {
       // 目前的戰場：原點＝玩家，玩家是演員 'player'（不受劇本控制、播完不移除）
@@ -276,9 +356,6 @@ Object.assign(Game.prototype, {
       return;
     }
     if (S.k === 'space') {
-      set.space = buildSpaceSet(this.scene);
-      set.space.station.group.scale.multiplyScalar(set.k); // 軌道站跟著放大（劇本的 st 座標照舊）
-      if (S.coral != null) set.space.pu.coral.value = S.coral;
       this.scene.background = new THREE.Color(0x000000);
       this.scene.fog = null;
       this.hemi.color.set(0x8090a0);
@@ -291,13 +368,7 @@ Object.assign(Game.prototype, {
       SFX.ambStop();
       SFX.setReverb(3.5, 0.18);
     } else if (S.k === 'world') {
-      const w = (this.world = new World(this.scene, S.theme, S.seed || 7001, 3, null, {
-        variant: S.variant || undefined,
-        tod: S.tod || '',
-        rail: !!S.rail,
-        road: !!S.road,
-        zone: 'full',
-      }));
+      const w = (this.world = set.world);
       this.worldTheme = S.theme;
       this.worldSeed = S.seed || 7001;
       w.applyLight(this);
@@ -314,21 +385,6 @@ Object.assign(Game.prototype, {
       }
       cam.near = 0.5 * set.k;
       cam.far = (S.far || 700) * set.k;
-      // 鐵路對齊：原點放在鐵路上、局部 +X 沿著鐵路
-      if (S.align === 'rail' && w.corridor) {
-        const p = w.corridorPoint(-w.trackS * 0.25, 0),
-          d = w.corridorDir(-w.trackS * 0.25);
-        set.anchor.copy(p);
-        set.yaw = Math.atan2(-d.y, d.x); // d 是 XZ 平面的 Vector2（y＝z）
-      } else {
-        const k = set.k;
-        const a = this.cineSpot(
-          w,
-          (S.anchor || [0, 0]).map((v) => v * k),
-          (S.clear || 22) * k,
-        );
-        set.anchor.set(a.x, w.terrainHeight(a.x, a.z), a.z);
-      }
       this.audioScene();
       if (this.isClient !== false) this.isClient = false;
       this.cineStage();
@@ -461,6 +517,7 @@ Object.assign(Game.prototype, {
       this.renderer.clear();
       return;
     }
+    if (c.hold) return; // 換鏡頭時建場景中（game/cine-prep.js）：時鐘停住、畫面停在上一格
     // 時間：配樂的 AudioContext 時間（卡住後畫面直接跳過去）；測試時用實際時間×速度
     if (c.paused) {
       // 劇場暫停：時間不動
@@ -472,7 +529,12 @@ Object.assign(Game.prototype, {
     // 目前的鏡頭
     let si = 0;
     for (let i = 0; i < def.shots.length; i++) if (def.shots[i].at <= t) si = i;
-    if (si !== c.shot) this.cineEnterShot(si);
+    if (si !== c.shot) {
+      // 下一鏡的場景沒有常駐（記憶體不夠時）：暫停時鐘建好再進去（game/cine-prep.js）
+      if (this.cineNeedHold(c, def.shots[si])) return this.cineHoldBuild(c, def.shots[si]);
+      this.cineEnterShot(si);
+      this.cineSetGc(c, si); // 之後不會再用到的場景釋放
+    }
     const S = def.shots[si];
     const lt = t - S.at;
     // 事件
@@ -1087,7 +1149,7 @@ Object.assign(Game.prototype, {
     }
     if (ev.flash)
       c.flash = { color: ev.flash, t0: c.t, in: ev.in || 0.04, hold: ev.hold || 0.08, out: ev.out || 0.5 };
-    if (ev.sub !== undefined) this.cineSub(ev.sub, ev.who, ev.dur || 3.2);
+    if (ev.sub !== undefined) this.cineSub(ev.sub, ev.who, ev.dur || 3.2, ev.radio);
     if (ev.badge) {
       // 通訊分割的徽章（旁白的句子也可以掛上委託方）
       c.commWho = ev.badge;
@@ -1157,7 +1219,8 @@ Object.assign(Game.prototype, {
     }
   },
   // 字幕：說話者（有顏色）＋台詞；who 沒給＝旁白
-  cineSub(text, who, dur) {
+  // radio：劇本標成通訊的台詞（保留無線電的質感），其他是乾淨的聲音
+  cineSub(text, who, dur, radio) {
     const c = this.cine;
     const el = $('cineSub');
     if (!text) {
@@ -1178,7 +1241,7 @@ Object.assign(Game.prototype, {
     const shown = voiced && this.subText ? this.subText(text, who) : text;
     const nm = voiced && this.subName ? this.subName(who, name) : name;
     el.innerHTML = `${nm ? `<b style="color:${S.color}">${escHtml(nm)}</b>` : ''}<span>${escHtml(shown)}</span>`;
-    el.classList.toggle('radio', !!voiced);
+    el.classList.toggle('radio', !!(voiced && radio));
     // 說話的人在 2D 舞台上：字幕改成他旁邊的氣泡（game/cine-2d.js），字幕條不顯示
     const bub = this.cine2dBubble(who, text);
     if (bub) c.bub.hide = voiced && sub === 'off';
@@ -1190,12 +1253,17 @@ Object.assign(Game.prototype, {
       if (this.ptPlayer) this.ptPlayer(who, 'p2');
       c.commEx = lineExpr(text, { sp: who });
     }
-    if (who && who !== 'station') SFX.radio();
+    if (who && who !== 'station' && radio) SFX.radio();
     c.subUntil = c.t + dur;
+    // 對白：語音還在解碼時配樂就先開始壓低（唸出來之後由 voicePlay 延長到唸完）
+    const M = this.voiceMix ? this.voiceMix() : null;
+    if (M && M.k < 1 && who !== 'station' && SFX.ctx && this.voiceFolder && this.voiceFolder(who || 'narr'))
+      SFX.musicDuck(M.k, M.eq, SFX.ctx.currentTime + 0.4);
+    const vk = radio ? 'comm' : 'cine';
     const tok = (c.subTok = (c.subTok || 0) + 1);
     // 角色的台詞也唸（game/voice.js；沒有這句的語音就只有字幕）：唸得比劇本的時間長時，字幕顯示到唸完
     if (who && this.voiceSay)
-      this.voiceSay(text, who).then((d) => {
+      this.voiceSay(text, who, vk).then((d) => {
         if (this.cine !== c || c.subTok !== tok) return;
         if (!d) {
           if (bub) return (c.bub.hide = false);
@@ -1205,7 +1273,7 @@ Object.assign(Game.prototype, {
       });
     // 旁白（沒有說話者）：另一個聲音 narr 唸（過場改版第 11 期；設定「其他角色的語音」關掉時不唸，字幕照舊一律繁中）
     else if (!who && this.voiceSay)
-      this.voiceSay(text, 'narr').then((d) => {
+      this.voiceSay(text, 'narr', vk).then((d) => {
         if (this.cine !== c || c.subTok !== tok || !d) return;
         c.subUntil = Math.max(c.subUntil, c.t + d + 0.3);
       });

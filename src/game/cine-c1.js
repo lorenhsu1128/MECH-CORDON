@@ -18,6 +18,7 @@
 //   ov   c1stars    星空與軌道站的光點（S.stars）
 //   render c1heat   熱浪：畫完之後把地平線一帶的橫條左右錯開
 import { clamp } from '../core/math.js';
+import { DS } from '../core/scale.js';
 import { SPEAKERS } from '../data/story.js';
 import { Game } from './game.js';
 
@@ -218,9 +219,8 @@ Object.assign(Game.prototype, {
       );
       halo.position.copy(lamp.position);
       mast.add(halo);
-      const light = new THREE.PointLight(0xff3020, 0, 28, 2);
-      light.position.copy(lamp.position);
-      mast.add(light);
+      // 照亮周圍：特效點光（fx.glow，不加 three.js 的點光源：一出現整個場景的著色器都要重新編譯，game/cine-prep.js）
+      const light = { intensity: 0 };
       // 斜插在沙裡：桅杆的下半段埋在地面以下
       mast.position.y = -5;
       mast.rotation.set(A.tilt == null ? 0.32 : A.tilt, 0, 0.12);
@@ -248,7 +248,7 @@ Object.assign(Game.prototype, {
     o.lampM.color.setRGB(0.25 + k * 0.75, 0.05 + k * 0.15, 0.03 + k * 0.1);
     o.halo.material.opacity = 0.05 + k * 0.45;
     o.halo.scale.setScalar(0.7 + k * 0.6);
-    o.light.intensity = k * 6;
+    if (this.fx && k > 0.02) this.fx.glow(o, o.lamp.getWorldPosition(V3()), (k * 6) / 3.2, 0xff3020, 28 / DS);
   },
   // ---------- 營火 ----------
   // S.fire＝{ at: [x, z] }：石圈、交叉的木柴、跳動的火焰、閃爍的點光源、往上飄的火星
@@ -295,9 +295,7 @@ Object.assign(Game.prototype, {
         g.add(m);
         flames.push(m);
       }
-      const light = new THREE.PointLight(0xff8a3a, 4, 30, 1.6);
-      light.position.y = 1.4;
-      g.add(light);
+      const light = { intensity: 4 }; // 特效點光（fx.glow，見上面的天線）
       g.position.copy(this.cinePt({ g: F.at || [0, 0] }));
       this.c1Keep('fire', { group: g, flames, light, sparkT: 0 });
       return;
@@ -313,6 +311,7 @@ Object.assign(Game.prototype, {
     });
     o.light.intensity =
       3.6 + Math.sin(t * 9) * 0.5 + Math.sin(t * 23 + 1) * 0.35 + (Math.random() - 0.5) * 0.4;
+    if (this.fx) this.fx.glow(o, o.group.position, o.light.intensity / 3.2, 0xff8a3a, 30 / DS);
     // 火星往上飄
     o.sparkT -= dt;
     if (o.sparkT <= 0 && this.fx) {

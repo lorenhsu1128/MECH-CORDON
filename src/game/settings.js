@@ -382,6 +382,7 @@ Object.assign(Game.prototype, {
     $('ctrlTfx').value = this.ctrl.tfx || 'full';
     $('ctrlUiFx').value = this.ctrl.uiFx || 'full';
     $('ctrlCine').value = this.ctrl.cine || 'on';
+    $('ctrlVoiceClear').value = this.ctrl.voiceClear || 'std';
     $('ctrlCutin').value = this.ctrl.cutin || 'on';
     $('ctrlVoice').value = this.voiceId() || 'off';
     $('ctrlSub').value = this.subLang();

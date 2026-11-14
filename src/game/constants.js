@@ -30,3 +30,13 @@ export const HEAT = {
 
 // 機甲庫的零件格子：游標停留多久才換小卡片、量表與全像預覽（garage-ui.js、hangar.js；快速掠過的格子不算）
 export const HOVER_T = 0.2;
+
+// 過場的調色（疊在玩家選的渲染風格上）：暗角、底片顆粒、色差、動態模糊、Bloom 下限（game/cine.js、cine-prep.js）
+export const CINE_GRADE = {
+  vignette: 0.42,
+  grain: 0.16,
+  chroma: 0.18,
+  mblur: true,
+  mblurK: 0.18,
+  mblurMech: 0.35,
+};

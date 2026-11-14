@@ -188,7 +188,7 @@ Object.assign(Game.prototype, {
       g = c.createGain();
     s.buffer = b;
     let head = s;
-    if (!this.fp && kind !== 'brief') {
+    if (!this.fp && kind !== 'brief' && kind !== 'cine') {
       // 無線電（簡報是當面說話，不加）：帶通＋一點點飽和（溫柔的聲音不要壓得太扁）
       const hp = c.createBiquadFilter(),
         lp = c.createBiquadFilter(),
@@ -221,9 +221,32 @@ Object.assign(Game.prototype, {
       if (this.voiceCur && this.voiceCur.s === s) this.voiceCur = null;
     };
     // 說話時世界的聲音與配樂壓低
+    // 過場的配樂另外壓低並挖掉人聲的頻段（設定「過場對白的清晰度」，voiceMix）
+    const M = this.voiceMix();
     SFX.duck(0.22, dur * 0.9);
-    SFX.duckBgm(0.45, dur);
+    SFX.duckBgm(M.bgm, dur);
+    if (this.cine && M.k < 1) SFX.musicDuck(M.k, M.eq, t + 0.05 + dur);
     return dur;
+  },
+  // 對白時的混音（設定 ctrl.voiceClear：off 照舊／std 標準（預設）／strong 強）：
+  // k＝過場配樂壓到幾倍、eq＝人聲頻段再降幾 dB、boost＝過場中語音的倍率、bgm＝任務中通訊時配樂壓掉的比例
+  voiceMix() {
+    const m = (this.ctrl && this.ctrl.voiceClear) || 'std';
+    if (m === 'off') return { k: 1, eq: 0, boost: 1, bgm: 0.45 };
+    if (m === 'strong') return { k: 0.2, eq: 6, boost: 1.78, bgm: 0.75 };
+    return { k: 0.32, eq: 4, boost: 1.41, bgm: 0.6 };
+  },
+  // 過場開始前把劇本裡每一句的語音先載入並解碼（第一句不會慢半拍）；lines＝[[台詞, 說話者]]
+  async voicePreload(lines) {
+    if (!SFX.ctx) return;
+    const fs = [];
+    for (const [text, sp] of lines) {
+      const f = this.voiceFolder(sp);
+      if (f) fs.push([vkey(text), f]);
+    }
+    // 先載入各聲音的檔案，再依序解碼（解碼過的最多留 80 句，voiceBuf）
+    await Promise.all([...new Set(fs.map((x) => x[1]))].map((f) => this.voiceLoad(f)));
+    for (const [k, f] of fs.slice(0, 70)) await this.voiceBuf(k, f);
   },
   // 全部停掉（包括排好的下一句）
   voiceStop() {
@@ -245,9 +268,10 @@ Object.assign(Game.prototype, {
     } catch (e) {}
   },
   // 通訊、過場字幕的一句（comms.js 的 commNext、cine.js 的 cineSub）：sp＝說話者（沒有語音的角色＝0）
-  voiceSay(text, sp = 'echo') {
+  // kind＝'cine'：過場的對白，不加無線電的濾波（劇本標 radio 的台詞照舊是 'comm'）
+  voiceSay(text, sp = 'echo', kind = 'comm') {
     const f = this.voiceFolder(sp);
-    return f ? this.voicePlay(vkey(text), 2, 'comm', f) : Promise.resolve(0);
+    return f ? this.voicePlay(vkey(text), 2, kind, f) : Promise.resolve(0);
   },
   // 洗牌輪流：同一組的 n 句整輪播完才重複，新的一輪第一句不會和上一句相同
   bagPick(name, n) {

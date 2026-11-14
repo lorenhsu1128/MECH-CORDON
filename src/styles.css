@@ -3694,6 +3694,10 @@ body.mvGame #mvPanel {
   opacity: 0.85;
   animation: cineBlink 1s steps(2) infinite;
 }
+/* 過場的預先準備（game/cine-prep.js）：第幾個場景 */
+#cineLoad[data-p]::after {
+  content: '  ' attr(data-p);
+}
 @keyframes cineBlink {
   50% {
     opacity: 0.25;

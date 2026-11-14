@@ -220,6 +220,7 @@
 - **播放**（`game/voice.js` 的 `voiceBrief(sid, 句子, 說話者)`，`openBrief` 最後呼叫）：0.4 秒後一句唸完接下一句（間隔 0.35 秒）；正在唸的那一行 `#brLines p.speaking`（左邊委託方顏色的色條＋淡淡的底色，逐字的字有自己的顏色所以不改字色）；立繪 `briefView` 照那一句的 `lineExpr` 換表情（ECHO 的私人委託沒指定時用 tender）；對口型照語音的音量。`voicePlay` 的 kind 'brief' 不加無線電濾波；優先度 3，作戰室的通訊（2）在唸簡報時只顯示字。點一下文字只是把逐字全部顯示，語音照常唸下去。沒有語音（設定關掉、載不到）時照字數估計的時間換句，對口型用模擬的（`briefTalkEnd`）。離開簡報（`showScreen` 換到別的畫面）時 `voiceStop`。
 - **冒煙測試** `testStory`：打開 c1s1 的簡報，第一句亮起、立繪的表情是那一句的（smug）、離開簡報就停。
 
+- **對白的清晰度**（2026-11-14，使用者回報：過場有音樂時聽不清楚語音）：原因是過場的配樂（`mus`，設定音量 ×2.2、前面還有把安靜段落拉高的壓縮器）完全沒有被壓低（`duckBgm` 只管任務中的配樂），而且過場的對白都套了無線電的帶通＋飽和。現在：`mus` 的壓縮器之後加人聲頻段的 peaking（2.2 kHz）與壓低的增益（`musEq`／`musDuckG`），`SFX.musicDuck(倍率, dB, 到何時)`——字幕一出現就開始壓（語音還在解碼），唸出來之後 `voicePlay` 延長到唸完，再 0.5 秒恢復，連續的台詞不會中間彈回來；語音匯流排後面加 `voiceBoost`（過場中提高）；過場的對白與旁白用乾淨的聲音（`voicePlay` 的 kind 'cine'，劇本的事件標 `radio: true` 的才加無線電濾波）；任務中的通訊壓低任務配樂的比例也跟著設定。設定「過場對白的清晰度」`ctrl.voiceClear`（`voice.js` 的 `voiceMix`）：標準（預設：配樂 ×0.32≈−10 dB、人聲頻段再 −4 dB、語音 ×1.41≈+3 dB、任務的通訊壓掉 60%）／強（×0.2、−6 dB、×1.78、75%）／關（照舊）。冒煙測試 `testCine` 檢查壓低與恢復。
 - **過場的旁白**（2026-11-14，docs/cine-redesign-design.md 第 11 期）：過場裡沒有說話者的字幕由另一個聲音 `narr`（四十多歲的男性、紀錄片的口吻）唸，中文與日文；`data/voice.js` 的 `CAST_IDS`、`voice-gen.py` 的 `CAST`、`voice-lines.js` 收集時沒有說話者的過場字幕＝narr，遊戲 `game/cine.js` 的 `cineSub`。
 
 ### AI 配樂（2026-11-14）

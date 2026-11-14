@@ -98,7 +98,10 @@ export const SFX = {
       this.uiBus = c.createGain();
       this.uiBus.connect(this.master);
       this.voiceBus = c.createGain();
-      this.voiceBus.connect(this.master);
+      // 過場動畫中語音提高（game/cine.js 的 cineMixSet；設定「過場對白的清晰度」）
+      this.voiceBoost = c.createGain();
+      this.voiceBus.connect(this.voiceBoost);
+      this.voiceBoost.connect(this.master);
       // 任務中的配樂（game/bgm.js）：自己的壓低（語音時）與音量
       this.bgmDuck = c.createGain();
       this.bgmBus = c.createGain();
@@ -115,8 +118,17 @@ export const SFX = {
       mc.attack.value = 0.05;
       mc.release.value = 0.6;
       this.musOut = c.createGain();
+      // 對白時的壓低（musicDuck）：整體音量＋挖掉人聲的頻段（1～4 kHz），語音聽得清楚、音樂不用壓太多
+      this.musEq = c.createBiquadFilter();
+      this.musEq.type = 'peaking';
+      this.musEq.frequency.value = 2200;
+      this.musEq.Q.value = 0.8;
+      this.musEq.gain.value = 0;
+      this.musDuckG = c.createGain();
       this.mus.connect(mc);
-      mc.connect(this.musOut);
+      mc.connect(this.musEq);
+      this.musEq.connect(this.musDuckG);
+      this.musDuckG.connect(this.musOut);
       this.musOut.connect(this.master);
       this.revIn = c.createGain();
       this.revIn.gain.value = 0;
@@ -280,6 +292,44 @@ export const SFX = {
     g.setValueAtTime(g.value, t);
     g.linearRampToValueAtTime(1 - amt, t + 0.03);
     g.setTargetAtTime(1, t + dur, dur * 0.6);
+  },
+  // 過場配樂的壓低（對白時）：壓到 k 倍、人聲頻段再降 eqDb，until（ctx 時間）之後 0.5 秒恢復；
+  // 連續的台詞只延長，不會在兩句之間彈回來再壓
+  musicDuck(k, eqDb, until) {
+    if (!this.ctx || !this.musDuckG) return;
+    const t = this.ctx.currentTime,
+      g = this.musDuckG.gain,
+      q = this.musEq.gain;
+    const holding = this.mdUntil > t;
+    this.mdUntil = Math.max(holding ? this.mdUntil : 0, until);
+    for (const [p, v] of [
+      [g, k],
+      [q, -eqDb],
+    ]) {
+      p.cancelScheduledValues(t);
+      p.setValueAtTime(p.value, t);
+      if (!holding) p.linearRampToValueAtTime(v, t + 0.12);
+      else p.setValueAtTime(v, t + 0.001);
+      p.setValueAtTime(v, Math.max(t + 0.13, this.mdUntil));
+      p.linearRampToValueAtTime(p === g ? 1 : 0, Math.max(t + 0.13, this.mdUntil) + 0.5);
+    }
+  },
+  // 過場結束、略過：立刻恢復
+  musicDuckReset() {
+    if (!this.ctx || !this.musDuckG) return;
+    const t = this.ctx.currentTime;
+    this.mdUntil = 0;
+    for (const p of [this.musDuckG.gain, this.musEq.gain]) {
+      p.cancelScheduledValues(t);
+      p.setValueAtTime(p.value, t);
+      p.linearRampToValueAtTime(p === this.musDuckG.gain ? 1 : 0, t + 0.2);
+    }
+  },
+  // 過場中語音提高（倍率；1＝原本）
+  setVoiceBoost(k) {
+    this.voiceBoostK = k; // 測試看目標值（增益是慢慢變過去的）
+    if (!this.ctx || !this.voiceBoost) return;
+    this.voiceBoost.gain.setTargetAtTime(k, this.ctx.currentTime, 0.05);
   },
   // 配樂的壓低（語音說話時）：amt 0～1，dur 秒後恢復
   duckBgm(amt, dur) {

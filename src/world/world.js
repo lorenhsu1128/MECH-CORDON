@@ -553,8 +553,9 @@ export class World {
     this.regDecks();
     this.regSegs();
     this.regNew = false;
-    if (!LV) {
-      // 自訂關卡與編輯器不合併（產生器物件的移除與還原直接切換顯示）
+    if (!LV && !opt.noMerge) {
+      // 自訂關卡與編輯器不合併（產生器物件的移除與還原直接切換顯示）；過場動畫的地圖（opt.noMerge）也不合併：
+      // 合併池的網格＋原本的網格＋還原用的頂點各一份，常駐好幾張地圖時記憶體太大（game/cine-prep.js）
       this.mergeGridPillars();
       this.mergeProps();
     }
