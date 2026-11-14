@@ -188,8 +188,8 @@ Object.assign(Game.prototype, {
       g = c.createGain();
     s.buffer = b;
     let head = s;
-    if (!this.fp) {
-      // 無線電：帶通＋一點點飽和（溫柔的聲音不要壓得太扁）
+    if (!this.fp && kind !== 'brief') {
+      // 無線電（簡報是當面說話，不加）：帶通＋一點點飽和（溫柔的聲音不要壓得太扁）
       const hp = c.createBiquadFilter(),
         lp = c.createBiquadFilter(),
         sh = c.createWaveShaper();
@@ -349,6 +349,41 @@ Object.assign(Game.prototype, {
       });
       // 估計長度：每秒約 4 個字（實際長度要解碼之後才知道，所以排程用估計值，播的時候照實際的）
       at += q.length / 4 + 0.5;
+    }
+  },
+  // 作戰室的簡報（hub.js 的 openBrief，每次打開都唸）：一句唸完接下一句，正在唸的那一行亮起來、立繪換成那一句的表情；
+  // 沒有語音（設定關掉、這個角色沒有語音、載不到）時照字數估計的時間換句，對口型用模擬的（briefTalkEnd）。
+  // 離開簡報（showScreen 換到別的畫面）時 voiceStop 停掉。
+  async voiceBrief(sid, lines, sp) {
+    this.voiceStop();
+    const sq = this.voiceSeqN;
+    const live = () => sq === this.voiceSeqN && this.state === 'brief' && this.briefSid === sid;
+    const wait = (s) =>
+      new Promise((r) => {
+        this.voiceSeqTo = this.voiceSeqTo || [];
+        this.voiceSeqTo.push(setTimeout(r, s * 1000));
+      });
+    const f = this.voiceFolder(sp);
+    const ps = document.querySelectorAll('#brLines p');
+    this.briefVoiceOn = true;
+    await wait(0.4);
+    for (const [i, t] of lines.entries()) {
+      if (!live()) return;
+      const x = lineExpr(t, { sp });
+      // ECHO 的私人委託：沒有指定表情的句子用溫柔的
+      if (sp === 'echo' && x.e === 'neutral') x.e = 'tender';
+      if (this.briefView) this.ptSetExpr(this.briefView, x);
+      const p = ps[i];
+      if (p) p.classList.add('speaking');
+      // 優先度 3：作戰室的通訊（2）在唸簡報時只顯示字，不會把簡報切掉
+      let d = f ? await this.voicePlay(vkey(t), 3, 'brief', f) : 0;
+      if (!live()) return p && p.classList.remove('speaking');
+      if (!d) {
+        d = Math.min(7, 0.4 + t.length * 0.12);
+        this.briefTalkEnd = performance.now() + d * 1000;
+      }
+      await wait(d + 0.35);
+      if (p) p.classList.remove('speaking');
     }
   },
   // 設定畫面改語音音量時試聽一句

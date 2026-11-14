@@ -3,7 +3,7 @@
 // 表情（e）＝data/line-expr.js 的 lineExpr（和遊戲顯示立繪時相同；平常 neutral 不寫），voice-gen.py 依它加上語氣（語音 v2，
 // docs/cine-redesign-design.md）。
 // 情境決定產生時的語氣：sys 系統提示、alarm 緊急的系統提示、comm 通訊、story 劇情畫面、cine 過場動畫、
-// private 第 3 周目的私人頻道、end 結局與記憶片段、bark 敵兵的喊話（shout 大喊／low 壓低聲音）。
+// private 第 3 周目的私人頻道、end 結局與記憶片段、bark 敵兵的喊話（shout 大喊／low 壓低聲音）、brief 作戰室的簡報（當面說話）。
 //   1. data/story-comms.js 的通訊（[說話者, 台詞]）
 //   2. src/ 裡寫死的 commSay('<說話者>', …) 的字串（單引號的字面字串；教官的第幾課另外展開）
 //   3. data/story.js 的序章、章節開場／章末、結局、回收程序、記憶片段裡「名字：「……」」的句子（data/voice.js 的 storyQuote）
@@ -11,6 +11,8 @@
 //      與敵兵的喊話（grunt，鍵＝b_<事件><編號>）
 //   5. data/cine/ 的過場動畫的字幕（每個周目 × 抉擇的組合都產生一次）
 //   6. data/tutorial.js、tutorial-ranged.js 的教官提示（say）
+//   7. data/story.js 的簡報（BRIEFINGS 的 lines 與 prev；說話者＝speaker 或依抉擇的委託方 briefClient，每個抉擇的組合都展開；
+//      ECHO 的私人委託＝private）
 // 只收 echo 與 data/voice.js 的 CAST_IDS（有語音的角色）；鍵＝data/voice.js 的 vkey(台詞)，遊戲播放時用同一個函式找語音。
 const fs = require('fs');
 const path = require('path');
@@ -178,6 +180,17 @@ async function main() {
           for (const sh of d.shots)
             for (const e of sh.ev || []) if (e.who && e.sub) add(e.who, e.sub, 'cine', '過場');
       }
+  // 7. 簡報（game/hub.js 的 openBrief：每次打開都唸，voice.js 的 voiceBrief）
+  for (const sid in story.BRIEFINGS) {
+    const B = story.BRIEFINGS[sid];
+    const prev = [];
+    walkStrings(B.prev, (s) => prev.push(s));
+    for (const choices of combos) {
+      const sp = B.speaker || story.briefClient(B, choices);
+      for (const t of story.pickLines(B.lines, choices).concat(prev))
+        add(sp, t, sp === 'echo' ? 'private' : 'brief', '簡報');
+    }
+  }
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
   const sorted = {};
   for (const sp of Object.keys(lines).sort())

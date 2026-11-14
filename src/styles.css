@@ -3277,7 +3277,21 @@ body.mvGame #mvPanel {
 }
 #brLines p {
   margin: 0 0 8px;
+  padding-left: 8px;
+  border-left: 3px solid transparent;
   line-height: 1.7;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+/* 正在唸的那一行（voice.js 的 voiceBrief）：逐字的字自己有顏色，所以用左邊的色條＋淡淡的底色標出來 */
+#brLines p.speaking {
+  border-left-color: var(--theme, var(--acc));
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--theme, #7fc8ff) 18%, transparent),
+    transparent 85%
+  );
 }
 #brGoal {
   font-weight: 700;

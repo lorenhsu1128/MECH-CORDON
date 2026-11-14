@@ -21126,6 +21126,31 @@ async function testStory(browser, base) {
       br.aetheric +
       '）',
   );
+  // 簡報的語音（voice.js 的 voiceBrief）：打開就逐句唸（自動化測試沒有聲音＝照字數估計的時間換句），
+  // 正在唸的那一行亮起來、立繪換成那一句的表情，離開簡報就停
+  await page.evaluate(() => window.__game.openBrief('c1s1'));
+  await page
+    .waitForFunction(() => window.__game.briefView && document.querySelector('#brLines p.speaking'), null, {
+      timeout: 15000,
+    })
+    .catch(() => {});
+  const bv = await page.evaluate(() => {
+    const g = window.__game;
+    const ps = [...document.querySelectorAll('#brLines p')];
+    const r = {
+      on: !!g.briefVoiceOn,
+      sp: ps.findIndex((p) => p.classList.contains('speaking')),
+      ex: g.briefView && g.briefView.P.expr,
+    };
+    g.showScreen('hub');
+    g.state = 'hub';
+    r.off = !g.briefVoiceOn && !(g.voiceSeqTo || []).length;
+    return r;
+  });
+  check(
+    bv.on && bv.sp === 0 && bv.ex === 'smug' && bv.off,
+    `簡報的語音：第一句亮起、立繪的表情照那一句（${bv.ex}）、離開簡報就停`,
+  );
   // 宿敵依抉擇：c6s1 依抉擇 1、c6s3 依抉擇 2、最後的抉擇區段是 ZENITH；擊破宿敵與依抉擇的通訊
   const ace = await page.evaluate(() => {
     const g = window.__game;

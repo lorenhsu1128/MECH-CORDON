@@ -209,3 +209,13 @@
 
 - 新角色的聲音（`scripts/voice-gen.py` 的 `CAST`，`data/voice.js` 的 `CAST_IDS`）：僚機 BASALT（老練的男性傭兵）、WREN（年輕的女性新人）、第 7 章的宿敵 KILN、第 8 章的宿敵 KEEL；中文與日文各自設計（`ref/<聲音>.flac`、`ref/<聲音>_ja.flac`）。
 - 第 6～8 章、新區段類型、僚機、宿敵的新台詞（約 150 句）的中文與日文語音；日文台詞在 `lines-ja.json`（人名照舊譯法：ホルスト、サキ、パイク、ミラ）。
+
+### 簡報的語音（2026-11-14）
+
+使用者 2026-11-14 定案：作戰室的簡報畫面（`openBrief`）「每次打開簡報都念」、不用無線電濾波、簡報的文字一律繁體中文（不跟著字幕的語言換）、立繪的表情跟著每一句換。
+
+- **台詞**：`scripts/voice-lines.js` 多了第 7 個來源「簡報」：`BRIEFINGS` 的 `lines` 與 `prev`，說話者＝`speaker` 或 `briefClient`（每個抉擇的組合都展開，所以 c3s3／c6s1／c7s3 依抉擇換人的分支都收），情境 `brief`（`voice-gen.py` 的 `STYLE`：「當面交代委託、清楚平穩」）；ECHO 的私人委託＝`private`。新增 169 句（另外 2 句本來就有語音）：霍斯特 41、派克 31、諾拉 28、米拉 28、薩奇 19、ECHO 30（溫柔知性與 AI 系統感兩個聲音）。
+- **表情**：`data/line-expr.js` 的 `@brief-start` 區段逐句指定（119 句，其他是平常），語音 v2 照它加語氣，播放時立繪也照它換。
+- **日文**：`lines-ja.json` 補上這 169 句的翻譯（寫法照上面的「翻譯的寫法」；HALBERD＝ハルバード、CERBERUS＝ケルベロス、ARCHON＝アルコン、SPECIMEN＝スペシメン、MIRAGE＝ミラージュ），`'@yomi'` 加了方舟＝はこぶね、主ダム、誘導塔、中枢等唸法。
+- **播放**（`game/voice.js` 的 `voiceBrief(sid, 句子, 說話者)`，`openBrief` 最後呼叫）：0.4 秒後一句唸完接下一句（間隔 0.35 秒）；正在唸的那一行 `#brLines p.speaking`（左邊委託方顏色的色條＋淡淡的底色，逐字的字有自己的顏色所以不改字色）；立繪 `briefView` 照那一句的 `lineExpr` 換表情（ECHO 的私人委託沒指定時用 tender）；對口型照語音的音量。`voicePlay` 的 kind 'brief' 不加無線電濾波；優先度 3，作戰室的通訊（2）在唸簡報時只顯示字。點一下文字只是把逐字全部顯示，語音照常唸下去。沒有語音（設定關掉、載不到）時照字數估計的時間換句，對口型用模擬的（`briefTalkEnd`）。離開簡報（`showScreen` 換到別的畫面）時 `voiceStop`。
+- **冒煙測試** `testStory`：打開 c1s1 的簡報，第一句亮起、立繪的表情是那一句的（smug）、離開簡報就停。
