@@ -7,6 +7,7 @@ import { ch3Intro, ch3Outro } from './ch3-anime.js';
 import { ch4Intro, ch4Outro } from './ch4-anime.js';
 import { ch5Intro, ch5Outro } from './ch5-anime.js';
 import { ch6Intro, ch6Outro } from './ch6-anime.js';
+import { ch7Intro, ch7Outro, ch8Intro } from './ch7-anime.js';
 
 // kind：'intro'｜'outro'
 export function chapterCine(ch, kind, ctx) {
@@ -22,5 +23,8 @@ export function chapterCine(ch, kind, ctx) {
   if (ch === 5 && kind === 'outro') return ch5Outro(ctx);
   if (ch === 6 && kind === 'intro') return ch6Intro(ctx);
   if (ch === 6 && kind === 'outro') return ch6Outro(ctx);
+  if (ch === 7 && kind === 'intro') return ch7Intro(ctx);
+  if (ch === 7 && kind === 'outro') return ch7Outro(ctx);
+  if (ch === 8 && kind === 'intro') return ch8Intro(ctx);
   return chapterFilm(ch, kind, ctx);
 }
