@@ -382,7 +382,7 @@ export function gearFrameFx(g, cat) {
 export function axText(a) {
   const D = axDef(a[0]);
   if (!D) return '';
-  if (D.txt) return D.txt(a[1]);
+  if (D.txt) return D.txt(a[1]) + (a[2] ? ' ★' : '');
   const v = a[1];
   const s = D.abs
     ? D.k === 'absorb' || D.k === 'enAd'
@@ -392,6 +392,45 @@ export function axText(a) {
   const pct = `${D.down ? '−' : '+'}${Math.round(v * 1000) / 10}%`;
   return `${D.n} ${s || pct}${a[2] ? ' ★' : ''}`;
 }
+// ---------- 詞條在範圍裡的位置（docs/gear-rarity-design.md 第 11 節） ----------
+// 範圍不看品級；極品★用 ×1.5 的範圍（整數詞條四捨五入）。p＝0～1（「−」的詞條存的是正值，一樣越大越好；
+// 代價詞條只有好處是隨機的）。讀檔整理時極品的下限只夾在原本的下限，所以 p 夾到 0。
+export function axRoll(a) {
+  const D = axDef(a && a[0]);
+  if (!D) return null;
+  const star = !!a[2] && !!ADV[a[0]];
+  let lo = D.r[0] * (star ? 1.5 : 1),
+    hi = D.r[1] * (star ? 1.5 : 1);
+  if (D.int) {
+    lo = Math.round(lo);
+    hi = Math.round(hi);
+  }
+  const p = hi > lo ? Math.max(0, Math.min(1, (a[1] - lo) / (hi - lo))) : 1;
+  return { p, lo, hi, star };
+}
+const trimN = (v, d) => String(Math.round(v * 10 ** d) / 10 ** d);
+// 詞條的一個數值（範圍、差值用）：百分比、秒、絕對值、整數
+export function axFmt(k, v) {
+  const D = axDef(k);
+  if (!D) return '';
+  if (D.int) return String(Math.round(v));
+  if (D.u === 's') return trimN(v, 2) + ' 秒';
+  if (D.u === 'a' || (D.abs && D.k !== 'absorb' && D.k !== 'enAd')) return trimN(v, 3);
+  return trimN(v * 100, 1) + '%';
+}
+// 範圍文字：「8～15%」「★12～22.5%」
+export function axRangeText(a) {
+  const R = axRoll(a);
+  if (!R) return '';
+  const lo = axFmt(a[0], R.lo).replace(/[%秒 ]+$/, '');
+  return `${R.star ? '★' : ''}${lo}～${axFmt(a[0], R.hi)}`;
+}
+// 整件的詞條品質：隨機詞條位置的平均（0～1；沒有隨機詞條＝null）
+export function gearRollQ(g) {
+  const ps = ((g && g.ax) || []).map(axRoll).filter(Boolean);
+  return ps.length ? ps.reduce((s, r) => s + r.p, 0) / ps.length : null;
+}
+export const pctOf = (p) => `${Math.round(p * 100)}%`;
 // 這件的主要數值文字
 const MAIN_TXT = {
   head: '頭部 AP、鎖定距離',

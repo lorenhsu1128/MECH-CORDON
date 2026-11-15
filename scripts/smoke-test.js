@@ -17343,6 +17343,36 @@ async function testGear(browser, base) {
     lines[1].click();
     const opts = document.querySelectorAll('#forgeBox .fgOpt');
     out.opts = opts.length;
+    // 詞條的位置（docs/gear-rarity-design.md 第 11 節）：原本那條的位置條、候選的比較、可能抽到的清單
+    out.fgCmp =
+      !!document.querySelector('#forgeBox .fgCur .gRoll') &&
+      document.querySelectorAll('#forgeBox .fgOpt .gRoll').length === 2 &&
+      document.querySelectorAll('#forgeBox .fgOpt .fgD').length === 2 &&
+      !!document.querySelector('#forgeBox .fgPool');
+    out.roll = [
+      G.axRoll(['dmg', 0.15]).p === 1,
+      G.axRoll(['dmg', 0.08]).p === 0,
+      Math.abs(G.axRoll(['dmg', 0.115]).p - 0.5) < 1e-6,
+      G.axRoll(['aKill', 0.525, 1]).p === 1 && G.axRoll(['aKill', 0.525, 1]).star,
+      G.axRangeText(['dmg', 0.1]) === '8～15%',
+      G.axRangeText(['aKill', 0.4, 1]) === '★30～52.5%',
+      G.axRangeText(['aSup', 1.5]) === '1～2 秒',
+      G.axRangeText(['cMulti', 2, 1]) === '★2～3',
+      Math.abs(
+        G.gearRollQ({
+          ax: [
+            ['dmg', 0.15],
+            ['mag', 0.15],
+          ],
+        }) - 0.5,
+      ) < 1e-6,
+      G.gearRollQ({ ax: [] }) === null,
+    ];
+    g.garageTab('inv');
+    out.invRoll =
+      document.querySelectorAll('#gInv .invR .gRoll').length === a.ax.length &&
+      !!document.querySelector('#gInv .invR .gQ') &&
+      document.querySelectorAll('#gInv .invS').length === 3;
     const other = a.ax[0][0];
     const c1 = S.coam;
     opts[0].click();
@@ -17362,6 +17392,9 @@ async function testGear(browser, base) {
   check(f.std, '標準版升階成改良（一條詞條、直接裝上）');
   check(f.asc, '改良升階成精製：多一條詞條、扣 9,000 COAM');
   check(f.lines === 2 && f.opts === 2 && f.rr, '重骰：選一條、兩個候選，換掉選的那一條（另一條不變）');
+  check(f.roll.every(Boolean), `詞條的位置與範圍（${f.roll.map((x) => (x ? 1 : 0)).join('')}）`);
+  check(f.fgCmp, '重骰視窗：原本那條的位置、候選的位置與比較、可能抽到的清單');
+  check(f.invRoll, '背包頁：每條詞條的位置條、整件的詞條品質、三種排序');
   check(f.locked && f.cost2, '重骰過的只能重骰同一條、第二次 ×1.5（3,000 COAM）');
   // 第 5 期：進階詞條（紫、金）——固定效果、觸發型、同名不疊加、敵人只用敵人可用的、不生效的標示
   const v = await page.evaluate(() => {

@@ -411,3 +411,16 @@
 - 第 2 期：卡斯特隆、維爾威各 4 個。掛勾：`tutE('stag')` 多帶 `over`（超過門檻的衝擊）→ `lgEv`；`takeDamage` 的 `lgDealt`（火力支援的 Boss 傷害、火力封鎖的持續命中，封鎖看目標自己的 `t`）；`mech-moves.js` 的 `movesTick` 看 `lgSupUntil`；`hwDrop` 的 `hwOut`；QB 的方向決定之後 `lgQbStart(targetEnt)`，`qbT` 那一段 `lgArcSteer`（繞背：以目標為圓心沿弧線、速度上限 220 m/s，從 QB 的方向先到的那一側）；`jumpMove` 在空中按下時先 `lgWallKick`（身邊 8 個方向的 `hitsWorld`）；`fire` 開頭的殘影誘餌（上當的敵人 `lgFooled`＝殘影 id，瞄準點換成殘影）；`game.js` 的 `aiStep` 與投射物乘 `lgZeroK`／`lgFieldK`。
 - 第 3 期：艾瑟立克 4 個。`mech-react.js` 的 `rxFire(r, from, spread)`：最後呼叫 `lgRxFire`（擴散的不再加風格評價、不再擴散），反應冷卻在持有反應擴散時減半；`takeDamage` 扣 AP 之後 `lgLinkShare`（`lgLinkNo` 防止連鎖）；`fire` 開頭 `lgFired`（浮游砲：hitscan 的光束，冷卻 0.2 秒，`cleanup` 時 `lgBitsClear`）；`useEn` 的 `lgEnCheck`（EN 剩 2% 以下＝用完）。
 - 冒煙測試 `testLegend`：取得條件與升級的替代、7 個一般模組的 Lv3 數值、16 個傳說各自的規則、四選一的卡片在三種畫面大小不重疊（`test-results/legend-pick4-*.png`）。
+
+## 11. 詞條的好壞與範圍的顯示（2026-11-15 定案並完成）
+
+使用者回饋：看不出一條詞條算不算好。詞條的數值範圍**不看品級**（綠藍同一個範圍，紫金同一個範圍，極品★是 ×1.5 的範圍），所以要顯示的是「這一條抽到範圍裡的哪個位置」。定案：位置用**百分比**、範圍**預設顯示**、整件的「詞條品質」取**平均值**。
+
+- **計算**（`src/data/gear.js`，純函式）：`axRoll(a)`＝`{ p, lo, hi, star }`，p＝(v − lo)／(hi − lo) 夾在 0～1；極品用 lo×1.5～hi×1.5，整數詞條（多目標）四捨五入；「−」的詞條存的是正值，一樣越大越好；代價詞條只有好處是隨機的（代價固定，介面標「代價固定」）。`axRangeText`（「8～15%」「★30～52.5%」「1～2 秒」）、`axFmt`（單位：進階詞條的 `u`＝'s' 秒、'a' 絕對值，沒有＝百分比；數值詞條的 `abs`）、`gearRollQ(g)`＝隨機詞條 p 的平均（沒有隨機詞條＝null）、`pctOf`。
+- **顏色區段**（文字一律是百分比，顏色只是輔助）：< 25% 灰、< 75% 白、< 95% 黃綠 `--acc`、≥ 95% 警戒黃 `--focus`（`gear-ui.js` 的 `rollBand`，CSS `qb0`～`qb3`）；極品的位置條加斜紋。
+- **詞條行**（小卡片、背包頁，`gearLinesHtml`）：「◆ 詞條文字」右側接位置條＋百分比＋範圍（`gearRollHtml`）；進階詞條的文字也補上 ★（`axText`，以前只靠顏色）。主要數值顯示品級的格數 ●●●○ 與最高值（`gearMainHtml`：特製寫「傳說 +16%（只有 Boss 掉）」、改良／精製寫「升階最高到特製」）。專屬詞條標「固定」，特製另外列出傳說 ×1.5 的版本與傳說的特殊詞條名稱（`.gHint`，不是 `.gFx`，冒煙測試數 `.gFx`）。
+- **整件的詞條品質**：品級標籤旁的「詞條 nn%」（`gearQHtml`）。背包頁的排序：依品級（同品級依詞條品質）／依詞條品質／新取得在前（`invF.s`）；小卡片的裝備清單每列是品級＋詞條品質＋每條的色點、名稱、百分比，同品級依詞條品質排序。
+- **範圍的開關**：背包頁的「範圍：顯示／不顯示」（`ctrl.gearRange`，'off'＝只顯示位置條與百分比），小卡片與重骰視窗共用。
+- **重骰視窗**（`gear-forge.js`）：上方列出原本那一條（位置、範圍），候選各自的位置與比較（同一種詞條比數值 ▲▼，不同種比位置的差），最後列出這一條可能抽到的全部詞條與範圍（紫金另注明 10% 極品）。
+- **掉落**：撿到時的中央訊息與結果畫面的「取得裝備」帶「詞條 nn%」與「極品★」（`lootRun.gear` 的 `r`）。
+- **截圖**：`node scripts/ui-shots.js garage-inv,garage-gear,garage-forge --size=all`（`gearSeed` 放各品級的固定裝備）。冒煙測試 `testGear` 檢查位置與範圍的計算、背包頁、重骰視窗。

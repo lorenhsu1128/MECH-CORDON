@@ -4,7 +4,17 @@
 import { SFX } from '../audio/audio.js';
 import { MS } from '../core/scale.js';
 import { AF, affixList } from '../data/affix.js';
-import { GEAR_CAT, GEAR_SLOTS, GRADES, AX_N, gearPart, rollAx, rollGear } from '../data/gear.js';
+import {
+  GEAR_CAT,
+  GEAR_SLOTS,
+  GRADES,
+  AX_N,
+  gearPart,
+  gearRollQ,
+  pctOf,
+  rollAx,
+  rollGear,
+} from '../data/gear.js';
 import {
   ALL_GEAR,
   GEAR_DROP,
@@ -173,13 +183,22 @@ Object.assign(Game.prototype, {
       if (this.lootRun) this.lootRun.lost = (this.lootRun.lost || 0) + 1;
       return false;
     }
-    if (this.lootRun) (this.lootRun.gear = this.lootRun.gear || []).push({ id: g.id, q: g.q });
+    if (this.lootRun) {
+      const r = gearRollQ(g);
+      (this.lootRun.gear = this.lootRun.gear || []).push(
+        r === null ? { id: g.id, q: g.q } : { id: g.id, q: g.q, r },
+      );
+    }
     SFX.cue('pickup');
     const col = parseInt(GRADES[g.q].c.slice(1), 16);
-    this.flashMsg(`${src ? src + '：' : ''}取得「${GRADES[g.q].n}」${p.name}`, col, 2.6, {
+    // 詞條品質（隨機詞條在範圍裡的平均位置；docs/gear-rarity-design.md 第 11 節）與極品
+    const rq = gearRollQ(g);
+    const star = g.ax.some((a) => a[2]);
+    const tail = (rq !== null ? `・詞條 ${pctOf(rq)}` : '') + (star ? '・極品★' : '');
+    this.flashMsg(`${src ? src + '：' : ''}取得「${GRADES[g.q].n}」${p.name}${tail}`, col, 2.6, {
       k: 'good',
       m: `取得裝備・${GRADES[g.q].n}`,
-      s: p.name,
+      s: p.name + tail,
     });
     return true;
   },

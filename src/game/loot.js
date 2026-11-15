@@ -5,7 +5,7 @@ import { SFX } from '../audio/audio.js';
 import { escHtml } from '../core/html.js';
 import { PARTS, partById } from '../data/parts.js';
 import { DROP, MATS, MAT_KEYS } from '../data/tune.js';
-import { GRADES, gearPart } from '../data/gear.js';
+import { GRADES, gearPart, pctOf } from '../data/gear.js';
 import { Game } from './game.js';
 
 // 零件 id → 分類（只取可以購買的零件）
@@ -100,7 +100,12 @@ Object.assign(Game.prototype, {
       rows.push([
         '取得裝備',
         // 用 gearPart：PART_CAT 只有有售價的零件，初始零件等會查成「（空）」
-        L.gear.map((x) => `${GRADES[x.q].n}・${(gearPart(x.id) || { name: x.id }).name}`).join('、'),
+        L.gear
+          .map(
+            (x) =>
+              `${GRADES[x.q].n}・${(gearPart(x.id) || { name: x.id }).name}${typeof x.r === 'number' ? `（詞條 ${pctOf(x.r)}）` : ''}`,
+          )
+          .join('、'),
       ]);
     if (L.lost) rows.push(['背包已滿', `${L.lost} 件沒有撿到`]);
     return rows;

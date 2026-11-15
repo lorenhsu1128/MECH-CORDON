@@ -3,7 +3,20 @@
 // 重骰（暗黑 4）：第一次選定一條之後只能重骰那一條，每次給 2 個候選＋保留原本，每重骰一次就變貴。
 import { SFX } from '../audio/audio.js';
 import { escHtml } from '../core/html.js';
-import { AX_N, GEAR_CAT, GRADES, axText, gearPart, newUid, rollAx } from '../data/gear.js';
+import {
+  AX_N,
+  GEAR_CAT,
+  GRADES,
+  axDef,
+  axFmt,
+  axPool,
+  axRangeText,
+  axRoll,
+  axText,
+  gearPart,
+  newUid,
+  rollAx,
+} from '../data/gear.js';
 import { MATS } from '../data/tune.js';
 import { Game } from './game.js';
 
@@ -134,28 +147,47 @@ Object.assign(Game.prototype, {
     const p = gearPart(g.id);
     const cost = rerollCost(g.rr && g.rr.n);
     let body = '';
+    const line = (a) => `<span class="fgT">${escHtml(axText(a))}</span>${this.gearRollHtml(a)}`;
     if (c.step === 'pick') {
       body = `<div class="dim">選一條重骰。選定之後，這一件只能重骰同一條。</div>${g.ax
-        .map((a) => `<button class="fgLine" data-k="${a[0]}">${escHtml(axText(a))}</button>`)
+        .map((a) => `<button class="fgLine" data-k="${a[0]}">${line(a)}</button>`)
         .join('')}`;
     } else {
       const cur = g.ax.find((a) => a[0] === c.k);
+      const cat = GEAR_CAT.get(g.id);
+      const except = g.ax.filter((a) => a[0] !== c.k).map((a) => a[0]);
       if (!c.opts) {
         // 兩個候選：同一個詞條池（不和其他條重複；可以抽到同一條、數值重抽）
-        const cat = GEAR_CAT.get(g.id);
-        const except = g.ax.filter((a) => a[0] !== c.k).map((a) => a[0]);
         c.opts = [];
         for (let i = 0; i < 2; i++) {
           const a = rollAx(cat, p, g.q >= 3, Math.random, except);
           if (a) c.opts.push(a);
         }
       }
-      body = `<div class="dim">重骰「${escHtml(cur ? axText(cur) : c.k)}」：選一個（花費 ${escHtml(costTxt(cost))}，選了才扣）</div>${c.opts
+      // 和原本比：同一種詞條比數值，不同種比位置
+      const cmp = (a) => {
+        if (!cur) return '';
+        if (a[0] === cur[0] && !!a[2] === !!cur[2]) {
+          const d = a[1] - cur[1];
+          if (Math.abs(d) < 1e-6) return '<em class="fgD">相同</em>';
+          return `<em class="fgD ${d > 0 ? 'up' : 'dn'}">${d > 0 ? '▲' : '▼'} ${escHtml(axFmt(a[0], Math.abs(d)))}</em>`;
+        }
+        const d = Math.round((axRoll(a).p - axRoll(cur).p) * 100);
+        return `<em class="fgD ${d > 0 ? 'up' : d < 0 ? 'dn' : ''}">位置 ${d > 0 ? '▲' : d < 0 ? '▼' : ''}${Math.abs(d)}%</em>`;
+      };
+      // 這一條可能抽到的詞條與範圍
+      const pool = axPool(cat, p, g.q >= 3).filter((k) => !except.includes(k));
+      const poolTxt = pool.map((k) => `${axDef(k).n} ${axRangeText([k, 0])}`).join('、');
+      body = `<div class="dim">重骰「${escHtml(cur ? axText(cur) : c.k)}」：選一個（花費 ${escHtml(costTxt(cost))}，選了才扣）</div>${
+        cur ? `<div class="fgCur"><span class="dim">原本</span>${line(cur)}</div>` : ''
+      }${c.opts
         .map(
           (a, i) =>
-            `<button class="fgOpt" data-i="${i}"${this.tuneAfford(cost) ? '' : ' disabled'}>${escHtml(axText(a))}</button>`,
+            `<button class="fgOpt" data-i="${i}"${this.tuneAfford(cost) ? '' : ' disabled'}>${line(a)}${cmp(a)}</button>`,
         )
-        .join('')}<button class="fgKeep">保留原本（不花費）</button>`;
+        .join(
+          '',
+        )}<button class="fgKeep">保留原本（不花費）</button><div class="fgPool dim">可能抽到 ${pool.length} 種：${escHtml(poolTxt)}${g.q >= 3 ? '（10% 是極品★，範圍 ×1.5）' : ''}</div>`;
     }
     box.innerHTML = `<div class="fgH">${this.gearTag(g)}<b>${escHtml(p.name)}</b><span class="dim">重骰 ${(g.rr && g.rr.n) || 0} 次</span></div>${body}<div class="fgA"><button class="fgClose">關閉</button></div>`;
     box.classList.add('on');

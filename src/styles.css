@@ -8102,7 +8102,6 @@ body.vpad #subBar {
 }
 .gLines .gAx.na {
   color: #6b7782;
-  text-decoration: line-through;
 }
 .gLines .gAx small {
   text-decoration: none;
@@ -8117,6 +8116,166 @@ body.vpad #subBar {
 }
 .gLines .gFx.na {
   color: #6b7782;
+}
+/* 詞條在範圍裡的位置（docs/gear-rarity-design.md 第 11 節）：區段的顏色 qb0 灰／qb1 白／qb2 黃綠／qb3 警戒黃 */
+.gLines .gAx {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 8px;
+}
+.gLines .gAx .gAxT {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.gLines .gAx.na .gAxT {
+  text-decoration: line-through;
+}
+.gLines .gAx.na {
+  text-decoration: none;
+}
+.gCost {
+  margin-left: 6px;
+  color: #c98a8a;
+  font-size: 10px;
+}
+.gRoll {
+  --qc: #7d8a96;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  font-size: 10.5px;
+  color: var(--qc);
+}
+.gRoll i {
+  position: relative;
+  width: 46px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+.gRoll i::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: max(3px, var(--p));
+  border-radius: 3px;
+  background: var(--qc);
+}
+.gRoll b {
+  min-width: 30px;
+  text-align: right;
+  font-weight: 600;
+}
+.gRoll small {
+  color: var(--dim);
+  font-size: 10px;
+}
+.gRoll.st i::before {
+  background: repeating-linear-gradient(135deg, var(--qc) 0 4px, #ffe9a8 4px 6px);
+}
+.qb0 {
+  --qc: #7d8a96;
+}
+.qb1 {
+  --qc: #dfe7ee;
+}
+.qb2 {
+  --qc: var(--acc);
+}
+.qb3 {
+  --qc: var(--focus);
+}
+.gLines .gAx.na .gRoll {
+  opacity: 0.45;
+}
+.gLines .gNa {
+  flex-basis: 100%;
+  color: #6b7782;
+}
+.gLines .gMain .gPips {
+  margin-left: 8px;
+  letter-spacing: 1px;
+  font-size: 9px;
+}
+.gLines .gMain small,
+.gLines .gFx small {
+  margin-left: 6px;
+  color: var(--dim);
+  font-size: 10px;
+}
+.gLines .gHint {
+  color: #8f7a52;
+  font-size: 10px;
+}
+.gQ {
+  --qc: #7d8a96;
+  display: inline-block;
+  padding: 0 5px;
+  border: 1px solid var(--qc);
+  border-radius: 8px;
+  color: var(--qc);
+  font-size: 10px;
+  line-height: 14px;
+  white-space: nowrap;
+}
+.gIList .gIl span.gQ {
+  flex: none;
+  color: var(--qc);
+  overflow: visible;
+}
+.gIList .gIl .qd {
+  --qc: #7d8a96;
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 3px;
+  border-radius: 50%;
+  background: var(--qc);
+  vertical-align: 1px;
+}
+#gInv .invSort .invRg {
+  margin-left: auto;
+}
+#gInv .invNote {
+  font-size: 10.5px;
+  margin: 0 0 6px;
+}
+#forgeBox .fgLine,
+#forgeBox .fgOpt,
+#forgeBox .fgCur {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  text-align: left;
+}
+#forgeBox .fgT {
+  flex: 1 1 auto;
+}
+#forgeBox .fgCur {
+  padding: 4px 8px;
+  border-left: 3px solid #7d8a96;
+  font-size: 12px;
+}
+#forgeBox .fgD {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--dim);
+  white-space: nowrap;
+}
+#forgeBox .fgD.up {
+  color: var(--acc);
+}
+#forgeBox .fgD.dn {
+  color: #ff7a7a;
+}
+#forgeBox .fgPool {
+  font-size: 10.5px;
+  line-height: 1.5;
+  margin-top: 4px;
 }
 .gIList {
   display: flex;
@@ -8259,7 +8418,7 @@ em.nw,
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: min(420px, calc(100vw - 24px));
+  width: min(480px, calc(100vw - 24px));
   max-height: calc(100vh - 24px);
   overflow: auto;
   box-sizing: border-box;

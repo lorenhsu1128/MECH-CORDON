@@ -11,7 +11,12 @@ import {
   GRADES,
   INV_MAX,
   STD,
+  axDef,
+  axRangeText,
+  axRoll,
   axText,
+  gearRollQ,
+  pctOf,
   gearPart,
   gearTileInfo,
   isWeaponCat,
@@ -38,6 +43,8 @@ const CAT_F = [
   ['f', '機體'],
   ['o', '推進器・發電機・火控'],
 ];
+// 詞條位置的區段（顏色；文字一律是百分比）：<25% 灰、<75% 白、<95% 黃綠、≥95% 警戒黃
+const rollBand = (p) => (p >= 0.95 ? 3 : p >= 0.75 ? 2 : p >= 0.25 ? 1 : 0);
 const catGroup = (c) => (isWeaponCat(c) ? 'w' : ['head', 'core', 'arms', 'legs'].includes(c) ? 'f' : 'o');
 const matTxt = (m) =>
   Object.keys(m)
@@ -107,25 +114,60 @@ Object.assign(Game.prototype, {
     }
     return '';
   },
+  // 一條詞條在範圍裡的位置：位置條＋百分比＋範圍（docs/gear-rarity-design.md 第 11 節；範圍可以在背包頁關掉）
+  gearRollHtml(a) {
+    const R = axRoll(a);
+    if (!R) return '';
+    const rng = this.ctrl.gearRange === 'off' ? '' : `<small>${escHtml(axRangeText(a))}</small>`;
+    return `<span class="gRoll qb${rollBand(R.p)}${R.star ? ' st' : ''}"><i style="--p:${Math.round(R.p * 100)}%"></i><b>${pctOf(R.p)}</b>${rng}</span>`;
+  },
+  // 整件的詞條品質（隨機詞條位置的平均）
+  gearQHtml(g) {
+    const q = gearRollQ(g);
+    return q === null
+      ? ''
+      : `<span class="gQ qb${rollBand(q)}" title="詞條品質：隨機詞條在範圍裡的平均位置">詞條 ${pctOf(q)}</span>`;
+  },
+  // 主要數值：品級的格數與最高值
+  gearMainHtml(g) {
+    const main = mainText(g.id, g.q);
+    if (!main) return '';
+    const pips = [1, 2, 3, 4].map((i) => (i <= g.q ? '●' : '○')).join('');
+    const top =
+      g.q >= 4
+        ? '最高'
+        : g.q === 3
+          ? `傳說 ${mainText(g.id, 4).replace(/^.* /, '')}（只有 Boss 掉）`
+          : `升階最高到特製 ${mainText(g.id, 3).replace(/^.* /, '')}`;
+    return `<div class="gMain">${escHtml(main)}<span class="gPips" style="color:${GRADES[g.q].c}">${pips}</span><small>${escHtml(top)}</small></div>`;
+  },
   // 這一件的品級、主要數值、詞條（小卡片、背包頁共用）
   gearLinesHtml(g) {
     if (!g || (!g.q && !g.ax.length)) return '';
-    const main = mainText(g.id, g.q);
     const ax = g.ax
       .map((a) => {
         const na = this.gearAxNa(g, a);
-        return `<div class="gAx${a[2] ? ' star' : ''}${na ? ' na' : ''}"${na ? ` title="${escHtml(na)}"` : ''}>◆ ${escHtml(axText(a))}${na ? `<small>（${escHtml(na)}）</small>` : ''}</div>`;
+        const D = axDef(a[0]);
+        const cost = D && D.cost ? '<small class="gCost">代價固定</small>' : '';
+        return `<div class="gAx${a[2] ? ' star' : ''}${na ? ' na' : ''}"${na ? ` title="${escHtml(na)}"` : ''}><span class="gAxT">◆ ${escHtml(axText(a))}${cost}</span>${this.gearRollHtml(a)}${na ? `<small class="gNa">（${escHtml(na)}）</small>` : ''}</div>`;
       })
       .join('');
-    return `<div class="gLines">${main ? `<div class="gMain">${escHtml(main)}</div>` : ''}${ax}${this.gearFixedHtml(g)}</div>`;
+    return `<div class="gLines">${this.gearMainHtml(g)}${ax}${this.gearFixedHtml(g)}</div>`;
   },
-  // 特製／傳說的固定詞條（data/gear-excl.js）：紫色專屬、金色特殊
+  // 特製／傳說的固定詞條（data/gear-excl.js）：紫色專屬、金色特殊；特製另外標出傳說時的版本
   gearFixedHtml(g) {
-    return fixedLines(g.id, g.q)
-      .map(
-        (x) =>
-          `<div class="gFx${x.k === 'g' ? ' gold' : ''}">${x.k === 'g' ? '★' : '◇'} ${escHtml(x.n)}：${escHtml(x.txt)}</div>`,
-      )
+    const L = fixedLines(g.id, g.q);
+    const gold = g.q === 3 ? fixedLines(g.id, 4) : [];
+    return L.map((x) => {
+      const up =
+        g.q === 3 && x.k === 'p' && gold[0] && gold[0].txt !== x.txt
+          ? `<small>傳說 ×1.5：${escHtml(gold[0].txt)}</small>`
+          : g.q === 4 && x.k === 'p'
+            ? '<small>×1.5</small>'
+            : '';
+      return `<div class="gFx${x.k === 'g' ? ' gold' : ''}">${x.k === 'g' ? '★' : '◇'} ${escHtml(x.n)}：${escHtml(x.txt)}<small>固定</small>${up}</div>`;
+    })
+      .concat(gold[1] ? [`<div class="gHint">傳說另有特殊詞條「${escHtml(gold[1].n)}」</div>`] : [])
       .join('');
   },
   gearTag(g) {
@@ -135,7 +177,9 @@ Object.assign(Game.prototype, {
   // 這個型號的裝備清單（小卡片）：點一下換上、游標停留預覽量表
   gearListHtml(id) {
     const S = this.save;
-    const list = S.inv.filter((g) => g.id === id).sort((a, b) => b.q - a.q);
+    const list = S.inv
+      .filter((g) => g.id === id)
+      .sort((a, b) => b.q - a.q || (gearRollQ(b) || 0) - (gearRollQ(a) || 0));
     const sel0 = this.gearTipPick(id);
     // 升階與重骰（gear-forge.js）：看的那一件；標準版可以升階成改良
     const forge = `<div class="fgTip">${sel0 ? this.forgeBtnsHtml(sel0) : this.forgeStdHtml(id)}</div>`;
@@ -154,8 +198,19 @@ Object.assign(Game.prototype, {
       const on = cur !== undefined && (cur ? cur.u : null) === (g ? g.u : null);
       const other = g && used.has(g.u);
       const tl = tuneLevels(g ? g.t : (S.tune || {})[id]);
-      const ax = g ? g.ax.map((a) => axText(a)).join('・') : '詞條無';
-      return `<button class="gIl${on ? ' on' : ''}${(sel ? sel.u : null) === (g ? g.u : null) ? ' sel' : ''}" data-u="${g ? g.u : ''}" style="--gq:${GRADES[q].c}"${other ? ' disabled title="裝在另一個槽位"' : ''}><b>${GRADES[q].n}</b><span>${escHtml(ax)}</span>${tl ? `<em>調+${tl}</em>` : ''}${on ? '<em>裝備中</em>' : other ? '<em>另一手</em>' : ''}${g && g.nw ? '<em class="nw">新</em>' : ''}</button>`;
+      // 每條：名稱＋位置的色點；整件的詞條品質
+      const ax = g
+        ? g.ax
+            .map((a) => {
+              const R = axRoll(a),
+                D = axDef(a[0]);
+              return R && D
+                ? `<i class="qd qb${rollBand(R.p)}"></i>${a[2] ? '★' : ''}${escHtml(D.n)} ${pctOf(R.p)}`
+                : '';
+            })
+            .join('・')
+        : '詞條無';
+      return `<button class="gIl${on ? ' on' : ''}${(sel ? sel.u : null) === (g ? g.u : null) ? ' sel' : ''}" data-u="${g ? g.u : ''}" style="--gq:${GRADES[q].c}"${other ? ' disabled title="裝在另一個槽位"' : ''}><b>${GRADES[q].n}</b>${g ? this.gearQHtml(g) : ''}<span>${ax}</span>${tl ? `<em>調+${tl}</em>` : ''}${on ? '<em>裝備中</em>' : other ? '<em>另一手</em>' : ''}${g && g.nw ? '<em class="nw">新</em>' : ''}</button>`;
     };
     return `<div class="gIList"><div class="dim">這個型號的裝備（${list.length} 件＋標準版）：點一下換上</div>${list.map(row).join('')}${row(null)}${forge}</div>`;
   },
@@ -197,13 +252,20 @@ Object.assign(Game.prototype, {
     const box = document.getElementById('gInv');
     if (!box) return;
     const S = this.gearEnsure();
-    const f = (this.invF = this.invF || { q: -1, c: '' });
+    const f = (this.invF = this.invF || { q: -1, c: '', s: 'q' });
+    const ord = new Map(S.inv.map((g, i) => [g.u, i]));
+    const rq = (g) => gearRollQ(g) ?? -1;
+    const SORTS = {
+      q: (a, b) => b.q - a.q || rq(b) - rq(a) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+      r: (a, b) => rq(b) - rq(a) || b.q - a.q,
+      t: (a, b) => ord.get(b.u) - ord.get(a.u),
+    };
     const pick = this.gearNow();
     const eqU = new Map();
     for (const k in pick) if (pick[k]) eqU.set(pick[k].u, k);
     const list = S.inv
       .filter((g) => (f.q < 0 || g.q === f.q) && (!f.c || catGroup(GEAR_CAT.get(g.id)) === f.c))
-      .sort((a, b) => b.q - a.q || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+      .sort(SORTS[f.s] || SORTS.q);
     const qBtn = [[-1, '全部'], ...GRADES.map((G, i) => [i, G.n])]
       .map(
         ([q, n]) =>
@@ -213,6 +275,14 @@ Object.assign(Game.prototype, {
     const cBtn = CAT_F.map(
       ([c, n]) => `<button class="invC${f.c === c ? ' on' : ''}" data-c="${c}">${n}</button>`,
     ).join('');
+    const sBtn = [
+      ['q', '依品級'],
+      ['r', '依詞條品質'],
+      ['t', '新取得在前'],
+    ]
+      .map(([k, n]) => `<button class="invS${f.s === k ? ' on' : ''}" data-s="${k}">${n}</button>`)
+      .join('');
+    const rangeOn = this.ctrl.gearRange !== 'off';
     const SN = Object.fromEntries(SLOTS.map(([k, n]) => [k, n]));
     const rows = list
       .map((g) => {
@@ -220,17 +290,31 @@ Object.assign(Game.prototype, {
         const slot = eqU.get(g.u);
         const tl = tuneLevels(g.t);
         const forge = this.forgeBtnsHtml ? this.forgeBtnsHtml(g) : '';
-        return `<div class="invR" style="--gq:${GRADES[g.q].c}"><div class="invN">${this.gearTag(g)}<b>${escHtml(p.name)}</b><span class="dim">${CAT_N[GEAR_CAT.get(g.id)]}</span>${slot ? `<em class="invEq">裝備中：${SN[slot]}</em>` : ''}${tl ? `<em class="invTu">調校 +${tl}</em>` : ''}${g.nw ? '<em class="nw">新</em>' : ''}</div>${this.gearLinesHtml(g)}<div class="invA"><button class="invEqB" data-u="${g.u}"${slot ? ' disabled' : ''}>裝備</button>${forge}<button class="invLk" data-u="${g.u}">${g.lk ? '解除鎖定' : '鎖定'}</button><button class="invDs" data-u="${g.u}"${slot || g.lk ? ' disabled' : ''}>分解（${escHtml(matTxt(DISMANTLE[g.q]))}${tl ? '＋退還調校的一半' : ''}）</button></div></div>`;
+        return `<div class="invR" style="--gq:${GRADES[g.q].c}"><div class="invN">${this.gearTag(g)}<b>${escHtml(p.name)}</b>${this.gearQHtml(g)}<span class="dim">${CAT_N[GEAR_CAT.get(g.id)]}</span>${slot ? `<em class="invEq">裝備中：${SN[slot]}</em>` : ''}${tl ? `<em class="invTu">調校 +${tl}</em>` : ''}${g.nw ? '<em class="nw">新</em>' : ''}</div>${this.gearLinesHtml(g)}<div class="invA"><button class="invEqB" data-u="${g.u}"${slot ? ' disabled' : ''}>裝備</button>${forge}<button class="invLk" data-u="${g.u}">${g.lk ? '解除鎖定' : '鎖定'}</button><button class="invDs" data-u="${g.u}"${slot || g.lk ? ' disabled' : ''}>分解（${escHtml(matTxt(DISMANTLE[g.q]))}${tl ? '＋退還調校的一半' : ''}）</button></div></div>`;
       })
       .join('');
     const bulk = [1, 2]
       .map((q) => `<button class="invBulk" data-q="${q}">分解全部「${GRADES[q].n}」</button>`)
       .join('');
-    box.innerHTML = `<div class="gPageH"><h2>背包</h2><span class="dim">${this.invCount()}／${INV_MAX} 件（裝備中的不算）</span></div><div class="invMats">${this.lootMatsHtml()}</div><div class="invF" data-padtabs=".invQ">${qBtn}</div><div class="invF">${cBtn}</div><div class="invBulkRow">${bulk}<span class="dim">鎖定、裝備中的不分解</span></div><div class="invList">${rows || '<p class="dim">背包是空的：擊破敵人、開補給箱、委託的報酬都會掉裝備。商店只賣標準版。</p>'}</div>`;
+    box.innerHTML = `<div class="gPageH"><h2>背包</h2><span class="dim">${this.invCount()}／${INV_MAX} 件（裝備中的不算）</span></div><div class="invMats">${this.lootMatsHtml()}</div><div class="invF" data-padtabs=".invQ">${qBtn}</div><div class="invF">${cBtn}</div><div class="invF invSort" data-padtabs=".invS">${sBtn}<button class="invRg${rangeOn ? ' on' : ''}" title="詞條後面顯示範圍（範圍不看品級；★＝極品，範圍 ×1.5）">範圍：${rangeOn ? '顯示' : '不顯示'}</button></div><div class="invNote dim">百分比＝詞條在範圍裡的位置（100%＝最高）。範圍不看品級：品級決定條數與種類，紫、金的極品★範圍 ×1.5。</div><div class="invBulkRow">${bulk}<span class="dim">鎖定、裝備中的不分解</span></div><div class="invList">${rows || '<p class="dim">背包是空的：擊破敵人、開補給箱、委託的報酬都會掉裝備。商店只賣標準版。</p>'}</div>`;
     for (const b of box.querySelectorAll('.invQ'))
       b.onclick = () => {
         SFX.ui();
         f.q = Number(b.dataset.q);
+        this.invUi();
+      };
+    for (const b of box.querySelectorAll('.invS'))
+      b.onclick = () => {
+        SFX.ui();
+        f.s = b.dataset.s;
+        this.invUi();
+      };
+    const rg = box.querySelector('.invRg');
+    if (rg)
+      rg.onclick = () => {
+        SFX.ui();
+        this.ctrl.gearRange = rangeOn ? 'off' : 'on';
+        this.saveKeys();
         this.invUi();
       };
     for (const b of box.querySelectorAll('.invC'))

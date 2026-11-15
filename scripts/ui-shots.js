@@ -17,6 +17,34 @@ const show = (id) => async (page) => {
   await page.evaluate((id) => window.__game.showScreen(id), id);
 };
 
+// 背包放幾件固定的裝備（各品級、極品）再開機甲庫
+async function gearSeed(page) {
+  await page.evaluate(() => {
+    const g = window.__game;
+    const G = window.__gear;
+    const S = g.save;
+    g.ctrl.hangarFx = 'off';
+    S.coam = 500000;
+    S.mats = { alloy: 50, circuit: 50, core: 20, shard: 5 };
+    let sd = 7;
+    const rng = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+    const rid = S.asm.rarm;
+    S.inv = [];
+    S.eq = {};
+    for (const [id, q] of [
+      [rid, 1],
+      [rid, 2],
+      [rid, 3],
+      [rid, 4],
+      [S.asm.core, 2],
+      [S.asm.core, 3],
+    ])
+      S.inv.push(G.rollGear(id, q, rng));
+    g.openGarage();
+  });
+  await wait(2500);
+}
+
 // 每個畫面：怎麼打開（page 已在標題畫面）
 const SHOTS = {
   title: async () => {},
@@ -84,6 +112,31 @@ const SHOTS = {
   'garage-set': async (page) => {
     await SHOTS.garage(page);
     await page.evaluate(() => document.querySelector('#gTabs [data-tab="set"]')?.click());
+  },
+  // 零件品級（docs/gear-rarity-design.md 第 11 節）：背包頁、小卡片的裝備清單、重骰視窗
+  'garage-inv': async (page) => {
+    await gearSeed(page);
+    await page.evaluate(() => window.__game.garageTab('inv'));
+  },
+  'garage-gear': async (page) => {
+    await gearSeed(page);
+    await page.evaluate(() => {
+      const g = window.__game;
+      g.garageTab('eq');
+      g.garageSlot = 'rarm';
+      g.gFlyOpen = true;
+      g.renderGarage();
+    });
+  },
+  'garage-forge': async (page) => {
+    await gearSeed(page);
+    await page.evaluate(() => {
+      const g = window.__game;
+      const it = g.save.inv.find((x) => x.q === 3);
+      g.garageTab('inv');
+      g.forgeRerollOpen(it.u);
+      document.querySelector('#forgeBox .fgLine').click();
+    });
   },
   // 從作戰室進來的機甲庫（主線整備）：火控與消耗品的零件格子（小卡片比較高）
   'garage-hub-fcs': async (page) => {

@@ -3,7 +3,7 @@
 // en＝敵人可用（false＝只有玩家的系統觸發得到，敵人生成時不抽、裝了也不生效）、cost＝代價詞條、
 // sc：'w' 只對這把武器、'g' 整台；txt(v) 說明；
 // 固定的效果：wfx(v)＝這把武器的增量（pilotWeaponDef）、mfx(v)＝整台的加成表增量、pfx(v)＝零件自己的（火控的距離輔助）、
-// efx(v)＝實體的加成表增量（修復套件）。觸發型的判定在 entities/mech-gear.js（房主／單機）。
+// efx(v)＝實體的加成表增量（修復套件）；u＝範圍的單位（沒有＝百分比、's' 秒、'a' 絕對值；int 是整數）。觸發型的判定在 entities/mech-gear.js（房主／單機）。
 
 const P = (v) => `${Math.round(v * 1000) / 10}%`;
 const ammoW = (p) => p.type !== 'laser' && p.type !== 'empbeam' && !(p.enShot > 0) && p.mag < 99;
@@ -116,6 +116,7 @@ export const ADV = {
   aSup: {
     n: '壓制',
     r: [1, 2],
+    u: 's',
     kinds: RANGED,
     en: true,
     sc: 'w',
@@ -551,6 +552,7 @@ export const ADV = {
   },
   cSnipe: {
     n: '狙擊模式',
+    u: 'a',
     r: [0.15, 0.25],
     kinds: ['fcs'],
     en: true,
