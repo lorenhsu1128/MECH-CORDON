@@ -9,7 +9,8 @@
 // 每一格的畫面只由「鏡頭的時間」決定（暫停、跳時間一致）；立繪自己的眨眼與呼吸用 dt。
 import { clamp, lerp } from '../core/math.js';
 import { PERSONA, PERSONA_DEF } from '../data/cine/persona.js';
-import { SPEAKERS } from '../data/story.js';
+import { FACTIONS, SPEAKERS } from '../data/story.js';
+import { BC, FB, FD, slantTag } from '../render/cine-brand.js';
 import { drawArt, dotPattern } from '../render/cine-art.js';
 import { Portrait, Portraits } from '../render/portraits.js';
 import { Game } from './game.js';
@@ -71,6 +72,30 @@ function wrap(x, s, maxW) {
     } else line = t;
   }
   if (line) out.push(line);
+  return out;
+}
+// 有強調詞（**…**）的換行：一般字 fB、強調字 fE 分開量寬度；回傳 [{ runs: [{ s, em }], w }]
+function wrapEm(x, s, maxW, fB, fE) {
+  const toks = [];
+  s.split('**').forEach((p, i) => {
+    for (const t of p.match(/[A-Za-z0-9'’\-.,!?]+|\s+|./gu) || []) toks.push({ s: t, em: i % 2 === 1 });
+  });
+  const out = [];
+  let cur = { runs: [], w: 0 };
+  for (const t of toks) {
+    x.font = t.em ? fE : fB;
+    const w = x.measureText(t.s).width;
+    if (cur.w + w > maxW && cur.runs.length) {
+      out.push(cur);
+      cur = { runs: [], w: 0 };
+      if (!t.s.trim()) continue;
+    }
+    const last = cur.runs[cur.runs.length - 1];
+    if (last && last.em === t.em) last.s += t.s;
+    else cur.runs.push({ s: t.s, em: t.em });
+    cur.w += w;
+  }
+  if (cur.runs.length) out.push(cur);
   return out;
 }
 
@@ -178,8 +203,9 @@ Object.assign(Game.prototype, {
     if (this.cine) this.cine.s2 = null;
   },
   // 字幕的說話者在舞台上：改成氣泡（cineSub 呼叫；回傳 true＝字幕條不顯示）
-  cine2dBubble(who, text) {
+  cine2dBubble(who, marked, radio) {
     const c = this.cine;
+    const text = marked.replace(/\*\*/g, '');
     if (!c || !who) return false;
     const S = c.def.shots[c.shot];
     if (
@@ -188,7 +214,7 @@ Object.assign(Game.prototype, {
       !this.cine2dFind(S.st.els, (e) => e.k === 'actor' && (e.sp || e.who) === who && !e.noBub)
     )
       return false;
-    c.bub = { who, text, t0: c.t, tok: c.subTok + 1 };
+    c.bub = { who, text, marked, radio: !!radio, t0: c.t, tok: c.subTok + 1 };
     return true;
   },
   cine2dFind(els, f) {
@@ -722,91 +748,188 @@ Object.assign(Game.prototype, {
       B.who === 'echo'
         ? 'ECHO'
         : (this.subName ? this.subName(B.who, S.name || '') : S.name || '').replace(/（.*）/, '');
+    // 氣泡的種類：全像的演員＝holo、無線電＝radio、劇本標 think＝內心話、「！」結尾＝喊叫
+    const kind =
+      spec && spec.holo
+        ? 'holo'
+        : B.radio
+          ? 'radio'
+          : spec && spec.think
+            ? 'think'
+            : /[！!]$/.test(B.text)
+              ? 'shout'
+              : 'normal';
     this.cine2dBalloon(x, {
       at,
       tail,
-      text,
+      text: text === B.text ? B.marked || text : text,
       name,
+      en: S.faction && FACTIONS[S.faction] ? FACTIONS[S.faction].short : '',
       color: S.color,
+      kind,
+      holo: spec && spec.holo,
       t: c.t - B.t0,
-      w: (spec && spec.bubW) || 460,
+      w: (spec && spec.bubW) || 480,
     });
   },
-  // 氣泡（白底黑框、往說話的人拉一條尾巴、名字的小標籤）；字一個一個出來
+  // 氣泡（文字風格，docs/cinematics.md）：粗黑框、往右下的硬陰影、往說話的人拉一條尾巴、說話者顏色的斜切名牌；
+  // 種類 kind：normal 圓角／shout 鋸齒（喊叫）／radio 切角（無線電）／holo 全像（青色框＋掃描線）／think 虛線（內心話）。
+  // 字一個一個出來；**…** 的強調詞用標題字、紅色
   cine2dBalloon(x, o) {
     const fs = o.fs || 30;
+    const kind = o.kind || 'normal';
+    const holo = kind === 'holo';
+    const fB = `700 ${fs}px ${FB}`,
+      fE = `900 ${fs * 1.06}px ${FD}`;
     x.save();
-    x.font = `700 ${fs}px "Noto Sans TC", sans-serif`;
-    const lines = wrap(x, o.text, o.w - 48);
-    const lh = fs * 1.42;
-    const bw = Math.min(o.w, Math.max(...lines.map((l) => x.measureText(l).width)) + 56),
-      bh = lines.length * lh + 34;
+    const lines = wrapEm(x, o.text, o.w - 60, fB, fE);
+    const lh = fs * 1.45;
+    const bw = Math.min(o.w, Math.max(...lines.map((l) => l.w)) + 64),
+      bh = lines.length * lh + 40;
     let [cx, cy] = o.at;
-    cx = clamp(cx, bw / 2 + 30, VW - bw / 2 - 30);
-    cy = clamp(cy, bh / 2 + 40, VH - bh / 2 - 40);
+    const pad = kind === 'shout' ? 60 : 34;
+    cx = clamp(cx, bw / 2 + pad, VW - bw / 2 - pad);
+    cy = clamp(cy, bh / 2 + pad + 10, VH - bh / 2 - pad);
     const k = clamp(o.t / 0.16, 0, 1);
-    const s = 0.7 + 0.3 * easeOut(k) + Math.sin(k * Math.PI) * 0.05;
+    const s = 0.7 + 0.3 * easeOut(k) + Math.sin(k * Math.PI) * (kind === 'shout' ? 0.1 : 0.05);
     x.translate(cx, cy);
     x.scale(s, s);
-    x.rotate(o.rot ?? -0.012);
+    x.rotate(o.rot ?? (kind === 'shout' ? -0.03 : -0.012));
     x.globalAlpha *= k;
     const L = -bw / 2,
       T = -bh / 2;
-    // 尾巴
+    // 框的外形
+    const shape = () => {
+      x.beginPath();
+      if (kind === 'shout') {
+        const n = 26,
+          rx = bw / 2 + 30,
+          ry = bh / 2 + 26;
+        for (let i = 0; i < n; i++) {
+          const a = (i / n) * Math.PI * 2;
+          const r = i % 2 ? 0.84 : 1 + ((i * 7) % 5) * 0.03;
+          x[i ? 'lineTo' : 'moveTo'](Math.cos(a) * rx * r, Math.sin(a) * ry * r);
+        }
+        x.closePath();
+      } else if (kind === 'radio' || holo) {
+        const cc = 18;
+        x.moveTo(L + cc, T);
+        x.lineTo(-L - cc, T);
+        x.lineTo(-L, T + cc);
+        x.lineTo(-L, -T - cc);
+        x.lineTo(-L - cc, -T);
+        x.lineTo(L + cc, -T);
+        x.lineTo(L, -T - cc);
+        x.lineTo(L, T + cc);
+        x.closePath();
+      } else x.roundRect(L, T, bw, bh, kind === 'think' ? bh / 2 : 26);
+    };
+    // 尾巴（內心話是兩顆小圓）
+    let tailPts = null;
     if (o.tail) {
       const tx = (o.tail[0] - cx) / s,
         ty = (o.tail[1] - cy) / s;
-      const bx0 = clamp(tx * 0.3, L + 40, -L - 40);
-      x.beginPath();
-      x.moveTo(bx0 - 22, ty > 0 ? -T - 4 : T + 4);
-      x.lineTo(tx * 0.72, ty * 0.72);
-      x.lineTo(bx0 + 22, ty > 0 ? -T - 4 : T + 4);
-      x.closePath();
-      x.fillStyle = '#fff';
-      x.strokeStyle = '#0a0a0a';
-      x.lineWidth = 5;
-      x.stroke();
-      x.fill();
+      const bx0 = clamp(tx * 0.3, L + 44, -L - 44);
+      const edge = ty > 0 ? -T - 4 : T + 4;
+      tailPts = { tx: tx * 0.72, ty: ty * 0.72, bx0, edge };
     }
-    x.beginPath();
-    x.roundRect(L, T, bw, bh, 18);
-    x.fillStyle = '#fff';
-    x.strokeStyle = '#0a0a0a';
-    x.lineWidth = 5;
-    x.stroke();
+    const tailPath = () => {
+      if (!tailPts || kind === 'think') return;
+      const { tx, ty, bx0, edge } = tailPts;
+      x.moveTo(bx0 - 24, edge);
+      x.lineTo(tx, ty);
+      x.lineTo(bx0 + 24, edge);
+      x.closePath();
+    };
+    const fill = holo ? 'rgba(8,26,40,0.92)' : '#fff';
+    const line = holo ? o.holo || BC.cyan : BC.ink;
+    // 硬陰影
+    x.save();
+    x.translate(8, 8);
+    x.fillStyle = holo ? 'rgba(0,0,0,0.45)' : BC.ink;
+    shape();
+    tailPath();
     x.fill();
-    // 名字的標籤（說話者的顏色）
-    if (o.name) {
-      x.font = `800 ${fs * 0.62}px "Rubik", "Noto Sans TC", sans-serif`;
-      const nw = x.measureText(o.name).width + 26;
-      x.fillStyle = o.color || '#222';
+    x.restore();
+    // 框＋尾巴
+    x.lineJoin = 'round';
+    x.strokeStyle = line;
+    x.lineWidth = 6;
+    if (kind === 'think') x.setLineDash([14, 9]);
+    shape();
+    x.stroke();
+    x.setLineDash([]);
+    if (tailPts && kind !== 'think') {
       x.beginPath();
-      x.moveTo(L + 16, T - 16);
-      x.lineTo(L + 16 + nw + 10, T - 16);
-      x.lineTo(L + 16 + nw, T + 12);
-      x.lineTo(L + 6, T + 12);
-      x.closePath();
+      tailPath();
+      x.stroke();
+      x.fillStyle = fill;
       x.fill();
-      x.fillStyle = '#0a0a0a';
-      x.textBaseline = 'middle';
-      x.fillText(o.name, L + 26, T - 2);
     }
+    shape();
+    x.fillStyle = fill;
+    x.fill();
+    if (tailPts && kind === 'think') {
+      const { tx, ty, bx0, edge } = tailPts;
+      for (const [u, r] of [
+        [0.35, 12],
+        [0.7, 7],
+      ]) {
+        x.beginPath();
+        x.arc(lerp(bx0, tx, u), lerp(edge, ty, u), r, 0, Math.PI * 2);
+        x.fill();
+        x.stroke();
+      }
+    }
+    if (holo) {
+      x.save();
+      shape();
+      x.clip();
+      x.fillStyle = 'rgba(127,200,255,0.07)';
+      for (let y = T; y < -T; y += 4) x.fillRect(L, y, bw, 1.5);
+      x.restore();
+    }
+    // 名牌（壓在框的左上角）
+    if (o.name)
+      slantTag(x, o.name, L + 18, T - 2, {
+        size: fs * 0.64,
+        bg: o.color || BC.acc,
+        sub: o.en || '',
+      });
     // 內文：逐字
-    x.font = `700 ${fs}px "Noto Sans TC", sans-serif`;
-    x.fillStyle = '#111';
     x.textBaseline = 'top';
+    x.textAlign = 'left';
     let n = Math.floor(o.t * (o.cps || 26));
+    const ink = holo ? '#e6f6ff' : '#111';
     lines.forEach((l, i) => {
-      const ch = [...l];
-      const shown = ch.slice(0, Math.max(0, n)).join('');
-      n -= ch.length;
-      x.fillText(shown, L + 28, T + 18 + i * lh);
+      let px = L + 30;
+      const py = T + 22 + i * lh;
+      for (const r of l.runs) {
+        if (n <= 0) break;
+        const ch = [...r.s];
+        const part = ch.slice(0, n).join('');
+        n -= ch.length;
+        x.font = r.em ? fE : fB;
+        if (r.em) {
+          x.lineJoin = 'round';
+          x.strokeStyle = BC.ink;
+          x.lineWidth = 4;
+          x.strokeText(part, px, py - fs * 0.04);
+          x.fillStyle = holo ? BC.acc : BC.red;
+          x.fillText(part, px, py - fs * 0.04);
+        } else {
+          x.fillStyle = ink;
+          x.fillText(part, px, py);
+        }
+        px += x.measureText(r.s).width;
+      }
     });
     x.restore();
   },
   // 沒有語音的氣泡：{ k: 'bubble', s 文字, at, tail, name, color, t0, t1, w }
   cine2d_bubble(x, e, lt) {
-    this.cine2dBalloon(x, { ...e, text: e.s, t: lt - (e.t0 || 0) });
+    const kind = e.kind || (e.think ? 'think' : /[！!]$/.test(e.s.replace(/\*\*/g, '')) ? 'shout' : 'normal');
+    this.cine2dBalloon(x, { ...e, kind, text: e.s, t: lt - (e.t0 || 0) });
   },
   // ---------- 字 ----------
   // 狀聲詞與大字：{ s, at, size, color, stroke 描邊顏色, sw 描邊寬, rot, font 'sfx'|'title'|'mono', al, in, sub 小字 }

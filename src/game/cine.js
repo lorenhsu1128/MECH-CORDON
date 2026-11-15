@@ -50,6 +50,18 @@ const ROOMS = {
   core: [buildOrbitCore, tickOrbitCore],
 };
 const SKIP_HOLD = 0.8; // 長按幾秒略過
+// 字幕名牌的英文小字：陣營的簡稱（CASTRON…），沒有陣營時取名字裡的英文（顯示的名字已經是英文就不加）
+function speakerEn(who, S, shown) {
+  if (S.faction && FACTIONS[S.faction]) return FACTIONS[S.faction].short;
+  const m = (S.name || '').match(/[A-Z][A-Z0-9-]{2,}/);
+  return m && !shown.includes(m[0]) ? m[0] : '';
+}
+// **…** → <em>（其他照常跳脫）
+const markEm = (s) =>
+  s
+    .split('**')
+    .map((p, i) => (i % 2 ? `<em>${escHtml(p)}</em>` : escHtml(p)))
+    .join('');
 if (/[?&]test\b/.test(location.search)) window.__CINES = CINES; // 測試：放臨時的劇本
 
 Object.assign(Game.prototype, {
@@ -1350,6 +1362,9 @@ Object.assign(Game.prototype, {
       el.classList.remove('on');
       return;
     }
+    // 強調詞（**…**）：字幕條與氣泡畫成強調色，語音、表情、翻譯一律用去掉標記的句子
+    const marked = text;
+    text = text.replace(/\*\*/g, '');
     const S = who ? SPEAKERS[who] : null;
     const name = S
       ? who === 'echo'
@@ -1363,10 +1378,17 @@ Object.assign(Game.prototype, {
     const sub = this.subLang ? this.subLang() : 'zh';
     const shown = voiced && this.subText ? this.subText(text, who) : text;
     const nm = voiced && this.subName ? this.subName(who, name) : name;
-    el.innerHTML = `${nm ? `<b style="color:${S.color}">${escHtml(nm)}</b>` : ''}<span>${escHtml(shown)}</span>`;
+    // 文字風格（docs/cinematics.md）：說話者顏色的斜切名牌＋黑膠囊；名牌的小字是陣營的英文簡稱
+    const en = S ? speakerEn(who, S, nm) : '';
+    const body = shown === text ? markEm(marked) : escHtml(shown);
+    el.innerHTML =
+      (nm
+        ? `<b style="--c:${S.color}"><i>${escHtml(nm)}${en ? `<small>${escHtml(en)}</small>` : ''}</i></b>`
+        : '') + `<span>${body}</span>`;
     el.classList.toggle('radio', !!(voiced && radio));
+    el.classList.toggle('narr', !nm);
     // 說話的人在 2D 舞台上：字幕改成他旁邊的氣泡（game/cine-2d.js），字幕條不顯示
-    const bub = this.cine2dBubble(who, text);
+    const bub = this.cine2dBubble(who, marked, !!radio);
     if (bub) c.bub.hide = voiced && sub === 'off';
     el.classList.toggle('on', !bub && !(voiced && sub === 'off'));
     if (who) {

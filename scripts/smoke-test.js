@@ -22589,7 +22589,8 @@ async function testCine(browser, base) {
     state: window.__game.state,
     // 文字風格（render/cine-brand.js）：內嵌的子集字型已註冊並載入
     font:
-      document.fonts.check('900 40px "MC Display"', '轟') && document.fonts.check('900 40px "MC Latin"', 'CAUTION'),
+      document.fonts.check('900 40px "MC Display"', '轟') &&
+      document.fonts.check('900 40px "MC Latin"', 'CAUTION'),
   }));
   check(
     mus.lib && mus.n >= 4 && mus.state === 'cine',
