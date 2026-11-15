@@ -944,7 +944,37 @@ const COLORS = {
   car: [0x8a2a2a, 0x2a4a7a, 0xc8c8c8, 0x2a2a2a, 0x6a6a5a],
   bus: [0xd8b030, 0x3a6a8a, 0xe8e8e8],
 };
+// 快取：同一種車（key＋顏色變化）建一次，之後複製（共用幾何與材質，只複製節點）；車輪、零件依節點的路徑在複本裡找回來。
+// 過場換鏡時加上的人與車很多，每次重新建模與合併會卡一下（docs/cine-redesign-design.md 第十一節第 7 期）
+const VEH_CACHE = new Map();
+const pathOf = (root, o) => {
+  const p = [];
+  for (let n = o; n && n !== root; n = n.parent) p.unshift(n.parent.children.indexOf(n));
+  return p;
+};
+const atPath = (root, p) => p.reduce((n, i) => n && n.children[i], root);
 export function buildCineVeh(key, o = {}) {
+  const ck = `${key}|${o.v || 0}|${o.color || ''}|${o.pal || ''}`;
+  let c = VEH_CACHE.get(ck);
+  if (!c) {
+    const r = buildCineVeh0(key, o);
+    if (!r) return null;
+    c = {
+      r,
+      wheels: r.wheels.map((w) => ({ p: pathOf(r.group, w.o), r: w.r })),
+      parts: Object.entries(r.parts).map(([k, n]) => [k, pathOf(r.group, n)]),
+    };
+    VEH_CACHE.set(ck, c);
+  }
+  const group = c.r.group.clone();
+  return {
+    group,
+    wheels: c.wheels.map((w) => ({ o: atPath(group, w.p), r: w.r })).filter((w) => w.o),
+    parts: Object.fromEntries(c.parts.map(([k, p]) => [k, atPath(group, p)])),
+    len: c.r.len,
+  };
+}
+function buildCineVeh0(key, o = {}) {
   const v = o.v || 0; // 變化（顏色等，劇本給，不用亂數）
   let r;
   if (key === 'forklift') r = buildForklift();
