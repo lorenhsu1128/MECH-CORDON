@@ -147,7 +147,7 @@ Object.assign(Game.prototype, {
     const p = gearPart(g.id);
     const cost = rerollCost(g.rr && g.rr.n);
     let body = '';
-    const line = (a) => `<span class="fgT">${escHtml(axText(a))}</span>${this.gearRollHtml(a)}`;
+    const line = (a, ref) => `<span class="fgT">${escHtml(axText(a))}</span>${this.gearRollHtml(a, ref)}`;
     if (c.step === 'pick') {
       body = `<div class="dim">選一條重骰。選定之後，這一件只能重骰同一條。</div>${g.ax
         .map((a) => `<button class="fgLine" data-k="${a[0]}">${line(a)}</button>`)
@@ -172,18 +172,19 @@ Object.assign(Game.prototype, {
           if (Math.abs(d) < 1e-6) return '<em class="fgD">相同</em>';
           return `<em class="fgD ${d > 0 ? 'up' : 'dn'}">${d > 0 ? '▲' : '▼'} ${escHtml(axFmt(a[0], Math.abs(d)))}</em>`;
         }
-        const d = Math.round((axRoll(a).p - axRoll(cur).p) * 100);
-        return `<em class="fgD ${d > 0 ? 'up' : d < 0 ? 'dn' : ''}">位置 ${d > 0 ? '▲' : d < 0 ? '▼' : ''}${Math.abs(d)}%</em>`;
+        // 不同種：位置條上的細線是原本那條的位置
+        const d = axRoll(a).p - axRoll(cur).p;
+        return `<em class="fgD ${d > 0.02 ? 'up' : d < -0.02 ? 'dn' : ''}">${d > 0.02 ? '▲ 位置較高' : d < -0.02 ? '▼ 位置較低' : '位置相近'}</em>`;
       };
       // 這一條可能抽到的詞條與範圍
       const pool = axPool(cat, p, g.q >= 3).filter((k) => !except.includes(k));
       const poolTxt = pool.map((k) => `${axDef(k).n} ${axRangeText([k, 0])}`).join('、');
-      body = `<div class="dim">重骰「${escHtml(cur ? axText(cur) : c.k)}」：選一個（花費 ${escHtml(costTxt(cost))}，選了才扣）</div>${
+      body = `<div class="dim">重骰「${escHtml(cur ? axText(cur) : c.k)}」：選一個（花費 ${escHtml(costTxt(cost))}，選了才扣；候選位置條上的虛線＝原本那條）</div>${
         cur ? `<div class="fgCur"><span class="dim">原本</span>${line(cur)}</div>` : ''
       }${c.opts
         .map(
           (a, i) =>
-            `<button class="fgOpt" data-i="${i}"${this.tuneAfford(cost) ? '' : ' disabled'}>${line(a)}${cmp(a)}</button>`,
+            `<button class="fgOpt" data-i="${i}"${this.tuneAfford(cost) ? '' : ' disabled'}>${line(a, cur ? axRoll(cur).p : undefined)}${cmp(a)}</button>`,
         )
         .join(
           '',

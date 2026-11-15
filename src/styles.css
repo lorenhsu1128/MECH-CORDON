@@ -8140,41 +8140,94 @@ body.vpad #subBar {
   font-size: 10px;
 }
 .gRoll {
-  --qc: #7d8a96;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+  margin-left: auto;
   white-space: nowrap;
-  font-size: 10.5px;
-  color: var(--qc);
-}
-.gRoll i {
-  position: relative;
-  width: 46px;
-  height: 5px;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.12);
-  overflow: hidden;
-}
-.gRoll i::before {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: max(3px, var(--p));
-  border-radius: 3px;
-  background: var(--qc);
-}
-.gRoll b {
-  min-width: 30px;
-  text-align: right;
-  font-weight: 600;
 }
 .gRoll small {
   color: var(--dim);
   font-size: 10px;
 }
-.gRoll.st i::before {
-  background: repeating-linear-gradient(135deg, var(--qc) 0 4px, #ffe9a8 4px 6px);
+/* 位置條：底＝四等分的刻度，::before＝填滿（顏色依區段），::after＝數值所在的亮線；s＝比較用的另一條的位置 */
+.gBar {
+  --qc: #7d8a96;
+  --w: 84px;
+  position: relative;
+  flex: none;
+  display: inline-block;
+  width: var(--w);
+  height: 8px;
+  border-radius: 2px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 calc(var(--w) / 4 - 1px),
+      rgba(255, 255, 255, 0.28) calc(var(--w) / 4 - 1px) calc(var(--w) / 4)
+    ),
+    rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+  vertical-align: middle;
+}
+.gBar::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 1px;
+  bottom: 1px;
+  width: var(--p);
+  border-radius: 1px 0 0 1px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 calc(var(--w) / 4 - 1px),
+      rgba(0, 0, 0, 0.4) calc(var(--w) / 4 - 1px) calc(var(--w) / 4)
+    ),
+    var(--qc);
+  opacity: 0.85;
+}
+.gBar::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  left: clamp(0px, calc(var(--p) - 1px), calc(100% - 2px));
+  width: 2px;
+  background: #fff;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.9);
+}
+.gBar.st::before {
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 calc(var(--w) / 4 - 1px),
+      rgba(0, 0, 0, 0.4) calc(var(--w) / 4 - 1px) calc(var(--w) / 4)
+    ),
+    repeating-linear-gradient(135deg, var(--qc) 0 4px, #fff3c4 4px 6px);
+}
+.gBar.max {
+  box-shadow:
+    inset 0 0 0 1px var(--qc),
+    0 0 6px var(--qc);
+}
+.gBar s {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  left: clamp(0px, calc(var(--r) - 0.5px), calc(100% - 1px));
+  width: 0;
+  border-left: 1px dashed #9fe1ff;
+  z-index: 1;
+}
+.gBar.mini {
+  --w: 40px;
+  height: 6px;
+  margin-left: 4px;
+}
+.gBar.mini::after {
+  top: -1px;
+  bottom: -1px;
 }
 .qb0 {
   --qc: #7d8a96;
@@ -8189,7 +8242,7 @@ body.vpad #subBar {
   --qc: var(--focus);
 }
 .gLines .gAx.na .gRoll {
-  opacity: 0.45;
+  opacity: 0.4;
 }
 .gLines .gNa {
   flex-basis: 100%;
@@ -8211,30 +8264,18 @@ body.vpad #subBar {
   font-size: 10px;
 }
 .gQ {
-  --qc: #7d8a96;
-  display: inline-block;
-  padding: 0 5px;
-  border: 1px solid var(--qc);
-  border-radius: 8px;
-  color: var(--qc);
+  display: inline-flex;
+  align-items: center;
+  color: var(--dim);
   font-size: 10px;
-  line-height: 14px;
   white-space: nowrap;
 }
 .gIList .gIl span.gQ {
   flex: none;
-  color: var(--qc);
   overflow: visible;
 }
-.gIList .gIl .qd {
-  --qc: #7d8a96;
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  margin-right: 3px;
-  border-radius: 50%;
-  background: var(--qc);
-  vertical-align: 1px;
+.gIList .gIl span .gBar.mini {
+  margin-right: 4px;
 }
 #gInv .invSort .invRg {
   margin-left: auto;

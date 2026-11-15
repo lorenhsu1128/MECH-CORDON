@@ -16,7 +16,6 @@ import {
   axRoll,
   axText,
   gearRollQ,
-  pctOf,
   gearPart,
   gearTileInfo,
   isWeaponCat,
@@ -114,19 +113,27 @@ Object.assign(Game.prototype, {
     }
     return '';
   },
-  // 一條詞條在範圍裡的位置：位置條＋百分比＋範圍（docs/gear-rarity-design.md 第 11 節；範圍可以在背包頁關掉）
-  gearRollHtml(a) {
+  // 一條詞條在範圍裡的位置：位置條＋範圍（docs/gear-rarity-design.md 第 11 節；不直接顯示百分比，
+  // 條上有四等分的刻度、數值所在的亮線；範圍可以在背包頁關掉）。ref＝比較用的另一條的位置（0～1，重骰視窗的原本那條）
+  gearBar(p, o = {}) {
+    const ref =
+      typeof o.ref === 'number'
+        ? `<s style="--r:${(Math.max(0, Math.min(1, o.ref)) * 100).toFixed(1)}%"></s>`
+        : '';
+    return `<i class="gBar qb${rollBand(p)}${o.star ? ' st' : ''}${p >= 0.999 ? ' max' : ''}${o.mini ? ' mini' : ''}" style="--p:${(p * 100).toFixed(1)}%">${ref}</i>`;
+  },
+  gearRollHtml(a, ref) {
     const R = axRoll(a);
     if (!R) return '';
     const rng = this.ctrl.gearRange === 'off' ? '' : `<small>${escHtml(axRangeText(a))}</small>`;
-    return `<span class="gRoll qb${rollBand(R.p)}${R.star ? ' st' : ''}"><i style="--p:${Math.round(R.p * 100)}%"></i><b>${pctOf(R.p)}</b>${rng}</span>`;
+    return `<span class="gRoll">${this.gearBar(R.p, { star: R.star, ref })}${rng}</span>`;
   },
-  // 整件的詞條品質（隨機詞條位置的平均）
+  // 整件的詞條品質（隨機詞條位置的平均）：小的位置條
   gearQHtml(g) {
     const q = gearRollQ(g);
     return q === null
       ? ''
-      : `<span class="gQ qb${rollBand(q)}" title="詞條品質：隨機詞條在範圍裡的平均位置">詞條 ${pctOf(q)}</span>`;
+      : `<span class="gQ" title="詞條品質：隨機詞條在範圍裡的平均位置">詞條${this.gearBar(q, { mini: 1 })}</span>`;
   },
   // 主要數值：品級的格數與最高值
   gearMainHtml(g) {
@@ -205,7 +212,7 @@ Object.assign(Game.prototype, {
               const R = axRoll(a),
                 D = axDef(a[0]);
               return R && D
-                ? `<i class="qd qb${rollBand(R.p)}"></i>${a[2] ? '★' : ''}${escHtml(D.n)} ${pctOf(R.p)}`
+                ? `${a[2] ? '★' : ''}${escHtml(D.n)}${this.gearBar(R.p, { star: R.star, mini: 1 })}`
                 : '';
             })
             .join('・')
@@ -296,7 +303,7 @@ Object.assign(Game.prototype, {
     const bulk = [1, 2]
       .map((q) => `<button class="invBulk" data-q="${q}">分解全部「${GRADES[q].n}」</button>`)
       .join('');
-    box.innerHTML = `<div class="gPageH"><h2>背包</h2><span class="dim">${this.invCount()}／${INV_MAX} 件（裝備中的不算）</span></div><div class="invMats">${this.lootMatsHtml()}</div><div class="invF" data-padtabs=".invQ">${qBtn}</div><div class="invF">${cBtn}</div><div class="invF invSort" data-padtabs=".invS">${sBtn}<button class="invRg${rangeOn ? ' on' : ''}" title="詞條後面顯示範圍（範圍不看品級；★＝極品，範圍 ×1.5）">範圍：${rangeOn ? '顯示' : '不顯示'}</button></div><div class="invNote dim">百分比＝詞條在範圍裡的位置（100%＝最高）。範圍不看品級：品級決定條數與種類，紫、金的極品★範圍 ×1.5。</div><div class="invBulkRow">${bulk}<span class="dim">鎖定、裝備中的不分解</span></div><div class="invList">${rows || '<p class="dim">背包是空的：擊破敵人、開補給箱、委託的報酬都會掉裝備。商店只賣標準版。</p>'}</div>`;
+    box.innerHTML = `<div class="gPageH"><h2>背包</h2><span class="dim">${this.invCount()}／${INV_MAX} 件（裝備中的不算）</span></div><div class="invMats">${this.lootMatsHtml()}</div><div class="invF" data-padtabs=".invQ">${qBtn}</div><div class="invF">${cBtn}</div><div class="invF invSort" data-padtabs=".invS">${sBtn}<button class="invRg${rangeOn ? ' on' : ''}" title="詞條後面顯示範圍（範圍不看品級；★＝極品，範圍 ×1.5）">範圍：${rangeOn ? '顯示' : '不顯示'}</button></div><div class="invNote dim">位置條＝詞條在範圍裡的位置（四格刻度、白線是數值，滿格＝最高）。範圍不看品級：品級決定條數與種類，紫、金的極品★範圍 ×1.5。</div><div class="invBulkRow">${bulk}<span class="dim">鎖定、裝備中的不分解</span></div><div class="invList">${rows || '<p class="dim">背包是空的：擊破敵人、開補給箱、委託的報酬都會掉裝備。商店只賣標準版。</p>'}</div>`;
     for (const b of box.querySelectorAll('.invQ'))
       b.onclick = () => {
         SFX.ui();
