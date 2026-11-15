@@ -221,19 +221,181 @@ export function buildAethericLab() {
     const a = (i / 4) * Math.PI * 2 + 0.4;
     box(0.12, 3.1, 0.12, M.steel, Math.cos(a) * 1.08, 2.05, Math.sin(a) * 1.08, 0, 0.02, pod);
   }
-  // 核心：碟形天線拆下來的發光核心（八面體）＋外面兩圈轉動的環
-  const core = add(new THREE.OctahedronGeometry(0.42, 0), M.coreG, 0, 2.05, 0, 0, pod);
-  core.castShadow = false;
+  // 核心（2026-11-15 重做，docs/cine-redesign-design.md 第十一節「建模」）：碟形天線拆下來的發光核心——
+  // 中央的晶簇（幾根長短不一的稜柱交錯）＋外圍的晶格籠（二十面體的稜）＋天線碟的殘片（剖面旋轉的一段弧）＋
+  // 螺旋的能量絲＋三圈帶刻度的環＋繞著飛的碎片；上下蓋接粗導管
+  const core = new THREE.Group();
+  core.position.set(0, 2.05, 0);
+  pod.add(core);
+  const prism = (r, h) => new THREE.CylinderGeometry(r * 0.35, r, h, 6, 1);
+  const cryst = [
+    [0.13, 0.95, 0, 0, 0],
+    [0.09, 0.7, 0.5, 0.3, 0.12],
+    [0.1, 0.75, -0.55, 1.9, -0.1],
+    [0.07, 0.55, 0.9, 3.4, 0.15],
+    [0.08, 0.6, -0.95, 4.6, -0.12],
+    [0.06, 0.45, 1.3, 5.6, 0.2],
+  ];
+  for (const [r, h, tilt, yaw, dy] of cryst) {
+    const m = add(prism(r, h), M.coreG, 0, dy, 0, yaw, core);
+    m.rotation.z = tilt;
+    m.castShadow = false;
+    // 每根稜柱的兩端（尖頭）
+    const tip = add(new THREE.ConeGeometry(r * 0.35, h * 0.25, 6), M.coreG, 0, dy, 0, yaw, core);
+    tip.rotation.z = tilt;
+    tip.translateY(h * 0.62);
+    tip.castShadow = false;
+  }
+  // 晶格籠：二十面體的稜（細桿），半徑 0.55
+  const ico = new THREE.IcosahedronGeometry(0.55, 0);
+  const ep = new THREE.EdgesGeometry(ico).attributes.position;
+  const cage = new THREE.Group();
+  core.add(cage);
+  for (let i = 0; i < ep.count; i += 2) {
+    const a = new THREE.Vector3().fromBufferAttribute(ep, i),
+      b = new THREE.Vector3().fromBufferAttribute(ep, i + 1);
+    const L = a.distanceTo(b);
+    const m = add(new THREE.CylinderGeometry(0.007, 0.007, L, 6), M.ringG, 0, 0, 0, 0, cage); // 細的發光稜（深色的桿子逆光時是黑線）
+    m.position.copy(a).add(b).multiplyScalar(0.5);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+    m.castShadow = false;
+  }
+  // 頂點的小節點（發光）
+  const vp = ico.attributes.position;
+  const seen = new Set();
+  for (let i = 0; i < vp.count; i++) {
+    const v = new THREE.Vector3().fromBufferAttribute(vp, i);
+    const k = v
+      .toArray()
+      .map((x) => x.toFixed(2))
+      .join();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    const n = add(new THREE.SphereGeometry(0.028, 8, 6), M.ringG, v.x, v.y, v.z, 0, cage);
+    n.castShadow = false;
+  }
+  // 天線碟的殘片：一段拋物面的弧（深色金屬，背後有肋），斜插在籠子的一側
+  const dishFrag = add(
+    new THREE.LatheGeometry(
+      [
+        [0.0, 0],
+        [0.35, 0.04],
+        [0.62, 0.14],
+        [0.66, 0.17],
+        [0.6, 0.15],
+        [0.33, 0.06],
+        [0.0, 0.02],
+      ].map(([x, y]) => new THREE.Vector2(x, y)),
+      16,
+      0.4,
+      1.6,
+    ),
+    M.dark,
+    0.15,
+    -0.1,
+    -0.25,
+    0,
+    core,
+  );
+  dishFrag.rotation.set(-1.1, 0.5, 0.3);
+  dishFrag.scale.setScalar(0.55);
+  dishFrag.position.set(0.25, -0.35, -0.35);
+  // 螺旋的能量絲（三條，繞著晶簇）
+  const fil = [];
+  for (let k = 0; k < 3; k++) {
+    const pts = [];
+    for (let i = 0; i <= 48; i++) {
+      const u = i / 48,
+        a = u * Math.PI * 4 + (k * Math.PI * 2) / 3;
+      const r = 0.32 + Math.sin(u * Math.PI) * 0.12;
+      pts.push(new THREE.Vector3(Math.cos(a) * r, -0.6 + u * 1.2, Math.sin(a) * r));
+    }
+    const m = add(
+      new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 64, 0.008, 5),
+      M.cyanG,
+      0,
+      0,
+      0,
+      0,
+      core,
+    );
+    m.castShadow = false;
+    fil.push(m);
+  }
+  // 三圈環（每圈帶刻度塊），各自轉
   const rings = [];
-  for (const [r, tilt] of [
-    [0.7, 0.5],
-    [0.85, -0.9],
+  for (const [r, tilt, n] of [
+    [0.78, 0.5, 12],
+    [0.9, -0.9, 16],
+    [0.68, 1.4, 8],
   ]) {
-    const ring = add(new THREE.TorusGeometry(r, 0.025, 8, 64), M.ringG, 0, 2.05, 0, 0, pod);
+    const ring = new THREE.Group();
+    ring.position.set(0, 2.05, 0);
     ring.rotation.x = tilt;
-    ring.castShadow = false;
+    pod.add(ring);
+    const t = add(new THREE.TorusGeometry(r, 0.018, 8, 72), M.ringG, 0, 0, 0, 0, ring);
+    t.castShadow = false;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const b = add(
+        new THREE.BoxGeometry(0.05, 0.035, 0.035),
+        M.steel,
+        Math.cos(a) * r,
+        Math.sin(a) * r,
+        0,
+        0,
+        ring,
+      );
+      b.rotation.z = a;
+      b.castShadow = false;
+    }
     rings.push(ring);
   }
+  // 繞著飛的碎片（天線的小零件）
+  const debris = new THREE.Group();
+  debris.position.set(0, 2.05, 0);
+  pod.add(debris);
+  for (let i = 0; i < 9; i++) {
+    const a = (i / 9) * Math.PI * 2,
+      r = 0.72 + (i % 3) * 0.08;
+    const d = add(
+      new THREE.BoxGeometry(0.06 + (i % 2) * 0.04, 0.02, 0.05),
+      i % 3 ? M.steel : M.dark,
+      Math.cos(a) * r,
+      Math.sin(i * 1.7) * 0.4,
+      Math.sin(a) * r,
+      a,
+      debris,
+    );
+    d.rotation.x = i;
+    d.castShadow = false;
+  }
+  // 上下蓋接到核心的粗導管（四根，彎曲的管）＋蓋上的螺栓圈
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+    for (const sy of [-1, 1]) {
+      const pts = [
+        new THREE.Vector3(Math.cos(a) * 0.85, 2.05 + sy * 1.45, Math.sin(a) * 0.85),
+        new THREE.Vector3(Math.cos(a) * 0.75, 2.05 + sy * 1.0, Math.sin(a) * 0.75),
+        new THREE.Vector3(Math.cos(a) * 0.45, 2.05 + sy * 0.75, Math.sin(a) * 0.45),
+      ];
+      const m = add(
+        new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 16, 0.045, 8),
+        M.black,
+        0,
+        0,
+        0,
+        0,
+        pod,
+      );
+      m.castShadow = false;
+    }
+  }
+  for (const y of [0.56, 3.38])
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2;
+      cyl(0.025, 0.025, 0.04, M.steel, Math.cos(a) * 1.22, y, Math.sin(a) * 1.22, 8, pod);
+    }
   // 地上的纜線（往四個方向）
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2;
@@ -282,22 +444,29 @@ export function buildAethericLab() {
     box(0.7, 0.42, 0.03, M.black, x, 1.05, -4.1, 0, 0.01);
     add(new THREE.PlaneGeometry(0.66, 0.38), M.holo, x, 1.05, -4.08, 0);
   }
-  root.userData.lab = { core, rings, holo, a1 };
+  root.userData.lab = { core, rings, holo, a1, debris, fil };
   // 細節層（天花板、牆面、地板、封存艙的零件、實驗台、白板、樣本櫃、門與置物櫃；cine-lab-detail.js，自己合併烘焙）
   root.add(buildLabDetail());
   // 不透明的靜態零件合併烘焙（核心、環、全像、機械臂會動，不合併）
-  return bakeStatic(root, [core, ...rings, holo, a1, root.children[root.children.length - 1]]);
+  return bakeStatic(root, [core, ...rings, debris, holo, a1, root.children[root.children.length - 1]]);
 }
 
 // 每格：核心脈動、環轉動、全像閃爍、機械臂慢慢擺
 export function tickAethericLab(root, t) {
   const L = root.userData.lab;
   if (!L) return;
-  const k = 1 + Math.sin(t * 2.4) * 0.08;
+  const k = 1 + Math.sin(t * 2.4) * 0.05;
   L.core.scale.setScalar(k);
-  L.core.rotation.y = t * 0.6;
+  L.core.rotation.y = t * 0.35;
   L.rings[0].rotation.z = t * 0.9;
   L.rings[1].rotation.z = -t * 0.7;
+  if (L.rings[2]) L.rings[2].rotation.z = t * 1.3;
+  if (L.debris) {
+    L.debris.rotation.y = -t * 0.5;
+    L.debris.position.y = 2.05 + Math.sin(t * 0.8) * 0.05;
+  }
+  // 能量絲閃爍
+  if (L.fil) for (let i = 0; i < L.fil.length; i++) L.fil[i].visible = Math.sin(t * 7 + i * 2.1) > -0.6;
   L.holo.material.opacity = 0.75 + Math.sin(t * 9) * 0.05 + (Math.sin(t * 31) > 0.97 ? -0.4 : 0);
   L.a1.rotation.y = Math.sin(t * 0.3) * 0.6;
 }
