@@ -3560,6 +3560,9 @@ body.mvGame #mvPanel {
   line-height: 1.9;
   margin: 6px 0;
 }
+#epLines .epMain p {
+  font-size: 17px; /* 同 #stLines：逐字照介面的字型 */
+}
 #epSeen {
   margin: 12px 0;
 }
@@ -3847,6 +3850,7 @@ body.touchDev #cineSkip span::after {
   margin: 8px 0 14px;
 }
 #stLines p {
+  font-size: 17px; /* 逐字改用介面的字型之後（以前是模板的明體） */
   line-height: 1.9;
   margin: 6px 0;
 }
@@ -3859,6 +3863,7 @@ body.touchDev #cineSkip span::after {
     margin: 4px 0 8px;
   }
   #stLines p {
+    font-size: 15px;
     line-height: 1.6;
     margin: 3px 0;
   }

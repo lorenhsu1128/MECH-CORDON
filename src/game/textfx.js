@@ -120,10 +120,11 @@ Object.assign(Game.prototype, {
       }
     }
   },
-  // 序章與章節的開場／章末（game/story.js）：標題＋電影感的逐字
-  tfxStory(title) {
+  // 序章與章節的開場／章末（game/story.js）：電影感的逐字。標題照介面的樣式（#stTitle），不再疊產生器的「結局」
+  // 模板（明體＋EPILOGUE，和絕區零式的介面不搭，原本的字也沒藏乾淨；2026-11-15）
+  tfxStory() {
     if (!this.textfx || !this.textfx.on) return;
-    this.textfx.host($('stTitle'), 'epTitle', title, null);
+    this.textfx.unhost($('stTitle'));
     return revealDom($('stLines'), 'ending', { delay: 1, limit: 24 });
   },
   // 簡報：系統日誌樣式逐字（ECHO 的私人委託是綠字＋故障）
@@ -134,7 +135,7 @@ Object.assign(Game.prototype, {
   // 結局：標題、電影感的逐字；真結局的結尾（幽魂樣式）播完接片尾
   tfxEpilogue(title, coda) {
     if (!this.textfx || !this.textfx.on) return;
-    this.textfx.host($('epTitle'), 'epTitle', title, null);
+    this.textfx.unhost($('epTitle')); // 標題照介面的樣式（同 tfxStory）
     const main = $('epLines').querySelector('.epMain'),
       rc = $('epLines').querySelector('.epRecall'),
       cd = $('epLines').querySelector('.epCoda');

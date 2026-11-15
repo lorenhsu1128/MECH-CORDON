@@ -106,7 +106,9 @@ export const REVEALS = {
   },
   briefEcho: { tpl: 'syslog', glitch: true },
   trans: { tpl: 'typewriter', patch: { fontId: 'share-tech-mono', cps: 30 } },
-  ending: { tpl: 'cinematic' },
+  // 劇情畫面與結局：只用電影感模板的速度與登場效果，字型與顏色照介面（#stLines／#epLines 的樣式；以前是模板的
+  // 明體＋光暈，和絕區零式的介面不搭；2026-11-15）
+  ending: { tpl: 'cinematic', ui: true },
   coda: { tpl: 'sweep', patch: preset('ghost') },
   // 通訊框：只用打字機的逐字，字型與顏色維持通訊框原本的
   comm: { tpl: 'typewriter', patch: { cps: 26, fontId: 'noto-sans-tc', fill: { color: '#e6edf3' } } },
@@ -447,12 +449,12 @@ export function revealDom(el, id, opt = {}) {
   el.classList.remove('tqDone');
   el.classList.add('tq');
   el.classList.toggle('tqGlitch', !!R.glitch);
-  el.style.fontFamily = Fonts.familyStack(s.fontId);
   const fill = s.fill.type === 'gradient' ? s.fill.color2 : s.fill.color;
-  el.style.setProperty('--tq-c', fill);
-  el.style.setProperty('--tq-op', s.fillOpacity);
-  el.style.setProperty('--tq-glow', s.glow.on ? s.glow.color : 'transparent');
-  el.style.setProperty('--tq-cur', s.cursorColor || fill);
+  el.style.fontFamily = R.ui ? '' : Fonts.familyStack(s.fontId);
+  el.style.setProperty('--tq-c', R.ui ? 'currentColor' : fill);
+  el.style.setProperty('--tq-op', R.ui ? 1 : s.fillOpacity);
+  el.style.setProperty('--tq-glow', !R.ui && s.glow.on ? s.glow.color : 'transparent');
+  el.style.setProperty('--tq-cur', R.ui ? 'currentColor' : s.cursorColor || fill);
   const rows = [...el.children].filter((c) => c.textContent.trim());
   const total = rows.reduce((a, r) => a + r.textContent.length, 0);
   let cps = s.cps;

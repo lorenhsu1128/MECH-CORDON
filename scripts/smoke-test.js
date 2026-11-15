@@ -20796,12 +20796,16 @@ async function testTextFx(browser, base) {
       len: el.textContent.length,
       coda: !!coda,
       cr,
-      title: !!document.querySelector('#epTitle > canvas.tfxC'),
+      // 標題照介面的樣式（不疊產生器的模板；2026-11-15）、內文的字型照介面（沒有模板的字型）
+      title:
+        !document.querySelector('#epTitle > canvas.tfxC') &&
+        !!document.getElementById('epTitle').textContent.trim() &&
+        !document.querySelector('#epLines .epMain').style.fontFamily,
     };
   });
   check(
     br.n > 20 && br.n === br.len && br.coda && br.cr && br.title,
-    '簡報與結局逐字、真結局的結尾與片尾（' + br.n + ' 字）',
+    '簡報與結局逐字、真結局的結尾與片尾、標題與內文照介面的字型（' + br.n + ' 字）',
   );
   // 關閉：回到原本的中央訊息與橫幅
   const off = await page.evaluate(() => {
