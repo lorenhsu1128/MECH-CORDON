@@ -903,6 +903,7 @@ Object.assign(Game.prototype, {
       return this.tutKilled(e);
     }
     this.foeScavenge(e);
+    if (!this.isClient) this.tallyKill(e); // 結果畫面的戰果（loot.js）
     if (!this.isClient) this.afKilled(e); // 詞綴：分裂、殉爆（game/affix.js）
     if (!this.isClient) this.lootKilled(e); // 素材與零件的掉落（game/loot.js）
     if (!this.isClient && e.nemId) this.nemKilled(e); // 宿敵（nemesis.js）
@@ -1119,17 +1120,9 @@ Object.assign(Game.prototype, {
     const rows = [
       ['戰區', this.levelName],
       ['任務時間', this.missionT.toFixed(1) + ' s'],
-      [
-        '擊破數',
-        this.enemies.filter((e) => e.dead && !e.decoy).length +
-          ' / ' +
-          this.enemies.filter((e) => !e.decoy).length,
-      ],
       ['受損 AP', Math.round(p.dmgTaken)],
       ...this.airResultRows(), // 空域：擊墜數、殘骸連鎖、友軍雷達站（game/air.js）
-      ...this.hkRows(), // 人員擊殺數（crowd.js）
-      ...this.mvRows(), // 載具擊毀數（map-veh.js）
-      ...this.lootRows(), // 素材與零件（loot.js）
+      // 擊破、破壞、取得的各項在下方的「戰果」（loot.js 的 spoilsHtml）
       // Boss 改版：擊破速度的評價（S 擊破獎金 ×1.5、A ×1.2）
       ...(this.bossRank && success ? [['Boss 擊破評價', this.tierRankTxt(this.bossRank)]] : []),
       ...(this.tierPartsBroken
@@ -1142,6 +1135,7 @@ Object.assign(Game.prototype, {
     $('resultGrid').innerHTML = rows
       .map((r) => `<span class="dim">${escHtml(r[0])}</span><span>${escHtml(r[1])}</span>`)
       .join('');
+    document.getElementById('rSpoils').innerHTML = this.spoilsHtml();
     if (this.net && this.net.role === 'host') {
       const st = this.mpStats || {};
       const mprows = this.net.players
@@ -1161,6 +1155,7 @@ Object.assign(Game.prototype, {
         rank,
         bonus: success ? baseBonus : 0,
         xpBySlot: xpAll,
+        tl: this.tl, // 戰果的擊破與破壞（客機的取得、人員、載具用自己的）
         rows: [...rows.filter((r) => r[0] !== 'SP 結餘'), ...mprows],
       });
       for (const x of this.net.players) x.ready = false;

@@ -23,6 +23,7 @@ Object.assign(Game.prototype, {
   startMissionClient(d) {
     this.clearMission();
     if (!(this.hk && this.campC)) this.hkReset(); // 人員擊殺數（crowd.js；主線合作整次出擊累計）
+    if (!(this.lootRun && this.campC)) this.lootReset(); // 這次拿到的素材與裝備（loot.js；結果畫面的戰果）
     this.isClient = true;
     this.lastClientTick = 0; // 開局後第一次更新重新起算房主失聯（clientTick）
     this.hostPace = d.pace || 1;
@@ -753,15 +754,13 @@ Object.assign(Game.prototype, {
       this.save.coam += d.bonus;
       this.writeSave();
     }
-    // 人員擊殺數：房主的那一列換成自己的（crowd.js）
-    const rows = [
-      ...d.rows.filter((r) => r[0] !== '人員擊殺' && r[0] !== '載具擊毀'),
-      ...this.hkRows(),
-      ...this.mvRows(),
-    ];
+    // 人員擊殺、載具擊毀是自己的，放在下方的戰果（舊版房主送來的那兩列略過）
+    const rows = d.rows.filter((r) => r[0] !== '人員擊殺' && r[0] !== '載具擊毀');
     $('resultGrid').innerHTML =
       rows.map((r) => `<span class="dim">${escHtml(r[0])}</span><span>${escHtml(r[1])}</span>`).join('') +
       `<span class="dim">SP 結餘</span><span>${this.save.coam.toLocaleString()}</span>`;
+    // 戰果：擊破與地圖物件的破壞是房主的計數（d.tl），人員、載具、取得是自己的（loot.js）
+    $('rSpoils').innerHTML = this.spoilsHtml(d.tl && typeof d.tl === 'object' ? d.tl : null);
     $('btnResultOk').textContent = '返回大廳';
     this.showScreen('result');
   },

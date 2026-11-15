@@ -192,6 +192,12 @@
   - 結果：
     - 評價字母是 96 px 粗斜體橘色＋黑描邊，完整動畫時像蓋章一樣蓋下來（`zStamp`）。
     - 數字表放在黑底框，背景是共用的 `zBg`。
+    - **2026-11-15 改版**（使用者回報結算畫面和介面不搭：標題與評價疊的是文字演出的明體範本，評價字母還重複出現兩次）：
+      - 標題與評價不再疊文字演出的範本（`game/textfx.js` 的 `tfxResult` 只依標題判斷種類，寫 `#result` 的 `data-res`＝clear／fail／win、`data-rank`＝S～D／word（PvP 的 WIN、LOSE）／none（沒有評價，評價章隱藏），以及上方的英文標籤 `#rKick`：MISSION CLEAR／MISSION FAILED／ABORTED／VICTORY／DEFEAT）。
+      - 標題列 `.rHead`：英文標籤是斜切的黃綠膠帶（失敗紅、勝利警戒黃），標題 40 px 粗斜體白字＋黑描邊（失敗是紅字），頂帶與斜紋底依種類換色；右側是評價章（「評價」＋104 px 字母：S 警戒黃發光、A 橘、B 青、C／D 灰）。
+      - 下面兩欄（`.rBody`）：左欄＝數據表 `#resultGrid`（每列分隔線）與駕駛員經驗 `#rPilot`，右欄＝戰果 `#rSpoils`（`loot.js` 的 `spoilsHtml`：擊破、破壞的各項總數格子，取得的每件裝備（品級色、★、詞條品質的小位置條）、解鎖的零件、素材）；沒有戰果的結果畫面（PvP、模擬戰）只有一欄、面板變窄（`:has(#rSpoils:empty)`）；寬 760 px 以下一欄。
+      - 戰果的計數：`loot.js` 的 `tallyReset`（`hkReset` 一起）、`tallyKill`（`onEnemyKilled`：Boss／敵對 AC／一般敵人／空中目標／部位／目標設施）、`tallyProp`（`destruct.js`：地圖物件損毀、建築倒塌）；載具與人員用 `mvKills`、`hk`。多人時擊破與破壞是房主的計數（`end` 訊息的 `tl`），人員、載具、取得是自己的；自訂關卡只有擊破與破壞。離開結果畫面時 `showScreen` 清掉 `#rSpoils`。
+      - 截圖：`node scripts/ui-shots.js result-real,result-fail,result-spoils --size=all`。
 - **B5（2026-11-12）**：戰鬥 HUD。
   - 視角寫在 `body[data-view]`（top／chase／fp／air，`hud.js` 每 16 格更新），CSS 依它排位置。
   - 電腦：

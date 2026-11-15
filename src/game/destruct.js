@@ -171,6 +171,7 @@ Object.assign(Game.prototype, {
     if (p.dead) return;
     this.propDirty && this.propDirty.delete(p);
     this.world.destroyProp(p, this.fx, { dir, cr: o.cr, noWreck: this.destructMode() === 'off' });
+    this.tallyProp('prop'); // 結果畫面的戰果（loot.js）
     if (p.seg) this.propSegDown(p, false);
     else if (p.support && !p.sep) this.propSupportDown(p, false);
     else this.propWreckFx(p);
@@ -637,6 +638,7 @@ Object.assign(Game.prototype, {
     const w = this.world,
       fx = this.fx;
     w.propUnmerge(b);
+    if (!quiet) this.tallyProp('col'); // 結果畫面的戰果（loot.js）
     b.collapsed = true;
     b.dead = true;
     b.hp = 0;
@@ -1553,6 +1555,7 @@ Object.assign(Game.prototype, {
     const dir = e.d ? new THREE.Vector3(e.d[0], 0, e.d[1]) : null;
     p.hp = Math.min(p.hp, 0);
     this.world.destroyProp(p, this.fx, { dir, cr: !!e.cr });
+    this.tallyProp('prop'); // 結果畫面的戰果（loot.js）
     if (p.seg) this.propSegDown(p, false);
     else if (p.support && !p.sep) this.propSupportDown(p, false);
     else this.propWreckFx(p);

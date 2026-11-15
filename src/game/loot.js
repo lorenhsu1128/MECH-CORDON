@@ -5,7 +5,7 @@ import { SFX } from '../audio/audio.js';
 import { escHtml } from '../core/html.js';
 import { PARTS, partById } from '../data/parts.js';
 import { DROP, MATS, MAT_KEYS } from '../data/tune.js';
-import { GRADES, gearPart } from '../data/gear.js';
+import { GRADES, gearPart, gearRollQ } from '../data/gear.js';
 import { Game } from './game.js';
 
 // 零件 id → 分類（只取可以購買的零件）
@@ -83,7 +83,92 @@ Object.assign(Game.prototype, {
   lootPartPool() {
     return [...PART_CAT.keys()];
   },
-  // 結果畫面的列
+  // ---------- 戰果的計數（結果畫面的「戰果」：擊破與破壞的各項總數；房主／單機，客機由 end 訊息的 tl 拿到） ----------
+  // crowd.js 的 hkReset（自由出擊、主線出擊、自訂關卡、客機開局）一起歸零
+  tallyReset() {
+    this.tl = { k: {}, d: {} };
+  },
+  // 擊破的種類（onEnemyKilled）
+  tallyKill(e) {
+    if (!this.tl || !e || e.decoy || e.ai === 'convoy' || e.ai === 'holo') return;
+    const o = e.opts || {};
+    const k =
+      e.ai === 'objective'
+        ? 'obj'
+        : e.isBoss
+          ? 'boss'
+          : e.ai === 'part' || o.partKind
+            ? 'part'
+            : e.ai === 'ac' || e.ace || e.nemId || e.nemesis || e.isElite
+              ? 'ac'
+              : e.flying
+                ? 'air'
+                : 'mt';
+    this.tl.k[k] = (this.tl.k[k] || 0) + 1;
+  },
+  // 地圖物件的破壞（destruct.js：prop＝物件損毀、col＝建築倒塌）
+  tallyProp(k) {
+    if (this.tl && this.state === 'play') this.tl.d[k] = (this.tl.d[k] || 0) + 1;
+  },
+  // 結果畫面的「戰果」：擊破、破壞、取得（tl＝房主送來的計數，沒給時用自己的）
+  spoilsHtml(tl, o = {}) {
+    const T = tl || this.tl || { k: {}, d: {} };
+    const tile = (n, name) => `<span class="rT${n ? '' : ' z'}"><b>${n}</b><i>${escHtml(name)}</i></span>`;
+    const sum = (o) => Object.values(o || {}).reduce((s, v) => s + (v | 0), 0);
+    const K = T.k || {},
+      D = T.d || {};
+    const kills = [
+      ['boss', 'Boss'],
+      ['ac', '敵對 AC'],
+      ['mt', '一般敵人'],
+      ['air', '空中目標'],
+      ['part', '部位'],
+      ['obj', '目標設施'],
+    ]
+      .filter(([k]) => K[k] || ['boss', 'ac', 'mt'].includes(k))
+      .map(([k, n]) => tile(K[k] | 0, n))
+      .join('');
+    const mv = this.mvKills | 0;
+    const hk = this.hkOn && this.hk ? this.hk : null;
+    const dTiles = [
+      tile(D.prop | 0, '地圖物件'),
+      tile(D.col | 0, '建築倒塌'),
+      tile(mv, '載具'),
+      ...(hk ? [tile(hk.foe | 0, '敵方人員'), tile(hk.civ | 0, '非戰鬥人員')] : []),
+    ].join('');
+    const dSum = (D.prop | 0) + (D.col | 0) + mv + (hk ? (hk.foe | 0) + (hk.civ | 0) : 0);
+    // 取得：每件裝備、解鎖的零件、素材
+    const L = this.lootRun || { mats: {}, parts: [], gear: [] };
+    const chips = [];
+    for (const g of L.gear || []) {
+      const p = gearPart(g.id) || { name: g.id };
+      const star = (g.ax || []).some((a) => a[2]);
+      const q = g.ax && g.ax.length ? gearRollQ(g) : null;
+      chips.push(
+        `<span class="rG" style="--gq:${GRADES[g.q].c}"><em>${GRADES[g.q].n}</em>${escHtml(p.name)}${star ? '<u>★</u>' : ''}${q !== null && this.gearBar ? this.gearBar(q, { mini: 1 }) : ''}</span>`,
+      );
+    }
+    for (const id of L.parts || [])
+      chips.push(
+        `<span class="rG part"><em>解鎖</em>${escHtml((gearPart(id) || partById(PART_CAT.get(id), id) || { name: id }).name)}</span>`,
+      );
+    for (const k of MAT_KEYS)
+      if ((L.mats || {})[k])
+        chips.push(
+          `<span class="rG mat" style="--gq:${MATS[k].color}">${MATS[k].icon} ${escHtml(MATS[k].name)}<b>×${L.mats[k]}</b></span>`,
+        );
+    if (L.lost) chips.push(`<span class="rG lost">倉庫已滿：${L.lost} 件沒有撿到</span>`);
+    const got =
+      (L.gear || []).length +
+      (L.parts || []).length +
+      MAT_KEYS.reduce((s, k) => s + ((L.mats || {})[k] | 0), 0);
+    const gotHtml =
+      o.loot === false
+        ? ''
+        : `<div class="rSpH">取得<b>${got}</b></div><div class="rSpL">${chips.join('') || '<span class="dim">這次沒有取得裝備或素材</span>'}</div>`;
+    return `<div class="rSp"><div class="rSpH">擊破<b>${sum(K)}</b></div><div class="rSpT">${kills}</div><div class="rSpH">破壞<b>${dSum}</b></div><div class="rSpT">${dTiles}</div>${gotHtml}</div>`;
+  },
+  // 結果畫面的列（舊的文字版：多人的 end 訊息仍帶給舊版客機看；結果畫面改用 spoilsHtml）
   lootRows() {
     const L = this.lootRun;
     if (!L) return [];

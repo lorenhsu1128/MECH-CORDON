@@ -432,6 +432,11 @@ export class Game {
   showScreen(id) {
     const prevScr = this.scrNow;
     this.scrNow = id;
+    // 結果畫面的戰果（loot.js 的 spoilsHtml）：離開結果畫面就清掉，只有寫了的結果畫面才顯示
+    if (id !== 'result') {
+      const sp = document.getElementById('rSpoils');
+      if (sp && sp.firstChild) sp.innerHTML = '';
+    }
     // 離開簡報：停掉簡報的語音（voice.js 的 voiceBrief）
     if (id !== 'brief' && this.briefVoiceOn) {
       this.briefVoiceOn = false;

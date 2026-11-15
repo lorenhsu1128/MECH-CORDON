@@ -89,18 +89,38 @@ Object.assign(Game.prototype, {
     if (this.textfx) this.textfx.clear((x) => x.cue === 'credits' || x.cue === 'chapter');
   },
   // ---------- 結果畫面：標題與評價 ----------
+  // 2026-11-15 使用者回報結果畫面的明體範本和介面不搭：標題與評價不再疊文字演出的範本，照介面的樣式
+  // （絕區零式的粗斜體、評價章；CSS 依 #result 的 data-res／data-rank），這裡只決定種類與上方的英文標籤
   tfxResult() {
-    if (!this.textfx || this.state !== 'result') return;
+    if (this.state !== 'result') return;
     const t = $('rTitle'),
-      r = $('rRank');
+      r = $('rRank'),
+      box = $('result');
+    if (this.textfx) {
+      this.textfx.unhost(t);
+      this.textfx.unhost(r);
+    }
     const title = t.textContent;
-    const cue = /失敗|放棄|敗北/.test(title) ? 'resFail' : /勝利/.test(title) ? 'resWin' : 'resClear';
-    const sub = cue === 'resFail' ? (/放棄/.test(title) ? 'ABORTED' : 'MISSION FAILED') : null;
-    this.textfx.host(t, cue, title, sub);
     const rank = r.textContent.trim();
-    if (/^[SABCD]$/.test(rank) && r.style.color === '')
-      this.textfx.host(r, rank === 'S' ? 'rankS' : rank === 'D' ? 'rankD' : 'rankA', rank, '');
-    else this.textfx.unhost(r);
+    const res =
+      rank === 'WIN' || /勝利/.test(title)
+        ? 'win'
+        : rank === 'LOSE' || /失敗|放棄|敗北|結束$/.test(title)
+          ? 'fail'
+          : 'clear';
+    const kick =
+      res === 'win'
+        ? 'VICTORY'
+        : res === 'clear'
+          ? 'MISSION CLEAR'
+          : rank === 'LOSE'
+            ? 'DEFEAT'
+            : /放棄|結束$/.test(title)
+              ? 'ABORTED'
+              : 'MISSION FAILED';
+    $('rKick').textContent = kick;
+    box.dataset.res = res;
+    box.dataset.rank = /^[SABCD]$/.test(rank) ? rank : rank === 'WIN' || rank === 'LOSE' ? 'word' : 'none';
   },
   // ---------- 主線 ----------
   // 轉場畫面：標題與下一段的說明；整章第一次出擊時先播章名卡

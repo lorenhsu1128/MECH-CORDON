@@ -20852,20 +20852,32 @@ async function testTextFx(browser, base) {
     cm.n === 12 && cm.done && cm.text === '雷達有反應，三點鐘方向。' && cm.echo,
     '通訊框逐字、ECHO 的樣式、點一下整句顯示',
   );
-  // 結果畫面：標題與評價畫在元素裡的畫布
+  // 結果畫面：標題與評價照介面的樣式（2026-11-15 起不疊文字演出的範本；textfx.js 的 tfxResult 只標種類與英文標籤）
   await page.evaluate(() => {
     const g = window.__game;
     g.commClear();
     g.endMission(true);
   });
   await page.waitForTimeout(1500);
-  const rs = await page.evaluate(() => ({
-    t: !!document.querySelector('#rTitle.tfxHost > canvas.tfxC'),
-    r: !!document.querySelector('#rRank.tfxHost > canvas.tfxC'),
-    text: document.getElementById('rTitle').textContent,
-  }));
+  const rs = await page.evaluate(() => {
+    const box = document.getElementById('result');
+    return {
+      host: !!document.querySelector('#result .tfxHost'),
+      res: box.dataset.res,
+      rank: box.dataset.rank,
+      kick: document.getElementById('rKick').textContent,
+      text: document.getElementById('rTitle').textContent,
+    };
+  });
   await page.screenshot({ path: path.join(SHOT_DIR, 'textfx-result.png') });
-  check(rs.t && rs.r && rs.text === '任務完成', '結果畫面的標題與評價（文字保留：' + rs.text + '）');
+  check(
+    !rs.host &&
+      rs.res === 'clear' &&
+      /^[SABCD]$/.test(rs.rank) &&
+      rs.kick === 'MISSION CLEAR' &&
+      rs.text === '任務完成',
+    `結果畫面的標題與評價照介面的樣式（${rs.res}／${rs.rank}／${rs.kick}／${rs.text}）`,
+  );
   // 簡報：系統日誌樣式逐字；結局：真結局的結尾、片尾
   const br = await page.evaluate(() => {
     const g = window.__game;
@@ -26352,8 +26364,16 @@ async function testCrowd(browser, base) {
     // 結果畫面
     const hk = g.hk.civ;
     g.endMission(false, true);
-    out.row = [...document.querySelectorAll('#resultGrid span')].map((x) => x.textContent).join('|');
+    // 戰果的格子（loot.js 的 spoilsHtml）
+    const tile = (n) => {
+      const t = [...document.querySelectorAll('#rSpoils .rT')].find(
+        (x) => x.querySelector('i').textContent === n,
+      );
+      return t ? t.querySelector('b').textContent : null;
+    };
+    out.row = `非戰鬥人員 ${tile('非戰鬥人員')}`;
     out.hk = hk;
+    out.spoils = [...document.querySelectorAll('#rSpoils .rSpH')].map((x) => x.firstChild.textContent).join();
     g.clearMission();
     out.cleared = !g.crowd;
     return out;
@@ -26378,7 +26398,7 @@ async function testCrowd(browser, base) {
   );
   check(r.offBlood && r.oil === '070605', `設定「血跡」：關閉不留、深色油污（#${r.oil}）`);
   check(
-    r.row.includes(`非戰鬥人員 ${r.hk}`) && r.cleared,
+    r.row === `非戰鬥人員 ${r.hk}` && r.spoils === '擊破,破壞,取得' && r.cleared,
     `結果畫面的人員擊殺數、結束後清掉小人（${r.row.slice(0, 160)}）`,
   );
   // 模擬器、靶場沒有小人
@@ -26844,7 +26864,13 @@ async function testCrowd(browser, base) {
     const h = g.crowd.list.find((q) => q.alive && q.kind === 'civ');
     g.crowdKill(h, g.player, 'crush');
     g.lvResult(false, '測試');
-    out.row = document.querySelector('#resultGrid').textContent;
+    const tile = (n) => {
+      const t = [...document.querySelectorAll('#rSpoils .rT')].find(
+        (x) => x.querySelector('i').textContent === n,
+      );
+      return t ? t.querySelector('b').textContent : null;
+    };
+    out.row = `人員擊殺非戰鬥人員 ${tile('非戰鬥人員')}`;
     g.clearMission();
     return out;
   });
@@ -30425,11 +30451,16 @@ async function testMpCrowd(browser, url) {
   // 結果畫面：各自的擊殺數
   await host.evaluate(() => window.__game.endMission(false, true));
   await wait(1500);
-  const rows = await cli.evaluate(() => document.querySelector('#resultGrid').textContent);
-  check(
-    rows.includes(`非戰鬥人員 ${kc.hk}・`),
-    `客機的結果畫面是自己的人員擊殺數（${(rows.match(/人員擊殺[^累]*/) || [''])[0]}）`,
-  );
+  const civ = await cli.evaluate(() => {
+    const tile = (n) => {
+      const t = [...document.querySelectorAll('#rSpoils .rT')].find(
+        (x) => x.querySelector('i').textContent === n,
+      );
+      return t ? t.querySelector('b').textContent : null;
+    };
+    return tile('非戰鬥人員');
+  });
+  check(civ === String(kc.hk), `客機的結果畫面（戰果）是自己的人員擊殺數（${civ}／${kc.hk}）`);
   await ctx.close();
 }
 
@@ -32537,8 +32568,10 @@ async function testDestruct(browser, base) {
     }
     // 損毀：碰撞換成較矮的殘骸
     const top0 = met.shape.y1;
+    const tl0 = (g.tl && g.tl.d.prop) || 0;
     g.damageProp(met, 1e7, 0, null, pl, 'none');
     out.dead = met.dead;
+    out.tally = ((g.tl && g.tl.d.prop) || 0) - tl0; // 結果畫面的戰果（loot.js 的 tallyProp）
     out.obGone = !(met.obs || [met.ob]).some((o) => w.obstacles.includes(o));
     out.wreckIn = !!met.wreck && w.obstacles.includes(met.wreck);
     out.wreckLow = met.wreck ? met.wreck.top < top0 : false;
@@ -32689,6 +32722,7 @@ async function testDestruct(browser, base) {
     '損毀：原本的碰撞拿掉、換成較矮的殘骸',
   );
   check(r.bigDead !== false, '新登記的大型物件打得壞並留下殘骸');
+  check(r.tally === 1, `結果畫面的戰果：地圖物件的破壞數 +1（${r.tally}）`);
   check(r.lamp && r.lampT1 && r.lampCut, '零件分批脫落：路燈的燈第 1 階段掉、第 3 階段桿子折斷（碰撞變矮）');
   check(r.lampPose, '受損姿勢：路燈往一邊歪');
   check(

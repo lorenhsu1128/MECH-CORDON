@@ -101,6 +101,7 @@ Object.assign(Game.prototype, {
     this.hk = { civ: 0, foe: 0 };
     this.mvKills = 0; // 載具擊毀數（map-veh.js）
     this.hkOn = false;
+    this.tallyReset(); // 結果畫面的戰果：擊破與破壞的計數（loot.js）
   },
   // 結果畫面的一列（這一場有小人時）
   hkRows() {

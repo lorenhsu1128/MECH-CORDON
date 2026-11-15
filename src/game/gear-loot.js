@@ -173,7 +173,8 @@ Object.assign(Game.prototype, {
       if (this.lootRun) this.lootRun.lost = (this.lootRun.lost || 0) + 1;
       return false;
     }
-    if (this.lootRun) (this.lootRun.gear = this.lootRun.gear || []).push({ id: g.id, q: g.q });
+    if (this.lootRun)
+      (this.lootRun.gear = this.lootRun.gear || []).push({ id: g.id, q: g.q, ax: g.ax.slice() });
     SFX.cue('pickup');
     const col = parseInt(GRADES[g.q].c.slice(1), 16);
     // 極品（詞條的位置不寫數字，看機甲庫的位置條；docs/gear-rarity-design.md 第 11 節）

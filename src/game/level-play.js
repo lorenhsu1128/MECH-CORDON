@@ -1054,7 +1054,6 @@ Object.assign(Game.prototype, {
       full = this.lvFull,
       p = this.player;
     const t = this.missionT;
-    const kills = this.enemies.filter((e) => e.dead && !e.gone).length;
     if (lv.test) {
       // 編輯器的試玩：成功時記下通關紀錄，回編輯器
       this.edTestDone(success, t, reason);
@@ -1075,10 +1074,8 @@ Object.assign(Game.prototype, {
       ['作者', full.author || '—'],
       ['任務時間', t.toFixed(1) + ' s'],
       ['最佳時間', best ? best.toFixed(1) + ' s' : '—'],
-      ['擊破數', String(kills)],
       ['受損 AP', String(Math.round(p ? p.dmgTaken : 0))],
-      ...this.hkRows(), // 人員擊殺數（crowd.js）
-      ...this.mvRows(), // 載具擊毀數（map-veh.js）
+      // 擊破與破壞的各項在下方的「戰果」（loot.js 的 spoilsHtml；自訂關卡沒有掉落）
       ['獎勵', '自訂關卡沒有 SP 與經驗'],
     ];
     if (!success && reason) rows.splice(3, 0, ['原因', reason]);
@@ -1086,6 +1083,7 @@ Object.assign(Game.prototype, {
       .map((r) => `<span class="dim">${escHtml(r[0])}</span><span>${escHtml(r[1])}</span>`)
       .join('');
     $('pilotResult') && ($('pilotResult').innerHTML = '');
+    $('rSpoils').innerHTML = this.spoilsHtml(null, { loot: false });
     if (this.net && this.net.role === 'host') {
       $('btnResultOk').textContent = '返回大廳';
       this.net.tr.broadcast({
@@ -1095,6 +1093,7 @@ Object.assign(Game.prototype, {
         title: $('rTitle').textContent,
         rank: $('rRank').textContent,
         rows,
+        tl: this.tl,
       });
       for (const x of this.net.players) x.ready = false;
     } else $('btnResultOk').textContent = '返回關卡選單';
@@ -1111,6 +1110,7 @@ Object.assign(Game.prototype, {
       .map((r) => `<span class="dim">${escHtml(r[0])}</span><span>${escHtml(r[1])}</span>`)
       .join('');
     $('pilotResult') && ($('pilotResult').innerHTML = '');
+    $('rSpoils').innerHTML = this.spoilsHtml(d.tl && typeof d.tl === 'object' ? d.tl : null, { loot: false });
     $('btnResultOk').textContent = '返回大廳';
     if (d.success) this.lvRecord(this.lvFull, this.missionT);
     this.showScreen('result');

@@ -9812,19 +9812,137 @@ body[data-uifx='full'] #modPick.on .mpCard:nth-child(4) {
   background-size: 25px 25px;
 }
 /* 結果：評價是等級色的粗斜體大字 */
-#result .panel {
-  min-width: min(420px, 92vw);
-}
-#rTitle {
-  font: italic 900 30px/1.2 var(--fz);
-}
 .rank {
-  font: italic 900 96px/1 var(--fd);
+  font: italic 900 104px/0.9 var(--fd);
   color: var(--org);
   -webkit-text-stroke: 3px #000;
   paint-order: stroke;
-  text-shadow: 5px 5px 0 #000;
-  margin: 4px 0 10px;
+  text-shadow: 6px 6px 0 #000;
+  margin: 0;
+  padding: 0 10px 0 4px;
+}
+/* 結果畫面（2026-11-15 改版）：標題列＝英文標籤＋粗斜體標題＋評價章；下面左欄數據與駕駛員經驗、右欄戰果 */
+#result .rPanel {
+  width: min(1040px, 94vw);
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0 0 18px;
+  overflow: hidden;
+}
+#result .rPanel:has(#rSpoils:empty) {
+  width: min(600px, 94vw);
+}
+.rHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 26px 14px;
+  border-bottom: 2px solid var(--line);
+  background:
+    linear-gradient(var(--acc) 0 0) top / 100% 6px no-repeat,
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.035) 0 10px, transparent 10px 20px);
+}
+#result[data-res='fail'] .rHead {
+  background:
+    linear-gradient(var(--red) 0 0) top / 100% 6px no-repeat,
+    repeating-linear-gradient(135deg, rgba(255, 60, 60, 0.05) 0 10px, transparent 10px 20px);
+}
+#result[data-res='win'] .rHead {
+  background:
+    linear-gradient(var(--focus) 0 0) top / 100% 6px no-repeat,
+    repeating-linear-gradient(135deg, rgba(255, 210, 26, 0.05) 0 10px, transparent 10px 20px);
+}
+.rHeadT {
+  min-width: 0;
+}
+.rKick {
+  display: inline-block;
+  margin: 0 0 10px 4px;
+  padding: 4px 12px 3px;
+  font: italic 900 12px/1 var(--fd);
+  letter-spacing: 0.22em;
+  color: var(--accInk);
+  background: var(--acc);
+  transform: skewX(-14deg);
+  box-shadow: 0 0 0 2px var(--edge);
+}
+#result[data-res='fail'] .rKick {
+  background: var(--red);
+  color: #fff;
+}
+#result[data-res='win'] .rKick {
+  background: var(--focus);
+}
+#result #rTitle {
+  margin: 0;
+  font: italic 900 40px/1.1 var(--fz);
+  letter-spacing: 0.05em;
+  color: #fff;
+  -webkit-text-stroke: 2px #000;
+  paint-order: stroke;
+  text-shadow: 4px 4px 0 #000;
+}
+#result[data-res='fail'] #rTitle {
+  color: var(--red);
+}
+.rRankBox {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.rRankBox > span {
+  font: 800 11px/1 var(--fz);
+  letter-spacing: 0.3em;
+  color: var(--dim);
+}
+#result[data-rank='none'] .rRankBox {
+  display: none;
+}
+#result[data-rank='S'] .rank {
+  color: var(--focus);
+  text-shadow:
+    6px 6px 0 #000,
+    0 0 22px rgba(255, 210, 26, 0.55);
+}
+#result[data-rank='B'] .rank {
+  color: var(--acc2);
+}
+#result[data-rank='C'] .rank,
+#result[data-rank='D'] .rank {
+  color: #9aa4ad;
+}
+#result[data-rank='word'] .rank {
+  font-size: 56px;
+  color: var(--acc);
+}
+#result[data-res='fail'][data-rank='word'] .rank {
+  color: #9aa4ad;
+}
+.rBody {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) 1.1fr;
+  gap: 16px;
+  align-items: start;
+  padding: 16px 22px 0;
+}
+.rBody:has(#rSpoils:empty) {
+  grid-template-columns: 1fr;
+}
+.rColR:has(> #rSpoils:empty) {
+  display: none;
+}
+@media (max-width: 760px) {
+  .rBody {
+    grid-template-columns: 1fr;
+  }
+}
+.rFoot {
+  justify-content: flex-end;
+  padding: 14px 22px 0;
+  margin: 0;
 }
 body[data-uifx='full'] #result.on .rank {
   animation: zStamp 0.45s cubic-bezier(0.2, 1.6, 0.4, 1) 0.15s backwards;
@@ -9840,12 +9958,149 @@ body[data-uifx='full'] #result.on .rank {
   }
 }
 #resultGrid {
+  margin: 0;
+  grid-template-columns: auto 1fr;
+  gap: 0;
   background: #000;
   border-radius: 14px;
-  padding: 10px 16px;
+  padding: 6px 16px;
+  font-size: 13px;
+}
+#resultGrid span {
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+#resultGrid span:nth-last-child(-n + 2) {
+  border-bottom: 0;
 }
 #resultGrid span:nth-child(even) {
   font: 800 14px/1.4 var(--fd);
+  padding-left: 16px;
+}
+#resultGrid span:nth-child(odd) {
+  white-space: nowrap;
+}
+#result #rPilot {
+  max-width: none;
+  margin: 12px 0 0;
+  padding: 10px 16px 12px;
+  background: #000;
+  border-radius: 14px;
+}
+/* 結果畫面的戰果（loot.js 的 spoilsHtml）：擊破與破壞的各項總數、取得的每件裝備與素材 */
+#rSpoils:empty {
+  display: none;
+}
+.rSp {
+  padding: 12px 16px 14px;
+  background: #000;
+  border-radius: 14px;
+}
+.rSpH {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 12px 0 7px;
+  font: 800 12px/1.2 var(--fz);
+  color: var(--dim);
+  letter-spacing: 1px;
+}
+.rSpH:first-child {
+  margin-top: 0;
+}
+.rSpH::before {
+  content: '';
+  align-self: center;
+  width: 6px;
+  height: 14px;
+  background: var(--acc);
+  transform: skewX(-18deg);
+}
+.rSpH b {
+  font: italic 900 18px/1 var(--fd);
+  color: var(--acc);
+}
+.rSpT {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.rT {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 68px;
+  padding: 5px 10px 6px;
+  border-radius: 8px;
+  background: #1a1b1f;
+  border-left: 3px solid var(--acc);
+}
+.rT b {
+  font: italic 900 22px/1.05 var(--fd);
+  color: #fff;
+}
+.rT.z {
+  border-left-color: #333;
+  background: #111214;
+}
+.rT i {
+  font-style: normal;
+  font-size: 10.5px;
+  color: var(--dim);
+  white-space: nowrap;
+}
+.rT.z b {
+  color: #555;
+}
+.rT.z i {
+  color: #666;
+}
+.rSpL {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  max-height: 168px;
+  overflow: auto;
+}
+.rG {
+  --gq: #c9d2da;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px 3px 6px;
+  border: 1px solid var(--gq);
+  border-left-width: 4px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #eef2f5;
+  white-space: nowrap;
+}
+.rG em {
+  font-style: normal;
+  font-size: 10.5px;
+  color: var(--gq);
+}
+.rG u {
+  text-decoration: none;
+  color: #ffd977;
+}
+.rG .gBar.mini {
+  margin-left: 2px;
+}
+.rG.part {
+  --gq: var(--acc2);
+}
+.rG.mat {
+  color: var(--gq);
+  border-left-width: 1px;
+}
+.rG.mat b {
+  color: #fff;
+  font-weight: 800;
+}
+.rG.lost {
+  --gq: #ff6060;
+  color: #ff9a9a;
 }
 @media (max-height: 540px) {
   #hubDock .hdI {

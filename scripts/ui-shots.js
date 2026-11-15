@@ -138,6 +138,85 @@ const SHOTS = {
       document.querySelector('#forgeBox .fgLine').click();
     });
   },
+  // 結果畫面的戰果（loot.js 的 spoilsHtml）：擊破與破壞的各項、取得的裝備與素材
+  'result-spoils': async (page) => {
+    await page.evaluate(() => {
+      const g = window.__game;
+      const G = window.__gear;
+      let sd = 11;
+      const rng = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+      const S = g.save;
+      g.hkReset();
+      g.hkOn = true;
+      g.hk = { civ: 3, foe: 7 };
+      g.mvKills = 2;
+      g.tl = { k: { boss: 1, ac: 2, mt: 23, air: 4, part: 3 }, d: { prop: 41, col: 2 } };
+      g.lootReset();
+      const L = g.lootRun;
+      L.mats = { alloy: 6, circuit: 3, core: 1, shard: 1 };
+      L.parts = ['w_sg'];
+      for (const [id, q] of [
+        [S.asm.rarm, 4],
+        [S.asm.core, 3],
+        [S.asm.head, 2],
+        [S.asm.legs, 1],
+        [S.asm.rarm, 1],
+      ]) {
+        const it = G.rollGear(id, q, rng);
+        L.gear.push({ id: it.id, q: it.q, ax: it.ax });
+      }
+      L.lost = 1;
+      document.getElementById('rTitle').textContent = '主線出擊 完成';
+      document.getElementById('rRank').textContent = 'A';
+      document.getElementById('resultGrid').innerHTML = [
+        ['作戰', '礦坑深層的掃蕩'],
+        ['完成區段', '4 / 4'],
+        ['作戰時間', '12 分 31 秒'],
+        ['報酬（已即時入帳）', '+48,200'],
+        ['作戰完成報酬', '+60,000'],
+        ['SP 結餘', '512,300'],
+      ]
+        .map((r) => `<span class="dim">${r[0]}</span><span>${r[1]}</span>`)
+        .join('');
+      g.state = 'result';
+      g.showScreen('result');
+      document.getElementById('rSpoils').innerHTML = g.spoilsHtml();
+    });
+  },
+  // 真的流程：自由出擊 → 任務完成的結果畫面（標題與評價的演出、駕駛員經驗、戰果）
+  'result-real': async (page) => {
+    await page.evaluate(() => {
+      const g = window.__game;
+      g.ctrl.hangarFx = 'off';
+      g.startMission();
+    });
+    await page.waitForFunction(() => window.__game.player && window.__game.state === 'play', null, {
+      timeout: 30000,
+    });
+    await page.evaluate(() => {
+      const g = window.__game;
+      const G = window.__gear;
+      let sd = 5;
+      const rng = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+      for (const e of g.enemies.slice(0, 6)) g.tallyKill(e);
+      g.tl.d.prop = 12;
+      g.lootMat('alloy', 2);
+      g.lootMat('circuit', 1);
+      const it = G.rollGear(g.save.asm.rarm, 2, rng);
+      g.lootRun.gear.push({ id: it.id, q: it.q, ax: it.ax });
+      g.missionT = 187.4;
+      g.endMission(true, false);
+    });
+    await wait(2500);
+  },
+  'result-fail': async (page) => {
+    await page.evaluate(() => window.__game.startMission());
+    await page.waitForFunction(() => window.__game.player && window.__game.state === 'play', null, {
+      timeout: 30000,
+    });
+    await page.evaluate(() => window.__game.endMission(false, false));
+    await wait(2500);
+  },
   // 從作戰室進來的機甲庫（主線整備）：火控與消耗品的零件格子（小卡片比較高）
   'garage-hub-fcs': async (page) => {
     await hubGarage(page);

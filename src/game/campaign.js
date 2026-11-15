@@ -1554,10 +1554,7 @@ Object.assign(Game.prototype, {
       ...(c.replay
         ? [[free ? '危險條款' : '作戰紀錄', this.heatNames(c.heat).join('、') || '無危險條款']]
         : []),
-      ['擊破數', String(c.stats[0] ? c.stats[0].kills : 0)],
-      ...this.hkRows(), // 人員擊殺數（crowd.js）
-      ...this.mvRows(), // 載具擊毀數（map-veh.js）
-      ...this.lootRows(), // 素材與零件（loot.js）
+      // 擊破、破壞、取得的各項在下方的「戰果」（loot.js 的 spoilsHtml）
       // Boss 改版：最後一段 Boss 的擊破評價（S＝多一個戰術模組三選一）
       ...(this.bossRank && success ? [['Boss 擊破評價', this.tierRankTxt(this.bossRank)]] : []),
       ...(this.tierPartsBroken && success
@@ -1570,6 +1567,7 @@ Object.assign(Game.prototype, {
     $('resultGrid').innerHTML = rows
       .map((r) => `<span class="dim">${escHtml(r[0])}</span><span>${escHtml(r[1])}</span>`)
       .join('');
+    $('rSpoils').innerHTML = this.spoilsHtml();
     // 作戰紀錄的重打：結果之後回作戰紀錄的清單（input.js 的 btnResultOk）
     const rec = !mp && !free && c.replay;
     this.resultNav = rec ? 'record' : null;
@@ -1595,6 +1593,7 @@ Object.assign(Game.prototype, {
           ending: (success && this.campEnding) || null,
           cycle: this.campEndingCycle || 1,
           xpBySlot: xpAll,
+          tl: this.tl, // 戰果的擊破與破壞（客機的取得、人員、載具用自己的）
           rows: rows.filter((r) => r[0] !== 'SP 結餘'),
         });
       for (const x of this.net.players) x.ready = false;
