@@ -1,6 +1,7 @@
 // 自訂關卡可以用的東西（主題、變體、物件、單位）：讀檔驗證、編輯器的選單、執行時共用
 import { AC_ROSTER, BOSS_DEFS, ENEMY_TYPES } from '../data/enemies.js';
 import { ACES, FOES } from '../data/foes.js';
+import { MV_TYPES } from '../data/map-veh.js';
 import { VARIANTS } from '../world/variants.js';
 import { THEMES } from '../world/world.js';
 import { sanitizeLevel } from './format.js';
@@ -43,6 +44,14 @@ export function unitTypes(kind) {
         { id: 'rocket', name: '敵方步兵（火箭筒）', note: '火箭筒' },
         { id: 'pilot', name: '駕駛員（拿槍）', note: '站著開槍、不逃' },
       ],
+      // 地圖上會動的載具（game/map-veh.js）：中立、不擋勝負；有路徑時沿路徑開
+      veh: Object.keys(MV_TYPES)
+        .filter((k) => !MV_TYPES[k].air && k !== 'cargoship')
+        .map((k) => ({
+          id: k,
+          name: MV_TYPES[k].name,
+          note: MV_TYPES[k].boat ? '水上' : '有路徑時沿路徑開',
+        })),
     };
   }
   return UT[kind] || [];
@@ -55,7 +64,7 @@ let KN = null;
 export function knownSets() {
   if (KN) return KN;
   const ok = {};
-  for (const k of ['enemy', 'ace', 'boss', 'ally', 'convoy', 'human'])
+  for (const k of ['enemy', 'ace', 'boss', 'ally', 'convoy', 'human', 'veh'])
     ok[k] = new Set(unitTypes(k).map((t) => t.id));
   KN = {
     themes: new Set(Object.keys(THEMES)),

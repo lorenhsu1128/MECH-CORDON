@@ -68,6 +68,7 @@ export const UNIT_KINDS = {
   ally: '友軍',
   convoy: '護送車輛',
   human: '小人',
+  veh: '地圖載具',
 };
 export const GROUP_COLORS = [0xff5050, 0xffb020, 0x7ee081, 0x5cc8ff, 0xc090ff, 0xff80c0, 0xe8e070, 0x80e0d0];
 
@@ -413,6 +414,7 @@ export function newLevel(base = {}) {
       tod: base.tod || '',
       weather: base.weather || '',
       crowd: base.crowd || 'auto',
+      mv: base.mv || 'auto',
       zone: null,
       level: base.level || 5,
       np: 1,
@@ -474,6 +476,7 @@ export function sanitizeLevel(raw, known, warn = []) {
         ? B.weather
         : '',
       crowd: B.crowd === 'placed' ? 'placed' : 'auto', // 地圖上的小人：auto＝隨機加上主題的平民與步兵、placed＝只有擺放的
+      mv: B.mv === 'off' ? 'off' : 'auto', // 地圖上會動的載具：auto＝隨機加上主題的車與作業機具、off＝只有擺放的（docs/map-vehicles-design.md）
       zone:
         B.zone && typeof B.zone === 'object'
           ? (() => {

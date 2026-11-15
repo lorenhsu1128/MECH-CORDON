@@ -2,7 +2,7 @@
 // （前方被擋住就停、倒車、掉頭）、機甲踩扁小車、大車擋住機甲、打壞時的駕駛與掉落。載具本身在 world/map-veh.js。
 // 第 1 期：只有單機（多人第 5 期）；路線用自己的亂數串（不動關卡生成的亂數）。
 import { makeRng } from '../core/math.js';
-import { MV_AIR, MV_DROP, MV_THEMES, MV_TYPES, MV_WATER, MV_WORK } from '../data/map-veh.js';
+import { MV_AIR, MV_DROP, MV_SEG, MV_THEMES, MV_TYPES, MV_WATER, MV_WORK } from '../data/map-veh.js';
 import { local } from '../render/foe-damage.js';
 import { MapVeh } from '../world/map-veh.js';
 import { Game } from './game.js';
@@ -17,7 +17,11 @@ Object.assign(Game.prototype, {
   mvPlan(o = {}) {
     this.mvClear();
     const W = this.world;
-    if (!W || !this.scene || o.ambient === false) return;
+    if (!W || !this.scene || o.mv === false) return; // 自訂關卡的底圖「地圖上的載具：不放」
+    const set = (this.ctrl && this.ctrl.mapVeh) || 'many'; // 設定「地圖上的載具」：many／few／off
+    if (set === 'off') return;
+    const segK = (this.camp && this.camp.ss && MV_SEG[this.camp.ss.type]) ?? 1; // 主線：依區段類型
+    const K = (set === 'few' ? 0.5 : 1) * segK;
     if (this.airMode || this.sim || this.range || this.tut || this.lab || this.cine || this.pvp) return;
     if (this.net && this.net.role === 'client') return; // 客機：照房主送來的（mvNetEvent）
     if (typeof window !== 'undefined' && window.__mvOff) return; // 量測的比較用（scripts/perf-campaign.js --nomv）
@@ -29,7 +33,7 @@ Object.assign(Game.prototype, {
     const area = Math.max(1, (Z[1] - Z[0]) * (Z[3] - Z[2]));
     let n = Math.round((4 + rng() * 4) * Math.min(1.4, Math.sqrt(area / (230 * 230))));
     if (W.opt && W.opt.open) n = Math.min(n, 2); // Boss 關：地圖要開闊
-    n = Math.max(2, Math.min(9, n));
+    n = Math.max(K < 0.5 ? 1 : 2, Math.min(9, Math.round(n * K)));
     const used = {};
     const pl = this.player;
     this.mvs = [];
@@ -38,6 +42,7 @@ Object.assign(Game.prototype, {
     // 作業（第 2 期）：先放，巡行的路線再避開它們
     const wl = (MV_WORK[W.themeKey] || []).slice();
     let nw = wl.length ? 1 + Math.floor(rng() * 2) + (area > 300 * 300 ? 1 : 0) : 0;
+    nw = Math.round(nw * Math.min(1, K));
     if (W.opt && W.opt.open) nw = 0;
     for (let k = 0; k < nw && wl.length; k++) this.mvJob(rng, wl.splice(Math.floor(rng() * wl.length), 1)[0]);
     for (let i = 0, tries = 0; list.length && i < n && tries < n * 3; tries++) {
@@ -366,6 +371,37 @@ Object.assign(Game.prototype, {
       v.placed = false;
     }
     this.mvFullT = 0.5;
+  },
+  // 自訂關卡的單位「地圖載具」（level-play.js）：有路徑時沿路徑開（兩個點的堆高機、推土機、礦用卡車在兩點之間作業），
+  // 沒有路徑時挖土機、吊車原地作業，其他停著（駕駛受驚會下車逃）
+  mvSpawnUnit(u, at) {
+    const T = MV_TYPES[u.type];
+    if (!T || !this.world || !this.scene) return null;
+    if (!this.mvs) this.mvs = [];
+    if (!this.mvNoGo) this.mvNoGo = [];
+    if (!this.mvSpots) this.mvSpots = [];
+    const P = this.lv && this.lv.L.paths.find((p) => p.id === (u.beh && u.beh.path));
+    const pts = P ? P.pts.map((q) => [q[0], q[1]]) : null;
+    const yaw = u.yaw || 0;
+    let v;
+    if (pts && pts.length >= 2) {
+      const line = pts.length === 2 && ['forklift', 'bulldozer', 'hauler'].includes(u.type);
+      v = this.mvAdd(u.type, pts, line ? { job: { k: 'line' } } : { i: 0, dir: 1 });
+    } else {
+      const k = u.type === 'excavator' ? 'dig' : u.type === 'crane' ? 'lift' : 'static';
+      v = this.mvAdd(
+        u.type,
+        [
+          [at.x, at.z],
+          [at.x + Math.sin(yaw), at.z + Math.cos(yaw)],
+        ],
+        {
+          job: { k, dump: 1.4 },
+        },
+      );
+    }
+    if (this.net && this.net.role === 'host') this.mvNetFull([v], false);
+    return v;
   },
   // 結果畫面的一列（這一場打壞過載具時）
   mvRows() {

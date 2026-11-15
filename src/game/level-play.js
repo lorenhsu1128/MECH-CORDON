@@ -147,7 +147,7 @@ Object.assign(Game.prototype, {
     this.scaleDmg = sc.dmg;
     this.levelName = full.name + (segCount(full) > 1 ? `（${n + 1}／${segCount(full)}）` : '');
     this.lvBuildMarks(true);
-    this.crowdPlan({ ambient: B.crowd !== 'placed' }); // 地圖上的小人（crowd.js）：擺放的小人要先有小人系統
+    this.crowdPlan({ ambient: B.crowd !== 'placed', mv: B.mv !== 'off' }); // 地圖上的小人（crowd.js）：擺放的小人要先有小人系統；地圖上的載具（map-veh.js）
     for (const u of L.units) if (u.at === 'start') this.lvSpawnUnit(u, 'place');
     for (const g of new Set(L.units.filter((u) => u.at === 'start').map((u) => u.g)))
       this.lv.st.spawned[g] = (this.lv.st.spawned[g] || 0) + 1;
@@ -414,6 +414,8 @@ Object.assign(Game.prototype, {
         }
       } else if (u.kind === 'human') {
         this.crowdSpawnUnit(u.type, at, u.yaw || 0); // 地圖上的小人（crowd.js）：不是實體
+      } else if (u.kind === 'veh') {
+        this.mvSpawnUnit(u, at); // 地圖上會動的載具（map-veh.js）：中立、不擋勝負
       } else if (u.kind === 'convoy') {
         const P = this.lv.L.paths.find((p) => p.id === u.beh.path);
         const path = (P ? P.pts : [[u.x, u.z]]).map(

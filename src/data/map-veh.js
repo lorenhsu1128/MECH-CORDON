@@ -123,4 +123,21 @@ export const MV_AIR = {
   orbit: ['workpod', 'workpod', 'cargopod', 'cargopod', 'cargopod', 'shuttle'],
 };
 
+// 主線的區段類型：巡行與作業的數量倍率（沒有列的＝1；Boss 關另外以 opt.open 限制）
+export const MV_SEG = {
+  supply: 1.3,
+  intel: 1.2,
+  battle: 1,
+  destroy: 0.9,
+  defend: 0.7,
+  escort: 0.8,
+  breakthrough: 0.8,
+  extract: 0.8,
+  elite: 0.5,
+  chase: 0.6,
+  front: 0.4,
+  colossus: 0.5,
+  boss: 0.3,
+};
+
 export const MV_DROP = 0.35; // 打壞（含踩扁）時掉修補包的機率（2026-11-15 使用者定案：隨機掉補血包）

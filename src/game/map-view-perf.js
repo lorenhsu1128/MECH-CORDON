@@ -61,6 +61,7 @@ Object.assign(Game.prototype, {
     for (const e of this.players || []) put(e.mesh, 'mech');
     for (const e of this.allies || []) put(e.mesh, 'mech');
     for (const v of this.vehicles || []) put(v.mesh, 'veh');
+    for (const v of this.mvs || []) put(v.mesh, 'veh'); // 地圖上會動的載具（map-veh.js）
     if (this.crowd && this.crowd.mesh) put(this.crowd.mesh.group, 'crowd');
     put(w.terrainMesh, 'terrain');
     put(w.decorG, 'terrain');

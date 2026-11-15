@@ -400,6 +400,7 @@ Object.assign(Game.prototype, {
     $('ctrlPopTag').value = this.ctrl.popTag || 'imp';
     $('ctrlDestruct').value = this.ctrl.destruct || 'easy';
     $('ctrlBlood').value = this.ctrl.blood || 'red';
+    $('ctrlMapVeh').value = this.ctrl.mapVeh || 'many';
     $('ctrlDmgSelf').value = this.ctrl.dmgSelf === false ? 'off' : 'on';
     $('ctrlHangar').value = this.hangarFx();
     this.renderLocalModels();

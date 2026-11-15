@@ -1035,7 +1035,13 @@ Object.assign(Game.prototype, {
     cur.units.forEach((u, i) => {
       const g = new THREE.Group();
       const col =
-        u.kind === 'ally' || u.kind === 'convoy' ? 0x7ee081 : u.kind === 'human' ? 0xe8d8b0 : gColor(u.g);
+        u.kind === 'ally' || u.kind === 'convoy'
+          ? 0x7ee081
+          : u.kind === 'human'
+            ? 0xe8d8b0
+            : u.kind === 'veh'
+              ? 0xc8c0a0
+              : gColor(u.g);
       const big = u.kind === 'boss' ? 2.4 : u.kind === 'ace' ? 1.5 : u.kind === 'human' ? 0.45 : 1;
       const s = isSel('unit', i) ? 1.35 : 1;
       const d = new THREE.Mesh(disc, flatMat(isSel('unit', i) ? 0xffd060 : col));
@@ -1514,8 +1520,9 @@ Object.assign(Game.prototype, {
       const wins = S.triggers.some((t) => t.act.some((a) => a.k === 'win' || a.k === 'next'));
       const exits = S.marks.some((m) => m.k === 'exit');
       const enemies =
-        S.units.some((u) => u.kind !== 'ally' && u.kind !== 'convoy' && u.kind !== 'human') ||
-        S.marks.some((m) => m.k === 'target');
+        S.units.some(
+          (u) => u.kind !== 'ally' && u.kind !== 'convoy' && u.kind !== 'human' && u.kind !== 'veh',
+        ) || S.marks.some((m) => m.k === 'target');
       const convoy = S.units.some((u) => u.kind === 'convoy');
       if (!wins && !exits && !enemies && !convoy)
         out.push({ err: true, msg: pre + '沒有結束條件（放敵人、出口、護送，或用觸發器「任務成功」）' });

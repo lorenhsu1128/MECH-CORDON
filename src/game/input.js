@@ -960,6 +960,10 @@ Object.assign(Game.prototype, {
       this.ctrl.blood = e.target.value;
       this.saveKeys();
     };
+    document.getElementById('ctrlMapVeh').onchange = (e) => {
+      this.ctrl.mapVeh = e.target.value; // 地圖上會動的載具（game/map-veh.js；下次出擊生效）
+      this.saveKeys();
+    };
     document.getElementById('ctrlDestruct').onchange = (e) => {
       this.ctrl.destruct = e.target.value;
       this.saveKeys();

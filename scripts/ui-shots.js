@@ -35,6 +35,15 @@ const SHOTS = {
     await page.click('#btnSettings');
     await page.click('#setTabs button[data-st="gfx"]');
   },
+  // 介面與演出（最下面是「血跡」「地圖上的載具」：捲到底）
+  'settings-ui': async (page) => {
+    await page.click('#btnSettings');
+    await page.click('#setTabs button[data-st="ui"]');
+    await page.evaluate(() => {
+      const el = document.getElementById('ctrlMapVeh');
+      if (el) el.scrollIntoView({ block: 'center' });
+    });
+  },
   modal: async (page) => {
     await page.evaluate(() =>
       window.__game.uiConfirm(
