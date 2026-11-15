@@ -1,7 +1,7 @@
 // 介面改版（docs/zzz-ui-design.md）的截圖：每個畫面 × 三種畫面大小（電腦 1920×1080、平板 1180×820 觸控、手機橫式 844×390 觸控）
 // 用法：node scripts/ui-shots.js [畫面,…] [--size=pc,tab,phone] [--tag=名稱]
 // 輸出 test-results/ui/<tag>/<畫面>-<大小>.png（tag 預設 now）；直接開 dist/mech-cordon.html（file://、?test）
-/* global window, document, getComputedStyle, innerWidth */
+/* global window, document, getComputedStyle, innerWidth, THREE */
 const fs = require('fs');
 const path = require('path');
 const { launch } = require('./perf-lib.js');
@@ -148,6 +148,27 @@ const SHOTS = {
   'hud-chase': async (page) => hudShot(page, 'chase'),
   'hud-fp': async (page) => hudShot(page, 'fp'),
   'hud-boss': async (page) => hudShot(page, 'top', 3),
+  // 主線的導航標記（出口的定位針：一個在畫面內、其他在畫面外；敵人的畫面外箭頭一起看）
+  'hud-exits': async (page) => {
+    await page.evaluate(() => {
+      const g = window.__game;
+      g.campBegin('c1s1');
+      g.campEnterSeg();
+    });
+    await wait(5000);
+    await page.evaluate(() => {
+      const g = window.__game;
+      g.waves = [];
+      g.wavePend = null;
+      g.campSpawnExits();
+      const p = g.player,
+        h = p.model.height;
+      const ex = g.camp.exits || [];
+      if (ex[0]) ex[0].pos = p.pos.clone().add(new THREE.Vector3(h * 2.2, 0, -h * 1.6));
+      if (g.player.lock == null && g.enemies[0]) g.player.lock = g.enemies[0];
+    });
+    await wait(4500); // 開場的過關條件卡片收起來之後
+  },
   comm: async (page) => {
     await hudShot(page, 'top');
     await page.evaluate(() =>

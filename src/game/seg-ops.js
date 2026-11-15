@@ -605,15 +605,21 @@ Object.assign(Game.prototype, {
     vis.segR = [];
     for (const a of (sv && sv.rings) || []) {
       const pos = new THREE.Vector3(a[0], a[1], a[2]);
-      vis.segR.push({ pos, col: a[3], icon: a[7], group: this.campRing(pos, a[3], a[4], a[5], a[6]) });
+      vis.segR.push({
+        pos,
+        col: a[3],
+        icon: a[7],
+        label: a[4],
+        group: this.campRing(pos, a[3], a[4], a[5], a[6]),
+      });
     }
   },
-  // HUD 的標記（campDrawHud）：[位置, 顏色, 字]
+  // HUD 的標記（campDrawHud）：[位置, 顏色, 字, 名稱]
   segMarks() {
     const hex = (c) => '#' + c.toString(16).padStart(6, '0');
     const R = this.camp && this.camp.ss && this.camp.ss.rings;
     const V = !this.camp && this.campC && this.campC.vis;
     const list = R ? Object.values(R) : (V && V.segR) || [];
-    return list.filter((o) => o.icon).map((o) => [o.pos, hex(o.col), o.icon]);
+    return list.filter((o) => o.icon).map((o) => [o.pos, hex(o.col), o.icon, o.label || '']);
   },
 });

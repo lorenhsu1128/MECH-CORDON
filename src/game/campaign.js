@@ -1639,87 +1639,239 @@ Object.assign(Game.prototype, {
       goal = `${SEG_TYPES[ss.type || 'battle'].goal} ｜ 殘存敵軍 ${alive}${wavesLeft ? '（尚有增援）' : ''}`;
     return goal;
   },
-  // 出口、補給台、資料終端的標記：畫面內畫在上方，畫面外貼在畫面邊緣
+  // 出口、補給台、資料終端、區段的光環（回收地點、逃脫點…）的導航標記（2026-11-15 改版：以前是「圖示＋距離」的文字，
+  // 和敵人的箭頭、增援、補給箱的標示混在一起）。一律是「白邊的定位針」——敵人＝三角箭頭、增援＝菱形、補給箱＝方塊，
+  // 只有導航目標用這個形狀：針頭填目標的顏色、中間是圖示，下面的膠囊寫種類與距離，外圈一直往外擴散的光環。
+  // 畫面內：針尖往下一條虛線接到地面的位置；畫面外：貼在比敵人箭頭內側一圈的軌道上，外側的雙箭頭指向它，
+  // 同一側的標記互相推開不重疊。
   campDrawHud(ctx) {
     const c = this.camp;
     if (!this.player) return;
     const marks = [];
-    const mk = (pos, reward, color, icon, lab) =>
+    const mk = (pos, reward, color, icon, lab, kind) =>
       marks.push({
         pos,
         color: lab ? lab.color : reward ? EXIT_REWARDS[reward].color : color,
         icon: reward ? EXIT_REWARDS[reward].icon : icon,
         lab,
+        kind,
       });
+    const add = (exits, pad, intel) => {
+      for (const ex of exits || []) mk(ex.pos, ex.reward, null, null, ex.lab, '出口');
+      if (pad) mk(pad.pos, null, '#7ee081', '補', null, '補給台');
+      if (intel) mk(intel.pos, null, '#7fc8ff', '情', null, '資料終端');
+      for (const [pos, col, icon, label] of this.segMarks()) mk(pos, null, col, icon, null, label || '目標');
+    };
     if (c) {
       const ss = c.ss || {};
-      for (const ex of c.exits || []) mk(ex.pos, ex.reward, null, null, ex.lab);
-      if (ss.pad && ss.pad.group) mk(ss.pad.pos, null, '#7ee081', '補');
-      if (ss.intel && ss.intel.group) mk(ss.intel.pos, null, '#7fc8ff', '情');
-      for (const [pos, col, icon] of this.segMarks()) mk(pos, null, col, icon);
+      add(c.exits, ss.pad && ss.pad.group && ss.pad, ss.intel && ss.intel.group && ss.intel);
     } else if (this.campC && this.campC.vis) {
       const V = this.campC.vis;
-      for (const ex of V.exits || []) mk(ex.pos, ex.reward, null, null, ex.lab);
-      if (V.pad) mk(V.pad.pos, null, '#7ee081', '補');
-      if (V.intel) mk(V.intel.pos, null, '#7fc8ff', '情');
-      for (const [pos, col, icon] of this.segMarks()) mk(pos, null, col, icon);
+      add(V.exits, V.pad, V.intel);
     }
     if (!marks.length) return;
     const W = innerWidth,
       H = innerHeight;
-    for (const mk of marks) {
-      const v = mk.pos.clone();
-      v.y += 3;
-      const s = this.proj(v);
-      let x = s.x,
-        y = s.y;
-      const behind = v.clone().project(this.camera).z > 1;
-      if (behind) {
-        x = W - x;
-        y = H - 30;
+    const small = H < 540;
+    const S = small ? 0.72 : clamp(H / 900, 1, 1.5);
+    const R = 15 * S; // 針頭的半徑
+    const FT = "'Rubik', 'Noto Sans TC', sans-serif";
+    const cx = W / 2,
+      cy = H / 2;
+    // 畫面外的軌道（針頭的中心）：畫面內側的橢圓——敵人、敵群、增援的畫面外箭頭貼著畫面的矩形邊緣，
+    // 導航標記在裡面一圈，而且橢圓避開四個角落的 HUD 面板（左上的狀態欄、右下的武器欄）
+    // 觸控（body.vpad）：下方是搖桿與按鈕、敵群標示也比較高，所以橢圓的中心往上移、下緣收高
+    const touch = document.body.classList.contains('vpad');
+    const ey = touch ? H * 0.45 : cy;
+    const rx = Math.max(W * 0.22, W / 2 - (small ? 150 : 200 * S));
+    let ry = Math.max(H * 0.2, H / 2 - (small ? 105 : 170 * S));
+    if (touch) ry = Math.max(H * 0.16, Math.min(ry, H - (small ? 150 : 250 * S) - ey));
+    const onE = (f) => [cx + Math.cos(f) * rx, ey + Math.sin(f) * ry];
+    const tm = this.time || 0;
+    const pl = this.player.pos;
+    const up = 5 * MS; // 針尖在目標上方多高
+    const mg = 40 * S;
+    for (const m of marks) {
+      m.d = Math.round(Math.hypot(pl.x - m.pos.x, pl.z - m.pos.z));
+      const g = this.proj(m.pos);
+      const tp = this.proj(m.pos.clone().setY(m.pos.y + up));
+      const inG = g.in && g.x > mg && g.x < W - mg && g.y > mg * 1.5 && g.y < H - mg;
+      if (inG && tp.in) {
+        m.edge = false;
+        m.gx = g.x;
+        m.gy = g.y;
+        m.x = tp.x;
+        m.y = Math.max(mg, Math.min(tp.y, g.y - 12 * S) - R * 1.9); // 針頭的中心（針尖在 tp）
+        continue;
       }
-      const m = 28;
-      const edge = behind || x < m || x > W - m || y < m || y > H - m;
-      x = clamp(x, m, W - m);
-      y = clamp(y, m, H - m);
-      const d = Math.round(Math.hypot(this.player.pos.x - mk.pos.x, this.player.pos.z - mk.pos.z));
+      let dx = g.x - cx,
+        dy = g.y - cy;
+      if (!g.in) {
+        dx = -dx;
+        dy = -dy;
+      }
+      const a = Math.atan2(dy, dx);
+      m.edge = true;
+      m.a = a;
+      m.f = Math.atan2(rx * Math.sin(a), ry * Math.cos(a)); // 這個方向的射線碰到橢圓的參數角
+      [m.x, m.y] = onE(m.f);
+    }
+    // 畫面外的標記沿著橢圓互相推開（同一個方向的出口常常有兩三個）
+    const ed = marks.filter((m) => m.edge);
+    const gap = R * 2 + 52 * S;
+    const rAvg = (rx + ry) / 2;
+    for (let it = 0; it < 8; it++)
+      for (let i = 0; i < ed.length; i++)
+        for (let j = i + 1; j < ed.length; j++) {
+          const p = ed[i],
+            q = ed[j];
+          const dd = Math.hypot(q.x - p.x, q.y - p.y);
+          if (dd >= gap) continue;
+          let df = Math.atan2(Math.sin(q.f - p.f), Math.cos(q.f - p.f));
+          if (Math.abs(df) < 1e-4) df = i % 2 ? -1e-4 : 1e-4;
+          const push = ((gap - dd) / 2 / rAvg) * Math.sign(df);
+          p.f -= push;
+          q.f += push;
+          [p.x, p.y] = onE(p.f);
+          [q.x, q.y] = onE(q.f);
+        }
+    // 遠的先畫，近的疊在上面
+    marks.sort((p, q) => q.d - p.d);
+    const th = Math.acos(1 / 1.9);
+    for (const m of marks) {
+      const { x, y, color } = m;
       ctx.save();
-      ctx.fillStyle = mk.color;
-      ctx.strokeStyle = 'rgba(0,0,0,0.7)';
-      ctx.lineWidth = 3;
+      // 畫面內：針尖到地面的虛線＋地面的小圓點
+      if (!m.edge) {
+        ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+        ctx.lineWidth = 4 * S;
+        ctx.beginPath();
+        ctx.moveTo(x, y + R * 1.9);
+        ctx.lineTo(m.gx, m.gy);
+        ctx.stroke();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2 * S;
+        ctx.setLineDash([5 * S, 4 * S]);
+        ctx.lineDashOffset = -tm * 18;
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(m.gx, m.gy, 3.5 * S, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // 往外擴散的光環
+      const ph = (tm * 0.9 + m.d * 0.013) % 1;
+      ctx.globalAlpha = (1 - ph) * 0.7;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2.5 * S;
+      ctx.beginPath();
+      ctx.arc(x, y, R * (1.15 + ph * 1.1), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      // 畫面外：外側的雙箭頭指向目標
+      if (m.edge) {
+        const bob = Math.sin(tm * 6) * 2.5 * S;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(m.a);
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        for (let i = 0; i < 2; i++) {
+          const ox = R + (10 + i * 8) * S + bob,
+            h = 7 * S;
+          ctx.beginPath();
+          ctx.moveTo(ox, -h);
+          ctx.lineTo(ox + h, 0);
+          ctx.lineTo(ox, h);
+          ctx.lineWidth = 5.5 * S;
+          ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+          ctx.stroke();
+          ctx.lineWidth = 2.8 * S;
+          ctx.strokeStyle = i ? color : '#ffffff';
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+      // 定位針：深色外框 → 填色 → 白邊 → 中間的深色圓與圖示
+      ctx.beginPath();
+      ctx.arc(x, y, R, Math.PI / 2 + th, Math.PI / 2 - th + Math.PI * 2);
+      ctx.lineTo(x, y + R * 1.9);
+      ctx.closePath();
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = 6 * S;
+      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+      ctx.stroke();
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.lineWidth = 2.6 * S;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(8,12,18,0.88)';
+      ctx.beginPath();
+      ctx.arc(x, y, R * 0.68, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = color;
       ctx.textAlign = 'center';
-      ctx.font = 'bold 15px sans-serif';
-      ctx.strokeText(`${mk.icon} ${d}m`, x, y);
-      ctx.fillText(`${mk.icon} ${d}m`, x, y);
-      // 畫面內的出口：標記下方寫出獎勵與下一段（光環上的招牌在遠的鏡頭看不清楚）
-      if (!edge && mk.lab) {
+      ctx.textBaseline = 'middle';
+      ctx.font = `bold ${Math.round(14 * S)}px ${FT}`;
+      ctx.fillText(m.icon || '●', x, y + 1);
+      // 膠囊：種類＋距離（畫面外在下半部時放在針的上方）
+      const kind = String(m.kind).slice(0, 8);
+      const dist = `${m.d}m`;
+      const fk = `bold ${Math.round(12 * S)}px ${FT}`,
+        fd = `${Math.round(12 * S)}px ${FT}`;
+      ctx.font = fk;
+      const kw = ctx.measureText(kind).width;
+      ctx.font = fd;
+      const dw = ctx.measureText(dist).width;
+      const cw = kw + dw + 22 * S,
+        ch = 18 * S;
+      const above = m.edge && y > cy + 20;
+      const by = above ? y - R - 8 * S - ch : y + R * 1.9 + 6 * S;
+      const bx = clamp(x - cw / 2, 6, W - 6 - cw);
+      ctx.fillStyle = 'rgba(8,12,18,0.85)';
+      ctx.beginPath();
+      ctx.roundRect(bx, by, cw, ch, ch / 2);
+      ctx.fill();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.5 * S;
+      ctx.stroke();
+      ctx.textAlign = 'left';
+      ctx.fillStyle = color;
+      ctx.font = fk;
+      ctx.fillText(kind, bx + 8 * S, by + ch / 2 + 1);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = fd;
+      ctx.fillText(dist, bx + 14 * S + kw, by + ch / 2 + 1);
+      // 畫面內的出口：膠囊下方寫出獎勵與下一段（光環上的招牌在遠的鏡頭看不清楚）
+      if (!m.edge && m.lab) {
         const lines = [
-          mk.lab.label,
-          ...String(mk.lab.sub || '')
+          m.lab.label,
+          ...String(m.lab.sub || '')
             .split('\n')
             .filter(Boolean),
         ];
-        ctx.font = 'bold 15px sans-serif';
+        const f0 = `bold ${Math.round(14 * S)}px ${FT}`,
+          f1 = `${Math.round(12 * S)}px ${FT}`,
+          lh = 17 * S;
+        ctx.font = f0;
         let w = ctx.measureText(lines[0]).width;
-        ctx.font = '13px sans-serif';
+        ctx.font = f1;
         for (const ln of lines.slice(1)) w = Math.max(w, ctx.measureText(ln).width);
-        const bh = 8 + lines.length * 18;
+        const bh = 8 * S + lines.length * lh;
+        const ty = by + ch + 4 * S;
+        const tx = clamp(x - w / 2 - 8 * S, 6, W - 6 - w - 16 * S);
         ctx.fillStyle = 'rgba(8,12,18,0.78)';
-        ctx.fillRect(x - w / 2 - 8, y + 6, w + 16, bh);
-        ctx.fillStyle = mk.color;
-        ctx.fillRect(x - w / 2 - 8, y + 6, 3, bh);
+        ctx.fillRect(tx, ty, w + 16 * S, bh);
+        ctx.fillStyle = color;
+        ctx.fillRect(tx, ty, 3 * S, bh);
+        ctx.textAlign = 'center';
         lines.forEach((ln, i) => {
-          ctx.font = i ? '13px sans-serif' : 'bold 15px sans-serif';
-          ctx.fillStyle = i ? (ln.startsWith('⚠') ? '#ffb070' : '#d8e2ec') : mk.color;
-          ctx.fillText(ln, x, y + 22 + i * 18);
+          ctx.font = i ? f1 : f0;
+          ctx.fillStyle = i ? (ln.startsWith('⚠') ? '#ffb070' : '#d8e2ec') : color;
+          ctx.fillText(ln, tx + w / 2 + 8 * S, ty + 4 * S + lh * (i + 0.5));
         });
-      }
-      if (edge) {
-        ctx.beginPath();
-        ctx.arc(x, y - 5, 15, 0, Math.PI * 2);
-        ctx.strokeStyle = mk.color;
-        ctx.lineWidth = 2;
-        ctx.stroke();
       }
       ctx.restore();
     }
