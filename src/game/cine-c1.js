@@ -19,6 +19,7 @@
 import { clamp } from '../core/math.js';
 import { DS } from '../core/scale.js';
 import { SPEAKERS } from '../data/story.js';
+import { FB, FL, FM } from '../render/cine-brand.js';
 import { Game } from './game.js';
 
 const V3 = () => new THREE.Vector3();
@@ -437,7 +438,7 @@ Object.assign(Game.prototype, {
     }
     x.stroke();
     // 文字
-    x.font = `${12 * s}px "Share Tech Mono", monospace`;
+    x.font = `600 ${12 * s}px ${FM}`;
     x.fillStyle = 'rgba(255,90,60,0.9)';
     x.fillText('BASTILLE // FCS-03', cx - R * 0.62, cy - R * 0.72);
     const rng = Math.max(0, 842 - Math.floor(lt * 3));
@@ -499,14 +500,14 @@ Object.assign(Game.prototype, {
       x.lineWidth = 1.5 * s;
       x.strokeRect(bx, by, 44 * s, 44 * s);
       x.fillStyle = SP.color;
-      x.font = `700 ${26 * s}px sans-serif`;
+      x.font = `900 ${26 * s}px ${FL}`;
       x.textAlign = 'center';
       x.textBaseline = 'middle';
       x.fillText(SP.mark, bx + 22 * s, by + 23 * s);
       x.textAlign = 'left';
-      x.font = `700 ${14 * s}px "Noto Sans TC", sans-serif`;
+      x.font = `700 ${14 * s}px ${FB}`;
       x.fillText(FACTION[ch.who] || SP.name, bx + 56 * s, by + 12 * s);
-      x.font = `${10 * s}px "Share Tech Mono", monospace`;
+      x.font = `600 ${10 * s}px ${FM}`;
       x.fillStyle = 'rgba(230,215,190,0.7)';
       x.fillText(`CH.0${ch.n || 1}  // INTERCEPTED`, bx + 56 * s, by + 28 * s);
       for (let i = 0; i < 22; i++) {

@@ -3708,23 +3708,35 @@ body[data-uifx='off'] #cineSub.on > b {
     padding: 0.35em 1em 0.4em;
   }
 }
+/* 機器文字（文字風格）：黃綠的 Chakra Petch、每行前面「//」、最後一行的游標；檔案畫面是紅黑警戒框 */
 #cineSys {
   left: max(4vw, 18px);
   bottom: max(18vh, 70px);
   z-index: 4;
-  font-family: 'Share Tech Mono', monospace;
+  font-family: 'Chakra Petch', var(--fz);
+  font-weight: 600;
   font-size: clamp(11px, 1.6vh, 15px);
-  color: #9fe8c8;
-  text-shadow: 0 0 6px rgba(80, 255, 170, 0.6);
-  letter-spacing: 0.08em;
+  color: var(--acc);
+  text-shadow:
+    0 0 1px #000,
+    0 2px 0 #000;
+  letter-spacing: 0.1em;
   transition: opacity 0.6s;
 }
 #cineSys p {
   margin: 2px 0;
 }
+#cineSys p::before {
+  content: '// ';
+  opacity: 0.6;
+}
+#cineSys p:last-child::after {
+  content: '▍';
+  margin-left: 0.2em;
+  animation: cineBlink 0.9s steps(2) infinite;
+}
 #cineSys.boot {
-  color: #9fd8ff;
-  text-shadow: 0 0 6px rgba(100, 200, 255, 0.7);
+  color: var(--acc2);
   bottom: auto;
   top: max(16vh, 50px);
 }
@@ -3734,10 +3746,16 @@ body[data-uifx='off'] #cineSub.on > b {
   bottom: auto;
   top: 34%;
   transform: translateX(-50%);
+  padding: 0.5em 1.3em;
   font-size: clamp(16px, 3.2vh, 30px);
-  color: #ff9a80;
-  text-shadow: 0 0 10px rgba(255, 80, 60, 0.7);
+  color: #ff5a46;
+  background: rgba(8, 8, 10, 0.88);
+  border: 10px solid transparent;
+  border-image: repeating-linear-gradient(135deg, var(--red) 0 10px, #111 10px 20px) 10;
   text-align: center;
+}
+#cineSys.file p::before {
+  content: none;
 }
 #cineSys.out {
   opacity: 0;
@@ -3746,15 +3764,24 @@ body[data-uifx='off'] #cineSub.on > b {
   inset: auto 0 45% 0;
   text-align: center;
   z-index: 5;
-  font-family: 'Share Tech Mono', monospace;
+  font: italic 900 15px var(--fd);
   letter-spacing: 0.3em;
-  color: #ff6a50;
-  font-size: 13px;
+  color: var(--focus);
+  text-shadow: 0 2px 0 #000;
   opacity: 0;
   transition: opacity 0.3s;
 }
+#cineLoad::before {
+  content: '';
+  display: block;
+  width: 220px;
+  height: 10px;
+  margin: 0 auto 10px;
+  background: var(--hazard);
+  border: 2px solid #000;
+}
 #cineLoad.on {
-  opacity: 0.85;
+  opacity: 0.9;
   animation: cineBlink 1s steps(2) infinite;
 }
 /* 過場的預先準備（game/cine-prep.js）：第幾個場景 */
@@ -3766,30 +3793,38 @@ body[data-uifx='off'] #cineSub.on > b {
     opacity: 0.25;
   }
 }
+/* 略過的提示：黑膠囊、黃綠的進度條 */
 #cineSkip {
   right: max(3vw, 14px);
   top: max(3vh, 12px);
   z-index: 5;
-  font-size: 12px;
-  color: #c8d2dc;
+  padding: 6px 16px 8px;
+  background: rgba(10, 10, 12, 0.88);
+  border: 2px solid #000;
+  box-shadow: 0 0 0 2px var(--line);
+  border-radius: 14px;
+  font: 700 12px var(--fz);
+  color: #f3f2ed;
   opacity: 0;
   transition: opacity 0.3s;
   text-align: right;
 }
 #cineSkip.on {
-  opacity: 0.9;
+  opacity: 0.95;
 }
 #cineSkip b {
   display: block;
   margin-top: 5px;
-  height: 3px;
+  height: 4px;
+  border-radius: 2px;
   background: rgba(255, 255, 255, 0.18);
+  overflow: hidden;
 }
 #cineSkip i {
   display: block;
   height: 100%;
   width: 0;
-  background: #e8eef4;
+  background: var(--acc);
 }
 body.touchDev #cineSkip span::after {
   content: '（觸控：長按畫面）';
@@ -10792,4 +10827,13 @@ body.vpad #lockHint {
 #bgeCap {
   font-size: 11px;
   margin: 4px 0;
+}
+/* 抒情的段落（記憶片段、真結局；劇本的 quiet）：字幕條偏暖、名牌降低彩度 */
+#cineSub.quiet > span {
+  background: rgba(24, 17, 10, 0.78);
+  box-shadow: 0 0 0 2px rgba(120, 96, 64, 0.6);
+  color: #f6ead6;
+}
+#cineSub.quiet > b {
+  filter: saturate(0.45) sepia(0.35);
 }

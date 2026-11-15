@@ -35,6 +35,8 @@ import {
   BC,
   FB,
   FL,
+  FM,
+  capsule,
   cross,
   hazard,
   loadBrandFonts,
@@ -1396,6 +1398,7 @@ Object.assign(Game.prototype, {
         : '') + `<span>${body}</span>`;
     el.classList.toggle('radio', !!(voiced && radio));
     el.classList.toggle('narr', !nm);
+    el.classList.toggle('quiet', !!c.def.quiet);
     // 說話的人在 2D 舞台上：字幕改成他旁邊的氣泡（game/cine-2d.js），字幕條不顯示
     const bub = this.cine2dBubble(who, marked, !!radio);
     if (bub) c.bub.hide = voiced && sub === 'off';
@@ -1626,7 +1629,7 @@ Object.assign(Game.prototype, {
       x.fillRect(W * 0.3, H * 0.86, W * 0.4, 6 * s);
       x.fillStyle = cyan(0.85 * a);
       x.fillRect(W * 0.3, H * 0.86, W * 0.4 * clamp((lt - 1.6) / 1.2, 0, 1), 6 * s);
-      x.font = `${12 * s}px "Share Tech Mono", monospace`;
+      x.font = `600 ${12 * s}px ${FM}`;
       x.fillText('AP', W * 0.3, H * 0.85);
     }
     a = on(2.2);
@@ -1715,10 +1718,14 @@ Object.assign(Game.prototype, {
           x.lineTo(sx + dx * (r - c), sy + dy * r);
           x.stroke();
         }
-        x.font = `${11 * s}px "Share Tech Mono", monospace`;
-        x.fillStyle = `rgba(255,90,80,${blink})`;
-        x.fillText('LOCK', sx + r + 6 * s, sy - r + 10 * s);
-        x.fillText(`${d.toFixed(0)}m`, sx + r + 6 * s, sy - r + 24 * s);
+        x.save();
+        x.globalAlpha *= blink;
+        capsule(x, 'LOCK', sx + r + 6 * s, sy - r + 8 * s, { size: 12 * s, bw: 2 * s });
+        x.restore();
+        x.font = `900 ${13 * s}px ${FL}`;
+        x.fillStyle = BC.white;
+        x.textBaseline = 'alphabetic';
+        x.fillText(`${d.toFixed(0)}m`, sx + r + 8 * s, sy - r + 34 * s);
         // 目標的 AP 與 ACS
         const bw = 220 * s,
           by = (this.cine.bar || 0) + 30 * s; // 遮幅下方
@@ -1728,22 +1735,26 @@ Object.assign(Game.prototype, {
         x.fillRect(W / 2 - bw / 2, by, bw * clamp(1 - lt * 0.08, 0.3, 1), 6 * s);
         x.fillStyle = 'rgba(255,200,80,0.9)';
         x.fillRect(W / 2 - bw / 2, by + 9 * s, bw * clamp(0.2 + lt * 0.3, 0, 1), 3 * s);
-        x.font = `${12 * s}px "Share Tech Mono", monospace`;
+        x.font = `900 ${14 * s}px ${FL}`;
         x.textAlign = 'center';
-        x.fillStyle = 'rgba(255,220,210,0.95)';
+        x.lineJoin = 'round';
+        x.strokeStyle = BC.ink;
+        x.lineWidth = 4 * s;
+        x.strokeText(e.name, W / 2, by - 6 * s);
+        x.fillStyle = BC.white;
         x.fillText(e.name, W / 2, by - 6 * s);
         x.textAlign = 'left';
       }
     }
     // 下方：彈數與 EN
-    x.font = `${13 * s}px "Share Tech Mono", monospace`;
-    x.fillStyle = 'rgba(200,230,255,0.85)';
+    x.font = `900 ${15 * s}px ${FL}`;
+    x.fillStyle = BC.white;
     const ammo = Math.max(0, 420 - Math.floor(lt * 37));
     x.fillText(`R-ARM ${ammo}`, W * 0.36, H * 0.8);
     x.fillText(`L-ARM ${Math.max(0, ammo - 88)}`, W * 0.36, H * 0.8 + 16 * s);
     x.fillStyle = 'rgba(0,0,0,0.35)';
     x.fillRect(W * 0.56, H * 0.8 - 8 * s, 120 * s, 5 * s);
-    x.fillStyle = 'rgba(120,220,255,0.9)';
+    x.fillStyle = BC.acc;
     x.fillRect(W * 0.56, H * 0.8 - 8 * s, 120 * s * (0.4 + 0.5 * Math.abs(Math.sin(lt * 1.7))), 5 * s);
     x.fillText('EN', W * 0.56, H * 0.8 + 12 * s);
     x.restore();
@@ -1771,12 +1782,12 @@ Object.assign(Game.prototype, {
       cy = H * 0.42,
       R = 46 * s;
     x.globalAlpha = k;
-    x.strokeStyle = S.color;
-    x.lineWidth = 2 * s;
-    x.beginPath();
-    x.rect(cx - R, cy - R, R * 2, R * 2);
-    x.stroke();
-    x.fillStyle = 'rgba(10,16,24,0.9)';
+    // 頭像框（文字風格）：白外框＋黑邊
+    x.fillStyle = BC.white;
+    x.fillRect(cx - R - 5 * s, cy - R - 5 * s, R * 2 + 10 * s, R * 2 + 10 * s);
+    x.fillStyle = BC.ink;
+    x.fillRect(cx - R - 2 * s, cy - R - 2 * s, R * 2 + 4 * s, R * 2 + 4 * s);
+    x.fillStyle = 'rgba(10,16,24,0.95)';
     x.fillRect(cx - R + 2 * s, cy - R + 2 * s, R * 2 - 4 * s, R * 2 - 4 * s);
     const talking = c.subUntil && c.t < c.subUntil;
     // 有立繪的角色：胸像（通訊姿勢、對口型），沒有的照舊畫字母
@@ -1812,27 +1823,39 @@ Object.assign(Game.prototype, {
       drawStationWave(cv.getContext('2d'), sz, sz, c.t, amp, S.color);
       x.drawImage(cv, cx - R + 2 * s, cy - R + 2 * s);
     } else {
-      x.fillStyle = S.color;
-      x.font = `700 ${44 * s}px sans-serif`;
-      x.textAlign = 'center';
-      x.textBaseline = 'middle';
-      x.fillText(S.mark, cx, cy + 2 * s);
+      sticker(x, S.mark, cx, cy + 2 * s, {
+        size: 46 * s,
+        font: FL,
+        align: 'center',
+        fill: S.color,
+        edgeW: 0,
+      });
     }
-    x.font = `${14 * s}px "Share Tech Mono", "Noto Sans TC", sans-serif`;
+    // 名字：說話者顏色的斜切名牌；下面一行頻道（黃綠的機器文字）
+    const nm = who === 'echo' ? 'ECHO' : who === 'station' ? '軌道站' : S.name.replace(/（.*）/, '');
+    slantTag(x, nm, cx - R, cy + R + 26 * s, {
+      size: 17 * s,
+      bg: S.color,
+      sub: S.faction && FACTIONS[S.faction] ? FACTIONS[S.faction].short : '',
+    });
+    x.fillStyle = BC.acc;
+    x.font = `600 ${11 * s}px ${FM}`;
+    x.letterSpacing = 2 * s + 'px';
     x.textAlign = 'left';
     x.textBaseline = 'alphabetic';
-    x.fillText(S.name, cx - R, cy + R + 22 * s);
-    x.fillStyle = 'rgba(200,215,230,0.7)';
-    x.font = `${11 * s}px "Share Tech Mono", monospace`;
-    x.fillText((S.note || '') + '　// SECURE CHANNEL', cx - R, cy + R + 40 * s);
-    // 聲紋
-    const n = 28;
+    x.fillText((S.note || '') + '　// SECURE CHANNEL', cx - R, cy + R + 60 * s);
+    x.letterSpacing = '0px';
+    // 聲紋（黃綠的圓角條）
+    const n = 22;
+    const bw = (R * 2) / n;
+    x.fillStyle = BC.acc;
+    x.globalAlpha = k * 0.9;
     for (let i = 0; i < n; i++) {
-      const a = talking ? 0.2 + Math.abs(Math.sin(c.t * 13 + i * 1.7) * Math.sin(c.t * 5.3 + i * 0.6)) : 0.05;
-      const h = a * 34 * s;
-      x.fillStyle = S.color;
-      x.globalAlpha = k * 0.85;
-      x.fillRect(cx - R + i * ((R * 2) / n), cy + R + 64 * s - h / 2, (R * 2) / n - 1.5 * s, h);
+      const a = talking ? 0.2 + Math.abs(Math.sin(c.t * 13 + i * 1.7) * Math.sin(c.t * 5.3 + i * 0.6)) : 0.06;
+      const h = Math.max(3 * s, a * 34 * s);
+      x.beginPath();
+      x.roundRect(cx - R + i * bw, cy + R + 84 * s - h / 2, bw - 2.5 * s, h, (bw - 2.5 * s) / 2);
+      x.fill();
     }
     x.restore();
   },

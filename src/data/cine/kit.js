@@ -33,7 +33,8 @@ export function timeline() {
       return sh;
     },
     def(o) {
-      return { title: o.title || '', dur: at + 0.3, lb: 2.39, music: o.music || [], shots };
+      // quiet：抒情的段落（記憶片段、真結局）：字幕條與氣泡跟著畫面的色調、不放 LOGO 的裝飾（game/cine-type.js）
+      return { title: o.title || '', dur: at + 0.3, lb: 2.39, music: o.music || [], shots, quiet: !!o.quiet };
     },
   };
 }

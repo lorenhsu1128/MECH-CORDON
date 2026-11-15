@@ -423,6 +423,7 @@ function shortFilm({ title, tag, look, lines, music }) {
   dropAll(T);
   return T.def({
     title,
+    quiet: true,
     music: [{ at: 0, track: music || 'cine_ident', vol: 0.55, fadeIn: 1.5, fadeOut: [T.at - 2.5, 2.5] }],
   });
 }

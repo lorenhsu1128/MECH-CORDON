@@ -767,6 +767,7 @@ Object.assign(Game.prototype, {
       en: S.faction && FACTIONS[S.faction] ? FACTIONS[S.faction].short : '',
       color: S.color,
       kind,
+      quiet: !!c.def.quiet,
       holo: spec && spec.holo,
       t: c.t - B.t0,
       w: (spec && spec.bubW) || 480,
@@ -846,7 +847,8 @@ Object.assign(Game.prototype, {
     // 硬陰影
     x.save();
     x.translate(8, 8);
-    x.fillStyle = holo ? 'rgba(0,0,0,0.45)' : BC.ink;
+    // 抒情的段落：影子跟著色調、淡一點
+    x.fillStyle = holo ? 'rgba(0,0,0,0.45)' : o.quiet ? 'rgba(40,28,14,0.45)' : BC.ink;
     shape();
     tailPath();
     x.fill();
