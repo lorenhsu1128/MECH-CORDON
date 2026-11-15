@@ -2,7 +2,7 @@
 // （前方被擋住就停、倒車、掉頭）、機甲踩扁小車、大車擋住機甲、打壞時的駕駛與掉落。載具本身在 world/map-veh.js。
 // 第 1 期：只有單機（多人第 5 期）；路線用自己的亂數串（不動關卡生成的亂數）。
 import { makeRng } from '../core/math.js';
-import { MV_DROP, MV_THEMES, MV_TYPES, MV_WORK } from '../data/map-veh.js';
+import { MV_AIR, MV_DROP, MV_THEMES, MV_TYPES, MV_WATER, MV_WORK } from '../data/map-veh.js';
 import { MapVeh } from '../world/map-veh.js';
 import { Game } from './game.js';
 
@@ -20,8 +20,9 @@ Object.assign(Game.prototype, {
     if (this.airMode || this.sim || this.range || this.tut || this.lab || this.cine || this.pvp) return;
     if (this.net && this.net.role) return; // 多人之後（第 5 期）
     if (typeof window !== 'undefined' && window.__mvOff) return; // 量測的比較用（scripts/perf-campaign.js --nomv）
-    const list = MV_THEMES[W.themeKey];
-    if (!list || !list.length) return;
+    const k0 = W.themeKey;
+    const list = MV_THEMES[k0] || [];
+    if (!list.length && !MV_WORK[k0] && !MV_WATER[k0] && !MV_AIR[k0]) return;
     const rng = makeRng(((W.seed | 0) * 173 + 11) >>> 0);
     const Z = W.zone;
     const area = Math.max(1, (Z[1] - Z[0]) * (Z[3] - Z[2]));
@@ -38,7 +39,7 @@ Object.assign(Game.prototype, {
     let nw = wl.length ? 1 + Math.floor(rng() * 2) + (area > 300 * 300 ? 1 : 0) : 0;
     if (W.opt && W.opt.open) nw = 0;
     for (let k = 0; k < nw && wl.length; k++) this.mvJob(rng, wl.splice(Math.floor(rng() * wl.length), 1)[0]);
-    for (let i = 0, tries = 0; i < n && tries < n * 3; tries++) {
+    for (let i = 0, tries = 0; list.length && i < n && tries < n * 3; tries++) {
       const key = list[Math.floor(rng() * list.length)];
       if ((used[key] || 0) >= 2) continue;
       const T = MV_TYPES[key];
@@ -64,6 +65,9 @@ Object.assign(Game.prototype, {
       this.mvs.push(v);
       i++;
     }
+    // 水上與空中（第 4 期）
+    this.mvPlanWater(rng);
+    this.mvPlanAir(rng);
     // 夜間：作業的地方旁邊放照明塔（第 3 期，最多 2 座）
     if (this.mvNight()) {
       const sp = this.mvSpots.slice(0, 2);
@@ -94,6 +98,143 @@ Object.assign(Game.prototype, {
     }
     if (!this.mvs.length) this.mvs = null;
   },
+  // 水上：深 1.8 m 以上、四周 hw 也有 1 m 以上的水、沒有障礙物（橋墩）；氣墊船陸上也行
+  mvWaterFree(x, z, hw, hover) {
+    const W = this.world,
+      Z = W.zone;
+    if (!W.theme.water) return null;
+    const m = hw + 4;
+    if (x < Z[0] + m || x > Z[1] - m || z < Z[2] + m || z > Z[3] - m) return null;
+    const L = W.theme.water.level;
+    const deep = W.waterDepth(x, z) >= 1.8;
+    if (!deep) return hover ? this.mvFree(x, z, hw) : null;
+    for (let i = 0; i < 4; i++) {
+      const a = (i * Math.PI) / 2;
+      if (W.waterDepth(x + Math.cos(a) * hw, z + Math.sin(a) * hw) < 1)
+        return hover ? this.mvFree(x, z, hw) : null;
+    }
+    for (const q of this.mvNoGo || []) if (Math.hypot(x - q[0], z - q[1]) < q[2] + hw) return null;
+    const [cx, cz] = W.collide(x, z, L + 0.6, hw);
+    if (Math.abs(cx - x) + Math.abs(cz - z) > 0.05) return null;
+    return L;
+  },
+  mvPlanWater(rng) {
+    const W = this.world;
+    const wl = (MV_WATER[W.themeKey] || []).slice();
+    if (!wl.length || !W.theme.water || (W.opt && W.opt.open)) return;
+    const pl = this.player;
+    const n = 1 + Math.floor(rng() * Math.min(3, wl.length));
+    for (let k = 0; k < n && wl.length; k++) {
+      const key = wl.splice(Math.floor(rng() * wl.length), 1)[0];
+      const T = MV_TYPES[key];
+      if (key === 'cargoship') {
+        this.mvShip(rng, T);
+        continue;
+      }
+      const route = this.mvRoute(rng, T, (x, z, hw) => this.mvWaterFree(x, z, hw, T.hover));
+      if (!route) continue;
+      const dist = ([x, z]) => (pl ? Math.hypot(x - pl.pos.x, z - pl.pos.z) : 99);
+      let si = 0;
+      route.forEach((p, j) => {
+        if (dist(p) > dist(route[si])) si = j;
+      });
+      this.mvAdd(key, route, { i: si, dir: rng() < 0.5 ? 1 : -1 });
+    }
+  },
+  // 貨輪：作戰區域外 50～90 m 的海面，沿著那一邊開過去（水夠深的那一邊）
+  mvShip(rng, T) {
+    const W = this.world,
+      Z = W.zone;
+    for (let t = 0; t < 8; t++) {
+      const side = Math.floor(rng() * 4),
+        off = 50 + rng() * 40;
+      const along = side < 2;
+      const c = side % 2 ? (along ? Z[1] + off : Z[3] + off) : along ? Z[0] - off : Z[2] - off;
+      const a0 = along ? Z[2] - 120 : Z[0] - 120,
+        a1 = along ? Z[3] + 120 : Z[1] + 120;
+      const A = along ? [c, a0] : [a0, c],
+        B = along ? [c, a1] : [a1, c];
+      let ok = true;
+      for (let i = 0; i <= 8 && ok; i++) {
+        const x = A[0] + ((B[0] - A[0]) * i) / 8,
+          z = A[1] + ((B[1] - A[1]) * i) / 8;
+        if (W.waterDepth(x, z) < 6) ok = false;
+      }
+      if (!ok) continue;
+      const v = this.mvAdd('cargoship', [A, B], { job: { k: 'ship' } });
+      v.job.s = rng() * v.job.L;
+      return;
+    }
+  },
+  mvPlanAir(rng) {
+    const W = this.world;
+    const al = (MV_AIR[W.themeKey] || []).slice();
+    if (!al.length || (W.opt && W.opt.open)) return;
+    const Z = W.zone;
+    for (const key of al) {
+      if (W.themeKey === 'spaceport' && key === 'shuttle') {
+        // 停在坪上（平坦、半徑 14 m 空曠）
+        const E = this.mvSpot(rng, 14);
+        if (!E) continue;
+        const a = rng() * Math.PI * 2;
+        const v = this.mvAdd('shuttle', [E, [E[0] + Math.sin(a), E[1] + Math.cos(a)]], {
+          job: { k: 'pad', ph: 'park', px: E[0], pz: E[1], wait: 40 + rng() * 60 },
+        });
+        v.job.ph = 'park';
+        this.mvNoGo.push([E[0], E[1], 16]);
+        this.mvSpots.push({ x: E[0], z: E[1], r: 13 });
+      } else if (key === 'shuttle') {
+        // 高空軌道：從上空飛過
+        const a = rng() * Math.PI * 2;
+        const cx = (Z[0] + Z[1]) / 2,
+          cz = (Z[2] + Z[3]) / 2;
+        const L = Math.max(Z[1] - Z[0], Z[3] - Z[2]) + 200;
+        const v = this.mvAdd(
+          'shuttle',
+          [
+            [cx, cz],
+            [cx + Math.sin(a), cz + Math.cos(a)],
+          ],
+          {
+            job: {
+              k: 'transit',
+              cx,
+              cz,
+              ux: Math.sin(a),
+              uz: Math.cos(a),
+              L,
+              dir: 1,
+              y: W.groundRef(cx, cz, 0) + 60,
+            },
+          },
+        );
+        v.job.pt = rng() * 20;
+      } else {
+        // 作業艇、吊艙：平台上空 14～30 m 漂
+        let E = null;
+        for (let t = 0; t < 20 && !E; t++) {
+          const x = Z[0] + 20 + rng() * (Z[1] - Z[0] - 40),
+            z = Z[2] + 20 + rng() * (Z[3] - Z[2] - 40);
+          if (!(W.isVoid && W.isVoid(x, z))) E = [x, z];
+        }
+        if (!E) continue;
+        const gy = W.groundAt(E[0], E[1], 999);
+        const v = this.mvAdd(key, [E, [E[0], E[1] + 1]], {
+          v: Math.floor(rng() * 3),
+          job: {
+            k: 'drift',
+            ax: E[0],
+            az: E[1],
+            ay: gy + 14 + rng() * 16,
+            rx: 8 + rng() * 10,
+            rz: 8 + rng() * 10,
+            yaw0: rng() * Math.PI * 2,
+          },
+        });
+        v.driftTick(0);
+      }
+    }
+  },
   // 夜晚的地圖（和過場的 c.night 相同的判斷）
   mvNight() {
     const W = this.world;
@@ -121,6 +262,7 @@ Object.assign(Game.prototype, {
   mvClear() {
     for (const v of this.mvs || []) v.cleanup();
     this.mvs = null;
+    this.mvPads = null;
     this.mvSpots = null;
     this.mvNoGo = null;
   },
@@ -141,14 +283,14 @@ Object.assign(Game.prototype, {
     return y;
   },
   // 一段路（a → b）每 STEP 公尺都開得過、坡度不陡
-  mvSegOk(a, b, hw) {
+  mvSegOk(a, b, hw, free) {
     const L = Math.hypot(b[0] - a[0], b[1] - a[1]);
     const n = Math.max(1, Math.ceil(L / STEP));
     let py = null;
     for (let s = 0; s <= n; s++) {
       const x = a[0] + ((b[0] - a[0]) * s) / n,
         z = a[1] + ((b[1] - a[1]) * s) / n;
-      const y = this.mvFree(x, z, hw);
+      const y = free ? free(x, z, hw) : this.mvFree(x, z, hw);
       if (y === null) return false;
       if (py !== null && Math.abs(y - py) > SLOPE) return false;
       py = y;
@@ -156,7 +298,7 @@ Object.assign(Game.prototype, {
     return true;
   },
   // 環狀路線：在作戰區域裡挑一個中心，繞一圈放 6～8 個點（碰到障礙物就往內縮），開不過的段落把點拿掉
-  mvRoute(rng, T) {
+  mvRoute(rng, T, free) {
     const W = this.world,
       Z = W.zone;
     const hw = T.w / 2 + 1.2;
@@ -178,7 +320,7 @@ Object.assign(Game.prototype, {
         for (const f of [1, 0.8, 0.6]) {
           const x = cx + Math.cos(a) * r * f,
             z = cz + Math.sin(a) * r * f;
-          if (this.mvFree(x, z, hw) !== null) {
+          if ((free ? free(x, z, hw) : this.mvFree(x, z, hw)) !== null) {
             pts.push([x, z]);
             break;
           }
@@ -190,7 +332,7 @@ Object.assign(Game.prototype, {
         bad = false;
         for (let i = 0; i < pts.length; i++) {
           const j = (i + 1) % pts.length;
-          if (!this.mvSegOk(pts[i], pts[j], hw)) {
+          if (!this.mvSegOk(pts[i], pts[j], hw, free)) {
             pts.splice(j, 1);
             bad = true;
             break;
@@ -315,11 +457,40 @@ Object.assign(Game.prototype, {
       if (!v.dead) v.tick(dt, this.mvBlocked(v, mechs, C));
       else v.tick(dt, true);
     }
-    // 開走離場的車
+    // 開走離場的車（起飛離場的穿梭機：40 秒後另一架降落到同一個坪）
     for (let i = L.length - 1; i >= 0; i--)
       if (L[i].gone) {
-        L[i].cleanup();
+        const v = L[i];
+        if (v.job && v.job.k === 'pad')
+          (this.mvPads || (this.mvPads = [])).push({ t: 40, J: v.job, yaw: v.yaw });
+        v.cleanup();
         L.splice(i, 1);
+      }
+    if (this.mvPads)
+      for (let i = this.mvPads.length - 1; i >= 0; i--) {
+        const q = this.mvPads[i];
+        if ((q.t -= dt) > 0) continue;
+        this.mvPads.splice(i, 1);
+        const J = q.J,
+          d = 180;
+        const v = this.mvAdd(
+          'shuttle',
+          [
+            [J.px, J.pz],
+            [J.px + Math.sin(q.yaw), J.pz + Math.cos(q.yaw)],
+          ],
+          {
+            job: {
+              k: 'pad',
+              px: J.px,
+              pz: J.pz,
+              sx: J.px - Math.sin(q.yaw) * d,
+              sz: J.pz - Math.cos(q.yaw) * d,
+            },
+          },
+        );
+        v.job.ph = 'in';
+        v.job.pt = 0;
       }
     // 玩家的機甲靠近（16 m）：受驚
     for (const m of mechs)
@@ -333,7 +504,7 @@ Object.assign(Game.prototype, {
   // 前方（車頭到煞車距離）有機甲、人、別的車、障礙物
   mvBlocked(v, mechs, C) {
     if (v.mode === 'rev') return false;
-    if (v.job && v.job.k !== 'line') return false; // 原地作業
+    if (v.job && v.job.k !== 'line') return false; // 原地作業、空中、貨輪
     if (v.hitWall && !v.job) return true;
     const sg = v.job && (v.job.ph === 'back' || v.spd < -0.1) ? -1 : 1; // 倒車：看後面
     const ahead = v.len / 2 + 2.5 + Math.abs(v.spd) * 1.1;
@@ -392,7 +563,7 @@ Object.assign(Game.prototype, {
   // 機甲踩扁小車（走過、QB 撞到）；大車與大車的殘骸擋住機甲
   mvMechTick(mechs) {
     for (const v of this.mvs) {
-      if (v.crushed) continue;
+      if (v.crushed || (v.T.air && !v.onPad() && !v.landed) || v.job?.k === 'ship') continue;
       for (const m of mechs) {
         if (m.flying || !m.vel) continue;
         if (m.pos.y > v.pos.y + v.h + 1) continue; // 站在上面、飛過去的不算

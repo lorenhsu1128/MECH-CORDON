@@ -28,6 +28,7 @@ import {
 } from './cine-vehicles3.js';
 import { buildBulldozer, buildMixer } from './cine-vehicles4.js';
 import { buildFireTruck, buildMoto, buildPolice } from './cine-vehicles5.js';
+import { buildHovercraft } from './cine-vehicles6.js';
 import { buildTransport } from './extra-models.js';
 import { buildVehicle } from './vehicle-models.js';
 import { PALETTES } from './materials.js';
@@ -1049,6 +1050,8 @@ function buildCineVeh0(key, o = {}) {
   else if (key === 'firetruck') r = buildFireTruck();
   else if (key === 'police') r = buildPolice();
   else if (key === 'moto') r = buildMoto(v);
+  // 第六批（render/cine-vehicles6.js）
+  else if (key === 'hovercraft') r = buildHovercraft();
   else if (key === 'tank') {
     const m = buildVehicle(PALETTES[o.pal || 'enemy'] || PALETTES.enemy, 1, 'tank');
     r = { group: m.group || m, wheels: [], parts: {}, len: 8 };

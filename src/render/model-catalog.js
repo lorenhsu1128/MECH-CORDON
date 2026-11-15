@@ -444,6 +444,7 @@ for (const [k, name, note] of [
   ['firetruck', '消防車', '長 9.4 m，車頂的雲梯、警示燈條（parts.lbR／lbB）'],
   ['police', '警車', '長 4.8 m，黑白車身、警示燈條（parts.lbR／lbB）'],
   ['moto', '越野機車', '長 2.2 m，騎士；轉彎時整台傾斜'],
+  ['hovercraft', '氣墊船', '長 11 m，裙圍、客艙、兩個導管風扇（parts.propL／propR）'],
 ])
   addPlain('vehicle', 'cine_' + k, name + '（過場）', note, () => buildCineVeh(k).group, {
     noGlb: true,

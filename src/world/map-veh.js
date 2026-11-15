@@ -193,8 +193,9 @@ export class MapVeh {
   place(dt) {
     const W = this.game.world,
       p = this.pos;
+    if (this.T.boat || (this.T.air && !this.onPad())) return this.placeFloat(dt);
     const y0 = p.y;
-    p.y = W.groundAt(p.x, p.z, y0 + 1.5);
+    p.y = W.groundAt(p.x, p.z, y0 + 1.5) + (this.T.yo || 0);
     const s = (this.sn = Math.sin(this.yaw)),
       c = (this.cs = Math.cos(this.yaw));
     // 前後左右的地面高度：每 3 格量一次（每次 4 個取樣）
@@ -220,16 +221,75 @@ export class MapVeh {
     m.quaternion.setFromEuler(_e);
     this.updShape();
   }
+  // 停在地上的空中載具（穿梭機停在坪上）
+  onPad() {
+    return !!(this.job && this.job.k === 'pad' && this.job.ph === 'park');
+  }
+  // 水上（浮在水面＋波浪的起伏與搖晃）與空中（位置由作業決定，這裡只放模型）
+  placeFloat(dt) {
+    const W = this.game.world,
+      p = this.pos,
+      T = this.T;
+    this.sn = Math.sin(this.yaw);
+    this.cs = Math.cos(this.yaw);
+    const a = this.age || 0,
+      ph = this.id * 1.7;
+    if (T.boat) {
+      const L = W.theme.water ? W.theme.water.level : 0;
+      const bob = Math.sin(a * 1.1 + ph) * 0.12;
+      p.y = T.hover ? Math.max(L, W.groundAt(p.x, p.z, L + 3)) + 0.15 + bob * 0.5 : L + bob;
+      this.tilt.x = Math.sin(a * 0.9 + ph) * 0.025 - Math.min(0.06, Math.abs(this.spd) * 0.006);
+      this.tilt.z = Math.sin(a * 1.3 + ph * 2) * 0.035;
+    }
+    const m = this.mesh;
+    m.position.set(p.x, p.y, p.z);
+    _e.set(this.tilt.x, this.yaw, this.tilt.z + (this.wreckRoll || 0));
+    m.quaternion.setFromEuler(_e);
+    this.updShape();
+  }
+  // 空中的殘骸：往下掉，落地時爆炸、揚塵（掉進虛空的看不到就藏起來）
+  fallTick(dt) {
+    const W = this.game.world,
+      p = this.pos;
+    this.vy = (this.vy || 0) + 14 * dt;
+    p.y -= this.vy * dt;
+    this.tilt.x += dt * 0.4;
+    const gy = W.groundAt(p.x, p.z, p.y + 3);
+    if (p.y <= gy) {
+      p.y = gy;
+      this.landed = true;
+      const g = this.game;
+      if (g.fx) {
+        g.fx.explosion(this.center(), 4, 0xffa040, this.len > 8);
+        g.fx.dust(this.center(), Math.max(2, this.w * 0.5), 8, 0x8a8478);
+      }
+      g.rumbleAt(this.center(), 0.5, 0.4, 200, 50);
+    } else if (W.theme.void && p.y < W.theme.void.y - 40) {
+      this.landed = true;
+      this.mesh.visible = false;
+      return;
+    }
+    this.placeFloat(dt);
+  }
   // 一格：blocked＝前方被擋住（Game 端判定：機甲、人、別的車、障礙物）
   tick(dt, blocked) {
     if (this.flashT > 0) {
       this.flashT -= dt;
       if (this.flashT <= 0 && this.om) for (const r of this.om) if (r.e0) r.m.emissive.copy(r.e0);
     }
-    if (this.dead) return;
+    if (this.dead) {
+      if (this.T.air && !this.landed) this.fallTick(dt);
+      return;
+    }
     this.age = (this.age || 0) + dt;
     const VP = this.v.parts;
     if (VP.drum && !this.abandoned) VP.drum.rotation.z += dt * 1.3; // 攪拌車：攪拌筒一直轉
+    if (VP.propL && !this.abandoned) {
+      // 氣墊船：導管裡的螺旋槳、方向舵跟著轉向
+      VP.propL.rotation.z += dt * 28;
+      VP.propR.rotation.z -= dt * 28;
+      VP.rudL.rotation.y = VP.rudR.rotation.y = this.steer * 0.7;
+    }
     if (VP.lbR) {
       // 警示燈條：紅藍輪流閃（沒人了就關）
       this.sirT = (this.sirT || 0) + dt;
@@ -331,8 +391,9 @@ export class MapVeh {
       nz = this.pos.z + fw.z * this.spd * dt;
     // 撞到障礙物（路線外、新的殘骸、臨時牆）：不穿過去，當成擋住
     const W = this.game.world;
-    const [cx, cz] = W.collide(nx, nz, this.pos.y + 0.6, this.w * 0.45);
-    if (Math.abs(cx - nx) + Math.abs(cz - nz) > 0.02) {
+    const shallow = this.T.boat && !this.T.hover && W.waterDepth(nx, nz) < 1.2; // 船：不開進淺水
+    const [cx, cz] = shallow ? [this.pos.x, this.pos.z] : W.collide(nx, nz, this.pos.y + 0.6, this.w * 0.45);
+    if (shallow || Math.abs(cx - nx) + Math.abs(cz - nz) > 0.02) {
       this.pos.x = cx;
       this.pos.z = cz;
       this.hitWall = true;
@@ -343,7 +404,22 @@ export class MapVeh {
       this.hitWall = false;
     }
     for (const wh of this.v.wheels) wh.o.rotation.x += (this.spd * dt) / wh.r;
+    if (this.T.boat && Math.abs(this.spd) > 2) this.wake(dt);
     this.place(dt);
+  }
+  // 船的尾波：船尾的白色水花
+  wake(dt) {
+    if ((this.wakeT = (this.wakeT || 0) - dt) > 0) return;
+    this.wakeT = 0.2;
+    const g = this.game;
+    if (!g.fx) return;
+    const b = this.len * 0.45;
+    g.fx.dust(
+      new THREE.Vector3(this.pos.x - this.sn * b, this.pos.y + 0.3, this.pos.z - this.cs * b),
+      Math.min(3, this.w * 0.45),
+      4,
+      0xdfe8ec,
+    );
   }
   // ---------- 作業（第 2 期）----------
   workTick(dt, blocked) {
@@ -354,6 +430,13 @@ export class MapVeh {
       this.placed = true;
       return;
     }
+    if (J.k === 'drift') {
+      J.t += dt;
+      return this.driftTick(dt);
+    }
+    if (J.k === 'pad') return this.padTick(dt);
+    if (J.k === 'transit') return this.transitTick(dt);
+    if (J.k === 'ship') return this.shipTick(dt);
     const k = this.st >= 3 ? 0.5 : 1; // 重損：動作變慢
     J.t += dt * k;
     if (J.k === 'dig') {
@@ -417,6 +500,139 @@ export class MapVeh {
     for (const wh of this.v.wheels) wh.o.rotation.x += (this.spd * dt) / wh.r;
     this.place(dt);
   }
+  // 高空軌道的作業艇與吊艙：繞著錨點慢慢漂（李沙育曲線）、慢慢轉；作業艇的機械臂擺動
+  driftTick(dt) {
+    const J = this.job,
+      t = J.t + this.id * 13;
+    this.pos.set(
+      J.ax + Math.sin(t * 0.07) * J.rx,
+      J.ay + Math.sin(t * 0.11) * 2.5,
+      J.az + Math.cos(t * 0.05) * J.rz,
+    );
+    this.yaw = J.yaw0 + Math.sin(t * 0.03) * 1.2;
+    this.tilt.x = Math.sin(t * 0.13) * 0.15;
+    this.tilt.z = Math.sin(t * 0.09) * 0.2;
+    const P = this.v.parts;
+    if (P.armL) {
+      P.armL.rotation.x = -0.4 + Math.sin(t * 0.6) * 0.35;
+      P.armR.rotation.x = -0.4 + Math.sin(t * 0.6 + 1.6) * 0.35;
+    }
+    this.placeFloat(dt);
+  }
+  // 舊宇宙港的穿梭機：park（停在坪上 J.wait 秒）→ up（垂直升到 35 m）→ out（往前加速、爬升，離開作戰區域就離場）；
+  // in（從遠方的空中飛回坪的上空）→ down（垂直降落）→ park
+  padTick(dt) {
+    const J = this.job,
+      g = this.game,
+      W = g.world;
+    J.pt = (J.pt || 0) + dt;
+    const gy = W.groundAt(J.px, J.pz, W.terrainHeight(J.px, J.pz) + 1) + (this.T.yo || 0);
+    const P = this.v.parts;
+    if (J.ph === 'park') {
+      if (P.bay) P.bay.rotation.x = 0;
+      if (!this.placed) this.place(0);
+      this.placed = true;
+      if (J.pt > J.wait && this.occ) this.padGo();
+      return;
+    }
+    this.placed = false;
+    const eng = () => {
+      // 引擎：機身下方的揚塵（離地 20 m 以內）與噴焰的光
+      if ((J.fxT = (J.fxT || 0) - dt) <= 0 && g.fx) {
+        J.fxT = 0.15;
+        if (this.pos.y - gy < 20)
+          g.fx.dust(new THREE.Vector3(J.px, gy - (this.T.yo || 0) + 0.3, J.pz), 4, 6, 0x9a958a);
+      }
+      if (g.fx && g.fx.glow)
+        g.fx.glow(
+          'mv' + this.id,
+          new THREE.Vector3(this.pos.x, this.pos.y - 2, this.pos.z),
+          1.6,
+          0x9fd0ff,
+          14,
+        );
+    };
+    if (J.ph === 'up') {
+      const u = Math.min(1, J.pt / 7);
+      this.pos.set(J.px, gy + 35 * u * u * (3 - 2 * u), J.pz);
+      eng();
+      if (u >= 1) {
+        J.ph = 'out';
+        J.pt = 0;
+      }
+    } else if (J.ph === 'out') {
+      const v = Math.min(45, J.pt * 7);
+      this.pos.x += this.sn * v * dt;
+      this.pos.z += this.cs * v * dt;
+      this.pos.y += 5 * dt;
+      eng();
+      const Z = W.zone;
+      const p = this.pos;
+      if (p.x < Z[0] - 60 || p.x > Z[1] + 60 || p.z < Z[2] - 60 || p.z > Z[3] + 60 || J.pt > 30)
+        this.gone = true;
+    } else if (J.ph === 'in') {
+      // 從 J.sx, J.sz（遠方 60 m 高）飛到坪的上空 35 m，12 秒
+      const u = Math.min(1, J.pt / 12),
+        e = 1 - (1 - u) * (1 - u);
+      this.pos.set(J.sx + (J.px - J.sx) * e, gy + 60 - 25 * e, J.sz + (J.pz - J.sz) * e);
+      eng();
+      if (u >= 1) {
+        J.ph = 'down';
+        J.pt = 0;
+      }
+    } else if (J.ph === 'down') {
+      const u = Math.min(1, J.pt / 7);
+      this.pos.set(J.px, gy + 35 * (1 - u * u * (3 - 2 * u)), J.pz);
+      eng();
+      if (u >= 1) {
+        J.ph = 'park';
+        J.pt = 0;
+        J.wait = 70 + ((this.id * 37) % 50);
+      }
+    }
+    this.placeFloat(dt);
+  }
+  padGo() {
+    const J = this.job;
+    if (J.ph !== 'park') return;
+    J.ph = 'up';
+    J.pt = 0;
+    SFX.play('~jetTailL', 0.8, 0.7, 0.03, 0.05, this.center());
+  }
+  // 高空軌道的穿梭機：從作戰區域的一邊飛到另一邊（60 m 高），出去之後 40 秒再從另一邊飛回來
+  transitTick(dt) {
+    const J = this.job;
+    J.pt = (J.pt || 0) + dt;
+    if (J.hide) {
+      this.mesh.visible = false;
+      if (J.pt < 40) return;
+      J.hide = false;
+      J.pt = 0;
+      this.mesh.visible = true;
+      J.dir = -J.dir;
+      this.yaw += Math.PI;
+    }
+    const L = J.L,
+      s = -L / 2 + ((J.pt * 28) % (L + 1));
+    this.pos.set(J.cx + J.ux * s * J.dir, J.y, J.cz + J.uz * s * J.dir);
+    if (J.pt * 28 >= L) {
+      J.hide = true;
+      J.pt = 0;
+    }
+    this.tilt.z = Math.sin(J.pt * 0.4) * 0.05;
+    this.placeFloat(dt);
+  }
+  // 貨輪：在作戰區域外的海面沿直線慢慢開過去，到了另一端從頭再來（看不到的時候換位置）
+  shipTick(dt) {
+    const J = this.job;
+    J.s += this.T.spd * dt;
+    if (J.s > J.L) J.s = 0;
+    this.spd = this.T.spd;
+    this.pos.x = J.x0 + J.dx * J.s;
+    this.pos.z = J.z0 + J.dz * J.s;
+    this.wake(dt);
+    this.place(dt);
+  }
   // 來回作業的部件動作（依階段與這個階段的時間）
   workAnim(J, dt) {
     const P = this.v.parts,
@@ -472,6 +688,8 @@ export class MapVeh {
   // 附近開火、爆炸、機甲靠近（game/map-veh.js 的 mvScare）：作業中的停下、駕駛下車逃跑；開車中的往遠離的方向開走
   alarm(src) {
     if (this.dead || this.gone || this.abandoned || !this.occ) return;
+    if (this.job && this.job.k === 'pad') return this.padGo(); // 停著的穿梭機：提早起飛
+    if (this.job && (this.job.k === 'drift' || this.job.k === 'transit' || this.job.k === 'ship')) return;
     if (this.job || !this.T.spd) return this.abandon(src);
     if (this.flee) return;
     this.fleeTo(src, ((this.id % 5) - 2) * 0.18);
@@ -515,6 +733,7 @@ export class MapVeh {
   // 駕駛下車逃跑（車留在原地，照樣可以打壞、踩扁）
   abandon(src) {
     if (this.abandoned) return;
+    if (this.T.air && !this.onPad()) return; // 飛在空中的照樣飛
     this.abandoned = true;
     if (this.occ > 0) this.game.mvDriverOut(this, src);
     this.occ = 0;

@@ -42,6 +42,36 @@ export const MV_TYPES = {
     vars: 3,
   },
   lighttower: { name: '移動照明塔', w: 2, h: 8.5, len: 2.4, spd: 0, mat: 'metal', crush: true, empty: true },
+  // 第 4 期：水上（boat：浮在水面，原點＝吃水線；hover：氣墊船，水上陸上都能開，原點＝裙圍的底）
+  patrolboat: { name: '巡邏小艇', w: 3.6, h: 3.5, len: 12.2, spd: 8, mat: 'vehicle', boat: true, hpK: 1.2 },
+  lander: { name: '登陸艇', w: 6, h: 4, len: 22, spd: 5, mat: 'metal', boat: true, hpK: 1.8 },
+  hovercraft: {
+    name: '氣墊船',
+    w: 5,
+    h: 4.9,
+    len: 11,
+    spd: 11,
+    mat: 'vehicle',
+    boat: true,
+    hover: true,
+    hpK: 1.2,
+  },
+  cargoship: { name: '貨輪', w: 11, h: 16, len: 61, spd: 3.5, mat: 'metal', boat: true, hpK: 6 },
+  // 空中（air：不貼地；yo＝停在地上時原點離地的高度）
+  shuttle: {
+    name: '穿梭機',
+    w: 20,
+    h: 7,
+    len: 24.5,
+    spd: 0,
+    mat: 'fuel',
+    air: true,
+    hpK: 3,
+    boom: [900, 16],
+    yo: 2.6,
+  },
+  workpod: { name: '太空作業艇', w: 3, h: 3, len: 3.5, spd: 0, mat: 'metal', air: true, hpK: 0.8 },
+  cargopod: { name: '貨物吊艙', w: 3, h: 3, len: 6.3, spd: 0, mat: 'metal', air: true, empty: true, vars: 3 },
 };
 // 油罐車這類（boom＝[傷害, 範圍公尺]）損毀時的大爆炸，之後留下燃燒的地面
 
@@ -78,6 +108,19 @@ export const MV_WORK = {
   institute: ['forklift'],
   volcano: ['dig', 'dozer'],
   ark: ['forklift', 'forklift'],
+};
+
+// 各主題的水上載具（第 4 期）：每張地圖 1～3 艘，從清單抽（cargoship 在作戰區域外的海面開過）
+export const MV_WATER = {
+  flooded: ['patrolboat', 'hovercraft', 'lander'],
+  dam: ['patrolboat', 'patrolboat'],
+  xylem: ['patrolboat', 'hovercraft', 'cargoship'],
+};
+// 空中（第 4 期）：舊宇宙港的穿梭機停在坪上、偶爾起飛離場（之後另一架降落）；高空軌道的作業艇與吊艙在平台上空漂、
+// 穿梭機從上空飛過
+export const MV_AIR = {
+  spaceport: ['shuttle'],
+  orbit: ['workpod', 'workpod', 'cargopod', 'cargopod', 'cargopod', 'shuttle'],
 };
 
 export const MV_DROP = 0.35; // 打壞（含踩扁）時掉修補包的機率（2026-11-15 使用者定案：隨機掉補血包）
