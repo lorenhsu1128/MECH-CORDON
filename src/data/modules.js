@@ -119,7 +119,7 @@ export const MODULES = {
     desc: '使用地圖裝置時 EN 全滿、短時間不耗 EN',
     fx: { lgConduit: 1 },
     lbl: (x) =>
-      `使用地圖裝置（雷達站、回復站、固定砲台）時 EN 全滿，${Math.round(4 * x)} 秒內 QB 與能量武器不耗 EN`,
+      `使用地圖裝置（回復站、固定砲台、控制台）時 EN 全滿，${Math.round(4 * x)} 秒內 QB 與能量武器不耗 EN`,
   },
   v_trap: {
     faction: 'veerwell',

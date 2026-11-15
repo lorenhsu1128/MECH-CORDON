@@ -354,3 +354,13 @@
 | 3   | 垂直試車台、高壓海水閥的模型與效果＋新的 6 個裝置（模型、效果）；自訂關卡的舊種類遷移；地面標示頁 | `testTraps` 15 個主題、`testGroundMarks`、`testDevicesMp`（客機看到擴散波與被推）、`node scripts/ui-shots.js` 看預警圈 |
 
 每期：build、只跑相關的冒煙測試、commit、push。
+
+### 第二版的實作紀錄
+
+#### 第 1 期（完成）
+
+- 拿掉雷達站：`data/devices.js` 的 `radar`、`game/devices.js` 的 `devRadarOn`／`devRadarTick`、HUD 的敵人紅色標記與「不限距離」，`outposts.js` 的補給箱箭頭只看距離；模型 `buildRadarStation` 與模型庫的 `device/radar` 槽位移除。`ST_ON` 只剩固定砲台的「玩家使用中」。
+- 回復站：`hpRate` 0.16、`enRate` 0.4、`cap` 0.9、`capMp` 0.4。
+- 自訂關卡：`level/format.js` 的 `devKind`（`DEV_RENAME`：radar → recharge；不認得的種類＝回復站），編輯器新放的地圖裝置預設回復站。
+- 傳說模組「能源導管」的說明拿掉雷達站；`NET_VERSION` 11.43。
+- 測試：`testDevices`（沒有雷達站、靠近回復站的提示與鍵盤 X、回復量與總量都是兩倍）、`testLevelDevices`（舊的雷達站與不認得的種類讀成回復站）、`testDevicesMp`（客機按住互動鍵用回復站）。

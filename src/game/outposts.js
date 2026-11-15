@@ -238,7 +238,7 @@ Object.assign(Game.prototype, {
           c.arc(s.x, s.y, 14, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, k.t / OPEN_T));
           c.stroke();
         }
-      } else if (dist < 90 * DS || this.devRadarOn()) {
+      } else if (dist < 90 * DS) {
         const cx = W / 2,
           cy = H / 2;
         let dx = s.x - cx,

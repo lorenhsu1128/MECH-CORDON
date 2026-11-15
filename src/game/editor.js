@@ -675,7 +675,7 @@ Object.assign(Game.prototype, {
     if (m.k === 'exit') m.open = false;
     if (m.k === 'supply') m.once = true;
     if (m.k === 'dev') {
-      m.dk = 'radar'; // 地圖裝置（屬性面板改種類）
+      m.dk = 'recharge'; // 地圖裝置（屬性面板改種類）
       m.foe = false;
     }
     cur.marks.push(m);

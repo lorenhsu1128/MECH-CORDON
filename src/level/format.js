@@ -47,6 +47,12 @@ export const DEV_KINDS = Object.fromEntries(
       d.name + (d.ev ? '（大型事件）' : d.trap ? '（陷阱）' : d.gun ? '（固定砲台）' : ''),
     ]),
 );
+// 拿掉或換掉的裝置（docs/map-devices-design.md 的第二版）：舊關卡的標記換成新的種類，標記 id 不變；不認得的＝回復站
+const DEV_RENAME = { radar: 'recharge' };
+const devKind = (k) => {
+  k = DEV_RENAME[k] || k;
+  return k in DEV_KINDS ? k : 'recharge';
+};
 export const CACHE_LV = { repair: '全員修理', ammo: '彈藥補給', kit: '修理套件補滿' }; // 自訂關卡沒有資金與模組
 export const BEHAVIORS = {
   attack: '進攻',
@@ -553,7 +559,7 @@ export function sanitizeLevel(raw, known, warn = []) {
       t: m.k === 'term' ? r2(clampN(m.t, 1, 60, 4)) : undefined,
       open: m.k === 'exit' ? bool(m.open) : undefined,
       once: m.k === 'supply' ? m.once !== false : undefined,
-      dk: m.k === 'dev' ? (m.dk in DEV_KINDS ? m.dk : 'radar') : undefined,
+      dk: m.k === 'dev' ? devKind(m.dk) : undefined,
       foe: m.k === 'dev' ? bool(m.foe) : undefined,
     });
   }

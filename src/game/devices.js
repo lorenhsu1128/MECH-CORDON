@@ -8,8 +8,8 @@ import { DEVICES, DEV_DECAY, DEV_MARK_R } from '../data/devices.js';
 import { DEVICE_BUILDERS } from '../render/device-models.js';
 import { Game } from './game.js';
 
-const ST_IDLE = 0, // 雷達站：沒有人佔；回復站：可以用；陷阱：待命
-  ST_ON = 1, // 雷達站：玩家佔領中
+const ST_IDLE = 0, // 回復站：可以用；陷阱：待命；砲台：中立
+  ST_ON = 1, // 固定砲台：玩家使用中
   ST_USED = 2, // 回復站：用完了；陷阱：用過了
   ST_ACT = 3, // 陷阱：作用中
   ST_CD = 4, // 互動型陷阱：冷卻中
@@ -39,10 +39,8 @@ Object.assign(Game.prototype, {
     const np = this.players && this.players.length ? this.players.length : 1;
     const s = W.start,
       G = this.encGroups || [];
-    // 依起點與敵群規畫位置：雷達站在路途的中段、回復站在起點到第一群之間；沒有分群時在玩家附近隨機
+    // 依起點與敵群規畫位置：回復站在起點到第一群之間；沒有分群時在玩家附近隨機
     const want = [];
-    if (!this.isBossLevel)
-      want.push(['radar', s && G.length ? this.devLerp(s, G[(G.length - 1) >> 1].pos, 0.55) : null]);
     want.push(['recharge', s && G.length ? this.devLerp(s, G[0].pos, 0.4) : null]);
     const used = [];
     for (const [k, at] of want) {
@@ -205,10 +203,6 @@ Object.assign(Game.prototype, {
     if (this.hwClear) this.hwClear();
     document.body.classList.remove('devNear');
   },
-  // 雷達站佔領中（HUD 顯示全部的敵群、據點、裝置）
-  devRadarOn() {
-    return (this.devs || []).some((d) => d.kind === 'radar' && d.st === ST_ON);
-  },
   // 可以互動的玩家（在範圍內、沒有失衡或 QB 中斷）
   devIn(d, p) {
     return (
@@ -221,7 +215,6 @@ Object.assign(Game.prototype, {
     );
   },
   devUsable(d) {
-    if (d.kind === 'radar') return d.st === ST_IDLE;
     if (d.kind === 'recharge') return d.st === ST_IDLE;
     if (d.def.gun) {
       const p = this.player;
@@ -238,8 +231,7 @@ Object.assign(Game.prototype, {
       if (d.st === ST_OFF) continue; // 自訂關卡的觸發器停用
       const inside = ps.filter((p) => this.devIn(d, p));
       const holder = inside.find((p) => p.itHeld && !(p.staggerT > 0) && !(p.qbT > 0));
-      if (d.kind === 'radar') this.devRadarTick(d, dt, inside, holder);
-      else if (d.kind === 'recharge') this.devRechargeTick(d, dt, holder);
+      if (d.kind === 'recharge') this.devRechargeTick(d, dt, holder);
       else if (d.def.trap) {
         // 互動型陷阱：按住 hold 秒觸發
         if (d.def.trig === 'use' && d.st === ST_IDLE) {
@@ -260,60 +252,6 @@ Object.assign(Game.prototype, {
         this.devs.splice(j, 1);
       }
     this.hwTick(dt); // 帶著重武器的玩家自動開火（devices-guns.js）
-  },
-  devRadarTick(d, dt, inside, holder) {
-    const def = d.def;
-    if (d.st === ST_IDLE) {
-      if (holder) {
-        d.prog = Math.min(1, d.prog + dt / def.hold);
-        d.user = holder.id;
-        d.noiseT -= dt;
-        if (d.noiseT <= 0) {
-          d.noiseT = 0.5;
-          this.aiNoise(holder, def.noise * DS);
-        }
-        if (d.prog >= 1) {
-          d.st = ST_ON;
-          d.t = 0;
-          if (holder.lgDevUse) holder.lgDevUse(); // 傳說模組「能源導管」
-          SFX.cue('cache');
-          this.flashMsg(`${holder.name || ''} 佔領雷達站 — 敵人的位置已標示`, def.color, 2.4);
-          this.devLvEmit(d);
-          // 最近的幾台還沒交戰的敵人被派來查看
-          const list = this.enemies
-            .filter((e) => !e.dead && e.sn && e.sn.st !== 2 && !e.guardOf)
-            .sort((a, b) => a.pos.distanceTo(d.pos) - b.pos.distanceTo(d.pos))
-            .slice(0, def.squad);
-          for (const e of list) e.senseHear(d.pos, 1e9, null);
-        }
-      } else {
-        d.prog = Math.max(0, d.prog - (dt / def.hold) * DEV_DECAY);
-        if (!d.prog) d.user = 0;
-      }
-    } else if (d.st === ST_ON) {
-      const foe = this.enemies.some(
-        (e) =>
-          !e.dead &&
-          !e.decoy &&
-          e.ai !== 'part' &&
-          e.ai !== 'objective' &&
-          Math.hypot(e.pos.x - d.pos.x, e.pos.z - d.pos.z) < def.r * MS * 1.5,
-      );
-      if (foe && !inside.length) {
-        d.t += dt;
-        d.prog = Math.max(0, 1 - d.t / def.retakeT);
-        if (d.t >= def.retakeT) {
-          d.st = ST_IDLE;
-          d.prog = 0;
-          d.t = 0;
-          d.user = 0;
-          this.flashMsg('雷達站被敵人奪回', 0xff8040, 2);
-        }
-      } else {
-        d.t = Math.max(0, d.t - dt);
-        d.prog = 1 - d.t / def.retakeT;
-      }
-    }
   },
   devRechargeTick(d, dt, holder) {
     const def = d.def;
@@ -409,23 +347,12 @@ Object.assign(Game.prototype, {
         this.devIntro(d, p);
         continue;
       }
-      if (d.kind === 'radar' && m.dish)
-        m.dish.rotation.y += dt * (d.st === ST_ON ? 1.6 : d.prog > 0 ? 4 : 0.3);
       if (d.kind === 'recharge' && m.core) {
         m.core.rotation.y += dt * (d.prog > 0 ? 3 : 0.5);
         m.core.position.y = 1.6 + Math.sin(this.time * 2) * 0.08;
       }
-      // 發光：雷達站佔領中＝亮、沒人佔＝暗；回復站用完＝熄滅
-      const lit =
-        d.kind === 'recharge'
-          ? d.st === ST_USED
-            ? 0.05
-            : d.prog > 0
-              ? 2.2
-              : 1
-          : d.st === ST_ON
-            ? 1.8
-            : 0.5 + d.prog;
+      // 發光：回復站用完＝熄滅
+      const lit = d.st === ST_USED ? 0.05 : d.prog > 0 ? 2.2 : 1;
       for (const g of d.glow) g.emissiveIntensity = lit;
       if (m.ring) m.ring.material.opacity = d.st === ST_USED ? 0.12 : 0.3 + 0.2 * Math.sin(this.time * 3);
       if (p && !p.dead && this.devUsable(d) && this.devIn(d, p)) near = d;
@@ -453,7 +380,6 @@ Object.assign(Game.prototype, {
     if (has((d) => d.def.ev)) L.push('大型事件');
     if (has((d) => d.def.trap && !d.def.ev)) L.push('陷阱');
     if (has((d) => d.def.gun)) L.push('固定砲台');
-    if (has((d) => d.kind === 'radar')) L.push('雷達站');
     if (has((d) => d.kind === 'recharge')) L.push('回復站');
     return L.length ? `（可選）利用地圖上的${L.join('、')}（互動鍵 ${this.devKeyLabel()}）` : '';
   },
@@ -488,30 +414,11 @@ Object.assign(Game.prototype, {
   drawDevMarks(c, W, H, p) {
     const devs = this.devs || [];
     if (!devs.length) return;
-    const radar = this.devRadarOn();
     c.save();
     c.font = 'bold 12px Rubik, Noto Sans TC';
     c.textAlign = 'center';
     c.lineWidth = 3;
     c.strokeStyle = 'rgba(0,0,0,.7)';
-    // 雷達站佔領中：每台敵人頭上一個紅色標記（穿過障礙物、不限距離；待機的是暗紅、交戰中的亮紅）
-    if (radar)
-      for (const e of this.enemies) {
-        if (e.dead || e.decoy || e.noLock || e.ai === 'part') continue;
-        const s = this.proj(e.pos.clone().setY(e.pos.y + (e.model ? e.model.height : 3) + 2 * MS));
-        if (!s.in || s.x < 0 || s.x > W || s.y < 0 || s.y > H) continue;
-        const aw = e.sn ? e.senseAw() : e.aw || 0; // 客機用快照的 aw
-        const hot = !aw || (aw & 7) - 1 === 2;
-        c.globalAlpha = 0.75;
-        c.fillStyle = hot ? '#ff4d4d' : '#b04040';
-        c.beginPath();
-        c.moveTo(s.x - 5, s.y - 6);
-        c.lineTo(s.x + 5, s.y - 6);
-        c.lineTo(s.x, s.y + 2);
-        c.closePath();
-        c.stroke();
-        c.fill();
-      }
     c.globalAlpha = 1;
     for (const d of devs) {
       const used = d.st === ST_USED || (d.def.trap && d.st !== ST_IDLE);
@@ -549,17 +456,13 @@ Object.assign(Game.prototype, {
                   : d.st === ST_USED
                     ? '（已觸發）'
                     : (d.def.ev ? '（大型事件：' : '（') + (d.def.trig === 'shoot' ? '打弱點）' : '控制台）')
-              : d.kind === 'radar'
-                ? d.st === ST_ON
-                  ? '（已佔領）'
-                  : ''
-                : d.st === ST_USED
-                  ? '（用完）'
-                  : `（剩 ${Math.round(d.val * 100)}%）`;
+              : d.st === ST_USED
+                ? '（用完）'
+                : `（剩 ${Math.round(d.val * 100)}%）`;
         const label = `${d.def.name}${tag} ${dist}m`;
         c.strokeText(label, s.x, s.y - 14);
         c.fillText(label, s.x, s.y - 14);
-      } else if (!used && (dist < DEV_MARK_R * DS || radar)) {
+      } else if (!used && dist < DEV_MARK_R * DS) {
         const cx = W / 2,
           cy = H / 2;
         let dx = s.x - cx,

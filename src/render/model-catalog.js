@@ -888,7 +888,7 @@ for (const [k, d] of Object.entries(DEVICES))
             '）；原點＝效果範圍的中心（地面）；命名為 glow 的材質依狀態發光；' +
             '名為 wp（弱點）、load（吊掛物）、tower（會倒下的塔，繞原點轉）、hole（破洞）、grid（通電地板）的節點有動作'
           : '原點在底面中心（約 3.6～5 m 寬）；命名為 glow 的材質依狀態發光，' +
-            (k === 'radar' ? '名為 dish 的節點會轉動' : '名為 core 的節點會轉動與上下浮動') +
+            '名為 core 的節點會轉動與上下浮動' +
             '；地面的互動範圍光環是程式特效',
     () => DEVICE_BUILDERS[k](d.color),
   );
