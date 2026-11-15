@@ -8389,8 +8389,10 @@ em.nw,
   position: absolute;
   right: 0;
   top: 34%;
-  width: min(580px, 44vw);
-  height: 170px;
+  /* --k：依畫面高度的縮放（portrait-ui.js 的 ptCutIn 設定：高 900 px＝1，0.6～1.6） */
+  --k: 1;
+  width: min(calc(580px * var(--k)), 44vw);
+  height: calc(170px * var(--k));
   z-index: 48;
   pointer-events: none;
   overflow: hidden;
@@ -8404,8 +8406,8 @@ em.nw,
   position: absolute;
   left: 0;
   right: -10%;
-  top: 30px;
-  height: 118px;
+  top: calc(30px * var(--k));
+  height: calc(118px * var(--k));
   background:
     repeating-linear-gradient(90deg, transparent 0 18px, rgba(255, 255, 255, 0.05) 18px 20px),
     linear-gradient(270deg, rgba(5, 8, 12, 0.92), rgba(5, 8, 12, 0.78) 60%, transparent);
@@ -8427,13 +8429,13 @@ em.nw,
 #ptCut .ptcHost {
   position: absolute;
   bottom: 0;
-  right: 14px;
+  right: calc(14px * var(--k));
   filter: drop-shadow(0 0 10px color-mix(in srgb, var(--c) 50%, transparent));
   animation: ptcInR 0.35s 0.08s cubic-bezier(0.2, 0.9, 0.3, 1.2) backwards;
 }
 #ptCut.sideL .ptcHost {
   right: auto;
-  left: 14px;
+  left: calc(14px * var(--k));
   animation-name: ptcInL;
 }
 #ptCut .ptCutV {
@@ -8443,8 +8445,8 @@ em.nw,
 }
 #ptCut .ptcTxt {
   position: absolute;
-  top: 60px;
-  right: 168px;
+  top: calc(60px * var(--k));
+  right: calc(168px * var(--k));
   left: 12px;
   text-align: right;
   color: #eef4fa;
@@ -8453,24 +8455,30 @@ em.nw,
 }
 #ptCut.sideL .ptcTxt {
   right: 12px;
-  left: 168px;
+  left: calc(168px * var(--k));
   text-align: left;
   animation-name: ptcInR;
 }
 #ptCut .ptcTxt small {
   display: block;
-  font: 700 12px/1.4 var(--fd);
+  font: 700 calc(12px * var(--k)) / 1.4 var(--fd);
   letter-spacing: 0.2em;
   color: var(--c);
+  white-space: nowrap;
 }
+/* 名字不換行（小手機時以前會斷成兩行壓到按鈕），太長時縮成「…」 */
 #ptCut .ptcTxt b {
   display: block;
-  font: 900 italic 28px/1.15 var(--fd);
+  font: 900 italic calc(28px * var(--k)) / 1.15 var(--fd);
   letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 0.15em;
 }
 #ptCut .ptcTxt p {
-  margin: 6px 0 0;
-  font-size: 14px;
+  margin: calc(6px * var(--k)) 0 0;
+  font-size: max(11px, calc(14px * var(--k)));
   line-height: 1.35;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -8503,32 +8511,11 @@ em.nw,
     transform: translateY(-14px);
   }
 }
+/* 矮的畫面（手機橫式）：往上移，避開右下的跳躍、QB 鍵 */
 @media (max-height: 540px) {
   #ptCut {
     top: 24%;
-    height: 120px;
-    width: min(400px, 42vw);
-  }
-  #ptCut .ptcBand {
-    top: 22px;
-    height: 82px;
-  }
-  #ptCut .ptcTxt {
-    top: 42px;
-    right: 118px;
-  }
-  #ptCut.sideL .ptcTxt {
-    right: 8px;
-    left: 118px;
-  }
-  #ptCut .ptcTxt small {
-    font-size: 10px;
-  }
-  #ptCut .ptcTxt b {
-    font-size: 19px;
-  }
-  #ptCut .ptcTxt p {
-    font-size: 11px;
+    width: min(calc(580px * var(--k)), 46vw);
   }
 }
 /* 字幕條的小頭像（game/voice.js 的 subBar） */

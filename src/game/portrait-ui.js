@@ -271,12 +271,14 @@ Object.assign(Game.prototype, {
       `<b>${escHtml(nm)}</b>` +
       (o.line ? `<p>${escHtml(o.line)}</p>` : '') +
       `</div>`;
+    // 依畫面高度縮放（高 900 px＝1；大螢幕不會變成一小塊、小手機不會壓到按鈕；styles.css 的 --k）
+    const k = Math.max(0.6, Math.min(1.6, innerHeight / 900));
+    el.style.setProperty('--k', k.toFixed(3));
     ui.appendChild(el);
-    const small = innerHeight < 540;
     const t0 = performance.now();
     this.ptView(el.querySelector('.ptcHost'), sp, {
-      w: small ? 100 : 145,
-      h: small ? 115 : 170,
+      w: Math.round(145 * k),
+      h: Math.round(170 * k),
       fit: 'bust',
       expr: o.expr,
       act: o.act || 'lean',

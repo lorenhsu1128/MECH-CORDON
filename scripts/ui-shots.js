@@ -220,10 +220,12 @@ async function hudShot(page, view, level = 1) {
   const browser = await launch();
   try {
     for (const sz of sizes) {
-      // 自訂大小：寬x高（觸控、2 倍像素），例如 1000x626
-      const m = /^(\d+)x(\d+)$/.exec(sz);
+      // 自訂大小：寬x高（觸控、2 倍像素），例如 1000x626；後面加 d＝桌機（滑鼠、1 倍像素），例如 1366x768d
+      const m = /^(\d+)x(\d+)(d?)$/.exec(sz);
       const conf = m
-        ? { viewport: { width: +m[1], height: +m[2] }, hasTouch: true, deviceScaleFactor: 2 }
+        ? m[3]
+          ? { viewport: { width: +m[1], height: +m[2] } }
+          : { viewport: { width: +m[1], height: +m[2] }, hasTouch: true, deviceScaleFactor: 2 }
         : SIZES[sz];
       const ctx = await browser.newContext(conf);
       for (const name of names) {
