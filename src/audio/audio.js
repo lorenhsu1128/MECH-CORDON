@@ -155,7 +155,7 @@ export const SFX = {
     this.world.gain.setTargetAtTime(V.s, t, 0.03);
     this.uiBus.gain.setTargetAtTime(V.u, t, 0.03);
     this.voiceBus.gain.setTargetAtTime(V.v * 1.1, t, 0.03);
-    this.bgmBus.gain.setTargetAtTime(V.b * 0.55, t, 0.03);
+    this.bgmBus.gain.setTargetAtTime(V.b * 1.0, t, 0.03); // 任務中的配樂（以前 0.55：太小聲，2026-11-15）
     this.musOut.gain.setTargetAtTime(V.b * 2.2, t, 0.03);
   },
   b64(s) {

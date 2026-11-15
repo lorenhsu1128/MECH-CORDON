@@ -16074,7 +16074,7 @@ async function testAudio2(browser, base) {
     `多人只轉送高階呼叫（${r.mc.join(',')}、個別 ${r.single}）、客機重播（${r.net.join('+')}）`,
   );
   check(
-    Math.abs(r.mGain - 0.35) < 0.05 && Math.abs(r.bGain - 0.165) < 0.05,
+    Math.abs(r.mGain - 0.35) < 0.05 && Math.abs(r.bGain - 0.3) < 0.05 /* 配樂 0.3 × 匯流排 1.0 */,
     `音量設定（主 ${r.mGain.toFixed(2)}、配樂 ${r.bGain.toFixed(2)}）`,
   );
   check(

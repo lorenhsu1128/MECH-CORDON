@@ -28,8 +28,10 @@ const AIR_SET = ['air1', 'air2', 'air3'];
 const CH_OF_THEME = {};
 for (const r of REGIONS) for (const t of r.themes) CH_OF_THEME[t] = r.chapter;
 const AIR_CH = [4, 5, 6]; // 有空戰曲的章
-const LV_VOL = [0.55, 0.72, 0.95, 1.0]; // 各級的音量
-const LV_LP = [2200, 7000, 20000, 20000]; // 各級的低通（探索時悶一點）
+// 各級的音量與低通（探索時悶一點）。2026-11-15 使用者回報任務中的配樂太小聲：匯流排 0.55 → 1.0（audio.js 的 setVol）、
+// 探索與警戒加大、探索的低通 2200 → 6000 Hz（AI 配樂是有人聲的歌，太悶聽起來更小聲）
+const LV_VOL = [0.8, 0.88, 1.0, 1.0];
+const LV_LP = [6000, 12000, 20000, 20000];
 const UP_T = 0.8; // 往上切換：目標維持幾秒
 const DOWN_T = 8; // 往下切換：目標維持幾秒
 const PAUSE_STATES = { pause: 1, modpick: 1, rangecfg: 1 };
