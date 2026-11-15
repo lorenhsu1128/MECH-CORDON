@@ -249,7 +249,8 @@ Object.assign(Game.prototype, {
     if (c && c.sp === sp && SFX.ctx && SFX.ctx.currentTime < c.end + 0.1) return this.voiceLevel(sp);
     return fallback ? -1 : null;
   },
-  // 插入畫面（機戰式，docs/portrait-design.md 第 5 期）：斜的色帶＋胸像滑入＋名字與一句台詞，約 2 秒、不暫停。
+  // 插入畫面（機戰式，docs/portrait-design.md 第 5 期）：畫面側邊的斜色帶＋胸像滑入＋名字與一句台詞，約 2 秒、不暫停
+  // （2026-11-15 起是側邊的小卡片，不擋畫面中央）。
   // o：{ tag 小標, name 名字（預設＝說話者）, line 台詞, expr, color, side 'r'／'l' }。設定 ctrl.cutin 'off'、
   // 過場動畫、地圖預覽器、沒有立繪＝不顯示（回傳 false，呼叫端照原本的畫面）。後來的取代前一個
   ptCutIn(sp, o = {}) {
@@ -274,8 +275,8 @@ Object.assign(Game.prototype, {
     const small = innerHeight < 540;
     const t0 = performance.now();
     this.ptView(el.querySelector('.ptcHost'), sp, {
-      w: small ? 150 : 250,
-      h: small ? 170 : 290,
+      w: small ? 100 : 145,
+      h: small ? 115 : 170,
       fit: 'bust',
       expr: o.expr,
       act: o.act || 'lean',

@@ -155,6 +155,19 @@ const SHOTS = {
     );
     await wait(1800);
   },
+  // 插入畫面（Boss 換型態：ECHO 的胸像＋Boss 的名字；側邊的小卡片，不擋畫面中央）
+  cutin: async (page) => {
+    await hudShot(page, 'top', 3);
+    await page.evaluate(() =>
+      window.__game.ptCutIn('echo', {
+        tag: 'WARNING — 第二型態',
+        name: 'AEGIS 護盾指揮艦',
+        expr: 'surprised',
+        color: '#ff4030',
+      }),
+    );
+    await wait(900);
+  },
   story: async (page) => {
     await page.evaluate(() => {
       const g = window.__game;

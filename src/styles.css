@@ -8382,50 +8382,58 @@ em.nw,
   opacity: 0.6;
   filter: drop-shadow(0 0 8px rgba(127, 200, 255, 0.08)) saturate(0.7);
 }
-/* 插入畫面（機戰式，portrait-ui.js 的 ptCutIn）：畫面中段的斜色帶＋胸像＋名字，約 2 秒 */
+/* 插入畫面（機戰式，portrait-ui.js 的 ptCutIn）：畫面側邊的斜色帶＋胸像＋名字，約 2 秒。
+   2026-11-15 使用者回報橫跨整個畫面中段、擋住正在打的敵人：改成貼著右側（sideL＝左側）的小卡片，
+   放在頂端的狀態欄／武器欄與下方的觸控按鈕之間，畫面中央留空 */
 #ptCut {
   position: absolute;
-  left: 0;
   right: 0;
-  top: 30%;
-  height: 300px;
+  top: 34%;
+  width: min(580px, 44vw);
+  height: 170px;
   z-index: 48;
   pointer-events: none;
   overflow: hidden;
   --c: #7fc8ff;
 }
+#ptCut.sideL {
+  right: auto;
+  left: 0;
+}
 #ptCut .ptcBand {
   position: absolute;
-  left: -10%;
+  left: 0;
   right: -10%;
-  top: 70px;
-  height: 170px;
+  top: 30px;
+  height: 118px;
   background:
     repeating-linear-gradient(90deg, transparent 0 18px, rgba(255, 255, 255, 0.05) 18px 20px),
-    linear-gradient(90deg, rgba(5, 8, 12, 0.92), rgba(5, 8, 12, 0.75) 60%, transparent);
+    linear-gradient(270deg, rgba(5, 8, 12, 0.92), rgba(5, 8, 12, 0.78) 60%, transparent);
   border-top: 3px solid var(--c);
   border-bottom: 3px solid var(--c);
-  box-shadow: 0 0 24px color-mix(in srgb, var(--c) 40%, transparent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--c) 40%, transparent);
   transform: skewY(-4deg) scaleX(0);
-  transform-origin: left;
+  transform-origin: right;
   animation: ptcBand 0.25s ease-out forwards;
 }
 #ptCut.sideL .ptcBand {
-  transform-origin: right;
+  left: -10%;
+  right: 0;
+  transform-origin: left;
   background:
     repeating-linear-gradient(90deg, transparent 0 18px, rgba(255, 255, 255, 0.05) 18px 20px),
-    linear-gradient(270deg, rgba(5, 8, 12, 0.92), rgba(5, 8, 12, 0.75) 60%, transparent);
+    linear-gradient(90deg, rgba(5, 8, 12, 0.92), rgba(5, 8, 12, 0.78) 60%, transparent);
 }
 #ptCut .ptcHost {
   position: absolute;
   bottom: 0;
-  right: 12%;
-  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--c) 50%, transparent));
+  right: 14px;
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--c) 50%, transparent));
   animation: ptcInR 0.35s 0.08s cubic-bezier(0.2, 0.9, 0.3, 1.2) backwards;
 }
 #ptCut.sideL .ptcHost {
   right: auto;
-  left: 12%;
+  left: 14px;
   animation-name: ptcInL;
 }
 #ptCut .ptCutV {
@@ -8435,35 +8443,39 @@ em.nw,
 }
 #ptCut .ptcTxt {
   position: absolute;
-  top: 100px;
-  right: calc(12% + 270px);
+  top: 60px;
+  right: 168px;
+  left: 12px;
   text-align: right;
   color: #eef4fa;
   text-shadow: 0 2px 6px #000;
   animation: ptcInL 0.35s 0.15s ease-out backwards;
 }
 #ptCut.sideL .ptcTxt {
-  right: auto;
-  left: calc(12% + 270px);
+  right: 12px;
+  left: 168px;
   text-align: left;
   animation-name: ptcInR;
 }
 #ptCut .ptcTxt small {
   display: block;
-  font: 700 13px/1.4 sans-serif;
+  font: 700 12px/1.4 var(--fd);
   letter-spacing: 0.2em;
   color: var(--c);
 }
 #ptCut .ptcTxt b {
   display: block;
-  font: 900 italic 44px/1.1 sans-serif;
-  letter-spacing: 0.04em;
+  font: 900 italic 28px/1.15 var(--fd);
+  letter-spacing: 0.03em;
 }
 #ptCut .ptcTxt p {
-  margin: 8px 0 0;
-  max-width: 34em;
-  font-size: 17px;
-  line-height: 1.4;
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 #ptCut.out {
   animation: ptcOut 0.4s ease-in forwards;
@@ -8493,26 +8505,30 @@ em.nw,
 }
 @media (max-height: 540px) {
   #ptCut {
-    top: 22%;
-    height: 180px;
+    top: 24%;
+    height: 120px;
+    width: min(400px, 42vw);
   }
   #ptCut .ptcBand {
-    top: 40px;
-    height: 105px;
+    top: 22px;
+    height: 82px;
   }
   #ptCut .ptcTxt {
-    top: 52px;
-    right: calc(10% + 160px);
+    top: 42px;
+    right: 118px;
   }
   #ptCut.sideL .ptcTxt {
-    left: calc(10% + 160px);
+    right: 8px;
+    left: 118px;
+  }
+  #ptCut .ptcTxt small {
+    font-size: 10px;
   }
   #ptCut .ptcTxt b {
-    font-size: 28px;
+    font-size: 19px;
   }
   #ptCut .ptcTxt p {
-    font-size: 13px;
-    max-width: 26em;
+    font-size: 11px;
   }
 }
 /* 字幕條的小頭像（game/voice.js 的 subBar） */
