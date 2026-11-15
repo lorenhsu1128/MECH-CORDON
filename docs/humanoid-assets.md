@@ -73,5 +73,5 @@
 
 1. **小人（地圖上的人）**：KayKit 的人物＋KayKit Character Animations（同一副骨架，動畫多，有工具與搬運）。數量多時先減面、共用一份骨架動畫，遠處改成看板或不畫。
 2. **格納庫、作戰室的技師**：維持現在的 Quaternius 三隻；要更多種時，從 Ultimate Animated Character Pack 轉 GLB（同骨架，現在的動畫直接共用）。
-3. **過場動畫的駕駛員、角色特寫**：Universal Base Characters＋Universal Animation Library（比例好、可以換髮型、動畫最多），需要減面。
+3. **過場動畫的人物**：Ultimate Animated Character Pack（穿好衣服、和現在同一套骨架）＋從 Universal Animation Library 借動作（重新對應骨架）。Universal Base Characters 是只穿內衣的基本人體（免費版 2 個身體＋5 種髮型），服裝包只有奇幻風，不用（2026-11-15）。
 4. 匯入流程照現在格納庫的做法：Blender 轉 GLB → 減面 → 貼圖轉 WebP → 只留用得到的動畫 → 放進 `src/assets/hangar/`（或之後另開資料夾）→ 記進 `CREDITS.txt`。

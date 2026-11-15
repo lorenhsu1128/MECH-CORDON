@@ -722,7 +722,8 @@ YouTube 影片，720p，換鏡偵測後抽格，拼成縮圖表看。縮圖表�
 
 #### 1. 人物 v2（解決「太假」）
 
-- 換成 docs/humanoid-assets.md 選定的 **Universal Base Characters＋Universal Animation Library 1、2**（Quaternius，CC0，同一副骨架，120 個以上的動作：8 方向移動、慢跑、推、拉、搬、爬、坐、操作、指揮、交談、揮手、受傷、持槍），必要時再補 KayKit Character Animations 的工具與搬運動作（重新對應到同一副骨架）。
+- **人物**：Quaternius 的 **Ultimate Animated Character Pack**（52 隻穿好衣服的人物：工人、士兵、西裝、白袍、休閒服…，CC0，只有 FBX、要轉 GLB），和現在格納庫的 worker／crew／soldier、過場的 7 隻同一套骨架，換進來程式不用改。**不用 Universal Base Characters**（2026-11-15 使用者指出：它是只穿內衣的基本人體，免費版只有 2 個身體＋5 種髮型，搭配的服裝包只有奇幻風）。
+- **動作**：從 **Universal Animation Library 1、2**（CC0，120 個以上：推、拉、搬、爬、坐、操作、指揮、交談、揮手、受傷、持槍）只借動作，在 Blender 重新對應到上面那套骨架後存進人物的 GLB；必要時再補 KayKit Character Animations 的工具與搬運動作。重新對應時手指與肩膀可能歪掉，要逐個動作看過，先轉 5 個（搬箱、推車、指揮手勢、交談、操作控制台）給使用者看效果。
 - 服裝與配色依場景（礦工、碼頭工人、研究員、難民、士兵、地勤、太空作業員、記者…），沿用 `data/crowd-themes.js` 的分類，GLB 換材質顏色就好。
 - 三段距離：近景 GLB（骨架動畫）、中景減面的 GLB、遠景以 InstancedMesh 的程式小人＋走路的頂點動畫（數百人），由鏡頭距離自動切換。
 - 每個人的動作照鏡頭時間 `lt` 算出來（現在的做法），所以暫停、跳時間一致。
@@ -808,7 +809,7 @@ YouTube 影片，720p，換鏡偵測後抽格，拼成縮圖表看。縮圖表�
 ### 分期（草案）
 
 1. **工具**：`cine-shots --check`（亮度、人數、載具數）與報表；`k: 'scene'` 的框架與 3 個範本（裝卸、車隊、撤離上車）；先套第 2 章開場試做給使用者看。
-2. **人物 v2**：下載與整理 Universal Base Characters＋動作庫（`scripts/` 的整理腳本，CC0，CREDITS.txt）、換掉過場的 11 隻、三段距離、服裝依場景。
+2. **人物 v2**：Ultimate Animated Character Pack 轉 GLB、Universal Animation Library 的動作重新對應到同一套骨架（先 5 個給使用者看），換掉過場的 11 隻、三段距離、服裝依場景（CC0，CREDITS.txt）。
 3. **載具 v2**：上表的載具（先做民用與作業，各自登記到模型庫）。
 4. **亮度**：夜景補光、輪廓光、全部段落調到目標；`dark: true` 標記。
 5. **建模**：研究所核心重做、過場專用場景的細節。
@@ -817,6 +818,6 @@ YouTube 影片，720p，換鏡偵測後抽格，拼成縮圖表看。縮圖表�
 
 ### 待決定
 
-- 人物素材換成 Universal Base Characters（要另外下載、約 10～20 MB 進 `people-assets.js`），還是保留現在的 11 隻、只補動作。
+- 人物素材：改用 Ultimate Animated Character Pack（穿好衣服、和現在同一套骨架）＋借 Universal Animation Library 的動作（建議）；Universal Base Characters 只有內衣，不用。
 - 夜景調亮的幅度：照白天的下限（建議），或只拉到「看得清楚」、保留比較重的夜色。
 - 人與車變多之後每段的長度不變（建議），還是為了小品延長幾秒。
