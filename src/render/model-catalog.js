@@ -432,6 +432,12 @@ for (const [k, name, note] of [
   ['tug', '甲板牽引車', '低矮、拖桿、警示燈、斜紋'],
   ['lowboy', '機甲運輸拖車', '全長 19.6 m，低床可以放機甲'],
   ['newsvan', '轉播車', '車頂的衛星碟與伸縮桅杆'],
+  ['patrolboat', '巡邏小艇', '長 12 m，原點＝吃水線'],
+  ['cargoship', '貨輪', '長 61 m，甲板上的貨櫃、上層建築、吊桿'],
+  ['lander', '登陸艇', '長 22 m，艏門會放下（parts.ramp）'],
+  ['shuttle', '穿梭機', '長 24.5 m，貨艙門（parts.bay）'],
+  ['workpod', '太空作業艇', '作業球＋兩支機械臂'],
+  ['cargopod', '貨物吊艙', '太空用的八角筒貨櫃'],
 ])
   addPlain('vehicle', 'cine_' + k, name + '（過場）', note, () => buildCineVeh(k).group, {
     noGlb: true,

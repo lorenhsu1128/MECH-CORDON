@@ -17,6 +17,14 @@ import {
   buildNewsVan,
   buildTug,
 } from './cine-vehicles2.js';
+import {
+  buildCargoPod,
+  buildCargoShip,
+  buildLander,
+  buildPatrolBoat,
+  buildShuttle,
+  buildWorkPod,
+} from './cine-vehicles3.js';
 import { buildTransport } from './extra-models.js';
 import { buildVehicle } from './vehicle-models.js';
 import { PALETTES } from './materials.js';
@@ -966,6 +974,13 @@ export function buildCineVeh(key, o = {}) {
   else if (key === 'tug') r = buildTug();
   else if (key === 'lowboy') r = buildLowboy();
   else if (key === 'newsvan') r = buildNewsVan();
+  // 第三批（render/cine-vehicles3.js）：水上與太空
+  else if (key === 'patrolboat') r = buildPatrolBoat();
+  else if (key === 'cargoship') r = buildCargoShip();
+  else if (key === 'lander') r = buildLander();
+  else if (key === 'shuttle') r = buildShuttle();
+  else if (key === 'workpod') r = buildWorkPod();
+  else if (key === 'cargopod') r = buildCargoPod(v);
   else if (key === 'tank') {
     const m = buildVehicle(PALETTES[o.pal || 'enemy'] || PALETTES.enemy, 1, 'tank');
     r = { group: m.group || m, wheels: [], parts: {}, len: 8 };
