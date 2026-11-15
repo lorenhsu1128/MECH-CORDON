@@ -30504,14 +30504,18 @@ async function testMpMapVeh(browser, url) {
     );
     // 手動推進新房主的主迴圈（無頭瀏覽器裡兩個分頁共用執行緒，實際時間換算的遊戲時間很少）
     await cli.evaluate(() => (window.requestAnimationFrame = () => 0));
-    for (let i = 0; i < 90; i++) {
-      await cli
+    // 推到遊戲時間前進 1.5 秒（接手後可能先等著色器預熱，那幾格主迴圈不前進），最多 300 格
+    const mt0 = await cli.evaluate(() => window.__game.missionT);
+    for (let i = 0; i < 300; i++) {
+      const mt = await cli
         .evaluate(() => {
           const g = window.__game;
           g.pumpDt = 1 / 30;
           g.loop(performance.now());
+          return g.missionT;
         })
-        .catch(() => {});
+        .catch(() => mt0);
+      if (mt - mt0 > 1.5) break;
       await wait(15);
     }
     const moved = await cli.evaluate((p0) => {
@@ -30521,7 +30525,22 @@ async function testMpMapVeh(browser, url) {
         return v && !v.remote && Math.hypot(v.pos.x - x, v.pos.z - z) > 1;
       }).length;
     }, p0);
-    check(p0.length === 0 || moved > 0, `接手後載具由新房主判定、繼續開（${moved}／${p0.length} 台在動）`);
+    const why = moved
+      ? ''
+      : await cli.evaluate(() =>
+          (window.__game.mvs || [])
+            .filter((v) => !v.dead && !v.job)
+            .slice(0, 4)
+            .map(
+              (v) =>
+                `${v.key} r${+v.remote} 速度 ${v.spd.toFixed(1)} ${v.mode} 擋 ${v.blockT.toFixed(1)} 棄 ${+!!v.abandoned} 逃 ${+!!v.flee} 有人 ${v.occ}`,
+            )
+            .join('／'),
+        );
+    check(
+      p0.length === 0 || moved > 0,
+      `接手後載具由新房主判定、繼續開（${moved}／${p0.length} 台在動）${why}`,
+    );
   }
   await ctx.close();
 }
