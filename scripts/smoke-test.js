@@ -30385,6 +30385,147 @@ async function testMpCrowd(browser, url) {
   await ctx.close();
 }
 
+// 多人的地圖載具（docs/map-vehicles-design.md 第 5 期）：客機收到同樣的載具、位置跟得上、房主打壞的客機也壞、
+// 房主遷移後原本的客機接手（載具繼續動）
+async function testMpMapVeh(browser, url) {
+  console.log('多人的地圖載具：客機收到同樣的載具、位置跟上、打壞同步、房主遷移後接手');
+  const ctx = await browser.newContext({ viewport: { width: 1100, height: 680 } });
+  const host = await ctx.newPage();
+  const cli = await ctx.newPage();
+  watch(host, 'mpmv:host');
+  watch(cli, 'mpmv:client');
+  await host.goto(url, { timeout: 90000 });
+  await cli.goto(url, { timeout: 90000 });
+  await host.$eval('#btnMP', (b) => b.click());
+  await setNick(host, 'HOST');
+  await host.$eval('#btnMPHost', (b) => b.click());
+  await waitVisible(host, 'lobby');
+  await host.check('#mpAuto');
+  await host.dispatchEvent('#mpAuto', 'change');
+  await cli.$eval('#btnMP', (b) => b.click());
+  await setNick(cli, 'CLIENT');
+  await wait(1000);
+  await cli.$eval('#btnMPList', (b) => b.click());
+  await cli.waitForSelector('#mpRooms .part', { timeout: 15000 });
+  await cli.$eval('#mpRooms .part', (b) => b.click());
+  await waitVisible(cli, 'lobby', 15000);
+  await cli.evaluate(() => (window.__game.hostLostMs = 15000));
+  await cli.$eval('#btnLobbyReady', (b) => b.click());
+  await wait(500);
+  await host.$eval('#btnLobbyReady', (b) => b.click());
+  await wait(500);
+  await host.$eval('#btnLobbySortie', (b) => b.click());
+  await cli.bringToFront();
+  await cli.evaluate(() => (window.__game.hostLostMs = 60000));
+  const ok = (await waitVisible(host, 'hudWrap', 40000)) && (await waitVisible(cli, 'hudWrap', 40000));
+  check(ok, '房主與客機都出擊');
+  if (!ok) return ctx.close();
+  await cli.bringToFront();
+  await host.evaluate(() => (window.requestAnimationFrame = () => 0));
+  const pump = async (n) => {
+    for (let i = 0; i < n; i++) {
+      await host
+        .evaluate(() => {
+          const g = window.__game;
+          g.pumpDt = 1 / 30; // 固定的時間間隔（不靠兩次讀時間的差）
+          g.loop(performance.now());
+        })
+        .catch(() => {});
+      await wait(20);
+    }
+  };
+  await host.evaluate(() => {
+    const g = window.__game;
+    g.waves = [];
+    g.wavePend = null;
+    for (const p of g.players) p.hp = p.maxHp = 1e7;
+    for (const e of g.enemies) {
+      e.updateAI = () => {};
+      e.pos.set(900, -80, 900);
+    }
+    g.mvFullT = 0; // 馬上送一次完整清單
+  });
+  await pump(60);
+  const list = (pg) =>
+    pg.evaluate(() =>
+      (window.__game.mvs || []).map((v) => [v.id, v.key, +v.pos.x.toFixed(1), +v.pos.z.toFixed(1), v.dead]),
+    );
+  const [a, b] = await Promise.all([list(host), list(cli)]);
+  const bm = new Map(b.map((v) => [v[0], v]));
+  const same = a.filter((v) => bm.has(v[0]) && bm.get(v[0])[1] === v[1]).length;
+  const dist = a
+    .filter((v) => bm.has(v[0]))
+    .map((v) => Math.hypot(v[2] - bm.get(v[0])[2], v[3] - bm.get(v[0])[3]));
+  check(
+    a.length > 2 && same === a.length && b.length === a.length,
+    `客機收到同樣的載具（房主 ${a.length}、客機 ${b.length}、相同 ${same}）`,
+  );
+  check(
+    dist.length && Math.max(...dist) < 6,
+    `客機的位置跟得上（最大差 ${dist.length ? Math.max(...dist).toFixed(1) : '-'} m）`,
+  );
+  // 房主打壞一台（玩家打的：記在房主的載具擊毀數）
+  const id = await host.evaluate(() => {
+    const g = window.__game;
+    const v = g.mvs.find((x) => !x.dead && !x.T.air);
+    v.parts[0].takeDamage(1e7, 0, g.player, v.center(), null, null, null, 'kin');
+    return v.id;
+  });
+  await pump(20);
+  const dead = await cli.evaluate((id) => {
+    const v = (window.__game.mvs || []).find((x) => x.id === id);
+    return v ? v.dead : null;
+  }, id);
+  check(dead === true, `房主打壞的載具，客機上也是殘骸（${dead}）`);
+  // 客機的投射物打到載具不改變狀態（只有房主判定）
+  const cl = await cli.evaluate(() => {
+    const g = window.__game;
+    const v = g.mvs.find((x) => !x.dead);
+    if (!v) return null;
+    const hp = v.hp;
+    v.parts[0].takeDamage(1e7, 0, g.player, v.center(), null, null, null, 'kin');
+    return v.dead === false && v.hp === hp;
+  });
+  check(cl === true, '客機自己打到載具：不改變（只顯示房主的結果）');
+  // 房主遷移：關掉房主的分頁，客機接手後載具繼續動
+  await host.close();
+  await cli.evaluate(() => (window.__game.hostLostMs = 3000));
+  let promoted = false;
+  for (let t = 0; t < 40 && !promoted; t++) {
+    await wait(500);
+    promoted = await cli.evaluate(() => window.__game.net && window.__game.net.role === 'host');
+  }
+  check(promoted, '房主離線：客機成為房主');
+  if (promoted) {
+    const p0 = await cli.evaluate(() =>
+      (window.__game.mvs || [])
+        .filter((v) => !v.dead && !v.job && v.T.spd > 0)
+        .map((v) => [v.id, v.pos.x, v.pos.z, v.remote]),
+    );
+    // 手動推進新房主的主迴圈（無頭瀏覽器裡兩個分頁共用執行緒，實際時間換算的遊戲時間很少）
+    await cli.evaluate(() => (window.requestAnimationFrame = () => 0));
+    for (let i = 0; i < 90; i++) {
+      await cli
+        .evaluate(() => {
+          const g = window.__game;
+          g.pumpDt = 1 / 30;
+          g.loop(performance.now());
+        })
+        .catch(() => {});
+      await wait(15);
+    }
+    const moved = await cli.evaluate((p0) => {
+      const g = window.__game;
+      return p0.filter(([id, x, z]) => {
+        const v = g.mvs.find((q) => q.id === id);
+        return v && !v.remote && Math.hypot(v.pos.x - x, v.pos.z - z) > 1;
+      }).length;
+    }, p0);
+    check(p0.length === 0 || moved > 0, `接手後載具由新房主判定、繼續開（${moved}／${p0.length} 台在動）`);
+  }
+  await ctx.close();
+}
+
 async function testMpStatus(browser, url) {
   console.log('多人狀態效果：客機看到鉤住與捕獲網、QB 掙脫同步');
   // 頁面忙或在背景時 playwright 的點擊會等不到畫面更新：直接呼叫元素的 click()
@@ -33780,6 +33921,7 @@ const STEPS = [
   ]),
   ['testMpStatus', (c) => testMpStatus(c.browser, c.base + '?lan=local&test')],
   ['testMpCrowd', (c) => testMpCrowd(c.browser, c.base + '?lan=local&test')],
+  ['testMpMapVeh', (c) => testMpMapVeh(c.browser, c.base + '?lan=local&test')],
   ['testMpCampaign', (c) => testMpCampaign(c.browser, c.base + '?lan=local&test')],
   ['testFreeOpsMp', (c) => testFreeOpsMp(c.browser, c.base + '?lan=local&test')],
   ['testDevicesMp', (c) => testDevicesMp(c.browser, c.base + '?lan=local&test')],

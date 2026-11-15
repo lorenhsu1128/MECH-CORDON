@@ -16,6 +16,7 @@ import { World } from '../world/world.js';
 import { Game } from './game.js';
 
 const CROWD_EV = new Set(['crowd', 'cw', 'hadd', 'hkill', 'hgone']);
+const MV_EV = new Set(['mvf', 'mvw', 'mvd', 'mvg', 'mvk']);
 
 Object.assign(Game.prototype, {
   // ----- 客機：開始任務 -----
@@ -300,6 +301,7 @@ Object.assign(Game.prototype, {
   },
   clientEvent(e) {
     if (CROWD_EV.has(e.t)) return this.crowdNetEvent(e); // 地圖上的小人（crowd.js）：放最前面，別的處理不會先接走
+    if (MV_EV.has(e.t)) return this.mvNetEvent(e); // 地圖上會動的載具（map-veh.js）
     if (this.clientMapEvent(e)) return;
     if (this.tierClientEvent(e)) return; // Boss 改版：作戰區域縮小（boss-tier.js）
     if (this.bfClientEvent(e)) return; // Boss 改版的場地效果（boss-field.js）
@@ -752,7 +754,11 @@ Object.assign(Game.prototype, {
       this.writeSave();
     }
     // 人員擊殺數：房主的那一列換成自己的（crowd.js）
-    const rows = [...d.rows.filter((r) => r[0] !== '人員擊殺'), ...this.hkRows()];
+    const rows = [
+      ...d.rows.filter((r) => r[0] !== '人員擊殺' && r[0] !== '載具擊毀'),
+      ...this.hkRows(),
+      ...this.mvRows(),
+    ];
     $('resultGrid').innerHTML =
       rows.map((r) => `<span class="dim">${escHtml(r[0])}</span><span>${escHtml(r[1])}</span>`).join('') +
       `<span class="dim">SP 結餘</span><span>${this.save.coam.toLocaleString()}</span>`;

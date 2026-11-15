@@ -397,6 +397,7 @@ Object.assign(Game.prototype, {
     this.boss = this.bosses[0] || null;
     this.isClient = false;
     this.lvPromote(); // 自訂關卡：觸發器狀態與單位的群組
+    this.mvPromote(); // 地圖上會動的載具（map-veh.js）
     this.vehPlan = [];
     this.flashMsg('你已成為房主', 0xffb020, 2);
   },

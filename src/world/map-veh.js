@@ -7,6 +7,7 @@ import { DESTRUCT, PROP_CHAR, propAttrK, propHpFor, propStage } from '../data/de
 import { MV_TYPES } from '../data/map-veh.js';
 import { weaponById } from '../data/parts.js';
 import { buildCineVeh } from '../render/cine-vehicles.js';
+import { local } from '../render/foe-damage.js';
 import { isOutline } from '../render/geometry.js';
 import { tagStyle } from '../render/style/shader.js';
 
@@ -61,7 +62,11 @@ export class MapVeh {
     this.game = game;
     this.key = key;
     const T = (this.T = MV_TYPES[key]);
-    this.id = MV_ID++;
+    // 多人（第 5 期）：客機用房主的編號建（o.id），之後房主遷移時接著編
+    this.id = o.id || MV_ID++;
+    if (this.id >= MV_ID) MV_ID = this.id + 1;
+    this.remote = !!o.remote; // 客機：位置與狀態照房主送來的（remoteTick），不自己判定
+    this.vv = o.v || 0;
     this.name = T.name;
     const V = buildCineVeh(key, { v: o.v || 0 });
     this.v = V;
@@ -298,6 +303,7 @@ export class MapVeh {
       VP.lbR.visible = on && ph === 0;
       VP.lbB.visible = on && ph === 1;
     }
+    if (this.remote) return this.remoteTick(dt);
     if (this.abandoned) {
       // 駕駛跑了：滑行停下
       this.spd *= Math.max(0, 1 - dt * 2.5);
@@ -406,6 +412,31 @@ export class MapVeh {
     for (const wh of this.v.wheels) wh.o.rotation.x += (this.spd * dt) / wh.r;
     if (this.T.boat && Math.abs(this.spd) > 2) this.wake(dt);
     this.place(dt);
+  }
+  // 客機：往房主送來的位置與方向內插、車輪照速度轉、部件的動作在本機算（作業的階段與時間照房主的）
+  remoteTick(dt) {
+    const N = this.net;
+    if (N) {
+      const k = Math.min(1, dt * 8);
+      this.pos.x += (N.x - this.pos.x) * k;
+      this.pos.z += (N.z - this.pos.z) * k;
+      if (this.T.air || this.T.boat) this.pos.y += (N.y - this.pos.y) * k;
+      this.yaw += angDiff(this.yaw, N.yaw) * k;
+      this.spd = N.spd;
+    }
+    for (const wh of this.v.wheels) wh.o.rotation.x += (this.spd * dt) / wh.r;
+    const J = this.job;
+    if (J && !this.abandoned) {
+      if (J.k === 'dig' || J.k === 'lift' || J.k === 'static') return this.workTick(dt, false);
+      J.t += dt;
+      if (J.k === 'line') {
+        J.opT += dt;
+        this.workAnim(J, dt);
+      }
+    }
+    if (this.T.boat && Math.abs(this.spd) > 2) this.wake(dt);
+    if (this.T.boat || (this.T.air && !this.onPad())) this.placeFloat(dt);
+    else this.place(dt);
   }
   // 船的尾波：船尾的白色水花
   wake(dt) {
@@ -740,7 +771,7 @@ export class MapVeh {
   }
   // ---------- 受傷與受損（地圖物件的規則：依材質的屬性倍率、四段受損；docs/destruction-design.md）----------
   takeDamage(dmg, impact, from, at, wid, attr) {
-    if (this.dead) return;
+    if (this.dead || this.remote) return; // 客機：只顯示房主的結果
     const g = this.game;
     const a = attr || (wid ? weaponAttr(weaponById(wid)) : 'kin');
     const mode = g.destructMode();
@@ -784,15 +815,18 @@ export class MapVeh {
     for (const r of this.own()) if (r.c0) r.m.color.copy(r.c0).multiplyScalar(1 - Math.min(0.92, k * 0.9));
   }
   stageCheck() {
-    const st = Math.min(3, propStage(this.hp, this.maxHp));
+    this.applyStage(Math.min(3, propStage(this.hp, this.maxHp)));
+  }
+  // 進入第 st 階段的外觀（焦黑、碎板、冒煙；特效各端自己做，不轉送）
+  applyStage(st, quiet) {
     if (st <= this.st) return;
     const st0 = this.st;
     this.st = st;
     this.char(PROP_CHAR[st]);
     const g = this.game;
-    if (g.fx) g.propShards(this, st >= 3 && st0 < 3 ? 3 : 1);
+    if (g.fx && !quiet) local(g.fx, () => g.propShards(this, st >= 3 && st0 < 3 ? 3 : 1));
     if (st >= 2) g.propActivate(this); // 冒煙；可燃的第 3 階段起火（game/destruct.js 的 propEmit）
-    if (st >= 3) this.abandon(this.center()); // 重損：駕駛棄車
+    if (st >= 3 && !this.remote) this.abandon(this.center()); // 重損：駕駛棄車
   }
   // 損毀：o.cr＝被踩扁（扁的殘骸，不爆炸）
   wreck(o = {}) {
@@ -806,20 +840,22 @@ export class MapVeh {
       this.crushed = true;
       this.mesh.scale.y = 0.32;
       this.char(Math.max(0.45, this.charK || 0));
-      if (g.fx) {
-        g.fx.dust(c, Math.max(1.2, this.w * 0.7), 6, 0x8a8478);
-        g.propShards(this, 2);
-      }
-      SFX.pickPlay(['crunch1', 'crunch2', 'crunch3'], 0.8, 0.85, c);
+      if (g.fx && !o.quiet)
+        local(g.fx, () => {
+          g.fx.dust(c, Math.max(1.2, this.w * 0.7), 6, 0x8a8478);
+          g.propShards(this, 2);
+        });
+      if (!this.remote) SFX.pickPlay(['crunch1', 'crunch2', 'crunch3'], 0.8, 0.85, c);
     } else {
       this.char(1); // 燒黑的殘骸
       this.wreckRoll = (this.id % 2 ? 1 : -1) * 0.05;
       const big = this.mat === 'fuel' || this.len > 9;
-      if (g.fx) {
-        g.fx.explosion(c, big ? 6 : 4, 0xffa040, big);
-        g.propShards(this, big ? 5 : 3);
-      }
-      SFX.explode(big, c);
+      if (g.fx && !o.quiet)
+        local(g.fx, () => {
+          g.fx.explosion(c, big ? 6 : 4, 0xffa040, big);
+          g.propShards(this, big ? 5 : 3);
+        });
+      if (!this.remote) SFX.explode(big, c);
       g.rumbleAt(c, big ? 0.7 : 0.4, 0.4, 220, 40);
     }
     this.wreckT = o.cr ? 7 : 22; // 殘骸繼續冒煙／燒幾秒（propDmgTick）

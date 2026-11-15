@@ -99,6 +99,7 @@ Object.assign(Game.prototype, {
   // 這一場的人員擊殺數歸零（自由出擊、主線出擊、自訂關卡開始時）
   hkReset() {
     this.hk = { civ: 0, foe: 0 };
+    this.mvKills = 0; // 載具擊毀數（map-veh.js）
     this.hkOn = false;
   },
   // 結果畫面的一列（這一場有小人時）

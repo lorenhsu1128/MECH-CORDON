@@ -1556,6 +1556,7 @@ Object.assign(Game.prototype, {
         : []),
       ['擊破數', String(c.stats[0] ? c.stats[0].kills : 0)],
       ...this.hkRows(), // 人員擊殺數（crowd.js）
+      ...this.mvRows(), // 載具擊毀數（map-veh.js）
       ...this.lootRows(), // 素材與零件（loot.js）
       // Boss 改版：最後一段 Boss 的擊破評價（S＝多一個戰術模組三選一）
       ...(this.bossRank && success ? [['Boss 擊破評價', this.tierRankTxt(this.bossRank)]] : []),

@@ -1128,6 +1128,7 @@ Object.assign(Game.prototype, {
       ['受損 AP', Math.round(p.dmgTaken)],
       ...this.airResultRows(), // 空域：擊墜數、殘骸連鎖、友軍雷達站（game/air.js）
       ...this.hkRows(), // 人員擊殺數（crowd.js）
+      ...this.mvRows(), // 載具擊毀數（map-veh.js）
       ...this.lootRows(), // 素材與零件（loot.js）
       // Boss 改版：擊破速度的評價（S 擊破獎金 ×1.5、A ×1.2）
       ...(this.bossRank && success ? [['Boss 擊破評價', this.tierRankTxt(this.bossRank)]] : []),

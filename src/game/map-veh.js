@@ -3,6 +3,7 @@
 // 第 1 期：只有單機（多人第 5 期）；路線用自己的亂數串（不動關卡生成的亂數）。
 import { makeRng } from '../core/math.js';
 import { MV_AIR, MV_DROP, MV_THEMES, MV_TYPES, MV_WATER, MV_WORK } from '../data/map-veh.js';
+import { local } from '../render/foe-damage.js';
 import { MapVeh } from '../world/map-veh.js';
 import { Game } from './game.js';
 
@@ -18,7 +19,7 @@ Object.assign(Game.prototype, {
     const W = this.world;
     if (!W || !this.scene || o.ambient === false) return;
     if (this.airMode || this.sim || this.range || this.tut || this.lab || this.cine || this.pvp) return;
-    if (this.net && this.net.role) return; // 多人之後（第 5 期）
+    if (this.net && this.net.role === 'client') return; // 客機：照房主送來的（mvNetEvent）
     if (typeof window !== 'undefined' && window.__mvOff) return; // 量測的比較用（scripts/perf-campaign.js --nomv）
     const k0 = W.themeKey;
     const list = MV_THEMES[k0] || [];
@@ -235,6 +236,141 @@ Object.assign(Game.prototype, {
       }
     }
   },
+  // ---------- 多人（第 5 期）：房主送清單與狀態，客機只顯示 ----------
+  // 狀態的階段名稱（送索引）
+  mvPhases: ['go', 'opB', 'back', 'opA', 'park', 'up', 'out', 'in', 'down'],
+  // 一台的規格（客機照這個建同樣的載具；房主遷移時新房主照它接著跑）
+  mvSpec(v) {
+    const j = v.job ? {} : null;
+    if (j)
+      for (const [k, x] of Object.entries(v.job))
+        if (typeof x === 'number' || typeof x === 'string') j[k] = typeof x === 'number' ? +x.toFixed(2) : x;
+    return { i: v.id, k: v.key, v: v.vv, r: v.route.map((p) => [+p[0].toFixed(1), +p[1].toFixed(1)]), j };
+  },
+  // 一台的狀態：[編號, x, z, y, 方向, 速度, 旗標（1 損毀 2 扁 4 棄車 8 有人 16 逃走中）＋階段×32, 作業的時間, 作業的階段, 階段的時間]
+  mvState(v, out) {
+    const J = v.job;
+    out.push(
+      v.id,
+      +v.pos.x.toFixed(2),
+      +v.pos.z.toFixed(2),
+      +v.pos.y.toFixed(2),
+      +v.yaw.toFixed(3),
+      +v.spd.toFixed(2),
+      (v.dead ? 1 : 0) |
+        (v.crushed ? 2 : 0) |
+        (v.abandoned ? 4 : 0) |
+        (v.occ ? 8 : 0) |
+        (v.flee ? 16 : 0) |
+        (v.st << 5),
+      J ? +J.t.toFixed(2) : 0,
+      J ? this.mvPhases.indexOf(J.ph) : -1,
+      J ? +(J.opT || 0).toFixed(2) : 0,
+    );
+  },
+  // 完整清單（all：客機移除清單裡沒有的）
+  mvNetFull(list = this.mvs || [], all = true) {
+    const s = [];
+    for (const v of list) this.mvState(v, s);
+    this.netEv({ t: 'mvf', a: all ? 1 : 0, l: list.map((v) => this.mvSpec(v)), s });
+  },
+  // 房主：每 5 秒完整清單（中途加入、房主遷移），每 0.1 秒位置與狀態
+  mvSync(dt) {
+    this.mvFullT = (this.mvFullT === undefined ? 0.5 : this.mvFullT) - dt;
+    this.mvSyncT = (this.mvSyncT || 0) - dt;
+    if (this.mvFullT <= 0) {
+      this.mvFullT = 5;
+      this.mvNetFull();
+    } else if (this.mvSyncT <= 0) {
+      this.mvSyncT = 0.1;
+      const s = [];
+      for (const v of this.mvs) if (!v.dead || !v.landed) this.mvState(v, s);
+      this.netEv({ t: 'mvw', s });
+    }
+  },
+  // 客機：套用一台的狀態（a＝狀態陣列、k＝起點）
+  mvApply(a, k) {
+    const v = (this.mvs || []).find((x) => x.id === a[k]);
+    if (!v) return;
+    const f = a[k + 6];
+    v.net = { x: a[k + 1], z: a[k + 2], y: a[k + 3], yaw: a[k + 4], spd: a[k + 5] };
+    if (!v.inited) {
+      // 第一次：直接放到位置上（不從建立的地方內插過去）
+      v.inited = true;
+      v.pos.set(a[k + 1], a[k + 3], a[k + 2]);
+      v.yaw = a[k + 4];
+    }
+    if (f & 4) v.abandoned = true;
+    v.occ = f & 8 ? 1 : 0;
+    v.flee = f & 16 ? v.flee || {} : null;
+    v.applyStage(f >> 5, false);
+    const J = v.job;
+    if (J && a[k + 8] >= 0) {
+      const ph = this.mvPhases[a[k + 8]];
+      if (J.ph !== ph) J.opT = a[k + 9];
+      J.ph = ph;
+      if (Math.abs(J.t - a[k + 7]) > 0.5) J.t = a[k + 7];
+    }
+    if (f & 1 && !v.dead) v.wreck({ cr: !!(f & 2), quiet: true }); // 中途加入：已經壞掉的
+  },
+  // 客機：房主的事件（mvf／mvw／mvd／mvg／mvk）；回傳 true＝處理了
+  mvNetEvent(e) {
+    if (e.t === 'mvf') {
+      if (!this.world || !this.scene) return true;
+      if (!this.mvs) this.mvs = [];
+      const ids = new Set(e.l.map((q) => q.i));
+      if (e.a)
+        for (let i = this.mvs.length - 1; i >= 0; i--)
+          if (!ids.has(this.mvs[i].id)) {
+            this.mvs[i].cleanup();
+            this.mvs.splice(i, 1);
+          }
+      for (const q of e.l) {
+        if (this.mvs.some((v) => v.id === q.i) || !MV_TYPES[q.k]) continue;
+        const v = new MapVeh(this, q.k, q.r, { id: q.i, v: q.v, remote: true, job: q.j ? { ...q.j } : null });
+        if (q.j) Object.assign(v.job, q.j);
+        this.mvs.push(v);
+      }
+      for (let k = 0; k + 9 < e.s.length; k += 10) this.mvApply(e.s, k);
+      return true;
+    }
+    if (e.t === 'mvw') {
+      for (let k = 0; k + 9 < e.s.length; k += 10) this.mvApply(e.s, k);
+      return true;
+    }
+    const v = (this.mvs || []).find((x) => x.id === e.i);
+    if (e.t === 'mvd') {
+      if (v) {
+        if (v.dead && e.c && !v.crushed) v.dead = false; // 殘骸被踩扁
+        if (!v.dead) v.wreck({ cr: !!e.c });
+      }
+      return true;
+    }
+    if (e.t === 'mvg') {
+      if (v) {
+        v.cleanup();
+        this.mvs.splice(this.mvs.indexOf(v), 1);
+      }
+      return true;
+    }
+    if (e.t === 'mvk') {
+      if (this.net && e.s === this.net.me) this.mvKills = (this.mvKills || 0) + 1;
+      return true;
+    }
+    return false;
+  },
+  // 房主遷移：客機的載具改成自己判定（位置、作業的階段已經照舊房主最後送來的）
+  mvPromote() {
+    for (const v of this.mvs || []) {
+      v.remote = false;
+      v.placed = false;
+    }
+    this.mvFullT = 0.5;
+  },
+  // 結果畫面的一列（這一場打壞過載具時）
+  mvRows() {
+    return this.mvKills ? [['載具擊毀', `${this.mvKills} 台`]] : [];
+  },
   // 夜晚的地圖（和過場的 c.night 相同的判斷）
   mvNight() {
     const W = this.world;
@@ -262,6 +398,7 @@ Object.assign(Game.prototype, {
   mvClear() {
     for (const v of this.mvs || []) v.cleanup();
     this.mvs = null;
+    this.mvFullT = 0.5; // 多人：開局的事件會被清掉，0.5 秒後送第一份完整清單
     this.mvPads = null;
     this.mvSpots = null;
     this.mvNoGo = null;
@@ -450,13 +587,23 @@ Object.assign(Game.prototype, {
   mvTick(dt) {
     const L = this.mvs;
     if (!L || !(dt > 0)) return;
-    if (this.net && this.net.role === 'client') return;
+    const fx = this.fx;
+    if (this.net && this.net.role === 'client') {
+      local(fx, () => {
+        for (const v of L) v.tick(dt, false);
+      });
+      if (this.mvNight()) this.mvLights();
+      return;
+    }
     const mechs = this.crowdMechs();
     const C = this.crowd;
-    for (const v of L) {
-      if (!v.dead) v.tick(dt, this.mvBlocked(v, mechs, C));
-      else v.tick(dt, true);
-    }
+    local(fx, () => {
+      for (const v of L) {
+        if (!v.dead) v.tick(dt, this.mvBlocked(v, mechs, C));
+        else v.tick(dt, true);
+      }
+    });
+    if (this.net && this.net.role === 'host') this.mvSync(dt);
     // 開走離場的車（起飛離場的穿梭機：40 秒後另一架降落到同一個坪）
     for (let i = L.length - 1; i >= 0; i--)
       if (L[i].gone) {
@@ -465,6 +612,7 @@ Object.assign(Game.prototype, {
           (this.mvPads || (this.mvPads = [])).push({ t: 40, J: v.job, yaw: v.yaw });
         v.cleanup();
         L.splice(i, 1);
+        this.netEv({ t: 'mvg', i: v.id });
       }
     if (this.mvPads)
       for (let i = this.mvPads.length - 1; i >= 0; i--) {
@@ -491,6 +639,7 @@ Object.assign(Game.prototype, {
         );
         v.job.ph = 'in';
         v.job.pt = 0;
+        if (this.net && this.net.role === 'host') this.mvNetFull([v], false);
       }
     // 玩家的機甲靠近（16 m）：受驚
     for (const m of mechs)
@@ -602,6 +751,9 @@ Object.assign(Game.prototype, {
             ox = d * s;
             oz = d * c;
           }
+          // 推過去會掉進虛空（洋上都市的平台邊緣）：不推（寧可和車重疊，不把機體推下海）
+          const W = this.world;
+          if (W.isVoid && W.isVoid(m.pos.x + ox, m.pos.z + oz) && !W.isVoid(m.pos.x, m.pos.z)) continue;
           m.pos.x += ox;
           m.pos.z += oz;
           // 往車子裡的速度拿掉
@@ -621,6 +773,7 @@ Object.assign(Game.prototype, {
   mvKill(v, by, o = {}) {
     if (v.dead && (!o.cr || v.crushed)) return;
     const wasDead = v.dead;
+    this.netEv({ t: 'mvd', i: v.id, c: o.cr ? 1 : 0 });
     if (wasDead) {
       // 殘骸再被踩：只是變扁
       v.dead = false;
@@ -628,6 +781,11 @@ Object.assign(Game.prototype, {
       return;
     }
     v.wreck(o);
+    // 載具擊毀數（結果畫面）：只算玩家打壞的（多人：記在動手的那位玩家名下）
+    if (by && by.team === 'player' && by.slot !== undefined && !by.isAI) {
+      if (by === this.player) this.mvKills = (this.mvKills || 0) + 1;
+      else this.netEv({ t: 'mvk', s: by.slot });
+    }
     const c = v.center();
     if (v.occ && by && by === this.player) {
       if (!this.hk) this.hkReset();

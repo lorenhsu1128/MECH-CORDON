@@ -1076,6 +1076,7 @@ Object.assign(Game.prototype, {
       ['擊破數', String(kills)],
       ['受損 AP', String(Math.round(p ? p.dmgTaken : 0))],
       ...this.hkRows(), // 人員擊殺數（crowd.js）
+      ...this.mvRows(), // 載具擊毀數（map-veh.js）
       ['獎勵', '自訂關卡沒有 SP 與經驗'],
     ];
     if (!success && reason) rows.splice(3, 0, ['原因', reason]);
