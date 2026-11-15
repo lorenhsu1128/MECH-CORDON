@@ -23076,6 +23076,25 @@ async function testCine(browser, base) {
     lp.still && lp.shot === lp.last && lp.hero && lp.ex === 2 && lp.ctl && back2 === 'cinelib',
     `過場動畫劇場：代替的戰場（主角、${lp.ex} 個出口）、暫停、下一鏡、返回清單（${back2}）`,
   );
+  // 一段過場的第一句就是舞台上的人說話（改成氣泡）：氣泡要顯示（以前 subTok 還沒有值，氣泡的序號是 NaN，第一句整句不見）
+  const firstBub = await page.evaluate(async () => {
+    const g = window.__game;
+    g.cineTest = 4;
+    g.cinePlay('o1_1', () => {});
+    const t0 = performance.now();
+    while (performance.now() - t0 < 60000) {
+      await new Promise((r) => setTimeout(r, 50));
+      const c = g.cine;
+      if (c && c.started && c.subTok >= 1) {
+        const ok = !!(c.bub && !c.bub.hide && c.bub.tok === c.subTok);
+        const bar = document.getElementById('cineSub').classList.contains('on');
+        g.cineEnd(true);
+        return { ok: ok || bar, who: c.bub && c.bub.who };
+      }
+    }
+    return { ok: false };
+  });
+  check(firstBub.ok, `第一句台詞是氣泡時也顯示（o1_1：${firstBub.who}）`);
   await ctx.close();
 }
 

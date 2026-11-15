@@ -214,7 +214,8 @@ Object.assign(Game.prototype, {
       !this.cine2dFind(S.st.els, (e) => e.k === 'actor' && (e.sp || e.who) === who && !e.noBub)
     )
       return false;
-    c.bub = { who, text, marked, radio: !!radio, t0: c.t, tok: c.subTok + 1 };
+    // 序號＝cineSub 接著設的 subTok（第一句時 subTok 還沒有值，要當 0）
+    c.bub = { who, text, marked, radio: !!radio, t0: c.t, tok: (c.subTok || 0) + 1 };
     return true;
   },
   cine2dFind(els, f) {
