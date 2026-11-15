@@ -12,6 +12,8 @@ const HUMAN_H = 1.75;
 const WALK_V = 1.35; // 走路 m/s
 const RUN_V = 3.8; // 跑步 m/s
 const ONCE = new Set(['Death', 'HitRecieve', 'Standing', 'Sitting']); // 只播一次、停在最後
+// 程式小人（遠景、素材還沒載入）用「工作」姿勢的動作（追加的動作見 scripts/people-retarget.js）
+const WORK = new Set(['Interact', 'Use', 'Fix', 'Push', 'PickUp', 'Open', 'Carry']);
 const D2R = Math.PI / 180;
 // 格納庫的人物原本的身高（HA.glb 沒有量）
 const H_HANGAR = { worker: 1.85, crew: 1.9, soldier: 1.85 };
@@ -228,8 +230,8 @@ Object.assign(Game.prototype, {
             sw: moving ? Math.sin(t * Math.PI) : 0,
             run: run ? 1 : 0,
             crouch: anim === 'Sitting' ? 0.6 : 0,
-            work: anim === 'Interact' ? 1 : 0,
-            wave: anim === 'Wave' ? 1 : 0,
+            work: WORK.has(anim) ? 1 : 0,
+            wave: anim === 'Wave' || anim === 'Call' ? 1 : 0,
             aim: anim === 'Idle_Gun_Pointing' ? 1 : 0,
             lean: 0,
           },

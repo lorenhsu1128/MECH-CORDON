@@ -835,3 +835,11 @@ YouTube 影片，720p，換鏡偵測後抽格，拼成縮圖表看。縮圖表�
 - **互動小品 `k: 'scene'`**（`data/cine/scenes.js` 的 `SCENES`，`game/cine-scene.js` 的 `cineSceneAdd`）：範本用公尺寫，`L.pt(u, v)` 換成劇本座標（除以 K），展開成子演員 `<id>.<名稱>`，標記演員 `A.kids`；`cineDropActor` 連子演員一起移除（建立、跳時間、預熱、移除四個地方都不用另外處理）。先做三種：**loading**（堆高機從貨物堆一個一個叉起棧板、倒車、送進貨車的後門、退出；指揮員在堆高機靠近時打手勢、理貨員核對與走動；`t0` 可以是負的＝從一輪的中間開始）、**convoy**（`path` 劇本座標的折線、等速、車距 `gap` 公尺、車種輪替，一開始就排成一列）、**board**（人群排隊走到巴士門口上車＝`vis: false`、引導員揮手、最後一個上車後巴士開走）。人物的劇本步驟多了 `vis`。
 - **試做**：第 2 章開場的集散場空拍（兩組裝卸、中景的貨車隊、工人走過、後方的聯結車隊）、水壩電磁砲台的三鏡（`RAIL_LIFE`：砲台前的裝卸、沿河岸的補給車隊、圍著砲台底座作業的工兵）；第 2 章章末的難民（圓頂前的撤離巴士、往西的車隊、遠處 60 人的程式小人）。
 - **看到的問題（之後的期處理）**：遠景的空拍裡人與車只有幾個像素——遠景要靠數量（多組、多條車流），動作要在近景看；夜景很暗（第 4 期）；人物只有 Walk／Interact／Wave，搬運、指揮手勢要等人物 v2（第 2 期）。
+
+### 第 2 期：人物 v2（進行中，2026-11-15）
+
+- **素材的狀況**：Quaternius 從 2026-08 起改成 QAL v1.0（遊戲裡免費用、不能把素材本身再散布）；使用者定案照舊放進 git。Ultimate Animated Character Pack 只在 Google Drive，2026-11-15 下載時超過配額（匿名與另一個端點都一樣），晚點再試。Universal Animation Library 1、2 在 itch.io（自由定價、0 元可下載），**壓縮檔附的 License.txt 是 CC0**。
+- **動作的轉換（Blender）**：`node scripts/people-retarget.js --src=<UAL 的資料夾>` 呼叫 Blender（預設找 `C:/Program Files/Blender Foundation/Blender 5.x`，或 `--blender=`／環境變數 `BLENDER`）跑 `scripts/blender/retarget.py`：每 2 格、目標骨頭由父到子，旋轉＝來源骨頭相對於 T 姿勢的世界旋轉變化套到目標的綁定姿勢（Blender 的靜止姿勢），**腳掌 `Foot.L/R` 是 IK 的控制點、掛在根部**（不是小腿的子骨頭），位置改照小腿末端；骨盆照腿長比例；根骨頭以外每根骨頭都寫關鍵格（原檔的預設姿勢不是 T 姿勢，`Body` 還轉了 27°，沒寫的話整個身體是歪的）；線性插值、整條不變的只留一格。輸出 `src/assets/people/anims/ual.glb`（男性骨架＝biz）、`ual_f.glb`（女性骨架＝suitw，`Body` 比較高），各約 730 KB、25 個動作。Blender 往返測試過：骨頭的平移與原檔相同（局部座標框架一致），所以動作包可以直接套到原本的人物 GLB。
+- **執行時**：`render/hangar-assets.js` 的 `loadPeopleAssets` 把 `anims/` 收進 `PA.clips`；`haChar` 對有 `Wrist.L` 與 `Chest` 的骨架（Ultimate Animated Character Pack；低面數的 man／woman 沒有）補上追加的動作（男女依 `Body` 的高度）。動作名稱：Talk、Carry、Push、Call（招手指揮）、Fix（跪著修理）、PickUp、Use、Arms（抱胸）、Phone、Yes、No、Sit、SitTalk、Drive、Torch、WalkFormal、Jog、Sprint、Crouch、GunIdle、GunAim、Open、Throw、Drink、Lantern。小品的範本改用它們（指揮員 Call、理貨員 Talk／Phone、工兵 Fix／Use、引導員 Call、排隊的人 Talk／Arms／Phone）。
+- **檢視**：標題「工具與其他」的**「人物動作預覽」**（`game/people-lab.js`，state 'peoplelab'，自己的渲染器）：選人物、原本的與追加的動作、速度、暫停、時間軸、繞看、「全部並排」（沒有那個動作的人物列出來）；`node scripts/people-shots.js <動作,…>` 拍 5 個人物 × 動作的總表（test-results/people/review.png）。
+- **還沒好**：Carry、Talk 的雙手在胸前交疊（這些人物肩膀窄、手臂短，照抄角度手就跑到中間）——要用手的位置（IK）修正；人物包下載到之後轉 GLB、補更多服裝。

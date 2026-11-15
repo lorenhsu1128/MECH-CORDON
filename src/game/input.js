@@ -762,6 +762,7 @@ Object.assign(Game.prototype, {
     document.getElementById('btnMapView').onclick = () => this.openMapView();
     document.getElementById('btnCineLib').onclick = () => this.openCineLib();
     document.getElementById('btnVoiceLab').onclick = () => this.openVoiceLab();
+    document.getElementById('btnPeopleLab').onclick = () => this.openPeopleLab();
     document.getElementById('btnBgmLab').onclick = () => this.openBgmLab();
     document.getElementById('btnBgmAi').onclick = () => this.openBgmLab(true);
     // 配樂產生器（game/bgm-gen-ui.js）：伺服器的 /api/bgm，只有從伺服器開啟時才顯示

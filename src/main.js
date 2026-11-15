@@ -66,6 +66,7 @@ import './game/bgm-gen-ui.js';
 import './game/energy.js';
 import './game/cine-people.js';
 import './game/cine-scene.js';
+import './game/people-lab.js';
 import './game/cine-c1.js';
 import './game/tactics.js';
 import './game/guide.js';

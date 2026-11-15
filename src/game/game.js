@@ -559,6 +559,7 @@ export class Game {
       this.state === 'story' ||
       this.state === 'cinelib' ||
       this.state === 'voicelab' ||
+      this.state === 'peoplelab' ||
       this.state === 'bgmlab' ||
       this.state === 'bgmgen' ||
       this.state === 'campfail' ||

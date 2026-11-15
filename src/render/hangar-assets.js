@@ -77,7 +77,8 @@ export function loadHangarAssets() {
 // ---------- 過場動畫的人物（src/assets/people/ → lib/people-assets.js） ----------
 // 解析後放進同一個 HA.glb（名稱不和格納庫的 worker／crew／soldier 重複），所以 haChar 兩邊都能用；
 // PA.h＝每個人物在待機姿勢的身高（公尺，用來縮成 1.75 m 左右）
-export const PA = { ready: false, failed: false, p: null, h: {} };
+// PA.clips＝對應到人物骨架的追加動作（anims/ual.glb＝男性骨架、ual_f.glb＝女性骨架；scripts/people-retarget.js）
+export const PA = { ready: false, failed: false, p: null, h: {}, clips: {} };
 export function loadPeopleAssets() {
   if (PA.p) return PA.p;
   PA.p = (async () => {
@@ -96,6 +97,11 @@ export function loadPeopleAssets() {
       for (const [k, v] of Object.entries(window.MECH_CORDON_PEOPLE)) {
         if (!k.endsWith('.glb')) continue;
         const g = await parseGlb(b64buf(v));
+        // 動作包（只有骨架＋動作）：不是人物
+        if (k.startsWith('anims/')) {
+          PA.clips[k.slice(6, -4)] = g.animations;
+          continue;
+        }
         g.scene.updateMatrixWorld(true);
         const n = k.slice(0, -4);
         HA.glb[n] = g;
@@ -261,6 +267,14 @@ export function haChar(name) {
   const mixer = new THREE.AnimationMixer(o);
   const acts = {};
   for (const clip of src.animations) acts[clip.name.split('|').pop()] = mixer.clipAction(clip);
+  // 同一套骨架（Ultimate Animated Character Pack）的人物補上追加的動作（交談、搬運、推、招手、修理…）；
+  // 男女骨架的比例不同，各用自己的那一份（Body 骨頭比較高的是女性骨架）
+  // （低面數的 man／woman 也有 UpperArm.L，但沒有 Chest、手腕叫 Palm：用 Wrist.L＋Chest 判斷）
+  if (o.getObjectByName('WristL') && o.getObjectByName('Chest')) {
+    const body = o.getObjectByName('Body');
+    const extra = PA.clips[body && body.position.y > 0.0089 ? 'ual_f' : 'ual'] || [];
+    for (const clip of extra) if (!acts[clip.name]) acts[clip.name] = mixer.clipAction(clip);
+  }
   let cur = null;
   const act = (n, fade = 0.25) => {
     const a = acts[n] || acts.Idle;

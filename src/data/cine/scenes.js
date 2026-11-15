@@ -67,14 +67,14 @@ function loading(o, L) {
   const sig = [];
   for (let i = 0; i < n; i++) {
     const tb = t0 + i * cyc;
-    sig.push({ t: tb + 3.6, anim: 'Wave' }, { t: tb + 8.8, anim: 'Idle_Neutral' });
+    sig.push({ t: tb + 3.6, anim: 'Call' }, { t: tb + 8.8, anim: 'Arms' });
   }
   out.push({
     id: id + '.sig',
     k: 'human',
     who: 'worker',
     p: P(2.4, -2.4),
-    anim: 'Idle_Neutral',
+    anim: 'Arms',
     s: [{ t: 0, face: P(door[0] - 1, door[1] - 2) }, ...sig],
     seed: 11,
   });
@@ -89,9 +89,9 @@ function loading(o, L) {
     s: [
       { t: 0, face: P(S(0)[0], S(0)[1]) },
       { t: t0 + 6, go: P(-2.8, -3.6) },
-      { t: t0 + 10.5, anim: 'Interact', face: P(0, 1) },
+      { t: t0 + 10.5, anim: 'Talk', face: P(0, 1) },
       { t: t0 + 14, go: P(ck[0], ck[1]) },
-      { t: t0 + 20, anim: 'Interact', face: P(S(3)[0], S(3)[1]) },
+      { t: t0 + 20, anim: 'Phone', face: P(S(3)[0], S(3)[1]) },
     ],
     seed: 12,
   });
@@ -170,7 +170,7 @@ function board(o, L) {
       who: who[Math.floor(rnd() * who.length)],
       p: L.pt(pu, pv),
       yaw: L.yaw(0),
-      anim: rnd() < 0.3 ? 'Idle_Neutral' : 'Idle',
+      anim: ['Idle', 'Talk', 'Arms', 'Phone', 'Idle_Neutral'][Math.floor(rnd() * 5)],
       s: [
         { t: 0, face: L.pt(doorL[0], doorL[1] + 2) },
         { t: Math.max(0, tGo - 3 + rnd()), go: L.pt(pu - 0.3, pv + 0.6) },
@@ -187,8 +187,8 @@ function board(o, L) {
     who: o.guide || 'soldier',
     p: L.pt(doorL[0] + 1.2, doorL[1] + 1.3),
     yaw: L.yaw(-150),
-    anim: 'Wave',
-    s: [{ t: tEnd, anim: 'Idle_Neutral' }],
+    anim: 'Call',
+    s: [{ t: tEnd, anim: 'Arms' }],
     seed: 29,
   });
   return out;

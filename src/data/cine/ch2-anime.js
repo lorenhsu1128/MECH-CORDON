@@ -77,7 +77,7 @@ const RAIL_LIFE = [
     n: 6,
     p: [3, -3],
     box: [5, 1.4],
-    anim: ['Interact', 'Interact', 'Idle_Neutral'],
+    anim: ['Fix', 'Use', 'Talk'],
     s: [{ t: 0, face: [1, -8] }],
   },
 ];

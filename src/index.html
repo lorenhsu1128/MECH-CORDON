@@ -195,6 +195,12 @@
               過場動畫
             </button>
             <button
+              id="btnPeopleLab"
+              title="過場動畫用的人物與動作：選人物與動作、調速度、暫停、拖時間軸、繞看；可以讓所有人物並排做同一個動作"
+            >
+              人物動作預覽
+            </button>
+            <button
               id="btnVoiceLab"
               title="試聽 ECHO 的候選語音（VoxCPM2 產生的聲音類型），評分後決定用哪一個"
             >
@@ -435,6 +441,19 @@
           <div id="clOpts" class="row"></div>
           <div id="clList"></div>
           <div class="row"><button id="btnClBack">返回標題</button></div>
+        </div>
+      </div>
+      <!-- 人物動作預覽（game/people-lab.js）：左邊清單、右邊 3D 視圖 -->
+      <div id="peopleLab" class="screen zBg">
+        <div id="plSide">
+          <h2>人物動作預覽</h2>
+          <p class="dim">過場動畫的人物與動作。拖曳轉視角、滾輪縮放、右鍵平移。</p>
+          <div id="plList"></div>
+          <div class="row"><button id="btnPlBack">返回標題</button></div>
+        </div>
+        <div id="plMain">
+          <div id="plView"></div>
+          <input id="plTime" type="range" min="0" max="1000" value="0" title="時間軸（拖曳停在某一格）" />
         </div>
       </div>
       <div id="voiceLab" class="screen center zBg">

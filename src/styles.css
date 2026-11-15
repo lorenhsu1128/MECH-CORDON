@@ -10837,3 +10837,65 @@ body.vpad #lockHint {
 #cineSub.quiet > b {
   filter: saturate(0.45) sepia(0.35);
 }
+
+/* 人物動作預覽（game/people-lab.js） */
+#peopleLab {
+  display: none;
+  flex-direction: row;
+  pointer-events: auto;
+  background: #16181d;
+}
+#peopleLab.on {
+  display: flex;
+}
+#plSide {
+  width: 380px;
+  max-width: 42vw;
+  padding: 14px 16px;
+  overflow-y: auto;
+  box-sizing: border-box;
+  border-right: 1px solid #333842;
+}
+#plSide h3 {
+  margin: 12px 0 6px;
+  font-size: 14px;
+  color: var(--acc, #c8f05a);
+}
+#plMain {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+#plView {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+#plView canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+#plTime {
+  width: calc(100% - 32px);
+  margin: 8px 16px 12px;
+}
+.plRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.plBtn {
+  padding: 4px 9px;
+  font-size: 12px;
+  min-height: 0;
+}
+.plBtn.on {
+  outline: 2px solid var(--acc, #c8f05a);
+}
+.plChk {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+}
