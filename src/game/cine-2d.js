@@ -148,17 +148,25 @@ Object.assign(Game.prototype, {
   },
   cine2dLoadImg(ref) {
     const C = (this.cineImgs = this.cineImgs || {});
-    if (C[ref]) return C[ref].p;
+    const old = C[ref];
+    // 失敗過的（插畫檔沒載到、解碼失敗）過 3 秒再試，不要整頁都記成沒有圖
+    if (old && (old.im || !old.fail || performance.now() - old.fail < 3000)) return old.p;
     const [ch, id] = ref.split('/');
-    const E = (C[ref] = { im: null });
+    const E = (C[ref] = { im: null, fail: 0 });
+    const miss = (why) => {
+      E.fail = performance.now();
+      console.warn('[過場] 插畫載入失敗：' + ref + '（' + why + '）');
+      return null;
+    };
     E.p = this.cine2dArtLib(ch).then(
-      () =>
+      (ok) =>
         new Promise((res) => {
           const d = window.MECH_CORDON_CINE_ART && window.MECH_CORDON_CINE_ART[ch];
-          if (!d || !d[id]) return res(null);
+          if (!d) return res(miss(ok ? '檔案裡沒有這一章' : `lib/cine-art-${ch}.js 載不到`));
+          if (!d[id]) return res(miss('這一章沒有這張圖'));
           const im = new Image();
           im.onload = () => res((E.im = im));
-          im.onerror = () => res(null);
+          im.onerror = () => res(miss('解碼失敗'));
           im.src = d[id];
         }),
     );
@@ -173,7 +181,12 @@ Object.assign(Game.prototype, {
         const s = document.createElement('script');
         s.src = `lib/cine-art-${ch}.js`;
         s.onload = () => res(true);
-        s.onerror = () => res(false);
+        // 載不到：拿掉這次的 script，下次再要這一章時重新載
+        s.onerror = () => {
+          s.remove();
+          delete L[ch];
+          res(false);
+        };
         document.head.appendChild(s);
       });
     return L[ch];
