@@ -33,36 +33,8 @@ export const IMPACT = () => ({
     { k: 'lines', kind: 'focus', q: [0, 0, 1600, 900], color: '#000', r: 0.2, n: 120 },
   ],
 });
-// 地點的字卡（左上：色條＋地名＋英文）
-export const LOC = (name, en, color = '#fff', t0 = 0.4) => [
-  { k: 'block', q: [40, 60, 8, 74], color, t0, in: 'fade' },
-  {
-    k: 'text',
-    s: name,
-    at: [66, 84],
-    size: 40,
-    al: 'left',
-    color: '#f4ece0',
-    stroke: '#000',
-    sw: 6,
-    t0: t0 + 0.1,
-    in: 'left',
-    ls: 6,
-  },
-  {
-    k: 'text',
-    s: en,
-    at: [68, 122],
-    size: 18,
-    font: 'mono',
-    al: 'left',
-    color,
-    stroke: null,
-    t0: t0 + 0.4,
-    in: 'fade',
-    ls: 8,
-  },
-];
+// 地點的字卡（左上；文字風格的 loc 元素，game/cine-type.js）：color＝LOCATION 膠囊的顏色
+export const LOC = (name, en, color, t0 = 0.4) => [{ k: 'loc', name, en, color, at: [56, 70], t0 }];
 // 斜切的格子（插畫或立繪）：q＝四個點；img 或 kids
 export const PANEL = (q, o = {}) => ({ k: 'panel', q, in: 'right', dots: 0.25, ...o });
 // 立繪放大當特寫格：臉在主圖上緣約 15～20%，格子中心 cy、高 h → at 的 y

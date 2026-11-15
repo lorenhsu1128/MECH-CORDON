@@ -356,7 +356,7 @@ function liveShot(opts) {
     ev: [
       { t: 0, sfx: 'alarmBig', vol: 0.4, rate: 0.7 },
       ...opts.map((o, i) => ({ t: 0.2 + i * 0.3, fx: 'pillar', at: { ex: i }, r: 4, color: o.hex })),
-      { t: 0.3, card: '抉擇', s: 'DECISION', style: 'name', dur: 3.2 },
+      { t: 0.3, card: '抉擇', s: 'DECISION', style: 'decision', dur: 3.2 },
     ],
   };
 }
@@ -480,30 +480,8 @@ function cardShot(card, color) {
     st: {
       bg: '#050505',
       els: [
-        { k: 'block', q: [0, 418, 1600, 6], color, in: 'wipe', ind: 0.4, t0: 0.2 },
-        {
-          k: 'text',
-          s: card[0],
-          at: [800, 380],
-          size: 76,
-          color: '#f4ece0',
-          stroke: null,
-          t0: 0.5,
-          in: 'stamp',
-          ls: 10,
-        },
-        {
-          k: 'text',
-          s: card[1],
-          at: [800, 470],
-          size: 26,
-          font: 'mono',
-          color,
-          stroke: null,
-          t0: 0.9,
-          in: 'fade',
-          ls: 14,
-        },
+        // 結語（文字風格，game/cine-type.js）
+        { k: 'endcard', s: card[0], en: card[1], color, t0: 0.2 },
       ],
     },
     ev: [{ t: 0.5, sfx: 'heavy', vol: 0.8, rate: 0.5 }],

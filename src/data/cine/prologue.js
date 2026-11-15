@@ -499,7 +499,7 @@ export function prologueCine(ctx) {
   shots.push({
     at: 46,
     set: { k: 'black' },
-    ev: [{ t: 1.0, card: 'DEEPVEIN', s: '這顆星球唯一的燃料，也是唯一的戰爭理由。', dur: 3 }],
+    ev: [{ t: 1.0, card: '**深脈** DEEPVEIN', s: '這顆星球唯一的燃料，也是唯一的戰爭理由。', dur: 3 }],
   });
   // ---- 0:50 世界觀的空景（四家委託方、軌道站），配樂每兩秒一下的脈動 ----
   let at = 50.1;
@@ -527,7 +527,7 @@ export function prologueCine(ctx) {
   shots.push({
     at: 65.1,
     set: { k: 'black' },
-    ev: [{ t: 0.25, card: '他們都需要同一種東西。', dur: 1.7 }],
+    ev: [{ t: 0.25, card: '他們都需要**同一種東西**。', dur: 1.7 }],
   });
   // 黑暗裡的駕駛員：越過肩膀看手套伸向開關（臉在畫面外；同一個黑畫面，不重建場景）
   shots.push({
@@ -548,7 +548,7 @@ export function prologueCine(ctx) {
       ease: 'lin',
     },
     ev: [
-      { t: 0.1, card: '不問理由的傭兵。', dur: 1.8 },
+      { t: 0.1, card: '**不問理由**的傭兵。', dur: 1.8 },
       // 控制台的待機燈：只從前面照，駕駛員是剪影
       { t: 0, fx: 'flash', at: [0.1, 1.3, -0.9], r: 0.08, color: 0xff3020, life: 2, i: 3 },
       { t: 1.2, fx: 'flash', at: [-0.25, 1.45, -1.0], r: 0.06, color: 0x60d0ff, life: 0.8, i: 2 },
@@ -773,7 +773,7 @@ export function prologueCine(ctx) {
     },
     ev: [
       { t: 0, a: 'h', aim: 'sl', stop: true },
-      { t: 0.3, card: 'SLUICE', s: '水壩守備隊長', style: 'name', dur: 2.3 },
+      { t: 0.3, card: 'SLUICE', s: '水壩守備隊長', style: 'name', kind: 'rival', dur: 2.3 },
       { t: 0.6, a: 'h', fire: 'rarm', dur: 2, at: 'sl' },
       { t: 1.4, a: 'mt2', die: true },
       { t: 2.6, flash: '#ffffff', in: 0.05, hold: 0.12, out: 0.25 },
@@ -838,7 +838,7 @@ export function prologueCine(ctx) {
     },
     ev: [
       { t: 0, sfx: 'engineHi', vol: 1, rate: 0.45, at: { a: 'train' } },
-      { t: 0.5, card: 'IRON CITADEL', s: '武裝列車', style: 'name', dur: 2.4 },
+      { t: 0.5, card: 'IRON CITADEL', s: '武裝列車', style: 'name', kind: 'boss', dur: 2.4 },
       { t: 1.4, boom: { a: 'train', o: [3, 4, 2] } },
       { t: 2.2, boom: { a: 'train', o: [12, 5, -2] } },
       { t: 2.9, shake: 0.7 },
@@ -915,7 +915,7 @@ export function prologueCine(ctx) {
       { t: 0, shake: 0.8 },
       { t: 0.3, boom: [0, 0, -30], big: true },
       { t: 0.3, fx: 'dust', at: [0, 0, -30], r: 16, n: 40, color: 0xdde6ee },
-      { t: 0.5, card: 'SANDWORM', s: '巨型鑽地蟲', style: 'name', dur: 2.4 },
+      { t: 0.5, card: 'SANDWORM', s: '巨型鑽地蟲', style: 'name', kind: 'boss', dur: 2.4 },
       { t: 0.6, sfx: 'rock2', vol: 1, rate: 0.6 },
       { t: 1.0, fx: 'dust', at: [6, 0, -24], r: 10, n: 30, color: 0xdde6ee },
     ],
@@ -956,7 +956,7 @@ export function prologueCine(ctx) {
     },
     ev: [
       { t: 0, a: 'h', stop: true, aim: 'sp', hover: false },
-      { t: 0.1, card: 'SPECIMEN', s: '「為什麼被選上的是你？」', style: 'name', dur: 2.3 },
+      { t: 0.1, card: 'SPECIMEN', s: '「為什麼被選上的是你？」', style: 'name', kind: 'rival', dur: 2.3 },
       { t: 0.15, sfx: 'alarm', vol: 0.5, rate: 1.2 },
       { t: 0.25, a: 'h', fire: ['rarm', 'larm'], dur: 2.3, at: 'sp' },
       { t: 0.6, a: 'h', qb: [-1, -0.2] },

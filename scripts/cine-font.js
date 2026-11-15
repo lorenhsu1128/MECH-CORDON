@@ -2,7 +2,7 @@
 // 只取劇本用得到的字子集化成 woff2 → src/assets/fonts/（建置時內嵌進遊戲的 HTML，直接開檔、沒有網路也一樣）。
 //   node scripts/cine-font.js           重新產生（要 python 與 fontTools＋brotli：python -m pip install --user fonttools brotli）
 // 建置（scripts/build.js）呼叫 checkCineFont()：劇本用到、字型裡卻沒有的字（改了字卡之後忘了重跑）印出警告。
-// 收字的規則：data/cine/ 裡 card／s／sub／name／en／kana／big／tag 這些欄位的短字串、loc 的兩個字串、任何字串裡 **…** 標的強調詞，
+// 收字的規則：data/cine/ 裡 card／s／sub／name／en／kana／big／tag 這些欄位的短字串、loc 與 LOC(…) 的兩個字串、任何字串裡 **…** 標的強調詞，
 // 以及 render/cine-brand.js、game/cine-type.js 的全部字串（膠帶、標籤的固定文字），再加上英數、片假名與常用標點。
 const fs = require('fs');
 const path = require('path');
@@ -37,6 +37,7 @@ function collectChars() {
     for (const m of t.matchAll(/\b(?:card|s|sub|name|en|kana|big|tag):\s*'([^'\n]{1,32})'/g)) add(m[1]);
     for (const m of t.matchAll(/\bloc:\s*\[\s*'([^'\n]*)',\s*'([^'\n]*)'/g)) add(m[1] + m[2]);
     for (const m of t.matchAll(/\*\*([^*\n']+)\*\*/g)) add(m[1]);
+    for (const m of t.matchAll(/\bLOC\(\s*'([^'\n]*)',\s*'([^'\n]*)'/g)) add(m[1] + m[2]);
   }
   for (const f of ['render/cine-brand.js', 'game/cine-type.js']) {
     const p = path.join(ROOT, 'src', f);

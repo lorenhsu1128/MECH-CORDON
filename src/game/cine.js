@@ -31,7 +31,17 @@ import { buildVeerwellDispatch, tickVeerwellDispatch } from '../render/cine-veer
 import { buildCouncilChamber, tickCouncilChamber } from '../render/cine-council.js';
 import { buildOrbitCore, tickOrbitCore } from '../render/cine-core.js';
 import { revealDom } from '../render/textfx.js';
-import { loadBrandFonts } from '../render/cine-brand.js';
+import {
+  BC,
+  FB,
+  FL,
+  cross,
+  hazard,
+  loadBrandFonts,
+  measure,
+  slantTag,
+  sticker,
+} from '../render/cine-brand.js';
 import { World } from '../world/world.js';
 import { CINE_GRADE } from './constants.js';
 import { Game } from './game.js';
@@ -218,7 +228,7 @@ Object.assign(Game.prototype, {
     $('cineSub').classList.remove('on');
     if (this.voiceStop) this.voiceStop();
     $('cineSys').innerHTML = '';
-    if (this.textfx) this.textfx.clear((x) => x.opt && x.opt.cine);
+    c.bcards = null;
   },
   // 測試用：全部的劇本產生一次（ctx：{ cycle, choices }），回傳 [{ k, n 鏡頭數, dur }]
   cineDefs(ctx) {
@@ -251,7 +261,6 @@ Object.assign(Game.prototype, {
     if (!c.live) SFX.stopLoops();
     this.cineClearSet(c);
     this.cineSetsDispose(c); // 常駐的場景（game/cine-prep.js）
-    this.textfx && this.textfx.clear((x) => x.opt && x.opt.cine);
     this.cineUi(false);
     this.cine2dClear();
     const cam = this.camera;
@@ -1424,26 +1433,11 @@ Object.assign(Game.prototype, {
       });
     else if (who === 'station') SFX.play('glitch', 0.3, 0.6, 0.02, 0.1, null, 'ui');
   },
-  // 字卡（文字演出）：style＝card（黑底的電影字距）、logo、chapter、name（宿敵名牌，左下）、loc（地點，左上）
+  // 字卡（文字風格，game/cine-type.js）：style＝card 旁白字卡／logo 片名／name 名牌（kind：boss｜rival）／loc 地點／
+  // decision 抉擇；畫在疊加畫布。設定「文字演出」關閉時改成字幕
   cineCard(ev) {
-    const cue = {
-      card: 'cineCard',
-      logo: 'cineLogo',
-      chapter: 'cineChapter',
-      name: 'cineName',
-      loc: 'cineLoc',
-    }[ev.style || 'card'];
-    const ok = this.textfx && this.textfx.on;
-    if (ok) {
-      const it = this.textfx.show(cue, ev.card, ev.s == null ? '' : ev.s, {
-        states: ['cine'],
-        hold: ev.dur || 2.4,
-        cine: true,
-      });
-      // 模板自己的時間軸可能比 dur 長：到時間就收掉（過場的時間為準）
-      if (it)
-        (this.cine.cards = this.cine.cards || []).push({ it, until: this.cine.t + (ev.dur || 2.4) + 0.8 });
-    } else this.cineSub(ev.card + (ev.s ? '　' + ev.s : ''), null, ev.dur || 2.4);
+    if (this.textfx && this.textfx.on) this.cineCardPush(ev);
+    else this.cineSub(ev.card.replace(/\*\*/g, '') + (ev.s ? '　' + ev.s : ''), null, ev.dur || 2.4);
   },
   // 機器文字（左下，系統日誌樣式逐字）
   cineSys(lines, dur, cls) {
@@ -1486,14 +1480,7 @@ Object.assign(Game.prototype, {
     const fe = $('cineFade');
     fe.style.background = col;
     fe.style.opacity = fade.toFixed(3);
-    // 字卡、字幕與機器文字的時間（以過場的時間為準）
-    if (c.cards && c.cards.length && this.textfx) {
-      const over = c.cards.filter((x) => c.t >= x.until).map((x) => x.it);
-      if (over.length) {
-        this.textfx.clear((x) => over.includes(x));
-        c.cards = c.cards.filter((x) => c.t < x.until);
-      }
-    }
+    // 字幕與機器文字的時間（以過場的時間為準）
     if (c.subUntil && c.t >= c.subUntil) {
       c.subUntil = 0;
       $('cineSub').classList.remove('on');
@@ -1530,6 +1517,8 @@ Object.assign(Game.prototype, {
       const o = this['cineOv_' + n];
       if (o) o.call(this, x, W, H, lt, S);
     }
+    // 字卡（game/cine-type.js）
+    this.cineCardsDraw(x, W, H);
     // 略過的提示
     if (c.hintT > 0) c.hintT -= dt;
     $('cineSkip').classList.toggle('on', c.hintT > 0 || c.skipT > 0);
@@ -1847,63 +1836,86 @@ Object.assign(Game.prototype, {
     }
     x.restore();
   },
-  // 抉擇倒數：上方的計時條、各出口的光柱名牌（委託方的顏色）、四角的冷色框
+  // 抉擇倒數（文字風格）：上方的 DECISION 貼紙字＋警戒斜紋的倒數條（剩三成時換紅黑閃）＋秒數、
+  // 各出口的光柱名牌（委託方顏色的斜切名牌＋黑底的代價說明）、四角的準星
   cineChoiceOv(x, W, H, lt, S) {
     const c = this.cine;
-    const s = H / 720;
+    const s = H / 900;
     const next = c.def.shots[c.shot + 1];
     const dur = (next ? next.at : c.def.dur) - S.at;
     const k = clamp(1 - lt / Math.max(0.1, dur), 0, 1);
     x.save();
-    const top = (c.bar || 0) + 18 * s;
-    x.fillStyle = 'rgba(0,0,0,0.4)';
-    x.fillRect(W * 0.3, top, W * 0.4, 4 * s);
-    x.fillStyle = k < 0.3 ? 'rgba(255,80,70,0.95)' : 'rgba(255,170,90,0.95)';
-    x.fillRect(W * 0.3, top, W * 0.4 * k, 4 * s);
-    x.font = `${12 * s}px "Share Tech Mono", monospace`;
-    x.textAlign = 'center';
-    x.fillStyle = 'rgba(255,200,150,0.95)';
-    x.fillText('DECISION REQUIRED', W / 2, top - 5 * s);
+    const top = (c.bar || 0) + 46 * s;
+    const bw = Math.min(W * 0.36, 520 * s),
+      bh = 20 * s;
+    const lw = measure(x, 'DECISION', { size: 40 * s, font: FL });
+    const x0 = W / 2 - (lw + bw + 120 * s) / 2;
+    sticker(x, 'DECISION', x0, top, { size: 40 * s, font: FL, fill: BC.yel });
+    const bx = x0 + lw + 26 * s;
+    const hot = k < 0.3;
+    x.beginPath();
+    x.roundRect(bx - 3 * s, top - bh / 2 - 3 * s, bw + 6 * s, bh + 6 * s, bh);
+    x.fillStyle = BC.white;
+    x.fill();
+    x.save();
+    x.beginPath();
+    x.roundRect(bx, top - bh / 2, bw, bh, bh / 2);
+    x.fillStyle = '#222';
+    x.fill();
+    x.clip();
+    const blink = hot && Math.floor(c.t * 6) % 2 ? 0.55 : 1;
+    x.globalAlpha *= blink;
+    hazard(x, bx, top - bh / 2, bw * k, bh, { c1: hot ? BC.red : BC.yel, off: c.t * 30 * s });
+    x.restore();
+    sticker(x, Math.max(0, dur - lt).toFixed(1), bx + bw + 16 * s, top, {
+      size: 34 * s,
+      font: FL,
+      fill: hot ? BC.red : BC.white,
+      edgeW: 0,
+      inkW: 7 * s,
+      shadow: 0,
+    });
     // 出口的名牌
     for (const o of S.opts || []) {
       const p = this.cinePt({ ex: o.ex, o: [0, 6, 0] }).project(this.camera);
       if (p.z > 1 || Math.abs(p.x) > 1.1 || Math.abs(p.y) > 1.1) continue;
       const sx = (p.x * 0.5 + 0.5) * W,
         sy = (-p.y * 0.5 + 0.5) * H;
-      const pulse = 0.75 + Math.sin(c.t * 6 + o.ex) * 0.25;
-      x.globalAlpha = pulse;
-      x.strokeStyle = o.color;
-      x.lineWidth = 2 * s;
-      x.strokeRect(sx - 70 * s, sy - 22 * s, 140 * s, 36 * s);
-      x.fillStyle = 'rgba(6,10,14,0.75)';
-      x.fillRect(sx - 69 * s, sy - 21 * s, 138 * s, 34 * s);
-      x.fillStyle = o.color;
-      x.font = `700 ${14 * s}px "Noto Sans TC", sans-serif`;
-      x.fillText(o.name, sx, sy - 3 * s);
-      x.font = `${10 * s}px "Noto Sans TC", sans-serif`;
-      x.fillStyle = 'rgba(230,236,242,0.9)';
-      x.fillText(o.sub, sx, sy + 10 * s);
+      const pulse = 1 + Math.sin(c.t * 6 + o.ex) * 0.03;
+      x.save();
+      x.translate(sx, sy);
+      x.rotate(o.ex % 2 ? 0.05 : -0.05);
+      x.scale(pulse, pulse);
+      slantTag(x, o.name, 0, -16 * s, { size: 24 * s, bg: o.color, font: FL, align: 'center' });
+      if (o.sub) {
+        x.font = `700 ${15 * s}px ${FB}`;
+        x.letterSpacing = '0px';
+        const tw = x.measureText(o.sub).width + 24 * s;
+        x.beginPath();
+        x.roundRect(-tw / 2, 12 * s, tw, 28 * s, 10 * s);
+        x.fillStyle = 'rgba(10,10,12,0.9)';
+        x.fill();
+        x.strokeStyle = o.color;
+        x.lineWidth = 2 * s;
+        x.stroke();
+        x.fillStyle = '#fff';
+        x.textAlign = 'center';
+        x.textBaseline = 'middle';
+        x.fillText(o.sub, 0, 26 * s);
+      }
+      x.restore();
     }
-    x.globalAlpha = 1;
-    // 冷色的四角框
-    x.strokeStyle = 'rgba(150,200,255,0.5)';
-    x.lineWidth = 2 * s;
-    const m = 40 * s,
-      L = 60 * s,
-      y0 = (c.bar || 0) + m,
+    // 四角的準星
+    const m = 60 * s,
+      y0 = (c.bar || 0) + 130 * s,
       y1 = H - (c.bar || 0) - m;
-    for (const [px, py, dx, dy] of [
-      [m, y0, 1, 1],
-      [W - m, y0, -1, 1],
-      [W - m, y1, -1, -1],
-      [m, y1, 1, -1],
-    ]) {
-      x.beginPath();
-      x.moveTo(px, py + dy * L);
-      x.lineTo(px, py);
-      x.lineTo(px + dx * L, py);
-      x.stroke();
-    }
+    for (const [px, py] of [
+      [m, y0],
+      [W - m, y0],
+      [W - m, y1],
+      [m, y1],
+    ])
+      cross(x, px, py, 16 * s, { col: 'rgba(255,255,255,0.75)' });
     x.restore();
   },
   // 監視器式的掃描線與雜訊（通訊、回憶）
