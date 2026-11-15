@@ -102,7 +102,7 @@ Object.assign(Game.prototype, {
         // 用 gearPart：PART_CAT 只有有售價的零件，初始零件等會查成「（空）」
         L.gear.map((x) => `${GRADES[x.q].n}・${(gearPart(x.id) || { name: x.id }).name}`).join('、'),
       ]);
-    if (L.lost) rows.push(['背包已滿', `${L.lost} 件沒有撿到`]);
+    if (L.lost) rows.push(['倉庫已滿', `${L.lost} 件沒有撿到`]);
     return rows;
   },
   // 素材的持有（機甲庫的調校畫面用）

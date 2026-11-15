@@ -17276,7 +17276,7 @@ async function testGear(browser, base) {
     };
     g.gearDropsTick(0.1);
     g.flashMsg = fm;
-    out.fullWarn = /背包已滿/.test(warn) && g.gearDrops.length === 1;
+    out.fullWarn = /倉庫已滿/.test(warn) && g.gearDrops.length === 1;
     // 清出空間後離開地圖：自動撿起
     S.inv = S.inv.slice(0, 5);
     g.clearMission();

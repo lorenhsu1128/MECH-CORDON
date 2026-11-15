@@ -59,7 +59,7 @@ Object.assign(Game.prototype, {
     if (!n && !(cur && cur.q)) return { cls: '', html: '', style: '' };
     const q = cur !== undefined ? (cur ? cur.q : 0) : qMax;
     const tip =
-      (cur !== undefined ? `裝備中「${GRADES[q].n}」；` : '') + `背包裡有 ${n} 件，最高「${GRADES[qMax].n}」`;
+      (cur !== undefined ? `裝備中「${GRADES[q].n}」；` : '') + `倉庫裡有 ${n} 件，最高「${GRADES[qMax].n}」`;
     return {
       cls: ` gq${q}`,
       style: `--gq:${GRADES[q].c}`,
@@ -303,7 +303,7 @@ Object.assign(Game.prototype, {
     const bulk = [1, 2]
       .map((q) => `<button class="invBulk" data-q="${q}">分解全部「${GRADES[q].n}」</button>`)
       .join('');
-    box.innerHTML = `<div class="gPageH"><h2>背包</h2><span class="dim">${this.invCount()}／${INV_MAX} 件（裝備中的不算）</span></div><div class="invMats">${this.lootMatsHtml()}</div><div class="invF" data-padtabs=".invQ">${qBtn}</div><div class="invF">${cBtn}</div><div class="invF invSort" data-padtabs=".invS">${sBtn}<button class="invRg${rangeOn ? ' on' : ''}" title="詞條後面顯示範圍（範圍不看品級；★＝極品，範圍 ×1.5）">範圍：${rangeOn ? '顯示' : '不顯示'}</button></div><div class="invNote dim">位置條＝詞條在範圍裡的位置（四格刻度、白線是數值，滿格＝最高）。範圍不看品級：品級決定條數與種類，紫、金的極品★範圍 ×1.5。</div><div class="invBulkRow">${bulk}<span class="dim">鎖定、裝備中的不分解</span></div><div class="invList">${rows || '<p class="dim">背包是空的：擊破敵人、開補給箱、委託的報酬都會掉裝備。商店只賣標準版。</p>'}</div>`;
+    box.innerHTML = `<div class="gPageH"><h2>倉庫</h2><span class="dim">${this.invCount()}／${INV_MAX} 件（裝備中的不算）</span></div><div class="invMats">${this.lootMatsHtml()}</div><div class="invF" data-padtabs=".invQ">${qBtn}</div><div class="invF">${cBtn}</div><div class="invF invSort" data-padtabs=".invS">${sBtn}<button class="invRg${rangeOn ? ' on' : ''}" title="詞條後面顯示範圍（範圍不看品級；★＝極品，範圍 ×1.5）">範圍：${rangeOn ? '顯示' : '不顯示'}</button></div><div class="invNote dim">位置條＝詞條在範圍裡的位置（四格刻度、白線是數值，滿格＝最高）。範圍不看品級：品級決定條數與種類，紫、金的極品★範圍 ×1.5。</div><div class="invBulkRow">${bulk}<span class="dim">鎖定、裝備中的不分解</span></div><div class="invList">${rows || '<p class="dim">倉庫是空的：擊破敵人、開補給箱、委託的報酬都會掉裝備。商店只賣標準版。</p>'}</div>`;
     for (const b of box.querySelectorAll('.invQ'))
       b.onclick = () => {
         SFX.ui();

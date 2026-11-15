@@ -165,9 +165,9 @@ Object.assign(Game.prototype, {
       return true;
     }
     if (!this.invAdd(g)) {
-      this.flashMsg(`背包已滿，無法拾取「${GRADES[g.q].n}」${p.name}`, 0xff6060, 2.2, {
+      this.flashMsg(`倉庫已滿，無法拾取「${GRADES[g.q].n}」${p.name}`, 0xff6060, 2.2, {
         k: 'warn',
-        m: '背包已滿',
+        m: '倉庫已滿',
         s: '無法拾取',
       });
       if (this.lootRun) this.lootRun.lost = (this.lootRun.lost || 0) + 1;

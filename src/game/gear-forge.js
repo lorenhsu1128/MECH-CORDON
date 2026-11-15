@@ -74,7 +74,7 @@ Object.assign(Game.prototype, {
     if (!b) return;
     b.onclick = () => {
       const id = b.dataset.id;
-      if (this.invFull()) return this.flashMsg('背包已滿', 0xff4d4d, 1.4);
+      if (this.invFull()) return this.flashMsg('倉庫已滿', 0xff4d4d, 1.4);
       if (!this.forgePay(ASCEND[1])) return;
       const g = { u: newUid(), id, q: 0, ax: [] };
       this.forgeUp(g);
