@@ -873,13 +873,20 @@ Object.assign(Game.prototype, {
       () => land(true),
     );
   },
-  // 接著它的坡道一起拿掉（碰撞與模型）
-  propRampsOff(b) {
-    const R = this.world.ramps;
+  // 接著它的坡道一起拿掉（碰撞與模型）。piv＝甲板掉下去的軸：坡道的模型跟著掉、一起淡出（還沒被別的甲板帶走的）
+  propRampsOff(b, piv) {
+    const w = this.world,
+      R = w.ramps;
     for (const r of b.ramps || []) {
       const i = R ? R.indexOf(r) : -1;
       if (i >= 0) R.splice(i, 1);
-      if (r.mesh) r.mesh.visible = false;
+      const m = r.mesh;
+      if (!m) continue;
+      if (piv && m.parent === this.scene && m.visible) {
+        const k = w.meshes.indexOf(m);
+        if (k >= 0) w.meshes.splice(k, 1);
+        piv.attach(m);
+      } else if (!piv) m.visible = false;
     }
   },
   // 甲板掉下來（docs/destruction-design.md 第 5 期）：預警（甲板底下的地面）、晃動 → 往下掉到地上 → 碎裂、揚塵，
@@ -906,6 +913,7 @@ Object.assign(Game.prototype, {
     piv.updateMatrixWorld(true);
     if (g) piv.attach(g);
     b.piv = piv;
+    this.propRampsOff(b, piv);
     const onTop = (s) =>
       s.x1 > bb.min.x && s.x0 < bb.max.x && s.z1 > bb.min.z && s.z0 < bb.max.z && Math.abs(s.y0 - yTop) < 1.5;
     // 放在甲板上的物件跟著掉（落地時摔壞，propFallHit）；撐在上面的承重柱、站在上面的結構不跟著動，由房主弄倒（客機照事件）

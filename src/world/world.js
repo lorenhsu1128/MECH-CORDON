@@ -2677,13 +2677,20 @@ export class World {
         Math.abs(d.y - b.max.y) < 4,
     );
   }
-  // 接著這個外框的坡道（坡道的高端在外框的頂附近、水平相接）
+  // 接著這個外框的坡道：坡道的高端在外框的頂附近、水平相接；或懸空的坡道放在它上面（Lattice-9 從第一層接到
+  // 第二層的坡道，低端在第一層的格子上：以前沒算進去，格子掉了坡道留在半空；2026-11-15）。自訂關卡的坡道是自己的物件
   rampsNear(b) {
+    const cx = (b.min.x + b.max.x) / 2,
+      cz = (b.min.z + b.max.z) / 2,
+      hx = (b.max.x - b.min.x) / 2,
+      hz = (b.max.z - b.min.z) / 2;
     return (this.ramps || []).filter(
       (r) =>
-        Math.abs(r.x - (b.min.x + b.max.x) / 2) < r.w / 2 + (b.max.x - b.min.x) / 2 + 2 &&
-        Math.abs(r.z - (b.min.z + b.max.z) / 2) < r.d / 2 + (b.max.z - b.min.z) / 2 + 2 &&
-        Math.abs(r.y1 - b.max.y) < 3,
+        !r.lvl &&
+        ((Math.abs(r.x - cx) < r.w / 2 + hx + 2 &&
+          Math.abs(r.z - cz) < r.d / 2 + hz + 2 &&
+          Math.abs(r.y1 - b.max.y) < 3) ||
+          (r.lift && Math.abs(r.x - cx) < hx && Math.abs(r.z - cz) < hz && Math.abs(r.y0 - b.max.y) < 3)),
     );
   }
   // 甲板（橋面、高架、掩體頂、虛空上的橋；docs/destruction-design.md 第 5 期）：甲板本體（noDie）＋撐著它的
@@ -2765,6 +2772,8 @@ export class World {
         sp.name = '橋墩';
         sp.support = true;
         sp.sep = true; // 有自己的模型與碰撞：損毀時照一般的物件換成殘骸
+        // 接著它的坡道（上方剛好有甲板的高台被當成橋墩）：它壞了坡道一起拿掉（接著甲板的歸甲板；2026-11-15）
+        sp.ramps = this.rampsNear(ob2).filter((r) => !body.ramps.includes(r));
         sp.of = body;
         sp.ofs = [body];
         body.sup.push(sp);
@@ -3246,6 +3255,12 @@ export class World {
     p.hp = Math.min(p.hp, 0);
     if (p.seg && !p.grid) return; // 巨型結構的一段（壩體、隧道口、平台外緣）：Game 的 propSegDown 演出
     if (p.support && !p.sep) return; // 承重柱：結構的碰撞與模型不動（Game 的 propSupportDown 演出、全壞時倒塌）
+    // 接著它的坡道一起拿掉（結構本體與甲板的在 Game 的 propCollapse／propDrop）
+    for (const r of p.ramps || []) {
+      const i = this.ramps ? this.ramps.indexOf(r) : -1;
+      if (i >= 0) this.ramps.splice(i, 1);
+      if (r.mesh) r.mesh.visible = false;
+    }
     for (const ob of p.obs || [p.ob]) {
       const i = this.obstacles.indexOf(ob);
       if (i >= 0) this.obstacles.splice(i, 1);

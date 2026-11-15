@@ -32732,6 +32732,18 @@ async function testDestructSegs(browser, base) {
           out.cascade = t2.gone && u2.collapsed && u2.gone && u2.sup.every((q) => q.dead);
         }
         out.pillars = t.sup.filter((q) => q.ofs.length > 1).every((q) => !q.dead); // 旁邊的格子的支柱還在
+        // 接著格子的坡道（地面 → 第一層、第一層 → 第二層的懸空坡道）：格子掉下去時坡道跟著掉、碰撞拿掉
+        // （以前留在半空；2026-11-15）
+        const rt = w.props.find(
+          (q) => q.grid && !q.collapsed && far(q) && (q.ramps || []).some((r) => r.mesh),
+        );
+        out.rampN = w.props.filter((q) => q.grid && (q.ramps || []).length).length;
+        if (rt) {
+          const R = rt.ramps.filter((r) => r.mesh);
+          kill(rt);
+          window.__pump(14, () => rt.gone);
+          out.ramp = R.every((r) => !w.ramps.includes(r) && (!r.mesh.parent || !r.mesh.visible));
+        }
       } else if (map === 'institute') {
         out.roof = !!w.roofMesh;
         const C = w.roofCell;
@@ -32798,6 +32810,7 @@ async function testDestructSegs(browser, base) {
         `第一層掉下去時，站在上面的第二層支柱與格子跟著倒、一起消失（${r.cascade}）`,
       );
       check(r.pillars, `共用的支柱留著（${r.shared} 根撐著旁邊的格子）`);
+      check(r.rampN > 0 && r.ramp, `接著甲板格子的坡道（${r.rampN} 格有）：格子掉下去時坡道跟著掉、碰撞拿掉`);
     } else if (map === 'institute') {
       check(
         r.roof && r.hole && r.cell && r.through && r.tbl,

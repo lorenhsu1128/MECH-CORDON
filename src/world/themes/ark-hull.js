@@ -979,6 +979,7 @@ function buildRamps(w) {
       y1: r.y1,
       len: r.len,
       lift: false,
+      mesh: g, // 艦內機庫的上層走道掉下去時坡道跟著掉（game/destruct.js 的 propRampsOff）
     });
     w.reserve(r.x - r.w / 2, r.x + r.w / 2, r.z - r.d / 2, r.z + r.d / 2);
   }

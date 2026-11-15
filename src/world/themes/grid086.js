@@ -530,7 +530,19 @@ function buildStructures(w) {
     rg.rotation.x = r.side[1] ? r.side[1] * a : 0;
     w.scene.add(rg);
     w.meshes.push(rg);
-    w.ramps.push({ x: r.x, z: r.z, w: r.w, d: r.d, side: r.side, y0, y1: r.y1, len: r.len, lift: r.lift });
+    // mesh：甲板格子掉下去時坡道跟著掉（game/destruct.js 的 propRampsOff）
+    w.ramps.push({
+      x: r.x,
+      z: r.z,
+      w: r.w,
+      d: r.d,
+      side: r.side,
+      y0,
+      y1: r.y1,
+      len: r.len,
+      lift: r.lift,
+      mesh: rg,
+    });
     if (!r.lift) w.reserve(r.x - r.w / 2, r.x + r.w / 2, r.z - r.d / 2, r.z + r.d / 2);
   }
 }
