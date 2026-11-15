@@ -10,7 +10,7 @@
 import { clamp, lerp } from '../core/math.js';
 import { PERSONA, PERSONA_DEF } from '../data/cine/persona.js';
 import { FACTIONS, SPEAKERS } from '../data/story.js';
-import { BC, FB, FD, slantTag } from '../render/cine-brand.js';
+import { BC, FB, FD, FL, FM, slantTag } from '../render/cine-brand.js';
 import { drawArt, dotPattern } from '../render/cine-art.js';
 import { Portrait, Portraits } from '../render/portraits.js';
 import { Game } from './game.js';
@@ -932,18 +932,17 @@ Object.assign(Game.prototype, {
     this.cine2dBalloon(x, { ...e, kind, text: e.s, t: lt - (e.t0 || 0) });
   },
   // ---------- 字 ----------
-  // 狀聲詞與大字：{ s, at, size, color, stroke 描邊顏色, sw 描邊寬, rot, font 'sfx'|'title'|'mono', al, in, sub 小字 }
+  // 狀聲詞與大字：{ s, at, size, color, stroke 描邊顏色, sw 描邊寬, rot, font 'sfx'|'title'|'mono', al, in, sub 小字,
+  //   onom（漫畫的狀聲詞：逐字歪斜，en＝英文擬音） }
   cine2d_text(x, e, lt, v) {
+    // 漫畫的狀聲詞（onom）：逐字歪斜的排版（game/cine-type.js）
+    if (e.onom) return this.cine2dOnom(x, e, lt, v);
     const [px, py] = e.at || [VW / 2, VH / 2];
     this.cine2dIn(x, e, v, px, py);
-    const fam =
-      e.font === 'mono'
-        ? '"Share Tech Mono", monospace'
-        : e.font === 'title'
-          ? '"Rubik", "Noto Sans TC", sans-serif'
-          : '"Noto Sans TC", sans-serif';
+    // 文字風格（render/cine-brand.js）：預設＝標題字、title＝英數的粗斜體、mono＝機器文字
+    const fam = e.font === 'mono' ? FM : e.font === 'title' ? FL : FD;
     const sz = e.size || 160;
-    x.font = `${e.wt || 900} ${sz}px ${fam}`;
+    x.font = `${e.font === 'mono' ? 600 : e.wt || 900} ${sz}px ${fam}`;
     x.textAlign = e.al || 'center';
     x.textBaseline = 'middle';
     x.translate(px, py);

@@ -175,57 +175,8 @@ function titleShot(set, grade, track, at, ch, name, en, color) {
       bg: color,
       els: [
         LIVE({ k: 'block', gco: 'multiply', flt: 'grayscale(1) contrast(9) brightness(1.3)' }),
-        {
-          k: 'block',
-          q: [
-            [0, 640],
-            [1600, 520],
-            [1600, 900],
-            [0, 900],
-          ],
-          color: '#0a0a0a',
-          in: 'wipe',
-          t0: 0.2,
-          ind: 0.35,
-        },
-        {
-          k: 'text',
-          s: en,
-          at: [1530, 600],
-          size: 36,
-          font: 'mono',
-          al: 'right',
-          color,
-          stroke: null,
-          t0: 0.5,
-          in: 'fade',
-          ls: 8,
-        },
-        {
-          k: 'text',
-          s: 'CHAPTER ' + ch,
-          at: [140, 690],
-          size: 54,
-          font: 'title',
-          al: 'left',
-          color: '#ffffff',
-          stroke: null,
-          t0: 0.55,
-          in: 'left',
-          ls: 12,
-        },
-        {
-          k: 'text',
-          s: name,
-          at: [130, 790],
-          size: 120,
-          al: 'left',
-          color: '#ffffff',
-          stroke: null,
-          t0: cb(0.8),
-          in: 'stamp',
-          ls: 14,
-        },
+        // 章名卡（文字風格，game/cine-type.js；片假名副標依章號）
+        { k: 'chapter', ch: ch, name: name, en: en, color: color, t0: 0.2, tn: cb(0.8) },
       ],
     },
     cam: {
@@ -289,6 +240,7 @@ export function ch7Intro(ctx) {
               kids: [
                 {
                   k: 'text',
+                  onom: true,
                   s: '轟',
                   at: [1180, 320],
                   size: 220,
@@ -493,6 +445,7 @@ export function ch7Outro(ctx) {
             kids: [
               {
                 k: 'text',
+                onom: true,
                 s: '轟',
                 at: [1300, 300],
                 size: 200,

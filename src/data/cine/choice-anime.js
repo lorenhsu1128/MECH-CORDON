@@ -406,6 +406,7 @@ function postShot(s, i) {
           ? [
               {
                 k: 'text',
+                onom: true,
                 s: s.sfx,
                 at: [q[1][0] - 200, q[1][1] + 240],
                 size: 190,

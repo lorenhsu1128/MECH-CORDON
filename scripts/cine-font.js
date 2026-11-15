@@ -34,7 +34,7 @@ function collectChars() {
   const dir = path.join(ROOT, 'src', 'data', 'cine');
   for (const f of fs.readdirSync(dir).filter((n) => n.endsWith('.js'))) {
     const t = fs.readFileSync(path.join(dir, f), 'utf8');
-    for (const m of t.matchAll(/\b(?:card|s|sub|name|en|kana|big|tag):\s*'([^'\n]{1,32})'/g)) add(m[1]);
+    for (const m of t.matchAll(/\b(?:card|s|sub|name|en|kana|big|tag|sfx):\s*'([^'\n]{1,32})'/g)) add(m[1]);
     for (const m of t.matchAll(/\bloc:\s*\[\s*'([^'\n]*)',\s*'([^'\n]*)'/g)) add(m[1] + m[2]);
     for (const m of t.matchAll(/\*\*([^*\n']+)\*\*/g)) add(m[1]);
     for (const m of t.matchAll(/\bLOC\(\s*'([^'\n]*)',\s*'([^'\n]*)'/g)) add(m[1] + m[2]);

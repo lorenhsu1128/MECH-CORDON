@@ -12,6 +12,9 @@ import {
   FL,
   FM,
   capsule,
+  cross,
+  dotBlock,
+  gear,
   hazard,
   measure,
   splat,
@@ -380,6 +383,211 @@ function paintEnd(x, W, H, u, out, o) {
   x.restore();
 }
 
+// 章名卡的片假名副標（像 LOGO 的「メック・コルドン」）：英文副標的讀音，依章號
+const KANA = {
+  1: 'バスティーユ',
+  2: 'インダストリアル・コントラクト',
+  3: 'ビニース・ジ・アイス',
+  4: 'ザ・ラティス',
+  5: 'ザ・チョイス・アット・シー',
+  6: 'オービット',
+  7: 'ザ・フォージ',
+  8: 'ジ・アーク',
+};
+// '#rrggbb' → 'rgba(r,g,b,a)'
+const rgba = (hex, a) => {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+  if (!m) return `rgba(255,255,255,${a})`;
+  const n = parseInt(m[1], 16);
+  return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
+};
+
+// 章名卡（開場的最後一鏡；LOGO 的元素全開）：暗色網點的斜塊、齒輪、準星、墨漬、片假名、CH 標籤＋斜紋、
+// 章名的貼紙字（章節色）、英文副標、斜貫的封鎖膠帶。u＝出現後的秒數，tn＝章名砸下來的時間（對齊配樂的拍點）
+function paintChapter(x, W, H, u, out, o) {
+  const k = H / 900;
+  const col = o.color || BC.yel;
+  const tn = o.tn ?? 0.6;
+  x.save();
+  x.globalAlpha *= 1 - out;
+  // 暗色的斜塊（網點是章節色），從左擦入
+  const e = easeOut(u / 0.3);
+  if (e > 0) {
+    x.save();
+    x.beginPath();
+    x.rect(0, 0, W * 0.66 * e, H);
+    x.clip();
+    dotBlock(
+      x,
+      [
+        [0, 0],
+        [W * 0.62, 0],
+        [W * 0.44, H],
+        [0, H],
+      ],
+      'rgba(10,10,12,0.86)',
+      { dot: rgba(col, 0.42), step: 9 * k },
+    );
+    x.restore();
+  }
+  // 齒輪、準星
+  const gk = easeBack((u - 0.25) / 0.3);
+  if (gk > 0) {
+    x.save();
+    x.globalAlpha *= clamp(gk, 0, 1);
+    gear(x, W * 0.895, H * 0.17, 70 * k * gk, u * 0.5, { col: BC.white, lw: 7 * k, teeth: 11 });
+    gear(x, W * 0.83, H * 0.29, 38 * k * gk, -u * 0.9, { col: BC.white, lw: 5 * k, teeth: 9 });
+    cross(x, W * 0.95, H * 0.62, 18 * k);
+    cross(x, W * 0.07, H * 0.12, 18 * k);
+    x.restore();
+  }
+  // 片假名
+  const kana = o.kana || KANA[o.ch];
+  if (kana && u > 0.35) {
+    x.save();
+    x.globalAlpha *= clamp((u - 0.35) / 0.25, 0, 1);
+    sticker(x, kana, 130 * k, 300 * k, {
+      size: 24 * k,
+      font: FB,
+      ls: 8 * k,
+      edgeW: 0,
+      inkW: 5 * k,
+      shadow: 0,
+    });
+    x.restore();
+  }
+  // CH 標籤＋斜紋
+  if (u > 0.3) {
+    const kk = easeBack((u - 0.3) / 0.2);
+    x.save();
+    x.translate(130 * k, 362 * k);
+    x.scale(kk, kk);
+    const label = 'CH.' + String(o.ch || 0).padStart(2, '0');
+    const lw = measure(x, label, { size: 46 * k, font: FL }) + 36 * k;
+    x.save();
+    x.transform(1, 0, -0.21, 1, 0, 0);
+    x.fillStyle = BC.white;
+    x.fillRect(-4 * k, -34 * k, lw + 8 * k, 68 * k);
+    x.fillStyle = BC.ink;
+    x.fillRect(0, -30 * k, lw, 60 * k);
+    x.restore();
+    sticker(x, label, 14 * k, 2 * k, { size: 46 * k, font: FL, fill: BC.yel, edgeW: 0, inkW: 0, shadow: 0 });
+    hazard(x, lw + 24 * k, -9 * k, 210 * k * easeOut((u - 0.4) / 0.3), 18 * k, {
+      off: u * 30 * k,
+      edge: 3 * k,
+    });
+    x.restore();
+  }
+  // 墨漬
+  splat(x, 250 * k, 790 * k, 28 * k, seedOf(o.name), { k: easeOut((u - tn) / 0.25) * (u > tn ? 1 : 0) });
+  // 章名（砸下來）
+  let size = 150 * k;
+  const maxW = W * 0.6;
+  const nw = measure(x, o.name, { size, font: FD, ls: 4 * k });
+  if (nw > maxW) size *= maxW / nw;
+  const sc = slam(u, tn, 0.15, 1.35);
+  if (sc) {
+    x.save();
+    x.translate(115 * k, 520 * k);
+    x.rotate(-0.05);
+    x.scale(sc, sc);
+    sticker(x, o.name, 0, 0, { size, font: FD, ls: 4 * k, fill: col, halftone: true });
+    x.restore();
+  }
+  // 英文副標
+  if (o.en && u > tn + 0.25) {
+    const n = Math.ceil((u - tn - 0.25) * 40);
+    sticker(x, o.en.slice(0, n), 124 * k, 650 * k, {
+      size: 30 * k,
+      font: FL,
+      ls: 9 * k,
+      edgeW: 0,
+      inkW: 7 * k,
+      shadow: 0,
+    });
+  }
+  // 封鎖膠帶（章名之後掃過）
+  const tk = easeOut((u - tn - 0.15) / 0.3);
+  if (tk > 0) tape(x, -60 * k, 800 * k, W * 1.3 * tk, -0.09, { h: 46 * k, scroll: u * 40 * k });
+  x.restore();
+}
+
+// 漫畫的狀聲詞（轟、噹…）：每個字各自歪斜、大小不一、錯開，貼紙描邊＋網點，依序砸下；下面一顆英文擬音的黑膠囊
+const ONOM_EN = { 轟: 'KA-BOOM!!', 噹: 'CLANG!!', 鏗: 'KLANG!!', 砰: 'BANG!!', 咚: 'THUD!!' };
+function paintOnom(x, e, lt, kout) {
+  const u = lt - (e.t0 || 0);
+  const [px, py] = e.at || [800, 450];
+  const sz = e.size || 200;
+  const chars = [...e.s];
+  const seed = seedOf(e.s);
+  // 填色固定用 LOGO 的黃（劇本的 color 多半是給舊的白字用的米白）；ocol 可以指定
+  const fill = e.ocol || BC.yel;
+  // 每個字的大小與寬度
+  const L = chars.map((ch, i) => {
+    const r = (n) => {
+      const v = Math.sin((seed + i * 7.31 + n) * 12.9898) * 43758.5453;
+      return v - Math.floor(v);
+    };
+    const s = sz * (0.86 + r(1) * 0.28) * (ch === '—' ? 0.7 : 1);
+    return {
+      ch,
+      s,
+      w: measure(x, ch, { size: s, font: FD }) * 0.92,
+      rot: (r(2) - 0.5) * 0.4,
+      dy: (r(3) - 0.5) * sz * 0.16,
+    };
+  });
+  const total = L.reduce((a, c) => a + c.w, 0);
+  const al = e.al || 'center';
+  let cx = al === 'left' ? px : al === 'right' ? px - total : px - total / 2;
+  x.save();
+  x.globalAlpha *= 1 - kout;
+  x.translate(0, 0);
+  if (e.rot) {
+    x.translate(px, py);
+    x.rotate(e.rot);
+    x.translate(-px, -py);
+  }
+  L.forEach((c, i) => {
+    const sc = slam(u, i * 0.07, 0.14, 1.45);
+    if (sc) {
+      const shake = Math.max(0, 1 - (u - i * 0.07) / 0.35);
+      x.save();
+      x.translate(
+        cx + c.w / 2 + (Math.random() - 0.5) * 12 * shake,
+        py + c.dy + (Math.random() - 0.5) * 12 * shake,
+      );
+      x.rotate(c.rot);
+      x.scale(sc, sc);
+      sticker(x, c.ch, 0, 0, {
+        size: c.s,
+        font: FD,
+        align: 'center',
+        fill,
+        halftone: true,
+        inkW: c.s * 0.065,
+        edgeW: c.s * 0.15,
+      });
+      x.restore();
+    }
+    cx += c.w;
+  });
+  const en = e.en || ONOM_EN[chars[0]];
+  if (en && u > 0.22) {
+    const kk = easeBack((u - 0.22) / 0.18);
+    x.save();
+    x.translate(
+      px + (al === 'left' ? total * 0.8 : al === 'right' ? -total * 0.2 : total * 0.3),
+      py + sz * 0.46,
+    );
+    x.rotate(-0.05);
+    x.scale(kk, kk);
+    capsule(x, en, 0, 0, { size: Math.max(18, sz * 0.13), font: FL, align: 'center', bw: 3 });
+    x.restore();
+  }
+  x.restore();
+}
+
 Object.assign(Game.prototype, {
   // 事件的字卡：加進清單，疊加畫布每格畫（cineOverlay 呼叫 cineCardsDraw）
   cineCardPush(ev) {
@@ -439,6 +647,15 @@ Object.assign(Game.prototype, {
   cine2d_loc(x, e, lt, v) {
     const [bx, by] = e.at || [60, 70];
     paintLoc(x, 1600, 900, lt - (e.t0 || 0), v.kout, { text: e.name, sub: e.en, color: e.color }, bx, by);
+  },
+  // 章名卡：{ k: 'chapter', ch, name, en, kana（沒有時依章號）, color, t0, tn（章名砸下來的時間，鏡頭裡的秒數）}
+  cine2d_chapter(x, e, lt, v) {
+    const t0 = e.t0 || 0;
+    paintChapter(x, 1600, 900, lt - t0, v.kout, { ...e, tn: (e.tn ?? t0 + 0.6) - t0 });
+  },
+  // 狀聲詞（cine2d_text 的 onom：true 轉過來）
+  cine2dOnom(x, e, lt, v) {
+    paintOnom(x, e, lt, v.kout);
   },
   // 結語：{ k: 'endcard', s, en, color, t0 }
   cine2d_endcard(x, e, lt, v) {
