@@ -6842,7 +6842,8 @@ async function testTraps(browser, base) {
           if (tNear < 0 && e.dead) tNear = tt;
           if (eFar && tFar < 0 && eFar.hp < eFar.maxHp) tFar = tt;
         }
-        const airHurt = eAir ? eAir.hp < eAir.maxHp : null;
+        // 被波打到＝明顯的傷害（流彈、附近的載具爆炸只會擦到一點）
+        const airHurt = eAir ? (eAir.maxHp - eAir.hp) / eAir.maxHp > 0.02 : null;
         const shotAt = { x: d.pos.x, z: d.pos.z };
         window.__pump(14, () => d.st !== 3 || e.dead);
         return {
