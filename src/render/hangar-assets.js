@@ -96,7 +96,7 @@ export function loadPeopleAssets() {
       }
       for (const [k, v] of Object.entries(window.MECH_CORDON_PEOPLE)) {
         if (!k.endsWith('.glb')) continue;
-        const g = await parseGlb(b64buf(v));
+        const g = await parseGlbD(b64buf(v)); // 人物是 Draco 壓縮的（scripts/blender/people_import.py）
         // 動作包（只有骨架＋動作）：不是人物
         if (k.startsWith('anims/')) {
           PA.clips[k.slice(6, -4)] = g.animations;
@@ -270,10 +270,21 @@ export function haChar(name) {
   // 同一套骨架（Ultimate Animated Character Pack）的人物補上追加的動作（交談、搬運、推、招手、修理…）；
   // 男女骨架的比例不同，各用自己的那一份（Body 骨頭比較高的是女性骨架）
   // （低面數的 man／woman 也有 UpperArm.L，但沒有 Chest、手腕叫 Palm：用 Wrist.L＋Chest 判斷）
+  // Body 骨頭的高度：0.0084／0.0094＝Poly Pizza 的公分版（男／女）、0.83／0.94＝Ultimate Modular Men／Women 的公尺版
+  // （scripts/people-import.js：人物本身的動作拿掉了，用共用的 m_orig／w_orig）
   if (o.getObjectByName('WristL') && o.getObjectByName('Chest')) {
     const body = o.getObjectByName('Body');
-    const extra = PA.clips[body && body.position.y > 0.0089 ? 'ual_f' : 'ual'] || [];
-    for (const clip of extra) if (!acts[clip.name]) acts[clip.name] = mixer.clipAction(clip);
+    const y = body ? body.position.y : 0;
+    const big = y > 0.5,
+      fem = big ? y > 0.88 : y > 0.0089;
+    const extra = [
+      ...(big ? PA.clips[fem ? 'w_orig' : 'm_orig'] || [] : []),
+      ...(PA.clips[big ? (fem ? 'ual_w2' : 'ual_m2') : fem ? 'ual_f' : 'ual'] || []),
+    ];
+    for (const clip of extra) {
+      const n = clip.name.split('|').pop();
+      if (!acts[n]) acts[n] = mixer.clipAction(clip);
+    }
   }
   let cur = null;
   const act = (n, fade = 0.25) => {
@@ -291,3 +302,4 @@ export function haChar(name) {
     bone: (n) => o.getObjectByName(n),
   };
 }
+import { parseGlb as parseGlbD } from './glb.js';

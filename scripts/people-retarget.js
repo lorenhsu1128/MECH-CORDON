@@ -104,7 +104,11 @@ fs.mkdirSync(OUT_DIR, { recursive: true });
 for (const [rig, tgt, out] of [
   ['男性骨架', 'biz.glb', 'ual.glb'],
   ['女性骨架', 'suitw.glb', 'ual_f.glb'],
+  // Ultimate Modular Men／Women 的公尺版（scripts/people-import.js 匯入的 m_／w_）
+  ['男性骨架（公尺版）', 'm_Worker.glb', 'ual_m2.glb'],
+  ['女性骨架（公尺版）', 'w_Worker.glb', 'ual_w2.glb'],
 ]) {
+  if (!fs.existsSync(path.join(ROOT, 'src', 'assets', 'people', tgt))) continue;
   const job = {
     target: path.join(ROOT, 'src', 'assets', 'people', tgt),
     sources,

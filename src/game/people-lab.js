@@ -22,6 +22,31 @@ const NAMES = {
   woman: '女（低面數）',
   womanc: '女休閒（低面數）',
   mansuit: '西裝（低面數）',
+  // Ultimate Modular Men／Women（scripts/people-import.js）
+  ...Object.fromEntries(
+    Object.entries({
+      Adventurer: '冒險者',
+      Beach: '海灘',
+      Casual: '休閒',
+      Casual_2: '休閒 2',
+      Casual_Hoodie: '帽 T',
+      Farmer: '農夫',
+      King: '國王',
+      Punk: '龐克',
+      Spacesuit: '太空服',
+      Suit: '西裝',
+      Swat: 'SWAT',
+      Worker: '工人',
+      Formal: '正裝',
+      Medieval: '中世紀',
+      SciFi: '科幻',
+      Soldier: '士兵',
+      Witch: '女巫',
+    }).flatMap(([k, v]) => [
+      ['m_' + k, v + '（男）'],
+      ['w_' + k, v + '（女）'],
+    ]),
+  ),
 };
 const SPEEDS = [0.25, 0.5, 1, 2];
 
@@ -38,10 +63,10 @@ Object.assign(Game.prototype, {
     $('plList').innerHTML = '<p class="dim">載入人物…</p>';
     Promise.all([loadHangarAssets(), loadPeopleAssets()]).then(() => {
       if (this.state !== 'peoplelab') return;
-      // 人物＝有骨架網格與動作的 GLB（格納庫的道具、動作包不算）
+      // 人物＝有骨架網格的 GLB（格納庫的道具、動作包不算）
       L.chars = Object.keys(HA.glb).filter((k) => {
         const g = HA.glb[k];
-        if (!g || !g.animations || !g.animations.length || k.startsWith('anims/')) return false;
+        if (!g || k.startsWith('anims/')) return false; // 新的人物沒有自己的動作（共用 m_orig／w_orig）
         let skin = false;
         g.scene.traverse((o) => o.isSkinnedMesh && (skin = true));
         return skin;
@@ -148,7 +173,13 @@ Object.assign(Game.prototype, {
   plabRender() {
     const L = this.plab;
     const ch0 = haChar(L.who);
-    const own = new Set((HA.glb[L.who].animations || []).map((c) => c.name.split('|').pop()));
+    // 追加的＝Universal Animation Library 轉過來的（ual*），其他（GLB 自己的、共用的 m_orig／w_orig）都算原本的
+    const ual = new Set(
+      Object.entries(PA.clips)
+        .filter(([k]) => k.startsWith('ual'))
+        .flatMap(([, v]) => v.map((c) => c.name)),
+    );
+    const own = new Set(Object.keys(ch0 ? ch0.acts : {}).filter((n) => !ual.has(n)));
     const all = ch0 ? Object.keys(ch0.acts) : [];
     const base = all.filter((n) => own.has(n)).sort(),
       extra = all.filter((n) => !own.has(n)).sort();
