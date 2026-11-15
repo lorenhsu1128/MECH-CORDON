@@ -6,6 +6,7 @@
 //   node scripts/perf-campaign.js                     主線的 19 個出擊（第 1～6 章）
 //   node scripts/perf-campaign.js --only=c4s1,c4s2    只跑這幾個（--ch=4＝只跑第 4 章；--all＝連第 2、3 周目的委託）
 //   node scripts/perf-campaign.js --segsecs=90 --hitch=50 --tag=now
+//   --nomv：不放地圖上會動的載具（和有載具的比較，docs/map-vehicles-design.md）
 //
 // 結果：test-results/perf-campaign/<tag>.json（每段的統計與每個卡頓）與 <tag>.md（報告）；
 // 跑到一半中斷時，已完成的出擊會保留，加 --resume 從沒跑的接著跑。
@@ -532,6 +533,7 @@ async function runSortie(browser, sid, done, seen) {
   });
   await page.addInitScript(initScript);
   await page.addInitScript(() => (window.__warmAsync = true));
+  if (args.nomv) await page.addInitScript(() => (window.__mvOff = true)); // 不放地圖上的載具（比較用，game/map-veh.js）
   const LEARN = path.join(OUTD, 'warm.json');
   if (args.learn && fs.existsSync(LEARN))
     await page.addInitScript(

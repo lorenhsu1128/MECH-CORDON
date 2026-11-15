@@ -284,6 +284,22 @@ function norm(y) {
 }
 
 // 全部的合成音：鍵名 → 產生函式
+// 汽車喇叭：兩個不協和的方波（約大三度），低通、短的起音與收尾（地圖上會動的載具受驚時，game/map-veh.js）
+function horn(sr, r, dur) {
+  const n = Math.floor(sr * dur),
+    out = new Float32Array(n);
+  let lp = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / sr;
+    const env = Math.min(1, t / 0.015) * Math.min(1, (dur - t) / 0.07);
+    const sq = (f) => (Math.sin(2 * Math.PI * f * t) > 0 ? 1 : -1);
+    const x = (sq(415) + sq(523) * 0.8) * 0.5 + (r() - 0.5) * 0.02;
+    lp += (x - lp) * 0.22;
+    out[i] = lp * env;
+  }
+  return out;
+}
+
 export const SYNTH = {
   '~thA': (sr, r) => thump(sr, r, 72, 40, 0.22), // 步槍、手槍
   '~thB': (sr, r) => thump(sr, r, 58, 32, 0.38), // 霰彈、重武器、QB
@@ -316,6 +332,7 @@ export const SYNTH = {
   '~reload': (sr, r) => reload(sr, r, false),
   '~reloadH': (sr, r) => reload(sr, r, true),
   '~sting': (sr, r) => stinger(sr, r, 1.3, 98),
+  '~horn': (sr, r) => horn(sr, r, 0.55),
   '~stingL': (sr, r) => stinger(sr, r, 2.6, 73.4),
 };
 

@@ -26,11 +26,13 @@ import {
   buildShuttle,
   buildWorkPod,
 } from './cine-vehicles3.js';
+import { buildBulldozer, buildMixer } from './cine-vehicles4.js';
+import { buildFireTruck, buildMoto, buildPolice } from './cine-vehicles5.js';
 import { buildTransport } from './extra-models.js';
 import { buildVehicle } from './vehicle-models.js';
 import { PALETTES } from './materials.js';
 import { tagStyle } from './style/shader.js';
-import { mergeRig } from './mesh-merge.js';
+import { makeSkeleton, mergeRig } from './mesh-merge.js';
 import { buildBus, buildCar, buildSemiTruck } from '../world/cover-models.js';
 
 const HP = Math.PI / 2;
@@ -968,6 +970,7 @@ export function buildCineVeh(key, o = {}) {
     VEH_CACHE.set(ck, c);
   }
   const group = c.r.group.clone();
+  rebindSkins(c.r.group, group);
   return {
     group,
     wheels: c.wheels.map((w) => ({ o: atPath(group, w.p), r: w.r })).filter((w) => w.o),
@@ -975,6 +978,31 @@ export function buildCineVeh(key, o = {}) {
     len: c.r.len,
     lamp: c.r.lamp,
   };
+}
+// 複本的蒙皮網格（mergeRig 把不同錨點上同材質的網格合併成 SkinnedMesh：車輪、會動的部件）：Object3D.clone 的骨架
+// 還是原本那份模型的節點（不在場景裡＝當成隱藏，整個不見），改綁到複本裡同一個位置的節點
+function rebindSkins(src, dst) {
+  const map = new Map();
+  const walk = (a, b) => {
+    map.set(a, b);
+    for (let i = 0; i < a.children.length; i++) walk(a.children[i], b.children[i]);
+  };
+  walk(src, dst);
+  const sks = new Map(); // 原本的骨架 → 複本的骨架（同一台模型的蒙皮網格共用一副）
+  for (const [a, b] of map) {
+    if (!a.isSkinnedMesh) continue;
+    let sk = sks.get(a.skeleton);
+    if (!sk) {
+      sk = makeSkeleton(
+        dst,
+        a.skeleton.bones.map((x) => map.get(x) || x),
+        [],
+      );
+      sk.boneInverses = a.skeleton.boneInverses.map((m) => m.clone());
+      sks.set(a.skeleton, sk);
+    }
+    b.bind(sk, a.bindMatrix);
+  }
 }
 function buildCineVeh0(key, o = {}) {
   const v = o.v || 0; // 變化（顏色等，劇本給，不用亂數）
@@ -1014,6 +1042,13 @@ function buildCineVeh0(key, o = {}) {
   else if (key === 'shuttle') r = buildShuttle();
   else if (key === 'workpod') r = buildWorkPod();
   else if (key === 'cargopod') r = buildCargoPod(v);
+  // 第四批（render/cine-vehicles4.js）：地圖上會動的載具新增的車種
+  else if (key === 'bulldozer') r = buildBulldozer();
+  else if (key === 'mixer') r = buildMixer();
+  // 第五批（render/cine-vehicles5.js）
+  else if (key === 'firetruck') r = buildFireTruck();
+  else if (key === 'police') r = buildPolice();
+  else if (key === 'moto') r = buildMoto(v);
   else if (key === 'tank') {
     const m = buildVehicle(PALETTES[o.pal || 'enemy'] || PALETTES.enemy, 1, 'tank');
     r = { group: m.group || m, wheels: [], parts: {}, len: 8 };

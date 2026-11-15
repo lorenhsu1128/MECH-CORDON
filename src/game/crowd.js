@@ -148,6 +148,7 @@ Object.assign(Game.prototype, {
         (o.kind === 'box' ? Math.max(o.w, o.d) > 2 && Math.max(o.w, o.d) < 40 : o.r > 0.8 && o.r < 12),
     );
     const list = [];
+    const ws = (this.mvSpots || []).slice(); // 作業中的機具（map-veh.js）
     const far = (x, z) => !pl || Math.hypot(x - pl.pos.x, z - pl.pos.z) > 15;
     for (let c = 0; c < nc && list.length < n && n > 0; c++) {
       let cx = 0,
@@ -163,6 +164,18 @@ Object.assign(Game.prototype, {
           cz = pl.pos.z + Math.sin(a) * r;
           ok = this.crowdFree(cx, cz);
         }
+      // 作業中的機具旁邊（地圖上會動的載具，game/map-veh.js）：工人圍著看與指揮
+      if (!ok && c >= 3 && ws.length) {
+        const o = ws.shift();
+        for (let t = 0; t < 12 && !ok; t++) {
+          const a = rng() * Math.PI * 2;
+          const r = o.r + 2 + rng() * 2;
+          cx = o.x + Math.cos(a) * r;
+          cz = o.z + Math.sin(a) * r;
+          face = Math.atan2(o.x - cx, o.z - cz);
+          ok = this.crowdFree(cx, cz) && far(cx, cz);
+        }
+      }
       if (!ok && props.length && rng() < T.near)
         for (let t = 0; t < 12 && !ok; t++) {
           const o = props[Math.floor(rng() * props.length)];
@@ -362,11 +375,34 @@ Object.assign(Game.prototype, {
     h.work = 0;
   },
   crowdScare(pos, r) {
+    if (this.mvs) this.mvScare(pos, r); // 地圖上會動的載具也受驚（map-veh.js）
     const C = this.crowd;
     if (!C) return;
     for (const h of C.list)
       if (h.alive && !h.soldier && Math.hypot(h.x - pos.x, h.z - pos.z) < r)
         this.crowdScareOne(h, pos.x, pos.z); // 步兵不怕槍聲
+  },
+  // 地圖載具的駕駛下車（map-veh.js）：主題的平民外觀，馬上往遠離 (sx, sz) 的方向逃
+  crowdCivAt(x, z, sx, sz) {
+    const C = this.crowd;
+    if (!C) return null;
+    const W = this.world;
+    const T = CROWD_THEMES[W.themeKey] || CROWD_THEME0;
+    const pk = (a) => a[Math.floor(C.rng() * a.length)];
+    const h = this.crowdAdd({
+      x,
+      z,
+      y: W.groundAt(x, z, W.terrainHeight(x, z) + 0.5),
+      yaw: C.rng() * Math.PI * 2,
+      st: 'idle',
+      t: 1,
+      look: { shirt: pk(T.look.shirt), pants: pk(T.look.pants), skin: pk(SKIN), hat: pk(T.look.hat) },
+      kind: 'civ',
+      dx: 0,
+      dz: 0,
+    });
+    if (h) this.crowdScareOne(h, sx, sz);
+    return h;
   },
   // 戰鬥中加一個人（乘員）：用沒用過的位置，滿了就用已經死掉／離開的
   crowdAdd(h) {

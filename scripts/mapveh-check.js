@@ -10,6 +10,7 @@ const args = process.argv.slice(2);
 const SECS = +((args.find((a) => a.startsWith('--secs=')) || '').slice(7) || 8);
 const HIT = args.includes('--hit');
 const ACT = args.includes('--act');
+const WORK = args.includes('--work');
 const ALL =
   'industrial desert wasteland dunes snow dam flooded spaceport grid086 xylem institute volcano ark'.split(
     ' ',
@@ -63,7 +64,7 @@ fs.mkdirSync(OUT, { recursive: true });
         window.__mv0 = L.map((v) => v.pos.clone());
         window.__mvD = L.map(() => 0);
         window.__mvLast = L.map((v) => v.pos.clone());
-        return L.map((v) => `${v.key}(${v.route.length} 點)`);
+        return L.map((v) => `${v.key}${v.job ? '［' + v.job.k + '］' : ''}(${v.route.length} 點)`);
       });
       // 跑 SECS 秒：量 fps、每台走過的距離
       const fps = await page.evaluate(
@@ -111,6 +112,32 @@ fs.mkdirSync(OUT, { recursive: true });
         });
         await page.waitForTimeout(700);
         await page.screenshot({ path: path.join(OUT, `${key}.png`) });
+      }
+      if (WORK) {
+        // 作業中的機具：鏡頭拉近、隔 2.5 秒拍兩張（看得出動作）
+        const n = await page.evaluate(() => (window.__game.mvs || []).filter((v) => v.job).length);
+        for (let i = 0; i < Math.min(n, 3); i++) {
+          const st = await page.evaluate((i) => {
+            const g = window.__game;
+            const v = g.mvs.filter((x) => x.job)[i];
+            g.player.pos.set(
+              v.pos.x - 10,
+              g.world.groundAt(v.pos.x - 10, v.pos.z - 12, v.pos.y + 3),
+              v.pos.z - 12,
+            );
+            g.camUser = 0.7;
+            return `${v.key} ${v.job.ph || ''}`;
+          }, i);
+          for (const k of [0, 1]) {
+            await page.waitForTimeout(k ? 2500 : 900);
+            await page.screenshot({ path: path.join(OUT, `${key}-work${i}-${k}.png`) });
+          }
+          const st2 = await page.evaluate((i) => {
+            const v = window.__game.mvs.filter((x) => x.job)[i];
+            return `${v.job.ph || ''} t=${v.job.t.toFixed(1)}`;
+          }, i);
+          console.log(`  作業 ${i}：${st} → ${st2}`);
+        }
       }
       if (ACT && r0.length) {
         // 互動：前方站著機甲時停車（之後倒車）、踩扁小車、大車擋住機甲

@@ -2,7 +2,7 @@
 // （前方被擋住就停、倒車、掉頭）、機甲踩扁小車、大車擋住機甲、打壞時的駕駛與掉落。載具本身在 world/map-veh.js。
 // 第 1 期：只有單機（多人第 5 期）；路線用自己的亂數串（不動關卡生成的亂數）。
 import { makeRng } from '../core/math.js';
-import { MV_DROP, MV_THEMES, MV_TYPES } from '../data/map-veh.js';
+import { MV_DROP, MV_THEMES, MV_TYPES, MV_WORK } from '../data/map-veh.js';
 import { MapVeh } from '../world/map-veh.js';
 import { Game } from './game.js';
 
@@ -19,6 +19,7 @@ Object.assign(Game.prototype, {
     if (!W || !this.scene || o.ambient === false) return;
     if (this.airMode || this.sim || this.range || this.tut || this.lab || this.cine || this.pvp) return;
     if (this.net && this.net.role) return; // 多人之後（第 5 期）
+    if (typeof window !== 'undefined' && window.__mvOff) return; // 量測的比較用（scripts/perf-campaign.js --nomv）
     const list = MV_THEMES[W.themeKey];
     if (!list || !list.length) return;
     const rng = makeRng(((W.seed | 0) * 173 + 11) >>> 0);
@@ -30,6 +31,13 @@ Object.assign(Game.prototype, {
     const used = {};
     const pl = this.player;
     this.mvs = [];
+    this.mvNoGo = []; // 作業的地方：[x, z, 半徑]（巡行的路線避開）
+    this.mvSpots = []; // 工人圍著做事的地方（crowdPlan）：{ x, z, r }
+    // 作業（第 2 期）：先放，巡行的路線再避開它們
+    const wl = (MV_WORK[W.themeKey] || []).slice();
+    let nw = wl.length ? 1 + Math.floor(rng() * 2) + (area > 300 * 300 ? 1 : 0) : 0;
+    if (W.opt && W.opt.open) nw = 0;
+    for (let k = 0; k < nw && wl.length; k++) this.mvJob(rng, wl.splice(Math.floor(rng() * wl.length), 1)[0]);
     for (let i = 0, tries = 0; i < n && tries < n * 3; tries++) {
       const key = list[Math.floor(rng() * list.length)];
       if ((used[key] || 0) >= 2) continue;
@@ -56,11 +64,65 @@ Object.assign(Game.prototype, {
       this.mvs.push(v);
       i++;
     }
+    // 夜間：作業的地方旁邊放照明塔（第 3 期，最多 2 座）
+    if (this.mvNight()) {
+      const sp = this.mvSpots.slice(0, 2);
+      if (!sp.length) {
+        const E = this.mvSpot(rng, 3);
+        if (E) sp.push({ x: E[0], z: E[1], r: 0 });
+      }
+      for (const s of sp)
+        for (let t = 0; t < 8; t++) {
+          const a = rng() * Math.PI * 2,
+            r = s.r + 6 + rng() * 3;
+          const x = s.x + Math.sin(a) * r,
+            z = s.z + Math.cos(a) * r;
+          if (this.mvFree(x, z, 1.6) === null) continue;
+          this.mvAdd(
+            'lighttower',
+            [
+              [x, z],
+              [x + Math.sin(a + Math.PI), z + Math.cos(a + Math.PI)],
+            ],
+            {
+              job: { k: 'static' },
+            },
+          );
+          this.mvNoGo.push([x, z, 3]);
+          break;
+        }
+    }
     if (!this.mvs.length) this.mvs = null;
+  },
+  // 夜晚的地圖（和過場的 c.night 相同的判斷）
+  mvNight() {
+    const W = this.world;
+    return !!W && (W.tod === 'night' || !!(W.theme && W.theme.noTod && !W.theme.roof));
+  },
+  // 附近開火、爆炸（crowd.js 的 crowdScare 一起呼叫）：範圍裡的車受驚（world/map-veh.js 的 alarm）
+  mvScare(pos, r) {
+    if (!this.mvs || (this.net && this.net.role === 'client')) return;
+    for (const v of this.mvs) if (!v.dead && Math.hypot(v.pos.x - pos.x, v.pos.z - pos.z) < r) v.alarm(pos);
+  },
+  // 駕駛下車：車門旁邊放一個平民（小人系統），往遠離威脅的方向逃
+  mvDriverOut(v, src) {
+    if (!this.crowd || !this.crowdCivAt) return;
+    const s = Math.sin(v.yaw),
+      c = Math.cos(v.yaw);
+    for (const side of [1, -1]) {
+      const d = v.w / 2 + 1.1;
+      const x = v.pos.x + c * d * side,
+        z = v.pos.z - s * d * side;
+      if (!this.crowdFree(x, z)) continue;
+      this.crowdCivAt(x, z, src ? src.x : v.pos.x, src ? src.z : v.pos.z);
+      return;
+    }
   },
   mvClear() {
     for (const v of this.mvs || []) v.cleanup();
     this.mvs = null;
+    this.mvSpots = null;
+    this.mvNoGo = null;
   },
   // 這一點車子開得過：作戰區域裡、不是禁區／虛空／深水、不在高台或橋面底下、沒有障礙物（半寬 hw）
   mvFree(x, z, hw) {
@@ -71,6 +133,7 @@ Object.assign(Game.prototype, {
     if (W.offLimits(x, z) || (W.isVoid && W.isVoid(x, z))) return null;
     if (W.waterDepth && W.waterDepth(x, z) > WADE) return null;
     if (W.onLedge && W.onLedge(x, z)) return null;
+    for (const q of this.mvNoGo || []) if (Math.hypot(x - q[0], z - q[1]) < q[2] + hw) return null;
     const y = W.groundAt(x, z, W.terrainHeight(x, z) + 0.5);
     if (W.groundAt(x, z, 999) > y + 2.2) return null;
     const [cx, cz] = W.collide(x, z, y + 0.6, hw);
@@ -144,6 +207,99 @@ Object.assign(Game.prototype, {
     }
     return null;
   },
+  // ---------- 作業（第 2 期）----------
+  // 平坦、空曠（半徑 r）、離玩家 30 m 以上的一點：[x, z]
+  mvSpot(rng, r) {
+    const W = this.world,
+      Z = W.zone,
+      pl = this.player;
+    for (let t = 0; t < 40; t++) {
+      const x = Z[0] + r + 6 + rng() * Math.max(1, Z[1] - Z[0] - 2 * r - 12);
+      const z = Z[2] + r + 6 + rng() * Math.max(1, Z[3] - Z[2] - 2 * r - 12);
+      if (pl && Math.hypot(x - pl.pos.x, z - pl.pos.z) < 30) continue;
+      const y = this.mvFree(x, z, r);
+      if (y === null) continue;
+      let flat = true;
+      for (let i = 0; i < 4 && flat; i++) {
+        const a = (i * Math.PI) / 2;
+        const yy = W.groundAt(x + Math.cos(a) * r, z + Math.sin(a) * r, y + 2);
+        if (Math.abs(yy - y) > 1) flat = false;
+      }
+      if (flat) return [x, z];
+    }
+    return null;
+  },
+  // 兩點之間的直線作業：A 空曠（ra）、A → B（長 L）開得過；dir0＝方向（沒有時隨機）
+  mvLine(rng, hw, L, ra, A0, dir0) {
+    for (let t = 0; t < (A0 ? 10 : 24); t++) {
+      const A = A0 || this.mvSpot(rng, ra);
+      if (!A) continue;
+      const a = dir0 !== undefined ? dir0 + (rng() - 0.5) * 1.2 : rng() * Math.PI * 2;
+      const B = [A[0] + Math.sin(a) * L, A[1] + Math.cos(a) * L];
+      if (this.mvFree(B[0], B[1], hw + 1) !== null && this.mvSegOk(A, B, hw)) return [A, B];
+    }
+    return null;
+  },
+  mvNoGoLine(A, B, r) {
+    const L = Math.hypot(B[0] - A[0], B[1] - A[1]),
+      n = Math.ceil(L / 3);
+    for (let i = 0; i <= n; i++)
+      this.mvNoGo.push([A[0] + ((B[0] - A[0]) * i) / n, A[1] + ((B[1] - A[1]) * i) / n, r]);
+  },
+  mvAdd(key, route, o) {
+    const v = new MapVeh(this, key, route, o);
+    this.mvs.push(v);
+    return v;
+  },
+  // 一個作業：forklift／crane／dozer／dig
+  mvJob(rng, j) {
+    const ofs = (A, B, d) => {
+      // A 端旁邊（線的側面 d 公尺）：工人站的地方
+      const L = Math.hypot(B[0] - A[0], B[1] - A[1]) || 1;
+      return { x: A[0] + ((B[1] - A[1]) / L) * d, z: A[1] - ((B[0] - A[0]) / L) * d, r: 1 };
+    };
+    if (j === 'forklift' || j === 'dozer') {
+      const key = j === 'dozer' ? 'bulldozer' : 'forklift';
+      const T = MV_TYPES[key];
+      const hw = T.w / 2 + 1;
+      const AB = this.mvLine(rng, hw, j === 'dozer' ? 14 + rng() * 6 : 11 + rng() * 5, hw + 2);
+      if (!AB) return;
+      this.mvAdd(key, AB, { job: { k: 'line' } });
+      this.mvNoGoLine(AB[0], AB[1], hw + 2);
+      this.mvSpots.push(ofs(AB[0], AB[1], j === 'dozer' ? 6 : 4));
+    } else if (j === 'crane') {
+      const E = this.mvSpot(rng, 8);
+      if (!E) return;
+      const a = rng() * Math.PI * 2;
+      this.mvAdd('crane', [E, [E[0] + Math.sin(a), E[1] + Math.cos(a)]], { job: { k: 'lift' } });
+      this.mvNoGo.push([E[0], E[1], 10]);
+      this.mvSpots.push({ x: E[0], z: E[1], r: 5 });
+    } else if (j === 'dig') {
+      // 挖土機＋礦用卡車：卡車在挖土機旁邊的 A 裝貨（車尾朝挖土機）、開到 B 翻斗卸料、倒車回 A
+      const E = this.mvSpot(rng, 6);
+      if (!E) return;
+      let AB = null;
+      for (let t = 0; t < 8 && !AB; t++) {
+        const a = rng() * Math.PI * 2;
+        const A = [E[0] + Math.sin(a) * 8.5, E[1] + Math.cos(a) * 8.5];
+        if (this.mvFree(A[0], A[1], 2.6) === null) continue;
+        AB = this.mvLine(rng, 2.6, 22 + rng() * 10, 2.6, A, a);
+      }
+      const ya = AB ? Math.atan2(AB[0][0] - E[0], AB[0][1] - E[1]) + Math.PI / 2 : rng() * Math.PI * 2;
+      const ex = this.mvAdd('excavator', [E, [E[0] + Math.sin(ya), E[1] + Math.cos(ya)]], {
+        job: { k: 'dig', dump: 1.4 },
+      });
+      // 卸料轉到卡車的方向（上部旋轉的角度＝卡車在挖土機座標裡的方向）
+      if (AB) {
+        const [lx, lz] = ex.local(AB[0][0], AB[0][1]);
+        ex.job.dump = Math.atan2(lx, lz);
+        this.mvAdd('hauler', AB, { job: { k: 'line' } });
+        this.mvNoGoLine(AB[0], AB[1], 4.5);
+      }
+      this.mvNoGo.push([E[0], E[1], 7]);
+      this.mvSpots.push({ x: E[0], z: E[1], r: 4 });
+    }
+  },
   // 命中目標（map-extras.js 的 destructibles）
   mvTargets(out) {
     for (const v of this.mvs || []) if (!v.dead) for (const pt of v.parts) out.push(pt);
@@ -159,30 +315,79 @@ Object.assign(Game.prototype, {
       if (!v.dead) v.tick(dt, this.mvBlocked(v, mechs, C));
       else v.tick(dt, true);
     }
+    // 開走離場的車
+    for (let i = L.length - 1; i >= 0; i--)
+      if (L[i].gone) {
+        L[i].cleanup();
+        L.splice(i, 1);
+      }
+    // 玩家的機甲靠近（16 m）：受驚
+    for (const m of mechs)
+      if (m.team === 'player')
+        for (const v of L)
+          if (!v.dead && !v.abandoned && Math.hypot(v.pos.x - m.pos.x, v.pos.z - m.pos.z) < 16)
+            v.alarm(m.pos);
     this.mvMechTick(mechs);
+    if (this.mvNight()) this.mvLights();
   },
   // 前方（車頭到煞車距離）有機甲、人、別的車、障礙物
   mvBlocked(v, mechs, C) {
     if (v.mode === 'rev') return false;
-    if (v.hitWall) return true;
-    const ahead = v.len / 2 + 2.5 + Math.max(0, v.spd) * 1.1;
+    if (v.job && v.job.k !== 'line') return false; // 原地作業
+    if (v.hitWall && !v.job) return true;
+    const sg = v.job && (v.job.ph === 'back' || v.spd < -0.1) ? -1 : 1; // 倒車：看後面
+    const ahead = v.len / 2 + 2.5 + Math.abs(v.spd) * 1.1;
     const half = v.w / 2 + 0.8;
+    const R = ahead + v.len + 6; // 先用方塊範圍篩掉遠的
+    const px = v.pos.x,
+      pz = v.pos.z;
     const hit = (x, z, r) => {
-      const [lx, lz] = v.local(x, z);
-      return lz > v.len * 0.3 && lz < ahead + r && Math.abs(lx) < half + r;
+      if (Math.abs(x - px) > R || Math.abs(z - pz) > R) return false;
+      v.localXZ(x, z);
+      const lz = v.lz * sg;
+      return lz > v.len * 0.3 && lz < ahead + r && Math.abs(v.lx) < half + r;
     };
     for (const m of mechs) if (hit(m.pos.x, m.pos.z, (m.radius || 2) * 0.8)) return true;
-    if (C && C.list)
+    if (C && C.list && !v.flee)
+      // 逃走中不為路上的人停車（被一起逃的人群堵死）
+
       for (const h of C.list)
         if (h.alive && h.st !== 'chute' && Math.abs(h.y - v.pos.y) < 3 && hit(h.x, h.z, 0.5)) return true;
     for (const o of this.mvs) {
-      if (o === v) continue;
-      for (const pt of o.parts) {
-        const c = pt.center();
-        if (hit(c.x, c.z, pt.radius)) return true;
-      }
+      if (o === v || Math.abs(o.pos.x - px) > R + o.len || Math.abs(o.pos.z - pz) > R + o.len) continue;
+      for (const pt of o.parts)
+        if (hit(o.pos.x + o.sn * pt.off, o.pos.z + o.cs * pt.off, pt.radius)) return true;
     }
     return false;
+  },
+  // 夜間的燈（第 3 期）：有人開的車的車頭燈照亮前方的地面、照明塔的燈（特效點光，只有離鏡頭最近的 4 盞會亮）
+  mvLights() {
+    const fx = this.fx;
+    if (!fx || !fx.glow) return;
+    for (const v of this.mvs) {
+      if (v.dead) continue;
+      if (v.key === 'lighttower') {
+        const L = v.v.lamp;
+        v.mesh.updateWorldMatrix(true, false);
+        fx.glow(
+          'mv' + v.id,
+          v.mesh.localToWorld(new THREE.Vector3(L[0], L[1] - 2, L[2] + 4)),
+          2.2,
+          0xfff4e0,
+          12,
+        );
+      } else if (v.occ > 0 && v.len > 2) {
+        const f = v.fwd();
+        const d = v.len / 2 + 3;
+        fx.glow(
+          'mv' + v.id,
+          new THREE.Vector3(v.pos.x + f.x * d, v.pos.y + 1.4, v.pos.z + f.z * d),
+          1.3,
+          0xfff0d8,
+          6,
+        );
+      }
+    }
   },
   // 機甲踩扁小車（走過、QB 撞到）；大車與大車的殘骸擋住機甲
   mvMechTick(mechs) {
@@ -191,7 +396,11 @@ Object.assign(Game.prototype, {
       for (const m of mechs) {
         if (m.flying || !m.vel) continue;
         if (m.pos.y > v.pos.y + v.h + 1) continue; // 站在上面、飛過去的不算
-        const [lx, lz] = v.local(m.pos.x, m.pos.z);
+        const reach = v.len / 2 + 8;
+        if (Math.abs(m.pos.x - v.pos.x) > reach || Math.abs(m.pos.z - v.pos.z) > reach) continue;
+        v.localXZ(m.pos.x, m.pos.z);
+        const lx = v.lx,
+          lz = v.lz;
         if (v.T.crush) {
           const v2 = m.vel.x * m.vel.x + m.vel.z * m.vel.z;
           if (v2 < 1) continue;
@@ -260,7 +469,13 @@ Object.assign(Game.prototype, {
       }
     }
     v.occ = 0;
-    if (this.crowd) this.crowdScare(c, 22);
+    // 油罐車、熔岩運輸車：大爆炸（範圍裡的機甲、別的車、地圖物件都受傷；連鎖）＋燃燒的地面
+    if (v.T.boom && !o.cr) {
+      this.explodeAt(c, v.T.boom[0], 600, v.T.boom[1], by || null);
+      if (this.addPool) this.addPool(by || null, v.pos, 3.2, 16, 45);
+      this.rumbleAt(c, 1, 0.6, 400, 70);
+    }
+    this.crowdScare(c, 22); // 也會嚇到附近的車（mvScare）
     if (Math.random() < MV_DROP) {
       const W = this.world;
       const x = v.pos.x + (Math.random() - 0.5) * 3,
