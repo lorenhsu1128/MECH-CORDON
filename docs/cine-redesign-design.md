@@ -843,3 +843,5 @@ YouTube 影片，720p，換鏡偵測後抽格，拼成縮圖表看。縮圖表�
 - **執行時**：`render/hangar-assets.js` 的 `loadPeopleAssets` 把 `anims/` 收進 `PA.clips`；`haChar` 對有 `Wrist.L` 與 `Chest` 的骨架（Ultimate Animated Character Pack；低面數的 man／woman 沒有）補上追加的動作（男女依 `Body` 的高度）。動作名稱：Talk、Carry、Push、Call（招手指揮）、Fix（跪著修理）、PickUp、Use、Arms（抱胸）、Phone、Yes、No、Sit、SitTalk、Drive、Torch、WalkFormal、Jog、Sprint、Crouch、GunIdle、GunAim、Open、Throw、Drink、Lantern。小品的範本改用它們（指揮員 Call、理貨員 Talk／Phone、工兵 Fix／Use、引導員 Call、排隊的人 Talk／Arms／Phone）。
 - **檢視**：標題「工具與其他」的**「人物動作預覽」**（`game/people-lab.js`，state 'peoplelab'，自己的渲染器）：選人物、原本的與追加的動作、速度、暫停、時間軸、繞看、「全部並排」（沒有那個動作的人物列出來）；`node scripts/people-shots.js <動作,…>` 拍 5 個人物 × 動作的總表（test-results/people/review.png）。
 - **還沒好**：Carry、Talk 的雙手在胸前交疊（這些人物肩膀窄、手臂短，照抄角度手就跑到中間）——要用手的位置（IK）修正；人物包下載到之後轉 GLB、補更多服裝。
+- **人物的來源（2026-11-15 使用者定案）**：Ultimate Animated Character Pack 2019-11 版（Google Drive 的壓縮檔，CC0）是 Q 版（頭大、黑皮膚＋白眼睛的風格），使用者看過說風格不搭，不用。MakeHuman 也不用。**改找和現在的人物同一系列**：現在的工人、技師、士兵、西裝、農夫、斗篷、駕駛服、帽 T 來自 Quaternius 的 **Ultimate Modular Characters（男，11 個）**與 **Ultimate Modular Women（女，10 個）**（CC0，每個人物分成頭／上身／下身／腳四塊、可以互換，適合組出大量路人）；兩包都在 Google Drive，匿名下載超過配額，請使用者從瀏覽器下載。
+- 人物動作預覽的「全部並排」改成每排 7 個的方陣。

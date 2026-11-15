@@ -123,7 +123,11 @@ Object.assign(Game.prototype, {
       if (!ch) return;
       const h0 = PA.h[name] || { worker: 1.85, crew: 1.9, soldier: 1.85 }[name] || 1.8;
       ch.g.scale.setScalar(1.75 / h0);
-      ch.g.position.x = (i - (list.length - 1) / 2) * 1.2;
+      // 全部並排：每排 7 個、往後排
+      const cols = Math.min(7, list.length),
+        row = Math.floor(i / cols),
+        col = i % cols;
+      ch.g.position.set((col - (cols - 1) / 2) * 1.2, 0, -row * 1.8);
       L.scene.add(ch.g);
       const a = ch.acts[L.anim] || ch.acts.Idle;
       if (a) {
@@ -133,10 +137,11 @@ Object.assign(Game.prototype, {
       L.ppl.push({ name, ch, a, has: !!ch.acts[L.anim] });
     });
     // 鏡頭：並排時拉遠
-    const span = Math.max(1, list.length * 1.2);
     if (L.all) {
-      L.ctl.target.set(0, 0.95, 0);
-      L.cam.position.set(0, 1.6, Math.max(5.5, span * 1.25));
+      const cols = Math.min(7, list.length),
+        rows = Math.ceil(list.length / cols);
+      L.ctl.target.set(0, 0.8, -((rows - 1) * 1.8) / 2);
+      L.cam.position.set(0, 2.5 + rows * 1.0, Math.max(5.5, cols * 1.35));
     }
   },
   // 左邊的清單：人物、動作（原本的／追加的）、播放控制
