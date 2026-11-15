@@ -115,6 +115,18 @@ const check = (ok, msg) => {
             civ: (g.crowd ? g.crowd.list.filter((h) => h.alive).length : 0) - h0,
           };
         }
+        // 打壞之後再踩扁殘骸（以前 wreck 的欄位蓋掉了同名的方法，第二次就出錯）
+        const sm = (g.mvs || []).find((v) => v.T.crush && !v.dead);
+        if (sm) {
+          sm.parts[0].takeDamage(1e6, 0, g.player, sm.center(), null, null, null, 'kin');
+          let err = '';
+          try {
+            g.mvKill(sm, g.player, { cr: true });
+          } catch (e) {
+            err = e.message;
+          }
+          out.recrush = { key: sm.key, dead: sm.dead, crushed: !!sm.crushed, err };
+        }
         // 油罐車：打壞 → 大爆炸、燃燒的地面
         const tk = (g.mvs || []).find((v) => v.T.boom && !v.dead);
         if (tk) {
@@ -134,6 +146,11 @@ const check = (ok, msg) => {
         check(
           r.work.ab && r.work.occ === 0 && r.work.civ > 0,
           `${r.work.key} 作業中受驚：停下、駕駛下車（小人 +${r.work.civ}）`,
+        );
+      if (r.recrush)
+        check(
+          r.recrush.dead && r.recrush.crushed && !r.recrush.err,
+          `${r.recrush.key} 打壞後再踩扁殘骸（${r.recrush.err || '扁的殘骸'}）`,
         );
       if (r.boom)
         check(r.boom.dead && r.boom.pools > 0, `${r.boom.key} 打壞：大爆炸、燃燒的地面 ${r.boom.pools} 處`);

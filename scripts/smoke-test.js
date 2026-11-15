@@ -16433,6 +16433,10 @@ async function testVoidMaps(browser, base) {
       const w = g.world,
         pl = g.player;
       pl.iFrames = 0;
+      // 這項只測虛空的拉回：敵人打到玩家的傷害擋掉（場上的敵人照常在跑，剛好在射程內會打中，AP 的檢查就不準；
+      // 拉回本身扣的 AP 沒有攻擊者，照算）
+      const td0 = pl.takeDamage.bind(pl);
+      pl.takeDamage = (d, im, from, ...x) => (from ? 0 : td0(d, im, from, ...x));
       const out = { theme: w.theme.name, blocks: w.islands.blocks.length };
       const L = w.obstacles.filter((o) => o.ledge);
       out.ledges = L.length;
@@ -16503,8 +16507,21 @@ async function testVoidMaps(browser, base) {
           return fa(m, ...a);
         };
         const hp2 = pl.hp;
+        // 這段只量拉回的扣 AP：敵人的攻擊擋掉（場上的敵人照常在跑，剛好在射程內時會打中，多扣的 AP 讓檢查失敗；
+        // 2026-11-15 的完整測試：突擊型步行機 6 發各 35）。沒有攻擊者的傷害照算，失敗時列出來源
+        const hits = [];
+        const td = pl.takeDamage.bind(pl);
+        pl.takeDamage = (d, im, from, ...a) => {
+          if (from) return 0;
+          const h0 = pl.hp;
+          const ret = td(d, im, from, ...a);
+          if (pl.hp < h0) hits.push(`無來源 ${Math.round(h0 - pl.hp)}`);
+          return ret;
+        };
         window.__pump(6, () => n > 0 && pl.grounded);
         window.__pump(2);
+        pl.takeDamage = td;
+        out.brHits = hits.slice(0, 6).join('、');
         g.flashAlert = fa;
         out.brN = n;
         out.brY = +pl.pos.y.toFixed(1);
@@ -16534,7 +16551,7 @@ async function testVoidMaps(browser, base) {
     );
     check(
       r.br && r.brN === 1 && r.brY > -1 && Math.abs(r.brLost - 0.05) < 0.01,
-      `${r.theme}：從橋邊掉到橋下，拉回 ${r.brN} 次到平台（y ${r.brY}、AP −${(r.brLost * 100).toFixed(1)}%）`,
+      `${r.theme}：從橋邊掉到橋下，拉回 ${r.brN} 次到平台（y ${r.brY}、AP −${(r.brLost * 100).toFixed(1)}%）${Math.abs(r.brLost - 0.05) < 0.01 ? '' : '；其他傷害：' + (r.brHits || '無')}`,
     );
     check(r.e && r.eBack, `${r.theme}：敵人落到下層平台就拉回站穩的位置`);
     await page.screenshot({ path: path.join(SHOT_DIR, `void-${map}.png`) });
@@ -20254,6 +20271,12 @@ async function testBossKit(browser, base, list, label) {
           const name = ch && ch.name;
           if (ch) {
             b.iFrames = 0;
+            // HEARTH：4 片繞著轉的護盾板擋住約 64% 的方向（從板之間的縫隙打進去是設計）。以前從玩家當時的方向打，
+            // 要看護盾板轉到哪裡（2026-11-15 完整測試三個都打不斷）：被擋住時玩家移到兩片板的中間
+            if (b.reactorBlocked_ && b.reactorBlocked_(pl.pos)) {
+              const a = (b.bx ? b.bx[0] : b.aiState.rot || 0) + Math.PI / 4;
+              pl.pos.set(b.pos.x - Math.sin(a) * 40, pl.pos.y, b.pos.z - Math.cos(a) * 40);
+            }
             b.takeDamage(b.maxHp * 0.2, 0, pl, b.center());
             // 本體被護盾或裝甲擋住時（發生器、引擎在）：打部位也算進打斷量表
             for (const p of g.enemies.filter((e) => !e.dead && e.opts.parent === b.id))
@@ -20263,6 +20286,9 @@ async function testBossKit(browser, base, list, label) {
               }
           }
           out.ints.push(name && !b.bt.ch && b.staggerT >= 4 ? name : '×');
+          (out.intDbg = out.intDbg || []).push(
+            `型態${ph} 蓄力 ${name || '無'} 打後 ${b.bt.ch ? '還在' : '斷'} 硬直 ${(+b.staggerT || 0).toFixed(1)} AP ${Math.round((b.hp / b.maxHp) * 100)}% 量表 ${b.bt.ib !== undefined ? b.bt.ib : '-'}`,
+          );
         }
         // 破綻：刁鑽度 3 的指定招式收招（open2），刁鑽度 5 以上連續兩招
         b.opts.tier = 3;
@@ -20345,7 +20371,7 @@ async function testBossKit(browser, base, list, label) {
     check(r.ownModel, `${r.name}：部位的造型（${r.models.join('、')}）`);
     check(
       r.ints.every((x) => x !== '×'),
-      `${r.name}：三個大招都打斷了（${r.ints.join('、')}）`,
+      `${r.name}：三個大招都打斷了（${r.ints.join('、')}）${r.ints.includes('×') ? '；' + (r.intDbg || []).join('／') : ''}`,
     );
     check(/:ok$/.test(r.reflect), `${r.name}：可以打回去的彈（${r.reflect}）`);
     check(r.open, `${r.name}：破綻（刁鑽度 3 指定的招式收招、刁鑽度 5 連續兩招之後）`);
@@ -33019,6 +33045,17 @@ async function testDestructSegs(browser, base) {
         out.drop =
           t.collapsed && t.landed && t.gone && !t.wreck && !w.obstacles.includes(t.ob) && !t.piv.parent;
         out.dropY = +(t.shape.y1 - top).toFixed(1);
+        if (!out.drop) {
+          // 診斷：沒掉下去的原因（血量、保護（出生點、裝置、目標）、倒塌的狀態）
+          const sh = t.shape;
+          const dd = (q) =>
+            Math.hypot(Math.max(sh.x0 - q.x, 0, q.x - sh.x1), Math.max(sh.z0 - q.z, 0, q.z - sh.z1));
+          const pr = (w.protect || [])
+            .map((q) => +dd(q).toFixed(0))
+            .sort((a, b) => a - b)
+            .slice(0, 3);
+          out.dbg = `hp ${t.hp} 保護 ${g.segProtected(t)}（最近的保護點 ${pr.join('/')} m）collapsed ${t.collapsed} colQ ${t.colQ} landed ${t.landed} gone ${t.gone} wreck ${!!t.wreck} 障礙物 ${w.obstacles.includes(t.ob)} piv ${!!t.piv.parent}`;
+        }
         if (t2 && t2 !== t) {
           kill(t2);
           window.__pump(14, () => t2.gone && u2.gone);
@@ -33096,7 +33133,7 @@ async function testDestructSegs(browser, base) {
     } else if (map === 'grid086') {
       check(
         r.n > 0 && r.drop,
-        `Lattice-9 的甲板格子（${r.n} 格）：整格掉下去、碎裂淡出消失、不留碰撞（${r.dropY}）`,
+        `Lattice-9 的甲板格子（${r.n} 格）：整格掉下去、碎裂淡出消失、不留碰撞（${r.dropY}）${r.dbg ? '；' + r.dbg : ''}`,
       );
       check(
         r.cascade !== false,

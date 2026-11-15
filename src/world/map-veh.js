@@ -829,7 +829,7 @@ export class MapVeh {
     if (st >= 3 && !this.remote) this.abandon(this.center()); // 重損：駕駛棄車
   }
   // 損毀：o.cr＝被踩扁（扁的殘骸，不爆炸）
-  wreck(o = {}) {
+  breakDown(o = {}) {
     if (this.dead) return;
     this.dead = true;
     this.spd = 0;

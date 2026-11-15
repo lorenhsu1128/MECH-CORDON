@@ -316,7 +316,7 @@ Object.assign(Game.prototype, {
       J.ph = ph;
       if (Math.abs(J.t - a[k + 7]) > 0.5) J.t = a[k + 7];
     }
-    if (f & 1 && !v.dead) v.wreck({ cr: !!(f & 2), quiet: true }); // 中途加入：已經壞掉的
+    if (f & 1 && !v.dead) v.breakDown({ cr: !!(f & 2), quiet: true }); // 中途加入：已經壞掉的
   },
   // 客機：房主的事件（mvf／mvw／mvd／mvg／mvk）；回傳 true＝處理了
   mvNetEvent(e) {
@@ -347,7 +347,7 @@ Object.assign(Game.prototype, {
     if (e.t === 'mvd') {
       if (v) {
         if (v.dead && e.c && !v.crushed) v.dead = false; // 殘骸被踩扁
-        if (!v.dead) v.wreck({ cr: !!e.c });
+        if (!v.dead) v.breakDown({ cr: !!e.c });
       }
       return true;
     }
@@ -813,10 +813,10 @@ Object.assign(Game.prototype, {
     if (wasDead) {
       // 殘骸再被踩：只是變扁
       v.dead = false;
-      v.wreck(o);
+      v.breakDown(o);
       return;
     }
-    v.wreck(o);
+    v.breakDown(o);
     // 載具擊毀數（結果畫面）：只算玩家打壞的（多人：記在動手的那位玩家名下）
     if (by && by.team === 'player' && by.slot !== undefined && !by.isAI) {
       if (by === this.player) this.mvKills = (this.mvKills || 0) + 1;
