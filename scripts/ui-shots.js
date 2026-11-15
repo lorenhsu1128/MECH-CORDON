@@ -214,7 +214,26 @@ async function hudShot(page, view, level = 1) {
   const args = process.argv.slice(2);
   const opt = Object.fromEntries(args.filter((a) => a.startsWith('--')).map((a) => a.slice(2).split('=')));
   const names = (args.find((a) => !a.startsWith('--')) || Object.keys(SHOTS).join(',')).split(',');
-  const sizes = (opt.size || 'pc,tab,phone').split(',');
+  // --size=all：動到版面時一律檢查的 15 種解析度（桌機 7、平板 4、手機橫式 4；CLAUDE.md 的「版面」）
+  const ALL = [
+    '1280x720d',
+    '1366x768d',
+    '1440x900d',
+    '1600x900d',
+    'pc',
+    '2560x1440d',
+    '3440x1440d',
+    '1280x1024d',
+    '1024x768',
+    '1000x626',
+    'tab',
+    '1366x1024',
+    '667x375',
+    '740x360',
+    'phone',
+    '932x430',
+  ];
+  const sizes = opt.size === 'all' ? ALL : (opt.size || 'pc,tab,phone').split(',');
   const dir = path.join(__dirname, '..', 'test-results', 'ui', opt.tag || 'now');
   fs.mkdirSync(dir, { recursive: true });
   const browser = await launch();
