@@ -66,9 +66,10 @@ export const CUES = {
     hd: 720,
     patch: { bg: { type: 'solid', color: '#120c06', opacity: 0.82, sync: true } },
   },
+  // 章名卡：絕區零式的「街頭・章名卡」（以前是明體的 chapter 模板；2026-11-15）
   chapter: {
     mode: 'message',
-    tpl: 'chapter',
+    tpl: 'streetChapter',
     slot: 'full',
     hd: 720,
     patch: { bg: { type: 'solid', color: '#000000', opacity: 0.9, sync: true } },

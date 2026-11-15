@@ -12,8 +12,9 @@ import { Game } from './game.js';
 const $ = (id) => document.getElementById(id);
 // 任務中的項目：暫停、設定、靶場設定時凍結
 const PLAY = { states: ['play', 'modpick'], freeze: ['pause', 'settings', 'rangecfg'] };
-const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI'];
-const NUM = ['', '一', '二', '三', '四', '五', '六'];
+// 第 7、8 章（主線擴充）以前漏了：章名卡顯示「第undefined章」（2026-11-15）
+const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
+const NUM = ['', '一', '二', '三', '四', '五', '六', '七', '八'];
 
 // flashMsg 沒指定種類時：依顏色
 function kindOf(color) {

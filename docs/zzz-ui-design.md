@@ -221,6 +221,7 @@
     - APNG 產生器加字型 Rubik，以及「街頭」模板 `streetStart`／`streetClear`／`streetKill`／`streetDone`／`streetWarn`／`streetGood`／`streetInfo`：粗斜體白字＋黑粗描邊＋硬陰影＋黃黑（警告是紅黑）警戒膠帶，登場是 slam。
     - 遊戲的 `CUES` 的 start、warning、clear、kill、done、good、info 改用它們。
     - 其他演出（Boss 型態、狂暴、宿敵、最後一波、ECHO、記憶、抉擇、過場的字卡）照舊。
+    - 2026-11-15：主線每章第一次出擊的章名卡（`CUES.chapter`）改用新的「街頭・章名卡」`streetChapter`（黃綠粗斜體＋黑描邊、白色的 CHAPTER 在上、黃黑膠帶），以前是明體的 `chapter` 模板；章號補到第八章（`game/textfx.js` 的 `ROMAN`／`NUM`）。
 - **C1（2026-11-12）**：主題色接管。
   - 機甲庫：
     - 機體配色對到一個主題色（`garage-ui.js` 的 `PAL_THEME`，白＝LOGO 的紅），寫在 `#garage` 的 `--theme`。

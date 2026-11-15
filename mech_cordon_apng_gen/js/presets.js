@@ -216,6 +216,12 @@ export const TEMPLATES = {
     msg('streetWarn', 'combat', L('街頭・警告', 'Street: Warning'), '警告', 'WARNING', STREET_WARN),
     msg('streetGood', 'combat', L('街頭・好消息', 'Street: Good'), '回收完成', 'GOT IT', { ...STREET_GOOD, loop: 'once' }),
     msg('streetInfo', 'combat', L('街頭・訊息', 'Street: Info'), '前往出口', 'NEXT', STREET_INFO),
+    // 章名卡（MECH CORDON 主線每章第一次出擊的轉場；以前用明體的「章節標題」，和介面不搭）：黃綠粗斜體、英文在上
+    msg('streetChapter', 'scene', L('街頭・章名卡', 'Street: Chapter'), '第一章　邊境的荒野', 'CHAPTER I', {
+      ...STREET, fontSize: 96, letterSpacing: 0.08, fill: { type: 'solid', color: '#cdeb2a' },
+      subPosition: 'above', subSize: 0.3, subLetterSpacing: 0.45, subGap: 0.45, subColorOn: true, subColor: '#ffffff',
+      inStagger: 0.05, hold: 2.2, outFx: 'fade', outDur: 0.5, loop: 'once'
+    }),
     msg('battle', 'combat', L('戰鬥開始', 'Battle Start'), '戰鬥開始', 'BATTLE START', BATTLE),
     msg('battleEnd', 'combat', L('戰鬥結束', 'Battle End'), '戰鬥結束', 'BATTLE END', { ...BATTLE, inFx: 'fade', inStagger: 0.05, outFx: 'fade' }),
     msg('victory', 'combat', L('勝利', 'Victory'), '勝利', 'VICTORY', { ...ROUND, fontId: 'noto-serif-tc', fontSize: 150, subFontId: 'cinzel', inFx: 'flash', holdFx: 'glow' }),
