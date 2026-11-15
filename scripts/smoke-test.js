@@ -22636,6 +22636,12 @@ async function testCine(browser, base) {
     const g = window.__game;
     const had = document.body.classList.contains('touchDev');
     document.body.classList.add('touchDev');
+    // 記憶體的條件（用量超過上限 55% 一律拒絕）另外算：這裡只測地圖的張數。前面播過很多段過場，用量隨 GC 的時機
+    // 浮動，會讓五個全是 false（偶發失敗），所以暫時把用量固定在很低
+    Object.defineProperty(performance, 'memory', {
+      configurable: true,
+      get: () => ({ jsHeapSizeLimit: 4e9, usedJSHeapSize: 1e8 }),
+    });
     const set = (k) => ({ spec: { k } });
     const c = {
       sets: new Map([
@@ -22648,6 +22654,7 @@ async function testCine(browser, base) {
     const r = [g.cineResOk(c, { k: 'world' }), g.cineResOk(c, { k: 'room' })];
     c.sets.set('e', set('world'));
     r.push(g.cineResOk(c, { k: 'world' }), g.cineResOk(c, { k: 'room' }), g.cineResOk(c));
+    delete performance.memory; // 恢復原本的存取子（在 Performance.prototype 上）
     if (!had) document.body.classList.remove('touchDev');
     return r.join();
   });
