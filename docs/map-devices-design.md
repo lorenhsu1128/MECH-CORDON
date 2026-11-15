@@ -364,3 +364,10 @@
 - 自訂關卡：`level/format.js` 的 `devKind`（`DEV_RENAME`：radar → recharge；不認得的種類＝回復站），編輯器新放的地圖裝置預設回復站。
 - 傳說模組「能源導管」的說明拿掉雷達站；`NET_VERSION` 11.43。
 - 測試：`testDevices`（沒有雷達站、靠近回復站的提示與鍵盤 X、回復量與總量都是兩倍）、`testLevelDevices`（舊的雷達站與不認得的種類讀成回復站）、`testDevicesMp`（客機按住互動鍵用回復站）。
+
+#### 第 2 期（完成）
+
+- **框架**（`game/devices-traps.js`）：陷阱定義的 `fx.wave`（一圈或陣列）＋`fx.warn`；`trapTimes(def)`（依定義快取：一次性打擊的時間、每一圈波的出發時間、持續區域的開始與結束）取代以前的 `delay`＋`zone.dur`；`trapWaveTick`（房主／單機：這一格波前掃過的目標各打一次，地面型看離地高度、爆風型看上下距離，`water` 只打水裡的；扣 EN、緩速、EMP 封鎖；電腦依技巧機率起跳；掃到其他陷阱的弱點就連鎖觸發）；`trapWavePush`（`devPush` 呼叫，依各端的 `d.vt` 算波前，房主與客機的自身預測一致）；外觀各端自己畫（`trapVis` 進入作用中時 `trapWaveVisStart`：預警圈＋地面型的 `groundWave`／爆風型的 `pulseShell`；每格 `trapWaveVisTick`：波前上依種類的粒子），不轉送、不改同步。冰面的破洞等波走完才出現、模型放大 `holeK`。
+- **7 個陷阱**改成擴散波：吊掛的貨櫃、坍方點、冰面裂縫、天然氣井、斷掉的電纜、吊掛的廢料、深脈收容槽（數值照第四節）。其他 6 個（電擊地板、輸電鐵塔、閘口控制台、推進器試車台、海水閥、氣閘）在第 3 期換。
+- **模型庫的地面標示頁**：`library/ground-kit.js` 的 `trap` 播放擴散波（預警圈、groundWave／pulseShell、持續區域在波走完之後）。順便補上 `game/map-veh.js`（油罐車大爆炸的燃燒地面）的範例 `ms_tanker`：合併進來的「會動的載具」沒有登記，`testGroundMarks` 失敗。
+- **測試** `testTraps`：擴散波的陷阱另外檢查「依距離先後打到」（近、遠兩台的時間）、「地面型躲得過、爆風型躲不過」（離地 h 以上的一台）、「經過時往外推」（玩家站在半徑一半處）。

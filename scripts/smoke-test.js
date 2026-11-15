@@ -6785,6 +6785,27 @@ async function testTraps(browser, base) {
         e.mesh.position.copy(e.pos);
         e.hp = e.maxHp * 0.08;
         e.iFrames = 0;
+        // 擴散波（第二版）：遠一點的一台（量先後）、空中的一台（地面型躲得掉、爆風型躲不掉）
+        const WV = d.def.fx.wave ? [].concat(d.def.fx.wave)[0] : null;
+        let eFar = null,
+          eAir = null;
+        if (WV && !WV.water) {
+          const c = g.trapWaveCenter(d);
+          const mk = (ang, rr, up) => {
+            const o = g.spawnType('mt', 1, 1);
+            o.updateAI = () => {}; // 不更新＝不會落下
+            const x = c.x + Math.cos(ang) * rr,
+              z = c.z + Math.sin(ang) * rr;
+            o.pos.set(x, g.world.groundAt(x, z, 999) + up, z);
+            o.vel.set(0, 0, 0);
+            o.mesh.position.copy(o.pos);
+            o.hp = o.maxHp = 1e7;
+            o.iFrames = 0;
+            return o;
+          };
+          eFar = mk(2.2, WV.R * MS * 0.8, 0);
+          eAir = mk(4.2, WV.R * MS * 0.45, ((WV.h === 'all' ? 2 : WV.h) + 1.5) * MS);
+        }
         const p = g.player;
         p.maxHp = p.hp = 100000;
         const hp0 = p.hp;
@@ -6813,7 +6834,15 @@ async function testTraps(browser, base) {
           g.down[g.keymap.interact] = false;
         }
         const st1 = d.st;
-        window.__pump(1.4);
+        // 量第一次被打到的時間（近的那台擊破、遠的受傷）
+        let tNear = -1,
+          tFar = -1;
+        for (let tt = 0; tt < 1.4; tt += 0.05) {
+          window.__pump(0.05);
+          if (tNear < 0 && e.dead) tNear = tt;
+          if (eFar && tFar < 0 && eFar.hp < eFar.maxHp) tFar = tt;
+        }
+        const airHurt = eAir ? eAir.hp < eAir.maxHp : null;
         const shotAt = { x: d.pos.x, z: d.pos.z };
         window.__pump(14, () => d.st !== 3 || e.dead);
         return {
@@ -6826,6 +6855,7 @@ async function testTraps(browser, base) {
           hurt: Math.round(((hp0 - p.hp) / hp0) * 100),
           lockable,
           shotAt,
+          wave: WV ? { ground: WV.h !== 'all', tNear, tFar, airHurt } : null,
         };
       },
       [kind, 77 + ti],
@@ -6840,6 +6870,17 @@ async function testTraps(browser, base) {
       `${theme}：觸發陷阱、範圍裡的敵人被擊破＝環境擊殺（${r.envK}）`,
     );
     if (r.lockable !== null) check(r.lockable, `${theme}：弱點可以鎖定（排在敵人後面）`);
+    if (r.wave && r.wave.airHurt !== null) {
+      const W = r.wave;
+      check(
+        W.tNear >= 0 && W.tFar > W.tNear,
+        `${theme}：圓形擴散的波依距離先後打到（近 ${W.tNear.toFixed(2)} 秒、遠 ${W.tFar.toFixed(2)} 秒）`,
+      );
+      check(
+        W.airHurt === !W.ground,
+        `${theme}：${W.ground ? '地面型的波，空中的機體躲得掉' : '爆風型的波，空中的機體也會受傷'}（空中受傷 ${W.airHurt}）`,
+      );
+    }
     if (kind === 'crane' || kind === 'mine' || kind === 'scrap')
       check(r.walls > 0, `${theme}：留下掩體（臨時障礙物 ${r.walls} 個）`);
     if (['crane', 'mine', 'ice', 'pylon', 'gas', 'scrap', 'coral'].includes(kind))
@@ -6858,6 +6899,27 @@ async function testTraps(browser, base) {
       g.camUser = 1.6;
       g.tfxClear && g.tfxClear();
       window.__pump(1.2);
+      // 擴散波往外推：玩家站在半徑一半的地方，波經過之後量往外移動了多少
+      const WP = d.def.fx.wave && [].concat(d.def.fx.wave).find((w) => w.push);
+      if (WP && d.st === 0) {
+        const c = g.trapWaveCenter(d);
+        for (const o of g.enemies)
+          if (!o.dead && o.pos.distanceTo(c) < WP.R * MS * 1.5) {
+            o.pos.set(o.pos.x + 400, o.pos.y, o.pos.z + 400);
+            o.updateAI = () => {};
+          }
+        const q = c.clone().addScaledVector(back, WP.R * MS * 0.5);
+        p.pos.set(q.x, g.world.groundAt(q.x, q.z, 999), q.z);
+        p.vel.set(0, 0, 0);
+        const r0 = Math.hypot(p.pos.x - c.x, p.pos.z - c.z);
+        if (d.def.trig === 'shoot') g.damageProp(d.tgt, d.def.hp + 10, 0, d.tgt.pos.clone(), p);
+        else {
+          d.prog = 0.99;
+          g.devTrigger(d, p);
+        }
+        window.__pump((d.def.fx.warn || 0) + WP.R / WP.sp + 0.3);
+        return { radial: +(Math.hypot(p.pos.x - c.x, p.pos.z - c.z) - r0).toFixed(1) };
+      }
       if (d.st === 0) {
         if (d.def.trig === 'shoot') g.damageProp(d.tgt, d.def.hp + 10, 0, d.tgt.pos.clone(), p);
         else {
@@ -6882,7 +6944,9 @@ async function testTraps(browser, base) {
       window.__pump(0.6);
       return +p.pos.clone().sub(p0).dot(fwd).toFixed(1);
     }, kind);
-    if (push !== null)
+    if (push && push.radial !== undefined)
+      check(push.radial > 1, `${theme}：擴散波經過時把機體往外推（${push.radial} m）`);
+    else if (push !== null)
       check(
         Math.abs(push) > 3,
         `${theme}：站在前方的機體被推走（${push} m；負的＝推下虛空後拉回最後站穩的位置）`,

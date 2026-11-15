@@ -689,11 +689,17 @@ export class Run {
     if (E.blast || E.line) this.mark('shockwave');
     if (E.pool) this.mark('firePool');
     if (E.pillar) this.mark('pillarStrike');
+    // 擴散波（第二版：game/devices-traps.js 的 trapWaveVisStart）
+    const WV = E.wave ? [].concat(E.wave) : [];
+    const warn = E.warn || 0;
+    if (WV.length && warn > 0.05) this.mark('warnCircle');
+    for (const w of WV) this.mark(w.h === 'all' ? 'pulseShell' : 'groundWave');
+    const zs = WV.length ? Math.max(...WV.map((w) => warn + (w.t0 || 0) + w.R / w.sp)) : E.delay || 0;
     if (this.dry) return;
     const { mesh: m, def, glow } = this.device(k, at);
     const rot = (v) => V((v[0] || 0) * MS, (v[1] || 0) * MS, (v[2] || 0) * MS);
     const T0 = 1;
-    const dur = Math.max(2.5, (Z ? Z.dur : 0) + (E.delay || 0) + 0.5);
+    const dur = Math.max(2.5, (Z ? Z.dur : 0) + zs + 0.5);
     let t = 0,
       fired = false,
       vfx = 0;
@@ -734,6 +740,21 @@ export class Run {
               this.ring(tip.clone().setY(0.5), 6, 0xffe080, 0.5);
             });
           }
+          if (WV.length) {
+            const c = at.clone().add(rot(E.at || [0, 0, 0]));
+            if (warn > 0.05) this.warnCircle(c, Math.max(...WV.map((w) => w.R)) * MS, warn, def.color);
+            for (const w of WV) {
+              const ts = warn + (w.t0 || 0);
+              if (w.h === 'all')
+                this.at(ts, () =>
+                  this.pulse(c.clone().setY(1.2 * MS), (w.R * MS) / DS, (w.sp * MS) / DS, def.color),
+                );
+              else {
+                this.mark('groundWave');
+                this.fx.groundWave(c.clone().setY(0), w.R * MS, w.sp * MS, ts, () => 0, def.color);
+              }
+            }
+          }
           if (E.pool) {
             this.mark('firePool');
             this.fx.firePool(at.clone(), Z.R, Math.min(Z.dur, 6), 0);
@@ -750,7 +771,7 @@ export class Run {
         if (m.tower) m.tower.rotation.x = act ? Math.min(Math.PI / 2, 1.6 * vt * vt) : 0;
         if (m.hole) m.hole.visible = act;
         // 區域的電光、火花、水花（trapVis：每 0.12 秒兩顆）
-        if (act && Z && vt >= (E.delay || 0) && vt < Z.dur) {
+        if (act && Z && vt >= zs && vt < zs + Z.dur) {
           vfx -= dt;
           if (vfx <= 0) {
             vfx = 0.12;

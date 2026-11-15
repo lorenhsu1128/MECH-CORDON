@@ -14,6 +14,35 @@ const ST_IDLE = 0,
   ST_USED = 2,
   ST_ACT = 3,
   ST_CD = 4;
+// 擴散波的顏色（依種類）
+const WAVE_COL = {
+  shock: 0xffd090,
+  blast: 0xffa060,
+  fire: 0xff7a20,
+  water: 0x9fd8ff,
+  elec: 0x8fd8ff,
+  crack: 0xd8f0ff,
+  lava: 0xff5a20,
+  energy: 0xff4a5a,
+};
+// 陷阱的時間表（依定義快取）：hit＝一次性打擊的時間、waves／ws＝每一圈波與出發時間、zs＝持續區域開始、end＝結束
+function trapTimes(def) {
+  if (def._T) return def._T;
+  const E = def.fx;
+  let T;
+  if (E.wave) {
+    const waves = [].concat(E.wave);
+    const warn = E.warn || 0;
+    const ws = waves.map((w) => warn + (w.t0 || 0));
+    const wEnd = Math.max(...waves.map((w, i) => ws[i] + w.R / w.sp));
+    T = { hit: ws[0], waves, ws, zs: wEnd, end: wEnd + (E.zone ? E.zone.dur : 0) };
+  } else {
+    const dl = E.delay || 0;
+    T = { hit: dl, waves: [], ws: [], zs: dl, end: dl + (E.zone ? E.zone.dur : 0) };
+  }
+  Object.defineProperty(def, '_T', { value: T, enumerable: false });
+  return T;
+}
 // 每個主題的大型地形事件（F）
 const THEME_EVENTS = {
   industrial: 'gantry',
@@ -158,6 +187,8 @@ Object.assign(Game.prototype, {
     d.t = 0;
     d.hp = 0;
     d.done = 0;
+    d.wh = null;
+    d.wtry = null;
     d.by = by && by.team === 'player' ? by.id : 0;
     const def = d.def;
     this.devLvEmit(d); // 自訂關卡的觸發器
@@ -180,22 +211,23 @@ Object.assign(Game.prototype, {
     if (d.st !== ST_ACT) return;
     d.t += dt;
     const by = d.by ? this.entById(d.by) : null;
-    // 一次性的打擊（delay 秒後）
-    if (!d.done && d.t >= (E.delay || 0)) {
+    const T = trapTimes(def);
+    // 一次性的打擊（delay 秒後；擴散波的陷阱＝第一圈波出發時）
+    if (!d.done && d.t >= T.hit) {
       d.done = 1;
       this.trapHit(d, by);
     }
-    // 持續的區域（zone）
-    const dur = E.zone ? E.zone.dur : 0;
-    if (dur && d.done) {
+    if (E.wave) this.trapWaveTick(d, by, dt, T); // 圓形擴散的波（第二版）
+    // 持續的區域（zone；擴散波的陷阱在波走完之後）
+    if (E.zone && d.done && d.t >= T.zs) {
       d.tick = (d.tick || 0) - dt;
       if (d.tick <= 0) {
         d.tick = 0.25;
         this.trapZoneTick(d, by);
       }
     }
-    d.prog = clamp(d.t / Math.max(0.01, (E.delay || 0) + dur), 0, 1);
-    if (d.t >= (E.delay || 0) + dur + 0.05) {
+    d.prog = clamp(d.t / Math.max(0.01, T.end), 0, 1);
+    if (d.t >= T.end + 0.05) {
       if (def.trig === 'use' && !def.once) {
         d.st = ST_CD;
         d.t = 0;
@@ -208,6 +240,16 @@ Object.assign(Game.prototype, {
     const def = d.def,
       E = def.fx;
     const fwd = this.devRot(d, [0, 0, 1]).normalize();
+    if (E.wave) {
+      // 擴散波：中心的演出（會轉送給客機）；傷害在 trapWaveTick
+      const c = this.trapWaveCenter(d);
+      const w0 = [].concat(E.wave)[0];
+      if (w0.vis === 'blast' || w0.vis === 'energy')
+        this.fx.explosion(c.clone().setY(c.y + 1.5 * MS), 3, def.boomColor || WAVE_COL[w0.vis], true);
+      this.fx.dust(c.clone().setY(c.y + 0.3), 4, 14, def.dustColor || 0x9a8e80);
+      SFX.explode(true, c);
+      this.camShakeAt(c, 0.45);
+    }
     if (E.blast) {
       const c = d.pos.clone().add(this.devRot(d, E.at || [0, 0, 0]));
       this.fx.explosion(c.clone().setY(c.y + 1.5 * MS), E.blast * 0.6, def.boomColor || 0xffa040, true);
@@ -279,6 +321,132 @@ Object.assign(Game.prototype, {
     if (E.pool) this.fx.firePool(d.pos.clone(), E.zone.R, E.zone.dur, 0);
     if (E.pillar) this.fx.pillarStrike(d.pos.clone(), E.pillar, def.color);
   },
+  // ---------- 擴散波（第二版：docs/map-devices-design.md） ----------
+  trapWaveCenter(d) {
+    const c = d.pos.clone().add(this.devRot(d, d.def.fx.at || [0, 0, 0]));
+    c.y = this.world.groundAt(c.x, c.z, c.y + 3 * MS);
+    return c;
+  },
+  // 判定（房主／單機）：每一圈波的波前 r＝(t − 出發)×sp，這一格掃過的目標各打一次；
+  // 地面型（h 是數字）離地 h 以上躲得掉，爆風型（h＝'all'）上下都打；其他陷阱的弱點被掃到就連鎖觸發
+  trapWaveTick(d, by, dt, T) {
+    const def = d.def,
+      W = this.world;
+    const c = this.trapWaveCenter(d);
+    if (!d.wh) d.wh = T.waves.map(() => new Set());
+    if (!d.wtry) d.wtry = new Set();
+    T.waves.forEach((w, i) => {
+      const el = d.t - T.ws[i];
+      const R = w.R * MS,
+        sp = w.sp * MS;
+      const r = el * sp;
+      if (r > R + 2 * MS) return;
+      const ground = w.h !== 'all';
+      const hit = d.wh[i];
+      for (const t of this.everyone()) {
+        if (!t || t.dead || t.isProp || !t.pos || hit.has(t)) continue;
+        const dd = Math.hypot(t.pos.x - c.x, t.pos.z - c.z);
+        const rad = t.radius || 0;
+        if (dd - rad > R) continue;
+        // 電腦：地面型的波快到時依技巧機率起跳（和地面衝擊波相同）
+        if (ground && t.ai && !d.wtry.has(t)) {
+          const eta = (dd - rad - r) / sp;
+          if (eta < 0.45) {
+            d.wtry.add(t);
+            if (Math.random() < clamp(0.45 * (t.aiSkill || 1), 0, 0.9)) t.aiJumpT = 0.7;
+          }
+        }
+        if (el < 0) continue;
+        if (dd - rad > r || dd + rad < r - sp * dt * 1.5) continue; // 這一格波前沒掃到
+        const gy = W.groundAt(t.pos.x, t.pos.z, t.pos.y + 1);
+        if (ground ? t.pos.y - gy > w.h * MS : Math.abs(t.center().y - c.y) > R) continue;
+        if (w.water && W.waterDepth(t.pos.x, t.pos.z) <= 0.05) continue;
+        hit.add(t);
+        const k = 1 - 0.5 * clamp(dd / R, 0, 1);
+        this.devHurt(t, w.frac * k, (w.imp || 0) * k, by, c, w.attr || 'exp');
+        if (t.dead) continue;
+        if (w.en && t.en !== undefined) t.en = Math.max(0, t.en - t.enMax * w.en);
+        if (w.slow && t.addStatus) t.addStatus('slow', 2, { k: w.slow, qb: 1.6 });
+        if (w.emp && !t.isBoss) t.empLockT = Math.max(t.empLockT || 0, w.emp);
+      }
+      // 連鎖：其他陷阱的弱點
+      if (el >= 0)
+        for (const o of this.devs || []) {
+          if (o === d || !o.tgt || o.st !== ST_IDLE || o.def.gun || hit.has(o)) continue;
+          const q = o.tgt.pos;
+          const dd = Math.hypot(q.x - c.x, q.z - c.z);
+          if (dd > R || dd > r) continue;
+          hit.add(o);
+          this.devTrigger(o, by);
+        }
+    });
+  },
+  // 外觀（各端；進入作用中時呼叫一次）：預警圈、波
+  trapWaveVisStart(d) {
+    const def = d.def,
+      E = def.fx,
+      T = trapTimes(def);
+    const fx = this.fx,
+      nest = fx._nested;
+    const c = this.trapWaveCenter(d);
+    const ground = (x, z) => this.world.terrainHeight(x, z);
+    fx._nested = true; // 各端自己畫，不轉送
+    try {
+      if (T.ws[0] > 0.05)
+        fx.warnCircle(c, [].concat(E.wave).reduce((m, w) => Math.max(m, w.R), 0) * MS, T.ws[0], def.color);
+      T.waves.forEach((w, i) => {
+        const col = WAVE_COL[w.vis] || def.color;
+        const R = w.R * MS,
+          sp = w.sp * MS;
+        if (w.h === 'all') {
+          const go = () => fx.pulseShell(c.clone().setY(c.y + 1.2 * MS), R, sp, col);
+          if (T.ws[i] > 0.02) fx.task(T.ws[i], () => {}, go);
+          else go();
+        } else fx.groundWave(c, R, sp, T.ws[i], ground, col);
+      });
+    } finally {
+      fx._nested = nest;
+    }
+  },
+  // 外觀（各端每格）：波前上的粒子（依種類：塵土、火、水花、電弧、冰屑、熔岩、碎片）
+  trapWaveVisTick(d, dt) {
+    const def = d.def,
+      T = trapTimes(def);
+    d.wvfx = (d.wvfx || 0) - dt;
+    if (d.wvfx > 0) return;
+    d.wvfx = 0.05;
+    const fx = this.fx,
+      nest = fx._nested;
+    const c = this.trapWaveCenter(d);
+    fx._nested = true;
+    try {
+      T.waves.forEach((w, i) => {
+        const r = (d.vt - T.ws[i]) * w.sp * MS;
+        if (r < 0.5 * MS || r > w.R * MS) return;
+        const n = Math.max(3, Math.round((r / MS) * 0.7));
+        for (let j = 0; j < n; j++) {
+          const a = Math.random() * Math.PI * 2;
+          const p = new THREE.Vector3(c.x + Math.cos(a) * r, 0, c.z + Math.sin(a) * r);
+          p.y = this.world.groundAt(p.x, p.z, c.y + 3 * MS) + 0.3 * MS;
+          const v = w.vis;
+          if (v === 'shock' || v === 'blast') fx.dust(p, 2.2, 3, def.dustColor || 0xb0a080);
+          else if (v === 'fire' || v === 'lava') {
+            fx.dust(p, 1.6, 2, v === 'lava' ? 0x602010 : 0x4a3a30);
+            if (Math.random() < 0.6) fx.spark(p, v === 'lava' ? 0xff5a20 : 0xffa040);
+          } else if (v === 'water') fx.dust(p, 2.4, 3, 0xd8f0ff);
+          else if (v === 'elec') {
+            if (Math.random() < 0.5) fx.arc(p, 1.4, WAVE_COL.elec);
+            else fx.spark(p, 0xbfe8ff);
+          } else if (v === 'crack') fx.dust(p, 1.4, 2, 0xe8f6ff);
+          else if (v === 'energy') {
+            if (Math.random() < 0.5) fx.spark(p.setY(p.y + 0.8 * MS), def.color);
+          }
+        }
+      });
+    } finally {
+      fx._nested = nest;
+    }
+  },
   // 持續的區域：每 0.25 秒（電擊、落水、火）
   trapZoneTick(d, by) {
     const Z = d.def.fx.zone;
@@ -298,7 +466,12 @@ Object.assign(Game.prototype, {
   // 推（MechEntity.move 呼叫；房主與客機的自身預測都算）：作用中的區域把機體往裝置的前方推
   devPush(e, target) {
     for (const d of this.devs) {
-      if (d.st !== ST_ACT || !d.def.fx || !d.def.fx.zone || !d.def.fx.zone.push) continue;
+      if (d.st !== ST_ACT || !d.def.fx) continue;
+      if (d.def.fx.wave) {
+        this.trapWavePush(d, e, target);
+        continue;
+      }
+      if (!d.def.fx.zone || !d.def.fx.zone.push) continue;
       const Z = d.def.fx.zone;
       if ((d.vt || d.t || 0) < (d.def.fx.delay || 0) || e.noPush || !this.devInZone(d, e)) continue;
       if (e.pos.y - this.world.groundAt(e.pos.x, e.pos.z, e.pos.y + 1) > (Z.air || 1.6) * MS) continue;
@@ -306,6 +479,26 @@ Object.assign(Game.prototype, {
       target.x += Math.sin(a) * Z.push * MS;
       target.z += Math.cos(a) * Z.push * MS;
     }
+  },
+  // 擴散波經過時往外推（各端依自己的裝置計時 d.vt 算，客機的自身預測也一樣）
+  trapWavePush(d, e, target) {
+    if (e.noPush) return;
+    const T = trapTimes(d.def);
+    const c = this.trapWaveCenter(d);
+    T.waves.forEach((w, i) => {
+      if (!w.push) return;
+      const sp = w.sp * MS,
+        r = ((d.vt || 0) - T.ws[i]) * sp;
+      if (r < 0 || r > w.R * MS) return;
+      const dx = e.pos.x - c.x,
+        dz = e.pos.z - c.z,
+        dd = Math.hypot(dx, dz);
+      if (dd < 0.01 || Math.abs(dd - r) > sp * 0.35 + (e.radius || 0)) return;
+      const gy = this.world.groundAt(e.pos.x, e.pos.z, e.pos.y + 1);
+      if (w.h !== 'all' && e.pos.y - gy > w.h * MS) return;
+      target.x += (dx / dd) * w.push * MS;
+      target.z += (dz / dd) * w.push * MS;
+    });
   },
   devInZone(d, t) {
     const Z = d.def.fx.zone;
@@ -379,8 +572,10 @@ Object.assign(Game.prototype, {
     if (d.vst !== d.st) {
       d.vst = d.st;
       d.vt = 0;
+      if (d.st === ST_ACT && def.fx.wave) this.trapWaveVisStart(d);
     }
     d.vt = (d.vt || 0) + dt;
+    if (d.st === ST_ACT && def.fx.wave) this.trapWaveVisTick(d, dt);
     const act = d.st === ST_ACT,
       used = d.st === ST_USED || (d.st === ST_CD && def.trig !== 'use');
     // 弱點：待命時脈動，觸發後藏起來（被打斷、炸掉）
@@ -421,12 +616,16 @@ Object.assign(Game.prototype, {
         if (j >= 0) this.world.obstacles.splice(j, 1);
       }
     }
-    if (m.hole) m.hole.visible = def.ev ? act : act || used;
+    if (m.hole) {
+      // 擴散波的陷阱（冰面）：波走完才破洞
+      m.hole.visible = def.ev ? act : (act && (!def.fx.wave || d.vt >= trapTimes(def).zs)) || used;
+      if (def.holeK) m.hole.scale.setScalar(def.holeK);
+    }
     if (m.grid)
       for (const g of d.glow) g.emissiveIntensity = act ? 2 + Math.random() : d.st === ST_CD ? 0.1 : lit;
     // 區域效果的電光、火花（本地，不轉送）
     const Z = def.fx.zone;
-    if (act && Z && d.vt >= (def.fx.delay || 0)) {
+    if (act && Z && d.vt >= trapTimes(def).zs) {
       d.vfx = (d.vfx || 0) - dt;
       if (d.vfx <= 0) {
         d.vfx = 0.12;

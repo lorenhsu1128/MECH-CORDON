@@ -17,6 +17,10 @@ export const DEVICES = {
 };
 // ---------- C 環境陷阱（game/devices-traps.js） ----------
 // trig：shoot＝打壞弱點（hp、弱點的位置 wp＝舊尺度、轉 yaw）／use＝控制台按住互動（use＝控制台的位置、cd 冷卻）。
+// 第二版（2026-11-15）：陷阱一律是圓形擴散的波 fx.wave（一圈或多圈的陣列）——warn 預警秒數（地上的預警圈，之後波才出發）、
+// at 中心（舊尺度、轉 yaw）、每一圈 { R 半徑, sp 擴散速度, t0 比 warn 晚幾秒出發, h 打得到的離地高度（數字＝地面型、跳起來
+// 躲得掉；'all'＝爆風型、上下都打）, frac 傷害（目標最大 AP 的比例，中心 100%、邊緣 50%）, imp, attr, en 扣 EN, slow 緩速,
+// emp EMP 封鎖秒數, push 往外推的速度, water 只打站在水裡的, vis 外觀 }；波走完之後才開始 zone（一律圓形 R）。
 // fx：delay 秒後的一次性打擊（blast 爆炸半徑＋frac（目標最大 AP 的比例）、line 倒下的直線 [長, 寬]、cover 留下的掩體）
 // 與持續的區域 zone（R 圓、sq 正方形的半邊、line 直線；frac 每 0.25 秒、en 扣 EN、slow 緩速、water 只打水裡的、dur 秒）。
 // 距離都是舊尺度（× MS）。frac 對玩家與友軍減半、對 Boss ×0.08（devHurt）。
@@ -36,13 +40,11 @@ Object.assign(DEVICES, {
     wpR: 0.9,
     hideWp: true,
     act: '鋼索斷了！',
-    tip: '吊掛的貨櫃：打斷發光的吊鉤，貨櫃砸下來壓扁底下的敵人，之後留下掩體。' + TRAP_TIP,
+    tip:
+      '吊掛的貨櫃：打斷發光的吊鉤，貨櫃砸到地上，衝擊波往四周擴散（跳起來躲得掉），之後留下掩體。' + TRAP_TIP,
     fx: {
-      delay: 0.55,
-      blast: 5,
-      frac: 0.8,
-      imp: 1400,
-      attr: 'kin',
+      warn: 0.55, // 貨櫃落地的時間
+      wave: { R: 8, sp: 26, h: 1.6, frac: 0.7, imp: 1400, attr: 'kin', push: 4, vis: 'shock' },
       cover: [{ kind: 'crate', at: [0, 0, 0], w: 4.1, h: 1.8, d: 1.9 }],
     },
   },
@@ -72,12 +74,10 @@ Object.assign(DEVICES, {
     wpR: 1,
     hideWp: true,
     act: '坍方！',
-    tip: '坍方點：打爆支撐木下的炸藥箱，岩石崩落壓住附近的敵人，碎石會擋住路。' + TRAP_TIP,
+    tip: '坍方點：打爆支撐木下的炸藥箱，爆風往四周擴散（躲不掉），崩落的碎石會擋住路。' + TRAP_TIP,
     dustColor: 0x8a7a64,
     fx: {
-      blast: 6,
-      frac: 0.7,
-      imp: 1200,
+      wave: { R: 7, sp: 30, h: 'all', frac: 0.65, imp: 1200, attr: 'exp', vis: 'blast' },
       at: [0, 0, 1.5],
       cover: [
         { kind: 'rubble', at: [-2.4, 0, 2.2], w: 2.4, h: 1.2, d: 1.6, yaw: 0.6 },
@@ -96,14 +96,14 @@ Object.assign(DEVICES, {
     wpR: 0.9,
     hideWp: true,
     act: '冰面碎裂',
-    tip: '冰面裂縫：打碎發光的冰晶，冰面破洞，站在上面的機體落水（持續受損、行動遲緩）8 秒。' + TRAP_TIP,
+    tip:
+      '冰面裂縫：打碎發光的冰晶，裂痕從中心往外爬（QB 跑得贏），之後整片冰面破洞，裡面的機體落水（持續受損、行動遲緩）8 秒。' +
+      TRAP_TIP,
     dustColor: 0xd8f0ff,
+    holeK: 1.8, // 破洞的模型是半徑 5，放大到 9
     fx: {
-      blast: 5,
-      frac: 0.15,
-      imp: 300,
-      attr: 'kin',
-      zone: { R: 5, dur: 8, frac: 0.03, slow: 0.45, vis: 'ice', attr: 'kin' },
+      wave: { R: 9, sp: 10, h: 1.6, frac: 0.12, imp: 300, attr: 'kin', slow: 0.45, vis: 'crack' },
+      zone: { R: 9, dur: 8, frac: 0.03, slow: 0.45, vis: 'ice', attr: 'kin' },
     },
   },
   pylon: {
@@ -136,12 +136,12 @@ Object.assign(DEVICES, {
     wp: [-1.3, 1.1, 0.6],
     wpR: 1,
     act: '氣井噴火',
-    tip: '天然氣井：打爆發光的壓力槽，噴出火柱，附近燒成一片火海 10 秒。' + TRAP_TIP,
+    tip:
+      '天然氣井：打爆發光的壓力槽，噴出火柱、火焰環往四周擴散（低空懸浮也燒得到），之後附近燒成一片火海 10 秒。' +
+      TRAP_TIP,
     boomColor: 0xff7a20,
     fx: {
-      blast: 5,
-      frac: 0.55,
-      imp: 900,
+      wave: { R: 8, sp: 18, h: 4, frac: 0.55, imp: 900, attr: 'exp', vis: 'fire' },
       pool: true,
       pillar: 4,
       zone: { R: 6, dur: 10, frac: 0.03, attr: 'exp' },
@@ -157,8 +157,13 @@ Object.assign(DEVICES, {
     wp: [0, 5.7, 0.45],
     wpR: 0.9,
     act: '水面通電',
-    tip: '斷掉的電纜：打壞電線桿上的變壓器，附近的水面通電 6 秒（只電到站在水裡的）。' + TRAP_TIP,
-    fx: { zone: { R: 7, dur: 6, frac: 0.05, en: 0.08, water: true, vis: 'elec', attr: 'en' } },
+    tip:
+      '斷掉的電纜：打壞電線桿上的變壓器，電流沿著水面往四周擴散，之後水面通電 4 秒（只電到站在水裡的）。' +
+      TRAP_TIP,
+    fx: {
+      wave: { R: 10, sp: 22, h: 1.6, water: true, frac: 0.25, en: 0.25, imp: 200, attr: 'en', vis: 'elec' },
+      zone: { R: 7, dur: 4, frac: 0.05, en: 0.08, water: true, vis: 'elec', attr: 'en' },
+    },
   },
 });
 // 第 3 期：後 6 個主題。zone.push＝往 +Z（裝置的前方）推的速度（舊尺度／秒，MechEntity.move 的 devPush）；
@@ -211,14 +216,11 @@ Object.assign(DEVICES, {
     hideWp: true,
     solid: [[-4.2, 0, 1.8, 1.8, 9.2]],
     act: '鋼索斷了！',
-    tip: '吊掛的廢料：打斷發光的吊鉤，廢料砸下來壓扁底下的敵人，之後留下掩體。' + TRAP_TIP,
+    tip: '吊掛的廢料：打斷發光的吊鉤，廢料砸碎、碎片往四周飛散（躲不掉），之後留下掩體。' + TRAP_TIP,
     dustColor: 0x7a6a58,
     fx: {
-      delay: 0.55,
-      blast: 5,
-      frac: 0.8,
-      imp: 1400,
-      attr: 'kin',
+      warn: 0.55,
+      wave: { R: 7, sp: 30, h: 'all', frac: 0.7, imp: 1400, attr: 'kin', vis: 'blast' },
       cover: [{ kind: 'rubble', at: [0, 0, 0], w: 3.4, h: 1.6, d: 2.2 }],
     },
   },
@@ -269,14 +271,13 @@ Object.assign(DEVICES, {
     hideWp: true,
     solid: [[0, 0, 2.8, 2.8, 3.6]],
     act: '深脈爆發',
-    tip: '深脈收容槽：打破玻璃筒，深脈爆發造成能量傷害，附近 6 秒扣 EN。' + TRAP_TIP,
+    tip:
+      '深脈收容槽：打破玻璃筒，深脈的能量球殼往四周擴散（QB 的無敵時間可以穿過），之後附近 6 秒扣 EN。' +
+      TRAP_TIP,
     boomColor: 0xff3a5a,
     dustColor: 0x8a3a4a,
     fx: {
-      blast: 5,
-      frac: 0.55,
-      imp: 600,
-      attr: 'en',
+      wave: { R: 9, sp: 14, h: 'all', frac: 0.45, en: 0.3, imp: 600, attr: 'en', vis: 'energy' },
       zone: { R: 6, dur: 6, frac: 0.025, en: 0.12, vis: 'coral', attr: 'en' },
     },
   },

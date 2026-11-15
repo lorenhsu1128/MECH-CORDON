@@ -1822,6 +1822,13 @@ const MORE_MISSION = [
     src: 'game/devices-guns.js 的 hwTick（flameCone）',
     run: (S) => S.every(0.1, 2.5, () => S.flame(S.tgt.muzzle('rarm'), V(0, 0, -1), 12 * DS, 0.25, 6)),
   },
+  {
+    id: 'ms_tanker',
+    name: '油罐車大爆炸',
+    who: '地圖上會動的載具：油罐車、熔岩運輸車',
+    src: 'game/map-veh.js 的 mvKill（explodeAt＋addPool 3.2、16 秒）',
+    run: (S) => (S.boom(S.g(0, -12), 5 * MS, 0xff8040), S.pool(S.g(0, -12), 3.2, 6)),
+  },
 ];
 const MORE_MECH = [
   {
