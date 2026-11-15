@@ -760,11 +760,22 @@ function startGame(port) {
           resp.writeHead(404);
           resp.end('not found');
         } else {
-          resp.writeHead(200, {
-            'Content-Type': 'application/javascript; charset=utf-8',
-            'Cache-Control': 'max-age=3600',
-          });
-          fs.createReadStream(f).pipe(resp);
+          // 每次都向伺服器確認（no-cache＋Last-Modified）：沒改過回 304 不重傳，改過才傳新檔。以前是 max-age=3600，
+          // 重新產生語音、配樂之後一小時內瀏覽器還在用舊的（2026-11-15：旁白改成女聲之後播出來還是男聲）
+          const mt = fs.statSync(f).mtime;
+          mt.setMilliseconds(0);
+          const since = Date.parse(req.headers['if-modified-since'] || '');
+          if (since && since >= mt.getTime()) {
+            resp.writeHead(304, { 'Cache-Control': 'no-cache', 'Last-Modified': mt.toUTCString() });
+            resp.end();
+          } else {
+            resp.writeHead(200, {
+              'Content-Type': 'application/javascript; charset=utf-8',
+              'Cache-Control': 'no-cache',
+              'Last-Modified': mt.toUTCString(),
+            });
+            fs.createReadStream(f).pipe(resp);
+          }
         }
       } else if (/^\/(apng|paint|charagen)$/.test(u)) {
         // 相對路徑（./css、./js）要以 /apng/ 為基準
