@@ -846,3 +846,10 @@ YouTube 影片，720p，換鏡偵測後抽格，拼成縮圖表看。縮圖表�
 - **人物的來源（2026-11-15 使用者定案）**：Ultimate Animated Character Pack 2019-11 版（Google Drive 的壓縮檔，CC0）是 Q 版（頭大、黑皮膚＋白眼睛的風格），使用者看過說風格不搭，不用。MakeHuman 也不用。**改找和現在的人物同一系列**：現在的工人、技師、士兵、西裝、農夫、斗篷、駕駛服、帽 T 來自 Quaternius 的 **Ultimate Modular Characters（男，11 個）**與 **Ultimate Modular Women（女，10 個）**（CC0，每個人物分成頭／上身／下身／腳四塊、可以互換，適合組出大量路人）；兩包都在 Google Drive，匿名下載超過配額，請使用者從瀏覽器下載。
 - 人物動作預覽的「全部並排」改成每排 7 個的方陣。
 - **Ultimate Modular Men／Women 匯入（2026-11-15）**：使用者從瀏覽器下載兩包（CC0）。`node scripts/people-import.js --men=<男性包> --women=<女性包>` 用 Blender（`scripts/blender/people_import.py`）把 Individual Characters 的 21 個人物轉成只有網格＋骨架、**Draco 壓縮**的 GLB（`src/assets/people/m_<名稱>.glb`、`w_<名稱>.glb`，合計 3.3 MB；`render/hangar-assets.js` 改用 `render/glb.js` 的 `parseGlb`，需要時才載入 Draco 解碼器），原本的 24 個動作男女各一份（`anims/m_orig.glb`、`w_orig.glb`）。骨架和現有的同一套，但這版是公尺（`Body` 骨頭高 0.83／0.94，Poly Pizza 那一版是 0.0084／0.0094），骨盆位移的軌跡有單位，所以追加的動作另外轉 `ual_m2.glb`、`ual_w2.glb`；`haChar` 依 `Body` 的高度挑。過場的人物包 `lib/people-assets.js` 變成約 20 MB（第一次播過場時載入）。人物動作預覽共 35 個人物。
+
+### 第 3 期：載具 v2（進行中，2026-11-15）
+
+- **第一批**（`render/cine-vehicles.js`，車頭 +Z、原點＝底面中心、真實尺寸，`buildCineVeh(key)`）：pickup 皮卡（5.3 m，開放貨斗、四種顏色）、ambulance 救護車（6.4 m，白色車廂、紅色腰線與十字、車頂紅藍警示燈）、jeep 軍用吉普（4.3 m，敞篷、擋風框、防滾架、備胎）、apc 8 輪裝甲運兵車（7.4 m，斜面車頭、小砲塔、艙門、潛望鏡、裙板）、snowcat 雪地車（履帶、推雪鏟、車頂燈、貨架）、tanker 油罐車／加注車（9.6 m，鋼罐＋半球蓋、罐頂走道與欄杆、管線捲盤、危險品標示）。共用的小工具：`axles`（兩側的車輪，可雙胎）、`fenders`、`nose`（頭燈、方向燈、護罩、保險桿）、`tail`（尾燈）。
+- 模型庫登記成 `vehicle/cine_<鍵>`（只預覽、不接受 GLB），用 `node scripts/model-shots.js vehicle/cine_apc` 近拍檢查。
+- **合併**：`buildCineVeh` 最後呼叫 `mergeRig`（rig 參照到的車輪、貨叉照舊獨立），每台的繪製次數從 30～70 次降到 9～15 次。
+- **坑**：`D.extrude` 已經在厚度方向置中，`P` 的位置不要再加半個寬度（堆高機的車身、運兵車的車體一開始偏到一側、蓋住那一側的輪子）；`P` 只是記下零件，建模函式最後一定要 `bakeAll`（漏了＝0 個三角形）。救護車的白、油罐的鋼太亮會在模型庫的光線下爆白，調成灰一點、粗糙一點。

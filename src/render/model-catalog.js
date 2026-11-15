@@ -13,6 +13,7 @@ import { WS } from '../core/scale.js';
 import { AC_ROSTER, BOSS_DEFS, DUO_BOSS, ENEMY_TYPES, PART_DEFS } from '../data/enemies.js';
 import { buildBossModel, BP_CATALOG } from './boss-models.js';
 import { buildPod, buildStation } from './cine-sets.js';
+import { buildCineVeh } from './cine-vehicles.js';
 import { FOE_CATALOG } from './foe-models.js';
 import { PARTS, START_ASM } from '../data/parts.js';
 import { PALETTES } from './materials.js';
@@ -413,6 +414,22 @@ addPlain(
     origin: '脊柱中心',
   },
 );
+
+// 過場動畫的載具（render/cine-vehicles.js，docs/cine-redesign-design.md 第十一節）：真實尺寸、車頭朝正面，只預覽
+for (const [k, name, note] of [
+  ['forklift', '堆高機', '貨叉會升降、有駕駛；互動小品「裝卸」'],
+  ['pallet', '棧板貨物', '木棧板＋紙箱＋收縮膜'],
+  ['pickup', '皮卡', '長 5.3 m，貨斗開放'],
+  ['ambulance', '救護車', '長 6.4 m，車頂紅藍警示燈'],
+  ['jeep', '吉普車（軍用）', '長 4.3 m，敞篷、防滾架、備胎'],
+  ['apc', '裝甲運兵車', '8 輪、長 7.4 m，小砲塔'],
+  ['snowcat', '雪地車', '履帶、推雪鏟、車頂燈'],
+  ['tanker', '油罐車（加注車）', '長 9.6 m，罐頂走道、管線捲盤'],
+])
+  addPlain('vehicle', 'cine_' + k, name + '（過場）', note, () => buildCineVeh(k).group, {
+    noGlb: true,
+    origin: '底面中心（車頭朝正面）',
+  });
 
 // ---------- 地圖物件（遊戲中尺寸為隨機，這裡取代表值，備註列出範圍）----------
 // GLB 以這裡的代表尺寸製作，遊戲依每個物件的隨機尺寸分別縮放長寬高（prop-models.js 的 propGlb）；
