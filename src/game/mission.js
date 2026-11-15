@@ -1076,6 +1076,7 @@ Object.assign(Game.prototype, {
     this.popups = [];
     this.popSeen = null; // 小加成的狀態字：每一場第一次才冒字（juice.js）
     this.crowdClear(); // 地圖上的小人與血跡（crowd.js）
+    this.mvClear(); // 地圖上會動的載具（map-veh.js）
     this.killStreak = null; // 連殺計數不帶到下一場
   },
   endMission(success, aborted) {

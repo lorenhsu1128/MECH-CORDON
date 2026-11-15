@@ -111,6 +111,7 @@ Object.assign(Game.prototype, {
   // o.ambient＝false：只建立小人系統，不隨機放（自訂關卡「只有擺放的」）
   crowdPlan(o = {}) {
     this.crowdClear();
+    this.mvPlan(o); // 地圖上會動的載具（map-veh.js）
     if (!this.world || !this.scene || this.crowdOff) return;
     if (
       this.airMode ||

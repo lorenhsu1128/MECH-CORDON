@@ -6900,6 +6900,12 @@ async function testTraps(browser, base) {
       if (!Z || !Z.push || d.st !== 3) return null;
       const fwd = g.devRot(d, [0, 0, 1]).normalize();
       const at = d.pos.clone().addScaledVector(fwd, (Z.line ? 4 : 1) * MS);
+      // 陷阱附近的敵人先移出場：站在推的路線上會擋住機體（固定的亂數下，擺放隨前面的出擊建過哪些模型而不同）
+      for (const o of g.enemies)
+        if (!o.dead && o.pos.distanceTo(at) < 18 * MS) {
+          o.pos.set(o.pos.x + 400, o.pos.y, o.pos.z + 400);
+          o.updateAI = () => {};
+        }
       p.pos.set(at.x, g.world.groundAt(at.x, at.z, 999), at.z);
       p.vel.set(0, 0, 0);
       const p0 = p.pos.clone();

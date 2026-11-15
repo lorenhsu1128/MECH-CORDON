@@ -48,6 +48,7 @@ Object.assign(Game.prototype, {
     const out = [];
     if (this.world && this.world.props) for (const p of this.world.props) if (this.propLive(p)) out.push(p); // 不可破壞時改版後的物件不算
     for (const v of this.vehicles) if (!v.dead) for (const pt of v.parts) out.push(pt);
+    if (this.mvs) this.mvTargets(out); // 地圖上會動的載具（map-veh.js）
     if (team) out.push(...this.shotTargets(team));
     if (team !== 'prop' && this.devs && this.devs.length) out.push(...this.trapTargets()); // 環境陷阱的弱點（敵人的流彈也算）
     return out;
@@ -147,6 +148,7 @@ Object.assign(Game.prototype, {
   },
   updateMapExtras(dt) {
     const isHost = !(this.net && this.net.role === 'client');
+    this.mvTick(dt); // 地圖上會動的載具（map-veh.js）
     if (isHost && this.vehPlan.length && this.missionT >= this.vehPlan[0]) {
       this.vehPlan.shift();
       const kind = this.world.corridor.kind === 'rail' ? 'train' : 'truck';
