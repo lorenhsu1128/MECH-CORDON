@@ -294,7 +294,7 @@ export const MARKS = [
     name: '陷阱的作用區域',
     fx: 'game/devices-traps.js 的 trapVis',
     note: '環境陷阱觸發後的電光、冰屑、水花、氣流、火焰（敵我不分）',
-    demo: (S) => S.trap('shock'),
+    demo: (S) => S.trap('substation'),
   },
   {
     key: 'chevrons',
@@ -789,6 +789,11 @@ export class Run {
               } else if (Z.vis === 'fire' && i === 0) {
                 const o = at.clone().add(rot([0, 1.7, 1.2]));
                 this.flame(o, fw, Z.line[0] * MS * 0.5, 0.18, 8);
+              } else if (Z.vis === 'burn' || Z.vis === 'lava') {
+                if (i === 0) this.fx.fire(p.setY(p.y + 0.1 * MS), Z.vis === 'lava' ? 0.8 : 0.6, 0.3);
+                else this.fx.dust(p.setY(p.y + 0.3), 1.4, 2, 0x3a3430);
+              } else if (Z.vis === 'wet') {
+                if (i === 0) this.fx.dust(p.setY(p.y + 0.2), 1.6, 2, 0xc8e4f4);
               } else if (Z.vis === 'coral') {
                 this.fx.spark(p.setY(p.y + 0.5 * MS), 0xff5a6a);
                 if (Math.random() < 0.4) this.fx.arc(p, 1.2, 0xff4a5a);

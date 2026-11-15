@@ -1350,21 +1350,23 @@ const TIER = [
 }));
 
 // ---------- 地圖陷阱（data/devices.js 的 fx、game/devices-traps.js 的 trapHit／trapVis）----------
-// trap：DEVICES 的鍵（模型 render/trap-models.js）。zone 的特效照 trapVis（每 0.12 秒兩顆）
+// trap：DEVICES 的鍵（模型 render/trap-models.js、trap-models2.js）。擴散波照 trapWaveVisStart，zone 的特效照 trapVis（每 0.12 秒兩顆）
 const TRAP = [
   ['crane', '吊掛的貨櫃', '集散場'],
-  ['shock', '電擊地板', '模擬訓練場'],
+  ['pulse', '脈衝發生器', '模擬訓練場'],
   ['mine', '坍方點', '礦坑'],
   ['ice', '冰面裂縫', '冰原'],
-  ['pylon', '輸電鐵塔', '荒野'],
+  ['substation', '廢棄變電站', '荒野'],
   ['gas', '天然氣井', '沙丘'],
   ['cable', '斷掉的電纜', '淹沒城區'],
-  ['sluice', '閘口控制台', '水壩'],
-  ['testrig', '推進器試車台', '舊宇宙港'],
+  ['watertower', '壩頂蓄水塔', '水壩'],
+  ['testrig', '垂直試車台', '舊宇宙港'],
   ['scrap', '吊掛的廢料', 'Lattice-9'],
-  ['valve', '海水閥', '洋上都市'],
-  ['airlock', '氣閘', '高空軌道'],
+  ['valve', '高壓海水閥', '洋上都市'],
+  ['o2tank', '高壓氣瓶組', '高空軌道'],
   ['coral', '深脈收容槽', '研究特區'],
+  ['slagpot', '熔渣釜', '火山熔爐帶'],
+  ['ammorack', '甲板彈藥架', '方舟'],
 ].map(([k, name, theme]) => ({
   id: 'tp_' + k,
   name: `${name}（${theme}）`,

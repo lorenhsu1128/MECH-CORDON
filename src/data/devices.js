@@ -48,21 +48,6 @@ Object.assign(DEVICES, {
       cover: [{ kind: 'crate', at: [0, 0, 0], w: 4.1, h: 1.8, d: 1.9 }],
     },
   },
-  shock: {
-    solid: [[6.3, 0, 0.9, 0.7, 1.4]],
-    name: '電擊地板',
-    color: 0x7fc8ff,
-    trap: true,
-    trig: 'use',
-    r: 3,
-    use: [6.3, 0, 0],
-    hold: 1.5,
-    cd: 30,
-    verb: '通電',
-    act: '地板通電',
-    tip: '電擊地板：在控制台按住互動鍵，整片地板通電 5 秒，扣 AP 與 EN。跳起來就躲得掉。' + TRAP_TIP,
-    fx: { zone: { sq: 5, dur: 5, frac: 0.045, en: 0.06, vis: 'elec', attr: 'en' } },
-  },
   mine: {
     solid: [[0, -2.5, 6, 2.2, 3.4]],
     name: '坍方點',
@@ -104,26 +89,6 @@ Object.assign(DEVICES, {
     fx: {
       wave: { R: 9, sp: 10, h: 1.6, frac: 0.12, imp: 300, attr: 'kin', slow: 0.45, vis: 'crack' },
       zone: { R: 9, dur: 8, frac: 0.03, slow: 0.45, vis: 'ice', attr: 'kin' },
-    },
-  },
-  pylon: {
-    solid: [[0, 0, 1.8, 1.8, 12]],
-    name: '輸電鐵塔',
-    color: 0xffe060,
-    trap: true,
-    trig: 'shoot',
-    hp: 330,
-    wp: [1.6, 0.7, -0.4],
-    wpR: 0.9,
-    hideWp: true,
-    act: '鐵塔倒下',
-    tip: '輸電鐵塔：打壞底部的變電箱，鐵塔倒下砸中一整排，倒下的電線通電 8 秒。' + TRAP_TIP,
-    fx: {
-      delay: 1.0,
-      line: [13, 3],
-      frac: 0.6,
-      imp: 1000,
-      zone: { line: [13, 4], dur: 8, frac: 0.035, en: 0.05, vis: 'elec', attr: 'en' },
     },
   },
   gas: {
@@ -169,42 +134,6 @@ Object.assign(DEVICES, {
 // 第 3 期：後 6 個主題。zone.push＝往 +Z（裝置的前方）推的速度（舊尺度／秒，MechEntity.move 的 devPush）；
 // faceOut＝放的時候前方朝向作戰區域的外側（把機體推出去）
 Object.assign(DEVICES, {
-  sluice: {
-    name: '閘口控制台',
-    color: 0x7fd0ff,
-    trap: true,
-    trig: 'use',
-    r: 3,
-    use: [3.4, 0, -1.2],
-    hold: 1.5,
-    cd: 30,
-    solid: [
-      [0, -1.6, 3.4, 2.2, 2.6],
-      [3.4, -1.2, 0.9, 0.7, 1.4],
-    ],
-    verb: '開閘',
-    act: '閘口放水',
-    tip: '閘口控制台：按住互動鍵開閘，前方的機體被水沖走並受損 4 秒。' + TRAP_TIP,
-    fx: { zone: { line: [16, 5], dur: 4, frac: 0.02, push: 8, vis: 'water', attr: 'none' } },
-  },
-  testrig: {
-    name: '推進器試車台',
-    color: 0xff9a40,
-    trap: true,
-    trig: 'use',
-    r: 3,
-    use: [-3.2, 0, -1.2],
-    hold: 1.5,
-    cd: 30,
-    solid: [
-      [0, -0.6, 2.6, 3.2, 2.6],
-      [-3.2, -1.2, 0.9, 0.7, 1.4],
-    ],
-    verb: '點火',
-    act: '推進器點火',
-    tip: '推進器試車台：按住互動鍵點火，噴口前方噴火 3 秒。' + TRAP_TIP,
-    fx: { zone: { line: [14, 4], dur: 3, frac: 0.07, push: 6, vis: 'fire', attr: 'exp', air: 4 } },
-  },
   scrap: {
     name: '吊掛的廢料',
     color: 0xffa040,
@@ -223,42 +152,6 @@ Object.assign(DEVICES, {
       wave: { R: 7, sp: 30, h: 'all', frac: 0.7, imp: 1400, attr: 'kin', vis: 'blast' },
       cover: [{ kind: 'rubble', at: [0, 0, 0], w: 3.4, h: 1.6, d: 2.2 }],
     },
-  },
-  valve: {
-    name: '海水閥',
-    color: 0x6ad8ff,
-    trap: true,
-    trig: 'use',
-    r: 3,
-    use: [0, 0, -2.6],
-    hold: 1.5,
-    cd: 30,
-    faceOut: true,
-    solid: [[0, -1.4, 2.2, 3.6, 2.0]],
-    verb: '開閥',
-    act: '海水噴出',
-    tip: '海水閥：按住互動鍵開閥，水柱把前方的機體往外推（可能推下去）。' + TRAP_TIP,
-    fx: { zone: { line: [15, 5], dur: 3, frac: 0.015, push: 11, vis: 'water', attr: 'none' } },
-  },
-  airlock: {
-    name: '氣閘',
-    color: 0xffd060,
-    trap: true,
-    trig: 'use',
-    r: 3,
-    use: [3.6, 0, -1.0],
-    hold: 2,
-    cd: 35,
-    faceOut: true,
-    solid: [
-      [-2.4, 0, 0.6, 1.2, 4.6],
-      [2.4, 0, 0.6, 1.2, 4.6],
-      [3.6, -1.0, 0.9, 0.7, 1.4],
-    ],
-    verb: '開啟',
-    act: '氣閘減壓',
-    tip: '氣閘：按住互動鍵開啟，減壓的氣流把附近的機體往外吸（懸浮中也會被吸走）。' + TRAP_TIP,
-    fx: { zone: { R: 9, dur: 4, frac: 0.01, push: 9, vis: 'wind', attr: 'none', air: 20 } },
   },
   coral: {
     name: '深脈收容槽',
@@ -279,6 +172,188 @@ Object.assign(DEVICES, {
     fx: {
       wave: { R: 9, sp: 14, h: 'all', frac: 0.45, en: 0.3, imp: 600, attr: 'en', vis: 'energy' },
       zone: { R: 6, dur: 6, frac: 0.025, en: 0.12, vis: 'coral', attr: 'en' },
+    },
+  },
+});
+// ---------- 第二版（2026-11-15）：換成圓形擴散的新陷阱（docs/map-devices-design.md 的「第二版」第四節） ----------
+Object.assign(DEVICES, {
+  testrig: {
+    name: '垂直試車台',
+    color: 0xff9a40,
+    trap: true,
+    trig: 'use',
+    r: 3,
+    use: [-4.5, 0, -1.5],
+    hold: 1.5,
+    cd: 30,
+    solid: [
+      [0, 0, 3, 3, 5.6],
+      [-4.5, -1.5, 0.9, 0.7, 1.4],
+    ],
+    verb: '點火',
+    act: '推進器點火',
+    tip:
+      '垂直試車台：按住互動鍵點火，朝下的引擎噴到地面，火焰環往四周翻滾、把機體往外推（跳高一點躲得掉）。' +
+      TRAP_TIP,
+    fx: {
+      warn: 1.0,
+      wave: { R: 9, sp: 20, h: 3, frac: 0.5, imp: 900, attr: 'exp', push: 10, vis: 'fire' },
+      zone: { R: 4, dur: 3, frac: 0.04, vis: 'burn', attr: 'exp' },
+    },
+  },
+  valve: {
+    name: '高壓海水閥',
+    color: 0x6ad8ff,
+    trap: true,
+    trig: 'use',
+    r: 3,
+    use: [0, 0, -4.5],
+    hold: 1.5,
+    cd: 30,
+    solid: [
+      [0, 0, 2.4, 2.4, 2.8],
+      [0, -4.5, 0.7, 0.9, 1.4],
+    ],
+    verb: '開閥',
+    act: '海水噴出',
+    tip:
+      '高壓海水閥：按住互動鍵開閥，水柱衝上天、落下成環狀的浪，把四周的機體往外推（可能推下去）。' + TRAP_TIP,
+    fx: {
+      warn: 0.8,
+      wave: { R: 10, sp: 16, h: 2, frac: 0.1, imp: 200, attr: 'none', push: 14, vis: 'water' },
+    },
+  },
+  pulse: {
+    name: '脈衝發生器',
+    color: 0x7fc8ff,
+    trap: true,
+    trig: 'use',
+    r: 3,
+    use: [4.5, 0, 0],
+    hold: 1.5,
+    cd: 30,
+    solid: [
+      [0, 0, 2.4, 2.4, 4.6],
+      [4.5, 0, 0.9, 0.7, 1.4],
+    ],
+    verb: '啟動',
+    act: 'EMP 脈衝',
+    tip:
+      '脈衝發生器：按住互動鍵，線圈充能後放出 EMP 環：扣 EN，打到的 1.5 秒不能 QB、不能跳（上下都打得到）。' +
+      TRAP_TIP,
+    fx: {
+      warn: 0.8,
+      wave: { R: 10, sp: 20, h: 'all', frac: 0.15, en: 0.4, emp: 1.5, imp: 200, attr: 'en', vis: 'elec' },
+    },
+  },
+  substation: {
+    name: '廢棄變電站',
+    color: 0xffe060,
+    trap: true,
+    trig: 'shoot',
+    hp: 330,
+    wp: [1.9, 1.0, 0],
+    wpR: 0.9,
+    hideWp: true,
+    solid: [[0, 0, 3.2, 2.4, 2.8]],
+    act: '變壓器爆炸',
+    tip:
+      '廢棄變電站：打爆側面的冷卻油槽，變壓器爆炸、電弧沿地面往四周擴散（跳起來躲得掉），之後地面放電 5 秒。' +
+      TRAP_TIP,
+    boomColor: 0xffe080,
+    fx: {
+      wave: { R: 9, sp: 24, h: 1.6, frac: 0.5, en: 0.15, imp: 800, attr: 'en', vis: 'elec' },
+      zone: { R: 5, dur: 5, frac: 0.035, en: 0.05, vis: 'elec', attr: 'en' },
+    },
+  },
+  watertower: {
+    name: '壩頂蓄水塔',
+    color: 0x7fd0ff,
+    trap: true,
+    trig: 'shoot',
+    hp: 330,
+    wp: [0.45, 1.0, 0.45],
+    wpR: 0.9,
+    hideWp: true,
+    solid: [
+      [-1.4, -1.4, 0.5, 0.5, 6],
+      [1.4, -1.4, 0.5, 0.5, 6],
+      [-1.4, 1.4, 0.5, 0.5, 6],
+      [1.4, 1.4, 0.5, 0.5, 6],
+    ],
+    act: '水槽破裂',
+    tip:
+      '壩頂蓄水塔：打壞豎管底部的洩壓閥，水槽破裂、水牆往四周潑出，把機體往外推並受損，之後一片濕地讓機體變慢 4 秒。' +
+      TRAP_TIP,
+    dustColor: 0xb8dcf0,
+    fx: {
+      wave: { R: 10, sp: 18, h: 2.5, frac: 0.15, imp: 400, attr: 'none', push: 12, vis: 'water' },
+      zone: { R: 8, dur: 4, frac: 0, slow: 0.6, vis: 'wet', attr: 'none' },
+    },
+  },
+  o2tank: {
+    name: '高壓氣瓶組',
+    color: 0xffd060,
+    trap: true,
+    trig: 'shoot',
+    hp: 330,
+    wp: [0, 2.7, 0],
+    wpR: 0.9,
+    hideWp: true,
+    solid: [[0, 0, 3.0, 2.0, 2.6]],
+    act: '氣瓶爆裂',
+    tip:
+      '高壓氣瓶組：打爆頂上的主閥，爆炸減壓的氣浪往四周擴散，把附近的機體往外吹（懸浮中也一樣，可能吹下去）。' +
+      TRAP_TIP,
+    boomColor: 0xfff0c0,
+    fx: { wave: { R: 10, sp: 28, h: 'all', frac: 0.35, imp: 1000, attr: 'exp', push: 16, vis: 'blast' } },
+  },
+  slagpot: {
+    name: '熔渣釜',
+    color: 0xff6a20,
+    trap: true,
+    trig: 'shoot',
+    hp: 330,
+    wp: [0, 4.1, 0.7],
+    wpR: 1.0,
+    hideWp: true,
+    solid: [
+      [-2.2, 0, 0.8, 1.9, 4.6],
+      [2.2, 0, 0.8, 1.9, 4.6],
+    ],
+    act: '熔渣傾倒',
+    tip:
+      '熔渣釜：打壞傾倒用的齒輪箱，熔渣倒出、熔岩波往四周流（慢，跑得掉；跳起來也躲得掉），之後燒 8 秒。' +
+      TRAP_TIP,
+    boomColor: 0xff6a20,
+    dustColor: 0x3a2a22,
+    fx: {
+      wave: { R: 8, sp: 12, h: 1.6, frac: 0.4, imp: 600, attr: 'exp', vis: 'lava' },
+      pool: true,
+      zone: { R: 7, dur: 8, frac: 0.03, vis: 'lava', attr: 'exp' },
+    },
+  },
+  ammorack: {
+    name: '甲板彈藥架',
+    color: 0xff7a40,
+    trap: true,
+    trig: 'shoot',
+    hp: 330,
+    wp: [0, 1.0, 1.0],
+    wpR: 0.9,
+    hideWp: true,
+    solid: [[0, 0, 3.6, 2.0, 2.4]],
+    act: '連鎖殉爆',
+    tip:
+      '甲板彈藥架：打爆前面的引信盒，砲彈連鎖殉爆：三圈接連變大的爆風（躲不掉，站在外圈也會被最後一圈打到）。' +
+      TRAP_TIP,
+    boomColor: 0xff8a40,
+    fx: {
+      wave: [
+        { R: 6, sp: 30, h: 'all', frac: 0.25, imp: 600, attr: 'exp', vis: 'blast' },
+        { t0: 0.4, R: 8, sp: 30, h: 'all', frac: 0.25, imp: 600, attr: 'exp', vis: 'blast' },
+        { t0: 0.8, R: 10, sp: 30, h: 'all', frac: 0.25, imp: 600, attr: 'exp', vis: 'blast' },
+      ],
     },
   },
 });

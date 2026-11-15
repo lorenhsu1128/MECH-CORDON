@@ -48,7 +48,13 @@ export const DEV_KINDS = Object.fromEntries(
     ]),
 );
 // 拿掉或換掉的裝置（docs/map-devices-design.md 的第二版）：舊關卡的標記換成新的種類，標記 id 不變；不認得的＝回復站
-const DEV_RENAME = { radar: 'recharge' };
+const DEV_RENAME = {
+  radar: 'recharge',
+  shock: 'pulse',
+  pylon: 'substation',
+  sluice: 'watertower',
+  airlock: 'o2tank',
+};
 const devKind = (k) => {
   k = DEV_RENAME[k] || k;
   return k in DEV_KINDS ? k : 'recharge';

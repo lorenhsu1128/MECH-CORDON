@@ -6696,20 +6696,20 @@ async function testTraps(browser, base) {
   await waitVisible(page, 'title');
   const LIST = [
     ['industrial', 'crane'],
-    ['grid', 'shock'],
+    ['grid', 'pulse'],
     ['desert', 'mine'],
     ['snow', 'ice'],
-    ['wasteland', 'pylon'],
+    ['wasteland', 'substation'],
     ['dunes', 'gas'],
     ['flooded', 'cable'],
-    ['dam', 'sluice'],
+    ['dam', 'watertower'],
     ['spaceport', 'testrig'],
     ['grid086', 'scrap'],
     ['xylem', 'valve'],
-    ['orbit', 'airlock'],
+    ['orbit', 'o2tank'],
     ['institute', 'coral'],
-    ['volcano', 'testrig'],
-    ['ark', 'airlock'],
+    ['volcano', 'slagpot'],
+    ['ark', 'ammorack'],
   ];
   for (const [ti, [theme, kind]] of LIST.entries()) {
     // 固定亂數（地圖、陷阱的擺放、敵人的編成）：不固定時偶爾放不下陷阱、挑到擋得住陷阱的敵人
@@ -6834,10 +6834,10 @@ async function testTraps(browser, base) {
           g.down[g.keymap.interact] = false;
         }
         const st1 = d.st;
-        // 量第一次被打到的時間（近的那台擊破、遠的受傷）
+        // 量第一次被打到的時間（近的那台擊破、遠的受傷；控制台型有 0.8～1 秒的預警，遊戲節奏也讓時間變長）
         let tNear = -1,
           tFar = -1;
-        for (let tt = 0; tt < 1.4; tt += 0.05) {
+        for (let tt = 0; tt < 2.6; tt += 0.05) {
           window.__pump(0.05);
           if (tNear < 0 && e.dead) tNear = tt;
           if (eFar && tFar < 0 && eFar.hp < eFar.maxHp) tFar = tt;
@@ -6883,7 +6883,21 @@ async function testTraps(browser, base) {
     }
     if (kind === 'crane' || kind === 'mine' || kind === 'scrap')
       check(r.walls > 0, `${theme}：留下掩體（臨時障礙物 ${r.walls} 個）`);
-    if (['crane', 'mine', 'ice', 'pylon', 'gas', 'scrap', 'coral'].includes(kind))
+    if (
+      [
+        'crane',
+        'mine',
+        'ice',
+        'substation',
+        'gas',
+        'scrap',
+        'coral',
+        'watertower',
+        'o2tank',
+        'slagpot',
+        'ammorack',
+      ].includes(kind)
+    )
       check(r.hurt > 0, `${theme}：玩家站在範圍裡也會受傷（AP −${r.hurt}%）`);
     // 截圖：第二個陷阱，玩家站在旁邊、鏡頭拉遠，觸發後 0.9 秒（作用中）；會推的陷阱：玩家站進範圍、量被推了多遠
     const push = await page.evaluate((kind) => {

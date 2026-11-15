@@ -63,21 +63,21 @@ const THEME_EVENTS = {
 };
 // 每個主題的陷阱
 const THEME_TRAPS = {
-  dam: ['sluice'],
+  industrial: ['crane'],
+  grid: ['pulse'],
+  desert: ['mine'],
+  snow: ['ice'],
+  wasteland: ['substation'],
+  dunes: ['gas'],
+  flooded: ['cable'],
+  dam: ['watertower'],
   spaceport: ['testrig'],
   grid086: ['scrap'],
   xylem: ['valve'],
-  orbit: ['airlock'],
+  orbit: ['o2tank'],
   institute: ['coral'],
-  industrial: ['crane'],
-  grid: ['shock'],
-  desert: ['mine'],
-  snow: ['ice'],
-  wasteland: ['pylon'],
-  dunes: ['gas'],
-  flooded: ['cable'],
-  volcano: ['testrig'], // 噴火的試驗台（沿用宇宙港的）
-  ark: ['airlock'], // 甲板的氣閘（沿用高空軌道的）
+  volcano: ['slagpot'],
+  ark: ['ammorack'],
 };
 
 Object.assign(Game.prototype, {
@@ -343,6 +343,12 @@ Object.assign(Game.prototype, {
       if (r > R + 2 * MS) return;
       const ground = w.h !== 'all';
       const hit = d.wh[i];
+      if (i > 0 && el >= 0 && !hit.has('boom')) {
+        hit.add('boom');
+        this.fx.explosion(c.clone().setY(c.y + 1.5 * MS), 3 + i, def.boomColor || WAVE_COL[w.vis], true);
+        SFX.explode(true, c);
+        this.camShakeAt(c, 0.35);
+      }
       for (const t of this.everyone()) {
         if (!t || t.dead || t.isProp || !t.pos || hit.has(t)) continue;
         const dd = Math.hypot(t.pos.x - c.x, t.pos.z - c.z);
@@ -431,8 +437,8 @@ Object.assign(Game.prototype, {
           const v = w.vis;
           if (v === 'shock' || v === 'blast') fx.dust(p, 2.2, 3, def.dustColor || 0xb0a080);
           else if (v === 'fire' || v === 'lava') {
-            fx.dust(p, 1.6, 2, v === 'lava' ? 0x602010 : 0x4a3a30);
-            if (Math.random() < 0.6) fx.spark(p, v === 'lava' ? 0xff5a20 : 0xffa040);
+            if (Math.random() < 0.5) fx.fire(p, v === 'lava' ? 0.7 : 0.9, 0.15);
+            else fx.dust(p, 1.6, 2, v === 'lava' ? 0x602010 : 0x4a3a30);
           } else if (v === 'water') fx.dust(p, 2.4, 3, 0xd8f0ff);
           else if (v === 'elec') {
             if (Math.random() < 0.5) fx.arc(p, 1.4, WAVE_COL.elec);
@@ -647,6 +653,11 @@ Object.assign(Game.prototype, {
             } else if (Z.vis === 'fire' && i === 0) {
               const o = d.pos.clone().add(this.devRot(d, [0, 1.7, 1.2]));
               fx.flameCone(o, fw, Z.line[0] * MS * 0.5, 0.18, 8);
+            } else if (Z.vis === 'burn' || Z.vis === 'lava') {
+              if (i === 0) fx.fire(p.setY(p.y + 0.1 * MS), Z.vis === 'lava' ? 0.8 : 0.6, 0.3);
+              else fx.dust(p.setY(p.y + 0.3), 1.4, 2, Z.vis === 'lava' ? 0x3a2018 : 0x3a3430);
+            } else if (Z.vis === 'wet') {
+              if (i === 0) fx.dust(p.setY(p.y + 0.2), 1.6, 2, 0xc8e4f4);
             } else if (Z.vis === 'sand') {
               fx.dust(p.setY(p.y + 0.2), 3, 3, 0xc0a070);
             } else if (Z.vis === 'coral') {
