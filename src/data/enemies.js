@@ -1169,7 +1169,7 @@ export const AC_ROSTER = {
 export const DUO_BOSS = [
   {
     name: 'KESTREL',
-    pal: 'berserker',
+    pal: 'kestrel',
     asm: {
       head: 'h_lt',
       core: 'c_nat',
@@ -1189,7 +1189,7 @@ export const DUO_BOSS = [
   },
   {
     name: 'BRANT',
-    pal: 'rain',
+    pal: 'brant',
     asm: {
       head: 'h_scan',
       core: 'c_std',

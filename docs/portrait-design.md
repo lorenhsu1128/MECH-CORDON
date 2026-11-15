@@ -193,6 +193,8 @@
 | KILN           | 黑短髮往後梳、半邊臉的燙傷疤、黑色耐熱長外套、皮圍裙、雙臂交叉             | 熔爐橘   | 冷硬 hard、怒吼 roar         |
 | KEEL           | 暗紅長髮低馬尾、騎士又像神職的立領長制服、單肩披風、按著立著的長盾         | 方舟紅   | 誓詞 vow、肅穆 solemn        |
 
+**機體配色跟著立繪**（2026-11-15 使用者定案：人和 AC 看起來是一套）：16 位宿敵的 AC 配色（`render/materials.js` 的 `PALETTES`）照立繪的服裝改主色與輔色（例如 SIROCCO 沙色＋藍圍巾、STEVEDORE 反光背心的橘、UNDERTOW 青綠斗篷、KESTREL 橘黑外套、BRANT 紫）；和雜兵或其他 AC 共用名稱的另開一組（`whiteout_ace`、`specimen_ace`、`kestrel`、`brant`）。這些配色列在 `RIVAL_PALS`，渲染風格的「敵人配色」（絕區零的白殼／深色身體）不換它們（`MechEntity` 建模時略過 `tagTeam`），否則深色系的宿敵會被換成同一種深藍。看配色：`node scripts/style-shots.js --maps=industrial --styles=zzz --lineup=ace:sirocco,ace:rust,…,duo:KESTREL --hud=0`。
+
 **台詞的表情**：宿敵 16 位的 138 句（`lines.json`）逐句指定在 `LINE_EXPR` 的第三個產生區塊（`@gen5-start`～`@gen5-end`）；同一句不同人說的（SLUICE 與 UNDERTOW 的「沉下去吧。」）鍵寫成「說話者:台詞」。
 
 **插入畫面**（機戰式，`game/portrait-ui.js` 的 `ptCutIn(sp, { tag, name, line, expr, act, color, side })`）：畫面中段一條斜的暗色帶（上下是角色的強調色）＋胸像（帶色邊的斜框）從側邊滑入＋小標、名字、一句台詞，約 2 秒、不暫停、後來的取代前一個；台詞的語音在唸就對口型。設定「插入畫面」`ctrl.cutin`（顯示／關閉）；過場動畫、地圖預覽器、沒有立繪時回傳 false，呼叫端照原本的畫面。立繪清單在載入 portrait-ui 時就先抓（`Portraits.known` 要同步知道）。

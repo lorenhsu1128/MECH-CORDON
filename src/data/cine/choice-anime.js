@@ -204,7 +204,7 @@ function speakerShot(who, side, i) {
     veerwell: ['p3', 'p9'],
     sancta: ['p1', 'p7'],
   }[who] || ['p1', 'p2'];
-  const at = side === 'L' ? [520, 1820] : [1080, 1820];
+  const face = side === 'L' ? [520, 430] : [1080, 430];
   if (who === 'zenith')
     return {
       set: ARK,
@@ -213,7 +213,10 @@ function speakerShot(who, side, i) {
       fi: 0.12,
       actors: [{ id: 'zn', k: 'ace', key: 'zenith', p: [-4, -4], yaw: 160, s: [{ t: 0, look: 0.4 }] }],
       st: {
-        els: [ACT('zenith', { pose: pose[i ? 1 : 0], at, h: 1900, in: 'fade', par: 0.08 }), FOCUS(0, 0.3)],
+        els: [
+          ACT('zenith', { pose: pose[i ? 1 : 0], face, faceH: 300, in: 'fade', par: 0.08 }),
+          FOCUS(0, 0.3),
+        ],
       },
       cam: {
         fov: 34,
@@ -235,7 +238,7 @@ function speakerShot(who, side, i) {
     lb: false,
     fi: 0.12,
     actors: actors(),
-    st: { els: [ACT(who, { pose: pose[i ? 1 : 0], at, h: 1900, in: 'fade' }), FOCUS(0, 0.3)] },
+    st: { els: [ACT(who, { pose: pose[i ? 1 : 0], face, faceH: 300, in: 'fade' }), FOCUS(0, 0.3)] },
     cam: {
       fov: 32,
       dof: 1,

@@ -16,7 +16,6 @@ import {
   ROOM_GRADE,
   SPEED,
   dropAll,
-  faceY,
   placeLines,
 } from './anime.js';
 
@@ -234,7 +233,7 @@ export function ch3Intro(ctx) {
               t0: 1.4,
               fill: '#16121a',
               dots: 0.15,
-              kids: [NORA({ pose: 'p7', at: [1290, faceY(270, 1800)], h: 1800, in: null })],
+              kids: [NORA({ pose: 'p7', face: [1285, 255], faceH: 190, in: null })],
             },
           ),
         ],
@@ -294,7 +293,7 @@ export function ch3Intro(ctx) {
       lb: false,
       st: {
         els: [
-          NORA({ pose: 'p5', at: [720, 1820], h: 1900, in: null }),
+          NORA({ pose: 'p5', face: [720, 430], faceH: 300, in: null }),
           FOCUS(0, 0.35, 'rgba(255,230,200,0.3)'),
         ],
       },
@@ -765,7 +764,7 @@ export function ch3Outro(ctx) {
       lb: false,
       st: {
         els: [
-          PIKE({ pose: 'p9', at: [720, 1820], h: 1900, in: null }),
+          PIKE({ pose: 'p9', face: [720, 430], faceH: 300, in: null }),
           FOCUS(0, 0.35, 'rgba(200,255,200,0.3)'),
         ],
       },

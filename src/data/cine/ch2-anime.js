@@ -19,7 +19,6 @@ import {
   PARKED,
   ROOM_GRADE,
   SPEED,
-  faceY,
   placeLines,
   dropAll,
 } from './anime.js';
@@ -431,7 +430,7 @@ export function ch2Intro(ctx) {
               t0: 1.2,
               fill: '#06121c',
               dots: 0.15,
-              kids: [SAKKI({ pose: 'p1', at: [1290, faceY(270, 1800)], h: 1800, in: null })],
+              kids: [SAKKI({ pose: 'p1', face: [1285, 255], faceH: 190, in: null })],
             },
           ),
         ],
@@ -456,7 +455,7 @@ export function ch2Intro(ctx) {
       lb: false,
       st: {
         els: [
-          SAKKI({ pose: 'p9', at: [720, 1820], h: 1900, in: null }),
+          SAKKI({ pose: 'p9', face: [720, 430], faceH: 300, in: null }),
           FOCUS(0, 0.35, 'rgba(200,240,255,0.35)'),
           {
             k: 'text',
@@ -813,7 +812,7 @@ export function ch2Outro(ctx) {
       actors: roomActors,
       st: {
         els: [
-          CLIENT({ pose: cas ? 'p6' : 'p9', at: [720, 1820], h: 1900, in: null }),
+          CLIENT({ pose: cas ? 'p6' : 'p9', face: [720, 430], faceH: 300, in: null }),
           FOCUS(0, 0.35, 'rgba(220,230,255,0.3)'),
         ],
       },

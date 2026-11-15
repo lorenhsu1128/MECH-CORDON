@@ -533,7 +533,7 @@ export function ch1Intro() {
             in: 'right',
             fill: '#1a0e08',
             dots: 0.18,
-            kids: [HORST({ pose: 'p1', at: [1290, 1760], h: 1800, in: null })],
+            kids: [HORST({ pose: 'p1', face: [1285, 255], faceH: 190, in: null })],
           },
         ],
       },
@@ -603,7 +603,7 @@ export function ch1Intro() {
       lb: false,
       st: {
         els: [
-          HORST({ pose: 'p4', expr: 'smug', at: [720, 1820], h: 1900, in: null }),
+          HORST({ pose: 'p4', expr: 'smug', face: [720, 430], faceH: 300, in: null }),
           {
             k: 'lines',
             kind: 'focus',

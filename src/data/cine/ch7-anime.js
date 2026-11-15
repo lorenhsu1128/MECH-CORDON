@@ -16,7 +16,6 @@ import {
   ROOM_GRADE,
   SPEED,
   dropAll,
-  faceY,
   placeLines,
 } from './anime.js';
 
@@ -354,7 +353,7 @@ export function ch7Intro(ctx) {
       grade: { ...OFFG, contrast: 1.38 },
       lb: false,
       actors: [PARKED('stevedore')],
-      st: { els: [HORST({ pose: 'p9', at: [720, 1820], h: 1900, in: null }), FOCUS(0, 0.35)] },
+      st: { els: [HORST({ pose: 'p9', face: [720, 430], faceH: 300, in: null }), FOCUS(0, 0.35)] },
       cam: {
         fov: 32,
         dof: 1,
@@ -510,8 +509,8 @@ export function ch7Outro(ctx) {
   [
     [DISPATCH, DSG, 'veerwell', PK, dispCam, 4.4],
     [STATION, STG, 'sancta', NR, statCam, 3.6],
-    [DISPATCH, DSG, 'veerwell', { pose: 'p9', at: [720, 1820], h: 1900 }, dispCam, 6.4],
-    [STATION, STG, 'sancta', { pose: 'p7', at: [720, 1820], h: 1900 }, statCam, 6.4],
+    [DISPATCH, DSG, 'veerwell', { pose: 'p9', face: [720, 430], faceH: 300 }, dispCam, 6.4],
+    [STATION, STG, 'sancta', { pose: 'p7', face: [720, 430], faceH: 300 }, statCam, 6.4],
   ].forEach(([set, grade, who, a, keys, d]) =>
     T.add(
       {
@@ -532,7 +531,7 @@ export function ch7Outro(ctx) {
       set: veer ? DISPATCH : STATION,
       grade: veer ? DSG : STG,
       lb: false,
-      st: { els: [ACT(who, { pose: veer ? 'p9' : 'p8', at: [720, 1820], h: 1900 }), FOCUS(0, 0.35)] },
+      st: { els: [ACT(who, { pose: veer ? 'p9' : 'p8', face: [720, 430], faceH: 300 }), FOCUS(0, 0.35)] },
       cam: { fov: 32, dof: 1, focus: 0.9, range: 0.4, ease: 'lin', keys: veer ? dispCam : statCam },
     },
     5,
@@ -654,7 +653,7 @@ export function ch8Intro(ctx) {
               t0: 0.5 + i * 0.7,
               fill: '#121216',
               dots: 0.12,
-              kids: [ACT(who, { pose, at: [210 + i * 390, faceY(450, 2000)], h: 2000, in: null })],
+              kids: [ACT(who, { pose, face: [210 + i * 390, 360], faceH: 190, in: null })],
             },
           ),
         ),

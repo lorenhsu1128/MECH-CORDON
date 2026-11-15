@@ -17,7 +17,6 @@ import {
   ROOM_GRADE,
   SPEED,
   dropAll,
-  faceY,
   placeLines,
 } from './anime.js';
 
@@ -173,7 +172,7 @@ export function ch6Intro(ctx) {
         lb: false,
         fi: 0.15,
         actors,
-        st: { els: [ACT(who, { pose, at: [720, 1820], h: 1900, in: 'fade' }), FOCUS(0, 0.3)] },
+        st: { els: [ACT(who, { pose, face: [720, 430], faceH: 300, in: 'fade' }), FOCUS(0, 0.3)] },
         cam: {
           fov: 32,
           dof: 1,
@@ -240,7 +239,7 @@ export function ch6Intro(ctx) {
       set: STATION,
       grade: { ...STG, contrast: 1.36 },
       lb: false,
-      st: { els: [ACT('sancta', { pose: 'p7', at: [720, 1820], h: 1900, in: null }), FOCUS(0, 0.35)] },
+      st: { els: [ACT('sancta', { pose: 'p7', face: [720, 430], faceH: 300, in: null }), FOCUS(0, 0.35)] },
       cam: {
         fov: 34,
         dof: 1,
@@ -554,7 +553,7 @@ export function ch6Outro(ctx) {
               t0: 0,
               fill: '#121216',
               dots: 0.12,
-              kids: [ACT(who, { pose, at: [210 + i * 390, faceY(450, 2000)], h: 2000, in: null })],
+              kids: [ACT(who, { pose, face: [210 + i * 390, 360], faceH: 190, in: null })],
             }),
             {
               k: 'block',
@@ -602,7 +601,7 @@ export function ch6Outro(ctx) {
       grade: { ...OFFG, contrast: 1.36, exposure: 1.0 },
       lb: false,
       actors: [PARKED('stevedore')],
-      st: { els: [ACT('castron', { pose: 'p9', at: [720, 1820], h: 1900, in: 'fade' })] },
+      st: { els: [ACT('castron', { pose: 'p9', face: [720, 430], faceH: 300, in: 'fade' })] },
       cam: {
         fov: 32,
         dof: 1,

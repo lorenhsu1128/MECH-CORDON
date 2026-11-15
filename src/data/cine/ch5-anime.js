@@ -17,7 +17,6 @@ import {
   ROOM_GRADE,
   SPEED,
   dropAll,
-  faceY,
   placeLines,
 } from './anime.js';
 
@@ -282,7 +281,7 @@ export function ch5Intro(ctx) {
       grade: { ...OFFG, contrast: 1.38 },
       lb: false,
       actors: [PARKED('stevedore')],
-      st: { els: [HORST({ pose: 'p6', at: [720, 1820], h: 1900, in: null }), FOCUS(0, 0.35)] },
+      st: { els: [HORST({ pose: 'p6', face: [720, 430], faceH: 300, in: null }), FOCUS(0, 0.35)] },
       cam: {
         fov: 34,
         dof: 1,
@@ -665,7 +664,7 @@ export function ch5Outro(ctx) {
               in: 'drop',
               fill: '#14141a',
               dots: 0.12,
-              kids: [ACT(who, { pose, at: [210 + i * 390, faceY(420, 2200)], h: 2200, in: null })],
+              kids: [ACT(who, { pose, face: [210 + i * 390, 330], faceH: 200, in: null })],
             },
           ),
         ),
@@ -722,7 +721,7 @@ export function ch5Outro(ctx) {
       lb: false,
       st: {
         els: [
-          SAKKI({ pose: 'p9', at: [720, 1820], h: 1900, in: null }),
+          SAKKI({ pose: 'p9', face: [720, 430], faceH: 300, in: null }),
           FOCUS(0, 0.35, 'rgba(200,240,255,0.35)'),
         ],
       },

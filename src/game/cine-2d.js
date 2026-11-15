@@ -600,6 +600,22 @@ Object.assign(Game.prototype, {
       at = [lerp(from.at[0], at[0], k), lerp(from.at[1], at[1], k)];
       h = lerp(from.h, h, k);
     }
+    // face：[x, y]＝臉的中心要對到的點（特寫格）：照這個姿勢立繪的真實臉部範圍換算底部中心，
+    // 不再假設臉在上緣幾成（每個角色的髮型、姿勢不同，舊的 faceY 會切到頭髮）
+    if (e.face) {
+      const f = (P.P && P.P.boxes && P.P.boxes.face) || [
+        IMG_W * 0.3,
+        IMG_H * 0.12,
+        IMG_W * 0.4,
+        IMG_H * 0.22,
+      ];
+      const fx = (f[0] + f[2] / 2) / IMG_W,
+        fy = (f[1] + f[3] / 2) / IMG_H;
+      // faceH：臉要畫多高（px）→ 立繪的高度；每個角色的臉一樣大
+      if (e.faceH) h = (e.faceH * IMG_H) / f[3];
+      const w = (h * IMG_W) / IMG_H;
+      at = [e.face[0] + (0.5 - fx) * w * (e.mirror ? -1 : 1), e.face[1] + (1 - fy) * h];
+    }
     // 說話：字幕的氣泡是他、或語音是他 → 對口型
     const c = this.cine;
     const talking = !!(c.bub && c.bub.who === (e.sp || e.who) && c.subUntil && c.t < c.subUntil);

@@ -16,7 +16,6 @@ import {
   ROOM_GRADE,
   SPEED,
   dropAll,
-  faceY,
   placeLines,
 } from './anime.js';
 
@@ -197,7 +196,7 @@ export function ch4Intro(ctx) {
               t0: 1.6,
               fill: '#1a1408',
               dots: 0.15,
-              kids: [NORA({ pose: 'p8', at: [1290, faceY(270, 1800)], h: 1800, in: null })],
+              kids: [NORA({ pose: 'p8', face: [1285, 255], faceH: 190, in: null })],
             },
           ),
         ],
@@ -300,7 +299,7 @@ export function ch4Intro(ctx) {
               t0: 1.0,
               fill: '#0c160a',
               dots: 0.15,
-              kids: [PIKE({ pose: 'p9', at: [1290, faceY(270, 1800)], h: 1800, in: null })],
+              kids: [PIKE({ pose: 'p9', face: [1285, 255], faceH: 190, in: null })],
             },
           ),
         ],
@@ -344,7 +343,7 @@ export function ch4Intro(ctx) {
       lb: false,
       st: {
         els: [
-          PIKE({ pose: 'p9', at: [720, 1820], h: 1900, in: null }),
+          PIKE({ pose: 'p9', face: [720, 430], faceH: 300, in: null }),
           FOCUS(0, 0.35, 'rgba(200,255,200,0.3)'),
         ],
       },
@@ -608,7 +607,9 @@ export function ch4Outro(ctx) {
       set: ROOM,
       grade: { ...RG, contrast: 1.36 },
       lb: false,
-      st: { els: [CLIENT({ pose: veer ? 'p9' : 'p5', at: [720, 1820], h: 1900, in: null }), FOCUS(0, 0.35)] },
+      st: {
+        els: [CLIENT({ pose: veer ? 'p9' : 'p5', face: [720, 430], faceH: 300, in: null }), FOCUS(0, 0.35)],
+      },
       cam: { fov: 34, dof: 1, focus: 0.9, range: 0.4, ease: 'out', keys: close },
     },
     4.5,
@@ -726,7 +727,7 @@ export function ch4Outro(ctx) {
       lb: false,
       fo: 1.5,
       actors: [PARKED('stevedore')],
-      st: { els: [HORST({ pose: 'p9', at: [720, 1820], h: 1900, in: 'fade' })] },
+      st: { els: [HORST({ pose: 'p9', face: [720, 430], faceH: 300, in: 'fade' })] },
       cam: {
         fov: 32,
         dof: 1,

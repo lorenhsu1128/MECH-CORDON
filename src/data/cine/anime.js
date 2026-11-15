@@ -37,8 +37,6 @@ export const IMPACT = () => ({
 export const LOC = (name, en, color, t0 = 0.4) => [{ k: 'loc', name, en, color, at: [56, 70], t0 }];
 // 斜切的格子（插畫或立繪）：q＝四個點；img 或 kids
 export const PANEL = (q, o = {}) => ({ k: 'panel', q, in: 'right', dots: 0.25, ...o });
-// 立繪放大當特寫格：臉在主圖上緣約 15～20%，格子中心 cy、高 h → at 的 y
-export const faceY = (cy, h) => Math.round(cy + 0.82 * h);
 
 // 對白放進當時的那一鏡：lines＝[[過場的秒數, 台詞（「名字：「…」」或旁白）, 字幕的秒數, 說話者（可省）]]
 export function placeLines(T, lines) {

@@ -60,6 +60,16 @@ const EXE = [
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 (async () => {
+  // --lineup 的 ace:／duo: 項目：在 Node 讀資料檔的組裝與配色
+  const ACEDEF = {};
+  if (/(^|,)(ace|duo):/.test(arg('lineup', ''))) {
+    const { ACES } = await import(require('url').pathToFileURL(path.join(ROOT, 'src/data/foes.js')).href);
+    const { DUO_BOSS } = await import(
+      require('url').pathToFileURL(path.join(ROOT, 'src/data/enemies.js')).href
+    );
+    for (const [k, r] of Object.entries(ACES)) ACEDEF['ace:' + k] = { name: r.name, asm: r.asm, pal: r.pal };
+    for (const r of DUO_BOSS) ACEDEF['duo:' + r.name] = { name: r.name, asm: r.asm, pal: r.pal };
+  }
   fs.mkdirSync(OUT, { recursive: true });
   const b = await chromium.launch({
     executablePath: EXE,
@@ -165,7 +175,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     );
     // 敵人擺到玩家前方（不同距離與左右），地面高度照地形；推進一點時間讓動作就位
     await p.evaluate(
-      ({ SUNREL, LINEUP, HIDEHUD }) => {
+      ({ SUNREL, LINEUP, HIDEHUD, ACEDEF }) => {
         const g = window.__game,
           pl = g.player,
           w = g.world;
@@ -199,7 +209,19 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
             const at = new window.THREE.Vector3(x, w.groundAt(x, z, pl.pos.y + 40), z);
             const n0 = g.enemies.length;
             try {
-              g.spawnType(t, 1, 1, at);
+              // ace:<ACES 的鍵>、duo:<雙 AC 的名稱>＝宿敵 AC（看配色）
+              if (ACEDEF[t])
+                g.spawnEnemy({
+                  ...ACEDEF[t],
+                  asm: ACEDEF[t].asm || g.foeRandomAsm(),
+                  scale: 1,
+                  hpMul: 1,
+                  dmgMul: 1,
+                  stabMul: 1,
+                  ai: 'ac',
+                  ace: true,
+                });
+              else g.spawnType(t, 1, 1, at);
             } catch (err) {
               console.error('lineup', t, String(err));
             }
@@ -245,6 +267,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
         SUNREL: +arg('sunrel', 150),
         HIDEHUD: arg('hud', '1') === '0',
         LINEUP: arg('lineup', '') ? arg('lineup', '').split(',') : [],
+        ACEDEF,
       },
     );
     for (const view of VIEWS) {
