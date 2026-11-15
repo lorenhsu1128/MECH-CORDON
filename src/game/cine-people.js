@@ -212,7 +212,10 @@ Object.assign(Game.prototype, {
           if (H.head === undefined) H.head = H.ch.bone('Head') || null;
           if (H.head) H.head.rotateY(A.headTurn); // 骨頭的 Y 軸沿著脖子：繞它轉＝轉頭
         }
-        g.visible = A.obj.visible;
+        // vis：劇本 s 裡的 vis（上車、走進門裡就看不到）
+        let vis = true;
+        for (const st of spec.s || []) if (st.t <= lt && st.vis !== undefined) vis = st.vis;
+        g.visible = A.obj.visible && vis;
       } else if (A.cm) {
         const t = lt * (run ? 2.6 : 1.8) + H.ph * 6;
         A.cm.pose(

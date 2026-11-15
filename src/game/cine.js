@@ -721,6 +721,8 @@ Object.assign(Game.prototype, {
   },
   // ---------- 演員 ----------
   cineAddActor(spec, shotAt) {
+    // 互動小品：展開成子演員（game/cine-scene.js）
+    if (spec.k === 'scene') return this.cineSceneAdd(spec, shotAt);
     const c = this.cine;
     const A = {
       id: spec.id,
@@ -736,6 +738,12 @@ Object.assign(Game.prototype, {
       : this.cinePt(p0.length === 2 ? { g: p0, h: spec.h || 0 } : p0, new THREE.Vector3());
     A.parent = parent;
     const fyaw = (c.set && c.set.yaw) || 0;
+    // 載具（game/cine-scene.js、render/cine-vehicles.js）
+    if (spec.k === 'veh') {
+      this.cineVehAdd(A, spec, pos, fyaw);
+      c.actors.set(spec.id, A);
+      return A;
+    }
     // 人物（game/cine-people.js）：一個人或一群人
     if (spec.k === 'human' || spec.k === 'people') {
       this.cineHumAdd(A, spec, pos);
@@ -881,6 +889,15 @@ Object.assign(Game.prototype, {
     return A;
   },
   cineDropActor(A) {
+    if (A.dropped) return;
+    A.dropped = true;
+    // 互動小品：子演員一起移除
+    if (A.kids)
+      for (const id of A.kids) {
+        const k = this.cine.actors.get(id);
+        if (k) this.cineDropActor(k);
+        this.cine.actors.delete(id);
+      }
     if (A.e) {
       A.e.cleanup && A.e.cleanup();
       this.scene.remove(A.e.mesh);
@@ -967,8 +984,9 @@ Object.assign(Game.prototype, {
       const lt = (A.lt = t - A.t0);
       const steps = A.spec.s || [];
       while (A.si < steps.length && steps[A.si].t <= lt) this.cineDo(A, steps[A.si++]);
-      if (A.live) continue;
+      if (A.live || A.kids) continue;
       if (A.e) this.cinePuppet(A, dt, lt);
+      else if (A.veh) this.cineVehTick(A, lt);
       else if (A.hum) this.cineHumTick(A, dt, lt);
       else this.cineModel(A, lt, dt);
     }

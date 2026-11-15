@@ -52,6 +52,35 @@ const SAKKI = (o) => ACT('aetheric', o);
 const HORST = (o) => ACT('castron', o);
 // 電磁砲台：壩前的河岸，砲口朝南（下游、集散場的方向）
 const RAIL = { id: 'rg', k: 'model', key: 'railgun', p: [0, -8], yaw: 180, scale: 2.5, pal: 'boss' };
+// 砲台前的河岸：補給車隊沿河岸開來、砲彈的裝卸、圍著砲台底座作業的工兵（docs/cine-redesign-design.md 第十一節）
+const RAIL_LIFE = [
+  { id: 'rl', k: 'scene', type: 'loading', p: [-12, -6], yaw: 150, dur: 30, t0: -3 },
+  {
+    id: 'rc',
+    k: 'scene',
+    type: 'convoy',
+    path: [
+      [-40, 4],
+      [-20, 0],
+      [16, 2],
+      [40, 6],
+    ],
+    n: 4,
+    kinds: ['truck', 'semi'],
+    speed: 7,
+    gap: 20,
+  },
+  {
+    id: 'reng',
+    k: 'people',
+    who: ['crew', 'soldier', 'worker'],
+    n: 6,
+    p: [3, -3],
+    box: [5, 1.4],
+    anim: ['Interact', 'Interact', 'Idle_Neutral'],
+    s: [{ t: 0, face: [1, -8] }],
+  },
+];
 // 水壩的鏡頭：太陽從南邊（+Z）照，壩的下游面與砲台的正面是亮的（WEST 那種北邊的夕陽會讓整面壩變成黑的）
 const DAMG = { ...DUSK, sunAz: 90, sunEl: 16 };
 
@@ -90,6 +119,51 @@ export function ch2Intro(ctx) {
           ),
         ],
       },
+      // 集散場的作業：貨車的後門朝鏡頭、堆高機來回裝貨；後面的路上一列貨車開過（docs/cine-redesign-design.md 第十一節）
+      actors: [
+        { id: 'ld', k: 'scene', type: 'loading', p: [13, -29], yaw: 172, dur: 8 },
+        { id: 'ld2', k: 'scene', type: 'loading', p: [18, -42], yaw: 200, dur: 8, t0: -5 },
+        {
+          id: 'cv2',
+          k: 'scene',
+          type: 'convoy',
+          path: [
+            [44, -40],
+            [27, -36],
+            [-15, -27],
+            [-34, -23],
+          ],
+          n: 3,
+          kinds: ['truck'],
+          speed: 8,
+          gap: 18,
+        },
+        {
+          id: 'wk',
+          k: 'people',
+          who: ['worker', 'crew', 'worker'],
+          n: 7,
+          p: [14, -32],
+          box: [4, 2],
+          anim: ['Walk'],
+          go: [-24, 9],
+          stagger: 1.5,
+          s: [{ t: 0, face: [-10, -23] }],
+        },
+        {
+          id: 'cv',
+          k: 'scene',
+          type: 'convoy',
+          path: [
+            [-30, -22],
+            [30, -30],
+          ],
+          n: 5,
+          kinds: ['truck', 'semi', 'truck'],
+          speed: 11,
+          gap: 22,
+        },
+      ],
       cam: {
         fov: 44,
         hand: 0.02,
@@ -151,7 +225,7 @@ export function ch2Intro(ctx) {
       grade: { ...DAMG, contrast: 1.38, sat: 0.7 },
       lb: false,
       koma: 2,
-      actors: [RAIL],
+      actors: [RAIL, ...RAIL_LIFE],
       cam: {
         fov: 30,
         hand: 0.03,
@@ -416,7 +490,7 @@ export function ch2Intro(ctx) {
       set: DAM,
       grade: { ...DAMG, exposure: 0.85 },
       lb: false,
-      actors: [RAIL],
+      actors: [RAIL, ...RAIL_LIFE],
       st: {
         els: [
           PANEL(
@@ -636,7 +710,7 @@ export function ch2Intro(ctx) {
       grade: DUSK,
       lb: false,
       fo: 0.8,
-      actors: [RAIL],
+      actors: [RAIL, ...RAIL_LIFE],
       st: {
         bg: ORANGE,
         els: [
@@ -901,7 +975,47 @@ export function ch2Outro(ctx) {
       set: SNOW,
       grade: { ...NIGHT, exposure: 1.05 },
       lb: false,
-      actors: [REF],
+      // 撤離：圓頂前的巴士排隊上車、後面一列往西的卡車、遠處更多往西走的人（docs/cine-redesign-design.md 第十一節）
+      actors: [
+        REF,
+        {
+          id: 'eb',
+          k: 'scene',
+          type: 'board',
+          p: [3, -6.5],
+          yaw: -90,
+          n: 9,
+          every: 0.55,
+          t0: -1.5,
+          guide: 'soldier',
+        },
+        {
+          id: 'ec',
+          k: 'scene',
+          type: 'convoy',
+          path: [
+            [30, -9.5],
+            [-40, -10.5],
+          ],
+          n: 3,
+          kinds: ['truck', 'bus', 'truck'],
+          speed: 5,
+          gap: 16,
+          t0: -4,
+        },
+        {
+          id: 'rf2',
+          k: 'people',
+          far: true,
+          who: ['farmer', 'casual', 'hoodie', 'man', 'woman'],
+          n: 60,
+          p: [22, -2],
+          box: [18, 4],
+          anim: ['Walk'],
+          go: [-40, -2],
+          s: [{ t: 0, face: [-40, -11] }],
+        },
+      ],
       st: {
         els: [
           PANEL(
