@@ -151,16 +151,20 @@ ENDS = {
 # x_c4_veerwell／sancta 的逐鏡截圖）：p1＝序章（三個周目共用；音色沿用第 1 章，接得上第 1 章的開場）、
 # q<章>＝抉擇的選前（兩位委託方對峙 → 接回戰場的倒數）、x1～x4＝選後（卡斯特隆、艾瑟立克、維爾威、聖域）
 EXTRA = {
-    'p1': dict(ch=1, dur=134, bpm=92,
-               mood='a cold orbital station ends a cycle and launches a drop pod to the planet, a fiery reentry, four '
-               'powers fighting over one fuel, a nameless mercenary wakes to an AI voice, then war, epic sci-fi prologue',
-               arc='near silent cold signal intro, slow ominous build as the station launches the pod, a fiery rise '
-               'during reentry, a rhythmic driving section introducing four factions, a hush for the awakening, then '
-               'a huge explosive hit and relentless battle action, a brief silence, a dark menacing rival, and a grand '
-               'title climax',
-               curve=[(0, 14, .2), (14, 30, .35), (30, 39, .5), (39, 47, .75), (47, 51, .4), (51, 66, .65),
-                      (66, 70, .35), (70, 76, .25), (76, 79, 1), (79, 106, .9), (106, 111, .15), (111, 120, .55),
-                      (120, 131, 1)]),
+    # 序章（2026-11-15 第二版）：使用者「序章過場動畫的背景音樂太平淡而且大都是弦樂」。重看 cine-shots.js p1：
+    # 是動作遊戲預告片（訊號線 → 軌道站投放 → 再入的火光 → 四家委託方的漫畫分格 → 兩張標語卡 → 黑畫面甦醒 →
+    # 1:16 爆炸 → 戰鬥接連打出宿敵／Boss 的名牌 → 1:46 黑畫面 → 紅天的 ZENITH → LOGO），所以不沿用第 1 章的音色與
+    # 「電影動畫配樂」的開頭（模型會寫成弦樂為主的管弦樂），改成混合電子的預告片配樂（head／pal 覆寫）、120 BPM、能量整體拉高
+    'p1': dict(ch=1, dur=134, bpm=120,
+               head='instrumental hybrid electronic action game trailer music, no vocals',
+               pal='heavy taiko and industrial drums, distorted synth bass, aggressive electric guitar riffs, '
+               'brass stabs, pulsing synth arpeggiator, glitch sound design, deep braam hits',
+               mood='hard-hitting sci-fi mech battle trailer',
+               arc='cold glitchy pulse intro, building tension, a fiery riser, a stomping syncopated groove with two '
+               'hard hits, a dark breath, then a massive drop into relentless driving battle, sudden silence, a dark '
+               'menacing riff, a huge final hit',
+               curve=[(0, 14, .15), (14, 31, .35), (31, 39, .55), (39, 47, .8), (47, 66, .75), (66, 70, .9),
+                      (70, 76, .2), (76, 79, 1), (79, 106, .95), (106, 111, .1), (111, 120, .6), (120, 131, 1)]),
     'q2': dict(ch=2, dur=31, bpm=100,
                mood='a tense standoff between a blunt industrial boss and a cool smiling scientist, a contract against '
                'power, the mercenary must choose a side, a countdown',
@@ -211,9 +215,12 @@ SCENES = {**{f'i{k}': v for k, v in INTROS.items()}, **{f'o{k}': v for k, v in O
 
 
 def caption(sid, pal):
+    # 段落可以覆寫開頭（head）與音色（pal）：序章不沿用那一章的音色
+    it = SCENES[sid]
+    pal = it.get('pal', pal)
     for a, b in NO_VOX:
         pal = pal.replace(a, b)
-    return ', '.join([HEAD, SCENES[sid]['mood'], pal, SCENES[sid]['arc']])[:512]
+    return ', '.join([it.get('head', HEAD), it['mood'], pal, it['arc']])[:512]
 
 
 def chapters(opt):
