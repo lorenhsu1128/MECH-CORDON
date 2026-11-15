@@ -1,1 +1,1 @@
-undertow 的語音：VoxCPM2（OpenBMB，https://github.com/OpenBMB/VoxCPM，Apache-2.0）以 src/assets/voice/ref/undertow.flac 克隆，scripts/voice-gen.py 產生。AI 合成語音，不是任何配音員的聲音。
+undertow 的語音（語音 v3，docs/voice-casting.md）：VoxCPM2（OpenBMB，https://github.com/OpenBMB/VoxCPM，Apache-2.0）以聲音設計產生的 src/assets/voice/ref/v3/undertow.flac 克隆，加上 scripts/voice-lora.py 訓練的這個角色的 LoRA，scripts/voice-gen.py --v3 產生。AI 合成語音，不是任何配音員的聲音。

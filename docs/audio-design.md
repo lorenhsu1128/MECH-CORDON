@@ -341,3 +341,6 @@
 - 交接：`docs/bgm-handoff.md`（2026-11-14 這台暫停，改由 RTX 4070 的電腦接著產生；同一天 8 章全部完成，交接文件改成「已完成」，結果見上面「AI 配樂」的「結果」）。
 - **跨電腦同步**（`scripts/bgm-sync.py`，`npm run bgm:sync -- export|import`）：候選與輕快版的 wav 以 320 kbps mp3 放進進 git 的 `tools/bgm-work/c<章>/`（連同 json、scores.json、picks.json；配樂產生器刪掉的候選也一起刪），別台電腦匯入時解回 48 kHz 的 wav、分數與挑選合併（自己已經有的不蓋）。`bgm:all` 開始時匯入、每一步之後匯出；伺服器啟動時自動匯入並補齊試聽檔；配樂產生器的「同步」按鈕。
 
+## 語音 v3（2026-11-15）
+
+使用者：「目前的語音同角色的聲音會變」→ 每個角色一個聲音（中日文共用）＋一個 LoRA，全部台詞重新產生；旁白改成溫柔的女聲。做法、選角、每個聲音的結果與重做的指令見 `docs/voice-casting.md`。遊戲端的播放（`game/voice.js`、資料夾 `src/assets/voice/<聲音>[_ja]/`、鍵）不變。

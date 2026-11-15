@@ -13,3 +13,6 @@ tools/voicelab/
 tools/acestep/
 .cache/acestep/
 dist/lib/bgm-cand*.js
+
+# 語音 v3：VoxCPM 的原始碼（LoRA 訓練腳本）、訓練資料與 LoRA（scripts/voice-lora.py）
+tools/voxcpm/

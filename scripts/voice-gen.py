@@ -276,9 +276,82 @@ def load_vox():
     if not torch.cuda.is_available():
         sys.exit('沒有 CUDA：要裝 CUDA 版的 PyTorch（pip install torch --index-url https://download.pytorch.org/whl/cu124）')
     torch.set_float32_matmul_precision('high')
-    model = VoxCPM.from_pretrained('openbmb/VoxCPM2', load_denoiser=False, device='cuda')
+    kw = {}
+    if V3:
+        # 語音 v3：模型建好 LoRA 的層（r 32，和 voice-lora.py 訓練的一樣），換角色時換權重
+        from voxcpm.model.voxcpm2 import LoRAConfig
+        kw['lora_config'] = LoRAConfig(enable_lm=True, enable_dit=True, enable_proj=False, r=32, alpha=32)
+    model = VoxCPM.from_pretrained('openbmb/VoxCPM2', load_denoiser=False, device='cuda', **kw)
     print('裝置', torch.cuda.get_device_name(0), flush=True)
     return model
+
+
+# ---------- 語音 v3（docs/voice-casting.md）：每個角色一個聲音＋一個 LoRA ----------
+V3 = False
+LORA_DIR = os.path.join(ROOT, 'tools', 'voxcpm', 'lora')
+
+
+def ref_of(v):
+    """參考音：v3 是中日文共用的 ref/v3/<聲音>.flac"""
+    if V3:
+        return os.path.join(VDIR, 'ref', 'v3', v + '.flac')
+    return os.path.join(VDIR, 'ref', fold(v) + '.flac')
+
+
+def lora_of(v):
+    """這個聲音訓練好的 LoRA（scripts/voice-lora.py 的 tools/voxcpm/lora/<聲音>/ckpt 底下最新的）"""
+    base = os.path.join(LORA_DIR, v, 'ckpt')
+    if not os.path.isdir(base):
+        return None
+    c = [r for r, _, fs in os.walk(base) if any(f.startswith('lora_weights') for f in fs)]
+    return max(c, key=os.path.getmtime) if c else None
+
+
+def lora_ok(v):
+    """voice-lora.py 的比較（eval.json）：加上 LoRA 的聲紋比原本的模型差時不用它（例：資料太少的角色）。
+    比較只有 16 句，平均差 0.01、最低差 0.03 以內算打平（打平時 LoRA 的唸對通常比較好，照樣用）"""
+    f = os.path.join(LORA_DIR, v, 'eval.json')
+    if not os.path.exists(f):
+        return True
+    e = json.load(open(f, encoding='utf-8'))
+    b, l = e['base'], e['lora']
+    # 平均明顯比較好（+0.03 以上）時不看最低：16 句裡的最低值常被單一句拉低，產生時每句 3 次挑最像的會濾掉（敵兵 2）
+    return l['sim_mean'] >= b['sim_mean'] - 0.01 and (
+        l['sim_min'] >= b['sim_min'] - 0.03 or l['sim_mean'] >= b['sim_mean'] + 0.03)
+
+
+def use_lora(model, v):
+    p = lora_of(v) if V3 and lora_ok(v) else None
+    if p:
+        model.tts_model.load_lora_weights(p)
+        model.tts_model.set_lora_enabled(True)
+    elif V3:
+        model.tts_model.set_lora_enabled(False)
+    return p
+
+
+_SV = None
+
+
+def sv_emb(w, sr):
+    """說話者向量（WavLM，16 kHz）：挑 take 時看像不像參考音"""
+    global _SV
+    import torch
+    import librosa
+    from transformers import AutoFeatureExtractor, WavLMForXVector
+    if _SV is None:
+        _SV = (AutoFeatureExtractor.from_pretrained('microsoft/wavlm-base-plus-sv'),
+               WavLMForXVector.from_pretrained('microsoft/wavlm-base-plus-sv').cuda().eval())
+    fe, m = _SV
+    if sr != 16000:
+        w = librosa.resample(np.asarray(w, dtype=np.float32), orig_sr=sr, target_sr=16000)
+    if len(w) < 8000:
+        # 短於 0.5 秒：WavLM 的卷積算不了，當成完全不像（相似度 0）
+        return np.zeros(512, dtype=np.float32)
+    x = fe(w, sampling_rate=16000, return_tensors='pt').to('cuda')
+    with torch.no_grad():
+        e = m(**x).embeddings
+    return torch.nn.functional.normalize(e, dim=-1)[0].cpu().numpy()
 
 
 def load_asr():
@@ -383,7 +456,10 @@ def generate(lines, todo, takes):
     i = 0
     t_all = time.time()
     for v, keys in todo.items():
-        ref = os.path.join(VDIR, 'ref', fold(v) + '.flac')
+        ref = ref_of(v)
+        lp = use_lora(model, v)
+        if V3:
+            print(v, 'LoRA', lp or '（沒有，用原本的模型）', flush=True)
         L0 = lines[LINES_OF.get(v, v)]
         os.makedirs(os.path.join(TAKES, fold(v)), exist_ok=True)
         for k in keys:
@@ -408,6 +484,12 @@ def pick(lines, todo, force):
     for v, keys in todo.items():
         L0 = lines[LINES_OF.get(v, v)]
         rep = []
+        ref_e = None
+        if V3:
+            # v3：聲紋也算進去（像不像參考音）；分數＝唸對＋1.5×聲紋相似度（和 voice-lora.py 挑訓練資料一樣）
+            rw, rsr = sf.read(ref_of(v), dtype='float32')
+            ref_e = sv_emb(rw if rw.ndim == 1 else rw.mean(axis=1), rsr)
+        sims = []
         for k in keys:
             best = None
             for tk in range(1, 9):
@@ -425,13 +507,19 @@ def pick(lines, todo, force):
                     hi = 260 if L0[k]['k'] in ('shout', 'alarm') or '！' in L0[k]['t'] else 200
                     if (g == 'm' and f0 > hi) or (g == 'f' and 0 < f0 < 150):
                         r -= 0.25
-                if not best or r > best[0]:
-                    best = (r, w, sr, got)
+                sc, sim = r, 0.0
+                if ref_e is not None:
+                    sim = float(np.dot(sv_emb(w, sr), ref_e))
+                    sc = r + 1.5 * sim
+                if not best or sc > best[4]:
+                    best = (r, w, sr, got, sc, sim)
             if not best:
                 continue
+            if ref_e is not None:
+                sims.append(best[5])
             write_mp3(best[1], best[2], os.path.join(VDIR, fold(v), k + '.mp3'), 'robot' if v == 'station' else None)
-            if best[0] < 0.75:
-                rep.append(f'{k}\t{best[0]:.2f}\t{L0[k]["t"]}\t{best[3]}')
+            if best[0] < 0.75 or (ref_e is not None and best[5] < 0.75):
+                rep.append(f'{k}\t{best[0]:.2f}\t{L0[k]["t"]}\t{best[3]}' + (f'\t聲紋 {best[5]:.2f}' if ref_e is not None else ''))
         rp = os.path.join(VDIR, fold(v), 'report.txt')
         old = []
         if not force and os.path.exists(rp):
@@ -441,12 +529,21 @@ def pick(lines, todo, force):
         with open(rp, 'w', encoding='utf-8', newline='\n') as f:
             f.write('\n'.join(old + rep) + ('\n' if old or rep else ''))
         print(v, '完成', len(keys), '句，相似度低的', len(rep), '句', flush=True)
+        if sims:
+            print(f'  聲紋相似度 平均 {np.mean(sims):.3f}　最低 {np.min(sims):.3f}', flush=True)
+            with open(os.path.join(VDIR, fold(v), 'v3-sim.txt'), 'w', encoding='utf-8', newline='\n') as f:
+                f.write(f'{len(sims)}\t{np.mean(sims):.3f}\t{np.min(sims):.3f}\n')
     free(asr)
 
 
 def credits(v):
     who = {'gentle': 'ECHO（溫柔知性）', 'ai': 'ECHO（AI 系統感）'}.get(v, v) + ('（日文）' if JA else '')
     with open(os.path.join(VDIR, fold(v), 'CREDITS.txt'), 'w', encoding='utf-8', newline='\n') as f:
+        if V3:
+            f.write(f'{who} 的語音（語音 v3，docs/voice-casting.md）：VoxCPM2（OpenBMB，https://github.com/OpenBMB/VoxCPM，'
+                    f'Apache-2.0）以聲音設計產生的 src/assets/voice/ref/v3/{v}.flac 克隆，加上 scripts/voice-lora.py '
+                    f'訓練的這個角色的 LoRA，scripts/voice-gen.py --v3 產生。AI 合成語音，不是任何配音員的聲音。\n')
+            return
         f.write(f'{who} 的語音：VoxCPM2（OpenBMB，https://github.com/OpenBMB/VoxCPM，Apache-2.0）以 '
                 f'src/assets/voice/ref/{fold(v)}.flac 克隆，scripts/voice-gen.py 產生。AI 合成語音，不是任何配音員的聲音。\n')
 
@@ -461,7 +558,13 @@ def main():
     ap.add_argument('--only', default='', help='只做這些鍵（逗號分隔）')
     ap.add_argument('--more', action='store_true', help='每句再多產生 2 次（第 takes+1、+2 次），和原本的一起重挑')
     ap.add_argument('--lang', default='zh', choices=['zh', 'ja'], help='ja＝日文語音（lines-ja.json，資料夾 <聲音>_ja）')
+    ap.add_argument('--resume', action='store_true',
+                    help='接著上次中斷的 --force：全部台詞重挑，但沿用已產生的 take（不刪暫存）')
+    ap.add_argument('--v3', action='store_true',
+                    help='語音 v3（docs/voice-casting.md）：選角 voice_cast.json、參考音 ref/v3/、每個角色的 LoRA（先跑 voice-lora.py）')
     a = ap.parse_args()
+    global V3, TAKES
+    V3 = a.v3
     lines = json.load(open(os.path.join(VDIR, 'lines.json'), encoding='utf-8'))
     if a.lang == 'ja':
         global JA, SUF
@@ -482,6 +585,12 @@ def main():
                     miss += 1
         if miss:
             print(f'lines-ja.json 少了 {miss} 句的翻譯（略過；先補翻譯）', flush=True)
+    if V3:
+        TAKES = TAKES + '-v3'
+        cast = json.load(open(os.path.join(ROOT, 'scripts', 'voice_cast.json'), encoding='utf-8'))
+        for v, c in cast.items():
+            if not v.startswith('_'):
+                CAST[v] = (c['g'], c['desc'], c['style'])
     voices = [v for v in a.voice.split(',') if v in VOICES]
     if a.recast:
         a.force = True
@@ -489,7 +598,9 @@ def main():
             p = os.path.join(VDIR, 'ref', fold(v) + '.flac')
             if v in CAST and os.path.exists(p):
                 os.unlink(p)
-    need = [v for v in voices if not os.path.exists(os.path.join(VDIR, 'ref', fold(v) + '.flac'))]
+    need = [v for v in voices if not os.path.exists(ref_of(v))]
+    if V3 and need:
+        sys.exit(f'沒有 v3 的參考音（先跑 scripts/voice-lora.py）：{need}')
     bad = [v for v in need if v not in CAST]
     if bad:
         sys.exit(f'沒有參考音檔：{bad}')
@@ -507,7 +618,7 @@ def main():
         elif a.more:
             keys = list(L0)
         else:
-            keys = [k for k in L0 if a.force or not os.path.exists(os.path.join(VDIR, fold(v), k + '.mp3'))]
+            keys = [k for k in L0 if a.force or a.resume or not os.path.exists(os.path.join(VDIR, fold(v), k + '.mp3'))]
         todo[v] = [k for k in keys if k in L0]
         if a.force:
             for k in todo[v]:
@@ -528,7 +639,8 @@ def main():
         return
     print({v: len(k) for v, k in todo.items()}, '句，每句', len(takes), '次', flush=True)
     generate(lines, todo, takes)
-    pick(lines, todo, a.force)
+    # 只重做指定的句子（--only）時報告保留其他句子，只換掉這次重做的
+    pick(lines, todo, a.force and not a.only)
 
 
 if __name__ == '__main__':
