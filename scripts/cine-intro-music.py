@@ -155,14 +155,16 @@ EXTRA = {
     # 是動作遊戲預告片（訊號線 → 軌道站投放 → 再入的火光 → 四家委託方的漫畫分格 → 兩張標語卡 → 黑畫面甦醒 →
     # 1:16 爆炸 → 戰鬥接連打出宿敵／Boss 的名牌 → 1:46 黑畫面 → 紅天的 ZENITH → LOGO），所以不沿用第 1 章的音色與
     # 「電影動畫配樂」的開頭（模型會寫成弦樂為主的管弦樂），改成混合電子的預告片配樂（head／pal 覆寫）、120 BPM、能量整體拉高
-    'p1': dict(ch=1, dur=134, bpm=120,
-               head='instrumental hybrid electronic action game trailer music, no vocals',
-               pal='heavy taiko and industrial drums, distorted synth bass, aggressive electric guitar riffs, '
-               'brass stabs, pulsing synth arpeggiator, glitch sound design, deep braam hits',
-               mood='hard-hitting sci-fi mech battle trailer',
-               arc='cold glitchy pulse intro, building tension, a fiery riser, a stomping syncopated groove with two '
-               'hard hits, a dark breath, then a massive drop into relentless driving battle, sudden silence, a dark '
-               'menacing riff, a huge final hit',
+    # 第三版（同一天）：使用者聽了第二版「太節奏感了，我要輝宏壯闊的交響樂」→ 完整的交響樂團，銅管與定音鼓領頭、
+    # 弦樂只當橫掃的襯底（第一版的問題是弦樂鋪底、沒有起伏），不加合唱（會和對白打架）
+    'p1': dict(ch=1, dur=134, bpm=96,
+               head='instrumental epic symphonic orchestral film score, no vocals',
+               pal='full symphony orchestra, powerful brass fanfares and french horns, thundering timpani and '
+               'orchestral percussion, soaring heroic melody, sweeping strings, cymbal crashes',
+               mood='grand majestic heroic sci-fi epic',
+               arc='mysterious quiet opening, a slow majestic build, a soaring brass swell, a bold march with two '
+               'mighty hits, a hush, then a tremendous tutti climax and heroic battle theme, sudden silence, an '
+               'ominous dark brass motif, a triumphant grand finale',
                curve=[(0, 14, .15), (14, 31, .35), (31, 39, .55), (39, 47, .8), (47, 66, .75), (66, 70, .9),
                       (70, 76, .2), (76, 79, 1), (79, 106, .95), (106, 111, .1), (111, 120, .6), (120, 131, 1)]),
     'q2': dict(ch=2, dur=31, bpm=100,
