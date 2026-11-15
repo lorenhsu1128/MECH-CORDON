@@ -194,4 +194,133 @@ function board(o, L) {
   return out;
 }
 
-export const SCENES = { loading, convoy, board };
+// ---------- 巡邏：軍車慢慢開過（裝甲車或吉普），一小隊步兵跟在旁邊走、隊長在前面揮手 ----------
+// 局部座標：沿 +v 走 len 公尺
+function patrol(o, L) {
+  const id = o.id,
+    t0 = o.t0 || 0,
+    len = o.len || 40;
+  const sp = 2.2; // 跟著步兵的速度
+  const out = [
+    {
+      id: id + '.v',
+      k: 'veh',
+      key: o.veh || 'apc',
+      keys: [
+        { t: t0, p: L.pt(0, -len / 2) },
+        { t: t0 + len / sp, p: L.pt(0, len / 2), lin: true },
+      ],
+      yaw: L.yaw(0),
+      turn: 'move',
+    },
+  ];
+  const n = o.n || 6;
+  for (let i = 0; i < n; i++) {
+    const u = (i % 2 ? 1 : -1) * (2.6 + (i % 3) * 0.5),
+      v0 = -len / 2 - 2 - Math.floor(i / 2) * 2.2;
+    out.push({
+      id: `${id}.s${i}`,
+      k: 'human',
+      who: o.who || 'soldier',
+      p: L.pt(u, v0),
+      anim: 'GunIdle',
+      s: [{ t: t0, go: L.pt(u, v0 + len), run: false }],
+      speed: sp / 1.35,
+      seed: 50 + i,
+    });
+  }
+  out.push({
+    id: id + '.lead',
+    k: 'human',
+    who: o.who || 'soldier',
+    p: L.pt(1.5, -len / 2 + 6),
+    anim: 'Call',
+    s: [{ t: t0 + 0.5, go: L.pt(1.5, len / 2 + 4) }],
+    speed: sp / 1.35,
+    seed: 49,
+  });
+  return out;
+}
+
+// ---------- 施工：挖土機原地挖（動臂與斗桿擺動、上部旋轉），旁邊停一台礦用卡車，工人在旁邊看與指揮 ----------
+function dig(o, L) {
+  const id = o.id;
+  return [
+    {
+      id: id + '.ex',
+      k: 'veh',
+      key: 'excavator',
+      p: L.pt(0, 0),
+      yaw: L.yaw(0),
+      swing: {
+        turret: ['y', 0, 0.7, 7, 0],
+        boom: ['x', -0.35, 0.22, 3.5, 0],
+        arm: ['x', 1.15, 0.35, 3.5, 0.8],
+        bucket: ['x', 0.3, 0.5, 3.5, 1.4],
+      },
+    },
+    { id: id + '.tr', k: 'veh', key: o.truck || 'hauler', p: L.pt(7, 3), yaw: L.yaw(-30) },
+    {
+      id: id + '.w1',
+      k: 'human',
+      who: 'worker',
+      p: L.pt(-4, 4),
+      anim: 'Call',
+      s: [{ t: 0, face: L.pt(0, 0) }],
+      seed: 61,
+    },
+    {
+      id: id + '.w2',
+      k: 'human',
+      who: 'crew',
+      p: L.pt(-5, 6),
+      anim: 'Phone',
+      s: [{ t: 0, face: L.pt(0, 0) }],
+      seed: 62,
+    },
+    {
+      id: id + '.w3',
+      k: 'human',
+      who: 'worker',
+      p: L.pt(4, -3),
+      anim: 'Arms',
+      s: [{ t: 0, face: L.pt(0, 0) }],
+      seed: 63,
+    },
+  ];
+}
+
+// ---------- 群聚：一群人站著做事（交談、講電話、抱胸、蹲著修理），旁邊停一兩台車 ----------
+function crowd(o, L) {
+  const id = o.id,
+    n = o.n || 10;
+  const rnd = r1(o.seed || 9);
+  const who = o.who || ['worker', 'crew', 'casual', 'hoodie', 'farmer'];
+  const anims = o.anims || ['Talk', 'Phone', 'Arms', 'Fix', 'Use', 'Yes', 'Idle'];
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const a = rnd() * Math.PI * 2,
+      r = 1.5 + rnd() * 5;
+    out.push({
+      id: `${id}.h${i}`,
+      k: 'human',
+      who: who[Math.floor(rnd() * who.length)],
+      p: L.pt(Math.cos(a) * r, Math.sin(a) * r),
+      anim: anims[Math.floor(rnd() * anims.length)],
+      s: [{ t: 0, face: L.pt(Math.cos(a) * r * 0.3, Math.sin(a) * r * 0.3) }],
+      seed: 70 + i,
+    });
+  }
+  for (const [j, k] of (o.vehs || ['pickup']).entries())
+    out.push({
+      id: `${id}.v${j}`,
+      k: 'veh',
+      key: k,
+      v: j,
+      p: L.pt(-7 + j * 4, -5 + j * 2),
+      yaw: L.yaw(20 + j * 35),
+    });
+  return out;
+}
+
+export const SCENES = { loading, convoy, board, patrol, dig, crowd };

@@ -13,6 +13,8 @@ import { SFX } from '../audio/audio.js';
 import { energyWarm } from '../fx/energy.js';
 import { transpWarm, warmGroup } from '../render/shader-warm.js';
 import { CINE_GRADE } from './constants.js';
+import { CINE_CROWD } from '../data/cine/crowd.js';
+import { shotKey } from '../data/cine/exposure.js';
 import { Game } from './game.js';
 
 const $ = (id) => document.getElementById(id);
@@ -91,6 +93,12 @@ Object.assign(Game.prototype, {
     for (const si of shots) {
       const sh = c.def.shots[si];
       for (const spec of sh.actors || []) if (!c.actors.has(spec.id)) this.cineAddActor(spec, sh.at);
+      // 自動的人與載具（data/cine/crowd.js）也一起預熱
+      const crowd = sh.crowd === false ? null : CINE_CROWD[shotKey(sh)];
+      for (const [i, spec] of (crowd || []).entries()) {
+        const id = `warm${si}_${i}`;
+        if (!c.actors.has(id)) this.cineAddActor({ ...spec, id }, sh.at);
+      }
     }
     // 各章的掛勾（game/cine-c<章>.js）在進鏡頭時才建的模型（天線、殘骸…）也一起預熱：enter 之後馬上 exit
     const hooked = shots.map((i) => c.def.shots[i]).filter((sh) => sh.hook);

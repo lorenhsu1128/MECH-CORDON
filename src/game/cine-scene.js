@@ -37,7 +37,7 @@ Object.assign(Game.prototype, {
       yaw: (d) => (spec.yaw || 0) + d,
     };
     const kids = fn ? fn(spec, L) : [];
-    const A = { id: spec.id, spec, t0: shotAt, si: 0, pup: {}, kids: kids.map((k) => k.id) };
+    const A = { id: spec.id, spec, t0: shotAt, si: 0, pup: {}, kids: kids.map((k) => k.id), acts: c.actors };
     c.actors.set(spec.id, A);
     for (const k of kids) if (!c.actors.has(k.id)) this.cineAddActor(k, shotAt);
     return A;
@@ -98,7 +98,14 @@ Object.assign(Game.prototype, {
     }
     if (A.rode && spec.ride && lt > spec.ride[spec.ride.length - 1].t1) return; // 放下之後停在放下的地方
     const k = spec.keys;
-    if (!k || !k.length) return;
+    if (!k || !k.length) {
+      if (spec.swing)
+        for (const [pn, [ax, c0, amp, per, ph]] of Object.entries(spec.swing)) {
+          const p = v.parts[pn];
+          if (p) p.rotation[ax] = c0 + amp * Math.sin(((lt + (ph || 0)) / per) * Math.PI * 2);
+        }
+      return;
+    }
     let i = 0;
     while (i < k.length - 1 && k[i + 1].t <= lt) i++;
     const a = k[i],
@@ -127,6 +134,12 @@ Object.assign(Game.prototype, {
       const dist = j > i ? s.acc + s.len * s.sg * e : s.acc + s.len * s.sg;
       for (const wh of v.wheels) wh.o.rotation.x = dist / wh.r;
     }
+    // 零件的持續擺動：spec.swing＝{ 零件: [軸 'x'|'y'|'z', 中心（弧度）, 幅度, 週期（秒）, 相位] }（挖土機挖土、吊車轉）
+    if (spec.swing)
+      for (const [pn, [ax, c0, amp, per, ph]] of Object.entries(spec.swing)) {
+        const p = v.parts[pn];
+        if (p) p.rotation[ax] = c0 + amp * Math.sin(((lt + (ph || 0)) / per) * Math.PI * 2);
+      }
     // 貨叉的高度
     if (v.parts.fork && (a.f != null || b.f != null)) {
       const fa = a.f ?? b.f,

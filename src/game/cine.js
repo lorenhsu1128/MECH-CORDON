@@ -47,6 +47,7 @@ import {
 import { World } from '../world/world.js';
 import { CINE_GRADE } from './constants.js';
 import { CINE_EXPO, shotKey } from '../data/cine/exposure.js';
+import { CINE_CROWD } from '../data/cine/crowd.js';
 import { Game } from './game.js';
 
 const $ = (id) => document.getElementById(id);
@@ -711,6 +712,19 @@ Object.assign(Game.prototype, {
     c.xk = xk;
     // 倍率在 renderMain 套用（地圖的調色還會經過 styleThemed 的依地圖覆寫，覆寫裡也有曝光）
     c.xm = (this.cineExpoTest && this.cineExpoTest[xk]) || (!S.dark && CINE_EXPO[xk]) || 1;
+    // 自動的人與載具（data/cine/crowd.js）：上一鏡的拿掉、這一鏡的加上
+    for (const id of c.autoIds || []) {
+      const a = c.actors.get(id);
+      if (a) this.cineDropActor(a);
+      c.actors.delete(id);
+    }
+    c.autoIds = [];
+    const crowd = S.crowd === false ? null : (this.cineCrowdTest || CINE_CROWD)[xk];
+    for (const [i, spec] of (crowd || []).entries()) {
+      const sp = { ...spec, id: `auto${i}_${spec.id || ''}` };
+      this.cineAddActor(sp, S.at);
+      c.autoIds.push(sp.id);
+    }
     // 室內（room）：天空用場景的背景色（窗外的夜色），不畫風格的天空與雲
     if (S.set && S.set.k === 'room') Object.assign(c.P, { sky: 'theme', dust: 0, fogColorK: 0, hfog: 0 });
     if (S.set && S.set.k === 'space') {
@@ -898,12 +912,15 @@ Object.assign(Game.prototype, {
     if (A.dropped) return;
     A.dropped = true;
     // 互動小品：子演員一起移除
-    if (A.kids)
+    // （過場結束時 this.cine 已經是 null：用小品建立時記下的演員表）
+    if (A.kids) {
+      const acts = A.acts || (this.cine && this.cine.actors);
       for (const id of A.kids) {
-        const k = this.cine.actors.get(id);
+        const k = acts && acts.get(id);
         if (k) this.cineDropActor(k);
-        this.cine.actors.delete(id);
+        if (acts) acts.delete(id);
       }
+    }
     if (A.e) {
       A.e.cleanup && A.e.cleanup();
       this.scene.remove(A.e.mesh);
