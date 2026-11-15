@@ -2,7 +2,9 @@
 // 空降艙與墜落現場。全部程式產生，純函式（不呼叫遊戲的亂數串，用自己的 makeRng），模型庫登記 vehicle/cine_*。
 // 座標：太空場景的鏡頭在原點附近，行星中心在 (0, -PLANET_R - ALT, 0)，所以原點離地 ALT 公尺。
 import { makeRng } from '../core/math.js';
-import { CB, P, bakeAll, gBox, gCyl, gSph } from './geometry.js';
+import * as K from './dev-kit.js';
+import { buildCineVeh } from './cine-vehicles.js';
+import { CB, P, bakeAll, fine, gBox, gCyl, gSph } from './geometry.js';
 import { mechMats } from './materials.js';
 import { tagStyle } from './style/shader.js';
 
@@ -437,8 +439,157 @@ export function buildStation() {
     g.add(l);
     lamps.push(l);
   }
+  stationDetail(g, hull, M);
   bakeAll(g, { tint: { ao: 0.8, grime: 0 }, cache: 'cine:station' }); // 精細版（docs/model-detail.md）
+  // 對接中的穿梭機（render/cine-vehicles3.js；合併好的模型，不再烘焙）
+  for (const [y, a] of [
+    [95, 0.6],
+    [205, 3.6],
+  ]) {
+    const sh = buildCineVeh('shuttle').group;
+    sh.scale.setScalar(1.6);
+    sh.position.set(Math.cos(a) * 34, y, Math.sin(a) * 34);
+    sh.rotation.set(0, -a + Math.PI / 2, Math.PI / 2);
+    g.add(sh);
+  }
   return { group: g, bay, lampMat };
+}
+
+// 軌道站的細節層（docs/cine-redesign-design.md 第十一節「建模」）：脊柱各節的分割環與螺栓、一圈窗、桁架、對接臂、
+// 居住環的環管與窗、散熱板的電池格線、天線與航行燈
+function stationDetail(g, hull, M) {
+  const win = new THREE.MeshStandardMaterial({
+    color: 0xffe0a8,
+    emissive: 0xffd890,
+    emissiveIntensity: 1.6,
+    roughness: 0.4,
+  });
+  const navR = new THREE.MeshStandardMaterial({ color: 0xff3030, emissive: 0xff2020, emissiveIntensity: 2 });
+  const navG = new THREE.MeshStandardMaterial({ color: 0x30ff70, emissive: 0x20ff50, emissiveIntensity: 2 });
+  for (let i = 0; i < 18; i++) {
+    const y = -80 + i * 22;
+    const r = i % 3 === 0 ? 15 : 12;
+    // 分割環兩道、螺栓圈
+    for (const dy of [-6, 6]) K.cy(hull, M.sub, r + 0.35, 0.5, 0, y + dy, 0, 32);
+    fine(() => K.boltRing(hull, M.joint, r + 0.5, y + 10.5, 24, 0.35));
+    // 一圈窗（每 3 節亮一圈）
+    if (i % 3 === 1)
+      for (let k = 0; k < 20; k++) {
+        const a = (k / 20) * Math.PI * 2;
+        K.bx(
+          hull,
+          win,
+          1.4,
+          0.8,
+          0.3,
+          Math.cos(a) * (r + 0.1),
+          y + 2,
+          Math.sin(a) * (r + 0.1),
+          0,
+          -a + Math.PI / 2,
+          0,
+          0.1,
+        );
+      }
+    // 檢修艙門與把手
+    fine(() => {
+      K.bx(hull, M.grey, 3.5, 5, 0.4, 0, y - 1, r + 0.15, 0, 0, 0, 0.2);
+      K.handle(hull, M.joint, 1.6, 0, y + 0.5, r + 0.4, 0, 0.4, 0.12);
+    });
+  }
+  // 桁架（脊柱兩側，三角形的格）
+  for (const sx of [-1, 1]) {
+    const x0 = sx * 20;
+    for (let i = 0; i < 16; i++) {
+      const y0 = -70 + i * 22,
+        y1 = y0 + 22;
+      K.rod(hull, M.sub, [x0, y0, -3], [x0, y1, -3], 0.5);
+      K.rod(hull, M.sub, [x0, y0, 3], [x0, y1, 3], 0.5);
+      K.rod(hull, M.joint, [x0, y0, -3], [x0, y1, 3], 0.3);
+      K.rod(hull, M.joint, [x0, y0, -3], [x0, y0, 3], 0.3);
+      if (i % 4 === 0) K.rod(hull, M.joint, [x0, y0, 0], [sx * 12, y0, 0], 0.4);
+    }
+  }
+  // 居住環：環管＋一排窗＋對接臂
+  for (const y of [40, 150, 250]) {
+    K.put(hull, new THREE.TorusGeometry(44, 2.2, 10, 64), M.sub, 0, y + 4.2, 0, Math.PI / 2, 0, 0);
+    for (let k = 0; k < 48; k++) {
+      const a = (k / 48) * Math.PI * 2;
+      K.bx(
+        hull,
+        win,
+        1.2,
+        1.0,
+        0.3,
+        Math.cos(a) * 48.7,
+        y + 1,
+        Math.sin(a) * 48.7,
+        0,
+        -a + Math.PI / 2,
+        0,
+        0.1,
+      );
+    }
+  }
+  for (const [y, a] of [
+    [95, 0.6],
+    [205, 3.6],
+  ]) {
+    K.cy(hull, M.main2, 3, 22, Math.cos(a) * 23, y, Math.sin(a) * 23, 16, 0.4, 3, 0, 0, 0);
+    K.rod(
+      hull,
+      M.main2,
+      [Math.cos(a) * 12, y, Math.sin(a) * 12],
+      [Math.cos(a) * 30, y, Math.sin(a) * 30],
+      2.4,
+    );
+    K.cy(hull, M.acc, 4, 1.4, Math.cos(a) * 30, y, Math.sin(a) * 30, 20, 0.2, 4, 0, -a, Math.PI / 2);
+  }
+  // 散熱板：電池格線、邊框、鉸鏈
+  for (const s of [-1, 1]) {
+    fine(() => {
+      for (let i = 0; i < 12; i++) K.bx(hull, M.joint, 0.4, 1.3, 46, s * (22 + i * 12.5), 200, 0, 0, 0, 0, 0);
+      for (let j = 0; j < 5; j++) K.bx(hull, M.joint, 156, 1.3, 0.4, s * 98, 200, -20 + j * 10, 0, 0, 0, 0);
+    });
+    K.bx(hull, M.sub, 160, 2, 1.2, s * 98, 200, 23.5, 0, 0, 0, 0.3);
+    K.bx(hull, M.sub, 160, 2, 1.2, s * 98, 200, -23.5, 0, 0, 0, 0.3);
+    K.cy(hull, M.joint, 3, 6, s * 17, 200, 0, 16, 0.3, 3, 0, 0, Math.PI / 2);
+  }
+  // 天線（碟形與桿狀）與航行燈
+  K.lathe(
+    hull,
+    M.main3,
+    [
+      [0, 0],
+      [5, 0.8],
+      [9, 3],
+      [9.3, 3.4],
+      [0, 1],
+    ],
+    0,
+    302,
+    0,
+    'y',
+    24,
+  );
+  K.cy(hull, M.joint, 0.5, 14, 0, 296, 0, 8);
+  for (let k = 0; k < 4; k++) {
+    const a = (k / 4) * Math.PI * 2 + 0.3;
+    K.rod(
+      hull,
+      M.joint,
+      [Math.cos(a) * 14, 120, Math.sin(a) * 14],
+      [Math.cos(a) * 22, 145, Math.sin(a) * 22],
+      0.3,
+    );
+  }
+  for (const [x, y, z, m] of [
+    [-178, 200, 0, navR],
+    [178, 200, 0, navG],
+    [0, 310, 0, navR],
+    [0, -104, 0, navG],
+  ])
+    K.cy(hull, m, 1.2, 1.2, x, y, z, 10);
 }
 
 // ---------- 空降艙（vehicle/cine_pod）：裡面裝著一台 AC。機頭（熱罩）朝 -Y，尾端 +Y 有 4 具推進器 ----------
