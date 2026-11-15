@@ -499,7 +499,7 @@ export function prologueCine(ctx) {
   shots.push({
     at: 46,
     set: { k: 'black' },
-    ev: [{ t: 1.0, card: 'CORAL', s: '這顆星球唯一的燃料，也是唯一的戰爭理由。', dur: 3 }],
+    ev: [{ t: 1.0, card: 'DEEPVEIN', s: '這顆星球唯一的燃料，也是唯一的戰爭理由。', dur: 3 }],
   });
   // ---- 0:50 世界觀的空景（四家委託方、軌道站），配樂每兩秒一下的脈動 ----
   let at = 50.1;
