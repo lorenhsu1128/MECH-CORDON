@@ -8,6 +8,15 @@ import { P, bakeAll, fine, gBox } from './geometry.js';
 import { D } from './detail.js';
 import { treadMat, vCab, vExhaust, vJerry, vLamp, vLight, vMirror, vTrack, vWheel } from './vehicle-kit.js';
 import * as K from './dev-kit.js';
+import {
+  buildCrane,
+  buildExcavator,
+  buildHauler,
+  buildLavaHauler,
+  buildLowboy,
+  buildNewsVan,
+  buildTug,
+} from './cine-vehicles2.js';
 import { buildTransport } from './extra-models.js';
 import { buildVehicle } from './vehicle-models.js';
 import { PALETTES } from './materials.js';
@@ -949,6 +958,14 @@ export function buildCineVeh(key, o = {}) {
   else if (key === 'apc') r = buildApc(o.color);
   else if (key === 'snowcat') r = buildSnowcat();
   else if (key === 'tanker') r = buildTanker();
+  // 第二批（render/cine-vehicles2.js）
+  else if (key === 'hauler') r = buildHauler();
+  else if (key === 'excavator') r = buildExcavator();
+  else if (key === 'crane') r = buildCrane();
+  else if (key === 'lavahauler') r = buildLavaHauler();
+  else if (key === 'tug') r = buildTug();
+  else if (key === 'lowboy') r = buildLowboy();
+  else if (key === 'newsvan') r = buildNewsVan();
   else if (key === 'tank') {
     const m = buildVehicle(PALETTES[o.pal || 'enemy'] || PALETTES.enemy, 1, 'tank');
     r = { group: m.group || m, wheels: [], parts: {}, len: 8 };
@@ -958,3 +975,22 @@ export function buildCineVeh(key, o = {}) {
   tagStyle(r.group);
   return r;
 }
+
+// 給 render/cine-vehicles2.js（第二批之後的載具）用的共用工具
+export {
+  HP,
+  M,
+  mats,
+  wheelM,
+  driver,
+  axles,
+  fenders,
+  nose,
+  tail,
+  plate,
+  door,
+  wipers,
+  mudflaps,
+  markers,
+  underbody,
+};
