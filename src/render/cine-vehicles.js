@@ -6,7 +6,8 @@
 // 地圖的掩體車輛（world/cover-models.js）車頭朝 −Z，這裡轉 180°；它們的車輪是合併的（遠景用），近景的動作用 truck／forklift。
 import { P, bakeAll, fine, gBox } from './geometry.js';
 import { D } from './detail.js';
-import { treadMat, vCab, vExhaust, vLamp, vLight, vMirror, vTrack, vWheel } from './vehicle-kit.js';
+import { treadMat, vCab, vExhaust, vJerry, vLamp, vLight, vMirror, vTrack, vWheel } from './vehicle-kit.js';
+import * as K from './dev-kit.js';
 import { buildTransport } from './extra-models.js';
 import { buildVehicle } from './vehicle-models.js';
 import { PALETTES } from './materials.js';
@@ -36,11 +37,11 @@ function mats() {
     skin: M(0xb08060, { roughness: 0.8, metalness: 0 }),
     helmet: M(0xf2c230, { roughness: 0.5, metalness: 0.1 }),
     glass: M(0x304048, { roughness: 0.15, metalness: 0.6 }),
-    white: M(0xcfd2d4, { roughness: 0.65, metalness: 0.1 }),
+    white: M(0xb4b8bb, { roughness: 0.75, metalness: 0.05 }),
     red: M(0xc02a24, { roughness: 0.5, metalness: 0.2 }),
     olive: M(0x56603e, { roughness: 0.7, metalness: 0.2 }),
     orange: M(0xe06a18, { roughness: 0.55, metalness: 0.25 }),
-    tankSteel: M(0xa8acb0, { roughness: 0.5, metalness: 0.45 }),
+    tankSteel: M(0x8c9196, { roughness: 0.6, metalness: 0.4 }),
     // 警示燈（救護車的紅、藍）
     lightR: M(0xff3030, { emissive: 0xff2020, emissiveIntensity: 1.2 }),
     lightB: M(0x3060ff, { emissive: 0x2050ff, emissiveIntensity: 1.2 }),
@@ -290,6 +291,7 @@ function buildPickup(color) {
   tail(g, T, WM, -2.72, 1.88, 1.1);
   axles(g, WM, [1.8, -1.7], 0.82, 0.4, 0.3, wheels);
   fenders(g, body, [1.8, -1.7], 0.82, 0.4, 0.3);
+  detailPickup(g, T);
   bakeAll(g, { tint: { ao: 0.85, grime: 0.3, gh: 0.8 }, cache: 'cineveh:pickup' });
   return { group: g, wheels, parts: {}, len: 5.3 };
 }
@@ -322,6 +324,7 @@ function buildAmbulance() {
   for (const z of [0.85, -3.05])
     for (const s of [-1, 1]) vLamp(g, WM, T.lightR, s * 1.0, 3.0, z, 0.18, 0.14, z > 0 ? Math.PI : 0);
   axles(g, WM, [2.35, -1.9], 0.9, 0.42, 0.3, wheels, [-1.9]);
+  detailAmbulance(g, T);
   bakeAll(g, { tint: { ao: 0.85, grime: 0.3, gh: 0.8 }, cache: 'cineveh:ambulance' });
   return { group: g, wheels, parts: {}, len: 6.4 };
 }
@@ -374,6 +377,7 @@ function buildJeep(color = 0x56603e) {
   tail(g, T, WM, -2.01, 1.7, 1.0);
   axles(g, WM, [1.4, -1.3], 0.82, 0.42, 0.32, wheels);
   fenders(g, body, [1.4, -1.3], 0.82, 0.42, 0.32);
+  detailJeep(g, T, body);
   bakeAll(g, { tint: { ao: 0.85, grime: 0.3, gh: 0.8 }, cache: 'cineveh:jeep' });
   return { group: g, wheels, parts: {}, len: 4.3 };
 }
@@ -441,6 +445,7 @@ function buildApc(color = 0x56603e) {
   for (const s of [-1, 1]) vLight(g, WM, T.lamp, s * 0.9, 1.75, 3.3, 0.1, Math.PI, true);
   tail(g, T, WM, -3.72, 2.4, 1.9);
   axles(g, WM, [2.3, 0.8, -0.8, -2.3], 1.42, 0.58, 0.42, wheels);
+  detailApc(g, T, body);
   bakeAll(g, { tint: { ao: 0.85, grime: 0.3, gh: 0.8 }, cache: 'cineveh:apc' });
   return { group: g, wheels, parts: {}, len: 7.4 };
 }
@@ -494,6 +499,7 @@ function buildSnowcat() {
   P(g, D.box(2.0, 0.08, 1.6, 0.02), T.dark, 0, 1.45, -1.6);
   for (const s of [-1, 1]) P(g, D.box(0.05, 0.4, 1.6, 0.01), T.dark, s * 0.98, 1.68, -1.6);
   P(g, D.box(0.9, 0.5, 0.7, 0.04), T.olive, -0.4, 1.74, -1.5);
+  detailSnowcat(g, T);
   bakeAll(g, { tint: { ao: 0.85, grime: 0.3, gh: 0.8 }, cache: 'cineveh:snowcat' });
   return { group: g, wheels, parts: {}, len: 5.4 };
 }
@@ -542,8 +548,371 @@ function buildTanker() {
   tail(g, T, WM, -4.6, 2.2, 1.05);
   axles(g, WM, [3.75, -2.4, -3.6], 0.95, 0.52, 0.34, wheels, [-2.4, -3.6]);
   fenders(g, T.dark, [-2.4, -3.6], 0.95, 0.52, 0.34);
+  detailTanker(g, T);
   bakeAll(g, { tint: { ao: 0.85, grime: 0.3, gh: 0.8 }, cache: 'cineveh:tanker' });
   return { group: g, wheels, parts: {}, len: 9.6 };
+}
+
+// ---------- 細節層（docs/model-detail.md 的三層細節：中層的門、窗、框架；小細節的螺栓、把手、標示，包在 fine 裡） ----------
+// 車牌：白底＋一排字塊（face＝+1 朝前、−1 朝後）
+function plate(g, T, y, z, face) {
+  K.bx(g, T.white, 0.52, 0.13, 0.02, 0, y, z + face * 0.012);
+  fine(() => {
+    for (let i = 0; i < 6; i++) K.bx(g, T.dark, 0.045, 0.075, 0.01, -0.17 + i * 0.068, y, z + face * 0.024);
+  });
+}
+// 車門：門縫（四邊的細條）＋把手（側面 sx＝±1，z0～z1、y0～y1）
+function door(g, T, sx, x, z0, z1, y0, y1) {
+  const c = T.dark;
+  fine(() => {
+    K.bx(g, c, 0.012, y1 - y0, 0.012, x + sx * 0.006, (y0 + y1) / 2, z0, 0, 0, 0, 0);
+    K.bx(g, c, 0.012, y1 - y0, 0.012, x + sx * 0.006, (y0 + y1) / 2, z1, 0, 0, 0, 0);
+    K.bx(g, c, 0.012, 0.012, z1 - z0, x + sx * 0.006, y0, (z0 + z1) / 2, 0, 0, 0, 0);
+    K.handle(g, T.metal, 0.16, x + sx * 0.005, y0 + (y1 - y0) * 0.62, z0 + 0.14, sx * HP, 0.04, 0.012);
+  });
+}
+// 雨刷（擋風玻璃下緣，兩支）
+function wipers(g, T, w, y, z, tilt) {
+  fine(() => {
+    for (const s of [-1, 1]) {
+      K.bx(g, T.dark, w * 0.42, 0.018, 0.03, s * w * 0.18, y, z, tilt, 0, s * 0.18, 0.004);
+      K.cy(g, T.dark, 0.025, 0.04, s * w * 0.36, y - 0.04, z, 8);
+    }
+  });
+}
+// 擋泥片（後輪後方）
+function mudflaps(g, T, x, z, R) {
+  for (const s of [-1, 1]) K.bx(g, T.tire, 0.34, R * 0.95, 0.02, s * x, R * 0.62, z, 0, 0, 0, 0.005);
+}
+// 側面的示寬燈（琥珀色小燈，一排）
+function markers(g, T, x, y, zs) {
+  fine(() => {
+    for (const z of zs)
+      for (const s of [-1, 1]) K.bx(g, T.amber, 0.02, 0.05, 0.1, s * x, y, z, 0, 0, 0, 0.005);
+  });
+}
+// 底盤：傳動軸、排氣管、車軸
+function underbody(g, T, zf, zr, y, axZ, w) {
+  K.cz(g, T.steel, 0.05, zf - zr, 0, y, (zf + zr) / 2, 10);
+  K.pipe(
+    g,
+    T.metal,
+    [
+      [0.35, y + 0.02, zf - 0.4],
+      [0.45, y - 0.02, (zf + zr) / 2],
+      [0.55, y - 0.02, zr - 0.15],
+    ],
+    0.045,
+  );
+  for (const z of axZ) K.cx(g, T.steel, 0.06, w, 0, y - 0.02, z, 10);
+}
+
+function detailPickup(g, T) {
+  for (const s of [-1, 1]) door(g, T, s, s * 0.95, 0.05, 1.25, 0.82, 1.7);
+  // 防撞桿（前方）
+  for (const s of [-1, 1]) K.rod(g, T.dark, [s * 0.5, 0.5, 2.82], [s * 0.45, 1.2, 2.86], 0.04);
+  K.rod(g, T.dark, [-0.55, 1.2, 2.86], [0.55, 1.2, 2.86], 0.04);
+  K.rod(g, T.dark, [-0.62, 0.72, 2.84], [0.62, 0.72, 2.84], 0.045);
+  // 貨斗：工具箱、底板的肋、固定勾
+  K.bx(g, T.steel, 1.7, 0.3, 0.42, 0, 1.47, -0.72);
+  fine(() => {
+    K.fins(g, T.dark, 7, 1.4, 0.03, 2.1, 0, 0.87, -1.55, 0, 0.04);
+    for (const s of [-1, 1])
+      for (const z of [-0.8, -2.3]) K.handle(g, T.metal, 0.08, s * 0.83, 1.0, z, s * -HP, 0.03, 0.01);
+    K.handle(g, T.metal, 0.3, 0, 1.2, -2.72, Math.PI, 0.03, 0.015);
+  });
+  // 拖車球、後保險桿
+  K.bx(g, T.dark, 1.9, 0.18, 0.16, 0, 0.55, -2.78);
+  K.lathe(
+    g,
+    T.metal,
+    [
+      [0, 0],
+      [0.04, 0],
+      [0.04, 0.06],
+      [0.06, 0.1],
+      [0, 0.16],
+    ],
+    0,
+    0.6,
+    -2.95,
+    'y',
+    12,
+  );
+  // 側踏板、車頂燈、天線
+  for (const s of [-1, 1]) K.cz(g, T.dark, 0.035, 1.5, s * 1.0, 0.52, 0.6, 10);
+  fine(() => {
+    for (const x of [-0.2, 0, 0.2]) K.bx(g, T.amber, 0.1, 0.04, 0.05, x, 1.87, 1.0, 0, 0, 0, 0.01);
+    K.cy(g, T.dark, 0.008, 0.9, 0.85, 2.3, 0.4, 6);
+    K.cy(g, T.dark, 0.06, 0.03, -0.93, 1.15, -1.25, 12, 0, 0.06, 0, 0, HP); // 油箱蓋
+  });
+  plate(g, T, 0.55, 2.94, 1);
+  plate(g, T, 0.75, -2.9, -1);
+  wipers(g, T, 1.8, 1.42, 1.2, -0.7);
+  mudflaps(g, T, 0.82, -2.18, 0.4);
+  markers(g, T, 0.95, 0.95, [2.4, -2.5]);
+  underbody(g, T, 2.2, -2.3, 0.42, [1.8, -1.7], 1.5);
+}
+
+function detailAmbulance(g, T) {
+  for (const s of [-1, 1]) {
+    door(g, T, s, s * 1.06, 1.45, 2.5, 0.85, 2.15);
+    // 車廂的器材門（下排）與門扣、側窗、扶手
+    for (const [z0, z1] of [
+      [-2.75, -1.75],
+      [-1.55, -0.45],
+    ]) {
+      door(g, T, s, s * 1.15, z0, z1, 0.75, 1.35);
+      fine(() => K.bx(g, T.metal, 0.02, 0.06, 0.12, s * 1.16, 1.05, (z0 + z1) / 2, 0, 0, 0, 0.005));
+    }
+    K.bx(g, T.glass, 0.02, 0.45, 0.9, s * 1.155, 2.55, 0.65, 0, 0, 0, 0.005);
+    fine(() => K.handle(g, T.metal, 0.5, s * 1.16, 2.0, 1.15, s * HP, 0.05, 0.015));
+  }
+  // 後面：踏板（防滑）、紅白斜紋、兩片後窗、門把
+  K.bx(g, T.metal, 2.2, 0.08, 0.35, 0, 0.55, -3.3);
+  fine(() => K.fins(g, T.dark, 9, 2.0, 0.015, 0.3, 0, 0.6, -3.3, 0, 0.02));
+  K.hazard(g, T.red, T.white, 2.2, 0.22, 0.02, 0, 0.88, -3.13, Math.PI, 8);
+  for (const s of [-1, 1]) K.bx(g, T.glass, 0.8, 0.55, 0.02, s * 0.5, 2.5, -3.125, 0, 0, 0, 0.005);
+  fine(() => {
+    for (const s of [-1, 1]) K.handle(g, T.metal, 0.12, s * 0.12, 1.6, -3.13, Math.PI, 0.04, 0.012);
+  });
+  // 車頂：空調的散熱片、現場照明燈、欄杆
+  fine(() => K.fins(g, T.dark, 9, 0.8, 0.12, 0.7, 0, 3.32, -1.6, 0, 0.02));
+  for (const [x, z] of [
+    [-1.05, 0.95],
+    [1.05, 0.95],
+    [-1.05, -2.95],
+    [1.05, -2.95],
+  ])
+    vLight(g, wheelM(T), T.lamp, x, 3.0, z, 0.08, x < 0 ? HP : -HP, false);
+  for (const s of [-1, 1]) K.rod(g, T.metal, [s * 0.9, 3.18, -2.6], [s * 0.9, 3.18, 0.6], 0.02);
+  // 前保險桿的警報喇叭、車牌、雨刷、擋泥片、示寬燈
+  K.bx(g, T.dark, 0.22, 0.16, 0.12, -0.6, 0.62, 3.38);
+  plate(g, T, 0.55, 3.38, 1);
+  plate(g, T, 0.75, -3.45, -1);
+  wipers(g, T, 2.0, 1.92, 3.0, -0.6);
+  mudflaps(g, T, 0.9, -2.45, 0.42);
+  markers(g, T, 1.16, 0.75, [0.9, -1.0, -2.9]);
+  underbody(g, T, 2.8, -2.9, 0.42, [2.35, -1.9], 1.6);
+}
+
+function detailJeep(g, T, body) {
+  // 油桶（車尾兩側）、鏟子和斧頭（右側）
+  for (const s of [-1, 1]) vJerry(g, wheelM(T), T.olive, s * 0.62, 0.95, -2.1, 0);
+  K.rod(g, T.wood, [0.9, 1.15, -1.6], [0.9, 1.15, -0.2], 0.022);
+  K.bx(g, T.steel, 0.02, 0.22, 0.3, 0.9, 1.15, -1.75, 0, 0, 0, 0.01);
+  K.rod(g, T.wood, [0.9, 0.95, -1.5], [0.9, 0.95, -0.5], 0.02);
+  K.bx(g, T.steel, 0.02, 0.18, 0.12, 0.9, 0.98, -0.45, 0, 0, 0, 0.01);
+  // 前保險桿＋絞盤、拖車勾、頭燈護欄、引擎蓋扣
+  K.bx(g, T.dark, 1.9, 0.2, 0.18, 0, 0.6, 2.3);
+  K.cx(g, T.steel, 0.12, 0.6, 0, 0.62, 2.42, 14);
+  for (const s of [-1, 1])
+    K.lathe(
+      g,
+      T.metal,
+      [
+        [0.05, -0.02],
+        [0.07, 0],
+        [0.05, 0.02],
+      ],
+      s * 0.7,
+      0.5,
+      2.45,
+      'z',
+      10,
+    );
+  fine(() => {
+    for (const s of [-1, 1]) {
+      for (const d of [-0.06, 0, 0.06])
+        K.bx(g, T.dark, 0.012, 0.22, 0.012, s * 0.58 + d, 1.0, 2.24, 0, 0, 0, 0);
+      K.bx(g, T.dark, 0.04, 0.08, 0.08, s * 0.8, 1.32, 1.6, 0, 0, 0, 0.01);
+      K.handle(g, T.metal, 0.18, s * 0.88, 1.25, -1.0, s * HP, 0.04, 0.012);
+    }
+  });
+  // 收起的帆布頂、鞭狀天線、後座
+  K.bx(g, M(0x4a4a34, { roughness: 0.95, metalness: 0 }), 1.6, 0.22, 0.42, 0, 1.48, -1.75, 0, 0, 0, 0.1);
+  K.cy(g, T.dark, 0.008, 1.6, -0.8, 2.15, -1.85, 6);
+  K.bx(g, T.dark, 1.4, 0.12, 0.5, 0, 1.12, -1.2, 0, 0, 0, 0.04);
+  K.bx(g, T.dark, 1.4, 0.45, 0.1, 0, 1.35, -1.48, 0, 0, 0, 0.04);
+  // 後照鏡（擋風框上）、雨刷、車牌、示寬燈
+  fine(() => {
+    for (const s of [-1, 1]) {
+      K.rod(g, T.dark, [s * 0.8, 1.55, 0.72], [s * 1.0, 1.65, 0.75], 0.012);
+      K.bx(g, T.dark, 0.04, 0.16, 0.12, s * 1.02, 1.66, 0.75, 0, 0, 0, 0.01);
+    }
+  });
+  wipers(g, T, 1.5, 1.86, 0.74, 0);
+  plate(g, T, 0.62, 2.4, 1);
+  plate(g, T, 0.85, -2.03, -1);
+  underbody(g, T, 1.9, -1.9, 0.42, [1.4, -1.3], 1.5);
+  void body;
+}
+
+function detailApc(g, T, body) {
+  // 側面加掛的裝甲板＋螺栓、焊縫
+  for (const s of [-1, 1]) {
+    for (const z of [-2.2, -0.9, 0.4, 1.7]) {
+      K.bx(g, body, 0.05, 0.5, 1.15, s * 1.33, 1.72, z, 0, 0, 0, 0.012);
+      fine(() => {
+        for (const dz of [-0.48, 0.48])
+          for (const dy of [-0.19, 0.19]) K.cx(g, T.steel, 0.025, 0.04, s * 1.36, 1.72 + dy, z + dz, 6);
+      });
+    }
+    fine(() => K.bx(g, T.dark, 0.012, 0.012, 6.6, s * 1.31, 2.18, -0.1, 0, 0, 0, 0));
+    // 排氣格柵（右後）、置物箱、拖纜
+    K.vents(g, T.dark, T.steel, 0.7, 0.4, s * 1.36, 1.55, -3.0, s * HP, 5);
+    K.cable(g, T.steel, [s * 1.3, 2.1, -3.0], [s * 1.3, 2.1, -1.4], 0.03, 0.25);
+  }
+  // 擋浪板（車頭斜面上）
+  K.bx(g, body, 2.4, 0.5, 0.05, 0, 1.75, 3.3, -0.6, 0, 0, 0.01);
+  // 砲塔：煙幕彈發射管（兩側各 4 根）、後面的置物籃
+  for (const s of [-1, 1])
+    for (let i = 0; i < 4; i++)
+      K.cz(g, T.dark, 0.045, 0.25, s * (0.55 + i * 0.03), 2.75 + i * 0.03, 0.75 - i * 0.06, 10);
+  fine(() => {
+    K.railing(
+      g,
+      T.dark,
+      [
+        [-0.6, -0.2],
+        [-0.6, -0.65],
+        [0.6, -0.65],
+        [0.6, -0.2],
+      ],
+      2.7,
+      0.25,
+      0.018,
+    );
+  });
+  // 後門：把手、觀察窗、尾燈的護欄、拖車勾
+  K.handle(g, T.metal, 0.22, 0.3, 1.4, -3.74, Math.PI, 0.05, 0.015);
+  K.bx(g, T.glass, 0.18, 0.1, 0.03, -0.25, 1.75, -3.74, 0, 0, 0, 0.005);
+  for (const s of [-1, 1])
+    K.lathe(
+      g,
+      T.metal,
+      [
+        [0.05, -0.02],
+        [0.07, 0],
+        [0.05, 0.02],
+      ],
+      s * 0.9,
+      0.95,
+      -3.78,
+      'z',
+      10,
+    );
+  // 艙門的鉸鏈、頭燈護欄
+  fine(() => {
+    for (const z of [-1.4, -2.5]) K.cx(g, T.steel, 0.04, 0.3, 0, 2.27, z + 0.3, 8);
+    for (const s of [-1, 1])
+      for (const d of [-0.05, 0.05]) K.bx(g, T.dark, 0.01, 0.2, 0.01, s * 0.9 + d, 1.75, 3.42, 0, 0, 0, 0);
+  });
+}
+
+function detailSnowcat(g, T) {
+  for (const s of [-1, 1]) {
+    door(g, T, s, s * 1.02, 0.0, 1.0, 2.0, 2.8);
+    K.rod(g, T.metal, [s * 1.07, 2.1, -0.4], [s * 1.07, 2.75, -0.4], 0.02); // 扶手
+    K.bx(g, T.dark, 0.3, 0.04, 0.35, s * 1.18, 1.3, 0.5, 0, 0, 0, 0.01); // 踏板
+    fine(() => {
+      K.rod(g, T.dark, [s * 1.0, 2.75, 1.5], [s * 1.25, 2.8, 1.55], 0.012);
+      K.bx(g, T.dark, 0.04, 0.2, 0.14, s * 1.27, 2.78, 1.55, 0, 0, 0, 0.01);
+    });
+  }
+  // 車頂架、油桶、警示燈、天線
+  K.railing(
+    g,
+    T.dark,
+    [
+      [-0.85, -0.6],
+      [-0.85, 1.4],
+      [0.85, 1.4],
+      [0.85, -0.6],
+      [-0.85, -0.6],
+    ],
+    2.9,
+    0.15,
+    0.02,
+  );
+  for (const x of [-0.4, 0.05]) vJerry(g, wheelM(T), T.red, x, 3.0, -0.3, HP);
+  K.cy(g, T.amber, 0.08, 0.12, 0.6, 3.0, 0.9, 12);
+  K.cy(g, T.dark, 0.008, 1.2, -0.7, 3.5, 1.2, 6);
+  vExhaust(g, wheelM(T), 0.85, 2.0, -0.7, 1.2);
+  wipers(g, T, 1.6, 2.15, 1.68, 0);
+  // 後面的拖車勾
+  K.lathe(
+    g,
+    T.metal,
+    [
+      [0.05, -0.02],
+      [0.08, 0],
+      [0.05, 0.02],
+    ],
+    0,
+    0.9,
+    -2.55,
+    'z',
+    10,
+  );
+}
+
+function detailTanker(g, T) {
+  for (const s of [-1, 1]) door(g, T, s, s * 1.21, 2.85, 3.95, 1.0, 2.6);
+  // 後方的爬梯（到罐頂）
+  for (const s of [-1, 1]) K.rod(g, T.metal, [s * 0.22, 0.9, -4.2], [s * 0.22, 3.15, -4.05], 0.022);
+  // 罐底的閥門與手輪、管路
+  for (const z of [-2.6, -1.0, 0.6]) {
+    K.cy(g, T.dark, 0.08, 0.35, 0, 0.75, z, 12);
+    K.lathe(
+      g,
+      T.red,
+      [
+        [0.11, -0.012],
+        [0.13, 0],
+        [0.11, 0.012],
+      ],
+      0,
+      0.55,
+      z,
+      'y',
+      14,
+    );
+  }
+  K.pipe(
+    g,
+    T.metal,
+    [
+      [0, 0.6, -2.6],
+      [0.9, 0.6, -2.6],
+      [1.05, 0.75, -3.0],
+    ],
+    0.05,
+  );
+  // 側面的工具箱、滅火器、UN 編號牌
+  for (const s of [-1, 1]) K.bx(g, T.metal, 0.4, 0.45, 1.1, s * 1.0, 1.0, 1.4, 0, 0, 0, 0.03);
+  K.cy(g, T.red, 0.08, 0.45, 1.1, 1.75, 2.55, 14);
+  K.bx(g, T.orange, 0.4, 0.22, 0.02, 0, 1.25, -4.62, 0, 0, 0, 0.005);
+  fine(() => {
+    for (let i = 0; i < 4; i++) K.bx(g, T.dark, 0.05, 0.12, 0.01, -0.12 + i * 0.08, 1.25, -4.635, 0, 0, 0, 0);
+    // 人孔蓋的鉸鏈、走道的格柵
+    for (let i = 0; i < 3; i++) K.bx(g, T.dark, 0.1, 0.05, 0.08, 0.22, 3.25, -2.75 + i * 2, 0, 0, 0, 0.01);
+    K.fins(g, T.dark, 12, 0.5, 0.02, 5.6, 0, 3.2, -0.75, 0, 0.012);
+  });
+  // 捲盤上的管子（一圈一圈）
+  for (let i = 0; i < 4; i++) K.cx(g, T.tire, 0.43, 0.08, -0.36 + i * 0.24, 1.0, -4.45, 18);
+  // 駕駛室：氣喇叭、遮陽板、車頂的示寬燈
+  for (const s of [-1, 1]) K.cz(g, T.metal, 0.05, 0.5, s * 0.35, 2.95, 3.9, 10, 0, 0.09);
+  K.bx(g, T.dark, 2.2, 0.06, 0.4, 0, 2.82, 4.75, 0.2, 0, 0, 0.01);
+  fine(() => {
+    for (let i = 0; i < 5; i++) K.bx(g, T.amber, 0.08, 0.05, 0.05, -0.4 + i * 0.2, 2.92, 4.6, 0, 0, 0, 0.01);
+  });
+  plate(g, T, 0.6, 4.95, 1);
+  plate(g, T, 0.85, -4.65, -1);
+  wipers(g, T, 2.2, 1.85, 4.62, -0.5);
+  mudflaps(g, T, 0.95, -4.25, 0.52);
+  markers(g, T, 1.18, 0.9, [1.0, -1.5, -4.0]);
+  underbody(g, T, 3.6, -3.9, 0.45, [3.75, -2.4, -3.6], 1.7);
 }
 
 // 掩體車輛（車頭 −Z）轉成車頭 +Z
