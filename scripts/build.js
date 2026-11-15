@@ -12,6 +12,7 @@
 const fs = require('fs');
 const path = require('path');
 const esbuild = require('esbuild');
+const { checkCineFont } = require('./cine-font.js');
 
 const ROOT = path.resolve(__dirname, '..');
 const SRC = path.join(ROOT, 'src');
@@ -413,7 +414,7 @@ const options = (page) => ({
   format: 'iife', // 一般 <script>：file:// 直接開啟也能執行
   target: 'es2020',
   charset: 'utf8', // 保留中文與全形空白，不轉成 \u 跳脫
-  loader: { '.mp3': 'base64', '.glb': 'binary' },
+  loader: { '.mp3': 'base64', '.glb': 'binary', '.woff2': 'base64' },
   minify: !dev,
   sourcemap: dev ? 'inline' : false,
   write: false,
@@ -533,6 +534,7 @@ async function main() {
   if (!watch) fs.rmSync(LIB, { recursive: true, force: true }); // 重新複製，移除不再使用的程式庫
   writeDraco();
   writeMusic();
+  checkCineFont();
   writeHangar();
   writeSounds();
   await writeGaze();

@@ -13,7 +13,6 @@
 //   ov   c1glint    眼燈的星芒（S.glint）
 //   ov   c1scope    BASTILLE 的砲台瞄準鏡
 //   ov   c1pulse    天線的訊號圈
-//   ov   c1title    西部片的大字章名（S.title）
 //   ov   c1chan     攔截到的頻道標籤（S.chans）
 //   ov   c1stars    星空與軌道站的光點（S.stars）
 //   render c1heat   熱浪：畫完之後把地平線一帶的橫條左右錯開
@@ -479,80 +478,6 @@ Object.assign(Game.prototype, {
       x.arc(sx, sy, u * H * 0.6, 0, Math.PI * 2);
       x.stroke();
     }
-    x.restore();
-  },
-  // 西部片的大字章名：直接壓在遠景上（S.title＝{ at, big, sub, en }）
-  cineOv_c1title(x, W, H, lt, S) {
-    const T = S.title;
-    if (!T || lt < T.at) return;
-    const u = lt - T.at;
-    const next = this.cine.def.shots[this.cine.shot + 1];
-    const left = (next ? next.at : this.cine.def.dur) - S.at - lt;
-    const a = clamp(left / 1.2, 0, 1);
-    // 一下子砸上來（稍微放大再定住），之後慢慢變大一點點
-    const pop = u < 0.12 ? 1.06 - u * 0.5 : 1 + Math.min(u, 8) * 0.004;
-    const s = Math.min(W / 1280, H / 720);
-    const cx = W / 2,
-      cy = H * (T.y || 0.42);
-    x.save();
-    x.globalAlpha = a;
-    x.translate(cx, cy);
-    x.scale(pop, pop);
-    const serif = '"Noto Serif TC","Source Han Serif TC","PMingLiU","MingLiU",serif';
-    // 上方小字
-    x.textAlign = 'center';
-    x.textBaseline = 'middle';
-    x.fillStyle = 'rgba(245,225,190,0.92)';
-    x.font = `700 ${18 * s}px Georgia, ${serif}`;
-    x.fillText(T.sub.split('').join(' '), 0, -96 * s);
-    // 上下的雙線與星
-    x.strokeStyle = 'rgba(245,225,190,0.85)';
-    x.lineWidth = 2 * s;
-    for (const y of [-74, 70]) {
-      x.beginPath();
-      x.moveTo(-330 * s, y * s);
-      x.lineTo(-30 * s, y * s);
-      x.moveTo(30 * s, y * s);
-      x.lineTo(330 * s, y * s);
-      x.stroke();
-      x.beginPath();
-      x.moveTo(-330 * s, (y + 6) * s);
-      x.lineTo(-30 * s, (y + 6) * s);
-      x.moveTo(30 * s, (y + 6) * s);
-      x.lineTo(330 * s, (y + 6) * s);
-      x.lineWidth = 0.8 * s;
-      x.stroke();
-      x.lineWidth = 2 * s;
-      x.font = `${16 * s}px ${serif}`;
-      x.fillText('★', 0, (y + 3) * s);
-    }
-    // 大字：深色的粗描邊＋奶油色＋木刻的粗糙感（幾條水平的缺口）
-    x.font = `900 ${104 * s}px ${serif}`;
-    x.lineJoin = 'round';
-    x.lineWidth = 10 * s;
-    x.strokeStyle = 'rgba(40,16,6,0.85)';
-    x.strokeText(T.big, 0, 0);
-    const g = x.createLinearGradient(0, -52 * s, 0, 52 * s);
-    g.addColorStop(0, '#fff1cf');
-    g.addColorStop(0.55, '#f2c98a');
-    g.addColorStop(1, '#c9813e');
-    x.fillStyle = g;
-    x.fillText(T.big, 0, 0);
-    x.globalCompositeOperation = 'destination-out';
-    for (let i = 0; i < 9; i++) {
-      x.fillStyle = `rgba(0,0,0,${0.25 + hash(i) * 0.4})`;
-      x.fillRect(
-        (hash(i + 1) - 0.5) * 620 * s,
-        (hash(i + 2) - 0.5) * 90 * s,
-        (20 + hash(i + 3) * 90) * s,
-        1.5 * s,
-      );
-    }
-    x.globalCompositeOperation = 'source-over';
-    // 下方英文
-    x.fillStyle = 'rgba(245,225,190,0.9)';
-    x.font = `italic 700 ${19 * s}px Georgia, ${serif}`;
-    x.fillText(T.en, 0, 120 * s);
     x.restore();
   },
   // 攔截到的頻道：S.chans＝[{ t, d, who }]，畫面左上的徽章、頻道名、聲紋

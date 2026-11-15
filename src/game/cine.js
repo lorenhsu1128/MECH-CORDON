@@ -31,6 +31,7 @@ import { buildVeerwellDispatch, tickVeerwellDispatch } from '../render/cine-veer
 import { buildCouncilChamber, tickCouncilChamber } from '../render/cine-council.js';
 import { buildOrbitCore, tickOrbitCore } from '../render/cine-core.js';
 import { revealDom } from '../render/textfx.js';
+import { loadBrandFonts } from '../render/cine-brand.js';
 import { World } from '../world/world.js';
 import { CINE_GRADE } from './constants.js';
 import { Game } from './game.js';
@@ -133,7 +134,12 @@ Object.assign(Game.prototype, {
     $('cineLoad').classList.add('on');
     // 配樂與字型：最多等 4 秒（沒有配樂也照樣播）
     // 人物（lib/people-assets.js 與格納庫的素材）：和配樂一起等；沒等到時人物改用程式的小人
-    const ppl = Promise.all([loadPeopleAssets(), loadHangarAssets(), this.cine2dPreload(def)]);
+    const ppl = Promise.all([
+      loadPeopleAssets(),
+      loadHangarAssets(),
+      this.cine2dPreload(def),
+      loadBrandFonts(),
+    ]);
     const load = Promise.all([this.cineMusicLoad(), ppl]).then(async ([has]) => {
       if (!has) return false;
       const names = [...new Set(def.music.map((m) => m.track))];

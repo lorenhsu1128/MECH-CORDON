@@ -22587,11 +22587,15 @@ async function testCine(browser, base) {
     n: window.MECH_CORDON_MUSIC ? Object.keys(window.MECH_CORDON_MUSIC).length : 0,
     ok: window.__game.cine.musicOk,
     state: window.__game.state,
+    // 文字風格（render/cine-brand.js）：內嵌的子集字型已註冊並載入
+    font:
+      document.fonts.check('900 40px "MC Display"', '轟') && document.fonts.check('900 40px "MC Latin"', 'CAUTION'),
   }));
   check(
     mus.lib && mus.n >= 4 && mus.state === 'cine',
     `配樂：從 lib/cine-music.js 載入 ${mus.n} 首、state＝cine`,
   );
+  check(mus.font, '文字風格：內嵌的字型（MC Display、MC Latin）已載入');
   const ended = await page
     .waitForFunction(() => window.__cineEnd, null, { timeout: 120000 })
     .then(

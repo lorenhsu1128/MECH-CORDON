@@ -1,0 +1,4 @@
+過場動畫的字型（scripts/cine-font.js 從 tools/fonts/ 的原檔子集化，建置時內嵌進遊戲的 HTML）
+mc-display.woff2：Dela Gothic One（Copyright 2020 The Dela Gothic Project Authors，SIL Open Font License 1.1，OFL-DelaGothicOne.txt）
+mc-latin.woff2：Rubik Italic 900（Copyright 2015 The Rubik Project Authors，SIL Open Font License 1.1，OFL-Rubik.txt）
+依 OFL 的規定，子集化後的字型改用別的名稱（MC Display、MC Latin），不使用原本的保留字型名稱。
