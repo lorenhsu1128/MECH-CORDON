@@ -9,6 +9,8 @@ import { buildCineVeh } from '../render/cine-vehicles.js';
 import { Game } from './game.js';
 
 const D2R = Math.PI / 180;
+const NO_LAMP = new Set(['pallet', 'cargopod', 'cargoship']); // 沒有車頭燈的
+const _lamp = new THREE.Vector3();
 const smooth = (u) => u * u * (3 - 2 * u);
 const angLerp = (a, b, k) => {
   let d = b - a;
@@ -50,11 +52,14 @@ Object.assign(Game.prototype, {
     A.fyaw = fyaw;
     A.yaw = (spec.yaw || 0) * D2R + fyaw;
     v.group.position.copy(pos);
-    if (this.world) v.group.position.y = this.world.groundAt(pos.x, pos.z, pos.y + 3);
+    // air：飄在空中（太空的作業艇、吊艙；p 是 [x, y, z]），不貼地
+    const air = spec.air || (this.cine.set && this.cine.set.k === 'space');
+    A.air = air;
+    if (this.world && !air && !spec.room) v.group.position.y = this.world.groundAt(pos.x, pos.z, pos.y + 3);
     v.group.rotation.y = A.yaw;
     // 路線：每一段的長度（公尺）與方向，車輪的轉動與車頭方向用
     const ks = spec.keys || [];
-    A.vp = ks.map((k) => this.cinePt({ g: k.p, h: 0 }, new THREE.Vector3()));
+    A.vp = ks.map((k) => this.cinePt(k.p.length === 3 ? k.p : { g: k.p, h: 0 }, new THREE.Vector3()));
     A.vseg = [];
     let acc = 0;
     for (let i = 0; i < ks.length; i++) {
@@ -81,6 +86,23 @@ Object.assign(Game.prototype, {
       obj = A.obj;
     if (!v) return;
     const c = this.cine;
+    // 夜景：開著的車頭燈照亮前方的地面（特效點光，只有最近的 4 盞會亮）
+    if (c && c.night && obj.visible && this.fx && this.fx.glow) {
+      if (v.lamp) {
+        // 照明塔：燈在桅杆頂端，照得遠
+        obj.updateWorldMatrix(true, false);
+        this.fx.glow(
+          'cv_' + A.id,
+          obj.localToWorld(_lamp.set(v.lamp[0], v.lamp[1] - 2, v.lamp[2] + 4)),
+          2.2,
+          0xfff4e0,
+          12,
+        );
+      } else if (v.len > 3 && !NO_LAMP.has(spec.key)) {
+        obj.updateWorldMatrix(true, false);
+        this.fx.glow('cv_' + A.id, obj.localToWorld(_lamp.set(0, 1.4, v.len / 2 + 3)), 1.3, 0xfff0d8, 6);
+      }
+    }
     const vis = spec.hideAt == null || lt < spec.hideAt;
     obj.visible = vis && (spec.showAt == null || lt >= spec.showAt);
     // 跟著別的載具的零件（貨叉上的棧板）
@@ -118,7 +140,8 @@ Object.assign(Game.prototype, {
     const x = pa.x + (pb.x - pa.x) * e,
       z = pa.z + (pb.z - pa.z) * e;
     const w = this.world;
-    obj.position.set(x, w ? w.groundAt(x, z, Math.max(pa.y, pb.y) + 3) : pa.y, z);
+    const yy = pa.y + (pb.y - pa.y) * e;
+    obj.position.set(x, w && !A.air && !spec.room ? w.groundAt(x, z, Math.max(pa.y, pb.y) + 3) : yy, z);
     // 車頭：這一段的方向，段尾的 30% 轉向下一段（倒車接前進時在原地轉）
     if (spec.turn === 'move') {
       const s = A.vseg[j];

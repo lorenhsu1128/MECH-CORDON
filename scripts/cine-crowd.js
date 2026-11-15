@@ -25,6 +25,131 @@ const KEYS = (args.find((a) => !a.startsWith('--')) || '').split(',').filter(Boo
 const keys = KEYS.length ? KEYS : ALL;
 const FILE = path.join(__dirname, '..', 'src', 'data', 'cine', 'crowd.js');
 
+// 在這一秒的鏡頭範圍找可以放東西的平地（瀏覽器端；RR＝要多大的平地，公尺）
+const FIND = (RR) => {
+  const g = window.__game,
+    c = g.cine,
+    w = g.world,
+    cam = g.camera;
+  c.paused = true;
+  if (!w || !c.set || !c.set.world) return null;
+  const T = window.THREE;
+  const K = c.set.k || 1;
+  const camP = cam.getWorldPosition(new T.Vector3());
+  const camS = (() => {
+    // 鏡頭在劇本座標的位置（只看 x、z）
+    const A = c.set.anchor,
+      yaw = c.set.yaw || 0;
+    const dx = (camP.x - A.x) / K,
+      dz = (camP.z - A.z) / K;
+    return [dx * Math.cos(yaw) - dz * Math.sin(yaw), dx * Math.sin(yaw) + dz * Math.cos(yaw)];
+  })();
+  const out = [];
+  const R = RR;
+  for (let sx = -90; sx <= 90; sx += 3)
+    for (let sz = -90; sz <= 90; sz += 3) {
+      const p = g.cinePt({ g: [sx, sz], h: 0 }, new T.Vector3());
+      const y0 = w.groundAt(p.x, p.z, p.y + 50);
+      p.y = y0;
+      const d = camP.distanceTo(p);
+      if (d < 16 || d > 120) continue;
+      const q = p.clone().project(cam);
+      if (q.z > 1 || Math.abs(q.x) > 0.8 || q.y < -0.75 || q.y > 0.45) continue;
+      let lo = y0,
+        hi = y0;
+      for (let a = 0; a < 8; a++) {
+        const h = w.groundAt(p.x + Math.cos(a) * R, p.z + Math.sin(a) * R, y0 + 20);
+        lo = Math.min(lo, h);
+        hi = Math.max(hi, h);
+      }
+      if (hi - lo > 1.2) continue;
+      if (w.obstacles.some((o) => Math.hypot(o.x - p.x, o.z - p.z) < R + (o.r || 0) * 0.5)) continue;
+      if ((w.isVoid && w.isVoid(p.x, p.z)) || (w.waterDepth && w.waterDepth(p.x, p.z) > 0.3)) continue;
+      if (w.losBlocked(camP, new T.Vector3(p.x, y0 + 2, p.z))) continue;
+      out.push({ sx, sz, d, qx: q.x, qy: q.y });
+    }
+  return { spots: out, camS, K, night: !!c.night };
+};
+
+// 室內：地板上（往下打到朝上、高度 < 0.3 m 的面）、頭頂 1.9 m 內沒有東西、鏡頭看得到、離鏡頭 2～10 m 的位置
+const FIND_ROOM = () => {
+  const g = window.__game,
+    c = g.cine,
+    cam = g.camera;
+  c.paused = true;
+  const T = window.THREE;
+  const root = c.set && c.set.root;
+  if (!root) return null;
+  const meshes = [];
+  root.traverse((o) => o.isMesh && o.visible && meshes.push(o));
+  const rc = new T.Raycaster();
+  const camP = cam.getWorldPosition(new T.Vector3());
+  const out = [];
+  for (let x = -7; x <= 7; x += 0.7)
+    for (let z = -7; z <= 7; z += 0.7) {
+      rc.set(new T.Vector3(x, 2.6, z), new T.Vector3(0, -1, 0));
+      rc.far = 3;
+      const h = rc.intersectObjects(meshes, false)[0];
+      if (!h || h.point.y > 0.3 || h.point.y < -0.3 || !h.face || h.face.normal.y < 0.5) continue;
+      const p = h.point;
+      // 頭頂淨空（從腳邊往上 1.9 m 不能打到東西）＋周圍 0.4 m
+      let free = true;
+      for (const [dx, dz] of [
+        [0, 0],
+        [0.4, 0],
+        [-0.4, 0],
+        [0, 0.4],
+        [0, -0.4],
+      ]) {
+        rc.set(new T.Vector3(p.x + dx, p.y + 0.05, p.z + dz), new T.Vector3(0, 1, 0));
+        rc.far = 1.9;
+        if (rc.intersectObjects(meshes, false).length) free = false;
+      }
+      if (!free) continue;
+      const d = camP.distanceTo(p);
+      if (d < 2 || d > 10) continue;
+      const q = p.clone().project(cam);
+      if (q.z > 1 || Math.abs(q.x) > 0.85 || q.y < -0.9 || q.y > 0.3) continue;
+      // 看得到（鏡頭到 1.2 m 高的那一點沒被擋）
+      const head = new T.Vector3(p.x, p.y + 1.2, p.z);
+      const dir = head.clone().sub(camP);
+      rc.set(camP, dir.clone().normalize());
+      rc.far = dir.length() - 0.3;
+      if (rc.intersectObjects(meshes, false).length) continue;
+      out.push({ x: +p.x.toFixed(2), z: +p.z.toFixed(2), d, qx: q.x });
+    }
+  return { spots: out, cam: [camP.x, camP.z], kind: c.set.spec.kind };
+};
+// 太空：鏡頭前方 25～60 m（劇本座標＝世界÷K）
+const FIND_SPACE = () => {
+  const g = window.__game,
+    c = g.cine,
+    cam = g.camera;
+  c.paused = true;
+  const T = window.THREE;
+  const K = c.set.k || 1;
+  const camP = cam.getWorldPosition(new T.Vector3());
+  const f = cam.getWorldDirection(new T.Vector3());
+  const r = new T.Vector3().crossVectors(f, cam.up).normalize();
+  const u = new T.Vector3().crossVectors(r, f).normalize();
+  const at = (d, x, y) =>
+    camP.clone().addScaledVector(f, d).addScaledVector(r, x).addScaledVector(u, y).divideScalar(K);
+  const P = (v) => [+v.x.toFixed(2), +v.y.toFixed(2), +v.z.toFixed(2)];
+  return {
+    pods: [P(at(32, -9, -3)), P(at(44, 10, 4)), P(at(55, -2, 8))],
+    drift: P(r.clone().multiplyScalar(4 / K)),
+    yaw: Math.round((Math.atan2(f.x, f.z) * 180) / Math.PI),
+  };
+};
+const ROOM_WHO = {
+  castron: ['worker', 'crew', 'biz', 'mansuit'],
+  aetheric: ['suitw', 'crew', 'biz'],
+  sancta: ['farmer', 'hooded', 'casual', 'womanc', 'woman'],
+  veerwell: ['pilot', 'crew', 'soldier'],
+  council: ['biz', 'suitw', 'mansuit', 'soldier'],
+  core: ['crew', 'pilot'],
+};
+
 // 依主題：小品的輪替、車種、人
 const THEME = {
   snow: {
@@ -142,7 +267,7 @@ const DEF = {
       }, key);
       let rot = 0;
       for (const s of shots) {
-        if (s.k !== 'world' || s.skip || s.end - s.at < 1) continue;
+        if (!['world', 'room', 'space'].includes(s.k) || s.skip || s.end - s.at < 1) continue;
         const t = +(s.at + Math.min(1.5, (s.end - s.at) * 0.5)).toFixed(2);
         await page.evaluate((t) => {
           const g = window.__game;
@@ -152,51 +277,64 @@ const DEF = {
         await page.waitForFunction((t) => window.__game.cine && window.__game.cine.t >= t, t, {
           timeout: 20000,
         });
-        const r = await page.evaluate(() => {
-          const g = window.__game,
-            c = g.cine,
-            w = g.world,
-            cam = g.camera;
-          c.paused = true;
-          if (!w || !c.set || !c.set.world) return null;
-          const T = window.THREE;
-          const K = c.set.k || 1;
-          const camP = cam.getWorldPosition(new T.Vector3());
-          const camS = (() => {
-            // 鏡頭在劇本座標的位置（只看 x、z）
-            const A = c.set.anchor,
-              yaw = c.set.yaw || 0;
-            const dx = (camP.x - A.x) / K,
-              dz = (camP.z - A.z) / K;
-            return [dx * Math.cos(yaw) - dz * Math.sin(yaw), dx * Math.sin(yaw) + dz * Math.cos(yaw)];
-          })();
-          const out = [];
-          const R = 8;
-          for (let sx = -90; sx <= 90; sx += 3)
-            for (let sz = -90; sz <= 90; sz += 3) {
-              const p = g.cinePt({ g: [sx, sz], h: 0 }, new T.Vector3());
-              const y0 = w.groundAt(p.x, p.z, p.y + 50);
-              p.y = y0;
-              const d = camP.distanceTo(p);
-              if (d < 16 || d > 120) continue;
-              const q = p.clone().project(cam);
-              if (q.z > 1 || Math.abs(q.x) > 0.8 || q.y < -0.75 || q.y > 0.45) continue;
-              let lo = y0,
-                hi = y0;
-              for (let a = 0; a < 8; a++) {
-                const h = w.groundAt(p.x + Math.cos(a) * R, p.z + Math.sin(a) * R, y0 + 20);
-                lo = Math.min(lo, h);
-                hi = Math.max(hi, h);
-              }
-              if (hi - lo > 1.2) continue;
-              if (w.obstacles.some((o) => Math.hypot(o.x - p.x, o.z - p.z) < R + (o.r || 0) * 0.5)) continue;
-              if ((w.isVoid && w.isVoid(p.x, p.z)) || (w.waterDepth && w.waterDepth(p.x, p.z) > 0.3))
-                continue;
-              if (w.losBlocked(camP, new T.Vector3(p.x, y0 + 2, p.z))) continue;
-              out.push({ sx, sz, d, qx: q.x, qy: q.y });
-            }
-          return { spots: out, camS, K };
-        });
+        if (s.k === 'room' || s.k === 'space') {
+          const xk0 = await page.evaluate(() => window.__game.cine.xk);
+          const list = [];
+          if (s.k === 'room') {
+            const rr = await page.evaluate(FIND_ROOM);
+            if (!rr || !rr.spots.length) continue;
+            // 最多 4 個人，彼此相隔 1.2 m 以上，近的優先
+            const pick = [];
+            for (const p of rr.spots.sort((a, b) => a.d - b.d))
+              if (pick.length < 4 && pick.every((q) => Math.hypot(q.x - p.x, q.z - p.z) > 1.2)) pick.push(p);
+            const who = ROOM_WHO[rr.kind] || ['crew', 'biz'];
+            const anims = ['Talk', 'Use', 'Phone', 'Arms', 'Yes', 'Talk'];
+            pick.forEach((p, i) => {
+              // 兩兩面對面交談，或面向房間中央
+              const o = pick[i ^ 1];
+              list.push({
+                id: 'r' + i,
+                k: 'human',
+                who: who[(i + s.i) % who.length],
+                p: [p.x, p.z],
+                ground: false,
+                anim: anims[(i + s.i) % anims.length],
+                s: [{ t: 0, face: o ? [o.x, o.z] : [0, 0] }],
+                seed: 90 + i + s.i,
+              });
+            });
+          } else {
+            const sp = await page.evaluate(FIND_SPACE);
+            sp.pods.forEach((p, i) =>
+              list.push({
+                id: 'sp' + i,
+                k: 'veh',
+                key: i === 2 ? 'cargopod' : 'workpod',
+                v: i,
+                air: true,
+                yaw: sp.yaw + 60 + i * 70,
+                keys: [
+                  { t: -2, p },
+                  {
+                    t: Math.ceil(s.end - s.at) + 2,
+                    p: p.map((x, j) => +(x + sp.drift[j] * (i % 2 ? -1 : 1)).toFixed(2)),
+                    lin: true,
+                  },
+                ],
+              }),
+            );
+          }
+          if (list.length) {
+            table[xk0] = list;
+            nShots++;
+            nAdd += list.length;
+            console.log(`${key}#${s.i}（${s.k}）：${list.length} 個`);
+          }
+          continue;
+        }
+        let r = await page.evaluate(FIND, 8);
+        // 找不到 8 m 的平地：改用 4 m 再找一次（水壩、構造體這類地方）
+        if (r && !r.spots.length) r = await page.evaluate(FIND, 4);
         if (!r || !r.spots.length) continue;
         nShots++;
         const TH = THEME[s.theme] || DEF;
@@ -222,6 +360,24 @@ const DEF = {
         if (tpl === 'dig')
           Object.assign(base, { truck: TH.veh.includes('lavahauler') ? 'lavahauler' : 'hauler' });
         list.push({ id: 'a', ...base });
+        // 夜景：小品靠鏡頭那一側放兩座照明塔（燈朝小品），車頭燈之外的主要光源
+        if (r.night) {
+          const dx = r.camS[0] - a.sx,
+            dz = r.camS[1] - a.sz,
+            dl = Math.hypot(dx, dz) || 1;
+          const off = 10 / r.K;
+          for (const side of [-1, 1]) {
+            const px = a.sx + (dx / dl) * off * 0.6 + (-dz / dl) * off * side,
+              pz = a.sz + (dz / dl) * off * 0.6 + (dx / dl) * off * side;
+            list.push({
+              id: 'l' + side,
+              k: 'veh',
+              key: 'lighttower',
+              p: [+px.toFixed(1), +pz.toFixed(1)],
+              yaw: Math.round((Math.atan2(a.sx - px, a.sz - pz) * 180) / Math.PI),
+            });
+          }
+        }
         // 車隊：另外找兩個離小品 20 m 以上、彼此 45 m 以上的位置連成一條路
         const far = spots.filter((p) => Math.hypot(p.sx - a.sx, p.sz - a.sz) * r.K > 20);
         let best = null;

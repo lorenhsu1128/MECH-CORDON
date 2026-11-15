@@ -299,6 +299,11 @@ export function haChar(name) {
     mixer,
     acts,
     act,
+    // 回收重用前（game/cine-people.js 的回收池）：停掉動作、忘記目前的動作
+    reset: () => {
+      mixer.stopAllAction();
+      cur = null;
+    },
     bone: (n) => o.getObjectByName(n),
   };
 }

@@ -643,3 +643,40 @@ export function buildNewsVan() {
   bakeAll(g, { tint: TINT, cache: 'cineveh:newsvan' });
   return { group: g, wheels, parts: { dish }, len: 5.6 };
 }
+
+// ---------- 移動照明塔（拖車式，桅杆 7 m、四盞燈）：夜景的工地與營地（game/cine-scene.js 在桅杆頂端放特效點光） ----------
+export function buildLightTower() {
+  const T = mats(),
+    WM = wheelM(T),
+    g = new THREE.Group(),
+    wheels = [];
+  const body = yel();
+  const lamp = M(0xfff4d8, { emissive: 0xfff0d0, emissiveIntensity: 2.4, roughness: 0.3 });
+  P(g, D.box(1.4, 1.0, 2.4, 0.08), body, 0, 0.95, 0); // 發電機箱
+  K.vents(g, T.dark, T.steel, 0.9, 0.5, 0.71, 1.0, 0.2, HP, 5);
+  K.vents(g, T.dark, T.steel, 0.9, 0.5, -0.71, 1.0, 0.2, -HP, 5);
+  K.rod(g, T.dark, [0, 0.6, 1.2], [0, 0.45, 2.3], 0.05); // 拖桿
+  for (const [x, z] of [
+    [-1.1, 1.0],
+    [1.1, 1.0],
+    [-1.1, -1.0],
+    [1.1, -1.0],
+  ]) {
+    K.rod(g, T.dark, [x * 0.55, 0.7, z], [x, 0.1, z], 0.04); // 支腳
+    K.cy(g, T.dark, 0.12, 0.05, x, 0.03, z, 12);
+  }
+  // 桅杆（三節）＋燈架＋四盞燈（朝前下方）
+  K.cy(g, T.steel, 0.09, 3.0, 0, 2.9, -0.8, 10);
+  K.cy(g, T.steel, 0.07, 2.6, 0, 5.6, -0.8, 10);
+  K.cy(g, T.steel, 0.05, 1.4, 0, 7.4, -0.8, 10);
+  K.bx(g, T.dark, 1.6, 0.08, 0.1, 0, 8.05, -0.8, 0, 0, 0, 0.02);
+  for (const x of [-0.55, -0.18, 0.18, 0.55]) {
+    K.bx(g, T.dark, 0.32, 0.32, 0.14, x, 8.2, -0.72, -0.5, 0, 0, 0.03);
+    K.bx(g, lamp, 0.26, 0.26, 0.02, x, 8.17, -0.64, -0.5, 0, 0, 0.01);
+  }
+  K.cable(g, T.tire, [0.1, 1.45, -0.6], [0.1, 7.5, -0.75], 0.02, 0.05);
+  axles(g, WM, [-0.2], 0.85, 0.32, 0.22, wheels);
+  fenders(g, T.dark, [-0.2], 0.85, 0.32, 0.22);
+  bakeAll(g, { tint: TINT, cache: 'cineveh:lighttower' });
+  return { group: g, wheels, parts: {}, len: 2.4, lamp: [0, 8.1, 0.2] };
+}

@@ -456,6 +456,15 @@ Object.assign(Game.prototype, {
       this.worldTheme = S.theme;
       this.worldSeed = S.seed || 7001;
       w.applyLight(this);
+      // 夜景的補光（docs/cine-redesign-design.md 第十一節「亮度」）：天光改成藍色調並加強、太陽當月光（冷白、不太弱）；
+      // 車頭燈由 cineVehTick 用特效點光照地面
+      c.night = w.tod === 'night' || !!(w.theme && w.theme.noTod && !w.theme.roof);
+      if (c.night) {
+        this.hemi.color.set(0x7088b8);
+        this.hemi.intensity = Math.max(this.hemi.intensity, 0.62);
+        this.sun.color.set(0xb0c4ff);
+        this.sun.intensity = Math.max(this.sun.intensity, 0.95);
+      }
       const L = S.light;
       if (L) {
         if (L.sky) this.scene.background = new THREE.Color(L.sky);

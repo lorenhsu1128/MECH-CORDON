@@ -4,6 +4,8 @@
 export const CINE_CROWD = {
   '11412k': [
     { id: 'a', k: 'scene', type: 'patrol', p: [6, -3], yaw: 152, dur: 8, t0: -2, veh: 'apc', len: 30 },
+    { id: 'l-1', k: 'veh', key: 'lighttower', p: [8, 0.3], yaw: -149 },
+    { id: 'l1', k: 'veh', key: 'lighttower', p: [2.1, -2.8], yaw: 93 },
     {
       id: 'c',
       k: 'scene',
@@ -20,7 +22,7 @@ export const CINE_CROWD = {
     },
   ],
   '128w69x': [
-    { id: 'a', k: 'scene', type: 'loading', p: [0, -9], yaw: 174, dur: 5, t0: -2 },
+    { id: 'a', k: 'scene', type: 'loading', p: [3, -9], yaw: 169, dur: 5, t0: -2 },
     {
       id: 'c',
       k: 'scene',
@@ -51,6 +53,28 @@ export const CINE_CROWD = {
       speed: 8,
       gap: 16,
       t0: -3,
+    },
+  ],
+  '12y8zjj': [
+    {
+      id: 'r0',
+      k: 'human',
+      who: 'crew',
+      p: [4.2, -4.2],
+      ground: false,
+      anim: 'Yes',
+      s: [{ t: 0, face: [5.6, -4.9] }],
+      seed: 100,
+    },
+    {
+      id: 'r1',
+      k: 'human',
+      who: 'biz',
+      p: [5.6, -4.9],
+      ground: false,
+      anim: 'Talk',
+      s: [{ t: 0, face: [4.2, -4.2] }],
+      seed: 101,
     },
   ],
   '13ecjcj': [
@@ -247,6 +271,8 @@ export const CINE_CROWD = {
       every: 0.7,
       who: ['farmer', 'hooded', 'casual', 'hoodie', 'man', 'woman'],
     },
+    { id: 'l-1', k: 'veh', key: 'lighttower', p: [2.9, 6.4], yaw: -49 },
+    { id: 'l1', k: 'veh', key: 'lighttower', p: [0.9, 12.8], yaw: -167 },
     {
       id: 'c',
       k: 'scene',
@@ -277,6 +303,45 @@ export const CINE_CROWD = {
       speed: 8,
       gap: 16,
       t0: -3,
+    },
+  ],
+  '17truds': [{ id: 'a', k: 'scene', type: 'dig', p: [-24, -3], yaw: 157, dur: 15, t0: -2, truck: 'hauler' }],
+  '186ujov': [
+    {
+      id: 'sp0',
+      k: 'veh',
+      key: 'workpod',
+      v: 0,
+      air: true,
+      yaw: -98,
+      keys: [
+        { t: -2, p: [3.41, -207, -0.08] },
+        { t: 10, p: [4.64, -207, -0.59], lin: true },
+      ],
+    },
+    {
+      id: 'sp1',
+      k: 'veh',
+      key: 'workpod',
+      v: 1,
+      air: true,
+      yaw: -28,
+      keys: [
+        { t: -2, p: [7.53, -206.38, -6.74] },
+        { t: 10, p: [6.3, -206.38, -6.23], lin: true },
+      ],
+    },
+    {
+      id: 'sp2',
+      k: 'veh',
+      key: 'cargopod',
+      v: 2,
+      air: true,
+      yaw: 42,
+      keys: [
+        { t: -2, p: [2.35, -206.56, -8.82] },
+        { t: 10, p: [3.58, -206.56, -9.33], lin: true },
+      ],
     },
   ],
   '1947p9k': [
@@ -339,6 +404,8 @@ export const CINE_CROWD = {
       n: 9,
       seed: 11,
     },
+    { id: 'l-1', k: 'veh', key: 'lighttower', p: [-2.4, 7.7], yaw: -70 },
+    { id: 'l1', k: 'veh', key: 'lighttower', p: [-6.5, 12.9], yaw: 172 },
     {
       id: 'c',
       k: 'scene',
@@ -355,14 +422,14 @@ export const CINE_CROWD = {
     },
   ],
   '1as2qvd': [
-    { id: 'a', k: 'scene', type: 'patrol', p: [-12, 6], yaw: -77, dur: 5, t0: -2, veh: 'apc', len: 30 },
+    { id: 'a', k: 'scene', type: 'patrol', p: [-9, 6], yaw: -75, dur: 5, t0: -2, veh: 'apc', len: 30 },
     {
       id: 'c',
       k: 'scene',
       type: 'convoy',
       path: [
         [-33, -3],
-        [-3, 6],
+        [-12, 12],
       ],
       n: 3,
       kinds: ['truck', 'jeep', 'apc'],
@@ -518,6 +585,8 @@ export const CINE_CROWD = {
   ],
   '1gqgpba': [
     { id: 'a', k: 'scene', type: 'patrol', p: [3, -3], yaw: -169, dur: 8, t0: -2, veh: 'apc', len: 30 },
+    { id: 'l-1', k: 'veh', key: 'lighttower', p: [6.7, -1.7], yaw: -109 },
+    { id: 'l1', k: 'veh', key: 'lighttower', p: [0.1, -0.4], yaw: 132 },
   ],
   '1hacznn': [
     { id: 'a', k: 'scene', type: 'loading', p: [-15, 27], yaw: -150, dur: 7, t0: -2 },
@@ -587,6 +656,44 @@ export const CINE_CROWD = {
   '1kh3nf2': [
     { id: 'a', k: 'scene', type: 'patrol', p: [-3, -3], yaw: 156, dur: 11, t0: -2, veh: 'apc', len: 30 },
   ],
+  '1kse5a5': [
+    {
+      id: 'sp0',
+      k: 'veh',
+      key: 'workpod',
+      v: 0,
+      air: true,
+      yaw: -111,
+      keys: [
+        { t: -2, p: [64.5, -82.61, -209.85] },
+        { t: 7, p: [65.82, -82.61, -210.06], lin: true },
+      ],
+    },
+    {
+      id: 'sp1',
+      k: 'veh',
+      key: 'workpod',
+      v: 1,
+      air: true,
+      yaw: -41,
+      keys: [
+        { t: -2, p: [70.05, -82.03, -215.37] },
+        { t: 7, p: [68.73, -82.03, -215.16], lin: true },
+      ],
+    },
+    {
+      id: 'sp2',
+      k: 'veh',
+      key: 'cargopod',
+      v: 2,
+      air: true,
+      yaw: 29,
+      keys: [
+        { t: -2, p: [65.49, -82.25, -218.6] },
+        { t: 7, p: [66.81, -82.25, -218.81], lin: true },
+      ],
+    },
+  ],
   '1l3v028': [
     { id: 'a', k: 'scene', type: 'loading', p: [0, -15], yaw: 180, dur: 8, t0: -2 },
     {
@@ -634,26 +741,14 @@ export const CINE_CROWD = {
     },
   ],
   '1lrrj5l': [
-    {
-      id: 'a',
-      k: 'scene',
-      type: 'crowd',
-      p: [-12, 9],
-      yaw: 108,
-      dur: 5,
-      t0: -2,
-      who: ['farmer', 'hooded', 'casual', 'hoodie', 'man', 'woman'],
-      vehs: ['snowcat', 'apc'],
-      n: 9,
-      seed: 28,
-    },
+    { id: 'a', k: 'scene', type: 'patrol', p: [-12, 9], yaw: 108, dur: 5, t0: -2, veh: 'apc', len: 30 },
     {
       id: 'c',
       k: 'scene',
       type: 'convoy',
       path: [
         [-18, -15],
-        [0, 15],
+        [-3, 15],
       ],
       n: 3,
       kinds: ['snowcat', 'apc', 'truck'],
@@ -724,7 +819,19 @@ export const CINE_CROWD = {
     },
   ],
   '1o7jke8': [
-    { id: 'a', k: 'scene', type: 'dig', p: [-12, -21], yaw: -149, dur: 8, t0: -2, truck: 'hauler' },
+    {
+      id: 'a',
+      k: 'scene',
+      type: 'crowd',
+      p: [-12, -21],
+      yaw: -149,
+      dur: 8,
+      t0: -2,
+      who: ['hooded', 'farmer', 'soldier'],
+      vehs: ['jeep', 'pickup'],
+      n: 9,
+      seed: 29,
+    },
   ],
   '1ok3cvv': [
     {
@@ -746,8 +853,8 @@ export const CINE_CROWD = {
       id: 'a',
       k: 'scene',
       type: 'crowd',
-      p: [-12, 3],
-      yaw: 161,
+      p: [-15, 3],
+      yaw: 156,
       dur: 5,
       t0: -2,
       who: ['worker', 'crew', 'soldier'],
@@ -760,7 +867,7 @@ export const CINE_CROWD = {
       k: 'scene',
       type: 'convoy',
       path: [
-        [-27, -21],
+        [-24, -24],
         [9, -9],
       ],
       n: 3,
@@ -912,6 +1019,44 @@ export const CINE_CROWD = {
       t0: -3,
     },
   ],
+  '1tfwdx9': [
+    {
+      id: 'sp0',
+      k: 'veh',
+      key: 'workpod',
+      v: 0,
+      air: true,
+      yaw: -109,
+      keys: [
+        { t: -2, p: [0.61, -25.32, -19.89] },
+        { t: 6, p: [1.92, -25.32, -20.14], lin: true },
+      ],
+    },
+    {
+      id: 'sp1',
+      k: 'veh',
+      key: 'workpod',
+      v: 1,
+      air: true,
+      yaw: -39,
+      keys: [
+        { t: -2, p: [6.19, -28.39, -24.47] },
+        { t: 6, p: [4.88, -28.39, -24.22], lin: true },
+      ],
+    },
+    {
+      id: 'sp2',
+      k: 'veh',
+      key: 'cargopod',
+      v: 2,
+      air: true,
+      yaw: 31,
+      keys: [
+        { t: -2, p: [1.81, -31.45, -26.1] },
+        { t: 6, p: [3.12, -31.45, -26.35], lin: true },
+      ],
+    },
+  ],
   '1tjpq12': [
     { id: 'a', k: 'scene', type: 'loading', p: [3, -3], yaw: 141, dur: 6, t0: -2 },
     {
@@ -927,6 +1072,44 @@ export const CINE_CROWD = {
       speed: 8,
       gap: 16,
       t0: -3,
+    },
+  ],
+  '1tzczbj': [
+    {
+      id: 'sp0',
+      k: 'veh',
+      key: 'workpod',
+      v: 0,
+      air: true,
+      yaw: 232,
+      keys: [
+        { t: -2, p: [-63.91, 35.78, 159.46] },
+        { t: 11, p: [-62.59, 35.78, 159.65], lin: true },
+      ],
+    },
+    {
+      id: 'sp1',
+      k: 'veh',
+      key: 'workpod',
+      v: 1,
+      air: true,
+      yaw: 302,
+      keys: [
+        { t: -2, p: [-56.99, 35.92, 155.76] },
+        { t: 11, p: [-58.31, 35.92, 155.57], lin: true },
+      ],
+    },
+    {
+      id: 'sp2',
+      k: 'veh',
+      key: 'cargopod',
+      v: 2,
+      air: true,
+      yaw: 372,
+      keys: [
+        { t: -2, p: [-60.42, 35.35, 151.38] },
+        { t: 11, p: [-59.1, 35.35, 151.57], lin: true },
+      ],
     },
   ],
   '1tzesid': [
@@ -947,13 +1130,27 @@ export const CINE_CROWD = {
     },
   ],
   '1u8rnfm': [
-    { id: 'a', k: 'scene', type: 'loading', p: [-21, -9], yaw: -51, dur: 6, t0: -2 },
+    {
+      id: 'a',
+      k: 'scene',
+      type: 'crowd',
+      p: [-18, -9],
+      yaw: -44,
+      dur: 6,
+      t0: -2,
+      who: ['worker', 'crew'],
+      vehs: ['truck', 'semi'],
+      n: 9,
+      seed: 24,
+    },
+    { id: 'l-1', k: 'veh', key: 'lighttower', p: [-19, -12.8], yaw: 15 },
+    { id: 'l1', k: 'veh', key: 'lighttower', p: [-14.2, -8.1], yaw: -103 },
     {
       id: 'c',
       k: 'scene',
       type: 'convoy',
       path: [
-        [-45, -15],
+        [-39, 0],
         [-15, 0],
       ],
       n: 3,
@@ -961,6 +1158,49 @@ export const CINE_CROWD = {
       speed: 8,
       gap: 16,
       t0: -3,
+    },
+  ],
+  '1wginpk': [
+    { id: 'a', k: 'scene', type: 'loading', p: [6, 0], yaw: 113, dur: 6, t0: -2 },
+    { id: 'l-1', k: 'veh', key: 'lighttower', p: [5.5, 3.9], yaw: 172 },
+    { id: 'l1', k: 'veh', key: 'lighttower', p: [2.8, -2.3], yaw: 54 },
+  ],
+  '1wl0rl2': [
+    {
+      id: 'sp0',
+      k: 'veh',
+      key: 'workpod',
+      v: 0,
+      air: true,
+      yaw: -92,
+      keys: [
+        { t: -2, p: [128.22, 34, -137.74] },
+        { t: 10, p: [129.4, 34, -138.37], lin: true },
+      ],
+    },
+    {
+      id: 'sp1',
+      k: 'veh',
+      key: 'workpod',
+      v: 1,
+      air: true,
+      yaw: -22,
+      keys: [
+        { t: -2, p: [131.64, 34.09, -144.8] },
+        { t: 10, p: [130.46, 34.09, -144.17], lin: true },
+      ],
+    },
+    {
+      id: 'sp2',
+      k: 'veh',
+      key: 'cargopod',
+      v: 2,
+      air: true,
+      yaw: 48,
+      keys: [
+        { t: -2, p: [126.31, 33.46, -146.32] },
+        { t: 10, p: [127.49, 33.46, -146.95], lin: true },
+      ],
     },
   ],
   '1xjvpf8': [
@@ -992,7 +1232,21 @@ export const CINE_CROWD = {
       t0: -3,
     },
   ],
-  '1yb0r29': [{ id: 'a', k: 'scene', type: 'loading', p: [30, 12], yaw: 82, dur: 5, t0: -2 }],
+  '1yb0r29': [
+    {
+      id: 'a',
+      k: 'scene',
+      type: 'crowd',
+      p: [30, 12],
+      yaw: 82,
+      dur: 5,
+      t0: -2,
+      who: ['worker', 'crew'],
+      vehs: ['truck', 'semi'],
+      n: 9,
+      seed: 16,
+    },
+  ],
   '1yhpa1f': [
     { id: 'a', k: 'scene', type: 'loading', p: [48, 48], yaw: 59, dur: 9, t0: -2 },
     {
@@ -1027,6 +1281,48 @@ export const CINE_CROWD = {
       t0: -3,
     },
   ],
+  '1yzf9hd': [
+    {
+      id: 'r0',
+      k: 'human',
+      who: 'crew',
+      p: [-2.8, -1.4],
+      ground: false,
+      anim: 'Use',
+      s: [{ t: 0, face: [0, -4.2] }],
+      seed: 91,
+    },
+    {
+      id: 'r1',
+      k: 'human',
+      who: 'biz',
+      p: [0, -4.2],
+      ground: false,
+      anim: 'Phone',
+      s: [{ t: 0, face: [-2.8, -1.4] }],
+      seed: 92,
+    },
+    {
+      id: 'r2',
+      k: 'human',
+      who: 'suitw',
+      p: [-4.2, -0.7],
+      ground: false,
+      anim: 'Arms',
+      s: [{ t: 0, face: [-4.2, -2.1] }],
+      seed: 93,
+    },
+    {
+      id: 'r3',
+      k: 'human',
+      who: 'crew',
+      p: [-4.2, -2.1],
+      ground: false,
+      anim: 'Yes',
+      s: [{ t: 0, face: [-4.2, -0.7] }],
+      seed: 94,
+    },
+  ],
   '34bsjp': [{ id: 'a', k: 'scene', type: 'loading', p: [51, 51], yaw: 57, dur: 10, t0: -2 }],
   '5a5rf0': [
     { id: 'a', k: 'scene', type: 'loading', p: [3, -6], yaw: 150, dur: 15, t0: -2 },
@@ -1045,6 +1341,7 @@ export const CINE_CROWD = {
       t0: -3,
     },
   ],
+  '5xhvnw': [{ id: 'a', k: 'scene', type: 'loading', p: [-3, -12], yaw: 162, dur: 7, t0: -2 }],
   '6ahyx4': [
     {
       id: 'a',
@@ -1152,19 +1449,61 @@ export const CINE_CROWD = {
       t0: -3,
     },
   ],
+  '857wf': [
+    {
+      id: 'r0',
+      k: 'human',
+      who: 'crew',
+      p: [-2.1, -2.8],
+      ground: false,
+      anim: 'Use',
+      s: [{ t: 0, face: [2.1, -1.4] }],
+      seed: 97,
+    },
+    {
+      id: 'r1',
+      k: 'human',
+      who: 'biz',
+      p: [2.1, -1.4],
+      ground: false,
+      anim: 'Phone',
+      s: [{ t: 0, face: [-2.1, -2.8] }],
+      seed: 98,
+    },
+    {
+      id: 'r2',
+      k: 'human',
+      who: 'suitw',
+      p: [3.5, -0.7],
+      ground: false,
+      anim: 'Arms',
+      s: [{ t: 0, face: [-0.7, -3.5] }],
+      seed: 99,
+    },
+    {
+      id: 'r3',
+      k: 'human',
+      who: 'crew',
+      p: [-0.7, -3.5],
+      ground: false,
+      anim: 'Yes',
+      s: [{ t: 0, face: [3.5, -0.7] }],
+      seed: 100,
+    },
+  ],
   '85j1x1': [
     {
       id: 'a',
       k: 'scene',
-      type: 'board',
+      type: 'crowd',
       p: [-27, 3],
-      yaw: 123,
+      yaw: 122,
       dur: 5,
       t0: -2,
-      veh: 'bus',
-      n: 9,
-      every: 0.7,
       who: ['farmer', 'hooded', 'casual', 'hoodie', 'man', 'woman'],
+      vehs: ['snowcat', 'apc'],
+      n: 9,
+      seed: 27,
     },
     {
       id: 'c',
@@ -1182,7 +1521,19 @@ export const CINE_CROWD = {
     },
   ],
   be1o2z: [
-    { id: 'a', k: 'scene', type: 'patrol', p: [-15, -3], yaw: 152, dur: 5, t0: -2, veh: 'apc', len: 30 },
+    {
+      id: 'a',
+      k: 'scene',
+      type: 'board',
+      p: [-15, -3],
+      yaw: 152,
+      dur: 5,
+      t0: -2,
+      veh: 'bus',
+      n: 9,
+      every: 0.7,
+      who: ['farmer', 'hooded', 'casual', 'hoodie', 'man', 'woman'],
+    },
     {
       id: 'c',
       k: 'scene',
@@ -1440,6 +1791,18 @@ export const CINE_CROWD = {
       t0: -3,
     },
   ],
+  iy2j27: [
+    {
+      id: 'r0',
+      k: 'human',
+      who: 'biz',
+      p: [2.1, -3.5],
+      ground: false,
+      anim: 'Phone',
+      s: [{ t: 0, face: [0, 0] }],
+      seed: 92,
+    },
+  ],
   jbj068: [
     { id: 'a', k: 'scene', type: 'patrol', p: [-6, 21], yaw: -145, dur: 4, t0: -2, veh: 'jeep', len: 30 },
     {
@@ -1458,7 +1821,7 @@ export const CINE_CROWD = {
     },
   ],
   k3p6od: [
-    { id: 'a', k: 'scene', type: 'loading', p: [-6, 6], yaw: 127, dur: 5, t0: -2 },
+    { id: 'a', k: 'scene', type: 'loading', p: [-6, 6], yaw: 126, dur: 5, t0: -2 },
     {
       id: 'c',
       k: 'scene',
@@ -1628,19 +1991,7 @@ export const CINE_CROWD = {
     },
   ],
   pfg23d: [
-    {
-      id: 'a',
-      k: 'scene',
-      type: 'crowd',
-      p: [-9, 15],
-      yaw: 170,
-      dur: 6,
-      t0: -2,
-      who: ['farmer', 'hooded', 'casual', 'hoodie', 'man', 'woman'],
-      vehs: ['snowcat', 'apc'],
-      n: 9,
-      seed: 25,
-    },
+    { id: 'a', k: 'scene', type: 'patrol', p: [-9, 15], yaw: 170, dur: 6, t0: -2, veh: 'apc', len: 30 },
     {
       id: 'c',
       k: 'scene',
@@ -1651,6 +2002,23 @@ export const CINE_CROWD = {
       ],
       n: 3,
       kinds: ['snowcat', 'apc', 'truck'],
+      speed: 8,
+      gap: 16,
+      t0: -3,
+    },
+  ],
+  qeqtko: [
+    { id: 'a', k: 'scene', type: 'patrol', p: [3, -9], yaw: 150, dur: 7, t0: -2, veh: 'jeep', len: 30 },
+    {
+      id: 'c',
+      k: 'scene',
+      type: 'convoy',
+      path: [
+        [-3, -15],
+        [21, -21],
+      ],
+      n: 3,
+      kinds: ['jeep', 'pickup', 'truck'],
       speed: 8,
       gap: 16,
       t0: -3,
@@ -1699,6 +2067,8 @@ export const CINE_CROWD = {
       n: 9,
       seed: 4,
     },
+    { id: 'l-1', k: 'veh', key: 'lighttower', p: [0, -3.5], yaw: -130 },
+    { id: 'l1', k: 'veh', key: 'lighttower', p: [-6.6, -4.5], yaw: 112 },
     {
       id: 'c',
       k: 'scene',

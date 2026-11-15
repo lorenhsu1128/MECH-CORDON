@@ -82,6 +82,65 @@ def slim(act):
                 kps.remove(kps[len(kps) - 1])
 
 
+
+ARM_IK = A.get('armIk', True)
+# 只修正雙手會在胸前交疊的動作（推、招手之類照抄角度比較自然）
+IK_CLIPS = {'Talk', 'Carry', 'SitTalk'}
+SUB = {}  # 每根骨頭的子孫（含自己）
+
+
+def subtree(n):
+    if n not in SUB:
+        b = T.data.bones[n]
+        SUB[n] = [n] + [c.name for c in b.children_recursive]
+    return SUB[n]
+
+
+def rot_about(P, names, pivot, q):
+    R = Matrix.Translation(pivot) @ q.to_matrix().to_4x4() @ Matrix.Translation(-pivot)
+    for m in names:
+        P[m] = R @ P[m]
+
+
+def fix_arms(S, SW, P):
+    sb = S.pose.bones
+    if 'spine_03' not in sb or 'Chest' not in P:
+        return
+    chest_s = SW @ sb['spine_03'].head
+    for sd, td in (('l', 'L'), ('r', 'R')):
+        ua, la, wr = 'UpperArm.' + td, 'LowerArm.' + td, 'Wrist.' + td
+        if ua not in P or la not in P or wr not in P:
+            continue
+        L1 = (A0[la].translation - A0[ua].translation).length
+        L2 = (A0[wr].translation - A0[la].translation).length
+        sh = P[ua].translation.copy()
+        want = P['Chest'].translation + MWi3 @ ((SW @ sb['hand_' + sd].head - chest_s) * ratio)
+        v = want - sh
+        dist = max(1e-4, min(v.length, (L1 + L2) * 0.999))
+        dirv = v.normalized()
+        t = sh + dirv * dist
+        # 手肘方向：來源的手肘相對於肩→手連線的垂直分量
+        es = SW @ sb['lowerarm_' + sd].head
+        ss = SW @ sb['upperarm_' + sd].head
+        hs = SW @ sb['hand_' + sd].head
+        pole = MWi3 @ (es - (ss + (hs - ss) * ((es - ss).dot(hs - ss) / max(1e-6, (hs - ss).length_squared))))
+        pole = pole - dirv * pole.dot(dirv)
+        if pole.length < 1e-5:
+            continue
+        pole.normalize()
+        a = (L1 * L1 - L2 * L2 + dist * dist) / (2 * dist)
+        h = max(0.0, L1 * L1 - a * a) ** 0.5
+        elbow = sh + dirv * a + pole * h
+        # 上臂：肩為中心，把目前的手肘轉到新的手肘
+        cur_e = P[la].translation - sh
+        q1 = cur_e.rotation_difference(elbow - sh)
+        rot_about(P, subtree(ua), sh, q1)
+        # 前臂：手肘為中心，把目前的手腕轉到目標
+        e2 = P[la].translation.copy()
+        q2 = (P[wr].translation - e2).rotation_difference(t - e2)
+        rot_about(P, subtree(la), e2, q2)
+
+
 out_actions = []
 for S, sacts in srcs:
     # glTF 匯入的動作名稱可能帶物件名稱的後綴：去掉
@@ -144,8 +203,17 @@ for S, sacts in srcs:
                 else:
                     M = natural
                 P[n] = M
+            # 手臂 IK：照抄角度時，這些人物肩膀窄、手臂短，手會跑到身體中間交疊（交談、搬東西）。
+            # 手的位置照來源「相對於胸口、依身高比例縮放」，兩節骨頭的解析解算上臂與前臂，手肘的方向照來源
+            if ARM_IK and gname in IK_CLIPS:
+                fix_arms(S, SW, P)
+            for b in order:
+                n = b.name
+                par = b.parent.name if b.parent else None
+                rel = (A0[par].inverted() @ A0[n]) if par else A0[n]
+                natural = (P[par] @ rel) if par else A0[n]
                 pb = T.pose.bones[n]
-                pb.matrix_basis = (natural.inverted() @ M) if par else (A0[n].inverted() @ M)
+                pb.matrix_basis = (natural.inverted() @ P[n]) if par else (A0[n].inverted() @ P[n])
                 if par:  # 根骨頭不寫（它的平移在往返之後不同）
                     pb.keyframe_insert('rotation_quaternion', frame=f)
                     if n == 'Hips' or n in FOOT:

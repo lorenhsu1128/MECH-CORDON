@@ -123,11 +123,12 @@ Object.assign(Game.prototype, {
         });
       } else {
         const name = hasGlb(who) ? who : whoList.find(hasGlb);
-        const ch = haChar(name);
+        const ch = this.cineHumTake(name);
         H.ch = ch;
         const h0 = PA.h[name] || H_HANGAR[name] || 1.8;
         ch.g.scale.setScalar(((spec.scale || 1) * HUMAN_H * (0.94 + rng() * 0.1)) / h0);
         this.cineHumLook(ch, spec);
+        ch.looked = !!(spec.tint || spec.dark); // 換過材質的不回收
         this.scene.add(ch.g);
       }
       A.hum.push(H);
@@ -262,8 +263,36 @@ Object.assign(Game.prototype, {
     if (typeof f === 'string') return this.cineAimPt(f);
     return this.cinePt(f.length === 3 ? f : { g: f, h: 0 }); // [x, z]＝地面上的點、[x, y, z]＝劇本座標
   },
+  // 人物的回收池（docs/cine-redesign-design.md 第十一節第 7 期）：骨架複本（SkeletonUtils.clone）很貴，換鏡時一次建很多人
+  // 會卡一下；移除的人留著給之後同一種人重用（預熱時建的也會進池子，所以播放時幾乎不用再建）
+  cineHumTake(name) {
+    const pool = (this.humPool = this.humPool || new Map());
+    const list = pool.get(name);
+    const ch = list && list.pop();
+    if (ch) {
+      ch.g.visible = true;
+      ch.g.rotation.set(0, 0, 0);
+      return ch;
+    }
+    const n = haChar(name);
+    if (n) n.name = name;
+    return n;
+  },
+  cineHumGive(ch) {
+    if (!ch || ch.looked || !ch.name) return;
+    if (ch.reset) ch.reset();
+    else ch.mixer.stopAllAction();
+    const pool = (this.humPool = this.humPool || new Map());
+    if (!pool.has(ch.name)) pool.set(ch.name, []);
+    const list = pool.get(ch.name);
+    if (list.length < 40) list.push(ch);
+  },
   cineHumDrop(A) {
-    for (const H of A.hum || []) if (H.ch) this.scene.remove(H.ch.g);
+    for (const H of A.hum || [])
+      if (H.ch) {
+        this.scene.remove(H.ch.g);
+        this.cineHumGive(H.ch);
+      }
     if (A.cm) {
       this.scene.remove(A.cm.group);
       A.cm.dispose();

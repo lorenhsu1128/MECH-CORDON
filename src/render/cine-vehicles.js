@@ -13,6 +13,7 @@ import {
   buildExcavator,
   buildHauler,
   buildLavaHauler,
+  buildLightTower,
   buildLowboy,
   buildNewsVan,
   buildTug,
@@ -972,6 +973,7 @@ export function buildCineVeh(key, o = {}) {
     wheels: c.wheels.map((w) => ({ o: atPath(group, w.p), r: w.r })).filter((w) => w.o),
     parts: Object.fromEntries(c.parts.map(([k, p]) => [k, atPath(group, p)])),
     len: c.r.len,
+    lamp: c.r.lamp,
   };
 }
 function buildCineVeh0(key, o = {}) {
@@ -1004,6 +1006,7 @@ function buildCineVeh0(key, o = {}) {
   else if (key === 'tug') r = buildTug();
   else if (key === 'lowboy') r = buildLowboy();
   else if (key === 'newsvan') r = buildNewsVan();
+  else if (key === 'lighttower') r = buildLightTower();
   // 第三批（render/cine-vehicles3.js）：水上與太空
   else if (key === 'patrolboat') r = buildPatrolBoat();
   else if (key === 'cargoship') r = buildCargoShip();
