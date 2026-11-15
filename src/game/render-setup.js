@@ -156,7 +156,15 @@ Object.assign(Game.prototype, {
   },
   renderMain() {
     const lab = this.lab;
-    const P = this.styleThemed(lab ? lab.P : this.cine ? this.cine.P : this.styleP); // 過場動畫：風格＋過場的調色（game/cine.js）
+    let P = this.styleThemed(lab ? lab.P : this.cine ? this.cine.P : this.styleP); // 過場動畫：風格＋過場的調色（game/cine.js）
+    // 過場的曝光補正（data/cine/exposure.js）：依地圖覆寫之後才乘（快取，同一組調色＋倍率不重建）
+    const xm = (this.cine && this.cine.xm) || 1;
+    if (xm !== 1) {
+      const q = this.cineXP;
+      if (!q || q.P !== P || q.xm !== xm)
+        this.cineXP = { P, xm, out: { ...P, exposure: (P.exposure ?? 1) * xm } };
+      P = this.cineXP.out;
+    }
     const t = performance.now() / 1000;
     // 新地圖：整個場景的著色器先編好。第一格只顯示「準備中」並讓瀏覽器畫出來，下一格才預熱；
     // 非同步（warmAsyncOk）時背景編譯，完成前不畫場景、主迴圈也停住（loop 開頭看 warmBusy）。

@@ -46,6 +46,7 @@ import {
 } from '../render/cine-brand.js';
 import { World } from '../world/world.js';
 import { CINE_GRADE } from './constants.js';
+import { CINE_EXPO, shotKey } from '../data/cine/exposure.js';
 import { Game } from './game.js';
 
 const $ = (id) => document.getElementById(id);
@@ -705,6 +706,11 @@ Object.assign(Game.prototype, {
     }
     for (const spec of S.actors || []) if (!c.actors.has(spec.id)) this.cineAddActor(spec, S.at);
     c.P = { ...this.styleP, ...CINE_GRADE, ...(c.def.grade || {}), ...(S.grade || {}) };
+    // 亮度：量過的曝光補正（data/cine/exposure.js；暗的 3D 鏡頭調到看得清楚）；cineExpoTest＝量測時的覆寫
+    const xk = shotKey(S);
+    c.xk = xk;
+    // 倍率在 renderMain 套用（地圖的調色還會經過 styleThemed 的依地圖覆寫，覆寫裡也有曝光）
+    c.xm = (this.cineExpoTest && this.cineExpoTest[xk]) || (!S.dark && CINE_EXPO[xk]) || 1;
     // 室內（room）：天空用場景的背景色（窗外的夜色），不畫風格的天空與雲
     if (S.set && S.set.k === 'room') Object.assign(c.P, { sky: 'theme', dust: 0, fogColorK: 0, hfog: 0 });
     if (S.set && S.set.k === 'space') {
