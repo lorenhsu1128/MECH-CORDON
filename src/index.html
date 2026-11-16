@@ -14,6 +14,8 @@
   <body>
     <canvas id="gl"></canvas>
     <canvas id="hud"></canvas>
+    <!-- 視角切換時舊 HUD 的畫面（game/view-tr.js），淡出 -->
+    <canvas id="hudTr"></canvas>
     <!-- 本地模型庫讀取進度 -->
     <div id="lmLoad">
       <div class="panel">
@@ -1072,7 +1074,7 @@
               <h4>共通</h4>
               <div
                 class="krow"
-                data-desc="出擊時一開始用的視角；任務中改的話回到遊戲時直接換成這個視角，任務中也可以按 V（觸控：「視角」）依序切換"
+                data-desc="出擊時一開始用的視角；任務中改的話回到遊戲時直接換成這個視角。任務中按「切換視角」（預設鍵盤 V、手把 Back；觸控：「視角」）依序切換；主線同一次出擊換區段時沿用你切的視角"
               >
                 <span>預設視角</span
                 ><select id="ctrlView">
@@ -1080,7 +1082,17 @@
                   <option value="chase">追尾視角（背後視角，鏡頭在機體後方）</option>
                   <option value="fps">第一人稱</option>
                 </select>
-                <span class="dim" style="font-size: 11px">任務中按 V（觸控：「視角」）依序切換</span>
+                <span class="dim" style="font-size: 11px">任務中按「切換視角」依序切換</span>
+              </div>
+              <div
+                class="krow"
+                data-desc="切換視角時鏡頭從原本的位置飛到新視角（約 0.5 秒）、HUD 交叉淡化；操作在按下時就換成新視角。關閉＝瞬間切換"
+              >
+                <span>視角切換的運鏡</span
+                ><select id="ctrlViewTr">
+                  <option value="on">開啟（預設）</option>
+                  <option value="off">關閉</option>
+                </select>
               </div>
               <div class="krow" data-desc="追尾與第一人稱轉鏡頭的速度（0.2～4，1＝標準）">
                 <span>滑鼠靈敏度（追尾／第一人稱）</span

@@ -632,6 +632,7 @@ export class Game {
       this.tickPopups(dt);
       if (this.csCd) for (const k in this.csCd) if (this.csCd[k] > 0) this.csCd[k] -= dt;
       this.updateCamera(dt);
+      this.viewTrApply(); // 視角切換的運鏡（view-tr.js）
       SFX.setListener((this.camFocus || this.player).center());
       this.updateLoops();
       this.renderMain();
@@ -735,6 +736,7 @@ export class Game {
     if (this.range) this.rangeTick(dt); // 靶場（range.js）
     if (this.tut) this.tutTick(dt); // 近戰訓練（tutorial.js）
     this.updateCamera(dt);
+    this.viewTrApply(); // 視角切換的運鏡（view-tr.js）
     SFX.setListener((this.camFocus || this.player).center());
     this.updateLoops();
     this.renderMain();

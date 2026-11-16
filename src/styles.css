@@ -54,6 +54,61 @@ body {
   inset: 0;
   pointer-events: none;
 }
+/* 視角切換的 HUD 交叉淡化（game/view-tr.js）：#hudTr＝舊畫面淡出、#hud 與 #hudWrap 淡入 */
+#hudTr {
+  position: fixed;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+#hudTr.vtOut {
+  animation: vtOut 0.32s ease-out both;
+}
+#hud.vtIn {
+  animation: vtIn 0.4s ease-out both;
+}
+/* DOM 的 HUD（狀態欄、武器卡片）各視角大致相同：不整個藏起來，只輕微淡一下 */
+#hudWrap.vtIn {
+  animation: vtSoft 0.3s ease-out both;
+}
+@keyframes vtSoft {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
+}
+body[data-uifx='simple'] #hud.vtIn,
+body[data-uifx='simple'] #hudWrap.vtIn {
+  animation-name: zFade;
+  animation-duration: 0.25s;
+}
+@keyframes vtOut {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+}
+@keyframes vtIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  35% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
 #ui {
   position: fixed;
   inset: 0;
@@ -11724,4 +11779,10 @@ body.vpad #lockHint {
   display: block;
   margin-top: 8px;
   font-size: 13px;
+}
+/* 設定「預設視角」旁邊的小說明：矮螢幕時藏起來（說明欄已經有），不把標籤擠成直排 */
+@media (max-height: 540px) {
+  #ctrlView + .dim {
+    display: none;
+  }
 }

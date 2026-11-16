@@ -34,6 +34,7 @@ Object.assign(Game.prototype, {
       aam: 'KeyC',
       interact: 'KeyX',
       wing: 'KeyZ', // 僚機的指令（game/wing.js）
+      view: 'KeyV', // 切換視角（以前寫死 V，2026-11-16 加進按鍵設定）
       pause: 'Escape',
       gzCenter: 'KeyG',
       gzPause: '',
@@ -123,6 +124,7 @@ Object.assign(Game.prototype, {
       aam: 'Pad8',
       interact: 'Pad15',
       wing: 'Pad14', // 十字鍵左：僚機的指令（多人時是信號，沒有僚機）
+      view: 'Pad8', // Back：切換視角（空域只有追尾視角，那裡 Back 是空戰導彈；VIEW_SHARE）
       pause: 'Pad9',
       gzCenter: '',
       gzPause: '',
@@ -668,7 +670,7 @@ Object.assign(Game.prototype, {
     this.padAim = new THREE.Vector3(dz(gp.axes[2] || 0), 0, dz(gp.axes[3] || 0));
     if (this.padMove.length() > 0.01 || this.padAim.length() > 0.01) this.padActive = true;
     const prev = this.padPrev || {};
-    const one = ['lock', 'assist', 'kit', 'cs1', 'cs2', 'pause', 'gzCenter', 'gzPause'];
+    const one = ['lock', 'assist', 'kit', 'cs1', 'cs2', 'pause', 'gzCenter', 'gzPause', 'view'];
     for (let i = 0; i < gp.buttons.length && i < 16; i++) {
       const b = gp.buttons[i];
       const pressed = b.pressed || b.value > 0.5;
@@ -695,6 +697,7 @@ Object.assign(Game.prototype, {
               } else if (this.state === 'pause') this.resume();
             } else if (this.state === 'play') {
               if (nm === 'lock') this.cycleLock();
+              if (nm === 'view' && !this.airMode) this.cycleView(); // 空域：同一顆是空戰導彈
               if (nm === 'assist') this.toggleAssist();
               if (nm === 'kit') this.useKit();
               if (nm === 'cs1') this.useConsumable('c1');
@@ -858,6 +861,10 @@ Object.assign(Game.prototype, {
     };
     document.getElementById('ctrlView').onchange = (e) => {
       this.ctrl.view = e.target.value;
+      this.saveKeys();
+    };
+    document.getElementById('ctrlViewTr').onchange = (e) => {
+      this.ctrl.viewTr = e.target.value; // 視角切換的運鏡（view-tr.js）
       this.saveKeys();
     };
     document.getElementById('ctrlSway').onchange = (e) => {
@@ -1072,7 +1079,7 @@ Object.assign(Game.prototype, {
       const km = this.keymap;
       if (this.lab && this.lab.mode === 'watch' && e.code !== km.pause) return; // 實驗室觀看模式：WASD 給自由鏡頭
       if (e.code === km.lock || e.code === 'Tab') e.preventDefault();
-      if (e.code === 'KeyV' && this.state === 'play') {
+      if (e.code === km.view && this.state === 'play' && !this.airMode) {
         this.cycleView();
       }
       if (e.code === km.lock && this.state === 'play') {

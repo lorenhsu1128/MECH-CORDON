@@ -29,6 +29,12 @@ Object.assign(Game.prototype, {
     if (!VIEWS.includes(v)) v = 'top';
     const cur = this.viewName();
     if (cur === v) return;
+    if (!quiet) {
+      this.viewTrStart(cur, v); // 運鏡與 HUD 的交叉淡化（view-tr.js），要在換旗標之前記下舊鏡頭
+      // 主線：同一次出擊換區段時沿用玩家切的視角（viewReset）
+      const so = this.camp || this.campC;
+      if (so) so.view = v;
+    }
     const p = this.player;
     if (cur === 'top' && p) {
       this.fpYaw = p.aimYaw !== undefined ? p.aimYaw : p.yaw;
@@ -64,7 +70,13 @@ Object.assign(Game.prototype, {
         document.exitPointerLock();
       } catch (e) {}
     }
-    if (!quiet) this.flashMsg(VIEW_NAME[v] + '（V 切換）', 0xffb020, 1.2);
+    if (!quiet) this.flashMsg(VIEW_NAME[v] + `（${this.viewKeyLabel()} 切換）`, 0xffb020, 1.2);
+  },
+  // 切換視角的按鍵（依目前的裝置與改過的按鍵）
+  viewKeyLabel() {
+    if (this.touchActive) return '「視角」';
+    if (this.padActive && this.padConnected) return this.padLabel(this.padmap.view) || '—';
+    return this.keyLabel(this.keymap.view) || '—';
   },
   // V：俯視 → 追尾 → 第一人稱 → 俯視
   cycleView() {
@@ -72,8 +84,9 @@ Object.assign(Game.prototype, {
     const i = VIEWS.indexOf(this.viewName());
     this.setView(VIEWS[(i + 1) % VIEWS.length]);
   },
-  // 出擊時：回到設定的預設視角
+  // 出擊時：回到設定的預設視角；主線的同一次出擊換區段時沿用玩家切的視角（setView 記在 camp／campC 的 view）
   viewReset() {
+    this.viewTr = null;
     this.gazeHeadReset();
     this.topAimReset();
     this.fp = false;
@@ -83,13 +96,17 @@ Object.assign(Game.prototype, {
     this.camera.fov = this.tpFov();
     this.camera.updateProjectionMatrix();
     document.body.classList.remove('chaseView');
+    const so = this.camp || this.campC;
+    const keep = so && VIEWS.includes(so.view) ? so.view : null;
     const v = this.airMode
       ? 'chase' // 空域只有追尾視角（game/air.js）
-      : this.ctrl.view === 'fps'
-        ? 'fp'
-        : this.ctrl.view === 'chase'
-          ? 'chase'
-          : 'top';
+      : keep
+        ? keep
+        : this.ctrl.view === 'fps'
+          ? 'fp'
+          : this.ctrl.view === 'chase'
+            ? 'chase'
+            : 'top';
     if (v !== 'top') this.setView(v, true);
   },
   chaseFov() {

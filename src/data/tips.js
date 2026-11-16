@@ -44,7 +44,7 @@ export const BTN = {
   wing: { name: '僚機指令', k: ['wing'], touch: null },
   cs: { name: '消耗品', k: ['cs1', 'cs2'], touch: '道具' },
   aam: { name: '空戰導彈', k: ['aam'], touch: '導彈' },
-  view: { name: '切換視角', kb: 'V', pad: null, touch: '視角' },
+  view: { name: '切換視角', k: ['view'], touch: '視角' },
   pause: { name: '暫停', k: ['pause'], touch: '暫停' },
 };
 
@@ -71,8 +71,7 @@ export const TIPS = [
   {
     id: 'op_view',
     c: 'op',
-    t: '{view}依序切換俯視、追尾、第一人稱。出擊時的預設視角在設定裡改。',
-    only: { dev: ['kb', 'touch'] },
+    t: '{view}依序切換俯視、追尾、第一人稱。主線同一次出擊裡，換區段也會沿用你切的視角。',
   },
   {
     id: 'op_assist',

@@ -324,6 +324,7 @@ Object.assign(Game.prototype, {
       ['aam', '空戰導彈（空域）'],
       ['interact', '互動（地圖裝置，按住）'],
       ['wing', '僚機的指令（主線，依序切換）'],
+      ['view', '切換視角（空域以外）'],
       ['pause', '暫停'],
       ['gzCenter', '眼動：頭部置中'],
       ['gzPause', '眼動：暫停頭部追蹤'],
@@ -357,6 +358,7 @@ Object.assign(Game.prototype, {
     $('ctrlTouch').value = this.ctrl.touch || 'auto';
     $('ctrlAuto').checked = !!this.ctrl.autoFire;
     $('ctrlView').value = this.ctrl.view || 'tps';
+    $('ctrlViewTr').value = this.ctrl.viewTr || 'on';
     $('ctrlSens').value = this.ctrl.sens || 1;
     $('ctrlSway').value = String(this.ctrl.chaseSway === undefined ? 1 : this.ctrl.chaseSway);
     $('ctrlChaseDist').value = String(this.ctrl.chaseDist || 1);
@@ -501,7 +503,10 @@ Object.assign(Game.prototype, {
       return true;
     }
     const map = code.startsWith('Pad') ? this.padmap : this.keymap;
-    for (const k in map) if (map[k] === code && k !== this.rebinding) map[k] = '';
+    // 同一顆按鍵只給一個動作；例外：切換視角與空戰導彈不會同時用到（空域只有追尾視角），可以共用
+    const share = { view: 'aam', aam: 'view' };
+    for (const k in map)
+      if (map[k] === code && k !== this.rebinding && share[this.rebinding] !== k) map[k] = '';
     map[this.rebinding] = code;
     if (this.settingsFrom === 'pause') (this.setChanged = this.setChanged || new Set()).add('按鍵');
     this.rebinding = null;

@@ -2183,6 +2183,74 @@ async function testSolo(browser, base) {
 
 // 著色器的非同步預熱（docs/perf-threejs-upgrade.md 第 2 期）：自動化測試預設同步，這裡以 window.__warmAsync 走非同步：
 // 出擊時背景編譯、完成後「戰場準備中」消失、任務照常進行，之後幾乎不再新編著色器
+// 視角切換（game/view-tr.js、chase.js）：按鍵設定的「切換視角」、手把的 Back、運鏡與設定、主線換區段沿用視角
+async function testViewTr(browser, base) {
+  console.log('視角切換：按鍵、手把、運鏡、主線沿用');
+  const { ctx, page } = await newPage(browser, 'viewtr');
+  await page.addInitScript(() => (window.__viewTr = true));
+  await page.goto(base + '?test');
+  check(await waitVisible(page, 'title'), '標題畫面顯示');
+  await newCareer(page);
+  await page.evaluate(() => {
+    const g = window.__game;
+    g.save.level = 1;
+    g.startMission();
+  });
+  await page.waitForFunction(() => {
+    const g = window.__game;
+    return g.state === 'play' && g.player && g.warmWorld === g.world && !g.warmBusy;
+  });
+  const k = await page.evaluate(() => {
+    const g = window.__game;
+    return { kb: g.keymap.view, pad: g.padmap.view, v0: g.viewName() };
+  });
+  check(k.kb === 'KeyV' && k.pad === 'Pad8', `切換視角在按鍵設定裡（鍵盤 ${k.kb}、手把 ${k.pad}）`);
+  await page.keyboard.press('KeyV');
+  const r1 = await page.evaluate(() => {
+    const g = window.__game;
+    return { v: g.viewName(), tr: !!g.viewTr, ctl: g.camAim() };
+  });
+  check(
+    r1.v === 'chase' && r1.tr && r1.ctl,
+    `按 V：切到追尾、運鏡開始、操作立刻換成追尾（${JSON.stringify(r1)}）`,
+  );
+  await page.waitForTimeout(800);
+  const r2 = await page.evaluate(() => !window.__game.viewTr);
+  check(r2, '運鏡約 0.5 秒後結束');
+  const r3 = await page.evaluate(() => {
+    const g = window.__game;
+    g.ctrl.viewTr = 'off';
+    g.cycleView();
+    const off = !g.viewTr && g.viewName() === 'fp';
+    g.ctrl.viewTr = 'on';
+    return off;
+  });
+  check(r3, '設定「視角切換的運鏡」關閉時瞬間切換');
+  // 主線：換區段時沿用玩家切的視角
+  const r4 = await page.evaluate(() => {
+    const g = window.__game;
+    g.ctrl.view = 'tps';
+    g.campBegin('c1s1');
+    g.campEnterSeg();
+    const v0 = g.viewName();
+    g.setView('chase');
+    g.camp.seg = 1;
+    g.campEnterSeg();
+    const v1 = g.viewName();
+    g.campEnd(false, true);
+    return { v0, v1 };
+  });
+  check(r4.v0 === 'top' && r4.v1 === 'chase', `主線換區段沿用玩家切的視角（${r4.v0} → ${r4.v1}）`);
+  const r5 = await page.evaluate(() => {
+    const g = window.__game;
+    g.openSettings('title', 'keys');
+    const rows = [...document.querySelectorAll('#keyRows .krow span:first-child')].map((x) => x.textContent);
+    return { row: rows.some((t) => /切換視角/.test(t)), sel: !!document.getElementById('ctrlViewTr') };
+  });
+  check(r5.row && r5.sel, '設定畫面：按鍵設定有「切換視角」、有「視角切換的運鏡」');
+  await ctx.close();
+}
+
 // 載入畫面與轉場畫面的提示（game/tips.js、data/tips.js）：提示卡、依裝置的鍵帽、沒遇過的情報不出現、設定關閉
 async function testTips(browser, base) {
   console.log('載入提示：提示卡、鍵帽、情報的隱藏、設定');
@@ -33912,6 +33980,7 @@ const STEPS = [
   ['testSolo', (c) => testSolo(c.browser, c.base)],
   ['testWarmAsync', (c) => testWarmAsync(c.browser, c.base)], // 著色器的非同步預熱（docs/perf-threejs-upgrade.md）
   ['testTips', (c) => testTips(c.browser, c.base)], // 載入提示（game/tips.js）
+  ['testViewTr', (c) => testViewTr(c.browser, c.base)], // 視角切換（game/view-tr.js）
   ['testMaps', (c) => testMaps(c.browser, c.base + '?test')],
   ['testDestruct', (c) => testDestruct(c.browser, c.base + '?test')],
   ['testDestructCollapse', (c) => testDestructCollapse(c.browser, c.base + '?test')],
