@@ -359,6 +359,7 @@ Object.assign(Game.prototype, {
             mine.map((m) => `<span class="modChip">${escHtml(m)}</span>`).join('')
           : '<span class="dim">戰術模組：尚未取得</span>';
         $('ctWait').textContent = '';
+        this.tipStart('ctTip'); // 提示（game/tips.js）
         $('ctBtns').style.visibility = 'hidden';
         const T = d.resume ? 0 : 2.4;
         clearTimeout(this.campTransTo);

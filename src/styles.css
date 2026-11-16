@@ -10029,10 +10029,130 @@ body[data-uifx='simple'] #campTrans.on .ctBox {
 body[data-uifx='off'] .lcBar > i {
   animation: none;
 }
+/* 提示卡（game/tips.js）：載入畫面與轉場畫面共用；ECHO 的小頭像、斜切的 TIPS 標籤與分類、按鈕＝「名稱」＋鍵帽 */
+.tipCard:empty {
+  display: none;
+}
+.tipCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px 13px 12px;
+  border-radius: 12px;
+  border: 2px solid var(--line);
+  background: rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 0 2px var(--edge);
+  text-align: left;
+}
+#lcTip {
+  align-self: stretch;
+  margin-top: 22px;
+}
+.tipFace {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--panel2);
+  box-shadow:
+    0 0 0 2px var(--acc2),
+    0 0 0 4px var(--edge);
+}
+.tipFace img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.tipMain {
+  min-width: 0;
+  flex: 1;
+}
+.tipHd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.tipTag {
+  padding: 3px 9px 2px;
+  font: italic 900 11px/1 var(--fd);
+  letter-spacing: 0.2em;
+  color: var(--accInk);
+  background: var(--acc);
+  transform: skewX(-14deg);
+  box-shadow: 0 0 0 2px var(--edge);
+}
+.tipCat {
+  font: 900 12px/1 var(--fz);
+  color: var(--acc);
+}
+.tipWho {
+  margin-left: auto;
+  font: italic 900 11px/1 var(--fd);
+  letter-spacing: 0.2em;
+  color: var(--acc2);
+}
+.tipTx {
+  font: 500 14px/1.65 var(--fz);
+  color: var(--ink);
+}
+.tipB {
+  font-weight: 900;
+  color: #fff;
+  white-space: nowrap;
+}
+.tipB kbd {
+  display: inline-block;
+  margin: 0 2px 0 3px;
+  padding: 0 7px;
+  border-radius: var(--rp);
+  border: 1.5px solid var(--line);
+  background: var(--pill);
+  color: var(--focus);
+  font: 800 12px/1.6 var(--fd);
+  vertical-align: 1px;
+}
+body[data-uifx='full'] .tipCard.tipIn {
+  animation: zSlideIn 0.3s ease-out both;
+}
+@media (max-height: 540px) {
+  .tipCard {
+    padding: 8px 12px 9px 8px;
+    gap: 10px;
+  }
+  .tipFace {
+    width: 30px;
+    height: 30px;
+  }
+  .tipHd {
+    margin-bottom: 3px;
+  }
+  .tipTx {
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+  #lcTip {
+    margin-top: 12px;
+  }
+}
+/* 內容比畫面高時（矮螢幕、提示卡）可以捲動，上方不被切掉 */
+#campTrans {
+  overflow-y: auto;
+  align-items: safe center;
+  padding: 12px 0;
+  box-sizing: border-box;
+}
 @media (max-height: 540px) {
   #campTrans #ctTitle,
   #lcTitle {
     font-size: 26px;
+  }
+  #ctSub {
+    display: none;
+  }
+  #campTrans .ctBarW {
+    height: 6px;
   }
   .ctHead {
     padding: 14px 18px 10px;

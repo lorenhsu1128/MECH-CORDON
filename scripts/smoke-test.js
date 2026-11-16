@@ -2183,6 +2183,50 @@ async function testSolo(browser, base) {
 
 // 著色器的非同步預熱（docs/perf-threejs-upgrade.md 第 2 期）：自動化測試預設同步，這裡以 window.__warmAsync 走非同步：
 // 出擊時背景編譯、完成後「戰場準備中」消失、任務照常進行，之後幾乎不再新編著色器
+// 載入畫面與轉場畫面的提示（game/tips.js、data/tips.js）：提示卡、依裝置的鍵帽、沒遇過的情報不出現、設定關閉
+async function testTips(browser, base) {
+  console.log('載入提示：提示卡、鍵帽、情報的隱藏、設定');
+  const { ctx, page } = await newPage(browser, 'tips');
+  await page.goto(base + '?test');
+  check(await waitVisible(page, 'title'), '標題畫面顯示');
+  await newCareer(page);
+  const r = await page.evaluate(() => {
+    const g = window.__game;
+    const out = {};
+    g.levelName = '測試地圖';
+    g.loadCover(true);
+    const el = document.getElementById('lcTip');
+    out.card = !!el.querySelector('.tipTx') && el.querySelector('.tipTx').textContent.length > 8;
+    out.cat = (el.querySelector('.tipCat') || {}).textContent || '';
+    // 指定一則帶按鈕的提示：鍵盤＝鍵名、觸控＝觸控按鈕的字
+    g.tipStart('lcTip', 'op_hover');
+    out.kb = el.querySelector('.tipB kbd') ? el.querySelector('.tipB').textContent : '';
+    g.touchActive = true;
+    g.tipStart('lcTip', 'op_hover');
+    out.touch = el.querySelector('.tipB') ? el.querySelector('.tipB').textContent : '';
+    g.touchActive = false;
+    // 沒遇過的專屬敵人：情報不在清單裡；遇過之後出現
+    const c0 = g.tipCtx();
+    out.hid = !g.tipList(c0).some((t) => t.id === 'if_scav');
+    g.save.story = g.save.story || {};
+    g.save.story.seen2 = { foes: { scav: 1 }, aces: {}, bosses: {} };
+    out.shown = g.tipList(g.tipCtx()).some((t) => t.id === 'if_scav' && /拾荒步行機/.test(t.t));
+    // 設定關閉：不顯示
+    g.ctrl.tips = 'off';
+    g.tipStart('lcTip');
+    out.off = el.innerHTML === '';
+    g.ctrl.tips = 'on';
+    g.loadCover(false);
+    return out;
+  });
+  check(r.card, `載入畫面有提示卡（${r.cat}）`);
+  check(/「跳躍」鈕/.test(r.kb) && r.kb.length > 6, `鍵盤時按鈕附鍵帽（${r.kb}）`);
+  check(/「跳躍」鈕跳躍/.test(r.touch), `觸控時鍵帽是觸控按鈕的字（${r.touch}）`);
+  check(r.hid && r.shown, '沒遇過的敵人情報不出現、遇過之後出現');
+  check(r.off, '設定「載入提示」關閉時不顯示');
+  await ctx.close();
+}
+
 async function testWarmAsync(browser, base) {
   console.log('著色器的非同步預熱：出擊 → 背景編譯 → 任務照常');
   const { ctx, page } = await newPage(browser, 'warm-async');
@@ -33867,6 +33911,7 @@ const STEPS = [
   ['testFile', (c) => testFile(c.browser)],
   ['testSolo', (c) => testSolo(c.browser, c.base)],
   ['testWarmAsync', (c) => testWarmAsync(c.browser, c.base)], // 著色器的非同步預熱（docs/perf-threejs-upgrade.md）
+  ['testTips', (c) => testTips(c.browser, c.base)], // 載入提示（game/tips.js）
   ['testMaps', (c) => testMaps(c.browser, c.base + '?test')],
   ['testDestruct', (c) => testDestruct(c.browser, c.base + '?test')],
   ['testDestructCollapse', (c) => testDestructCollapse(c.browser, c.base + '?test')],

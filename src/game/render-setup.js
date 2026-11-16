@@ -413,7 +413,11 @@ Object.assign(Game.prototype, {
       $('lcTitle').textContent = this.levelName || '';
       $('lcSub').innerHTML = sub;
     }
+    const was = el.classList.contains('on');
     el.classList.toggle('on', !!on);
+    if (on && !was && this.tipStart)
+      this.tipStart('lcTip'); // 提示（game/tips.js）
+    else if (!on && this.tipStop) this.tipStop('lcTip');
   },
   // 預熱時的提示（畫面中央）；自動化測試照樣顯示，不影響判定
   warmMsg(on, txt = '戰場準備中…') {

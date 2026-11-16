@@ -71,6 +71,7 @@ Object.assign(Game.prototype, {
         this.state = 'camptrans';
         this.showScreen('campTrans');
         document.getElementById('ctBtns').style.visibility = 'visible';
+        this.tipStart('ctTip'); // 提示（game/tips.js）
         return;
       case 'campfail':
         if (!this.camp) return this.openHub();

@@ -1200,6 +1200,7 @@ Object.assign(Game.prototype, {
     if (first !== 'resume' && c.seg > 0) this.campComm('trans', this.campCtx());
     $('ctWait').textContent = '';
     this.tfxTrans(tr, first); // 文字演出：標題、說明逐字、章名卡
+    this.tipStart('ctTip'); // 提示（game/tips.js）：下一段的情境
     if (this.campMp()) this.campMpTrans(tr, first);
     else this.campPreSched();
   },

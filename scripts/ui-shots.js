@@ -286,6 +286,16 @@ const SHOTS = {
     });
     await wait(800);
   },
+  // 提示卡：帶按鈕鍵帽的長提示（game/tips.js）
+  'load-tip': async (page) => {
+    await page.evaluate(() => {
+      const g = window.__game;
+      g.levelName = '冰原・白夜';
+      g.loadCover(true);
+      g.tipStart('lcTip', 'melee_parry');
+    });
+    await wait(800);
+  },
   'load-free': async (page) => {
     await page.evaluate(() => {
       const g = window.__game;

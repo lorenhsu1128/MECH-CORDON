@@ -984,6 +984,10 @@ Object.assign(Game.prototype, {
       this.ctrl.voiceClear = e.target.value; // 對白的清晰度（game/voice.js 的 voiceMix）
       this.saveKeys();
     };
+    document.getElementById('ctrlTips').onchange = (e) => {
+      this.ctrl.tips = e.target.value; // 載入提示（game/tips.js）
+      this.saveKeys();
+    };
     document.getElementById('ctrlCutin').onchange = (e) => {
       this.ctrl.cutin = e.target.value; // 插入畫面（game/portrait-ui.js 的 ptCutIn）
       this.saveKeys();

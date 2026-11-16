@@ -629,6 +629,7 @@
           <div id="ctReward"></div>
           <div id="ctMods"></div>
           <div id="ctWait" class="dim"></div>
+          <div id="ctTip" class="tipCard"></div>
           <div id="ctBtns">
             <button class="primary" id="btnCampGo">直接出擊</button>
             <button id="btnCampGarage">進機甲庫整備</button>
@@ -1335,6 +1336,16 @@
                 </select>
               </div>
               <div class="krow">
+                <span>載入提示</span
+                ><select
+                  id="ctrlTips"
+                  title="載入畫面與主線的轉場畫面顯示 ECHO 的提示（操作、系統、遇過的敵人情報）"
+                >
+                  <option value="on">顯示（預設）</option>
+                  <option value="off">不顯示</option>
+                </select>
+              </div>
+              <div class="krow">
                 <span>整備演出</span
                 ><select id="ctrlHangar" title="機甲庫換零件、維修、出擊時的格納庫演出">
                   <option value="full">完整（預設）</option>
@@ -1621,6 +1632,7 @@
         <div id="lcSub"></div>
         <div class="lcBar"><i></i></div>
         <div id="lcMsg">戰場準備中…</div>
+        <div id="lcTip" class="tipCard"></div>
       </div>
     </div>
     <script src="lib/three/three.js"></script>

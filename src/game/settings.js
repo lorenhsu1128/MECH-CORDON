@@ -384,6 +384,7 @@ Object.assign(Game.prototype, {
     $('ctrlCine').value = this.ctrl.cine || 'on';
     $('ctrlVoiceClear').value = this.ctrl.voiceClear || 'std';
     $('ctrlCutin').value = this.ctrl.cutin || 'on';
+    $('ctrlTips').value = this.ctrl.tips || 'on';
     $('ctrlVoice').value = this.voiceId() || 'off';
     $('ctrlSub').value = this.subLang();
     $('ctrlSubSize').value = ['s', 'l'].includes(this.ctrl.subSize) ? this.ctrl.subSize : 'm';

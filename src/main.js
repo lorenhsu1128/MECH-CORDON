@@ -153,5 +153,6 @@ import './game/devices-traps.js';
 import './game/devices-guns.js';
 import './game/top-aim.js';
 import './game/free-ops.js';
+import './game/tips.js'; // 載入畫面與轉場畫面的提示
 
 new Game();
