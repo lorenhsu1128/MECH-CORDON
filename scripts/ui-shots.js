@@ -271,6 +271,29 @@ const SHOTS = {
   },
   campFail: show('campFail'),
   campTrans: show('campTrans'),
+  // 真的出擊的轉場畫面（標題、說明、下一段、模組、按鈕；等文字演出播完）
+  'trans-real': async (page) => {
+    await page.evaluate(() => window.__game.campBegin('c1s1'));
+    await wait(5500);
+  },
+  // 全畫面的載入畫面（render-setup.js 的 loadCover）：主線的區段與自由出擊
+  'load-camp': async (page) => {
+    await page.evaluate(() => {
+      const g = window.__game;
+      g.campBegin('c1s1');
+      g.levelName = g.campSegName();
+      g.loadCover(true);
+    });
+    await wait(800);
+  },
+  'load-free': async (page) => {
+    await page.evaluate(() => {
+      const g = window.__game;
+      g.levelName = '貨運集散場・夜間';
+      g.loadCover(true);
+    });
+    await wait(800);
+  },
   // 任務中的 HUD（視角：top／chase／fp；boss＝Boss 關）
   banner: async (page) => {
     await page.evaluate(() => {

@@ -58,7 +58,8 @@ Object.assign(Game.prototype, {
     const now = performance.now();
     const dt = Math.min(0.25, (now - (this.tfxLast || now)) / 1000);
     this.tfxLast = now;
-    this.textfx.tick(dt, this.state);
+    // 全畫面的載入畫面蓋著時（render-setup.js 的 loadCover）時間不走：作戰開始的橫幅等載入畫面拿掉才開始播
+    this.textfx.tick(this.lcOn ? 0 : dt, this.state);
   },
   // 播一個演出；回傳 false＝關閉（呼叫端改用原本的畫面）
   tfx(cue, main, sub, opt) {
@@ -126,8 +127,9 @@ Object.assign(Game.prototype, {
   // 轉場畫面：標題與下一段的說明；整章第一次出擊時先播章名卡
   tfxTrans(tr, first) {
     if (!this.textfx || !this.textfx.on) return;
-    this.textfx.host($('ctTitle'), 'transTitle', tr.title, '');
-    revealDom($('ctNext'), 'trans', { delay: 0.5, limit: 2.5 });
+    // 標題與下一段的資訊卡照介面的樣式（粗斜體＋英文標籤，進場動畫在 styles.css），不再疊產生器的範本與打字機逐字
+    // （明體和絕區零式的介面不搭，底下的字也會露出來；2026-11-16，同結果畫面的改版）
+    this.textfx.unhost($('ctTitle'));
     const so = this.campSortie && this.campSortie();
     if (first === true && so && this.camp && this.camp.seg === 0 && !this.camp.replay) {
       const st = this.campStory();

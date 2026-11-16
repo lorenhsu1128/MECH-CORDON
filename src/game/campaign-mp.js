@@ -208,6 +208,7 @@ Object.assign(Game.prototype, {
       sub: tr.sub,
       next: document.getElementById('ctNext').textContent,
       reward: document.getElementById('ctReward').textContent,
+      ni: this.campTransNi || null, // 資訊卡的欄位（campaign.js 的 campTransInfo）
       carry: c.carryBy || {},
       mods,
       resume: first === 'resume',
@@ -346,8 +347,12 @@ Object.assign(Game.prototype, {
         this.showScreen('campTrans');
         $('ctTitle').textContent = d.title;
         $('ctSub').textContent = d.sub;
-        $('ctNext').textContent = d.next;
-        $('ctReward').textContent = d.reward;
+        if (d.ni && typeof d.ni === 'object') this.campTransInfo(d.ni);
+        else {
+          $('ctKick').textContent = 'TRANSIT';
+          $('ctNext').textContent = d.next;
+          $('ctReward').textContent = d.reward;
+        }
         const mine = (d.mods && d.mods[this.net.me]) || [];
         $('ctMods').innerHTML = mine.length
           ? '<span class="dim">戰術模組：</span>' +

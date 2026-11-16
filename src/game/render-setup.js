@@ -9,6 +9,7 @@ import { DS } from '../core/scale.js';
 import { Game } from './game.js';
 import { WARM, saveWarm, transpWarm, warmGroup } from '../render/shader-warm.js';
 import { legacyTarget } from '../render/legacy-rt.js';
+import { escHtml } from '../core/html.js';
 
 installStyleShader(); // 越早越好：之後建立的標準材質都會用風格著色器
 
@@ -174,7 +175,7 @@ Object.assign(Game.prototype, {
     if (this.world && this.warmWorld !== this.world && this.state !== 'editor' && !this.cine) {
       if (this.warmNote !== this.world) {
         this.warmNote = this.world;
-        this.warmMsg(true);
+        this.warmCover(true);
         return;
       }
       if (this.warmAsyncOk()) {
@@ -184,14 +185,14 @@ Object.assign(Game.prototype, {
           if (this.warmBusy !== busy) return;
           this.warmPrime();
           this.warmBusy = null;
-          this.warmMsg(false);
+          this.warmCover(false);
         };
         // 保險：驅動程式一直沒回報完成時（裝置遺失等）最多等 20 秒
         Promise.race([busy, new Promise((r) => setTimeout(r, 20000))]).then(done, done);
         return;
       }
       this.shaderWarm();
-      this.warmMsg(false);
+      this.warmCover(false);
     }
     if ((this.frames & 511) === 0) saveWarm();
     WARM.rec = !!this.world; // 這段期間新編的風格著色器變體記下來（render/shader-warm.js）
@@ -363,6 +364,39 @@ Object.assign(Game.prototype, {
     if ((this.net && this.net.role) || this.pumpDt) return false; // net 物件單人時也在（role 是 null）
     if (typeof this.renderer.compileAsync !== 'function') return false;
     return !navigator.webdriver || !!window.__warmAsync;
+  },
+  // 新地圖預熱期間的畫面：一般是全畫面的載入畫面（#loadCover，蓋住黑色的場景與 HUD；2026-11-16 使用者回報
+  // 每次進關卡都看到黑畫面＋HUD，像是卡住）。地圖預覽器一直重新產生地圖，照舊只顯示中央的小提示
+  warmCover(on) {
+    if (this.mapv) return this.warmMsg(on);
+    this.warmMsg(false);
+    this.loadCover(on);
+  },
+  // 全畫面的載入畫面：英文標籤、這一段的名稱、說明（index.html 的 #loadCover，樣式 styles.css）
+  loadCover(on) {
+    const el = document.getElementById('loadCover');
+    if (!el) return;
+    this.lcOn = !!on;
+    if (on) {
+      const $ = (id) => document.getElementById(id);
+      const pad = (v) => String(v).padStart(2, '0');
+      const ni = (this.camp || this.campC) && this.campTransNi;
+      let kick = 'DEPLOY',
+        sub = '';
+      if (ni && ni.seg) {
+        kick = `SORTIE · SEG ${pad(ni.seg)} / ${pad(ni.n)}`;
+        // 區段類型是和轉場資訊卡一樣的膠囊（styles.css 的 .ctnType）；多人時欄位來自房主，一律跳脫
+        sub = `<span class="ctnType">${escHtml(String(ni.type || ''))}</span><span>${escHtml(String(ni.so || ''))}</span>`;
+      } else if (this.lv) kick = 'CUSTOM LEVEL';
+      else if (this.sim) kick = 'SIMULATION';
+      else if (this.range) kick = 'FIRING RANGE';
+      else if (this.lab) kick = 'STYLE LAB';
+      else if (this.isBossLevel) kick = 'BOSS SORTIE';
+      $('lcKick').textContent = kick;
+      $('lcTitle').textContent = this.levelName || '';
+      $('lcSub').innerHTML = sub;
+    }
+    el.classList.toggle('on', !!on);
   },
   // 預熱時的提示（畫面中央）；自動化測試照樣顯示，不影響判定
   warmMsg(on, txt = '戰場準備中…') {

@@ -2191,6 +2191,15 @@ async function testWarmAsync(browser, base) {
   check(await waitVisible(page, 'title'), '標題畫面顯示');
   await newCareer(page);
   check(await waitVisible(page, 'garage'), '機甲庫顯示');
+  // 全畫面的載入畫面（render-setup.js 的 loadCover）：預熱中蓋著、記下標題
+  await page.evaluate(() => {
+    window.__lcSeen = '';
+    window.__lcIv = setInterval(() => {
+      const el = document.getElementById('loadCover');
+      if (el && el.classList.contains('on') && window.__game.warmBusy)
+        window.__lcSeen = document.getElementById('lcTitle').textContent || '(空)';
+    }, 15);
+  });
   await page.click('#btnSortie');
   check(await waitVisible(page, 'hudWrap', 30000), '出擊後 HUD 顯示');
   const done = await page
@@ -2207,13 +2216,20 @@ async function testWarmAsync(browser, base) {
   const r = await page.evaluate(() => {
     const g = window.__game;
     const el = document.getElementById('warmMsg');
+    clearInterval(window.__lcIv);
     return {
       n: g.warmAsyncN || 0,
       msg: !!(el && el.style.display !== 'none'),
+      lc: window.__lcSeen,
+      lcOn: document.getElementById('loadCover').classList.contains('on'),
       progs: g.renderer.info.programs.length,
     };
   });
   check(done && r.n >= 1 && !r.msg, `出擊時走非同步預熱（${r.n} 次）、完成後提示消失、任務時間前進`);
+  check(
+    !!r.lc && r.lc !== '(空)' && !r.lcOn,
+    `預熱中蓋著全畫面的載入畫面（${r.lc || '沒看到'}）、完成後拿掉`,
+  );
   await playFor(page, 3000);
   const p2 = await page.evaluate(() => window.__game.renderer.info.programs.length);
   check(
@@ -20843,7 +20859,12 @@ async function testTextFx(browser, base) {
         'warn:防衛目標被摧毀,good:修復完成,good:取得戰術模組：測試,sys:手把已連接|測試手把,info:COAM 不足',
     '出擊的橫幅與中央訊息的種類（' + s1.kinds.join('、') + '）',
   );
-  // 橫幅畫在疊加畫布上（播到顯示中）
+  // 橫幅畫在疊加畫布上（播到顯示中）。先等新地圖的預熱做完：全畫面的載入畫面蓋著時文字演出的時間不走
+  // （render-setup.js 的 loadCover、textfx.js 的 tfxTick）
+  await page.waitForFunction(() => {
+    const g = window.__game;
+    return g.warmWorld === g.world && !g.warmBusy && !g.lcOn;
+  });
   await page.evaluate(() => {
     const g = window.__game;
     g.textfx.clear();

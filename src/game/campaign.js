@@ -1159,11 +1159,15 @@ Object.assign(Game.prototype, {
     this.showScreen('campTrans');
     $('ctTitle').textContent = tr.title;
     $('ctSub').textContent = tr.sub;
-    $('ctNext').textContent =
-      `${so.name}　區段 ${c.seg + 1}／${so.segs.length}【${SEG_TYPES[this.campSegType()].name}】${this.campSegName()}`;
-    $('ctReward').textContent = c.pending
-      ? `本區段清除後獲得：${EXIT_REWARDS[c.pending].name}（${EXIT_REWARDS[c.pending].desc}）`
-      : '';
+    this.campTransInfo({
+      so: so.name,
+      seg: c.seg + 1,
+      n: so.segs.length,
+      type: SEG_TYPES[this.campSegType()].name,
+      area: this.campSegName(),
+      rw: c.pending ? EXIT_REWARDS[c.pending].name : '',
+      rwd: c.pending ? EXIT_REWARDS[c.pending].desc : '',
+    });
     $('ctMods').innerHTML = this.campModsHtml();
     $('ctBtns').style.visibility = 'hidden';
     const bar = $('ctBar');
@@ -1181,6 +1185,22 @@ Object.assign(Game.prototype, {
     $('ctWait').textContent = '';
     this.tfxTrans(tr, first); // 文字演出：標題、說明逐字、章名卡
     if (this.campMp()) this.campMpTrans(tr, first);
+  },
+  // 轉場畫面的英文標籤與「下一段」資訊卡（docs/zzz-ui-design.md 的轉場）。ni＝{ so 出擊名, seg 第幾段, n 共幾段,
+  // type 區段類型, area 地區與變體, rw 清除獎勵, rwd 獎勵說明 }；多人時房主隨 ctrans 送給客機（campaign-mp.js），所以一律跳脫
+  campTransInfo(ni) {
+    const $ = (id) => document.getElementById(id);
+    const E = (s) => escHtml(String(s == null ? '' : s));
+    this.campTransNi = ni;
+    const pad = (v) => String(v).padStart(2, '0');
+    $('ctKick').textContent = ni.seg ? `TRANSIT · SEG ${pad(ni.seg)} / ${pad(ni.n)}` : 'TRANSIT';
+    $('ctNext').innerHTML =
+      `<div class="ctnTop"><span class="ctnLbl">NEXT</span><span class="ctnSo">${E(ni.so)}</span>` +
+      `<span class="ctnSeg">區段 <b>${E(ni.seg)}</b>／${E(ni.n)}</span></div>` +
+      `<div class="ctnMain"><span class="ctnType">${E(ni.type)}</span><span class="ctnArea">${E(ni.area)}</span></div>`;
+    $('ctReward').innerHTML = ni.rw
+      ? `<span class="ctnLbl">清除獎勵</span><b>${E(ni.rw)}</b><span class="dim">${E(ni.rwd)}</span>`
+      : '';
   },
   campGo() {
     if (this.campIsClient()) return this.campClientReady();

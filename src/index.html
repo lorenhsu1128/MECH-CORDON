@@ -616,14 +616,17 @@
           </div>
         </div>
       </div>
-      <!-- 主線：轉場（game/campaign.js） -->
-      <div id="campTrans" class="screen">
+      <!-- 主線：轉場（game/campaign.js；docs/zzz-ui-design.md 的轉場）：英文標籤＋粗斜體標題、下一段的資訊卡 -->
+      <div id="campTrans" class="screen zBg">
         <div class="ctBox">
-          <div id="ctTitle">運輸機空降</div>
-          <div id="ctSub" class="dim"></div>
+          <div class="ctHead">
+            <div class="rKick" id="ctKick">TRANSIT</div>
+            <div id="ctTitle">運輸機空降</div>
+            <div id="ctSub"></div>
+          </div>
           <div class="ctBarW"><i id="ctBar"></i></div>
           <div id="ctNext"></div>
-          <div id="ctReward" class="dim"></div>
+          <div id="ctReward"></div>
           <div id="ctMods"></div>
           <div id="ctWait" class="dim"></div>
           <div id="ctBtns">
@@ -1608,6 +1611,16 @@
         <div id="oob">警告：離開作戰區域<small>返回作戰區域</small></div>
         <div id="fps"></div>
         <div id="lockHint"></div>
+      </div>
+    </div>
+    <!-- 全畫面的載入畫面（game/render-setup.js 的 loadCover）：新地圖的著色器預熱與資源上傳期間蓋住場景與 HUD -->
+    <div id="loadCover" aria-hidden="true">
+      <div class="lcBox">
+        <div class="rKick" id="lcKick">DEPLOY</div>
+        <div id="lcTitle"></div>
+        <div id="lcSub"></div>
+        <div class="lcBar"><i></i></div>
+        <div id="lcMsg">戰場準備中…</div>
       </div>
     </div>
     <script src="lib/three/three.js"></script>

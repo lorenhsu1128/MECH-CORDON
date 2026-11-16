@@ -1033,6 +1033,7 @@ Object.assign(Game.prototype, {
       this.warmBusy = null; // 非同步預熱到一半就離開（render-setup.js）
       this.warmMsg(false);
     }
+    if (this.lcOn) this.loadCover(false); // 全畫面的載入畫面（render-setup.js）
     for (const p of this.pickups || []) p.remove();
     this.pickups = [];
     this.vehPlan = [];
