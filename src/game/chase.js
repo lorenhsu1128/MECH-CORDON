@@ -368,7 +368,9 @@ Object.assign(Game.prototype, {
     const now = performance.now();
     const all = this.lockCands(p);
     const c = all.filter((e) => !e.isTrap); // 陷阱的弱點只用切換鎖定或點選（devices-traps.js）
-    if (p.lock && !all.includes(p.lock) && !this.assistOn() && !this.gazeHolds(p)) {
+    // Boss 離開鎖定框：旁邊沒有別的目標時照樣鎖著（攻擊距離的 1.5 倍內，player.js 的 autoLock）
+    const keepBoss = p.lock && p.lock.isBoss && !c.some((e) => e !== p.lock);
+    if (p.lock && !all.includes(p.lock) && !this.assistOn() && !this.gazeHolds(p) && !keepBoss) {
       if (!this.lockLostT) this.lockLostT = now;
       if (now - this.lockLostT > LOST_T * 1000) {
         p.lock = c[0] || null;

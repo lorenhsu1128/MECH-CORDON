@@ -940,7 +940,9 @@ Object.assign(MechEntity.prototype, {
     this.bossTick(dt);
     return r;
   },
-  // ---------- 高速突擊機：場外盤旋 → 警示線 → 高速掃射通過（音爆）→ 掉頭減速（輸出時機）；EMP 打中失速 ----------
+  // ---------- 高速突擊機：繞著目標盤旋 → 拉開＋警示線 → 高速掃射通過（音爆）→ 在目標附近低空掉頭（輸出時機）；EMP 打中失速 ----------
+  // 2026-11-16 使用者回報一直飛來飛去很難鎖定：量到可以鎖定的時間只有 10%，設計上的破綻（掉頭）平均離玩家 196 m、
+  // 超出攻擊距離（144 m）。改成盤旋繞著目標（ORB）、掃射飛過 45 m 就掉頭、掉頭在目標附近（TURN_R）的低空繞弧
   interceptorAI(dt, pl) {
     const g = this.game,
       s = this.aiState,
@@ -954,8 +956,18 @@ Object.assign(MechEntity.prototype, {
       s.alt = 26 * DS;
     }
     const gy = g.world.terrainHeight(this.pos.x, this.pos.z);
-    const rr = V(this.pos.x, 0, this.pos.z);
+    // 相對目標的位置：盤旋與掉頭都繞著它（以前繞著地圖中心、在作戰區域外）
+    const rr = V(this.pos.x - pl.pos.x, 0, this.pos.z - pl.pos.z);
     const dist = rr.length() || 1;
+    const ORB = 30 * DS, // 盤旋半徑（加上高度仍在攻擊距離以內）
+      TURN_R = 24 * DS; // 掉頭時離目標的距離
+    if (!s.orbS) s.orbS = Math.random() < 0.5 ? 1 : -1; // 繞的方向
+    // 繞目標飛：切線方向 sp、往半徑 R 修正
+    const orbit = (R, sp) =>
+      V(-rr.z * s.orbS, 0, rr.x * s.orbS)
+        .divideScalar(dist)
+        .multiplyScalar(sp)
+        .addScaledVector(rr.clone().divideScalar(dist), (R - dist) * 1.5);
     let want = s.v.clone(),
       k = 1.5;
     if (this.staggerT > 0 && ['line', 'run', 'turn'].includes(s.vm)) {
@@ -966,17 +978,16 @@ Object.assign(MechEntity.prototype, {
     }
     switch (s.vm) {
       case 'loiter': {
-        const tan = V(-rr.z, 0, rr.x).divideScalar(dist);
-        want = tan
-          .multiplyScalar(45 * DS)
-          .addScaledVector(rr.clone().divideScalar(dist), (LIM(this) + 16 * DS - dist) * 1.5);
-        s.alt = 26 * DS;
+        want = orbit(ORB, 45 * DS);
+        s.alt = 16 * DS;
+        k = 2;
         if ((s.vmT -= dt) <= 0 && this.canAct()) {
           s.vm = 'line';
           s.vmT = 1.4;
           s.runDir = pl.pos.clone().addScaledVector(pl.vel, 1.2).sub(this.pos).setY(0).normalize();
-          s.runO = this.pos.clone(); // 航線起點：之後一直貼著這條線飛（和警示線一致）
-          s.v.copy(s.runDir).multiplyScalar(Math.max(30 * DS, s.v.length()));
+          // 警示線期間往航線的反方向拉開到目標 55 m×DS 外，再從那裡俯衝（離得太近時掃射一下就過去了）
+          s.runP0 = pl.pos.clone().addScaledVector(s.runDir, -55 * DS);
+          s.runO = null;
           const c = pl.pos.clone();
           c.y = g.world.groundAt(c.x, c.z, c.y);
           g.fx.warnRect(c, yawOf(s.runDir), 8 * MS, 120 * DS, 1.6);
@@ -985,17 +996,21 @@ Object.assign(MechEntity.prototype, {
         }
         break;
       }
-      case 'line':
-        want = s.runDir.clone().multiplyScalar(40 * DS);
+      case 'line': {
+        const to = s.runP0.clone().sub(this.pos).setY(0);
+        want = to.multiplyScalar(2.5);
+        if (want.length() > 50 * DS) want.setLength(50 * DS);
         s.alt = 9 * MS;
         k = 3;
         if ((s.vmT -= dt) <= 0) {
           s.vm = 'run';
           s.vmT = this.tierFlag('gun') ? 1.8 : 3.2; // Boss 改版：機砲壞了掃射變短
           s.boomed = new Set();
+          s.runO = this.pos.clone(); // 航線起點：之後一直貼著這條線飛（和警示線平行）
           s.v.copy(s.runDir).multiplyScalar(40 * DS);
         }
         break;
+      }
       case 'run': {
         want = s.runDir.clone().multiplyScalar((p2 ? 82 : 72) * DS);
         s.alt = 7 * MS;
@@ -1055,18 +1070,18 @@ Object.assign(MechEntity.prototype, {
         const leaving =
           (Math.abs(this.pos.x) > LIM(this) + 4 * MS || Math.abs(this.pos.z) > LIM(this) + 4 * MS) &&
           this.pos.x * s.runDir.x + this.pos.z * s.runDir.z > 0;
-        if (past > 50 * DS || leaving || (s.vmT -= dt) <= 0) {
+        if (past > 15 * DS || leaving || (s.vmT -= dt) <= 0) {
           s.vm = 'turn';
-          s.vmT = this.tierFlag('wing') ? 4 : 2.6; // Boss 改版：機翼壞了掉頭更慢（破綻更長）
+          s.vmT = this.tierFlag('wing') ? 4.2 : 3; // Boss 改版：機翼壞了掉頭更慢（破綻更長）
+          // 往航線的哪一側掉頭：目標在左邊就往左繞
+          s.orbS = V(-s.runDir.z, 0, s.runDir.x).dot(pl.pos.clone().sub(this.pos)) >= 0 ? -1 : 1;
         }
         break;
       }
       case 'turn':
-        want = rr
-          .clone()
-          .divideScalar(-dist)
-          .multiplyScalar(22 * DS);
-        s.alt = 11 * MS;
+        // 破綻：在目標附近的低空減速繞弧（攻擊距離以內、畫面看得到）
+        want = orbit(TURN_R, 16 * DS);
+        s.alt = 9 * MS;
         k = 1.8;
         if ((s.vmT -= dt) <= 0) {
           s.vm = 'climb';
@@ -1074,11 +1089,8 @@ Object.assign(MechEntity.prototype, {
         }
         break;
       case 'climb':
-        want = rr
-          .clone()
-          .divideScalar(dist)
-          .multiplyScalar(45 * DS);
-        s.alt = 26 * DS;
+        want = orbit(ORB, 40 * DS);
+        s.alt = 16 * DS;
         if ((s.vmT -= dt) <= 0) {
           s.vm = 'loiter';
           s.vmT = p2 ? rnd(2, 3.5) : rnd(3, 5);
@@ -1111,7 +1123,9 @@ Object.assign(MechEntity.prototype, {
     this.pos.x = clamp(this.pos.x, -LIM(this) - 33 * DS, LIM(this) + 33 * DS);
     this.pos.z = clamp(this.pos.z, -LIM(this) - 33 * DS, LIM(this) + 33 * DS);
     this.pos.y = lerp(this.pos.y, gy + s.alt, Math.min(1, dt * (onLine ? 4 : 2.5)));
-    if (s.v.lengthSq() > 1 * DS * DS) this.yaw = this.aimYaw = yawOf(s.v);
+    if (s.vm === 'line')
+      this.yaw = this.aimYaw = yawOf(s.runDir); // 拉開時機首照樣朝著航線
+    else if (s.v.lengthSq() > 1 * DS * DS) this.yaw = this.aimYaw = yawOf(s.v);
     const yr = Math.atan2(Math.sin(this.yaw - prevYaw), Math.cos(this.yaw - prevYaw)) / Math.max(dt, 1e-3);
     this.leanZ = lerp(this.leanZ || 0, clamp(-yr * 0.5, -0.9, 0.9), Math.min(1, dt * 4));
     this.bossVis = s.vm === 'stall' ? 1 : s.vm === 'turn' ? 2 : 0;

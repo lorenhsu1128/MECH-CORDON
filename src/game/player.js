@@ -5,6 +5,9 @@ import { DS } from '../core/scale.js';
 import { AIR } from '../data/air.js';
 import { Game } from './game.js';
 
+// 已鎖住的 Boss 要離開攻擊距離的幾倍才解除（2026-11-16：高速飛行的 Boss 一下就飛出去，鎖定一直斷）
+const BOSS_LOCK_KEEP = 1.5;
+
 Object.assign(Game.prototype, {
   // 鎖定的有效距離：裝備的武器（不含近戰）最遠的射程，上限是火控的鎖定距離；只有近戰武器時用鎖定距離
   lockReach(p) {
@@ -51,7 +54,8 @@ Object.assign(Game.prototype, {
         const dist = e.pos.distanceTo(p.pos);
         if (dist > reach) continue;
         const rel = e.pos.clone().sub(p.pos).setY(0);
-        if (rel.lengthSq() > 0.01 && rel.normalize().dot(fwd) < 0) continue;
+        // Boss 不受正面 180° 的限制（2026-11-16：高速飛行的 Boss 常在背後，轉過去之前就鎖不到）
+        if (!e.isBoss && rel.lengthSq() > 0.01 && rel.normalize().dot(fwd) < 0) continue;
         out.push({ e, k: dist });
       }
     }
@@ -64,7 +68,7 @@ Object.assign(Game.prototype, {
       p.lock &&
       (p.lock.dead ||
         p.lock.noLock ||
-        p.lock.pos.distanceTo(p.pos) > this.lockReach(p) * 1.05 ||
+        p.lock.pos.distanceTo(p.pos) > this.lockReach(p) * (p.lock.isBoss ? BOSS_LOCK_KEEP : 1.05) ||
         this.smokeHides(p, p.lock))
     )
       p.lock = null;

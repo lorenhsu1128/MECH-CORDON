@@ -758,6 +758,16 @@ Object.assign(Game.prototype, {
         const k = Math.min((tx - cx) / (Math.cos(ang) || 1e-6), (ty - cy) / (Math.sin(ang) || 1e-6));
         const ax = cx + Math.cos(ang) * Math.abs(k),
           ay = cy + Math.sin(ang) * Math.abs(k);
+        // Boss：加強的畫面外指示（攻擊距離內變色、快速接近時預告與邊緣發光；bossEdgeHud）
+        if (e.isBoss) {
+          this.bossEdgeHud(c, e, p, ax, ay, ang, W, H, isLock, dt);
+          continue;
+        }
+        // Boss 的部位：本體還在、看得到時由本體的指示代表（同一個方向，不疊兩個標籤）
+        if (!isLock && e.opts && e.opts.parent !== undefined && e.opts.parent !== null && e.parentEnt) {
+          const par = e.parentEnt();
+          if (par && !par.dead && !par.noLock) continue;
+        }
         const main = (e.sn ? e.senseAw() : e.aw || 0) & 8; // 主攻（攻擊權杖，ai-director.js）
         // 邊緣進場的地圖：遠處的敵人由敵群的標示代表（encounters.js），只留鎖定的、Boss、主攻
         if (
@@ -943,5 +953,86 @@ Object.assign(Game.prototype, {
       c.fillStyle = 'rgba(255,40,40,.12)';
       c.fillRect(0, 0, W, H);
     }
+  }, // Boss 的畫面外指示（2026-11-16 使用者回報高速飛行的 Boss 很難找、很難鎖定；所有 Boss 共用）：
+  // 比一般敵人大的箭頭與脈動的外圈；攻擊距離內＝警戒黃「可鎖定」，外面＝紅色；快速接近時寫「接近中 n 秒」，
+  // 那一側的畫面邊緣發紅光（像 VIPER 俯衝進場）。(ax, ay)＝箭頭在畫面邊緣的位置、ang＝方向
+  bossEdgeHud(c, e, p, ax, ay, ang, W, H, isLock, dt) {
+    const d = e.pos.distanceTo(p.pos);
+    // 接近的速度（m/s，平滑）：用距離的變化算，所有 Boss 一樣（不靠各自的速度欄位）
+    const h = (e.hudEdge = e.hudEdge || { d, v: 0 });
+    if (dt > 0) h.v += ((h.d - d) / dt - h.v) * Math.min(1, dt * 6);
+    h.d = d;
+    const reach = this.lockReach(p);
+    const inR = d <= reach;
+    const eta = h.v > 12 * DS ? (d - reach * 0.5) / h.v : 99;
+    const rush = eta < 2.5 && d < 140 * DS;
+    const t = this.time || 0;
+    const pulse = 0.5 + 0.5 * Math.sin(t * (rush ? 14 : 5));
+    const col = isLock ? '#ffb020' : inR ? '#ffd21a' : '#ff4d4d';
+    // 快速接近：那一側的畫面邊緣發紅光
+    if (rush) {
+      const ex = Math.cos(ang),
+        ey = Math.sin(ang);
+      const vert = Math.abs(ex) * H > Math.abs(ey) * W; // 左右邊
+      const L = 70;
+      c.save();
+      let gr;
+      if (vert) {
+        const x0 = ex > 0 ? W : 0;
+        gr = c.createLinearGradient(x0, 0, x0 - Math.sign(ex) * L, 0);
+      } else {
+        const y0 = ey > 0 ? H : 0;
+        gr = c.createLinearGradient(0, y0, 0, y0 - Math.sign(ey) * L);
+      }
+      gr.addColorStop(0, `rgba(255,50,40,${0.35 + 0.3 * pulse})`);
+      gr.addColorStop(1, 'rgba(255,50,40,0)');
+      c.fillStyle = gr;
+      if (vert) c.fillRect(ex > 0 ? W - L : 0, 0, L, H);
+      else c.fillRect(0, ey > 0 ? H - L : 0, W, L);
+      c.restore();
+    }
+    // 箭頭與外圈
+    const sz = isLock ? 24 : 21;
+    c.save();
+    c.translate(ax, ay);
+    c.strokeStyle = col;
+    c.globalAlpha = 0.35 + 0.45 * pulse;
+    c.lineWidth = 2;
+    c.beginPath();
+    c.arc(0, 0, sz + 6 + 4 * pulse, 0, Math.PI * 2);
+    c.stroke();
+    c.globalAlpha = 1;
+    c.rotate(ang);
+    c.fillStyle = col;
+    c.strokeStyle = 'rgba(0,0,0,.8)';
+    c.lineWidth = 3;
+    c.beginPath();
+    c.moveTo(sz, 0);
+    c.lineTo(-sz * 0.6, -sz * 0.75);
+    c.lineTo(-sz * 0.2, 0);
+    c.lineTo(-sz * 0.6, sz * 0.75);
+    c.closePath();
+    c.stroke();
+    c.fill();
+    c.restore();
+    // 標籤：BOSS 名稱／距離與狀態
+    const st = rush ? `接近中 ${Math.max(0, eta).toFixed(1)}s` : inR ? '可鎖定' : '';
+    const l1 = e.name,
+      l2 = `${Math.round(d)} m${st ? '　' + st : ''}`;
+    c.save();
+    c.font = 'bold 12px Rubik, Noto Sans TC';
+    const w = Math.max(c.measureText(l1).width, c.measureText(l2).width) + 18;
+    const lx = clamp(ax, w / 2 + 8, W - w / 2 - 8),
+      ly = clamp(ay + (ay < H / 2 ? 34 : -50), 8, H - 44);
+    c.fillStyle = 'rgba(0,0,0,.72)';
+    c.fillRect(lx - w / 2, ly, w, 36);
+    c.fillStyle = col;
+    c.fillRect(lx - w / 2, ly, 3, 36);
+    c.textAlign = 'center';
+    c.fillText(l1, lx, ly + 14);
+    c.fillStyle = rush ? '#ff6a5a' : inR ? '#ffd21a' : '#e8e6df';
+    c.font = 'bold 11px Rubik, Noto Sans TC';
+    c.fillText(l2, lx, ly + 29);
+    c.restore();
   },
 });
