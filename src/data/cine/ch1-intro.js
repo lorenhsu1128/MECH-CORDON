@@ -176,7 +176,6 @@ export function ch1Intro() {
       set: WASTE,
       grade: { ...SCOPE, sat: 0.55, vignette: 0.55 },
       lb: false,
-      koma: 2,
       actors: [...BASTILLE, ...convoy],
       cam: {
         fov: 26,
@@ -205,7 +204,6 @@ export function ch1Intro() {
       grade: { ...SCOPE, sat: 0.3, contrast: 1.5 },
       lb: false,
       keep: true,
-      koma: 2,
       st: {
         els: [
           { k: 'lines', kind: 'reticle', lock: 0, t1: 1.1 },
@@ -279,7 +277,6 @@ export function ch1Intro() {
       grade: { ...WEST, contrast: 1.38, sat: 0.72 },
       lb: false,
       keep: true,
-      koma: 2,
       actors: [
         {
           id: 'wk',
@@ -771,7 +768,6 @@ export function ch1Intro() {
       set: WASTE,
       grade: { ...WEST, contrast: 1.32 },
       lb: false,
-      koma: 2,
       hook: 'c1fxclear',
       actors: [HX, ...BASTILLE],
       st: {
@@ -808,7 +804,6 @@ export function ch1Intro() {
       set: WASTE,
       grade: { ...WEST, contrast: 1.3 },
       lb: false,
-      koma: 2,
       keep: true,
       st: { els: [SPEED(0, 2.5)] },
       cam: {
@@ -831,7 +826,6 @@ export function ch1Intro() {
       grade: { ...SCOPE, sat: 0.4 },
       lb: false,
       keep: true,
-      koma: 2,
       st: {
         els: [
           { k: 'lines', kind: 'reticle', lock: 0, t1: 0.9 },
@@ -866,7 +860,6 @@ export function ch1Intro() {
       grade: { ...WEST, contrast: 1.35, chroma: 0.35 },
       lb: false,
       keep: true,
-      koma: 2,
       st: { els: [SPEED(0.15, 0.9, 0.4)] },
       cam: {
         fov: 38,
@@ -956,7 +949,6 @@ export function ch1Intro() {
       grade: { ...WEST, contrast: 1.3 },
       lb: false,
       keep: true,
-      koma: 2,
       cam: {
         fov: 30,
         hand: 0.05,

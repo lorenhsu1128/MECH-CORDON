@@ -358,7 +358,6 @@ export function ch3Intro(ctx) {
       set: SNOWD,
       grade: { ...STORM, contrast: 1.38 },
       lb: false,
-      koma: 2,
       actors: [
         { id: 'wo', k: 'ace', key: 'whiteout', p: [-6, -6], yaw: 160, s: [{ t: 0, scan: 0.4, per: 3 }] },
       ],
@@ -413,7 +412,6 @@ export function ch3Intro(ctx) {
       set: SNOWD,
       grade: { ...STORM, contrast: 1.32 },
       lb: false,
-      koma: 2,
       actors: [{ id: 'hx2', k: 'hero', p: [6, 14], yaw: 0, s: [{ t: 0, go: [6, -30], ab: true }] }],
       st: { els: [SPEED(0, 2.5, 0.3)] },
       cam: {

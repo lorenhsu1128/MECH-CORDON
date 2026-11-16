@@ -399,7 +399,6 @@ export function ch4Intro(ctx) {
       // SPIRE 是白色的機體：曝光壓低、光暈弱一點
       grade: { ...DAYG, contrast: 1.3, exposure: 0.7, bloom: 0.6, sunK: 0.5 },
       lb: false,
-      koma: 2,
       actors: [{ id: 'sp', k: 'ace', key: 'spire', p: [-4, -4], yaw: 160, s: [{ t: 0, scan: 0.5, per: 3 }] }],
       st: {
         els: [
@@ -444,7 +443,6 @@ export function ch4Intro(ctx) {
       set: LAT,
       grade: { ...DAYG, contrast: 1.32 },
       lb: false,
-      koma: 2,
       actors: [{ id: 'hx2', k: 'hero', p: [6, 14], yaw: 0, s: [{ t: 0, go: [6, -30], ab: true }] }],
       st: { els: [SPEED(0, 2.5)] },
       cam: {

@@ -103,7 +103,6 @@ function rivalShot(set, grade, key, who, name, tag, color) {
     set,
     grade: { ...grade, contrast: 1.26, sunEl: 40, exposure: 0.72, bloom: 0.45, tintLoK: 0.3 },
     lb: false,
-    koma: 2,
     actors: [
       { id: 'rv', k: 'ace', key, pal: key + '_lit', p: [-4, -4], yaw: 160, s: [{ t: 0, scan: 0.5, per: 3 }] },
     ],
@@ -148,7 +147,6 @@ function boostShot(set, grade) {
     set,
     grade: { ...grade, contrast: 1.32 },
     lb: false,
-    koma: 2,
     actors: [{ id: 'hx2', k: 'hero', p: [6, 14], yaw: 0, s: [{ t: 0, go: [6, -30], ab: true }] }],
     st: { els: [SPEED(0, 2.5)] },
     cam: {

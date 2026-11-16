@@ -385,7 +385,6 @@ export function ch5Intro(ctx) {
       set: REEF,
       grade: { ...DAYG, contrast: 1.4 },
       lb: false,
-      koma: 2,
       actors: [{ id: 'ut', k: 'ace', key: 'undertow', p: [-4, -4], yaw: 160, s: [{ t: 0, chk: true }] }],
       st: {
         els: [
@@ -437,7 +436,6 @@ export function ch5Intro(ctx) {
       set: REEF,
       grade: { ...DAYG, contrast: 1.32 },
       lb: false,
-      koma: 2,
       actors: [{ id: 'hx2', k: 'hero', p: [6, 14], yaw: 0, s: [{ t: 0, go: [6, -30], ab: true }] }],
       st: { els: [SPEED(0, 2.5)] },
       cam: {

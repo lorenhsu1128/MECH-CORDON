@@ -264,7 +264,6 @@ function faceOff(L, R) {
   return {
     set: { k: 'black' },
     lb: false,
-    koma: 2,
     st: {
       bg: '#050505',
       els: [

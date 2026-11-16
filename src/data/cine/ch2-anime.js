@@ -224,7 +224,6 @@ export function ch2Intro(ctx) {
       set: DAM,
       grade: { ...DAMG, contrast: 1.38, sat: 0.7 },
       lb: false,
-      koma: 2,
       actors: [RAIL, ...RAIL_LIFE],
       cam: {
         fov: 30,
@@ -251,7 +250,6 @@ export function ch2Intro(ctx) {
       set: DAM,
       grade: { ...DAMG, contrast: 1.45, sat: 0.6, chroma: 0.3 },
       lb: false,
-      koma: 2,
       keep: true,
       st: { els: [FOCUS(0, 1.6, 'rgba(160,230,255,0.35)', 0.35)] },
       cam: {
@@ -307,7 +305,6 @@ export function ch2Intro(ctx) {
       grade: { ...DAMG, contrast: 1.35 },
       lb: false,
       keep: true,
-      koma: 2,
       actors: [
         {
           id: 'gd',
@@ -627,7 +624,6 @@ export function ch2Intro(ctx) {
       set: YARD,
       grade: { ...DUSK, contrast: 1.4, sat: 0.8 },
       lb: false,
-      koma: 2,
       actors: [{ id: 'sv', k: 'ace', key: 'stevedore', p: [-5, -4], yaw: 160, s: [{ t: 0, chk: true }] }],
       st: {
         els: [
@@ -685,7 +681,6 @@ export function ch2Intro(ctx) {
       set: YARD,
       grade: { ...DUSK, contrast: 1.32 },
       lb: false,
-      koma: 2,
       actors: [{ id: 'hx2', k: 'hero', p: [6, 14], yaw: 0, s: [{ t: 0, go: [6, -30], ab: true }] }],
       st: { els: [SPEED(0, 2.5)] },
       cam: {
