@@ -2236,6 +2236,44 @@ async function testWarmAsync(browser, base) {
     r.progs > 30 && p2 - r.progs <= 6,
     `預熱編好 ${r.progs} 個程式，之後 3 秒的戰鬥只新增 ${p2 - r.progs} 個`,
   );
+  // 主線：轉場畫面時先建好下一段的地圖並預熱（campaign.js 的 campPrebuild），出擊時沿用、載入畫面蓋著再拿掉
+  await page.evaluate(() => {
+    const g = window.__game;
+    g.clearMission();
+    g.campBegin('c1s1');
+  });
+  const pb = await page
+    .waitForFunction(
+      () => {
+        const g = window.__game;
+        return g.campPre && g.world === g.campPre.world && g.warmWorld === g.world && !g.warmBusy;
+      },
+      null,
+      { timeout: 30000 },
+    )
+    .then(() => true)
+    .catch(() => false);
+  const pr = await page.evaluate(() => {
+    const g = window.__game;
+    const w = g.world;
+    g.campGo();
+    return { same: g.world === w, cover: !!g.lcOn, st: g.state };
+  });
+  const pd = await page
+    .waitForFunction(
+      () => {
+        const g = window.__game;
+        return g.state === 'play' && !g.warmBusy && !g.lcOn && g.warmWorld === g.world && g.missionT > 0.5;
+      },
+      null,
+      { timeout: 30000 },
+    )
+    .then(() => true)
+    .catch(() => false);
+  check(
+    pb && pr.same && pr.cover && pr.st === 'play' && pd,
+    `轉場時先建好地圖並預熱，出擊時沿用、蓋上載入畫面後拿掉（${JSON.stringify({ pb, ...pr, pd })}）`,
+  );
   await ctx.close();
 }
 

@@ -1034,6 +1034,7 @@ Object.assign(Game.prototype, {
       this.warmMsg(false);
     }
     if (this.lcOn) this.loadCover(false); // 全畫面的載入畫面（render-setup.js）
+    this.warmAgain = false;
     for (const p of this.pickups || []) p.remove();
     this.pickups = [];
     this.vehPlan = [];

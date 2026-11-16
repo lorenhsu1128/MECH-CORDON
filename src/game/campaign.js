@@ -319,7 +319,6 @@ Object.assign(Game.prototype, {
       so = this.campSortie(),
       seg = so.segs[c.seg],
       S = this.save;
-    this.clearMission();
     const type = this.campSegType();
     const L = this.campLevel();
     const bd = sortieBoss(seg, type);
@@ -328,10 +327,25 @@ Object.assign(Game.prototype, {
     const air = type === 'air';
     const theme = air ? 'airspace' : seg.theme;
     const W = air ? {} : this.campSegWorld(so, c.seg, type, c.plan[c.seg], c.trans[c.seg]);
+    // 轉場畫面時先建好的地圖（campPrebuild）：同一段、同樣的參數就沿用，不讓 clearMission 丟掉
+    const pre = this.campPreTake(c.seg, JSON.stringify([theme, seed, L, W]));
+    const wb = pre && this.warmBusy; // 預建地圖的預熱還在進行：clearMission 會清掉，接著用
+    this.clearMission();
+    if (wb) this.warmBusy = wb;
     this.worldSeed = seed;
     this.worldTheme = theme;
     this.styleRefresh();
-    this.world = new World(this.scene, theme, seed, L, null, W);
+    this.world = pre || new World(this.scene, theme, seed, L, null, W);
+    if (pre) {
+      // 地圖的著色器與資源在轉場時已經做過；機體、敵人、裝置是現在才加的，照樣再預熱一次（大多已編好，只剩上傳）。
+      // 轉場時的預熱還沒做完：等它做完再補一次（render-setup.js 的 warmAgain），不中斷重來
+      if (this.warmBusy) this.warmAgain = true;
+      else {
+        this.warmWorld = this.warmNote = null;
+        this.warmExtra = null;
+        this.warmLite = pre.warmPrimed ? pre : null; // 這次的 warmPrime 只上傳新加的東西
+      }
+    }
     this.isClient = false;
     this.net.spawnReg = {};
     this.mpStats = c.stats;
@@ -419,6 +433,8 @@ Object.assign(Game.prototype, {
         : { k: 'seg', m: this.levelName, s: segTxt },
     );
     this.goalIntro();
+    // 沿用轉場時預建的地圖：一按出擊就蓋上載入畫面（預熱還在進行時主迴圈停住，不會走到 renderMain 蓋上）
+    if (pre) this.loadCover(true);
     const lm = this.world.landmark && this.world.landmark.name;
     if (lm) setTimeout(() => this.camp && this.state === 'play' && this.flashAlert(`地標：${lm}`), 2800);
     // 通訊（data/story.js）
@@ -1185,6 +1201,63 @@ Object.assign(Game.prototype, {
     $('ctWait').textContent = '';
     this.tfxTrans(tr, first); // 文字演出：標題、說明逐字、章名卡
     if (this.campMp()) this.campMpTrans(tr, first);
+    else this.campPreSched();
+  },
+  // ---------- 轉場時先建下一段的地圖 ----------
+  // 2026-11-16 使用者回報每次進區段都會頓：建地圖（0.8～2.2 秒，主執行緒一口氣做完）＋預熱。單人時在轉場畫面
+  // 就先建好下一段的 World 並預熱它的著色器、上傳資源（renderMain 在 camptrans 也會做，只是不畫、不蓋載入畫面），
+  // 按「直接出擊」時 campEnterSeg 沿用（campPreTake）。多人不做（客機照房主的開局訊息建，房主停住會讓客機以為失聯）。
+  // 等轉場畫面的進場動畫與章名卡播完才開始（建地圖時主執行緒停住，畫布上的動畫會卡）
+  campPreSched() {
+    clearTimeout(this.campPreTo);
+    const t0 = performance.now();
+    const tick = () => {
+      if (this.state !== 'camptrans' || !this.camp || this.campMp()) return;
+      const busy = this.textfx && this.textfx.items.length;
+      if (busy && performance.now() - t0 < 6000) return (this.campPreTo = setTimeout(tick, 200));
+      this.campPrebuild();
+    };
+    this.campPreTo = setTimeout(tick, 450);
+  },
+  campPrebuild() {
+    const c = this.camp;
+    if (!c || this.state !== 'camptrans' || this.campMp() || this.world) return;
+    const so = this.campSortie(),
+      seg = so.segs[c.seg];
+    if (!seg) return;
+    const type = this.campSegType();
+    if (type === 'air') return; // 空戰區段的空域有自己的進場（seg-air.js）
+    const L = this.campLevel(),
+      seed = c.seeds[c.seg];
+    const W = this.campSegWorld(so, c.seg, type, c.plan[c.seg], c.trans[c.seg]);
+    const key = JSON.stringify([seg.theme, seed, L, W]);
+    this.worldSeed = seed;
+    this.worldTheme = seg.theme;
+    this.styleRefresh();
+    const w = new World(this.scene, seg.theme, seed, L, null, W);
+    w.applyLight(this); // 霧與光線照這張地圖（著色器的鍵含霧）
+    this.world = w;
+    this.campPre = { seg: c.seg, key, world: w };
+  },
+  // 進區段時取用先建好的地圖：同一段、同樣的參數才算；否則丟掉（clearMission 會釋放 this.world）
+  campPreTake(seg, key) {
+    const pre = this.campPre;
+    this.campPre = null;
+    clearTimeout(this.campPreTo);
+    if (!pre || pre.world !== this.world || pre.seg !== seg || pre.key !== key) return null;
+    this.world = null;
+    return pre.world;
+  },
+  // 不出擊了（進機甲庫整備等）：丟掉先建好的地圖
+  campPreDrop() {
+    clearTimeout(this.campPreTo);
+    const pre = this.campPre;
+    this.campPre = null;
+    if (!pre || pre.world !== this.world) return;
+    if (this.warmBusy) this.warmBusy = null;
+    this.warmExtra = null;
+    this.world.dispose();
+    this.world = null;
   },
   // 轉場畫面的英文標籤與「下一段」資訊卡（docs/zzz-ui-design.md 的轉場）。ni＝{ so 出擊名, seg 第幾段, n 共幾段,
   // type 區段類型, area 地區與變體, rw 清除獎勵, rwd 獎勵說明 }；多人時房主隨 ctrans 送給客機（campaign-mp.js），所以一律跳脫
@@ -1225,6 +1298,7 @@ Object.assign(Game.prototype, {
     SFX.ui();
     // 返回：回到轉場畫面或失敗／撤退畫面，不出擊（nav.js）
     this.navSet('garage', this.state === 'campfail' ? 'campfail' : 'camptrans');
+    this.campPreDrop(); // 轉場時先建好的地圖（機甲庫有自己的場景）
     this.camp.inGarage = true;
     this.openGarage();
   },

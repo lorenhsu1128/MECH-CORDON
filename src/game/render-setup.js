@@ -185,6 +185,14 @@ Object.assign(Game.prototype, {
           if (this.warmBusy !== busy) return;
           this.warmPrime();
           this.warmBusy = null;
+          // 轉場時預建的地圖在預熱途中就出擊了（campaign.js 的 campEnterSeg）：接著補預熱新加的機體與敵人，
+          // 載入畫面不拿掉（拿掉再蓋回去會閃一格）；地圖剛上傳過，這次只上傳新加的
+          if (this.warmAgain) {
+            this.warmAgain = false;
+            this.warmWorld = this.warmNote = null;
+            this.warmLite = this.world;
+            return;
+          }
           this.warmCover(false);
         };
         // 保險：驅動程式一直沒回報完成時（裝置遺失等）最多等 20 秒
@@ -194,6 +202,8 @@ Object.assign(Game.prototype, {
       this.shaderWarm();
       this.warmCover(false);
     }
+    // 主線的轉場畫面：下一段的地圖先建好、預熱完（campaign.js 的 campPrebuild），轉場畫面蓋著，不用畫
+    if (this.state === 'camptrans') return;
     if ((this.frames & 511) === 0) saveWarm();
     WARM.rec = !!this.world; // 這段期間新編的風格著色器變體記下來（render/shader-warm.js）
     try {
@@ -336,6 +346,10 @@ Object.assign(Game.prototype, {
     const extra = this.warmExtra;
     this.warmExtra = null;
     if (extra) s.add(extra);
+    // 沿用轉場時先建好的地圖（campaign.js 的 campPreTake）：地圖的幾何與陰影在那時已經上傳，這次只畫新加的東西
+    const lite = this.warmLite === this.world && this.world ? this.world.meshes.filter((m) => m.visible) : [];
+    this.warmLite = null;
+    for (const m of lite) m.visible = false;
     const off = [];
     s.traverse((o) => {
       if ((o.isMesh || o.isPoints || o.isLine || o.isSprite) && o.frustumCulled) {
@@ -353,7 +367,9 @@ Object.assign(Game.prototype, {
       if (pipe && pipe.ssao && pipe.renderNormals) pipe.renderNormals(pipe.ssao);
     } finally {
       for (const o of off) o.frustumCulled = true;
+      for (const m of lite) m.visible = true;
       if (extra) s.remove(extra);
+      if (this.world) this.world.warmPrimed = true; // 這張地圖的幾何與陰影已經上傳（沿用時 warmLite 看它）
       R.setRenderTarget(rt0);
       R.shadowMap.needsUpdate = true;
     }
@@ -370,7 +386,8 @@ Object.assign(Game.prototype, {
   warmCover(on) {
     if (this.mapv) return this.warmMsg(on);
     this.warmMsg(false);
-    this.loadCover(on);
+    // 轉場畫面時的預建（campaign.js 的 campPrebuild）：轉場畫面本身蓋著，不另外蓋載入畫面
+    this.loadCover(on && this.state !== 'camptrans');
   },
   // 全畫面的載入畫面：英文標籤、這一段的名稱、說明（index.html 的 #loadCover，樣式 styles.css）
   loadCover(on) {
