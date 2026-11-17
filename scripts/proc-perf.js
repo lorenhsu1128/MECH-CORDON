@@ -5,7 +5,7 @@
 //     每格的繪製次數與三角形、幾何與貼圖的數量、機甲用到的貼圖的顯示卡記憶體估計、JS heap。
 //   node scripts/proc-perf.js [--n=24] [--frames=400] [--size=1600x900] [--only=glb,rebuilt]
 // 需要先 npm run build。量測時電腦不要做其他重的事
-/* global window, performance */
+/* global window */
 const path = require('path');
 const { launch, initScript } = require('./perf-lib');
 
