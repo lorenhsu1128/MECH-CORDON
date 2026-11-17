@@ -1,23 +1,24 @@
 // 照 GLB 重建的程式模型（實驗）：一次轉換一組槽位並比對，列出每個槽位的平均與最差的視角。
-//   node scripts/proc-batch.js [--set=std|lt|hv] [--only=head/h_std,arms/a_std/l_upper] [--nogen]（只比對）
+//   node scripts/proc-batch.js [--set=std|lt|hv|rj] [--only=head/h_std,arms/a_std/l_upper] [--nogen]（只比對）
 // 來源是內建的玩家預設機甲 src/assets/player-mech/<槽位>.glb，輸出 src/render/proc/<槽位的 / 換成 _>.js
 // （匯出名稱 p_<…>Prims；core/c_std 沿用 c_std.js 的 cStdPrims）。需要先 npm run build（比對用 dist 的 three.js）
 const { execFileSync } = require('child_process');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-// 一組＝[頭, 核心, 手臂, 二足腳] 的零件 id
+// 一組＝[頭, 核心, 手臂, 腳, 腳的區塊（預設 大腿／小腿／腳掌）] 的零件 id
 const SETS = {
   std: ['h_std', 'c_std', 'a_std', 'l_bp'], // GRANITE（基礎機型）
   lt: ['h_lt', 'c_lt', 'a_lt', 'l_bp2'], // SEQ 輕量機型
   hv: ['h_hv', 'c_hv', 'a_hv', 'l_hv'], // HAWK 重裝機型
+  rj: ['h_scan', 'c_nat', 'a_ml', 'l_rj', ['thigh', 'shin', 'meta', 'foot']], // 逆足機型（腳多一節蹠骨）
 };
-const slotsOf = ([h, c, a, l]) => [
+const slotsOf = ([h, c, a, l, leg = ['thigh', 'shin', 'foot']]) => [
   'core/' + c,
   'head/' + h,
   ...['l', 'r'].flatMap((s) => ['upper', 'fore', 'hand'].map((k) => `arms/${a}/${s}_${k}`)),
   `legs/${l}/pelvis`,
-  ...['l', 'r'].flatMap((s) => ['thigh', 'shin', 'foot'].map((k) => `legs/${l}/${s}_${k}`)),
+  ...['l', 'r'].flatMap((s) => leg.map((k) => `legs/${l}/${s}_${k}`)),
 ];
 const A = {};
 for (const a of process.argv.slice(2)) {
