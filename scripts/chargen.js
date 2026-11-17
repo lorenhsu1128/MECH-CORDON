@@ -125,8 +125,41 @@ async function charCmd(a, comfy) {
       await save();
       await dl(names);
     }
+  } else if (sub === 'frames') {
+    // 2026-11-15 立繪大修：重產眨眼與嘴型（每格一張、直接選定，品管另外跑 scripts/portrait-qa.py）。
+    // 每個姿勢第一次先放大嘴框（widenMouth，pose.fv＝2）；--only=p1:smile.e1,p2:laugh.m2 只重產這幾格（換種子），
+    // 沒給時產生所有還沒有新版（slot.v2）的格子；--pose=all（預設）或 p1
+    const only = a.only ? String(a.only).split(',') : null;
+    const poses =
+      a.pose && a.pose !== 'all' ? [pose] : card.poses.filter((p) => p.master && p.boxes && p.boxes.face);
+    const FR = [...EYE_FRAMES, ...MOUTH_FRAMES].map((f) => f.id);
+    let n = 0;
+    for (const po of poses) {
+      if (po.fv !== 2 && po.boxes.mouth) {
+        po.boxes.mouth0 = po.boxes.mouth;
+        po.boxes.mouth = P.widenMouth(po.boxes);
+        po.fv = 2;
+        await save();
+      }
+      const exs = exprList(card).filter((e) => e.id === 'neutral' || po.ex[e.id]?.pick);
+      for (const e of exs)
+        for (const fid of FR) {
+          const key = e.id + '.' + fid;
+          const tag = po.id + ':' + key;
+          if (only ? !only.includes(tag) : po.ex[key]?.v2) continue;
+          if (fid[0] === 'e' && P.noBlink(po).includes(e.id)) continue;
+          const names = await pipe.variant(card, po.id, key, { n: 1 });
+          po.ex[key].pick = names[0];
+          po.ex[key].v2 = true;
+          delete po.ex[key].skip;
+          n++;
+          await save();
+          console.log('FRAME ' + card.id + ' ' + tag + ' ' + names[0]);
+        }
+    }
+    console.log('產生 ' + n + ' 格');
   } else if (sub === 'publish') {
-    const pub = await pipe.publish(card);
+    const pub = await pipe.publish(card, { keepBase: !!a.keep });
     console.log(JSON.stringify(pub, null, 1).slice(0, 2000));
   } else throw new Error('不認得的角色指令：' + sub);
   await save();

@@ -156,6 +156,103 @@ export function inpaintBox({
   return g;
 }
 
+// 局部改圖（2026-11-15 立繪大修，眨眼與嘴型）：把 crop 那一塊（通常是整張臉）裁出來放大到 side 給 Qwen 改，
+// 縮回去之後只把 inner（眼睛或嘴巴的範圍）裡真的改了的像素貼回（MCPatchPaste）。
+// 以前整張圖給 Qwen、整個框羽化貼回：眼睛只有幾十 px 會糊，框的羽化帶又讓新舊兩張疊成殘影
+// thrHi／keepFrac／noBlush：MCPatchPaste 的遲滯門檻、留下的小區塊比例、不貼只變紅的像素（眨眼用預設；嘴型要全部關掉，
+// 否則新嘴比原本小時，Qwen 擦掉的原本嘴唇線是弱改變、離新的嘴又遠，不會貼回去，留下殘線）
+export function qwenEditCrop({
+  image,
+  refs = [],
+  crop,
+  inner,
+  prompt,
+  seed,
+  side = 1024,
+  thr = 0.07,
+  grow = 3,
+  feather = 2,
+  thrHi = 0.22,
+  keepFrac = 0.2,
+  noBlush = true,
+  hystR = 8,
+  protectEdges = false,
+  exclude = [],
+  noRecolor = false,
+  toneFix = false,
+  keepTone = false,
+  skinBox = null,
+  glassesBase,
+  glassesBox,
+  prefix = 'chargen/edit',
+}) {
+  const [x, y, w, h] = crop.map((v) => Math.round(v));
+  const [ix, iy, iw, ih] = inner.map((v) => Math.round(v));
+  const k = side / Math.max(w, h);
+  const W = Math.round((w * k) / 16) * 16;
+  const H = Math.round((h * k) / 16) * 16;
+  const g = {};
+  g.img = { class_type: 'LoadImage', inputs: { image } };
+  g.crop = { class_type: 'ImageCrop', inputs: { image: ['img', 0], width: w, height: h, x, y } };
+  g.up = {
+    class_type: 'ImageScale',
+    inputs: { image: ['crop', 0], upscale_method: 'lanczos', width: W, height: H, crop: 'disabled' },
+  };
+  // refs：參考圖（上傳過的檔名），當成圖 2、圖 3
+  const e = qwenEdit({ images: ['__up__', ...refs], prompt, seed, prefix });
+  // qwenEdit 的圖 1 換成放大的裁切區
+  for (const [key, node] of Object.entries(e)) {
+    if (key === 'li0' || key === 'out') continue;
+    g[key] = node;
+  }
+  const ref = ['up', 0];
+  g.pos.inputs.image1 = ref;
+  g.neg.inputs.image1 = ref;
+  g.enc.inputs.pixels = ref;
+  g.pp = {
+    class_type: 'MCPatchPaste',
+    inputs: {
+      base: ['img', 0],
+      edit: ['dec', 0],
+      x,
+      y,
+      w,
+      h,
+      ix,
+      iy,
+      iw,
+      ih,
+      thr,
+      grow,
+      feather,
+      align: true,
+      thr_hi: thrHi,
+      keep_frac: keepFrac,
+      no_blush: noBlush,
+      hyst_r: hystR,
+      protect_edges: protectEdges,
+      no_recolor: noRecolor,
+      tone_fix: toneFix,
+      keep_tone: keepTone,
+      skin_box: skinBox ? skinBox.map(Math.round).join(',') : '',
+      exclude: exclude.map((r) => r.map(Math.round).join(',')).join(';'),
+    },
+  };
+  let res = ['pp', 0];
+  // glassesBase：image 是拿掉眼鏡的圖，閉眼之後把 glassesBase（有眼鏡的原圖）的鏡框疊回去（MCGlassesOver）
+  if (glassesBase) {
+    const [gx, gy, gw, gh] = (glassesBox || crop).map((v) => Math.round(v));
+    g.gb = { class_type: 'LoadImage', inputs: { image: glassesBase } };
+    g.go = {
+      class_type: 'MCGlassesOver',
+      inputs: { base: ['gb', 0], nog: ['img', 0], edit: ['pp', 0], x: gx, y: gy, w: gw, h: gh },
+    };
+    res = ['go', 0];
+  }
+  g.out = { class_type: 'SaveImage', inputs: { images: res, filename_prefix: prefix } };
+  return g;
+}
+
 // Qwen-Image-Edit-2511：照指令改整張圖（姿勢、表情、換裝），圖 1 是要改的，圖 2、3 是參考
 // paste＝[x, y, w, h]：改完以框外對齊回圖 1、只把框內羽化貼回（表情、眨眼、嘴型），沒給＝整張輸出
 // onto：貼回的底圖（沒給＝圖 1；例如閉眼從主圖改、只把眼睛貼到某個表情上）

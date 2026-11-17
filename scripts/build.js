@@ -261,7 +261,9 @@ function writePortraits() {
       const img = {};
       for (const P of card.pub.poses) {
         const names = [P.img];
-        for (const ex of Object.values(P.ex)) names.push(...Object.values(ex));
+        // 表情裡除了檔名，還有嘴型的框 mb（陣列）
+        for (const ex of Object.values(P.ex))
+          names.push(...Object.values(ex).filter((v) => typeof v === 'string'));
         if (P.layers) names.push(...Object.values(P.layers)); // 分層動畫的四層
         for (const n of names) {
           const f = path.join(dir, id, n);
