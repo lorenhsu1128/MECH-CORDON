@@ -1,7 +1,7 @@
 // 程式模型的近拍（docs/model-detail.md）：在模型庫的檢視窗關掉輔助標示，從前後兩個斜角各拍一張。
 //   node scripts/model-shots.js vehicle/tank vehicle/heli prop/container --tag=after
 // 輸出 test-results/shots/<槽位>-<tag>-a.png／-b.png。需要先 npm run build；--html＝改用別的模型庫檔案（例如舊版，比較用）、
-// --zoom＝第一張的距離倍率（預設 0.62）、--ty＝鏡頭對準的高度（公尺；整台機甲近拍頭部用）、--el＝仰角（弧度，預設 0.42）
+// --zoom＝第一張的距離倍率（預設 0.62）、--ty＝鏡頭對準的高度（公尺；整台機甲近拍頭部用）、--el＝仰角（弧度，預設 0.42）、--ang＝第一張的水平角度（弧度，預設 −0.75＝左前方；0＝正面）
 /* global window, document -- page.evaluate 的回呼在瀏覽器端執行 */
 const path = require('path');
 const fs = require('fs');
@@ -14,6 +14,7 @@ const tag = (process.argv.find((a) => a.startsWith('--tag=')) || '--tag=now').sl
 const zoom = +(process.argv.find((a) => a.startsWith('--zoom=')) || '--zoom=0.62').slice(7);
 const ty = (process.argv.find((a) => a.startsWith('--ty=')) || '').slice(5);
 const elev = +(process.argv.find((a) => a.startsWith('--el=')) || '--el=0.42').slice(5);
+const ang0 = +(process.argv.find((a) => a.startsWith('--ang=')) || '--ang=-0.75').slice(6);
 const EXE = [
   process.env.BENCH_BROWSER,
   'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
@@ -52,7 +53,7 @@ const EXE = [
       return { d: ins.camera.position.distanceTo(ins.controls.target) };
     }, ty);
     for (const [k, ang] of [
-      ['a', -0.75],
+      ['a', ang0],
       ['b', 2.3],
     ]) {
       await p.evaluate(
