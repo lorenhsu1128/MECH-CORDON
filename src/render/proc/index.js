@@ -1,5 +1,6 @@
 // 照 GLB 量測重建的程式模型（scripts/glb-to-proc.mjs 產生；批次 scripts/proc-batch.js）：槽位 id → 基本形體清單。
 // PROC_PRIMS：槽位 → 清單（render/mech-model.js 的 makeProcPiece0 用它取代原本手寫的程式模型）。GRANITE 系列與 SEQ 輕量機型的頭、核心、手臂、腳。
+// PROC_TEMP：還在給使用者檢查的（模型庫的暫時分類），還沒有換成預設：HAWK 重裝機型的頭、核心、手臂、腳。
 import { cStdPrims } from './c_std.js';
 import { p_head_h_stdPrims } from './head_h_std.js';
 import { p_arms_a_std_l_upperPrims } from './arms_a_std_l_upper.js';
@@ -30,6 +31,21 @@ import { p_legs_l_bp2_l_footPrims } from './legs_l_bp2_l_foot.js';
 import { p_legs_l_bp2_r_thighPrims } from './legs_l_bp2_r_thigh.js';
 import { p_legs_l_bp2_r_shinPrims } from './legs_l_bp2_r_shin.js';
 import { p_legs_l_bp2_r_footPrims } from './legs_l_bp2_r_foot.js';
+import { p_core_c_hvPrims } from './core_c_hv.js';
+import { p_head_h_hvPrims } from './head_h_hv.js';
+import { p_arms_a_hv_l_upperPrims } from './arms_a_hv_l_upper.js';
+import { p_arms_a_hv_l_forePrims } from './arms_a_hv_l_fore.js';
+import { p_arms_a_hv_l_handPrims } from './arms_a_hv_l_hand.js';
+import { p_arms_a_hv_r_upperPrims } from './arms_a_hv_r_upper.js';
+import { p_arms_a_hv_r_forePrims } from './arms_a_hv_r_fore.js';
+import { p_arms_a_hv_r_handPrims } from './arms_a_hv_r_hand.js';
+import { p_legs_l_hv_pelvisPrims } from './legs_l_hv_pelvis.js';
+import { p_legs_l_hv_l_thighPrims } from './legs_l_hv_l_thigh.js';
+import { p_legs_l_hv_l_shinPrims } from './legs_l_hv_l_shin.js';
+import { p_legs_l_hv_l_footPrims } from './legs_l_hv_l_foot.js';
+import { p_legs_l_hv_r_thighPrims } from './legs_l_hv_r_thigh.js';
+import { p_legs_l_hv_r_shinPrims } from './legs_l_hv_r_shin.js';
+import { p_legs_l_hv_r_footPrims } from './legs_l_hv_r_foot.js';
 
 export const PROC_PRIMS = {
   'core/c_std': cStdPrims, // BD-100 GRANITE
@@ -63,4 +79,21 @@ export const PROC_PRIMS = {
   'legs/l_bp2/r_thigh': p_legs_l_bp2_r_thighPrims,
   'legs/l_bp2/r_shin': p_legs_l_bp2_r_shinPrims,
   'legs/l_bp2/r_foot': p_legs_l_bp2_r_footPrims,
+};
+export const PROC_TEMP = {
+  'core/c_hv': p_core_c_hvPrims,
+  'head/h_hv': p_head_h_hvPrims,
+  'arms/a_hv/l_upper': p_arms_a_hv_l_upperPrims,
+  'arms/a_hv/l_fore': p_arms_a_hv_l_forePrims,
+  'arms/a_hv/l_hand': p_arms_a_hv_l_handPrims,
+  'arms/a_hv/r_upper': p_arms_a_hv_r_upperPrims,
+  'arms/a_hv/r_fore': p_arms_a_hv_r_forePrims,
+  'arms/a_hv/r_hand': p_arms_a_hv_r_handPrims,
+  'legs/l_hv/pelvis': p_legs_l_hv_pelvisPrims,
+  'legs/l_hv/l_thigh': p_legs_l_hv_l_thighPrims,
+  'legs/l_hv/l_shin': p_legs_l_hv_l_shinPrims,
+  'legs/l_hv/l_foot': p_legs_l_hv_l_footPrims,
+  'legs/l_hv/r_thigh': p_legs_l_hv_r_thighPrims,
+  'legs/l_hv/r_shin': p_legs_l_hv_r_shinPrims,
+  'legs/l_hv/r_foot': p_legs_l_hv_r_footPrims,
 };
