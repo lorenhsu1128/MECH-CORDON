@@ -1,5 +1,6 @@
 // ---------------- WEAPONS（Q 版：粗大方塊化） ----------------
-import { PROC_PRIMS } from './proc/index.js';
+import { PROC_COLS, PROC_PARTS, PROC_PRIMS } from './proc/index.js';
+import { tankPartsGroup, tankPartsPose } from './proc-tank.js';
 import { primsGroup } from './proc-prims.js';
 import { clamp, lerp } from '../core/math.js';
 import { MB } from '../core/scale.js';
@@ -2073,8 +2074,9 @@ function makeProcPiece(info, ctx) {
   return g;
 }
 // 基本形體清單 → 一個區塊（遊戲的座標；每個色槽一個網格＋和其他程式模型一樣的描邊外殼）。M＝mechMats 的材質
+// 固定色（PROC_COLS：顏色在貼圖上的 GLB，例如背包推進器）與會動的零件（PROC_PARTS：戰車腳的輪子與履帶片）依槽位帶上
 export function procPrimPiece(prims, M, slot) {
-  const pg = primsGroup(prims, M, true);
+  const pg = primsGroup(prims, M, true, PROC_COLS[slot]);
   const pos = [];
   for (const c of pg.children) pos.push(...c.geometry.attributes.position.array);
   const og = new THREE.BufferGeometry();
@@ -2083,6 +2085,12 @@ export function procPrimPiece(prims, M, slot) {
   const o = new THREE.Mesh(og, OUTLINE_MAT);
   o.castShadow = false;
   pg.add(o);
+  if (PROC_PARTS[slot]) {
+    // 會動的零件是 glTF 座標：繞 Y 轉 180° 就是遊戲的座標（−Z 正面）
+    const tg = tankPartsGroup(PROC_PARTS[slot], M);
+    tg.rotation.y = Math.PI;
+    pg.add(tg);
+  }
   pg.userData.slot = slot;
   return pg;
 }
@@ -2331,6 +2339,11 @@ export function buildMech(asm, pal, scale = 1, opts = {}) {
     mats,
     flashT: 0,
   };
+  // 戰車腳的會動零件（輪子、履帶片）：animateMech 的 tankRoll 依移動距離更新
+  for (const slot in PROC_PARTS) {
+    const tg = pieces[slot] && pieces[slot].getObjectByName('tankParts');
+    if (tg) rig.tank = { g: tg, parts: PROC_PARTS[slot], dist: PROC_PARTS[slot].tracks.map(() => 0) };
+  }
   if (!opts.noGround) refreshGround(rig);
   root.scale.setScalar(scale);
   root.traverse((o) => {
@@ -2415,6 +2428,17 @@ function lowestY(objs, space) {
       for (let p = o; p && p !== obj; p = p.parent) if (p.userData.helper) return;
       m.multiplyMatrices(inv, o.matrixWorld);
       const pos = o.geometry.attributes.position;
+      if (o.isInstancedMesh) {
+        // 戰車腳的輪子與履帶片：每個實例各自的位置
+        const im = new THREE.Matrix4();
+        for (let k = 0; k < o.count; k++) {
+          o.getMatrixAt(k, im);
+          im.premultiply(m);
+          for (let i = 0; i < pos.count; i++)
+            min = Math.min(min, v.fromBufferAttribute(pos, i).applyMatrix4(im).y);
+        }
+        return;
+      }
       for (let i = 0; i < pos.count; i++)
         min = Math.min(min, v.fromBufferAttribute(pos, i).applyMatrix4(m).y);
     });
@@ -2519,6 +2543,31 @@ function vehicleRoll(m, dt) {
     m.susp.rotation.x += (pitch - m.susp.rotation.x) * k;
     m.susp.position.y = Math.sin(V.ph) * 0.012 * run;
   }
+}
+// 戰車腳（照 GLB 重建的程式模型）的輪子與履帶：依下半身前後方向實際走過的距離轉動，轉彎時左右兩側不同
+// （差速：外側走得多、內側走得少，原地轉向時一前一後）。只改外觀，各端各自算。
+// preview＝沒有實體在移動的預覽（模型庫的動作預覽）：照動作的前進速度比例轉
+function tankRoll(m, dt, grounded, preview) {
+  const T = m.tank;
+  const e = m.legsG.matrixWorld.elements; // 上一格的
+  const p = m.group.position;
+  const V = T.vr || (T.vr = { lp: p.clone(), yaw: Math.atan2(-e[8], -e[10]) });
+  const L = Math.hypot(e[8], e[10]) || 1; // 世界 ← 模型的倍率
+  const yaw = Math.atan2(-e[8], -e[10]);
+  let dy = yaw - V.yaw;
+  dy = ((((dy + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) - Math.PI;
+  const dx = p.x - V.lp.x,
+    dz = p.z - V.lp.z;
+  V.lp.copy(p);
+  V.yaw = yaw;
+  let d = preview !== null ? preview * 8 * dt : 0;
+  if (preview === null && grounded && dx * dx + dz * dz < 36 * L * L)
+    d = (dx * -e[8] + dz * -e[10]) / (L * L);
+  if (!grounded || Math.abs(dy) > 1) dy = 0;
+  if (!d && !dy) return;
+  // 左側（glTF 的 +x）在往左轉（yaw 增加）時往後
+  T.parts.tracks.forEach((t, i) => (T.dist[i] += d - dy * t.x));
+  tankPartsPose(T.g, T.parts, T.dist);
 }
 const NO_WK = {},
   NO_LR = { l: 0, r: 0 };
@@ -2955,6 +3004,7 @@ export function animateMech(m, dt, st) {
   // 腿的座標裡的移動（步伐、側步用）
   const fL = Math.cos(mvA - ly) * spd,
     sL = Math.sin(mvA - ly) * spd;
+  if (m.tank) tankRoll(m, dt, grounded, st.vr === undefined ? (grounded && moving ? fL : 0) : null);
   // ===== 腿：髖三軸（俯仰＝擺動、外展＝側移／落地、偏航＝轉向）＋膝＋踝兩軸 =====
   if (legged) {
     // 逆關節（四段）的膝和二足同向彎（膝在前），往後折的是跗關節：蹠骨依膝的彎曲連動（HOCK_K），

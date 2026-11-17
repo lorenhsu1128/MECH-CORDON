@@ -9,6 +9,7 @@ const AX = { x: 0, y: 1, z: 2 };
 export function primsTris(prims) {
   const out = PRIM_SLOTS.map(() => []);
   const tri = (s, a, b, c, mir) => {
+    if (!out[s]) for (let k = out.length; k <= s; k++) out[k] = []; // 色槽 4 起＝固定色（primsGroup 的 cols）
     if (mir) out[s].push(-a[0], a[1], a[2], -c[0], c[1], c[2], -b[0], b[1], b[2]);
     else out[s].push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]);
   };
@@ -75,27 +76,47 @@ export function primsTris(prims) {
   return out;
 }
 
+// 三角形座標 → 幾何（平面著色的法線＋依面的方向投影的貼圖座標）
+export function posGeo(pos) {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.computeVertexNormals();
+  const uv = new Float32Array((pos.length / 3) * 2);
+  const N = geo.attributes.normal;
+  for (let v = 0; v < pos.length / 3; v++) {
+    const ax = Math.abs(N.getX(v)),
+      ay = Math.abs(N.getY(v)),
+      az = Math.abs(N.getZ(v));
+    const [a, b] = ay >= ax && ay >= az ? [0, 2] : ax >= az ? [2, 1] : [0, 1];
+    uv[v * 2] = pos[v * 3 + a] * 0.5;
+    uv[v * 2 + 1] = pos[v * 3 + b] * 0.5;
+  }
+  geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  return geo;
+}
 // 網格群組：每個色槽一個網格（平面著色的法線）。mats＝{ main, sub, joint, acc }；flip＝轉成遊戲的座標（−Z 正面）
-export function primsGroup(prims, mats, flip = false) {
+// 固定色的材質（貼圖上的顏色，不跟著配色換：背包推進器）：複製 main 的材質換顏色，同一組材質＋同色共用
+const FIX = new WeakMap();
+export function fixMat(mats, hex) {
+  let m = FIX.get(mats.main);
+  if (!m) FIX.set(mats.main, (m = new Map()));
+  let x = m.get(hex);
+  if (!x) {
+    x = mats.main.clone();
+    x.color.set(hex);
+    x.name = 'fix';
+    m.set(hex, x);
+  }
+  return x;
+}
+// cols＝固定色的色碼（色槽 4 起）
+export function primsGroup(prims, mats, flip = false, cols = null) {
   const g = new THREE.Group();
   primsTris(prims).forEach((pos, i) => {
     if (!pos.length) return;
     if (flip) for (let k = 0; k < pos.length; k += 3) ((pos[k] = -pos[k]), (pos[k + 2] = -pos[k + 2]));
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    geo.computeVertexNormals();
-    const uv = new Float32Array((pos.length / 3) * 2);
-    const N = geo.attributes.normal;
-    for (let v = 0; v < pos.length / 3; v++) {
-      const ax = Math.abs(N.getX(v)),
-        ay = Math.abs(N.getY(v)),
-        az = Math.abs(N.getZ(v));
-      const [a, b] = ay >= ax && ay >= az ? [0, 2] : ax >= az ? [2, 1] : [0, 1];
-      uv[v * 2] = pos[v * 3 + a] * 0.5;
-      uv[v * 2 + 1] = pos[v * 3 + b] * 0.5;
-    }
-    geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-    const m = new THREE.Mesh(geo, mats[PRIM_SLOTS[i]]);
+    const geo = posGeo(pos);
+    const m = new THREE.Mesh(geo, i < 4 ? mats[PRIM_SLOTS[i]] : fixMat(mats, cols[i - 4]));
     m.castShadow = m.receiveShadow = true;
     g.add(m);
   });

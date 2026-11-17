@@ -70,18 +70,269 @@ const raw = [];
 for (const m of J.meshes)
   for (const p of m.primitives) {
     const P = acc(p.attributes.POSITION),
+      UV = ARG.tex && p.attributes.TEXCOORD_0 !== undefined ? acc(p.attributes.TEXCOORD_0) : null,
       I = p.indices !== undefined ? acc(p.indices) : null;
     const slot = Math.max(0, SL.indexOf(J.materials[p.material].name));
     const n = I ? I.length : P.length / 3;
     for (let k = 0; k < n; k += 3) {
-      const t = [];
+      const t = [],
+        uv = [];
       for (let q = 0; q < 3; q++) {
         const vi = I ? I[k + q] : k + q;
         t.push([P[vi * 3] * nodeScale[0], P[vi * 3 + 1] * nodeScale[1], P[vi * 3 + 2] * nodeScale[2]]);
+        if (UV) uv.push([UV[vi * 2], UV[vi * 2 + 1]]);
       }
-      raw.push({ p: t, slot });
+      raw.push({ p: t, slot, uv, mat: p.material });
     }
   }
+// ---------- 貼圖的顏色（--tex[=色數]）：材質不是色槽、顏色畫在貼圖上的 GLB（背包推進器：保留原本的顏色、不換色）----------
+// 每個三角形在貼圖上取樣（重心＋往三個頂點）→ 面積加權的 k-means 分成幾個固定色 → 色槽編號 4 起（輸出 …Cols）
+let COLS = null;
+if (ARG.tex) {
+  const sharp = (await import('sharp')).default;
+  const K = ARG.tex === true ? 8 : +ARG.tex;
+  const imgs = new Map();
+  const imgOf = async (mi) => {
+    if (imgs.has(mi)) return imgs.get(mi);
+    const tx = J.materials[mi].pbrMetallicRoughness.baseColorTexture;
+    const bv = J.bufferViews[J.images[J.textures[tx.index].source].bufferView];
+    const { data, info } = await sharp(bin.slice(bv.byteOffset || 0, (bv.byteOffset || 0) + bv.byteLength))
+      .removeAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    imgs.set(mi, { data, w: info.width, h: info.height });
+    return imgs.get(mi);
+  };
+  const S = [];
+  for (const t of raw) {
+    const im = await imgOf(t.mat);
+    const c = [0, 0, 0];
+    const cu = (t.uv[0][0] + t.uv[1][0] + t.uv[2][0]) / 3,
+      cv = (t.uv[0][1] + t.uv[1][1] + t.uv[2][1]) / 3;
+    const pts = [[cu, cv], ...t.uv.map((q) => [cu + (q[0] - cu) * 0.5, cv + (q[1] - cv) * 0.5])];
+    for (const [u, v] of pts) {
+      const x = Math.min(im.w - 1, Math.max(0, Math.floor((u - Math.floor(u)) * im.w))),
+        y = Math.min(im.h - 1, Math.max(0, Math.floor((v - Math.floor(v)) * im.h)));
+      for (let k = 0; k < 3; k++) c[k] += im.data[(y * im.w + x) * 3 + k] / pts.length;
+    }
+    const n = cross(sub(t.p[1], t.p[0]), sub(t.p[2], t.p[0]));
+    S.push({ c, w: len(n) / 2 });
+  }
+  // k-means（起點：最遠點取樣，結果固定）
+  const d2 = (a, b) => (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2;
+  const cen = [
+    S.slice()
+      .sort((a, b) => b.w - a.w)[0]
+      .c.slice(),
+  ];
+  while (cen.length < K) {
+    let best = null,
+      bd = -1;
+    for (const s of S) {
+      const d = Math.min(...cen.map((c) => d2(c, s.c))) * Math.sqrt(s.w);
+      if (d > bd) {
+        bd = d;
+        best = s;
+      }
+    }
+    cen.push(best.c.slice());
+  }
+  const lab = S.map(() => 0);
+  for (let it = 0; it < 30; it++) {
+    const sum = cen.map(() => [0, 0, 0, 0]);
+    S.forEach((s, i) => {
+      let b = 0;
+      for (let k = 1; k < cen.length; k++) if (d2(cen[k], s.c) < d2(cen[b], s.c)) b = k;
+      lab[i] = b;
+      for (let k = 0; k < 3; k++) sum[b][k] += s.c[k] * s.w;
+      sum[b][3] += s.w;
+    });
+    sum.forEach((q, k) => {
+      if (q[3] > 0) cen[k] = [q[0] / q[3], q[1] / q[3], q[2] / q[3]];
+    });
+  }
+  // 去掉零星的雜色（貼圖上烘進去的明暗與髒污會讓同一塊面板的三角形分到不同色）：
+  // 和幾乎同平面的相鄰三角形依面積投票，做 4 輪
+  {
+    const key = (q) => q.map((x) => Math.round(x / 1e-3)).join(',');
+    const em = new Map();
+    const nr = raw.map((t) => nrm(cross(sub(t.p[1], t.p[0]), sub(t.p[2], t.p[0]))));
+    raw.forEach((t, i) => {
+      const ks = t.p.map(key);
+      for (let q = 0; q < 3; q++) {
+        const a = ks[q],
+          b = ks[(q + 1) % 3];
+        const k = a < b ? a + '|' + b : b + '|' + a;
+        if (!em.has(k)) em.set(k, []);
+        em.get(k).push(i);
+      }
+    });
+    const nb = raw.map(() => []);
+    for (const l of em.values())
+      for (const i of l) for (const k of l) if (i !== k && dot(nr[i], nr[k]) > 0.94) nb[i].push(k);
+    for (let it = 0; it < 4; it++) {
+      const next = lab.slice();
+      raw.forEach((_, i) => {
+        const v = cen.map(() => 0);
+        v[lab[i]] += S[i].w;
+        for (const k of nb[i]) v[lab[k]] += S[k].w;
+        next[i] = v.indexOf(Math.max(...v));
+      });
+      next.forEach((x, i) => (lab[i] = x));
+    }
+  }
+  raw.forEach((t, i) => (t.slot = 4 + lab[i]));
+  COLS = cen.map((c) => '#' + c.map((x) => Math.round(x).toString(16).padStart(2, '0')).join(''));
+  console.log('貼圖的顏色：', COLS.join(' '));
+}
+const NS = 4 + (COLS ? COLS.length : 0); // 色槽的數量（4 個換色的色槽＋固定色）
+// ---------- 戰車腳（--tank）：輪子與履帶片是獨立的零件，從靜態的部分拿掉，另外輸出成會動的零件 ----------
+// 輪子＝12 邊形的圓柱（中心、半徑、寬），履帶片＝沿履帶艙底部與兩端排列的小塊（取一片當範本＋排列的路徑）
+function tankParts() {
+  const key = (q) => q.map((x) => Math.round(x / 1e-3)).join(',');
+  const ids = new Map(),
+    fa2 = [];
+  const f2 = (x) => {
+    while (fa2[x] !== x) x = fa2[x] = fa2[fa2[x]];
+    return x;
+  };
+  const tv = raw.map((t) =>
+    t.p.map((q) => {
+      const k = key(q);
+      if (!ids.has(k)) {
+        ids.set(k, fa2.length);
+        fa2.push(fa2.length);
+      }
+      return ids.get(k);
+    }),
+  );
+  for (const v of tv) {
+    fa2[f2(v[0])] = f2(v[1]);
+    fa2[f2(v[1])] = f2(v[2]);
+  }
+  const comps = new Map();
+  raw.forEach((t, i) => {
+    const r = f2(tv[i][0]);
+    if (!comps.has(r)) comps.set(r, { tris: [], mn: [1e9, 1e9, 1e9], mx: [-1e9, -1e9, -1e9], main: 0 });
+    const c = comps.get(r);
+    c.tris.push(i);
+    if (t.slot === 0) c.main++;
+    for (const q of t.p)
+      for (let k = 0; k < 3; k++) {
+        c.mn[k] = Math.min(c.mn[k], q[k]);
+        c.mx[k] = Math.max(c.mx[k], q[k]);
+      }
+  });
+  const wheels = [],
+    links = [],
+    drop = new Set();
+  for (const c of comps.values()) {
+    const sz = c.mx.map((x, k) => x - c.mn[k]),
+      n = c.tris.length,
+      ax = Math.min(Math.abs(c.mn[0]), Math.abs(c.mx[0]));
+    if (ax > 3.9 && sz[0] < 0.75 && n <= 50 && sz[1] > 0.7 && sz[1] < 1.75 && sz[2] > 0.9 && sz[2] < 1.75) {
+      const r = sz[2] / 2;
+      // 上半被側裙蓋住的輪子在 GLB 裡是切掉的：中心照底部＋半徑
+      const cut = sz[1] <= sz[2] * 0.92;
+      const cy = cut ? c.mn[1] + r : (c.mn[1] + c.mx[1]) / 2;
+      let x0 = c.mn[0],
+        x1 = c.mx[0];
+      if (cut) {
+        // 補成整個輪子之後上半要藏在側裙後面：外側的面退到側裙下緣（切口上方、同一側、比輪子外面的靜態零件）的內側
+        const s = Math.sign(x0 + x1),
+          cx = (x0 + x1) / 2;
+        // 從切口上方的幾個點往外打射線，最近打到的靜態零件就是側裙
+        let lim = 1e9;
+        const cz = (c.mn[2] + c.mx[2]) / 2,
+          mine = new Set(c.tris);
+        for (const y of [c.mx[1] + 0.03, cy + r * 0.55, cy + r * 0.9])
+          for (const dz of [-0.5, 0, 0.5]) {
+            const z = cz + dz * Math.sqrt(Math.max(0, r * r - (y - cy) * (y - cy)));
+            raw.forEach((t, ti) => {
+              if (mine.has(ti)) return;
+              const [a, b, d] = t.p;
+              // 射線沿 X：在 (y, z) 平面上看點是否在三角形裡
+              const e = (p, q) => (q[1] - p[1]) * (z - p[2]) - (q[2] - p[2]) * (y - p[1]);
+              const w0 = e(a, b),
+                w1 = e(b, d),
+                w2 = e(d, a);
+              if (!((w0 >= 0 && w1 >= 0 && w2 >= 0) || (w0 <= 0 && w1 <= 0 && w2 <= 0))) return;
+              const sum = w0 + w1 + w2;
+              if (Math.abs(sum) < 1e-9) return;
+              const x = (d[0] * w0 + a[0] * w1 + b[0] * w2) / sum;
+              if (x * s > cx * s) lim = Math.min(lim, x * s);
+            });
+          }
+        // 輪轂比輪面凸出寬度的 12%（render/proc-tank.js）
+        const inner = s > 0 ? x0 : x1;
+        const w = Math.min(sz[0], (lim - 0.03 - inner * s) / 1.12);
+        if (s > 0) x1 = x0 + w;
+        else x0 = x1 - w;
+      }
+      wheels.push([(x0 + x1) / 2, cy, (c.mn[2] + c.mx[2]) / 2, r, x1 - x0].map(r3));
+      c.tris.forEach((i) => drop.add(i));
+    } else if (
+      ax > 3.3 &&
+      n >= 18 &&
+      n <= 48 &&
+      !c.main &&
+      sz[0] > 1.5 &&
+      sz[0] < 2.1 &&
+      Math.min(sz[1], sz[2]) < 0.6 &&
+      Math.max(sz[1], sz[2]) < 1.0
+    ) {
+      links.push({ c, cen: c.mn.map((x, k) => (x + c.mx[k]) / 2), sz });
+      c.tris.forEach((i) => drop.add(i));
+    }
+  }
+  // 範本：最扁的那一片（在底部、水平）
+  const tpl = links.slice().sort((a, b) => a.sz[1] - b.sz[1] || a.c.tris.length - b.c.tris.length)[0];
+  const link = tpl.c.tris.map((i) => [
+    raw[i].slot,
+    ...raw[i].p.map((q) => q.map((x, k) => r3(x - tpl.cen[k]))),
+  ]);
+  // 四個履帶艙（左右 × 前後）：片的中心繞艙的中心排序（從上方的缺口開始：後端往下 → 底部往前 → 前端往上），
+  // 上方補一段藏在側裙裡的回程
+  const tracks = [];
+  for (const sx of [1, -1])
+    for (const fz of [1, -1]) {
+      const L = links.filter((l) => Math.sign(l.cen[0]) === sx && (l.cen[2] > -0.6 ? 1 : -1) === fz);
+      if (L.length < 6) continue;
+      const cy = L.reduce((q, l) => q + l.cen[1], 0) / L.length,
+        cz = (Math.min(...L.map((l) => l.cen[2])) + Math.max(...L.map((l) => l.cen[2]))) / 2;
+      const ang = (l) =>
+        (Math.atan2(l.cen[1] - cy, l.cen[2] - cz) - Math.PI / 2 + Math.PI * 4) % (Math.PI * 2);
+      L.sort((a, b) => ang(a) - ang(b));
+      const pts = L.map((l) => [l.cen[1], l.cen[2]]);
+      const top = Math.max(...L.map((l) => l.c.mx[1])) - 0.12;
+      const a = pts[0],
+        b = pts[pts.length - 1];
+      pts.push([top, b[1] - 0.45], [top, a[1] + 0.45]);
+      // 間距：底部相鄰兩片的中心距離的中位數
+      const ds = [];
+      for (let i = 1; i < L.length; i++)
+        if (L[i].sz[1] < 0.3 && L[i - 1].sz[1] < 0.3) ds.push(Math.abs(L[i].cen[2] - L[i - 1].cen[2]));
+      ds.sort((p, q) => p - q);
+      let total = 0;
+      for (let i = 0; i < pts.length; i++) {
+        const q = pts[(i + 1) % pts.length];
+        total += Math.hypot(q[0] - pts[i][0], q[1] - pts[i][1]);
+      }
+      tracks.push({
+        x: r3(L.reduce((q, l) => q + l.cen[0], 0) / L.length),
+        n: Math.round(total / (ds[ds.length >> 1] || 0.52)),
+        pts: pts.map((q) => q.map(r3)),
+      });
+    }
+  const keep = raw.filter((_, i) => !drop.has(i));
+  raw.length = 0;
+  raw.push(...keep);
+  console.log(
+    `戰車腳：輪子 ${wheels.length} 個、履帶片 ${links.length} 片（${tracks.length} 條履帶，各 ${tracks.map((t) => t.n).join('／')} 片）、範本 ${link.length} 個三角形`,
+  );
+  return { wheels, link, tracks };
+}
+const PARTS = ARG.tank ? tankParts() : null;
 // 焊接
 const V = [];
 const vid = new Map();
@@ -249,7 +500,7 @@ function segment(ids, CT, sameSlot) {
   return out;
 }
 const slotArea = (fs2) => {
-  const a = [0, 0, 0, 0];
+  const a = Array(NS).fill(0);
   for (const fi of fs2) a[F[fi].slot] += F[fi].ar;
   return a;
 };
@@ -507,7 +758,7 @@ function classify(b) {
   };
   // 每個面的色槽：同平面的原面裡面積最大的色槽；沒有對應的原面（封口面）用塊體的色槽
   const HF = b.hull.faces.map((f) => {
-    const a = [0, 0, 0, 0];
+    const a = Array(NS).fill(0);
     for (const fi of b.fs)
       if (dot(F[fi].n, f.n) > 0.985 && Math.abs(F[fi].d - f.d) < 0.03) a[F[fi].slot] += F[fi].ar;
     const m = Math.max(...a);
@@ -652,6 +903,20 @@ const src = `// ${NAME}：照 GLB（${path.basename(glbPath)}）量測重建的�
 export const ${NAME}Prims = [
 ${lines.join('\n')}
 ];
-`;
+${
+  COLS
+    ? `// 固定色（貼圖上的顏色，不跟著配色換）：色槽 4 起
+export const ${NAME}Cols = ${JSON.stringify(COLS)};
+`
+    : ''
+}${
+  PARTS
+    ? `// 會動的零件（戰車腳，render/proc-tank.js）：wheels＝[x, y, z, 半徑, 寬]…、link＝一片履帶的三角形（以它的中心為原點）、
+// tracks＝每條履帶的 x、片數、路徑（[y, z]…，封閉）
+// prettier-ignore
+export const ${NAME}Parts = ${JSON.stringify(PARTS)};
+`
+    : ''
+}`;
 fs.writeFileSync(outPath, src);
 console.log('寫出', outPath, (src.length / 1024).toFixed(0) + ' KB');

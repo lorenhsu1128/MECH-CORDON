@@ -55,14 +55,31 @@ async function setup(N) {
     src.updateMatrixWorld(true);
     src.traverse((o) => {
       if (!o.isMesh) return;
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      if (o.isInstancedMesh) {
+        // 會動的零件（戰車腳的輪子與履帶片）：每個實例各放一份
+        const im = new THREE.Matrix4();
+        const mt =
+          kind === 'n'
+            ? mat
+            : new THREE.MeshBasicMaterial({ color: new THREE.Color(...(SC[mats[0].name] || [1, 0, 1])) });
+        for (let i = 0; i < o.count; i++) {
+          o.getMatrixAt(i, im);
+          const gi = o.geometry.clone();
+          gi.applyMatrix4(im.premultiply(o.matrixWorld));
+          G.add(new THREE.Mesh(gi, mt));
+        }
+        return;
+      }
       const geo = o.geometry.clone();
       geo.applyMatrix4(o.matrixWorld);
-      const mats = Array.isArray(o.material) ? o.material : [o.material];
       const mm =
         kind === 'n'
           ? mats.map(() => mat)
-          : mats.map(
-              (x) => new THREE.MeshBasicMaterial({ color: new THREE.Color(...(SC[x.name] || [1, 0, 1])) }),
+          : mats.map((x) =>
+              window.TEX
+                ? new THREE.MeshBasicMaterial({ map: x.map || null, color: x.map ? 0xffffff : x.color })
+                : new THREE.MeshBasicMaterial({ color: new THREE.Color(...(SC[x.name] || [1, 0, 1])) }),
             );
       G.add(new THREE.Mesh(geo, mats.length > 1 ? mm : mm[0]));
     });
@@ -158,7 +175,10 @@ async function setup(N) {
       if (fa || fb) uni++;
       if (fa && fb) {
         inter++;
-        if (Math.abs(ca[i] - cb[i]) + Math.abs(ca[i + 1] - cb[i + 1]) + Math.abs(ca[i + 2] - cb[i + 2]) < 0.5)
+        if (
+          Math.abs(ca[i] - cb[i]) + Math.abs(ca[i + 1] - cb[i + 1]) + Math.abs(ca[i + 2] - cb[i + 2]) <
+          (window.TEX ? 0.12 : 0.5)
+        )
           same++;
       }
     }
@@ -199,6 +219,25 @@ async function setup(N) {
         }
       }
     o.putImageData(im, 0, 0);
+    if (window.TEX) {
+      // 顏色的對照圖（左＝GLB、右＝程式模型），畫在第二張畫布
+      const o2 = document.getElementById('o2').getContext('2d');
+      const im2 = o2.createImageData(N * 2, N);
+      const g8 = (v) => Math.round(255 * Math.pow(Math.min(1, Math.max(0, v)), 1 / 2.2));
+      for (let y = 0; y < N; y++)
+        for (let x = 0; x < N; x++) {
+          const i = (y * N + x) * 4;
+          [ca, cb].forEach((c, k) => {
+            const q = ((N - 1 - y) * N * 2 + x + k * N) * 4;
+            const on = c[i + 3] > 0;
+            im2.data[q] = on ? g8(c[i]) : 205;
+            im2.data[q + 1] = on ? g8(c[i + 1]) : 205;
+            im2.data[q + 2] = on ? g8(c[i + 2]) : 205;
+            im2.data[q + 3] = 255;
+          });
+        }
+      o2.putImageData(im2, 0, 0);
+    }
     return {
       lineRef: (100 * ha) / na,
       lineProc: (100 * hb) / nb,
@@ -211,7 +250,7 @@ async function setup(N) {
   let t = 0,
     t0 = 0;
   proc.traverse((o) => {
-    if (o.isMesh) t += o.geometry.attributes.position.count / 3;
+    if (o.isMesh) t += (o.geometry.attributes.position.count / 3) * (o.isInstancedMesh ? o.count : 1);
   });
   g.scene.traverse((o) => {
     if (o.isMesh)
@@ -226,8 +265,8 @@ async function setup(N) {
   const r = await es.build({
     stdin: {
       contents:
-        `import { primsGroup } from './src/render/proc-prims.js';import { ${EXP} as PR } from './src/render/proc/${MOD}.js';` +
-        `window.buildProc=()=>{const M={};for(const n of ['main','sub','joint','acc']){M[n]=new THREE.MeshStandardMaterial({flatShading:true});M[n].name=n}return primsGroup(PR,M)};`,
+        `import { primsGroup } from './src/render/proc-prims.js';import { tankPartsGroup } from './src/render/proc-tank.js';import * as MODX from './src/render/proc/${MOD}.js';const PR=MODX['${EXP}'],PT=MODX['${EXP.replace(/Prims$/, 'Parts')}'],PC=MODX['${EXP.replace(/Prims$/, 'Cols')}'];` +
+        `window.buildProc=()=>{const M={};for(const n of ['main','sub','joint','acc']){M[n]=new THREE.MeshStandardMaterial({flatShading:true});M[n].name=n}window.TEX=!!PC;const g=primsGroup(PR,M,false,PC);if(PT)g.add(tankPartsGroup(PT,M));return g};`,
       resolveDir: ROOT,
     },
     bundle: true,
@@ -239,7 +278,7 @@ async function setup(N) {
   const three = 'file:///' + path.join(ROOT, 'dist/lib/three/three.js').split(path.sep).join('/');
   const html =
     `<html><body style="margin:0;background:#fff"><canvas id=c width=${SIZE} height=${SIZE} style="display:none"></canvas>` +
-    `<canvas id=o width=${SIZE * 3} height=${SIZE}></canvas><script src="${three}"></script>` +
+    `<canvas id=o width=${SIZE * 3} height=${SIZE}></canvas><br><canvas id=o2 width=${SIZE * 2} height=${SIZE}></canvas><script src="${three}"></script>` +
     `<script>window.GLB="${glb}";</script><script>${r.outputFiles[0].text.replace(/<\/script>/g, '<\\/script>')}</script></body></html>`;
   const hp = path.join(OUT, '_page.html');
   fs.writeFileSync(hp, html);
@@ -260,6 +299,8 @@ async function setup(N) {
       for (const k in sum) sum[k] += m[k] / only.length;
       console.log(v.padEnd(7), row(m));
       await page.screenshot({ path: path.join(OUT, v + '.png') });
+      if (await page.evaluate(() => window.TEX))
+        await (await page.$('#o2')).screenshot({ path: path.join(OUT, v + '-color.png') });
     }
     console.log('平均'.padEnd(5), row(sum));
   } finally {

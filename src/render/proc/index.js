@@ -1,5 +1,7 @@
 // 照 GLB 量測重建的程式模型（scripts/glb-to-proc.mjs 產生；批次 scripts/proc-batch.js）：槽位 id → 基本形體清單。
 // PROC_PRIMS：槽位 → 清單（render/mech-model.js 的 makeProcPiece0 用它取代原本手寫的程式模型）。GRANITE 系列、SEQ 輕量機型、HAWK 重裝機型、逆足機型的頭、核心、手臂、腳。
+// PROC_TEMP：還在給使用者檢查的（模型庫的暫時分類），還沒有換成預設：四足腳、核心 BD-AEGIS、三種背包推進器、戰車腳。
+// PROC_COLS：槽位 → 固定色（顏色在貼圖上的 GLB：背包推進器）。PROC_PARTS：槽位 → 會動的零件（戰車腳的輪子與履帶片，render/proc-tank.js）。
 import { cStdPrims } from './c_std.js';
 import { p_head_h_stdPrims } from './head_h_std.js';
 import { p_arms_a_std_l_upperPrims } from './arms_a_std_l_upper.js';
@@ -62,6 +64,24 @@ import { p_legs_l_rj_r_thighPrims } from './legs_l_rj_r_thigh.js';
 import { p_legs_l_rj_r_shinPrims } from './legs_l_rj_r_shin.js';
 import { p_legs_l_rj_r_metaPrims } from './legs_l_rj_r_meta.js';
 import { p_legs_l_rj_r_footPrims } from './legs_l_rj_r_foot.js';
+import { p_legs_l_qd_bodyPrims } from './legs_l_qd_body.js';
+import { p_legs_l_qd_fl_thighPrims } from './legs_l_qd_fl_thigh.js';
+import { p_legs_l_qd_fl_shinPrims } from './legs_l_qd_fl_shin.js';
+import { p_legs_l_qd_fl_footPrims } from './legs_l_qd_fl_foot.js';
+import { p_legs_l_qd_fr_thighPrims } from './legs_l_qd_fr_thigh.js';
+import { p_legs_l_qd_fr_shinPrims } from './legs_l_qd_fr_shin.js';
+import { p_legs_l_qd_fr_footPrims } from './legs_l_qd_fr_foot.js';
+import { p_legs_l_qd_bl_thighPrims } from './legs_l_qd_bl_thigh.js';
+import { p_legs_l_qd_bl_shinPrims } from './legs_l_qd_bl_shin.js';
+import { p_legs_l_qd_bl_footPrims } from './legs_l_qd_bl_foot.js';
+import { p_legs_l_qd_br_thighPrims } from './legs_l_qd_br_thigh.js';
+import { p_legs_l_qd_br_shinPrims } from './legs_l_qd_br_shin.js';
+import { p_legs_l_qd_br_footPrims } from './legs_l_qd_br_foot.js';
+import { p_core_c_aegPrims } from './core_c_aeg.js';
+import { p_booster_b_stdPrims, p_booster_b_stdCols } from './booster_b_std.js';
+import { p_booster_b_hiPrims, p_booster_b_hiCols } from './booster_b_hi.js';
+import { p_booster_b_effPrims, p_booster_b_effCols } from './booster_b_eff.js';
+import { p_legs_l_tk_bodyPrims, p_legs_l_tk_bodyParts } from './legs_l_tk_body.js';
 
 export const PROC_PRIMS = {
   'core/c_std': cStdPrims, // BD-100 GRANITE
@@ -129,4 +149,32 @@ export const PROC_PRIMS = {
   'legs/l_rj/r_shin': p_legs_l_rj_r_shinPrims,
   'legs/l_rj/r_meta': p_legs_l_rj_r_metaPrims,
   'legs/l_rj/r_foot': p_legs_l_rj_r_footPrims,
+};
+export const PROC_TEMP = {
+  'legs/l_qd/body': p_legs_l_qd_bodyPrims,
+  'legs/l_qd/fl_thigh': p_legs_l_qd_fl_thighPrims,
+  'legs/l_qd/fl_shin': p_legs_l_qd_fl_shinPrims,
+  'legs/l_qd/fl_foot': p_legs_l_qd_fl_footPrims,
+  'legs/l_qd/fr_thigh': p_legs_l_qd_fr_thighPrims,
+  'legs/l_qd/fr_shin': p_legs_l_qd_fr_shinPrims,
+  'legs/l_qd/fr_foot': p_legs_l_qd_fr_footPrims,
+  'legs/l_qd/bl_thigh': p_legs_l_qd_bl_thighPrims,
+  'legs/l_qd/bl_shin': p_legs_l_qd_bl_shinPrims,
+  'legs/l_qd/bl_foot': p_legs_l_qd_bl_footPrims,
+  'legs/l_qd/br_thigh': p_legs_l_qd_br_thighPrims,
+  'legs/l_qd/br_shin': p_legs_l_qd_br_shinPrims,
+  'legs/l_qd/br_foot': p_legs_l_qd_br_footPrims,
+  'core/c_aeg': p_core_c_aegPrims,
+  'booster/b_std': p_booster_b_stdPrims,
+  'booster/b_hi': p_booster_b_hiPrims,
+  'booster/b_eff': p_booster_b_effPrims,
+  'legs/l_tk/body': p_legs_l_tk_bodyPrims,
+};
+export const PROC_COLS = {
+  'booster/b_std': p_booster_b_stdCols,
+  'booster/b_hi': p_booster_b_hiCols,
+  'booster/b_eff': p_booster_b_effCols,
+};
+export const PROC_PARTS = {
+  'legs/l_tk/body': p_legs_l_tk_bodyParts,
 };
