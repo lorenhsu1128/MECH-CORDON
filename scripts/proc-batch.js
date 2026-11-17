@@ -1,27 +1,22 @@
 // 照 GLB 重建的程式模型（實驗）：一次轉換一組槽位並比對，列出每個槽位的平均與最差的視角。
-//   node scripts/proc-batch.js [--only=head/h_std,arms/a_std/l_upper] [--nogen]（只比對）
+//   node scripts/proc-batch.js [--set=std|lt] [--only=head/h_std,arms/a_std/l_upper] [--nogen]（只比對）
 // 來源是內建的玩家預設機甲 src/assets/player-mech/<槽位>.glb，輸出 src/render/proc/<槽位的 / 換成 _>.js
 // （匯出名稱 p_<…>Prims；core/c_std 沿用 c_std.js 的 cStdPrims）。需要先 npm run build（比對用 dist 的 three.js）
 const { execFileSync } = require('child_process');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const SLOTS = [
-  'core/c_std',
-  'head/h_std',
-  'arms/a_std/l_upper',
-  'arms/a_std/l_fore',
-  'arms/a_std/l_hand',
-  'arms/a_std/r_upper',
-  'arms/a_std/r_fore',
-  'arms/a_std/r_hand',
-  'legs/l_bp/pelvis',
-  'legs/l_bp/l_thigh',
-  'legs/l_bp/l_shin',
-  'legs/l_bp/l_foot',
-  'legs/l_bp/r_thigh',
-  'legs/l_bp/r_shin',
-  'legs/l_bp/r_foot',
+// 一組＝[頭, 核心, 手臂, 二足腳] 的零件 id
+const SETS = {
+  std: ['h_std', 'c_std', 'a_std', 'l_bp'], // GRANITE（基礎機型）
+  lt: ['h_lt', 'c_lt', 'a_lt', 'l_bp2'], // SEQ 輕量機型
+};
+const slotsOf = ([h, c, a, l]) => [
+  'core/' + c,
+  'head/' + h,
+  ...['l', 'r'].flatMap((s) => ['upper', 'fore', 'hand'].map((k) => `arms/${a}/${s}_${k}`)),
+  `legs/${l}/pelvis`,
+  ...['l', 'r'].flatMap((s) => ['thigh', 'shin', 'foot'].map((k) => `legs/${l}/${s}_${k}`)),
 ];
 const A = {};
 for (const a of process.argv.slice(2)) {
@@ -34,7 +29,7 @@ const names = (slot) =>
     : { file: slot.replace(/\//g, '_'), exp: 'p_' + slot.replace(/\//g, '_') };
 const run = (args) => execFileSync(process.execPath, args, { cwd: ROOT, encoding: 'utf8' });
 
-const only = A.only ? String(A.only).split(',') : SLOTS;
+const only = A.only ? String(A.only).split(',') : slotsOf(SETS[A.set || 'std']);
 let sum = [0, 0];
 for (const slot of only) {
   const { file, exp } = names(slot);
