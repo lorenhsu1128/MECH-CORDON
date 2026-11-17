@@ -16,7 +16,9 @@ import { buildPod, buildStation } from './cine-sets.js';
 import { buildCineVeh } from './cine-vehicles.js';
 import { FOE_CATALOG } from './foe-models.js';
 import { PARTS, START_ASM } from '../data/parts.js';
-import { PALETTES } from './materials.js';
+import { PALETTES, mechMats } from './materials.js';
+import { primsGroup } from './proc-prims.js';
+import { cStdPrims } from './proc/c_std.js';
 import { PIECE_NAMES, SIDE_NAMES, buildMech, buildPiece, partPieces } from './mech-model.js';
 import { THEMES } from '../world/world.js';
 import { LANDMARKS } from '../world/landmarks.js';
@@ -108,6 +110,7 @@ export const CATEGORIES = [
   { id: 'prop', name: '地圖物件' },
   { id: 'device', name: '地圖裝置' },
   { id: 'small', name: '小物件' },
+  { id: 'temp', name: '暫時（GLB 重建比對）' },
 ];
 
 const v3 = (s) => (s && s.isVector3 ? s.clone() : new THREE.Vector3(s, s, s));
@@ -155,6 +158,21 @@ for (const [cat, list] of PART_LISTS)
           return { obj: wrap, scaleNode: wrap, scale: v3(1), rig: null, piece: info };
         },
       });
+
+// ---------- 暫時：照 GLB 量測重建的程式模型（scripts/glb-to-proc.mjs；比對用，還沒有接到遊戲）----------
+add({
+  id: 'temp/c_std_proc',
+  cat: 'temp',
+  name: 'BD-100 GRANITE（照 GLB 重建的程式模型）',
+  note: '暫時：照伺服器預設組的 GLB（core/c_std）量測重建——凸塊、柱體與原表面；用來和「核心」分類的 GLB 比對',
+  spec: 'part',
+  noGlb: true,
+  build: (k) => {
+    const wrap = new THREE.Group();
+    wrap.add(primsGroup(cStdPrims, mechMats(pal(k)), true)); // 轉成遊戲的座標（−Z 正面）
+    return { obj: wrap, scaleNode: wrap, scale: v3(1), rig: null };
+  },
+});
 
 // ---------- 完整機甲 ----------
 const addMech = (key, name, asm, palKey, scale, note = '', boss = false) =>
