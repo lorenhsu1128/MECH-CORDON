@@ -1,4 +1,6 @@
 // ---------------- WEAPONS（Q 版：粗大方塊化） ----------------
+import { PROC_PRIMS } from './proc/index.js';
+import { primsGroup } from './proc-prims.js';
 import { clamp, lerp } from '../core/math.js';
 import { MB } from '../core/scale.js';
 import { START_ASM, asmParts, partById } from '../data/parts.js';
@@ -2064,6 +2066,22 @@ function makeProcPiece(info, ctx) {
   return g;
 }
 function makeProcPiece0(info, ctx) {
+  // 照 GLB 量測重建的程式模型（render/proc/）：已經是建模尺寸與內建 GLB 的外形，不用變形與放大
+  const pr = PROC_PRIMS[info.slot];
+  if (pr) {
+    const pg = primsGroup(pr, ctx.M, true);
+    // 描邊外殼：同其他程式模型（所有色槽合成一個網格）
+    const pos = [];
+    for (const c of pg.children) pos.push(...c.geometry.attributes.position.array);
+    const og = new THREE.BufferGeometry();
+    og.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    og.computeVertexNormals();
+    const o = new THREE.Mesh(og, OUTLINE_MAT);
+    o.castShadow = false;
+    pg.add(o);
+    pg.userData.slot = info.slot;
+    return pg;
+  }
   const g = new THREE.Group();
   (BUILD[info.kind] || (() => {}))(g, info, ctx);
   // 變形到內建預設機甲的外框（先合併成網格；區塊本身維持單位變換，換成 GLB、拖曳原點等都以區塊本身為準）
