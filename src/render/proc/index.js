@@ -1,6 +1,5 @@
 // 照 GLB 量測重建的程式模型（scripts/glb-to-proc.mjs 產生；批次 scripts/proc-batch.js）：槽位 id → 基本形體清單。
-// PROC_PRIMS：槽位 → 清單（render/mech-model.js 的 makeProcPiece0 用它取代原本手寫的程式模型）。GRANITE 系列的頭、核心、手臂、腳。
-// PROC_TEMP：還在給使用者檢查的（模型庫的暫時分類），還沒有換成預設：SEQ 輕量機型的頭、核心、手臂、腳。
+// PROC_PRIMS：槽位 → 清單（render/mech-model.js 的 makeProcPiece0 用它取代原本手寫的程式模型）。GRANITE 系列與 SEQ 輕量機型的頭、核心、手臂、腳。
 import { cStdPrims } from './c_std.js';
 import { p_head_h_stdPrims } from './head_h_std.js';
 import { p_arms_a_std_l_upperPrims } from './arms_a_std_l_upper.js';
@@ -48,8 +47,7 @@ export const PROC_PRIMS = {
   'legs/l_bp/r_thigh': p_legs_l_bp_r_thighPrims,
   'legs/l_bp/r_shin': p_legs_l_bp_r_shinPrims,
   'legs/l_bp/r_foot': p_legs_l_bp_r_footPrims,
-};
-export const PROC_TEMP = {
+  // SEQ 輕量機型
   'core/c_lt': p_core_c_ltPrims,
   'head/h_lt': p_head_h_ltPrims,
   'arms/a_lt/l_upper': p_arms_a_lt_l_upperPrims,

@@ -8,8 +8,12 @@ import BUILTIN_JOINTS from 'virtual:joints';
 
 let overrides = {},
   gate = null,
+  procJ = {},
   scoped = null; // withJoints 執行期間使用的關節設定（一台機甲指定的模型組），取代全域覆寫
 export const builtinJoints = () => BUILTIN_JOINTS;
+// 照 GLB 重建的程式模型（render/proc/）的關節設定：內建預設機甲的 joints.json 裡這些槽位的部分，排在最後
+// （沒有模型組、瀏覽器暫存、內建的設定時才用），所以沒有 GLB 時重建的程式模型也照 GLB 的關節組裝
+export const setProcJoints = (map) => (procJ = map || {});
 // gate：回傳 false 時暫時不套用覆寫（遊戲的本地模型庫在多人時停用）
 export function setJointOverrides(map, g = null) {
   overrides = map || {};
@@ -28,7 +32,12 @@ export function withJoints(map, fn) {
 // 某個連接點的設定（glTF 座標），沒有則為 null；模型組（withJoints）或瀏覽器暫存＞內建
 export function jointSetting(slot, name) {
   const ov = scoped || (!gate || gate() ? overrides : {});
-  return (ov[slot] && ov[slot][name]) || (BUILTIN_JOINTS[slot] && BUILTIN_JOINTS[slot][name]) || null;
+  return (
+    (ov[slot] && ov[slot][name]) ||
+    (BUILTIN_JOINTS[slot] && BUILTIN_JOINTS[slot][name]) ||
+    (procJ[slot] && procJ[slot][name]) ||
+    null
+  );
 }
 
 const D2R = Math.PI / 180;

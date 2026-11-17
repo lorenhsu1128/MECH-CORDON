@@ -26,7 +26,8 @@ import {
   sideProfile,
 } from './geometry.js';
 import { mechMats } from './materials.js';
-import { jointSetting, resolveConn, withJoints } from './mech-joints.js';
+import { jointSetting, resolveConn, setProcJoints, withJoints } from './mech-joints.js';
+import PLAYER_MECH from 'virtual:player-mech';
 import { matsOf } from './glb.js';
 import { providedModel } from './model-provider.js';
 import { tagStyle } from './style/shader.js';
@@ -2028,6 +2029,12 @@ function waistPost(g, M, y0, y1) {
 const PIECE_TPL = new WeakMap(); // pal → Map(鍵 → { g, ctx })
 // 只在遊戲裡開（Game 建立時呼叫）；模型庫、GLB 編輯器會改程式模型的幾何，照舊每次重建
 let PIECE_CACHE = false;
+let HAND_ONLY = false; // groundRef 量貼地的基準時：一律用原本手寫的程式模型（不用 PROC_PRIMS、不進快取）
+{
+  const pj = {};
+  for (const k in PROC_PRIMS) if ((PLAYER_MECH.joints || {})[k]) pj[k] = PLAYER_MECH.joints[k];
+  setProcJoints(pj);
+}
 export const setPieceCache = (on) => (PIECE_CACHE = !!on);
 function pieceKey(info, ctx) {
   return JSON.stringify(info, (k, v) => (k === 'part' && v ? v.id : v)) + (ctx.heavy ? '|h' : '');
@@ -2049,7 +2056,7 @@ function clonePiece(tpl, ctx) {
   return g;
 }
 function makeProcPiece(info, ctx) {
-  const pal = PIECE_CACHE ? ctx.pal : null;
+  const pal = PIECE_CACHE && !HAND_ONLY ? ctx.pal : null;
   let byPal = pal && PIECE_TPL.get(pal);
   const key = pal ? pieceKey(info, ctx) : null;
   const tpl = byPal && byPal.get(key);
@@ -2081,7 +2088,7 @@ export function procPrimPiece(prims, M, slot) {
 }
 function makeProcPiece0(info, ctx) {
   // 照 GLB 量測重建的程式模型（render/proc/）：已經是建模尺寸與內建 GLB 的外形，不用變形與放大
-  const pr = PROC_PRIMS[info.slot];
+  const pr = !HAND_ONLY && PROC_PRIMS[info.slot];
   if (pr) return procPrimPiece(pr, ctx.M, info.slot);
   const g = new THREE.Group();
   (BUILD[info.kind] || (() => {}))(g, info, ctx);
@@ -2417,11 +2424,17 @@ function lowestY(objs, space) {
 const GROUND_REF = new Map();
 function groundRef(legs, pal) {
   if (!GROUND_REF.has(legs)) {
-    const ref = buildMech({ ...START_ASM, legs }, pal, 1, {
-      piece: () => null,
-      defaultConns: true,
-      noGround: true,
-    });
+    HAND_ONLY = true;
+    let ref;
+    try {
+      ref = buildMech({ ...START_ASM, legs }, pal, 1, {
+        piece: () => null,
+        defaultConns: true,
+        noGround: true,
+      });
+    } finally {
+      HAND_ONLY = false;
+    }
     const g = ref.ground;
     GROUND_REF.set(legs, lowestY(g.infos.map((i) => ref.pieces[i.slot]).filter(Boolean), ref.lift));
     ref.group.traverse((o) => {

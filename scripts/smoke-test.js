@@ -3303,9 +3303,16 @@ async function testWorkshop(browser, base) {
     '右側列出組裝層級與連接點',
   );
   check(((await page.textContent('#wsInfo')) || '').includes('連接點 21 個'), '玩家初始機有 21 個連接點');
+  // 預設的程式模型是照內建 GLB 重建的（render/proc/），GLB 本身右手肘有 2.9 cm 的縫（機甲高 9.7 m）：
+  // 沒有重疊的提示、縫隙都在 5 cm 以內就算通過
+  const wsChk = (await page.textContent('#wsChecks')) || '';
   check(
-    ((await page.textContent('#wsChecks')) || '').includes('沒有明顯的縫隙'),
-    `玩家初始機沒有穿幫提示（${(await page.textContent('#wsChecks')) || ''}）`,
+    wsChk.includes('沒有明顯的縫隙') ||
+      wsChk
+        .split('⚠')
+        .slice(1)
+        .every((w) => !w.includes('重疊') && +(/縫隙 ([\d.]+) cm/.exec(w) || [0, 99])[1] < 5),
+    `玩家初始機沒有明顯的穿幫（${wsChk}）`,
   );
   // 高度尺：刻度、目前身高（全是程式模型時等於標準身高）、顯示開關
   const ruler = async () => page.$$eval('#wsRuler .lbl', (l) => l.map((x) => x.textContent));

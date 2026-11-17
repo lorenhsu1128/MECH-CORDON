@@ -1,5 +1,5 @@
 // 照 GLB 重建的程式模型（實驗）：一次轉換一組槽位並比對，列出每個槽位的平均與最差的視角。
-//   node scripts/proc-batch.js [--set=std|lt] [--only=head/h_std,arms/a_std/l_upper] [--nogen]（只比對）
+//   node scripts/proc-batch.js [--set=std|lt|hv] [--only=head/h_std,arms/a_std/l_upper] [--nogen]（只比對）
 // 來源是內建的玩家預設機甲 src/assets/player-mech/<槽位>.glb，輸出 src/render/proc/<槽位的 / 換成 _>.js
 // （匯出名稱 p_<…>Prims；core/c_std 沿用 c_std.js 的 cStdPrims）。需要先 npm run build（比對用 dist 的 three.js）
 const { execFileSync } = require('child_process');
@@ -10,6 +10,7 @@ const ROOT = path.join(__dirname, '..');
 const SETS = {
   std: ['h_std', 'c_std', 'a_std', 'l_bp'], // GRANITE（基礎機型）
   lt: ['h_lt', 'c_lt', 'a_lt', 'l_bp2'], // SEQ 輕量機型
+  hv: ['h_hv', 'c_hv', 'a_hv', 'l_hv'], // HAWK 重裝機型
 };
 const slotsOf = ([h, c, a, l]) => [
   'core/' + c,
