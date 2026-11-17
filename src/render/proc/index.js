@@ -1,6 +1,8 @@
 // 照 GLB 量測重建的程式模型（scripts/glb-to-proc.mjs 產生；批次 scripts/proc-batch.js）：槽位 id → 基本形體清單。
 // PROC_PRIMS：槽位 → 清單（render/mech-model.js 的 makeProcPiece0 用它取代原本手寫的程式模型）。GRANITE 系列、SEQ 輕量機型、HAWK 重裝機型、逆足機型的頭、核心、手臂、腳，四足腳、核心 BD-AEGIS、三種背包推進器、戰車腳。
+// PROC_TEMP：還在給使用者檢查的（模型庫的暫時分類）：左側的手臂與腳改成右側的鏡像（四足＝右側是左側的鏡像），還沒有換成預設。
 // PROC_COLS：槽位 → 固定色（顏色在貼圖上的 GLB：背包推進器）。PROC_PARTS：槽位 → 會動的零件（戰車腳的輪子與履帶片，render/proc-tank.js）。
+import { mirrorPrims } from '../proc-prims.js';
 import { cStdPrims } from './c_std.js';
 import { p_head_h_stdPrims } from './head_h_std.js';
 import { p_arms_a_std_l_upperPrims } from './arms_a_std_l_upper.js';
@@ -176,3 +178,17 @@ export const PROC_COLS = {
 export const PROC_PARTS = {
   'legs/l_tk/body': p_legs_l_tk_bodyParts,
 };
+// 左右鏡像：[鏡像出來的槽位, 來源的槽位]。手臂與腳以右側為準、四足腳以左側為準（和內建 GLB 原本的做法一樣）
+const MIRRORS = [];
+for (const a of ['a_std', 'a_lt', 'a_hv', 'a_ml'])
+  for (const k of ['upper', 'fore', 'hand']) MIRRORS.push([`arms/${a}/l_${k}`, `arms/${a}/r_${k}`]);
+for (const l of ['l_bp', 'l_bp2', 'l_hv', 'l_rj'])
+  for (const k of ['thigh', 'shin', 'meta', 'foot']) MIRRORS.push([`legs/${l}/l_${k}`, `legs/${l}/r_${k}`]);
+for (const [d, s2] of [
+  ['fr', 'fl'],
+  ['br', 'bl'],
+])
+  for (const k of ['thigh', 'shin', 'foot']) MIRRORS.push([`legs/l_qd/${d}_${k}`, `legs/l_qd/${s2}_${k}`]);
+export const PROC_TEMP = {};
+for (const [d, s2] of MIRRORS)
+  if (PROC_PRIMS[s2] && PROC_PRIMS[d]) PROC_TEMP[d] = mirrorPrims(PROC_PRIMS[s2]);

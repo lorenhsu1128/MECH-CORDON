@@ -5,6 +5,29 @@
 export const PRIM_SLOTS = ['main', 'sub', 'joint', 'acc'];
 const AX = { x: 0, y: 1, z: 2 };
 
+// 左右鏡射（x → −x）的清單：左側的區塊＝右側的鏡像時用（proc/index.js）。面的繞向跟著反過來
+export function mirrorPrims(prims) {
+  const mx = (q) => [-q[0], q[1], q[2]];
+  return prims.map((p) => {
+    const k = p[0];
+    if (k === 'B') {
+      const [, s, a, b, ...r] = p;
+      return ['B', s, [-b[0], a[1], a[2]], [-a[0], b[1], b[2]], ...r];
+    }
+    if (k === 'P') {
+      const [, s, ax, a0, a1, prof, ...r] = p;
+      // 沿 x 的柱體：兩端對調、截面（y, z）不變；沿 y（截面 z, x）或 z（截面 x, y）的：截面的 x 反號並把順序反過來（維持逆時針）
+      if (ax === 'x') return ['P', s, ax, -a1, -a0, prof, ...r];
+      const i = ax === 'y' ? 1 : 0;
+      return ['P', s, ax, a0, a1, prof.map((q) => (i ? [q[0], -q[1]] : [-q[0], q[1]])).reverse(), ...r];
+    }
+    if (k === 'H') {
+      const [, s, pts, faces, ...r] = p;
+      return ['H', s, pts.map(mx), faces.map((f) => f.slice().reverse()), ...r];
+    }
+    return [k, p[1].map(([s, a, b, c]) => [s, mx(a), mx(c), mx(b)])];
+  });
+}
 // 每個色槽的三角形座標（[x,y,z,…]，沒有索引）
 export function primsTris(prims) {
   const out = PRIM_SLOTS.map(() => []);
