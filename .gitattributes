@@ -3,3 +3,4 @@
 *.exe binary
 *.png binary
 dist/mech-cordon-server.exe filter=lfs diff=lfs merge=lfs -text
+tools/voice-lora/**/*.safetensors filter=lfs diff=lfs merge=lfs -text

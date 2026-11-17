@@ -9,6 +9,10 @@
   eval    同一組句子有／沒有 LoRA 各產生一次，比聲紋相似度（平均、最低）→ tools/voxcpm/lora/<聲音>/eval.json
 之後 python scripts/voice-gen.py --v3 [--lang ja] 用新聲音＋LoRA 產生全部台詞（挑 take 時同時看聲紋）。
 
+--zh：中文專用的聲音（2026-11-17 起中文另外設計，照立繪的形象；選角是 voice_cast.json 每個聲音的 zh）：
+  用中文的句子設計、只留音高在 zh.f0 範圍內的候選，只用中文資料訓練 →
+  ref/v3zh/<聲音>.flac、tools/voxcpm/data_zh/、tools/voxcpm/lora_zh/。日文照舊用共用的聲音與 LoRA。
+
   python scripts/voice-lora.py --voice=castron [--steps=design,data,train,eval] [--force]
 要語音的 conda 環境（rubicon-voice）、TORCHINDUCTOR_USE_STATIC_CUDA_LAUNCHER=0。
 """
@@ -40,6 +44,7 @@ DATA = os.path.join(VX, 'data')
 LORA = os.path.join(VX, 'lora')
 LORA_R = 32
 MAX_CLIP = 11.5
+ZH = False  # --zh：中文專用的聲音
 STABLE = False  # --stable：聲音設計時也看克隆穩定度
 SIM_FLOOR = 0.85
 
@@ -108,6 +113,39 @@ GENERIC = [
     ('真可惜。如果是別的時候遇見你，說不定能當朋友。', '残念だな。別の時に出会っていたら、友達になれたかもしれないのに。', 'hesitate'),
 ]
 GENERIC_N = 60  # 每種語言湊到幾句（台詞少的用通用句補）
+# --zh 只用中文訓練：句子要比較多才有 5 分鐘以上，再補這些（只有中文）
+GENERIC_ZH = [
+    ('先別急著開火，等他們全部走進山谷再說。', 'focus'),
+    ('你看那邊的煙，八成是補給車隊被打了。', 'think'),
+    ('我跟你說，這種天氣出任務，十次有九次會出事。', 'weary'),
+    ('好啦好啦，這次算我欠你的，回去請你喝一杯。', 'smile'),
+    ('誰准你擅自行動的？下次再這樣，我直接把你踢出小隊。', 'angry'),
+    ('別怕，我就在你後面。你只要往前看就好。', 'tender'),
+    ('哈哈，你們的機體跑得也太慢了吧，烏龜都比你們快！', 'laugh'),
+    ('這份資料如果是真的，那我們一直以來都被騙了。', 'surprised'),
+    ('三號機失去聯絡，最後的位置在北邊的倉庫附近。', ''),
+    ('我不想再看到任何人死在這裡了。拜託，撤退吧。', 'sad'),
+    ('呵呵，真是可愛。你以為躲在那裡我就找不到你嗎？', 'smug'),
+    ('這筆錢我收了，事情我會辦好。其他的，不要多問。', 'cold'),
+    ('等我一下，我把座標傳給你。好了，收到了嗎？', ''),
+    ('雨一直下個不停，河水已經漲到警戒線了。', 'wary'),
+    ('如果你真的想知道真相，就自己去看吧。', 'resolve'),
+    ('喂喂，別擺出那種臉嘛。我只是開個小玩笑而已。', 'wry'),
+    ('裝甲剩不到一半了，再被打中兩次就撐不住了！', 'panic'),
+    ('我從來沒有說過我是好人。我只是做我該做的事。', 'cold'),
+    ('今天的風很舒服呢。如果沒有戰爭就好了。', 'smile'),
+    ('不行，太危險了。至少讓我先去偵察一下。', 'hesitate'),
+    ('你還記得我們第一次見面的時候嗎？你那時候還在發抖呢。', 'smile'),
+    ('目標已經離開雷達範圍，要不要繼續追？', 'puzzled'),
+    ('給我聽好，這是命令，不是請求。', 'shout'),
+    ('真是驚人的反應速度……你到底經歷過什麼？', 'intrigued'),
+    ('對不起，我不該對你發脾氣的。我只是太累了。', 'guilt'),
+    ('全員注意，五秒後開始突擊。五、四、三、二、一，上！', 'shout'),
+    ('嗯？這個聲音……好像是從地底下傳來的。', 'wary'),
+    ('我才不在乎什麼公司、什麼合約，我只想活下去。', 'angry'),
+    ('慢慢來，一個一個處理。我們有的是時間。', 'focus'),
+    ('如果有下輩子，我想當一個普通人，在海邊開一間小店。', 'mourn'),
+]
 
 
 def wav_len(p):
@@ -150,10 +188,16 @@ def set_lang(ja):
     vg.SUF = '_ja' if ja else ''
 
 
+def cast(v):
+    """選角：--zh 時用中文專用的（voice_cast.json 的 zh）"""
+    c = CAST3[v]
+    return {'g': c['g'], **c['zh']} if ZH and c.get('zh') else c
+
+
 def style3(v, line):
     """每句的語氣：選角的說話方式＋情境＋表情（同 voice-gen.py 的 style_of，但說話方式用 v3 的）"""
     parts = []
-    c = CAST3[v]
+    c = cast(v)
     if c.get('style'):
         parts.append(c['style'])
     st = vg.STYLE.get(line.get('k', ''), '')
@@ -184,8 +228,10 @@ def load_lines():
 def step_design(model, asr, v, lines, ja):
     os.makedirs(REF3, exist_ok=True)
     out = os.path.join(REF3, v + '.flac')
-    c = CAST3[v]
+    c = cast(v)
     sp = vg.LINES_OF.get(v, v)
+    if ZH:
+        return design_zh(model, asr, v, lines, out, c, sp)
     # 日文的代表句（長度最接近 34 字）；沒有日文台詞的用通用句
     set_lang(True)
     cand = [t for t in ja.get(sp, {}).values() if isinstance(t, str) and not re.search('[A-Za-z]', t)]
@@ -231,6 +277,59 @@ def step_design(model, asr, v, lines, ja):
     print(f'{v} 參考音 → {out}（{len(best[1]) / sr:.1f} 秒）', flush=True)
 
 
+def design_zh(model, asr, v, lines, out, c, sp):
+    """中文專用的聲音：用中文的代表句設計 12 個候選（不提早停），音高在 zh.f0 範圍外的淘汰；
+    分數＝唸對＋2×（克隆穩定度−0.9）−離範圍中央的距離×0.4（沒有範圍的不扣）"""
+    set_lang(False)
+    cand = [L['t'] for L in lines.get(sp, {}).values() if isinstance(L, dict) and 12 <= len(L.get('t', '')) <= 40
+            and not re.search('[A-Za-z]', L['t'])]
+    text = min(cand, key=lambda t: (abs(len(t) - 26), t)) if cand else '收到，正在移動到指定位置。保持隊形，不要脫隊。'
+    pre, _ = vg.GENDER[c['g']]
+    prompt = vg.to_simp(pre + c['desc'])
+    rng = c.get('f0')
+    sr = model.tts_model.sample_rate
+    best = None
+    hit = False
+    for k in range(24 if rng else 6):
+        # 12 個一輪；範圍內一個都沒有時再試 12 個
+        if k == 12 and hit:
+            break
+        vg.seed(37 + k * 211 + (zlib.crc32(v.encode()) & 0xfff))
+        w = vg.trim(np.asarray(model.generate(text=f'({prompt}){vg.say(text)}', cfg_value=2.0, inference_timesteps=10),
+                               dtype=np.float32), sr)
+        r, _ = vg.asr_score(asr, w, sr, text)
+        f0 = vg.f0_median(w, sr)
+        ok = True
+        if rng:
+            lo, hi = rng
+            ok = lo * 0.92 <= f0 <= hi * 1.08
+            r -= 0.4 * abs(f0 - (lo + hi) / 2) / (hi - lo)
+        stab = ''
+        hit = hit or ok
+        if ok and r > 0.5:
+            tmp = os.path.join(REF3, f'_{v}_cand.wav')
+            sf.write(tmp, w, sr)
+            ce = sv_emb(w, sr)
+            ss = []
+            for i, zt in enumerate((GENERIC[0][0], GENERIC[20][0])):
+                vg.seed(7 + i * 977 + k)
+                cw = vg.trim(np.asarray(model.generate(text=vg.say(zt), reference_wav_path=tmp, cfg_value=2.0,
+                                                       inference_timesteps=10), dtype=np.float32), sr)
+                ss.append(float(np.dot(ce, sv_emb(cw, sr))))
+            os.unlink(tmp)
+            r += 2.0 * (float(np.mean(ss)) - 0.9)
+            stab = f' 克隆穩定 {np.mean(ss):.3f}'
+        else:
+            r -= 1.0
+        print(f'  設計 {v}#{k} 分數 {r:.2f} 音高 {f0:.0f} Hz{"" if ok else "（範圍外）"}{stab}', flush=True)
+        if not best or r > best[0]:
+            best = (r, w, f0)
+    sf.write(out, best[1], sr)
+    print(f'{v} 中文參考音 → {out}（{len(best[1]) / sr:.1f} 秒、{best[2]:.0f} Hz、分數 {best[0]:.2f}）', flush=True)
+    json.dump({'score': round(best[0], 3), 'f0': round(best[2]), 'text': text},
+              open(out[:-5] + '.json', 'w', encoding='utf-8'), ensure_ascii=False)
+
+
 # ---------- data ----------
 def pick_lines(v, lines, ja, n=GENERIC_N):
     """角色自己的台詞挑 n 句（中文、日文各自）：長度 6～40 字、情緒盡量分散；不夠的補通用句"""
@@ -255,6 +354,10 @@ def pick_lines(v, lines, ja, n=GENERIC_N):
         if t and len(jl) < n:
             jl.append((f'ja_{k}', {**L[k], 't': t}))
     # 通用句補足
+    if ZH:
+        for i, (a, e) in enumerate(GENERIC_ZH):
+            if len(zh) < n:
+                zh.append((f'zh_x{i}', {'t': a, 'k': 'comm', **({'e': e} if e else {})}))
     for i, (a, b, e) in enumerate(GENERIC):
         if len(zh) < n:
             zh.append((f'zh_g{i}', {'t': a, 'k': 'comm', **({'e': e} if e else {})}))
@@ -266,7 +369,9 @@ def pick_lines(v, lines, ja, n=GENERIC_N):
 def step_data(model, asr, v, lines, ja, takes=3, use_lora=False):
     d = os.path.join(DATA, v)
     os.makedirs(d, exist_ok=True)
-    zh, jl = pick_lines(v, lines, ja)
+    zh, jl = pick_lines(v, lines, ja, n=90 if ZH else GENERIC_N)
+    if ZH:
+        jl = []
     ref = os.path.join(REF3, v + '.flac')
     re_ = ref_emb(v)
     sr = model.tts_model.sample_rate
@@ -410,7 +515,7 @@ def step_eval(model, asr, v, lines, ja):
         else:
             model.tts_model.set_lora_enabled(False)
         sims, asrs = [], []
-        for lang, items in (('zh', zh[-4:]), ('ja', jl[-4:])):
+        for lang, items in ((('zh', zh[-8:]),) if ZH else (('zh', zh[-4:]), ('ja', jl[-4:]))):
             set_lang(lang == 'ja')
             for key, line in items:
                 for tk in range(2):
@@ -444,9 +549,15 @@ def main():
     ap.add_argument('--iters', type=int, default=600)
     ap.add_argument('--force', action='store_true')
     ap.add_argument('--stable', action='store_true', help='聲音設計時另外量每個候選的克隆穩定度（比較慢）')
+    ap.add_argument('--zh', action='store_true', help='中文專用的聲音（voice_cast.json 的 zh）')
     a = ap.parse_args()
-    global STABLE
+    global STABLE, ZH, REF3, DATA, LORA
     STABLE = a.stable
+    if a.zh:
+        ZH = True
+        REF3 = os.path.join(VDIR, 'ref', 'v3zh')
+        DATA = os.path.join(VX, 'data_zh')
+        LORA = os.path.join(VX, 'lora_zh')
     voices = list(CAST3) if a.voice == 'all' else a.voice.split(',')
     steps = a.steps.split(',')
     lines, ja = load_lines()

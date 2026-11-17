@@ -289,20 +289,30 @@ def load_vox():
 # ---------- 語音 v3（docs/voice-casting.md）：每個角色一個聲音＋一個 LoRA ----------
 V3 = False
 LORA_DIR = os.path.join(ROOT, 'tools', 'voxcpm', 'lora')
+# 中文專用的聲音（2026-11-17 起，voice_cast.json 的 zh；scripts/voice-lora.py --zh）：參考音 ref/v3zh/、LoRA lora_zh/
+ZH2 = set()  # 有中文專用聲音的角色
+F0 = {}  # 中文專用聲音的音高範圍
+# 進 git 的 LoRA（只有權重，float16；tools/voxcpm/ 是 gitignore 的訓練目錄）：tools/voice-lora/<ja|zh>/<聲音>/
+LORA_GIT = os.path.join(ROOT, 'tools', 'voice-lora')
+
+
+def zh2(v):
+    return V3 and not JA and v in ZH2
 
 
 def ref_of(v):
     """參考音：v3 是中日文共用的 ref/v3/<聲音>.flac"""
     if V3:
-        return os.path.join(VDIR, 'ref', 'v3', v + '.flac')
+        return os.path.join(VDIR, 'ref', 'v3zh' if zh2(v) else 'v3', v + '.flac')
     return os.path.join(VDIR, 'ref', fold(v) + '.flac')
 
 
 def lora_of(v):
     """這個聲音訓練好的 LoRA（scripts/voice-lora.py 的 tools/voxcpm/lora/<聲音>/ckpt 底下最新的）"""
-    base = os.path.join(LORA_DIR, v, 'ckpt')
+    base = os.path.join(LORA_DIR + ('_zh' if zh2(v) else ''), v, 'ckpt')
     if not os.path.isdir(base):
-        return None
+        g = os.path.join(LORA_GIT, 'zh' if zh2(v) else 'ja', v)
+        return g if os.path.exists(os.path.join(g, 'lora_weights.safetensors')) else None
     c = [r for r, _, fs in os.walk(base) if any(f.startswith('lora_weights') for f in fs)]
     return max(c, key=os.path.getmtime) if c else None
 
@@ -310,7 +320,9 @@ def lora_of(v):
 def lora_ok(v):
     """voice-lora.py 的比較（eval.json）：加上 LoRA 的聲紋比原本的模型差時不用它（例：資料太少的角色）。
     比較只有 16 句，平均差 0.01、最低差 0.03 以內算打平（打平時 LoRA 的唸對通常比較好，照樣用）"""
-    f = os.path.join(LORA_DIR, v, 'eval.json')
+    f = os.path.join(LORA_DIR + ('_zh' if zh2(v) else ''), v, 'eval.json')
+    if not os.path.exists(f):
+        f = os.path.join(LORA_GIT, 'zh' if zh2(v) else 'ja', v, 'eval.json')
     if not os.path.exists(f):
         return True
     e = json.load(open(f, encoding='utf-8'))
@@ -502,7 +514,14 @@ def pick(lines, todo, force):
                 r, got = asr_score(asr, w, sr, L0[k]['t'])
                 # 音高偏離角色的性別（克隆後激動的句子會往上飄）：男聲高於 200 Hz（大喊 260）、女聲低於 150 Hz 的扣分
                 g = CAST[v][0] if v in CAST else 'x'
-                if g != 'x':
+                if zh2(v) and v in F0:
+                    # 中文專用的聲音：音高離開範圍太多的扣分（大喊可以高一點）
+                    lo, hi = F0[v]
+                    f0 = f0_median(w, sr)
+                    up = 1.6 if L0[k]['k'] in ('shout', 'alarm') or '！' in L0[k]['t'] else 1.35
+                    if f0 and (f0 > hi * up or f0 < lo * 0.75):
+                        r -= 0.25
+                elif g != 'x':
                     f0 = f0_median(w, sr)
                     hi = 260 if L0[k]['k'] in ('shout', 'alarm') or '！' in L0[k]['t'] else 200
                     if (g == 'm' and f0 > hi) or (g == 'f' and 0 < f0 < 150):
@@ -541,7 +560,7 @@ def credits(v):
     with open(os.path.join(VDIR, fold(v), 'CREDITS.txt'), 'w', encoding='utf-8', newline='\n') as f:
         if V3:
             f.write(f'{who} 的語音（語音 v3，docs/voice-casting.md）：VoxCPM2（OpenBMB，https://github.com/OpenBMB/VoxCPM，'
-                    f'Apache-2.0）以聲音設計產生的 src/assets/voice/ref/v3/{v}.flac 克隆，加上 scripts/voice-lora.py '
+                    f'Apache-2.0）以聲音設計產生的 src/assets/voice/ref/{"v3zh" if zh2(v) else "v3"}/{v}.flac 克隆，加上 scripts/voice-lora.py '
                     f'訓練的這個角色的 LoRA，scripts/voice-gen.py --v3 產生。AI 合成語音，不是任何配音員的聲音。\n')
             return
         f.write(f'{who} 的語音：VoxCPM2（OpenBMB，https://github.com/OpenBMB/VoxCPM，Apache-2.0）以 '
@@ -590,7 +609,12 @@ def main():
         cast = json.load(open(os.path.join(ROOT, 'scripts', 'voice_cast.json'), encoding='utf-8'))
         for v, c in cast.items():
             if not v.startswith('_'):
-                CAST[v] = (c['g'], c['desc'], c['style'])
+                z = c.get('zh') if a.lang == 'zh' else None
+                if z:
+                    ZH2.add(v)
+                    if z.get('f0'):
+                        F0[v] = z['f0']
+                CAST[v] = (c['g'], (z or c)['desc'], (z or c)['style'])
     voices = [v for v in a.voice.split(',') if v in VOICES]
     if a.recast:
         a.force = True
