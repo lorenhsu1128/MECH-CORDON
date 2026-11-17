@@ -1,0 +1,293 @@
+# 照 GLB 重建程式模型：方法、流程與品質標準
+
+2026-11-17 定案並完成第一批（內建預設機甲的全部部位：四組機型、四足腳、戰車腳、核心 BD-AEGIS、三種背包推進器、手持武器 14 把、肩上武器 9 種）。這份文件讓任何一台電腦的 Claude Code 都能用同樣的方式再做一批，並維持同樣的品質。
+
+相關檔案：
+
+| 檔案 | 用途 |
+|---|---|
+| `scripts/glb-to-proc.mjs` | 產生器：GLB → 基本形體清單（`src/render/proc/<槽位>.js`） |
+| `scripts/proc-compare.js` | 比對：GLB 與程式模型逐視角的線稿、輪廓、顏色、深度 |
+| `scripts/proc-batch.js` | 整批：一組槽位依序產生＋比對，每個槽位印一行摘要 |
+| `scripts/proc-perf.js` | 效能量測：GLB 與程式模型在遊戲裡的每格時間、繪製次數、貼圖記憶體 |
+| `scripts/model-shots.js` | 模型庫檢視窗的截圖（有打光、有描邊，看最後的樣子） |
+| `src/render/proc-prims.js` | 清單 → 網格（`primsGroup`）、左右鏡射（`mirrorPrims`）、固定色材質（`fixMat`） |
+| `src/render/proc-tank.js` | 戰車腳的會動零件（輪子、履帶片，InstancedMesh） |
+| `src/render/proc/index.js` | 登記表：`PROC_PRIMS`、`PROC_COLS`、`PROC_PARTS`、`PROC_SPIN`、`MIRRORS`、`WEAPONS` |
+| `src/render/mech-model.js` | `procPrimPiece`（清單 → 機甲的一個區塊）、`makeProcPiece0`、`tankRoll` |
+
+需要的套件都在 `package.json`（`three`、`sharp`、`esbuild`、`playwright-core`），`npm install` 之後就能用。比對與截圖要先 `npm run build`（用 `dist/lib/three/three.js` 與 `dist/model-library.html`）。
+
+## 1. 原理
+
+適用的對象是**硬表面、低面數、由平面與凸塊組成**的模型（Tripo 這類產生器做的機甲零件正是如此）。做法是把外殼拆成一塊一塊的凸形體，每一塊還原成基本形體。
+
+1. **讀 GLB、焊接頂點**：直接解析二進位；位置相同（0.1 mm 內）的頂點合併成一個，外殼才是連續的。節點上的縮放要乘進去（伺服器預設組的 GLB 把 3 倍放在節點上）。
+2. **合併共平面的面**：相鄰、同色槽、法線夾角 2.5° 內的三角形併成一個面。
+3. **沿凹的摺線切成凸片**（`segment`）：從面積最大的面開始往外長，鄰面和片裡現有的每個面「互相都在對方的背面」（容許誤差 `--ct`，預設 3 cm）才加入。切出來的每一片都是凸的。
+4. **每一片取凸包**（`hullOf`）：凸包上「沒有對應原面」的面叫**封口面**（把開口補起來的面）。
+5. **封口面露出檢查**（`exposed`，品質的關鍵）：在每個凸包面上取樣（中心＋往各頂點 45%、85%），不貼著原表面（`onSurface`）而且往外看得到外面（`escapes`：法線方向＋繞一圈斜 50° 共 9 條射線，有一條沒被擋住就算）的，就是蓋住了凹槽。露出的面積超過門檻（絕對值 `--limAbs` 15 cm²、或這一片面積的 `--limRel` 1%）就把容許誤差除以 2.5 重切，切到 4 mm 還是露出來的，那一片**不補面、保留原本的三角形**。
+   - 內外判斷用「射線逃得出去」而不是交點數的奇偶：從整台機甲切下來的區塊切口是開的，奇偶會判錯。
+6. **辨識基本形體**（`classify`），依序試：
+   - `B` 軸向方塊：大的面都對齊三個軸、只有一個色槽、補出來的面不露出。
+   - `P` 沿軸擠出的多邊形柱：面不是垂直軸就是平行軸。
+   - `H` 一般凸塊：凸包的頂點與多邊形面，每個面可以有自己的色槽。
+   - `T` 沒有補面的表面：原本的三角形，單面。
+7. **色片**（`D`）：塊體上顏色和所在的面不同的原面，貼到那個面上再往外 2.5 mm（`PAINT`），不會被塊體的面蓋住。
+8. **部位內的對稱**：鏡射後和另一個相同的塊只寫一份，清單裡最後一個元素 `1`＝左右鏡射再放一份（`--nomirror` 關掉）。這和「左手是右手的鏡像」無關（那是第 6 節）。
+
+清單的格式（色槽 0 main／1 sub／2 joint／3 acc，4 起＝固定色；座標是 glTF：+Z 正面、公尺）：
+
+```js
+['B', 色槽, 最小角, 最大角, 1?]
+['P', 色槽, 軸, 起, 訖, 截面, 1?]      // 截面在 (軸+1, 軸+2) 平面逆時針
+['H', 色槽, 頂點, 面, 各面的色槽?, 1?]  // 面＝頂點編號，從外面看逆時針
+['T', [[色槽, a, b, c]…]]              // 單面
+['D', [[色槽, a, b, c]…]]              // 色片
+```
+
+## 2. 腳本的用法
+
+```bash
+# 一個槽位
+node scripts/glb-to-proc.mjs <GLB> <輸出.js> <匯出名稱> [選項]
+# 選項：
+#   --ct=0.03        凸片的容許誤差（公尺）
+#   --limAbs=0.0015  封口面露出的門檻（m²）    --limRel=0.01  佔這一片面積的比例
+#   --tol=0.015      辨識方塊／柱體、配對對稱的容許誤差
+#   --nomirror       不做部位內的對稱
+#   --report         列出封口面露出最多的塊體（調參數時看）
+#   --tex[=色數]     顏色在貼圖上（材質不是色槽）：取色分成幾個固定色（輸出 …Cols）
+#   --tank           戰車腳：拆出輪子與履帶片（輸出 …Parts）
+#   --node=<名稱>    只取這個節點（會轉的槍管：輸出 …At＝節點的位置）
+#   --warheads       導彈武器：紅色的地方換成紅色圓頭彈頭（要和 --tex 一起）
+#   --debug          印出 --warheads 每一群的數字
+
+# 比對（10 個視角：front back right left top bottom fr bl fl br）
+node scripts/proc-compare.js --glb=<GLB> --mod=<清單檔名（不含 .js）> --exp=<匯出名稱>Prims [--size=640] [--only=front,right]
+# 圖在 test-results/proc-compare/<mod>/<視角>.png：左＝GLB、中＝程式模型、右＝疊圖（黑＝兩邊都有、紅＝只有 GLB、藍＝只有程式模型）
+# 貼圖模式另有 <視角>-color.png：左＝GLB 的顏色、右＝程式模型的顏色
+
+# 整批（產生＋比對，每個槽位一行；--nogen 只比對；--only=<槽位,…> 指定槽位）
+node scripts/proc-batch.js --set=std|lt|hv|rj|qd|aeg|bst|tk|wp|bk    # 可以用逗號列幾組
+```
+
+`proc-batch.js` 的 `SETS`（一組＝頭、核心、手臂、腳）與 `LISTS`（直接列槽位）是現有各組的清單；每個槽位要帶的選項在 `genArgs`（推進器 `--tex=4`、武器 `--tex=6`、戰車腳 `--tank`、`SPINS` 的 `--node=gun`、`WARHEADS` 的 `--warheads`）。新的一組加在這裡。來源一律是 `src/assets/player-mech/<槽位>.glb`，輸出 `src/render/proc/<槽位的 / 換成 _>.js`，匯出名稱 `p_<…>Prims`（`core/c_std` 例外：`c_std.js` 的 `cStdPrims`）。
+
+**清單檔不要手改**：要調整就改產生器再重跑。
+
+## 3. 品質標準
+
+比對的四個數字：
+
+| 數字 | 意思 |
+|---|---|
+| 線 a／b | 螢幕空間的線稿（深度差 > 4 cm 或面法線夾角 > 22°，和遊戲的描線同樣的原理）：GLB 的線對得到程式模型的比例／反過來 |
+| 輪廓 | 兩邊剪影的交集 ÷ 聯集 |
+| 顏色 | 重疊的像素裡顏色相同的比例（色槽模式比色槽；貼圖模式比實際的顏色，門檻很嚴） |
+| 深度差 | 表面前後差的平均、超過 3 cm 的比例 |
+
+**色槽的模型（機體部位）要達到**：
+
+- 各視角平均：線兩個方向都 ≥ 98.5%、輪廓 ≥ 99.5%、顏色 ≥ 97.5%。
+- 最差的單一視角：線 ≥ 94%、輪廓 ≥ 99%、顏色 ≥ 92%。
+- 第一批實際的結果：線平均 97.8～100%、輪廓 99.75～99.95%、顏色 97.7～100%（最差的單一視角：線 88%、顏色 92%，都看過圖確認只是細小的差異）。
+
+**沒達到時**：
+
+1. 先看那個視角的圖（疊圖的紅線＝GLB 有、程式模型沒有；藍線＝多出來的），找出是哪一塊。
+2. 多出來的面蓋住凹槽 → `--report` 看是哪些塊體、調小 `--limAbs`／`--limRel` 或 `--ct`。
+3. 少了面、破洞 → 多半是三角形被分到不該分的地方，看產生器那一步的判斷。
+4. 改的是產生器，改完整批重跑，確認其他槽位沒有變差。
+
+**貼圖模式的模型（推進器、武器）**：形狀照同樣的標準（線、輪廓）；顏色的數字會很低（30～90%），因為畫在貼圖上的面板線、標記、條紋變成每個面一個平均色，這是方法的限制，不是錯誤。這類要**看 `-color.png` 與模型庫的截圖**判斷：主要的色塊位置對、沒有零星的雜色、沒有該是某個顏色卻變成別的顏色。
+
+**不能只看數字的地方**（一定要看圖）：
+
+- 從底部看（`bottom`）：平常看不到，數字低可以接受，但要確認不是破了大洞。
+- 會動的零件、改過造型的地方（輪子、彈頭）：數字一定比較低，以截圖為準。
+- 整台組起來（第 5 節的整機）：各區塊接得上、沒有穿幫、貼地。
+
+三角形數通常比 GLB 多 10～25%（凸塊的封口面、色片）；多很多表示切得太碎，回頭看 `--ct`。
+
+## 4. 特殊情況
+
+### 4.1 顏色在貼圖上（`--tex`）
+
+材質名稱不是色槽（`main`／`sub`／`joint`／`acc`）的 GLB——背包推進器與武器依專案規則保留原本的顏色、不換色。
+
+- 每個三角形在貼圖上取樣（重心＋往三個頂點的中點），面積加權的 k-means 分成 N 個固定色（推進器 4、武器 6）。起點用最遠點取樣，結果固定。
+- **去雜色**：貼圖上烘進去的明暗與髒污會讓同一塊面板的三角形分到不同色。和幾乎同平面（法線內積 > 0.94）的相鄰三角形依面積投票，做 4 輪。
+- 固定色的色槽編號從 4 起，色碼輸出成 `…Cols`，登記在 `PROC_COLS`。材質是 `fixMat`（複製 main 的材質換顏色）。
+- **自發光的材質**（GLB 材質有 `emissiveFactor`：脈衝刀、光束大劍的刀刃）：整個材質一個固定色，色碼後面加 `!`，`fixMat` 會設成自發光。
+
+### 4.2 戰車腳（`--tank`）：輪子與履帶真的會動
+
+GLB 裡輪子與履帶片是獨立的零件（各自一個連通的網格）。產生器依大小與位置把它們挑出來、從靜態的部分拿掉，另外輸出 `…Parts`：
+
+- `wheels`：每個輪子的中心、半徑、寬。GLB 的輪子是素面的十二邊形圓柱；被側裙切掉上半的外側輪子補成整圓（中心＝底部＋半徑）。執行時的輪子另外加輪轂與 5 顆螺栓，轉動才看得出來。
+- `link`：一片履帶的三角形（挑最扁的那一片當範本，以它的中心為原點）。
+- `tracks`：每條履帶的 x、片數、封閉的路徑（片的中心繞艙的中心排序；上方補一段藏在側裙裡的回程）。
+
+`render/proc-tank.js` 用 InstancedMesh 顯示（輪子本體、輪子的細節、履帶片每個色槽各一個，群組名稱 `tankParts`）；`mech-model.js` 的 `tankRoll` 每格依下半身前後方向實際走過的距離更新（轉彎時左右差速；一格轉超過 0.3 弧度當成出生或傳送、不算；模型庫的動作預覽照前進速度）。`lowestY`（貼地的量測）與 `proc-compare.js` 都要逐實例處理 InstancedMesh。
+
+挑零件的門檻（大小、x 的範圍）是照 LG-TANK 寫的，換一台戰車要重新看它的零件大小。
+
+### 4.3 會轉的槍管（`--node`）
+
+格林機槍、背部加特林的 GLB 有兩個節點：`gun`（本體）與 `spin`（槍管，原點在槍管軸心）。各產生一份：本體 `--node=gun`，槍管 `--node=spin`（輸出到 `<槽位>_spin.js`，匯出 `…SpinPrims`／`…SpinCols`／`…SpinAt`）。登記在 `PROC_SPIN`；`procPrimPiece` 把槍管掛成名稱 `spin` 的子群組，`buildMech` 照原本的方式找到它，開火時繞自己的 Z 軸轉。
+
+### 4.4 導彈的彈頭（`--warheads`）
+
+使用者定案：導彈類的武器（MS-4、MS-8、PM-6）彈頭一律是紅色圓頭。
+
+- 每個三角形密一點取樣（8×8 的重心格點），紅色的取樣點（`isRed`）記下位置與面法線。
+- 超過一半是紅色的三角形拿掉；部分紅色的三角形顏色只算不是紅色的部分。
+- 紅色的點依距離分群（相距 5 cm 內相連），點數不到最大那一群三成的不算（機身上零星的紅色標記）。每一群＝一顆彈頭。
+- 軸：面法線的平均。**立體的彈頭一律朝正前方（+Z）**——只有看得到的部分是紅色，從點的分布估方向不可靠。畫在平面上的紅圈（PM-6）照那個面的法線，半球從那個面凸出來。
+- 半徑：點到軸的距離的第 90 百分位，而且不超過到最近那一顆的距離的 0.47 倍（相鄰的不重疊）。
+- 彈頭＝圓柱（後段）＋半球（前端），12 邊、紅色的固定色 `#c8242c`。其他分到紅色那一群的三角形改成最接近的不是紅色的顏色。
+
+### 4.5 關節設定
+
+重建的程式模型已經是建模尺寸與 GLB 的外形，不經過 `deformPiece` 與 `MB`。它的關節位置和 GLB 一樣，所以 `mech-model.js` 載入時把 `src/assets/player-mech/joints.json` 裡 `PROC_PRIMS` 這些槽位的設定交給 `setProcJoints`（排在模型組、瀏覽器暫存、內建設定之後）。沒有這一步，SEQ 之類的機型會照 GRANITE 的關節組歪。
+
+貼地的基準 `groundRef` 一律量原本手寫的程式模型（`HAND_ONLY`），貼地的結果才和以前一樣。
+
+## 5. 流程（每一批都照這個做）
+
+使用者的要求（2026-11-17）：**做完先放在模型庫的暫時分類給使用者檢查，使用者說可以才換成預設。有不清楚或遇到問題就問。**
+
+### 第 1 步：產生與比對
+
+```bash
+git fetch && git pull --ff-only
+npm run build                               # 比對要用 dist 的 three.js
+node scripts/proc-batch.js --set=<這一組>
+```
+
+照第 3 節的標準看每一行；不到標準的看圖、調產生器、重跑。
+
+### 第 2 步：放進模型庫的暫時分類
+
+1. `src/render/proc/index.js`：import 新的清單，放進 `export const PROC_TEMP = { '<槽位>': …Prims, … }`（檢查完才搬進 `PROC_PRIMS`）。固定色、會動的零件、轉管直接登記在 `PROC_COLS`／`PROC_PARTS`／`PROC_SPIN`（只有那個槽位用程式模型時才會查到，先登記沒有影響）。
+2. `src/render/model-catalog.js`：
+   - `CATEGORIES` 加 `{ id: 'temp', name: '暫時（GLB 重建的程式模型）' }`。
+   - 在「完整機甲」之前加一段，列出每個部位與裝著它們的整台機甲：
+
+```js
+import { PROC_TEMP } from './proc/index.js';
+import { …, procPrimPiece } from './mech-model.js';
+import PLAYER_MECH from 'virtual:player-mech';
+
+for (const [cat, list] of PART_LISTS)
+  for (const p of list)
+    for (const info of partPieces(cat, p)) {
+      const prims = PROC_TEMP[info.slot];
+      if (!prims) continue;
+      add({
+        id: 'temp/' + info.slot.replace(/\//g, '_'),
+        cat: 'temp',
+        name: pieceName(p, info) + '（重建）',
+        note: '暫時：照內建 GLB（' + info.slot + '）量測重建的程式模型',
+        spec: SPEC[info.kind] || 'piece',
+        noGlb: true,
+        build: (k) => {
+          const wrap = new THREE.Group();
+          wrap.add(procPrimPiece(prims, mechMats(pal(k)), info.slot));
+          return { obj: wrap, scaleNode: wrap, scale: v3(1), rig: null };
+        },
+      });
+    }
+// 整台：玩家初始機換上這一組的零件；關節設定用內建預設機甲的（還沒換成預設之前 setProcJoints 沒有這些槽位）
+const asm = { ...START_ASM, head: '…', core: '…', arms: '…', legs: '…' };
+add({
+  id: 'temp/<名稱>_mech',
+  cat: 'temp',
+  name: '<名稱> 全程式模型',
+  note: '暫時：…',
+  spec: 'mech',
+  noGlb: true,
+  asm,
+  build: (k) => {
+    const M = mechMats(pal(k));
+    const rig = buildMech(asm, pal(k), 1, {
+      source: { model: () => null, joints: PLAYER_MECH.joints || {} },
+      piece: (info) => (PROC_TEMP[info.slot] ? procPrimPiece(PROC_TEMP[info.slot], M, info.slot) : null),
+    });
+    return wholeRig(rig, 1);
+  },
+});
+```
+
+3. 建置、截圖、看圖：
+
+```bash
+npm run build
+node scripts/model-shots.js temp/<整機的 id> temp/<幾個部位的 id>   # test-results/shots/<id>-now-a.png、-b.png
+```
+
+要確認：各區塊接得上、貼地、沒有翻面（裡外顛倒的面會是黑的或破洞）、武器握在手上、肩上武器的方向。
+
+4. `npm run lint`、`npm run format:check`、`SMOKE_ONLY=testLibrary,testWorkshop,testSolo node scripts/smoke-test.js`，然後 `npm run build`、commit（訊息寫「實驗：…，還沒有換成預設，等檢查」）、push。
+5. 回報給使用者：怎麼看（`dist/model-library.html#temp/…`）、比對的數字、比較差的地方（請他特別看）、和 GLB 刻意不同的地方。**停在這裡等使用者檢查。**
+
+### 第 3 步：換成預設（使用者說可以之後）
+
+1. `proc/index.js`：`PROC_TEMP` 的內容搬進 `PROC_PRIMS`，拿掉 `PROC_TEMP`。
+2. `model-catalog.js`：拿掉暫時的那一段、`temp` 分類、用不到的 import。
+3. 有會動的東西（輪子、轉管）要**在遊戲裡實測**：遊戲的預設就是程式模型（設定「模型的來源」），寫一個臨時的腳本（照 `scripts/proc-perf.js` 的開頭：開遊戲 → 新存檔 → 機甲庫 → `g.save.asm` 換上零件 → `g.startMission()`）讀 `player.model` 的狀態，測完刪掉。
+4. 測試：
+
+```bash
+npm run lint && npm run format:check
+SMOKE_ONLY=testLibrary,testLibraryGlb,testLibraryJoints,testWorkshop,testSolo,testLocalModels,testModelSrc node scripts/smoke-test.js
+```
+
+5. 拍一台用這組零件的現成機甲（`node scripts/model-shots.js mech/boss_<名稱>`）確認預設的組裝正確。
+6. 更新 `CLAUDE.md`「照 GLB 重建的程式模型」那一條與這份文件的第 7 節，`npm run build`、commit、push。
+
+## 6. 左右鏡像（使用者定案）
+
+- **機體**：左側的手臂與二足／逆足的腳＝右側清單的鏡像；四足的右前／右後＝左側的鏡像（和內建 GLB 原本的做法一樣）。
+- **武器**（手持、肩上）：一律以右側的 GLB 重建，左側＝右側的鏡像。MS-4 左邊原本多的雷達碟因此沒有了。
+- 做法：`proc/index.js` 的 `MIRRORS`（機體）與 `WEAPONS`（武器）在載入時以 `mirrorPrims` 產生，**鏡像出來的槽位沒有自己的清單檔**，`proc-batch.js` 也略過它們（`MIRRORED`）。轉管的位置 x 反號。
+- 新增機型或武器照做：只產生來源那一側，在 `MIRRORS`／`WEAPONS` 登記。
+- 這些機型左右的關節設定本來就對稱（比對過），不用另外處理；新的機型要先確認。
+
+## 7. 目前完成的
+
+| 類別 | 槽位 | 備註 |
+|---|---|---|
+| GRANITE | `h_std`／`c_std`／`a_std`／`l_bp` | `c_std` 的檔名是 `c_std.js` |
+| SEQ 輕量 | `h_lt`／`c_lt`／`a_lt`／`l_bp2` | |
+| HAWK 重裝 | `h_hv`／`c_hv`／`a_hv`／`l_hv` | |
+| 逆足 | `h_scan`／`c_nat`／`a_ml`／`l_rj` | 腳多一節蹠骨 `meta` |
+| 四足腳 | `l_qd`（13 塊） | |
+| 戰車腳 | `l_tk` | 輪子與履帶會動 |
+| 核心 | `c_aeg` | |
+| 背包推進器 | `b_std`／`b_hi`／`b_eff` | 固定色 4 個 |
+| 手持武器 | `w_blade`／`bz`／`claw`／`emp`／`gl`／`hg`／`lc`／`lr`／`lsg`／`mg`／`pile`／`rifle`／`saber`／`sg` | 固定色 6 個；刀刃自發光；`mg` 有轉管 |
+| 肩上武器 | `bw_emp_l`／`emp_s`／`gat`／`gr`／`lc`／`ms`／`ms8`／`pm`／`sh` | 固定色 6 個；`gat` 有轉管；`ms`／`ms8`／`pm` 是紅色圓頭彈頭 |
+
+## 8. 踩過的坑
+
+- **凸塊頂點重複**：輸出凸塊時頂點要去重，否則面會退化。
+- **封口面判斷過頭**：只檢查「沒有對應原面」的面不夠，一部分貼著原表面、另一部分橫跨凹槽的面也要查，所以每個面都取樣。
+- **圍著凹洞的一圈面**：切到最細還是蓋住洞，就不補面（`T`）。
+- **內外判斷**：開口的網格（大腿的切口）用交點數的奇偶會判錯，改成射線逃逸。
+- **異色的面被蓋住**：塊體只有一個色槽時，異色的原面要貼成色片；異色超過一成的塊體用凸塊（每個面各自的色槽）。
+- **節點的位移**：有多個網格節點的 GLB（武器的 `spin`）不能只取第一個節點的縮放，位移也要算。
+- **半個輪子**：GLB 裡被遮住的零件可能是切掉的（戰車腳外側的輪子），要會動就得補成完整的。
+- **出生的瞬間**：`tankRoll` 把出生時的轉向當成轉彎，履帶多轉了一大段——大的瞬間變化要排除。
+- **從點的分布估方向不可靠**（MS-8 的彈頭）：能用已知的事實（發射口朝前）就用。
+- **排版檢查**：產生的清單檔開頭有 `// prettier-ignore`；固定色那一行也要（產生器已經加了）。
+- **測試跟著變**：預設的程式模型照 GLB 重建之後，GLB 本身的特性會出現在原本只測程式模型的測試裡——組裝調整頁的穿幫提示（GLB 右手肘有 2.9 cm 的縫）、武器範本的三角面超過建議值。確認是 GLB 本來就有的再放寬測試，並在測試裡寫明原因。
+- **shell 的引號**：用 `node -e` 或 heredoc 改含有反引號、`${}` 的程式很容易壞，改用 Edit 工具，或把修改寫成暫時的 `.js` 檔再執行（做完刪掉）。
+
+## 9. 限制
+
+- 畫在貼圖上的細節（面板線、標記、條紋、髒污）還原不了：每個面只有一個顏色。白底加深色線條的模型會變成淺灰。
+- 曲面多、有機造型的模型會切得很碎，不適合這個方法。
+- 挑零件的規則（戰車腳、彈頭）是照現有的模型寫的，新的模型要重新確認門檻。
+- 這是沒有 GLB 時的外觀。遊戲的設定「模型的來源」選「伺服器模型組」時，有 GLB 的部位仍然顯示 GLB。
