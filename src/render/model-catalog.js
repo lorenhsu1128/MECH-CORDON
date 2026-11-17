@@ -17,9 +17,7 @@ import { buildCineVeh } from './cine-vehicles.js';
 import { FOE_CATALOG } from './foe-models.js';
 import { PARTS, START_ASM } from '../data/parts.js';
 import { PALETTES, mechMats } from './materials.js';
-import { PROC_TEMP } from './proc/index.js';
-import { PIECE_NAMES, SIDE_NAMES, buildMech, buildPiece, partPieces, procPrimPiece } from './mech-model.js';
-import PLAYER_MECH from 'virtual:player-mech';
+import { PIECE_NAMES, SIDE_NAMES, buildMech, buildPiece, partPieces } from './mech-model.js';
 import { THEMES } from '../world/world.js';
 import { LANDMARKS } from '../world/landmarks.js';
 import { VARIANT_CATALOG } from '../world/variants.js';
@@ -110,7 +108,6 @@ export const CATEGORIES = [
   { id: 'prop', name: '地圖物件' },
   { id: 'device', name: '地圖裝置' },
   { id: 'small', name: '小物件' },
-  { id: 'temp', name: '暫時（GLB 重建的程式模型）' },
 ];
 
 const v3 = (s) => (s && s.isVector3 ? s.clone() : new THREE.Vector3(s, s, s));
@@ -158,45 +155,6 @@ for (const [cat, list] of PART_LISTS)
           return { obj: wrap, scaleNode: wrap, scale: v3(1), rig: null, piece: info };
         },
       });
-
-// ---------- 暫時：照 GLB 量測重建的程式模型（scripts/glb-to-proc.mjs；給使用者檢查，還沒有換成預設）----------
-// 逆足機型的頭、核心、手臂、腳，以及用它們組成的整台機甲（關節設定用內建預設機甲的）
-for (const [cat, list] of PART_LISTS)
-  for (const p of list)
-    for (const info of partPieces(cat, p)) {
-      const prims = PROC_TEMP[info.slot];
-      if (!prims) continue;
-      add({
-        id: 'temp/' + info.slot.replace(/\//g, '_'),
-        cat: 'temp',
-        name: pieceName(p, info) + '（重建）',
-        note: '暫時：照內建 GLB（' + info.slot + '）量測重建的程式模型',
-        spec: SPEC[info.kind] || 'piece',
-        noGlb: true,
-        build: (k) => {
-          const wrap = new THREE.Group();
-          wrap.add(procPrimPiece(prims, mechMats(pal(k)), info.slot));
-          return { obj: wrap, scaleNode: wrap, scale: v3(1), rig: null };
-        },
-      });
-    }
-add({
-  id: 'temp/rj_mech',
-  cat: 'temp',
-  name: '逆足機型 全程式模型（重建的頭／核心／手臂／腳）',
-  note: '暫時：頭、核心、手臂、腳都用照 GLB 重建的程式模型（背包與武器是原本的程式模型）',
-  spec: 'mech',
-  noGlb: true,
-  build: (k) => {
-    const M = mechMats(pal(k));
-    const asm = { ...START_ASM, head: 'h_scan', core: 'c_nat', arms: 'a_ml', legs: 'l_rj' };
-    const rig = buildMech(asm, pal(k), 1, {
-      source: { model: () => null, joints: PLAYER_MECH.joints || {} },
-      piece: (info) => (PROC_TEMP[info.slot] ? procPrimPiece(PROC_TEMP[info.slot], M, info.slot) : null),
-    });
-    return wholeRig(rig, 1);
-  },
-});
 
 // ---------- 完整機甲 ----------
 const addMech = (key, name, asm, palKey, scale, note = '', boss = false) =>
