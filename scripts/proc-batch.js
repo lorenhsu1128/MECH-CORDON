@@ -36,12 +36,18 @@ const LISTS = {
   tk: ['legs/l_tk/body'], // 戰車腳 LG-TANK（輪子與履帶片另外輸出成會動的零件：--tank）
 };
 // 產生器的額外參數
+// 導彈武器：彈頭換成紅色圓頭（--warheads，使用者定案）
+const WARHEADS = ['back/bw_ms/r', 'back/bw_ms8/r', 'back/bw_pm/r'];
 const SPINS = ['weapon/w_mg/r', 'back/bw_gat/r']; // 有會轉的槍管（GLB 的 spin 節點）：本體與槍管各產生一份
 const genArgs = (slot) =>
   slot.startsWith('booster/')
     ? ['--tex=4']
     : /^(weapon|back)\//.test(slot)
-      ? ['--tex=6', ...(SPINS.includes(slot) ? ['--node=gun'] : [])]
+      ? [
+          '--tex=6',
+          ...(SPINS.includes(slot) ? ['--node=gun'] : []),
+          ...(WARHEADS.includes(slot) ? ['--warheads'] : []),
+        ]
       : slot === 'legs/l_tk/body'
         ? ['--tank']
         : [];
