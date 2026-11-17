@@ -34,7 +34,18 @@ const blWheel = (s) => ({
 });
 
 export const FOOT_WHEELS = {
-  'legs/l_bp/r_foot': [{ c: [0.269, -0.47, -1.163], axis: norm([0.959, -0.044, 0.278]), r: 0.773, w: 0.62 }],
+  // GRANITE：原本的輪子外側的輪蓋比新輪子凸出一截（軸向到 +0.62），還有斜穿過輪子的長條碎片（span）：拿掉的範圍放寬
+  'legs/l_bp/r_foot': [
+    {
+      c: [0.269, -0.47, -1.163],
+      axis: norm([0.959, -0.044, 0.278]),
+      r: 0.773,
+      w: 0.62,
+      padW: 0.36,
+      padR: 0.15,
+      span: true,
+    },
+  ],
   'legs/l_bp2/r_foot': [
     { c: [0.291, -0.486, -1.533], axis: norm([0.978, 0, 0.208]), r: 0.797, w: 0.7, hub: 1.0, padW: 0.42 },
   ],
@@ -81,12 +92,29 @@ export function stripWheels(prims, wheels, padR = 0.04, padW = 0.16) {
       if (Math.abs(ax) <= k.w / 2 + (k.padW || padW) && rr <= k.r + (k.padR || padR)) return true;
       return Math.abs(ax) <= (k.hub === undefined ? 0.75 : k.hub) && rr <= k.r * 0.66;
     });
+  // span：斜穿過整個輪子的長條碎片（頂點分在輪子兩側、離輪軸都不遠）也拿掉
+  const crosses = (t) =>
+    wheels.some((k) => {
+      if (!k.span) return false;
+      let lo = 0,
+        hi = 0;
+      for (const v of t) {
+        const d = [v[0] - k.c[0], v[1] - k.c[1], v[2] - k.c[2]];
+        const ax = d[0] * k.axis[0] + d[1] * k.axis[1] + d[2] * k.axis[2];
+        const rr = Math.hypot(d[0] - k.axis[0] * ax, d[1] - k.axis[1] * ax, d[2] - k.axis[2] * ax);
+        if (rr > k.r * 1.6) return false;
+        lo = Math.min(lo, ax);
+        hi = Math.max(hi, ax);
+      }
+      return lo < -k.w / 2 && hi > k.w / 2;
+    });
   primsTris(prims).forEach((pos, s) => {
     for (let i = 0; i < pos.length; i += 9) {
       const a = pos.slice(i, i + 3),
         b = pos.slice(i + 3, i + 6),
         c = pos.slice(i + 6, i + 9);
       if (inside(a) && inside(b) && inside(c)) continue;
+      if (crosses([a, b, c])) continue;
       list.push([s, a, b, c]);
     }
   });
