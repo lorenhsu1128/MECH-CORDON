@@ -2327,15 +2327,18 @@ async function testModelSrc(browser, base) {
     const m = window.__game.player.model;
     return { n: (m.wheels || []).length, v: (m.wheels || []).map((w) => Math.abs(w.v)) };
   });
+  // 按住前進 2 秒，每 0.1 秒記一次：取滑行中最快的角速度（撞到東西停下的瞬間不算）
   await page.keyboard.down('KeyW');
-  await wait(1800);
-  const wh1 = await page.evaluate(() => {
+  const wh1 = await page.evaluate(async () => {
     const m = window.__game.player.model;
-    return {
-      gW: m.an.gW,
-      v: (m.wheels || []).map((w) => +Math.abs(w.v).toFixed(1)),
-      r: (m.wheels || []).map((w) => w.r),
-    };
+    let gW = 0;
+    const v = (m.wheels || []).map(() => 0);
+    for (let i = 0; i < 20; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+      gW = Math.max(gW, m.an.gW);
+      (m.wheels || []).forEach((w, k) => (v[k] = Math.max(v[k], +Math.abs(w.v).toFixed(1))));
+    }
+    return { gW, v };
   });
   await page.keyboard.up('KeyW');
   check(
