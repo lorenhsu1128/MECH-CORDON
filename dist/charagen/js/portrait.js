@@ -13,7 +13,8 @@ export class PortraitPack {
     const names = new Set();
     for (const P of pub.poses) {
       names.add(P.img);
-      for (const ex of Object.values(P.ex)) for (const f of Object.values(ex)) names.add(f);
+      for (const ex of Object.values(P.ex))
+        for (const f of Object.values(ex)) if (typeof f === 'string') names.add(f); // mb 是嘴型的框
       for (const f of Object.values(P.layers || {})) names.add(f);
     }
     const imgs = {};
@@ -60,6 +61,22 @@ export class PortraitPack {
     g.drawImage(this.imgs[L.head.img], x, y, w, h, 0, 0, w, h);
     g.globalCompositeOperation = 'destination-out';
     g.drawImage(this.imgs[L.hairf.img], x, y, w, h, 0, 0, w, h);
+    return (C[k] = c);
+  }
+  // 沒有分層時：小圖只留主圖不透明的地方（以前小圖是不透明的方塊，臉框超出輪廓時會在背景上露出白色的方塊）
+  patchMasked(P, name, box) {
+    const k = P.id + '|m|' + name;
+    const C = (this.masked = this.masked || {});
+    if (C[k]) return C[k];
+    const p = this.imgs[name];
+    const m = this.imgs[P.img];
+    if (!p || !m) return null;
+    const [x, y, w, h] = box;
+    const c = canvas(w, h);
+    const g = c.getContext('2d');
+    g.drawImage(p, 0, 0, w, h);
+    g.globalCompositeOperation = 'destination-in';
+    g.drawImage(m, x, y, w, h, 0, 0, w, h);
     return (C[k] = c);
   }
 }
@@ -242,15 +259,16 @@ export class Portrait {
     const patches = [
       [ex.f, P.boxes.face],
       [this.frame('eye'), P.boxes.eyes],
-      [this.frame('mouth'), P.boxes.mouth],
+      // 嘴型的框可以每個表情各自不同（ex.mb：大笑的嘴比較大，2026-11-15 立繪大修）
+      [this.frame('mouth'), ex.mb || P.boxes.mouth],
     ];
     const L = this.layersOn && this.pack.layers(P);
     if (L) this.drawLayers(ctx, P, L, patches);
     else {
       ctx.drawImage(im, 0, 0, W, H);
       for (const [name, box] of patches) {
-        const p = name && this.pack.imgs[name];
-        if (p && box) ctx.drawImage(p, box[0], box[1], box[2], box[3]);
+        const p = name && box && this.pack.patchMasked(P, name, box);
+        if (p) ctx.drawImage(p, box[0], box[1], box[2], box[3]);
       }
     }
     ctx.restore();

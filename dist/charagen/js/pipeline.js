@@ -16,7 +16,21 @@
 // }
 // 候選與選定的圖都在候選資料夾（/api/chars/<id>/work），發佈的 WebP 在定稿資料夾（/api/chars/<id>/file）
 import * as W from './workflows.js';
-import { exprList, EYE_FRAMES, MOUTH_FRAMES, KEEP, KEEP_EYES, KEEP_MOUTH } from './expr.js';
+import {
+  exprList,
+  EYE_FRAMES,
+  MOUTH_FRAMES,
+  KEEP,
+  KEEP_EYES,
+  KEEP_MOUTH,
+  NO_GLASSES,
+  KEEP_GLASSES,
+  OPEN_MOUTH_FRAMES,
+  OPEN_MOUTH_RE,
+  SMILE_MOUTH_FRAMES,
+  SMILE_RE,
+  MOUTH_STYLE,
+} from './expr.js';
 
 // 分層動畫的四層（由後往前；tools/comfyui/nodes 的 MCLayerGroups）
 export const LAYER_GROUPS = ['hairb', 'body', 'head', 'hairf'];
@@ -48,9 +62,44 @@ export function newPose(id, name) {
     ex: {},
   };
 }
+// 不眨眼的表情：大笑一律是 ^^ 閉眼（產生閉眼影格時 Qwen 反而畫成睜眼），再加上 pose.noBlink（閉眼的姿勢等）
+export const NO_BLINK = ['laugh', 'wink'];
+export const noBlink = (pose) => [...NO_BLINK, ...(pose.noBlink || [])];
+// 戴眼鏡的角色（look.prompt 有 glasses、不是 sunglasses：墨鏡的鏡片有顏色，疊回鏡框會留下沒有鏡片的眼睛）
+// card.glasses：手動指定（COUNTDOWN 的橘色圓墨鏡：不說要保留，閉眼時 Qwen 會把整副擦掉，2026-11-16）
+export const glassesChar = (card) =>
+  card.glasses ??
+  (/\bglasses\b/.test(card.look?.prompt || '') &&
+    !/\b(no glasses|sunglasses)\b/.test(card.look?.prompt || ''));
 export const poseOf = (card, pid) => card.poses.find((p) => p.id === pid);
 const rnd = () => Math.floor(Math.random() * 2 ** 31);
 const frameDef = (fid) => [...EYE_FRAMES, ...MOUTH_FRAMES].find((f) => f.id === fid);
+
+// 影格的範圍：crop＝臉框放大 1.4 倍（給 Qwen 的上下文），inner＝可以改的地方。
+// 嘴巴：pose.boxes.mouth（2026-11-15 起發佈前由 widenMouth 放大過，大笑、吼叫的嘴才放得下）
+export function frameRegion(B, fid, { w: IW, h: IH }) {
+  const [fx, fy, fw, fh] = B.face;
+  const s = Math.max(fw, fh) * 1.4;
+  const cx = fx + fw / 2;
+  const cy = fy + fh / 2;
+  const x = Math.max(0, Math.round(cx - s / 2));
+  const y = Math.max(0, Math.round(cy - s / 2));
+  const crop = [x, y, Math.min(IW, Math.round(x + s)) - x, Math.min(IH, Math.round(y + s)) - y];
+  const inner = (fid[0] === 'e' ? B.eyes : B.mouth).map(Math.round);
+  return { crop, inner };
+}
+// 嘴框放大（寬 ×1.7、高 ×2.2，不超過眼睛框的下緣與臉框）：以前所有表情共用一個小嘴框，大笑的嘴被切掉
+export function widenMouth(B) {
+  const [x, y, w, h] = B.mouth;
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  const W2 = w * 1.7;
+  let y0 = cy - h * 1.1;
+  let y1 = cy + h * 1.1;
+  if (B.eyes) y0 = Math.max(y0, B.eyes[1] + B.eyes[3] + 4);
+  if (B.face) y1 = Math.min(y1, B.face[1] + B.face[3] * 1.08);
+  return [Math.round(cx - W2 / 2), Math.round(y0), Math.round(W2), Math.round(y1 - y0)];
+}
 
 export class Pipeline {
   // comfy：Comfy 客戶端；store：CharStore；log(文字)：進度
@@ -127,7 +176,23 @@ export class Pipeline {
       const eye = fid[0] === 'e';
       box = eye ? B.eyes : B.mouth;
       if (!box) throw new Error(eye ? '先標出眼睛的範圍' : '先標出嘴巴的範圍');
-      prompt = `${f.prompt} ${extra} ${eye ? KEEP_MOUTH : KEEP_EYES} ${KEEP}`;
+      // 戴眼鏡的角色：直接閉眼、指示要求保留眼鏡（pose.glassesNog 時改成在拿掉眼鏡的圖上做，指示說沒戴眼鏡，否則 Qwen 會再畫一副）
+      // pose.noGlasses：這個姿勢沒戴眼鏡（例如薩奇博士 p10）——提到眼鏡 Qwen 就會幫她戴上
+      const glasses = eye && glassesChar(card) && !pose.noGlasses;
+      // 底圖本來就張著嘴的表情：嘴型用 OPEN_MOUTH_FRAMES（m1 不要把嘴變小）
+      const exd0 = exprList(card).find((e) => e.id === exId);
+      const open =
+        !eye &&
+        (pose.ex[exId]?.open || (exd0 && OPEN_MOUTH_RE.test(`${exd0.tags || ''} ${exd0.prompt || ''}`)));
+      // 微笑類：笑著說話（pose.ex[表情].smile＝手動標的，例如本來就帶笑的平常表情）
+      const smiling =
+        !eye &&
+        !open &&
+        (pose.ex[exId]?.smile ??
+          (exd0 && SMILE_RE.test(`${exd0.id} ${exd0.tags || ''} ${exd0.prompt || ''}`)));
+      const fp = open ? OPEN_MOUTH_FRAMES[fid] : smiling ? SMILE_MOUTH_FRAMES[fid] : f.prompt;
+      // pose.ex[表情].keep：只有這個表情才有、要保留的東西（例如哭的淚）；別寫進共用的指示，提到就會被畫到別的表情上
+      prompt = `${fp} ${eye ? '' : MOUTH_STYLE} ${glasses ? (pose.glassesNog ? NO_GLASSES : KEEP_GLASSES) : ''} ${extra} ${pose.ex[exId]?.keep || ''} ${eye ? KEEP_MOUTH : KEEP_EYES} ${KEEP}`;
       feather = 10;
     }
     const base = await this.uploadWork(card, this.baseOf(pose, key));
@@ -137,24 +202,89 @@ export class Pipeline {
     for (const seed of list) {
       this.log(`${card.name}／${pose.name}：${key}（種子 ${seed}）`);
       const name = `${pid}_${key.replace('.', '_')}_${seed}.webp`;
-      if (fid && fid[0] === 'm') {
-        // 嘴型：嘴巴在整張圖上只有 30 px 左右，Qwen 改出來會糊（第 1 期的測試）→ SDXL 把附近裁出來放大重畫、只貼回嘴巴
-        const [x, y, w, h] = box;
-        const s = Math.round(Math.max(w, h) * 4);
-        const cx = Math.max(0, Math.round(x + w / 2 - s / 2));
-        const cy = Math.max(0, Math.round(y + h / 2 - s / 2));
-        const ex = exprList(card).find((e) => e.id === exId);
+      if (fid) {
+        // 影格（2026-11-15 立繪大修）：臉放大給 Qwen 改，只貼回眼睛／嘴巴裡真的改了的像素（qwenEditCrop）
+        const { crop, inner } = frameRegion(
+          fid[0] === 'm' && pose.ex[exId]?.mb ? { ...B, mouth: pose.ex[exId].mb } : B,
+          fid,
+          await this.imageSize(card, pose.master),
+        );
+        // 戴眼鏡的角色眨眼：先在那個表情的圖上拿掉眼鏡（快取在 pose.ex[表情].nog），在沒眼鏡的圖上閉眼，最後疊回原圖的鏡框
+        // （Qwen 閉眼時常把眼鏡一起拿掉，2026-11-16）
+        let img = base;
+        let gl = null;
+        // 拿掉眼鏡再閉眼的做法（pose.glassesNog 為真才用）：2026-11-16 試過，Qwen 拿掉眼鏡時會重畫眼睛，疊回鏡框時把睜眼的碎片帶回來，
+        // 所以預設不用；戴眼鏡的角色改成直接閉眼＋KEEP_GLASSES，多種子以 scripts/portrait-retry.py 挑鏡框完整的
+        if (fid[0] === 'e' && glassesChar(card) && !pose.noGlasses && pose.glassesNog) {
+          const ek = exId === 'neutral' ? '_neutral' : exId;
+          const exs = (pose.ex[ek] ||= {});
+          if (!exs.nog) {
+            const ng = `${pid}_${exId}_nog.webp`;
+            const [fx, fy, fw, fh] = B.face;
+            await this.runSave(
+              card,
+              W.qwenEditCrop({
+                image: base,
+                crop,
+                inner: [fx, fy, fw, fh * 0.75],
+                prompt:
+                  'Remove the glasses completely (frame, lenses, nose pads and temples) and show the eyes, eyebrows, skin and hair behind them. Change nothing else: same eyes, same eyebrows, same hair, same face, same expression.',
+                seed: 4242,
+                thrHi: 0.07,
+                keepFrac: 0.02,
+                noBlush: false,
+              }),
+              ng,
+              onProgress,
+            );
+            exs.nog = ng;
+          }
+          img = await this.uploadWork(card, exs.nog);
+          const [ex0, ey0, ew0, eh0] = B.eyes;
+          gl = { glassesBase: base, glassesBox: [ex0 - ew0 * 0.3, ey0 - eh0 * 0.8, ew0 * 1.6, eh0 * 2.6] };
+        }
+        const exd = exprList(card).find((e) => e.id === exId);
+        const exTxt = exId === 'neutral' ? 'calm neutral' : (exd && (exd.tags || exd.name)) || exId;
         await this.runSave(
           card,
-          W.inpaintBox({
-            image: base,
-            box: [cx, cy, s, s],
-            inner: box,
-            feather: 6,
-            prompt: `portrait, face, close-up, ${card.look.prompt}, ${ex?.tags || ''}, ${frameDef(fid).tags}, ${W.STYLE}`,
-            neg: card.look.neg,
-            denoise: 0.92,
+          W.qwenEditCrop({
+            image: img,
+            ...(gl || {}),
+            crop,
+            inner,
+            prompt: prompt.replaceAll('{ex}', exTxt),
             seed,
+            side: this.frameSide || 1024,
+            // 嘴型：所有改變都貼（見 qwenEditCrop 的說明）
+            // 舊嘴線條的反鋸齒邊緣差異很小：門檻放低、往外多長一些才會一起換掉
+            // 眼睛：貼眼線附近 9 px、門檻 0.05（2026-11-16 從 4 px 放寬：新眼皮線離舊眼睛的上輪廓太遠時，舊輪廓只蓋掉一半，留下灰色殘影）；嘴巴：擦掉的舊唇線是強改變（≥0.15），反鋸齒的邊在它 10 px 內，
+            // 遠處的雜點（下巴線變粗、小點）不貼（2026-11-16 薩奇博士的品管）
+            ...(fid[0] === 'm'
+              ? {
+                  thr: 0.06,
+                  grow: 8,
+                  feather: 3,
+                  thrHi: 0.15,
+                  hystR: 10,
+                  keepFrac: 0.03,
+                  noBlush: false,
+                  protectEdges: true,
+                  toneFix: true,
+                }
+              : {
+                  thr: 0.05,
+                  thrHi: 0.22,
+                  hystR: 9,
+                  noRecolor: true,
+                  keepTone: !!card.keepTone,
+                  skinBox: pose.boxes.face,
+                }),
+            // pose.keepOut：[[x,y,w,h]…] 臉上的固定記號（OK 繃、痣），一律保留原圖；pose.eyeKeepOut：只在眨眼影格保留（眼睛框延伸到嘴的高度時把嘴標起來，SPECIMEN）
+            // pose.ex[表情].keepOut：這個表情的臉移了位置時另外指定（STEVEDORE 生氣時疤移到下巴，原本的保留區蓋在嘴角、舊牙齒留下來）
+            exclude: [
+              ...(pose.ex[exId]?.keepOut || pose.keepOut || []),
+              ...(fid[0] === 'e' ? pose.eyeKeepOut || [] : []),
+            ],
           }),
           name,
           onProgress,
@@ -197,13 +327,19 @@ export class Pipeline {
     return out;
   }
   // 發佈：主圖整張、每個表情的臉、每個影格的眼睛／嘴巴裁成 WebP 放進定稿資料夾，card.pub 記下
-  async publish(card, { quality = 88, onProgress } = {}) {
+  // keepBase：主圖與分層沿用上一次發佈的（只重裁表情與影格；2026-11-15 立繪大修重產影格時用，省掉去背與拆層）
+  async publish(card, { quality = 88, onProgress, keepBase = false } = {}) {
+    const old = new Map(((card.pub && card.pub.poses) || []).map((p) => [p.id, p]));
     const pub = { t: Date.now(), poses: [] };
     const files = [];
     for (const pose of card.poses) {
       if (!pose.master) continue;
       const B = pose.boxes;
-      const P = { id: pose.id, name: pose.name, img: `${pose.id}.webp`, boxes: B, ex: {} };
+      const P = { id: pose.id, name: pose.name, img: `${pose.id}.webp`, boxes: B, src: pose.master, ex: {} };
+      const O = old.get(pose.id);
+      // pose.rebase：主圖換過（scripts/portrait-propagate.py）→ 一定要重新去背、拆層
+      const reuse = keepBase && O && !pose.rebase && (!O.src || O.src === pose.master);
+      delete pose.rebase;
       const wf = {};
       let k = 0;
       const src = new Map();
@@ -233,27 +369,35 @@ export class Pipeline {
         files.push(name);
         return `${name}.webp`;
       };
+      if (reuse) {
+        files.push(pose.id);
+        if (O.layers) {
+          P.layers = { ...O.layers };
+          for (const g of Object.values(O.layers)) files.push(g.replace(/\.webp$/, ''));
+        }
+      }
       // 主圖去背（BiRefNet 的動漫專用版 toonout）→ 有透明的 WebP；臉、眼、嘴的小圖都在身體裡面，不用去背
-      wf.bg = {
-        class_type: 'BiRefNetRMBG',
-        // 選用的參數也要全部給（外掛的程式直接讀，沒給會出錯）
-        inputs: {
-          image: [await load(pose.master), 0],
-          model: 'BiRefNet_toonout',
-          sensitivity: 1,
-          mask_blur: 0,
-          mask_offset: 0,
-          invert_output: false,
-          refine_foreground: false,
-          unload_model: true,
-          background: 'Alpha',
-          background_color: '#222222',
-        },
-      };
-      await crop(pose.master, null, pose.id, ['bg', 1]);
+      if (!reuse)
+        wf.bg = {
+          class_type: 'BiRefNetRMBG',
+          // 選用的參數也要全部給（外掛的程式直接讀，沒給會出錯）
+          inputs: {
+            image: [await load(pose.master), 0],
+            model: 'BiRefNet_toonout',
+            sensitivity: 1,
+            mask_blur: 0,
+            mask_offset: 0,
+            invert_output: false,
+            refine_foreground: false,
+            unload_model: true,
+            background: 'Alpha',
+            background_color: '#222222',
+          },
+        };
+      if (!reuse) await crop(pose.master, null, pose.id, ['bg', 1]);
       // 分層動畫（card.layers，docs/portrait-design.md 第 6 期）：See-through 拆層 → MCLayerGroups 合併成
       // 後髮／身體／頭／前髮四層（看得到的像素用原圖的顏色，疊起來＝原圖），遊戲的播放器讓頭髮擺動、頭部微轉、身體呼吸
-      if (card.layers) {
+      if (card.layers && !reuse) {
         const m = await load(pose.master);
         wf.stL = {
           class_type: 'SeeThrough_LoadLayerDiffModel',
@@ -309,8 +453,14 @@ export class Pipeline {
           if (B.face) ex.f = await crop(pick, B.face, `${pose.id}_${e.id}_f`);
         }
         for (const f of [...EYE_FRAMES, ...MOUTH_FRAMES]) {
-          const pick = pose.ex[`${e.id}.${f.id}`]?.pick;
-          const box = f.id[0] === 'e' ? B.eyes : B.mouth;
+          const slot = pose.ex[`${e.id}.${f.id}`];
+          const pick = slot && !slot.skip && slot.pick;
+          // 本來就閉眼的表情（大笑的 ^^、閉眼的姿勢）不眨眼：pose.noBlink
+          if (f.id[0] === 'e' && noBlink(pose).includes(e.id)) continue;
+          // 嘴型的框：這個表情自己量的 mb（scripts/portrait-mouthbox.py），沒有就用姿勢的
+          const mb = pose.ex[e.id]?.mb;
+          const box = f.id[0] === 'e' ? B.eyes : mb || B.mouth;
+          if (f.id[0] === 'm' && mb) ex.mb = mb;
           if (pick && box) ex[f.id] = await crop(pick, box, `${pose.id}_${e.id}_${f.id}`);
         }
         P.ex[e.id] = ex;
@@ -319,7 +469,7 @@ export class Pipeline {
       // 拆層第一次要下載 See-through 的模型（約 10 GB），之後每個姿勢也要一兩分鐘：等久一點
       const imgs = await this.comfy.run(wf, {
         onProgress,
-        ...(card.layers ? { timeout: 60 * 60 * 1000 } : {}),
+        ...(card.layers && !reuse ? { timeout: 60 * 60 * 1000 } : {}),
       });
       for (const im of imgs) {
         const name = im.filename.replace(new RegExp('^' + card.id + '_'), '');

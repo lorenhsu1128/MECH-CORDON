@@ -73,12 +73,24 @@
           215
         ],
         "eyes": [
+          342,
+          247,
+          204,
+          85
+        ],
+        "mouth": [
+          391,
+          336,
+          119,
+          57
+        ],
+        "eyes0": [
           350,
           255,
           180,
           65
         ],
-        "mouth": [
+        "mouth0": [
           415,
           335,
           70,
@@ -91,133 +103,226 @@
             "p1_smile_1376434696.webp",
             "p1_smile_394090142.webp"
           ],
-          "pick": "p1_smile_1376434696.webp"
+          "pick": "p1_smile_1376434696.webp",
+          "mb": [
+            362,
+            322,
+            176,
+            91
+          ]
         },
         "laugh": {
           "cands": [
             "p1_laugh_854719727.webp",
             "p1_laugh_1740726148.webp"
           ],
-          "pick": "p1_laugh_854719727.webp"
+          "pick": "p1_laugh_854719727.webp",
+          "mb": [
+            362,
+            322,
+            176,
+            93
+          ]
         },
         "angry": {
           "cands": [
             "p1_angry_1611967850.webp",
             "p1_angry_92225541.webp"
           ],
-          "pick": "p1_angry_1611967850.webp"
+          "pick": "p1_angry_1611967850.webp",
+          "mb": [
+            362,
+            322,
+            176,
+            91
+          ]
         },
         "surprised": {
           "cands": [
             "p1_surprised_834852009.webp",
             "p1_surprised_1654985132.webp"
           ],
-          "pick": "p1_surprised_834852009.webp"
+          "pick": "p1_surprised_834852009.webp",
+          "mb": [
+            362,
+            322,
+            176,
+            93
+          ]
         },
         "sad": {
           "cands": [
             "p1_sad_1224921396.webp",
             "p1_sad_1515428835.webp"
           ],
-          "pick": "p1_sad_1224921396.webp"
+          "pick": "p1_sad_1224921396.webp",
+          "mb": [
+            336,
+            322,
+            174,
+            91
+          ],
+          "keep": "Keep the tear streaks exactly where they are."
         },
         "think": {
           "cands": [
             "p1_think_724916592.webp",
             "p1_think_1888251651.webp"
           ],
-          "pick": "p1_think_724916592.webp"
+          "pick": "p1_think_724916592.webp",
+          "mb": [
+            362,
+            322,
+            176,
+            91
+          ]
         },
         "smug": {
           "cands": [
             "p1_smug_476779919.webp",
             "p1_smug_1533225839.webp"
           ],
-          "pick": "p1_smug_476779919.webp"
+          "pick": "p1_smug_476779919.webp",
+          "mb": [
+            362,
+            322,
+            176,
+            91
+          ]
         },
         "guard": {
           "cands": [
             "p1_guard_1383632170.webp",
             "p1_guard_1184748447.webp"
           ],
-          "pick": "p1_guard_1383632170.webp"
+          "pick": "p1_guard_1383632170.webp",
+          "mb": [
+            362,
+            322,
+            176,
+            93
+          ]
         },
         "distant": {
           "cands": [
             "p1_distant_400996870.webp",
             "p1_distant_39100838.webp"
           ],
-          "pick": "p1_distant_400996870.webp"
+          "pick": "p1_distant_400996870.webp",
+          "mb": [
+            362,
+            322,
+            176,
+            91
+          ]
         },
         "neutral.e1": {
           "cands": [
             "p1_neutral_e1_988259219.webp",
-            "p1_neutral_e1_402841452.webp"
+            "p1_neutral_e1_402841452.webp",
+            "p1_neutral_e1_874357342.webp",
+            "p1_neutral_e1_392817451.webp",
+            "p1_neutral_e1_1184195646.webp",
+            "p1_neutral_e1_1996704047.webp",
+            "p1_neutral_e1_1072466128.webp",
+            "p1_neutral_e1_2144021206.webp",
+            "p1_neutral_e1_1564751966.webp"
           ],
-          "pick": "p1_neutral_e1_988259219.webp"
+          "pick": "p1_neutral_e1_1564751966.webp",
+          "v2": true
         },
         "neutral.e2": {
           "cands": [
             "p1_neutral_e2_1408642786.webp",
-            "p1_neutral_e2_1963928445.webp"
+            "p1_neutral_e2_1963928445.webp",
+            "p1_neutral_e2_1373970325.webp",
+            "p1_neutral_e2_75615976.webp",
+            "p1_neutral_e2_1426154480.webp"
           ],
-          "pick": "p1_neutral_e2_1408642786.webp"
+          "pick": "p1_neutral_e2_1426154480.webp",
+          "v2": true
         },
         "neutral.m1": {
           "cands": [
             "p1_neutral_m1_393424995.webp",
-            "p1_neutral_m1_331521251.webp"
+            "p1_neutral_m1_331521251.webp",
+            "p1_neutral_m1_1961778466.webp",
+            "p1_neutral_m1_1033336924.webp"
           ],
-          "pick": "p1_neutral_m1_393424995.webp"
+          "pick": "p1_neutral_m1_1033336924.webp",
+          "v2": true
         },
         "neutral.m2": {
           "cands": [
             "p1_neutral_m2_13728264.webp",
-            "p1_neutral_m2_1143552686.webp"
+            "p1_neutral_m2_1143552686.webp",
+            "p1_neutral_m2_1701458816.webp",
+            "p1_neutral_m2_1416269530.webp"
           ],
-          "pick": "p1_neutral_m2_13728264.webp"
+          "pick": "p1_neutral_m2_1416269530.webp",
+          "v2": true
         },
         "neutral.m3": {
           "cands": [
             "p1_neutral_m3_1988064869.webp",
-            "p1_neutral_m3_577766688.webp"
+            "p1_neutral_m3_577766688.webp",
+            "p1_neutral_m3_1924288454.webp",
+            "p1_neutral_m3_1296275529.webp"
           ],
-          "pick": "p1_neutral_m3_1988064869.webp"
+          "pick": "p1_neutral_m3_1296275529.webp",
+          "v2": true
         },
         "smile.e1": {
           "cands": [
             "p1_smile_e1_1425444609.webp",
-            "p1_smile_e1_221772791.webp"
+            "p1_smile_e1_221772791.webp",
+            "p1_smile_e1_2144459216.webp",
+            "p1_smile_e1_2075136709.webp",
+            "p1_smile_e1_1030726493.webp"
           ],
-          "pick": "p1_smile_e1_1425444609.webp"
+          "pick": "p1_smile_e1_1030726493.webp",
+          "v2": true
         },
         "smile.e2": {
           "cands": [
             "p1_smile_e2_663371516.webp",
-            "p1_smile_e2_1081846997.webp"
+            "p1_smile_e2_1081846997.webp",
+            "p1_smile_e2_684163659.webp",
+            "p1_smile_e2_2024438684.webp",
+            "p1_smile_e2_1984088636.webp"
           ],
-          "pick": "p1_smile_e2_663371516.webp"
+          "pick": "p1_smile_e2_1984088636.webp",
+          "v2": true
         },
         "smile.m1": {
           "cands": [
             "p1_smile_m1_1083088462.webp",
-            "p1_smile_m1_651820620.webp"
+            "p1_smile_m1_651820620.webp",
+            "p1_smile_m1_2118777426.webp",
+            "p1_smile_m1_1595955128.webp"
           ],
-          "pick": "p1_smile_m1_1083088462.webp"
+          "pick": "p1_smile_m1_1595955128.webp",
+          "v2": true
         },
         "smile.m2": {
           "cands": [
             "p1_smile_m2_479344629.webp",
-            "p1_smile_m2_1602108618.webp"
+            "p1_smile_m2_1602108618.webp",
+            "p1_smile_m2_661480675.webp",
+            "p1_smile_m2_1737801088.webp"
           ],
-          "pick": "p1_smile_m2_1602108618.webp"
+          "pick": "p1_smile_m2_1737801088.webp",
+          "v2": true
         },
         "smile.m3": {
           "cands": [
             "p1_smile_m3_1728190025.webp",
-            "p1_smile_m3_1612245424.webp"
+            "p1_smile_m3_1612245424.webp",
+            "p1_smile_m3_674245090.webp",
+            "p1_smile_m3_634552890.webp"
           ],
-          "pick": "p1_smile_m3_1728190025.webp"
+          "pick": "p1_smile_m3_634552890.webp",
+          "v2": true
         },
         "laugh.e1": {
           "cands": [
@@ -236,270 +341,414 @@
         "laugh.m1": {
           "cands": [
             "p1_laugh_m1_1340781676.webp",
-            "p1_laugh_m1_1915745217.webp"
+            "p1_laugh_m1_1915745217.webp",
+            "p1_laugh_m1_1580239522.webp",
+            "p1_laugh_m1_594820290.webp",
+            "p1_laugh_m1_869775745.webp",
+            "p1_laugh_m1_1640551506.webp",
+            "p1_laugh_m1_832355858.webp"
           ],
-          "pick": "p1_laugh_m1_1340781676.webp"
+          "pick": "p1_laugh_m1_869775745.webp",
+          "v2": true
         },
         "laugh.m2": {
           "cands": [
             "p1_laugh_m2_610433331.webp",
-            "p1_laugh_m2_1065364947.webp"
+            "p1_laugh_m2_1065364947.webp",
+            "p1_laugh_m2_1984194304.webp",
+            "p1_laugh_m2_2005001442.webp"
           ],
-          "pick": "p1_laugh_m2_610433331.webp"
+          "pick": "p1_laugh_m2_2005001442.webp",
+          "v2": true
         },
         "laugh.m3": {
           "cands": [
             "p1_laugh_m3_1033918284.webp",
-            "p1_laugh_m3_298513191.webp"
+            "p1_laugh_m3_298513191.webp",
+            "p1_laugh_m3_88370010.webp",
+            "p1_laugh_m3_1459127300.webp"
           ],
-          "pick": "p1_laugh_m3_1033918284.webp"
+          "pick": "p1_laugh_m3_1459127300.webp",
+          "v2": true
         },
         "angry.e1": {
           "cands": [
             "p1_angry_e1_116931669.webp",
-            "p1_angry_e1_915963715.webp"
+            "p1_angry_e1_915963715.webp",
+            "p1_angry_e1_455132112.webp",
+            "p1_angry_e1_771537945.webp",
+            "p1_angry_e1_1008622830.webp"
           ],
-          "pick": "p1_angry_e1_116931669.webp"
+          "pick": "p1_angry_e1_1008622830.webp",
+          "v2": true
         },
         "angry.e2": {
           "cands": [
             "p1_angry_e2_2110229403.webp",
-            "p1_angry_e2_1513902370.webp"
+            "p1_angry_e2_1513902370.webp",
+            "p1_angry_e2_1095226558.webp",
+            "p1_angry_e2_2005437721.webp",
+            "p1_angry_e2_1207331355.webp"
           ],
-          "pick": "p1_angry_e2_2110229403.webp"
+          "pick": "p1_angry_e2_1207331355.webp",
+          "v2": true
         },
         "angry.m1": {
           "cands": [
             "p1_angry_m1_1035847476.webp",
-            "p1_angry_m1_1358415214.webp"
+            "p1_angry_m1_1358415214.webp",
+            "p1_angry_m1_194123427.webp",
+            "p1_angry_m1_173785248.webp"
           ],
-          "pick": "p1_angry_m1_1035847476.webp"
+          "pick": "p1_angry_m1_173785248.webp",
+          "v2": true
         },
         "angry.m2": {
           "cands": [
             "p1_angry_m2_1314314310.webp",
-            "p1_angry_m2_1529307019.webp"
+            "p1_angry_m2_1529307019.webp",
+            "p1_angry_m2_1512613665.webp",
+            "p1_angry_m2_381029334.webp"
           ],
-          "pick": "p1_angry_m2_1314314310.webp"
+          "pick": "p1_angry_m2_381029334.webp",
+          "v2": true
         },
         "angry.m3": {
           "cands": [
             "p1_angry_m3_499457809.webp",
-            "p1_angry_m3_202155157.webp"
+            "p1_angry_m3_202155157.webp",
+            "p1_angry_m3_1622463330.webp",
+            "p1_angry_m3_430194954.webp"
           ],
-          "pick": "p1_angry_m3_499457809.webp"
+          "pick": "p1_angry_m3_430194954.webp",
+          "v2": true
         },
         "surprised.e1": {
           "cands": [
             "p1_surprised_e1_19982881.webp",
-            "p1_surprised_e1_1867547076.webp"
+            "p1_surprised_e1_1867547076.webp",
+            "p1_surprised_e1_108190841.webp",
+            "p1_surprised_e1_286092604.webp",
+            "p1_surprised_e1_1026395021.webp"
           ],
-          "pick": "p1_surprised_e1_19982881.webp"
+          "pick": "p1_surprised_e1_1026395021.webp",
+          "v2": true
         },
         "surprised.e2": {
           "cands": [
             "p1_surprised_e2_426291182.webp",
-            "p1_surprised_e2_1688385061.webp"
+            "p1_surprised_e2_1688385061.webp",
+            "p1_surprised_e2_375449313.webp",
+            "p1_surprised_e2_388200511.webp",
+            "p1_surprised_e2_233925102.webp",
+            "p1_surprised_e2_538136009.webp",
+            "p1_surprised_e2_986081737.webp",
+            "p1_surprised_e2_1383532344.webp",
+            "p1_surprised_e2_1011372231.webp"
           ],
-          "pick": "p1_surprised_e2_426291182.webp"
+          "pick": "p1_surprised_e2_1011372231.webp",
+          "v2": true
         },
         "surprised.m1": {
           "cands": [
             "p1_surprised_m1_2102586369.webp",
-            "p1_surprised_m1_1191072702.webp"
+            "p1_surprised_m1_1191072702.webp",
+            "p1_surprised_m1_1278059704.webp",
+            "p1_surprised_m1_724454746.webp"
           ],
-          "pick": "p1_surprised_m1_2102586369.webp"
+          "pick": "p1_surprised_m1_724454746.webp",
+          "v2": true
         },
         "surprised.m2": {
           "cands": [
             "p1_surprised_m2_32438388.webp",
-            "p1_surprised_m2_226441364.webp"
+            "p1_surprised_m2_226441364.webp",
+            "p1_surprised_m2_1819626604.webp",
+            "p1_surprised_m2_2098041730.webp"
           ],
-          "pick": "p1_surprised_m2_32438388.webp"
+          "pick": "p1_surprised_m2_2098041730.webp",
+          "v2": true
         },
         "surprised.m3": {
           "cands": [
             "p1_surprised_m3_1104781722.webp",
-            "p1_surprised_m3_754405312.webp"
+            "p1_surprised_m3_754405312.webp",
+            "p1_surprised_m3_1823055001.webp",
+            "p1_surprised_m3_34058664.webp"
           ],
-          "pick": "p1_surprised_m3_1104781722.webp"
+          "pick": "p1_surprised_m3_34058664.webp",
+          "v2": true
         },
         "sad.e1": {
           "cands": [
             "p1_sad_e1_1612666650.webp",
-            "p1_sad_e1_365831858.webp"
+            "p1_sad_e1_365831858.webp",
+            "p1_sad_e1_772195421.webp",
+            "p1_sad_e1_6847742.webp",
+            "p1_sad_e1_822591747.webp",
+            "p1_sad_e1_1454567050.webp",
+            "p1_sad_e1_1647227762.webp",
+            "p1_sad_e1_1920045603.webp",
+            "p1_sad_e1_1693017735.webp",
+            "p1_sad_e1_198603269.webp",
+            "p1_sad_e1_1336883633.webp"
           ],
-          "pick": "p1_sad_e1_1612666650.webp"
+          "pick": "p1_sad_e1_198603269.webp",
+          "v2": true
         },
         "sad.e2": {
           "cands": [
             "p1_sad_e2_1868785973.webp",
-            "p1_sad_e2_2145531658.webp"
+            "p1_sad_e2_2145531658.webp",
+            "p1_sad_e2_365328302.webp",
+            "p1_sad_e2_1154383501.webp",
+            "p1_sad_e2_891741715.webp"
           ],
-          "pick": "p1_sad_e2_1868785973.webp"
+          "pick": "p1_sad_e2_891741715.webp",
+          "v2": true
         },
         "sad.m1": {
           "cands": [
             "p1_sad_m1_494358299.webp",
-            "p1_sad_m1_1910500134.webp"
+            "p1_sad_m1_1910500134.webp",
+            "p1_sad_m1_2012692376.webp",
+            "p1_sad_m1_1589415988.webp",
+            "p1_sad_m1_408482104.webp"
           ],
-          "pick": "p1_sad_m1_494358299.webp"
+          "pick": "p1_sad_m1_408482104.webp",
+          "v2": true
         },
         "sad.m2": {
           "cands": [
             "p1_sad_m2_1278814529.webp",
-            "p1_sad_m2_937795860.webp"
+            "p1_sad_m2_937795860.webp",
+            "p1_sad_m2_563056007.webp",
+            "p1_sad_m2_1395242642.webp"
           ],
-          "pick": "p1_sad_m2_1278814529.webp"
+          "pick": "p1_sad_m2_1395242642.webp",
+          "v2": true
         },
         "sad.m3": {
           "cands": [
             "p1_sad_m3_851577490.webp",
-            "p1_sad_m3_1357843627.webp"
+            "p1_sad_m3_1357843627.webp",
+            "p1_sad_m3_1634797422.webp",
+            "p1_sad_m3_1134980508.webp"
           ],
-          "pick": "p1_sad_m3_851577490.webp"
+          "pick": "p1_sad_m3_1134980508.webp",
+          "v2": true
         },
         "think.e1": {
           "cands": [
             "p1_think_e1_530948859.webp",
-            "p1_think_e1_1698337108.webp"
+            "p1_think_e1_1698337108.webp",
+            "p1_think_e1_1157726987.webp",
+            "p1_think_e1_795988095.webp",
+            "p1_think_e1_1633681304.webp"
           ],
-          "pick": "p1_think_e1_530948859.webp"
+          "pick": "p1_think_e1_1633681304.webp",
+          "v2": true
         },
         "think.e2": {
           "cands": [
             "p1_think_e2_121466875.webp",
-            "p1_think_e2_1802783467.webp"
+            "p1_think_e2_1802783467.webp",
+            "p1_think_e2_1310900948.webp",
+            "p1_think_e2_1002790830.webp",
+            "p1_think_e2_1836493096.webp"
           ],
-          "pick": "p1_think_e2_121466875.webp"
+          "pick": "p1_think_e2_1836493096.webp",
+          "v2": true
         },
         "think.m1": {
           "cands": [
             "p1_think_m1_749368775.webp",
-            "p1_think_m1_175589275.webp"
+            "p1_think_m1_175589275.webp",
+            "p1_think_m1_674248262.webp",
+            "p1_think_m1_73529377.webp"
           ],
-          "pick": "p1_think_m1_749368775.webp"
+          "pick": "p1_think_m1_73529377.webp",
+          "v2": true
         },
         "think.m2": {
           "cands": [
             "p1_think_m2_1177026497.webp",
-            "p1_think_m2_1022500065.webp"
+            "p1_think_m2_1022500065.webp",
+            "p1_think_m2_918381473.webp",
+            "p1_think_m2_1309202915.webp"
           ],
-          "pick": "p1_think_m2_1177026497.webp"
+          "pick": "p1_think_m2_1309202915.webp",
+          "v2": true
         },
         "think.m3": {
           "cands": [
             "p1_think_m3_65794290.webp",
-            "p1_think_m3_41133690.webp"
+            "p1_think_m3_41133690.webp",
+            "p1_think_m3_1747127277.webp",
+            "p1_think_m3_356760254.webp"
           ],
-          "pick": "p1_think_m3_65794290.webp"
+          "pick": "p1_think_m3_356760254.webp",
+          "v2": true
         },
         "smug.e1": {
           "cands": [
             "p1_smug_e1_1856366814.webp",
-            "p1_smug_e1_867253182.webp"
+            "p1_smug_e1_867253182.webp",
+            "p1_smug_e1_1895937375.webp",
+            "p1_smug_e1_1124899120.webp",
+            "p1_smug_e1_661114710.webp"
           ],
-          "pick": "p1_smug_e1_1856366814.webp"
+          "pick": "p1_smug_e1_661114710.webp",
+          "v2": true
         },
         "smug.e2": {
           "cands": [
             "p1_smug_e2_692813544.webp",
-            "p1_smug_e2_1982722009.webp"
+            "p1_smug_e2_1982722009.webp",
+            "p1_smug_e2_1068689485.webp",
+            "p1_smug_e2_1632984174.webp",
+            "p1_smug_e2_488227246.webp"
           ],
-          "pick": "p1_smug_e2_692813544.webp"
+          "pick": "p1_smug_e2_488227246.webp",
+          "v2": true
         },
         "smug.m1": {
           "cands": [
             "p1_smug_m1_1854529635.webp",
-            "p1_smug_m1_526899727.webp"
+            "p1_smug_m1_526899727.webp",
+            "p1_smug_m1_2075786858.webp",
+            "p1_smug_m1_475686524.webp"
           ],
-          "pick": "p1_smug_m1_1854529635.webp"
+          "pick": "p1_smug_m1_475686524.webp",
+          "v2": true
         },
         "smug.m2": {
           "cands": [
             "p1_smug_m2_256375293.webp",
-            "p1_smug_m2_330796551.webp"
+            "p1_smug_m2_330796551.webp",
+            "p1_smug_m2_447847101.webp",
+            "p1_smug_m2_1739213365.webp"
           ],
-          "pick": "p1_smug_m2_330796551.webp"
+          "pick": "p1_smug_m2_1739213365.webp",
+          "v2": true
         },
         "smug.m3": {
           "cands": [
             "p1_smug_m3_697390954.webp",
-            "p1_smug_m3_1857558697.webp"
+            "p1_smug_m3_1857558697.webp",
+            "p1_smug_m3_190355668.webp",
+            "p1_smug_m3_1106497140.webp"
           ],
-          "pick": "p1_smug_m3_697390954.webp"
+          "pick": "p1_smug_m3_1106497140.webp",
+          "v2": true
         },
         "guard.e1": {
           "cands": [
             "p1_guard_e1_1877823057.webp",
-            "p1_guard_e1_475198266.webp"
+            "p1_guard_e1_475198266.webp",
+            "p1_guard_e1_598539364.webp",
+            "p1_guard_e1_2097930422.webp",
+            "p1_guard_e1_1155802877.webp"
           ],
-          "pick": "p1_guard_e1_1877823057.webp"
+          "pick": "p1_guard_e1_1155802877.webp",
+          "v2": true
         },
         "guard.e2": {
           "cands": [
             "p1_guard_e2_1153978734.webp",
-            "p1_guard_e2_262862510.webp"
+            "p1_guard_e2_262862510.webp",
+            "p1_guard_e2_1841358218.webp",
+            "p1_guard_e2_1403702494.webp",
+            "p1_guard_e2_18159537.webp"
           ],
-          "pick": "p1_guard_e2_1153978734.webp"
+          "pick": "p1_guard_e2_18159537.webp",
+          "v2": true
         },
         "guard.m1": {
           "cands": [
             "p1_guard_m1_1638436181.webp",
-            "p1_guard_m1_1571951207.webp"
+            "p1_guard_m1_1571951207.webp",
+            "p1_guard_m1_1601286434.webp",
+            "p1_guard_m1_565666334.webp"
           ],
-          "pick": "p1_guard_m1_1638436181.webp"
+          "pick": "p1_guard_m1_565666334.webp",
+          "v2": true
         },
         "guard.m2": {
           "cands": [
             "p1_guard_m2_1143134448.webp",
-            "p1_guard_m2_1348594067.webp"
+            "p1_guard_m2_1348594067.webp",
+            "p1_guard_m2_1652603040.webp",
+            "p1_guard_m2_1401261891.webp",
+            "p1_guard_m2_2042557816.webp"
           ],
-          "pick": "p1_guard_m2_1348594067.webp"
+          "pick": "p1_guard_m2_2042557816.webp",
+          "v2": true
         },
         "guard.m3": {
           "cands": [
             "p1_guard_m3_1711916516.webp",
-            "p1_guard_m3_789841970.webp"
+            "p1_guard_m3_789841970.webp",
+            "p1_guard_m3_467477068.webp",
+            "p1_guard_m3_1729220650.webp"
           ],
-          "pick": "p1_guard_m3_1711916516.webp"
+          "pick": "p1_guard_m3_1729220650.webp",
+          "v2": true
         },
         "distant.e1": {
           "cands": [
             "p1_distant_e1_1699945816.webp",
-            "p1_distant_e1_324963506.webp"
+            "p1_distant_e1_324963506.webp",
+            "p1_distant_e1_1222292323.webp",
+            "p1_distant_e1_109383012.webp",
+            "p1_distant_e1_1465588319.webp"
           ],
-          "pick": "p1_distant_e1_1699945816.webp"
+          "pick": "p1_distant_e1_1465588319.webp",
+          "v2": true
         },
         "distant.e2": {
           "cands": [
             "p1_distant_e2_677218748.webp",
-            "p1_distant_e2_403044166.webp"
+            "p1_distant_e2_403044166.webp",
+            "p1_distant_e2_1768030580.webp",
+            "p1_distant_e2_1365090657.webp",
+            "p1_distant_e2_694757647.webp"
           ],
-          "pick": "p1_distant_e2_677218748.webp"
+          "pick": "p1_distant_e2_694757647.webp",
+          "v2": true
         },
         "distant.m1": {
           "cands": [
             "p1_distant_m1_1946288264.webp",
-            "p1_distant_m1_1243094092.webp"
+            "p1_distant_m1_1243094092.webp",
+            "p1_distant_m1_288848481.webp",
+            "p1_distant_m1_1456072706.webp"
           ],
-          "pick": "p1_distant_m1_1946288264.webp"
+          "pick": "p1_distant_m1_1456072706.webp",
+          "v2": true
         },
         "distant.m2": {
           "cands": [
             "p1_distant_m2_350932309.webp",
-            "p1_distant_m2_55586235.webp"
+            "p1_distant_m2_55586235.webp",
+            "p1_distant_m2_433825731.webp",
+            "p1_distant_m2_1352301486.webp"
           ],
-          "pick": "p1_distant_m2_350932309.webp"
+          "pick": "p1_distant_m2_1352301486.webp",
+          "v2": true
         },
         "distant.m3": {
           "cands": [
             "p1_distant_m3_488701717.webp",
-            "p1_distant_m3_1896931806.webp"
+            "p1_distant_m3_1896931806.webp",
+            "p1_distant_m3_2057634276.webp",
+            "p1_distant_m3_948544893.webp"
           ],
-          "pick": "p1_distant_m3_488701717.webp"
+          "pick": "p1_distant_m3_948544893.webp",
+          "v2": true
         }
-      }
+      },
+      "fv": 2
     },
     {
       "id": "p2",
@@ -522,12 +771,24 @@
           225
         ],
         "eyes": [
+          351,
+          232,
+          202,
+          81
+        ],
+        "mouth": [
+          393,
+          317,
+          109,
+          52
+        ],
+        "eyes0": [
           360,
           240,
           175,
           60
         ],
-        "mouth": [
+        "mouth0": [
           415,
           315,
           64,
@@ -540,133 +801,229 @@
             "p2_smile_185422935.webp",
             "p2_smile_1591465634.webp"
           ],
-          "pick": "p2_smile_185422935.webp"
+          "pick": "p2_smile_185422935.webp",
+          "mb": [
+            366,
+            302,
+            152,
+            104
+          ]
         },
         "laugh": {
           "cands": [
             "p2_laugh_1012653523.webp",
             "p2_laugh_872760493.webp"
           ],
-          "pick": "p2_laugh_1012653523.webp"
+          "pick": "p2_laugh_1012653523.webp",
+          "mb": [
+            363,
+            302,
+            168,
+            104
+          ]
         },
         "angry": {
           "cands": [
             "p2_angry_1137723799.webp",
             "p2_angry_763798964.webp"
           ],
-          "pick": "p2_angry_1137723799.webp"
+          "pick": "p2_angry_1137723799.webp",
+          "mb": [
+            364,
+            302,
+            135,
+            104
+          ]
         },
         "surprised": {
           "cands": [
             "p2_surprised_501065959.webp",
             "p2_surprised_1664171686.webp"
           ],
-          "pick": "p2_surprised_501065959.webp"
+          "pick": "p2_surprised_501065959.webp",
+          "mb": [
+            364,
+            302,
+            135,
+            101
+          ]
         },
         "sad": {
           "cands": [
             "p2_sad_1979571478.webp",
             "p2_sad_781573744.webp"
           ],
-          "pick": "p2_sad_1979571478.webp"
+          "pick": "p2_sad_1979571478.webp",
+          "mb": [
+            364,
+            302,
+            128,
+            66
+          ],
+          "keep": "Keep the tear streaks exactly where they are."
         },
         "think": {
           "cands": [
             "p2_think_901390813.webp",
             "p2_think_854450771.webp"
           ],
-          "pick": "p2_think_901390813.webp"
+          "pick": "p2_think_901390813.webp",
+          "mb": [
+            364,
+            302,
+            134,
+            74
+          ]
         },
         "smug": {
           "cands": [
             "p2_smug_704235869.webp",
             "p2_smug_388678936.webp"
           ],
-          "pick": "p2_smug_704235869.webp"
+          "pick": "p2_smug_704235869.webp",
+          "mb": [
+            364,
+            302,
+            147,
+            88
+          ]
         },
         "guard": {
           "cands": [
             "p2_guard_650930992.webp",
             "p2_guard_2031228049.webp"
           ],
-          "pick": "p2_guard_650930992.webp"
+          "pick": "p2_guard_650930992.webp",
+          "mb": [
+            364,
+            302,
+            130,
+            104
+          ]
         },
         "distant": {
           "cands": [
             "p2_distant_82934966.webp",
             "p2_distant_1807753772.webp"
           ],
-          "pick": "p2_distant_82934966.webp"
+          "pick": "p2_distant_82934966.webp",
+          "mb": [
+            364,
+            302,
+            126,
+            66
+          ]
         },
         "neutral.e1": {
           "cands": [
             "p2_neutral_e1_1424987515.webp",
-            "p2_neutral_e1_308323214.webp"
+            "p2_neutral_e1_308323214.webp",
+            "p2_neutral_e1_348770031.webp",
+            "p2_neutral_e1_624553882.webp",
+            "p2_neutral_e1_1923656729.webp"
           ],
-          "pick": "p2_neutral_e1_1424987515.webp"
+          "pick": "p2_neutral_e1_1923656729.webp",
+          "v2": true
         },
         "neutral.e2": {
           "cands": [
             "p2_neutral_e2_1370548526.webp",
-            "p2_neutral_e2_2119244667.webp"
+            "p2_neutral_e2_2119244667.webp",
+            "p2_neutral_e2_627756694.webp",
+            "p2_neutral_e2_2146739396.webp",
+            "p2_neutral_e2_801257192.webp"
           ],
-          "pick": "p2_neutral_e2_1370548526.webp"
+          "pick": "p2_neutral_e2_801257192.webp",
+          "v2": true
         },
         "neutral.m1": {
           "cands": [
             "p2_neutral_m1_1507091692.webp",
-            "p2_neutral_m1_87802181.webp"
+            "p2_neutral_m1_87802181.webp",
+            "p2_neutral_m1_1564534489.webp",
+            "p2_neutral_m1_690314983.webp",
+            "p2_neutral_m1_1239877758.webp",
+            "p2_neutral_m1_2050329669.webp",
+            "p2_neutral_m1_211015769.webp",
+            "p2_neutral_m1_706037747.webp",
+            "p2_neutral_m1_586475130.webp",
+            "p2_neutral_m1_1410925336.webp"
           ],
-          "pick": "p2_neutral_m1_1507091692.webp"
+          "pick": "p2_neutral_m1_1410925336.webp",
+          "v2": true,
+          "skip": true
         },
         "neutral.m2": {
           "cands": [
             "p2_neutral_m2_2089650240.webp",
-            "p2_neutral_m2_1706482232.webp"
+            "p2_neutral_m2_1706482232.webp",
+            "p2_neutral_m2_1781076772.webp",
+            "p2_neutral_m2_1048261329.webp"
           ],
-          "pick": "p2_neutral_m2_2089650240.webp"
+          "pick": "p2_neutral_m2_1048261329.webp",
+          "v2": true
         },
         "neutral.m3": {
           "cands": [
             "p2_neutral_m3_2000090844.webp",
-            "p2_neutral_m3_2010141386.webp"
+            "p2_neutral_m3_2010141386.webp",
+            "p2_neutral_m3_1402339785.webp",
+            "p2_neutral_m3_473849622.webp"
           ],
-          "pick": "p2_neutral_m3_2000090844.webp"
+          "pick": "p2_neutral_m3_473849622.webp",
+          "v2": true
         },
         "smile.e1": {
           "cands": [
             "p2_smile_e1_978063221.webp",
-            "p2_smile_e1_1360173369.webp"
+            "p2_smile_e1_1360173369.webp",
+            "p2_smile_e1_485453642.webp",
+            "p2_smile_e1_1855190169.webp",
+            "p2_smile_e1_1264467756.webp"
           ],
-          "pick": "p2_smile_e1_978063221.webp"
+          "pick": "p2_smile_e1_1264467756.webp",
+          "v2": true
         },
         "smile.e2": {
           "cands": [
             "p2_smile_e2_1298097228.webp",
-            "p2_smile_e2_274713112.webp"
+            "p2_smile_e2_274713112.webp",
+            "p2_smile_e2_1149518871.webp",
+            "p2_smile_e2_1738034218.webp",
+            "p2_smile_e2_2119667509.webp"
           ],
-          "pick": "p2_smile_e2_1298097228.webp"
+          "pick": "p2_smile_e2_2119667509.webp",
+          "v2": true
         },
         "smile.m1": {
           "cands": [
             "p2_smile_m1_1800606572.webp",
-            "p2_smile_m1_1330206312.webp"
+            "p2_smile_m1_1330206312.webp",
+            "p2_smile_m1_996597190.webp",
+            "p2_smile_m1_1786144966.webp"
           ],
-          "pick": "p2_smile_m1_1800606572.webp"
+          "pick": "p2_smile_m1_1786144966.webp",
+          "v2": true
         },
         "smile.m2": {
           "cands": [
             "p2_smile_m2_192387678.webp",
-            "p2_smile_m2_1765771354.webp"
+            "p2_smile_m2_1765771354.webp",
+            "p2_smile_m2_834380188.webp",
+            "p2_smile_m2_573121887.webp"
           ],
-          "pick": "p2_smile_m2_192387678.webp"
+          "pick": "p2_smile_m2_573121887.webp",
+          "v2": true
         },
         "smile.m3": {
           "cands": [
             "p2_smile_m3_817223589.webp",
-            "p2_smile_m3_307779223.webp"
+            "p2_smile_m3_307779223.webp",
+            "p2_smile_m3_114236952.webp",
+            "p2_smile_m3_1345319216.webp"
           ],
-          "pick": "p2_smile_m3_817223589.webp"
+          "pick": "p2_smile_m3_1345319216.webp",
+          "v2": true
         },
         "laugh.e1": {
           "cands": [
@@ -685,275 +1042,425 @@
         "laugh.m1": {
           "cands": [
             "p2_laugh_m1_1236824285.webp",
-            "p2_laugh_m1_1071411747.webp"
+            "p2_laugh_m1_1071411747.webp",
+            "p2_laugh_m1_1861044403.webp",
+            "p2_laugh_m1_928150154.webp"
           ],
-          "pick": "p2_laugh_m1_1236824285.webp"
+          "pick": "p2_laugh_m1_928150154.webp",
+          "v2": true
         },
         "laugh.m2": {
           "cands": [
             "p2_laugh_m2_1472523587.webp",
-            "p2_laugh_m2_1543870056.webp"
+            "p2_laugh_m2_1543870056.webp",
+            "p2_laugh_m2_1450215548.webp",
+            "p2_laugh_m2_1575951221.webp"
           ],
-          "pick": "p2_laugh_m2_1472523587.webp"
+          "pick": "p2_laugh_m2_1575951221.webp",
+          "v2": true
         },
         "laugh.m3": {
           "cands": [
             "p2_laugh_m3_1395364529.webp",
-            "p2_laugh_m3_1942902521.webp"
+            "p2_laugh_m3_1942902521.webp",
+            "p2_laugh_m3_1092038387.webp",
+            "p2_laugh_m3_177219264.webp"
           ],
-          "pick": "p2_laugh_m3_1395364529.webp"
+          "pick": "p2_laugh_m3_177219264.webp",
+          "v2": true
         },
         "angry.e1": {
           "cands": [
             "p2_angry_e1_2056990388.webp",
-            "p2_angry_e1_582994007.webp"
+            "p2_angry_e1_582994007.webp",
+            "p2_angry_e1_927890240.webp",
+            "p2_angry_e1_813064654.webp",
+            "p2_angry_e1_934634501.webp"
           ],
-          "pick": "p2_angry_e1_2056990388.webp"
+          "pick": "p2_angry_e1_934634501.webp",
+          "v2": true
         },
         "angry.e2": {
           "cands": [
             "p2_angry_e2_65668023.webp",
-            "p2_angry_e2_79672395.webp"
+            "p2_angry_e2_79672395.webp",
+            "p2_angry_e2_1256079737.webp",
+            "p2_angry_e2_764445409.webp",
+            "p2_angry_e2_1987324543.webp"
           ],
-          "pick": "p2_angry_e2_65668023.webp"
+          "pick": "p2_angry_e2_1987324543.webp",
+          "v2": true
         },
         "angry.m1": {
           "cands": [
             "p2_angry_m1_945664382.webp",
-            "p2_angry_m1_1102870010.webp"
+            "p2_angry_m1_1102870010.webp",
+            "p2_angry_m1_865004841.webp",
+            "p2_angry_m1_381950485.webp"
           ],
-          "pick": "p2_angry_m1_945664382.webp"
+          "pick": "p2_angry_m1_381950485.webp",
+          "v2": true
         },
         "angry.m2": {
           "cands": [
             "p2_angry_m2_1598940237.webp",
-            "p2_angry_m2_1707402998.webp"
+            "p2_angry_m2_1707402998.webp",
+            "p2_angry_m2_1275979103.webp",
+            "p2_angry_m2_1030960908.webp"
           ],
-          "pick": "p2_angry_m2_1598940237.webp"
+          "pick": "p2_angry_m2_1030960908.webp",
+          "v2": true
         },
         "angry.m3": {
           "cands": [
             "p2_angry_m3_2096307852.webp",
-            "p2_angry_m3_1737019901.webp"
+            "p2_angry_m3_1737019901.webp",
+            "p2_angry_m3_1398742105.webp",
+            "p2_angry_m3_71621727.webp"
           ],
-          "pick": "p2_angry_m3_2096307852.webp"
+          "pick": "p2_angry_m3_71621727.webp",
+          "v2": true
         },
         "surprised.e1": {
           "cands": [
             "p2_surprised_e1_1808099809.webp",
-            "p2_surprised_e1_470758688.webp"
+            "p2_surprised_e1_470758688.webp",
+            "p2_surprised_e1_1111671482.webp",
+            "p2_surprised_e1_1389455575.webp",
+            "p2_surprised_e1_1342710051.webp"
           ],
-          "pick": "p2_surprised_e1_1808099809.webp"
+          "pick": "p2_surprised_e1_1342710051.webp",
+          "v2": true
         },
         "surprised.e2": {
           "cands": [
             "p2_surprised_e2_1460382017.webp",
-            "p2_surprised_e2_1177703450.webp"
+            "p2_surprised_e2_1177703450.webp",
+            "p2_surprised_e2_1180429998.webp",
+            "p2_surprised_e2_1016020180.webp",
+            "p2_surprised_e2_1390668777.webp",
+            "p2_surprised_e2_188037160.webp",
+            "p2_surprised_e2_718459493.webp",
+            "p2_surprised_e2_630786998.webp",
+            "p2_surprised_e2_1003496117.webp",
+            "p2_surprised_e2_511368865.webp",
+            "p2_surprised_e2_1320269007.webp",
+            "p2_surprised_e2_1838850028.webp"
           ],
-          "pick": "p2_surprised_e2_1460382017.webp"
+          "pick": "p2_surprised_e2_1838850028.webp",
+          "v2": true,
+          "skip": true
         },
         "surprised.m1": {
           "cands": [
             "p2_surprised_m1_797665661.webp",
-            "p2_surprised_m1_134224323.webp"
+            "p2_surprised_m1_134224323.webp",
+            "p2_surprised_m1_919903589.webp",
+            "p2_surprised_m1_1104760927.webp",
+            "p2_surprised_m1_171696145.webp",
+            "p2_surprised_m1_1642158150.webp",
+            "p2_surprised_m1_388039055.webp",
+            "p2_surprised_m1_688160000.webp"
           ],
-          "pick": "p2_surprised_m1_797665661.webp"
+          "pick": "p2_surprised_m1_1642158150.webp",
+          "v2": true
         },
         "surprised.m2": {
           "cands": [
             "p2_surprised_m2_1607176944.webp",
-            "p2_surprised_m2_1595810577.webp"
+            "p2_surprised_m2_1595810577.webp",
+            "p2_surprised_m2_419935187.webp",
+            "p2_surprised_m2_1398350940.webp"
           ],
-          "pick": "p2_surprised_m2_1607176944.webp"
+          "pick": "p2_surprised_m2_1398350940.webp",
+          "v2": true
         },
         "surprised.m3": {
           "cands": [
             "p2_surprised_m3_1439629482.webp",
-            "p2_surprised_m3_1604879786.webp"
+            "p2_surprised_m3_1604879786.webp",
+            "p2_surprised_m3_195252808.webp",
+            "p2_surprised_m3_201312562.webp"
           ],
-          "pick": "p2_surprised_m3_1439629482.webp"
+          "pick": "p2_surprised_m3_201312562.webp",
+          "v2": true
         },
         "sad.e1": {
           "cands": [
             "p2_sad_e1_1920658416.webp",
-            "p2_sad_e1_1948665523.webp"
+            "p2_sad_e1_1948665523.webp",
+            "p2_sad_e1_536757018.webp",
+            "p2_sad_e1_1062581711.webp",
+            "p2_sad_e1_1081886257.webp",
+            "p2_sad_e1_1905574198.webp",
+            "p2_sad_e1_600104508.webp",
+            "p2_sad_e1_156321547.webp",
+            "p2_sad_e1_106321667.webp"
           ],
-          "pick": "p2_sad_e1_1920658416.webp"
+          "pick": "p2_sad_e1_106321667.webp",
+          "v2": true
         },
         "sad.e2": {
           "cands": [
             "p2_sad_e2_546213709.webp",
-            "p2_sad_e2_576824813.webp"
+            "p2_sad_e2_576824813.webp",
+            "p2_sad_e2_480767249.webp",
+            "p2_sad_e2_244562292.webp",
+            "p2_sad_e2_1216652549.webp"
           ],
-          "pick": "p2_sad_e2_546213709.webp"
+          "pick": "p2_sad_e2_1216652549.webp",
+          "v2": true
         },
         "sad.m1": {
           "cands": [
             "p2_sad_m1_1838215134.webp",
-            "p2_sad_m1_1788839498.webp"
+            "p2_sad_m1_1788839498.webp",
+            "p2_sad_m1_1213130646.webp",
+            "p2_sad_m1_2112118424.webp"
           ],
-          "pick": "p2_sad_m1_1838215134.webp"
+          "pick": "p2_sad_m1_2112118424.webp",
+          "v2": true
         },
         "sad.m2": {
           "cands": [
             "p2_sad_m2_218027799.webp",
-            "p2_sad_m2_874141092.webp"
+            "p2_sad_m2_874141092.webp",
+            "p2_sad_m2_1477450265.webp",
+            "p2_sad_m2_586789539.webp"
           ],
-          "pick": "p2_sad_m2_218027799.webp"
+          "pick": "p2_sad_m2_586789539.webp",
+          "v2": true
         },
         "sad.m3": {
           "cands": [
             "p2_sad_m3_1699974587.webp",
-            "p2_sad_m3_1136676133.webp"
+            "p2_sad_m3_1136676133.webp",
+            "p2_sad_m3_1506453907.webp",
+            "p2_sad_m3_523328640.webp",
+            "p2_sad_m3_2123555564.webp",
+            "p2_sad_m3_1236345267.webp",
+            "p2_sad_m3_1937909902.webp",
+            "p2_sad_m3_1692583817.webp"
           ],
-          "pick": "p2_sad_m3_1699974587.webp"
+          "pick": "p2_sad_m3_1937909902.webp",
+          "v2": true
         },
         "think.e1": {
           "cands": [
             "p2_think_e1_66037066.webp",
-            "p2_think_e1_858778086.webp"
+            "p2_think_e1_858778086.webp",
+            "p2_think_e1_1891310818.webp",
+            "p2_think_e1_1627265210.webp",
+            "p2_think_e1_224091254.webp"
           ],
-          "pick": "p2_think_e1_66037066.webp"
+          "pick": "p2_think_e1_224091254.webp",
+          "v2": true
         },
         "think.e2": {
           "cands": [
             "p2_think_e2_1144942313.webp",
-            "p2_think_e2_62782761.webp"
+            "p2_think_e2_62782761.webp",
+            "p2_think_e2_1949443258.webp",
+            "p2_think_e2_58908408.webp",
+            "p2_think_e2_799323832.webp"
           ],
-          "pick": "p2_think_e2_1144942313.webp"
+          "pick": "p2_think_e2_799323832.webp",
+          "v2": true
         },
         "think.m1": {
           "cands": [
             "p2_think_m1_2123219878.webp",
-            "p2_think_m1_375415254.webp"
+            "p2_think_m1_375415254.webp",
+            "p2_think_m1_186651679.webp",
+            "p2_think_m1_1554071167.webp"
           ],
-          "pick": "p2_think_m1_2123219878.webp"
+          "pick": "p2_think_m1_1554071167.webp",
+          "v2": true
         },
         "think.m2": {
           "cands": [
             "p2_think_m2_1053601196.webp",
-            "p2_think_m2_1017069352.webp"
+            "p2_think_m2_1017069352.webp",
+            "p2_think_m2_1379429722.webp",
+            "p2_think_m2_1521542155.webp"
           ],
-          "pick": "p2_think_m2_1053601196.webp"
+          "pick": "p2_think_m2_1521542155.webp",
+          "v2": true
         },
         "think.m3": {
           "cands": [
             "p2_think_m3_714244177.webp",
-            "p2_think_m3_1723837921.webp"
+            "p2_think_m3_1723837921.webp",
+            "p2_think_m3_1665483636.webp",
+            "p2_think_m3_1827388885.webp"
           ],
-          "pick": "p2_think_m3_714244177.webp"
+          "pick": "p2_think_m3_1827388885.webp",
+          "v2": true
         },
         "smug.e1": {
           "cands": [
             "p2_smug_e1_125975447.webp",
-            "p2_smug_e1_1406087781.webp"
+            "p2_smug_e1_1406087781.webp",
+            "p2_smug_e1_944793618.webp",
+            "p2_smug_e1_1290821877.webp",
+            "p2_smug_e1_2045481654.webp"
           ],
-          "pick": "p2_smug_e1_125975447.webp"
+          "pick": "p2_smug_e1_2045481654.webp",
+          "v2": true
         },
         "smug.e2": {
           "cands": [
             "p2_smug_e2_1533808926.webp",
-            "p2_smug_e2_871492726.webp"
+            "p2_smug_e2_871492726.webp",
+            "p2_smug_e2_2080848718.webp",
+            "p2_smug_e2_778602524.webp",
+            "p2_smug_e2_1676478571.webp"
           ],
-          "pick": "p2_smug_e2_1533808926.webp"
+          "pick": "p2_smug_e2_1676478571.webp",
+          "v2": true
         },
         "smug.m1": {
           "cands": [
             "p2_smug_m1_788727695.webp",
-            "p2_smug_m1_856793695.webp"
+            "p2_smug_m1_856793695.webp",
+            "p2_smug_m1_1199017734.webp",
+            "p2_smug_m1_1668424707.webp"
           ],
-          "pick": "p2_smug_m1_788727695.webp"
+          "pick": "p2_smug_m1_1668424707.webp",
+          "v2": true
         },
         "smug.m2": {
           "cands": [
             "p2_smug_m2_1184793525.webp",
-            "p2_smug_m2_343403459.webp"
+            "p2_smug_m2_343403459.webp",
+            "p2_smug_m2_1729790904.webp",
+            "p2_smug_m2_1520669743.webp"
           ],
-          "pick": "p2_smug_m2_1184793525.webp"
+          "pick": "p2_smug_m2_1520669743.webp",
+          "v2": true
         },
         "smug.m3": {
           "cands": [
             "p2_smug_m3_1214170421.webp",
-            "p2_smug_m3_281022617.webp"
+            "p2_smug_m3_281022617.webp",
+            "p2_smug_m3_1937357990.webp",
+            "p2_smug_m3_1296484841.webp"
           ],
-          "pick": "p2_smug_m3_1214170421.webp"
+          "pick": "p2_smug_m3_1296484841.webp",
+          "v2": true
         },
         "guard.e1": {
           "cands": [
             "p2_guard_e1_1899017811.webp",
-            "p2_guard_e1_738858139.webp"
+            "p2_guard_e1_738858139.webp",
+            "p2_guard_e1_126313511.webp",
+            "p2_guard_e1_561634669.webp",
+            "p2_guard_e1_206080300.webp"
           ],
-          "pick": "p2_guard_e1_1899017811.webp"
+          "pick": "p2_guard_e1_206080300.webp",
+          "v2": true
         },
         "guard.e2": {
           "cands": [
             "p2_guard_e2_1723708535.webp",
-            "p2_guard_e2_1176109593.webp"
+            "p2_guard_e2_1176109593.webp",
+            "p2_guard_e2_919658628.webp",
+            "p2_guard_e2_816378809.webp",
+            "p2_guard_e2_793402241.webp"
           ],
-          "pick": "p2_guard_e2_1723708535.webp"
+          "pick": "p2_guard_e2_793402241.webp",
+          "v2": true
         },
         "guard.m1": {
           "cands": [
             "p2_guard_m1_1480069873.webp",
-            "p2_guard_m1_524858626.webp"
+            "p2_guard_m1_524858626.webp",
+            "p2_guard_m1_832082433.webp",
+            "p2_guard_m1_399642124.webp",
+            "p2_guard_m1_138179158.webp"
           ],
-          "pick": "p2_guard_m1_1480069873.webp"
+          "pick": "p2_guard_m1_138179158.webp",
+          "v2": true
         },
         "guard.m2": {
           "cands": [
             "p2_guard_m2_643932098.webp",
-            "p2_guard_m2_1686111163.webp"
+            "p2_guard_m2_1686111163.webp",
+            "p2_guard_m2_1034183797.webp",
+            "p2_guard_m2_2131629488.webp"
           ],
-          "pick": "p2_guard_m2_643932098.webp"
+          "pick": "p2_guard_m2_2131629488.webp",
+          "v2": true
         },
         "guard.m3": {
           "cands": [
             "p2_guard_m3_1421236012.webp",
-            "p2_guard_m3_1569259483.webp"
+            "p2_guard_m3_1569259483.webp",
+            "p2_guard_m3_2100518626.webp",
+            "p2_guard_m3_851635636.webp"
           ],
-          "pick": "p2_guard_m3_1421236012.webp"
+          "pick": "p2_guard_m3_851635636.webp",
+          "v2": true
         },
         "distant.e1": {
           "cands": [
             "p2_distant_e1_150566147.webp",
-            "p2_distant_e1_1755389051.webp"
+            "p2_distant_e1_1755389051.webp",
+            "p2_distant_e1_1080809985.webp",
+            "p2_distant_e1_1121960222.webp",
+            "p2_distant_e1_1350194158.webp"
           ],
-          "pick": "p2_distant_e1_150566147.webp"
+          "pick": "p2_distant_e1_1350194158.webp",
+          "v2": true
         },
         "distant.e2": {
           "cands": [
             "p2_distant_e2_2002283566.webp",
-            "p2_distant_e2_581744250.webp"
+            "p2_distant_e2_581744250.webp",
+            "p2_distant_e2_1717876918.webp",
+            "p2_distant_e2_2075900951.webp",
+            "p2_distant_e2_909630684.webp"
           ],
-          "pick": "p2_distant_e2_2002283566.webp"
+          "pick": "p2_distant_e2_909630684.webp",
+          "v2": true
         },
         "distant.m1": {
           "cands": [
             "p2_distant_m1_2035708761.webp",
-            "p2_distant_m1_256605353.webp"
+            "p2_distant_m1_256605353.webp",
+            "p2_distant_m1_1478766332.webp",
+            "p2_distant_m1_901974041.webp"
           ],
-          "pick": "p2_distant_m1_2035708761.webp"
+          "pick": "p2_distant_m1_901974041.webp",
+          "v2": true
         },
         "distant.m2": {
           "cands": [
             "p2_distant_m2_614822821.webp",
-            "p2_distant_m2_915118906.webp"
+            "p2_distant_m2_915118906.webp",
+            "p2_distant_m2_1036152327.webp",
+            "p2_distant_m2_954375405.webp"
           ],
-          "pick": "p2_distant_m2_614822821.webp"
+          "pick": "p2_distant_m2_954375405.webp",
+          "v2": true
         },
         "distant.m3": {
           "cands": [
             "p2_distant_m3_108197160.webp",
-            "p2_distant_m3_232400506.webp"
+            "p2_distant_m3_232400506.webp",
+            "p2_distant_m3_1913538095.webp",
+            "p2_distant_m3_279321915.webp"
           ],
-          "pick": "p2_distant_m3_108197160.webp"
+          "pick": "p2_distant_m3_279321915.webp",
+          "v2": true
         }
-      }
+      },
+      "fv": 2
     }
   ],
-  "t": 1794554209109,
+  "t": 1794889929090,
   "pub": {
-    "t": 1794554185960,
+    "t": 1794889915705,
     "poses": [
       {
         "id": "p1",
@@ -967,18 +1474,31 @@
             215
           ],
           "eyes": [
+            342,
+            247,
+            204,
+            85
+          ],
+          "mouth": [
+            391,
+            336,
+            119,
+            57
+          ],
+          "eyes0": [
             350,
             255,
             180,
             65
           ],
-          "mouth": [
+          "mouth0": [
             415,
             335,
             70,
             36
           ]
         },
+        "src": "p1_cand_1375526133.webp",
         "ex": {
           "neutral": {
             "e1": "p1_neutral_e1.webp",
@@ -991,14 +1511,24 @@
             "f": "p1_smile_f.webp",
             "e1": "p1_smile_e1.webp",
             "e2": "p1_smile_e2.webp",
+            "mb": [
+              362,
+              322,
+              176,
+              91
+            ],
             "m1": "p1_smile_m1.webp",
             "m2": "p1_smile_m2.webp",
             "m3": "p1_smile_m3.webp"
           },
           "laugh": {
             "f": "p1_laugh_f.webp",
-            "e1": "p1_laugh_e1.webp",
-            "e2": "p1_laugh_e2.webp",
+            "mb": [
+              362,
+              322,
+              176,
+              93
+            ],
             "m1": "p1_laugh_m1.webp",
             "m2": "p1_laugh_m2.webp",
             "m3": "p1_laugh_m3.webp"
@@ -1007,6 +1537,12 @@
             "f": "p1_angry_f.webp",
             "e1": "p1_angry_e1.webp",
             "e2": "p1_angry_e2.webp",
+            "mb": [
+              362,
+              322,
+              176,
+              91
+            ],
             "m1": "p1_angry_m1.webp",
             "m2": "p1_angry_m2.webp",
             "m3": "p1_angry_m3.webp"
@@ -1015,6 +1551,12 @@
             "f": "p1_surprised_f.webp",
             "e1": "p1_surprised_e1.webp",
             "e2": "p1_surprised_e2.webp",
+            "mb": [
+              362,
+              322,
+              176,
+              93
+            ],
             "m1": "p1_surprised_m1.webp",
             "m2": "p1_surprised_m2.webp",
             "m3": "p1_surprised_m3.webp"
@@ -1023,6 +1565,12 @@
             "f": "p1_sad_f.webp",
             "e1": "p1_sad_e1.webp",
             "e2": "p1_sad_e2.webp",
+            "mb": [
+              336,
+              322,
+              174,
+              91
+            ],
             "m1": "p1_sad_m1.webp",
             "m2": "p1_sad_m2.webp",
             "m3": "p1_sad_m3.webp"
@@ -1031,6 +1579,12 @@
             "f": "p1_think_f.webp",
             "e1": "p1_think_e1.webp",
             "e2": "p1_think_e2.webp",
+            "mb": [
+              362,
+              322,
+              176,
+              91
+            ],
             "m1": "p1_think_m1.webp",
             "m2": "p1_think_m2.webp",
             "m3": "p1_think_m3.webp"
@@ -1039,6 +1593,12 @@
             "f": "p1_smug_f.webp",
             "e1": "p1_smug_e1.webp",
             "e2": "p1_smug_e2.webp",
+            "mb": [
+              362,
+              322,
+              176,
+              91
+            ],
             "m1": "p1_smug_m1.webp",
             "m2": "p1_smug_m2.webp",
             "m3": "p1_smug_m3.webp"
@@ -1047,6 +1607,12 @@
             "f": "p1_guard_f.webp",
             "e1": "p1_guard_e1.webp",
             "e2": "p1_guard_e2.webp",
+            "mb": [
+              362,
+              322,
+              176,
+              93
+            ],
             "m1": "p1_guard_m1.webp",
             "m2": "p1_guard_m2.webp",
             "m3": "p1_guard_m3.webp"
@@ -1055,6 +1621,12 @@
             "f": "p1_distant_f.webp",
             "e1": "p1_distant_e1.webp",
             "e2": "p1_distant_e2.webp",
+            "mb": [
+              362,
+              322,
+              176,
+              91
+            ],
             "m1": "p1_distant_m1.webp",
             "m2": "p1_distant_m2.webp",
             "m3": "p1_distant_m3.webp"
@@ -1075,23 +1647,35 @@
             225
           ],
           "eyes": [
+            351,
+            232,
+            202,
+            81
+          ],
+          "mouth": [
+            393,
+            317,
+            109,
+            52
+          ],
+          "eyes0": [
             360,
             240,
             175,
             60
           ],
-          "mouth": [
+          "mouth0": [
             415,
             315,
             64,
             34
           ]
         },
+        "src": "p2_master_edit22.webp",
         "ex": {
           "neutral": {
             "e1": "p2_neutral_e1.webp",
             "e2": "p2_neutral_e2.webp",
-            "m1": "p2_neutral_m1.webp",
             "m2": "p2_neutral_m2.webp",
             "m3": "p2_neutral_m3.webp"
           },
@@ -1099,14 +1683,24 @@
             "f": "p2_smile_f.webp",
             "e1": "p2_smile_e1.webp",
             "e2": "p2_smile_e2.webp",
+            "mb": [
+              366,
+              302,
+              152,
+              104
+            ],
             "m1": "p2_smile_m1.webp",
             "m2": "p2_smile_m2.webp",
             "m3": "p2_smile_m3.webp"
           },
           "laugh": {
             "f": "p2_laugh_f.webp",
-            "e1": "p2_laugh_e1.webp",
-            "e2": "p2_laugh_e2.webp",
+            "mb": [
+              363,
+              302,
+              168,
+              104
+            ],
             "m1": "p2_laugh_m1.webp",
             "m2": "p2_laugh_m2.webp",
             "m3": "p2_laugh_m3.webp"
@@ -1115,6 +1709,12 @@
             "f": "p2_angry_f.webp",
             "e1": "p2_angry_e1.webp",
             "e2": "p2_angry_e2.webp",
+            "mb": [
+              364,
+              302,
+              135,
+              104
+            ],
             "m1": "p2_angry_m1.webp",
             "m2": "p2_angry_m2.webp",
             "m3": "p2_angry_m3.webp"
@@ -1122,7 +1722,12 @@
           "surprised": {
             "f": "p2_surprised_f.webp",
             "e1": "p2_surprised_e1.webp",
-            "e2": "p2_surprised_e2.webp",
+            "mb": [
+              364,
+              302,
+              135,
+              101
+            ],
             "m1": "p2_surprised_m1.webp",
             "m2": "p2_surprised_m2.webp",
             "m3": "p2_surprised_m3.webp"
@@ -1131,6 +1736,12 @@
             "f": "p2_sad_f.webp",
             "e1": "p2_sad_e1.webp",
             "e2": "p2_sad_e2.webp",
+            "mb": [
+              364,
+              302,
+              128,
+              66
+            ],
             "m1": "p2_sad_m1.webp",
             "m2": "p2_sad_m2.webp",
             "m3": "p2_sad_m3.webp"
@@ -1139,6 +1750,12 @@
             "f": "p2_think_f.webp",
             "e1": "p2_think_e1.webp",
             "e2": "p2_think_e2.webp",
+            "mb": [
+              364,
+              302,
+              134,
+              74
+            ],
             "m1": "p2_think_m1.webp",
             "m2": "p2_think_m2.webp",
             "m3": "p2_think_m3.webp"
@@ -1147,6 +1764,12 @@
             "f": "p2_smug_f.webp",
             "e1": "p2_smug_e1.webp",
             "e2": "p2_smug_e2.webp",
+            "mb": [
+              364,
+              302,
+              147,
+              88
+            ],
             "m1": "p2_smug_m1.webp",
             "m2": "p2_smug_m2.webp",
             "m3": "p2_smug_m3.webp"
@@ -1155,6 +1778,12 @@
             "f": "p2_guard_f.webp",
             "e1": "p2_guard_e1.webp",
             "e2": "p2_guard_e2.webp",
+            "mb": [
+              364,
+              302,
+              130,
+              104
+            ],
             "m1": "p2_guard_m1.webp",
             "m2": "p2_guard_m2.webp",
             "m3": "p2_guard_m3.webp"
@@ -1163,6 +1792,12 @@
             "f": "p2_distant_f.webp",
             "e1": "p2_distant_e1.webp",
             "e2": "p2_distant_e2.webp",
+            "mb": [
+              364,
+              302,
+              126,
+              66
+            ],
             "m1": "p2_distant_m1.webp",
             "m2": "p2_distant_m2.webp",
             "m3": "p2_distant_m3.webp"
