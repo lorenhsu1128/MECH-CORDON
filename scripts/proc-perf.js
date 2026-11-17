@@ -1,9 +1,9 @@
 // GLB 與程式模型的效能比較（實驗，2026-11-17）：同一張地圖放 N 台同樣組合的機甲（玩家初始機：GRANITE 全套），
-// 三種模型各開一次遊戲量：glb＝內建預設機甲的 GLB、rebuilt＝照 GLB 重建的程式模型（window.__procTemp）、
-// hand＝原本手寫的程式模型（核心 c_std 已經換成重建的）。
+// 兩種模型各開一次遊戲量：glb＝內建預設機甲的 GLB、proc＝預設的程式模型（GRANITE 的頭、核心、手臂、腳都是照 GLB 重建的，
+// 2026-11-17 起取代原本手寫的；當初三種的比較結果：每格 GLB 7.5 ms／重建 5.5 ms／手寫 6.3 ms）。
 // 量：建立 N 台的時間、每格的時間（直接逐格呼叫主迴圈並 gl.finish，含顯示卡的工作，不受垂直同步限制）、
 //     每格的繪製次數與三角形、幾何與貼圖的數量、機甲用到的貼圖的顯示卡記憶體估計、JS heap。
-//   node scripts/proc-perf.js [--n=24] [--frames=400] [--size=1600x900] [--only=glb,rebuilt]
+//   node scripts/proc-perf.js [--n=24] [--frames=400] [--size=1600x900] [--only=glb,proc]
 // 需要先 npm run build。量測時電腦不要做其他重的事
 /* global window */
 const path = require('path');
@@ -21,7 +21,7 @@ const [VW, VH] = String(A.size || '1600x900')
   .split('x')
   .map(Number);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const NAMES = { glb: 'GLB（內建預設機甲）', rebuilt: '重建的程式模型', hand: '原本手寫的程式模型' };
+const NAMES = { glb: 'GLB（內建預設機甲）', proc: '預設的程式模型（照 GLB 重建）' };
 
 async function measure(browser, variant) {
   const ctx = await browser.newContext({ viewport: { width: VW, height: VH } });
@@ -29,10 +29,9 @@ async function measure(browser, variant) {
   const errs = [];
   page.on('pageerror', (e) => errs.push(e.message));
   await page.addInitScript(initScript);
-  await page.addInitScript((v) => {
-    window.__procTemp = v === 'rebuilt';
+  await page.addInitScript(() => {
     window.localStorage.setItem('mech_cordon_map', 'industrial');
-  }, variant);
+  });
   await page.goto(require('url').pathToFileURL(path.join(ROOT, 'dist/mech-cordon.html')).href + '?test');
   await page.waitForFunction(() => window.__game && window.__game.state === 'title', null, {
     timeout: 60000,
@@ -178,7 +177,7 @@ async function measure(browser, variant) {
 
 (async () => {
   const browser = await launch();
-  const only = A.only ? String(A.only).split(',') : ['glb', 'rebuilt', 'hand'];
+  const only = A.only ? String(A.only).split(',') : ['glb', 'proc'];
   const rows = {};
   try {
     // 每種量幾輪（--rounds，預設 4）取每格時間最低的那一輪（第一輪有著色器與快取的影響）
