@@ -2563,7 +2563,8 @@ function tankRoll(m, dt, grounded, preview) {
   let d = preview !== null ? preview * 8 * dt : 0;
   if (preview === null && grounded && dx * dx + dz * dz < 36 * L * L)
     d = (dx * -e[8] + dz * -e[10]) / (L * L);
-  if (!grounded || Math.abs(dy) > 1) dy = 0;
+  // 一格轉超過 0.3 弧度（每秒十幾圈）＝出生、傳送，不算轉彎
+  if (!grounded || Math.abs(dy) > 0.3) dy = 0;
   if (!d && !dy) return;
   // 左側（glTF 的 +x）在往左轉（yaw 增加）時往後
   T.parts.tracks.forEach((t, i) => (T.dist[i] += d - dy * t.x));
