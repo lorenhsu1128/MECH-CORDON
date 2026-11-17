@@ -17,7 +17,9 @@ import { buildCineVeh } from './cine-vehicles.js';
 import { FOE_CATALOG } from './foe-models.js';
 import { PARTS, START_ASM } from '../data/parts.js';
 import { PALETTES, mechMats } from './materials.js';
-import { PIECE_NAMES, SIDE_NAMES, buildMech, buildPiece, partPieces } from './mech-model.js';
+import { PROC_TEMP } from './proc/index.js';
+import { PIECE_NAMES, SIDE_NAMES, buildMech, buildPiece, partPieces, procPrimPiece } from './mech-model.js';
+import PLAYER_MECH from 'virtual:player-mech';
 import { THEMES } from '../world/world.js';
 import { LANDMARKS } from '../world/landmarks.js';
 import { VARIANT_CATALOG } from '../world/variants.js';
@@ -108,6 +110,7 @@ export const CATEGORIES = [
   { id: 'prop', name: '地圖物件' },
   { id: 'device', name: '地圖裝置' },
   { id: 'small', name: '小物件' },
+  { id: 'temp', name: '暫時（GLB 重建的程式模型）' },
 ];
 
 const v3 = (s) => (s && s.isVector3 ? s.clone() : new THREE.Vector3(s, s, s));
@@ -155,6 +158,57 @@ for (const [cat, list] of PART_LISTS)
           return { obj: wrap, scaleNode: wrap, scale: v3(1), rig: null, piece: info };
         },
       });
+
+// ---------- 暫時：照 GLB 量測重建的程式模型（scripts/glb-to-proc.mjs；給使用者檢查，還沒有換成預設）----------
+// 手持武器與肩上武器（右側照 GLB 重建、左側是右側的鏡像），以及裝著它們的整台機甲（關節設定用內建預設機甲的）
+for (const [cat, list] of PART_LISTS)
+  for (const p of list)
+    for (const info of partPieces(cat, p)) {
+      const prims = PROC_TEMP[info.slot];
+      if (!prims) continue;
+      add({
+        id: 'temp/' + info.slot.replace(/\//g, '_'),
+        cat: 'temp',
+        name: pieceName(p, info) + '（重建）',
+        note: '暫時：照內建 GLB（' + info.slot + '）量測重建的程式模型',
+        spec: 'weapon',
+        noGlb: true,
+        build: (k) => {
+          const wrap = new THREE.Group();
+          wrap.add(procPrimPiece(prims, mechMats(pal(k)), info.slot));
+          return { obj: wrap, scaleNode: wrap, scale: v3(1), rig: null };
+        },
+      });
+    }
+for (const [i, [ra, la, rb, lb]] of [
+  ['w_rifle', 'w_hg', 'bw_ms', 'bw_ms8'],
+  ['w_mg', 'w_bz', 'bw_pm', 'bw_gr'],
+  ['w_gl', 'w_sg', 'bw_emp_s', 'bw_emp_l'],
+  ['w_emp', 'w_lr', 'bw_lc', 'bw_sh'],
+  ['w_blade', 'w_saber', 'bw_gat', 'bw_gat'],
+  ['w_pile', 'w_claw', 'bw_ms8', 'bw_pm'],
+  ['w_lsg', 'w_lc', 'bw_gr', 'bw_lc'],
+  ['w_mg', 'w_mg', 'bw_ms', 'bw_ms'],
+].entries()) {
+  const asm = { ...START_ASM, rarm: ra, larm: la, rback: rb, lback: lb };
+  add({
+    id: 'temp/weapons_' + (i + 1),
+    cat: 'temp',
+    name: `武器 ${i + 1}：右手 ${ra}／左手 ${la}／右肩 ${rb}／左肩 ${lb}`,
+    note: '暫時：玩家初始機換上這些武器（重建的程式模型；左側是右側的鏡像）',
+    spec: 'mech',
+    noGlb: true,
+    asm,
+    build: (k) => {
+      const M = mechMats(pal(k));
+      const rig = buildMech(asm, pal(k), 1, {
+        source: { model: () => null, joints: PLAYER_MECH.joints || {} },
+        piece: (info) => (PROC_TEMP[info.slot] ? procPrimPiece(PROC_TEMP[info.slot], M, info.slot) : null),
+      });
+      return wholeRig(rig, 1);
+    },
+  });
+}
 
 // ---------- 完整機甲 ----------
 const addMech = (key, name, asm, palKey, scale, note = '', boss = false) =>

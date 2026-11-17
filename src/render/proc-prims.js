@@ -126,7 +126,14 @@ export function fixMat(mats, hex) {
   let x = m.get(hex);
   if (!x) {
     x = mats.main.clone();
-    x.color.set(hex);
+    // 色碼後面的 !＝自發光（脈衝刀、光束大劍的刀刃）
+    const glow = hex.endsWith('!');
+    x.color.set(glow ? hex.slice(0, -1) : hex);
+    if (glow) {
+      x.emissive = x.color.clone();
+      x.emissiveIntensity = 1.6;
+      x.map = null;
+    }
     x.name = 'fix';
     m.set(hex, x);
   }

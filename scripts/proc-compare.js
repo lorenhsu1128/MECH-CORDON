@@ -19,6 +19,7 @@ const SIZE = +(A.size || 640);
 const MOD = A.mod || 'c_std',
   EXP = A.exp || 'cStdPrims',
   GLB = A.glb || 'src/assets/player-mech/core/c_std.glb';
+const SPIN = fs.existsSync(path.join(ROOT, `src/render/proc/${MOD}_spin.js`)); // 會轉的槍管另外一份（<槽位>_spin.js）
 const OUT = path.resolve(ROOT, A.out || `test-results/proc-compare/${MOD}`);
 const VIEWS = {
   front: [0, 0, 1],
@@ -265,8 +266,8 @@ async function setup(N) {
   const r = await es.build({
     stdin: {
       contents:
-        `import { primsGroup } from './src/render/proc-prims.js';import { tankPartsGroup } from './src/render/proc-tank.js';import * as MODX from './src/render/proc/${MOD}.js';const PR=MODX['${EXP}'],PT=MODX['${EXP.replace(/Prims$/, 'Parts')}'],PC=MODX['${EXP.replace(/Prims$/, 'Cols')}'];` +
-        `window.buildProc=()=>{const M={};for(const n of ['main','sub','joint','acc']){M[n]=new THREE.MeshStandardMaterial({flatShading:true});M[n].name=n}window.TEX=!!PC;const g=primsGroup(PR,M,false,PC);if(PT)g.add(tankPartsGroup(PT,M));return g};`,
+        `import { primsGroup } from './src/render/proc-prims.js';import { tankPartsGroup } from './src/render/proc-tank.js';import * as MODX from './src/render/proc/${MOD}.js';${SPIN ? `import * as MODS0 from './src/render/proc/${MOD}_spin.js';const MODS=MODS0;` : 'const MODS={};'}const PR=MODX['${EXP}'],PT=MODX['${EXP.replace(/Prims$/, 'Parts')}'],PC=MODX['${EXP.replace(/Prims$/, 'Cols')}'];` +
+        `window.buildProc=()=>{const M={};for(const n of ['main','sub','joint','acc']){M[n]=new THREE.MeshStandardMaterial({flatShading:true});M[n].name=n}window.TEX=!!PC;const g=primsGroup(PR,M,false,PC);const SP=MODS['${EXP.replace(/Prims$/, 'SpinPrims')}'];if(SP){const sg=primsGroup(SP,M,false,MODS['${EXP.replace(/Prims$/, 'SpinCols')}']);sg.position.fromArray(MODS['${EXP.replace(/Prims$/, 'SpinAt')}']);g.add(sg)}if(PT)g.add(tankPartsGroup(PT,M));return g};`,
       resolveDir: ROOT,
     },
     bundle: true,

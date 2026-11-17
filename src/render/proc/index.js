@@ -1,5 +1,7 @@
 // 照 GLB 量測重建的程式模型（scripts/glb-to-proc.mjs 產生；批次 scripts/proc-batch.js）：槽位 id → 基本形體清單。
 // PROC_PRIMS：槽位 → 清單（render/mech-model.js 的 makeProcPiece0 用它取代原本手寫的程式模型）。GRANITE 系列、SEQ 輕量機型、HAWK 重裝機型、逆足機型的頭、核心、手臂、腳，四足腳、核心 BD-AEGIS、三種背包推進器、戰車腳。
+// PROC_TEMP：還在給使用者檢查的（模型庫的暫時分類），還沒有換成預設：手持武器 14 把與肩上武器 9 種（右側照 GLB 重建、左側是右側的鏡像）。
+// PROC_SPIN：槽位 → 會轉的槍管（GLB 的 spin 節點：格林機槍、背部加特林）{ prims, cols, at }，procPrimPiece 掛成名稱 spin 的子群組。
 // PROC_COLS：槽位 → 固定色（顏色在貼圖上的 GLB：背包推進器）。PROC_PARTS：槽位 → 會動的零件（戰車腳的輪子與履帶片，render/proc-tank.js）。
 import { mirrorPrims } from '../proc-prims.js';
 import { cStdPrims } from './c_std.js';
@@ -51,6 +53,39 @@ import { p_booster_b_stdPrims, p_booster_b_stdCols } from './booster_b_std.js';
 import { p_booster_b_hiPrims, p_booster_b_hiCols } from './booster_b_hi.js';
 import { p_booster_b_effPrims, p_booster_b_effCols } from './booster_b_eff.js';
 import { p_legs_l_tk_bodyPrims, p_legs_l_tk_bodyParts } from './legs_l_tk_body.js';
+import { p_weapon_w_blade_rPrims, p_weapon_w_blade_rCols } from './weapon_w_blade_r.js';
+import { p_weapon_w_bz_rPrims, p_weapon_w_bz_rCols } from './weapon_w_bz_r.js';
+import { p_weapon_w_claw_rPrims, p_weapon_w_claw_rCols } from './weapon_w_claw_r.js';
+import { p_weapon_w_emp_rPrims, p_weapon_w_emp_rCols } from './weapon_w_emp_r.js';
+import { p_weapon_w_gl_rPrims, p_weapon_w_gl_rCols } from './weapon_w_gl_r.js';
+import { p_weapon_w_hg_rPrims, p_weapon_w_hg_rCols } from './weapon_w_hg_r.js';
+import { p_weapon_w_lc_rPrims, p_weapon_w_lc_rCols } from './weapon_w_lc_r.js';
+import { p_weapon_w_lr_rPrims, p_weapon_w_lr_rCols } from './weapon_w_lr_r.js';
+import { p_weapon_w_lsg_rPrims, p_weapon_w_lsg_rCols } from './weapon_w_lsg_r.js';
+import { p_weapon_w_mg_rPrims, p_weapon_w_mg_rCols } from './weapon_w_mg_r.js';
+import {
+  p_weapon_w_mg_rSpinPrims,
+  p_weapon_w_mg_rSpinCols,
+  p_weapon_w_mg_rSpinAt,
+} from './weapon_w_mg_r_spin.js';
+import { p_weapon_w_pile_rPrims, p_weapon_w_pile_rCols } from './weapon_w_pile_r.js';
+import { p_weapon_w_rifle_rPrims, p_weapon_w_rifle_rCols } from './weapon_w_rifle_r.js';
+import { p_weapon_w_saber_rPrims, p_weapon_w_saber_rCols } from './weapon_w_saber_r.js';
+import { p_weapon_w_sg_rPrims, p_weapon_w_sg_rCols } from './weapon_w_sg_r.js';
+import { p_back_bw_emp_l_rPrims, p_back_bw_emp_l_rCols } from './back_bw_emp_l_r.js';
+import { p_back_bw_emp_s_rPrims, p_back_bw_emp_s_rCols } from './back_bw_emp_s_r.js';
+import { p_back_bw_gat_rPrims, p_back_bw_gat_rCols } from './back_bw_gat_r.js';
+import {
+  p_back_bw_gat_rSpinPrims,
+  p_back_bw_gat_rSpinCols,
+  p_back_bw_gat_rSpinAt,
+} from './back_bw_gat_r_spin.js';
+import { p_back_bw_gr_rPrims, p_back_bw_gr_rCols } from './back_bw_gr_r.js';
+import { p_back_bw_lc_rPrims, p_back_bw_lc_rCols } from './back_bw_lc_r.js';
+import { p_back_bw_ms_rPrims, p_back_bw_ms_rCols } from './back_bw_ms_r.js';
+import { p_back_bw_ms8_rPrims, p_back_bw_ms8_rCols } from './back_bw_ms8_r.js';
+import { p_back_bw_pm_rPrims, p_back_bw_pm_rCols } from './back_bw_pm_r.js';
+import { p_back_bw_sh_rPrims, p_back_bw_sh_rCols } from './back_bw_sh_r.js';
 
 export const PROC_PRIMS = {
   'core/c_std': cStdPrims, // BD-100 GRANITE
@@ -127,3 +162,53 @@ for (const [d, s2] of [
 ])
   for (const k of ['thigh', 'shin', 'foot']) MIRRORS.push([`legs/l_qd/${d}_${k}`, `legs/l_qd/${s2}_${k}`]);
 for (const [d, s2] of MIRRORS) if (PROC_PRIMS[s2]) PROC_PRIMS[d] = mirrorPrims(PROC_PRIMS[s2]);
+// 武器（手持、肩上）：顏色在貼圖上（固定色）；右側照 GLB 重建，左側＝右側的鏡像（2026-11-17 使用者定案）
+const WEAPONS = {
+  'weapon/w_blade': [p_weapon_w_blade_rPrims, p_weapon_w_blade_rCols],
+  'weapon/w_bz': [p_weapon_w_bz_rPrims, p_weapon_w_bz_rCols],
+  'weapon/w_claw': [p_weapon_w_claw_rPrims, p_weapon_w_claw_rCols],
+  'weapon/w_emp': [p_weapon_w_emp_rPrims, p_weapon_w_emp_rCols],
+  'weapon/w_gl': [p_weapon_w_gl_rPrims, p_weapon_w_gl_rCols],
+  'weapon/w_hg': [p_weapon_w_hg_rPrims, p_weapon_w_hg_rCols],
+  'weapon/w_lc': [p_weapon_w_lc_rPrims, p_weapon_w_lc_rCols],
+  'weapon/w_lr': [p_weapon_w_lr_rPrims, p_weapon_w_lr_rCols],
+  'weapon/w_lsg': [p_weapon_w_lsg_rPrims, p_weapon_w_lsg_rCols],
+  'weapon/w_mg': [
+    p_weapon_w_mg_rPrims,
+    p_weapon_w_mg_rCols,
+    { prims: p_weapon_w_mg_rSpinPrims, cols: p_weapon_w_mg_rSpinCols, at: p_weapon_w_mg_rSpinAt },
+  ],
+  'weapon/w_pile': [p_weapon_w_pile_rPrims, p_weapon_w_pile_rCols],
+  'weapon/w_rifle': [p_weapon_w_rifle_rPrims, p_weapon_w_rifle_rCols],
+  'weapon/w_saber': [p_weapon_w_saber_rPrims, p_weapon_w_saber_rCols],
+  'weapon/w_sg': [p_weapon_w_sg_rPrims, p_weapon_w_sg_rCols],
+  'back/bw_emp_l': [p_back_bw_emp_l_rPrims, p_back_bw_emp_l_rCols],
+  'back/bw_emp_s': [p_back_bw_emp_s_rPrims, p_back_bw_emp_s_rCols],
+  'back/bw_gat': [
+    p_back_bw_gat_rPrims,
+    p_back_bw_gat_rCols,
+    { prims: p_back_bw_gat_rSpinPrims, cols: p_back_bw_gat_rSpinCols, at: p_back_bw_gat_rSpinAt },
+  ],
+  'back/bw_gr': [p_back_bw_gr_rPrims, p_back_bw_gr_rCols],
+  'back/bw_lc': [p_back_bw_lc_rPrims, p_back_bw_lc_rCols],
+  'back/bw_ms': [p_back_bw_ms_rPrims, p_back_bw_ms_rCols],
+  'back/bw_ms8': [p_back_bw_ms8_rPrims, p_back_bw_ms8_rCols],
+  'back/bw_pm': [p_back_bw_pm_rPrims, p_back_bw_pm_rCols],
+  'back/bw_sh': [p_back_bw_sh_rPrims, p_back_bw_sh_rCols],
+};
+export const PROC_TEMP = {};
+export const PROC_SPIN = {};
+for (const k in WEAPONS) {
+  const [pr, cols, spin] = WEAPONS[k];
+  PROC_TEMP[k + '/r'] = pr;
+  PROC_TEMP[k + '/l'] = mirrorPrims(pr);
+  PROC_COLS[k + '/r'] = PROC_COLS[k + '/l'] = cols;
+  if (spin) {
+    PROC_SPIN[k + '/r'] = spin;
+    PROC_SPIN[k + '/l'] = {
+      prims: mirrorPrims(spin.prims),
+      cols: spin.cols,
+      at: [-spin.at[0], spin.at[1], spin.at[2]],
+    };
+  }
+}

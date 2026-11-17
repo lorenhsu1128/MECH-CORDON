@@ -65,10 +65,14 @@ function acc(i) {
   return o;
 }
 // 節點的縮放（伺服器預設組的 GLB 把 3 倍放在節點上）
-const nodeScale = (J.nodes.find((n) => n.mesh !== undefined) || {}).scale || [1, 1, 1];
+// --node=<名稱>：只取那個節點的網格，座標是節點自己的（會轉的槍管 spin：另外輸出一份＋節點的位置 …At）；
+// 沒有指定＝所有有網格的節點（有位移的加上位移）
+const AT = ARG.node ? (J.nodes.find((n) => n.name === ARG.node) || {}).translation || [0, 0, 0] : null;
 const raw = [];
-for (const m of J.meshes)
-  for (const p of m.primitives) {
+for (const nd of J.nodes.filter((n) => n.mesh !== undefined && (!ARG.node || n.name === ARG.node))) {
+  const nodeScale = nd.scale || [1, 1, 1],
+    nodeT = ARG.node ? [0, 0, 0] : nd.translation || [0, 0, 0];
+  for (const p of J.meshes[nd.mesh].primitives) {
     const P = acc(p.attributes.POSITION),
       UV = ARG.tex && p.attributes.TEXCOORD_0 !== undefined ? acc(p.attributes.TEXCOORD_0) : null,
       I = p.indices !== undefined ? acc(p.indices) : null;
@@ -79,12 +83,13 @@ for (const m of J.meshes)
         uv = [];
       for (let q = 0; q < 3; q++) {
         const vi = I ? I[k + q] : k + q;
-        t.push([P[vi * 3] * nodeScale[0], P[vi * 3 + 1] * nodeScale[1], P[vi * 3 + 2] * nodeScale[2]]);
+        t.push([0, 1, 2].map((c) => P[vi * 3 + c] * nodeScale[c] + nodeT[c]));
         if (UV) uv.push([UV[vi * 2], UV[vi * 2 + 1]]);
       }
       raw.push({ p: t, slot, uv, mat: p.material });
     }
   }
+}
 // ---------- 貼圖的顏色（--tex[=色數]）：材質不是色槽、顏色畫在貼圖上的 GLB（背包推進器：保留原本的顏色、不換色）----------
 // 每個三角形在貼圖上取樣（重心＋往三個頂點）→ 面積加權的 k-means 分成幾個固定色 → 色槽編號 4 起（輸出 …Cols）
 let COLS = null;
@@ -182,7 +187,24 @@ if (ARG.tex) {
     }
   }
   raw.forEach((t, i) => (t.slot = 4 + lab[i]));
-  COLS = cen.map((c) => '#' + c.map((x) => Math.round(x).toString(16).padStart(2, '0')).join(''));
+  const hex = (c) => '#' + c.map((x) => Math.round(x).toString(16).padStart(2, '0')).join('');
+  COLS = cen.map(hex);
+  // 自發光的材質（脈衝刀、光束大劍的刀刃）：整個材質一個固定色，色碼後面加 !＝自發光（proc-prims.js 的 fixMat）
+  J.materials.forEach((m, mi) => {
+    if (!m.emissiveFactor || !m.emissiveFactor.some((x) => x > 0)) return;
+    const c = [0, 0, 0];
+    let w = 0;
+    raw.forEach((t, i) => {
+      if (t.mat !== mi) return;
+      for (let k = 0; k < 3; k++) c[k] += S[i].c[k] * S[i].w;
+      w += S[i].w;
+    });
+    if (!w) return;
+    COLS.push(hex(c.map((x) => x / w)) + '!');
+    raw.forEach((t) => {
+      if (t.mat === mi) t.slot = 4 + COLS.length - 1;
+    });
+  });
   console.log('貼圖的顏色：', COLS.join(' '));
 }
 const NS = 4 + (COLS ? COLS.length : 0); // 色槽的數量（4 個換色的色槽＋固定色）
@@ -907,6 +929,12 @@ ${
   COLS
     ? `// 固定色（貼圖上的顏色，不跟著配色換）：色槽 4 起
 export const ${NAME}Cols = ${JSON.stringify(COLS)};
+`
+    : ''
+}${
+  AT
+    ? `// 這個節點在 GLB 裡的位置（glTF 座標）
+export const ${NAME}At = ${JSON.stringify(AT.map(r3))};
 `
     : ''
 }${

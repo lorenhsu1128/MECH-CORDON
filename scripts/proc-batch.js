@@ -28,11 +28,23 @@ const LISTS = {
   ].map((x) => 'legs/l_qd/' + x), // 四足腳 LG-SPIDER
   aeg: ['core/c_aeg'], // 核心 BD-AEGIS
   bst: ['booster/b_std', 'booster/b_hi', 'booster/b_eff'], // 背包推進器（顏色在貼圖上：--tex）
+  // 武器：顏色在貼圖上（--tex=6）；都以右側為準，左側是鏡像（proc/index.js）
+  wp: ['blade', 'bz', 'claw', 'emp', 'gl', 'hg', 'lc', 'lr', 'lsg', 'mg', 'pile', 'rifle', 'saber', 'sg'].map(
+    (x) => `weapon/w_${x}/r`,
+  ),
+  bk: ['emp_l', 'emp_s', 'gat', 'gr', 'lc', 'ms', 'ms8', 'pm', 'sh'].map((x) => `back/bw_${x}/r`),
   tk: ['legs/l_tk/body'], // 戰車腳 LG-TANK（輪子與履帶片另外輸出成會動的零件：--tank）
 };
 // 產生器的額外參數
+const SPINS = ['weapon/w_mg/r', 'back/bw_gat/r']; // 有會轉的槍管（GLB 的 spin 節點）：本體與槍管各產生一份
 const genArgs = (slot) =>
-  slot.startsWith('booster/') ? ['--tex=4'] : slot === 'legs/l_tk/body' ? ['--tank'] : [];
+  slot.startsWith('booster/')
+    ? ['--tex=4']
+    : /^(weapon|back)\//.test(slot)
+      ? ['--tex=6', ...(SPINS.includes(slot) ? ['--node=gun'] : [])]
+      : slot === 'legs/l_tk/body'
+        ? ['--tank']
+        : [];
 const A = {};
 for (const a of process.argv.slice(2)) {
   const m = /^--([^=]+)(?:=(.*))?$/.exec(a);
@@ -60,6 +72,15 @@ for (const slot of only) {
   let tris = '';
   if (!A.nogen) {
     const g = run(['scripts/glb-to-proc.mjs', glb, `src/render/proc/${file}.js`, exp, ...genArgs(slot)]);
+    if (SPINS.includes(slot))
+      run([
+        'scripts/glb-to-proc.mjs',
+        glb,
+        `src/render/proc/${file}_spin.js`,
+        exp + 'Spin',
+        '--tex=3',
+        '--node=spin',
+      ]);
     const m = /原本 (\d+) 個.*方塊 (\d+)、柱體 (\d+)、凸塊 (\d+)、平面片 (\d+).*＝(\d+) 個三角形/.exec(g);
     if (m) {
       tris = `${m[1]}→${m[6]}（塊體 ${+m[2] + +m[3] + +m[4]}、原表面 ${m[5]} 片）`;

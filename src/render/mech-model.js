@@ -1,5 +1,5 @@
 // ---------------- WEAPONS（Q 版：粗大方塊化） ----------------
-import { PROC_COLS, PROC_PARTS, PROC_PRIMS } from './proc/index.js';
+import { PROC_COLS, PROC_PARTS, PROC_PRIMS, PROC_SPIN } from './proc/index.js';
 import { tankPartsGroup, tankPartsPose } from './proc-tank.js';
 import { primsGroup } from './proc-prims.js';
 import { clamp, lerp } from '../core/math.js';
@@ -2085,6 +2085,14 @@ export function procPrimPiece(prims, M, slot) {
   const o = new THREE.Mesh(og, OUTLINE_MAT);
   o.castShadow = false;
   pg.add(o);
+  if (PROC_SPIN[slot]) {
+    // 會轉的槍管：名稱 spin 的子群組（buildMech 找這個名稱，開火時繞自己的 Z 軸轉），位置＝GLB 的節點位置轉成遊戲的座標
+    const sp = PROC_SPIN[slot];
+    const sg = primsGroup(sp.prims, M, true, sp.cols);
+    sg.name = 'spin';
+    sg.position.set(-sp.at[0], sp.at[1], -sp.at[2]);
+    pg.add(sg);
+  }
   if (PROC_PARTS[slot]) {
     // 會動的零件是 glTF 座標：繞 Y 轉 180° 就是遊戲的座標（−Z 正面）
     const tg = tankPartsGroup(PROC_PARTS[slot], M);
