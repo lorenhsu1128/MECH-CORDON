@@ -44,6 +44,9 @@ const names = (slot) =>
     : { file: slot.replace(/\//g, '_'), exp: 'p_' + slot.replace(/\//g, '_') };
 const run = (args) => execFileSync(process.execPath, args, { cwd: ROOT, encoding: 'utf8' });
 
+// 左右鏡像的槽位（src/render/proc/index.js 的 MIRRORS）沒有自己的清單檔：左側的手臂與腳、四足的右側不產生也不比對
+const MIRRORED = (slot) =>
+  /^(arms\/[^/]+|legs\/l_(bp|bp2|hv|rj))\/l_/.test(slot) || /^legs\/l_qd\/(fr|br)_/.test(slot);
 const only = A.only
   ? String(A.only).split(',')
   : String(A.set || 'std')
@@ -51,6 +54,7 @@ const only = A.only
       .flatMap((k) => LISTS[k] || slotsOf(SETS[k]));
 let sum = [0, 0];
 for (const slot of only) {
+  if (MIRRORED(slot) && !A.only) continue;
   const { file, exp } = names(slot);
   const glb = `src/assets/player-mech/${slot}.glb`;
   let tris = '';

@@ -17,8 +17,7 @@ import { buildCineVeh } from './cine-vehicles.js';
 import { FOE_CATALOG } from './foe-models.js';
 import { PARTS, START_ASM } from '../data/parts.js';
 import { PALETTES, mechMats } from './materials.js';
-import { PROC_TEMP } from './proc/index.js';
-import { PIECE_NAMES, SIDE_NAMES, buildMech, buildPiece, partPieces, procPrimPiece } from './mech-model.js';
+import { PIECE_NAMES, SIDE_NAMES, buildMech, buildPiece, partPieces } from './mech-model.js';
 import { THEMES } from '../world/world.js';
 import { LANDMARKS } from '../world/landmarks.js';
 import { VARIANT_CATALOG } from '../world/variants.js';
@@ -109,7 +108,6 @@ export const CATEGORIES = [
   { id: 'prop', name: '地圖物件' },
   { id: 'device', name: '地圖裝置' },
   { id: 'small', name: '小物件' },
-  { id: 'temp', name: '暫時（GLB 重建的程式模型）' },
 ];
 
 const v3 = (s) => (s && s.isVector3 ? s.clone() : new THREE.Vector3(s, s, s));
@@ -157,51 +155,6 @@ for (const [cat, list] of PART_LISTS)
           return { obj: wrap, scaleNode: wrap, scale: v3(1), rig: null, piece: info };
         },
       });
-
-// ---------- 暫時：照 GLB 量測重建的程式模型（scripts/glb-to-proc.mjs；給使用者檢查，還沒有換成預設）----------
-// 左右鏡像：左側的手臂與腳改成右側的鏡像（四足＝右側是左側的鏡像），以及用它們組成的整台機甲
-for (const [cat, list] of PART_LISTS)
-  for (const p of list)
-    for (const info of partPieces(cat, p)) {
-      const prims = PROC_TEMP[info.slot];
-      if (!prims) continue;
-      add({
-        id: 'temp/' + info.slot.replace(/\//g, '_'),
-        cat: 'temp',
-        name: pieceName(p, info) + '（鏡像）',
-        note: '暫時：另一側重建的程式模型的鏡像',
-        spec: SPEC[info.kind] || 'piece',
-        noGlb: true,
-        build: (k) => {
-          const wrap = new THREE.Group();
-          wrap.add(procPrimPiece(prims, mechMats(pal(k)), info.slot));
-          return { obj: wrap, scaleNode: wrap, scale: v3(1), rig: null };
-        },
-      });
-    }
-for (const [key, name, over] of [
-  ['std', 'GRANITE', {}],
-  ['lt', 'SEQ 輕量機型', { head: 'h_lt', core: 'c_lt', arms: 'a_lt', legs: 'l_bp2' }],
-  ['hv', 'HAWK 重裝機型', { head: 'h_hv', core: 'c_hv', arms: 'a_hv', legs: 'l_hv' }],
-  ['rj', '逆足機型', { head: 'h_scan', core: 'c_nat', arms: 'a_ml', legs: 'l_rj' }],
-  ['qd', '四足腳 LG-SPIDER', { legs: 'l_qd' }],
-])
-  add({
-    id: 'temp/mirror_' + key,
-    cat: 'temp',
-    name: name + '（整台，左右鏡像）',
-    note: '暫時：左側的手臂與腳是右側的鏡像（四足＝右側是左側的鏡像）',
-    spec: 'mech',
-    noGlb: true,
-    asm: { ...START_ASM, ...over },
-    build: (k) => {
-      const M = mechMats(pal(k));
-      const rig = buildMech({ ...START_ASM, ...over }, pal(k), 1, {
-        piece: (info) => (PROC_TEMP[info.slot] ? procPrimPiece(PROC_TEMP[info.slot], M, info.slot) : null),
-      });
-      return wholeRig(rig, 1);
-    },
-  });
 
 // ---------- 完整機甲 ----------
 const addMech = (key, name, asm, palKey, scale, note = '', boss = false) =>
