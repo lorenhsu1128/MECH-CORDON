@@ -1,5 +1,5 @@
 // 腳掌的輪子（2026-11-17，使用者要求）：照 GLB 重建的腳掌上都有輪子，但它只是腳掌清單裡的一堆三角形、不會轉，
-// 側面也看不出輪圈與胎皮。這裡把每隻腳掌的輪子換成另外建的輪子（胎皮＋輪圈＋輪輻＋輪蓋），
+// 側面也看不出輪圈與胎皮。這裡把每隻腳掌的輪子換成另外建的輪子（胎皮＋輪圈＋輪蓋），
 // 掛成會轉的子群組（mech-model.js 的 procPrimPiece／animateMech 的 footWheels：滑行時依走過的距離轉）。
 //   FOOT_WHEELS[槽位]＝[{ c 中心, axis 輪軸方向, r 半徑, w 胎寬 }…]（glTF 座標：+Z 正面、公尺；照清單量的）
 //   stripWheels(清單, 輪子)＝把原本的輪子（整個落在輪子圓柱裡的三角形）從清單拿掉
@@ -113,29 +113,7 @@ function lathe(slot, rings, n) {
   faces.push(ring(rings.length - 1));
   return ['H', slot, pts, faces];
 }
-// 方塊（已經轉好的 8 個頂點）：o 中心、三個半邊向量
-function obox(slot, o, e1, e2, e3) {
-  const p = [];
-  for (const s3 of [-1, 1])
-    for (const s2 of [-1, 1])
-      for (const s1 of [-1, 1]) p.push([0, 1, 2].map((k) => r4(o[k] + e1[k] * s1 + e2[k] * s2 + e3[k] * s3)));
-  // e1 × e2 ＝ e3 的方向時，下面的面從外面看是逆時針
-  return [
-    'H',
-    slot,
-    p,
-    [
-      [0, 2, 3, 1],
-      [4, 5, 7, 6],
-      [0, 1, 5, 4],
-      [2, 6, 7, 3],
-      [0, 4, 6, 2],
-      [1, 3, 7, 5],
-    ],
-  ];
-}
-
-// 輪子：胎皮（深色橡膠，胎肩有倒角、胎面有一圈交錯的胎塊）＋兩側的輪圈（淺色金屬的外緣、深色的凹盤、5 根輪輻）＋輪蓋（機體主色）
+// 輪子：胎皮（深色橡膠，胎肩有倒角、胎面平滑）＋兩側的輪圈（淺色金屬的外緣、深色的凹盤）＋輪蓋（機體主色）；胎塊與輪輻依使用者要求拿掉
 export function wheelPrims(r, w) {
   const h = w / 2;
   const N = 20;
@@ -154,24 +132,6 @@ export function wheelPrims(r, w) {
       N,
     ),
   );
-  // 胎塊：左右兩排交錯
-  const TB = 12;
-  for (let i = 0; i < TB * 2; i++) {
-    const side = i % 2 ? 1 : -1;
-    const a = (i / (TB * 2)) * Math.PI * 2;
-    const rad = [0, Math.cos(a), Math.sin(a)],
-      tan = [0, -Math.sin(a), Math.cos(a)];
-    const o = [side * h * 0.3, rad[1] * (r + 0.012), rad[2] * (r + 0.012)];
-    out.push(
-      obox(
-        TYRE,
-        o,
-        [h * 0.27, 0, 0],
-        tan.map((v) => v * r * 0.085),
-        rad.map((v) => v * 0.022),
-      ),
-    );
-  }
   // 輪圈的外緣（穿過整個輪子的一塊，兩側各凸出一點）
   const e = 0.03;
   out.push(
@@ -186,7 +146,7 @@ export function wheelPrims(r, w) {
       N,
     ),
   );
-  // 凹盤（深色）、輪輻（淺色）、輪蓋（主色）：兩側各一份
+  // 凹盤（深色）、輪蓋（主色）：兩側各一份
   out.push(
     lathe(
       2,
@@ -199,21 +159,6 @@ export function wheelPrims(r, w) {
   );
   for (const s of [-1, 1]) {
     const x0 = s * (h + e + 0.012);
-    for (let k = 0; k < 5; k++) {
-      const a = (k / 5) * Math.PI * 2 + (s > 0 ? 0 : 0.3);
-      const rad = [0, Math.cos(a), Math.sin(a)],
-        tan = [0, -Math.sin(a), Math.cos(a)];
-      const mid = 0.36 * r;
-      out.push(
-        obox(
-          RIM,
-          [x0 + s * 0.012, rad[1] * mid, rad[2] * mid],
-          [0.014, 0, 0],
-          tan.map((v) => v * r * 0.055),
-          rad.map((v) => v * r * 0.17),
-        ),
-      );
-    }
     out.push(
       lathe(
         0,
