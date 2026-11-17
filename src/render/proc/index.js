@@ -2,7 +2,7 @@
 // PROC_PRIMS：槽位 → 清單（render/mech-model.js 的 makeProcPiece0 用它取代原本手寫的程式模型）。GRANITE 系列、SEQ 輕量機型、HAWK 重裝機型、逆足機型的頭、核心、手臂、腳，四足腳、核心 BD-AEGIS、三種背包推進器、戰車腳。
 // PROC_SPIN：槽位 → 會轉的槍管（GLB 的 spin 節點：格林機槍、背部加特林）{ prims, cols, at }，procPrimPiece 掛成名稱 spin 的子群組。
 // PROC_COLS：槽位 → 固定色（顏色在貼圖上的 GLB：背包推進器）。PROC_PARTS：槽位 → 會動的零件（戰車腳的輪子與履帶片，render/proc-tank.js）。
-import { mirrorPrims } from '../proc-prims.js';
+import { mirrorPrims, primBox, symmetrizePrims } from '../proc-prims.js';
 import { cStdPrims } from './c_std.js';
 import { EYE_COLS, withEyes } from './head_eyes.js';
 import { p_head_h_spdPrims, p_head_h_spdCols } from './head_h_spd.js';
@@ -171,6 +171,19 @@ for (const [d, s2] of [
 ])
   for (const k of ['thigh', 'shin', 'foot']) MIRRORS.push([`legs/l_qd/${d}_${k}`, `legs/l_qd/${s2}_${k}`]);
 for (const [d, s2] of MIRRORS) if (PROC_PRIMS[s2]) PROC_PRIMS[d] = mirrorPrims(PROC_PRIMS[s2]);
+// 核心、襠部與背包推進器左右對稱（使用者定案）：和手臂、腳一樣以機體的右側（−x）為準，另一側是它的鏡像（proc-prims.js 的 symmetrizePrims）。
+// 頭的對稱在 head_eyes.js（每顆頭各自指定基準的那一側）。只有單邊的造型照原樣保留（GRANITE 核心右後方的天線）
+const SYM_KEEP = {
+  'core/c_std': (t) => t.every((v) => v[0] < -0.3 && v[0] > -0.56 && v[1] > 3.2), // 天線（底座、桿、頂端與上面的色片）
+};
+// GRANITE 襠部的 GLB 裡有一小塊飄在頭頂高度（y 約 9.4 m）的碎片（拆件時分錯的：核心天線的一段），重建的清單也帶著它：拿掉
+PROC_PRIMS['legs/l_bp/pelvis'] = PROC_PRIMS['legs/l_bp/pelvis'].filter((p) => primBox(p).mn[1] < 8);
+for (const k of [
+  ...['c_std', 'c_lt', 'c_hv', 'c_nat', 'c_aeg'].map((c) => 'core/' + c),
+  ...['l_bp', 'l_bp2', 'l_hv', 'l_rj'].map((l) => `legs/${l}/pelvis`),
+  ...['b_std', 'b_hi', 'b_eff'].map((b) => 'booster/' + b), // 背包推進器也是（固定色的色槽照舊）
+])
+  PROC_PRIMS[k] = symmetrizePrims(PROC_PRIMS[k], -1, SYM_KEEP[k]);
 // 武器（手持、肩上）：顏色在貼圖上（固定色）；右側照 GLB 重建，左側＝右側的鏡像（2026-11-17 使用者定案）
 const WEAPONS = {
   'weapon/w_blade': [p_weapon_w_blade_rPrims, p_weapon_w_blade_rCols],

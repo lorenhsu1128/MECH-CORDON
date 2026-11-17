@@ -3,7 +3,7 @@
 // 多邊形蓋到的每個三角形裁出那一塊、沿法線浮起 4 mm，所以眼睛順著表面的轉折貼在頭上（跨過幾個面也一樣）。
 // 清單檔是產生器的輸出、不手改，眼睛在 proc/index.js 載入時接在清單後面（色槽 4＝EYE_COLS 的自發光紅）。
 // 複眼頭 h_spd 有自己的眼睛（head_h_spd.js），不經過這裡。
-import { primsTris } from '../proc-prims.js';
+import { primsTris, symmetrizePrims } from '../proc-prims.js';
 
 export const EYE_COLS = ['#ff1030!'];
 const EYE = 4;
@@ -199,7 +199,21 @@ export const EYES = {
           [0, 0.33],
         ],
       ],
-      {}, // 這塊凹處左右兩邊的色槽不一樣（GLB 的顏色不對稱），不限定色槽
+      {}, // 這塊凹處在基準的那一側是主色（不是深色），不限定色槽
     ),
 };
-export const withEyes = (id, prims) => (EYES[id] ? [...prims, ...EYES[id](prims)] : prims);
+
+// ---- 左右對稱（2026-11-17 使用者要求）----
+// 內建 GLB 的頭左右不完全一樣（形狀與色槽都有出入），照它重建的清單也跟著不對稱，眼睛貼上去兩邊就不一樣。
+// 所以先用 proc-prims.js 的 symmetrizePrims 換成「一側的一半＋它的鏡像」再貼眼睛。
+// 哪一側當基準（使用者指定：從正面看，SEQ 以右邊為準、HAWK 與觀測頭以左邊為準；正面看的右邊＝+x）
+const SYM = {
+  h_lt: [1],
+  h_scan: [-1],
+  // HAWK 的天線（頭的左後方：x < −0.29、y > 0.62、z −0.2～0.04 這個範圍裡的三角形）只有一支，不鏡射
+  h_hv: [-1, (t) => t.every((v) => v[0] < -0.29 && v[1] > 0.62 && v[2] > -0.2 && v[2] < 0.04)],
+};
+export function withEyes(id, prims) {
+  const base = SYM[id] ? symmetrizePrims(prims, ...SYM[id]) : prims;
+  return EYES[id] ? [...base, ...EYES[id](base)] : base;
+}

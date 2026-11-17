@@ -312,3 +312,9 @@ SMOKE_ONLY=testLibrary,testLibraryGlb,testLibraryJoints,testWorkshop,testSolo,te
 | 觀測頭 `h_scan` | 正面下方深色的倒三角形凹處（兜帽前緣底下）的 V 形光帶；這塊凹處左右的色槽不對稱，所以不限定色槽 |
 
 多邊形超出限定色槽的部分會自動裁掉，所以可以畫得比凹處大一點讓它順著凹處的邊界。設計新的眼睛時先畫有座標格線的正視與右視圖找位置（把各色槽的三角形照深度排序畫成 SVG 即可），多邊形只寫右半邊、左半邊由 `mirror` 產生；凹的形狀拆成幾個凸多邊形。
+
+## 左右對稱
+
+2026-11-17 使用者定案（頭、核心、襠部應該是對稱的）：內建 GLB 左右的形狀與色槽有些出入，照它重建的清單也跟著不對稱，所以載入時以 `proc-prims.js` 的 `symmetrizePrims(清單, 基準側, keep)` 換成「一側的一半＋它的鏡像」（攤成三角形、在 x＝0 切開、鏡射；`keep(三角形)` 為真的照原樣保留）：5 個核心、4 個襠部與 3 個背包推進器（`proc/index.js`，和手臂、腳一樣以機體的右側 −x 為準；GRANITE 核心右後方的天線保留單支）、SEQ／HAWK／觀測頭（`head_eyes.js` 的 `SYM`，基準側照使用者指定：SEQ +x、HAWK 與觀測頭 −x；HAWK 的天線保留單支）；GRANITE 頭、四足與戰車的主體沒有做。GRANITE 襠部的 GLB 裡有一塊飄在頭頂高度的碎片（拆件時分錯的核心天線），程式模型拿掉了（GLB 還在）。清單檔本身不改，`proc-batch.js` 比對的是對稱化之前的清單。新機型的核心、襠部、頭照做，先用截圖找只有單邊的造型（天線這類）再決定 `keep`。
+
+檢查用的截圖：`node scripts/model-shots.js core/c_std legs/l_bp/pelvis head/h_hv --zoom=0.62 --el=0.1 --ang=0`（正面）。找只有單邊的造型：逐個形體取樣，看鏡像的位置有沒有東西（大於 12 cm、鏡像位置一半以上是空的才算）。

@@ -99,6 +99,53 @@ export function primsTris(prims) {
   return out;
 }
 
+// 左右對稱（2026-11-17 使用者要求：頭、核心、襠部應該是對稱的；內建 GLB 左右的形狀與色槽有些出入，照它重建的清單也跟著不對稱）：
+// 把清單換成「一側的一半＋它的鏡像」——全部攤成三角形、在 x＝0 切開、留 sign 那一側（+1＝x ≥ 0）、鏡射到另一側。
+// keep(三角形的三個頂點) 為真的三角形照原樣保留、不鏡射（只有單邊的造型：HAWK 頭與 GRANITE 核心的天線）。結果是一個 'T'（色槽照舊）。
+export function primBox(p) {
+  const mn = [Infinity, Infinity, Infinity],
+    mx = [-Infinity, -Infinity, -Infinity];
+  for (const pos of primsTris([p]))
+    for (let i = 0; i < pos.length; i++) {
+      const k = i % 3;
+      if (pos[i] < mn[k]) mn[k] = pos[i];
+      if (pos[i] > mx[k]) mx[k] = pos[i];
+    }
+  return { mn, mx };
+}
+export function symmetrizePrims(prims, sign, keep) {
+  const list = [];
+  primsTris(prims).forEach((pos, s) => {
+    for (let i = 0; i < pos.length; i += 9) {
+      let poly = [pos.slice(i, i + 3), pos.slice(i + 3, i + 6), pos.slice(i + 6, i + 9)];
+      if (keep && keep(poly)) {
+        list.push([s, ...poly]);
+        continue;
+      }
+      // 以 x＝0 的平面裁切，留 sign 那一側
+      const out = [];
+      for (let k = 0; k < poly.length; k++) {
+        const p = poly[k],
+          q = poly[(k + 1) % poly.length];
+        const sp = p[0] * sign,
+          sq = q[0] * sign;
+        if (sp >= 0) out.push(p);
+        if (sp >= 0 !== sq >= 0) {
+          const t = sp / (sp - sq);
+          out.push([0, p[1] + (q[1] - p[1]) * t, p[2] + (q[2] - p[2]) * t]);
+        }
+      }
+      poly = out.map((v) => v.map((x) => Math.round(x * 10000) / 10000));
+      for (let k = 1; k + 1 < poly.length; k++) {
+        const [a, b, c] = [poly[0], poly[k], poly[k + 1]];
+        list.push([s, a, b, c]);
+        const m = (v) => [-v[0], v[1], v[2]];
+        list.push([s, m(a), m(c), m(b)]);
+      }
+    }
+  });
+  return [['T', list]];
+}
 // 三角形座標 → 幾何（平面著色的法線＋依面的方向投影的貼圖座標）
 export function posGeo(pos) {
   const geo = new THREE.BufferGeometry();
