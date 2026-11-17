@@ -1101,6 +1101,7 @@ ${lines.join('\n')}
 ${
   COLS
     ? `// 固定色（貼圖上的顏色，不跟著配色換）：色槽 4 起
+// prettier-ignore
 export const ${NAME}Cols = ${JSON.stringify(COLS)};
 `
     : ''
