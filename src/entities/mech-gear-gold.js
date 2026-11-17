@@ -14,6 +14,7 @@ Object.assign(MechEntity.prototype, {
   gearGoldSetup(id, F) {
     const st = this.stats;
     if (id === 'h_scan') st.lockRange *= F.foe ? 1.15 : 1.25;
+    if (id === 'h_spd' && !F.foe) st.lockRange *= 1.1; // 八目鎖定
     if (id === 'f_far') st.lockRange *= F.foe ? 1.15 : 1.3;
     if (id === 'f_std') {
       const lo = F.foe ? 0.6 : 0.7;
@@ -366,7 +367,10 @@ Object.assign(MechEntity.prototype, {
   },
   gearGoldMissileN(d) {
     const G = this.gG('bw_ms8');
-    return G && d && d.id === 'bw_ms8' ? (G.foe ? 2 : 4) : 0;
+    let n = G && d && d.id === 'bw_ms8' ? (G.foe ? 2 : 4) : 0;
+    const H = this.gG('h_spd'); // 八目鎖定：多連導彈（一次 2 發以上的）多發射
+    if (H && d && (d.count || 1) > 1) n += H.foe ? 1 : 2;
+    return n;
   },
   gearGoldEv(k, o) {
     const t = this.t,

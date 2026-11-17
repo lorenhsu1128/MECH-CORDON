@@ -2256,6 +2256,71 @@ async function testModelSrc(browser, base) {
     c.src === 'proc' && c.glb === 0 && c.proc === c.n,
     `改回程式模型後出擊：沒有 GLB（${JSON.stringify(c)}）`,
   );
+  // 複眼頭 HD-ARACHNE（h_spd：GRANITE 頭＋手寫的蜘蛛眼，沒有 GLB）：頭是它自己的程式模型、鏡片自發光、導彈鎖定速度 +20%
+  const spd = await page.evaluate(async () => {
+    const g = window.__game;
+    const full = () => {
+      const p = g.player,
+        fcs = p.stats.parts.fcs.lockSpeed || 1;
+      let la = 0;
+      const lockAge = p.lockAge;
+      p.lockAge = () => la;
+      const d = { count: 8 },
+        t = { dead: false };
+      // 鎖定時間每 0.01 秒試一次，找到 8 發全部鎖滿的時間
+      for (la = 0; la < 5 && p.missileN(d, t) < 8; la += 0.01);
+      p.lockAge = lockAge;
+      return la * fcs; // 換算成火控 lockSpeed 1 的秒數
+    };
+    const t0 = full();
+    g.save.asm.head = 'h_spd';
+    g.clearMission();
+    g.startMission();
+    await new Promise((r) => {
+      const w = () =>
+        g.state === 'play' && g.player && g.warmWorld === g.world && !g.warmBusy ? r() : setTimeout(w, 50);
+      w();
+    });
+    const head = Object.values(g.player.model.pieces).find((o) => o.userData.slot === 'head/h_spd');
+    let glow = 0;
+    if (head)
+      head.traverse(
+        (o) => o.isMesh && o.material.name === 'fix' && o.material.emissiveIntensity > 1 && glow++,
+      );
+    const r = { head: !!head, glow, t0, t1: full(), part: g.player.stats.parts.head.id };
+    // 品級的詞條：紫色「複眼追蹤」（鎖定時間 −20%）、金色「八目鎖定」（多連導彈 +2 發；紫色的數值 ×1.5）
+    const p = g.player,
+      gx0 = p.gx,
+      gxF0 = p.gxF;
+    p.gx = p.gx || {};
+    p.gxF = { h_spd: { slot: 'head', k: 1, gold: false } };
+    r.t2 = full();
+    r.n2 = p.missileN({ count: 8 }, null);
+    p.gxF = { h_spd: { slot: 'head', k: 1.5, gold: true } };
+    r.t3 = full();
+    r.n3 = p.missileN({ count: 8 }, null);
+    r.n3s = p.missileN({ count: 1 }, null);
+    p.gx = gx0;
+    p.gxF = gxF0;
+    g.save.asm.head = 'h_std';
+    return r;
+  });
+  check(
+    spd.head && spd.glow >= 1 && spd.part === 'h_spd',
+    `複眼頭：頭是 head/h_spd 的程式模型、有自發光的鏡片（${JSON.stringify(spd)}）`,
+  );
+  check(
+    Math.abs(spd.t0 / spd.t1 - 1.2) < 0.05,
+    `複眼頭：導彈鎖滿的時間是原本的 1／1.2（${spd.t0.toFixed(2)} → ${spd.t1.toFixed(2)}）`,
+  );
+  check(
+    Math.abs(spd.t2 / spd.t1 - 0.8) < 0.04 && spd.n2 === 8,
+    `複眼頭的紫色專屬「複眼追蹤」：鎖定時間 −20%（${spd.t1.toFixed(2)} → ${spd.t2.toFixed(2)}）`,
+  );
+  check(
+    Math.abs(spd.t3 / spd.t1 - 0.7) < 0.2 && spd.n3 === 10 && spd.n3s === 1,
+    `複眼頭的金色特殊「八目鎖定」：8 連導彈發射 ${spd.n3} 發、單發的不變（${spd.n3s}）`,
+  );
   // 從伺服器網址開（模擬：有 MECH_CORDON_SERVER）、模型的來源是程式模型時打開設定畫面：
   // 不讀伺服器預設組，也不能一直重畫（2026-11-17 當掉過：srvRefresh 立刻結束 → 重畫 → 又呼叫 srvRefresh）
   const srvUi = await page.evaluate(async () => {

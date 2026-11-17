@@ -17,8 +17,7 @@ import { buildCineVeh } from './cine-vehicles.js';
 import { FOE_CATALOG } from './foe-models.js';
 import { PARTS, START_ASM } from '../data/parts.js';
 import { PALETTES, mechMats } from './materials.js';
-import { PIECE_NAMES, SIDE_NAMES, buildMech, buildPiece, partPieces, procPrimPiece } from './mech-model.js';
-import { PROC_TEMP } from './proc/index.js';
+import { PIECE_NAMES, SIDE_NAMES, buildMech, buildPiece, partPieces } from './mech-model.js';
 import { THEMES } from '../world/world.js';
 import { LANDMARKS } from '../world/landmarks.js';
 import { VARIANT_CATALOG } from '../world/variants.js';
@@ -104,7 +103,6 @@ export const CATEGORIES = [
   { id: 'booster', name: '推進器（背包）' },
   { id: 'weapon', name: '手持武器' },
   { id: 'back', name: '背部武器' },
-  { id: 'temp', name: '暫時（HD-ARACHNE 複眼頭的草模）' },
   { id: 'mech', name: '完整機甲' },
   { id: 'vehicle', name: '非機甲／載具' },
   { id: 'prop', name: '地圖物件' },
@@ -157,40 +155,6 @@ for (const [cat, list] of PART_LISTS)
           return { obj: wrap, scaleNode: wrap, scale: v3(1), rig: null, piece: info };
         },
       });
-
-// ---------- 暫時：HD-ARACHNE 複眼頭的草模（等使用者確認） ----------
-{
-  const slot = 'head/h_spd';
-  add({
-    id: 'temp/head_spd',
-    cat: 'temp',
-    name: 'HD-ARACHNE 複眼頭',
-    note: '暫時：GRANITE 頭加上蜘蛛眼（跳蛛的排列）的草模',
-    spec: 'part',
-    noGlb: true,
-    build: (k) => {
-      const wrap = new THREE.Group();
-      wrap.add(procPrimPiece(PROC_TEMP[slot], mechMats(pal(k)), slot));
-      return { obj: wrap, scaleNode: wrap, scale: v3(1), rig: null };
-    },
-  });
-  add({
-    id: 'temp/spd_mech',
-    cat: 'temp',
-    name: '初始機＋複眼頭',
-    note: '暫時：玩家初始機換上複眼頭的草模',
-    spec: 'mech',
-    noGlb: true,
-    asm: START_ASM,
-    build: (k) => {
-      const M = mechMats(pal(k));
-      const rig = buildMech(START_ASM, pal(k), 1, {
-        piece: (info) => (info.slot === 'head/h_std' ? procPrimPiece(PROC_TEMP[slot], M, slot) : null),
-      });
-      return wholeRig(rig, 1);
-    },
-  });
-}
 
 // ---------- 完整機甲 ----------
 const addMech = (key, name, asm, palKey, scale, note = '', boss = false) =>

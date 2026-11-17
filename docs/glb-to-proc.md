@@ -4,17 +4,17 @@
 
 相關檔案：
 
-| 檔案 | 用途 |
-|---|---|
-| `scripts/glb-to-proc.mjs` | 產生器：GLB → 基本形體清單（`src/render/proc/<槽位>.js`） |
-| `scripts/proc-compare.js` | 比對：GLB 與程式模型逐視角的線稿、輪廓、顏色、深度 |
-| `scripts/proc-batch.js` | 整批：一組槽位依序產生＋比對，每個槽位印一行摘要 |
-| `scripts/proc-perf.js` | 效能量測：GLB 與程式模型在遊戲裡的每格時間、繪製次數、貼圖記憶體 |
-| `scripts/model-shots.js` | 模型庫檢視窗的截圖（有打光、有描邊，看最後的樣子） |
-| `src/render/proc-prims.js` | 清單 → 網格（`primsGroup`）、左右鏡射（`mirrorPrims`）、固定色材質（`fixMat`） |
-| `src/render/proc-tank.js` | 戰車腳的會動零件（輪子、履帶片，InstancedMesh） |
+| 檔案                       | 用途                                                                               |
+| -------------------------- | ---------------------------------------------------------------------------------- |
+| `scripts/glb-to-proc.mjs`  | 產生器：GLB → 基本形體清單（`src/render/proc/<槽位>.js`）                          |
+| `scripts/proc-compare.js`  | 比對：GLB 與程式模型逐視角的線稿、輪廓、顏色、深度                                 |
+| `scripts/proc-batch.js`    | 整批：一組槽位依序產生＋比對，每個槽位印一行摘要                                   |
+| `scripts/proc-perf.js`     | 效能量測：GLB 與程式模型在遊戲裡的每格時間、繪製次數、貼圖記憶體                   |
+| `scripts/model-shots.js`   | 模型庫檢視窗的截圖（有打光、有描邊，看最後的樣子）                                 |
+| `src/render/proc-prims.js` | 清單 → 網格（`primsGroup`）、左右鏡射（`mirrorPrims`）、固定色材質（`fixMat`）     |
+| `src/render/proc-tank.js`  | 戰車腳的會動零件（輪子、履帶片，InstancedMesh）                                    |
 | `src/render/proc/index.js` | 登記表：`PROC_PRIMS`、`PROC_COLS`、`PROC_PARTS`、`PROC_SPIN`、`MIRRORS`、`WEAPONS` |
-| `src/render/mech-model.js` | `procPrimPiece`（清單 → 機甲的一個區塊）、`makeProcPiece0`、`tankRoll` |
+| `src/render/mech-model.js` | `procPrimPiece`（清單 → 機甲的一個區塊）、`makeProcPiece0`、`tankRoll`             |
 
 需要的套件都在 `package.json`（`three`、`sharp`、`esbuild`、`playwright-core`），`npm install` 之後就能用。比對與截圖要先 `npm run build`（用 `dist/lib/three/three.js` 與 `dist/model-library.html`）。
 
@@ -80,12 +80,12 @@ node scripts/proc-batch.js --set=std|lt|hv|rj|qd|aeg|bst|tk|wp|bk    # 可以用
 
 比對的四個數字：
 
-| 數字 | 意思 |
-|---|---|
+| 數字    | 意思                                                                                                             |
+| ------- | ---------------------------------------------------------------------------------------------------------------- |
 | 線 a／b | 螢幕空間的線稿（深度差 > 4 cm 或面法線夾角 > 22°，和遊戲的描線同樣的原理）：GLB 的線對得到程式模型的比例／反過來 |
-| 輪廓 | 兩邊剪影的交集 ÷ 聯集 |
-| 顏色 | 重疊的像素裡顏色相同的比例（色槽模式比色槽；貼圖模式比實際的顏色，門檻很嚴） |
-| 深度差 | 表面前後差的平均、超過 3 cm 的比例 |
+| 輪廓    | 兩邊剪影的交集 ÷ 聯集                                                                                            |
+| 顏色    | 重疊的像素裡顏色相同的比例（色槽模式比色槽；貼圖模式比實際的顏色，門檻很嚴）                                     |
+| 深度差  | 表面前後差的平均、超過 3 cm 的比例                                                                               |
 
 **色槽的模型（機體部位）要達到**：
 
@@ -257,18 +257,18 @@ SMOKE_ONLY=testLibrary,testLibraryGlb,testLibraryJoints,testWorkshop,testSolo,te
 
 ## 7. 目前完成的
 
-| 類別 | 槽位 | 備註 |
-|---|---|---|
-| GRANITE | `h_std`／`c_std`／`a_std`／`l_bp` | `c_std` 的檔名是 `c_std.js` |
-| SEQ 輕量 | `h_lt`／`c_lt`／`a_lt`／`l_bp2` | |
-| HAWK 重裝 | `h_hv`／`c_hv`／`a_hv`／`l_hv` | |
-| 逆足 | `h_scan`／`c_nat`／`a_ml`／`l_rj` | 腳多一節蹠骨 `meta` |
-| 四足腳 | `l_qd`（13 塊） | |
-| 戰車腳 | `l_tk` | 輪子與履帶會動 |
-| 核心 | `c_aeg` | |
-| 背包推進器 | `b_std`／`b_hi`／`b_eff` | 固定色 4 個 |
-| 手持武器 | `w_blade`／`bz`／`claw`／`emp`／`gl`／`hg`／`lc`／`lr`／`lsg`／`mg`／`pile`／`rifle`／`saber`／`sg` | 固定色 6 個；刀刃自發光；`mg` 有轉管 |
-| 肩上武器 | `bw_emp_l`／`emp_s`／`gat`／`gr`／`lc`／`ms`／`ms8`／`pm`／`sh` | 固定色 6 個；`gat` 有轉管；`ms`／`ms8`／`pm` 是紅色圓頭彈頭 |
+| 類別       | 槽位                                                                                                | 備註                                                        |
+| ---------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| GRANITE    | `h_std`／`c_std`／`a_std`／`l_bp`                                                                   | `c_std` 的檔名是 `c_std.js`                                 |
+| SEQ 輕量   | `h_lt`／`c_lt`／`a_lt`／`l_bp2`                                                                     |                                                             |
+| HAWK 重裝  | `h_hv`／`c_hv`／`a_hv`／`l_hv`                                                                      |                                                             |
+| 逆足       | `h_scan`／`c_nat`／`a_ml`／`l_rj`                                                                   | 腳多一節蹠骨 `meta`                                         |
+| 四足腳     | `l_qd`（13 塊）                                                                                     |                                                             |
+| 戰車腳     | `l_tk`                                                                                              | 輪子與履帶會動                                              |
+| 核心       | `c_aeg`                                                                                             |                                                             |
+| 背包推進器 | `b_std`／`b_hi`／`b_eff`                                                                            | 固定色 4 個                                                 |
+| 手持武器   | `w_blade`／`bz`／`claw`／`emp`／`gl`／`hg`／`lc`／`lr`／`lsg`／`mg`／`pile`／`rifle`／`saber`／`sg` | 固定色 6 個；刀刃自發光；`mg` 有轉管                        |
+| 肩上武器   | `bw_emp_l`／`emp_s`／`gat`／`gr`／`lc`／`ms`／`ms8`／`pm`／`sh`                                     | 固定色 6 個；`gat` 有轉管；`ms`／`ms8`／`pm` 是紅色圓頭彈頭 |
 
 ## 8. 踩過的坑
 
@@ -291,3 +291,11 @@ SMOKE_ONLY=testLibrary,testLibraryGlb,testLibraryJoints,testWorkshop,testSolo,te
 - 曲面多、有機造型的模型會切得很碎，不適合這個方法。
 - 挑零件的規則（戰車腳、彈頭）是照現有的模型寫的，新的模型要重新確認門檻。
 - 這是沒有 GLB 時的外觀。遊戲的設定「模型的來源」選「伺服器模型組」時，有 GLB 的部位仍然顯示 GLB。
+
+## 手寫的變化型（沒有 GLB 的新零件）
+
+2026-11-17：HD-ARACHNE 複眼頭 `h_spd` 沒有 GLB，清單是「GRANITE 頭的清單＋手寫的蜘蛛眼」（`src/render/proc/head_h_spd.js`：`lathe` 旋轉體、`eye` 貼著表面的低圓頂、`ball` 埋在轉角裡的圓球；鏡片是自發光的固定色 `PROC_COLS`），照一般的清單登記在 `PROC_PRIMS`；它的特性是零件的 `lockSpd`（導彈鎖定速度的倍率，`parts.js` 的 `lockSpeedOf`），品級詞條在 `gear-excl.js`。之後要從現有的機型衍生新外型時照這個做法：先放模型庫的暫時分類給使用者看，確認後才登記成零件。
+
+- 截圖：`node scripts/model-shots.js <槽位> --zoom=0.8`；裝在整台機甲上近拍頭部 `--ty=8.6 --zoom=0.22 --el=0.15`。
+- 眼睛這類貼在表面的零件，方向照所在表面的法線才會貼著（統一朝前會有一邊翹起來）；跨在轉角上的用埋進去的圓球。
+- 新零件要提高 `NET_VERSION`、補冒煙測試（`testModelSrc` 的複眼頭那一段）。

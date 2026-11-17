@@ -260,6 +260,7 @@ Object.assign(MechEntity.prototype, {
     let k = 1;
     if (F.f_near && tgt && tgt.pos.distanceTo(this.pos) < 30 * this.dk) k *= this.gfv('f_near');
     if (F.bw_ms && d && d.id === 'bw_ms') k /= 1 - this.gfv('bw_ms');
+    if (F.h_spd) k /= 1 - this.gfv('h_spd'); // 複眼追蹤
     k *= this.gearGoldLock(d, tgt);
     return k;
   },

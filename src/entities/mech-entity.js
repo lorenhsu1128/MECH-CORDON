@@ -23,7 +23,7 @@ import {
   partById,
   usesAmmo,
 } from '../data/parts.js';
-import { assistSpread, fcsAssist, leadOf, trackRate, weaponById } from '../data/parts.js';
+import { assistSpread, fcsAssist, leadOf, lockSpeedOf, trackRate, weaponById } from '../data/parts.js';
 import { BOSS_STAG_GUARD } from '../data/enemies.js';
 import {
   DIVE_V,
@@ -2027,7 +2027,7 @@ export class MechEntity {
   missileN(d, t) {
     const n = d.count || 1;
     if (!t || t.dead || n <= 1) return n + (this.gx ? this.gearMissileN(d) : 0);
-    const full = 1 / ((this.stats.parts.fcs && this.stats.parts.fcs.lockSpeed) || 1);
+    const full = 1 / lockSpeedOf(this.stats.parts);
     const x = this.gx ? this.gearMissileN(d) : 0; // 多目標（mech-gear.js）
     const la = this.lockAge(t) * (this.gxF ? this.gearLockK(d, t) : 1); // 鎖定時間（mech-gear-fx.js）
     return clamp(Math.ceil(((n + x) * la) / full), 1, n + x);

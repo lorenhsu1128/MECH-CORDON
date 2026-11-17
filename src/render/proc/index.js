@@ -141,15 +141,15 @@ export const PROC_PRIMS = {
   'booster/b_hi': p_booster_b_hiPrims,
   'booster/b_eff': p_booster_b_effPrims,
   'legs/l_tk/body': p_legs_l_tk_bodyPrims,
+  // 複眼頭：不是照 GLB 重建的，是 GRANITE 頭的清單＋手寫的蜘蛛眼（head_h_spd.js），沒有 GLB
+  'head/h_spd': p_head_h_spdPrims,
 };
 export const PROC_COLS = {
+  'head/h_spd': p_head_h_spdCols,
   'booster/b_std': p_booster_b_stdCols,
   'booster/b_hi': p_booster_b_hiCols,
   'booster/b_eff': p_booster_b_effCols,
 };
-// 暫時：HD-ARACHNE 複眼頭的草模（等使用者確認）
-export const PROC_TEMP = { 'head/h_spd': p_head_h_spdPrims };
-PROC_COLS['head/h_spd'] = p_head_h_spdCols;
 export const PROC_PARTS = {
   'legs/l_tk/body': p_legs_l_tk_bodyParts,
 };

@@ -4,7 +4,7 @@ import { SFX } from '../audio/audio.js';
 import { escHtml } from '../core/html.js';
 import { pick } from '../core/math.js';
 import { bossForLevel, isBossLevel } from '../data/enemies.js';
-import { PARTS, SLOTS, asmStats, jumpSpec, partById, usesAmmo } from '../data/parts.js';
+import { PARTS, SLOTS, asmStats, jumpSpec, lockSpeedOf, partById, usesAmmo } from '../data/parts.js';
 import { applyPilotStats, levelOf } from '../data/pilot.js';
 import { MECH_COLORS, PALETTES } from '../render/materials.js';
 import { loadHangarAssets } from '../render/hangar-assets.js';
@@ -155,7 +155,7 @@ Object.assign(Game.prototype, {
         (P.fcs.assist || [0.6, 0.6, 0.45]).map((v) => Math.round(v * 100) + '%').join(' ／ '),
       ],
       ['射擊適性（手臂）', Math.round((P.arms.aim || 0.6) * 100) + '%'],
-      ['導彈鎖定時間', (1 / (P.fcs.lockSpeed || 1)).toFixed(1) + ' 秒'],
+      ['導彈鎖定時間', (1 / lockSpeedOf(P)).toFixed(1) + ' 秒'],
       ['修復套件', fx(3, 3 + ((pm && pm.kits) || 0))],
       ['腳部型式', { biped: '二足', reverse: '逆關節', quad: '四足', tank: '履帶' }[P.legs.type]],
     ];

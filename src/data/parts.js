@@ -52,6 +52,19 @@ export const PARTS = {
       stab: 110,
       desc: '鎖定距離 +15%',
     },
+    {
+      // 複眼頭（2026-11-17）：GRANITE 頭加上跳蛛排列的複眼；lockSpd＝導彈鎖定速度的倍率（lockSpeedOf）
+      id: 'h_spd',
+      name: 'HD-ARACHNE 複眼頭',
+      defs: [95, 95, 115],
+      ap: 840,
+      weight: 320,
+      en: 260,
+      price: 36000,
+      stab: 110,
+      lockSpd: 1.2,
+      desc: '導彈鎖定速度 +20%',
+    },
   ],
   core: [
     {
@@ -1977,6 +1990,10 @@ export function asmStats(asm) {
     lockRange: p.fcs.range * (p.head.id === 'h_scan' ? 1.15 : 1),
   };
 }
+
+// 導彈的鎖定速度（1／它＝多連導彈鎖滿需要的秒數）：火控的 lockSpeed × 頭部的 lockSpd（複眼頭）。parts＝asmStats 的 parts 或組裝的零件
+export const lockSpeedOf = (parts) =>
+  ((parts.fcs && parts.fcs.lockSpeed) || 1) * ((parts.head && parts.head.lockSpd) || 1);
 
 // ---- 跳躍與懸浮（MechEntity.jumpMove、車庫顯示）----
 // 腳部的 jumpH／jumpT：地面跳的高度（m）與到頂時間（s）；airH／airT：空中跳（第 1 次）；airN：空中跳次數。
