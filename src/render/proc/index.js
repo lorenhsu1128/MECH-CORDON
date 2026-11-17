@@ -4,6 +4,7 @@
 // PROC_COLS：槽位 → 固定色（顏色在貼圖上的 GLB：背包推進器）。PROC_PARTS：槽位 → 會動的零件（戰車腳的輪子與履帶片，render/proc-tank.js）。
 import { mirrorPrims } from '../proc-prims.js';
 import { cStdPrims } from './c_std.js';
+import { EYE_COLS, withEyes } from './head_eyes.js';
 import { p_head_h_spdPrims, p_head_h_spdCols } from './head_h_spd.js';
 import { p_head_h_stdPrims } from './head_h_std.js';
 import { p_arms_a_std_r_upperPrims } from './arms_a_std_r_upper.js';
@@ -89,7 +90,7 @@ import { p_back_bw_sh_rPrims, p_back_bw_sh_rCols } from './back_bw_sh_r.js';
 
 export const PROC_PRIMS = {
   'core/c_std': cStdPrims, // BD-100 GRANITE
-  'head/h_std': p_head_h_stdPrims,
+  'head/h_std': withEyes('h_std', p_head_h_stdPrims),
   'arms/a_std/r_upper': p_arms_a_std_r_upperPrims,
   'arms/a_std/r_fore': p_arms_a_std_r_forePrims,
   'arms/a_std/r_hand': p_arms_a_std_r_handPrims,
@@ -99,7 +100,7 @@ export const PROC_PRIMS = {
   'legs/l_bp/r_foot': p_legs_l_bp_r_footPrims,
   // SEQ 輕量機型
   'core/c_lt': p_core_c_ltPrims,
-  'head/h_lt': p_head_h_ltPrims,
+  'head/h_lt': withEyes('h_lt', p_head_h_ltPrims),
   'arms/a_lt/r_upper': p_arms_a_lt_r_upperPrims,
   'arms/a_lt/r_fore': p_arms_a_lt_r_forePrims,
   'arms/a_lt/r_hand': p_arms_a_lt_r_handPrims,
@@ -109,7 +110,7 @@ export const PROC_PRIMS = {
   'legs/l_bp2/r_foot': p_legs_l_bp2_r_footPrims,
   // HAWK 重裝機型
   'core/c_hv': p_core_c_hvPrims,
-  'head/h_hv': p_head_h_hvPrims,
+  'head/h_hv': withEyes('h_hv', p_head_h_hvPrims),
   'arms/a_hv/r_upper': p_arms_a_hv_r_upperPrims,
   'arms/a_hv/r_fore': p_arms_a_hv_r_forePrims,
   'arms/a_hv/r_hand': p_arms_a_hv_r_handPrims,
@@ -119,7 +120,7 @@ export const PROC_PRIMS = {
   'legs/l_hv/r_foot': p_legs_l_hv_r_footPrims,
   // 逆足機型
   'core/c_nat': p_core_c_natPrims,
-  'head/h_scan': p_head_h_scanPrims,
+  'head/h_scan': withEyes('h_scan', p_head_h_scanPrims),
   'arms/a_ml/r_upper': p_arms_a_ml_r_upperPrims,
   'arms/a_ml/r_fore': p_arms_a_ml_r_forePrims,
   'arms/a_ml/r_hand': p_arms_a_ml_r_handPrims,
@@ -146,6 +147,11 @@ export const PROC_PRIMS = {
 };
 export const PROC_COLS = {
   'head/h_spd': p_head_h_spdCols,
+  // 各頭部的眼睛（head_eyes.js）：螢光紅的自發光
+  'head/h_std': EYE_COLS,
+  'head/h_lt': EYE_COLS,
+  'head/h_hv': EYE_COLS,
+  'head/h_scan': EYE_COLS,
   'booster/b_std': p_booster_b_stdCols,
   'booster/b_hi': p_booster_b_hiCols,
   'booster/b_eff': p_booster_b_effCols,
