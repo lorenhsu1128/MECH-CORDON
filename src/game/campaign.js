@@ -17,7 +17,7 @@ import {
 } from '../data/campaign.js';
 import { TOD_NAMES, planKeys, planSortie } from '../data/campaign-plan.js';
 import { boardRegister } from '../data/board.js';
-import { AC_ROSTER, PART_DEFS, enemyScale } from '../data/enemies.js';
+import { AC_ROSTER, ENEMY_TYPES, PART_DEFS, enemyScale } from '../data/enemies.js';
 import { campaignTier } from '../data/boss-tier.js';
 import { ACES, THEME_ACE } from '../data/foes.js';
 import { FACTIONS, MEM_N, MEMORIES, speakerBadge, SPEAKERS } from '../data/story.js';
@@ -513,9 +513,12 @@ Object.assign(Game.prototype, {
     } else if (type === 'defend') {
       const pos = this.campSpots(1, 'near')[0];
       ss.defend = this.campObjective(pos, 'ally');
-      const w = [comp(L - 1), comp(L - 1), comp(L)];
-      for (const t of w[0]) this.spawnType(t, sh, sd);
-      this.waves = [w[1], w[2]];
+      // 一般戰鬥的 1.4 倍、照一般的分波（3～5 波，敵對機甲在最後一波），一開始就交戰。以前是三整組編成、
+      // 第一組一開場全部上場：編成隨等級變大，第 6 章一開場約 20 台、總共約 60 台＋3 台機甲，守不住（2026-11-17 使用者回報）
+      const base = comp(L);
+      const body = base.filter((t) => t !== 'ac' && !(ENEMY_TYPES[t] || {}).roster);
+      const extra = body.slice(0, Math.round(body.length * 0.4));
+      this.spawnComp([...extra, ...base], ss.np || 1, sh, sd, false);
       this.flashAlert('防衛目標遭到攻擊 — 擊退所有敵軍');
     } else if (type === 'escort' && this.world.corridor) {
       this.campConvoy();
