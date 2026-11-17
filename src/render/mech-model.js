@@ -1,5 +1,5 @@
 // ---------------- WEAPONS（Q 版：粗大方塊化） ----------------
-import { PROC_PRIMS } from './proc/index.js';
+import { PROC_PRIMS, PROC_TEMP } from './proc/index.js';
 import { primsGroup } from './proc-prims.js';
 import { clamp, lerp } from '../core/math.js';
 import { MB } from '../core/scale.js';
@@ -2081,7 +2081,9 @@ export function procPrimPiece(prims, M, slot) {
 }
 function makeProcPiece0(info, ctx) {
   // 照 GLB 量測重建的程式模型（render/proc/）：已經是建模尺寸與內建 GLB 的外形，不用變形與放大
-  const pr = PROC_PRIMS[info.slot];
+  // window.__procTemp：量測用（scripts/proc-perf.js），還沒換成預設的也用重建的版本
+  const pr =
+    PROC_PRIMS[info.slot] || (typeof window !== 'undefined' && window.__procTemp && PROC_TEMP[info.slot]);
   if (pr) return procPrimPiece(pr, ctx.M, info.slot);
   const g = new THREE.Group();
   (BUILD[info.kind] || (() => {}))(g, info, ctx);
