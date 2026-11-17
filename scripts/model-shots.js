@@ -1,7 +1,7 @@
 // 程式模型的近拍（docs/model-detail.md）：在模型庫的檢視窗關掉輔助標示，從前後兩個斜角各拍一張。
 //   node scripts/model-shots.js vehicle/tank vehicle/heli prop/container --tag=after
 // 輸出 test-results/shots/<槽位>-<tag>-a.png／-b.png。需要先 npm run build；--html＝改用別的模型庫檔案（例如舊版，比較用）、
-// --zoom＝第一張的距離倍率（預設 0.62）
+// --zoom＝第一張的距離倍率（預設 0.62）、--ty＝鏡頭對準的高度（公尺；整台機甲近拍頭部用）、--el＝仰角（弧度，預設 0.42）
 /* global window, document -- page.evaluate 的回呼在瀏覽器端執行 */
 const path = require('path');
 const fs = require('fs');
@@ -12,6 +12,8 @@ const OUT = path.join(ROOT, 'test-results', 'shots');
 const ids = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const tag = (process.argv.find((a) => a.startsWith('--tag=')) || '--tag=now').slice(6);
 const zoom = +(process.argv.find((a) => a.startsWith('--zoom=')) || '--zoom=0.62').slice(7);
+const ty = (process.argv.find((a) => a.startsWith('--ty=')) || '').slice(5);
+const elev = +(process.argv.find((a) => a.startsWith('--el=')) || '--el=0.42').slice(5);
 const EXE = [
   process.env.BENCH_BROWSER,
   'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
@@ -40,25 +42,25 @@ const EXE = [
       timeout: 30000,
     });
     await p.waitForTimeout(1500);
-    const info = await p.evaluate(() => {
+    const info = await p.evaluate((ty) => {
       for (const cb of document.querySelectorAll('#insToggles input')) {
         const off = ['axes', 'conns', 'dims', 'box', 'ruler', 'human', 'grid'].includes(cb.dataset.k);
         if (off && cb.checked) cb.click();
       }
       const ins = window.__inspect;
+      if (ty !== '') ins.controls.target.y = +ty;
       return { d: ins.camera.position.distanceTo(ins.controls.target) };
-    });
+    }, ty);
     for (const [k, ang] of [
       ['a', -0.75],
       ['b', 2.3],
     ]) {
       await p.evaluate(
-        ({ ang, zoom }) => {
+        ({ ang, zoom, el }) => {
           const ins = window.__inspect,
             c = ins.camera,
             t = ins.controls.target;
-          const d = c.position.distanceTo(t) * zoom,
-            el = 0.42;
+          const d = c.position.distanceTo(t) * zoom;
           c.position.set(
             t.x + Math.sin(ang) * Math.cos(el) * d,
             t.y + Math.sin(el) * d,
@@ -67,7 +69,7 @@ const EXE = [
           c.lookAt(t);
           ins.controls.update();
         },
-        { ang, zoom: k === 'a' ? zoom : zoom / (info.d ? 1 : 1) },
+        { ang, zoom: k === 'a' ? zoom : zoom / (info.d ? 1 : 1), el: elev },
       );
       await p.waitForTimeout(700);
       await p.screenshot({

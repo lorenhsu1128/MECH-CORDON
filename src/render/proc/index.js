@@ -4,6 +4,7 @@
 // PROC_COLS：槽位 → 固定色（顏色在貼圖上的 GLB：背包推進器）。PROC_PARTS：槽位 → 會動的零件（戰車腳的輪子與履帶片，render/proc-tank.js）。
 import { mirrorPrims } from '../proc-prims.js';
 import { cStdPrims } from './c_std.js';
+import { p_head_h_spdAPrims, p_head_h_spdBPrims, p_head_h_spdCols } from './head_h_spd.js';
 import { p_head_h_stdPrims } from './head_h_std.js';
 import { p_arms_a_std_r_upperPrims } from './arms_a_std_r_upper.js';
 import { p_arms_a_std_r_forePrims } from './arms_a_std_r_fore.js';
@@ -146,6 +147,9 @@ export const PROC_COLS = {
   'booster/b_hi': p_booster_b_hiCols,
   'booster/b_eff': p_booster_b_effCols,
 };
+// 暫時：HD-ARACHNE 複眼頭的兩種草模（等使用者挑）
+export const PROC_TEMP = { 'head/h_spd_a': p_head_h_spdAPrims, 'head/h_spd_b': p_head_h_spdBPrims };
+PROC_COLS['head/h_spd_a'] = PROC_COLS['head/h_spd_b'] = p_head_h_spdCols;
 export const PROC_PARTS = {
   'legs/l_tk/body': p_legs_l_tk_bodyParts,
 };
