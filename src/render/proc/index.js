@@ -1,6 +1,5 @@
 // 照 GLB 量測重建的程式模型（scripts/glb-to-proc.mjs 產生；批次 scripts/proc-batch.js）：槽位 id → 基本形體清單。
 // PROC_PRIMS：槽位 → 清單（render/mech-model.js 的 makeProcPiece0 用它取代原本手寫的程式模型）。GRANITE 系列、SEQ 輕量機型、HAWK 重裝機型、逆足機型的頭、核心、手臂、腳，四足腳、核心 BD-AEGIS、三種背包推進器、戰車腳。
-// PROC_TEMP：還在給使用者檢查的（模型庫的暫時分類），還沒有換成預設：手持武器 14 把與肩上武器 9 種（右側照 GLB 重建、左側是右側的鏡像）。
 // PROC_SPIN：槽位 → 會轉的槍管（GLB 的 spin 節點：格林機槍、背部加特林）{ prims, cols, at }，procPrimPiece 掛成名稱 spin 的子群組。
 // PROC_COLS：槽位 → 固定色（顏色在貼圖上的 GLB：背包推進器）。PROC_PARTS：槽位 → 會動的零件（戰車腳的輪子與履帶片，render/proc-tank.js）。
 import { mirrorPrims } from '../proc-prims.js';
@@ -196,12 +195,11 @@ const WEAPONS = {
   'back/bw_pm': [p_back_bw_pm_rPrims, p_back_bw_pm_rCols],
   'back/bw_sh': [p_back_bw_sh_rPrims, p_back_bw_sh_rCols],
 };
-export const PROC_TEMP = {};
 export const PROC_SPIN = {};
 for (const k in WEAPONS) {
   const [pr, cols, spin] = WEAPONS[k];
-  PROC_TEMP[k + '/r'] = pr;
-  PROC_TEMP[k + '/l'] = mirrorPrims(pr);
+  PROC_PRIMS[k + '/r'] = pr;
+  PROC_PRIMS[k + '/l'] = mirrorPrims(pr);
   PROC_COLS[k + '/r'] = PROC_COLS[k + '/l'] = cols;
   if (spin) {
     PROC_SPIN[k + '/r'] = spin;
