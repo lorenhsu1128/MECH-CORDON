@@ -106,11 +106,6 @@ for (const t of raw) {
 }
 
 // 點在原本的實體裡？射線的交點數是奇數；外殼有破洞（沒封閉的邊），所以打三個方向取多數
-const RAYS = [
-  nrm([0.8231, 0.4127, 0.3893]),
-  nrm([-0.3713, 0.8571, -0.3567]),
-  nrm([0.2917, -0.3311, -0.8974]),
-];
 function hits(p, dir) {
   let n = 0;
   for (const t of T) {
@@ -130,10 +125,21 @@ function hits(p, dir) {
   }
   return n;
 }
-function inside(p) {
-  let k = 0;
-  for (const d of RAYS) if (hits(p, d) % 2 === 1) k++;
-  return k >= 2;
+// 從 p 往法線那一側看得到外面？法線方向＋繞一圈斜 50° 的方向共 9 條射線，有一條沒被擋住就算
+// （不靠交點數的奇偶：從整台機甲切下來的區塊切口是開的，奇偶會判錯）
+function escapes(p, n) {
+  const a = Math.abs(n[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+  const u = nrm(cross(n, a)),
+    w = cross(n, u);
+  if (hits(p, n) === 0) return true;
+  const c = Math.cos((50 * Math.PI) / 180),
+    sn = Math.sin((50 * Math.PI) / 180);
+  for (let k = 0; k < 8; k++) {
+    const t = (k * Math.PI) / 4;
+    const d = [0, 1, 2].map((i) => n[i] * c + (u[i] * Math.cos(t) + w[i] * Math.sin(t)) * sn);
+    if (hits(p, d) === 0) return true;
+  }
+  return false;
 }
 
 // ---------- 共平面的面（同色槽）----------
@@ -333,7 +339,7 @@ function exposed(h) {
     let n = 0;
     for (const q of S) {
       if (onSurface(q, f.n)) continue;
-      if (!inside([q[0] + f.n[0] * 0.012, q[1] + f.n[1] * 0.012, q[2] + f.n[2] * 0.012])) n++;
+      if (escapes([q[0] + f.n[0] * 0.012, q[1] + f.n[1] * 0.012, q[2] + f.n[2] * 0.012], f.n)) n++;
     }
     a += (f.ar * n) / S.length;
   }
@@ -393,17 +399,25 @@ const AX = ['x', 'y', 'z'];
 function classify(b) {
   const sa = slotArea(b.fs);
   const slot = sa.indexOf(Math.max(...sa));
-  // 塊體上其他色槽的面：薄色片（沿法線往外 PAINT，蓋在塊體的面上）
-  if (b.hull)
+  // 塊體上顏色和所在的面不同的原面：薄色片（貼到那個面上再往外 PAINT，不會被塊體的面蓋住）
+  // faceSlot(原面)＝它所在的那個塊體的面的色槽與平面（沒給＝塊體的色槽、原面自己的平面）
+  const addPaint = (faceOf) => {
     for (const fi of b.fs) {
-      if (F[fi].slot === slot) continue;
-      const o = F[fi].n.map((x) => x * PAINT);
+      const g = faceOf ? faceOf(F[fi]) : null;
+      const base = g ? g.slot : slot;
+      if (F[fi].slot === base) continue;
+      const n = g ? g.n : F[fi].n,
+        d = g ? g.d : F[fi].d;
       for (const ti of F[fi].tris)
         paint.push([
           F[fi].slot,
-          ...T[ti].v.map((i) => [r3(V[i][0] + o[0]), r3(V[i][1] + o[1]), r3(V[i][2] + o[2])]),
+          ...T[ti].v.map((i) => {
+            const k = d - dot(n, V[i]) + PAINT;
+            return [r3(V[i][0] + n[0] * k), r3(V[i][1] + n[1] * k), r3(V[i][2] + n[2] * k)];
+          }),
         ]);
     }
+  };
   if (!b.hull) {
     // 平面片：原本的三角形（依色槽）
     const tris = [];
@@ -419,6 +433,7 @@ function classify(b) {
     S4 = Math.sin((4 * Math.PI) / 180);
   const fsBig = b.fs.filter((fi) => F[fi].ar > 0.0015);
   const lim = Math.max(LIM_ABS, b.ar * LIM_REL);
+  const oneSlot = sa[slot] > b.ar * 0.9; // 方塊與柱體只有一個色槽：異色的面超過一成就用凸塊（每個面各自的色槽）
   const polyFace = (loop) => {
     const c = loop
       .reduce((q, v) => [q[0] + v[0], q[1] + v[1], q[2] + v[2]], [0, 0, 0])
@@ -441,8 +456,10 @@ function classify(b) {
       [4, 5, 7, 6],
       [0, 2, 3, 1],
     ].map((f) => polyFace(f.map(c)));
-    if ([0, 1, 2].every((k) => mx[k] - mn[k] > FLAT) && exposed({ faces }) < lim)
+    if ([0, 1, 2].every((k) => mx[k] - mn[k] > FLAT) && oneSlot && exposed({ faces }) < lim) {
+      addPaint();
       return { k: 'B', slot, a: mn.map(r3), b: mx.map(r3) };
+    }
   }
   // 沿軸擠出的柱體：面不是垂直軸（兩端）就是平行軸（側面）
   for (let a = 0; a < 3; a++) {
@@ -472,8 +489,10 @@ function classify(b) {
         q1 = prof[(i + 1) % prof.length];
       faces.push(polyFace([at(mn[a], q0), at(mn[a], q1), at(mx[a], q1), at(mx[a], q0)]));
     }
-    if (exposed({ faces }) < lim)
+    if (oneSlot && exposed({ faces }) < lim) {
+      addPaint();
       return { k: 'P', slot, ax: a, a0: r3(mn[a]), a1: r3(mx[a]), prof: prof.map((p) => p.map(r3)) };
+    }
   }
   // 一般凸塊
   const pts = [];
@@ -486,10 +505,36 @@ function classify(b) {
     }
     return i;
   };
-  const faces = b.hull.faces
-    .map((f) => f.loop.map(id).filter((v, i, a) => v !== a[(i + 1) % a.length]))
-    .filter((f) => f.length >= 3);
-  return { k: 'H', slot, pts, faces };
+  // 每個面的色槽：同平面的原面裡面積最大的色槽；沒有對應的原面（封口面）用塊體的色槽
+  const HF = b.hull.faces.map((f) => {
+    const a = [0, 0, 0, 0];
+    for (const fi of b.fs)
+      if (dot(F[fi].n, f.n) > 0.985 && Math.abs(F[fi].d - f.d) < 0.03) a[F[fi].slot] += F[fi].ar;
+    const m = Math.max(...a);
+    return { n: f.n, d: f.d, slot: m > 0 ? a.indexOf(m) : slot, loop: f.loop };
+  });
+  addPaint((fc) => {
+    let best = null,
+      bd = 1e9;
+    for (const g of HF) {
+      if (dot(g.n, fc.n) < 0.985) continue;
+      const dd = Math.abs(g.d - fc.d);
+      if (dd < 0.03 && dd < bd) {
+        bd = dd;
+        best = g;
+      }
+    }
+    return best;
+  });
+  const faces = [],
+    fsl = [];
+  for (const g of HF) {
+    const f = g.loop.map(id).filter((v, i, a) => v !== a[(i + 1) % a.length]);
+    if (f.length < 3) continue;
+    faces.push(f);
+    fsl.push(g.slot);
+  }
+  return { k: 'H', slot, pts, faces, fsl: fsl.some((x) => x !== slot) ? fsl : null };
 }
 // 2D 凸包（逆時針）
 function hull2(pts) {
@@ -558,7 +603,7 @@ for (let i = 0; i < (ARG.nomirror ? 0 : prims.length); i++) {
   const ma = cloud(A).map((p) => [-p[0], p[1], p[2]]);
   for (let k = i + 1; k < prims.length; k++) {
     const B = prims[k];
-    if (done.has(k) || B.k !== A.k || B.slot !== A.slot) continue;
+    if (done.has(k) || B.k !== A.k || B.slot !== A.slot || A.fsl || B.fsl) continue;
     const cb = cloud(B);
     if (cb.length !== ma.length) continue;
     if (
@@ -595,12 +640,13 @@ const lines = prims.map((p) => {
   const m = p.m ? ', 1' : '';
   if (p.k === 'B') return `  ['B', ${p.slot}, ${q(p.a)}, ${q(p.b)}${m}],`;
   if (p.k === 'P') return `  ['P', ${p.slot}, '${AX[p.ax]}', ${p.a0}, ${p.a1}, ${q(p.prof)}${m}],`;
-  if (p.k === 'H') return `  ['H', ${p.slot}, ${q(p.pts)}, ${q(p.faces)}${m}],`;
+  if (p.k === 'H')
+    return `  ['H', ${p.slot}, ${q(p.pts)}, ${q(p.faces)}${p.fsl ? ', ' + q(p.fsl) : ''}${m}],`;
   return `  ['${p.k}', ${q(p.tris)}],`;
 });
 const src = `// ${NAME}：照 GLB（${path.basename(glbPath)}）量測重建的程式模型（scripts/glb-to-proc.mjs 產生，不要手改；要調整就改產生器再重跑）。
 // 基本形體：['B', 色槽, 最小角, 最大角]＝軸向方塊、['P', 色槽, 軸, 起, 訖, 截面]＝沿軸擠出的多邊形柱、
-// ['H', 色槽, 頂點, 面]＝凸塊、['T', [[色槽, a, b, c]…]]＝沒有補面的表面（照原本的三角形，單面）、['D', …]＝貼在表面的色片；最後的 1＝左右鏡射再放一份。
+// ['H', 色槽, 頂點, 面, 各面的色槽?]＝凸塊、['T', [[色槽, a, b, c]…]]＝沒有補面的表面（照原本的三角形，單面）、['D', …]＝貼在表面的色片；最後的 1＝左右鏡射再放一份。
 // 色槽 0 main／1 sub／2 joint／3 acc；座標是 glTF（+Z 正面）、公尺。組成網格：render/proc-prims.js 的 primsGeo
 // prettier-ignore
 export const ${NAME}Prims = [

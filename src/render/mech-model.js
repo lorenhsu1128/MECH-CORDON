@@ -2065,23 +2065,24 @@ function makeProcPiece(info, ctx) {
   }
   return g;
 }
+// 基本形體清單 → 一個區塊（遊戲的座標；每個色槽一個網格＋和其他程式模型一樣的描邊外殼）。M＝mechMats 的材質
+export function procPrimPiece(prims, M, slot) {
+  const pg = primsGroup(prims, M, true);
+  const pos = [];
+  for (const c of pg.children) pos.push(...c.geometry.attributes.position.array);
+  const og = new THREE.BufferGeometry();
+  og.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  og.computeVertexNormals();
+  const o = new THREE.Mesh(og, OUTLINE_MAT);
+  o.castShadow = false;
+  pg.add(o);
+  pg.userData.slot = slot;
+  return pg;
+}
 function makeProcPiece0(info, ctx) {
   // 照 GLB 量測重建的程式模型（render/proc/）：已經是建模尺寸與內建 GLB 的外形，不用變形與放大
   const pr = PROC_PRIMS[info.slot];
-  if (pr) {
-    const pg = primsGroup(pr, ctx.M, true);
-    // 描邊外殼：同其他程式模型（所有色槽合成一個網格）
-    const pos = [];
-    for (const c of pg.children) pos.push(...c.geometry.attributes.position.array);
-    const og = new THREE.BufferGeometry();
-    og.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    og.computeVertexNormals();
-    const o = new THREE.Mesh(og, OUTLINE_MAT);
-    o.castShadow = false;
-    pg.add(o);
-    pg.userData.slot = info.slot;
-    return pg;
-  }
+  if (pr) return procPrimPiece(pr, ctx.M, info.slot);
   const g = new THREE.Group();
   (BUILD[info.kind] || (() => {}))(g, info, ctx);
   // 變形到內建預設機甲的外框（先合併成網格；區塊本身維持單位變換，換成 GLB、拖曳原點等都以區塊本身為準）

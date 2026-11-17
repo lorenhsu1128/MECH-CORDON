@@ -1,6 +1,6 @@
 // 基本形體清單 → 網格（實驗，2026-11-17）：scripts/glb-to-proc.mjs 照 GLB 量測重建的程式模型用。
 // 形體：['B', 色槽, 最小角, 最大角]＝軸向方塊、['P', 色槽, 軸, 起, 訖, 截面]＝沿軸擠出的凸多邊形柱（截面逆時針）、
-// ['H', 色槽, 頂點, 面]＝凸塊（面＝頂點編號的多邊形，從外面看逆時針）、['T', [[色槽, a, b, c]…]]＝沒有補面的表面（單面：凹處、圍著洞的面）、['D', …]＝貼在表面的色片（比表面高 2.5 mm）；
+// ['H', 色槽, 頂點, 面, 各面的色槽?]＝凸塊（面＝頂點編號的多邊形，從外面看逆時針）、['T', [[色槽, a, b, c]…]]＝沒有補面的表面（單面：凹處、圍著洞的面）、['D', …]＝貼在表面的色片（比表面高 2.5 mm）；
 // 最後一個元素是 1＝左右鏡射（x → −x）再放一份。色槽 0 main／1 sub／2 joint／3 acc。純函式。
 export const PRIM_SLOTS = ['main', 'sub', 'joint', 'acc'];
 const AX = { x: 0, y: 1, z: 2 };
@@ -58,13 +58,15 @@ export function primsTris(prims) {
           poly(s, [at(a0, q0), at(a0, q1), at(a1, q1), at(a1, q0)], mir);
         }
       } else if (k === 'H') {
-        const [, s, pts, faces] = p;
-        for (const f of faces)
+        const [, s, pts, faces, fsl] = p;
+        const fs = Array.isArray(fsl) ? fsl : null; // 各面的色槽（沒有＝整塊同一個）
+        faces.forEach((f, fi) =>
           poly(
-            s,
+            fs ? fs[fi] : s,
             f.map((i) => pts[i]),
             mir,
-          );
+          ),
+        );
       } else if (k === 'T' || k === 'D') {
         for (const [s, a, b, c] of p[1]) tri(s, a, b, c, false);
       }
