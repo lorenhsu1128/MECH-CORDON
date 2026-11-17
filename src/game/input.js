@@ -49,6 +49,7 @@ Object.assign(Game.prototype, {
         {
           aim: 'mouse',
           moveRel: 'screen',
+          modelSrc: 'proc', // 模型的來源：proc 預設程式模型／set 伺服器模型組（local-lib.js 的 procOnly）
           topCtl: 'classic', // 俯視的操作：classic 傳統（預設）／aim 面向游標（top-aim.js）
           topSnap: true, // 游標吸附
           holdFire: true,

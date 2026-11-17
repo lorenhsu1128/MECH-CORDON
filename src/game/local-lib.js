@@ -38,6 +38,8 @@ const SRV_IDLE = new Set([
   'cinelib',
   'voicelab',
 ]);
+// 模型的來源選「程式模型」時機甲用的來源：沒有 GLB、關節設定只用內建的（重建的程式模型自己的關節設定排在內建之後）
+const PROC_SRC = { id: '@proc', name: '程式模型', model: () => null, joints: {} };
 const CATALOG = new Map(MODEL_CATALOG.map((e) => [e.id, e]));
 // 機甲清單換上的部位（組裝鍵、零件分類）；發電機、火控與消耗品保留目前的
 const MECH_KEYS = [
@@ -91,23 +93,19 @@ Object.assign(Game.prototype, {
   // - 直接開檔：單人用本地模型庫（所有機甲與物件），多人一律程式模型
   // - 伺服器網址：機甲依 mechSource 指定模型組；其他物件單人時本地模型庫（載具／地圖物件／小物件）優先，
   //   再來是伺服器預設組；多人只用伺服器預設組（各端一致）
-  lmInit() {
-    LocalModels.allow = () => !(this.net && this.net.role);
-    MeleeAnim.allowLocal = LocalModels.allow; // 模型庫動作編輯器的近戰動作：只在單人時用
-    LocalModels.applyJoints();
-    // 方舟「艦內維修機庫」的裝飾機甲：和電腦的 AC 一樣的模型來源（docs/ark-redesign.md）
-    setArkMechSource(() => this.mechSource({ team: 'enemy' }));
-    setModelProvider((slot, pal, unique) => {
-      if (!onServer()) return LocalModels.model(slot, pal, unique);
-      if (!setScoped(slot)) {
-        const own = LocalModels.model(slot, pal, unique);
-        if (own) return own;
-      }
-      return ServerModels.model(slot, pal, unique);
-    });
-    // 內建的玩家預設機甲：開啟遊戲就開始解析，讀完時停在機甲庫就重建預覽
+  // 模型的來源（設定 ctrl.modelSrc，2026-11-17 使用者定案）：proc＝預設程式模型（預設：機甲、武器、載具、地圖物件、
+  // 小物件一律用程式模型，不讀伺服器預設組、本地模型庫與內建的 GLB）／set＝模型組（原本的做法：伺服器預設組、
+  // 本地模型庫，沒有時用內建的 GLB）。多人時各自照自己的設定顯示（只是外觀：重建的程式模型和 GLB 的關節相同）
+  procOnly() {
+    return !this.ctrl || this.ctrl.modelSrc !== 'set';
+  },
+  // 選「模型組」時才開始讀內建的預設機甲與伺服器預設組（開遊戲時、之後在設定切換時；只做一次）
+  lmSetsStart() {
+    if (this.procOnly() || this.lmSetsOn) return;
+    this.lmSetsOn = true;
+    // 內建的玩家預設機甲：開始解析，讀完時停在機甲庫就重建預覽
     BuiltinMech.load().then((set) => set && this.state === 'garage' && this.renderGarage());
-    // 伺服器網址：開遊戲就在背景讀伺服器預設組（解析要幾秒，出擊入口以 srvGate 等它），
+    // 伺服器網址：在背景讀伺服器預設組（解析要幾秒，出擊入口以 srvGate 等它），
     // 之後伺服器的 rev 改變時主動通知、在選單畫面背景重新讀取
     if (onServer()) {
       this.srvRefresh();
@@ -118,8 +116,26 @@ Object.assign(Game.prototype, {
       setInterval(() => this.srvPending && this.srvIdleRefresh(), 2000);
     }
   },
+  lmInit() {
+    LocalModels.allow = () => !(this.net && this.net.role) && !this.procOnly();
+    MeleeAnim.allowLocal = () => !(this.net && this.net.role); // 模型庫動作編輯器的近戰動作：只在單人時用（和模型的來源無關）
+    LocalModels.applyJoints();
+    // 方舟「艦內維修機庫」的裝飾機甲：和電腦的 AC 一樣的模型來源（docs/ark-redesign.md）
+    setArkMechSource(() => this.mechSource({ team: 'enemy' }));
+    setModelProvider((slot, pal, unique) => {
+      if (this.procOnly()) return null;
+      if (!onServer()) return LocalModels.model(slot, pal, unique);
+      if (!setScoped(slot)) {
+        const own = LocalModels.model(slot, pal, unique);
+        if (own) return own;
+      }
+      return ServerModels.model(slot, pal, unique);
+    });
+    this.lmSetsStart();
+  },
   // 伺服器通知改變過：停在選單畫面時背景重新讀取，讀完重建機甲庫的預覽（作戰室窗外的機體由 hubMechSync 換上）
   srvIdleRefresh() {
+    if (this.procOnly()) return;
     if (!this.srvPending || ServerModels.busy() || !SRV_IDLE.has(this.state)) return;
     this.srvPending = false;
     const rev = ServerModels.rev;
@@ -130,7 +146,7 @@ Object.assign(Game.prototype, {
   // 出擊入口：伺服器預設組還在讀時顯示進度、讀完再呼叫 retry，回傳 true（呼叫端直接 return）；
   // 沒在讀（或不是伺服器網址）時回傳 false、照常同步執行
   srvGate(retry) {
-    if (!ServerModels.busy()) return false;
+    if (this.procOnly() || !ServerModels.busy()) return false;
     if (this.srvGating) return true;
     this.srvGating = true;
     const p = this.lmProgress('讀取伺服器模型組…', true);
@@ -157,6 +173,7 @@ Object.assign(Game.prototype, {
   // 玩家機甲沒有自己的模型組時用內建的玩家預設機甲（BuiltinMech，每個人的 HTML 都有同一份，多人也一致）；
   // 伺服器預設組有機甲區塊時優先用它。直接開檔時敵人、友軍、電腦 AC 回傳 null（全域來源＝程式模型）
   mechSource(o = {}) {
+    if (this.procOnly()) return PROC_SRC;
     const human = o.team === 'player' && o.slot !== undefined && o.slot >= 0 && !o.pvpAi && !o.modelKind;
     const mp = !!(this.net && this.net.role);
     // 電腦的 AC（具名 AC、宿敵、Boss 的 AC、隨機的敵對 AC、友軍、PvP 電腦）：和玩家同零件的部位也用內建預設機甲的 GLB，
@@ -206,7 +223,7 @@ Object.assign(Game.prototype, {
   // 伺服器網址：重新讀取伺服器預設組（只抓清單比對，沒變動就沿用）。平常在背景讀（標題列下方的小進度條）；
   // manual（設定的「重新讀取」）時顯示讀取視窗
   async srvRefresh(manual = false) {
-    if (!onServer()) return null;
+    if (!onServer() || this.procOnly()) return null;
     const p = manual ? this.lmProgress('讀取伺服器模型組…', true) : null;
     const set = await ServerModels.refresh((d, t, id) => {
       this.srvTitleProg(d, t);
@@ -221,6 +238,11 @@ Object.assign(Game.prototype, {
   // 內建預設機甲和本地模型庫同時讀（內建的 GLB 很多、解析要好幾秒，不擋住本地模型庫的結果），回傳前等兩邊都好
   async lmRefresh(manual = false) {
     MeleeAnim.reloadLocal();
+    if (this.procOnly()) {
+      if (manual) this.lmShowResult('模型的來源是「預設程式模型」，沒有使用 GLB（設定 → 本地模型庫可以改）');
+      return LocalModels.status;
+    }
+    this.lmSetsStart();
     const builtin = BuiltinMech.load();
     await this.srvRefresh();
     if (!LocalModels.active()) {
@@ -367,7 +389,11 @@ Object.assign(Game.prototype, {
     // 第一次打開設定時還沒讀過伺服器預設組：讀完再重畫
     if (srv && !ServerModels.source() && !ServerModels.loading && !ServerModels.error)
       this.srvRefresh().then(() => this.state === 'settings' && this.renderLocalModels());
+    const proc = this.procOnly();
     let html =
+      `<div class="krow"><span>模型的來源</span><label><select id="lmSrc"><option value="proc"${proc ? ' selected' : ''}>預設程式模型（預設）</option><option value="set"${proc ? '' : ' selected'}>伺服器模型組</option></select> <span class="dim" style="font-size:12px">下次出擊生效</span></label></div>` +
+      `<p class="dim" style="font-size:11px">預設程式模型＝機甲、武器、載具、地圖物件都用遊戲內建的程式模型（戰車腳的輪子與履帶會動），不用下載與解析 GLB。伺服器模型組＝用伺服器預設組的 GLB${srv ? '' : '（直接開檔時沒有伺服器，改用內建的預設機甲 GLB）'}，以及下面的本地模型庫；沒有 GLB 的部位仍然是程式模型。多人時每個人照自己的設定顯示。</p>` +
+      (proc ? `<p class="dim" style="font-size:11px">以下的設定在選「伺服器模型組」時才會用到。</p>` : '') +
       (srv
         ? `<div class="krow"><span>伺服器預設組</span><span class="dim" style="font-size:12px">${escHtml(this.srvSummary())}</span><button id="srvReload">重新讀取</button></div>` +
           `<p class="dim" style="font-size:11px">從伺服器開啟時，敵人、AI 機甲、載具、地圖物件，以及沒選本地模型組時你的機甲，都用伺服器預設組（在 /models 的模型庫選「伺服器預設組」編輯）。</p>`
@@ -419,6 +445,13 @@ Object.assign(Game.prototype, {
         `</details>`;
     html += `<p class="dim" style="font-size:11px">在模型庫拖進 GLB 或調整連接點後，回到遊戲進機甲庫或出擊時會自動重新讀取。碰撞與判定維持程式模型的數值。</p>`;
     el.innerHTML = html;
+    $('lmSrc').onchange = (e) => {
+      this.ctrl.modelSrc = e.target.value;
+      this.saveKeys();
+      // 改成模型組：開始讀內建的預設機甲與伺服器預設組、本地模型庫
+      this.lmRefresh().then(() => this.state === 'settings' && this.renderLocalModels());
+      this.renderLocalModels();
+    };
     $('lmOn').onchange = (e) => {
       S.on = e.target.checked;
       LocalModels.saveSettings();
