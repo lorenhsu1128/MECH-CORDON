@@ -158,17 +158,14 @@ for (const [cat, list] of PART_LISTS)
         },
       });
 
-// ---------- 暫時：HD-ARACHNE 複眼頭的草模（A 跳蛛／B 狼蛛，等使用者挑） ----------
-for (const [key, label] of [
-  ['a', 'A 跳蛛'],
-  ['b', 'B 狼蛛'],
-]) {
-  const slot = 'head/h_spd_' + key;
+// ---------- 暫時：HD-ARACHNE 複眼頭的草模（等使用者確認） ----------
+{
+  const slot = 'head/h_spd';
   add({
-    id: 'temp/head_spd_' + key,
+    id: 'temp/head_spd',
     cat: 'temp',
-    name: 'HD-ARACHNE 複眼頭（' + label + '）',
-    note: '暫時：GRANITE 頭加上蜘蛛眼的草模',
+    name: 'HD-ARACHNE 複眼頭',
+    note: '暫時：GRANITE 頭加上蜘蛛眼（跳蛛的排列）的草模',
     spec: 'part',
     noGlb: true,
     build: (k) => {
@@ -178,9 +175,9 @@ for (const [key, label] of [
     },
   });
   add({
-    id: 'temp/spd_' + key + '_mech',
+    id: 'temp/spd_mech',
     cat: 'temp',
-    name: '初始機＋複眼頭（' + label + '）',
+    name: '初始機＋複眼頭',
     note: '暫時：玩家初始機換上複眼頭的草模',
     spec: 'mech',
     noGlb: true,
