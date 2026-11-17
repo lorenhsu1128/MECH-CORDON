@@ -148,7 +148,7 @@ Object.assign(Game.prototype, {
       af: r.af || 0, // 詞綴（data/affix.js）
     };
     // 玩家的模型組還沒下載好：先用伺服器預設組，下載完再換（mp-models.js）
-    if (r.ms) RemoteSets.load(r.ms);
+    if (r.ms && !this.procOnly()) RemoteSets.load(r.ms);
     const e = new MechEntity(this, r.asm, pal, opts);
     if (r.ha) e.maxHp = e.hp = r.ha; // 指定的血量（Boss 改版的部位）
     e.id = r.i;

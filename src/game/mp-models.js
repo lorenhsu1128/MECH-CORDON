@@ -82,12 +82,12 @@ Object.assign(Game.prototype, {
   },
   // 下載房間裡所有玩家的模型組（大廳收到名單時）
   mpPrefetch() {
-    if (!onServer() || !this.net) return;
+    if (!onServer() || !this.net || this.procOnly()) return;
     for (const p of this.net.players || []) if (validHash(p.ms)) RemoteSets.load(p.ms);
   },
   // 進大廳、車庫時：讀伺服器預設組、上傳我的模型組、下載其他人的
   async mpModelsRefresh() {
-    if (!onServer()) return;
+    if (!onServer() || this.procOnly()) return; // 模型的來源是程式模型：不讀也不上傳模型組
     await this.srvRefresh();
     this.mpPrefetch();
     await this.mpSyncMySet();
@@ -95,7 +95,7 @@ Object.assign(Game.prototype, {
   // 房主出擊：先備齊伺服器預設組與所有玩家的模型組（最多等 30 秒，失敗的用伺服器預設組）
   async mpStartWhenReady() {
     if (this.mpStarting) return;
-    if (!onServer()) return this.startMission();
+    if (!onServer() || this.procOnly()) return this.startMission();
     this.mpStarting = true;
     const p = this.lmProgress('準備模型組…', true);
     try {

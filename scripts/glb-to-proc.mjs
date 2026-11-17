@@ -93,6 +93,7 @@ for (const nd of J.nodes.filter((n) => n.mesh !== undefined && (!ARG.node || n.n
 // ---------- 貼圖的顏色（--tex[=色數]）：材質不是色槽、顏色畫在貼圖上的 GLB（背包推進器：保留原本的顏色、不換色）----------
 // 每個三角形在貼圖上取樣（重心＋往三個頂點）→ 面積加權的 k-means 分成幾個固定色 → 色槽編號 4 起（輸出 …Cols）
 let COLS = null;
+const WAR = []; // --warheads：彈頭的三角形（[色槽, a, b, c]）
 if (ARG.tex) {
   const sharp = (await import('sharp')).default;
   const K = ARG.tex === true ? 8 : +ARG.tex;
@@ -108,6 +109,43 @@ if (ARG.tex) {
     imgs.set(mi, { data, w: info.width, h: info.height });
     return imgs.get(mi);
   };
+  // --warheads：導彈武器的彈頭（貼圖上紅色的地方）換成乾淨的紅色圓頭彈頭（2026-11-17 使用者定案）。
+  // 每個三角形密一點取樣，紅色的取樣點記下位置與面法線；整個都是紅色的三角形（彈頭自己的幾何、紅圈裡的面）拿掉，
+  // 部分紅色的三角形顏色只算不是紅色的部分。紅色的點依距離分群，每一群＝一顆彈頭（軸＝面法線的平均）。
+  const RED = []; // { p, n, tri }
+  const redOnly = new Set();
+  const isRed = (r, g, b) => r > 60 && r > g * 1.6 && r > b * 1.6;
+  if (ARG.warheads)
+    for (let i = 0; i < raw.length; i++) {
+      const t = raw[i],
+        im = await imgOf(t.mat);
+      const nn = nrm(cross(sub(t.p[1], t.p[0]), sub(t.p[2], t.p[0])));
+      const N = 7;
+      let red = 0,
+        all = 0;
+      const keep = [0, 0, 0];
+      for (let a = 0; a <= N; a++)
+        for (let b = 0; a + b <= N; b++) {
+          const w = [(a + 0.33) / (N + 1), (b + 0.33) / (N + 1)];
+          w.push(1 - w[0] - w[1]);
+          const u = t.uv[0][0] * w[0] + t.uv[1][0] * w[1] + t.uv[2][0] * w[2],
+            v = t.uv[0][1] * w[0] + t.uv[1][1] * w[1] + t.uv[2][1] * w[2];
+          const x = Math.min(im.w - 1, Math.max(0, Math.floor((u - Math.floor(u)) * im.w))),
+            y = Math.min(im.h - 1, Math.max(0, Math.floor((v - Math.floor(v)) * im.h)));
+          const c = [0, 1, 2].map((k) => im.data[(y * im.w + x) * 3 + k]);
+          all++;
+          if (isRed(...c)) {
+            red++;
+            RED.push({
+              p: [0, 1, 2].map((k) => t.p[0][k] * w[0] + t.p[1][k] * w[1] + t.p[2][k] * w[2]),
+              n: nn,
+              tri: i,
+            });
+          } else for (let k = 0; k < 3; k++) keep[k] += c[k];
+        }
+      if (red > all * 0.5) redOnly.add(i);
+      else if (red) t.noRed = keep.map((x) => x / (all - red));
+    }
   const S = [];
   for (const t of raw) {
     const im = await imgOf(t.mat);
@@ -121,7 +159,7 @@ if (ARG.tex) {
       for (let k = 0; k < 3; k++) c[k] += im.data[(y * im.w + x) * 3 + k] / pts.length;
     }
     const n = cross(sub(t.p[1], t.p[0]), sub(t.p[2], t.p[0]));
-    S.push({ c, w: len(n) / 2 });
+    S.push({ c: t.noRed || c, w: len(n) / 2 });
   }
   // k-means（起點：最遠點取樣，結果固定）
   const d2 = (a, b) => (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2;
@@ -186,6 +224,19 @@ if (ARG.tex) {
       next.forEach((x, i) => (lab[i] = x));
     }
   }
+  // --warheads：紅色只留給新的彈頭，其他分到紅色那一群的三角形（零星的殘留）改成最接近的不是紅色的顏色
+  if (ARG.warheads) {
+    const redK = cen.map((c) => isRed(...c));
+    if (redK.some((x) => !x))
+      lab.forEach((l, i) => {
+        if (!redK[l]) return;
+        let b = -1;
+        cen.forEach((c, k) => {
+          if (!redK[k] && (b < 0 || d2(c, cen[l]) < d2(cen[b], cen[l]))) b = k;
+        });
+        lab[i] = b;
+      });
+  }
   raw.forEach((t, i) => (t.slot = 4 + lab[i]));
   const hex = (c) => '#' + c.map((x) => Math.round(x).toString(16).padStart(2, '0')).join('');
   COLS = cen.map(hex);
@@ -205,6 +256,127 @@ if (ARG.tex) {
       if (t.mat === mi) t.slot = 4 + COLS.length - 1;
     });
   });
+  if (ARG.warheads && RED.length) {
+    // 分群（格子＋併查集，相距 5 cm 內相連）
+    const fa3 = RED.map((_, i) => i);
+    const f3 = (x) => {
+      while (fa3[x] !== x) x = fa3[x] = fa3[fa3[x]];
+      return x;
+    };
+    const CELL = 0.05,
+      grid = new Map();
+    RED.forEach((q, i) => {
+      const g = q.p.map((x) => Math.floor(x / CELL));
+      for (let dx = -1; dx <= 1; dx++)
+        for (let dy = -1; dy <= 1; dy++)
+          for (let dz = -1; dz <= 1; dz++)
+            for (const k of grid.get(`${g[0] + dx},${g[1] + dy},${g[2] + dz}`) || [])
+              if (len(sub(RED[k].p, q.p)) < CELL) fa3[f3(i)] = f3(k);
+      const key = g.join(',');
+      if (!grid.has(key)) grid.set(key, []);
+      grid.get(key).push(i);
+    });
+    const groups = new Map();
+    RED.forEach((q, i) => {
+      const r = f3(i);
+      if (!groups.has(r)) groups.set(r, []);
+      groups.get(r).push(q);
+    });
+    // 有效的群：點數至少是最大那一群的三成（機身上零星的紅色標記不算）
+    const maxN = Math.max(...[...groups.values()].map((g) => g.length));
+    const big = [...groups.values()].filter((g) => g.length >= Math.max(25, maxN * 0.3));
+    const okTri = new Set();
+    const heads = [];
+    for (const g of big) {
+      const cen = g.reduce((s2, q) => s2.map((x, k) => x + q.p[k] / g.length), [0, 0, 0]);
+      // 軸：面法線的平均
+      let ax = [0, 0, 0];
+      for (const q of g) ax = ax.map((x, k) => x + q.n[k]);
+      ax = nrm(ax);
+      // 立體的彈頭（沿法線的平均有厚度）：莢艙的發射口朝正前方（+Z），彈頭也朝正前方
+      // （只有看得到的部分是紅色，從點的分布估方向不可靠）；畫在平面上的圓照那個面的法線
+      {
+        const tt = g.map((q) => dot(sub(q.p, cen), ax));
+        if (Math.max(...tt) - Math.min(...tt) > 0.12 && ax[2] > 0.5) ax = [0, 0, 1];
+      }
+      const ts = g.map((q) => dot(sub(q.p, cen), ax)).sort((p2, q2) => p2 - q2);
+      const rs = g
+        .map((q) => {
+          const d = sub(q.p, cen),
+            t = dot(d, ax);
+          return len(
+            sub(
+              d,
+              ax.map((x) => x * t),
+            ),
+          );
+        })
+        .sort((p2, q2) => p2 - q2);
+      const r = rs[Math.floor(rs.length * 0.9)];
+      heads.push({ c: cen, ax, r, t0: ts[0], t1: ts[ts.length - 1] });
+      if (ARG.debug)
+        console.log('群', g.length, '軸', ax.map(r3), 't', r3(ts[0]), r3(ts[ts.length - 1]), 'r', r3(r));
+      g.forEach((q) => okTri.add(q.tri));
+    }
+    // 相鄰的彈頭不重疊：半徑不超過到最近那一顆的距離（垂直軸的方向）的 0.47 倍
+    for (const h of heads)
+      for (const o of heads) {
+        if (o === h) continue;
+        const d = sub(o.c, h.c),
+          t = dot(d, h.ax);
+        h.r = Math.min(
+          h.r,
+          len(
+            sub(
+              d,
+              h.ax.map((x) => x * t),
+            ),
+          ) * 0.47,
+        );
+      }
+    // 拿掉整個紅色的三角形（屬於有效的那幾群的）
+    const dropT = new Set([...redOnly].filter((i) => okTri.has(i)));
+    const kept = raw.filter((_, i) => !dropT.has(i));
+    raw.length = 0;
+    raw.push(...kept);
+    // 彈頭：圓柱（後段）＋半球（前端），紅色的固定色；輸出成單面的三角形（WAR）
+    COLS.push('#c8242c');
+    const slot = 4 + COLS.length - 1;
+    const SEG = 12,
+      RING = 4;
+    for (const h of heads) {
+      const a = Math.abs(h.ax[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+      const u = nrm(cross(h.ax, a)),
+        w = cross(h.ax, u);
+      // 畫在平面上的圓（前後沒有厚度）：半球從那個面凸出來；本來就是立體的：前端對齊原本的前端
+      const r = h.r,
+        tip = h.t1 - h.t0 < r * 0.6 ? h.t1 + r : h.t1,
+        base = Math.min(h.t0, tip - r) - 0.02; // 後端稍微埋進去
+      const pt = (t, rr, k) => {
+        const an = (k / SEG) * Math.PI * 2;
+        return [0, 1, 2].map((c) =>
+          r3(h.c[c] + h.ax[c] * t + (u[c] * Math.cos(an) + w[c] * Math.sin(an)) * rr),
+        );
+      };
+      const rings = [[base, r]];
+      for (let j = 0; j <= RING; j++) {
+        const an = (j / RING) * (Math.PI / 2);
+        rings.push([tip - r + Math.sin(an) * r, Math.cos(an) * r]);
+      }
+      for (let j = 0; j < rings.length - 1; j++)
+        for (let k = 0; k < SEG; k++) {
+          const p00 = pt(rings[j][0], rings[j][1], k),
+            p01 = pt(rings[j][0], rings[j][1], k + 1),
+            p10 = pt(rings[j + 1][0], rings[j + 1][1], k),
+            p11 = pt(rings[j + 1][0], rings[j + 1][1], k + 1);
+          WAR.push([slot, p00, p01, p11]);
+          if (rings[j + 1][1] > 1e-6) WAR.push([slot, p00, p11, p10]);
+        }
+    }
+    console.log(
+      `彈頭：${heads.length} 顆（半徑 ${heads.map((h) => h.r.toFixed(2)).join('／')}），拿掉 ${dropT.size} 個紅色的三角形`,
+    );
+  }
   console.log('貼圖的顏色：', COLS.join(' '));
 }
 const NS = 4 + (COLS ? COLS.length : 0); // 色槽的數量（4 個換色的色槽＋固定色）
@@ -827,6 +999,7 @@ function hull2(pts) {
 }
 let prims = blocks.sort((a, b) => b.ar - a.ar).map(classify);
 if (paint.length) prims.push({ k: 'D', tris: paint });
+if (WAR.length) prims.push({ k: 'T', tris: WAR });
 
 // ---------- 左右對稱：鏡射後和另一個相同的只留一份 ----------
 const cen = (p) => {
@@ -928,6 +1101,7 @@ ${lines.join('\n')}
 ${
   COLS
     ? `// 固定色（貼圖上的顏色，不跟著配色換）：色槽 4 起
+// prettier-ignore
 export const ${NAME}Cols = ${JSON.stringify(COLS)};
 `
     : ''

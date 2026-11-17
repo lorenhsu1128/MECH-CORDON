@@ -2182,6 +2182,82 @@ async function testSolo(browser, base) {
 }
 
 // 著色器的非同步預熱（docs/perf-threejs-upgrade.md 第 2 期）：自動化測試預設同步，這裡以 window.__warmAsync 走非同步：
+// 模型的來源（設定 ctrl.modelSrc，game/local-lib.js 的 procOnly）：預設是程式模型（不讀內建的 GLB、戰車腳有會動的零件）、
+// 設定裡改成「伺服器模型組」之後出擊用內建預設機甲的 GLB、改回來又是程式模型
+async function testModelSrc(browser, base) {
+  console.log('模型的來源：預設程式模型、設定切換成模型組');
+  const { ctx, page } = await newPage(browser, 'modelsrc', { realDefaults: true });
+  await page.goto(base + '?test');
+  check(await waitVisible(page, 'title'), '標題畫面顯示');
+  await newCareer(page);
+  const sortie = async (legs) => {
+    await page.evaluate((legs) => {
+      const g = window.__game;
+      g.save.level = 1;
+      if (legs) g.save.asm.legs = legs;
+      if (g.state === 'play') g.clearMission();
+      g.startMission();
+    }, legs);
+    await page.waitForFunction(() => {
+      const g = window.__game;
+      return g.state === 'play' && g.player && g.warmWorld === g.world && !g.warmBusy;
+    });
+    return page.evaluate(() => {
+      const g = window.__game,
+        m = g.player.model;
+      const ps = Object.values(m.pieces);
+      return {
+        src: g.procOnly() ? 'proc' : 'set',
+        id: (g.player.modelSrc && g.player.modelSrc.id) || '',
+        proc: ps.filter((o) => o.userData.proc).length,
+        glb: ps.filter((o) => o.userData.localGlb).length,
+        n: ps.length,
+        tank: !!m.tank,
+      };
+    });
+  };
+  const a = await sortie('l_tk');
+  check(
+    a.src === 'proc' && a.id === '@proc' && a.proc === a.n && a.glb === 0,
+    `預設是程式模型：玩家機甲 ${a.n} 個區塊都是程式模型（${JSON.stringify(a)}）`,
+  );
+  check(a.tank, '戰車腳的程式模型有會動的輪子與履帶');
+  // 設定畫面的選單改成模型組
+  const ui = await page.evaluate(async () => {
+    const g = window.__game;
+    g.renderLocalModels();
+    const sel = document.getElementById('lmSrc');
+    const v0 = sel.value;
+    sel.value = 'set';
+    sel.onchange({ target: sel });
+    await g.lmRefresh();
+    return {
+      v0,
+      ctrl: g.ctrl.modelSrc,
+      saved: JSON.parse(localStorage.getItem('mech_cordon_ctrl')).modelSrc,
+    };
+  });
+  check(
+    ui.v0 === 'proc' && ui.ctrl === 'set' && ui.saved === 'set',
+    `設定的「模型的來源」選單：預設 proc、改成 set 並存檔（${JSON.stringify(ui)}）`,
+  );
+  const b = await sortie();
+  check(
+    b.src === 'set' && b.glb > 0,
+    `改成模型組後出擊：玩家機甲用內建預設機甲的 GLB（${JSON.stringify(b)}）`,
+  );
+  await page.evaluate(() => {
+    const g = window.__game;
+    g.ctrl.modelSrc = 'proc';
+    g.saveKeys();
+  });
+  const c = await sortie();
+  check(
+    c.src === 'proc' && c.glb === 0 && c.proc === c.n,
+    `改回程式模型後出擊：沒有 GLB（${JSON.stringify(c)}）`,
+  );
+  await ctx.close();
+}
 // 出擊時背景編譯、完成後「戰場準備中」消失、任務照常進行，之後幾乎不再新編著色器
 // 視角切換（game/view-tr.js、chase.js）：按鍵設定的「切換視角」、手把的 Back、運鏡與設定、主線換區段沿用視角
 async function testViewTr(browser, base) {
@@ -3088,7 +3164,9 @@ async function testLibraryGlb(browser, base) {
   await openSlot('weapon/w_rifle/r');
   const rifle = await template('w_rifle_r_template.glb');
   await load(rifle);
-  const badW = await badCount();
+  // 武器的預設程式模型是照內建 GLB 重建的（render/proc/），三角形比 GLB 多一些（突擊步槍 1949 → 2197），
+  // 範本會超過武器的建議三角面數：這一項不算，其他規格照樣檢查
+  const badW = (await badCount()).filter((x) => !/^三角面/.test(x));
   check(badW.length === 0, `武器範本 GLB 規格檢查全部通過${badW.length ? '：' + badW.join('；') : ''}`);
   // 載具區塊：直升機主旋翼（原點在旋翼軸心）
   await openSlot('vehicle/heli/rotor');
@@ -33987,6 +34065,7 @@ const STEPS = [
   ['testSolo', (c) => testSolo(c.browser, c.base)],
   ['testWarmAsync', (c) => testWarmAsync(c.browser, c.base)], // 著色器的非同步預熱（docs/perf-threejs-upgrade.md）
   ['testTips', (c) => testTips(c.browser, c.base)], // 載入提示（game/tips.js）
+  ['testModelSrc', (c) => testModelSrc(c.browser, c.base)], // 模型的來源（預設程式模型／模型組）
   ['testViewTr', (c) => testViewTr(c.browser, c.base)], // 視角切換（game/view-tr.js）
   ['testMaps', (c) => testMaps(c.browser, c.base + '?test')],
   ['testDestruct', (c) => testDestruct(c.browser, c.base + '?test')],
@@ -34338,7 +34417,9 @@ async function launchBrowser() {
   // 各地圖本身由 testMaps 逐一出擊檢查。測試自己選了地圖（包含選回「隨機」）時不覆蓋
   // 遊戲節奏與地圖物件的破壞：測試的時間與數值照 85%／可破壞調的（2026-11-05 預設改成 75%／易破壞），
   // 俯視的操作：舊的測試照傳統操作寫的（2026-11-06 遊戲的預設也改回傳統；面向游標由 testTopAim 另外測），
-  // 沒有存過設定的環境先寫這兩項；realDefaults（設定畫面的測試）用遊戲真正的預設
+  // 模型的來源：舊的測試照「模型組」（GLB：內建的預設機甲、伺服器預設組、本地模型庫）寫的（2026-11-17 遊戲的預設改成
+  // 程式模型；預設與切換由 testModelSrc 另外測），
+  // 沒有存過設定的環境先寫這幾項；realDefaults（設定畫面的測試）用遊戲真正的預設
   const newCtx = browser.newContext.bind(browser);
   browser.newContext = async (o = {}) => {
     const { realDefaults, ...opt } = o;
@@ -34349,7 +34430,13 @@ async function launchBrowser() {
           if (localStorage.getItem('mech_cordon_ctrl') === null)
             localStorage.setItem(
               'mech_cordon_ctrl',
-              JSON.stringify({ pace: 0.85, paceV: 2, destruct: 'normal', topCtl: 'classic' }),
+              JSON.stringify({
+                pace: 0.85,
+                paceV: 2,
+                destruct: 'normal',
+                topCtl: 'classic',
+                modelSrc: 'set',
+              }),
             );
         } catch (e) {
           /* 沒有 localStorage 的頁面 */
