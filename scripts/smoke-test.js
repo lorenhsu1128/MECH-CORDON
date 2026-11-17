@@ -2256,6 +2256,32 @@ async function testModelSrc(browser, base) {
     c.src === 'proc' && c.glb === 0 && c.proc === c.n,
     `改回程式模型後出擊：沒有 GLB（${JSON.stringify(c)}）`,
   );
+  // 從伺服器網址開（模擬：有 MECH_CORDON_SERVER）、模型的來源是程式模型時打開設定畫面：
+  // 不讀伺服器預設組，也不能一直重畫（2026-11-17 當掉過：srvRefresh 立刻結束 → 重畫 → 又呼叫 srvRefresh）
+  const srvUi = await page.evaluate(async () => {
+    const g = window.__game;
+    window.MECH_CORDON_SERVER = { ws: '' };
+    let n = 0;
+    const orig = g.renderLocalModels;
+    g.renderLocalModels = function () {
+      n++;
+      if (n > 50) throw new Error('renderLocalModels 一直重畫');
+      return orig.call(this);
+    };
+    g.state = 'settings';
+    try {
+      g.renderLocalModels();
+      await new Promise((r) => setTimeout(r, 400));
+    } finally {
+      g.renderLocalModels = orig;
+      delete window.MECH_CORDON_SERVER;
+    }
+    return { n, sel: document.getElementById('lmSrc').value };
+  });
+  check(
+    srvUi.n <= 2 && srvUi.sel === 'proc',
+    `伺服器網址＋程式模型：設定的本地模型庫區塊只畫 ${srvUi.n} 次（不會一直重畫）`,
+  );
   await ctx.close();
 }
 // 出擊時背景編譯、完成後「戰場準備中」消失、任務照常進行，之後幾乎不再新編著色器

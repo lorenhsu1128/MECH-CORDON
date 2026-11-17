@@ -386,8 +386,9 @@ Object.assign(Game.prototype, {
     const st = LocalModels.status;
     const cnt = (g) => (st && st.slots ? st.slots.filter((s) => s.group === g).length : 0);
     const srv = onServer();
-    // 第一次打開設定時還沒讀過伺服器預設組：讀完再重畫
-    if (srv && !ServerModels.source() && !ServerModels.loading && !ServerModels.error)
+    // 第一次打開設定時還沒讀過伺服器預設組：讀完再重畫。模型的來源是程式模型時不讀
+    // （srvRefresh 會立刻結束，再重畫就變成無限迴圈：2026-11-17 從伺服器網址開設定畫面當掉）
+    if (srv && !this.procOnly() && !ServerModels.source() && !ServerModels.loading && !ServerModels.error)
       this.srvRefresh().then(() => this.state === 'settings' && this.renderLocalModels());
     const proc = this.procOnly();
     let html =
