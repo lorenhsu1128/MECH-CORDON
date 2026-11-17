@@ -2321,6 +2321,27 @@ async function testModelSrc(browser, base) {
     Math.abs(spd.t3 / spd.t1 - 0.7) < 0.2 && spd.n3 === 10 && spd.n3s === 1,
     `複眼頭的金色特殊「八目鎖定」：8 連導彈發射 ${spd.n3} 發、單發的不變（${spd.n3s}）`,
   );
+  // 腳掌的輪子（render/proc/foot_wheels.js）：二足左右腳各一個，站著不轉、往前滑行時會轉
+  await sortie('l_bp');
+  const wh0 = await page.evaluate(() => {
+    const m = window.__game.player.model;
+    return { n: (m.wheels || []).length, v: (m.wheels || []).map((w) => Math.abs(w.v)) };
+  });
+  await page.keyboard.down('KeyW');
+  await wait(1800);
+  const wh1 = await page.evaluate(() => {
+    const m = window.__game.player.model;
+    return {
+      gW: m.an.gW,
+      v: (m.wheels || []).map((w) => +Math.abs(w.v).toFixed(1)),
+      r: (m.wheels || []).map((w) => w.r),
+    };
+  });
+  await page.keyboard.up('KeyW');
+  check(
+    wh0.n === 2 && wh0.v.every((v) => v < 0.5) && wh1.v.every((v) => v > 3),
+    `腳掌的輪子：二足 ${wh0.n} 個，站著不轉、滑行時轉（滑行 ${wh1.gW.toFixed(2)}、角速度 ${wh1.v.join('／')} 弧度／秒）`,
+  );
   // 從伺服器網址開（模擬：有 MECH_CORDON_SERVER）、模型的來源是程式模型時打開設定畫面：
   // 不讀伺服器預設組，也不能一直重畫（2026-11-17 當掉過：srvRefresh 立刻結束 → 重畫 → 又呼叫 srvRefresh）
   const srvUi = await page.evaluate(async () => {

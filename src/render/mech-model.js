@@ -1,5 +1,6 @@
 // ---------------- WEAPONS（Q 版：粗大方塊化） ----------------
-import { PROC_COLS, PROC_PARTS, PROC_PRIMS, PROC_SPIN } from './proc/index.js';
+import { PROC_COLS, PROC_PARTS, PROC_PRIMS, PROC_SPIN, PROC_WHEELS } from './proc/index.js';
+import { WHEEL_COLS, wheelPrims } from './proc/foot_wheels.js';
 import { tankPartsGroup, tankPartsPose } from './proc-tank.js';
 import { primsGroup } from './proc-prims.js';
 import { clamp, lerp } from '../core/math.js';
@@ -2075,6 +2076,7 @@ function makeProcPiece(info, ctx) {
 }
 // 基本形體清單 → 一個區塊（遊戲的座標；每個色槽一個網格＋和其他程式模型一樣的描邊外殼）。M＝mechMats 的材質
 // 固定色（PROC_COLS：顏色在貼圖上的 GLB，例如背包推進器）與會動的零件（PROC_PARTS：戰車腳的輪子與履帶片）依槽位帶上
+const WHEEL_X = new THREE.Vector3(1, 0, 0);
 export function procPrimPiece(prims, M, slot) {
   const pg = primsGroup(prims, M, true, PROC_COLS[slot]);
   const pos = [];
@@ -2092,6 +2094,30 @@ export function procPrimPiece(prims, M, slot) {
     sg.name = 'spin';
     sg.position.set(-sp.at[0], sp.at[1], -sp.at[2]);
     pg.add(sg);
+  }
+  if (PROC_WHEELS[slot]) {
+    // 腳掌的輪子：座＝輪子的中心、x 軸對準輪軸（glTF → 遊戲的座標：x、z 反號）；裡面名稱 footWheel 的群組繞自己的 x 軸轉（animateMech 的 footWheels）
+    for (const k of PROC_WHEELS[slot]) {
+      const seat = new THREE.Group();
+      seat.position.set(-k.c[0], k.c[1], -k.c[2]);
+      seat.quaternion.setFromUnitVectors(
+        WHEEL_X,
+        new THREE.Vector3(-k.axis[0], k.axis[1], -k.axis[2]).normalize(),
+      );
+      const wg = primsGroup(wheelPrims(k.r, k.w), M, false, WHEEL_COLS);
+      const wp = [];
+      for (const c of wg.children) wp.push(...c.geometry.attributes.position.array);
+      const wo = new THREE.BufferGeometry();
+      wo.setAttribute('position', new THREE.Float32BufferAttribute(wp, 3));
+      wo.computeVertexNormals();
+      const wm = new THREE.Mesh(wo, OUTLINE_MAT);
+      wm.castShadow = false;
+      wg.add(wm);
+      wg.name = 'footWheel';
+      wg.userData.r = k.r;
+      seat.add(wg);
+      pg.add(seat);
+    }
   }
   if (PROC_PARTS[slot]) {
     // 會動的零件是 glTF 座標：繞 Y 轉 180° 就是遊戲的座標（−Z 正面）
@@ -2352,6 +2378,13 @@ export function buildMech(asm, pal, scale = 1, opts = {}) {
     const tg = pieces[slot] && pieces[slot].getObjectByName('tankParts');
     if (tg) rig.tank = { g: tg, parts: PROC_PARTS[slot], dist: PROC_PARTS[slot].tracks.map(() => 0) };
   }
+  // 腳掌的輪子（照 GLB 重建的程式模型）：animateMech 的 footWheels 在滑行時依走過的距離轉
+  for (const slot in pieces)
+    if (PROC_WHEELS[slot] && pieces[slot])
+      pieces[slot].traverse((o) => {
+        if (o.name === 'footWheel')
+          (rig.wheels || (rig.wheels = [])).push({ g: o, r: o.userData.r, a: 0, v: 0 });
+      });
   if (!opts.noGround) refreshGround(rig);
   root.scale.setScalar(scale);
   root.traverse((o) => {
@@ -2577,6 +2610,37 @@ function tankRoll(m, dt, grounded, preview) {
   // 左側（glTF 的 +x）在往左轉（yaw 增加）時往後
   T.parts.tracks.forEach((t, i) => (T.dist[i] += d - dy * t.x));
   tankPartsPose(T.g, T.parts, T.dist);
+}
+// 腳掌的輪子：滑行時（k＝滑行的程度；四足＝QB／突擊推進）依輪子在地面上走過的距離滾動——
+// 角速度＝(上 × 位移)／半徑 在輪軸方向的分量，所以側移時不轉、倒退時反轉；離地或沒在滑行時慢慢停下。只改外觀，各端各自算。
+// preview＝沒有實體在移動的預覽（模型庫的動作預覽）：照動作的前進速度
+function footWheels(m, dt, k, preview) {
+  const le = m.legsG.matrixWorld.elements;
+  for (const W of m.wheels) {
+    const e = W.g.parent.matrixWorld.elements; // 上一格的（輪子的座：x 軸＝輪軸）
+    const L = Math.hypot(e[0], e[1], e[2]) || 1;
+    let dx = 0,
+      dz = 0;
+    if (preview !== null) {
+      const fl = Math.hypot(le[8], le[10]) || 1;
+      dx = (-le[8] / fl) * preview * 8 * dt * L;
+      dz = (-le[10] / fl) * preview * 8 * dt * L;
+    } else if (W.has) {
+      dx = e[12] - W.x;
+      dz = e[14] - W.z;
+      if (dx * dx + dz * dz > 36 * L * L) dx = dz = 0; // 出生、傳送
+    }
+    W.has = true;
+    W.x = e[12];
+    W.z = e[14];
+    if (k > 0.05 && dt > 0) {
+      const roll = (dz * e[0] - dx * e[2]) / (L * L * W.r); // (上 × 位移)·輪軸 ÷ 半徑（弧度）
+      W.v += ((roll / dt) * k - W.v) * Math.min(1, dt * 16);
+    } else W.v *= Math.exp(-2.2 * dt);
+    if (Math.abs(W.v) < 0.01) continue;
+    W.a = (W.a + W.v * dt) % (Math.PI * 2);
+    W.g.rotation.x = W.a;
+  }
 }
 const NO_WK = {},
   NO_LR = { l: 0, r: 0 };
@@ -3014,6 +3078,13 @@ export function animateMech(m, dt, st) {
   const fL = Math.cos(mvA - ly) * spd,
     sL = Math.sin(mvA - ly) * spd;
   if (m.tank) tankRoll(m, dt, grounded, st.vr === undefined ? (grounded && moving ? fL : 0) : null);
+  if (m.wheels)
+    footWheels(
+      m,
+      dt,
+      grounded ? (legged ? an.gW : Math.max(an.qW || 0, st.boost ? 1 : 0)) : 0,
+      st.vr === undefined ? (grounded && moving ? fL : 0) : null,
+    );
   // ===== 腿：髖三軸（俯仰＝擺動、外展＝側移／落地、偏航＝轉向）＋膝＋踝兩軸 =====
   if (legged) {
     // 逆關節（四段）的膝和二足同向彎（膝在前），往後折的是跗關節：蹠骨依膝的彎曲連動（HOCK_K），

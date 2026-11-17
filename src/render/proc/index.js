@@ -5,6 +5,7 @@
 import { mirrorPrims, primBox, symmetrizePrims } from '../proc-prims.js';
 import { cStdPrims } from './c_std.js';
 import { EYE_COLS, withEyes } from './head_eyes.js';
+import { FOOT_EXTRA, FOOT_WHEELS, mirrorWheels, stripWheels } from './foot_wheels.js';
 import { p_head_h_spdPrims, p_head_h_spdCols } from './head_h_spd.js';
 import { p_head_h_stdPrims } from './head_h_std.js';
 import { p_arms_a_std_r_upperPrims } from './arms_a_std_r_upper.js';
@@ -160,6 +161,12 @@ export const PROC_PARTS = {
   'legs/l_tk/body': p_legs_l_tk_bodyParts,
 };
 // 左右鏡像（2026-11-17 使用者定案）：鏡像出來的槽位沒有自己的清單檔，載入時由來源的清單鏡射。[鏡像出來的槽位, 來源的槽位]。手臂與腳以右側為準、四足腳以左側為準（和內建 GLB 原本的做法一樣）
+// 腳掌的輪子（foot_wheels.js）：原本的輪子從清單拿掉，換成另外建的、會轉的輪子（PROC_WHEELS：槽位 → 輪子的位置與大小）
+export const PROC_WHEELS = {};
+for (const k in FOOT_WHEELS) {
+  PROC_PRIMS[k] = [...stripWheels(PROC_PRIMS[k], FOOT_WHEELS[k]), ...(FOOT_EXTRA[k] ? FOOT_EXTRA[k]() : [])];
+  PROC_WHEELS[k] = FOOT_WHEELS[k];
+}
 const MIRRORS = [];
 for (const a of ['a_std', 'a_lt', 'a_hv', 'a_ml'])
   for (const k of ['upper', 'fore', 'hand']) MIRRORS.push([`arms/${a}/l_${k}`, `arms/${a}/r_${k}`]);
@@ -170,7 +177,11 @@ for (const [d, s2] of [
   ['br', 'bl'],
 ])
   for (const k of ['thigh', 'shin', 'foot']) MIRRORS.push([`legs/l_qd/${d}_${k}`, `legs/l_qd/${s2}_${k}`]);
-for (const [d, s2] of MIRRORS) if (PROC_PRIMS[s2]) PROC_PRIMS[d] = mirrorPrims(PROC_PRIMS[s2]);
+for (const [d, s2] of MIRRORS)
+  if (PROC_PRIMS[s2]) {
+    PROC_PRIMS[d] = mirrorPrims(PROC_PRIMS[s2]);
+    if (PROC_WHEELS[s2]) PROC_WHEELS[d] = mirrorWheels(PROC_WHEELS[s2]);
+  }
 // 核心、襠部與背包推進器左右對稱（使用者定案）：和手臂、腳一樣以機體的右側（−x）為準，另一側是它的鏡像（proc-prims.js 的 symmetrizePrims）。
 // 頭的對稱在 head_eyes.js（每顆頭各自指定基準的那一側）。只有單邊的造型照原樣保留（GRANITE 核心右後方的天線）
 const SYM_KEEP = {

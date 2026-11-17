@@ -1,0 +1,261 @@
+// 腳掌的輪子（2026-11-17，使用者要求）：照 GLB 重建的腳掌上都有輪子，但它只是腳掌清單裡的一堆三角形、不會轉，
+// 側面也看不出輪圈與胎皮。這裡把每隻腳掌的輪子換成另外建的輪子（胎皮＋輪圈＋輪輻＋輪蓋），
+// 掛成會轉的子群組（mech-model.js 的 procPrimPiece／animateMech 的 footWheels：滑行時依走過的距離轉）。
+//   FOOT_WHEELS[槽位]＝[{ c 中心, axis 輪軸方向, r 半徑, w 胎寬 }…]（glTF 座標：+Z 正面、公尺；照清單量的）
+//   stripWheels(清單, 輪子)＝把原本的輪子（整個落在輪子圓柱裡的三角形）從清單拿掉
+//   wheelPrims(r, w)＝輪子本身的清單（輪軸＝x、中心在原點）；固定色 WHEEL_COLS（色槽 4 胎皮、5 輪圈）
+// 四足後腳在 GLB 裡是兩個大小不同、彼此不平行的圓盤：依使用者定案改成同一根軸上、直徑相同、互相平行的內外兩輪。
+// GRANITE、WISP、JACKAL 大輪前方的小圓盤是蓋子（使用者確認），不是輪子，留在腳掌上不動。
+import { primsTris } from '../proc-prims.js';
+
+export const WHEEL_COLS = ['#15161a', '#a3a8b0'];
+const TYRE = 4,
+  RIM = 5;
+
+const norm = (v) => {
+  const l = Math.hypot(v[0], v[1], v[2]) || 1;
+  return [v[0] / l, v[1] / l, v[2] / l];
+};
+const r4 = (x) => Math.round(x * 10000) / 10000;
+
+// 四足後腳：兩輪的中點、輪軸方向、兩輪中心的間距
+const BL_MID = [0.085, -0.35, 0.11],
+  BL_AXIS = norm([0.66, 0, 0.75]),
+  BL_GAP = 1.62;
+const blWheel = (s) => ({
+  c: BL_MID.map((v, i) => r4(v + BL_AXIS[i] * s * BL_GAP * 0.5)),
+  axis: BL_AXIS,
+  r: 1.12,
+  w: 0.42,
+  // 原本的兩個圓盤大小不同、也不平行，超出新輪子的部分比較多：拿掉的範圍放寬
+  padR: 0.26,
+  padW: 0.46,
+  hub: 0.85,
+});
+
+export const FOOT_WHEELS = {
+  'legs/l_bp/r_foot': [{ c: [0.269, -0.47, -1.163], axis: norm([0.959, -0.044, 0.278]), r: 0.773, w: 0.62 }],
+  'legs/l_bp2/r_foot': [
+    { c: [0.291, -0.486, -1.533], axis: norm([0.978, 0, 0.208]), r: 0.797, w: 0.7, hub: 1.0 },
+  ],
+  'legs/l_hv/r_foot': [{ c: [0.055, -0.47, -1.291], axis: norm([0.952, 0, 0.305]), r: 0.784, w: 0.8 }],
+  'legs/l_rj/r_foot': [{ c: [0.195, -0.298, -0.624], axis: norm([0.973, -0.11, 0.204]), r: 0.8, w: 0.6 }],
+  'legs/l_qd/fl_foot': [{ c: [0.153, -0.265, -0.739], axis: norm([0.969, 0, -0.246]), r: 0.804, w: 0.9 }],
+  'legs/l_qd/bl_foot': [blWheel(1), blWheel(-1)],
+};
+// 留在腳掌上不轉的零件（glTF 座標）：四足後腳兩輪之間的輪軸（原本的被當成輪蓋一起拿掉了）
+export const FOOT_EXTRA = {
+  'legs/l_qd/bl_foot': () => {
+    const a = BL_AXIS;
+    const u = norm([-a[2], 0, a[0]]);
+    const v = [a[1] * u[2] - a[2] * u[1], a[2] * u[0] - a[0] * u[2], a[0] * u[1] - a[1] * u[0]];
+    const h = BL_GAP / 2 - 0.15;
+    const H = lathe(
+      2,
+      [
+        [-h, 0.26],
+        [-h * 0.5, 0.32],
+        [h * 0.5, 0.32],
+        [h, 0.26],
+      ],
+      12,
+    );
+    // 輪軸＝x 的旋轉體擺到兩輪的中點：(x, y, z) → 軸、v、u（右手系）
+    H[2] = H[2].map((p) => [0, 1, 2].map((q) => r4(BL_MID[q] + a[q] * p[0] + v[q] * p[1] + u[q] * p[2])));
+    return [H];
+  },
+};
+// 左右鏡像的槽位（proc/index.js 的 MIRRORS）：輪子跟著鏡射
+export const mirrorWheels = (ws) =>
+  ws.map((k) => ({ ...k, c: [-k.c[0], k.c[1], k.c[2]], axis: [-k.axis[0], k.axis[1], k.axis[2]] }));
+
+// 把原本的輪子從清單拿掉：三個頂點都在某個輪子的範圍（輪胎的圓柱，半徑與寬各放寬一點；加上兩側原本的輪蓋）裡的三角形。結果是一個 'T'
+export function stripWheels(prims, wheels, padR = 0.04, padW = 0.16) {
+  const list = [];
+  const inside = (v) =>
+    wheels.some((k) => {
+      const d = [v[0] - k.c[0], v[1] - k.c[1], v[2] - k.c[2]];
+      const ax = d[0] * k.axis[0] + d[1] * k.axis[1] + d[2] * k.axis[2];
+      const rr = Math.hypot(d[0] - k.axis[0] * ax, d[1] - k.axis[1] * ax, d[2] - k.axis[2] * ax);
+      // 輪胎的圓柱，加上兩側輪軸附近的輪蓋（半徑 0.66r 以內、往外到 hub）
+      if (Math.abs(ax) <= k.w / 2 + (k.padW || padW) && rr <= k.r + (k.padR || padR)) return true;
+      return Math.abs(ax) <= (k.hub === undefined ? 0.75 : k.hub) && rr <= k.r * 0.66;
+    });
+  primsTris(prims).forEach((pos, s) => {
+    for (let i = 0; i < pos.length; i += 9) {
+      const a = pos.slice(i, i + 3),
+        b = pos.slice(i + 3, i + 6),
+        c = pos.slice(i + 6, i + 9);
+      if (inside(a) && inside(b) && inside(c)) continue;
+      list.push([s, a, b, c]);
+    }
+  });
+  return [['T', list]];
+}
+
+// 繞 x 軸的旋轉體（凸）：rings＝[[x, 半徑]…]（x 由小到大），n 邊
+function lathe(slot, rings, n) {
+  const pts = [];
+  for (const [x, r] of rings)
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      pts.push([r4(x), r4(Math.cos(a) * r), r4(Math.sin(a) * r)]);
+    }
+  const faces = [];
+  const ring = (k) => Array.from({ length: n }, (_, i) => k * n + i);
+  // 從 +x 看，角度增加（y → z）是逆時針
+  faces.push(ring(0).reverse());
+  for (let k = 0; k + 1 < rings.length; k++)
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      faces.push([k * n + i, k * n + j, (k + 1) * n + j, (k + 1) * n + i]);
+    }
+  faces.push(ring(rings.length - 1));
+  return ['H', slot, pts, faces];
+}
+// 方塊（已經轉好的 8 個頂點）：o 中心、三個半邊向量
+function obox(slot, o, e1, e2, e3) {
+  const p = [];
+  for (const s3 of [-1, 1])
+    for (const s2 of [-1, 1])
+      for (const s1 of [-1, 1]) p.push([0, 1, 2].map((k) => r4(o[k] + e1[k] * s1 + e2[k] * s2 + e3[k] * s3)));
+  // e1 × e2 ＝ e3 的方向時，下面的面從外面看是逆時針
+  return [
+    'H',
+    slot,
+    p,
+    [
+      [0, 2, 3, 1],
+      [4, 5, 7, 6],
+      [0, 1, 5, 4],
+      [2, 6, 7, 3],
+      [0, 4, 6, 2],
+      [1, 3, 7, 5],
+    ],
+  ];
+}
+
+// 輪子：胎皮（深色橡膠，胎肩有倒角、胎面有一圈交錯的胎塊）＋兩側的輪圈（淺色金屬的外緣、深色的凹盤、5 根輪輻）＋輪蓋（機體主色）
+export function wheelPrims(r, w) {
+  const h = w / 2;
+  const N = 20;
+  const out = [];
+  out.push(
+    lathe(
+      TYRE,
+      [
+        [-h, 0.84 * r],
+        [-h * 0.86, 0.95 * r],
+        [-h * 0.6, r],
+        [h * 0.6, r],
+        [h * 0.86, 0.95 * r],
+        [h, 0.84 * r],
+      ],
+      N,
+    ),
+  );
+  // 胎塊：左右兩排交錯
+  const TB = 12;
+  for (let i = 0; i < TB * 2; i++) {
+    const side = i % 2 ? 1 : -1;
+    const a = (i / (TB * 2)) * Math.PI * 2;
+    const rad = [0, Math.cos(a), Math.sin(a)],
+      tan = [0, -Math.sin(a), Math.cos(a)];
+    const o = [side * h * 0.3, rad[1] * (r + 0.012), rad[2] * (r + 0.012)];
+    out.push(
+      obox(
+        TYRE,
+        o,
+        [h * 0.27, 0, 0],
+        tan.map((v) => v * r * 0.085),
+        rad.map((v) => v * 0.022),
+      ),
+    );
+  }
+  // 輪圈的外緣（穿過整個輪子的一塊，兩側各凸出一點）
+  const e = 0.03;
+  out.push(
+    lathe(
+      RIM,
+      [
+        [-h - e, 0.6 * r],
+        [-h - e * 0.4, 0.68 * r],
+        [h + e * 0.4, 0.68 * r],
+        [h + e, 0.6 * r],
+      ],
+      N,
+    ),
+  );
+  // 凹盤（深色）、輪輻（淺色）、輪蓋（主色）：兩側各一份
+  out.push(
+    lathe(
+      2,
+      [
+        [-h - e - 0.012, 0.52 * r],
+        [h + e + 0.012, 0.52 * r],
+      ],
+      N,
+    ),
+  );
+  for (const s of [-1, 1]) {
+    const x0 = s * (h + e + 0.012);
+    for (let k = 0; k < 5; k++) {
+      const a = (k / 5) * Math.PI * 2 + (s > 0 ? 0 : 0.3);
+      const rad = [0, Math.cos(a), Math.sin(a)],
+        tan = [0, -Math.sin(a), Math.cos(a)];
+      const mid = 0.36 * r;
+      out.push(
+        obox(
+          RIM,
+          [x0 + s * 0.012, rad[1] * mid, rad[2] * mid],
+          [0.014, 0, 0],
+          tan.map((v) => v * r * 0.055),
+          rad.map((v) => v * r * 0.17),
+        ),
+      );
+    }
+    out.push(
+      lathe(
+        0,
+        s > 0
+          ? [
+              [x0, 0.21 * r],
+              [x0 + 0.035, 0.19 * r],
+              [x0 + 0.05, 0.12 * r],
+            ]
+          : [
+              [x0 - 0.05, 0.12 * r],
+              [x0 - 0.035, 0.19 * r],
+              [x0, 0.21 * r],
+            ],
+        10,
+      ),
+    );
+  }
+  return out;
+}
+
+// 檢查用（暫存區的三視圖工具）：把輪子擺回腳掌的座標，合成一份清單
+export function debugFoot(name, prims) {
+  const slot = name.replace(/^legs_(l_[a-z0-9]+)_/, 'legs/$1/');
+  const ws = FOOT_WHEELS[slot];
+  if (!ws) return { prims };
+  const tris = [];
+  for (const k of ws) {
+    const a = k.axis;
+    const u = norm([-a[2], 0, a[0]]); // 水平、垂直於輪軸
+    const v = [a[1] * u[2] - a[2] * u[1], a[2] * u[0] - a[0] * u[2], a[0] * u[1] - a[1] * u[0]];
+    primsTris(wheelPrims(k.r, k.w)).forEach((pos, s) => {
+      for (let i = 0; i < pos.length; i += 9) {
+        const t = [s];
+        for (let j = 0; j < 9; j += 3) {
+          const p = [pos[i + j], pos[i + j + 1], pos[i + j + 2]];
+          t.push([0, 1, 2].map((q) => r4(k.c[q] + a[q] * p[0] + u[q] * p[2] + v[q] * p[1])));
+        }
+        // (x, y, z) → 軸、v、u：這組基底是左手系時翻面
+        tris.push(t);
+      }
+    });
+  }
+  return { prims: [...stripWheels(prims, ws), ['T', tris]] };
+}
