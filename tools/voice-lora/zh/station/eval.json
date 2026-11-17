@@ -1,0 +1,12 @@
+{
+ "base": {
+  "sim_mean": 0.9247,
+  "sim_min": 0.8053,
+  "asr_mean": 0.832
+ },
+ "lora": {
+  "sim_mean": 0.9302,
+  "sim_min": 0.8671,
+  "asr_mean": 0.859
+ }
+}
