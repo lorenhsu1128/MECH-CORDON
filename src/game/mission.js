@@ -17,7 +17,7 @@ import {
   enemyScale,
   isBossLevel,
 } from '../data/enemies.js';
-import { CONSUMABLES, FOE_STAB_K, PARTS, START_ASM, partById } from '../data/parts.js';
+import { CONSUMABLES, FOE_STAB_K, PARTS, partById } from '../data/parts.js';
 import { bossDefIndex, freeTier } from '../data/boss-tier.js';
 import { MechEntity } from '../entities/mech-entity.js';
 import { Projectile } from '../entities/projectile.js';
@@ -385,8 +385,8 @@ Object.assign(Game.prototype, {
       for (const e of this.players)
         this.mpStats[e.slot] = { kills: 0, dmg: 0, rev: 0, taken: 0, xp: 0, pf: {} };
     } else {
-      // 節奏調整室：一律是預設機甲的組合、沒有駕駛員技能與零件品級（乾淨的基準，2026-11-18 使用者定案）
-      this.player = new MechEntity(this, this.paceLab ? { ...START_ASM } : S.asm, this.myPal(), {
+      // 節奏調整室：預設機甲的組合＋面板選的手部／肩部武器（paceAsm）、沒有駕駛員技能與零件品級（乾淨的基準，2026-11-18 使用者定案）
+      this.player = new MechEntity(this, this.paceLab ? this.paceAsm() : S.asm, this.myPal(), {
         team: 'player',
         name: 'KEYSTONE',
         palKey: this.myPalKey(),

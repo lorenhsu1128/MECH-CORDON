@@ -11851,9 +11851,14 @@ body.paceLab #weapons {
   gap: 6px;
   margin: 4px 0;
 }
-#pacePanel .pcRow > span {
+#pacePanel .pcRow > span,
+#pacePanel .pcRow > label {
   width: 44px;
   opacity: 0.75;
+}
+#pacePanel .pcRow > label {
+  width: auto;
+  flex: none;
 }
 #pacePanel .pcRow select,
 #pacePanel .pcRow input[type='number'],

@@ -263,6 +263,19 @@ const SHOTS = {
       .catch(() => {});
     await wait(2500);
   },
+  // 節奏調整室的武器區（手部／肩部武器的選單與倍率）
+  'pacelab-wpn': async (page) => {
+    await SHOTS.pacelab(page);
+    await page.evaluate(() => {
+      const P = document.getElementById('pacePanel');
+      P.classList.remove('mini');
+      const h = P.querySelector('h4[data-g="wpn"]');
+      if (h && h.textContent.includes('▸')) h.click();
+      const s = P.querySelector('select[data-wk="hand"]');
+      if (s) s.scrollIntoView({ block: 'start' });
+    });
+    await wait(400);
+  },
   brief: async (page) => {
     await SHOTS.hub(page);
     await page.evaluate(() => window.__game.openBrief('c2s2'));

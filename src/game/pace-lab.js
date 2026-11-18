@@ -25,6 +25,8 @@ const CFG0 = {
   god: false,
   ammo: true,
   aggro: true,
+  hand: START_ASM.rarm, // 雙手的手部武器（左右同一把）
+  back: START_ASM.rback, // 雙肩的肩部武器
 };
 const r2 = (x) => Math.round(x * 100) / 100;
 
@@ -56,15 +58,41 @@ function clean(set) {
   }
   return { v, w };
 }
-// 武器的名稱清單（手持＋肩上，不含空的）
-function weaponList() {
-  const out = [];
-  for (const d of PARTS.arm || []) if (d.type !== 'none') out.push(d);
-  for (const d of PARTS.back || []) if (d.type !== 'none') out.push(d);
-  return out;
-}
+// 武器清單（不含空的）：手部 arm、肩部 back
+const weaponList = (cat) => (PARTS[cat] || []).filter((d) => d.type !== 'none');
 
 Object.assign(Game.prototype, {
+  // 調整室的機體組合：預設機甲＋面板選的手部武器（雙手）與肩部武器（雙肩）
+  paceAsm() {
+    const c = this.paceLab.cfg;
+    const ok = (cat, id) => weaponList(cat).some((d) => d.id === id);
+    const h = ok('arm', c.hand) ? c.hand : START_ASM.rarm;
+    const b = ok('back', c.back) ? c.back : START_ASM.rback;
+    return { ...START_ASM, rarm: h, larm: h, rback: b, lback: b };
+  },
+  // 換上新的機體（被擊破後重新出場、換武器）；at＝沿用原本的位置與朝向
+  paceRespawn(at) {
+    const old = this.player;
+    if (old) {
+      old.dead = true;
+      old.cleanup();
+    }
+    this.player = new MechEntity(this, this.paceAsm(), this.myPal(), {
+      team: 'player',
+      name: 'KEYSTONE',
+      palKey: this.myPalKey(),
+      slot: 0,
+    });
+    if (at && old) {
+      this.player.pos.copy(old.pos);
+      this.player.yaw = old.yaw;
+      if (old.aimYaw !== undefined) this.player.aimYaw = old.aimYaw;
+      this.player.mesh.position.copy(old.pos);
+      this.player.lock = old.lock || null;
+    } else this.placeStart(this.player);
+    this.players = [this.player];
+    this.renderWeaponHud(true);
+  },
   // ---------- 進入／離開 ----------
   openPace() {
     if (this.net && this.net.role) return;
@@ -75,7 +103,6 @@ Object.assign(Game.prototype, {
       cfg: st.cfg,
       stats: null,
       wait: 0,
-      wsel: '',
       open: { world: true, pmove: true, pshot: true },
     };
     this.paceApplySet();
@@ -177,17 +204,7 @@ Object.assign(Game.prototype, {
     this.flashMsg('機體已被擊破 — 重新出場', 0xff4d4d, 1.6);
     setTimeout(() => {
       if (!this.paceLab || !this.world) return;
-      const old = this.player;
-      if (old && old.mesh) this.scene.remove(old.mesh);
-      this.player = new MechEntity(this, { ...START_ASM }, this.myPal(), {
-        team: 'player',
-        name: 'KEYSTONE',
-        palKey: this.myPalKey(),
-        slot: 0,
-      });
-      this.placeStart(this.player);
-      this.players = [this.player];
-      this.renderWeaponHud(true);
+      this.paceRespawn(false);
     }, 1500);
   },
   // 鍵盤：面板裡的輸入框不當成遊戲操作；` 鍵開關面板
@@ -280,24 +297,25 @@ Object.assign(Game.prototype, {
           );
       h += '</section>';
     }
-    // 每一把武器
-    const WL = weaponList();
-    const eq = this.player
-      ? Object.values(this.player.weapons || {})
-          .map((w) => w && w.def && w.def.id)
-          .filter(Boolean)
-      : [];
-    if (!P.wsel || !WL.some((d) => d.id === P.wsel))
-      P.wsel = eq.find((id) => WL.some((d) => d.id === id)) || (WL[0] && WL[0].id) || '';
+    // 武器：手部（雙手同一把）與肩部（雙肩同一組），選了就換裝；下面是這把武器自己的倍率
     const changed = Object.keys(PACE.w).filter((id) =>
       Object.values(PACE.w[id]).some((x) => Math.abs(x - 1) > 1e-4),
     );
-    h += `<section class="pcSec"><h4 data-pa="fold" data-g="wpn">${P.open.wpn ? '▾' : '▸'} 每一把武器</h4>`;
+    const asm = this.paceAsm();
+    h += `<section class="pcSec"><h4 data-pa="fold" data-g="wpn">${P.open.wpn ? '▾' : '▸'} 武器（換裝＋這把武器的倍率）</h4>`;
     if (P.open.wpn) {
-      h += `<div class="pcRow"><select data-pa="wsel">${WL.map((d) => opt(d.id, (eq.includes(d.id) ? '★ ' : '') + d.name + (changed.includes(d.id) ? ' ●' : ''), P.wsel)).join('')}</select></div>`;
-      const W = PACE.w[P.wsel] || {};
-      for (const [k, name] of PACE_WPN_KEYS) h += this.paceSlider('w:' + k, name, 0.1, 4, '', W[k] ?? 1, 1);
-      h += `<div class="pcNote">★＝目前裝備的武器　●＝調過的武器${changed.length ? '：' + changed.map((id) => escHtml((WL.find((d) => d.id === id) || {}).name || id)).join('、') : ''}</div>`;
+      for (const [cat, key, label, cur] of [
+        ['arm', 'hand', '手部武器（雙手）', asm.rarm],
+        ['back', 'back', '肩部武器（雙肩）', asm.rback],
+      ]) {
+        const WL = weaponList(cat);
+        h += `<div class="pcRow"><label>${label}</label><select data-pa="wsel" data-wk="${key}">${WL.map((d) => opt(d.id, d.name + (changed.includes(d.id) ? ' ●' : ''), cur)).join('')}</select></div>`;
+        const W = PACE.w[cur] || {};
+        for (const [k, name] of PACE_WPN_KEYS)
+          h += this.paceSlider('w:' + key + ':' + k, name, 0.1, 4, '', W[k] ?? 1, 1);
+      }
+      const all = [...weaponList('arm'), ...weaponList('back')];
+      h += `<div class="pcNote">●＝調過的武器${changed.length ? '：' + changed.map((id) => escHtml((all.find((d) => d.id === id) || {}).name || id)).join('、') : ''}</div>`;
     }
     h += '</section></div>';
     el.innerHTML = h;
@@ -313,9 +331,11 @@ Object.assign(Game.prototype, {
   paceSet(k, v) {
     const P = this.paceLab;
     if (k.startsWith('w:')) {
-      const id = P.wsel;
-      if (!id) return;
-      (PACE.w[id] = PACE.w[id] || {})[k.slice(2)] = v;
+      // w:<hand|back>:<倍率鍵>
+      const [, slot, wk] = k.split(':');
+      const asm = this.paceAsm();
+      const id = slot === 'hand' ? asm.rarm : asm.rback;
+      (PACE.w[id] = PACE.w[id] || {})[wk] = v;
     } else PACE.v[k] = v;
     PACE.ver++;
     this.paceSave();
@@ -354,7 +374,9 @@ Object.assign(Game.prototype, {
       saveStore(P.st);
       this.paceRender();
     } else if (t.dataset.pa === 'wsel' && commit) {
-      P.wsel = t.value;
+      P.cfg[t.dataset.wk] = t.value;
+      this.paceSave();
+      if (this.player && !this.player.dead && this.state === 'play') this.paceRespawn(true);
       this.paceRender();
     }
   },
