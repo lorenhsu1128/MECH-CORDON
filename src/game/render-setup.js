@@ -3,7 +3,7 @@ import { energyWarm } from '../fx/energy.js';
 import { makeStudioEnv } from '../render/environment.js';
 import { fineTick } from '../render/detail.js';
 import { StylePipeline, manualShadows } from '../render/style/pipeline.js';
-import { installStyleShader } from '../render/style/shader.js';
+import { installStyleShader, SU } from '../render/style/shader.js';
 import { StyleStore } from '../render/style/store.js';
 import { DS } from '../core/scale.js';
 import { Game } from './game.js';
@@ -157,6 +157,12 @@ Object.assign(Game.prototype, {
   },
   renderMain() {
     const lab = this.lab;
+    // 透視洞：這一格的鏡頭沒有設定（選單、編輯器、觀戰、過場）就關掉（game/camera.js 的 camCut）
+    this.frameN = (this.frameN || 0) + 1;
+    if (this.camCutFrame !== this.frameN - 1 && this.camCutFrame !== this.frameN) {
+      SU.stCutC.value.w = 0;
+      this.cutK = 0;
+    }
     let P = this.styleThemed(lab ? lab.P : this.cine ? this.cine.P : this.styleP); // 過場動畫：風格＋過場的調色（game/cine.js）
     // 過場的曝光補正（data/cine/exposure.js）：依地圖覆寫之後才乘（快取，同一組調色＋倍率不重建）
     const xm = (this.cine && this.cine.xm) || 1;

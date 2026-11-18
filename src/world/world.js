@@ -91,7 +91,11 @@ import { FAR_R, OOB_BUF, buildBackdrop, edgeDelta, planEdges } from './edges.js'
 const FADE_OP = 0.15,
   FADE_OP_BIG = 0.04,
   FADE_BIG_H = 15;
-const fadeTo = (b) => (b.max.y - b.min.y >= FADE_BIG_H ? FADE_OP_BIG : FADE_OP);
+// 高的建築與扁平寬大的東西（樓板、甲板、橋面：板面、梁好幾個網格，兩三層疊起來各 15% 會疊成六成不透明）淡到 FADE_OP_BIG
+const fadeTo = (b) => {
+  const h = b.max.y - b.min.y;
+  return h >= FADE_BIG_H || h < 0.3 * Math.max(b.max.x - b.min.x, b.max.z - b.min.z) ? FADE_OP_BIG : FADE_OP;
+};
 const BOUND_R = 20 * DS; // 作戰區域的邊界線：機體離邊界這麼近才顯示、亮的半徑
 const OPEN_KEEP = 0.2; // Boss 關（opt.open）：地圖物件只留這個比例當掩體
 const OPEN_MID = 0.4; // Boss 關：地圖中央這個半徑（× lim）內的物件全部拿掉
@@ -4206,7 +4210,35 @@ export class World {
         act.delete(o);
       }
     }
-    return this._fadeHit.size > 0;
+    return this._fadeHit.size > 0 || this.mergedBlocks(camPos, pts);
+  }
+  // 合併過的網格（裝飾 decorG、合併池 poolG、支柱 pillarG：noFade，不淡出）有沒有擋在鏡頭和機體之間：只決定透視洞
+  // （game/camera.js 的 camCut）要不要打開。三角形多，每 4 格打一條射線（輪流檢查 pts），結果保留 0.5 秒
+  mergedBlocks(camPos, pts) {
+    const now = performance.now();
+    this._mbN = (this._mbN || 0) + 1;
+    if (this._mbN % 4 === 0) {
+      const roots = [this.decorG, this.poolG, this.pillarG].filter((g) => g && g.visible);
+      const p = pts[(this._mbN >> 2) % pts.length];
+      const rc = this._mbRc || (this._mbRc = new THREE.Raycaster());
+      const dir = _fdir.copy(p).sub(camPos);
+      const dist = dir.length();
+      rc.set(camPos, dir.normalize());
+      rc.far = dist - 0.8 * MS;
+      const out = this._mbOut || (this._mbOut = []);
+      out.length = 0;
+      const floor = p.y - 1.6 * MS;
+      for (const g of roots) {
+        rc.intersectObject(g, true, out);
+        if (out.some((h) => h.object.visible && h.point.y > floor)) {
+          this._mbT = now;
+          break;
+        }
+        out.length = 0;
+      }
+      out.length = 0;
+    }
+    return !!this._mbT && now - this._mbT < 500;
   }
   // 鏡頭 → 點 p 的一條射線：擋住的網格放進 hit（先清空）。候選的群組先用快取的外框篩選（射線沒穿過外框的不逐一
   // 檢查三角形），命中結果用同一個陣列（不每次配置）

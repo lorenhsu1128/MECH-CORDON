@@ -306,9 +306,10 @@ Object.assign(Game.prototype, {
     const c = ent.center();
     const pts = [c, c.clone().setY(ent.pos.y + h * 0.95), c.clone().setY(ent.pos.y + 0.4 * MS)];
     // 擋住的物件淡出；鏡頭離機體很近，不顯示透視輪廓（機體自己的零件互相遮住也會變成輪廓）
-    w.updateOcclusion(pos, c, dt, pts);
-    w.fadeMeshes(pos, pts, dt);
+    const occ = w.updateOcclusion(pos, c, dt, pts);
+    const fade = w.fadeMeshes(pos, pts, dt);
     this.camXray(ent, false, dt);
+    this.camCut(ent, (occ || fade) && !ent.dead, dt);
     this.rangeRing.visible = false;
   },
   // 鏡頭自動轉向：近戰中的對象，或目標輔助的鎖定目標

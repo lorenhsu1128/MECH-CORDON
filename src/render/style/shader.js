@@ -89,7 +89,15 @@ export const SU = {
   // 不用 three.js 的 PointLight：每盞點光會讓風格著色器多展開一次完整的光照，編譯時間加倍（docs/perf-threejs-upgrade.md）
   stFxP: { value: [0, 1, 2, 3].map(() => new THREE.Vector4(0, 0, 0, 1)) },
   stFxC: { value: [0, 1, 2, 3].map(() => new THREE.Vector4(0, 0, 0, 2)) },
+  // 鏡頭遮擋的透視洞（2026-11-18 使用者定案；game/camera.js 的 camCut 每格設定）：鏡頭到機體的視線周圍一圈，
+  // 比機體腳底高的場景（樓板、牆、建築、地圖物件）挖空，邊緣用網點漸層。機體類（stCat）與地形不挖
+  stCut: V4(0, 0, 0, 0), // 機體中心、洞的半徑
+  stCutC: V4(0, 0, 0, 0), // 鏡頭的位置、開關
+  stCutF: V4(-1e9, 0, 0, 0), // 腳底的高度（低於這個高度不挖：腳下的地板）
 };
+// 不挖透視洞的材質（地形）
+const NOCUT = new WeakSet();
+export const markNoCut = (m) => m && NOCUT.add(m);
 export const FX_LIGHTS = 4;
 // 特效點光的強度倍率（渲染風格的 fxLight；絕區零調低，白色的碎片與地面不會被爆炸的火光照成一片白）
 let fxLightK = 1;
@@ -146,13 +154,29 @@ const PARS = /* glsl */ `
 uniform vec4 stA, stB, stC, stD, stE, stM, stN, stF, stW, stWa, stWb, stWc, stWd;
 uniform vec4 stZ, stZc, stZe, stZp, stZn;
 uniform sampler2D stCau, stCauT;
-uniform float stCat, stOpq, stAuth, stFlat, stTeam;
+uniform float stCat, stOpq, stAuth, stFlat, stTeam, stNoCut;
 uniform vec4 stFxP[ 4 ], stFxC[ 4 ];
+uniform vec4 stCut, stCutC, stCutF;
 #ifdef ST_DECAL
 uniform sampler2D stDecT, stDecW;
 uniform vec3 stSlot[ 4 ];
 #endif
 varying vec3 vStW;
+// 透視洞：視線（鏡頭 → 機體中心）周圍半徑 stCut.w 的圓柱，靠鏡頭的那一段收細；邊緣 25% 用網點漸層
+void stCutTest() {
+	if ( stCutC.w < 0.01 || stCat > 0.5 || stNoCut > 0.5 || vStW.y < stCutF.x ) return;
+	vec3 ab = stCut.xyz - stCutC.xyz;
+	float L = length( ab );
+	vec3 d = ab / max( L, 1e-3 );
+	vec3 q = vStW - stCutC.xyz;
+	float t = dot( q, d );
+	if ( t <= 0.0 || t > L - stCutF.y ) return;
+	float R = stCut.w * stCutC.w * clamp( t / ( 0.35 * L ), 0.25, 1.0 );
+	float e = length( q - d * t ) / max( R, 1e-3 );
+	if ( e >= 1.0 ) return;
+	float n = fract( 52.9829189 * fract( dot( gl_FragCoord.xy, vec2( 0.06711056, 0.00583715 ) ) ) );
+	if ( e < 0.72 || n > ( e - 0.72 ) / 0.28 ) discard;
+}
 float stSh = 1.0;
 vec3 stLit = vec3( 0.0 );
 vec3 stSpec = vec3( 0.0 );
@@ -467,6 +491,11 @@ for ( int i = 0; i < 4; i ++ ) {
           return mat.transparent ? 0 : 1;
         },
       },
+      stNoCut: {
+        get value() {
+          return NOCUT.has(mat) || SMOOTHABLE.has(mat) ? 1 : 0;
+        },
+      },
     });
     const dec = hasDecal(mat);
     if (dec) {
@@ -525,6 +554,7 @@ for ( int i = 0; i < 4; i ++ ) {
       '#include <lights_physical_pars_fragment>',
       '#include <lights_physical_pars_fragment>\n' + PARS,
     );
+    f = rep(f, '#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nstCutTest();');
     f = rep(f, '#include <map_fragment>', MAP);
     f = rep(f, '#include <color_fragment>', '#include <color_fragment>\n' + AFTER_COLOR + RECOLOR);
     f = rep(f, '#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\n' + AFTER_METAL);

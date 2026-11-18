@@ -2,6 +2,7 @@
 import { clamp, lerp, rnd } from '../core/math.js';
 import { DS, MS } from '../core/scale.js';
 import { isOutline } from '../render/geometry.js';
+import { SU } from '../render/style/shader.js';
 import { meleeMove } from '../data/melee.js';
 import { TP_FOV } from './constants.js';
 
@@ -218,6 +219,20 @@ Object.assign(Game.prototype, {
       if (this.fitsAt(target, z, pts)) return z;
     }
     return maxZ;
+  },
+  // 透視洞（render/style/shader.js 的 stCutTest；2026-11-18 使用者定案）：物件擋在鏡頭和機體之間時，視線周圍一圈挖空，
+  // 和淡出一起用（淡出讓擋住的整個物件變淡，洞讓機體周圍完全看得清楚）。開關慢慢打開與收起；每格都要呼叫，
+  // 沒呼叫的那一格（選單、編輯器、觀戰）由 renderMain 的 camCutFrame 關掉
+  camCut(ent, on, dt) {
+    const h = (ent.model && ent.model.height) || 4 * MS;
+    const c = ent.center();
+    const cam = this.camera.position;
+    this.cutK = clamp((this.cutK || 0) + (on ? dt * 5 : -dt * 3), 0, 1);
+    SU.stCut.value.set(c.x, c.y, c.z, h * 0.62);
+    SU.stCutC.value.set(cam.x, cam.y, cam.z, this.cutK);
+    // 腳底以下不挖（站著的樓板）；機體前方 0.6 個身高以內不挖（貼著機體的東西）
+    SU.stCutF.value.set(ent.pos.y + 0.25 * MS, h * 0.6, 0, 0);
+    this.camCutFrame = this.frameN;
   },
   // 機體的透視輪廓：每個網格掛一個共用幾何的子網格（XRAY_MAT，只畫在被擋住的地方），換模型時重建
   camXray(ent, on, dt) {
@@ -535,8 +550,10 @@ Object.assign(Game.prototype, {
     const pts = [c, c.clone().setY(p.pos.y + h * 0.95), c.clone().setY(p.pos.y + 0.4 * MS)];
     const occ = this.world.updateOcclusion(this.camera.position, c, dt, pts);
     const fade = this.world.fadeMeshes(this.camera.position, pts, dt);
-    const hid = occ || fade || pts.some((q) => this.world.terrainBlocks(this.camera.position, q));
+    // 透視輪廓只給地形擋住的時候：物件擋住時有透視洞（camCut），機體本身看得到，輪廓整個蓋住機體反而看不清
+    const hid = pts.some((q) => this.world.terrainBlocks(this.camera.position, q));
     this.camXray(p, hid && !p.dead, dt);
+    this.camCut(p, (occ || fade) && !p.dead, dt);
     this.rangeRing.visible = true;
     this.rangeRing.position.set(p.pos.x, this.world.terrainHeight(p.pos.x, p.pos.z) + 0.12 * MS, p.pos.z);
     this.rangeRing.scale.setScalar(p.stats.lockRange);

@@ -8582,6 +8582,7 @@ async function testCamOcclusion(browser, base) {
       run(120);
       out.fade = +ob.mats[0].opacity.toFixed(2);
       out.xray = +xray().toFixed(2);
+      out.cut = +(g.cutK || 0).toFixed(2);
     }
     // 空曠的地方：剛才那塊平地（先拿掉測試的方塊）
     w.occluders.splice(w.occluders.indexOf(ob), 1);
@@ -8617,6 +8618,7 @@ async function testCamOcclusion(browser, base) {
         pitch: +(g.camPitch || 0).toFixed(2),
       });
       out.meshXray = +xray().toFixed(2);
+      out.meshCut = +(g.cutK || 0).toFixed(2);
       um.visible = false;
       run(120);
       out.meshBack = mesh[0].material === orig;
@@ -8635,6 +8637,7 @@ async function testCamOcclusion(browser, base) {
     run(240);
     out.back = +(g.camPitch - base).toFixed(3);
     out.xray2 = +xray().toFixed(2);
+    out.cut2 = +(g.cutK || 0).toFixed(2);
     // 平時的距離、近戰時拉近並壓低俯角、特寫鏡頭（camera.js）
     out.zDef = +g.camZoom.toFixed(2);
     const foe = g.spawnType('mt', 1, 1);
@@ -8704,19 +8707,19 @@ async function testCamOcclusion(browser, base) {
   );
   check(r.clearSpot, '找到測試用的平地');
   check(
-    r.ob && r.fade < 0.4 && r.xray > 0.3,
-    `機體在大型物件後面：物件淡出（${r.fade}）、顯示透視輪廓（${r.xray}）`,
+    r.ob && r.fade < 0.4 && r.cut > 0.9 && r.xray < 0.05,
+    `機體在大型物件後面：物件淡出（${r.fade}）、開透視洞（${r.cut}），物件擋住時不顯示透視輪廓（${r.xray}）`,
   );
   check(
-    r.mesh && r.meshFade && r.meshXray > 0.3 && r.meshBack,
-    `沒有登記的大型結構擋住時也會淡出（${r.meshFade}）、顯示輪廓（${r.meshXray}），離開後還原材質（${r.meshBack}）` +
+    r.mesh && r.meshFade && r.meshCut > 0.9 && r.meshBack,
+    `沒有登記的大型結構擋住時也會淡出（${r.meshFade}）、開透視洞（${r.meshCut}），離開後還原材質（${r.meshBack}）` +
       (r.meshFade ? '' : r.meshDbg),
   );
   check(r.tFade && r.tBack, `沒有登記的半透明材質擋住時也會淡出（${r.tFade}），離開後還原（${r.tBack}）`);
   check(r.wreck, '打壞的物件留下的殘骸擋住鏡頭時會淡出（加進 meshes）');
   check(
-    Math.abs(r.back) < 0.02 && r.xray2 < 0.05,
-    `回到空曠的地方：鏡頭轉回原本的角度（${r.back}）、輪廓消失（${r.xray2}）`,
+    Math.abs(r.back) < 0.02 && r.xray2 < 0.05 && r.cut2 < 0.05,
+    `回到空曠的地方：鏡頭轉回原本的角度（${r.back}）、輪廓消失（${r.xray2}）、透視洞收起（${r.cut2}）`,
   );
   // 截圖：機體在方塊後面（透視輪廓）
   await page.evaluate(() => {
