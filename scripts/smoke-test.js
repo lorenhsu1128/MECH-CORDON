@@ -32738,7 +32738,210 @@ async function testStudio(game, page) {
   const face = await px('#pvFull', 32 / 64, 20 / 96);
   check(face[1] > 150 && face[0] < 90, `預覽：微笑時臉換成表情的小圖（${face}）`);
   await cg.screenshot({ path: path.join(SHOT_DIR, 'studio.png') });
+  await testStudio2(game, cg);
   await cg.close();
+}
+// 立繪工房第 2～5 期（docs/portrait-studio-design.md）：品管分頁、標框的保留區與旗標、專案的預設、整張圖與精靈圖、
+// 顯示卡、自動完成的 API（ComfyUI 沒開，不實際產圖）。cg＝立繪工房的分頁（testStudio 開的）
+function boxPng(w, h, bg, rects) {
+  const zlib = require('zlib');
+  const crc = (b) => zlib.crc32(b) >>> 0;
+  const chunk = (type, data) => {
+    const t = Buffer.from(type);
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(data.length);
+    const c = Buffer.alloc(4);
+    c.writeUInt32BE(crc(Buffer.concat([t, data])));
+    return Buffer.concat([len, t, data, c]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(w, 0);
+  ihdr.writeUInt32BE(h, 4);
+  ihdr[8] = 8;
+  ihdr[9] = 6;
+  const rows = [];
+  for (let y = 0; y < h; y++) {
+    const row = Buffer.alloc(1 + w * 4);
+    for (let x = 0; x < w; x++) {
+      let c = bg;
+      for (const [rx, ry, rw, rh, col] of rects)
+        if (x >= rx && x < rx + rw && y >= ry && y < ry + rh) c = col;
+      Buffer.from(c).copy(row, 1 + x * 4);
+    }
+    rows.push(row);
+  }
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', ihdr),
+    chunk('IDAT', zlib.deflateSync(Buffer.concat(rows))),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
+}
+async function testStudio2(game, cg) {
+  const u = game.url;
+  const zipNames = (b) => {
+    const out = [];
+    for (let i = 0; i + 30 < b.length;) {
+      if (b.readUInt32LE(i) !== 0x04034b50) break;
+      const nl = b.readUInt16LE(i + 26);
+      const el = b.readUInt16LE(i + 28);
+      out.push(b.slice(i + 30, i + 30 + nl).toString('utf8'));
+      i += 30 + nl + el + b.readUInt32LE(i + 18);
+    }
+    return out;
+  };
+  // 整張圖與精靈圖（遊戲的測試角色 zz_test 已經發佈過）
+  const zf = Buffer.from(
+    await (await fetch(u + 'api/studio/p/mech_cordon/zip?char=zz_test&what=full')).arrayBuffer(),
+  );
+  const zfn = zipNames(zf);
+  check(
+    zfn.includes('zz_test/full/index.json') &&
+      zfn.includes('zz_test/full/p1_neutral_e2_m2.webp') &&
+      zfn.includes('zz_test/full/p1_smile_open_closed.webp') &&
+      zfn.length === 6,
+    `立繪工房：整張圖（每個表情×眼睛×嘴巴合成好）${zfn.length} 個檔案`,
+  );
+  const za = Buffer.from(
+    await (await fetch(u + 'api/studio/p/mech_cordon/zip?char=zz_test&what=atlas')).arrayBuffer(),
+  );
+  const zan = zipNames(za);
+  check(
+    zan.includes('zz_test/atlas/p1.json') &&
+      zan.includes('zz_test/atlas/p1.webp') &&
+      zan.includes('zz_test/atlas/p1_body.webp'),
+    `立繪工房：精靈圖＋JSON＋身體（${zan.join('、')}）`,
+  );
+  // 顯示卡與自動完成的 API
+  const gp = await (await fetch(u + 'api/studio/gpu')).json();
+  check('gpu' in gp, `立繪工房：顯示卡記憶體的 API（${JSON.stringify(gp.gpu)}）`);
+  const a0 = await (await fetch(u + 'api/studio/p/zz_proj/chars/zz_alice/auto')).json();
+  const a1 = await fetch(u + 'api/studio/p/zz_proj/chars/zz_nobody/auto', { method: 'POST', body: '{}' });
+  check(a0.running === false && a1.status === 404, '立繪工房：自動完成的狀態（沒在跑）、沒有的角色不能開始');
+  // 專案的預設：只做微笑、只做閉眼與張嘴 → 新角色照它
+  const pc = await (await fetch(u + 'api/studio/p/zz_proj')).json();
+  pc.base = ['smile'];
+  pc.frames = ['e2', 'm2'];
+  pc.extra = [{ id: 'grin', name: '咧嘴', prompt: 'Make the character grin.' }];
+  await fetch(u + 'api/studio/p/zz_proj', { method: 'PUT', body: JSON.stringify(pc) });
+  await cg.goto(u + 'studio/#zz_proj/');
+  await cg.waitForSelector('#charAdd', { timeout: 10000 }).catch(() => {});
+  await cg.click('#charAdd');
+  await cg.fill('#ncId', 'zz_qa');
+  await cg.fill('#ncName', '品管測試');
+  await cg.click('#ncGo');
+  await cg.waitForSelector('#charPane:not(.hidden)', { timeout: 10000 }).catch(() => {});
+  const cq = await (await fetch(u + 'api/studio/p/zz_proj/chars/zz_qa')).json();
+  check(
+    JSON.stringify(cq.baseExprs) === '["smile"]' &&
+      JSON.stringify(cq.frames) === '["e2","m2"]' &&
+      cq.extraExprs.length === 1 &&
+      cq.extraExprs[0].id === 'grin',
+    '立繪工房：新角色照專案的預設（共用表情、影格、招牌表情）',
+  );
+  // 一個做好的角色：主圖（紅，臉的範圍膚色）＋微笑（臉的範圍改綠）＋影格（閉眼＝眼睛的範圍改藍、張嘴＝嘴的範圍改白）
+  const W = 64,
+    H = 96;
+  const RED = [200, 40, 40, 255],
+    SKIN = [240, 200, 180, 255];
+  const B = { face: [16, 10, 32, 32], eyes: [18, 14, 28, 10], mouth: [26, 30, 12, 8] };
+  const put = (n, b) => fetch(u + 'api/studio/p/zz_proj/chars/zz_qa/work/' + n, { method: 'PUT', body: b });
+  await put('m.webp', boxPng(W, H, RED, [[16, 10, 32, 32, SKIN]]));
+  await put('s.webp', boxPng(W, H, RED, [[16, 10, 32, 32, [230, 190, 170, 255]]]));
+  await put(
+    'ne2.webp',
+    boxPng(W, H, RED, [
+      [16, 10, 32, 32, SKIN],
+      [20, 16, 24, 5, [60, 40, 40, 255]],
+    ]),
+  );
+  await put(
+    'nm2.webp',
+    boxPng(W, H, RED, [
+      [16, 10, 32, 32, SKIN],
+      [28, 32, 8, 5, [120, 30, 40, 255]],
+    ]),
+  );
+  await put(
+    'se2.webp',
+    boxPng(W, H, RED, [
+      [16, 10, 32, 32, [230, 190, 170, 255]],
+      [10, 60, 20, 20, [0, 255, 0, 255]],
+    ]),
+  );
+  cq.poses[0] = {
+    ...cq.poses[0],
+    cands: [{ file: 'm.webp', seed: 1 }],
+    master: 'm.webp',
+    boxes: B,
+    ex: {
+      smile: { cands: ['s.webp'], pick: 's.webp' },
+      'neutral.e2': { cands: ['ne2.webp'], pick: 'ne2.webp', v2: true },
+      'neutral.m2': { cands: ['nm2.webp'], pick: 'nm2.webp', v2: true },
+      'smile.e2': { cands: ['se2.webp'], pick: 'se2.webp', v2: true },
+    },
+  };
+  await fetch(u + 'api/studio/p/zz_proj/chars/zz_qa', { method: 'PUT', body: JSON.stringify(cq) });
+  await cg.goto(u + 'studio/?r=1#zz_proj/zz_qa'); // 換了查詢字串才會重新載入（只換 # 時網頁還拿著舊的角色卡）
+  await cg.waitForSelector('#charPane:not(.hidden)', { timeout: 10000 }).catch(() => {});
+  // 品管分頁：量測（smile.e2 在範圍外改了一大塊綠色＝不合格）
+  await cg.click('[data-tab=qa]');
+  await cg.waitForSelector('.qaCell', { timeout: 10000 }).catch(() => {});
+  await cg.click('#qaRun');
+  await cg
+    .waitForFunction(() => document.querySelectorAll('.qaCell.bad').length > 0, null, { timeout: 15000 })
+    .catch(() => {});
+  const c2 = await (await fetch(u + 'api/studio/p/zz_proj/chars/zz_qa')).json();
+  const ex = c2.poses[0].ex;
+  check(
+    ex['neutral.e2'].qm &&
+      ex['neutral.e2'].qm.bad.length === 0 &&
+      ex['smile.e2'].qm &&
+      ex['smile.e2'].qm.bad.includes('out') &&
+      (await cg.$$eval('.qaCell.bad', (e) => e.length)) === 1,
+    `立繪工房：品管分頁的量測（範圍外的改變抓得到：${JSON.stringify(ex['smile.e2'].qm && ex['smile.e2'].qm.bad)}；閉眼 ${JSON.stringify(ex['neutral.e2'].qm && ex['neutral.e2'].qm.bad)}）`,
+  );
+  // 點一格 → 標不合格（打勾原因）→ 角色卡記下
+  await cg.click('.qaCell.bad');
+  await cg.waitForSelector('#qaDlg[open]', { timeout: 5000 }).catch(() => {});
+  await cg.check('#qdChecks input[value=thing]');
+  await cg.click('#qdNg');
+  await cg
+    .waitForFunction(() => !document.getElementById('qaDlg').open, null, { timeout: 5000 })
+    .catch(() => {});
+  const c3 = await (await fetch(u + 'api/studio/p/zz_proj/chars/zz_qa')).json();
+  const qa = c3.poses[0].ex['smile.e2'].qa;
+  check(
+    qa && qa.st === 'ng' && qa.why.includes('thing') && qa.pick === 'se2.webp',
+    '立繪工房：品管對話框標成不合格與原因',
+  );
+  // 標框分頁：旗標表（只做微笑＝平常與微笑兩列＋招牌表情）、拖曳畫保留區
+  await cg.click('[data-tab=boxes]');
+  await cg.waitForSelector('#flagTbl tr[data-e]', { timeout: 5000 }).catch(() => {});
+  const rows = await cg.$$eval('#flagTbl tr[data-e]', (r) => r.map((x) => x.dataset.e));
+  check(rows.join(',') === 'neutral,smile,grin', `立繪工房：標框分頁的表情旗標（${rows}）`);
+  await cg.check('input[name=box][value=keep]');
+  await cg
+    .waitForFunction(() => document.getElementById('boxCv').width > 1, null, { timeout: 5000 })
+    .catch(() => {});
+  const bb = await cg.$eval('#boxCv', (c) => {
+    const r = c.getBoundingClientRect();
+    return [r.left, r.top, r.width / c.width];
+  });
+  await cg.mouse.move(bb[0] + 20 * bb[2], bb[1] + 20 * bb[2]);
+  await cg.mouse.down();
+  await cg.mouse.move(bb[0] + 30 * bb[2], bb[1] + 26 * bb[2], { steps: 4 });
+  await cg.mouse.up();
+  await cg.selectOption('#flagTbl tr[data-e=smile] [data-f=smile]', '0');
+  await cg.click('#boxSave');
+  await wait(500);
+  const c4 = await (await fetch(u + 'api/studio/p/zz_proj/chars/zz_qa')).json();
+  const kp = c4.poses[0].keepOut;
+  check(
+    kp && kp.length === 1 && Math.abs(kp[0][0] - 20) <= 2 && c4.poses[0].ex.smile.smile === false,
+    `立繪工房：拖曳畫保留區（${JSON.stringify(kp)}）、說話不帶笑的旗標`,
+  );
+  await cg.screenshot({ path: path.join(SHOT_DIR, 'studio-boxes.png') });
 }
 
 // 區網伺服器：/health、注入、/models、/apng、/paint、渲染風格的分享（testServerModels 等共用同一個伺服器）

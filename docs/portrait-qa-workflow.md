@@ -2,6 +2,8 @@
 
 2026-11-15～17 立繪品質大修用的方法與工具（設計與歷史見 `docs/portrait-design.md` 第 8 期）。29 個角色的眨眼（e1 半閉、e2 全閉）與嘴型（m1～m3）全部照這個流程重新品管，使用者確認品質很好，**之後新增角色、重產表情或影格、換主圖時一律照這份做**，換電腦的 Claude Code 也一樣。
 
+> **2026-11-18 起有立繪工房**（`docs/portrait-studio-design.md`）：同一套流程做成網頁＋命令列 `scripts/studio.js`，也能做其他遊戲的專案，選好主圖之後可以一路自動做到發佈（`char <角色> auto`），給 Claude Code 的技能在 `.claude/skills/portrait-studio/`。下面第八節的 Python 腳本對應的工房指令見第九節；Python 腳本只認得遊戲本身的資料夾，其他專案一律用工房的指令。
+
 ## 一、品質標準
 
 - **零容忍**：再淡的殘線、色塊、白圈、接縫都不能放行。要用放大總表看，縮圖看不出來。
@@ -148,7 +150,7 @@ python scripts/portrait-sheet.py pick <角色> <清單檔>        # 確認選到
 
 | 腳本                                                                              | 用途                                                                                   |
 | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `scripts/studio.js`                                                              | 角色產生器的命令列：`char <角色> frames [--only=…]`、`char <角色> publish [--keep]`    |
+| `scripts/studio.js`                                                               | 角色產生器的命令列：`char <角色> frames [--only=…]`、`char <角色> publish [--keep]`    |
 | `scripts/portrait-audit.py`                                                       | 照遊戲的合成方式拼總表、量去背與接縫；`--zoom` 放大總表                                |
 | `scripts/portrait-qa.py`                                                          | 影格的量測（範圍外的改變、外來顏色、改變量、單眼）                                     |
 | `scripts/portrait-sheet.py`                                                       | 看圖用的總表：`cands`、`all`、`pick`、`eyes`、`pairs`、`heads`、`grid`、`fix`          |
@@ -162,4 +164,23 @@ python scripts/portrait-sheet.py pick <角色> <清單檔>        # 確認選到
 | `scripts/portrait-glasses.py`、`portrait-glassprobe.mjs`、`portrait-openmouth.py` | 眼鏡與張嘴底圖的判斷                                                                   |
 | `scripts/comfy-restart.ps1`                                                       | 隱藏視窗重開 ComfyUI                                                                   |
 | ComfyUI 節點 `tools/comfyui/nodes/mech_cordon/__init__.py` 的 `MCPatchPaste`      | 只貼回真的改了的像素：`exclude`、`protect_edges`、`no_recolor`＋`skin_box`、`tone_fix` |
-| `mech_cordon_studio/js/workflows.js` 的 `qwenEditCrop`、`pipeline.js`           | 影格的工作流程與指示                                                                   |
+| `mech_cordon_studio/js/workflows.js` 的 `qwenEditCrop`、`pipeline.js`             | 影格的工作流程與指示                                                                   |
+
+## 九、立繪工房的對應指令（2026-11-18）
+
+都是 `node scripts/studio.js char <角色> …`，加 `--project=<專案>`（遊戲本身可以省略）。網頁的立繪工房（`/studio/`）也都做得到。
+
+| 原本                                            | 立繪工房                                                                                     |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `portrait-qa.py`（量測、總表）                  | `qa`（量測與判斷一樣；`<姿勢>_zoom.jpg` 放大總表、`qa.json`；網頁的「品管」分頁）            |
+| `portrait-sheet.py cands`／`all`                | `sheet cands <格> … [--n=3] [--list=清單檔]`（`--n=0` 全部）                                 |
+| `portrait-sheet.py grid`                        | `sheet grid`（主圖＋座標格線、目前的框、臉部放大）                                           |
+| `portrait-pick.py`                              | `pick <格>=<編號>`（0＝略過）                                                                |
+| `portrait-cands.sh`、`chargen.js frames --only` | `regen <格> … [--n=3]`（只加候選，不改選擇）                                                 |
+| 標記看過的結果                                  | `mark <格>=ok                                                                                | ng [--why=…] [--note=…]`、`status` |
+| `portrait-mouthbox.py`                          | 自動完成會量（`js/qa.js` 的 `exprMouthBox`）                                                 |
+| `portrait-scarfix.py`                           | `restore <格> --box=x,y,w,h`（框裡整塊換回底圖；網頁：品管對話框上拖曳框出）                 |
+| `portrait-fix.mjs edit`（主圖）                 | `fixmaster --box=x,y,w,h --prompt=…`（新的主圖候選；網頁：「主圖」分頁的局部修正）           |
+| 手改 card 的 `keepOut`、`noBlink`、`smile`…     | `flag --keep=… --eyekeep=… --glasses=… --noblink=… --smile=… --open=…`（網頁：「標框」分頁） |
+| 標框                                            | `box --auto`（自動偵測）或 `box --face=… --eyes=… --mouth=…`                                 |
+| `comfy-restart.ps1` 與記憶體監看                | `auto --restart-comfy`（開始前重開、超過 95% 重開；網頁的自動完成會加）                      |

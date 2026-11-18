@@ -2,10 +2,10 @@
 // /api/studio（專案與角色資料）。專案 mech_cordon＝遊戲本身（名單＝遊戲的說話者），其他專案的角色由使用者新增
 import { Comfy } from './comfy.js';
 import { CharStore, StudioStore, LINKED, refName } from './store.js';
-import { Pipeline, newCard, newPose, poseOf, noBlink } from './pipeline.js';
+import { Pipeline, newCard, newPose, poseOf, noBlink, NO_BLINK } from './pipeline.js';
 import * as Q from './qa.js';
 import { ROSTER, TIER_NAMES, rosterOf } from './roster.js';
-import { exprList, EYE_FRAMES, MOUTH_FRAMES, EXTRA_LIBRARY } from './expr.js';
+import { exprList, frameList, ALL_FRAMES, EXPRS, EXTRA_LIBRARY } from './expr.js';
 import { Portrait, PortraitPack, ACT_NAMES } from './portrait.js';
 
 const $ = (id) => document.getElementById(id);
@@ -31,7 +31,7 @@ const ST = {
   projects: [],
 };
 const linked = () => ST.proj === LINKED;
-const FRAMES = [...EYE_FRAMES, ...MOUTH_FRAMES];
+const FRAMES = () => frameList(ST.card); // 這個角色要做的影格
 
 function toast(msg, err) {
   const d = document.createElement('div');
@@ -80,6 +80,17 @@ async function checkComfy() {
   }
   $('comfySt').textContent = ok ? 'ComfyUI：連線中' : 'ComfyUI：沒有在執行（npm run comfy）';
   $('comfySt').className = 'pill ' + (ok ? 'ok' : 'bad');
+  // 顯示卡記憶體
+  try {
+    const g = (await (await fetch('/api/studio/gpu')).json()).gpu;
+    $('gpuSt').classList.toggle('hidden', !g);
+    if (g) {
+      $('gpuSt').textContent = `顯示卡 ${(g.used / 1024).toFixed(1)} / ${(g.total / 1024).toFixed(0)} GB`;
+      $('gpuSt').className = 'pill ' + (g.used > g.total * 0.9 ? 'bad' : 'dim');
+    }
+  } catch (e) {
+    /* 伺服器沒回應 */
+  }
 }
 
 // ---- 角色清單 ----
@@ -180,6 +191,7 @@ function charHead() {
   $('cDlOut').href = studio.zipUrl(ST.proj, { char: C.id, what: 'out' });
   $('cDlWork').classList.toggle('off', !has);
   $('cDlOut').classList.toggle('off', !C.pub);
+  $('cDlMore').disabled = !C.pub;
   $('cDel').classList.toggle('hidden', linked());
 }
 $('cDel').onclick = async () => {
@@ -285,6 +297,8 @@ function renderLook() {
   $('lookPrompt').value = L.prompt || '';
   $('lookNeg').value = L.neg || '';
   $('lookExtra').value = (ST.card.extraExprs || []).map((e) => `${e.id}|${e.name}|${e.prompt}`).join('\n');
+  chkRow($('lookBase'), BASE_EX, ST.card.baseExprs);
+  chkRow($('lookFrames'), ALL_FRAMES, ST.card.frames);
   $('refs').innerHTML = ST.card.refs
     .map(
       (f) =>
@@ -311,6 +325,8 @@ $('lookSave').onclick = async () => {
     .map((l) => l.split('|').map((s) => s.trim()))
     .filter((a) => a.length >= 3 && /^[a-z][a-z0-9_]*$/.test(a[0]))
     .map(([id, name, ...p]) => ({ id, name, prompt: p.join('|') }));
+  setOrAll(C, 'baseExprs', chkVal($('lookBase')), BASE_EX);
+  setOrAll(C, 'frames', chkVal($('lookFrames')), ALL_FRAMES);
   await saveCard();
   toast('已儲存');
 };
@@ -339,11 +355,12 @@ dropZone($('refDrop'), $('refFile'), (fl) => ST.card && addRefs(fl));
 // ---- 2 主圖 ----
 function renderMaster() {
   const P = pose();
+  fixRender();
   $('posePrompt').value = P.prompt;
   $('cands').innerHTML = P.cands
     .map(
       (c) =>
-        `<div class="it ${P.master === c.file ? 'pick' : ''}" data-f="${esc(c.file)}"><img loading="lazy" src="${store.workUrl(ST.card.id, c.file)}"><span>${c.seed}${P.master === c.file ? '　主圖' : ''}</span></div>`,
+        `<div class="it ${P.master === c.file ? 'pick' : ''}" data-f="${esc(c.file)}"><img loading="lazy" src="${store.workUrl(ST.card.id, c.file)}"><span>${c.fix ? '修正 ' : ''}${c.seed}${P.master === c.file ? '　主圖' : ''}</span></div>`,
     )
     .join('');
   $('cands')
@@ -356,6 +373,11 @@ function renderMaster() {
           if (P.master && P.master !== c.file && Object.keys(P.ex).length) {
             if (!confirm('換主圖之後，這個姿勢已經做的表情與影格都要重做。確定嗎？')) return;
             P.ex = {};
+          }
+          if (P.master !== c.file && !c.fix) {
+            // 換成別張（不是局部修正的）：框與保留區是舊主圖的位置，清掉（自動完成會重新偵測）
+            P.boxes = {};
+            for (const k of ['autoBox', 'fv', 'keepOut', 'eyeKeepOut']) delete P[k];
           }
           P.master = c.file;
           P.seed = c.seed;
@@ -380,13 +402,14 @@ $('candGo').onclick = () =>
     }
   });
 
-// ---- 3 標框 ----
-const BOX_COL = { face: '#7fc8ff', eyes: '#ffb020', mouth: '#ff6bd5' };
+// ---- 3 標框、保留區與旗標（docs/portrait-qa-workflow.md 第三、六節；立繪工房第 4 期在網頁上改）----
+const BOX_COL = { face: '#7fc8ff', eyes: '#ffb020', mouth: '#ff6bd5', keep: '#ff4040', eyekeep: '#c070ff' };
 let boxImg = null;
 let drag = null;
 function renderBoxes() {
   const P = pose();
   const cv = $('boxCv');
+  renderFlags();
   if (!P.master) {
     cv.width = 1;
     return toast('先選定主圖');
@@ -407,13 +430,20 @@ function drawBoxes() {
   cv.style.width = Math.min(boxImg.width, 760) + 'px';
   const g = cv.getContext('2d');
   g.drawImage(boxImg, 0, 0);
-  for (const [k, col] of Object.entries(BOX_COL)) {
-    const b = drag && drag.k === k ? drag.b : P.boxes[k];
-    if (!b) continue;
+  const rect = (b, col, dash) => {
     g.strokeStyle = col;
     g.lineWidth = 3;
+    g.setLineDash(dash ? [8, 5] : []);
     g.strokeRect(b[0], b[1], b[2], b[3]);
+  };
+  for (const k of ['face', 'eyes', 'mouth']) {
+    const b = drag && drag.k === k ? drag.b : P.boxes[k];
+    if (b) rect(b, BOX_COL[k]);
   }
+  for (const b of P.keepOut || []) rect(b, BOX_COL.keep, true);
+  for (const b of P.eyeKeepOut || []) rect(b, BOX_COL.eyekeep, true);
+  if (drag && (drag.k === 'keep' || drag.k === 'eyekeep')) rect(drag.b, BOX_COL[drag.k], true);
+  g.setLineDash([]);
 }
 const cvPos = (e) => {
   const cv = $('boxCv');
@@ -435,13 +465,106 @@ $('boxCv').onpointermove = (e) => {
   drawBoxes();
 };
 $('boxCv').onpointerup = () => {
-  if (drag && drag.b[2] > 8 && drag.b[3] > 8) pose().boxes[drag.k] = drag.b;
+  const P = pose();
+  if (drag && drag.b[2] > 4 && drag.b[3] > 4) {
+    if (drag.k === 'keep') (P.keepOut ||= []).push(drag.b);
+    else if (drag.k === 'eyekeep') (P.eyeKeepOut ||= []).push(drag.b);
+    else {
+      P.boxes[drag.k] = drag.b;
+      // 手改了嘴框：重新放大（影格用的）
+      if (drag.k === 'mouth') {
+        delete P.boxes.mouth0;
+        delete P.fv;
+      }
+    }
+  }
   drag = null;
   drawBoxes();
+  renderFlags();
 };
 $('boxSave').onclick = async () => {
   await saveCard();
-  toast('框已儲存');
+  toast('框與保留區已儲存');
+};
+$('boxAuto').onclick = () =>
+  job('自動偵測臉、眼睛、嘴', async (onProgress) => {
+    const { detectBoxes } = await import('./auto.js');
+    const b = await detectBoxes(pipe, ST.card, ST.pid, { onProgress });
+    const P = pose();
+    P.boxes = { face: b.face, eyes: b.eyes, mouth: b.mouth };
+    P.autoBox = b.info;
+    delete P.fv;
+    toast(`找到臉、${b.info.eyeN} 隻眼睛、嘴（${b.info.mouth === 'green' ? '塗綠找到' : '照比例推算'}）`);
+  });
+// 保留區清單與每個表情的旗標
+function renderFlags() {
+  const C = ST.card;
+  const P = pose();
+  const keeps = [
+    ...(P.keepOut || []).map((b, i) => ['keepOut', i, b, '保留區']),
+    ...(P.eyeKeepOut || []).map((b, i) => ['eyeKeepOut', i, b, '只在眨眼']),
+  ];
+  $('keepList').innerHTML = keeps.length
+    ? keeps
+        .map(
+          ([k, i, b, n]) =>
+            `<div>${n} ${b.join(', ')} <button data-k="${k}" data-i="${i}" title="刪除">✕</button></div>`,
+        )
+        .join('')
+    : '沒有';
+  $('keepList')
+    .querySelectorAll('button')
+    .forEach(
+      (x) =>
+        (x.onclick = () => {
+          P[x.dataset.k].splice(+x.dataset.i, 1);
+          drawBoxes();
+          renderFlags();
+        }),
+    );
+  $('flagGlasses').value = C.glasses === true ? '1' : C.glasses === false ? '0' : '';
+  const nb = P.noBlink || [];
+  const tri = (v) => (v === true ? '1' : v === false ? '0' : '');
+  $('flagTbl').innerHTML =
+    '<tr><th>表情</th><th>不眨眼</th><th>說話帶笑</th><th>底圖張嘴</th></tr>' +
+    exprList(C)
+      .map((e) => {
+        const x = P.ex[e.id] || {};
+        const fixed = NO_BLINK.includes(e.id);
+        return `<tr data-e="${e.id}"><td>${esc(e.name)}</td>
+          <td><input type="checkbox" data-f="nb" ${fixed || nb.includes(e.id) ? 'checked' : ''} ${fixed ? 'disabled title="一律不眨眼"' : ''}></td>
+          <td><select data-f="smile"><option value="">自動</option><option value="1">是</option><option value="0">否</option></select></td>
+          <td><input type="checkbox" data-f="open" ${x.open ? 'checked' : ''}></td></tr>`;
+      })
+      .join('');
+  $('flagTbl')
+    .querySelectorAll('tr[data-e]')
+    .forEach((tr) => {
+      const e = tr.dataset.e;
+      const sel = tr.querySelector('[data-f=smile]');
+      sel.value = tri(P.ex[e]?.smile);
+      sel.onchange = () => {
+        const x = (P.ex[e] ||= {});
+        if (sel.value === '') delete x.smile;
+        else x.smile = sel.value === '1';
+      };
+      tr.querySelector('[data-f=nb]').onchange = (ev) => {
+        const s = new Set(P.noBlink || []);
+        if (ev.target.checked) s.add(e);
+        else s.delete(e);
+        P.noBlink = [...s];
+      };
+      tr.querySelector('[data-f=open]').onchange = (ev) => {
+        const x = (P.ex[e] ||= {});
+        if (ev.target.checked) x.open = true;
+        else delete x.open;
+      };
+    });
+}
+$('flagGlasses').onchange = () => {
+  const v = $('flagGlasses').value;
+  if (v === '') delete ST.card.glasses;
+  else ST.card.glasses = v === '1';
 };
 
 // ---- 4 表情、5 影格：一列一個（表情或影格），候選以框的範圍放大顯示 ----
@@ -460,7 +583,7 @@ function cropDiv(file, box, sel, W = 140, H = 120) {
 function rowHtml(key, label, sub, box, base) {
   const P = pose();
   const s = P.ex[key] || { cands: [] };
-  const cands = s.cands.map((f) => cropDiv(f, box, s.pick === f)).join('');
+  const cands = (s.cands || []).map((f) => cropDiv(f, box, s.pick === f)).join('');
   const baseH = base ? `<div title="底圖">${cropDiv(base, box, false, 70, 60)}</div>` : '';
   return `<div class="row"><div class="lbl"><b>${esc(label)}</b><span class="dim">${esc(sub)}</span><br><button data-job="1" data-gen="${key}">產生</button></div>${baseH}<div class="cands" data-key="${key}">${cands || '<span class="dim">還沒有候選</span>'}</div></div>`;
 }
@@ -532,7 +655,7 @@ function frameKeys() {
   const out = [];
   for (const e of exprList(ST.card)) {
     if (e.id !== 'neutral' && !P.ex[e.id]?.pick) continue;
-    for (const f of FRAMES) out.push(`${e.id}.${f.id}`);
+    for (const f of FRAMES()) out.push(`${e.id}.${f.id}`);
   }
   return out;
 }
@@ -544,7 +667,7 @@ function renderFrames() {
     const base = e.id === 'neutral' ? P.master : P.ex[e.id]?.pick;
     if (!base) continue;
     h += `<h3>${esc(e.name)}</h3>`;
-    for (const f of FRAMES)
+    for (const f of FRAMES())
       h += rowHtml(
         `${e.id}.${f.id}`,
         f.name,
@@ -862,8 +985,15 @@ async function renderProj() {
   $('pjNeg').value = st.neg || '';
   $('pjW').value = st.w || 832;
   $('pjH').value = st.h || 1216;
+  $('pjPose').value = C.pose || '';
+  $('pjQ').value = (C.out && C.out.quality) || 88;
+  chkRow($('pjBase'), BASE_EX, C.base);
+  chkRow($('pjFrames'), ALL_FRAMES, C.frames);
+  $('pjExtra').value = (C.extra || []).map((e) => `${e.id}|${e.name}|${e.prompt}`).join('\n');
   $('pjDlWork').href = studio.zipUrl(ST.proj);
   $('pjDlOut').href = studio.zipUrl(ST.proj, { what: 'out' });
+  $('pjDlFull').href = studio.zipUrl(ST.proj, { what: 'full' });
+  $('pjDlAtlas').href = studio.zipUrl(ST.proj, { what: 'atlas' });
   const refs = await studio.refs(ST.proj);
   $('pjRefs').innerHTML = refs.length
     ? refs
@@ -902,6 +1032,11 @@ $('pjSave').onclick = async () => {
     w: Math.max(512, Math.min(1536, Math.round((+$('pjW').value || 832) / 64) * 64)),
     h: Math.max(512, Math.min(1536, Math.round((+$('pjH').value || 1216) / 64) * 64)),
   };
+  C.pose = $('pjPose').value.trim();
+  C.out = { ...(C.out || {}), quality: Math.max(50, Math.min(100, Math.round(+$('pjQ').value || 88))) };
+  setOrAll(C, 'base', chkVal($('pjBase')), BASE_EX);
+  setOrAll(C, 'frames', chkVal($('pjFrames')), ALL_FRAMES);
+  C.extra = parseExtra($('pjExtra').value);
   try {
     await studio.put(C);
     ST.conf = await studio.get(ST.proj);
@@ -1012,7 +1147,11 @@ $('ncGo').onclick = async () => {
   };
   if (ST.conf.pose) card.poses[0].prompt = ST.conf.pose;
   // 招牌表情預先填好常用的（不要的在「外觀」分頁刪掉那一行）
-  card.extraExprs = EXTRA_LIBRARY.map((e) => ({ ...e }));
+  card.extraExprs = (ST.conf.extra && ST.conf.extra.length ? ST.conf.extra : EXTRA_LIBRARY).map((e) => ({
+    ...e,
+  }));
+  if (ST.conf.base) card.baseExprs = [...ST.conf.base];
+  if (ST.conf.frames) card.frames = [...ST.conf.frames];
   try {
     await store.putCard(card);
     $('charDlg').close();
@@ -1092,7 +1231,7 @@ async function cropCanvas(file, box, W) {
   return c;
 }
 const qaExprIds = () => exprList(ST.card).map((e) => e.id);
-const QA_FR = () => FRAMES.map((f) => f.id);
+const QA_FR = () => FRAMES().map((f) => f.id);
 const fmtQm = (m) =>
   m
     ? `變 ${m.chg.toFixed(2)}・外 ${(m.out * 100).toFixed(2)}%・異色 ${m.alien.toFixed(2)}${m.side != null ? '・左右 ' + m.side.toFixed(2) : ''}${m.iris != null ? '・虹膜 ' + m.iris.toFixed(2) : ''}`
@@ -1122,7 +1261,7 @@ async function renderQa() {
       bc.appendChild(await cropCanvas(bf, box, W));
       bc.insertAdjacentHTML('beforeend', '<span>底圖</span>');
       row.appendChild(bc);
-      for (const f of FRAMES.filter((x) => x.id[0] === kind[0])) {
+      for (const f of FRAMES().filter((x) => x.id[0] === kind[0])) {
         const key = `${e.id}.${f.id}`;
         const sl = P.ex[key];
         const d = document.createElement('div');
@@ -1194,7 +1333,7 @@ async function qaOpen(key) {
   const [e, fid] = key.split('.');
   const sl = (P.ex[key] ||= { cands: [], pick: null });
   const ed = exprList(ST.card).find((x) => x.id === e);
-  const fd = FRAMES.find((x) => x.id === fid);
+  const fd = ALL_FRAMES.find((x) => x.id === fid);
   $('qdTitle').textContent = `${ed ? ed.name : e}・${fd ? fd.name : fid}（${P.id}:${key}）`;
   const box = Q.viewBox(P, e, fid[0] === 'e' ? 'eyes' : 'mouth');
   const bf = e === 'neutral' ? P.master : P.ex[e]?.pick;
@@ -1208,6 +1347,7 @@ async function qaOpen(key) {
     t.height = c.height;
     t.getContext('2d').drawImage(c, 0, 0);
   }
+  qrReset(box);
   const qm = sl.qm && sl.qm.pick === sl.pick ? sl.qm : null;
   $('qdMetric').textContent =
     fmtQm(qm) + (qm && qm.bad.length ? '　量測抓到：' + qm.bad.map((b) => Q.QA_REASONS[b]).join('、') : '');
@@ -1372,4 +1512,197 @@ $('lookFill').onclick = () => {
   const cur = $('lookExtra').value.trim();
   $('lookExtra').value = (cur ? cur + '\n' : '') + add.join('\n');
   toast(`補上 ${add.length} 種，按「儲存」才會存起來`);
+};
+
+// 品管對話框：把一塊換回底圖（疤、配件被改掉時；命令列的 restore）
+const QR = { box: null, rect: null, drag: null, img: null };
+function qrDraw() {
+  const t = $('qdCur');
+  if (!QR.img) return;
+  const g = t.getContext('2d');
+  g.drawImage(QR.img, 0, 0);
+  const r = QR.drag || QR.rect;
+  if (r) {
+    const k = t.width / QR.box[2];
+    g.strokeStyle = '#ff4040';
+    g.lineWidth = 2;
+    g.setLineDash([6, 4]);
+    g.strokeRect((r[0] - QR.box[0]) * k, (r[1] - QR.box[1]) * k, r[2] * k, r[3] * k);
+    g.setLineDash([]);
+  }
+}
+const qrPos = (e) => {
+  const t = $('qdCur');
+  const b = t.getBoundingClientRect();
+  const k = QR.box[2] / b.width;
+  return [QR.box[0] + (e.clientX - b.left) * k, QR.box[1] + (e.clientY - b.top) * k];
+};
+$('qdCur').onpointerdown = (e) => {
+  if (!QR.img) return;
+  QR.p0 = qrPos(e);
+  QR.drag = [...QR.p0, 1, 1];
+  $('qdCur').setPointerCapture(e.pointerId);
+};
+$('qdCur').onpointermove = (e) => {
+  if (!QR.drag) return;
+  const p = qrPos(e);
+  QR.drag = [
+    Math.min(p[0], QR.p0[0]),
+    Math.min(p[1], QR.p0[1]),
+    Math.abs(p[0] - QR.p0[0]),
+    Math.abs(p[1] - QR.p0[1]),
+  ].map(Math.round);
+  qrDraw();
+};
+$('qdCur').onpointerup = () => {
+  if (QR.drag && QR.drag[2] > 2 && QR.drag[3] > 2) QR.rect = QR.drag;
+  QR.drag = null;
+  $('qdRestore').disabled = !QR.rect;
+  qrDraw();
+};
+// qaOpen 畫完「這一格」之後呼叫：記下範圍與畫好的圖
+function qrReset(box) {
+  QR.box = box;
+  QR.rect = null;
+  QR.drag = null;
+  const t = $('qdCur');
+  QR.img = document.createElement('canvas');
+  QR.img.width = t.width;
+  QR.img.height = t.height;
+  QR.img.getContext('2d').drawImage(t, 0, 0);
+  $('qdRestore').disabled = true;
+}
+$('qdRestore').onclick = () => {
+  const key = qaKey;
+  const r = QR.rect;
+  if (!r) return;
+  job('把框裡換回底圖', async () => {
+    const P = pose();
+    const sl = P.ex[key];
+    const e = key.split('.')[0];
+    const bf = e === 'neutral' ? P.master : P.ex[e]?.pick;
+    const base = await imgOf(bf);
+    const cur = await imgOf(sl.pick);
+    const c = document.createElement('canvas');
+    c.width = cur.naturalWidth;
+    c.height = cur.naturalHeight;
+    const g = c.getContext('2d');
+    g.drawImage(cur, 0, 0);
+    g.drawImage(base, r[0], r[1], r[2], r[3], r[0], r[1], r[2], r[3]);
+    const blob = await new Promise((res) => c.toBlob(res, 'image/png'));
+    const nf = sl.pick.replace(/(_r\d+)?\.webp$/, '') + '_r' + Date.now().toString().slice(-6) + '.webp';
+    await store.putWork(ST.card.id, nf, new Uint8Array(await blob.arrayBuffer()));
+    sl.cands.push(nf);
+    sl.pick = nf;
+    delete sl.qa;
+    await saveCard();
+    toast('已換回底圖（新的候選、已選定）');
+    if ($('qaDlg').open) await qaOpen(key);
+  });
+};
+
+// ---- 主圖的局部修正（第 4 期）：在主圖上框出要修的地方 → Qwen 只改框裡 → 新的主圖候選 ----
+const FX = { img: null, rect: null, drag: null };
+function fixRender() {
+  const P = pose();
+  const cv = $('fixCv');
+  if (!P.master) {
+    $('fixBox').classList.add('hidden');
+    return;
+  }
+  $('fixBox').classList.remove('hidden');
+  const url = store.workUrl(ST.card.id, P.master);
+  if (!FX.img || FX.img.dataset.url !== url) {
+    FX.rect = null;
+    FX.img = new Image();
+    FX.img.dataset.url = url;
+    FX.img.onload = fixDraw;
+    FX.img.src = url;
+  } else fixDraw();
+  cv.style.width = '420px';
+}
+function fixDraw() {
+  const cv = $('fixCv');
+  if (!FX.img || !FX.img.naturalWidth) return;
+  cv.width = FX.img.naturalWidth;
+  cv.height = FX.img.naturalHeight;
+  const g = cv.getContext('2d');
+  g.drawImage(FX.img, 0, 0);
+  const r = FX.drag || FX.rect;
+  if (r) {
+    g.strokeStyle = '#ff4040';
+    g.lineWidth = 3;
+    g.setLineDash([8, 5]);
+    g.strokeRect(...r);
+    g.setLineDash([]);
+  }
+  $('fixInfo').textContent = FX.rect ? `範圍 ${FX.rect.join(', ')}` : '還沒框出範圍';
+}
+const fixPos = (e) => {
+  const cv = $('fixCv');
+  const b = cv.getBoundingClientRect();
+  return [((e.clientX - b.left) * cv.width) / b.width, ((e.clientY - b.top) * cv.height) / b.height];
+};
+$('fixCv').onpointerdown = (e) => {
+  FX.p0 = fixPos(e);
+  FX.drag = [...FX.p0, 1, 1];
+  $('fixCv').setPointerCapture(e.pointerId);
+};
+$('fixCv').onpointermove = (e) => {
+  if (!FX.drag) return;
+  const p = fixPos(e);
+  FX.drag = [
+    Math.min(p[0], FX.p0[0]),
+    Math.min(p[1], FX.p0[1]),
+    Math.abs(p[0] - FX.p0[0]),
+    Math.abs(p[1] - FX.p0[1]),
+  ].map(Math.round);
+  fixDraw();
+};
+$('fixCv').onpointerup = () => {
+  if (FX.drag && FX.drag[2] > 8 && FX.drag[3] > 8) FX.rect = FX.drag;
+  FX.drag = null;
+  fixDraw();
+};
+$('fixGo').onclick = () => {
+  const prompt = $('fixPrompt').value.trim();
+  if (!FX.rect) return toast('先在主圖上框出要修的地方', true);
+  if (!prompt) return toast('寫要怎麼改', true);
+  const n = Math.max(1, Math.min(6, +$('fixN').value || 2));
+  job('主圖局部修正', async (onProgress) => {
+    await pipe.fixMaster(ST.card, ST.pid, { box: FX.rect, prompt, n, onProgress });
+    toast('修正後的候選在上面的候選裡（最後幾張），點它設成主圖');
+  });
+};
+
+// ---- 表情組與影格組（第 5 期）：勾選框的一列；全部勾選時存成「沒有設定」（＝全部）----
+const BASE_EX = EXPRS.filter((e) => e.id !== 'neutral');
+function chkRow(el, items, sel) {
+  el.innerHTML = items
+    .map(
+      (it) =>
+        `<label><input type="checkbox" value="${it.id}" ${!sel || sel.includes(it.id) ? 'checked' : ''}/> ${esc(it.name)}</label>`,
+    )
+    .join('');
+}
+const chkVal = (el) => [...el.querySelectorAll('input:checked')].map((x) => x.value);
+function setOrAll(o, k, v, all) {
+  if (v.length === all.length) delete o[k];
+  else o[k] = v;
+}
+function parseExtra(txt) {
+  return txt
+    .split('\n')
+    .map((l) => l.split('|').map((x) => x.trim()))
+    .filter((a) => a.length >= 3 && /^[a-z][a-z0-9_]*$/.test(a[0]))
+    .map(([id, name, ...p]) => ({ id, name, prompt: p.join('|') }));
+}
+
+// 角色的其他輸出格式：整張圖、精靈圖（伺服器邊合成邊下載，表情多時要等一下）
+$('cDlMore').onchange = () => {
+  const w = $('cDlMore').value;
+  $('cDlMore').value = '';
+  if (!w || !ST.card) return;
+  toast(w === 'full' ? '合成整張圖中，下載會慢慢進來' : '合成精靈圖中，完成後開始下載');
+  location.href = studio.zipUrl(ST.proj, { char: ST.card.id, what: w });
 };

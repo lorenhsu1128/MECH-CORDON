@@ -7,6 +7,7 @@
 //   node scripts/studio.js project new <專案> [--name=名稱] [--note=說明]
 //   node scripts/studio.js project show <專案>
 //   node scripts/studio.js project set <專案> [--name=…] [--note=…] [--style=畫風] [--neg=…] [--w=832 --h=1216] [--pose=新姿勢的標籤]
+//       [--quality=88] [--base=smile,laugh,…|all] [--frames=e1,e2,m1,m2,m3|all]   （新角色的預設：共用表情、影格）
 //   node scripts/studio.js project ref <專案> <圖檔> [<圖檔>…]            加入專案的參考圖
 //   node scripts/studio.js project zip <專案> --out=<檔案.zip> [--char=<角色>] [--what=all|out]   下載工作資料（all）或成品（out）
 //   node scripts/studio.js project import <專案> <檔案.zip>                  匯入（專案還沒有時建立）
@@ -35,9 +36,15 @@
 //   node scripts/studio.js char <id> pick <姿勢>:<表情>[.<影格>]=<編號> …     選定候選表上的第幾張；0＝略過（不發佈）
 //   node scripts/studio.js char <id> regen <姿勢>:<表情>[.<影格>] … [--n=3] [--list=清單檔]   產生新候選（不改目前的選擇）
 //   node scripts/studio.js char <id> master --n=<編號> [--pose=p1]            主圖候選表上的第幾張設成主圖
+//   node scripts/studio.js char <id> fixmaster --box=x,y,w,h --prompt="Fix the left hand…" [--n=2]   主圖的局部修正（新的主圖候選）
+//   node scripts/studio.js char <id> box --auto                               自動偵測臉、眼睛、嘴（要 ComfyUI）
+//   node scripts/studio.js char <id> flag [--keep=x,y,w,h] [--eyekeep=…] [--clear-keep] [--glasses=1|0|auto]
+//       [--noblink=表情,…] [--smile=表情:1|0|auto,…] [--open=表情[:0],…]   保留區（疤、OK 繃）與旗標
+//   node scripts/studio.js char <id> restore <姿勢>:<表情>.<影格> --box=x,y,w,h   把一塊換回底圖（新候選、直接選定）
 //
 // 自動完成（第 4 期；主圖選定之後一路做到發佈，中途停掉再跑會接著做）：
-//   node scripts/studio.js char <id> auto [--pose=p1|all] [--n=3] [--no-publish]
+//   node scripts/studio.js char <id> auto [--pose=p1|all] [--n=3] [--no-publish] [--restart-comfy]
+//       --restart-comfy：開始前重開 ComfyUI、顯示卡記憶體超過 95% 時也重開（Windows；網頁的自動完成會加）
 //   共用：--project=<專案>、--server=http://127.0.0.1:80（沒給時讀 mech-cordon-server.json 的 port）、--comfy=http://127.0.0.1:8188、
 //         --dl=<資料夾>（把這次產生的候選也下載到本機，方便看）
 //
@@ -113,6 +120,16 @@ async function projectCmd(cmd, a) {
     if (a.neg !== undefined) c.style.neg = String(a.neg);
     if (a.w) c.style.w = +a.w;
     if (a.h) c.style.h = +a.h;
+    if (a.quality) c.out = { ...(c.out || {}), quality: +a.quality };
+    // --base＝新角色要做的共用表情（smile,laugh…；all＝全部）、--frames＝影格（e1,e2,m1,m2,m3；all＝全部）
+    for (const [k, key] of [
+      ['base', 'base'],
+      ['frames', 'frames'],
+    ])
+      if (a[k] !== undefined) {
+        if (String(a[k]) === 'all') delete c[key];
+        else c[key] = String(a[k]).split(',').filter(Boolean);
+      }
     await S.put(c);
     console.log(JSON.stringify(await S.get(pid), null, 2));
   } else if (sub === 'ref') {
@@ -170,7 +187,7 @@ async function charCmd(a, comfy) {
   const { CharStore, StudioStore, LINKED, refName } = await lib('store.js');
   const P = await lib('pipeline.js');
   const { rosterOf } = await lib('roster.js');
-  const { exprList, EYE_FRAMES, MOUTH_FRAMES } = await lib('expr.js');
+  const { exprList, frameList } = await lib('expr.js');
   const project = a.project || LINKED;
   const server = a.server || defaultServer();
   const store = new CharStore(server, project);
@@ -208,7 +225,12 @@ async function charCmd(a, comfy) {
   } else if (sub === 'new') {
     card.info = { sex: a.sex || '', age: a.age || '', color: a.color || '#7fc8ff', note: a.note || '' };
     // 招牌表情預先填好常用的（--no-extra＝只有共用的 8 種）
-    if (!a['no-extra']) card.extraExprs = (await lib('expr.js')).EXTRA_LIBRARY.map((e) => ({ ...e }));
+    // 專案設定的新角色預設（表情組、影格組、招牌表情；沒有＝全部＋常用的 43 種）
+    const lib0 = (await lib('expr.js')).EXTRA_LIBRARY;
+    if (!a['no-extra'])
+      card.extraExprs = (conf.extra && conf.extra.length ? conf.extra : lib0).map((e) => ({ ...e }));
+    if (conf.base) card.baseExprs = [...conf.base];
+    if (conf.frames) card.frames = [...conf.frames];
   } else if (sub === 'ref') {
     for (const f of a._.slice(2)) {
       const n = refName();
@@ -228,11 +250,121 @@ async function charCmd(a, comfy) {
   } else if (sub === 'master') {
     if (a.n) a.file = pose.cands[a.n - 1]?.file;
     if (!pose.cands.find((c) => c.file === a.file)) throw new Error('沒有這個候選：' + (a.file || a.n));
-    if (pose.master !== a.file) pose.ex = {};
+    if (pose.master !== a.file) {
+      pose.ex = {};
+      // 換成別張（不是局部修正的）：框與保留區是舊主圖的位置，清掉（自動完成會重新偵測）
+      if (!pose.cands.find((c) => c.file === a.file).fix) {
+        pose.boxes = {};
+        for (const k of ['autoBox', 'fv', 'keepOut', 'eyeKeepOut']) delete pose[k];
+      }
+    }
     pose.master = a.file;
     pose.seed = pose.cands.find((c) => c.file === a.file).seed;
   } else if (sub === 'box') {
+    // --auto：自動偵測（動漫的臉與眼睛＋Qwen 塗綠找嘴）；手給的值優先
+    if (a.auto) {
+      const A = await lib('auto.js');
+      const b = await A.detectBoxes(pipe, card, pid);
+      pose.boxes = { face: b.face, eyes: b.eyes, mouth: b.mouth };
+      pose.autoBox = b.info;
+      delete pose.fv;
+      console.log(
+        `自動偵測：臉 ${b.face}、眼睛 ${b.eyes}（${b.info.eyeN} 隻）、嘴 ${b.mouth}（${b.info.mouth}）`,
+      );
+    }
     for (const k of ['face', 'eyes', 'mouth']) if (a[k]) pose.boxes[k] = nums(a[k]);
+    if (a.mouth) {
+      delete pose.boxes.mouth0; // 手改了嘴框：影格用的放大重算
+      delete pose.fv;
+    }
+  } else if (sub === 'fixmaster') {
+    // 主圖的局部修正：只改 --box 裡，存成新的主圖候選（sheet masters 看、master --n= 選）
+    if (!a.box || !a.prompt) throw new Error('要給 --box=x,y,w,h 與 --prompt="要怎麼改"');
+    const names = await pipe.fixMaster(card, pid, {
+      box: nums(a.box),
+      prompt: String(a.prompt),
+      n: a.n || 2,
+    });
+    for (const f of names) console.log(`第 ${pose.cands.findIndex((c) => c.file === f) + 1} 張：${f}`);
+  } else if (sub === 'restore') {
+    // 把一塊換回底圖（疤、配件被影格改掉時）：選定的圖＋框裡換成底圖的像素（邊緣 2 px 漸變）→ 新候選、直接選定
+    const sharp = require('sharp');
+    const [[po, key]] = slotArgs(card, [a._[2]], false);
+    const [e] = key.split('.');
+    const sl = po.ex[key];
+    if (!key.includes('.') || !sl || !sl.pick) throw new Error('要給有選定圖的影格：<姿勢>:<表情>.<影格>');
+    if (!a.box) throw new Error('要給 --box=x,y,w,h（整張圖的座標，用 sheet grid 量）');
+    const bf = e === 'neutral' ? po.master : po.ex[e]?.pick;
+    const raw = async (f) =>
+      sharp(Buffer.from(await store.getWork(card.id, f)))
+        .removeAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+    const B = await raw(bf);
+    const C = await raw(sl.pick);
+    const W = C.info.width;
+    const H = C.info.height;
+    const [x0, y0, bw, bh] = nums(a.box).map(Math.round);
+    const fe = 2;
+    for (let y = Math.max(0, y0); y < Math.min(H, y0 + bh); y++)
+      for (let x = Math.max(0, x0); x < Math.min(W, x0 + bw); x++) {
+        const d = Math.min(x - x0 + 1, x0 + bw - x, y - y0 + 1, y0 + bh - y);
+        const k = Math.min(1, d / (fe + 1));
+        const i = (y * W + x) * 3;
+        for (let c = 0; c < 3; c++) C.data[i + c] = Math.round(B.data[i + c] * k + C.data[i + c] * (1 - k));
+      }
+    const png = await sharp(C.data, { raw: { width: W, height: H, channels: 3 } })
+      .png()
+      .toBuffer();
+    const nf = sl.pick.replace(/(_r\d+)?\.webp$/, '') + '_r' + Date.now().toString().slice(-6) + '.webp';
+    await store.putWork(card.id, nf, png);
+    sl.cands.push(nf);
+    sl.pick = nf;
+    delete sl.qa;
+    console.log(`${po.id}:${key} → ${nf}`);
+  } else if (sub === 'flag') {
+    // 保留區與旗標（docs/portrait-qa-workflow.md 第三、六節）
+    if (a.keep) (pose.keepOut ||= []).push(nums(a.keep));
+    if (a.eyekeep) (pose.eyeKeepOut ||= []).push(nums(a.eyekeep));
+    if (a['clear-keep']) {
+      delete pose.keepOut;
+      delete pose.eyeKeepOut;
+    }
+    if (a.glasses !== undefined) {
+      if (a.glasses === 'auto') delete card.glasses;
+      else card.glasses = String(a.glasses) === '1';
+    }
+    if (a.noblink !== undefined) pose.noBlink = String(a.noblink).split(',').filter(Boolean);
+    for (const kv of String(a.smile || '')
+      .split(',')
+      .filter(Boolean)) {
+      const [e, v] = kv.split(':');
+      const x = (pose.ex[e] ||= {});
+      if (v === 'auto') delete x.smile;
+      else x.smile = v === '1';
+    }
+    for (const kv of String(a.open || '')
+      .split(',')
+      .filter(Boolean)) {
+      const [e, v] = kv.split(':');
+      const x = (pose.ex[e] ||= {});
+      if (v === '0') delete x.open;
+      else x.open = true;
+    }
+    console.log(
+      JSON.stringify({
+        glasses: card.glasses,
+        keepOut: pose.keepOut,
+        eyeKeepOut: pose.eyeKeepOut,
+        noBlink: pose.noBlink,
+        smile: Object.fromEntries(
+          Object.entries(pose.ex)
+            .filter(([, x]) => x.smile != null)
+            .map(([k, x]) => [k, x.smile]),
+        ),
+        open: Object.keys(pose.ex).filter((k) => pose.ex[k].open),
+      }),
+    );
   } else if (sub === 'var') {
     for (const key of String(a.key).split(',')) {
       const names = await pipe.variant(card, pid, key, {
@@ -246,12 +378,13 @@ async function charCmd(a, comfy) {
     }
   } else if (sub === 'pick' && a.key) {
     const s = pose.ex[a.key];
-    if (!s || !s.cands.includes(a.file)) throw new Error('沒有這個候選');
+    if (!s || !(s.cands || []).includes(a.file)) throw new Error('沒有這個候選');
     s.pick = a.file;
   } else if (sub === 'pick') {
     // <姿勢>:<格>=<編號>：編號＝候選表上的（這格 cands 的第幾張，1 起算）；0＝略過
     for (const [po, key, v] of slotArgs(card, a._.slice(2), true)) {
       const sl = (po.ex[key] ||= { cands: [], pick: null });
+      sl.cands ||= [];
       const k = +v;
       if (k === 0) {
         if (!key.includes('.')) throw new Error('表情不能略過（只有眨眼與嘴型的影格可以）：' + key);
@@ -314,7 +447,7 @@ async function charCmd(a, comfy) {
         ...ctx,
         poses,
         exprIds: exprList(card).map((e) => e.id),
-        frames: [...EYE_FRAMES, ...MOUTH_FRAMES].map((f) => f.id),
+        frames: frameList(card).map((f) => f.id),
         noBlink: (po) => P.noBlink(po),
       });
     else if (kind === 'masters') await SQ.masterSheet({ ...ctx, P: pose });
@@ -330,7 +463,26 @@ async function charCmd(a, comfy) {
     const Q = await lib('qa.js');
     const SQ = require('./studio-qa.js');
     const t1 = Date.now();
+    // --restart-comfy：先重開 ComfyUI（每個角色一次），跑的過程中顯示卡記憶體超過 95% 也重開（server-studio-gpu.js）
+    const G = require('../server-studio-gpu.js');
+    const ROOTD = path.join(__dirname, '..');
+    const restart = async (why) => {
+      console.log(`重開 ComfyUI（${why}）`);
+      if (!G.restartComfy(ROOTD)) console.log('  重開失敗或不支援（只在 Windows），照樣繼續');
+      pipe.up.clear();
+    };
+    if (a['restart-comfy']) await restart('每個角色開始前');
+    let lastG = 0;
+    const tick = async () => {
+      if (Date.now() - lastG < 60000) return;
+      lastG = Date.now();
+      const v = await G.vram();
+      if (!v) return;
+      console.log(`顯示卡記憶體 ${(v.used / 1024).toFixed(1)} / ${(v.total / 1024).toFixed(1)} GB`);
+      if (a['restart-comfy'] && v.used > v.total * 0.95) await restart('顯示卡記憶體太滿');
+    };
     const rep = await A.autoRun(pipe, card, {
+      tick,
       pids: a.pose && a.pose !== 'all' ? [pid] : undefined,
       n: a.n || 3,
       publish: !a['no-publish'],
@@ -347,7 +499,7 @@ async function charCmd(a, comfy) {
       log: (t) => console.log(t),
       poses: card.poses.filter((p) => p.master && p.boxes && p.boxes.face),
       exprIds: exprList(card).map((e) => e.id),
-      frames: [...EYE_FRAMES, ...MOUTH_FRAMES].map((f) => f.id),
+      frames: frameList(card).map((f) => f.id),
       noBlink: (po) => P.noBlink(po),
     });
     console.log(`自動完成（${((Date.now() - t1) / 60000).toFixed(1)} 分鐘）`);
@@ -355,7 +507,7 @@ async function charCmd(a, comfy) {
     if (rep.weak.length) console.log(`量測不理想的表情（建議看一下）：${rep.weak.join(' ')}`);
   } else if (sub === 'status') {
     const Q = await lib('qa.js');
-    const FR = [...EYE_FRAMES, ...MOUTH_FRAMES].map((f) => f.id);
+    const FR = frameList(card).map((f) => f.id);
     console.log(
       `${card.name}（${card.id}）狀態 ${card.status}，${card.pub ? '發佈過 ' + new Date(card.pub.t).toLocaleString('zh-TW') : '還沒發佈'}`,
     );
@@ -394,8 +546,7 @@ async function charCmd(a, comfy) {
     for (const e of exprList(card)) if (e.id !== 'neutral' && !pose.ex[e.id]?.pick) keys.push(e.id);
     if (!keys.length)
       for (const e of exprList(card))
-        for (const f of [...EYE_FRAMES, ...MOUTH_FRAMES])
-          if (!pose.ex[`${e.id}.${f.id}`]?.pick) keys.push(`${e.id}.${f.id}`);
+        for (const f of frameList(card)) if (!pose.ex[`${e.id}.${f.id}`]?.pick) keys.push(`${e.id}.${f.id}`);
     for (const key of keys) {
       const names = await pipe.variant(card, pid, key, { n: a.n || 2 });
       await save();
@@ -408,7 +559,7 @@ async function charCmd(a, comfy) {
     const only = a.only ? String(a.only).split(',') : null;
     const poses =
       a.pose && a.pose !== 'all' ? [pose] : card.poses.filter((p) => p.master && p.boxes && p.boxes.face);
-    const FR = [...EYE_FRAMES, ...MOUTH_FRAMES].map((f) => f.id);
+    const FR = frameList(card).map((f) => f.id);
     let n = 0;
     for (const po of poses) {
       if (po.fv !== 2 && po.boxes.mouth) {
@@ -490,6 +641,8 @@ const NO_COMFY = new Set([
   'qa',
   'sheet',
   'status',
+  'flag',
+  'restore',
 ]);
 async function main() {
   const cmd = process.argv[2];
@@ -497,7 +650,7 @@ async function main() {
   if (cmd === 'projects' || cmd === 'project') return projectCmd(cmd, a);
   const { Comfy } = await lib('comfy.js');
   const c = new Comfy(a.comfy || 'http://127.0.0.1:' + (process.env.COMFY_PORT || 8188));
-  if (!(cmd === 'char' && NO_COMFY.has(a._[1])) && !(await c.alive()))
+  if (!(cmd === 'char' && NO_COMFY.has(a._[1]) && !(a._[1] === 'box' && a.auto)) && !(await c.alive()))
     throw new Error('ComfyUI 沒有在執行：先 npm run comfy');
   if (cmd === 'char') return charCmd(a, c);
   return flowCmd(cmd, a, c);

@@ -1,6 +1,6 @@
 // 立繪工房的 zip（docs/portrait-studio-design.md）：工作資料的下載與匯入
 // - writeZip(out, entries)：不壓縮、一個檔案一個檔案寫進可寫串流（照顧背壓），超過 4 GB 或 65535 個檔案時用 zip64
-//   entries：[{ name: zip 裡的路徑, file: 磁碟上的檔案 } 或 { name, data: Buffer }]
+//   entries：[{ name: zip 裡的路徑, file: 磁碟上的檔案 } 或 { name, data: Buffer } 或 { name, make: async () => Buffer }]
 // - readZip(檔案)：讀中央目錄，回傳 [{ name, size, read(): Promise<Buffer> }]（不壓縮與 deflate；zip64）
 'use strict';
 const fs = require('fs');
@@ -52,7 +52,8 @@ async function writeZip(out, entries) {
     let data;
     let mt = new Date();
     try {
-      data = e.data || fs.readFileSync(e.file);
+      // make()：寫到這一項時才產生（成品輸出邊合成邊寫）
+      data = e.make ? await e.make() : e.data || fs.readFileSync(e.file);
       if (e.file) mt = fs.statSync(e.file).mtime;
     } catch (err) {
       continue; // 讀不到（剛好被刪掉）的略過

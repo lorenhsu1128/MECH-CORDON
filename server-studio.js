@@ -12,6 +12,8 @@ const http = require('http'),
   path = require('path');
 const { WebSocketServer, WebSocket } = require('ws');
 const { writeZip, readZip } = require('./server-studio-zip.js');
+const GPU = require('./server-studio-gpu.js');
+const { exportEntries } = require('./server-studio-export.js');
 
 module.exports = function chargen({ base, modelsDir, env, readBody, writeAtomic, log }) {
   const COMFY = new URL(env('COMFY') || 'http://127.0.0.1:8188');
@@ -59,13 +61,14 @@ module.exports = function chargen({ base, modelsDir, env, readBody, writeAtomic,
     }
   }
   // 候選資料夾的圖一律存 WebP（2026-11-12 使用者定案：進 git 的檔案小一點）。開發模式才轉（sharp 是開發用的套件，exe 版沒有）
+  // 立繪工房（2026-11-18）：有裝 sharp 就用（從專案執行時都有；exe 版沒有：候選照原格式存、整張圖與精靈圖不能輸出）
   let sharp = null;
-  if (DEV)
+  if (!process.pkg)
     try {
       const req = require; // 不寫死字面的 require：打包 exe 時 pkg 不會去收 sharp 的原生檔
       sharp = req('sharp');
     } catch (e) {
-      log('[charagen] 沒有 sharp（npm install），候選圖照原格式存');
+      log('[studio] 沒有 sharp（npm install），候選圖照原格式存、不能輸出整張圖與精靈圖');
     }
   const isPngJpg = (b) =>
     b.length > 4 && ((b[0] === 0x89 && b[1] === 0x50) || (b[0] === 0xff && b[1] === 0xd8));
@@ -335,15 +338,24 @@ module.exports = function chargen({ base, modelsDir, env, readBody, writeAtomic,
     return out;
   }
   async function zipDownload(req, resp, P, q) {
-    const what = q.get('what') === 'out' ? 'out' : 'all';
+    // what：all（工作資料）／out（成品：遊戲格式）／full（每格合成好的整張 WebP）／atlas（精靈圖＋JSON）
+    const what = ['out', 'full', 'atlas'].includes(q.get('what')) ? q.get('what') : 'all';
+    if ((what === 'full' || what === 'atlas') && !sharp)
+      return bad(resp, '整張圖與精靈圖要在開發模式產生（要 sharp）', 404);
+    const quality = (projConf(P).out || {}).quality || 88;
+    const NAMES = { out: '成品', full: '整張圖', atlas: '精靈圖', all: '工作資料' };
+    const entriesOf = (cid, pre) =>
+      what === 'full' || what === 'atlas'
+        ? exportEntries(sharp, path.join(P.chars, cid), cid, what, pre, quality)
+        : charEntries(P, cid, what, pre);
     const id = q.get('char');
     let entries = [];
     let fname;
     if (id) {
       if (!ID_RE.test(id) || !fs.existsSync(path.join(P.chars, id, 'card.json')))
         return bad(resp, '沒有這個角色', 404);
-      entries = charEntries(P, id, what, '');
-      fname = `${P.id}_${id}_${what === 'out' ? '成品' : '工作資料'}.zip`;
+      entries = entriesOf(id, '');
+      fname = `${P.id}_${id}_${NAMES[what]}.zip`;
     } else {
       if (what === 'all') {
         entries.push({
@@ -356,10 +368,10 @@ module.exports = function chargen({ base, modelsDir, env, readBody, writeAtomic,
         const sk = path.join(base, '.claude', 'skills', 'portrait-studio', 'SKILL.md');
         if (fs.existsSync(sk)) entries.push({ name: 'CLAUDE-CODE.md', file: sk });
       }
-      for (const c of listChars(P)) entries.push(...charEntries(P, c.id, what, 'chars/'));
-      fname = `${P.id}_${what === 'out' ? '成品' : '工作資料'}.zip`;
+      for (const c of listChars(P)) entries.push(...entriesOf(c.id, 'chars/'));
+      fname = `${P.id}_${NAMES[what]}.zip`;
     }
-    if (!entries.length) return bad(resp, what === 'out' ? '還沒有發佈過' : '沒有資料', 404);
+    if (!entries.length) return bad(resp, what === 'all' ? '沒有資料' : '還沒有發佈過', 404);
     resp.writeHead(200, {
       'Content-Type': 'application/zip',
       'Content-Disposition': attach(fname),
@@ -533,6 +545,7 @@ module.exports = function chargen({ base, modelsDir, env, readBody, writeAtomic,
       `--project=${P.id}`,
       `--server=http://127.0.0.1:${req.socket.localPort}`,
       `--comfy=${COMFY.href.replace(/\/$/, '')}`,
+      '--restart-comfy', // 每個角色開始前重開 ComfyUI、顯示卡記憶體太滿時也重開
     ];
     if (b.pose && ID_RE.test(String(b.pose))) args.push(`--pose=${b.pose}`);
     if (b.n) args.push(`--n=${Math.max(1, Math.min(6, +b.n || 3))}`);
@@ -758,6 +771,11 @@ module.exports = function chargen({ base, modelsDir, env, readBody, writeAtomic,
         );
         r.on('timeout', () => r.destroy());
         r.on('error', () => done(false));
+        return true;
+      }
+      // 顯示卡記憶體（立繪工房上方的標籤）：{ gpu: { used, total, util }（MiB）}，沒有 NVIDIA 顯示卡＝null
+      if (u === '/api/studio/gpu') {
+        GPU.vram().then((g) => json(resp, { gpu: g }));
         return true;
       }
       if (u.startsWith('/api/comfy/') || u === '/api/comfy') {

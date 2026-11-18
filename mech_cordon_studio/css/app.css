@@ -578,3 +578,59 @@ a.btn {
 .qaRow h4 {
   flex: none;
 }
+
+/* 標框分頁的保留區與旗標（第 4 期） */
+.c-keep {
+  color: #ff4040;
+}
+.c-eyekeep {
+  color: #c070ff;
+}
+.boxCols {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+}
+.boxSide {
+  min-width: 300px;
+  max-height: 80vh;
+  overflow: auto;
+}
+.boxSide #keepList button {
+  padding: 0 5px;
+  font-size: 11px;
+}
+.flagTbl td {
+  text-align: center;
+}
+.flagTbl td:first-child {
+  text-align: left;
+}
+.fixBox {
+  margin-top: 14px;
+}
+.fixBox summary {
+  cursor: pointer;
+  color: var(--acc);
+}
+.fixCv {
+  cursor: crosshair;
+  border: 1px solid var(--line);
+}
+.chkRow label {
+  display: inline-block;
+  margin: 2px 12px 2px 0;
+  font-size: 13px;
+  color: var(--fg);
+}
+.charHead {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+.charHead button {
+  white-space: nowrap;
+}
+#cDlMore {
+  width: 8.5em;
+  flex: none;
+}

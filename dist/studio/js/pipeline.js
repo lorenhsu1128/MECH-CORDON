@@ -18,6 +18,7 @@
 import * as W from './workflows.js';
 import {
   exprList,
+  frameList,
   EYE_FRAMES,
   MOUTH_FRAMES,
   KEEP,
@@ -169,6 +170,45 @@ export class Pipeline {
     }
     return out;
   }
+  // 主圖的局部修正（立繪工房第 4 期）：只改 box 裡（手、配件、背景殘塊…），Qwen 照指示改、對齊後只貼回框裡，
+  // 存成新的主圖候選（pose.cands 的 fix）；選它當主圖時表情與影格照樣要重做
+  async fixMaster(card, pid, { box, prompt, n = 2, onProgress } = {}) {
+    const pose = poseOf(card, pid);
+    if (!pose.master) throw new Error('先選定主圖');
+    if (!box || box[2] < 8 || box[3] < 8) throw new Error('先框出要修的地方');
+    const up = await this.uploadWork(card, pose.master);
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const seed = rnd();
+      const name = `${pid}_fix_${seed}.webp`;
+      this.log(`${card.name}／${pose.name}：主圖局部修正（種子 ${seed}）`);
+      // 框往外 60%（至少 192 px）裁出來放大給 Qwen（整張給它時小東西照不到指示），只貼回框裡真的改了的像素
+      // （scripts/portrait-fix.mjs edit 的做法：不要遲滯、留下所有大塊）
+      const { w: IW, h: IH } = await this.imageSize(card, pose.master);
+      const [bx, by, bw, bh] = box.map(Math.round);
+      const sz = Math.max(192, Math.max(bw, bh) * 1.6);
+      const x0 = Math.max(0, Math.round(bx + bw / 2 - sz / 2));
+      const y0 = Math.max(0, Math.round(by + bh / 2 - sz / 2));
+      const crop = [x0, y0, Math.min(IW, Math.round(x0 + sz)) - x0, Math.min(IH, Math.round(y0 + sz)) - y0];
+      const wf = W.qwenEditCrop({
+        image: up,
+        crop,
+        inner: [bx, by, bw, bh],
+        prompt: `${prompt} Do not change anything else: same character, same face, same pose, same art style.`,
+        seed,
+        thr: 0.07,
+        grow: 4,
+        feather: 3,
+      });
+      wf.pp.inputs.thr_hi = 0.07;
+      wf.pp.inputs.keep_frac = 0.02;
+      wf.pp.inputs.no_blush = false;
+      await this.runSave(card, wf, name, onProgress);
+      pose.cands.push({ file: name, seed, fix: { from: pose.master, box, prompt } });
+      out.push(name);
+    }
+    return out;
+  }
   // 表情或影格的底圖：表情＝主圖；影格（smile.e1）＝那個表情選定的圖（neutral＝主圖）
   baseOf(pose, key) {
     const ex = key.split('.')[0];
@@ -219,6 +259,7 @@ export class Pipeline {
     const base = await this.uploadWork(card, this.baseOf(pose, key));
     const list = seeds || Array.from({ length: n }, rnd);
     const slot = (pose.ex[key] ||= { cands: [], pick: null });
+    slot.cands ||= []; // 只有旗標（smile、open…）、還沒有候選的表情
     const out = [];
     for (const seed of list) {
       this.log(`${card.name}／${pose.name}：${key}（種子 ${seed}）`);
@@ -349,7 +390,14 @@ export class Pipeline {
   }
   // 發佈：主圖整張、每個表情的臉、每個影格的眼睛／嘴巴裁成 WebP 放進定稿資料夾，card.pub 記下
   // keepBase：主圖與分層沿用上一次發佈的（只重裁表情與影格；2026-11-15 立繪大修重產影格時用，省掉去背與拆層）
-  async publish(card, { quality = 88, onProgress, keepBase = false } = {}) {
+  async publish(
+    card,
+    {
+      quality = (this.project && this.project.out && this.project.out.quality) || 88,
+      onProgress,
+      keepBase = false,
+    } = {},
+  ) {
     const old = new Map(((card.pub && card.pub.poses) || []).map((p) => [p.id, p]));
     const pub = { t: Date.now(), poses: [] };
     const files = [];
@@ -473,7 +521,7 @@ export class Pipeline {
           if (!pick) continue;
           if (B.face) ex.f = await crop(pick, B.face, `${pose.id}_${e.id}_f`);
         }
-        for (const f of [...EYE_FRAMES, ...MOUTH_FRAMES]) {
+        for (const f of frameList(card)) {
           const slot = pose.ex[`${e.id}.${f.id}`];
           const pick = slot && !slot.skip && slot.pick;
           // 本來就閉眼的表情（大笑的 ^^、閉眼的姿勢）不眨眼：pose.noBlink

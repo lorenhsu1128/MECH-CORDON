@@ -115,7 +115,16 @@ export const MOUTH_STYLE =
 export const KEEP_MOUTH =
   'Keep the mouth exactly the same. Do not add any objects, marks, symbols, text, letters or new colors.';
 
-export const exprList = (card) => [...EXPRS, ...((card && card.extraExprs) || [])];
+// 角色的表情：共用的（card.baseExprs＝要用哪幾種，沒有＝全部；平常一定有）＋招牌表情（card.extraExprs）
+// （立繪工房第 5 期：新增角色時從專案設定複製 baseExprs／extraExprs／frames 到角色卡）
+export const exprList = (card) => [
+  ...EXPRS.filter((e) => e.id === 'neutral' || !card || !card.baseExprs || card.baseExprs.includes(e.id)),
+  ...((card && card.extraExprs) || []),
+];
+// 角色的影格：card.frames＝要做哪幾種（沒有＝全部：半閉、閉眼、微開、張開、圓口）
+export const ALL_FRAMES = [...EYE_FRAMES, ...MOUTH_FRAMES];
+export const frameList = (card) =>
+  ALL_FRAMES.filter((f) => !card || !Array.isArray(card.frames) || card.frames.includes(f.id));
 
 // 新角色預先填好的招牌表情（2026-11-18 使用者要求：所有的表情先填進去）：這次遊戲角色用過的、通用的招牌表情
 // （去掉某個角色專屬的：ECHO 的干擾、COUNTDOWN 的倒數、聖域的誓詞…與重複的）。不要的在「外觀」分頁刪掉那一行

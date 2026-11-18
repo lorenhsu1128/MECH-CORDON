@@ -62,7 +62,7 @@ node scripts/studio.js char alice ref 參考圖.png … --project=my_game # 使�
 主圖選定之後：
 
 ```bash
-node scripts/studio.js char <id> auto [--project=…]     # 約一個姿勢一小時多；中途停掉再跑會接著做
+node scripts/studio.js char <id> auto --restart-comfy [--project=…]   # 8 種表情約 20 分鐘、51 種約 2～3 小時；停掉再跑會接著做
 ```
 
 它會一路做到發佈：
@@ -112,15 +112,21 @@ node scripts/studio.js char <id> auto [--project=…]     # 約一個姿勢一�
    - 兩份都列的，直接重做。
    - 只有一份列的，自己看放大總表決定。
    - 量測的 `BAD` 一律重做。
-5. 同一種瑕疵出現在很多格（系統性）：回 `docs/portrait-qa-workflow.md` 第六節找根源（框、`keepOut`、`noBlink`、`card.glasses`、`ex[表情].smile`），改了之後整批重產，不要一格一格補。
+5. 同一種瑕疵出現在很多格（系統性）：回 `docs/portrait-qa-workflow.md` 第六節找根源，改了之後整批重產，不要一格一格補。改的指令：
+   - 框：`char <id> box --face=… --eyes=… --mouth=…`（或 `--auto`）。
+   - 保留區與旗標：`char <id> flag --keep=x,y,w,h`（疤、OK 繃）、`--eyekeep=…`、`--glasses=1|0|auto`、`--noblink=表情,…`、`--smile=表情:1|0|auto`、`--open=表情`。
+   - 指示：`regen … --extra="補充的英文指示"`。
 6. 個別的格子：
    1. 把格子寫進清單檔（每行一格）。
    2. `char <id> regen --list=清單檔 --n=3` 產新候選。
    3. `char <id> sheet cands --list=清單檔 --n=3` 拼候選表。
    4. 看完候選表，`char <id> pick p1:smile.e1=2 p1:angry.m3=0` 選定（0＝略過：不發佈，那個表情就不眨眼或不動嘴）。
-7. **不要無限重試**：同一個方法只試一輪。三張都不合格就換方法（框、保留區、指示），最多再一輪，還不行就略過（`=0`）。
-8. 看過的格子可以 `char <id> mark p1:smile.e1=ok`（或 `=ng --why=ghost,expr`）記下來，網頁會顯示。原因的代號在 `mech_cordon_studio/js/qa.js` 的 `QA_CHECKS`。
-9. `char <id> status` 隨時看進度：缺幾格、略過、量測抓到、標成不合格、還沒看。
+7. 個別的修法：
+   - 疤、配件被改掉：`char <id> restore p1:smile.e1 --box=x,y,w,h`（框裡換回底圖，用 `sheet grid` 量座標）。
+   - 主圖本身有問題（手、配件、去背殘塊）：要在自動完成之前修，`char <id> fixmaster --box=… --prompt="Fix …"` 產新的主圖候選，`sheet masters` 看、`master --n=` 選（換主圖會清掉表情與影格）。
+8. **不要無限重試**：同一個方法只試一輪。三張都不合格就換方法（框、保留區、指示），最多再一輪，還不行就略過（`=0`）。
+9. 看過的格子可以 `char <id> mark p1:smile.e1=ok`（或 `=ng --why=ghost,expr`）記下來，網頁會顯示。原因的代號在 `mech_cordon_studio/js/qa.js` 的 `QA_CHECKS`。
+10. `char <id> status` 隨時看進度：缺幾格、略過、量測抓到、標成不合格、還沒看。
 
 ## 六、發佈與交付
 
@@ -131,6 +137,7 @@ node scripts/studio.js char <id> auto [--project=…]     # 約一個姿勢一�
    node scripts/studio.js project zip <專案> --char=<id> --what=out --out=<檔案>.zip
    ```
    內容是 `portrait.json`（播放器要的資料）＋WebP。網頁的「下載成品」是同一份。
+   給別的引擎用：`--what=full`（每個表情×眼睛×嘴巴合成好的整張 WebP＋`full/index.json`）、`--what=atlas`（臉的那一塊排成精靈圖＋`atlas/<姿勢>.json`＋身體）。使用者沒說要哪種時三種都給。
 4. **遊戲本身的角色**（`mech_cordon`）：照 CLAUDE.md 跑 `npm run build`、lint、`npm test`，commit 並 push `src/assets/characters/`、`tools/charwork/`、`dist/`。
    **使用者自己的專案**：資料在 gitignore 的 `studio-data/`，不用 commit。
 5. 回報：

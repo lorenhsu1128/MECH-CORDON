@@ -20,7 +20,13 @@ module.exports = [
     languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.browser } },
   },
   {
-    files: ['server-studio.js', 'server-studio-zip.js', 'server-bgmgen.js'],
+    files: [
+      'server-studio.js',
+      'server-studio-zip.js',
+      'server-studio-gpu.js',
+      'server-studio-export.js',
+      'server-bgmgen.js',
+    ],
     languageOptions: { ecmaVersion: 2022, sourceType: 'commonjs', globals: { ...globals.node } },
   },
   {

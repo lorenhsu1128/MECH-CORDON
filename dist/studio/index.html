@@ -16,6 +16,11 @@
         <button id="projBtn" title="新增、設定、下載與匯入專案">專案…</button></label
       >
       <span id="comfySt" class="pill">ComfyUI：檢查中…</span>
+      <span
+        id="gpuSt"
+        class="pill dim hidden"
+        title="顯示卡記憶體（超過九成五時自動完成會重開 ComfyUI）"
+      ></span>
       <span id="devSt" class="pill dim"></span>
       <div class="grow"></div>
       <div id="busy" class="busy hidden">
@@ -38,7 +43,18 @@
             <a id="cDlWork" class="btn" download title="角色卡、候選、參考圖與發佈的檔案（zip）"
               >下載工作資料</a
             >
-            <a id="cDlOut" class="btn" download title="發佈的成品：portrait.json＋WebP（zip）">下載成品</a>
+            <a
+              id="cDlOut"
+              class="btn"
+              download
+              title="發佈的成品：portrait.json＋WebP（zip），遊戲的立繪播放器用的格式"
+              >下載成品</a
+            >
+            <select id="cDlMore" title="給別的引擎用的格式">
+              <option value="">其他格式…</option>
+              <option value="full">整張圖（每個表情×眼睛×嘴巴合成好的 WebP）</option>
+              <option value="atlas">精靈圖（臉的那一塊排成一張＋JSON）</option>
+            </select>
             <button id="cDel" title="刪除這個角色的全部資料">刪除角色</button>
             <label
               >狀態
@@ -103,6 +119,9 @@
                 ></textarea>
                 <h3>不要出現的（英文）</h3>
                 <input id="lookNeg" class="wide" placeholder="glasses, hat, …" />
+                <h3>要做的共用表情與影格</h3>
+                <div id="lookBase" class="chkRow"></div>
+                <div id="lookFrames" class="chkRow"></div>
                 <h3>
                   招牌表情（每行：id｜名稱｜英文指令）
                   <button id="lookFill" type="button" title="把常用的招牌表情補進來（已經有的不重複）">
@@ -144,6 +163,27 @@
               <span class="dim">點一張設成主圖。主圖換了之後，這個姿勢的表情與影格要重做。</span>
             </p>
             <div id="cands" class="grid big"></div>
+            <details id="fixBox" class="fixBox">
+              <summary>局部修正目前的主圖（手、配件、背景殘塊…）</summary>
+              <p class="dim">
+                在下面的主圖上拖曳框出要修的地方，寫要怎麼改（英文效果最好，例如 Fix the left hand: five
+                fingers, natural pose.），產生修正後的候選，出現在上面的候選裡，點它設成主圖。
+              </p>
+              <p>
+                <input
+                  id="fixPrompt"
+                  class="wide"
+                  placeholder="Fix the left hand: five fingers, natural relaxed pose."
+                />
+              </p>
+              <p>
+                <label
+                  >張數 <input id="fixN" type="number" value="2" min="1" max="6" style="width: 4em"
+                /></label>
+                <button id="fixGo" data-job="1">產生修正候選</button> <span id="fixInfo" class="dim"></span>
+              </p>
+              <canvas id="fixCv" class="fixCv"></canvas>
+            </details>
           </div>
 
           <div class="tab hidden" id="t-boxes">
@@ -160,9 +200,46 @@
                 ><input type="radio" name="box" value="mouth" />
                 <b class="c-mouth">嘴巴</b>（避開麥克風之類的配件）</label
               >
-              <button id="boxSave" class="pri">儲存</button>
+              <label
+                ><input type="radio" name="box" value="keep" /> <b class="c-keep">保留區</b>（臉上的疤、OK
+                繃、刺青：一律保留原圖，不要放在頭髮上）</label
+              >
+              <label
+                ><input type="radio" name="box" value="eyekeep" />
+                <b class="c-eyekeep">只在眨眼保留</b>（眼睛框延伸到的別的東西）</label
+              >
             </p>
-            <div class="boxWrap"><canvas id="boxCv"></canvas></div>
+            <p>
+              <button id="boxSave" class="pri">儲存</button>
+              <button
+                id="boxAuto"
+                data-job="1"
+                title="動漫的臉與眼睛偵測＋讓 Qwen 把嘴唇塗綠找嘴（約 20 秒）"
+              >
+                自動偵測臉、眼睛、嘴
+              </button>
+              <span class="dim">框改了之後，已經做好的眨眼與嘴型要重做（品管分頁看得出來）。</span>
+            </p>
+            <div class="boxCols">
+              <div class="boxWrap"><canvas id="boxCv"></canvas></div>
+              <div class="boxSide">
+                <h3>保留區</h3>
+                <div id="keepList" class="dim"></div>
+                <h3>眼鏡</h3>
+                <select id="flagGlasses">
+                  <option value="">照外觀的標籤判斷</option>
+                  <option value="1">有戴（眨眼時要求保留眼鏡）</option>
+                  <option value="0">沒戴（不要在指示裡提到眼鏡）</option>
+                </select>
+                <h3>每個表情的旗標</h3>
+                <p class="dim">
+                  不眨眼：底圖本來就閉眼（大笑
+                  ^^、閉眼的表情）。說話帶笑：說話時嘴角維持笑（板著臉的不要勾）。
+                  底圖張嘴：表情本身張著嘴（嘴型不會把嘴變小）。
+                </p>
+                <table id="flagTbl" class="flagTbl"></table>
+              </div>
+            </div>
           </div>
 
           <div class="tab hidden" id="t-expr">
@@ -281,6 +358,25 @@
             >主圖大小 <input id="pjW" type="number" min="512" max="1536" step="64" style="width: 6em" /> ×
             <input id="pjH" type="number" min="512" max="1536" step="64" style="width: 6em"
           /></label>
+          <label
+            >新姿勢的預設標籤（英文）
+            <input
+              id="pjPose"
+              class="wide"
+              placeholder="cowboy shot, standing, looking at viewer, white background, simple background"
+          /></label>
+          <label
+            >發佈的 WebP 品質 <input id="pjQ" type="number" min="50" max="100" style="width: 5em"
+          /></label>
+          <h3>新角色的預設（建立角色時複製過去，之後每個角色可以在「外觀」分頁自己改）</h3>
+          <div class="dim">共用表情</div>
+          <div id="pjBase" class="chkRow"></div>
+          <div class="dim">影格</div>
+          <div id="pjFrames" class="chkRow"></div>
+          <label
+            >招牌表情（每行：id｜名稱｜英文指令；空白＝常用的 43 種）
+            <textarea id="pjExtra" rows="6" class="wide"></textarea>
+          </label>
           <p><button id="pjSave" class="pri" type="button">儲存設定</button></p>
         </div>
         <h3>專案的參考圖（整體的畫風、世界觀）</h3>
@@ -291,6 +387,8 @@
         <p>
           <a id="pjDlWork" class="btn" download>下載整個專案的工作資料</a>
           <a id="pjDlOut" class="btn" download>下載全部的成品</a>
+          <a id="pjDlFull" class="btn" download>全部的整張圖</a>
+          <a id="pjDlAtlas" class="btn" download>全部的精靈圖</a>
         </p>
         <p>
           <button id="pjImp" type="button">匯入 zip 到這個專案…</button>
@@ -390,6 +488,18 @@
           略過這格
         </button>
         <button id="qdRegen" type="button" data-job="1">產生 3 張新候選</button>
+        <button
+          id="qdRestore"
+          type="button"
+          disabled
+          title="在「這一格」上拖曳框出範圍（疤、配件被改掉的地方）"
+        >
+          把框裡換回底圖
+        </button>
+      </p>
+      <p class="dim">
+        疤、OK
+        繃、配件被改掉時：在右邊「這一格」上拖曳框出那個地方，再按「把框裡換回底圖」（會存成新的候選並選定）。
       </p>
       <h3>候選（點一張選定）</h3>
       <div id="qdCands" class="qdCands"></div>

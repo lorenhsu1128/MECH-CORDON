@@ -9,10 +9,9 @@
 // 純量測挑不出「表情跑掉」「淡淡的殘線」，所以每一格都記下 slot.auto，品管分頁可以再看。
 import * as W from './workflows.js';
 import * as Q from './qa.js';
-import { exprList, EYE_FRAMES, MOUTH_FRAMES } from './expr.js';
+import { exprList, frameList } from './expr.js';
 import { poseOf, widenMouth, noBlink } from './pipeline.js';
 
-const FR = [...EYE_FRAMES, ...MOUTH_FRAMES].map((f) => f.id);
 // 第二輪的加強指示
 const RETRY_EXTRA = {
   e1: 'IMPORTANT: both upper eyelids must come down to cover the top half of both irises.',
@@ -90,8 +89,12 @@ function pickExpr(rs) {
   return { r: s[(s.length - 1) >> 1], weak: false };
 }
 // 影格的挑法：不合格的不要；e1＝虹膜剩約四成、e2＝虹膜剩最少、m1＝改最少、m2＝改最多、m3＝中間
+// 半閉眼：虹膜剩超過七成＝幾乎沒閉（第二次實測「怒」的半閉），不算合格
+const E1_MAX_IRIS = 0.7;
+const okFrame = (fid, m) =>
+  !Q.qaJudge(fid, m).length && !(fid === 'e1' && m.iris != null && m.iris > E1_MAX_IRIS);
 function pickFrame(fid, rs) {
-  const ok = rs.filter((r) => !Q.qaJudge(fid, r.m).length);
+  const ok = rs.filter((r) => okFrame(fid, r.m));
   if (!ok.length) return null;
   const by = (f) => ok.slice().sort((a, b) => f(a) - f(b))[0];
   if (fid === 'e1') return by((r) => Math.abs((r.m.iris ?? 0.4) - 0.4) - r.m.chg * 0.01);
@@ -103,7 +106,8 @@ function pickFrame(fid, rs) {
 }
 
 // 整個角色（或指定的姿勢）跑到完成
-// o：{ pids, n＝每格的候選數, publish, load(檔名)→圖, save(), log(文字), progress(0～1, 文字), ctl: { stop } }
+// o：{ pids, n＝每格的候選數, publish, load(檔名)→圖, save(), log(文字), progress(0～1, 文字), ctl: { stop },
+//      tick()＝每次產圖之前（命令列用來看顯示卡記憶體、太滿就重開 ComfyUI）}
 export async function autoRun(pipe, card, o = {}) {
   const n = o.n || 3;
   const log = o.log || (() => {});
@@ -117,6 +121,7 @@ export async function autoRun(pipe, card, o = {}) {
   const report = { skipped: [], weak: [], boxes: {} };
   // 進度：每個姿勢 1（標框）＋表情數＋影格數
   const exprs = exprList(card);
+  const FR = frameList(card).map((f) => f.id);
   const per = 1 + (exprs.length - 1) + exprs.length * FR.length;
   let done = 0;
   const step = (txt) => {
@@ -150,6 +155,7 @@ export async function autoRun(pipe, card, o = {}) {
         step(e.name);
         continue;
       }
+      if (o.tick) await o.tick();
       log(`${P.name}：表情「${e.name}」產生 ${n} 張`);
       const names = await pipe.variant(card, pid, e.id, { n });
       await save();
@@ -182,6 +188,7 @@ export async function autoRun(pipe, card, o = {}) {
     for (const e of exprs) {
       const bf = e.id === 'neutral' ? P.master : P.ex[e.id]?.pick;
       if (!bf) continue;
+      const mouthPool = []; // 這次產生的嘴型裡合格的（三格做完後依張開程度重新分配）
       for (const fid of FR) {
         stopped();
         const key = `${e.id}.${fid}`;
@@ -195,12 +202,14 @@ export async function autoRun(pipe, card, o = {}) {
         let best = null;
         for (let round = 0; round < 2 && !best; round++) {
           stopped();
+          if (o.tick) await o.tick(); // 顯示卡記憶體太滿時重開 ComfyUI（命令列）
           log(`${P.name}：${e.name}・${fid}${round ? '（第二輪，加強指示）' : ''}產生 ${n} 張`);
           const names = await pipe.variant(card, pid, key, { n, extra: round ? RETRY_EXTRA[fid] : '' });
           await save();
           for (const f of names) rs.push({ f, m: await measure(o.load, bf, f, inner, fid, P.boxes) });
           best = pickFrame(fid, rs);
         }
+        if (fid[0] === 'm') for (const x of rs) if (okFrame(fid, x.m)) mouthPool.push({ ...x, fid });
         const s = P.ex[key];
         s.v2 = true;
         if (best) {
@@ -210,12 +219,36 @@ export async function autoRun(pipe, card, o = {}) {
         } else {
           // 兩輪都不合格：略過（不發佈，播放器在這個表情就不眨眼或不動嘴）
           s.skip = true;
-          s.auto = { n: rs.length, why: [...new Set(rs.flatMap((r) => Q.qaJudge(fid, r.m)))] };
-          report.skipped.push(`${pid}:${key}（${s.auto.why.map((w) => Q.QA_REASONS[w] || w).join('、')}）`);
+          const why = [...new Set(rs.flatMap((r) => Q.qaJudge(fid, r.m)))];
+          if (fid === 'e1' && rs.some((x) => x.m.iris > E1_MAX_IRIS)) why.push('half');
+          s.auto = { n: rs.length, why };
+          const txt = { ...Q.QA_REASONS, half: '半閉不夠閉' };
+          report.skipped.push(`${pid}:${key}（${why.map((w) => txt[w] || w).join('、')}）`);
           log(`  ${key}：${rs.length} 張都不合格，略過`);
         }
         await save();
         step(key);
+      }
+      // 嘴型依張開程度重新分配：三格各自挑時可能「微開比張開大」（第二次實測的「驚」）。
+      // 這次產生的三格都有合格的候選時，全部放在一起照改變量排序：微開＝最小、張開＝最大、圓口＝中間
+      const mk = FR.filter((f) => f[0] === 'm');
+      const fresh = mk.filter((f) => mouthPool.some((x) => x.fid === f));
+      if (mk.length >= 2 && fresh.length === mk.length && !mk.some((f) => P.ex[`${e.id}.${f}`].skip)) {
+        const srt = mouthPool.slice().sort((a, b) => a.m.chg - b.m.chg);
+        const want = { m1: srt[0], m2: srt[srt.length - 1], m3: srt[(srt.length - 1) >> 1] };
+        const used = new Set();
+        for (const f of ['m1', 'm2', 'm3'].filter((x) => mk.includes(x))) {
+          let c = want[f];
+          if (used.has(c.f)) c = srt.find((x) => !used.has(x.f)) || c; // 候選不夠時避免兩格同一張
+          used.add(c.f);
+          const sl = P.ex[`${e.id}.${f}`];
+          if (!sl.cands.includes(c.f)) sl.cands.push(c.f);
+          if (sl.pick !== c.f) {
+            sl.pick = c.f;
+            sl.auto = { ...(sl.auto || {}), reorder: true };
+          }
+        }
+        await save();
       }
     }
     // 5. 整個姿勢量測（只閉一隻眼要和同一個姿勢的中位數比）
