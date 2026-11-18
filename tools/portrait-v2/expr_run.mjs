@@ -5,7 +5,7 @@ import fs from 'fs';
 import { execFileSync } from 'child_process';
 import { pathToFileURL } from 'url';
 const ROOT = 'C:/Users/LOREN/Documents/_projects/MECH-CORDON';
-const { exprList, EYE_FRAMES, MOUTH_FRAMES } = await import(pathToFileURL(ROOT + '/mech_cordon_charagen/js/expr.js').href);
+const { exprList, EYE_FRAMES, MOUTH_FRAMES } = await import(pathToFileURL(ROOT + '/mech_cordon_studio/js/expr.js').href);
 const NO_MOUTH = {
   castron: ['p5', 'p10'],
   aetheric: ['p5'],

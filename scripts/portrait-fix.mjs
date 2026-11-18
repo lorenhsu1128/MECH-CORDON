@@ -11,7 +11,7 @@ import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
-const lib = (f) => import(pathToFileURL(path.join(ROOT, 'mech_cordon_charagen', 'js', f)).href);
+const lib = (f) => import(pathToFileURL(path.join(ROOT, 'mech_cordon_studio', 'js', f)).href);
 const args = Object.fromEntries(
   process.argv
     .slice(5)

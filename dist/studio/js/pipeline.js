@@ -96,7 +96,9 @@ export function widenMouth(B) {
   const W2 = w * 1.7;
   let y0 = cy - h * 1.1;
   let y1 = cy + h * 1.1;
-  if (B.eyes) y0 = Math.max(y0, B.eyes[1] + B.eyes[3] + 4);
+  // 上緣不超過眼睛框的下緣，但最多只推到原本嘴框的上緣：頭歪的時候眼睛框的下緣伸到嘴旁邊，
+  // 推過頭會把嘴擠到框的上緣、上唇改不到（2026-11-18 立繪工房的自動標框）
+  if (B.eyes) y0 = Math.max(y0, Math.min(B.eyes[1] + B.eyes[3] + 4, y));
   if (B.face) y1 = Math.min(y1, B.face[1] + B.face[3] * 1.08);
   return [Math.round(cx - W2 / 2), Math.round(y0), Math.round(W2), Math.round(y1 - y0)];
 }
@@ -108,9 +110,21 @@ export class Pipeline {
     this.store = store;
     this.log = log;
     this.up = new Map(); // 候選資料夾的檔名 → ComfyUI 裡的檔名（這一次執行內快取）
+    this.project = null; // 專案設定（docs/portrait-studio-design.md 第三節）：畫風、主圖大小；null＝遊戲的預設
+    this.sizes = new Map();
+  }
+  // 專案的畫風：style.prompt（加在提示詞後面，沒有＝絕區零）、style.neg、主圖大小 style.w／h
+  styleOf() {
+    const st = (this.project && this.project.style) || {};
+    return {
+      prompt: st.prompt != null && st.prompt !== '' ? st.prompt : W.STYLE,
+      neg: st.neg || '',
+      w: +st.w || 832,
+      h: +st.h || 1216,
+    };
   }
   async uploadWork(card, name) {
-    const k = card.id + '/' + name;
+    const k = this.store.project + '/' + card.id + '/' + name;
     if (!this.up.has(k)) {
       const data = await this.store.getWork(card.id, name);
       this.up.set(k, await this.comfy.upload(data, `${card.id}_${name}`.replace(/\.(jpe?g|webp)$/i, '.png')));
@@ -123,11 +137,11 @@ export class Pipeline {
     if (!im) throw new Error('ComfyUI 沒有輸出');
     const data = await this.comfy.view(im);
     await this.store.putWork(card.id, name, data);
-    this.up.delete(card.id + '/' + name);
+    this.up.delete(this.store.project + '/' + card.id + '/' + name);
     return name;
   }
   prompt(card, pose) {
-    return [card.look.prompt, pose.prompt].filter(Boolean).join(', ') + ', ' + W.STYLE;
+    return [card.look.prompt, pose.prompt, this.styleOf().prompt].filter(Boolean).join(', ');
   }
   // 主圖的候選：n 張（或指定 seeds）
   async candidates(card, pid, { n = 4, seeds, onProgress } = {}) {
@@ -139,7 +153,14 @@ export class Pipeline {
       const name = `${pid}_cand_${seed}.webp`;
       await this.runSave(
         card,
-        W.txt2img({ prompt: this.prompt(card, pose), neg: card.look.neg, seed, prefix: 'chargen/cand' }),
+        W.txt2img({
+          prompt: this.prompt(card, pose),
+          neg: [card.look.neg, this.styleOf().neg].filter(Boolean).join(', '),
+          seed,
+          w: this.styleOf().w,
+          h: this.styleOf().h,
+          prefix: 'chargen/cand',
+        }),
         name,
         onProgress,
       );
@@ -312,8 +333,8 @@ export class Pipeline {
             box: [Math.max(0, x - pad), Math.max(0, y - pad), w + pad * 2, h + pad * 2],
             inner: box,
             feather: 14,
-            prompt: `portrait, face, ${card.look.prompt}, ${W.STYLE}`,
-            neg: card.look.neg,
+            prompt: `portrait, face, ${card.look.prompt}, ${this.styleOf().prompt}`,
+            neg: [card.look.neg, this.styleOf().neg].filter(Boolean).join(', '),
             denoise: pose.refine,
             seed,
           }),
@@ -489,12 +510,29 @@ export class Pipeline {
     return pub;
   }
   async imageSize(card, file) {
-    const d = await this.store.getWork(card.id, file);
-    // PNG：IHDR 的寬高
-    if (d[0] === 0x89 && d[1] === 0x50) {
-      const v = new DataView(d.buffer, d.byteOffset);
-      return { w: v.getUint32(16), h: v.getUint32(20) };
+    const k = this.store.project + '/' + card.id + '/' + file;
+    if (!this.sizes.has(k)) {
+      const d = await this.store.getWork(card.id, file);
+      this.sizes.set(k, imageSizeOf(d) || { w: this.styleOf().w, h: this.styleOf().h });
     }
-    return { w: 832, h: 1216 };
+    return this.sizes.get(k);
   }
+}
+
+// 圖檔的寬高（PNG、WebP），讀不出來回傳 null
+export function imageSizeOf(d) {
+  const v = new DataView(d.buffer, d.byteOffset, d.byteLength);
+  if (d[0] === 0x89 && d[1] === 0x50) return { w: v.getUint32(16), h: v.getUint32(20) };
+  const tag = (o) => String.fromCharCode(d[o], d[o + 1], d[o + 2], d[o + 3]);
+  if (d.length > 30 && tag(0) === 'RIFF' && tag(8) === 'WEBP') {
+    const c = tag(12);
+    if (c === 'VP8X')
+      return { w: 1 + (d[24] | (d[25] << 8) | (d[26] << 16)), h: 1 + (d[27] | (d[28] << 8) | (d[29] << 16)) };
+    if (c === 'VP8 ') return { w: v.getUint16(26, true) & 0x3fff, h: v.getUint16(28, true) & 0x3fff };
+    if (c === 'VP8L') {
+      const b = v.getUint32(21, true);
+      return { w: (b & 0x3fff) + 1, h: ((b >> 14) & 0x3fff) + 1 };
+    }
+  }
+  return null;
 }

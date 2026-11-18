@@ -32469,7 +32469,8 @@ async function testFoesB2(browser, base) {
   await lib.ctx.close();
 }
 
-// 角色產生器（docs/portrait-design.md）：/charagen/、角色資料 API、ComfyUI 沒有在執行時的回應、標題按鈕、預覽的立繪播放器
+// 立繪工房（docs/portrait-studio-design.md、docs/portrait-design.md）：/studio/（舊的 /charagen/ 轉過去）、角色資料 API、
+// ComfyUI 沒有在執行時的回應、標題按鈕、專案（建立、新增角色、參考圖的拖曳上傳、下載與匯入 zip、刪除）、預覽的立繪播放器
 // （測試伺服器的 MECH_CORDON_COMFY 指到沒人聽的 port；角色資料在測試的 server-models/characters）
 function tinyPng(w, h, rgba) {
   const zlib = require('zlib');
@@ -32496,14 +32497,16 @@ function tinyPng(w, h, rgba) {
     chunk('IEND', Buffer.alloc(0)),
   ]);
 }
-async function testCharagen(game, page) {
+async function testStudio(game, page) {
   const u = game.url;
-  const r0 = await fetch(u + 'charagen', { redirect: 'manual' });
-  check(r0.status === 301 && r0.headers.get('location') === '/charagen/', '/charagen 轉到 /charagen/');
-  const js = await fetch(u + 'charagen/js/portrait.js');
+  const r0 = await fetch(u + 'studio', { redirect: 'manual' });
+  check(r0.status === 301 && r0.headers.get('location') === '/studio/', '/studio 轉到 /studio/');
+  const rOld = await fetch(u + 'charagen/', { redirect: 'manual' });
+  check(rOld.status === 301 && rOld.headers.get('location') === '/studio/', '舊的 /charagen/ 轉到 /studio/');
+  const js = await fetch(u + 'studio/js/portrait.js');
   check(
     js.ok && /javascript/.test(js.headers.get('content-type') || ''),
-    '/charagen/ 的 ES Module 以 JavaScript 型別提供',
+    '/studio/ 的 ES Module 以 JavaScript 型別提供',
   );
   const cs = await fetch(u + 'api/comfy/system_stats');
   check(
@@ -32564,8 +32567,8 @@ async function testCharagen(game, page) {
     `角色資料：清單列出測試角色、定稿資料夾 5 個檔案（${files.length}）`,
   );
   check(
-    (await page.$eval('#btnCharagen', (b) => b.style.display)) === '',
-    '從伺服器開啟時標題畫面有「角色產生器」按鈕',
+    (await page.$eval('#btnStudio', (b) => b.style.display)) === '',
+    '從伺服器開啟時標題畫面有「立繪工房」按鈕',
   );
   // 配樂產生器（server-bgmgen.js）：只在開發模式開放；測試的伺服器用 MECH_CORDON_MODELS_DIR，所以回 dev:false、畫面顯示說明
   const bgs = await (await fetch(u + 'api/bgm/state')).json();
@@ -32582,11 +32585,47 @@ async function testCharagen(game, page) {
   check(bgs.dev === false && bgTxt, '配樂產生器：非開發模式的伺服器回 dev:false、畫面顯示說明');
   await page.click('#btnBgBack');
   await waitVisible(page, 'title');
-  const [cg] = await Promise.all([page.waitForEvent('popup'), titleTool(page, '#btnCharagen')]);
-  watch(cg, 'charagen');
+  // 專案的 API（docs/portrait-studio-design.md）：遊戲的專案、建立、重複、不正確的代號、遊戲的專案不能刪
+  const pj0 = await (await fetch(u + 'api/studio/projects')).json();
+  check(
+    pj0.projects[0].id === 'mech_cordon' && pj0.projects[0].linked,
+    '立繪工房：專案清單的第一個是遊戲本身（mech_cordon）',
+  );
+  const mk = (b) => fetch(u + 'api/studio/projects', { method: 'POST', body: JSON.stringify(b) });
+  check((await mk({ id: 'Bad-ID' })).status === 400, '立繪工房：專案代號不正確時拒絕');
+  check((await mk({ id: 'zz_proj', name: '測試專案' })).ok, '立繪工房：建立專案');
+  check((await mk({ id: 'zz_proj' })).status === 409, '立繪工房：同一個代號不能再建一次');
+  check(
+    (await fetch(u + 'api/studio/p/mech_cordon?confirm=mech_cordon', { method: 'DELETE' })).status === 403 &&
+      (await fetch(u + 'api/studio/p/mech_cordon/chars/zz_test', { method: 'DELETE' })).status === 403,
+    '立繪工房：遊戲的專案與角色不能從工房刪除',
+  );
+  // 下載遊戲角色的成品（portrait.json＋WebP）
+  const zo = Buffer.from(
+    await (await fetch(u + 'api/studio/p/mech_cordon/zip?char=zz_test&what=out')).arrayBuffer(),
+  );
+  const zipNames = (b) => {
+    const out = [];
+    for (let i = 0; i + 30 < b.length;) {
+      if (b.readUInt32LE(i) !== 0x04034b50) break;
+      const nl = b.readUInt16LE(i + 26);
+      const el = b.readUInt16LE(i + 28);
+      out.push(b.slice(i + 30, i + 30 + nl).toString('utf8'));
+      i += 30 + nl + el + b.readUInt32LE(i + 18);
+    }
+    return out;
+  };
+  const zn = zipNames(zo);
+  check(
+    zn.includes('zz_test/portrait.json') && zn.includes('zz_test/p1.webp') && zn.length === 5,
+    `立繪工房：下載角色的成品 zip（${zn.join('、')}）`,
+  );
+  // 網頁：切到測試專案、新增角色、拖曳上傳參考圖、下載工作資料、匯入成另一個專案
+  const [cg] = await Promise.all([page.waitForEvent('popup'), titleTool(page, '#btnStudio')]);
+  watch(cg, 'studio');
   await cg.waitForSelector('#roster button', { timeout: 15000 }).catch(() => {});
   const n = await cg.$$eval('#roster button', (b) => b.length);
-  check(n >= 25, `角色產生器列出劇情角色（${n} 個，含名單以外的測試角色）`);
+  check(n >= 25, `立繪工房列出遊戲的劇情角色（${n} 個，含名單以外的測試角色）`);
   check(
     await cg
       .waitForFunction(() => document.getElementById('comfySt').classList.contains('bad'), null, {
@@ -32596,9 +32635,86 @@ async function testCharagen(game, page) {
         () => true,
         () => false,
       ),
-    '角色產生器顯示「ComfyUI 沒有在執行」',
+    '立繪工房顯示「ComfyUI 沒有在執行」',
   );
-  await cg.goto(u + 'charagen/#zz_test');
+  await cg.selectOption('#projSel', 'zz_proj');
+  await cg.waitForSelector('#charAdd', { timeout: 10000 }).catch(() => {});
+  await cg.click('#charAdd');
+  await cg.fill('#ncId', 'zz_alice');
+  await cg.fill('#ncName', '測試愛麗絲');
+  await cg.selectOption('#ncSex', 'f');
+  await cg.click('#ncGo');
+  await cg.waitForSelector('#charPane:not(.hidden)', { timeout: 10000 }).catch(() => {});
+  check(
+    (await cg.$eval('#cName', (e) => e.textContent)) === '測試愛麗絲' &&
+      /^#zz_proj\/zz_alice$/.test(await cg.evaluate(() => location.hash)),
+    '立繪工房：在自己的專案新增角色（網址 #專案/角色）',
+  );
+  // 拖曳兩張圖到參考圖的框（DataTransfer 模擬拖放）
+  const png = tinyPng(16, 16, [10, 120, 200, 255]).toString('base64');
+  await cg.evaluate(async (b64) => {
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const dt = new window.DataTransfer();
+    dt.items.add(new File([bytes], 'a.png', { type: 'image/png' }));
+    dt.items.add(new File([bytes], 'b.png', { type: 'image/png' }));
+    const el = document.getElementById('refDrop');
+    el.dispatchEvent(new window.DragEvent('dragover', { dataTransfer: dt, bubbles: true, cancelable: true }));
+    el.dispatchEvent(new window.DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+  }, png);
+  await cg
+    .waitForFunction(() => document.querySelectorAll('#refs .it').length === 2, null, { timeout: 10000 })
+    .catch(() => {});
+  const c1 = await (await fetch(u + 'api/studio/p/zz_proj/chars/zz_alice')).json();
+  check(
+    (await cg.$$eval('#refs .it', (e) => e.length)) === 2 && c1.refs.length === 2 && c1.info.sex === 'f',
+    `立繪工房：拖曳上傳 2 張參考圖、角色卡記下（${c1.refs.length}）`,
+  );
+  // 專案的參考圖（選檔案）
+  await cg.click('#projBtn');
+  await cg.setInputFiles('#pjRefFile', {
+    name: 'style.png',
+    mimeType: 'image/png',
+    buffer: tinyPng(16, 16, [200, 200, 10, 255]),
+  });
+  await cg
+    .waitForFunction(() => document.querySelectorAll('#pjRefs .it').length === 1, null, { timeout: 10000 })
+    .catch(() => {});
+  check((await cg.$$eval('#pjRefs .it', (e) => e.length)) === 1, '立繪工房：專案的參考圖（選檔案上傳）');
+  // 下載整個專案的工作資料（網頁的連結）→ 匯入成另一個專案
+  const href = await cg.$eval('#pjDlWork', (a) => a.href);
+  const zw = Buffer.from(await (await fetch(href)).arrayBuffer());
+  const zwn = zipNames(zw);
+  check(
+    zwn.includes('project.json') &&
+      zwn.filter((x) => /^refs\//.test(x)).length === 1 &&
+      zwn.includes('chars/zz_alice/card.json') &&
+      zwn.filter((x) => /^chars\/zz_alice\/work\//.test(x)).length === 2,
+    `立繪工房：下載專案的工作資料 zip（${zwn.length} 個檔案）`,
+  );
+  await cg.click('#projDlg .dlgHead button');
+  await cg.click('#projBtn');
+  await cg.fill('#npId', 'zz_proj2');
+  const [fc] = await Promise.all([cg.waitForEvent('filechooser'), cg.click('#npImp')]);
+  await fc.setFiles({ name: 'zz.zip', mimeType: 'application/zip', buffer: zw });
+  await cg
+    .waitForFunction(() => document.getElementById('projSel').value === 'zz_proj2', null, { timeout: 10000 })
+    .catch(() => {});
+  const c2 = await (await fetch(u + 'api/studio/p/zz_proj2/chars/zz_alice')).json().catch(() => null);
+  const r2 = await (await fetch(u + 'api/studio/p/zz_proj2/refs')).json().catch(() => []);
+  check(
+    c2 && c2.refs.length === 2 && c2.name === '測試愛麗絲' && r2.length === 1,
+    '立繪工房：zip 匯入成新專案（角色、角色與專案的參考圖都在）',
+  );
+  // 刪除專案（要帶確認）
+  check(
+    (await fetch(u + 'api/studio/p/zz_proj2', { method: 'DELETE' })).status === 400 &&
+      (await fetch(u + 'api/studio/p/zz_proj2?confirm=zz_proj2', { method: 'DELETE' })).ok &&
+      (await fetch(u + 'api/studio/p/zz_proj2')).status === 404,
+    '立繪工房：刪除專案要帶確認，刪掉之後就沒有了',
+  );
+  await cg.screenshot({ path: path.join(SHOT_DIR, 'studio-proj.png') });
+  // 遊戲的角色：預覽的播放器
+  await cg.goto(u + 'studio/#zz_test');
   await cg.waitForSelector('#charPane:not(.hidden)', { timeout: 10000 }).catch(() => {});
   await cg.click('[data-tab=preview]');
   await cg.waitForSelector('#pvExpr button[data-e=smile]', { timeout: 10000 }).catch(() => {});
@@ -32621,7 +32737,7 @@ async function testCharagen(game, page) {
   // 對話立繪是整張：臉框的中心＝(32/64, 20/96)
   const face = await px('#pvFull', 32 / 64, 20 / 96);
   check(face[1] > 150 && face[0] < 90, `預覽：微笑時臉換成表情的小圖（${face}）`);
-  await cg.screenshot({ path: path.join(SHOT_DIR, 'charagen.png') });
+  await cg.screenshot({ path: path.join(SHOT_DIR, 'studio.png') });
   await cg.close();
 }
 
@@ -32708,7 +32824,7 @@ async function testServerBasics(browser, game) {
   );
   await wait(1500);
   await apng.screenshot({ path: path.join(SHOT_DIR, 'apng-tool.png') });
-  await testCharagen(game, page);
+  await testStudio(game, page);
   // 渲染風格：上傳到伺服器 → 清單有它 → 刪除
   page.on('dialog', (d) => d.accept());
   await titleTool(page, '#btnStyleLab');

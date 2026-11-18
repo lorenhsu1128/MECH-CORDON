@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>立繪工房</title>
+    <link rel="stylesheet" href="css/app.css" />
+  </head>
+  <body>
+    <header>
+      <a class="back" id="back" href="/">← 回遊戲</a>
+      <h1>立繪工房</h1>
+      <label class="proj"
+        >專案
+        <select id="projSel"></select>
+        <button id="projBtn" title="新增、設定、下載與匯入專案">專案…</button></label
+      >
+      <span id="comfySt" class="pill">ComfyUI：檢查中…</span>
+      <span id="devSt" class="pill dim"></span>
+      <div class="grow"></div>
+      <div id="busy" class="busy hidden">
+        <div class="bar"><i id="busyBar"></i></div>
+        <span id="busyTxt"></span><button id="busyStop">停止</button>
+      </div>
+    </header>
+    <main>
+      <aside id="roster"></aside>
+      <section id="work">
+        <div id="empty" class="empty">從左邊選一個角色</div>
+        <div id="charPane" class="hidden">
+          <div class="charHead">
+            <h2 id="cName"></h2>
+            <span id="cNote" class="dim"></span>
+            <div class="grow"></div>
+            <button id="cClaude" title="讓你自己的 Claude Code 照完整流程產圖、品管、發佈">
+              交給 Claude Code
+            </button>
+            <a id="cDlWork" class="btn" download title="角色卡、候選、參考圖與發佈的檔案（zip）"
+              >下載工作資料</a
+            >
+            <a id="cDlOut" class="btn" download title="發佈的成品：portrait.json＋WebP（zip）">下載成品</a>
+            <button id="cDel" title="刪除這個角色的全部資料">刪除角色</button>
+            <label
+              >狀態
+              <select id="cStatus">
+                <option value="draft">外觀討論中</option>
+                <option value="look">外觀已確認（可以量產）</option>
+                <option value="done">完成</option>
+              </select>
+            </label>
+          </div>
+          <div id="autoBar" class="autoBar">
+            <button
+              id="autoGo"
+              class="pri"
+              title="主圖選好之後：自動標框、表情、眨眼與嘴型、品管、發佈，一路做完"
+            >
+              自動完成
+            </button>
+            <span id="autoHint" class="dim"
+              >選好全身主圖之後按這裡，其他全部自動做完（伺服器上跑，關掉網頁也會繼續）。</span
+            >
+            <div id="autoRun" class="autoRun hidden">
+              <div class="bar"><i id="autoBarI"></i></div>
+              <span id="autoTxt"></span>
+              <button id="autoStop" type="button">停止</button>
+              <button id="autoLogBtn" type="button">看輸出</button>
+            </div>
+            <pre id="autoLog" class="autoLog hidden"></pre>
+          </div>
+          <nav id="tabs">
+            <button data-tab="look" class="on">1 外觀</button>
+            <button data-tab="master">2 主圖</button>
+            <button data-tab="boxes">3 標框</button>
+            <button data-tab="expr">4 表情</button>
+            <button data-tab="frames">5 眨眼與嘴型</button>
+            <button data-tab="qa">品管</button>
+            <button data-tab="preview">6 預覽</button>
+            <button data-tab="publish">7 發佈</button>
+            <button data-tab="scene" id="tabScene">場景插畫</button>
+          </nav>
+          <div class="poseBar">
+            姿勢
+            <select id="poseSel"></select>
+            <button id="poseAdd">新增姿勢</button>
+            <label>名稱 <input id="poseName" size="8" /></label>
+          </div>
+
+          <div class="tab" id="t-look">
+            <div class="cols">
+              <div>
+                <h3>外觀設定卡（中文，和使用者確認用）</h3>
+                <textarea
+                  id="lookZh"
+                  rows="12"
+                  placeholder="年齡感、體型、臉型、髮型與髮色、眼睛、服裝、配件、配色（陣營色）、表情傾向、招牌動作…"
+                ></textarea>
+                <h3>給模型的標籤（英文，逗號分隔）</h3>
+                <textarea
+                  id="lookPrompt"
+                  rows="5"
+                  placeholder="1girl, solo, short black hair, blue inner hair, blue eyes, oversized white jacket, …"
+                ></textarea>
+                <h3>不要出現的（英文）</h3>
+                <input id="lookNeg" class="wide" placeholder="glasses, hat, …" />
+                <h3>
+                  招牌表情（每行：id｜名稱｜英文指令）
+                  <button id="lookFill" type="button" title="把常用的招牌表情補進來（已經有的不重複）">
+                    填入常用表情
+                  </button>
+                </h3>
+                <p class="dim">
+                  另外一律有共用的 8
+                  種（平常、微笑、大笑、怒、驚、悲、思考、不屑）。表情越多越久：每個表情連眨眼與嘴型約 8～9
+                  分鐘。
+                </p>
+                <textarea
+                  id="lookExtra"
+                  rows="12"
+                  placeholder="wink|眨眼|Make the character wink with the left eye and smile."
+                ></textarea>
+                <p><button id="lookSave" class="pri">儲存</button></p>
+              </div>
+              <div>
+                <h3>參考圖</h3>
+                <p class="dim">
+                  拖曳圖片到下面的框，或點框選檔案（可以一次多張）。外觀、髮型、服裝的方向參考；別人的作品只取方向、不照抄。
+                </p>
+                <div id="refDrop" class="drop">把參考圖拖到這裡，或點一下選檔案</div>
+                <input type="file" id="refFile" accept="image/*" multiple hidden />
+                <div id="refs" class="grid"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab hidden" id="t-master">
+            <h3>姿勢的標籤（英文）</h3>
+            <input id="posePrompt" class="wide" />
+            <p>
+              <label
+                >張數 <input id="candN" type="number" value="4" min="1" max="16" style="width: 4em"
+              /></label>
+              <button id="candGo" class="pri">產生候選</button>
+              <span class="dim">點一張設成主圖。主圖換了之後，這個姿勢的表情與影格要重做。</span>
+            </p>
+            <div id="cands" class="grid big"></div>
+          </div>
+
+          <div class="tab hidden" id="t-boxes">
+            <p>
+              拖曳畫框：
+              <label
+                ><input type="radio" name="box" value="face" checked />
+                <b class="c-face">臉</b>（表情貼回的範圍：眉毛到下巴、不要包到頭髮外緣）</label
+              >
+              <label
+                ><input type="radio" name="box" value="eyes" /> <b class="c-eyes">眼睛</b>（含眉毛）</label
+              >
+              <label
+                ><input type="radio" name="box" value="mouth" />
+                <b class="c-mouth">嘴巴</b>（避開麥克風之類的配件）</label
+              >
+              <button id="boxSave" class="pri">儲存</button>
+            </p>
+            <div class="boxWrap"><canvas id="boxCv"></canvas></div>
+          </div>
+
+          <div class="tab hidden" id="t-expr">
+            <p>
+              <label
+                >每次張數 <input id="exN" type="number" value="2" min="1" max="8" style="width: 4em"
+              /></label>
+              <label
+                >臉部重描 <input id="refine" type="number" step="0.05" min="0" max="0.5" style="width: 4em"
+              /></label>
+              <span class="dim">（0＝不重描；0.25 線條和主圖最一致，0.35 以上會擦掉細的配件）</span>
+              <button id="exAll">產生全部還沒選的</button>
+            </p>
+            <div id="exRows"></div>
+          </div>
+
+          <div class="tab hidden" id="t-frames">
+            <p>
+              <label
+                >每次張數 <input id="frN" type="number" value="2" min="1" max="8" style="width: 4em"
+              /></label>
+              <button id="frAll">產生全部還沒選的</button>
+              <span class="dim">每個表情都要有：半閉、閉眼（只貼眼睛）與微開、張開、圓口（只貼嘴巴）</span>
+            </p>
+            <div id="frRows"></div>
+          </div>
+
+          <div class="tab hidden" id="t-qa">
+            <p>
+              <button id="qaRun" class="pri">量測</button>
+              <label
+                >顯示
+                <select id="qaFilter">
+                  <option value="all">全部</option>
+                  <option value="bad">有問題的（量測抓到、標成不合格）</option>
+                  <option value="unseen">還沒看的</option>
+                </select></label
+              >
+              <span id="qaSum" class="dim"></span>
+            </p>
+            <p class="dim">
+              每行一個表情：左邊是眼睛（底圖、半閉、閉眼），右邊是嘴巴（底圖、微開、張開、圓口）。點一格放大、標合格或不合格、挑別的候選。
+              紅框＝量測抓到或標成不合格，綠框＝看過合格，灰＝略過。再淡的殘線、色塊也不能放行。
+            </p>
+            <div id="qaGrid"></div>
+          </div>
+
+          <div class="tab hidden" id="t-preview">
+            <p class="dim">預覽的是「發佈」之後的版本。</p>
+            <div class="pvBar" id="pvExpr"></div>
+            <div class="pvBar" id="pvAct"></div>
+            <p>
+              <label><input type="checkbox" id="pvTalk" checked /> 模擬說話（對口型）</label>
+            </p>
+            <div class="pvStage">
+              <div>
+                <div class="pvLbl">通訊框（胸像）</div>
+                <canvas id="pvComm" width="220" height="220"></canvas>
+              </div>
+              <div>
+                <div class="pvLbl">對話立繪（簡報、劇情）</div>
+                <canvas id="pvFull" width="380" height="560"></canvas>
+              </div>
+              <div>
+                <div class="pvLbl">插入畫面（臉）</div>
+                <canvas id="pvCut" width="420" height="160"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab hidden" id="t-publish">
+            <p>
+              <button id="pubGo" class="pri">發佈到遊戲</button>
+              <span class="dim"
+                >把主圖、每個表情的臉、每個影格的眼睛與嘴巴裁成
+                WebP，寫進定稿資料夾（開發模式＝src/assets/characters/，重新建置後遊戲就有）。</span
+              >
+            </p>
+            <div id="pubInfo"></div>
+          </div>
+
+          <div class="tab hidden" id="t-scene">
+            <p class="dim">
+              過場的場景插畫（不屬於哪一個角色；定義在 tools/cine-art/scenes.json，命令列
+              scripts/cine-art.js）： 沒有角色的用文字生圖（寬幅），有角色的以選定的背景為圖 1、角色的主圖為圖
+              2，用 Qwen 照指示擺進去。 選定的寫進 src/assets/cine-art/&lt;章&gt;/，重新建置後過場的 2D 舞台以
+              img: '&lt;章&gt;/&lt;id&gt;' 使用。只在開發模式。
+            </p>
+            <div id="scList"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <dialog id="projDlg">
+      <form method="dialog" class="dlgHead">
+        <h2>專案</h2>
+        <div class="grow"></div>
+        <button>關閉</button>
+      </form>
+      <section>
+        <h3>目前的專案：<span id="pjName"></span></h3>
+        <p id="pjLinked" class="dim">
+          這是遊戲本身的角色（定稿寫進 src/assets/characters/），畫風照遊戲的設定，這裡不能改。
+        </p>
+        <div id="pjConf" class="form">
+          <label>名稱 <input id="pjN" /></label>
+          <label>說明 <input id="pjNote" class="wide" /></label>
+          <label
+            >畫風（英文，加在每張主圖的提示詞後面；空白＝絕區零）<input
+              id="pjStyle"
+              class="wide"
+              placeholder="(zenless zone zero:0.6), thick outlines, vibrant colors, cel shading"
+          /></label>
+          <label>不要出現的（英文） <input id="pjNeg" class="wide" /></label>
+          <label
+            >主圖大小 <input id="pjW" type="number" min="512" max="1536" step="64" style="width: 6em" /> ×
+            <input id="pjH" type="number" min="512" max="1536" step="64" style="width: 6em"
+          /></label>
+          <p><button id="pjSave" class="pri" type="button">儲存設定</button></p>
+        </div>
+        <h3>專案的參考圖（整體的畫風、世界觀）</h3>
+        <div id="pjDrop" class="drop">把參考圖拖到這裡，或點一下選檔案</div>
+        <input type="file" id="pjRefFile" accept="image/*" multiple hidden />
+        <div id="pjRefs" class="grid"></div>
+        <h3>下載與匯入</h3>
+        <p>
+          <a id="pjDlWork" class="btn" download>下載整個專案的工作資料</a>
+          <a id="pjDlOut" class="btn" download>下載全部的成品</a>
+        </p>
+        <p>
+          <button id="pjImp" type="button">匯入 zip 到這個專案…</button>
+          <span class="dim">角色的或整個專案的 zip 都可以；同名的檔案會被覆蓋。</span>
+          <input type="file" id="pjImpFile" accept=".zip" hidden />
+        </p>
+        <p id="pjDelP"><button id="pjDel" type="button" class="danger">刪除這個專案…</button></p>
+      </section>
+      <section>
+        <h3>新增專案</h3>
+        <div class="form">
+          <label>代號（英文小寫開頭，英數與底線） <input id="npId" placeholder="my_game" /></label>
+          <label>名稱 <input id="npName" placeholder="我的遊戲" /></label>
+          <label>說明 <input id="npNote" class="wide" /></label>
+          <p>
+            <button id="npGo" class="pri" type="button">建立</button>
+            <button id="npImp" type="button">從 zip 匯入成新專案…</button>
+            <input type="file" id="npImpFile" accept=".zip" hidden />
+          </p>
+        </div>
+      </section>
+    </dialog>
+    <dialog id="charDlg">
+      <form method="dialog" class="dlgHead">
+        <h2>新增角色</h2>
+        <div class="grow"></div>
+        <button>取消</button>
+      </form>
+      <div class="form">
+        <label>代號（英文小寫開頭，英數與底線） <input id="ncId" placeholder="alice" /></label>
+        <label>名稱 <input id="ncName" placeholder="愛麗絲" /></label>
+        <label
+          >性別
+          <select id="ncSex">
+            <option value="">—</option>
+            <option value="f">女</option>
+            <option value="m">男</option>
+          </select></label
+        >
+        <label>年紀 <input id="ncAge" placeholder="十七歲" /></label>
+        <label>代表色 <input id="ncColor" type="color" value="#7fc8ff" /></label>
+        <label>個性與說明 <input id="ncNote" class="wide" /></label>
+        <p><button id="ncGo" class="pri" type="button">建立</button></p>
+      </div>
+    </dialog>
+    <dialog id="claudeDlg">
+      <form method="dialog" class="dlgHead">
+        <h2>交給 Claude Code</h2>
+        <div class="grow"></div>
+        <button>關閉</button>
+      </form>
+      <ol class="steps">
+        <li>
+          在這個專案的資料夾（有 <code>server.js</code> 的那一層）打開終端機，輸入 <code>claude</code> 啟動
+          Claude Code。
+        </li>
+        <li>
+          把下面這段貼上送出（可以先改外觀的描述）。Claude Code 會照專案內建的技能
+          <code>/portrait-studio</code> 做。
+        </li>
+        <li>
+          它會先產生全身主圖的候選給你挑；<b>你選好之後就不用再管</b>，它會一路做完標框、表情、眨眼與嘴型、品管（兩個獨立的複查）、發佈，最後告訴你成品的位置。
+        </li>
+        <li>過程中可以回到這個網頁看進度（重新整理這個角色）。</li>
+      </ol>
+      <textarea id="claudeTxt" rows="7" class="wide"></textarea>
+      <p>
+        <button id="claudeCopy" class="pri" type="button">複製</button>
+        <span id="claudeMsg" class="dim"></span>
+      </p>
+    </dialog>
+    <dialog id="qaDlg">
+      <form method="dialog" class="dlgHead">
+        <h2 id="qdTitle"></h2>
+        <div class="grow"></div>
+        <button>關閉</button>
+      </form>
+      <div class="qdView">
+        <div>
+          <div class="pvLbl">底圖</div>
+          <canvas id="qdBase"></canvas>
+        </div>
+        <div>
+          <div class="pvLbl">這一格</div>
+          <canvas id="qdCur"></canvas>
+        </div>
+      </div>
+      <p id="qdMetric" class="dim"></p>
+      <div id="qdChecks" class="qdChecks"></div>
+      <p>
+        <input id="qdNote" class="wide" placeholder="備註（選填）" />
+      </p>
+      <p>
+        <button id="qdOk" class="pri" type="button">合格</button>
+        <button id="qdNg" type="button" class="danger">不合格</button>
+        <button id="qdSkip" type="button" title="不發佈這一格：播放器在這個表情就不眨眼或不動嘴">
+          略過這格
+        </button>
+        <button id="qdRegen" type="button" data-job="1">產生 3 張新候選</button>
+      </p>
+      <h3>候選（點一張選定）</h3>
+      <div id="qdCands" class="qdCands"></div>
+    </dialog>
+    <div id="log"></div>
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>

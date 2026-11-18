@@ -13,7 +13,7 @@
 
 1. `git pull`，看 `package.json` 與 `CLAUDE.md` 有沒有變（有就 `npm install`）。
 2. ComfyUI：第一次 `npm run comfy:setup`（裝到 gitignore 的 `tools/comfyui/runtime/`，模型很大）。
-   - 啟動：`npm run comfy`，或用隱藏視窗 `powershell -ExecutionPolicy Bypass -File scripts/comfy-restart.ps1`。
+   - 啟動：`npm run comfy`，或用隱藏視窗 `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/comfy-restart.ps1`（要 PowerShell 7；內建的 5.1 讀這個 UTF-8 檔的中文會解析失敗）。
    - **長時間產圖每個角色重開一次**，避免顯示卡記憶體越吃越多。
 3. 伺服器：`chargen.js` 透過伺服器寫 card。用隱藏的獨立程序啟動：`Start-Process node server.js -WindowStyle Hidden`＋記錄檔。不要用 Claude 的背景工作，不要留視窗。
 4. Python：
@@ -48,7 +48,7 @@
 ### 1. 總檢查（看全部）
 
 ```bash
-node scripts/chargen.js char <角色> publish --keep        # 發佈（主圖與分層沿用，只重裁表情與影格）
+node scripts/studio.js char <角色> publish --keep        # 發佈（主圖與分層沿用，只重裁表情與影格）
 python scripts/portrait-audit.py <角色> …                  # 照遊戲的合成方式拼出每一格 → test-results/portrait-qa/audit/
 python scripts/portrait-audit.py --zoom <角色> <姿勢>       # 放大總表（每格只裁臉、300 px）
 python scripts/portrait-qa.py <角色> …                     # 量測：範圍外的改變、外來顏色、改變量太少、只閉一隻眼
@@ -92,7 +92,7 @@ python scripts/portrait-sheet.py pick <角色> <清單檔>        # 確認選到
 
 ### 5. 收尾
 
-1. `node scripts/chargen.js char <角色> publish --keep`，再跑一次 `portrait-audit.py`，看放大總表。只看改過的格子，不再開新的複查輪次。
+1. `node scripts/studio.js char <角色> publish --keep`，再跑一次 `portrait-audit.py`，看放大總表。只看改過的格子，不再開新的複查輪次。
 2. `npm run build`、`npm run lint`、`npm run format:check`、`npm test`。
 3. commit 並 push：`src/assets/characters/` 與 `dist/`。
 
@@ -148,7 +148,7 @@ python scripts/portrait-sheet.py pick <角色> <清單檔>        # 確認選到
 
 | 腳本                                                                              | 用途                                                                                   |
 | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `scripts/chargen.js`                                                              | 角色產生器的命令列：`char <角色> frames [--only=…]`、`char <角色> publish [--keep]`    |
+| `scripts/studio.js`                                                              | 角色產生器的命令列：`char <角色> frames [--only=…]`、`char <角色> publish [--keep]`    |
 | `scripts/portrait-audit.py`                                                       | 照遊戲的合成方式拼總表、量去背與接縫；`--zoom` 放大總表                                |
 | `scripts/portrait-qa.py`                                                          | 影格的量測（範圍外的改變、外來顏色、改變量、單眼）                                     |
 | `scripts/portrait-sheet.py`                                                       | 看圖用的總表：`cands`、`all`、`pick`、`eyes`、`pairs`、`heads`、`grid`、`fix`          |
@@ -162,4 +162,4 @@ python scripts/portrait-sheet.py pick <角色> <清單檔>        # 確認選到
 | `scripts/portrait-glasses.py`、`portrait-glassprobe.mjs`、`portrait-openmouth.py` | 眼鏡與張嘴底圖的判斷                                                                   |
 | `scripts/comfy-restart.ps1`                                                       | 隱藏視窗重開 ComfyUI                                                                   |
 | ComfyUI 節點 `tools/comfyui/nodes/mech_cordon/__init__.py` 的 `MCPatchPaste`      | 只貼回真的改了的像素：`exclude`、`protect_edges`、`no_recolor`＋`skin_box`、`tone_fix` |
-| `mech_cordon_charagen/js/workflows.js` 的 `qwenEditCrop`、`pipeline.js`           | 影格的工作流程與指示                                                                   |
+| `mech_cordon_studio/js/workflows.js` 的 `qwenEditCrop`、`pipeline.js`           | 影格的工作流程與指示                                                                   |

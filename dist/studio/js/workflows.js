@@ -337,3 +337,36 @@ export function qwenEdit({
   g.out = { class_type: 'SaveImage', inputs: { images: res, filename_prefix: prefix } };
   return g;
 }
+
+// 自動標框（docs/portrait-studio-design.md 第 4 期；ComfyUI 節點 tools/comfyui/nodes/mech_cordon/detect.py）
+// 臉與眼睛：動漫的臉與眼睛偵測 → 節點 fb 的 ui.text
+export function faceBoxes({ image }) {
+  return {
+    img: { class_type: 'LoadImage', inputs: { image } },
+    fb: { class_type: 'MCFaceBoxes', inputs: { image: ['img', 0] } },
+  };
+}
+// 嘴：臉的裁切放大給 Qwen 把嘴唇塗成純綠色，比對找綠色的那一塊 → 節點 gb 的 ui.text（整張圖的座標）
+export const MOUTH_GREEN =
+  'Paint the lips and the mouth of the character solid pure bright green (#00FF00), filling the whole mouth area. Change nothing else: same face, same eyes, same hair, same lines.';
+export function mouthGreen({ image, crop, seed = 7, side = 1024 }) {
+  const [x, y, w, h] = crop.map((v) => Math.round(v));
+  const k = side / Math.max(w, h);
+  const W = Math.round((w * k) / 16) * 16;
+  const H = Math.round((h * k) / 16) * 16;
+  const e = qwenEdit({ images: ['__up__'], prompt: MOUTH_GREEN, seed });
+  const g = {};
+  for (const [key, node] of Object.entries(e)) if (key !== 'li0' && key !== 'out') g[key] = node;
+  g.img = { class_type: 'LoadImage', inputs: { image } };
+  g.crop = { class_type: 'ImageCrop', inputs: { image: ['img', 0], width: w, height: h, x, y } };
+  g.up = {
+    class_type: 'ImageScale',
+    inputs: { image: ['crop', 0], upscale_method: 'lanczos', width: W, height: H, crop: 'disabled' },
+  };
+  const ref = ['up', 0];
+  g.pos.inputs.image1 = ref;
+  g.neg.inputs.image1 = ref;
+  g.enc.inputs.pixels = ref;
+  g.gb = { class_type: 'MCGreenBox', inputs: { base: ['crop', 0], edit: ['dec', 0], x, y } };
+  return g;
+}

@@ -129,6 +129,21 @@ export class Comfy {
     }
     const imgs = [];
     for (const [node, o] of Object.entries(outs)) for (const im of o.images || []) imgs.push({ ...im, node });
+    imgs.outputs = outs; // 其他輸出（例如自動標框節點的 ui.text）
     return imgs;
+  }
+  // 執行一個只輸出文字（ui.text，JSON）的工作流程，回傳 { 節點 id: 解析後的物件 }
+  async runText(workflow, opt) {
+    const imgs = await this.run(workflow, opt);
+    const out = {};
+    for (const [node, o] of Object.entries(imgs.outputs || {}))
+      if (o.text && o.text.length) {
+        try {
+          out[node] = JSON.parse(Array.isArray(o.text) ? o.text[0] : o.text);
+        } catch (e) {
+          out[node] = null;
+        }
+      }
+    return out;
   }
 }

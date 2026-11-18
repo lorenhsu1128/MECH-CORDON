@@ -1,4 +1,4 @@
-// 過場的場景插畫（docs/cine-redesign-design.md 第 2 期）：角色產生器的工作流程（mech_cordon_charagen/js/workflows.js）
+// 過場的場景插畫（docs/cine-redesign-design.md 第 2 期）：角色產生器的工作流程（mech_cordon_studio/js/workflows.js）
 // 產生 2D 舞台用的插畫，選定的存成 src/assets/cine-art/<章>/<id>.webp（建置成 dist/lib/cine-art-<章>.js，
 // 劇本以 img: '<章>/<id>' 使用；game/cine-2d.js）。先 npm run comfy 啟動 ComfyUI。
 //
@@ -23,7 +23,7 @@ const DEF = path.join(ROOT, 'tools', 'cine-art', 'scenes.json');
 const WORK = path.join(ROOT, 'tools', 'comfyui', 'runtime', 'work', 'cine-art');
 const OUT = path.join(ROOT, 'src', 'assets', 'cine-art');
 const CHARS = path.join(ROOT, 'src', 'assets', 'characters');
-const lib = (f) => import(pathToFileURL(path.join(ROOT, 'mech_cordon_charagen', 'js', f)).href);
+const lib = (f) => import(pathToFileURL(path.join(ROOT, 'mech_cordon_studio', 'js', f)).href);
 
 function args() {
   const o = { _: [] };

@@ -2,6 +2,8 @@
 
 2026-11-11 定案。所有劇情角色加動漫立繪：表情差分、眨眼、對口型、程式做的動作；**整個遊戲有對話的地方都出現**。素材由本機的 ComfyUI 產生，生產流程做成標題頁進得去的「角色產生器」，命令列（`scripts/chargen.js`）用同一套工作流程。
 
+> 2026-11-18：角色產生器改名成**立繪工房**（`mech_cordon_studio/`、`/studio/`、`scripts/studio.js`），可以另外建專案做其他遊戲的立繪，見 `docs/portrait-studio-design.md`。下面寫的「角色產生器」就是它。
+
 ## 一、定案
 
 - **畫風**：像《絕區零》的角色——乾淨的線條、賽璐璐平塗加柔和漸層、現代動畫的臉、機能街頭風的服裝、黑白為底＋每人一個強調色（對上陣營色：卡斯特隆橘、艾瑟立克藍、維爾威綠、聖域黃、ECHO 淡藍）。
@@ -42,24 +44,24 @@
 
 ## 五、分期
 
-| 期  | 內容                                                                                          |
-| --- | --------------------------------------------------------------------------------------------- |
-| 0   | 安裝與流程驗證（測試用的假角色：一致性、速度、檔案大小）                                      |
-| 1   | 角色產生器（子專案 `mech_cordon_charagen/`、伺服器轉送 `/api/comfy`、命令列）、遊戲的立繪元件 |
-| 2   | ECHO：外觀討論 → 定稿 → 全套素材，接上通訊框、簡報、全畫面劇情                                |
-| 3   | 接上全部對話的地方，補每句台詞的表情與動作                                                    |
-| 4   | 委託方 5 位、僚機 2 位、教官                                                                  |
-| 5   | 宿敵 16 位＋插入畫面（完成）                                                                  |
-| 6   | ECHO 的分層動畫（See-through）與周目外觀                                                      |
-| 7   | 敵兵、軌道站的波形、收尾（完成）                                                              |
+| 期  | 內容                                                                                        |
+| --- | ------------------------------------------------------------------------------------------- |
+| 0   | 安裝與流程驗證（測試用的假角色：一致性、速度、檔案大小）                                    |
+| 1   | 角色產生器（子專案 `mech_cordon_studio/`、伺服器轉送 `/api/comfy`、命令列）、遊戲的立繪元件 |
+| 2   | ECHO：外觀討論 → 定稿 → 全套素材，接上通訊框、簡報、全畫面劇情                              |
+| 3   | 接上全部對話的地方，補每句台詞的表情與動作                                                  |
+| 4   | 委託方 5 位、僚機 2 位、教官                                                                |
+| 5   | 宿敵 16 位＋插入畫面（完成）                                                                |
+| 6   | ECHO 的分層動畫（See-through）與周目外觀                                                    |
+| 7   | 敵兵、軌道站的波形、收尾（完成）                                                            |
 
 ## 六、實作紀錄
 
 ### 第 0 期
 
 - `tools/comfyui/manifest.json`、`scripts/comfy-setup.js`（uv 建 Python 3.12 環境、torch cu128、外掛照 commit、模型續傳與 sha256）、`scripts/comfy-start.js`。
-- `mech_cordon_charagen/js/comfy.js`：ComfyUI 的 API 客戶端（`/prompt`、`/ws`、`/history`、`/view`、`/upload/image`），瀏覽器與 Node 24 共用（全域 fetch／WebSocket／FormData）。
-- `mech_cordon_charagen/js/workflows.js`：`txt2img`（底模＋絕區零畫風 LoRA）、`inpaintBox`（裁一塊放大重畫再羽化貼回）、`qwenEdit`。
+- `mech_cordon_studio/js/comfy.js`：ComfyUI 的 API 客戶端（`/prompt`、`/ws`、`/history`、`/view`、`/upload/image`），瀏覽器與 Node 24 共用（全域 fetch／WebSocket／FormData）。
+- `mech_cordon_studio/js/workflows.js`：`txt2img`（底模＋絕區零畫風 LoRA）、`inpaintBox`（裁一塊放大重畫再羽化貼回）、`qwenEdit`。
 - `scripts/chargen.js`：命令列，輸出在 `tools/comfyui/runtime/work/`。
 - `tools/comfyui/nodes/mech_cordon/`（進 git）：專案自己的 ComfyUI 節點，`npm run comfy` 以 `extra_model_paths.yaml` 的 `custom_nodes` 載入。`MCAlignPaste`：用框外（往外 60 px）以 OpenCV ECC 估計仿射變換，把改過的圖對齊回原圖，再只把框內羽化貼回。
 - 安裝的坑：中文 Windows 的 cp950 讓某些套件的 setup.py 失敗 → 安裝一律 `PYTHONUTF8=1`；ComfyUI-RMBG 的 groundingdino-py 等用不到又難裝的相依套件以 manifest 的 `skipReqs` 略過；civitai 有些檔案要登入（`opt` 的模型失敗只警告，設 `CIVITAI_TOKEN` 才裝）。
@@ -81,7 +83,7 @@
 
 ### 第 1 期
 
-**角色產生器**（子專案 `mech_cordon_charagen/`，原生 ES modules，建置時複製到 `dist/charagen/`，伺服器在 `/charagen/` 提供；標題畫面的「角色產生器」只在伺服器網址時顯示；網址 `#<角色 id>` 直接開那個角色）：
+**角色產生器**（子專案 `mech_cordon_studio/`，原生 ES modules，建置時複製到 `dist/charagen/`，伺服器在 `/charagen/` 提供；標題畫面的「角色產生器」只在伺服器網址時顯示；網址 `#<角色 id>` 直接開那個角色）：
 
 - 7 個分頁：外觀（中文的外觀設定卡、給模型的英文標籤、不要出現的、招牌表情、參考圖）→ 主圖（姿勢的標籤、產生候選、點一張設成主圖；換主圖會清掉這個姿勢的表情與影格）→ 標框（拖曳畫臉、眼睛、嘴巴三個框）→ 表情 → 眨眼與嘴型 → 預覽 → 發佈。可以有多個姿勢。工作一次只跑一件、可以停止。
 - 狀態：外觀討論中（draft）→ 外觀已確認（look，才可以量產）→ 完成（done）。
@@ -91,7 +93,7 @@
 
 - `card.json`＋發佈的 WebP 在定稿資料夾：開發模式（從專案執行 server.js、沒設 `MECH_CORDON_MODELS_DIR`）＝`src/assets/characters/<id>/`（進 git），否則 `server-models/characters/<id>/`。
 - 候選、選定的圖與參考圖在 `tools/charwork/<id>/`（開發模式；2026-11-12 使用者決定用一般 git 提交，否則別台電腦的角色產生器是破圖；以前的 `server-models/charwork/` 在伺服器啟動時自動搬過去）。exe 版照舊在 `server-models/charwork/`。**一律存 WebP**（2026-11-12 使用者定案）：開發模式的伺服器在存進候選資料夾時以 `sharp`（devDependency）把 PNG／JPG 轉成 WebP（品質 92、透明度無損），網頁與命令列產生的候選、上傳的參考圖檔名都是 `.webp`；啟動時把候選資料夾裡舊的 PNG／JPG 轉掉並改 card.json 裡的檔名（轉換中 `/api/chars` 回 503）。送給 ComfyUI 的圖照舊改名 .png 上傳（ComfyUI 依內容讀）。產生新的候選後要 commit＋push。
-- 伺服器（`server-chargen.js`，server.js 載入）：`/api/comfy/…`＝轉送到本機的 ComfyUI（`MECH_CORDON_COMFY` 改網址，`/api/comfy/ws` 是 WebSocket），`/api/comfy-status`＝ComfyUI 有沒有在執行（一律 200），`/api/chars`、`/api/chars/<id>`（card）、`/api/chars/<id>/file/<檔名>`（定稿）、`/api/chars/<id>/work/<檔名>`（候選）。
+- 伺服器（`server-studio.js`，server.js 載入）：`/api/comfy/…`＝轉送到本機的 ComfyUI（`MECH_CORDON_COMFY` 改網址，`/api/comfy/ws` 是 WebSocket），`/api/comfy-status`＝ComfyUI 有沒有在執行（一律 200），`/api/chars`、`/api/chars/<id>`（card）、`/api/chars/<id>/file/<檔名>`（定稿）、`/api/chars/<id>/work/<檔名>`（候選）。
 
 **生產流程**（網頁與命令列共用 `js/pipeline.js`）：
 

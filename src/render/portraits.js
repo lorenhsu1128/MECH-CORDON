@@ -1,8 +1,8 @@
 // 劇情角色的立繪（docs/portrait-design.md）：載入 lib/portraits/<id>.js（建置時由 src/assets/characters/ 打包），
-// 播放器直接用角色產生器的 mech_cordon_charagen/js/portrait.js（和文字演出直接用 APNG 產生器的引擎一樣）
+// 播放器直接用角色產生器的 mech_cordon_studio/js/portrait.js（和文字演出直接用 APNG 產生器的引擎一樣）
 //   const pk = await Portraits.get('echo');   // 沒有這個角色的立繪＝null（照舊顯示字母徽章）
 //   const p = new Portrait(pk, 'p1');
-import { Portrait, PortraitPack, ACT_NAMES } from '../../mech_cordon_charagen/js/portrait.js';
+import { Portrait, PortraitPack, ACT_NAMES } from '../../mech_cordon_studio/js/portrait.js';
 
 export { Portrait, ACT_NAMES };
 

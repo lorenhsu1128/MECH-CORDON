@@ -1,6 +1,6 @@
 # 劇情角色的參考圖
 
-角色產生器（docs/portrait-design.md）做外觀時參考的圖，檔名＝`<角色 id>_<編號>.jpg`（id＝遊戲的說話者，`mech_cordon_charagen/js/roster.js`）。
+角色產生器（docs/portrait-design.md）做外觀時參考的圖，檔名＝`<角色 id>_<編號>.jpg`（id＝遊戲的說話者，`mech_cordon_studio/js/roster.js`）。
 
 2026-11-11 使用者決定放進版本庫，換電腦時直接 pull 就有。這些是別人的作品（有的帶簽名與浮水印）：**只取方向（髮型、配色、服裝的感覺），不照原圖複製**；產生的角色要改成遊戲自己的設計（陣營色、配件、和劇情有關的東西），簽名、浮水印、文字一律不要出現。
 

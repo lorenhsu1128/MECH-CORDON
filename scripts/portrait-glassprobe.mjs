@@ -8,7 +8,7 @@ import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
-const lib = (f) => import(pathToFileURL(path.join(ROOT, 'mech_cordon_charagen', 'js', f)).href);
+const lib = (f) => import(pathToFileURL(path.join(ROOT, 'mech_cordon_studio', 'js', f)).href);
 const { Comfy } = await lib('comfy.js');
 const W = await lib('workflows.js');
 const c = new Comfy('http://127.0.0.1:8188');

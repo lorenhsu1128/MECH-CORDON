@@ -1,4 +1,4 @@
-// 台詞的表情與動作（docs/portrait-design.md 第 3 期）：立繪播放器的表情 id（mech_cordon_charagen/js/expr.js 的 EXPRS＋角色的招牌表情）
+// 台詞的表情與動作（docs/portrait-design.md 第 3 期）：立繪播放器的表情 id（mech_cordon_studio/js/expr.js 的 EXPRS＋角色的招牌表情）
 // 與動作（portrait.js 的 ACTS：nod、shake、lean、back、turn、bounce、flinch）。
 // 查的順序：逐句指定（LINE_EXPR，以台詞文字為鍵；改了台詞就退回預設；同一句不同人說、表情不同時用「說話者:台詞」為鍵，sp 給說話者時先查它）→ 通訊事件的預設（EVENT_EXPR）→ neutral。
 // 動作沒有指定時依表情（ACT_OF_EXPR）。角色沒有那個表情時播放器自己退回 neutral。

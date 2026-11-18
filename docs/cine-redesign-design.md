@@ -497,7 +497,7 @@ YouTube 影片，720p，換鏡偵測後抽格，拼成縮圖表看。縮圖表�
 
 - **定義**：`tools/cine-art/scenes.json`，每張插畫一項：`{ ch, w, h, prompt, neg, steps, cfg, tone, pick }`（沒有角色＝NoobAI 文字生圖，畫風同立繪的 `STYLE`，預設 1344×768）或 `{ ch, bg: '<背景的 id>', char: { id, pose }, edit: 'Qwen 的指示' }`（有角色＝Qwen-Image-Edit：圖 1 是選定的背景、圖 2 是角色的主圖（透明底鋪灰），照指示把角色擺進去；輸出和背景一樣大）。`tone`＝選定時轉成單色。
 - **命令列** `scripts/cine-art.js`：`list`／`gen <id> [--n=3 | --seeds=…]`（候選 → `tools/comfyui/runtime/work/cine-art/<id>/<種子>.png`，不進 git）／`sheet <id>`（候選總表）／`pick <id> <種子>`（→ `src/assets/cine-art/c<章>/<id>.webp`，寬最多 1600、WebP 84，寫回 `pick`）。文字生圖一張約 4 秒、Qwen 一張約 10 秒（RTX 5090）。
-- **角色產生器的「場景插畫」分頁**（`mech_cordon_charagen`，不屬於哪一個角色）：列出 scenes.json 的每一張、可以改提示詞／指示、產生候選（瀏覽器直接跑同一份工作流程）、點「選定」；伺服器的 `/api/cineart`（`server-chargen.js`，只在開發模式：讀寫 scenes.json、候選、選定時用 sharp 轉 WebP）。
+- **角色產生器的「場景插畫」分頁**（`mech_cordon_studio`，不屬於哪一個角色）：列出 scenes.json 的每一張、可以改提示詞／指示、產生候選（瀏覽器直接跑同一份工作流程）、點「選定」；伺服器的 `/api/cineart`（`server-studio.js`，只在開發模式：讀寫 scenes.json、候選、選定時用 sharp 轉 WebP）。
 - **建置**：`scripts/build.js` 的 `writeCineArt`：每章一個 `dist/lib/cine-art-<章>.js`（`window.MECH_CORDON_CINE_ART[章]`）。**遊戲**：`game/cine-2d.js` 的 `cine2dPreload` 收集劇本的 `img`、載入那一章的檔案並解碼，`panel`／`art`／`bg` 的 `img` cover 對齊畫出來；沒有圖時畫原本的 `art`／`live`（所以插畫還沒做的段落照樣能播）。格式見 docs/cinematics.md。
 - **第 1 章開場的插畫**（4 張，約 0.5 MB）：`c1_antenna`（沙丘上的舊天線，赭紅單色，取代 3D 的天線、慢慢推近）、`c1_office`（夜裡的辦公室，對話分格的背景）、`c1_desk`（辦公桌與一頂舊的礦工頭盔——候選裡畫成頭盔而不是合照，同樣是「礦工出身」的暗示，就用它）、`c1_alone`（Qwen 把霍斯特的 p9 摸後頸擺到桌旁，看著頭盔；暗橘單色）。漫畫頁的三格與 3D 的段落照舊用即時的 3D。
 - **注意**：Qwen 擺角色時偶爾把男角畫老（皺紋），挑候選時照「男角一律看起來年輕」。插畫裡已經有角色時，那一格不要再疊立繪演員（`unless`）。

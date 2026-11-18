@@ -17,3 +17,6 @@ dist/lib/bgm-cand*.js
 # 語音 v3：VoxCPM 的原始碼（LoRA 訓練腳本）、訓練資料與 LoRA（scripts/voice-lora.py）
 tools/voxcpm/
 __pycache__/
+
+# 立繪工房的其他專案（docs/portrait-studio-design.md；各台電腦自己的，用網頁的下載／匯入搬）
+studio-data/

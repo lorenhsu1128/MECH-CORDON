@@ -16,11 +16,11 @@ module.exports = [
   },
   {
     // 角色產生器（docs/portrait-design.md）：原生 ES modules，瀏覽器與 Node（scripts/chargen.js）共用
-    files: ['mech_cordon_charagen/**/*.js'],
+    files: ['mech_cordon_studio/**/*.js'],
     languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.browser } },
   },
   {
-    files: ['server-chargen.js', 'server-bgmgen.js'],
+    files: ['server-studio.js', 'server-studio-zip.js', 'server-bgmgen.js'],
     languageOptions: { ecmaVersion: 2022, sourceType: 'commonjs', globals: { ...globals.node } },
   },
   {

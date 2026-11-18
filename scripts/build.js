@@ -479,7 +479,7 @@ async function writeGaze() {
 const SUBPROJECTS = [
   { src: 'mech_cordon_apng_gen', out: 'apng', dirs: ['css', 'js'] },
   { src: 'mech_cordon_paint', out: 'paint', dirs: ['css', 'js', 'lib'] },
-  { src: 'mech_cordon_charagen', out: 'charagen', dirs: ['css', 'js'] }, // 角色產生器（docs/portrait-design.md）
+  { src: 'mech_cordon_studio', out: 'studio', dirs: ['css', 'js'] }, // 立繪工房（docs/portrait-studio-design.md）
 ];
 function copySubprojects() {
   for (const p of SUBPROJECTS) {

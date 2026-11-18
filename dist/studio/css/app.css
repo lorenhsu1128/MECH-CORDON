@@ -373,3 +373,208 @@ th {
 .scCands figure.sel {
   border-color: #c6f04a;
 }
+
+/* 立繪工房：專案、對話框、拖曳上傳（docs/portrait-studio-design.md） */
+.proj {
+  color: var(--dim);
+  font-size: 13px;
+}
+a.btn {
+  display: inline-block;
+  font-size: 13px;
+  color: var(--fg);
+  background: #0f171f;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 4px 8px;
+  text-decoration: none;
+}
+a.btn:hover {
+  border-color: var(--acc);
+}
+a.btn.off {
+  opacity: 0.45;
+  pointer-events: none;
+}
+button.danger {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+dialog {
+  background: var(--pan);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  width: min(760px, 94vw);
+  max-height: 90vh;
+  padding: 10px 18px 18px;
+}
+dialog::backdrop {
+  background: #000a;
+}
+.dlgHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.dlgHead h2 {
+  margin: 0;
+  font-size: 17px;
+}
+dialog section + section {
+  border-top: 1px solid var(--line);
+  margin-top: 14px;
+}
+.form label {
+  display: block;
+  margin: 6px 0;
+  color: var(--dim);
+}
+.form label input,
+.form label select {
+  color: var(--fg);
+}
+.drop {
+  border: 2px dashed var(--line);
+  border-radius: 6px;
+  padding: 18px;
+  text-align: center;
+  color: var(--dim);
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+.drop.over {
+  border-color: var(--acc);
+  color: var(--acc);
+  background: #16405e33;
+}
+aside .add {
+  color: var(--acc);
+  justify-content: center;
+}
+
+a.btn {
+  white-space: nowrap;
+}
+.charHead h2 {
+  white-space: nowrap;
+}
+.steps {
+  padding-left: 22px;
+  line-height: 1.7;
+}
+.steps code,
+.steps b {
+  color: var(--acc);
+}
+
+/* 品管分頁（docs/portrait-studio-design.md 第 2 期） */
+.qaRow {
+  display: flex;
+  gap: 3px;
+  margin-bottom: 4px;
+  align-items: flex-start;
+}
+.qaRow .gap {
+  width: 12px;
+}
+.qaCell {
+  position: relative;
+  border: 2px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+  background: #1a1a1a;
+}
+.qaCell canvas {
+  display: block;
+}
+.qaCell span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  font-size: 11px;
+  background: #000b;
+  padding: 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.qaCell.bad {
+  border-color: var(--bad);
+}
+.qaCell.ok {
+  border-color: var(--ok);
+}
+.qaCell.off {
+  opacity: 0.45;
+  cursor: default;
+}
+.qaRow h4 {
+  width: 70px;
+  margin: 4px 0;
+  font-size: 12px;
+  color: var(--dim);
+  font-weight: normal;
+}
+.qdView {
+  display: flex;
+  gap: 12px;
+}
+.qdView canvas {
+  max-width: 100%;
+  border: 1px solid var(--line);
+}
+.qdChecks label {
+  display: inline-block;
+  margin: 2px 12px 2px 0;
+  font-size: 13px;
+}
+.qdCands {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.qdCands canvas {
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+.qdCands canvas.pick {
+  border-color: var(--ok);
+}
+
+/* 自動完成（第 4 期） */
+.autoBar {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #0f171f;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.autoRun {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+.autoRun .bar {
+  width: 220px;
+}
+.autoLog {
+  flex-basis: 100%;
+  max-height: 260px;
+  overflow: auto;
+  margin: 0;
+  font-size: 12px;
+  color: var(--dim);
+  white-space: pre-wrap;
+}
+#qaGrid {
+  overflow-x: auto;
+}
+.qaRow h4 {
+  flex: none;
+}

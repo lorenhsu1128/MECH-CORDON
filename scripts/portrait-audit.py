@@ -1,4 +1,4 @@
-"""立繪的總檢查（docs/portrait-qa-workflow.md）：照遊戲的合成方式（mech_cordon_charagen/js/portrait.js：分層、patchMasked）
+"""立繪的總檢查（docs/portrait-qa-workflow.md）：照遊戲的合成方式（mech_cordon_studio/js/portrait.js：分層、patchMasked）
 拼出已發佈的每個表情 × 每一格（底圖、e1、e2、m1～m3），量去背與接縫，輸出總表給 Claude 或人看圖。
 
   python scripts/portrait-audit.py [<角色> …]                      全部表情的總表（每格 170 px）＋ report.json

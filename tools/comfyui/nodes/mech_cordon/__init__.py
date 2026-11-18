@@ -498,7 +498,12 @@ NODE_CLASS_MAPPINGS = {
     "MCCropSave": MCCropSave,
     "MCLayerGroups": MCLayerGroups,
 }
+# 立繪工房的自動標框（detect.py）
+from .detect import NODE_CLASS_MAPPINGS as _DET, NODE_DISPLAY_NAME_MAPPINGS as _DETN  # noqa: E402
+
+NODE_CLASS_MAPPINGS.update(_DET)
 NODE_DISPLAY_NAME_MAPPINGS = {
+    **_DETN,
     "MCAlignPaste": "MECH CORDON：對齊並貼回",
     "MCPatchPaste": "MECH CORDON：局部改圖貼回（只貼有改的像素）",
     "MCCropSave": "MECH CORDON：裁切存成 WebP",

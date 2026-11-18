@@ -6,7 +6,7 @@ for c in "$@"; do
   bash $S/comfy_restart.sh > $S/comfy_restart.log 2>&1; tail -1 $S/comfy_restart.log
   node --input-type=module -e "
 import { pathToFileURL } from 'url';
-const { CharStore } = await import(pathToFileURL('mech_cordon_charagen/js/store.js').href);
+const { CharStore } = await import(pathToFileURL('mech_cordon_studio/js/store.js').href);
 const st = new CharStore('http://127.0.0.1');
 const k = await st.getCard('$c');
 if (!k.layers) { k.layers = true; await st.putCard(k); console.log('  打開拆層'); }
