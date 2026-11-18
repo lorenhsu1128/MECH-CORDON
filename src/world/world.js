@@ -1162,9 +1162,15 @@ export class World {
   }
   // 站在下層平台上（虛空地圖）
   onLedge(x, z, y) {
-    return this.obstacles.some(
+    return this.obsAt(x, z).some(
       (o) =>
         o.ledge && Math.abs(x - o.x) < o.w / 2 && Math.abs(z - o.z) < o.d / 2 && Math.abs(y - o.top) < 1.5,
+    );
+  }
+  // (x, z) 的正下方有下層平台（不看高度；電腦機體的「敵人也能用平台」，MechEntity 的 voidCheck／ledgeAI）
+  ledgeAt(x, z) {
+    return this.obsAt(x, z).some(
+      (o) => o.ledge && Math.abs(x - o.x) < o.w / 2 && Math.abs(z - o.z) < o.d / 2,
     );
   }
   // 高度上限、飛行高度用的地面：虛空上方以 void.ref 為準

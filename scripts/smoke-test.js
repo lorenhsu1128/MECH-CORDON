@@ -16898,7 +16898,8 @@ async function testVoidMaps(browser, base) {
         out.brY = +pl.pos.y.toFixed(1);
         out.brLost = +((hp2 - pl.hp) / pl.maxHp).toFixed(3);
       }
-      // 電腦落到下層平台：拉回站穩的位置
+      // 電腦落到下層平台（2026-11-18 使用者定案「敵人也能用平台」）：站在平台上不拉回，目標在上層時自己跳回去
+      // （不能懸浮的 8 秒後拉回、不扣 AP）
       const e = g.enemies.find((x) => !x.dead && !x.flying && !x.isBoss);
       out.e = !!e;
       if (e) {
@@ -16906,8 +16907,13 @@ async function testVoidMaps(browser, base) {
         e.safePos = safe.clone();
         e.pos.set(lg.x, lg.top + 2, lg.z);
         e.vel.set(0, 0, 0);
-        window.__pump(2, () => !w.isVoid(e.pos.x, e.pos.z));
+        const eh = e.hp;
+        let landed = false;
+        window.__pump(0.6, () => (landed = e.grounded && w.onLedge(e.pos.x, e.pos.z, e.pos.y)));
+        out.eLand = landed;
+        window.__pump(12, () => !w.isVoid(e.pos.x, e.pos.z) && e.grounded);
         out.eBack = !w.isVoid(e.pos.x, e.pos.z);
+        out.eLost = e.hp < eh - e.maxHp * 0.05;
       }
       return out;
     });
@@ -16924,7 +16930,10 @@ async function testVoidMaps(browser, base) {
       r.br && r.brN === 1 && r.brY > -1 && Math.abs(r.brLost - 0.05) < 0.01,
       `${r.theme}：從橋邊掉到橋下，拉回 ${r.brN} 次到平台（y ${r.brY}、AP −${(r.brLost * 100).toFixed(1)}%）${Math.abs(r.brLost - 0.05) < 0.01 ? '' : '；其他傷害：' + (r.brHits || '無')}`,
     );
-    check(r.e && r.eBack, `${r.theme}：敵人落到下層平台就拉回站穩的位置`);
+    check(
+      r.e && r.eLand && r.eBack && !r.eLost,
+      `${r.theme}：敵人落到下層平台站得住（${r.eLand}），目標在上層時回到街區（${r.eBack}），不扣 AP（${!r.eLost}）`,
+    );
     await page.screenshot({ path: path.join(SHOT_DIR, `void-${map}.png`) });
     await ctx.close();
   }

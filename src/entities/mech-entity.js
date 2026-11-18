@@ -1925,18 +1925,50 @@ export class MechEntity {
   // 虛空（洋上都市、高空）：AI 不走進虛空；掉下去扣 10% AP（只在房主／單機）、1.5 秒無敵，拉回最後站穩的位置。
   // 2026-11-07：玩家操作的機體掉到 void.fallP（比較深）才拉回，之前可以用空中跳／懸浮飛回去或落在下層平台再跳上來，
   // 拉回時扣 5%、放在掉下去的地方附近的實地；電腦落到下層平台（World.onLedge）就照墜落拉回
+  // 電腦機體與下層平台（虛空地圖）：目標在平台上 → wantLow（voidCheck 讓它從街區走下去）；自己在平台上而目標不在 →
+  // 朝最近的街區走、按住跳躍爬升（hover 2）跳回上層；不能懸浮的（戰車等）8 秒還在平台上就拉回街區（不扣 AP）。
+  // 回傳要覆寫的 hover（null＝照原本的移動）
+  ledgeAI(dt, pl, wish) {
+    const w = this.game.world;
+    const s = this.aiState;
+    if (w.voidY === undefined || this.flying || !w.ledgeAt) return null;
+    const plOnLedge = !!pl && pl.grounded !== false && w.onLedge(pl.pos.x, pl.pos.z, pl.pos.y);
+    this.wantLow = plOnLedge && pl.pos.y < this.pos.y - 3 * this.dk;
+    if (plOnLedge) this.ledgeFightT = this.t; // 目標在平台上：留在平台上打（voidCheck 不計時拉回）
+    const onL = this.grounded && w.onLedge(this.pos.x, this.pos.z, this.pos.y);
+    s.upT = Math.max(0, (s.upT || 0) - dt);
+    if (onL && !plOnLedge) s.upT = 1.4;
+    if (!s.upT) return null;
+    // 往最近的街區（周圍站得住的實地）；比街區的地面低時按住爬升，高過了就放開、往前飛過邊緣落在街區上
+    const [bx, bz] = w.nearSolid(this.pos.x, this.pos.z, true);
+    wish.set(bx - this.pos.x, 0, bz - this.pos.z);
+    if (wish.lengthSq() > 1e-6) wish.normalize();
+    return this.pos.y < w.terrainHeight(bx, bz) + 1.2 * this.dk ? 2 : false;
+  }
+  // 2026-11-18（使用者定案「敵人也能用平台」）：電腦機體只在目標在下層平台上時（ledgeAI 的 wantLow）才從街區走下平台，
+  // 站在平台上是正常的地面（不再拉回）、不從平台走進虛空，要回上層時 ledgeAI 讓它跳回去（以前一落到平台就拉回，
+  // 拉回的位置又在邊緣的斜坡上，40 秒被拉回幾百次，看起來卡住又抖動）
   voidCheck(w, px, pz) {
-    if (
-      this.ai &&
-      !this.flying &&
-      w.isVoid(this.pos.x, this.pos.z) &&
-      !w.isVoid(px, pz) &&
-      this.pos.y - w.terrainHeight(px, pz) < 3 * this.dk
-    ) {
-      this.pos.x = px;
-      this.pos.z = pz;
-      this.vel.x = this.vel.z = 0;
-      this.aiState.stuck += 0.05;
+    if (this.ai && !this.flying) {
+      const x = this.pos.x,
+        z = this.pos.z;
+      const toVoid = w.isVoid(x, z);
+      const ledgeNew = toVoid && w.ledgeAt(x, z);
+      const fromLedge = w.ledgeAt(px, pz); // 平台的範圍（站著或在它上方的空中）
+      const block =
+        (toVoid &&
+          !w.isVoid(px, pz) &&
+          this.pos.y - w.terrainHeight(px, pz) < 3 * this.dk &&
+          !(ledgeNew && this.wantLow)) ||
+        (fromLedge && toVoid && !ledgeNew && this.pos.y > w.theme.void.y) || // 平台的外緣：不走（跳）進虛空
+        // 街區邊緣的斜坡（已經算虛空）往平台走：目標不在平台上時不下去（以前就是從這裡一直滑下平台）
+        (ledgeNew && !this.wantLow && !fromLedge && this.grounded);
+      if (block) {
+        this.pos.x = px;
+        this.pos.z = pz;
+        this.vel.x = this.vel.z = 0;
+        this.aiState.stuck += 0.05;
+      }
     }
     // 站穩的位置只記在平台的高度（2026-11-08 使用者回報：橋下方「上面有橋面」不算虛空，落到深淵底部時會把
     // 底部記成站穩的位置，拉回又回到底部，每格扣 AP 到剩 1 卡在下面）
@@ -1946,8 +1978,21 @@ export class MechEntity {
     }
     if (this.flying) return;
     const pilot = this.pilotEnt();
-    const ledge = !pilot && this.grounded && w.onLedge(this.pos.x, this.pos.z, this.pos.y);
-    if (!ledge && this.pos.y >= (pilot ? w.theme.void.fallP : w.voidY)) return;
+    // 電腦在下層平台上待太久（不能懸浮跳不回去、閒置中不會走 ledgeAI）：8 秒後拉回街區，不扣 AP；目標在平台上時不計時
+    if (this.ai && this.grounded && w.onLedge(this.pos.x, this.pos.z, this.pos.y)) {
+      const fight = this.ledgeFightT !== undefined && this.t - this.ledgeFightT < 1;
+      this.ledgeT = fight ? 0 : (this.ledgeT || 0) + (this.t - (this.ledgeLastT ?? this.t));
+      if (this.ledgeT > 8) {
+        this.ledgeGiveUp = true;
+        this.ledgeT = 0;
+      }
+    } else if (this.grounded) this.ledgeT = 0;
+    this.ledgeLastT = this.t;
+    // 站在下層平台上：不是墜落（高空軌道的平台比 void.fall 低）。電腦在平台上太久回不去（不能懸浮的）時 ledgeAI 設 ledgeGiveUp 拉回
+    const giveUp = this.ledgeGiveUp;
+    this.ledgeGiveUp = false;
+    if (!giveUp && w.onLedge(this.pos.x, this.pos.z, this.pos.y)) return;
+    if (!giveUp && this.pos.y >= (pilot ? w.theme.void.fallP : w.voidY)) return;
     // 還沒站穩過（例：運輸機投放在海上）：移到最近的實地，不拉回地圖中心
     let p = this.safePos;
     if (pilot || !p) {
@@ -1968,9 +2013,10 @@ export class MechEntity {
     // 保險：1 秒內再被拉回不再扣（不會因為一直拉回而把 AP 扣光）
     const again = this.voidAt !== undefined && this.t - this.voidAt < 1;
     this.voidAt = this.t;
-    if (!g.isClient && !this.dead && !again)
+    if (!g.isClient && !this.dead && !again && !giveUp)
       this.hp = Math.max(1, this.hp - this.maxHp * (pilot ? 0.05 : 0.1));
-    if (this.isPlayer) g.flashAlert(pilot ? '墜落 — AP −5%，返回平台' : '墜落 — AP −10%，返回平台');
+    if (this.isPlayer && !giveUp)
+      g.flashAlert(pilot ? '墜落 — AP −5%，返回平台' : '墜落 — AP −10%，返回平台');
     g.fx.ring(this.pos.clone().setY(this.pos.y + 0.1), 4, 0x80c8ff);
   }
   // attr＝攻擊屬性（data/attrs.js：kin／exp／en／none）；沒給時依 wid（武器 id）推算，都沒有時算實彈
@@ -2887,7 +2933,8 @@ export class MechEntity {
     if (this.pilotEnt()) this.oobPush(w, dt);
     // integrate
     const px0 = this.pos.x,
-      pz0 = this.pos.z;
+      pz0 = this.pos.z,
+      py0 = this.pos.y;
     // 站在地形上（街區邊緣的斜坡也算）：可以照舊沿著地形走上去；站在下層平台上或在空中時，街區的側面才是牆
     const onTerr =
       w.voidY !== undefined && this.grounded && this.pos.y - w.terrainHeight(px0, pz0) < 0.3 * this.dk;
@@ -2901,7 +2948,8 @@ export class MechEntity {
         if (this.vel.y > 0) this.vel.y = 0;
       }
     }
-    const g2 = w.groundAt(this.pos.x, this.pos.z, this.pos.y);
+    // 往下掉得快時一格會掉超過 STEP_H：以這一格開始的高度找落腳的面，才不會穿過薄的平台（洋上都市的下層平台，2026-11-18）
+    const g2 = w.groundAt(this.pos.x, this.pos.z, this.vel.y < 0 ? Math.max(this.pos.y, py0) : this.pos.y);
     if (this.pos.y <= g2) {
       if (!this.grounded && this.vel.y < -6 * this.dk)
         ((this.landT = 0),
@@ -3791,6 +3839,8 @@ export class MechEntity {
       }
       if (this.ai === 'ac' && d > 40 * K && Math.random() < dt * 0.5) ab = true;
     }
+    const lgH = this.ledgeAI(dt, pl, wish); // 下層平台：跳回上層（虛空地圖）
+    if (lgH !== null) hover = lgH;
     const mvr = sn ? this.movesTick(dt, d, dir, pl, wish) : null; // 主攻的預警招式（mech-moves.js）
     if (mvr && mvr.ab) ab = true;
     if (!sup) this.aiShock(dt, d, wish);
