@@ -439,6 +439,7 @@ Object.assign(Game.prototype, {
       this.net.tr.broadcast({
         t: 'start',
         pace: this.ctrl.pace || 1,
+        ps: this.pvp ? undefined : this.paceRun || undefined, // 房主的節奏設定組（game/pace-lab.js）
         seed,
         theme,
         variant: this.world.variantKey,
@@ -594,6 +595,7 @@ Object.assign(Game.prototype, {
     this.camTarget.copy(p);
   },
   rollComp(L, np) {
+    this.paceSync();
     let pts = (6 + L * 2.2) * np * pv('eCount'); // 節奏調整室的數量倍率（調整室以外＝1）
     const comp = [];
     const types = Object.keys(ENEMY_TYPES).filter((k) => !(k === 'ac' || ENEMY_TYPES[k].roster));
@@ -800,6 +802,7 @@ Object.assign(Game.prototype, {
     return g;
   },
   spawnEnemy(o) {
+    this.paceSync();
     o.palKey = o.pal;
     if (!o.res && o.isBoss && this.spawnRes) o.res = this.spawnRes; // Boss 的弱點（spawnBossDef）
     if (o.isBoss && this.spawnTier && o.tier === undefined) o.tier = this.spawnTier; // Boss 改版的刁鑽度
@@ -1015,6 +1018,7 @@ Object.assign(Game.prototype, {
     }, 2600);
   },
   clearMission() {
+    this.paceCapture(); // 這次出擊用的節奏設定組（game/pace-lab.js）
     this.gearDropsFlush(); // 地上沒撿的裝備自動撿起（gear-loot.js）
     this.wingRingDrop(); // 僚機的救援圈（wing.js）
     this.airEnd(); // 空域（game/air.js）

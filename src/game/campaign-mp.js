@@ -86,6 +86,7 @@ Object.assign(Game.prototype, {
     return {
       t: 'start',
       pace: this.ctrl.pace || 1,
+      ps: this.paceRun || undefined, // 房主的節奏設定組
       seed: this.worldSeed,
       theme: this.worldTheme,
       variant: w.variantKey,

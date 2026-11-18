@@ -90,8 +90,20 @@ export const PACE_WPN_KEYS = [
   ['imp', '衝擊'],
 ];
 
-// 目前的值（調整室改它；沒列的鍵＝1）。on＝調整室裡才生效
-export const PACE = { on: false, v: {}, w: {}, ver: 0, strict: false };
+// 目前的值（調整室改它；沒列的鍵＝1）。on＝生效中；lab＝在調整室裡（game/pace-lab.js）。
+// 調整室以外：設定「節奏設定組」（ctrl.paceSet）選了一組時，任務中也生效（game/pace-lab.js 的 paceSync；
+// 遊戲規則與加成照舊，每把武器的倍率只給玩家；多人以房主的為準）
+export const PACE = { on: false, lab: false, v: {}, w: {}, ver: 0, strict: false, name: '' };
+// 設定組的存檔（調整室寫、設定畫面與出擊時讀）
+export const PACE_KEY = 'mech_cordon_pace';
+export function paceStoreRead() {
+  try {
+    const d = JSON.parse(localStorage.getItem(PACE_KEY) || 'null');
+    return d && typeof d === 'object' && d.sets && typeof d.sets === 'object' ? d : null;
+  } catch (e) {
+    return null;
+  }
+}
 // 部位判定的「擦過不算」（調整室的開關；render/hit-parts.js）：人形機甲的命中只看各區塊的外框，不看外接球
 export const strictHit = () => PACE.on && PACE.strict;
 export const paceDefault = (k) => {
@@ -107,6 +119,8 @@ export function pk(e, p, en) {
   const s = side(e);
   return s === 'p' ? pv(p) : s === 'e' && en ? pv(en) : 1;
 }
+// 每把武器的倍率：調整室裡敵我都套（同一把武器），正常遊戲只給玩家
+const P0 = (s) => s === 'p' || PACE.lab;
 // 開火用的武器定義：我方／敵方與這把武器的倍率套上去（複本依武器、版本快取；PACE 改了 ver 加 1）
 const DEF_CACHE = new Map();
 export function paceDef(e, d) {
@@ -116,7 +130,7 @@ export function paceDef(e, d) {
   const key = s + '|' + d.id + '|' + PACE.ver;
   const c = DEF_CACHE.get(key);
   if (c && c.src === d) return c.out;
-  const W = PACE.w[d.id] || {};
+  const W = (P0(s) && PACE.w[d.id]) || {};
   const wk = (k) => W[k] ?? 1;
   const P = s === 'p';
   const spd = wk('spd') * (P ? pv('pShotSpd') : pv('eShotSpd'));
@@ -137,3 +151,5 @@ export function paceDef(e, d) {
   DEF_CACHE.set(key, { src: d, out });
   return out;
 }
+// 冒煙測試與量測
+if (typeof location !== 'undefined' && /[?&]test\b/.test(location.search)) window.__PACE = { PACE, paceDef };

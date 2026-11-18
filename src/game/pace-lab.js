@@ -4,7 +4,7 @@
 import { Game } from './game.js';
 import { SFX } from '../audio/audio.js';
 import { MechEntity } from '../entities/mech-entity.js';
-import { PACE, PACE_GROUPS, PACE_WPN_KEYS, paceDefault } from '../data/pace.js';
+import { PACE, PACE_GROUPS, PACE_KEY, PACE_WPN_KEYS, paceDefault, paceStoreRead } from '../data/pace.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { FOES } from '../data/foes.js';
 import { PARTS, START_ASM } from '../data/parts.js';
@@ -12,7 +12,7 @@ import { THEMES } from '../world/world.js';
 import { VARIANTS } from '../world/variants.js';
 import { escHtml } from '../core/html.js';
 
-const KEY = 'mech_cordon_pace';
+const KEY = PACE_KEY;
 const $ = (id) => document.getElementById(id);
 const CFG0 = {
   theme: 'industrial',
@@ -24,7 +24,6 @@ const CFG0 = {
   loop: true,
   god: false,
   ammo: true,
-  strict: false, // 部位判定的「擦過不算」（PACE.strict，render/hit-parts.js）
   aggro: true,
   hand: START_ASM.rarm, // 雙手的手部武器（左右同一把）
   back: START_ASM.rback, // 雙肩的肩部武器
@@ -32,13 +31,15 @@ const CFG0 = {
 const r2 = (x) => Math.round(x * 100) / 100;
 
 function loadStore() {
-  let d = null;
-  try {
-    d = JSON.parse(localStorage.getItem(KEY) || 'null');
-  } catch (e) {}
-  if (!d || typeof d !== 'object' || !d.sets) d = { cur: '預設', sets: { 預設: { v: {}, w: {} } }, cfg: {} };
+  let d = paceStoreRead();
+  if (!d) d = { cur: '預設', sets: { 預設: { v: {}, w: {} } }, cfg: {} };
   if (!d.sets[d.cur]) d.cur = Object.keys(d.sets)[0] || '預設';
   if (!d.sets[d.cur]) d.sets[d.cur] = { v: {}, w: {} };
+  // 舊版的「擦過不算」是戰場設定：搬進當時的設定組（之後每組各自一個，正常遊戲選了那一組也跟著用）
+  if (d.cfg && 'strict' in d.cfg) {
+    if (d.cfg.strict) d.sets[d.cur].strict = true;
+    delete d.cfg.strict;
+  }
   d.cfg = { ...CFG0, ...(d.cfg || {}) };
   return d;
 }
@@ -57,12 +58,68 @@ function clean(set) {
     for (const k in set.w[id]) if (Math.abs(set.w[id][k] - 1) > 1e-4) o[k] = r2(set.w[id][k]);
     if (Object.keys(o).length) w[id] = o;
   }
-  return { v, w };
+  return set.strict ? { v, w, strict: true } : { v, w };
 }
 // 武器清單（不含空的）：手部 arm、肩部 back
 const weaponList = (cat) => (PARTS[cat] || []).filter((d) => d.type !== 'none');
 
+// 從網路收到的設定組：只留數字、限制範圍（房主送來的資料）
+const numMap = (o, lo, hi) => {
+  const r = {};
+  if (o && typeof o === 'object')
+    for (const k of Object.keys(o).slice(0, 80)) {
+      const x = +o[k];
+      if (Number.isFinite(x)) r[String(k).slice(0, 40)] = Math.min(hi, Math.max(lo, x));
+    }
+  return r;
+};
+
 Object.assign(Game.prototype, {
+  // ---------- 正常遊戲的節奏設定組（設定「節奏設定組」ctrl.paceSet；2026-11-18 使用者定案，docs/pace-lab-design.md） ----------
+  // 選的那一組 → this.paceRun（{ n 名稱, v, w, s 擦過不算 }）；每次出擊（clearMission）讀一次，單人在設定畫面改了也重讀；
+  // 多人的客機改用房主開局訊息的 ps（startMissionClient）
+  paceCapture() {
+    const name = (this.ctrl && this.ctrl.paceSet) || '';
+    const d = name ? paceStoreRead() : null;
+    const set = d && d.sets[name];
+    this.paceRun =
+      set && typeof set === 'object'
+        ? { n: name, v: numMap(set.v, 0, 10), w: this.paceW(set.w), s: !!set.strict }
+        : null;
+  },
+  paceW(w) {
+    const r = {};
+    if (w && typeof w === 'object')
+      for (const id of Object.keys(w).slice(0, 80)) r[String(id).slice(0, 40)] = numMap(w[id], 0, 10);
+    return r;
+  },
+  paceFromNet(ps) {
+    if (!ps || typeof ps !== 'object') return null;
+    return { n: String(ps.n || '').slice(0, 24), v: numMap(ps.v, 0, 10), w: this.paceW(ps.w), s: !!ps.s };
+  },
+  // 這個模式套不套用：訓練課程、PvP、過場、渲染風格實驗室、地圖預覽不套用（調整室自己管）
+  paceGameOk() {
+    return !!this.paceRun && !this.paceLab && !this.pvp && !this.tut && !this.lab && !this.cine && !this.mapv;
+  },
+  // 每格（與生成敵人前）把設定組放進 PACE、切換 PACE.on
+  paceSync() {
+    if (this.paceLab) return;
+    const on = this.paceGameOk();
+    if (on && this.paceSrc !== this.paceRun) {
+      const r = this.paceRun;
+      PACE.v = r.v;
+      PACE.w = r.w;
+      PACE.strict = r.s;
+      PACE.name = r.n;
+      PACE.ver++;
+      this.paceSrc = r;
+    }
+    if (PACE.on !== on) {
+      PACE.on = on;
+      PACE.ver++;
+    }
+    if (on && this.lv) this.lvPaceUsed = true; // 自訂關卡：用了設定組的通關不能當上傳的紀錄
+  },
   // 調整室的機體組合：預設機甲＋面板選的手部武器（雙手）與肩部武器（雙肩）
   paceAsm() {
     const c = this.paceLab.cfg;
@@ -99,6 +156,7 @@ Object.assign(Game.prototype, {
     if (this.net && this.net.role) return;
     SFX.init();
     const st = loadStore();
+    saveStore(st); // 舊版資料的搬移（擦過不算搬進設定組）馬上寫回，正常遊戲讀得到
     this.paceLab = {
       st,
       cfg: st.cfg,
@@ -106,16 +164,20 @@ Object.assign(Game.prototype, {
       wait: 0,
       open: { world: true, pmove: true, pshot: true },
     };
+    PACE.lab = true;
+    PACE.name = '';
+    this.paceSrc = null;
     this.paceApplySet();
     PACE.on = true;
-    PACE.strict = !!st.cfg.strict;
     this.paceBuildUi();
     this.paceStart();
   },
   exitPace() {
     if (!this.paceLab) return;
     PACE.on = false;
+    PACE.lab = false;
     PACE.ver++;
+    this.paceSrc = null; // PACE 裡是調整室的值：正常遊戲的設定組重新填入（paceSync）
     this.clearMission();
     this.paceLab = null;
     $('pacePanel').hidden = true;
@@ -130,11 +192,12 @@ Object.assign(Game.prototype, {
       set = P.st.sets[P.st.cur];
     PACE.v = { ...(set.v || {}) };
     PACE.w = JSON.parse(JSON.stringify(set.w || {}));
+    PACE.strict = !!set.strict;
     PACE.ver++;
   },
   paceSave() {
     const P = this.paceLab;
-    P.st.sets[P.st.cur] = clean({ v: PACE.v, w: PACE.w });
+    P.st.sets[P.st.cur] = clean({ v: PACE.v, w: PACE.w, strict: PACE.strict });
     P.st.cfg = P.cfg;
     saveStore(P.st);
   },
@@ -267,7 +330,7 @@ Object.assign(Game.prototype, {
       .map((k) => opt(k, k, P.st.cur))
       .join('');
     const chk = (k, t) =>
-      `<label class="pcChk"><input type="checkbox" data-cfg="${k}"${c[k] ? ' checked' : ''}>${t}</label>`;
+      `<label class="pcChk"><input type="checkbox" data-cfg="${k}"${(k === 'strict' ? PACE.strict : c[k]) ? ' checked' : ''}>${t}</label>`;
     let h = `<div class="pcHead"><b>節奏調整室</b><span class="pcHint">\` 鍵收合　改了馬上生效</span><button data-pa="mini">收合</button></div><div class="pcBody">`;
     h += `<section class="pcSec"><h4>設定組</h4><div class="pcRow"><select data-pa="set">${sets}</select></div>
       <div class="pcRow"><input type="text" maxlength="24" placeholder="名稱（另存新的、改名用）" data-pa="name"></div>
@@ -281,7 +344,7 @@ Object.assign(Game.prototype, {
       <div class="pcRow"><span>敵人</span><select data-cfg="foe">${foes}</select></div>
       <div class="pcRow"><span>台數</span><input type="number" min="1" max="30" step="1" data-cfg="n" value="${c.n}"></div>
       <div class="pcRow pcChks">${chk('ace', '加一台敵對 AC')}${chk('aggro', '一出現就交戰')}${chk('loop', '清完自動補')}${chk('god', '不會被擊破')}${chk('ammo', '彈藥無限')}${chk('strict', '部位判定：擦過不算')}</div>
-      <div class="pcNote">擦過不算：人形機甲的命中只看機體各部位的實際外形（敵我都一樣；玩家的子彈判定稍大）</div>
+      <div class="pcNote">擦過不算：人形機甲的命中只看機體各部位的實際外形（敵我都一樣；玩家的子彈判定稍大）；記在設定組裡</div>
       <div class="pcRow pcBtns"><button class="primary" data-pa="restart">套用戰場並重新開始</button></div></section>`;
     h += `<section class="pcSec pcStats" id="pcStats"></section>`;
     for (const G of PACE_GROUPS) {
@@ -360,6 +423,11 @@ Object.assign(Game.prototype, {
     }
     if (t.dataset.cfg && commit) {
       const k = t.dataset.cfg;
+      if (k === 'strict') {
+        PACE.strict = t.checked; // 擦過不算：記在設定組裡
+        this.paceSave();
+        return;
+      }
       P.cfg[k] =
         t.type === 'checkbox'
           ? t.checked
@@ -367,7 +435,6 @@ Object.assign(Game.prototype, {
             ? Math.max(1, parseInt(t.value) || 1)
             : t.value;
       if (k === 'theme') P.cfg.variant = 'base';
-      PACE.strict = !!P.cfg.strict;
       this.paceSave();
       if (k === 'theme') this.paceRender();
       return;
@@ -405,7 +472,7 @@ Object.assign(Game.prototype, {
       const name = ((nameEl && nameEl.value) || '').trim().slice(0, 24);
       if (!name) return this.flashMsg('先在上面的欄位輸入名稱', 0xffb020, 1.4);
       if (P.st.sets[name] && name !== P.st.cur) return this.flashMsg('已經有同名的設定組', 0xff8a8a, 1.4);
-      const cur = clean({ v: PACE.v, w: PACE.w });
+      const cur = clean({ v: PACE.v, w: PACE.w, strict: PACE.strict });
       if (a === 'ren') delete P.st.sets[P.st.cur];
       P.st.sets[name] = cur;
       P.st.cur = name;
@@ -421,12 +488,17 @@ Object.assign(Game.prototype, {
     } else if (a === 'reset') {
       PACE.v = {};
       PACE.w = {};
+      PACE.strict = false;
       PACE.ver++;
       this.paceSave();
       this.paceRender();
     } else if (a === 'export') {
       io.hidden = false;
-      io.value = JSON.stringify({ name: P.st.cur, ...clean({ v: PACE.v, w: PACE.w }) }, null, 1);
+      io.value = JSON.stringify(
+        { name: P.st.cur, ...clean({ v: PACE.v, w: PACE.w, strict: PACE.strict }) },
+        null,
+        1,
+      );
       io.select();
       try {
         navigator.clipboard.writeText(io.value);
@@ -442,7 +514,7 @@ Object.assign(Game.prototype, {
       try {
         const d = JSON.parse(io.value);
         const name = String(d.name || '匯入').slice(0, 24);
-        P.st.sets[name] = clean({ v: d.v || {}, w: d.w || {} });
+        P.st.sets[name] = clean({ v: d.v || {}, w: d.w || {}, strict: !!d.strict });
         P.st.cur = name;
         this.paceApplySet();
         saveStore(P.st);

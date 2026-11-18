@@ -259,6 +259,7 @@ export class Net {
     this.tr.send(pid, {
       t: 'start',
       pace: g.ctrl.pace || 1,
+      ps: g.pvp ? undefined : g.paceRun || undefined, // 房主的節奏設定組
       rejoin: !!rejoin,
       seed: g.worldSeed,
       theme: g.worldTheme,

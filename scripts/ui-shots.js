@@ -72,6 +72,26 @@ const SHOTS = {
       if (el) el.scrollIntoView({ block: 'center' });
     });
   },
+  // 操作分頁最下面的「遊戲節奏」與「節奏設定組」（選了一組時遊戲節奏停用）
+  'settings-pace': async (page) => {
+    await page.evaluate(() =>
+      localStorage.setItem(
+        'mech_cordon_pace',
+        JSON.stringify({
+          cur: '預設',
+          sets: { 預設: { v: {}, w: {} }, 快節奏・高機動測試組: { v: { time: 1 }, w: {} } },
+        }),
+      ),
+    );
+    await page.click('#btnSettings');
+    await page.click('#setTabs button[data-st="ctrl"]');
+    await page.evaluate(() => {
+      const el = document.getElementById('ctrlPaceSet');
+      el.value = '快節奏・高機動測試組';
+      el.dispatchEvent(new Event('change'));
+      el.scrollIntoView({ block: 'center' });
+    });
+  },
   modal: async (page) => {
     await page.evaluate(() =>
       window.__game.uiConfirm(

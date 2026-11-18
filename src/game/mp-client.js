@@ -28,6 +28,7 @@ Object.assign(Game.prototype, {
     this.isClient = true;
     this.lastClientTick = 0; // 開局後第一次更新重新起算房主失聯（clientTick）
     this.hostPace = d.pace || 1;
+    this.paceRun = d.pvp ? null : this.paceFromNet(d.ps); // 房主的節奏設定組（game/pace-lab.js）
     if (d.pvp) {
       this.pvp = true;
       this.pvpType = d.pvp.type;

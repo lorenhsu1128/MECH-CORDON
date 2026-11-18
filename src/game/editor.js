@@ -1432,7 +1432,13 @@ Object.assign(Game.prototype, {
     this.clearMission();
     if (!ed) return this.openLevels();
     this.state = 'editor';
-    if (success && ed.testFull) {
+    if (success && ed.testFull && this.lvPaceUsed)
+      this.flashMsg(
+        '使用節奏設定組時的通關不算上傳用的紀錄（設定的「節奏設定組」改回不使用再試玩）',
+        0xffb020,
+        4,
+      );
+    else if (success && ed.testFull) {
       ed.L.clear = { by: ed.L.author || this.edAuthorName(), t: +t.toFixed(1), at: Date.now() };
       ed.dirty = true;
     }

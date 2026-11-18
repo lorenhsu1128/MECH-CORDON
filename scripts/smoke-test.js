@@ -24938,6 +24938,18 @@ async function testMultiplayer(browser, url, tag, migrate) {
   const cli = await ctx.newPage();
   watch(host, `${tag}:host`);
   watch(cli, `${tag}:client`);
+  // 節奏設定組（game/pace-lab.js）：房主選了一組、客機沒選 → 客機照房主的（HUD 顯示組名）；倍率幾乎是 1，不影響其他檢查
+  const paceCtrl = (name) => {
+    const c = JSON.parse(localStorage.getItem('mech_cordon_ctrl') || '{}');
+    c.paceSet = name;
+    localStorage.setItem('mech_cordon_ctrl', JSON.stringify(c));
+    localStorage.setItem(
+      'mech_cordon_pace',
+      JSON.stringify({ cur: '多人測試', sets: { 多人測試: { v: { eSight: 1.01 }, w: {} } }, cfg: {} }),
+    );
+  };
+  await host.addInitScript(paceCtrl, '多人測試');
+  await cli.addInitScript(paceCtrl, '');
   await host.goto(url);
   await cli.goto(url);
   await host.click('#btnMP');
@@ -24962,6 +24974,8 @@ async function testMultiplayer(browser, url, tag, migrate) {
   check(await waitVisible(host, 'hudWrap', 30000), '房主出擊');
   check(await waitVisible(cli, 'hudWrap', 30000), '客機出擊');
   await Promise.all([playFor(host, 5000), playFor(cli, 5000)]);
+  const paceHud = await cli.textContent('#hudTop');
+  check((paceHud || '').includes('多人測試'), '客機套用房主的節奏設定組（HUD 顯示組名）');
   const [hHp, cHp] = [await host.textContent('#hpTxt'), await cli.textContent('#hpTxt')];
   check(
     /\d/.test(hHp || '') && /\d/.test(cHp || ''),

@@ -4,6 +4,7 @@ import { SFX } from '../audio/audio.js';
 import { IK, IK_ITEMS, setIK } from '../render/mech-ik.js';
 import { StyleStore } from '../render/style/store.js';
 import { Game } from './game.js';
+import { paceStoreRead } from '../data/pace.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -415,10 +416,27 @@ Object.assign(Game.prototype, {
     const cli = !!(this.net && this.net.role === 'client');
     $('settings').classList.toggle('mpClient', cli);
     $('ctrlPace').disabled = cli;
+    this.renderPaceSet();
     $('ctrlDestruct').disabled = cli;
     this.setMarks();
   },
   // 聲音的音量（ctrl.vol：m 主音量、s 音效、b 配樂、v 語音、u 介面；docs/audio-design.md）：下拉選單，手把左右就能改
+  // 節奏設定組（game/pace-lab.js）：選單列出調整室存的各組；選了一組時「遊戲節奏」由它決定（停用）
+  renderPaceSet() {
+    const el = $('ctrlPaceSet');
+    if (!el) return;
+    const d = paceStoreRead();
+    const names = d ? Object.keys(d.sets) : [];
+    const cur = this.ctrl.paceSet || '';
+    el.innerHTML =
+      '<option value="">不使用（預設）</option>' +
+      names.map((n) => `<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('');
+    el.value = names.includes(cur) ? cur : '';
+    const cli = !!(this.net && this.net.role === 'client');
+    el.disabled = cli;
+    $('ctrlPace').disabled = cli || !!el.value;
+    $('ctrlPace').title = el.value ? '選了節奏設定組：遊戲速度由設定組決定' : '';
+  },
   renderVolSettings() {
     const V = Object.assign({ m: 1, s: 1, b: 1, v: 1, u: 1 }, this.ctrl.vol || {});
     const opts = (x) =>

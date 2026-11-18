@@ -1064,6 +1064,13 @@ Object.assign(Game.prototype, {
       this.ctrl.pace = parseFloat(e.target.value) || 0.75;
       this.saveKeys();
     };
+    // 節奏設定組（game/pace-lab.js）：單人任務中改了馬上生效，多人下次出擊
+    document.getElementById('ctrlPaceSet').onchange = (e) => {
+      this.ctrl.paceSet = e.target.value || '';
+      this.saveKeys();
+      if (!(this.net && this.net.role)) this.paceCapture();
+      this.renderPaceSet();
+    };
     addEventListener('keydown', (e) => {
       if (e.repeat) return;
       SFX.init();

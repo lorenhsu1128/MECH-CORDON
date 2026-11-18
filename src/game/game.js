@@ -497,7 +497,8 @@ export class Game {
     this.gazeTick(); // 眼動追蹤（game/gaze.js）：約 30 Hz 偵測一次臉
     if (this.camp && this.camp.wait) this.campWaitTick(); // 主線多人：轉場中等待隊友（不靠會被節流的計時器）
     if ((this.frames & 15) === 0) this.updateVpad();
-    // 一般任務的節奏設定（ctrl.pace）
+    this.paceSync(); // 節奏設定組（game/pace-lab.js：調整室以外選了一組時）
+    // 一般任務的節奏設定（ctrl.pace；套用節奏設定組時用它的遊戲速度）
     if (this.state === 'play' || this.state === 'ending') {
       const pace = PACE.on
         ? pv('time') // 節奏調整室（data/pace.js）

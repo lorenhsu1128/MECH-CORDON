@@ -70,6 +70,7 @@ Object.assign(Game.prototype, {
     this.hkReset(); // 人員擊殺數（crowd.js）
     this.lvFull = full;
     this.lvOpt = o;
+    this.lvPaceUsed = false; // 用了節奏設定組（paceSync）：試玩的通關不記成上傳用的紀錄
     this.lvBegin(0, null);
   },
   // 第 n 段（0 起）：建地圖、玩家、機能物件、開場的單位，送開局訊息（多人）
@@ -205,6 +206,7 @@ Object.assign(Game.prototype, {
     return {
       t: 'start',
       pace: this.ctrl.pace || 1,
+      ps: this.paceRun || undefined, // 房主的節奏設定組
       rejoin: !!pid,
       seed: this.worldSeed,
       theme: this.worldTheme,
