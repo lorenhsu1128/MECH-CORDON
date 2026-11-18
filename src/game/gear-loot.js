@@ -197,13 +197,20 @@ Object.assign(Game.prototype, {
       color: col,
       transparent: true,
       opacity: 0.5,
-      blending: THREE.AdditiveBlending,
       depthWrite: false,
+      vertexColors: true,
     });
-    const beam = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.22 * MS, 0.32 * MS, 12 * MS, 10, 1, true),
-      beamMat,
-    );
+    // 一般混合、往上漸淡（頂點色的 alpha：底部 1、頂端 0）。2026-11-18 使用者回報：以前是加色，追尾視角從側面看整根，
+    // 疊上亮的天空與泛光變成白色
+    const bg = new THREE.CylinderGeometry(0.22 * MS, 0.32 * MS, 12 * MS, 10, 4, true);
+    const bp = bg.attributes.position,
+      vc = new Float32Array(bp.count * 4);
+    for (let i = 0; i < bp.count; i++) {
+      vc.fill(1, i * 4, i * 4 + 3);
+      vc[i * 4 + 3] = Math.pow(1 - (bp.getY(i) / (12 * MS) + 0.5), 1.6);
+    }
+    bg.setAttribute('color', new THREE.BufferAttribute(vc, 4));
+    const beam = new THREE.Mesh(bg, beamMat);
     beam.position.y = 6 * MS;
     const core = new THREE.Mesh(
       new THREE.OctahedronGeometry(0.55 * MS),

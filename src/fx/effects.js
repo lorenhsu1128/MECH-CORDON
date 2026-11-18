@@ -1902,6 +1902,10 @@ export class Effects {
     const W = Math.max(width * 10, 0.6) * this.k;
     m.setAB(a, b, W);
     const U = m.material.uniforms;
+    // 直立的（增援預告的光柱）：往上漸淡、限制亮度（energy.js 的 uVert），落地時也不再閃到 2.5 倍
+    const vert = b.y - a.y > 0.8 * d;
+    U.uVert.value = vert ? 1 : 0;
+    if (vert) m.material.blending = THREE.NormalBlending;
     const HIT = dl >= 0.33 ? 0.1 : 0,
       life = dl + HIT;
     this.add(m, life, (e, t) => {
@@ -1909,7 +1913,7 @@ export class Effects {
       U.uTime.value = this.time;
       U.uFill.value = Math.min(1, el / Math.max(dl, 0.01));
       const h = el > dl ? 1 - (el - dl) / HIT : 0;
-      U.uOp.value = Math.min(1, el * 12) * (el > dl ? 1 + 1.5 * h : 1);
+      U.uOp.value = Math.min(1, el * 12) * (el > dl && !vert ? 1 + 1.5 * h : 1);
     });
   }
   // 落點預警（迫擊砲）：紅色外圈＋由內往外填滿的圓，dl 秒後填滿，接近落地時閃得更快；R 是世界尺寸（和判定一致）

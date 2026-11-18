@@ -306,7 +306,7 @@ void main() {
 }`;
 const RIB_FS = /* glsl */ `
 uniform vec3 uColor;
-uniform float uOp, uTime, uLen, uKind, uFill;
+uniform float uOp, uTime, uLen, uKind, uFill, uVert;
 varying vec2 vUv;
 ${NOISE}
 void main() {
@@ -341,6 +341,13 @@ void main() {
     c = mix(uColor, vec3(1.0), core * 0.7);
   }
   float ends = smoothstep(0.0, 0.03, vUv.y) * smoothstep(1.0, 0.97, vUv.y);
+  // 直立的光柱（增援預告；2026-11-18 使用者回報追尾視角過曝）：一般混合（effects.js 的 warnLine 換掉加色）、
+  // 往上漸淡、不透明度有上限——加色疊上亮的天空與泛光一定會變成一條白光
+  if (uVert > 0.5) {
+    float k = clamp(a * ends * uOp * pow(1.0 - vUv.y, 1.8), 0.0, 0.62);
+    gl_FragColor = vec4(mix(uColor, vec3(1.0), 0.15), k);
+    return;
+  }
   gl_FragColor = vec4(c * a * ends * uOp, 1.0);
 }`;
 let RIB_GEO = null;
@@ -362,6 +369,7 @@ export function ribbonMat(color, kind = 1) {
       uLen: { value: 10 },
       uKind: { value: kind },
       uFill: { value: 0 },
+      uVert: { value: 0 },
       uA: { value: new THREE.Vector3() },
       uB: { value: new THREE.Vector3(0, 0, -1) },
       uW: { value: 0.5 },
