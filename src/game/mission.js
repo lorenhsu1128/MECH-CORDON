@@ -1,4 +1,5 @@
 // Game：任務流程、敵人生成、道具與支援
+import { PACE, pv } from '../data/pace.js';
 import { SFX } from '../audio/audio.js';
 import { escHtml } from '../core/html.js';
 import { clamp, pick, rnd } from '../core/math.js';
@@ -16,7 +17,7 @@ import {
   enemyScale,
   isBossLevel,
 } from '../data/enemies.js';
-import { CONSUMABLES, FOE_STAB_K, PARTS, partById } from '../data/parts.js';
+import { CONSUMABLES, FOE_STAB_K, PARTS, START_ASM, partById } from '../data/parts.js';
 import { bossDefIndex, freeTier } from '../data/boss-tier.js';
 import { MechEntity } from '../entities/mech-entity.js';
 import { Projectile } from '../entities/projectile.js';
@@ -59,6 +60,7 @@ Object.assign(Game.prototype, {
   },
   useConsumable(slot) {
     if (this.lab) return this.flashMsg('渲染風格實驗室不能使用消耗品', 0xff8a8a, 1);
+    if (this.paceLab) return this.flashMsg('節奏調整室不能使用消耗品', 0xff8a8a, 1);
     if (this.mapv) return this.flashMsg('地圖預覽器不能使用消耗品', 0xff8a8a, 1); // 消耗品的數量在存檔裡
     const p = this.player;
     if (!p || p.dead || p.downed || this.state !== 'play') return;
@@ -304,7 +306,7 @@ Object.assign(Game.prototype, {
   startMission() {
     if (this.srvGate(() => this.startMission())) return; // 伺服器預設組還在讀：讀完再進來（local-lib.js）
     const S = this.save;
-    const L = S.level;
+    const L = this.paceLab ? this.paceLab.cfg.level : S.level; // 節奏調整室（game/pace-lab.js）的等級
     const mp0 = !!(this.net && this.net.role === 'host');
     // 多人主線：房主的進度（campaign-mp.js）
     if (mp0 && this.net.pvpSet && this.net.pvpSet.mode === 'story')
@@ -314,13 +316,13 @@ Object.assign(Game.prototype, {
     // 多人的任務（房主的作戰設定，free-ops.js）
     if (mp0 && this.net.pvpSet && this.net.pvpSet.mode === 'ops') return this.foBegin();
     // 空域（空戰，game/air.js）：只有單人；Boss 關只排空中要塞
-    const air0 = !mp0 && this.mapPref() === 'airspace';
+    const air0 = !mp0 && !this.paceLab && this.mapPref() === 'airspace';
     const pvp0 = !!(mp0 && this.net.pvpSet && this.net.pvpSet.mode === 'pvp');
-    const boss = isBossLevel(L) && !pvp0;
+    const boss = isBossLevel(L) && !pvp0 && !this.paceLab;
     const bd0 = boss ? (air0 ? this.airBossDef() : bossForLevel(L)) : null;
     this.clearMission();
     // 地圖：單人用車庫選的，多人用房主在大廳選的；沒選（隨機）或不認得時隨機
-    const want = mp0 ? (this.net.pvpSet || {}).map : this.mapPref();
+    const want = this.paceLab ? this.paceLab.cfg.theme : mp0 ? (this.net.pvpSet || {}).map : this.mapPref();
     // 有些 Boss 不能在某些地圖（例：會鑽地、衝撞的 Boss 不排在有虛空的地圖）：主題的 bossBan
     // 武裝列車只排在允許鐵路的地圖
     const fits = (k) =>
@@ -342,7 +344,7 @@ Object.assign(Game.prototype, {
     this.styleRefresh(); // 渲染風格只在出擊時套用，任務中不換
     const variant = this.resolveVariant(
       theme,
-      mp0 ? (this.net.pvpSet || {}).variant : this.variantPref(),
+      this.paceLab ? this.paceLab.cfg.variant : mp0 ? (this.net.pvpSet || {}).variant : this.variantPref(),
       bd0,
     );
     // 武裝列車：地圖一定有鐵路（客機收到開局訊息的地形特徵，跟著一致）
@@ -351,8 +353,9 @@ Object.assign(Game.prototype, {
       variant,
       open: bd0 ? 1 : undefined, // Boss 關：地圖物件少一點，不會一直擋住 Boss 的攻擊（World.openArena）
       // 大地圖與邊緣進場（docs/map-pacing-design.md）：一般戰鬥才有，Boss 關、PvP、空域照舊
-      big: !bd0 && !pvp0 && !air0 ? 1 : undefined,
-      edge: !bd0 && !pvp0 && !air0 ? 1 : undefined,
+      // 節奏調整室：一般大小、從中間出發（很快就打得到）
+      big: !bd0 && !pvp0 && !air0 && !this.paceLab ? 1 : undefined,
+      edge: !bd0 && !pvp0 && !air0 && !this.paceLab ? 1 : undefined,
     });
     this.isClient = false;
     const mp = !!(this.net && this.net.role === 'host');
@@ -382,12 +385,13 @@ Object.assign(Game.prototype, {
       for (const e of this.players)
         this.mpStats[e.slot] = { kills: 0, dmg: 0, rev: 0, taken: 0, xp: 0, pf: {} };
     } else {
-      this.player = new MechEntity(this, S.asm, this.myPal(), {
+      // 節奏調整室：一律是預設機甲的組合、沒有駕駛員技能與零件品級（乾淨的基準，2026-11-18 使用者定案）
+      this.player = new MechEntity(this, this.paceLab ? { ...START_ASM } : S.asm, this.myPal(), {
         team: 'player',
         name: 'KEYSTONE',
         palKey: this.myPalKey(),
         slot: 0,
-        pilot: this.pilotLocalMods('pve'),
+        pilot: this.paceLab ? undefined : this.pilotLocalMods('pve'),
       });
       this.placeStart(this.player);
       this.players = [this.player];
@@ -416,11 +420,13 @@ Object.assign(Game.prototype, {
     if (air) this.airBegin(); // 空域：玩家進入飛行狀態（game/air.js）
     if (boss) this.spawnBossDef(bd0, scaleHp, scaleDmg, freeTier(bossIndexForLevel(L)));
     else if (air) this.airSpawn(L, scaleHp, scaleDmg);
+    else if (this.paceLab)
+      this.paceSpawn(np, scaleHp, scaleDmg); // 節奏調整室：選的編成
     else this.spawnComp(this.foeMix(this.rollComp(L, np), theme, 0, true), np, scaleHp, scaleDmg);
     this.scaleHp = scaleHp;
     this.scaleDmg = scaleDmg;
     if (boss && air) this.airBossSetup(); // 空中要塞移到空中、島上的防空砲
-    if (!boss && !air) this.outpostsPlan(L); // 據點與補給箱
+    if (!boss && !air && !this.paceLab) this.outpostsPlan(L); // 據點與補給箱
     this.devPlan(); // 地圖互動裝置（devices.js）
     this.hkReset(); // 人員擊殺數（crowd.js）
     this.lootReset(); // 這次出擊拿到的素材與零件（loot.js）
@@ -588,7 +594,7 @@ Object.assign(Game.prototype, {
     this.camTarget.copy(p);
   },
   rollComp(L, np) {
-    let pts = (6 + L * 2.2) * np;
+    let pts = (6 + L * 2.2) * np * pv('eCount'); // 節奏調整室的數量倍率（調整室以外＝1）
     const comp = [];
     const types = Object.keys(ENEMY_TYPES).filter((k) => !(k === 'ac' || ENEMY_TYPES[k].roster));
     let guard = 0;
@@ -884,6 +890,11 @@ Object.assign(Game.prototype, {
     if (this.spawnIdle && !e.guardOf && e.senseOn()) e.senseInit(true);
     if (this.encG !== null && this.encG !== undefined) e.encG = this.encG; // 分群（encounters.js）
     if (e.af) this.afSpawned(e); // 詞綴的指揮（game/affix.js）
+    // 節奏調整室的敵人血量（data/pace.js）：生成時乘上
+    if (PACE.on && e.team === 'enemy') {
+      e.maxHp *= pv('eHp');
+      e.hp = e.maxHp;
+    }
     this.registerSpawn(e);
     e.yaw = e.aimYaw = Math.atan2(-(0 - sp.x), -(0 - sp.z));
     e.mesh.position.copy(e.pos);
@@ -893,6 +904,7 @@ Object.assign(Game.prototype, {
     return e;
   },
   onEnemyKilled(e, from) {
+    if (this.paceLab) return this.paceKill(e); // 節奏調整室：只記統計，不寫存檔
     if (this.lab || this.cine || this.mapv) return; // 渲染風格實驗室的模擬戰鬥、過場動畫、地圖預覽器：不計入存檔
     if (this.range) {
       this.fbKill(e, from); // 靶場：只有擊破音與連殺，不計入存檔
@@ -979,6 +991,7 @@ Object.assign(Game.prototype, {
     }
   },
   onPlayerDead() {
+    if (this.paceLab) return this.paceDead(); // 節奏調整室：重新出場
     if (this.lab || this.cine || this.mapv) return; // 實驗室：由 labTick 重新空降（過場動畫不會倒下；地圖預覽器無敵）
     if (this.range) return this.rangePlayerDead(); // 靶場：重新出場
     if (this.tut) return; // 近戰訓練：不會被擊破（tutSaveEnt）

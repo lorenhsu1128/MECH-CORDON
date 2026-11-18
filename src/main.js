@@ -43,6 +43,7 @@ import './game/pad-ui.js';
 import './game/pvp.js';
 import './game/mp-models.js';
 import './game/style-lab.js';
+import './game/pace-lab.js'; // 遊戲節奏調整室
 import './game/lab-demo.js';
 import './game/map-view.js';
 import './game/map-view-foes.js';

@@ -1,6 +1,7 @@
 // Game：一般戰鬥的增援波次——編成分成 3～5 波，場上的敵人剩下少數時派出下一波：
 // 從作戰區域邊緣進入，或由運輸機空降到玩家附近；出現前 ECHO 預告方向（依各自的鏡頭換算成幾點鐘方向）、
 // 地點立起紅色光柱、畫面邊緣顯示指示。派出與生成只在房主／單機，客機收到 'wave' 事件只做顯示。
+import { pv } from '../data/pace.js';
 import { SFX } from '../audio/audio.js';
 import { clamp, pick, rnd } from '../core/math.js';
 import { DS } from '../core/scale.js';
@@ -68,7 +69,7 @@ Object.assign(Game.prototype, {
           ).length;
     const thr = Math.max(1, Math.round((this.waveSize || 3) * 0.34));
     if (fighters > thr) {
-      this.waveGap = WAVE_GAP;
+      this.waveGap = WAVE_GAP * pv('eGap'); // 節奏調整室的增援間隔
       return;
     }
     this.waveGap -= dt * (fighters === 0 ? 2 : 1);

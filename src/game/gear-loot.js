@@ -31,6 +31,7 @@ Object.assign(Game.prototype, {
   },
   // ---------- 敵人身上的零件（spawnEnemy 呼叫，生成前） ----------
   gearEnemy(o) {
+    if (this.paceLab) return; // 節奏調整室：敵人身上的零件沒有品級（不要任何加成，2026-11-18 使用者定案）
     if (!this.lootOn() || !o.asm || o.grunt || o.modelKind || (o.team && o.team !== 'enemy')) return;
     const [lo, hi] = enemyQRange(this.gearCh(), !!o.isBoss);
     const gr = {},

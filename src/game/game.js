@@ -1,6 +1,7 @@
 // ============================================================
 //  GAME
 // ============================================================
+import { PACE, pv } from '../data/pace.js';
 import { SFX } from '../audio/audio.js';
 import { clamp } from '../core/math.js';
 import { DS, MS } from '../core/scale.js';
@@ -498,7 +499,11 @@ export class Game {
     if ((this.frames & 15) === 0) this.updateVpad();
     // 一般任務的節奏設定（ctrl.pace）
     if (this.state === 'play' || this.state === 'ending') {
-      const pace = this.net && this.net.role === 'client' ? this.hostPace || 1 : this.ctrl.pace || 1;
+      const pace = PACE.on
+        ? pv('time') // 節奏調整室（data/pace.js）
+        : this.net && this.net.role === 'client'
+          ? this.hostPace || 1
+          : this.ctrl.pace || 1;
       dt *= pace;
       this.lastDt = dt;
     }
@@ -716,7 +721,9 @@ export class Game {
       this.playersAlive().length &&
       this.state === 'play'
     ) {
-      if (this.camp) {
+      if (this.paceLab) {
+        this.paceCleared(); // 節奏調整室：補下一批（game/pace-lab.js）
+      } else if (this.camp) {
         if (!this.camp.cleared) this.campCleared(); // 主線：開出口，最後一段才結束
       } else if (this.sim) {
         this.state = 'ending';
@@ -733,6 +740,7 @@ export class Game {
       this.campTick(dt);
       if (!this.player) return; // 走進出口：已經轉場
     }
+    if (this.paceLab) this.paceTick(dt); // 節奏調整室
     if (this.range) this.rangeTick(dt); // 靶場（range.js）
     if (this.tut) this.tutTick(dt); // 近戰訓練（tutorial.js）
     this.updateCamera(dt);

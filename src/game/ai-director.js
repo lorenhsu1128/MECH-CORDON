@@ -3,6 +3,7 @@
 // 權杖：每個目標同時最多 TOKEN_MAX 台主攻（權重合計不超過預算），沒拿到的退到外圈壓制；優先給玩家看得到的、
 // 和其他主攻不同種類的、等最久的。敵對 AC 一律主攻（在場時其他人的預算少 1）。
 // 節奏導演：最近 STRESS_T 秒受到的傷害與目前 AP 算出壓力 0～1，壓力高時預算與主攻數變少。
+import { pv } from '../data/pace.js';
 import { clamp, lerp, rnd } from '../core/math.js';
 import { DS } from '../core/scale.js';
 import {
@@ -64,7 +65,7 @@ Object.assign(Game.prototype, {
   aiFireNoise(src, type) {
     src.firedT = 0.6;
     this.playerFiredAt = 0.3; // 敵人的閃避（房主處理客機開火時也算）
-    this.aiNoise(src, NOISE[type] || 40);
+    this.aiNoise(src, (NOISE[type] || 40) * pv('eSight'));
   },
   aiRelease(e) {
     const sn = e.sn;
@@ -159,7 +160,7 @@ Object.assign(Game.prototype, {
       // 敵對 AC 在場時其他人的名額與預算都少 1（至少 1 台）
       // 被標定（狀態效果 spotted）的目標：名額與預算各多 1
       const spot = t.sts && t.sts.spotted ? 1 : 0;
-      const maxN = Math.max(1, (stress > 0.6 ? 2 : TOKEN_MAX) - (aces.length ? 1 : 0)) + spot;
+      const maxN = Math.max(1, (stress > 0.6 ? 2 : TOKEN_MAX) * pv('eToken') - (aces.length ? 1 : 0)) + spot;
       if (aces.length) budget -= 1;
       budget += spot;
       const others = list.filter((e) => !e.ace);

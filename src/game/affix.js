@@ -38,7 +38,7 @@ Object.assign(Game.prototype, {
   },
   // spawnType 建好的生成參數 o 加上詞綴（房主／單機）：位元、名稱、AP、速度；回傳 o
   afApply(o, d, t) {
-    if (this.isClient || !this.afOn() || !affixable(d, t) || this.isBossLevel) return o;
+    if (this.isClient || this.paceLab || !this.afOn() || !affixable(d, t) || this.isBossLevel) return o; // 節奏調整室：沒有加成
     let mask = 0;
     const fa = this.camp && this.camp.free && this.camp.free.affix; // 自由出擊的作戰設定：off／auto／all
     if (fa === 'off') return o;

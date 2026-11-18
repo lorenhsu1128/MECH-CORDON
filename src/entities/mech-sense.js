@@ -3,6 +3,7 @@
 // 前往最後已知位置）。感知：視覺距離＋視角＋視線（World.losBlocked），察覺量表滿了才交戰；受到攻擊直接交戰。
 // 交戰中每 LOS_DT 秒檢查視線；看不到時用附近友軍共享的目標位置，整隊都看不到 LOST_T 秒才搜索；敵對 AC 一直知道目標在哪。
 // 仇恨：受到的傷害（AP 比例）＋距離＋玩家正鎖定我，目前的目標有黏著倍率。只在房主／單機執行；狀態以 sx 之外的 aw 同步顯示。
+import { pv } from '../data/pace.js';
 import { clamp, rnd } from '../core/math.js';
 import { DS } from '../core/scale.js';
 import {
@@ -56,7 +57,7 @@ Object.assign(MechEntity.prototype, {
     this.sn = {
       on: true,
       st: idle ? 0 : 2,
-      sight: D.sight,
+      sight: D.sight * pv('eSight'), // 節奏調整室的察覺範圍
       fov: (D.fov * Math.PI) / 180,
       meter: 0,
       kn: null, // 最後已知的目標位置

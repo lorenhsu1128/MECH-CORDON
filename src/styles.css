@@ -11786,3 +11786,145 @@ body.vpad #lockHint {
     display: none;
   }
 }
+
+/* 遊戲節奏調整室（game/pace-lab.js）：右側的調整面板，遊戲照常進行 */
+#pacePanel {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  bottom: 8px;
+  width: 360px;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(6px);
+  pointer-events: auto;
+  font-size: 12px;
+  z-index: 60;
+}
+#pacePanel[hidden] {
+  display: none;
+}
+/* 面板在右側：武器的 HUD 移到面板左邊 */
+body.paceLab #weapons {
+  margin-right: 372px;
+}
+#pacePanel.mini {
+  bottom: auto;
+  width: auto;
+}
+#pacePanel.mini .pcBody {
+  display: none;
+}
+#pacePanel .pcHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+}
+#pacePanel .pcHint {
+  flex: 1;
+  opacity: 0.6;
+  font-size: 11px;
+}
+#pacePanel .pcBody {
+  overflow-y: auto;
+  padding: 4px 10px 10px;
+}
+#pacePanel .pcSec {
+  border-bottom: 1px solid var(--line);
+  padding: 6px 0;
+}
+#pacePanel h4 {
+  margin: 4px 0;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#pacePanel .pcRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+}
+#pacePanel .pcRow > span {
+  width: 44px;
+  opacity: 0.75;
+}
+#pacePanel .pcRow select,
+#pacePanel .pcRow input[type='number'],
+#pacePanel .pcRow input[type='text'] {
+  flex: 1;
+  min-width: 0;
+}
+#pacePanel .pcBtns {
+  flex-wrap: wrap;
+}
+#pacePanel .pcBtns button,
+#pacePanel h4 button,
+#pacePanel .pcHead button {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+#pacePanel .pcChks {
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+#pacePanel .pcIo {
+  width: 100%;
+  height: 120px;
+  font: 11px monospace;
+}
+#pacePanel .pcSl {
+  display: grid;
+  grid-template-columns: 92px 1fr 52px 22px;
+  align-items: center;
+  gap: 6px;
+  margin: 3px 0;
+}
+#pacePanel .pcSl.mod .pcN {
+  color: var(--acc);
+}
+#pacePanel .pcSl.mod .pcN::after {
+  content: ' •';
+}
+#pacePanel .pcSl input[type='number'] {
+  width: 52px;
+}
+#pacePanel .pcSl button {
+  padding: 0;
+  width: 22px;
+}
+#pacePanel .pcGrid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 10px;
+}
+#pacePanel .pcGrid b {
+  text-align: right;
+}
+#pacePanel .pcNote {
+  opacity: 0.65;
+  font-size: 11px;
+  margin-top: 4px;
+}
+@media (max-height: 540px) {
+  #pacePanel {
+    width: 300px;
+  }
+}
+/* 觸控（平板、手機）：面板避開上方的暫停鍵、蓋在觸控按鈕上面（調好收合再操作）；一開始是收合的 */
+body.vpad #pacePanel {
+  top: 72px;
+  bottom: 8px;
+  width: min(360px, 52vw);
+  z-index: 80;
+}
+body.vpad #pacePanel.mini {
+  bottom: auto;
+  width: auto;
+}

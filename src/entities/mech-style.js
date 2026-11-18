@@ -8,7 +8,8 @@ import { tierRow } from '../data/boss-tier.js';
 Object.assign(MechEntity.prototype, {
   syOn() {
     const g = this.game;
-    return this.pilotEnt() && !g.pvp && !g.cine && !(g.net && g.net.role === 'client');
+    // 節奏調整室：沒有風格評價（ACS 回復的加成）
+    return this.pilotEnt() && !g.pvp && !g.cine && !g.paceLab && !(g.net && g.net.role === 'client');
   },
   syState() {
     if (!this.sy) this.sy = { pts: 0, idle: 0, hist: [], labels: [], rank: -1, cls: '', sendT: 0 };

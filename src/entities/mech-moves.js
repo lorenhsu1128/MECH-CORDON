@@ -2,6 +2,7 @@
 // 每個招式分三段：準備（預警：槍口閃光、瞄準線、落點圈、路線）→ 出手 → 收招（不開火，部分招式有破綻＝受傷 ×1.25）。
 // 準備中被打出失衡就中斷。預警都用會轉送給客機的 fx（warnLine、warnRect、flash、spark；落點圈另送 warn 事件），
 // 所以多人不用改協定。只在房主／單機執行。
+import { pv } from '../data/pace.js';
 import { SFX } from '../audio/audio.js';
 import { usesAmmo } from '../data/parts.js';
 import { clamp, rnd } from '../core/math.js';
@@ -80,7 +81,7 @@ Object.assign(MechEntity.prototype, {
       if (!sn.mv) return null;
     }
     const mv = sn.mv;
-    mv.t += dt;
+    mv.t += mv.ph === 'wind' ? dt / pv('eWarn') : dt; // 節奏調整室的預警時間：準備的時間拉長
     mv.fxT -= dt;
     r.skip = true;
     const f = this['mv_' + mv.k];
@@ -111,7 +112,7 @@ Object.assign(MechEntity.prototype, {
       if (lead.length() > 6 * DS) lead.setLength(6 * DS);
       mv.p = pl.pos.clone().add(lead);
       mv.p.y = g.world.groundAt(mv.p.x, mv.p.z, mv.p.y + 2 * MS);
-      g.fx.warnCircle(mv.p, 5 * MS, 1.9, 0xff7020);
+      g.fx.warnCircle(mv.p, 5 * MS, 1.9 * pv('eWarn'), 0xff7020);
       g.netEv({ t: 'warn', p: mv.p.toArray().map((x) => +x.toFixed(2)), R: 5 * MS, dl: 1.9, c: 0xff7020 });
     } else if (mv.k === 'strafeRun') {
       const a = this.pos.clone().setY(0),
@@ -124,7 +125,7 @@ Object.assign(MechEntity.prototype, {
       const L = a.distanceTo(mv.end);
       const c = a.clone().lerp(mv.end, 0.5);
       c.y = g.world.terrainHeight(c.x, c.z);
-      g.fx.warnRect(c, Math.atan2(-dir.x, -dir.z), 5 * MS, L, 1.1, 0xff4020);
+      g.fx.warnRect(c, Math.atan2(-dir.x, -dir.z), 5 * MS, L, 1.1 * pv('eWarn'), 0xff4020);
     } else if (mv.k === 'charge') SFX.play('charge', 0.5, 1.2, 0, 0, this.center());
     else if (mv.k === 'sweep') mv.side = Math.random() < 0.5 ? 1 : -1;
     else if (mv.k === 'dash') {

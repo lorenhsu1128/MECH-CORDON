@@ -1,3 +1,4 @@
+import { pv } from '../data/pace.js';
 import { KIN_FALL_MIN, weaponAttr } from '../data/attrs.js';
 import { weaponById } from '../data/parts.js';
 // ============================================================
@@ -185,12 +186,13 @@ export class Projectile {
     let best = null,
       bestT = 2;
     const pad = 0.4 + (this.hitR || 0); // hitR：玩家實彈加大的判定（對物件不加：物件用命中形狀，world/prop-hit.js）
+    const eK = this.team === 'enemy' ? pv('eSize') : 1; // 節奏調整室的敵人子彈大小（data/pace.js）
     for (let li = 0; li < 2; li++) {
       const L = li ? ds : hs;
       for (let i = 0; i < L.length; i++) {
         const t = L[i];
         if (t.dead || t.id === this.pierced) continue; // 貫穿彈已經打過的（mech-legend.js）
-        const tt = targetSegT(t, prev, seg, pad);
+        const tt = targetSegT(t, prev, seg, eK === 1 || li ? pad : (t.radius + pad) * eK - t.radius);
         if (tt >= 0 && tt < bestT) {
           best = t;
           bestT = tt;

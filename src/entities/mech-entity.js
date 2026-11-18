@@ -82,6 +82,7 @@ import { applyPilotStats, pilotWeaponDef } from '../data/pilot.js';
 import { MeleeAnim } from '../render/melee-anim.js';
 import { animateMech, buildMech, mechFlash } from '../render/mech-model.js';
 import { rigMuzzle } from '../render/muzzle.js';
+import { PACE, paceDef, pk, pv } from '../data/pace.js';
 import { applyIK, ikMeasure, ikOn, ikRestore } from '../render/mech-ik.js';
 import { hrBodyRestore } from '../render/hit-react-pose.js';
 import { dmgOn } from '../render/foe-damage.js';
@@ -407,6 +408,7 @@ export class MechEntity {
   }
   // 頓格：自己（與 other）在 sec 秒內時間放慢到 HITSTOP_K（move／remoteUpdate）；全場不變慢
   hitStopLocal(sec, other) {
+    sec *= pk(this, 'pStop'); // 節奏調整室的頓格
     if (!(sec > 0)) return;
     this.hsT = Math.max(this.hsT || 0, sec);
     if (other && other !== this && !other.dead && other.hitStopLocal)
@@ -632,7 +634,7 @@ export class MechEntity {
 
   fire(slot, targetPos, targetEnt) {
     const w = this.weapons[slot],
-      d = w.def,
+      d = paceDef(this, w.def), // 節奏調整室的倍率（data/pace.js；調整室以外原樣）
       g = this.game;
     if (d.type === 'none' || d.type === 'shield') return false;
     if (this.devMount) return false; // 在固定砲台上：自己的武器不能用（game/devices-guns.js）
@@ -692,6 +694,8 @@ export class MechEntity {
       return false;
     }
     const muzzle = this.muzzleSafe(slot, this.muzzle(slot)); // 槍口（貼牆時退回牆前）
+    if (g.paceLab && g.paceLab.stats && this.pilotEnt() && d.type !== 'melee')
+      g.paceLab.stats.shots += d.type === 'shotgun' ? d.pellets || 1 : d.type === 'missile' ? 0 : 1; // 節奏調整室的命中率
     const from = this.center();
     if (this.pilotEnt()) g.aiFireNoise(this, d.type); // 開火的聲音（敵人起疑，game/ai-director.js）
     if (this.pm) this.lgFired(d, targetEnt); // 傳說模組「浮游砲『回聲』」（mech-legend.js）
@@ -728,11 +732,12 @@ export class MechEntity {
     // 霰彈：理想射程以內越近越集中
     const near = d.near ? clamp(distT / (d.ideal || 14 * this.dk), 0.45, 1) : 1;
     // 邊閃邊打（data/ranged.js、mech-ranged.js）：QB、完美 QB 反擊、最高點、落地、繞射的加成，只給玩家操作的機體
-    const rb = this.pilotEnt() && RB_TYPES.has(d.type) ? this.rbShot() : null;
+    const noBonus = !!g.paceLab; // 節奏調整室：沒有任何加成（邊閃邊打、蓄力的強力彈）
+    const rb = this.pilotEnt() && RB_TYPES.has(d.type) && !noBonus ? this.rbShot() : null;
     if (rb && this.game.tut) this.tutE('rbFire', { tags: rb.tags, slot }); // 遠程訓練（tutorial-ranged.js）：開火時的加成
     // 蓄力射擊（data/charge.js、mech-charge.js）：這一發是不是強力彈
     if (this.pilotEnt()) this.pwLast = { e: tgtOk ? targetEnt : null, p: targetPos.clone() };
-    const pwfx = this.pilotEnt() ? this.pwShot(slot, w, d) : null;
+    const pwfx = this.pilotEnt() && !noBonus ? this.pwShot(slot, w, d) : null;
     const pwK = pwfx ? (this.pwFollow ? this.pwFollow.k : this.pwKind(d)) : null;
     const spread =
       (d.spread || 0) *
@@ -755,7 +760,7 @@ export class MechEntity {
     const pilot = this.pilotEnt();
     const dk = pilot ? 1 : d.npcK || 1;
     const pwN = pwK === 'slug' ? d.pellets || 1 : 1; // 獨頭彈＝所有彈丸合成一發
-    const arK = pilot && w.arN > 0 ? FEEL.AR_DMG : 1; // 主動裝填成功的彈匣（mech-feel.js）
+    const arK = pilot && w.arN > 0 && !noBonus ? FEEL.AR_DMG : 1; // 主動裝填成功的彈匣（mech-feel.js）
     const lgK = this.pm ? this.lgShotK(d, w) : 1; // 模組「補給回收」、極致技能「終彈」（mech-legend.js）
     const gk = this.gx ? this.gearShotK(slot, w, d, distT, rb, tgtOk ? targetEnt : null) : null; // 零件品級的詞條（mech-gear.js）
     const dmg =
@@ -1568,12 +1573,19 @@ export class MechEntity {
   pqbDodge(from) {
     if (!from || from.team === this.team || !this.pilotEnt()) return false;
     if (this.cueArmed('q', from)) return true;
-    return !this.game.pvp && this.t - (this.qbStartT === undefined ? -9 : this.qbStartT) <= PQB_WIN;
+    return (
+      !this.game.pvp &&
+      this.t - (this.qbStartT === undefined ? -9 : this.qbStartT) <= PQB_WIN * pk(this, 'pPqb')
+    );
   }
   // 完美 QB：躲掉敵人的攻擊 → 接下來的第一下近戰加強；單人時畫面短暫變慢（force＝pqbDodge 已經判定過）
   pqbCheck(from, force) {
     if (!this.pilotEnt() || !from || from.team === this.team || this.pqbCD > 0) return;
-    if (!force && !(this.t - (this.qbStartT === undefined ? -9 : this.qbStartT) <= PQB_WIN)) return;
+    if (
+      !force &&
+      !(this.t - (this.qbStartT === undefined ? -9 : this.qbStartT) <= PQB_WIN * pk(this, 'pPqb'))
+    )
+      return;
     const g = this.game;
     this.pqbT = PQB_BUFF;
     this.pqbCD = 0.6;
@@ -1841,7 +1853,7 @@ export class MechEntity {
     // 拳擊：前 30% 瞬間衝刺；其他近戰前 60%；至少衝到出手的時間點（判定從那裡開始）
     const burst = Math.max(d.id === 'w_fist' ? 0.3 : 0.6, (m.strike || 0) + 0.03);
     // 突進的距離照招式（dash × 突進倍率）：每格離散會少衝一截，突進結束的那一格補足（m.dashGone＝已經衝了多少）
-    const dashTot = st.dash * (m.lungeK || 1),
+    const dashTot = st.dash * (m.lungeK || 1) * pk(this, 'pLunge'),
       gone = m.dashGone || 0;
     let dashSpd = 0;
     if (gone < dashTot && dt > 0)
@@ -1875,7 +1887,7 @@ export class MechEntity {
       g.tempWallMelee(
         c,
         st.reach * this.scale + 1.0,
-        st.dmg * this.dmgMul * this.stats.parts.arms.melee,
+        st.dmg * this.dmgMul * this.stats.parts.arms.melee * pk(this, 'pMelee'),
         m.hit,
       ); // 臨時障礙物
       for (const t of targets) {
@@ -1897,7 +1909,7 @@ export class MechEntity {
         if (t.isProp) {
           g.damageProp(
             t,
-            st.dmg * mk * this.dmgMul * this.stats.parts.arms.melee,
+            st.dmg * mk * this.dmgMul * this.stats.parts.arms.melee * pk(this, 'pMelee'),
             st.impact,
             hp,
             this,
@@ -1910,7 +1922,7 @@ export class MechEntity {
         m.hitAny = true;
         const stag0 = t.staggerT > 0;
         t.takeDamage(
-          st.dmg * mk * this.dmgMul * this.stats.parts.arms.melee,
+          st.dmg * mk * this.dmgMul * this.stats.parts.arms.melee * pk(this, 'pMelee'),
           st.impact * mk * (m.impK || 1) * this.dmgMul,
           this,
           hp,
@@ -1928,7 +1940,8 @@ export class MechEntity {
           },
           d.id,
         );
-        if (this.pm) this.lgMeleeHit(t, st.dmg * mk * this.dmgMul * this.stats.parts.arms.melee, d); // 極致技能「電弧刃」
+        if (this.pm)
+          this.lgMeleeHit(t, st.dmg * mk * this.dmgMul * this.stats.parts.arms.melee * pk(this, 'pMelee'), d); // 極致技能「電弧刃」
         g.fx.meleeHit(hp, d.color, !!st.finisher, m.dir, {
           sw,
           s: HITSTOP[wgt],
@@ -1990,9 +2003,9 @@ export class MechEntity {
           this.meleeGrace = {
             slot: m.slot,
             stage: m.stage,
-            t: A.grace,
+            t: A.grace * pk(this, 'pChain'),
             target: m.target,
-            T: A.grace,
+            T: A.grace * pk(this, 'pChain'),
             dur: st.dur,
           };
         m.active = false;
@@ -2122,7 +2135,7 @@ export class MechEntity {
     }
     const dt = Math.min(1, Math.max(0, now - this.trkT));
     this.trkT = now;
-    this.trkV.lerp(t.vel, 1 - Math.exp(-trackRate(this.stats.parts.arms.aim) * dt));
+    this.trkV.lerp(t.vel, 1 - Math.exp(-trackRate(this.stats.parts.arms.aim) * pk(this, '', 'eReact') * dt)); // 節奏調整室的敵人反應速度
     return this.trkV;
   }
   // 攔截點：目標中心＋追蹤速度 × 飛行時間 × 預判準度
@@ -2275,7 +2288,7 @@ export class MechEntity {
       if (melee.stun > 0 && !this.pilotEnt() && !this.isBoss && this.ai !== 'part' && !this.isProp) {
         const kind = this.ace || this.ai === 'ac' || this.isElite ? 'ace' : '';
         const s = kind === 'ace' ? Math.min(melee.stun, STUN_ACE) : melee.stun;
-        this.hitStunT = Math.max(this.hitStunT || 0, s);
+        this.hitStunT = Math.max(this.hitStunT || 0, s * pk(this, '', 'eStun'));
       }
       if (dir) {
         const kb = melee.kb * (this.isBoss ? 0.2 : 1);
@@ -2346,7 +2359,7 @@ export class MechEntity {
       mul = directOf(W) + (from && from.pmv ? from.pmv('stagDmg') : 0) + this.pmv('stagTaken');
       // 失衡連攜：打出失衡的人改用不同種類的武器打 → 直擊補正再 ×LINK_K
       const sb = this.stagBy;
-      if (sb && from && from.id === sb.id && cls && cls !== sb.cls) {
+      if (sb && from && from.id === sb.id && cls && cls !== sb.cls && !this.game.paceLab) {
         mul *= LINK_K;
         if (!sb.shown && from.team === 'player') {
           sb.shown = true;
@@ -2413,6 +2426,12 @@ export class MechEntity {
     let take = this.pm && real > 0 ? this.lgBufTake(real, from) : real; // 傳說模組「緩衝裝甲」：一部分改成慢慢扣
     if (this.isBoss && take > 0) take = this.tierGate(take); // Boss 的型態閘門：傷害不溢出型態門檻（mech-boss-tier.js）
     this.hp -= take;
+    // 節奏調整室的統計（game/pace-lab.js）：玩家受到的傷害、玩家打中的次數
+    if (this.game.paceLab && take > 0) {
+      const S = this.game.paceLab.stats;
+      if (S && this.pilotEnt()) S.taken += take;
+      else if (S && from && from.pilotEnt && from.pilotEnt() && !melee) S.hits++;
+    }
     if (take > 0 && from && from !== this) {
       if (this.team === 'player')
         this.scarHit(take, from); // 結構損傷（mech-boss-tier.js）
@@ -2456,7 +2475,7 @@ export class MechEntity {
       if (guard) this.acs = Math.min(this.acs, this.acsMax * STAG_GUARD_CAP);
       this.acsDecayDelay = pve ? PVE_ACS_DELAY : 1.2;
       // Boss 改版的 A：每打出一次失衡，下一次需要的 ACS 變多、失衡時間變短（換型態重置，mech-boss-tier.js）
-      if (this.acs >= this.acsMax * this.tierAcsK()) {
+      if (this.acs >= this.acsMax * this.tierAcsK() * pk(this, '', 'eStab')) {
         const over = this.acs - this.acsMax * this.tierAcsK(); // 超過門檻的衝擊（傳說模組「衝擊傳導」）
         this.acs = this.acsMax;
         // 玩家機體一律 1.4 秒（房主端的遠端玩家 isPlayer 為 false，不能用它判斷）
@@ -2466,7 +2485,7 @@ export class MechEntity {
             : this.team === 'player'
               ? 1.4
               : this.team === 'enemy'
-                ? FOE_STAG_T
+                ? FOE_STAG_T * pv('eStagT')
                 : 2.0) *
           (1 - this.pmv('stagT'));
         this.stagBy = from ? { id: from.id, cls } : null;
@@ -2708,7 +2727,8 @@ export class MechEntity {
       (this.buffT > 0 ? 1.15 : 1) *
       this.waterK() *
       (this.sts ? this.stsSpeedK() : 1) * // 指揮官 MT 強化、水中、狀態效果
-      (this.gx ? this.gearSpdK() : 1); // 零件品級的詞條（mech-gear.js）
+      (this.gx ? this.gearSpdK() : 1) * // 零件品級的詞條（mech-gear.js）
+      pk(this, 'pMove', 'eMove'); // 節奏調整室
     this.t += dt;
     // AI 閃避衝擊波時按住跳躍（Game.updateShocks 設定）
     if (this.aiJumpT > 0) {
@@ -2853,7 +2873,8 @@ export class MechEntity {
             dt *
             (this.grounded ? 1.6 + this.pmv('gnd') : 1) *
             this.gearRchK() *
-            (this.pm ? this.lgRchK() : 1), // 零件品級、電漿灼燒（mech-gear.js）、極致技能「超頻」
+            (this.pm ? this.lgRchK() : 1) * // 零件品級、電漿灼燒（mech-gear.js）、極致技能「超頻」
+            pk(this, 'pEn'),
       );
     // 空域的飛行（entities/mech-air.js）：推力、轉向、機動，姿勢與動作照下面的 poseTail
     if (this.air) {
@@ -2867,16 +2888,19 @@ export class MechEntity {
     if (
       wantQB &&
       this.qbT <= 0 &&
+      !(this.qbCdT > 0) &&
       qbAny &&
       this.useEn(
         P.booster.qbCost *
           (this.sts ? this.stsQbK() : 1) *
           (this.pm ? this.lgQbK() : 1) *
-          (this.gx ? this.gearQbK() : 1),
+          (this.gx ? this.gearQbK() : 1) *
+          pk(this, 'pQbCost'),
       )
     ) {
       this.qbT = 0.16;
       this.qbStartT = this.t; // 完美 QB 的判定（pqbDodge）
+      if (g.paceLab && g.paceLab.stats && this.pilotEnt()) g.paceLab.stats.qb++; // 節奏調整室的統計
       if (this.pilotEnt()) this.cueArmSet('q'); // 提示中按 QB＝完美迴避
       this.tutE('qb', {});
       if (wish.lengthSq() > 0.1) this.qbDir.copy(wish).normalize();
@@ -2888,7 +2912,8 @@ export class MechEntity {
       if (this.isPlayer) g.rumble(0.1, 0.35, 80);
       g.fx.chevrons(this.pos.clone(), this.qbDir.clone().negate(), 0xffffff);
       if (this.grounded) g.fx.dust(this.pos.clone(), (2.2 * this.scale) / g.fx.k, 7);
-      this.iFrames = 0.14 + this.pmv('qbIF');
+      this.iFrames = (0.14 + this.pmv('qbIF')) * pk(this, 'pQbIF');
+      this.qbCdT = PACE.on && this.pilotEnt() ? pv('pQbCd') + 0.16 : 0; // 節奏調整室的 QB 冷卻
       if (this.pmv('qbRam') > 0) {
         this.ramT = 0.35;
         this.ramHit = new Set();
@@ -2924,11 +2949,14 @@ export class MechEntity {
       this.enDelay = 0.3;
     }
     let target = new THREE.Vector3();
+    if (this.qbCdT > 0) this.qbCdT -= dt;
     if (this.qbT > 0) {
       this.qbT -= dt;
       target
         .copy(this.qbDir)
-        .multiplyScalar((P.booster.qb * this.dk * (this.gx ? this.gearQbSpdK() : 1)) / DS);
+        .multiplyScalar(
+          (P.booster.qb * this.dk * (this.gx ? this.gearQbSpdK() : 1) * pk(this, 'pQbSpd', 'eMove')) / DS,
+        );
       if (this.lgArc) this.lgArcSteer(target, dt); // 傳說模組「繞背」：沿弧線繞到目標側後方
       this.boost = true;
     } else if (this.abT > 0 && targetEnt) {
@@ -2936,7 +2964,7 @@ export class MechEntity {
       const d = targetEnt.pos.clone().sub(this.pos);
       d.y = 0;
       if (d.length() > 6 * this.dk) {
-        target.copy(d.normalize()).multiplyScalar(spd * 2.2);
+        target.copy(d.normalize()).multiplyScalar(spd * 2.2 * pk(this, 'pAb'));
       }
       this.boost = true;
     } else {
@@ -3129,7 +3157,7 @@ export class MechEntity {
         this.torsoYawS = angLerp(
           this.torsoYawS === undefined ? rel : this.torsoYawS,
           rel,
-          Math.min(1, dt * this.turnRate),
+          Math.min(1, dt * this.turnRate * pk(this, '', 'eReact')),
         );
         this.model.torso.rotation.y = this.torsoYawS;
       } else this.model.torso.rotation.y = this.model.torsoTwist || 0;
@@ -3243,6 +3271,7 @@ export class MechEntity {
   // want：按住（AI 傳 2 表示要爬升）。jumpExt（房主處理客機輸入）時按下由 jumpPressQ 給，不從按住推算
   // 上升的曲線（data/parts.js 的 RISE_P）：v(t)＝v0·(1 −(t/T)^p)，前段幾乎全速、接近最高點才急停
   riseStart(v0, T) {
+    v0 *= pk(this, 'pJump'); // 節奏調整室的跳躍力
     this.vel.y = v0;
     this.riseV0 = v0;
     this.riseDur = T;
@@ -3953,7 +3982,9 @@ export class MechEntity {
       }
       // 壓制與看不到時的開火限制
       const hasMv = !!sn && !!this.movesOf();
-      const fk = !sn ? 1 : sup ? SUP_FIRE : hasMv ? HOLDER_IDLE_FIRE : 1;
+      const fk =
+        (!sn ? 1 : sup ? Math.min(1, SUP_FIRE * pv('eSup')) : hasMv ? HOLDER_IDLE_FIRE : 1) *
+        pk(this, '', 'eRof'); // 節奏調整室的開火頻率
       const allow = (type) => {
         if (!sn) return true;
         const ind = type === 'missile' || type === 'grenade';

@@ -1,7 +1,7 @@
 // 介面改版（docs/zzz-ui-design.md）的截圖：每個畫面 × 三種畫面大小（電腦 1920×1080、平板 1180×820 觸控、手機橫式 844×390 觸控）
 // 用法：node scripts/ui-shots.js [畫面,…] [--size=pc,tab,phone] [--tag=名稱]
 // 輸出 test-results/ui/<tag>/<畫面>-<大小>.png（tag 預設 now）；直接開 dist/mech-cordon.html（file://、?test）
-/* global window, document, getComputedStyle, innerWidth, THREE */
+/* global window, document, getComputedStyle, innerWidth, THREE, Element */
 const fs = require('fs');
 const path = require('path');
 const { launch } = require('./perf-lib.js');
@@ -253,6 +253,16 @@ const SHOTS = {
       .catch(() => {});
     await wait(1500);
   },
+  // 遊戲節奏調整室（game/pace-lab.js）：右側的調整面板
+  pacelab: async (page) => {
+    await page.evaluate(() => window.__game.openPace());
+    await page
+      .waitForFunction(() => document.getElementById('hudWrap').offsetParent !== null, null, {
+        timeout: 60000,
+      })
+      .catch(() => {});
+    await wait(2500);
+  },
   brief: async (page) => {
     await SHOTS.hub(page);
     await page.evaluate(() => window.__game.openBrief('c2s2'));
@@ -442,6 +452,12 @@ async function hudShot(page, view, level = 1) {
           : { viewport: { width: +m[1], height: +m[2] }, hasTouch: true, deviceScaleFactor: 2 }
         : SIZES[sz];
       const ctx = await browser.newContext(conf);
+      // 滑鼠鎖定一律停用（無頭的瀏覽器在 Windows 有隱藏視窗，會把使用者的滑鼠鎖到螢幕左上角）
+      await ctx.addInitScript(() => {
+        Element.prototype.requestPointerLock = function () {
+          return Promise.resolve();
+        };
+      });
       for (const name of names) {
         const fn = SHOTS[name];
         if (!fn) {

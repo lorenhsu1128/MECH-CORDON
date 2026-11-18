@@ -763,6 +763,7 @@ Object.assign(Game.prototype, {
       window.open(window.MECH_CORDON_SERVER ? '/paint/' : 'paint/index.html', '_blank');
     document.getElementById('btnLmReload').onclick = () => this.lmRefresh(true);
     document.getElementById('btnStyleLab').onclick = () => this.openLab();
+    document.getElementById('btnPaceLab').onclick = () => this.openPace(); // 節奏調整室（game/pace-lab.js）
     document.getElementById('btnMapView').onclick = () => this.openMapView();
     document.getElementById('btnCineLib').onclick = () => this.openCineLib();
     document.getElementById('btnVoiceLab').onclick = () => this.openVoiceLab();
@@ -1073,6 +1074,7 @@ Object.assign(Game.prototype, {
         return;
       }
       if (this.lab && this.labKey(e)) return;
+      if (this.paceLab && this.paceKey(e)) return; // 節奏調整室的面板（game/pace-lab.js）
       if (this.mapv && this.state === 'play' && this.mapvKey(e)) return; // 地圖預覽器（map-view.js）
       if (this.range && this.rangeKey(e.code)) return; // 靶場：T 設定、Y 重置
       this.keys[e.code] = true;
@@ -1166,6 +1168,7 @@ Object.assign(Game.prototype, {
       }
       if (this.state !== 'play') return;
       if (this.lab && this.labPointer('down', e)) return;
+      if (this.paceLab && e.target && e.target.closest && e.target.closest('#pacePanel')) return; // 點面板不開火
       if (this.mapv && !this.mapv.game) return; // 地圖預覽器：鏡頭的操作在 canvas 的 pointer events（map-view.js）
       if (this.spectator) {
         if (this.specMode === 'free' && e.button === 0) {
@@ -1462,6 +1465,7 @@ Object.assign(Game.prototype, {
       if (this.range) return this.rangeExit();
       if (this.tut) return this.tutExit(); // 近戰訓練：回模擬器
       if (this.lab) return this.exitLab();
+      if (this.paceLab) return this.exitPace(); // 節奏調整室
       if (this.mapv) return this.exitMapView(); // 地圖預覽器（map-view.js）
       if (this.camp && !this.campMp()) return this.campRetreat(); // 單人：撤退到紀錄點（不刪紀錄點）
       if (this.camp) return this.campEnd(false, true); // 多人時 campEnd 會通知客機
