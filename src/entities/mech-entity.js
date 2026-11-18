@@ -81,6 +81,7 @@ import {
 import { applyPilotStats, pilotWeaponDef } from '../data/pilot.js';
 import { MeleeAnim } from '../render/melee-anim.js';
 import { animateMech, buildMech, mechFlash } from '../render/mech-model.js';
+import { rigMuzzle } from '../render/muzzle.js';
 import { applyIK, ikMeasure, ikOn, ikRestore } from '../render/mech-ik.js';
 import { hrBodyRestore } from '../render/hit-react-pose.js';
 import { dmgOn } from '../render/foe-damage.js';
@@ -567,16 +568,24 @@ export class MechEntity {
     const arm = slot.endsWith('arm');
     const v = new THREE.Vector3();
     if (!A) return this.center();
+    this.rigMz(A);
     const pre = arm ? 'mz' : 'bmz';
     const n = A[pre + (part === 'rear' ? 'Rear' : part === 'mid' ? 'Mid' : '')] || (arm ? A.hand : A.back);
     n.getWorldPosition(v);
     return v;
+  }
+  // 載具、專屬敵人、Boss 的模型：第一次用到時量手／武器座底下的網格（render/muzzle.js 的 rigMuzzle）
+  rigMz(A) {
+    if (A.aim || A.mzDone) return;
+    A.mzDone = true;
+    rigMuzzle(A);
   }
   // 槍口被牆擋住（貼著掩體開火，槍管穿進牆裡）：從手／武器座往槍口找第一個碰到的位置，退回那裡發射（不會隔牆打人）
   muzzleSafe(slot, mz) {
     const w = this.weapons[slot];
     const A = this.model.arms && this.model.arms[w && w.side > 0 ? 'r' : 'l'];
     const W = this.game.world;
+    if (A) this.rigMz(A);
     if (!A || !A.mz || !W || !W.hitsWorld) return mz;
     const base = (slot.endsWith('arm') ? A.hand : A.back).getWorldPosition(new THREE.Vector3());
     const p = new THREE.Vector3();
@@ -598,6 +607,7 @@ export class MechEntity {
   tubeAt(slot, i) {
     const w = this.weapons[slot];
     const A = this.model.arms && this.model.arms[w && w.side > 0 ? 'r' : 'l'];
+    if (A) this.rigMz(A);
     if (!A || !A.tubes || !A.tubes.length) return null;
     const t = A.tubes[i % A.tubes.length];
     const pos = t.getWorldPosition(new THREE.Vector3());

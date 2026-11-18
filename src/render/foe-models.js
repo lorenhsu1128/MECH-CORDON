@@ -167,9 +167,9 @@ export function hazard(n, M, x, y, z, w, h, ry = 0) {
 
 function rig(root, torso, M, o) {
   const hand = o.hand || new THREE.Group();
-  const back = new THREE.Group();
+  const back = o.back || new THREE.Group(); // 肩上武器的發射點（沒給時在軀幹的原點）
   if (!hand.parent) torso.add(hand);
-  torso.add(back);
+  if (!back.parent) torso.add(back);
   const arm = () => ({ hand, back, sh: new THREE.Group(), up: new THREE.Group(), fore: new THREE.Group() });
   return {
     group: root,
@@ -811,6 +811,9 @@ function buildJunk(pal, scale) {
   const hand = new THREE.Group();
   hand.position.set(0, 2.2, -1.4);
   torso.add(hand);
+  const back = new THREE.Group(); // 榴彈：從頂上拋出
+  back.position.set(0, 3.1, -0.6);
+  torso.add(back);
   const plates = [
     slab_d1(torso, 0.7, 0.55, 0.06, M.main2, -0.62, 1.8, -1.36, 0, 0, 0.08),
     slab_d1(torso, 0.6, 0.5, 0.06, M.main3, 0.65, 1.75, -1.36, 0, 0, -0.12),
@@ -830,6 +833,7 @@ function buildJunk(pal, scale) {
   finish(root, scale);
   return rig(root, torso, M, {
     hand,
+    back,
     type: 'junk',
     height: 4.5 * scale,
     extra: {
@@ -1722,6 +1726,9 @@ function buildPatrolCart(pal, scale) {
   const hand = new THREE.Group();
   hand.position.set(0, 2.0, -3.0);
   torso.add(hand);
+  const back = new THREE.Group(); // 榴彈：砲塔右側的煙幕彈發射器
+  back.position.set(0.8, 2.2, -0.2);
+  torso.add(back);
   const plates = [];
   for (const s of [-1, 1]) plates.push(slab_d1(torso, 0.05, 0.3, 1.4, M.main3, s * 1.13, 1.05, -0.7));
   const animD1 = (r, st) => {
@@ -1735,6 +1742,7 @@ function buildPatrolCart(pal, scale) {
   finish(root, scale);
   return rig(root, torso, M, {
     hand,
+    back,
     type: 'patrol_cart',
     height: 2.6 * scale,
     extra: {

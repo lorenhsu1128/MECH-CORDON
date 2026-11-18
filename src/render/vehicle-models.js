@@ -215,6 +215,7 @@ export function buildVehicle(pal, scale = 1, key = 'tank') {
   P(hand, gCyl(0.18, 0.18, 0.4, 10), M.sub, 0, 0, -1.35, Math.PI / 2);
   CB(hand, 0.42, 0.3, 0.45, M.sub, 0, 0, -2.4, 0, 0, 0, 0.04);
   for (const z of [-2.32, -2.5]) P(hand, gBox(0.46, 0.08, 0.1), M.joint, 0, 0, z);
+  hand.userData.mz = [0, 0, -2.62]; // 槍口：砲口制退器的前端（render/muzzle.js 的 rigMuzzle；合併網格之後量不到）
   // 砲塔頂的飛彈發射器（back）
   const back = new THREE.Group();
   back.position.set(0.7, 0.95, 0.2);
@@ -222,6 +223,7 @@ export function buildVehicle(pal, scale = 1, key = 'tank') {
   CB(back, 0.36, 0.3, 0.9, M.gun, 0, 0, 0, 0, 0, 0, 0.04);
   for (const x of [-0.08, 0.08]) P(back, gCyl(0.06, 0.06, 0.04, 8), M.joint, x, -0.05, -0.45, Math.PI / 2);
   P(back, gCyl(0.06, 0.06, 0.9, 6), M.sub, 0, 0.05, -0.8, Math.PI / 2);
+  back.userData.mz = [0, 0.05, -1.25]; // 砲塔頂的機槍口
   P(back, gBox(0.1, 0.1, 0.3), M.joint, 0, -0.18, 0.2);
   const tankDmg = tankDetail(hull, torso, M, red, lamp);
   tankDmg.plates.push(skirts[0]);
@@ -444,8 +446,10 @@ export function buildHeli(pal, scale = 1, key = 'heli') {
       Math.PI / 2,
     );
   P(hand, gCyl(0.14, 0.14, 0.04, 8), M.joint, 0, 0, -1.1, Math.PI / 2);
+  hand.userData.mz = [0, 0, -1.15]; // 三管機砲的管口
   const back = new THREE.Group();
   back.position.set(0, 0.45, -0.5);
+  back.userData.mz = [2.2, -0.03, 0.06]; // 右側短翼的火箭莢艙口（火箭從這裡出去）
   torso.add(back);
   // ===== 主旋翼：旋翼轂＋槳夾＋四片葉片 =====
   const rotor = new THREE.Group();

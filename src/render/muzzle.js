@@ -18,7 +18,7 @@ export function measureMuzzle(grp, key) {
   grp.updateMatrixWorld(true);
   const meshes = [];
   grp.traverse((o) => {
-    if (!o.isMesh || o.isInstancedMesh || o.userData.xray || o.userData.helper) return;
+    if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || o.userData.xray || o.userData.helper) return;
     const m = o.material;
     if (!m || Array.isArray(m) || m.side === THREE.BackSide) return; // 描邊外殼
     meshes.push(o);
@@ -146,6 +146,59 @@ export function muzzleFromPoints(pts, tubes = []) {
         tubes.push(new THREE.Vector3(x0 + (x1 - x0) * fx, y0 + (y1 - y0) * fy, z0 + L * 0.03));
   }
   return { tip, rear, mid, tubes, len: L };
+}
+
+// 不是 buildMech 的模型（載具、步行機以外的專屬敵人、Boss：rig.arms 的 hand／back 是左右共用的節點，武器的網格做在它底下、
+// 槍管往節點的 −Z 長出去）：量節點底下的網格掛槍口、尾端、機匣、發射管（MechEntity.muzzle 第一次用到時呼叫）。
+// 節點底下沒有網格的（專屬敵人：手本來就放在槍口；網格合併成骨架動畫的也是）照舊用節點本身
+const RIG_MZ = new WeakMap(); // 節點 → 已經掛好的槍口節點（userData 會被 clone 轉成 JSON，不放這裡）
+export function rigMuzzle(A) {
+  for (const [grp, pre] of [
+    [A.hand, 'mz'],
+    [A.back, 'bmz'],
+  ]) {
+    if (!grp) continue;
+    // 左右手共用同一個節點：另一邊已經量過就沿用
+    const done = RIG_MZ.get(grp);
+    if (done) {
+      Object.assign(A, done);
+      continue;
+    }
+    // 建模時直接寫好的槍口（節點座標；網格合併之後節點底下量不到的載具）
+    const fix = grp.userData.mz;
+    if (fix) {
+      const o = new THREE.Object3D();
+      o.name = 'muzzle';
+      o.position.set(fix[0], fix[1], fix[2]);
+      grp.add(o);
+      A[pre] = o;
+      RIG_MZ.set(grp, { [pre]: o });
+      continue;
+    }
+    let has = false;
+    grp.traverse((o) => {
+      if (o !== grp && o.isMesh && !o.isSkinnedMesh && !o.userData.helper) has = true;
+    });
+    if (!has) continue;
+    const M = measureMuzzle(grp, null);
+    if (!M || M.len < 0.05) continue;
+    const node = (p, name) => {
+      const o = new THREE.Object3D();
+      o.name = name;
+      o.position.copy(p);
+      grp.add(o);
+      return o;
+    };
+    A[pre] = node(M.tip, 'muzzle');
+    A[pre + 'Rear'] = node(M.rear, 'muzzleRear');
+    A[pre + 'Mid'] = node(M.mid, 'muzzleMid');
+    if (pre === 'bmz') {
+      A.tubes = M.tubes.map((p) => node(p, 'tube'));
+      A.tubeDir = new THREE.Vector3(0, Math.sin(0.35), -Math.cos(0.35));
+    }
+    const keys = [pre, pre + 'Rear', pre + 'Mid', ...(pre === 'bmz' ? ['tubes', 'tubeDir'] : [])];
+    RIG_MZ.set(grp, Object.fromEntries(keys.map((k) => [k, A[k]])));
+  }
 }
 
 // 導彈離開莢艙的仰角（弧度；莢艙的 −Z 往上抬）：PM-6 的發射口本來就往上仰
