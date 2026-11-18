@@ -91,7 +91,9 @@ export const PACE_WPN_KEYS = [
 ];
 
 // 目前的值（調整室改它；沒列的鍵＝1）。on＝調整室裡才生效
-export const PACE = { on: false, v: {}, w: {}, ver: 0 };
+export const PACE = { on: false, v: {}, w: {}, ver: 0, strict: false };
+// 部位判定的「擦過不算」（調整室的開關；render/hit-parts.js）：人形機甲的命中只看各區塊的外框，不看外接球
+export const strictHit = () => PACE.on && PACE.strict;
 export const paceDefault = (k) => {
   for (const g of PACE_GROUPS) for (const it of g.items) if (it[0] === k) return it[5] ?? 1;
   return 1;

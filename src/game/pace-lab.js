@@ -24,6 +24,7 @@ const CFG0 = {
   loop: true,
   god: false,
   ammo: true,
+  strict: false, // 部位判定的「擦過不算」（PACE.strict，render/hit-parts.js）
   aggro: true,
   hand: START_ASM.rarm, // 雙手的手部武器（左右同一把）
   back: START_ASM.rback, // 雙肩的肩部武器
@@ -107,6 +108,7 @@ Object.assign(Game.prototype, {
     };
     this.paceApplySet();
     PACE.on = true;
+    PACE.strict = !!st.cfg.strict;
     this.paceBuildUi();
     this.paceStart();
   },
@@ -278,7 +280,8 @@ Object.assign(Game.prototype, {
       <div class="pcRow"><span>等級</span><input type="number" min="1" max="30" step="1" data-cfg="level" value="${c.level}"></div>
       <div class="pcRow"><span>敵人</span><select data-cfg="foe">${foes}</select></div>
       <div class="pcRow"><span>台數</span><input type="number" min="1" max="30" step="1" data-cfg="n" value="${c.n}"></div>
-      <div class="pcRow pcChks">${chk('ace', '加一台敵對 AC')}${chk('aggro', '一出現就交戰')}${chk('loop', '清完自動補')}${chk('god', '不會被擊破')}${chk('ammo', '彈藥無限')}</div>
+      <div class="pcRow pcChks">${chk('ace', '加一台敵對 AC')}${chk('aggro', '一出現就交戰')}${chk('loop', '清完自動補')}${chk('god', '不會被擊破')}${chk('ammo', '彈藥無限')}${chk('strict', '部位判定：擦過不算')}</div>
+      <div class="pcNote">擦過不算：人形機甲的命中只看機體各部位的實際外形（敵我都一樣；玩家的子彈判定稍大）</div>
       <div class="pcRow pcBtns"><button class="primary" data-pa="restart">套用戰場並重新開始</button></div></section>`;
     h += `<section class="pcSec pcStats" id="pcStats"></section>`;
     for (const G of PACE_GROUPS) {
@@ -364,6 +367,7 @@ Object.assign(Game.prototype, {
             ? Math.max(1, parseInt(t.value) || 1)
             : t.value;
       if (k === 'theme') P.cfg.variant = 'base';
+      PACE.strict = !!P.cfg.strict;
       this.paceSave();
       if (k === 'theme') this.paceRender();
       return;

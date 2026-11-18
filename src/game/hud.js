@@ -156,7 +156,8 @@ Object.assign(Game.prototype, {
     this._at = setTimeout(() => a.classList.remove('on'), 1500);
   },
   // key：合併連續命中用的目標（房主是 targetId，客機收到的事件另外帶）
-  popDamage(pos, val, onPlayer, stag, melee, combo, targetId, impact, key) {
+  // part＝被打中的區塊（render/hit-parts.js 的 rig.hb 索引，客機照著閃紅）
+  popDamage(pos, val, onPlayer, stag, melee, combo, targetId, impact, key, part) {
     this.pushPopup(pos, val, onPlayer, stag, melee, combo, targetId !== undefined ? targetId : key);
     if (targetId !== undefined)
       this.netEv({
@@ -168,6 +169,7 @@ Object.assign(Game.prototype, {
         c: combo || 0,
         i: targetId,
         im: impact || 0,
+        pc: part >= 0 ? part : undefined,
       });
   },
 

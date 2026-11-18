@@ -82,12 +82,13 @@ import { applyPilotStats, pilotWeaponDef } from '../data/pilot.js';
 import { MeleeAnim } from '../render/melee-anim.js';
 import { animateMech, buildMech, mechFlash } from '../render/mech-model.js';
 import { rigMuzzle } from '../render/muzzle.js';
-import { PACE, paceDef, pk, pv } from '../data/pace.js';
+import { PACE, paceDef, pk, pv, strictHit } from '../data/pace.js';
 import { applyIK, ikMeasure, ikOn, ikRestore } from '../render/mech-ik.js';
 import { hrBodyRestore } from '../render/hit-react-pose.js';
 import { dmgOn } from '../render/foe-damage.js';
 import { fireClass } from '../render/mech-fire.js';
 import { mergeRig } from '../render/mesh-merge.js';
+import { HP, hitRay, measureHitBoxes, nearestPiece, partFlash, partPoint } from '../render/hit-parts.js';
 import { nozzleWorld } from '../fx/thruster.js';
 import { measureBlades } from '../fx/trail.js';
 import { buildDrone, buildHeli, buildVehicle } from '../render/vehicle-models.js';
@@ -454,6 +455,7 @@ export class MechEntity {
   // 網格依材質合併（render/mesh-merge.js，降低 draw call）：只在遊戲實體做，模型庫、機甲庫的展示台不合併。
   // 動作 IK 要量腳底的網格，所以機甲先量好（ikMeasure）再合併。opts.noMerge 時不合併
   mergeModel(rig) {
+    if (!rig.vehicle) measureHitBoxes(rig); // 部位判定的外框（render/hit-parts.js）：合併網格之前量
     if (this.opts.noMerge) return rig;
     if (!rig.vehicle && rig.legs) ikMeasure(rig);
     if (!rig.vehicle) measureBlades(rig); // 刀光用的刀尖（entities/mech-trails.js）
@@ -707,9 +709,15 @@ export class MechEntity {
     const assist = this.fcsAssist(distT);
     // 空域：敵人打飛行中的目標（mech-air.js）：雷射先拉預警線、子彈越遠越散、曳光放大
     const airFoe = !!(g.airMode && tgtOk && targetEnt.air && !this.pilotEnt());
-    if (tgtOk && (d.type === 'bullet' || d.type === 'shotgun' || d.type === 'shell'))
+    // 電腦瞄準人形機甲的部位（aimPartOff）：攔截點從目標中心移到那個部位
+    const aoff = tgtOk ? this.aimPartOff(targetEnt, d, w) : null;
+    if (tgtOk && (d.type === 'bullet' || d.type === 'shotgun' || d.type === 'shell')) {
       targetPos = this.leadPoint(targetEnt, d.speed, muzzle); // 依彈速算攔截點
-    else if (tgtOk && (d.type === 'laser' || d.type === 'empbeam')) targetPos = targetEnt.center(); // 即時命中：不預判
+      if (aoff) targetPos.add(aoff);
+    } else if (tgtOk && (d.type === 'laser' || d.type === 'empbeam')) {
+      targetPos = targetEnt.center(); // 即時命中：不預判
+      if (aoff) targetPos.add(aoff);
+    }
     if (airFoe && (d.type === 'laser' || d.type === 'empbeam')) {
       const at = this.airBeamGate(w, d, muzzle, targetEnt);
       if (!at) return false;
@@ -1153,6 +1161,8 @@ export class MechEntity {
             stop *= pf[1];
             hits.push({ t: pf[0], proj: stop });
           }
+          const strict = strictHit(); // 部位判定的「擦過不算」（調整室的開關）
+          const lpad = 0.3 + (charged ? 0.6 : 0);
           for (const t of targets) {
             if (t.dead || t.shape) continue;
             const c = t.center();
@@ -1160,7 +1170,19 @@ export class MechEntity {
             const proj = ap.dot(bdir);
             if (proj < 0 || proj > stop) continue;
             const perp = ap.clone().sub(bdir.clone().multiplyScalar(proj)).length();
-            if (perp < t.radius + 0.6 + (charged ? 0.6 : 0)) hits.push({ t, proj });
+            const hb = t.model && t.model.hb;
+            const rc = strict && hb ? Math.max(t.radius, t.model.height * 0.62) : t.radius;
+            if (perp >= rc + 0.6 + (charged ? 0.6 : 0)) continue;
+            if (hb) {
+              // 人形機甲：打中哪一塊、表面的位置（render/hit-parts.js）；擦過不算時沒碰到外框就穿過去
+              const h = hitRay(t.model, muzzle, bdir.clone().multiplyScalar(stop), strict ? lpad : 0);
+              if (h) {
+                hits.push({ t, proj: h.t * stop, pi: h.i, n: h.n.clone() });
+                continue;
+              }
+              if (strict) continue;
+            }
+            hits.push({ t, proj });
           }
           hits.sort((a, b) => a.proj - b.proj);
           let n = 0;
@@ -1171,6 +1193,10 @@ export class MechEntity {
             else {
               h.t.rbGold = !!rbT; // 有加成的命中：金色的傷害數字
               h.t.wpAimK = wpk;
+              if (h.pi !== undefined) {
+                h.t.hitPart = h.pi; // 打中的區塊閃紅
+                g.fx.mechChips(pt, h.n);
+              }
               h.t.takeDamage(ldmg * fall, limp * fall, this, pt, bdir.clone(), undefined, d.id);
               h.t.rbGold = false;
               h.t.wpAimK = null;
@@ -2138,6 +2164,38 @@ export class MechEntity {
     this.trkV.lerp(t.vel, 1 - Math.exp(-trackRate(this.stats.parts.arms.aim) * pk(this, '', 'eReact') * dt)); // 節奏調整室的敵人反應速度
     return this.trkV;
   }
+  // 電腦瞄準人形機甲的部位（2026-11-18 使用者定案，render/hit-parts.js）：回傳「部位－目標中心」的偏移，沒有＝null。
+  // 依武器：狙擊與蓄力雷射瞄頭或核心、機槍持續射擊時從腳往上掃、火箭筒打腳邊、霰彈打核心與手臂、其他以核心為主
+  aimPartOff(t, d, w) {
+    if (this.pilotEnt() || this.game.airMode || !t.model || !t.model.hb) return null;
+    const r = Math.random();
+    let part;
+    if (this.ai === 'sniper' || d.type === 'empbeam' || (d.type === 'laser' && d.chargeT > 0))
+      part = r < 0.45 ? HP.head : HP.core;
+    else if (d.conv || d.spin) {
+      const f = clamp((w.streak || 0) / Math.max(0.6, (d.conv || d.spin) * 1.5), 0, 1);
+      part = f < 0.25 ? (r < 0.5 ? HP.legR : HP.legL) : f < 0.5 ? HP.waist : f < 0.85 ? HP.core : HP.head;
+    } else if (d.type === 'shell') part = r < 0.7 ? (r < 0.35 ? HP.legR : HP.legL) : HP.waist;
+    else if (d.type === 'shotgun') part = r < 0.7 ? HP.core : r < 0.85 ? HP.armR : HP.armL;
+    else
+      part =
+        r < 0.55
+          ? HP.core
+          : r < 0.63
+            ? HP.armR
+            : r < 0.71
+              ? HP.armL
+              : r < 0.79
+                ? HP.legR
+                : r < 0.87
+                  ? HP.legL
+                  : r < 0.95
+                    ? HP.head
+                    : HP.waist;
+    const p = new THREE.Vector3();
+    if (!partPoint(t.model, part, p)) return null;
+    return p.sub(t.center());
+  }
   // 攔截點：目標中心＋追蹤速度 × 飛行時間 × 預判準度
   leadPoint(t, speed, muzzle) {
     const c = t.center();
@@ -2332,7 +2390,12 @@ export class MechEntity {
       }
       dir = null;
     }
+    // 部位判定（render/hit-parts.js）：投射物與雷射已經算好的 hitPart，其他（爆炸、近戰）取離命中點最近的區塊
+    let hpi = this.hitPart;
+    this.hitPart = undefined;
+    if (hpi === undefined && this.model && this.model.hb) hpi = nearestPiece(this.model, at || this.center());
     mechFlash(this.model);
+    if (hpi >= 0) partFlash(this.model, hpi); // 被打中的部位閃紅
     // 依武器的受擊反應（mech-hit-react.js）：有的時候通用的推一下減半
     const hrk = melee ? null : this.hrFromHit(W, attr, at, dir, from);
     this.hitAnim(
@@ -2515,6 +2578,8 @@ export class MechEntity {
       melee ? this.comboHits : 0,
       this.id,
       impact,
+      undefined,
+      hpi,
     );
     this.wpGold = false;
     if (this.hp <= 0 && g.range && g.rangeSave(this)) return; // 靶場：目標 AP 無限、自己不會被擊破

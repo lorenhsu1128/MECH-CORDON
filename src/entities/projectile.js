@@ -1,4 +1,4 @@
-import { pv } from '../data/pace.js';
+import { pv, strictHit } from '../data/pace.js';
 import { KIN_FALL_MIN, weaponAttr } from '../data/attrs.js';
 import { weaponById } from '../data/parts.js';
 // ============================================================
@@ -10,6 +10,10 @@ import { DS, MS } from '../core/scale.js';
 import { buildProjectileMesh } from '../render/extra-models.js';
 import { shotColor } from '../fx/palette.js';
 import { targetDist, targetSegT } from '../world/prop-hit.js';
+import { hitRay, nearestPiece } from '../render/hit-parts.js';
+
+const _pjN = new THREE.Vector3(),
+  _pjC = new THREE.Vector3();
 
 const AAM_LOSE = 1.3; // 空戰導彈失去追蹤的夾角（data/air.js 的 AAM_LOSE）
 const BEND_CONE = 0.25; // 彈道修正只修正這個角度（弧度）以內的偏差：差一點擦過的會修正，大幅閃避照樣打不中
@@ -184,22 +188,58 @@ export class Projectile {
     const ds = g.destructiblesF(this.team);
     const seg = _pjSeg.copy(this.pos).sub(prev);
     let best = null,
-      bestT = 2;
+      bestT = 2,
+      bestP = -1; // 打中的區塊（render/hit-parts.js 的 rig.hb 索引；-1＝還沒算）
     const pad = 0.4 + (this.hitR || 0); // hitR：玩家實彈加大的判定（對物件不加：物件用命中形狀，world/prop-hit.js）
     const eK = this.team === 'enemy' ? pv('eSize') : 1; // 節奏調整室的敵人子彈大小（data/pace.js）
+    // 部位判定的「擦過不算」（調整室的開關）：人形機甲只看各區塊的外框；玩家的子彈外擴 0.5 m＋hitR、其他 0.25 m
+    const strict = strictHit();
+    const fpad = strict
+      ? this.owner && this.owner.pilotEnt && this.owner.pilotEnt()
+        ? 0.5 + (this.hitR || 0)
+        : 0.25 * eK
+      : 0;
     for (let li = 0; li < 2; li++) {
       const L = li ? ds : hs;
       for (let i = 0; i < L.length; i++) {
         const t = L[i];
         if (t.dead || t.id === this.pierced) continue; // 貫穿彈已經打過的（mech-legend.js）
+        if (strict && !li && t.model && t.model.hb) {
+          // 外接球放大到蓋住整台（頭頂、腳掌）只當粗判定，再對區塊的外框
+          const rc = Math.max(t.radius, t.model.height * 0.62);
+          if (targetSegT(t, prev, seg, rc - t.radius + fpad) < 0) continue;
+          const h = hitRay(t.model, prev, seg, fpad);
+          if (!h || h.t >= bestT) continue;
+          best = t;
+          bestT = h.t;
+          bestP = h.i;
+          _pjN.copy(h.n);
+          continue;
+        }
         const tt = targetSegT(t, prev, seg, eK === 1 || li ? pad : (t.radius + pad) * eK - t.radius);
         if (tt >= 0 && tt < bestT) {
           best = t;
           bestT = tt;
+          bestP = -1;
         }
       }
     }
     if (best) {
+      // 人形機甲：打中哪一塊、真正的表面位置（外框）與法線；彈道沒碰到外框（擦過外接球）時取最近的區塊
+      if (bestP < 0 && !best.isProp && best.model && best.model.hb) {
+        const h = hitRay(best.model, prev, seg, 0);
+        if (h) {
+          bestP = h.i;
+          bestT = h.t;
+          _pjN.copy(h.n);
+        } else {
+          _pjC.copy(prev).addScaledVector(seg, bestT);
+          bestP = nearestPiece(best.model, _pjC);
+          _pjN.copy(seg).normalize().negate();
+        }
+      }
+      this.hitPI = bestP;
+      if (bestP >= 0) (this.hitN || (this.hitN = new THREE.Vector3())).copy(_pjN);
       this.pos.copy(prev).addScaledVector(seg, bestT);
       // 傳說模組「貫穿彈」：第一個目標打中後繼續飛
       if (this.pierce && !best.isProp && !(this.splash > 0)) {
@@ -287,6 +327,7 @@ export class Projectile {
           else {
             t.rbGold = !!this.rb; // 邊閃邊打的加成：金色的傷害數字（mech-ranged.js）
             t.hrPw = !!this.pwk; // 蓄力強力彈：受擊反應放大（mech-hit-react.js）
+            if (t === direct && this.hitPI >= 0) t.hitPart = this.hitPI; // 直接打中的區塊（render/hit-parts.js）
             t.takeDamage(
               this.dmg * k,
               im,
@@ -331,6 +372,7 @@ export class Projectile {
         direct.rbGold = !!this.rb;
         direct.wpAimK = this.wpk || null; // 準星壓在弱點上射出的（mech-weak.js）
         direct.hrPw = !!this.pwk; // 蓄力強力彈：受擊反應放大（mech-hit-react.js）
+        if (this.hitPI >= 0) direct.hitPart = this.hitPI; // 打中的區塊（render/hit-parts.js）：那一塊閃紅
         direct.takeDamage(
           this.dmg * fk,
           this.impactV,
@@ -352,7 +394,12 @@ export class Projectile {
           if (this.pwk) this.owner.pwHitPop(direct, this.pwk);
         }
       }
-      g.fx.spark(this.pos, this.color || 0xffe0a0, dir);
+      if (this.hitPI >= 0 && this.hitN) {
+        // 人形機甲：火花沿表面法線往外濺，加上小碎片（從真正的命中點）
+        g.fx.spark(this.pos, this.color || 0xffe0a0, _pjC.copy(this.hitN).negate());
+        g.fx.mechChips(this.pos, this.hitN);
+      } else g.fx.spark(this.pos, this.color || 0xffe0a0, dir);
+      this.hitPI = -1;
       // 能量武器打中機體：電弧（docs/vfx-design.md）
       if ((this.attr || (this.wid && weaponAttr(weaponById(this.wid)))) === 'en')
         g.fx.arc(this.pos, 0.7, this.color || 0x9fe0ff);

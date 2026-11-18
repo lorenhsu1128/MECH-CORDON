@@ -39,6 +39,7 @@ import { MJ_AXES, clipPose, clipStrike, clipTarget } from './melee-anim.js';
 import { addPose, hrBody, hrKicks, hrPose } from './hit-react-pose.js';
 import { meleeHrOf } from '../data/hit-react.js';
 import { LAUNCH_PITCH, measureMuzzle, muzzleFromPoints } from './muzzle.js';
+import { partFlashTick } from './hit-parts.js';
 // 受擊閃光結束後還原的自發光（GLB 材質記錄在 userData.emis0，程式材質為黑）
 const BLACK = new THREE.Color(0);
 const unflash = (m) => {
@@ -2709,6 +2710,7 @@ const NO_WK = {},
   NO_LR = { l: 0, r: 0 };
 export function animateMech(m, dt, st) {
   const t = st.t;
+  if (m.pfT > 0) partFlashTick(m, dt); // 被打中的部位閃紅（render/hit-parts.js）
   const k = Math.min(1, dt * 14),
     ks = Math.min(1, dt * 6);
   if (m.vehicle) {

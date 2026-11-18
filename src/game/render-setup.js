@@ -1,5 +1,6 @@
 // Game：場景環境、後處理與渲染風格、主渲染
 import { energyWarm } from '../fx/energy.js';
+import { partFlashWarm } from '../render/hit-parts.js';
 import { makeStudioEnv } from '../render/environment.js';
 import { fineTick } from '../render/detail.js';
 import { StylePipeline, manualShadows } from '../render/style/pipeline.js';
@@ -276,6 +277,7 @@ Object.assign(Game.prototype, {
         dm.castShadow = true;
         extra.add(dm);
       }
+      if (extra) extra.add(partFlashWarm()); // 被打中的部位閃紅（render/hit-parts.js），第一次被打中時才建
       if (extra && this.fx.rich) extra.add(energyWarm(this.fx.k)); // 第 9 期的護罩、光柱、預警（fx/energy.js）
       // 場景與上面那些的半透明版（淡出、碎塊、掉板；render/shader-warm.js 的 transpWarm）
       if (extra) {
@@ -477,6 +479,7 @@ Object.assign(Game.prototype, {
     const names = [
       'explosion',
       'spark',
+      'mechChips',
       'muzzle',
       'beam',
       'chevrons',

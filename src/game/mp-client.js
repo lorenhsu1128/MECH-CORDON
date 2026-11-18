@@ -11,6 +11,7 @@ import { Projectile } from '../entities/projectile.js';
 import { applyEnt } from '../net/snapshot.js';
 import { PALETTES } from '../render/materials.js';
 import { mechFlash } from '../render/mech-model.js';
+import { partFlash } from '../render/hit-parts.js';
 import { RemoteSets } from '../render/net-models.js';
 import { World } from '../world/world.js';
 import { Game } from './game.js';
@@ -420,6 +421,7 @@ Object.assign(Game.prototype, {
             this.rumble(clamp(e.im / 700, 0.2, 1), clamp(e.im / 400, 0.3, 1), clamp(e.im / 4, 60, 260));
           }
           if (tgt) mechFlash(tgt.model, e.m ? 0xff7a30 : undefined, e.m ? 0.16 : 0.07);
+          if (tgt && e.pc !== undefined) partFlash(tgt.model, e.pc); // 被打中的部位閃紅（render/hit-parts.js）
         }
         break;
       case 'msg':

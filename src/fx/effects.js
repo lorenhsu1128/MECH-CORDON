@@ -1228,6 +1228,38 @@ export class Effects {
     }
     this.smoke(p, R ? 0.5 : 0.35, 0x6a6e75, 0.45, 1.5);
   }
+  // 子彈打中人形機甲的區塊（render/hit-parts.js，2026-11-18）：從真正的命中點沿表面法線 n 濺出小碎片
+  // （顯示卡粒子：受光的煙塵系統、一般混合、翻滾、重力），遠的與粒子很多時減量
+  mechChips(p, n) {
+    if (this.skip(p, 3)) return;
+    const K = this.k;
+    const N = this.far(p) ? 1 : this.rich ? 4 : 3;
+    for (let i = 0; i < N; i++) {
+      const v = new THREE.Vector3(rnd(-1, 1), rnd(-0.2, 1), rnd(-1, 1))
+        .multiplyScalar(0.7)
+        .add(n)
+        .normalize()
+        .multiplyScalar(rnd(5, 10) * K);
+      v.y += rnd(2, 4) * K;
+      const sz = rnd(0.09, 0.17) * K;
+      this.g.sm.emit({
+        p,
+        v,
+        life: rnd(0.45, 0.8),
+        s0: sz,
+        s1: sz * 0.85,
+        c0: i % 2 ? 0x2b2e33 : 0x8c9198,
+        a: 1,
+        occ: 1,
+        cell: pickCell(FXG.dirt),
+        fade: 2,
+        g: 26 * K,
+        drag: 0.4,
+        rot: frand() * 6.28,
+        rv: rnd(-14, 14),
+      });
+    }
+  }
   // 子彈打在地形上（第 8.4 期）：依地面材質；金屬照舊是火花（回傳 false）
   groundHit(p, dir) {
     const s = this.surfOf(p.x, p.z, p.y);
