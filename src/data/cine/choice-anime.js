@@ -279,7 +279,6 @@ function faceOff(L, R) {
             ind: 0.2,
             t0: 0.1,
             fill: C[L],
-            dots: 0.35,
             kids: [ACT(L, { pose: 'p1', at: [420, 1900], h: 1800, in: null })],
           },
         ),
@@ -295,7 +294,6 @@ function faceOff(L, R) {
             ind: 0.2,
             t0: 0.25,
             fill: C[R],
-            dots: 0.35,
             kids: [ACT(R, { pose: 'p1', at: [1220, 1900], h: 1800, in: null })],
           },
         ),
@@ -402,7 +400,6 @@ function postShot(s, i) {
         img: s.img,
         t0: 0.5,
         in: s.q === 'L' ? 'left' : s.q === 'C' ? 'drop' : 'right',
-        dots: 0.25,
         tone: s.tone,
         kids: s.sfx
           ? [

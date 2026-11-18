@@ -69,7 +69,7 @@ const ROOMG = {
   tintLo: '#101826',
   tintLoK: 0.5,
 };
-// 全畫面的 3D（舞台上的格子）；o 可以加 flt、tone、dots…
+// 全畫面的 3D（舞台上的格子）；o 可以加 flt、tone…
 const LIVE = (o = {}) => ({ k: 'panel', q: [0, 0, 1600, 900], bd: 0, live: true, ...o });
 // 霍斯特的立繪疊在 3D 上（對白用字幕：noBub）
 const HORST = (o) => ({ k: 'actor', who: 'castron', noBub: true, in: 'fade', ...o });
@@ -141,8 +141,6 @@ export function ch1Intro() {
               { t: 10, z: 1.42 },
             ],
             tone: OCHRE,
-            dots: 0.3,
-            dotSz: 6,
             t0: 7.4,
             in: 'right',
           },
@@ -336,7 +334,6 @@ export function ch1Intro() {
               ],
             },
             flt: 'contrast(1.3) saturate(0.85)',
-            dots: 0.22,
             kids: [
               {
                 k: 'text',
@@ -385,7 +382,6 @@ export function ch1Intro() {
               ],
             },
             flt: 'contrast(1.35) saturate(0.6)',
-            dots: 0.3,
             vig: 0.4,
             kids: [
               {
@@ -424,7 +420,6 @@ export function ch1Intro() {
               ],
             },
             tone: OCHRE,
-            dots: 0.3,
           },
         ],
       },
@@ -529,7 +524,6 @@ export function ch1Intro() {
             t0: 2.6,
             in: 'right',
             fill: '#1a0e08',
-            dots: 0.18,
             kids: [HORST({ pose: 'p1', face: [1285, 255], faceH: 190, in: null })],
           },
         ],
@@ -648,7 +642,6 @@ export function ch1Intro() {
             t0: 0.6,
             in: 'left',
             fill: '#120a06',
-            dots: 0.15,
             kids: [HORST({ pose: 'p6', at: [290, 1320], h: 1300, in: null })],
           },
         ],
@@ -729,7 +722,6 @@ export function ch1Intro() {
             focus: [0.35, 0.5],
             art: 'desk',
             tone: '#a0602a',
-            dots: 0.22,
             t0: 2.4,
             in: 'fade',
             ind: 0.8,

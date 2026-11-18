@@ -99,7 +99,7 @@ const center = (q) => [
 ];
 
 // ---------- 段落 → [鏡頭, 秒數] ----------
-// 漫畫頁。格：{ img, art, fill, focus, tone, dots, line: [說話者, 字], actor: { who, sp, pose, expr }, sfx, out }
+// 漫畫頁。格：{ img, art, fill, focus, tone, line: [說話者, 字], actor: { who, sp, pose, expr }, sfx, out }
 function pageShot(cells, ctx) {
   const { at, beat, key } = ctx;
   const Q = LAYOUT[cells.length] || LAYOUT[3];
@@ -153,7 +153,6 @@ function pageShot(cells, ctx) {
         { t: t0 + 14, z: 1.14 },
       ],
       tone: c.tone,
-      dots: c.dots ?? 0.28,
       vig: 0.45,
       kids,
     });
@@ -209,8 +208,6 @@ function stillShot(b) {
             fill: b.fill || '#101010',
             focus: b.focus,
             tone: b.tone,
-            dots: b.dots ?? 0.3,
-            dotSz: 7,
             vig: 0.7,
             kb: [
               { t: 0, z: 1.02 },
@@ -256,7 +253,6 @@ function echoShot(b, cyc) {
             art: b.art,
             fill: '#06101a',
             tone: b.tone,
-            dots: 0.35,
             vig: 0.85,
             a: 0.55,
           },

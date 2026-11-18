@@ -398,7 +398,7 @@ function shortFilm({ title, tag, look, lines, music }) {
                 [1520, 620],
                 [800, 620],
               ],
-          { img: L.img, tone: L.light, dots: 0.5, t0: 0.4, in: i % 2 ? 'left' : 'right' },
+          { img: L.img, tone: L.light, t0: 0.4, in: i % 2 ? 'left' : 'right' },
         ),
       );
     subs.push([T.at + 0.4, P.text, d - 0.6, echo ? 'echo' : null]);

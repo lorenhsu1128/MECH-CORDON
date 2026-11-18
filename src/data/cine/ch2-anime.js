@@ -340,7 +340,6 @@ export function ch2Intro(ctx) {
               in: 'drop',
               t0: pb(0.35),
               live: true,
-              dots: 0.2,
               flt: 'contrast(1.3)',
               cam: {
                 fov: 36,
@@ -375,7 +374,7 @@ export function ch2Intro(ctx) {
               [1540, 520],
               [880, 520],
             ],
-            { img: 'c2/c2i_railgun', t0: pb(2.6), dots: 0.3, tone: '#3a7aa0' },
+            { img: 'c2/c2i_railgun', t0: pb(2.6), tone: '#3a7aa0' },
           ),
           // ③ 艾瑟立克的警衛（3D、自己的鏡頭）
           PANEL(
@@ -389,7 +388,6 @@ export function ch2Intro(ctx) {
               in: 'left',
               t0: pb(4.6),
               live: true,
-              dots: 0.25,
               flt: 'contrast(1.3) saturate(0.7)',
               cam: {
                 fov: 32,
@@ -500,7 +498,6 @@ export function ch2Intro(ctx) {
             {
               t0: 1.2,
               fill: '#06121c',
-              dots: 0.15,
               kids: [SAKKI({ pose: 'p1', face: [1285, 255], faceH: 190, in: null })],
             },
           ),
@@ -908,7 +905,6 @@ export function ch2Outro(ctx) {
             {
               img: cas ? 'cx/x2_feast' : 'cx/x2_sakki',
               t0: 1.6,
-              dots: 0.25,
               kb: [
                 { t: 1.6, z: 1.1 },
                 { t: 6, z: 1.2 },
@@ -936,7 +932,7 @@ export function ch2Outro(ctx) {
               [650, 520],
               [60, 520],
             ],
-            { img: cas ? 'cx/x2_dry' : 'cx/x2_cooling', t0: 1.8, in: 'left', dots: 0.3, tone: '#4a6a8a' },
+            { img: cas ? 'cx/x2_dry' : 'cx/x2_cooling', t0: 1.8, in: 'left', tone: '#4a6a8a' },
           ),
         ],
       },
@@ -1020,7 +1016,7 @@ export function ch2Outro(ctx) {
               [1560, 850],
               [940, 850],
             ],
-            { img: 'cx/x2_refugees', t0: 2.0, dots: 0.3, tone: '#6080a0' },
+            { img: 'cx/x2_refugees', t0: 2.0, tone: '#6080a0' },
           ),
         ],
       },
@@ -1075,7 +1071,6 @@ export function ch2Outro(ctx) {
               img: cas ? 'c2/c2o_convoy' : 'cx/x2_wanted',
               t0: cas ? 1.6 : 0.8,
               in: cas ? 'left' : 'drop',
-              dots: 0.3,
               tone: cas ? '#6080a0' : null,
             },
           ),
@@ -1129,7 +1124,7 @@ export function ch2Outro(ctx) {
               [1200, 740],
               [400, 740],
             ],
-            { img: 'c2/c2o_camp', t0: 2.2, in: 'fade', ind: 1, dots: 0.35, tone: '#6080a0' },
+            { img: 'c2/c2o_camp', t0: 2.2, in: 'fade', ind: 1, tone: '#6080a0' },
           ),
         ],
       },

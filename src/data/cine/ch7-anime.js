@@ -85,7 +85,7 @@ const RIGHT = (img, t0, o = {}) =>
       [1540, 560],
       [840, 560],
     ],
-    { img, t0, dots: 0.25, ...o },
+    { img, t0, ...o },
   );
 const LEFT = (img, t0, o = {}) =>
   PANEL(
@@ -95,7 +95,7 @@ const LEFT = (img, t0, o = {}) =>
       [660, 560],
       [60, 560],
     ],
-    { img, t0, in: 'left', dots: 0.25, ...o },
+    { img, t0, in: 'left', ...o },
   );
 // 宿敵登場（仰角、一拍二、色塊＋立繪＋名牌）
 function rivalShot(set, grade, key, who, name, tag, color) {
@@ -233,7 +233,6 @@ export function ch7Intro(ctx) {
               img: 'c7/c7i_ark',
               in: 'drop',
               t0: 0.6,
-              dots: 0.25,
               kids: [
                 {
                   k: 'text',
@@ -650,7 +649,6 @@ export function ch8Intro(ctx) {
               ind: 0.3,
               t0: 0.5 + i * 0.7,
               fill: '#121216',
-              dots: 0.12,
               kids: [ACT(who, { pose, face: [210 + i * 390, 360], faceH: 190, in: null })],
             },
           ),

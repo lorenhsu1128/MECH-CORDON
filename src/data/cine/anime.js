@@ -2,7 +2,7 @@
 // 第 1 章開場（ch1-intro.js）是試做，有自己的一份；新的段落用這裡的。
 import { parseLine } from './kit.js';
 
-// 全畫面的 3D（舞台上的格子）；o 可以加 flt、tone、dots…
+// 全畫面的 3D（舞台上的格子）；o 可以加 flt、tone…
 export const LIVE = (o = {}) => ({ k: 'panel', q: [0, 0, 1600, 900], bd: 0, live: true, ...o });
 // 立繪疊在 3D 上（對白用字幕條：noBub）
 export const ACT = (who, o = {}) => ({ k: 'actor', who, noBub: true, in: 'fade', ...o });
@@ -36,7 +36,7 @@ export const IMPACT = () => ({
 // 地點的字卡（左上；文字風格的 loc 元素，game/cine-type.js）：color＝LOCATION 膠囊的顏色
 export const LOC = (name, en, color, t0 = 0.4) => [{ k: 'loc', name, en, color, at: [56, 70], t0 }];
 // 斜切的格子（插畫或立繪）：q＝四個點；img 或 kids
-export const PANEL = (q, o = {}) => ({ k: 'panel', q, in: 'right', dots: 0.25, ...o });
+export const PANEL = (q, o = {}) => ({ k: 'panel', q, in: 'right', ...o });
 
 // 對白放進當時的那一鏡：lines＝[[過場的秒數, 台詞（「名字：「…」」或旁白）, 字幕的秒數, 說話者（可省）]]
 export function placeLines(T, lines) {

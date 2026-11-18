@@ -12,25 +12,6 @@ function rng(seed) {
   };
 }
 
-// 網點（漫畫的網點紙）：疊在格子上，mode multiply
-const DOT = {};
-export function dotPattern(x, size = 9, a = 0.5) {
-  const k = size + '|' + a;
-  if (!DOT[k]) {
-    const c = document.createElement('canvas');
-    c.width = c.height = size;
-    const g = c.getContext('2d');
-    g.fillStyle = '#fff';
-    g.fillRect(0, 0, size, size);
-    g.fillStyle = `rgba(0,0,0,${a})`;
-    g.beginPath();
-    g.arc(size / 2, size / 2, size * 0.28, 0, Math.PI * 2);
-    g.fill();
-    DOT[k] = c;
-  }
-  return x.createPattern(DOT[k], 'repeat');
-}
-
 // 夜裡的辦公室（卡斯特隆）：大片窗戶、窗外礦場的燈（散景）、窗框、牆
 function office(x, w, h, t, o) {
   const R = rng(o.seed || 7);

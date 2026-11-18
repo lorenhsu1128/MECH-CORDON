@@ -550,7 +550,6 @@ export function ch6Outro(ctx) {
               in: 'fade',
               t0: 0,
               fill: '#121216',
-              dots: 0.12,
               kids: [ACT(who, { pose, face: [210 + i * 390, 360], faceH: 190, in: null })],
             }),
             {
@@ -631,7 +630,7 @@ export function ch6Outro(ctx) {
               [1000, 620],
               [300, 620],
             ],
-            { img: 'c7/c7i_ark', t0: 1.4, in: 'fade', ind: 0.6, dots: 0.3, tone: '#a04020' },
+            { img: 'c7/c7i_ark', t0: 1.4, in: 'fade', ind: 0.6, tone: '#a04020' },
           ),
         ],
       },

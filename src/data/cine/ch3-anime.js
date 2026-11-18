@@ -143,7 +143,7 @@ export function ch3Intro(ctx) {
               [650, 520],
               [60, 520],
             ],
-            { img: 'c3/c3i_camp', t0: 2.2, in: 'left', dots: 0.3, tone: '#6080a0' },
+            { img: 'c3/c3i_camp', t0: 2.2, in: 'left', tone: '#6080a0' },
           ),
         ],
       },
@@ -232,7 +232,6 @@ export function ch3Intro(ctx) {
             {
               t0: 1.4,
               fill: '#16121a',
-              dots: 0.15,
               kids: [NORA({ pose: 'p7', face: [1285, 255], faceH: 190, in: null })],
             },
           ),
@@ -569,7 +568,6 @@ export function ch3Outro(ctx) {
               img: 'c3/c3o_file',
               in: 'fade',
               ind: 0.6,
-              dots: 0.25,
               tone: '#7a8aa0',
               kb: [
                 { t: 0, z: 1.05 },
@@ -696,7 +694,7 @@ export function ch3Outro(ctx) {
               [600, 850],
               [60, 850],
             ],
-            { img: 'cx/x2_refugees', t0: 3.2, in: 'left', dots: 0.3, tone: '#6080a0' },
+            { img: 'cx/x2_refugees', t0: 3.2, in: 'left', tone: '#6080a0' },
           ),
         ],
       },

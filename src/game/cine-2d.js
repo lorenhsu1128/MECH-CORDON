@@ -1,7 +1,7 @@
 // Game：過場的 2D 舞台（docs/cine-redesign-design.md 第 1 期；格式見 docs/cinematics.md 的「2D 舞台」）。
 // 鏡頭的 st＝{ bg, pg, els }：畫在 #cine2d（3D 畫面之上、淡入淡出的黑幕之下），座標是 1600×900 的舞台（cover 對齊畫面）。
 //   - 分格 panel：多邊形的格子（白邊＋黑線），落下／蓋章／滑入，裡面放顏色、程式插畫、即時的 3D 畫面（live：
-//     渲染器的畫布直接畫進格子，snap 的時間定格）、子元素；tone＝單色、dots＝網點、flt＝濾鏡（反白線稿等）
+//     渲染器的畫布直接畫進格子，snap 的時間定格）、子元素；tone＝單色、flt＝濾鏡（反白線稿等）
 //   - 立繪演員 actor：角色產生器的立繪（分層動畫、眨眼、對口型），照時間軸換姿勢（保持＋兩格模糊的過渡格，
 //     到位的方式照角色個性表 data/cine/persona.js）、表情、動作、位置；holo＝全像（ECHO 的駕駛艙插入）
 //   - 氣泡：字幕的說話者在舞台上時，字幕改成他旁邊的氣泡（語音、字幕語言、對口型照舊）；bubble 元素＝沒有語音的氣泡
@@ -11,7 +11,7 @@ import { clamp, lerp } from '../core/math.js';
 import { PERSONA, PERSONA_DEF } from '../data/cine/persona.js';
 import { FACTIONS, SPEAKERS } from '../data/story.js';
 import { BC, FB, FD, FL, FM, slantTag } from '../render/cine-brand.js';
-import { drawArt, dotPattern } from '../render/cine-art.js';
+import { drawArt } from '../render/cine-art.js';
 import { Portrait, Portraits } from '../render/portraits.js';
 import { Game } from './game.js';
 
@@ -447,17 +447,10 @@ Object.assign(Game.prototype, {
     s2n.nest = (s2n.nest || 0) + 1; // 格子裡的元素：不套視差（cine2d_actor）
     for (const kid of e.kids || []) this.cine2dEl(x, kid, lt);
     s2n.nest--;
-    // 單色（保留亮度、換成這個顏色）、網點、反白
+    // 單色（保留亮度、換成這個顏色）、反白
     if (e.tone) {
       x.globalCompositeOperation = 'color';
       x.fillStyle = e.tone;
-      x.fillRect(bx, by, bw, bh);
-      x.globalCompositeOperation = 'source-over';
-    }
-    if (e.dots) {
-      x.globalCompositeOperation = 'multiply';
-      x.globalAlpha *= e.dots;
-      x.fillStyle = dotPattern(x, e.dotSz || 9, 0.55);
       x.fillRect(bx, by, bw, bh);
       x.globalCompositeOperation = 'source-over';
     }

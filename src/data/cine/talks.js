@@ -75,7 +75,6 @@ export function talkShot(o) {
           { t: 0, z: 1.04 },
           { t: dur, z: 1.1, x: -20 },
         ],
-        dots: 0.12,
         vig: 0.45,
         kids: [actor(Lw, o.L, rIn == null ? 640 : 470, 'r', sL)],
       },
@@ -94,7 +93,6 @@ export function talkShot(o) {
               in: 'right',
               img: PR.img,
               fill: PR.fill || '#0a1824',
-              dots: 0.3,
               vig: 0.35,
               kids: [
                 ...(PR.img

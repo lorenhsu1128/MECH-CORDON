@@ -24,7 +24,6 @@ function cell(line, img, o = {}) {
   if (who && who !== 'echo')
     return {
       img: SCENE[who] || img,
-      dots: 0.4,
       actor: { who, pose: o.pose || 'p1' },
       line: [who, text],
       ...o.cell,
@@ -40,7 +39,6 @@ const four = (lines, poses = ['p1', 'p1', 'p1', 'p1'], quote = false) =>
     const [sp, text] = q ? [who, q[1]] : l ? L(l) : [null, null];
     return {
       img: SCENE[who],
-      dots: 0.4,
       actor: { who, pose: poses[i] },
       ...(text ? { line: [sp, text] } : { hold: 1.2 }),
     };
@@ -63,7 +61,6 @@ const FILMS = {
         ].map((c, i) => ({
           ...c,
           actor: { who: ['castron', 'aetheric', 'veerwell', 'sancta'][i], pose: ['p8', 'p7', 'p9', 'p5'][i] },
-          dots: 0.4,
         })),
       },
       { echo: { img: 'c1/c1o_night', lines: [L(T[6]), L(T[7])], poses: ['p7', 'p8'] } },
@@ -91,8 +88,8 @@ const FILMS = {
       talkOf('intro_2', ctx),
       {
         page: [
-          { img: 'c1/c1_office', dots: 0.4, actor: { who: 'castron', pose: 'p7' }, line: L(T[4]) },
-          { img: 'cm/m_lab', dots: 0.4, actor: { who: 'aetheric', pose: 'p9' }, hold: 1.4 },
+          { img: 'c1/c1_office', actor: { who: 'castron', pose: 'p7' }, line: L(T[4]) },
+          { img: 'cm/m_lab', actor: { who: 'aetheric', pose: 'p9' }, hold: 1.4 },
         ],
       },
       { rival: { who: 'stevedore', name: 'STEVEDORE', tag: '卡斯特隆的碼頭工頭', color: '#d8903a' } },
@@ -148,7 +145,7 @@ const FILMS = {
       {
         page: [
           cell(T[1], 'c3/c3i_camp'),
-          { ...cell(T[2], 'cm/m_shelter'), actor: { who: 'sancta', pose: 'p7' }, dots: 0.4 },
+          { ...cell(T[2], 'cm/m_shelter'), actor: { who: 'sancta', pose: 'p7' } },
         ],
       },
       talkOf('intro_3', ctx),
@@ -170,7 +167,7 @@ const FILMS = {
       {
         page: [
           cell(T[3], 'c3/c3o_coords'),
-          { img: 'c1/c1_office', dots: 0.4, actor: { who: 'castron', pose: 'p7' }, line: L(T[4]) },
+          { img: 'c1/c1_office', actor: { who: 'castron', pose: 'p7' }, line: L(T[4]) },
           cell(T[5], 'c3/c3o_north'),
         ],
       },
@@ -192,8 +189,8 @@ const FILMS = {
       },
       {
         page: [
-          { img: 'cm/m_dispatch', dots: 0.4, actor: { who: 'veerwell', pose: 'p9' }, line: L(T[2]) },
-          { img: 'cm/m_shelter', dots: 0.4, actor: { who: 'sancta', pose: 'p8' }, line: L(T[3]) },
+          { img: 'cm/m_dispatch', actor: { who: 'veerwell', pose: 'p9' }, line: L(T[2]) },
+          { img: 'cm/m_shelter', actor: { who: 'sancta', pose: 'p8' }, line: L(T[3]) },
           cell(T[4], 'c4/c4i_scav'),
         ],
       },
@@ -215,7 +212,7 @@ const FILMS = {
             : [cell(T[0], 'cx/x4_gate'), cell(T[1], 'cx/x4_planes'), cell(T[2], 'c4/c4o_cable')],
         },
         { page: [cell(T[3], 'c4/c4o_coast'), cell(T[4], 'c4/c4o_letter')] },
-        { page: [{ img: 'c1/c1_office', dots: 0.4, actor: { who: 'castron', pose: 'p9' }, line: L(T[5]) }] },
+        { page: [{ img: 'c1/c1_office', actor: { who: 'castron', pose: 'p9' }, line: L(T[5]) }] },
       ],
     };
   },
@@ -298,7 +295,6 @@ const FILMS = {
           cell(T[3], 'cm/m_station'),
           ...['castron', 'aetheric', 'veerwell'].map((who) => ({
             img: SCENE[who],
-            dots: 0.4,
             actor: { who, pose: 'p1' },
             out: true,
             hold: 0.9,
@@ -324,7 +320,7 @@ const FILMS = {
           cell(T[3], 'c7/c7i_elevator'),
         ],
       },
-      { page: [{ img: 'c1/c1_office', dots: 0.4, actor: { who: 'castron', pose: 'p9' }, line: L(T[4]) }] },
+      { page: [{ img: 'c1/c1_office', actor: { who: 'castron', pose: 'p9' }, line: L(T[4]) }] },
       talkOf('intro_7', ctx),
       { rival: { who: 'kiln', name: 'KILN', tag: '熔爐的守衛', color: '#ff6a20' } },
       { title: { ch: 7, name: '熔爐', en: 'THE FORGE', color: '#ff6a20', img: 'c7/c7i_region' } },
@@ -338,8 +334,8 @@ const FILMS = {
       {
         page: [
           (ctx.choices || {}).c4 === 'sancta'
-            ? { img: 'cm/m_shelter', dots: 0.4, actor: { who: 'sancta', pose: 'p8' }, line: L(T[2]) }
-            : { img: 'cm/m_dispatch', dots: 0.4, actor: { who: 'veerwell', pose: 'p8' }, line: L(T[2]) },
+            ? { img: 'cm/m_shelter', actor: { who: 'sancta', pose: 'p8' }, line: L(T[2]) }
+            : { img: 'cm/m_dispatch', actor: { who: 'veerwell', pose: 'p8' }, line: L(T[2]) },
         ],
       },
       { echo: { img: 'c7/c7o_launch', lines: [L(T[3])], poses: ['p10'] } },
