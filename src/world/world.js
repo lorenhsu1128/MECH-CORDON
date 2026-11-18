@@ -2875,9 +2875,11 @@ export class World {
         v += n;
       }
     }
+    this.pillarOf = new Map();
     for (const p of P) {
       if (!p.pillarMerge) continue;
       const g = p.ob.group;
+      this.pillarOf.set(g, p);
       g.visible = false;
       const k = this.meshes.indexOf(g);
       if (k >= 0) this.meshes.splice(k, 1);
@@ -3050,6 +3052,43 @@ export class World {
       }
       if (busy) P.t = now;
       else this.poolIn(g);
+    }
+  }
+  // 甲板格子的支柱（mergeGridPillars）：擋住鏡頭時暫時拿出來（合併網格裡縮成一點、原本的群組顯示），淡回不透明 1 秒後放回去
+  pillarOut(g) {
+    const p = this.pillarOf.get(g);
+    if (!p || !p.pillarMerge || p.pOut) return;
+    p.pOut = performance.now();
+    for (const it of p.pillarMerge) {
+      const a = it.mesh.geometry.attributes.position;
+      if (!it.save) it.save = a.array.slice(it.v * 3, (it.v + it.n) * 3);
+      for (let i = it.v; i < it.v + it.n; i++) a.setXYZ(i, it.save[0], it.save[1], it.save[2]);
+      a.needsUpdate = true;
+    }
+    g.visible = true;
+    (this.pillarOutSet = this.pillarOutSet || new Set()).add(p);
+  }
+  pillarTick() {
+    if (!this.pillarOutSet || !this.pillarOutSet.size) return;
+    const now = performance.now();
+    for (const p of this.pillarOutSet) {
+      if (!p.pillarMerge) {
+        this.pillarOutSet.delete(p);
+        continue;
+      }
+      if (now - p.pOut < 1000) continue;
+      if ((p.ob.mats || []).some((m) => m.opacity < 0.999)) {
+        p.pOut = now;
+        continue;
+      }
+      for (const it of p.pillarMerge) {
+        const a = it.mesh.geometry.attributes.position;
+        a.array.set(it.save, it.v * 3);
+        a.needsUpdate = true;
+      }
+      p.ob.group.visible = false;
+      p.pOut = 0;
+      this.pillarOutSet.delete(p);
     }
   }
   propUnmerge(p) {
@@ -4047,6 +4086,9 @@ export class World {
     }
     // 每個材質的目標不透明度：記在材質上（這一格的戳記＋目標），同一個材質被好幾個物件共用時取最透明的
     const stamp = (this._occS = (this._occS || 0) + 1);
+    // 這一格擋住的遮擋物群組：登記的材質以外的零件交給 fadeMeshes 一起淡出（以前同一個物件的其他零件照舊不透明）
+    const occHit = this._occHitG || (this._occHitG = new Set());
+    occHit.clear();
     const mats = this._occM || (this._occM = []);
     mats.length = 0;
     for (const o of this.occluders) {
@@ -4067,8 +4109,14 @@ export class World {
       }
       if (hit) any = true;
       if (hit && this.pool && o.group) this.poolOut(o.group); // 合併池裡的：拿出來才淡得了
+      if (hit && o.group) {
+        if (this.pillarOf) this.pillarOut(o.group); // 甲板格子的支柱（mergeGridPillars）同樣要拿出來
+        occHit.add(o.group);
+      }
       // 擋住的那個優先
-      const target = hit ? fadeTo(o.fbox) : 1;
+      // 樓板一律淡到 FADE_OP_BIG（2026-11-18 使用者回報：一塊樓板有板面、梁好幾個網格，兩三層疊起來各 15% 會疊成六成不透明，
+      // 看起來像上層沒有淡出）
+      const target = hit ? (o.deck ? FADE_OP_BIG : fadeTo(o.fbox)) : 1;
       for (const m of o.mats)
         if (m._occS !== stamp) {
           m._occS = stamp;
@@ -4081,6 +4129,7 @@ export class World {
       m.depthWrite = m.opacity > 0.9;
     }
     this.poolTick();
+    this.pillarTick();
     return any;
   }
   // 沒有登記成 occluders 的網格（大型結構、地標、起重機、支柱、殘骸、倒下的結構…）擋住機體時，各自換成可以淡出的材質副本，
@@ -4113,6 +4162,16 @@ export class World {
     const hit = this._fadeHit || (this._fadeHit = new Set());
     hit.clear();
     for (const h of hp) for (const o of h) hit.add(o);
+    // 擋住的遮擋物（updateOcclusion）裡沒登記的材質：一起淡出
+    if (this._occHitG)
+      for (const g of this._occHitG)
+        g.traverse((o) => {
+          if (!o.isMesh || o.isInstancedMesh || !o.visible) return;
+          const m = (this._fading && this._fading.get(o) && this._fading.get(o).orig) || o.material;
+          if (!m || Array.isArray(m) || this.occOwned(o, m) || isOutline(m)) return;
+          if (m.transparent && (m.opacity < 0.5 || m.blending !== THREE.NormalBlending)) return;
+          hit.add(o);
+        });
     // 合併池裡的（原本的網格隱藏著）：拿出來才淡得了
     if (this.poolOf)
       for (const o of hit) {
@@ -4172,7 +4231,9 @@ export class World {
       rc.intersectObject(root, true, out);
       for (const h of out) {
         const o = h.object;
-        if (!o.isMesh || o.isInstancedMesh || !o.visible || h.point.y < floor) continue;
+        // 合併池裡藏起來的原本網格也算（2026-11-18：以前跳過看不見的網格，合併的物件永遠偵測不到、不會拿出來淡出）
+        if (!o.isMesh || o.isInstancedMesh || h.point.y < floor) continue;
+        if (!o.visible && !(this.poolOf && this.poolOf.has(o))) continue;
         const f = this._fading && this._fading.get(o);
         const m = o.material;
         if (
