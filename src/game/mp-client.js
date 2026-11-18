@@ -210,7 +210,7 @@ Object.assign(Game.prototype, {
       for (const k of ['l', 'r']) {
         const a = e.model.arms[k];
         if (!a || !a.hand) continue;
-        a.hand.getWorldPosition(v);
+        (a.mz || a.hand).getWorldPosition(v); // 子彈從槍口出來（render/muzzle.js）
         const d = v.distanceToSquared(pos);
         if (d < bd) {
           bd = d;
@@ -218,7 +218,7 @@ Object.assign(Game.prototype, {
         }
         // 肩上武器有轉管時（背部加特林），子彈從肩上出現就讓它轉
         if (a.bspin) {
-          a.bspin.getWorldPosition(v);
+          (a.bmz || a.bspin).getWorldPosition(v);
           const db = v.distanceToSquared(pos);
           if (db < bd) {
             bd = db;

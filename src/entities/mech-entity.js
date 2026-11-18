@@ -110,6 +110,7 @@ const ANIM_SLOTS = [
   ['lback', 'bl', true],
 ];
 const NO_KEY = { k: '', side: 0 };
+const MSL_GAP = 0.07; // 多連導彈：每個發射管之間的間隔（秒）
 
 // 近戰武器的音色（audio.js 的 meleeSwing／meleeHit）
 const MELEE_FAM = { w_blade: 'blade', w_saber: 'saber', w_claw: 'claw', w_pile: 'pile', w_fist: 'fist' };
@@ -558,14 +559,50 @@ export class MechEntity {
   center() {
     return new THREE.Vector3(this.pos.x, this.pos.y + this.model.height * 0.5, this.pos.z);
   }
-  muzzle(slot) {
+  // 槍口（render/muzzle.js：buildMech 量模型掛的節點；2026-11-18 以前一律是手腕／肩上武器座）。
+  // part：'rear' 尾端（火箭筒的後焰、莢艙的煙）、'mid' 機匣（彈殼）。沒有節點的（步行機、載具、Boss 的模型）照舊用手與武器座
+  muzzle(slot, part) {
     const w = this.weapons[slot];
-    const m = slot.endsWith('arm')
-      ? this.model.arms[w.side > 0 ? 'r' : 'l'].hand
-      : this.model.arms[w.side > 0 ? 'r' : 'l'].back;
+    const A = this.model.arms && this.model.arms[w && w.side > 0 ? 'r' : 'l'];
+    const arm = slot.endsWith('arm');
     const v = new THREE.Vector3();
-    m.getWorldPosition(v);
+    if (!A) return this.center();
+    const pre = arm ? 'mz' : 'bmz';
+    const n = A[pre + (part === 'rear' ? 'Rear' : part === 'mid' ? 'Mid' : '')] || (arm ? A.hand : A.back);
+    n.getWorldPosition(v);
     return v;
+  }
+  // 槍口被牆擋住（貼著掩體開火，槍管穿進牆裡）：從手／武器座往槍口找第一個碰到的位置，退回那裡發射（不會隔牆打人）
+  muzzleSafe(slot, mz) {
+    const w = this.weapons[slot];
+    const A = this.model.arms && this.model.arms[w && w.side > 0 ? 'r' : 'l'];
+    const W = this.game.world;
+    if (!A || !A.mz || !W || !W.hitsWorld) return mz;
+    const base = (slot.endsWith('arm') ? A.hand : A.back).getWorldPosition(new THREE.Vector3());
+    const p = new THREE.Vector3();
+    let last = base;
+    for (let i = 1; i <= 6; i++) {
+      p.copy(base).lerp(mz, i / 6);
+      if (W.hitsWorld(p)) return last.clone();
+      last = p.clone();
+    }
+    return mz;
+  }
+  // 排隊中的導彈（依序從各發射管射出，房主／單機）
+  mslTick() {
+    const q = this.mslQ;
+    while (q.length && this.t >= q[0].at) q.shift().go();
+    if (this.dead) q.length = 0;
+  }
+  // 導彈的發射管 i（世界座標）與發射方向（莢艙的朝向往上抬）；沒有發射管時是槍口＋往上
+  tubeAt(slot, i) {
+    const w = this.weapons[slot];
+    const A = this.model.arms && this.model.arms[w && w.side > 0 ? 'r' : 'l'];
+    if (!A || !A.tubes || !A.tubes.length) return null;
+    const t = A.tubes[i % A.tubes.length];
+    const pos = t.getWorldPosition(new THREE.Vector3());
+    const q = A.back.getWorldQuaternion(new THREE.Quaternion());
+    return { pos, dir: A.tubeDir.clone().applyQuaternion(q).normalize(), n: A.tubes.length };
   }
   aimDirTo(target) {
     const from = this.center();
@@ -644,7 +681,7 @@ export class MechEntity {
       if (this.isPlayer) SFX.reloadStart(d.type === 'missile' || d.type === 'shell' || d.type === 'grenade');
       return false;
     }
-    const muzzle = this.muzzle(slot);
+    const muzzle = this.muzzleSafe(slot, this.muzzle(slot)); // 槍口（貼牆時退回牆前）
     const from = this.center();
     if (this.pilotEnt()) g.aiFireNoise(this, d.type); // 開火的聲音（敵人起疑，game/ai-director.js）
     if (this.pm) this.lgFired(d, targetEnt); // 傳說模組「浮游砲『回聲』」（mech-legend.js）
@@ -793,7 +830,7 @@ export class MechEntity {
       case 'bullet':
         shoot(jitter(dir), 'bullet');
         g.fx.muzzle(muzzle, dir, d.color || 0xffd080, slot.endsWith('back') ? 1.1 : 0.9);
-        g.fx.casing(muzzle.clone().addScaledVector(dir, -1.2 * this.dk), w.side, dir);
+        g.fx.casing(this.muzzle(slot, 'mid'), w.side, dir); // 彈殼從機匣彈出
         SFX.shot('bullet', d.id, muzzle, this);
         SFX.casing(muzzle, !!d.spin && slot.endsWith('back'));
         w.cd = d.rof * (d.spin ? 2.5 - 1.5 * clamp(w.streak / d.spin, 0, 1) : 1); // 加特林：轉速慢慢提升
@@ -813,7 +850,7 @@ export class MechEntity {
         if (d.enShot && !this.useEn(d.enShot * (1 - this.pmv('enWpn')) * this.lgEnK())) return false; // 能量霰彈：每發耗 EN
         for (let i = 0; i < (pwK === 'slug' ? 1 : d.pellets); i++) shoot(jitter(dir), 'bullet');
         g.fx.muzzle(muzzle, dir, 0xffa050, 1.8, 'sg'); // 霰彈槍：前方扇形的煙
-        g.fx.casing(muzzle.clone().addScaledVector(dir, -1 * this.dk), w.side, dir);
+        g.fx.casing(this.muzzle(slot, 'mid'), w.side, dir);
         SFX.shot('shotgun', d.id, muzzle, this);
         if (!d.enShot) SFX.casing(muzzle, true);
         w.cd = d.rof;
@@ -832,8 +869,12 @@ export class MechEntity {
             foeShot ? this.foeShotOpt(dmg, 'shell') : {},
           ),
         );
-        g.fx.muzzle(muzzle, dir, 0xff8040, 2.4, 'bz'); // 火箭筒：筒子後方的後焰
-        g.fx.smoke(muzzle.clone().addScaledVector(dir, -1.5), 1.2, 0x9a9ea6, 0.8, 2);
+        {
+          // 火箭筒：筒口的火光＋筒尾的後焰與煙
+          const rear = this.muzzle(slot, 'rear');
+          g.fx.muzzle(muzzle, dir, 0xff8040, 2.4, 'bz', rear);
+          g.fx.smoke(rear, 1.2, 0x9a9ea6, 0.8, 2);
+        }
         SFX.shot('shell', d.id, muzzle, this);
         w.cd = d.rof;
         this.vel.addScaledVector(dir, -5);
@@ -884,7 +925,8 @@ export class MechEntity {
               ...(foeShot ? this.foeShotOpt(dmg, 'grenade') : {}),
             }),
           );
-          g.fx.muzzle(muzzle, dir, 0xff8040, 2.4, 'bz');
+          g.fx.muzzle(muzzle, dir, 0xff8040, 1.8); // 榴彈：槍口的火光與煙（沒有後焰）
+          g.fx.smoke(muzzle, 0.9, 0x9a9ea6, 0.7, 1.6);
           SFX.shot('grenade', d.id, muzzle, this);
           w.cd = d.rof;
           this.recoil[w.side > 0 ? 'r' : 'l'] = 1;
@@ -902,8 +944,15 @@ export class MechEntity {
           const n = ml ? d.count || 1 : this.missileN(d, targetEnt); // 多連導彈：鎖定時間不夠時發射數量較少
           this.lkT0 = this.t; // 發射後重新鎖定
           const af = ml ? this.airDirNow() : null;
-          for (let i = 0; i < n; i++) {
-            const up = new THREE.Vector3(rnd(-0.6, 0.6), 1.2, rnd(-0.6, 0.6)).normalize();
+          // 2026-11-18（使用者定案）：每發從莢艙的一個發射管（紅色彈頭的位置）輪流射出、間隔 MSL_GAP 秒，
+          // 先沿莢艙的朝向（往上抬）飛出去再轉向目標。沒有發射管的（步行機等）照舊從槍口往上
+          const mk = (i, pos, dir0) => {
+            const up = dir0
+              ? dir0
+                  .clone()
+                  .add(new THREE.Vector3(rnd(-0.08, 0.08), rnd(-0.04, 0.08), rnd(-0.08, 0.08)))
+                  .normalize()
+              : new THREE.Vector3(rnd(-0.6, 0.6), 1.2, rnd(-0.6, 0.6)).normalize();
             const v = ml
               ? af
                   .clone()
@@ -920,9 +969,12 @@ export class MechEntity {
                   aam: true,
                 }
               : null;
+            const tgt = targetEnt && !targetEnt.dead ? targetEnt : null;
             g.projectiles.push(
               new Projectile(g, {
-                pos: muzzle.clone().add(new THREE.Vector3(rnd(-0.3, 0.3), 0.3, rnd(-0.3, 0.3))),
+                pos: dir0
+                  ? pos.clone()
+                  : pos.clone().add(new THREE.Vector3(rnd(-0.3, 0.3), 0.3, rnd(-0.3, 0.3))),
                 vel: v,
                 kind: 'missile',
                 dmg,
@@ -931,7 +983,7 @@ export class MechEntity {
                 owner: this,
                 color: 0xffb3b3,
                 life: d.range / d.speed + 1.5,
-                target: targetEnt,
+                target: tgt,
                 turn: (d.turn * 1.4 * (this.stats.parts.fcs.id === 'f_near' ? 1.5 : 1)) / hmul,
                 splash: d.splash,
                 wid: d.id,
@@ -941,12 +993,30 @@ export class MechEntity {
                 ...(mlx || {}),
               }),
             );
+          };
+          const tube0 = this.tubeAt(slot, 0);
+          if (!tube0) for (let i = 0; i < n; i++) mk(i, muzzle, null);
+          else {
+            w.tubeI = w.tubeI || 0;
+            for (let i = 0; i < n; i++) {
+              const ti = w.tubeI++;
+              const go = () => {
+                if (this.dead) return;
+                const T = this.tubeAt(slot, ti);
+                const p = this.muzzleSafe(slot, T.pos);
+                mk(i, p, T.dir);
+                g.fx.muzzle(p, T.dir, 0xffc0a0, 0.8, 'ms'); // 發射管口的小閃光與往後的煙
+              };
+              if (i === 0) go();
+              else (this.mslQ || (this.mslQ = [])).push({ at: this.t + i * MSL_GAP, go });
+            }
           }
           if (ml) this.airMLFired = this.t;
-          g.fx.muzzle(muzzle, dir, 0xffc0a0, 1.2, 'ms'); // 導彈莢艙：發射口的小閃光與往後的煙
+          if (!tube0) g.fx.muzzle(muzzle, dir, 0xffc0a0, 1.2, 'ms'); // 導彈莢艙：發射口的小閃光與往後的煙
+          const smk = tube0 ? this.muzzle(slot, 'rear') : muzzle; // 莢艙的尾端冒煙
           for (let i = 0; i < 3; i++)
             g.fx.smoke(
-              muzzle.clone().add(new THREE.Vector3(rnd(-0.4, 0.4), 0.2, rnd(-0.4, 0.4))),
+              smk.clone().add(new THREE.Vector3(rnd(-0.4, 0.4), 0.2, rnd(-0.4, 0.4))),
               0.8,
               0xc0c4ca,
               0.8,
@@ -2579,6 +2649,7 @@ export class MechEntity {
   }
   // ---------- physics ----------
   move(dt, wish, wantHover, wantQB, wantAB, targetEnt) {
+    if (this.mslQ && this.mslQ.length) this.mslTick();
     const g = this.game,
       w = g.world,
       P = this.stats.parts;

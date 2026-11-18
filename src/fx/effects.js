@@ -1458,7 +1458,8 @@ export class Effects {
   }
   // kind（第 5 個參數，隨轉送帶給客機；docs/vfx-design.md 第 6 期）：'sg' 霰彈槍＝前方扇形的煙、
   // 'bz' 火箭筒與榴彈＝筒子後方的後焰、'ms' 導彈莢艙＝發射口的小閃光與往後的煙（沒有槍口火焰）
-  muzzle(p, dir, color = 0xffd080, size = 1, kind) {
+  // rear：火箭筒的尾端（後焰的位置；沒給時在槍口往後 2.2 m）
+  muzzle(p, dir, color = 0xffd080, size = 1, kind, rear) {
     if (this.skip(p, size)) return;
     const sz = size * this.k;
     if (kind === 'ms') {
@@ -1478,7 +1479,7 @@ export class Effects {
     const R = this.rich;
     if (kind === 'sg') emitPreset(this.g, 'sgSmoke', p, { S: this.k, axis: dir });
     else if (kind === 'bz')
-      emitPreset(this.g, 'bzBlast', p.clone().addScaledVector(dir, -2.2 * this.k), {
+      emitPreset(this.g, 'bzBlast', rear || p.clone().addScaledVector(dir, -2.2 * this.k), {
         S: this.k,
         axis: dir.clone().negate(),
       });

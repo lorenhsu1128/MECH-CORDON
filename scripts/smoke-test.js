@@ -7,7 +7,7 @@
 // 預設分段平行（scripts/smoke-jobs.js）：SMOKE_JOBS＝段數（1＝單一程序依序跑），耗時記在
 // test-results/smoke-times.json；SMOKE_ONLY 可以一起用
 'use strict';
-/* global window, document, localStorage, location, getComputedStyle, scrollTo, indexedDB, THREE, PointerEvent, innerWidth, innerHeight -- page.evaluate 的回呼在瀏覽器端執行 */
+/* global window, document, localStorage, location, getComputedStyle, scrollTo, indexedDB, THREE, PointerEvent, innerWidth, innerHeight, Element -- page.evaluate 的回呼在瀏覽器端執行 */
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -34628,6 +34628,21 @@ async function launchBrowser() {
       '--use-fake-ui-for-media-stream',
     ],
   });
+  // 滑鼠鎖定一律停用（2026-11-18 使用者回報）：追尾、第一人稱、空戰會 requestPointerLock，Windows 上無頭的瀏覽器
+  // 其實有一個看不到的視窗在螢幕左上角，使用者的滑鼠會被鎖進去、一直被拉到左上角。每個瀏覽器環境開頭換成空函式
+  {
+    const nc0 = browser.newContext.bind(browser);
+    browser.newContext = async (o) => {
+      const c = await nc0(o);
+      await c.addInitScript(() => {
+        Element.prototype.requestPointerLock = function () {
+          return Promise.resolve();
+        };
+      });
+      return c;
+    };
+    browser.newPage = async (o) => (await browser.newContext(o)).newPage();
+  }
   // SMOKE_RENDER＝畫面模式（localStorage mech_cordon_render 的 JSON，例如 {"mode":"hdr"}）：每個新的瀏覽器環境都先寫入，
   // 整套測試以那個模式跑（docs/perf-threejs-upgrade.md 第 4 期）
   if (process.env.SMOKE_RENDER) {

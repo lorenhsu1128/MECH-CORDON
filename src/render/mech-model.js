@@ -2,7 +2,7 @@
 import { PROC_COLS, PROC_PARTS, PROC_PRIMS, PROC_SPIN, PROC_WHEELS } from './proc/index.js';
 import { WHEEL_COLS, wheelPrims } from './proc/foot_wheels.js';
 import { tankPartsGroup, tankPartsPose } from './proc-tank.js';
-import { primsGroup } from './proc-prims.js';
+import { primsGroup, primsTris } from './proc-prims.js';
 import { clamp, lerp } from '../core/math.js';
 import { MB } from '../core/scale.js';
 import { START_ASM, asmParts, partById } from '../data/parts.js';
@@ -38,6 +38,7 @@ import { FIRE } from './mech-fire.js';
 import { MJ_AXES, clipPose, clipStrike, clipTarget } from './melee-anim.js';
 import { addPose, hrBody, hrKicks, hrPose } from './hit-react-pose.js';
 import { meleeHrOf } from '../data/hit-react.js';
+import { LAUNCH_PITCH, measureMuzzle, muzzleFromPoints } from './muzzle.js';
 // 受擊閃光結束後還原的自發光（GLB 材質記錄在 userData.emis0，程式材質為黑）
 const BLACK = new THREE.Color(0);
 const unflash = (m) => {
@@ -815,6 +816,7 @@ export const CONN_NAMES = {
   elbow: '手肘',
   wrist: '手腕',
   grip: '武器握點',
+  muzzle: '槍口',
   nozzle_l: '左噴口',
   nozzle_r: '右噴口',
 };
@@ -883,10 +885,33 @@ const C0 = (p, r = [0, 0, 0]) => ({ p, r: new THREE.Euler(r[0], r[1], r[2]) });
 // 區塊的連接點預設值（遊戲座標：正面 −Z、單位公尺、相對於區塊原點）：二足、逆關節的骨架用內建預設機甲的連接點
 // 機甲三倍高改版：下面的骨架數值（LAY、JOINT、REV、QD、TK、PIECE_BOX）照舊尺度寫（程式模型的造型也用它們），
 // 輸出的連接點、身高乘建模倍率 MB（＝內建 GLB 與關節設定的新尺度）
+// 沒有槍口的武器（近戰、盾、空）
+const NO_MUZZLE = /^(weapon\/w_(blade|saber|claw|pile|none|fist)|back\/bw_(sh|none))\//;
 export function pieceConns(info) {
   const o = baseConns(info);
   for (const k in o) o[k].p.multiplyScalar(MB);
+  // 射擊武器的槍口（模型庫可以拖曳微調；預設＝照程式模型量的槍口，遊戲裡沒有設定時照實際的模型量，render/muzzle.js）
+  if ((info.kind === 'weapon' || info.kind === 'back') && !NO_MUZZLE.test(info.slot)) {
+    const t = procMuzzle(info.slot);
+    if (t) o.muzzle = C0(t.clone());
+  }
   return o;
+}
+// 程式模型（PROC_PRIMS，glTF 座標）的槍口，換成遊戲座標（x、z 反號）；依槽位快取
+const PMZ = new Map();
+function procMuzzle(slot) {
+  if (PMZ.has(slot)) return PMZ.get(slot);
+  let t = null;
+  const L = PROC_PRIMS[slot];
+  if (L) {
+    const pts = [];
+    primsTris(L).forEach((pos) => {
+      for (let i = 0; i < pos.length; i += 3) pts.push(new THREE.Vector3(-pos[i], pos[i + 1], -pos[i + 2]));
+    });
+    if (pts.length) t = muzzleFromPoints(pts).tip;
+  }
+  PMZ.set(slot, t);
+  return t;
 }
 function baseConns(info) {
   const R = CUBE;
@@ -2318,6 +2343,8 @@ export function buildMech(asm, pal, scale = 1, opts = {}) {
     const spin = weapon.getObjectByName('spin') || null;
     const bspin = back.getObjectByName('spin') || null; // 肩上武器的轉管（背部加特林）
     arms[k] = {
+      wslot: wi ? wi.slot : null,
+      bslot: bwi ? bwi.slot : null,
       mount: shM,
       up,
       fore,
@@ -2335,6 +2362,7 @@ export function buildMech(asm, pal, scale = 1, opts = {}) {
     };
   }
   bakeAll(root);
+  muzzleNodes(arms, root);
   // 建立時的站姿（腿的關節角度），自動貼地以這個姿勢量測
   for (const L of legs) L.pose0 = legJoints(L).map((o) => o.rotation.clone());
   if (type === 'quad') quadRest(legs, legsG);
@@ -2392,6 +2420,41 @@ export function buildMech(asm, pal, scale = 1, opts = {}) {
   });
   tagStyle(root);
   return rig;
+}
+
+// 槍口（render/muzzle.js；2026-11-18 使用者要求）：射擊武器量模型的槍口、尾端、機匣與導彈的發射管，掛成節點，
+// MechEntity 的 muzzle／muzzleAt 用它們（沒有時退回手腕與肩上武器座）。關節設定的「槍口」連接點（muzzle）覆寫槍口的位置
+function muzzleNodes(arms, root) {
+  root.updateMatrixWorld(true);
+  const node = (par, p, name) => {
+    const o = new THREE.Object3D();
+    o.name = name;
+    o.position.copy(p);
+    par.add(o);
+    return o;
+  };
+  for (const k of ['l', 'r']) {
+    const A = arms[k];
+    for (const [slot, grp, pre] of [
+      [A.wslot, A.aim, 'mz'],
+      [A.bslot, A.back, 'bmz'],
+    ]) {
+      if (!slot || NO_MUZZLE.test(slot) || !grp) continue;
+      const M = measureMuzzle(grp, slot);
+      if (!M) continue;
+      const ov = jointSetting(slot, 'muzzle') ? resolveConn(slot, 'muzzle').p : null;
+      A[pre] = node(grp, ov || M.tip, 'muzzle');
+      A[pre + 'Rear'] = node(grp, M.rear, 'muzzleRear');
+      A[pre + 'Mid'] = node(grp, M.mid, 'muzzleMid');
+      if (pre === 'bmz') {
+        A.tubes = M.tubes.map((p) => node(grp, p, 'tube'));
+        // 導彈的發射方向：莢艙的 −Z 往上抬（群組的區域座標）
+        const pid = slot.split('/')[1];
+        const a = LAUNCH_PITCH[pid] ?? 0.35;
+        A.tubeDir = new THREE.Vector3(0, Math.sin(a), -Math.cos(a));
+      }
+    }
+  }
 }
 
 // 掛在機甲節點上的附加物（照舊尺度做的）：回傳 node 底下放大 MB 的群組；不是機甲（沒有 legsG）時回傳 node
