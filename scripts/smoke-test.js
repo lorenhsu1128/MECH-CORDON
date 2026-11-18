@@ -40,6 +40,8 @@ const SKIP = process.env.SMOKE_SKIP ? process.env.SMOKE_SKIP.split(',').filter(B
 const CHILD = process.env.SMOKE_CHILD || '';
 // 主題專屬敵人的三角形上限（精細版的載具預算，docs/model-detail.md；融合實驗體 2 倍）
 const FOE_TRI = 10000;
+// 用機甲模型的敵人（重裝 MT、登艦突擊兵、甲板軌道砲兵）：照 GLB 重建的程式模型約 2.1 萬面
+const MECH_FOE_TRI = 25000;
 // 跨測試共用的中間檔（模型庫範本 GLB）與伺服器的資料夾；單一程序時照舊放 test-results/
 const WORK_DIR = process.env.SMOKE_WORK ? path.resolve(process.env.SMOKE_WORK) : SHOT_DIR;
 const failures = []; // { test, label }
@@ -3307,7 +3309,13 @@ async function testLibraryGlb(browser, base) {
   await openSlot('mech/player');
   check(await page.$eval('#insLoad', (b) => b.disabled), '完整機甲不接受整台 GLB');
   check((await info()).includes('2 個區塊用 GLB'), '完整機甲以區塊組合顯示（含 2 個 GLB 區塊）');
-  check((await info()).includes('最低點（遊戲中離地）貼地'), '完整機甲照遊戲擺放：原點貼地、腳底在地面上');
+  {
+    const t = await info();
+    check(
+      t.includes('最低點（遊戲中離地）貼地'),
+      `完整機甲照遊戲擺放：原點貼地、腳底在地面上（${(t.split('最低點（遊戲中離地）')[1] || '').slice(0, 14)}）`,
+    );
+  }
   await page.keyboard.press('Escape');
   await wait(3000);
   const badge = await page.$eval('.cell[data-id="mech/player"] .badge', (b) => b.textContent);
@@ -3754,12 +3762,21 @@ async function testEditor(browser, base) {
   await wait(600);
   check((await stats()).includes('100%／100%／100%'), '對齊程式模型（外框整體符合）');
   check((await bad()).length === 0, `對齊後規格檢查全部通過${(await bad()).join('；')}`);
+  // 外框範圍與尺寸照目前的模型讀（前臂的程式模型改過造型，不寫死數字）
+  const yRangeB = async () => ((await stats()).match(/外框範圍 Y(-?[\d.]+) ～ (-?[\d.]+) m/) || []).slice(1);
+  const yr0 = await yRangeB();
   await page.click('#edOrigin button[data-o="bottom"]');
   await wait(400);
-  check((await stats()).includes('Y0.00 ～ 2.73'), `原點設在底面中心（${await stats()}）`);
+  check(
+    (await stats()).includes(`Y0.00 ～ ${dims0[2]}`),
+    `原點設在底面中心：Y0.00 ～ 高度 ${dims0[2]}（${await stats()}）`,
+  );
   await page.keyboard.press('Control+z');
   await wait(400);
-  check((await stats()).includes('Y-1.98 ～ 0.75'), `Ctrl+Z 復原原點修改（${await stats()}）`);
+  check(
+    yr0.length === 2 && yr0[0] !== '0.00' && (await yRangeB()).join() === yr0.join(),
+    `Ctrl+Z 復原原點修改：回到 Y${yr0.join(' ～ ')}（${await stats()}）`,
+  );
   const tris = async () => parseInt(((await page.textContent('#edTris')) || '').replace(/,/g, ''), 10);
   const t0 = await tris();
   await page.click('#edTree .edNode:last-child [data-act="del"]');
@@ -3778,8 +3795,8 @@ async function testEditor(browser, base) {
   await page.press('#edDetail input[data-k="p"][data-i="0"]', 'Tab');
   await wait(500);
   check(
-    /尺寸（寬×高×深） ?1\.\d\d/.test(await stats()),
-    `移動加入的節點後外框變寬（${(await stats()).slice(0, 30)}）`,
+    Math.abs(+((await stats()).match(/尺寸（寬×高×深） ?([\d.]+)/) || [])[1] - (+dims0[1] + 1)) < 0.03,
+    `移動加入的節點 1 m 後外框變寬：${dims0[1]} → ${(await stats()).slice(0, 30)}`,
   );
   await blur();
   await page.keyboard.press('Control+z');
@@ -3890,6 +3907,13 @@ async function testEditorSplit(browser, base) {
   await page.setInputFiles('#edFile', fp);
   await wait(1500);
   const mats = async () => ((await page.textContent('#edMats')) || '').match(/共 (\d+) 個材質/)[1];
+  // 程式模型的區塊共用材質，範本本來就沒有重複的材質：先把一個網格的材質換成複本（和原本相同）再合併
+  await page.evaluate(() => {
+    const ed = window.__glbEditor;
+    const o = ed.mat.meshes().find((x) => !Array.isArray(x.material));
+    o.material = o.material.clone();
+    ed.mat.render();
+  });
   const m0 = +(await mats());
   await page.click('#edMergeMats');
   await wait(800);
@@ -19124,6 +19148,7 @@ async function testBoard(browser, base) {
 async function testArk(browser, base) {
   console.log('移動要塞「方舟」：變體、地標、虛空、專屬敵人');
   const { ctx, page } = await newPage(browser, 'ark');
+  await seededRandom(page); // 登艦突擊兵的撲擊看亂數（距離、冷卻），固定亂數結果才穩定
   await page.goto(base + '?test');
   await waitVisible(page, 'title');
   await freezeLoop(page);
@@ -19212,6 +19237,7 @@ async function testArk(browser, base) {
     // 專屬敵人：中央甲板上逐一生成、推進 AI
     g.world.dispose();
     g.world = new W(g.scene, 'ark', 8300, 18, null, { variant: 'fore' });
+    window.__reseed(11);
     const w = g.world;
     const p = g.player;
     p.hp = p.maxHp = 1e7;
@@ -19321,7 +19347,7 @@ async function testArk(browser, base) {
   const F = r.foes;
   for (const k in F)
     check(
-      F[k].tris <= 10000 && (F[k].dmg || F[k].mech),
+      F[k].tris <= (F[k].mech ? MECH_FOE_TRI : FOE_TRI) && (F[k].dmg || F[k].mech),
       `${k}：模型 ${F[k].tris} 面、受損資料；狀態 ${F[k].vis}；傷害 ${F[k].hurt}`,
     );
   check(
@@ -19331,7 +19357,7 @@ async function testArk(browser, base) {
   check(r.popUnder === 0, '甲板升降砲塔：降下時無敵');
   check(
     F.boarder.vis.includes('1') && F.boarder.vis.includes('3') && F.boarder.hurt > 0,
-    '登艦突擊兵：預警圈 → 撲擊 → 落地的空檔',
+    `登艦突擊兵：預警圈 → 撲擊 → 落地的空檔（狀態 ${F.boarder.vis}、傷害 ${F.boarder.hurt}）`,
   );
   check(
     F.railgunner.vis.includes('1') && F.railgunner.vis.includes('2') && F.railgunner.hurt > 0,
@@ -19485,7 +19511,7 @@ async function testVolcano(browser, base) {
   const F = r.foes;
   for (const k in F)
     check(
-      F[k].tris <= 10000 && (F[k].dmg || k === 'heatguard'),
+      F[k].tris <= (k === 'heatguard' ? MECH_FOE_TRI : FOE_TRI) && (F[k].dmg || k === 'heatguard'),
       `${k}：模型 ${F[k].tris} 面、有受損資料（重裝 MT 用機甲共用的）；狀態 ${F[k].vis}；傷害 ${F[k].hurt}`,
     );
   check(F.slagger.vis.includes('1') && F.slagger.hurt > 0, '熔渣投擲機：預警後拋熔渣、打到人');

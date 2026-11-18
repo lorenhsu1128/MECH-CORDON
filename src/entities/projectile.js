@@ -300,7 +300,8 @@ export class Projectile {
       );
       for (const t of targets) {
         if (t.dead) continue;
-        const d = targetDist(t, this.pos); // 物件以外形最近點算距離
+        // 物件以外形最近點算距離；直接打中的一律 0（部位判定把爆炸點放在區塊外框的表面，可能在外接球外面，不能因此少算）
+        const d = t === direct ? 0 : targetDist(t, this.pos);
         if (d < this.splash) {
           let k = clamp(1 - (d / this.splash) * 0.5, 0.4, 1) * g.groundBlastK(t, this.pos);
           let im = this.impactV * k;

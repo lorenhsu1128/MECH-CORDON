@@ -14,13 +14,23 @@ export function measureBox(obj, includeFx = false) {
     tmp = new THREE.Box3();
   obj.traverseVisible((o) => {
     if (!o.isMesh || (!includeFx && isFxMaterial(o.material))) return;
-    const g = o.geometry;
-    if (!g.boundingBox) g.computeBoundingBox();
-    tmp.copy(g.boundingBox).applyMatrix4(o.matrixWorld);
+    // 一般網格逐頂點（幾何的外框轉過之後會變大：轉了角度的腳掌，最低點多算約 0.3 m）；InstancedMesh 用各實例的外框
+    if (o.isInstancedMesh) {
+      o.computeBoundingBox();
+      tmp.copy(o.boundingBox).applyMatrix4(o.matrixWorld);
+    } else {
+      // 只量這個網格自己（setFromObject 會連子物件的描邊、特效一起算）
+      const pa = o.geometry.attributes.position;
+      if (!pa) return;
+      tmp.makeEmpty();
+      for (let i = 0; i < pa.count; i++)
+        tmp.expandByPoint(_mv.fromBufferAttribute(pa, i).applyMatrix4(o.matrixWorld));
+    }
     box.union(tmp);
   });
   return box;
 }
+const _mv = new THREE.Vector3();
 
 const triCount = (g) =>
   (g.index ? g.index.count : g.attributes.position ? g.attributes.position.count : 0) / 3;
