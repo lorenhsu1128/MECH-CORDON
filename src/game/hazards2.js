@@ -634,12 +634,12 @@ Object.assign(Game.prototype, {
       },
     };
   },
-  // 這個隊伍打得到的投射物
+  // 這個隊伍打得到的投射物（QB 甩掉的導彈已經不追蹤、沒有威脅：不算，否則甩掉之後馬上反擊的那一發常被它吃掉）
   shotTargets(team) {
     const out = [];
     if (!team || team === 'prop') return out;
     for (const pr of this.projectiles || [])
-      if (pr.tgt && !pr.dead && pr.team !== team && !(team === 'ally' && pr.team === 'player'))
+      if (pr.tgt && !pr.dead && !pr.dodged && pr.team !== team && !(team === 'ally' && pr.team === 'player'))
         out.push(pr.tgt);
     return out;
   },
