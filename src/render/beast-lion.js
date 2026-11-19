@@ -77,6 +77,8 @@ export function buildBeast(def, pal, scale = 1, pose = null) {
     piv: pivots,
     mats: M,
     eyeMat: fixMat(M, def.cols[0]),
+    // burnMat＝噴嘴、排煙管、爐門的火光（動作改它的亮度）
+    burnMat: def.cols[4] ? fixMat(M, def.cols[4]) : null,
     tris: def.tris,
     kind: def.kind,
   };

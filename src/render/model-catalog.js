@@ -286,11 +286,26 @@ for (const [key, label, palKey, st] of [
 }
 
 // 暫時：熊型機獸（原創設計；第 7 章火山熔爐帶的大 Boss）
-for (const [key, label, palKey, pose, st] of [
-  ['stand', '站姿', 'boss', null, null],
-  ['stand_w', '站姿・白色配色', 'white', null, null],
-  ['open', '張嘴、轉頭（檢查關節）', 'boss', { jaw: [-36, 0, 0], neck: [8, 16, 0], head: [10, 12, 0] }, null],
-  ['anim_walk', '動作：走（先用獅型的步伐）', 'boss', null, { v: 5 }],
+for (const [key, label, palKey, st] of [
+  ['stand', '站姿', 'boss', null],
+  ['stand_w', '站姿・白色配色', 'white', null],
+  ['anim_idle', '動作：待機', 'boss', { v: 0 }],
+  ['anim_walk', '動作：走', 'boss', { v: 3 }],
+  ['anim_trot', '動作：小跑', 'boss', { v: 8 }],
+  ['anim_turn', '動作：原地轉身', 'boss', { v: 0, w: 0.6, spin: true }],
+  ['anim_stand', '動作：站起 → 落回四足', 'boss', lionClip('bStand')],
+  ['anim_standwalk', '動作：站著走', 'boss', (t) => ({ v: 1.6, act: { name: 'bStandWalk', t } })],
+  ['anim_slam3', '攻擊：掌擊連打', 'boss', lionClip('bSlam3')],
+  ['anim_ground', '攻擊：雙掌拍地', 'boss', lionClip('bGround')],
+  ['anim_hug', '攻擊：熊抱', 'boss', lionClip('bHug')],
+  ['anim_charge', '攻擊：衝撞', 'boss', lionClip('bCharge', 1.2)],
+  ['anim_flame', '攻擊：噴火', 'boss', lionClip('bFlame')],
+  ['anim_lava', '攻擊：丟熔岩塊', 'boss', lionClip('bLava')],
+  ['anim_roar', '咆哮', 'boss', lionClip('bRoar')],
+  ['anim_hit', '受擊', 'boss', lionClip('bHit', 0.8)],
+  ['anim_sit', '失衡：站立時往後坐下', 'boss', lionClip('bSit')],
+  ['anim_kneel', '失衡：四足時前腳跪下', 'boss', lionClip('bKneel')],
+  ['anim_death', '擊破', 'boss', lionClip('bDeath', 2)],
 ]) {
   add({
     id: 'temp/bear_' + key,
@@ -301,9 +316,11 @@ for (const [key, label, palKey, pose, st] of [
     spec: 'mech-boss',
     noGlb: true,
     build: (k) => {
-      const rig = buildBear(pal(k), 1, pose);
+      const rig = buildBear(pal(k), 1);
       const out = { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
-      if (st) out.tick = (dt, t) => animateBeast(rig, { ...st, t }, dt);
+      if (st)
+        out.tick = (dt, t) =>
+          animateBeast(rig, typeof st === 'function' ? { ...st(t), t } : { ...st, t }, dt);
       return out;
     },
   });

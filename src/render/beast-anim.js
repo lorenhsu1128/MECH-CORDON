@@ -42,6 +42,21 @@ const PROFILES = {
     flexK: 1.3,
   },
   // 鱷龜型：只會爬（對角兩腳同步、很慢）、背甲左右搖、不跑不跳；待機時嘴微張露出誘餌
+  // 熊型：蹠行的沉重步伐、肩峰左右晃；能小跑但不快；沒有脊椎伸縮
+  bear: (() => {
+    const walk = { T: 1.5, b: 0.68, ph: { bl: 0, fl: 0.25, br: 0.5, fr: 0.75 }, lift: 0.5 };
+    const trot = { T: 0.95, b: 0.52, ph: { bl: 0, fr: 0, br: 0.5, fl: 0.5 }, lift: 0.7 };
+    return {
+      gaits: { walk, trot, run: trot },
+      trotV: 5,
+      runV: 1e9,
+      maxStride: 3.6,
+      base: { by: 0, nx: 0, hx: 0 },
+      bobK: 1.3,
+      flexK: 0,
+      sway: 0.055,
+    };
+  })(),
   turtle: (() => {
     const crawl = { T: 2.0, b: 0.7, ph: { bl: 0, fr: 0.06, br: 0.5, fl: 0.56 }, lift: 0.4 };
     return {
@@ -64,6 +79,7 @@ const PROFILES = {
 //   <腳>F／L／C／X／P／R＝那隻腳的落點往前、抬高、掌骨收起（0～1）、往外、腳掌的角度（弧度，正＝腳尖翹起）、腳掌側轉（弧度，正＝往外翻）；nx／ny 頸、hx／hdy／hz 頭、jaw 下顎（負＝張開）
 //   tx／ty 尾（tx 負＝揚起）、mane 鬃甲張開（0～1）、glow 眼睛的亮度（−1 熄滅～1）、shake 顫抖
 //   ry／rf／rs／ryaw 整隻的高度、往前與往側面的位移、轉向；free 腿放鬆（1＝不貼地，跟著身體）、kick 放鬆時亂蹬
+//   bz 身體往前（公尺）、arm 手臂模式（0～1：前肢不貼地，照 <腳>S／A／E 擺：肩的前後、往外張、肘彎）、fire 爐火（−1～2）
 //   wig 臀部左右微擺、gun 莢艙／砲管的俯仰、lid 莢艙的蓋子（0～1）、ext 內頸伸縮（公尺）、tuck 四肢與尾巴縮進殼裡（0～1）
 const FEET = (o) => ({ flX: o, frX: o, blX: o * 0.8, brX: o * 0.8 });
 const ROAR = { by: -0.25, pitch: 0.1, nx: 0.36, hx: 0.28, jaw: -0.78, mane: 1, glow: 1, tx: -0.5, shake: 1 };
@@ -709,6 +725,483 @@ BEAST_CLIPS.uFire = [
 ];
 BEAST_CLIPS.uFire.keepGait = true;
 
+// ---------- 熊型的片段（正面硬碰的重拳手；招牌是站起來）----------
+// 站立的姿勢：胸立起來約 75°、退到後腳上方，前肢變成手臂（arm），頭轉回正前方
+const STAND = { pitch: 1.3, by: 3.3, bz: -3.5, flex: -0.3, arm: 1, nx: -0.85, hx: -0.3 };
+const GUARD = { flS: -0.3, frS: -0.3, flE: 0.6, frE: 0.6, flA: 0.15, frA: 0.15 }; // 雙臂的預備姿勢
+const UPR = { ...STAND, ...GUARD };
+// 掌擊連打：左右掌輪流由上往下拍，每下往前踏一步
+const slam3 = () => {
+  const out = [{ t: 0.5, ...UPR, fire: 0.4 }];
+  let t = 0.5,
+    rf = 0;
+  for (const a of ['fl', 'fr', 'fl']) {
+    const b = a === 'fl' ? 'fr' : 'fl';
+    const sg = a === 'fl' ? 1 : -1;
+    out.push({
+      t: t + 0.26,
+      ...UPR,
+      rf,
+      yaw: 0.18 * sg,
+      [a + 'S']: 2.0,
+      [a + 'E']: 0.3,
+      [a + 'A']: 0.35,
+      [a + 'P']: 0.7,
+      [a + 'R']: 0.8,
+      [b + 'S']: -0.5,
+      glow: 0.5,
+      fire: 0.8,
+    });
+    out.push({
+      t: t + 0.36,
+      ...UPR,
+      pitch: 1.12,
+      by: 2.3,
+      rf: rf + 1.2,
+      yaw: -0.2 * sg,
+      [a + 'S']: -0.15,
+      [a + 'E']: 0.15,
+      [a + 'A']: -0.1,
+      [a + 'P']: -0.5,
+      [a + 'R']: -0.4,
+      jaw: -0.3,
+      shake: 0.8,
+      fire: 0.8,
+    });
+    out.push({ t: t + 0.5, ...UPR, rf: rf + 1.2, [a + 'S']: -0.4 });
+    t += 0.5;
+    rf += 1.2;
+  }
+  out.push({ t: t + 0.7, rf });
+  return out;
+};
+Object.assign(BEAST_CLIPS, {
+  // 站起 → 站著 → 落回四足
+  bStand: [
+    { t: 0.25, by: -0.5, pitch: -0.06, flex: 0.05 },
+    { t: 0.7, ...UPR, shake: 0.3 },
+    { t: 2.2, ...UPR },
+    { t: 2.75, by: -0.5, pitch: -0.05, shake: 0.6 },
+    { t: 3.1 },
+  ],
+  bSlam3: slam3(),
+  // 雙掌拍地：雙掌高舉、身體後仰 → 兩掌同時砸下並落回四足（衝擊波、裂縫噴火）
+  bGround: [
+    { t: 0.5, ...UPR, fire: 0.5 },
+    {
+      t: 0.9,
+      ...STAND,
+      pitch: 1.45,
+      by: 2.8,
+      flS: 2.2,
+      frS: 2.2,
+      flE: 0.2,
+      frE: 0.2,
+      flA: 0.3,
+      frA: 0.3,
+      glow: 0.8,
+      fire: 1.2,
+      jaw: -0.3,
+    },
+    { t: 1.04, by: -0.7, pitch: -0.1, fire: 2, shake: 1, jaw: -0.2 },
+    { t: 1.3, by: -0.5, pitch: -0.05, fire: 1.2 },
+    { t: 1.8 },
+  ],
+  // 熊抱：雙臂大張 → 往前撲抱住 → 擠壓 → 摔出去
+  bHug: [
+    { t: 0.5, ...UPR },
+    { t: 0.85, ...STAND, flS: 0.3, frS: 0.3, flA: 1.15, frA: 1.15, flE: 0.2, frE: 0.2, glow: 0.6, jaw: -0.2 },
+    {
+      t: 0.98,
+      ...STAND,
+      pitch: 1.15,
+      rf: 3,
+      flS: 0.45,
+      frS: 0.45,
+      flA: -0.35,
+      frA: -0.35,
+      flE: 1.1,
+      frE: 1.1,
+    },
+    {
+      t: 1.3,
+      ...STAND,
+      pitch: 1.2,
+      rf: 3,
+      flS: 0.45,
+      frS: 0.45,
+      flA: -0.5,
+      frA: -0.5,
+      flE: 1.2,
+      frE: 1.2,
+      shake: 0.6,
+    },
+    { t: 1.55, ...STAND, pitch: 1.15, rf: 3, flS: 0.45, frS: 0.45, flA: -0.3, frA: -0.3, flE: 1.1, frE: 1.1 },
+    {
+      t: 1.8,
+      ...STAND,
+      pitch: 1.2,
+      rf: 3,
+      flS: 0.45,
+      frS: 0.45,
+      flA: -0.5,
+      frA: -0.5,
+      flE: 1.2,
+      frE: 1.2,
+      shake: 0.6,
+    },
+    {
+      t: 2.05,
+      ...STAND,
+      pitch: 1.35,
+      rf: 3,
+      yaw: 0.5,
+      flS: 1.3,
+      frS: 1.3,
+      flA: 0.6,
+      frA: 0.6,
+      flE: 0.2,
+      frE: 0.2,
+      jaw: -0.5,
+    },
+    { t: 2.4, ...UPR, rf: 3 },
+    { t: 3.0, rf: 3 },
+  ],
+  // 衝撞（四足）：前腳刨地、頭壓低、排煙管噴火 → 低頭直線衝、用肩峰撞
+  bCharge: [
+    { t: 0.22, by: -0.4, pitch: -0.08, nx: -0.2, flL: 0.9, flF: 0.6, fire: 0.8 },
+    { t: 0.38, by: -0.45, pitch: -0.1, nx: -0.25, flF: -0.9, fire: 1 },
+    { t: 0.55, by: -0.5, pitch: -0.12, nx: -0.3, flL: 0.9, flF: 0.6, fire: 1.4, glow: 0.6 },
+    {
+      t: 0.7,
+      by: -0.3,
+      pitch: -0.14,
+      nx: -0.3,
+      rf: 2,
+      flF: 1.6,
+      frF: -1.2,
+      blF: -1.4,
+      brF: 1.2,
+      fire: 1.6,
+      glow: 1,
+    },
+    {
+      t: 0.9,
+      by: -0.5,
+      pitch: -0.14,
+      nx: -0.3,
+      rf: 7.5,
+      flF: -1.4,
+      frF: 1.6,
+      blF: 1.2,
+      brF: -1.4,
+      frL: 0.5,
+      fire: 1.6,
+      glow: 1,
+    },
+    {
+      t: 1.1,
+      by: -0.3,
+      pitch: -0.14,
+      nx: -0.3,
+      rf: 13,
+      flF: 1.6,
+      frF: -1.2,
+      blF: -1.4,
+      brF: 1.2,
+      flL: 0.5,
+      fire: 1.6,
+      glow: 1,
+    },
+    {
+      t: 1.3,
+      by: -0.5,
+      pitch: -0.14,
+      nx: -0.3,
+      rf: 18.5,
+      flF: -1.4,
+      frF: 1.6,
+      blF: 1.2,
+      brF: -1.4,
+      frL: 0.5,
+      fire: 1.6,
+      glow: 1,
+    },
+    { t: 1.5, by: -0.6, pitch: 0.1, rf: 22, flF: 1.2, frF: 1.2, blF: 0.6, brF: 0.6, shake: 0.8 },
+    { t: 2.1, rf: 22 },
+  ],
+  // 噴火：爐門變亮、吸氣後仰 → 張嘴噴出、頭左右掃
+  bFlame: [
+    { t: 0.5, by: -0.2, pitch: 0.06, nx: 0.25, hx: 0.12, jaw: -0.1, fire: 1.4, glow: 0.5 },
+    {
+      t: 0.68,
+      by: -0.3,
+      pitch: -0.05,
+      nx: -0.08,
+      jaw: -0.85,
+      hdy: -0.5,
+      ny: -0.25,
+      fire: 2,
+      glow: 1,
+      shake: 0.5,
+    },
+    {
+      t: 1.5,
+      by: -0.3,
+      pitch: -0.05,
+      nx: -0.08,
+      jaw: -0.85,
+      hdy: 0.5,
+      ny: 0.25,
+      fire: 2,
+      glow: 1,
+      shake: 0.5,
+    },
+    { t: 1.8, by: -0.3, nx: -0.08, jaw: -0.85, fire: 1.5, glow: 0.6 },
+    { t: 2.3 },
+  ],
+  // 丟熔岩塊：單掌插地挖出一塊 → 舉起 → 丟出
+  bLava: [
+    { t: 0.5, ...UPR },
+    {
+      t: 0.9,
+      ...STAND,
+      pitch: 0.95,
+      by: 1.9,
+      bz: -3.0,
+      nx: -0.5,
+      flS: -1.2,
+      flE: 0.1,
+      frS: -0.4,
+      frE: 0.6,
+      yaw: 0.15,
+    },
+    {
+      t: 1.3,
+      ...STAND,
+      pitch: 1.4,
+      by: 2.75,
+      flS: 2.0,
+      flE: 0.5,
+      flA: 0.3,
+      frS: -0.5,
+      frE: 0.6,
+      yaw: 0.25,
+      fire: 1.2,
+      glow: 0.6,
+    },
+    {
+      t: 1.44,
+      ...STAND,
+      pitch: 1.15,
+      by: 2.4,
+      flS: 0.2,
+      flE: 0.1,
+      frS: -0.5,
+      frE: 0.6,
+      yaw: -0.3,
+      jaw: -0.3,
+      shake: 0.6,
+    },
+    { t: 1.8, ...UPR },
+    { t: 2.4 },
+  ],
+  // 咆哮：站直仰頭吼、排煙管全開
+  bRoar: [
+    { t: 0.55, ...UPR },
+    {
+      t: 0.85,
+      ...STAND,
+      pitch: 1.42,
+      by: 2.8,
+      nx: -0.45,
+      hx: -0.1,
+      jaw: -0.85,
+      flS: -0.2,
+      frS: -0.2,
+      flA: 0.9,
+      frA: 0.9,
+      flE: 0.5,
+      frE: 0.5,
+      fire: 2,
+      glow: 1,
+      shake: 1,
+    },
+    {
+      t: 1.9,
+      ...STAND,
+      pitch: 1.42,
+      by: 2.8,
+      nx: -0.45,
+      hx: -0.1,
+      jaw: -0.85,
+      flS: -0.2,
+      frS: -0.2,
+      flA: 0.9,
+      frA: 0.9,
+      flE: 0.5,
+      frE: 0.5,
+      fire: 2,
+      glow: 1,
+      shake: 1,
+    },
+    { t: 2.3, ...UPR },
+    { t: 2.9 },
+  ],
+  // 小受擊：身體幾乎不動，頭甩一下
+  bHit: [{ t: 0.07, hdy: -0.3, hz: -0.1, by: -0.06, jaw: -0.12 }, { t: 0.45 }],
+  // 失衡（站立時）：往後一屁股坐下、雙掌撐地、頭低垂、胸口的爐門暴露在正面
+  bSit: [
+    { t: 0.3, ...UPR, pitch: 1.4, shake: 0.6 },
+    {
+      t: 0.65,
+      pitch: 1.0,
+      by: -1.7,
+      bz: -3.2,
+      flex: -0.5,
+      arm: 1,
+      nx: -1.0,
+      hx: -0.25,
+      flS: -1.35,
+      frS: -1.35,
+      flA: 0.45,
+      frA: 0.45,
+      flE: 0.3,
+      frE: 0.3,
+      blF: 2.6,
+      brF: 2.6,
+      blX: 0.4,
+      brX: 0.4,
+      glow: -0.6,
+      fire: -0.5,
+      jaw: -0.25,
+      shake: 0.5,
+    },
+    {
+      t: 2.6,
+      pitch: 1.0,
+      by: -1.7,
+      bz: -3.2,
+      flex: -0.5,
+      arm: 1,
+      nx: -1.0,
+      hx: -0.25,
+      flS: -1.35,
+      frS: -1.35,
+      flA: 0.45,
+      frA: 0.45,
+      flE: 0.3,
+      frE: 0.3,
+      blF: 2.6,
+      brF: 2.6,
+      blX: 0.4,
+      brX: 0.4,
+      glow: -0.6,
+      fire: -0.5,
+      jaw: -0.2,
+    },
+    { t: 3.0, pitch: 0.4, by: -0.6, bz: -1.2, arm: 0.3, shake: 0.4 },
+    { t: 3.5 },
+  ],
+  // 失衡（四足時）：前腳跪下、頭垂地
+  bKneel: [
+    { t: 0.3, by: -1.5, pitch: -0.3, nx: -0.25, hx: -0.2, jaw: -0.25, glow: -0.6, fire: -0.5, shake: 0.4 },
+    { t: 2.3, by: -1.55, pitch: -0.31, nx: -0.27, hx: -0.2, jaw: -0.2, glow: -0.6, fire: -0.5 },
+    { t: 3.0 },
+  ],
+  // 擊破：站起來最後一吼、爐火噴出後熄滅 → 往前直挺挺倒下
+  bDeath: [
+    { t: 0.5, ...UPR, shake: 0.5 },
+    {
+      t: 0.8,
+      ...STAND,
+      pitch: 1.42,
+      by: 2.8,
+      nx: -0.45,
+      jaw: -0.85,
+      flS: -0.3,
+      frS: -0.3,
+      flA: 0.8,
+      frA: 0.8,
+      fire: 2,
+      glow: 1,
+      shake: 1,
+    },
+    {
+      t: 1.4,
+      ...STAND,
+      pitch: 1.4,
+      by: 2.75,
+      nx: -0.6,
+      jaw: -0.5,
+      flS: -0.5,
+      frS: -0.5,
+      flA: 0.3,
+      frA: 0.3,
+      fire: -1,
+      glow: -0.6,
+    },
+    {
+      t: 1.9,
+      ...STAND,
+      pitch: 0.7,
+      by: 1.0,
+      bz: -1.8,
+      nx: -0.5,
+      jaw: -0.4,
+      flS: 0.2,
+      frS: 0.2,
+      fire: -1,
+      glow: -0.8,
+    },
+    {
+      t: 2.2,
+      pitch: 0,
+      by: -3.1,
+      bz: 1.5,
+      arm: 1,
+      flS: 1.35,
+      frS: 1.35,
+      flA: 0.3,
+      frA: 0.3,
+      nx: 0.1,
+      jaw: -0.3,
+      blX: 0.9,
+      brX: 0.9,
+      blF: -1.2,
+      brF: -1.2,
+      fire: -1,
+      glow: -1,
+      shake: 1,
+    },
+    {
+      t: 2.6,
+      pitch: 0,
+      by: -3.15,
+      bz: 1.5,
+      arm: 1,
+      flS: 1.35,
+      frS: 1.35,
+      flA: 0.3,
+      frA: 0.3,
+      nx: 0.1,
+      jaw: -0.3,
+      blX: 0.9,
+      brX: 0.9,
+      blF: -1.2,
+      brF: -1.2,
+      fire: -1,
+      glow: -1,
+    },
+  ],
+});
+// 站著走：站立的姿勢不擋步伐（後腳照步態踏，前肢是手臂）
+BEAST_CLIPS.bStandWalk = [
+  { t: 0.5, ...UPR },
+  { t: 1e9, ...UPR },
+];
+BEAST_CLIPS.bStandWalk.keepGait = true;
+
 // 左右對調的片段（右前腳的爪擊、從右邊被打）
 const SWAP = { fl: 'fr', fr: 'fl', bl: 'br', br: 'bl' };
 const NEG = new Set(['roll', 'yaw', 'hy', 'ny', 'hdy', 'hz', 'ty', 'rs', 'ryaw']);
@@ -802,6 +1295,7 @@ function init(rig) {
     C: fy(P.chest),
     Hp: fy(P.hips),
     y0: rig.nodes.chest.position.y,
+    z0: rig.nodes.chest.position.z,
     // 前後腳、左右腳的距離（地形的俯仰與側傾）
     span: Math.abs(legs[0].gz - legs[2].gz),
     track: Math.abs(legs[0].gx - legs[1].gx),
@@ -902,6 +1396,7 @@ export function animateBeast(rig, st, dt) {
     (an.gait === 'stalk' ? 0.045 * Math.sin(p2) * mv : 0) +
     (PF.sway || 0) * Math.sin(p2) * mv;
   spring(N.chest.position, 'y', an.y0 + bob, SB[0] * 1.6, 0.8, dt);
+  spring(N.chest.position, 'z', an.z0 - ch('bz'), SB[0] * 1.6, 0.8, dt); // 片段的 bz：身體往前（負＝往後；站立時胸要退到後腳上方）
   sp(N.chest, 'x', pitch, SB, dt);
   sp(N.chest, 'z', roll + 0.012 * Math.sin(t * 0.5) * still, SB, dt);
   sp(N.chest, 'y', ch('yaw'), SB, dt);
@@ -919,7 +1414,8 @@ export function animateBeast(rig, st, dt) {
   const bobR = N.chest.position.y - an.y0,
     pR = N.chest.rotation.x,
     fR = N.hips.rotation.x;
-  const HpW = add2(add2(an.C, rot(pR, sub2(an.Hp, an.C))), [0, bobR]);
+  const bzR = an.z0 - N.chest.position.z;
+  const HpW = add2(add2(an.C, rot(pR, sub2(an.Hp, an.C))), [bzR, bobR]);
   const free = ch('free');
 
   // ---- 腿 ----
@@ -927,7 +1423,7 @@ export function animateBeast(rig, st, dt) {
     const front = L.parent === 'chest';
     const Ap = front ? pR : pR + fR;
     const Aw = front
-      ? add2(add2(an.C, rot(pR, sub2(L.a, an.C))), [0, bobR])
+      ? add2(add2(an.C, rot(pR, sub2(L.a, an.C))), [bzR, bobR])
       : add2(HpW, rot(Ap, sub2(L.a, an.Hp)));
     // 相位 → 落點（df 往前、dx 往側、lift 抬高）與掌骨的收起
     const ph = (an.ph + G.ph[L.key]) % 1;
@@ -965,15 +1461,19 @@ export function animateBeast(rig, st, dt) {
     const A4 = A3 * 1.1 + ch(L.key + 'P'); // 腳掌垂下；片段的 P＝腳掌另外轉的角度（正＝腳尖翹起）
     const f1 = 1 - free; // 放鬆：回到站姿的相對角度（跟著身體）
     const kick = ch('kick') * Math.sin(t * 17 + L.gx * 2 + L.gz); // 倒地時亂蹬
-    sp(L.n[0], 'x', (A1 - Ap) * f1 + kick * 0.45, S_LEG, dt);
-    sp(L.n[1], 'x', wrap(A2 - A1) * f1 - kick * 0.6, S_LEG, dt);
-    sp(L.n[2], 'x', wrap(A3 - A2) * f1, S_LEG, dt);
-    sp(L.n[3], 'x', wrap(A4 - A3) * f1, S_LEG, dt);
+    // 手臂模式（片段的 arm，只有前肢）：不貼地，照片段的角度擺——S 肩的前後擺（正＝往前上方舉）、A 往外張、E 肘彎
+    const arm = front ? ch('arm') : 0,
+      leg = 1 - arm;
+    const lat = Math.asin(Math.max(-0.5, Math.min(0.5, dx / L.len))) * f1;
+    sp(L.n[0], 'x', ((A1 - Ap) * f1 + kick * 0.45) * leg + ch(L.key + 'S') * arm, S_LEG, dt);
+    sp(L.n[1], 'x', (wrap(A2 - A1) * f1 - kick * 0.6) * leg + ch(L.key + 'E') * arm, S_LEG, dt);
+    sp(L.n[2], 'x', wrap(A3 - A2) * f1 * leg, S_LEG, dt);
+    sp(L.n[3], 'x', wrap(A4 - A3) * f1 * leg + ch(L.key + 'P') * arm, S_LEG, dt);
     // 腳掌側轉（片段的 R，正＝掌心往外翻）：繞腳掌的前後軸翻，並帶一點偏航
     const pr = ch(L.key + 'R') * out;
     sp(L.n[3], 'z', pr, S_LEG, dt);
     sp(L.n[3], 'y', pr * 0.5, S_LEG, dt);
-    sp(L.n[0], 'z', Math.asin(Math.max(-0.5, Math.min(0.5, dx / L.len))) * f1, S_LEG, dt);
+    sp(L.n[0], 'z', lat * leg + ch(L.key + 'A') * out * arm, S_LEG, dt);
   }
 
   // ---- 頸、頭：抵銷身體的俯仰，待機時左右張望 ----
@@ -1031,6 +1531,9 @@ export function animateBeast(rig, st, dt) {
     spring(n.scale, 'y', to, 22, 0.45, dt);
   }
   if (rig.eyeMat) rig.eyeMat.emissiveIntensity = Math.max(0, 1.6 * (1 + 1.6 * ch('glow')));
+  // 爐火（片段的 fire：−1 熄滅～2 全開；顫抖時跟著閃）
+  if (rig.burnMat)
+    rig.burnMat.emissiveIntensity = Math.max(0, 1.6 * (1 + 1.2 * ch('fire')) * (1 + jit * 0.15));
   // 片段要整隻移動的量（遊戲的實體自己用；預覽直接套在整隻上）
   // 伸縮的內頸（片段的 ext：公尺，正＝往前伸、負＝縮進殼裡）
   if (N.neck2) {
