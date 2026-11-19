@@ -24,6 +24,7 @@ import {
   buildBear,
   buildGorilla,
   buildLion,
+  buildMantis,
   buildScorpion,
   buildTiger,
   buildTurtle,
@@ -433,6 +434,44 @@ for (const [key, label, palKey, pose, st] of [
         out.tick = (dt, t) =>
           animateBeast(rig, typeof st === 'function' ? { ...st(t), t } : { ...st, t }, dt);
       return out;
+    },
+  });
+}
+
+// 暫時：螳螂型機獸（原創設計；第 6 章高空軌道的大 Boss）
+for (const [key, label, palKey, pose] of [
+  ['stand', '站姿（鐮刀收在胸前）', 'boss', null],
+  ['stand_w', '站姿・白色配色', 'white', null],
+  [
+    'open',
+    '張鐮、展翅、轉頭（檢查關節）',
+    'boss',
+    {
+      sl_coxa: [30, 0, 0],
+      sl_femur: [25, 0, 0],
+      sl_blade: [-95, 0, 0],
+      sr_coxa: [10, 0, 0],
+      sr_blade: [-40, 0, 0],
+      wing_l: [-20, 0, -40],
+      wing_r: [-20, 0, 40],
+      fan_l: [-12, 0, -68],
+      fan_r: [-12, 0, 68],
+      head: [0, 30, 0],
+      abdomen: [-8, 0, 0],
+    },
+  ],
+]) {
+  add({
+    id: 'temp/mantis_' + key,
+    cat: 'temp',
+    name: '螳螂型機獸（' + label + '）',
+    note: '暫時：原創設計的螳螂型機獸（斜舉的細長前胸、倒三角頭與大複眼、收在胸前的一對能量鐮刀、兩對細長的步足、長腹與翅鞘、發光的推進翼）',
+    pal: palKey,
+    spec: 'mech-boss',
+    noGlb: true,
+    build: (k) => {
+      const rig = buildMantis(pal(k), 1, pose);
+      return { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
     },
   });
 }

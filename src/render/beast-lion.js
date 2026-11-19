@@ -6,6 +6,7 @@ import { fixMat, primsGroup } from './proc-prims.js';
 import { bearDef } from './proc/beast_bear.js';
 import { gorillaDef } from './proc/beast_gorilla.js';
 import { lionDef } from './proc/beast_lion.js';
+import { mantisDef } from './proc/beast_mantis.js';
 import { scorpionDef } from './proc/beast_scorpion.js';
 import { tigerDef } from './proc/beast_tiger.js';
 import { turtleDef } from './proc/beast_turtle.js';
@@ -42,6 +43,7 @@ export const buildLion = (pal, scale = 1, pose = null) => buildBeast(lionDef(), 
 export const buildTiger = (pal, scale = 1, pose = null) => buildBeast(tigerDef(), pal, scale, pose);
 export const buildBear = (pal, scale = 1, pose = null) => buildBeast(bearDef(), pal, scale, pose);
 export const buildGorilla = (pal, scale = 1, pose = null) => buildBeast(gorillaDef(), pal, scale, pose);
+export const buildMantis = (pal, scale = 1, pose = null) => buildBeast(mantisDef(), pal, scale, pose);
 export const buildScorpion = (pal, scale = 1, pose = null) => buildBeast(scorpionDef(), pal, scale, pose);
 export const buildTurtle = (pal, scale = 1, pose = null) => buildBeast(turtleDef(), pal, scale, pose);
 // def＝區塊表（lionDef／tigerDef）
