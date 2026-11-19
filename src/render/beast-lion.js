@@ -67,5 +67,13 @@ export function buildBeast(def, pal, scale = 1, pose = null) {
   root.scale.setScalar(scale);
   tagStyle(root);
   // eyeMat＝眼睛與感測器的自發光材質（動作改它的亮度）
-  return { group: root, nodes, piv: pivots, mats: M, eyeMat: fixMat(M, def.cols[0]), tris: def.tris };
+  return {
+    group: root,
+    nodes,
+    piv: pivots,
+    mats: M,
+    eyeMat: fixMat(M, def.cols[0]),
+    tris: def.tris,
+    kind: def.kind,
+  };
 }

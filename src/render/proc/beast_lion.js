@@ -1028,7 +1028,12 @@ export function assembler() {
       prims: mirrored(pl.prims),
     });
   };
-  const done = (cols) => ({ pieces, cols, tris: pieces.reduce((n, q) => n + primTris(q.prims), 0) });
+  const done = (cols, kind) => ({
+    pieces,
+    cols,
+    kind,
+    tris: pieces.reduce((n, q) => n + primTris(q.prims), 0),
+  });
   return { add, pair, done };
 }
 // 給其他機獸沿用的零件（骨架、身體的截面、四肢、尾巴的節）
@@ -1080,6 +1085,6 @@ export function lionDef() {
   pair('bl_paw', 'br_paw', 'bl_meta', 'br_meta', J.A, paw(J.A), BL);
   for (let k = 0; k < 5; k++) add('tail' + (k + 1), k ? 'tail' + k : 'hips', J.tail[k], tailSeg(k), REAR);
   add('tail_tip', 'tail5', J.tail[5], tailTip(), REAR);
-  DEF = done(LION_COLS);
+  DEF = done(LION_COLS, 'lion');
   return DEF;
 }

@@ -471,7 +471,7 @@ function guns() {
     box(MAIN, [1.78, y + 0.05, z + 0.1], [0.96, 0.82, 2.0], null, 0.1, true),
     box(SUB, [1.78, y + 0.05, z - 0.95], [0.8, 0.66, 0.16], null, 0.04, true),
     box(ACC, [1.78, y + 0.47, z + 0.1], [0.5, 0.06, 1.5], null, 0, true),
-    box(GLASS, [1.78, y + 0.05, z + 1.1], [0.84, 0.7, 0.04], null, 0, true),
+    box(GLASS, [1.78, y + 0.05, z + 1.08], [0.84, 0.7, 0.04], null, 0, true),
   ];
   for (const dx of [-0.26, 0, 0.26])
     for (const dy of [-0.17, 0.17])
@@ -479,6 +479,16 @@ function guns() {
         cyl(GUN, [1.78 + dx, y + 0.05 + dy, z + 1.1], [1.78 + dx, y + 0.05 + dy, z + 1.16], 0.1, 8, true),
       );
   return out;
+}
+// 莢艙的蓋子（左）：轉軸在莢艙前緣的上邊，往前上方掀開
+const LID = [1.78, T.guns[1] + 0.46, T.guns[2] + 1.14];
+function lid() {
+  const [, y, z] = T.guns;
+  return [
+    box(MAIN, [1.78, y + 0.05, z + 1.17], [0.92, 0.8, 0.07], null, 0.02),
+    box(ACC, [1.78, y + 0.05, z + 1.215], [0.5, 0.1, 0.03]),
+    cyl(JOINT, [1.36, LID[1], LID[2]], [2.2, LID[1], LID[2]], 0.06, 6),
+  ];
 }
 // 尾端：上下兩片穩定翼＋感測器（照獅型的尾端位置建，之後和尾巴一起平移）
 function tailTip() {
@@ -555,6 +565,7 @@ export function tigerDef() {
   );
   add('turret', 'chest', T.turret, turret());
   add('guns', 'turret', T.guns, guns());
+  pair('lid_l', 'lid_r', 'guns', 'guns', LID, lid());
   pair('fl_upper', 'fr_upper', 'chest', 'chest', LJ.S, flUpper(), FL);
   pair('fl_fore', 'fr_fore', 'fl_upper', 'fr_upper', LJ.E, flFore(), FL);
   pair('fl_meta', 'fr_meta', 'fl_fore', 'fr_fore', LJ.W, flMeta(), FL);
@@ -565,6 +576,6 @@ export function tigerDef() {
   pair('bl_paw', 'br_paw', 'bl_meta', 'br_meta', LJ.A, paw(LJ.A), BL);
   for (let k = 0; k < 5; k++) add('tail' + (k + 1), k ? 'tail' + k : 'hips', LJ.tail[k], tailSeg(k), TAIL);
   add('tail_tip', 'tail5', LJ.tail[5], tailTip(), TAIL);
-  DEF = done(TIGER_COLS);
+  DEF = done(TIGER_COLS, 'tiger');
   return DEF;
 }

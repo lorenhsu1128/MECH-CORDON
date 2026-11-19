@@ -180,32 +180,7 @@ for (const [key, label, palKey] of [
   });
 }
 
-// 暫時：劍齒虎型機獸（原創設計；四肢與尾巴的節沿用獅型的零件，身體、頭、劍齒、武裝另外做）
-for (const [key, label, palKey, st] of [
-  ['stand', '站姿', 'boss', null],
-  ['stand_w', '站姿・白色配色', 'white', null],
-  ['anim_idle', '動作：待機', 'boss', { v: 0 }],
-  ['anim_walk', '動作：走', 'boss', { v: 5 }],
-  ['anim_run', '動作：奔跑', 'boss', { v: 24 }],
-]) {
-  add({
-    id: 'temp/tiger_' + key,
-    cat: 'temp',
-    name: '劍齒虎型機獸（' + label + '）',
-    note: '暫時：原創設計的劍齒虎型機獸（沒有鬃甲、低伏的身形、長劍齒、肩上的飛彈莢艙）',
-    pal: palKey,
-    spec: 'mech-boss',
-    noGlb: true,
-    build: (k) => {
-      const rig = buildTiger(pal(k), 1);
-      const out = { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
-      if (st) out.tick = (dt, t) => animateBeast(rig, { ...st, t }, dt);
-      return out;
-    },
-  });
-}
-
-// 獅型機獸的動作預覽（原地播放，built.tick 由檢視窗與格狀檢視每格呼叫）：st＝狀態，或 (t) => 狀態；clip＝重複播放的動作片段
+// 動作片段的預覽：重複播放（片段之間停一下），片段的位移直接套在整隻上
 const lionClip = (name, gap = 0.9, st = {}) => {
   const dur = clipDur(name) + gap;
   return (t) => {
@@ -213,6 +188,55 @@ const lionClip = (name, gap = 0.9, st = {}) => {
     return { ...st, root: true, act: u < dur - gap ? { name, t: u } : null };
   };
 };
+// 暫時：劍齒虎型機獸（原創設計；四肢與尾巴的節沿用獅型的零件，身體、頭、劍齒、武裝另外做）
+for (const [key, label, palKey, st] of [
+  ['stand', '站姿', 'boss', null],
+  ['stand_w', '站姿・白色配色', 'white', null],
+  ['anim_idle', '動作：待機', 'boss', { v: 0 }],
+  ['anim_stalk', '動作：潛行', 'boss', { v: 2.4, stalk: true }],
+  ['anim_walk', '動作：走', 'boss', { v: 5 }],
+  ['anim_trot', '動作：小跑', 'boss', { v: 11 }],
+  ['anim_run', '動作：奔跑', 'boss', { v: 26 }],
+  [
+    'anim_dodge',
+    '動作：側跳（左、右輪流）',
+    'boss',
+    (t) => {
+      const u = t % 3.2;
+      return { root: true, act: { name: u < 1.6 ? 'tDodgeR' : 'tDodgeL', t: u % 1.6 } };
+    },
+  ],
+  ['anim_spin', '動作：甩身急轉', 'boss', lionClip('tSpinL', 1.2)],
+  ['anim_fang', '攻擊：劍齒下刺', 'boss', lionClip('tFang')],
+  ['anim_lunge', '攻擊：撲咬', 'boss', lionClip('tLunge', 1.2)],
+  ['anim_claw3', '攻擊：連續爪擊', 'boss', lionClip('tClaw3')],
+  ['anim_dodgeclaw', '攻擊：側跳接爪擊', 'boss', lionClip('tDodgeClawR')],
+  ['anim_volley', '攻擊：飛彈齊射（邊小跑邊放）', 'boss', lionClip('tVolley', 1.2, { v: 10 })],
+  ['anim_snarl', '短吼（威嚇）', 'boss', lionClip('tSnarl')],
+  ['anim_hit', '受擊', 'boss', lionClip('tHit', 0.8)],
+  ['anim_stagger', '失衡', 'boss', lionClip('tStagger')],
+  ['anim_death', '擊破', 'boss', lionClip('tDeath', 2)],
+]) {
+  add({
+    id: 'temp/tiger_' + key,
+    cat: 'temp',
+    name: '劍齒虎型機獸（' + label + '）',
+    note: '暫時：原創設計的劍齒虎型機獸（低伏的身形、重裝甲的頭、長劍齒、肩上的飛彈莢艙）',
+    pal: palKey,
+    spec: 'mech-boss',
+    noGlb: true,
+    build: (k) => {
+      const rig = buildTiger(pal(k), 1);
+      const out = { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
+      if (st)
+        out.tick = (dt, t) =>
+          animateBeast(rig, typeof st === 'function' ? { ...st(t), t } : { ...st, t }, dt);
+      return out;
+    },
+  });
+}
+
+// 獅型機獸的動作預覽（原地播放，built.tick 由檢視窗與格狀檢視每格呼叫）：st＝狀態，或 (t) => 狀態；clip＝重複播放的動作片段
 for (const [key, label, st] of [
   ['idle', '待機', { v: 0 }],
   ['walk', '走（5 m/s）', { v: 5 }],

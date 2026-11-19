@@ -23,7 +23,7 @@
   背與頸的條紋（`stripe`：橫過背甲的強調色凸條）、肩上一對飛彈莢艙（`turret` 偏航、`guns` 俯仰）、臀部較大的噴嘴、尾端是上下兩片穩定翼、眼睛紅色。
 - 四肢與尾巴的節沿用獅型的零件（`beast_lion.js` 的 `LION_PARTS`），以 `tf` 調比例（前肢特別粗壯）；組裝工具 `assembler()` 兩隻共用。
 - 區塊名稱和獅型相同（沒有 `mane_a`／`mane_b`），動作 `animateBeast` 共用。
-- 模型庫：`temp/tiger_stand`、`temp/tiger_stand_w`、`temp/tiger_anim_idle`／`walk`／`run`。
+- 模型庫：`temp/tiger_stand`、`temp/tiger_stand_w` 與 `temp/tiger_anim_*`（見下面的動作）。
 
 ## 動作（`render/beast-anim.js` 的 `animateBeast(rig, st, dt)`）
 
@@ -36,6 +36,21 @@
   `tail` 甩尾、`roar` 咆哮、`hitL`／`hitR` 小受擊、`stagger` 失衡、`death` 擊破（停在最後一格）。每招的預備就是預警（鬃甲張開、眼睛變亮）。
 - 片段要整隻移動的量在 `rig.rootY`／`rig.rootF`（遊戲的實體自己用；預覽 `st.root` 直接套在整隻上）。
 - 貼地形：`st.gy` 的高度差 → 腳的落點、身體的高度、俯仰、側傾（腳掌還不會貼齊坡面的法線）。
+
+### 每隻機獸一組設定與劍齒虎型的動作（2026-11-19）
+
+使用者定案：劍齒虎型走低伏、迅捷、伏擊的路線；六招全做、甩尾不給牠；潛行當成有玩法意義來做（之後接成敵人時較難被發現）；
+側跳短（約一個身長）；側跳與甩身急轉不給獅型。
+
+- `PROFILES[rig.kind]`（`beast-anim.js`）：步態表、速度門檻、站姿的基準 `base`（劍齒虎型肩低、頭壓低）、潛行的姿勢 `stalk`、起伏與脊椎伸縮的倍率。
+  新機獸在這裡加一組；區塊表的 `kind` 由 `assembler().done(cols, kind)` 帶到 `rig.kind`。
+- 潛行：`st.stalk` → 步態 `stalk`（慢、貼地、身體左右微傾）。
+- 劍齒虎型的片段（`t` 開頭）：`tDodgeL／R` 側跳、`tSpinL／R` 甩身急轉 180°、`tFang` 劍齒下刺（招牌技）、`tLunge` 撲咬、`tClaw3` 連續爪擊（左右左）、
+  `tDodgeClawL／R` 側跳接爪擊、`tVolley` 飛彈齊射（`keepGait`：只動上半身，可以邊移動邊放）、`tSnarl` 短吼、`tHit` 往後彈的小受擊、
+  `tStagger` 側身滑倒亂蹬、`tDeath` 撲到一半栽倒滑行。預警訊號：伏低、臀部微擺（`wig`）、眼縫變亮、莢艙蓋打開（`lid`）。
+- 新的頻道：`rs`／`ryaw`（整隻往側面的位移與轉向，`rig.rootS`／`rig.rootYaw`）、`wig`、`kick`（倒地時亂蹬）、`gun`（莢艙俯仰）、`lid`（莢艙蓋）。
+- 模型配合：莢艙的蓋子拆成 `lid_l`／`lid_r`（轉軸在莢艙前緣的上邊）。
+- 模型庫：`temp/tiger_anim_*`（idle、stalk、walk、trot、run、dodge、spin、fang、lunge、claw3、dodgeclaw、volley、snarl、hit、stagger、death）。
 
 ## 在哪裡看
 

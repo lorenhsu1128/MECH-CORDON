@@ -9,21 +9,47 @@ import { spring } from './mech-spring.js';
 
 const TAU = Math.PI * 2;
 // 步態：T＝一個循環的秒數、b＝著地的比例、ph＝各腳的相位（後左 bl、前左 fl、後右 br、前右 fr）、lift＝抬腳高度
-const GAITS = {
-  walk: { T: 1.2, b: 0.66, ph: { bl: 0, fl: 0.25, br: 0.5, fr: 0.75 }, lift: 0.55 },
-  trot: { T: 0.8, b: 0.5, ph: { bl: 0, fr: 0, br: 0.5, fl: 0.5 }, lift: 0.8 },
-  run: { T: 0.62, b: 0.3, ph: { bl: 0, br: 0.1, fr: 0.48, fl: 0.58 }, lift: 1.0 },
+// 每隻機獸一組設定（rig.kind）：步態、速度門檻、站姿的基準、起伏與脊椎伸縮的倍率
+const PROFILES = {
+  // 獅型：厚重
+  lion: {
+    gaits: {
+      walk: { T: 1.2, b: 0.66, ph: { bl: 0, fl: 0.25, br: 0.5, fr: 0.75 }, lift: 0.55 },
+      trot: { T: 0.8, b: 0.5, ph: { bl: 0, fr: 0, br: 0.5, fl: 0.5 }, lift: 0.8 },
+      run: { T: 0.62, b: 0.3, ph: { bl: 0, br: 0.1, fr: 0.48, fl: 0.58 }, lift: 1.0 },
+    },
+    trotV: 7.5,
+    runV: 16,
+    maxStride: 4.4, // 一步最遠（公尺）；超過就加快步頻
+    base: { by: 0, nx: 0, hx: 0 },
+    bobK: 1,
+    flexK: 1,
+  },
+  // 劍齒虎型：低伏、步頻快、起伏小、奔跑時脊椎伸縮大；stalk＝潛行（st.stalk）
+  tiger: {
+    gaits: {
+      stalk: { T: 1.7, b: 0.76, ph: { bl: 0, fl: 0.25, br: 0.5, fr: 0.75 }, lift: 0.3 },
+      walk: { T: 1.0, b: 0.64, ph: { bl: 0, fl: 0.25, br: 0.5, fr: 0.75 }, lift: 0.42 },
+      trot: { T: 0.64, b: 0.5, ph: { bl: 0, fr: 0, br: 0.5, fl: 0.5 }, lift: 0.6 },
+      run: { T: 0.5, b: 0.28, ph: { bl: 0, br: 0.1, fr: 0.48, fl: 0.58 }, lift: 0.9 },
+    },
+    trotV: 7.5,
+    runV: 16,
+    maxStride: 4.6,
+    base: { by: -0.3, nx: -0.1, hx: 0.08 }, // 肩低、頭壓在肩線以下
+    stalk: { by: -0.95, nx: -0.16, hx: 0.16 }, // 潛行時再壓低
+    bobK: 0.55,
+    flexK: 1.3,
+  },
 };
-const TROT_V = 7.5,
-  RUN_V = 16,
-  MAX_STRIDE = 4.4; // 一步最遠（公尺）；超過就加快步頻
 
 // ---------- 動作片段 ----------
 // 關鍵影格：{ t 秒, 頻道… }，沒寫的頻道＝0；影格之間以平滑曲線內插，最後一格之後停在那一格。頻道：
 //   by 身體高度、pitch 俯仰（正＝前半身抬起）、roll 側傾、yaw 胸的偏航、flex 脊椎（正＝臀部往下收）、hy 腰臀的偏航
 //   <腳>F／L／C／X／P／R＝那隻腳的落點往前、抬高、掌骨收起（0～1）、往外、腳掌的角度（弧度，正＝腳尖翹起）、腳掌側轉（弧度，正＝往外翻）；nx／ny 頸、hx／hdy／hz 頭、jaw 下顎（負＝張開）
 //   tx／ty 尾（tx 負＝揚起）、mane 鬃甲張開（0～1）、glow 眼睛的亮度（−1 熄滅～1）、shake 顫抖
-//   ry／rf 整隻的高度與往前的位移、free 腿放鬆（1＝不貼地，跟著身體）
+//   ry／rf／rs／ryaw 整隻的高度、往前與往側面的位移、轉向；free 腿放鬆（1＝不貼地，跟著身體）、kick 放鬆時亂蹬
+//   wig 臀部左右微擺、gun 莢艙的俯仰、lid 莢艙的蓋子（0～1）
 const FEET = (o) => ({ flX: o, frX: o, blX: o * 0.8, brX: o * 0.8 });
 const ROAR = { by: -0.25, pitch: 0.1, nx: 0.36, hx: 0.28, jaw: -0.78, mane: 1, glow: 1, tx: -0.5, shake: 1 };
 export const BEAST_CLIPS = {
@@ -281,9 +307,231 @@ export const BEAST_CLIPS = {
     },
   ],
 };
+// ---------- 劍齒虎型的片段（低伏、迅捷）----------
+// 連續爪擊：左右左三連，邊打邊往前壓
+const claw3 = () => {
+  const out = [];
+  let t = 0,
+    rf = 0;
+  for (const [a, b] of [
+    ['fl', 'fr'],
+    ['fr', 'fl'],
+    ['fl', 'fr'],
+  ]) {
+    const sg = a === 'fl' ? 1 : -1;
+    out.push({
+      t: t + 0.2,
+      by: 0.55,
+      pitch: 0.32,
+      flex: -0.26,
+      yaw: 0.16 * sg,
+      rf,
+      [a + 'L']: 3.1,
+      [a + 'P']: 0.7,
+      [a + 'R']: 0.85,
+      [a + 'X']: 0.4,
+      [b + 'L']: 0.5,
+      glow: 0.5,
+    });
+    out.push({
+      t: t + 0.28,
+      by: 0.2,
+      pitch: 0.08,
+      yaw: -0.22 * sg,
+      rf: rf + 1,
+      [a + 'F']: 2.4,
+      [a + 'L']: 1.4,
+      [a + 'R']: -0.6,
+      [a + 'P']: -0.5,
+      [a + 'X']: -0.5,
+      jaw: -0.2,
+      glow: 0.6,
+    });
+    out.push({ t: t + 0.36, by: -0.3, pitch: -0.1, yaw: -0.2 * sg, rf: rf + 1.6, [a + 'F']: 1.6 });
+    t += 0.34;
+    rf += 1.6;
+  }
+  out.push({ t: t + 0.55, rf });
+  return out;
+};
+// 側跳（往右；rs 正＝遊戲座標 +x）
+const DODGE = [
+  { t: 0.1, by: -0.7, roll: 0.1, flX: 0.2, blX: 0.2 },
+  {
+    t: 0.2,
+    by: 0.1,
+    ry: 1.0,
+    rs: 3,
+    roll: -0.16,
+    flL: 0.8,
+    frL: 0.8,
+    blL: 0.6,
+    brL: 0.6,
+    flC: 0.6,
+    frC: 0.6,
+    tx: -0.2,
+    ty: -0.4,
+  },
+  { t: 0.38, ry: 0.6, rs: 9, roll: -0.08, flL: 0.5, frL: 0.5, blL: 0.5, brL: 0.5, ty: -0.3 },
+  { t: 0.48, rs: 11, by: -0.75, roll: 0.12, frX: 0.3, brX: 0.3, ty: 0.3 },
+];
+Object.assign(BEAST_CLIPS, {
+  // 側跳：橫向彈開約一個身長
+  tDodgeR: [...DODGE, { t: 0.75, rs: 11 }],
+  // 側跳接爪擊：落地瞬間用內側的前腳橫掃
+  tDodgeClawR: [
+    ...DODGE,
+    { t: 0.6, rs: 11, by: -0.3, yaw: -0.3, flL: 1.7, flX: 0.9, flR: 0.7, flP: 0.4, glow: 0.5 },
+    { t: 0.7, rs: 11, by: -0.35, yaw: 0.36, flL: 0.9, flF: 1.9, flX: -0.9, flR: -0.7, jaw: -0.2, glow: 0.6 },
+    { t: 0.82, rs: 11, by: -0.3, yaw: 0.2, flF: 1.0, flX: -0.4 },
+    { t: 1.2, rs: 11 },
+  ],
+  // 甩身急轉：前腳釘住、後半身甩過去，回頭 180°
+  tSpinL: [
+    { t: 0.12, by: -0.45, yaw: 0.35, hy: -0.4, ny: 0.3, hdy: 0.3, ty: -0.5 },
+    {
+      t: 0.3,
+      by: -0.3,
+      ryaw: 2.1,
+      yaw: 0.2,
+      hy: 0.6,
+      ny: 0.2,
+      ty: 0.8,
+      blL: 0.5,
+      brL: 0.5,
+      blX: 0.4,
+      brX: -0.2,
+    },
+    { t: 0.44, by: -0.4, ryaw: 3.1416, hy: 0.2, ty: 0.4 },
+    { t: 0.65, ryaw: 3.1416 },
+  ],
+  // 劍齒下刺（招牌技）：前半身揚起、頭後仰張嘴 → 由上往下把劍齒釘下去
+  tFang: [
+    {
+      t: 0.42,
+      by: 1.25,
+      pitch: 0.62,
+      flex: -0.45,
+      nx: 0.32,
+      hx: 0.36,
+      jaw: -0.95,
+      flL: 1.6,
+      frL: 1.6,
+      flC: 0.5,
+      frC: 0.5,
+      glow: 0.7,
+      shake: 0.4,
+      tx: -0.4,
+    },
+    { t: 0.5, by: -0.3, pitch: -0.22, nx: -0.3, hx: -0.3, jaw: -0.95, flF: 0.8, frF: 0.8, rf: 2, glow: 1 },
+    {
+      t: 0.56,
+      by: -0.8,
+      pitch: -0.3,
+      nx: -0.42,
+      hx: -0.34,
+      jaw: -0.85,
+      flF: 0.9,
+      frF: 0.9,
+      rf: 2.6,
+      glow: 1,
+      shake: 1,
+    },
+    {
+      t: 0.95,
+      by: -0.8,
+      pitch: -0.3,
+      nx: -0.42,
+      hx: -0.34,
+      jaw: -0.8,
+      flF: 0.9,
+      frF: 0.9,
+      rf: 2.6,
+      glow: 0.4,
+    },
+    { t: 1.35, rf: 2.6 },
+  ],
+  // 撲咬：伏到最低、臀部微擺、尾端抖動 → 低平地撲出去咬
+  tLunge: [
+    { t: 0.45, by: -1.2, pitch: -0.05, nx: -0.08, hx: 0.12, wig: 1, glow: 0.6, tx: -0.1, shake: 0.2 },
+    {
+      t: 0.55,
+      by: -0.5,
+      pitch: 0.1,
+      ry: 0.5,
+      rf: 5,
+      flF: 2.1,
+      frF: 2.1,
+      flL: 0.9,
+      frL: 0.9,
+      blF: -1.9,
+      brF: -1.9,
+      jaw: -0.85,
+      glow: 1,
+    },
+    {
+      t: 0.76,
+      by: -0.4,
+      ry: 0.4,
+      rf: 15,
+      flF: 1.8,
+      frF: 1.8,
+      flL: 0.5,
+      frL: 0.5,
+      blL: 0.8,
+      brL: 0.8,
+      blC: 0.8,
+      brC: 0.8,
+      jaw: -0.85,
+      glow: 1,
+    },
+    { t: 0.84, by: -0.65, rf: 17.5, nx: -0.15, jaw: 0.06, flF: 0.7, frF: 0.7, blF: 0.4, brF: 0.4 },
+    { t: 1.3, rf: 17.5 },
+  ],
+  tClaw3: claw3(),
+  // 短吼（威嚇）：伏低後抬頭
+  tSnarl: [
+    { t: 0.2, by: -0.5, nx: -0.15, hx: -0.05 },
+    { t: 0.34, by: -0.2, nx: 0.2, hx: 0.2, jaw: -0.75, glow: 1, shake: 1, tx: -0.4 },
+    { t: 0.66, by: -0.2, nx: 0.2, hx: 0.2, jaw: -0.75, glow: 1, shake: 1, tx: -0.4 },
+    { t: 0.9 },
+  ],
+  // 小受擊：整隻往後彈一小步、壓低
+  tHit: [
+    { t: 0.07, by: -0.5, pitch: 0.07, rf: -1.2, nx: -0.12, jaw: -0.12, flF: 0.5, frF: 0.5 },
+    { t: 0.2, by: -0.65, rf: -2.6, ry: 0.15 },
+    { t: 0.45, rf: -2.6 },
+  ],
+  // 失衡：側身滑倒、四腳亂蹬
+  tStagger: [
+    { t: 0.25, by: -1.6, roll: 0.5, free: 0.5, rs: -2, glow: -0.6, jaw: -0.2, shake: 0.5 },
+    { t: 0.5, by: -3.25, roll: 1.25, free: 1, rs: -4, kick: 1, glow: -0.6, jaw: -0.3, tx: 0.3 },
+    { t: 1.3, by: -3.25, roll: 1.25, free: 1, rs: -4.4, kick: 1, glow: -0.6, jaw: -0.3, tx: 0.3 },
+    { t: 2.3, by: -3.25, roll: 1.25, free: 1, rs: -4.4, kick: 0.2, glow: -0.4, jaw: -0.2, tx: 0.35 },
+    { t: 2.7, by: -1.0, roll: 0.3, free: 0.2, rs: -4.4, glow: 0.2, shake: 0.4 },
+    { t: 3.1, rs: -4.4 },
+  ],
+  // 擊破：撲到一半失去動力，往前栽倒、滑行、熄火
+  tDeath: [
+    { t: 0.15, ry: 0.8, rf: 3, pitch: 0.1, flF: 1.5, frF: 1.5, flL: 0.6, frL: 0.6, jaw: -0.5 },
+    { t: 0.4, rf: 7, by: -1.8, pitch: -0.36, nx: 0.2, free: 0.6, glow: -0.3, shake: 1, jaw: -0.4 },
+    { t: 0.9, rf: 12, by: -2.9, pitch: -0.12, roll: 0.5, free: 1, glow: -0.3, jaw: -0.4, tx: 0.3 },
+    { t: 1.5, rf: 14, by: -3.25, roll: 1.3, free: 1, jaw: -0.4, glow: 0.2, tx: 0.4, kick: 0.3 },
+    { t: 2.4, rf: 14.5, by: -3.3, roll: 1.32, free: 1, jaw: -0.3, glow: -1, tx: 0.45 },
+  ],
+});
+// 飛彈齊射：莢艙抬起、蓋子打開（只動上半身，可以邊移動邊放）
+BEAST_CLIPS.tVolley = [
+  { t: 0.3, gun: 0.45, lid: 1, glow: 0.4 },
+  { t: 0.45, gun: 0.45, lid: 1, glow: 0.8, shake: 0.6 },
+  { t: 1.2, gun: 0.45, lid: 1, glow: 0.8, shake: 0.6 },
+  { t: 1.6 },
+];
+BEAST_CLIPS.tVolley.keepGait = true;
+
 // 左右對調的片段（右前腳的爪擊、從右邊被打）
 const SWAP = { fl: 'fr', fr: 'fl', bl: 'br', br: 'bl' };
-const NEG = new Set(['roll', 'yaw', 'hy', 'ny', 'hdy', 'hz', 'ty']);
+const NEG = new Set(['roll', 'yaw', 'hy', 'ny', 'hdy', 'hz', 'ty', 'rs', 'ryaw']);
 const mirrorClip = (clip) =>
   clip.map((k) => {
     const o = {};
@@ -296,6 +544,9 @@ const mirrorClip = (clip) =>
   });
 BEAST_CLIPS.clawR = mirrorClip(BEAST_CLIPS.clawL);
 BEAST_CLIPS.hitR = mirrorClip(BEAST_CLIPS.hitL);
+BEAST_CLIPS.tDodgeL = mirrorClip(BEAST_CLIPS.tDodgeR);
+BEAST_CLIPS.tDodgeClawL = mirrorClip(BEAST_CLIPS.tDodgeClawR);
+BEAST_CLIPS.tSpinR = mirrorClip(BEAST_CLIPS.tSpinL);
 export const clipDur = (name) => {
   const c = BEAST_CLIPS[name];
   return c ? c[c.length - 1].t : 0;
@@ -402,7 +653,7 @@ export function animateBeast(rig, st, dt) {
   let aw = 0;
   if (clip) {
     clipAt(clip, st.act.t, A);
-    aw = Math.min(1, st.act.t / 0.08);
+    aw = clip.keepGait ? 0 : Math.min(1, st.act.t / 0.08); // keepGait＝只動上半身的片段（邊移動邊放）
   } else for (const k in A) delete A[k];
   const ch = (k) => A[k] || 0;
   const SB = clip ? S_ACT : S_BODY,
@@ -410,10 +661,19 @@ export function animateBeast(rig, st, dt) {
     ST = clip ? S_TAIL_ACT : S_TAIL;
   // 步態（切換有一點遲滯）
   const up = an.gait === 'walk' ? 1.05 : 0.95;
-  an.gait = v > RUN_V * (an.gait === 'run' ? 0.92 : 1.05) ? 'run' : v > TROT_V * up ? 'trot' : 'walk';
-  const G = GAITS[an.gait];
+  const PF = PROFILES[rig.kind] || PROFILES.lion;
+  const stalking = !!(st.stalk && PF.gaits.stalk);
+  an.gait = stalking
+    ? 'stalk'
+    : v > PF.runV * (an.gait === 'run' ? 0.92 : 1.05)
+      ? 'run'
+      : v > PF.trotV * up
+        ? 'trot'
+        : 'walk';
+  const G = PF.gaits[an.gait];
+  an.sk = (an.sk || 0) + ((stalking ? 1 : 0) - (an.sk || 0)) * Math.min(1, dt * 3);
   let T = G.T;
-  if (v * T * G.b > MAX_STRIDE) T = MAX_STRIDE / (v * G.b);
+  if (v * T * G.b > PF.maxStride) T = PF.maxStride / (v * G.b);
   if (moving) an.ph = (an.ph + dt / T) % 1;
   an.mv += ((moving ? 1 : 0) - an.mv) * Math.min(1, dt * 6);
   const mv = an.mv * (1 - aw),
@@ -425,7 +685,7 @@ export function animateBeast(rig, st, dt) {
     pitch = 0,
     flex = 0,
     roll = 0;
-  if (an.gait === 'walk') {
+  if (an.gait === 'walk' || an.gait === 'stalk') {
     bob = 0.05 * Math.sin(2 * p2);
     roll = 0.03 * Math.sin(p2);
     pitch = 0.012 * Math.sin(2 * p2 + 1);
@@ -446,16 +706,30 @@ export function animateBeast(rig, st, dt) {
   const gAvg = (g('fl') + g('fr') + g('bl') + g('br')) / 4;
   const gPitch = gy ? Math.atan2((g('fl') + g('fr') - g('bl') - g('br')) / 2, an.span) : 0;
   const gRoll = gy ? Math.atan2((g('fr') + g('br') - g('fl') - g('bl')) / 2, an.track) * 0.6 : 0;
-  bob = bob * mv + 0.03 * breath * still + ch('by') + gAvg;
+  // 站姿的基準（潛行時再壓低）；動作片段中照片段的姿勢、只留一半
+  const bk = 1 - aw * 0.5;
+  const SKP = PF.stalk || PF.base;
+  const baseBy = (PF.base.by + (SKP.by - PF.base.by) * an.sk) * bk,
+    baseNx = (PF.base.nx + (SKP.nx - PF.base.nx) * an.sk) * bk,
+    baseHx = (PF.base.hx + (SKP.hx - PF.base.hx) * an.sk) * bk;
+  bob = bob * mv * PF.bobK + 0.03 * breath * still + ch('by') + gAvg + baseBy;
   pitch = pitch * mv + ch('pitch') + gPitch * 0.85;
-  flex = flex * mv + ch('flex');
-  roll = roll * mv + ch('roll') + gRoll;
+  flex = flex * mv * PF.flexK + ch('flex');
+  roll = roll * mv + ch('roll') + gRoll + (an.gait === 'stalk' ? 0.045 * Math.sin(p2) * mv : 0);
   spring(N.chest.position, 'y', an.y0 + bob, SB[0] * 1.6, 0.8, dt);
   sp(N.chest, 'x', pitch, SB, dt);
   sp(N.chest, 'z', roll + 0.012 * Math.sin(t * 0.5) * still, SB, dt);
   sp(N.chest, 'y', ch('yaw'), SB, dt);
   sp(N.hips, 'x', flex, SB, dt);
-  sp(N.hips, 'y', -0.05 * Math.sin(p2) * mv * (an.gait === 'walk' ? 1 : 0.4) + ch('hy'), SB, dt);
+  sp(
+    N.hips,
+    'y',
+    -0.05 * Math.sin(p2) * mv * (an.gait === 'walk' ? 1 : 0.4) +
+      ch('hy') +
+      ch('wig') * 0.09 * Math.sin(t * 13),
+    SB,
+    dt,
+  );
   // 用彈簧之後實際的值算腿（腳才踩得穩）
   const bobR = N.chest.position.y - an.y0,
     pR = N.chest.rotation.x,
@@ -505,8 +779,9 @@ export function animateBeast(rig, st, dt) {
       A2 = wrap(th2 - L.a2);
     const A4 = A3 * 1.1 + ch(L.key + 'P'); // 腳掌垂下；片段的 P＝腳掌另外轉的角度（正＝腳尖翹起）
     const f1 = 1 - free; // 放鬆：回到站姿的相對角度（跟著身體）
-    sp(L.n[0], 'x', (A1 - Ap) * f1, S_LEG, dt);
-    sp(L.n[1], 'x', wrap(A2 - A1) * f1, S_LEG, dt);
+    const kick = ch('kick') * Math.sin(t * 17 + L.gx * 2 + L.gz); // 倒地時亂蹬
+    sp(L.n[0], 'x', (A1 - Ap) * f1 + kick * 0.45, S_LEG, dt);
+    sp(L.n[1], 'x', wrap(A2 - A1) * f1 - kick * 0.6, S_LEG, dt);
     sp(L.n[2], 'x', wrap(A3 - A2) * f1, S_LEG, dt);
     sp(L.n[3], 'x', wrap(A4 - A3) * f1, S_LEG, dt);
     // 腳掌側轉（片段的 R，正＝掌心往外翻）：繞腳掌的前後軸翻，並帶一點偏航
@@ -524,9 +799,9 @@ export function animateBeast(rig, st, dt) {
   const jit = shake * Math.sin(t * 47),
     jit2 = shake * Math.sin(t * 61 + 1);
   const runW = an.gait === 'run' ? mv : 0;
-  sp(N.neck, 'x', -pR * 0.6 * (1 - aw) + nod * mv - 0.06 * runW + ch('nx'), SH, dt);
+  sp(N.neck, 'x', -pR * 0.6 * (1 - aw) + nod * mv - 0.06 * runW + ch('nx') + baseNx, SH, dt);
   sp(N.neck, 'y', look * 0.5 + w * 0.12 * (1 - aw) + ch('ny'), SH, dt);
-  sp(N.head, 'x', -pR * 0.4 * (1 - aw) + 0.02 * breath * still + ch('hx') + jit * 0.012, SH, dt);
+  sp(N.head, 'x', -pR * 0.4 * (1 - aw) + 0.02 * breath * still + ch('hx') + baseHx + jit * 0.012, SH, dt);
   sp(N.head, 'y', look * 0.5 + w * 0.1 * (1 - aw) + ch('hdy'), SH, dt);
   sp(N.head, 'z', -roll * 0.8 * (1 - free) + ch('hz') + jit2 * 0.03, SH, dt);
   sp(N.jaw, 'x', -(0.03 + 0.03 * breath) * still - 0.1 * runW + ch('jaw') + jit * 0.02, SH, dt);
@@ -546,10 +821,10 @@ export function animateBeast(rig, st, dt) {
     // 沒有砲塔的機獸
   } else if (st.aim) {
     sp(N.turret, 'y', st.aim[0], S_HEAD, dt);
-    sp(N.guns, 'x', st.aim[1], S_HEAD, dt);
+    sp(N.guns, 'x', st.aim[1] + ch('gun'), S_HEAD, dt);
   } else {
     sp(N.turret, 'y', 0.5 * Math.sin(t * 0.23) * still, S_HEAD, dt);
-    sp(N.guns, 'x', 0.05 + 0.04 * Math.sin(t * 0.31) * still, S_HEAD, dt);
+    sp(N.guns, 'x', 0.05 + 0.04 * Math.sin(t * 0.31) * still + ch('gun'), clip ? S_ACT : S_HEAD, dt);
   }
   // ---- 鬃甲的張開、眼睛的亮度 ----
   const mane = ch('mane');
@@ -565,11 +840,17 @@ export function animateBeast(rig, st, dt) {
   }
   if (rig.eyeMat) rig.eyeMat.emissiveIntensity = Math.max(0, 1.6 * (1 + 1.6 * ch('glow')));
   // 片段要整隻移動的量（遊戲的實體自己用；預覽直接套在整隻上）
+  // 莢艙的蓋子（片段的 lid：0 關～1 全開）
+  for (const name of ['lid_l', 'lid_r']) if (N[name]) sp(N[name], 'x', ch('lid') * 1.9, [26, 0.6], dt);
   rig.rootY = ch('ry');
   rig.rootF = ch('rf');
+  rig.rootS = ch('rs'); // 往側面的位移（遊戲座標 +x）
+  rig.rootYaw = ch('ryaw'); // 整隻的轉向
   if (st.root) {
     rig.group.position.y = rig.rootY * rig.group.scale.y;
     rig.group.position.z = -rig.rootF * rig.group.scale.z;
+    rig.group.position.x = rig.rootS * rig.group.scale.x;
+    rig.group.rotation.y = rig.rootYaw;
   }
   if (st.spin) rig.group.rotation.y += w * dt;
 }
