@@ -16,7 +16,7 @@ import { buildPod, buildStation } from './cine-sets.js';
 import { buildCineVeh } from './cine-vehicles.js';
 import { FOE_CATALOG } from './foe-models.js';
 import { PARTS, START_ASM } from '../data/parts.js';
-import { PALETTES, mechMats } from './materials.js';
+import { BEAST_ACCENTS, BEAST_BASES, PALETTES, beastPal, mechMats } from './materials.js';
 import { PIECE_NAMES, SIDE_NAMES, buildMech, buildPiece, partPieces } from './mech-model.js';
 import { animateBeast, clipDur } from './beast-anim.js';
 import {
@@ -1386,5 +1386,36 @@ addPlain('small', 'proj_shell', '砲彈／榴彈', '發光彈體' + PROJ_NOTE, (
   measureFx: true,
   origin: '彈體中心',
 });
+
+// ---------- 暫時：機獸的配色提案（docs/beast-design.md 的「配色」）----------
+// 編號＝基礎色（十位：1 黑、2 深灰、3 淺灰、4 白）＋點綴色（個位：1 紅、2 黃、3 藍、4 橘、5 青、6 紫、7 青綠、8 金）
+// 每隻機獸：四種基礎色 × Claude 建議給牠的點綴色；獅型另外用深灰看全部八種點綴色
+const BEAST_PAL_LIST = [
+  ['scorpion', '蠍型', buildScorpion, 2],
+  ['turtle', '鱷龜型', buildTurtle, 7],
+  ['tiger', '劍齒虎型', buildTiger, 5],
+  ['gorilla', '猩猩型', buildGorilla, 4],
+  ['raptor', '猛禽型', buildRaptor, 3],
+  ['mantis', '螳螂型', buildMantis, 6],
+  ['bear', '熊型', buildBear, 1],
+  ['lion', '獅型', buildLion, 8],
+];
+for (const [key, label, fn, acc] of BEAST_PAL_LIST) {
+  const nums = [10 + acc, 20 + acc, 30 + acc, 40 + acc];
+  if (key === 'lion') for (let a = 1; a <= 7; a++) nums.push(20 + a);
+  for (const n of nums)
+    add({
+      id: `temp/pal_${key}_${n}`,
+      cat: 'temp',
+      name: `配色 ${n}：${label}（${BEAST_BASES[Math.floor(n / 10)].name}＋${BEAST_ACCENTS[n % 10].name}）`,
+      note: `暫時：機獸的配色提案 ${n}＝基礎色「${BEAST_BASES[Math.floor(n / 10)].name}」＋點綴色「${BEAST_ACCENTS[n % 10].name}」（敵對 AC ${BEAST_ACCENTS[n % 10].from} 的顏色）`,
+      spec: 'mech-boss',
+      noGlb: true,
+      build: () => {
+        const rig = fn(beastPal(n), 1);
+        return { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
+      },
+    });
+}
 
 export const MODEL_CATALOG = entries;

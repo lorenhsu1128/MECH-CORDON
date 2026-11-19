@@ -303,6 +303,28 @@ export const MECH_COLORS = [
   ['p4', '紫'],
   ['castron', '棕'],
 ];
+// 機獸的配色提案（2026-11-19；docs/beast-design.md 的「配色」）：編號＝基礎色（十位：1 黑、2 深灰、3 淺灰、4 白）＋點綴色（個位：敵對 AC 用的顏色）
+export const BEAST_BASES = {
+  1: { name: '黑', main: 0x24262b, main2: 0x1b1d21, main3: 0x30333a, sub: 0x45484f, joint: 0x101114 },
+  2: { name: '深灰', main: 0x474b53, main2: 0x383b42, main3: 0x565a63, sub: 0x1d1f23, joint: 0x15161a },
+  3: { name: '淺灰', main: 0x959aa3, main2: 0x7b808a, main3: 0xa9adb5, sub: 0x2e3138, joint: 0x1c1d21 },
+  4: { name: '白', main: 0xc9ccd2, main2: 0xadb1b9, main3: 0xd9dbe0, sub: 0x363a42, joint: 0x1e2025 },
+};
+export const BEAST_ACCENTS = {
+  1: { name: '紅', from: 'LONGSHOT', acc: 0xd83030 },
+  2: { name: '黃', from: 'BERSERKER', acc: 0xf0d040 },
+  3: { name: '藍', from: 'RAIN', acc: 0x2f7bd9 },
+  4: { name: '橘', from: 'BASTION', acc: 0xe87a20 },
+  5: { name: '青', from: 'NIGHTFALL', acc: 0x60d0ff },
+  6: { name: '紫', from: 'BRANT', acc: 0xc080ff },
+  7: { name: '青綠', from: 'MARSH', acc: 0x20c8b8 },
+  8: { name: '金', from: 'ZENITH', acc: 0xd8b040 },
+};
+export const beastPal = (n) => {
+  const b = BEAST_BASES[Math.floor(n / 10)],
+    a = BEAST_ACCENTS[n % 10];
+  return { ...b, acc: a.acc, visor: a.acc, glow: a.acc };
+};
 export const PALETTES = {
   // 內建的玩家預設機甲的原色（src/assets/player-mech/ 的色槽 × 灰階貼圖 ≈ 原本的彩色貼圖）
   white: {
