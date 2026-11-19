@@ -34,12 +34,12 @@ const { J: LJ, sec, fin, flUpper, flFore, flMeta, paw, blThigh, blShin, blMeta }
 const T = {
   chest: [0, 5.5, 1.5],
   hips: [0, 5.4, -0.3],
-  neck: [0, 5.7, 3.4],
-  head: [0, 6.3, 4.6],
+  neck: [0, 5.7, 3.3],
+  head: [0, 6.2, 3.95],
   jawL: [0, -0.45, 0.2],
-  shoulder: [2.0, 5.5, 2.4],
-  hip: [1.9, 5.39, -3.4],
-  tail: [0, 5.9, -4.95],
+  shoulder: [2.25, 5.5, 2.4],
+  hip: [2.45, 5.39, -3.3],
+  tail: [0, 6.0, -4.95],
 };
 
 // 排煙管：槍鐵色的短管＋管口的火光
@@ -72,10 +72,10 @@ const stack = (x, y, z, h, r, mir) => [
 
 function chest() {
   const R = [
-    sec(-0.6, 1.9, 7.25, 3.45),
-    sec(1.6, 2.1, 7.95, 3.1),
-    sec(2.8, 1.9, 7.6, 3.4),
-    sec(3.7, 1.3, 6.6, 4.2),
+    sec(-0.6, 2.15, 7.3, 3.3),
+    sec(1.6, 2.35, 7.95, 3.0),
+    sec(2.8, 2.15, 7.6, 3.3),
+    sec(3.7, 1.6, 6.7, 4.0),
   ];
   const m = { mir: true };
   return [
@@ -111,17 +111,17 @@ function chest() {
     cyl(GUN, [0.8, 3.45, 0.6], [0.7, 3.75, 3.1], 0.16, 8, true),
     cyl(STEEL, [1.3, 3.9, 0.6], [1.05, 4.2, 3.2], 0.09, 6, true),
     ...[0.9, 1.6, 2.3, 3.0].map((z) => box(SUB, [0, 3.5, z], [2.9, 0.22, 0.2], null, 0.05)),
-    cyl(JOINT, [1.3, T.shoulder[1], T.shoulder[2]], [2.1, T.shoulder[1], T.shoulder[2]], 0.75, 12, true),
+    cyl(JOINT, [1.5, T.shoulder[1], T.shoulder[2]], [2.35, T.shoulder[1], T.shoulder[2]], 0.8, 12, true),
   ];
 }
 
 function hips() {
   const R = [
-    sec(-0.3, 1.85, 7.2, 3.5, 0.95),
-    sec(-1.8, 1.8, 7.0, 3.6),
-    sec(-3.2, 1.9, 6.9, 3.5),
-    sec(-4.3, 1.7, 6.6, 3.8),
-    sec(-5.0, 1.1, 6.0, 4.6),
+    sec(-0.3, 2.3, 7.3, 3.3, 0.95),
+    sec(-1.8, 2.55, 7.45, 3.2),
+    sec(-3.2, 2.75, 7.5, 3.1),
+    sec(-4.3, 2.45, 7.0, 3.4),
+    sec(-5.0, 1.5, 6.2, 4.4),
   ];
   const m = { mir: true };
   return [
@@ -134,8 +134,8 @@ function hips() {
     panel(SUB, R, 3, 4, 4, 6, { ...m, t: 0.09 }),
     panel(ACC, R, 3.1, 3.5, 0.3, 1.8, { ...m, t: 0.18, sink: -0.09, gap: 0.01, ch: 0.02 }),
     // 腰露出骨架：三道肋環
-    ...[-0.7, -1.1, -1.5].map((z) => box(SUB, [1.82, 5.4, z], [0.14, 1.6, 0.14], [0, 0, 3], 0.04, true)),
-    ...[-1.0, -2.2, -3.4].map((z) => fin(SUB, z, 7.05 - Math.abs(z + 2.2) * 0.05, 0.7, 0.2)),
+    ...[-0.7, -1.1, -1.5].map((z) => box(SUB, [2.36, 5.4, z], [0.14, 1.7, 0.14], [0, 0, 3], 0.04, true)),
+    ...[-1.0, -2.2, -3.4].map((z) => fin(SUB, z, 7.55 - Math.abs(z + 2.6) * 0.09, 0.7, 0.2)),
     // 腹下的鍋爐
     lathe(
       SUB,
@@ -159,7 +159,7 @@ function hips() {
       ],
       10,
     ),
-    cyl(JOINT, [1.2, T.hip[1], T.hip[2]], [2.0, T.hip[1], T.hip[2]], 0.8, 12, true),
+    cyl(JOINT, [1.6, T.hip[1], T.hip[2]], [2.55, T.hip[1], T.hip[2]], 0.95, 12, true),
     ball(JOINT, T.tail, 0.4, 8),
   ];
 }
@@ -167,9 +167,9 @@ function hips() {
 function neck() {
   const R = tubeRings(
     [
-      { p: [0, 5.6, 3.3], prof: oct(1.35, 1.35, 1.25) },
-      { p: [0, 5.95, 4.0], prof: oct(1.25, 1.22, 1.15) },
-      { p: [0, 6.25, 4.6], prof: oct(1.15, 1.1, 1.05) },
+      { p: [0, 5.6, 3.2], prof: oct(1.5, 1.45, 1.35) },
+      { p: [0, 5.85, 3.6], prof: oct(1.45, 1.38, 1.3) },
+      { p: [0, 6.1, 3.95], prof: oct(1.35, 1.3, 1.2) },
     ],
     [0, 1, 0],
   );
@@ -397,13 +397,13 @@ export function bearDef() {
     FY = T.shoulder[1] / LJ.S[1],
     BY = T.hip[1] / LJ.H[1];
   const FL = {
-    k: [2.15, FY, 1.85],
+    k: [2.4, FY, 2.05],
     about: [LJ.S[0], 0, LJ.S[2]],
     d: [T.shoulder[0] - LJ.S[0] + T.shoulder[1] * SH, 0, T.shoulder[2] - LJ.S[2]],
     sh: SH,
   };
   const BL = {
-    k: [2.15, BY, 1.85],
+    k: [2.9, BY, 2.45],
     about: [LJ.H[0], 0, LJ.H[2]],
     d: [T.hip[0] - LJ.H[0] + T.hip[1] * SH, 0, T.hip[2] - LJ.H[2]],
     sh: SH,
