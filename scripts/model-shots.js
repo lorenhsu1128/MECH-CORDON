@@ -1,7 +1,7 @@
 // 程式模型的近拍（docs/model-detail.md）：在模型庫的檢視窗關掉輔助標示，從前後兩個斜角各拍一張。
 //   node scripts/model-shots.js vehicle/tank vehicle/heli prop/container --tag=after
 // 輸出 test-results/shots/<槽位>-<tag>-a.png／-b.png。需要先 npm run build；--html＝改用別的模型庫檔案（例如舊版，比較用）、
-// --zoom＝第一張的距離倍率（預設 0.62）、--ty＝鏡頭對準的高度（公尺；整台機甲近拍頭部用）、--el＝仰角（弧度，預設 0.42）、--ang＝第一張的水平角度（弧度，預設 −0.75＝左前方；0＝正面）
+// --zoom＝第一張的距離倍率（預設 0.62）、--ty＝鏡頭對準的高度（公尺；整台機甲近拍頭部用）、--tz＝鏡頭對準的前後位置（遊戲座標，負＝前方；機獸近拍頭部用）、--el＝仰角（弧度，預設 0.42）、--ang＝第一張的水平角度（弧度，預設 −0.75＝左前方；0＝正面）
 /* global window, document -- page.evaluate 的回呼在瀏覽器端執行 */
 const path = require('path');
 const fs = require('fs');
@@ -13,6 +13,7 @@ const ids = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const tag = (process.argv.find((a) => a.startsWith('--tag=')) || '--tag=now').slice(6);
 const zoom = +(process.argv.find((a) => a.startsWith('--zoom=')) || '--zoom=0.62').slice(7);
 const ty = (process.argv.find((a) => a.startsWith('--ty=')) || '').slice(5);
+const tz = (process.argv.find((a) => a.startsWith('--tz=')) || '').slice(5);
 const elev = +(process.argv.find((a) => a.startsWith('--el=')) || '--el=0.42').slice(5);
 const ang0 = +(process.argv.find((a) => a.startsWith('--ang=')) || '--ang=-0.75').slice(6);
 const EXE = [
@@ -43,15 +44,19 @@ const EXE = [
       timeout: 30000,
     });
     await p.waitForTimeout(1500);
-    const info = await p.evaluate((ty) => {
-      for (const cb of document.querySelectorAll('#insToggles input')) {
-        const off = ['axes', 'conns', 'dims', 'box', 'ruler', 'human', 'grid'].includes(cb.dataset.k);
-        if (off && cb.checked) cb.click();
-      }
-      const ins = window.__inspect;
-      if (ty !== '') ins.controls.target.y = +ty;
-      return { d: ins.camera.position.distanceTo(ins.controls.target) };
-    }, ty);
+    const info = await p.evaluate(
+      ({ ty, tz }) => {
+        for (const cb of document.querySelectorAll('#insToggles input')) {
+          const off = ['axes', 'conns', 'dims', 'box', 'ruler', 'human', 'grid'].includes(cb.dataset.k);
+          if (off && cb.checked) cb.click();
+        }
+        const ins = window.__inspect;
+        if (ty !== '') ins.controls.target.y = +ty;
+        if (tz !== '') ins.controls.target.z = +tz;
+        return { d: ins.camera.position.distanceTo(ins.controls.target) };
+      },
+      { ty, tz },
+    );
     for (const [k, ang] of [
       ['a', ang0],
       ['b', 2.3],
