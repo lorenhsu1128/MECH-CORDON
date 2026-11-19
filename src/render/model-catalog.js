@@ -19,7 +19,7 @@ import { PARTS, START_ASM } from '../data/parts.js';
 import { PALETTES, mechMats } from './materials.js';
 import { PIECE_NAMES, SIDE_NAMES, buildMech, buildPiece, partPieces } from './mech-model.js';
 import { animateBeast, clipDur } from './beast-anim.js';
-import { LION_POSES, buildBear, buildLion, buildTiger, buildTurtle } from './beast-lion.js';
+import { LION_POSES, buildBear, buildGorilla, buildLion, buildTiger, buildTurtle } from './beast-lion.js';
 import { THEMES } from '../world/world.js';
 import { LANDMARKS } from '../world/landmarks.js';
 import { VARIANT_CATALOG } from '../world/variants.js';
@@ -321,6 +321,30 @@ for (const [key, label, palKey, st] of [
       if (st)
         out.tick = (dt, t) =>
           animateBeast(rig, typeof st === 'function' ? { ...st(t), t } : { ...st, t }, dt);
+      return out;
+    },
+  });
+}
+
+// 暫時：猩猩型機獸（原創設計；第 4 章 Lattice-9／舊宇宙港的大 Boss）
+for (const [key, label, palKey, pose, st] of [
+  ['stand', '站姿（指節著地）', 'boss', null, null],
+  ['stand_w', '站姿・白色配色', 'white', null, null],
+  ['open', '張嘴、轉頭（檢查關節）', 'boss', { jaw: [-30, 0, 0], neck: [4, 14, 0], head: [8, 12, 0] }, null],
+  ['anim_walk', '動作：走（先用獅型的步伐）', 'boss', null, { v: 4 }],
+]) {
+  add({
+    id: 'temp/gorilla_' + key,
+    cat: 'temp',
+    name: '猩猩型機獸（' + label + '）',
+    note: '暫時：原創設計的猩猩型機獸（指節著地、斜背與銀背、半球形的肩罩、長而粗的前肢與絞盤、矢狀嵴與厚眉骨、背上的噴射筒）',
+    pal: palKey,
+    spec: 'mech-boss',
+    noGlb: true,
+    build: (k) => {
+      const rig = buildGorilla(pal(k), 1, pose);
+      const out = { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
+      if (st) out.tick = (dt, t) => animateBeast(rig, { ...st, t }, dt);
       return out;
     },
   });
