@@ -25,6 +25,7 @@ import {
   buildGorilla,
   buildLion,
   buildMantis,
+  buildRaptor,
   buildScorpion,
   buildTiger,
   buildTurtle,
@@ -491,6 +492,49 @@ for (const [key, label, palKey, pose, st] of [
         out.tick = (dt, t) =>
           animateBeast(rig, typeof st === 'function' ? { ...st(t), t } : { ...st, t }, dt);
       return out;
+    },
+  });
+}
+
+// 暫時：猛禽型機獸（原創設計；第 5 章洋上都市的大 Boss）
+const RAPTOR_FOLD = {
+  wl_arm: [0, 62, 18],
+  wr_arm: [0, -62, -18],
+  wl_fore: [0, -150, 0],
+  wr_fore: [0, 150, 0],
+  wl_hand: [0, 158, 0],
+  wr_hand: [0, -158, 0],
+};
+for (const [key, label, palKey, pose] of [
+  ['spread', '展翼（模型的原始姿勢）', 'boss', null],
+  ['spread_w', '展翼・白色配色', 'white', null],
+  ['perch', '收翼站姿', 'boss', RAPTOR_FOLD],
+  [
+    'open',
+    '張喙、抓握、轉頭（檢查關節）',
+    'boss',
+    {
+      jaw: [-28, 0, 0],
+      head: [0, 30, 0],
+      neck: [10, 0, 0],
+      l_toes: [-40, 0, 0],
+      l_thigh: [35, 0, 0],
+      l_tarsus: [-30, 0, 0],
+      tail: [-15, 0, 0],
+    },
+  ],
+]) {
+  add({
+    id: 'temp/raptor_' + key,
+    cat: 'temp',
+    name: '猛禽型機獸（' + label + '）',
+    note: '暫時：原創設計的猛禽型機獸（鉤喙與眉骨、平展的長翼與一片片的羽、翼尖的鋼刃、羽褲與大鉤爪、扇形的尾、翼下與背上的推進器）',
+    pal: palKey,
+    spec: 'mech-boss',
+    noGlb: true,
+    build: (k) => {
+      const rig = buildRaptor(pal(k), 1, pose);
+      return { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
     },
   });
 }

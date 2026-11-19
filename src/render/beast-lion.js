@@ -7,6 +7,7 @@ import { bearDef } from './proc/beast_bear.js';
 import { gorillaDef } from './proc/beast_gorilla.js';
 import { lionDef } from './proc/beast_lion.js';
 import { mantisDef } from './proc/beast_mantis.js';
+import { raptorDef } from './proc/beast_raptor.js';
 import { scorpionDef } from './proc/beast_scorpion.js';
 import { tigerDef } from './proc/beast_tiger.js';
 import { turtleDef } from './proc/beast_turtle.js';
@@ -44,6 +45,7 @@ export const buildTiger = (pal, scale = 1, pose = null) => buildBeast(tigerDef()
 export const buildBear = (pal, scale = 1, pose = null) => buildBeast(bearDef(), pal, scale, pose);
 export const buildGorilla = (pal, scale = 1, pose = null) => buildBeast(gorillaDef(), pal, scale, pose);
 export const buildMantis = (pal, scale = 1, pose = null) => buildBeast(mantisDef(), pal, scale, pose);
+export const buildRaptor = (pal, scale = 1, pose = null) => buildBeast(raptorDef(), pal, scale, pose);
 export const buildScorpion = (pal, scale = 1, pose = null) => buildBeast(scorpionDef(), pal, scale, pose);
 export const buildTurtle = (pal, scale = 1, pose = null) => buildBeast(turtleDef(), pal, scale, pose);
 // def＝區塊表（lionDef／tigerDef）
