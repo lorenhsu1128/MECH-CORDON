@@ -14,7 +14,24 @@ import {
   gorillaFlUpper,
   gorillaFoot,
 } from './legs_gorilla.js';
-import { ball, box, cyl, hull, hullS, lathe, loft, moved, oct, panel, tubeRings, vadd } from './beast_kit.js';
+import {
+  ball,
+  box,
+  cyl,
+  hull,
+  hullS,
+  lathe,
+  loft,
+  moved,
+  oct,
+  panel,
+  tubeRings,
+  vadd,
+  vmul,
+  vnorm,
+  vsub,
+  xf,
+} from './beast_kit.js';
 
 const MAIN = 0,
   SUB = 1,
@@ -358,17 +375,271 @@ function jawLocal() {
   return out;
 }
 
+// ---------- 外掛武器一（實彈）：前臂上的轉管機砲（左；右＝鏡像）----------
+// 沿著前臂、架在手背那一側（手臂往前平舉時在上面）：八角的機匣、六支砲管一束、前中兩道束盤、肘邊的彈箱與給彈槽
+function rotary() {
+  const { E, W } = G;
+  const d = vnorm(vsub(W, E));
+  const n = vnorm([0, -d[2], d[1]].map((v) => -v)); // 垂直前臂、朝前上方
+  const u = [1, 0, 0];
+  const at = (t, a = 0, b = 0) => vadd(vadd(vadd(E, vmul(d, t)), vmul(n, 1.85 + b)), vmul(u, a));
+  const out = [
+    // 兩道托架（箍在前臂上）
+    hull(SUB, [
+      at(0.5, -0.5, -0.9),
+      at(0.5, 0.5, -0.9),
+      at(0.9, -0.5, -0.9),
+      at(0.9, 0.5, -0.9),
+      at(0.5, -0.4, -0.3),
+      at(0.5, 0.4, -0.3),
+      at(0.9, -0.4, -0.3),
+      at(0.9, 0.4, -0.3),
+    ]),
+    hull(SUB, [
+      at(1.7, -0.45, -0.9),
+      at(1.7, 0.45, -0.9),
+      at(2.05, -0.45, -0.9),
+      at(2.05, 0.45, -0.9),
+      at(1.7, -0.36, -0.3),
+      at(1.7, 0.36, -0.3),
+      at(2.05, -0.36, -0.3),
+      at(2.05, 0.36, -0.3),
+    ]),
+    // 機匣與馬達
+    lathe(
+      MAIN,
+      at(0.1),
+      d,
+      [
+        [0, 0.5],
+        [0.12, 0.62],
+        [1.3, 0.62],
+        [1.42, 0.5],
+      ],
+      8,
+      false,
+      0.5,
+    ),
+    lathe(
+      JOINT,
+      at(-0.35),
+      d,
+      [
+        [0, 0.34],
+        [0.45, 0.4],
+      ],
+      12,
+    ),
+    lathe(
+      ACC,
+      at(0.55),
+      d,
+      [
+        [0, 0.65],
+        [0.14, 0.65],
+      ],
+      8,
+      false,
+      0.5,
+    ),
+    // 彈箱（內側）與給彈槽
+    hull(GUN, [
+      at(0.0, -1.25, -0.5),
+      at(0.0, -0.55, -0.5),
+      at(1.1, -1.25, -0.5),
+      at(1.1, -0.55, -0.5),
+      at(0.0, -1.25, 0.35),
+      at(0.0, -0.55, 0.35),
+      at(1.1, -1.25, 0.35),
+      at(1.1, -0.55, 0.35),
+    ]),
+    hull(STEEL, [
+      at(0.3, -0.6, -0.1),
+      at(0.3, -0.5, -0.1),
+      at(0.8, -0.6, -0.1),
+      at(0.8, -0.5, -0.1),
+      at(0.3, -0.6, 0.25),
+      at(0.3, -0.5, 0.25),
+      at(0.8, -0.6, 0.25),
+      at(0.8, -0.5, 0.25),
+    ]),
+    // 束盤與砲口盤
+    lathe(
+      GUN,
+      at(1.5),
+      d,
+      [
+        [0, 0.44],
+        [0.12, 0.44],
+      ],
+      12,
+    ),
+    lathe(
+      GUN,
+      at(2.35),
+      d,
+      [
+        [0, 0.4],
+        [0.1, 0.4],
+      ],
+      12,
+    ),
+    lathe(
+      STEEL,
+      at(3.25),
+      d,
+      [
+        [0, 0.42],
+        [0.14, 0.42],
+        [0.18, 0.36],
+      ],
+      12,
+    ),
+    lathe(
+      GUN,
+      at(1.42),
+      d,
+      [
+        [0, 0.12],
+        [1.95, 0.12],
+      ],
+      8,
+    ),
+  ];
+  for (let k = 0; k < 6; k++) {
+    const a = (k / 6) * Math.PI * 2;
+    out.push(
+      lathe(
+        GUN,
+        at(1.42, Math.cos(a) * 0.28, Math.sin(a) * 0.28),
+        d,
+        [
+          [0, 0.085],
+          [2.05, 0.085],
+        ],
+        8,
+      ),
+    );
+  }
+  return out;
+}
+
+// ---------- 外掛武器二（實彈）：肩上的絞盤魚叉砲（左；右＝鏡像）----------
+// 俯仰的發射架：粗短的發射筒、露在筒口外的三倒鉤魚叉、筒下的鋼索捲筒、後面的壓縮氣瓶
+const HARP = [2.35, 8.05, 0.9];
+function harpoon() {
+  const L = [
+    // 托架與俯仰軸
+    cyl(JOINT, [-0.7, 0, 0], [0.7, 0, 0], 0.24, 12),
+    box(SUB, [0, 0.15, 0], [1.1, 0.5, 0.9], null, 0.08),
+    // 發射筒
+    lathe(
+      MAIN,
+      [0, 0.6, -1.1],
+      [0, 0, 1],
+      [
+        [0, 0.4],
+        [0.15, 0.5],
+        [1.9, 0.5],
+        [2.0, 0.56],
+        [2.3, 0.56],
+        [2.36, 0.46],
+      ],
+      8,
+      false,
+      0.5,
+    ),
+    box(ACC, [0, 1.1, -0.1], [0.3, 0.05, 1.4]),
+    lathe(
+      GUN,
+      [0, 0.6, 1.2],
+      [0, 0, 1],
+      [
+        [0, 0.36],
+        [0.1, 0.36],
+      ],
+      12,
+    ),
+    // 魚叉：桿、箭頭、三片倒鉤
+    cyl(STEEL, [0, 0.6, 1.2], [0, 0.6, 2.5], 0.1, 8),
+    lathe(
+      STEEL,
+      [0, 0.6, 2.4],
+      [0, 0, 1],
+      [
+        [0, 0.1],
+        [0.1, 0.26],
+        [0.9, 0.02],
+      ],
+      6,
+    ),
+    ...[90, 210, 330].map((a) => {
+      const c = Math.cos((a * Math.PI) / 180),
+        sn = Math.sin((a * Math.PI) / 180);
+      const q = (r, z) => [c * r, 0.6 + sn * r, z];
+      return hull(STEEL, [
+        q(0.1, 2.7),
+        q(0.1, 2.3),
+        q(0.5, 2.05),
+        q(0.44, 2.0),
+        [c * 0.1 - sn * 0.03, 0.6 + sn * 0.1 + c * 0.03, 2.5],
+        [c * 0.1 + sn * 0.03, 0.6 + sn * 0.1 - c * 0.03, 2.5],
+      ]);
+    }),
+    // 筒下的鋼索捲筒
+    cyl(GUN, [-0.5, -0.05, 0.75], [0.5, -0.05, 0.75], 0.34, 12),
+    cyl(STEEL, [-0.4, -0.05, 0.75], [0.4, -0.05, 0.75], 0.38, 12),
+    cyl(ACC, [0.5, -0.05, 0.75], [0.56, -0.05, 0.75], 0.2, 10),
+    // 後面的壓縮氣瓶（兩支）
+    ...[-0.3, 0.3].map((x) =>
+      lathe(
+        SUB,
+        [x, 0.55, -2.0],
+        [0, 0, 1],
+        [
+          [0, 0.1],
+          [0.12, 0.26],
+          [0.8, 0.26],
+          [0.92, 0.12],
+        ],
+        10,
+      ),
+    ),
+  ];
+  return xf(L, [-12, 0, 0], HARP);
+}
+function harpMount() {
+  const [x, y, z] = HARP;
+  return [
+    hull(
+      SUB,
+      [
+        [x - 0.75, y - 1.3, z + 0.7],
+        [x + 0.75, y - 1.3, z + 0.7],
+        [x - 0.75, y - 1.3, z - 0.9],
+        [x + 0.75, y - 1.3, z - 0.9],
+        [x - 0.5, y - 0.1, z + 0.3],
+        [x + 0.5, y - 0.1, z + 0.3],
+        [x - 0.5, y - 0.1, z - 0.4],
+        [x + 0.5, y - 0.1, z - 0.4],
+      ],
+      true,
+    ),
+  ];
+}
+
 let DEF = null;
 export function gorillaDef() {
   if (DEF) return DEF;
   const { add, pair, done } = assembler();
-  add('chest', null, T.chest, chest());
+  add('chest', null, T.chest, [...chest(), ...harpMount()]);
+  pair('harp_l', 'harp_r', 'chest', 'chest', HARP, harpoon());
   add('hips', 'chest', T.hips, hips());
   add('neck', 'chest', T.neck, neck());
   add('head', 'neck', T.head, moved(headLocal(), T.head));
   add('jaw', 'head', vadd(T.head, T.jawL), moved(jawLocal(), T.head));
   pair('fl_upper', 'fr_upper', 'chest', 'chest', G.S, gorillaFlUpper());
-  pair('fl_fore', 'fr_fore', 'fl_upper', 'fr_upper', G.E, gorillaFlFore());
+  pair('fl_fore', 'fr_fore', 'fl_upper', 'fr_upper', G.E, [...gorillaFlFore(), ...rotary()]);
   pair('fl_meta', 'fr_meta', 'fl_fore', 'fr_fore', G.W, gorillaFlMeta());
   pair('fl_paw', 'fr_paw', 'fl_meta', 'fr_meta', G.K, gorillaFist(G.K));
   pair('bl_thigh', 'br_thigh', 'hips', 'hips', G.H, gorillaBlThigh());

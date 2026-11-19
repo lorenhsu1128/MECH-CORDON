@@ -24,9 +24,10 @@ const MAIN = 0,
   GLASS = 5,
   GUN = 6,
   STEEL = 7,
-  BURN = 8;
+  BURN = 8,
+  WAR = 9; // 卵鞘空雷（琥珀色）
 // 複眼（青綠）、玻璃（膜翅）、槍鐵、亮鋼、能量刃與推進的光（洋紅）
-export const MANTIS_COLS = ['#2fd69a!', '#1a2233', '#3a3d45', '#c8ccd3', '#ff4fd8!'];
+export const MANTIS_COLS = ['#2fd69a!', '#1a2233', '#3a3d45', '#c8ccd3', '#ff4fd8!', '#ffae1e'];
 
 const T = {
   chest: [0, 4.2, 0],
@@ -439,13 +440,178 @@ function wingFan() {
   return out;
 }
 
+// ---------- 外掛武器一（能量）：前胸盾兩側的脈衝雷射機砲（寫在 thorax 這一塊，左右鏡像）----------
+// 從盾緣伸出的短支架上一具細長的砲：上下兩支並列的發射管（管口是洋紅的鏡片）、機匣側面的散熱鰭、後端的電池匣
+function pulseGuns() {
+  const x = 1.95,
+    y = 9.05,
+    z = 4.3;
+  const m = true;
+  const out = [
+    // 支架（從盾緣斜出來）
+    hull(
+      SUB,
+      [
+        [1.0, y + 0.3, z + 0.2],
+        [1.0, y - 0.3, z + 0.2],
+        [1.0, y + 0.3, z - 0.5],
+        [1.0, y - 0.3, z - 0.5],
+        [x - 0.2, y + 0.18, z + 0.1],
+        [x - 0.2, y - 0.18, z + 0.1],
+        [x - 0.2, y + 0.18, z - 0.3],
+        [x - 0.2, y - 0.18, z - 0.3],
+      ],
+      m,
+    ),
+    cyl(JOINT, [x - 0.3, y, z - 0.1], [x + 0.3, y, z - 0.1], 0.2, 12, m),
+    // 機匣：扁高的六角匣
+    hull(
+      MAIN,
+      [z - 0.9, z + 0.8].flatMap((zz) => [
+        [x - 0.14, y + 0.52, zz],
+        [x + 0.14, y + 0.52, zz],
+        [x + 0.26, y + 0.3, zz],
+        [x + 0.26, y - 0.3, zz],
+        [x + 0.14, y - 0.52, zz],
+        [x - 0.14, y - 0.52, zz],
+        [x - 0.26, y - 0.3, zz],
+        [x - 0.26, y + 0.3, zz],
+      ]),
+      m,
+    ),
+    box(ACC, [x + 0.27, y, z + 0.1], [0.02, 0.14, 1.1], null, 0, m),
+    box(SUB, [x, y, z - 1.2], [0.4, 0.8, 0.6], null, 0.07, m),
+    // 上下兩支發射管
+    ...[0.24, -0.24].flatMap((dy) => [
+      cyl(GUN, [x, y + dy, z + 0.8], [x, y + dy, z + 2.3], 0.1, 8, m),
+      lathe(
+        GUN,
+        [x, y + dy, z + 2.3],
+        [0, 0, 1],
+        [
+          [0, 0.15],
+          [0.2, 0.15],
+          [0.24, 0.1],
+        ],
+        8,
+        m,
+      ),
+      cyl(BURN, [x, y + dy, z + 2.5], [x, y + dy, z + 2.56], 0.085, 8, m),
+      cyl(STEEL, [x, y + dy, z + 1.3], [x, y + dy, z + 1.4], 0.14, 8, m),
+    ]),
+    box(JOINT, [x, y, z + 1.85], [0.14, 0.62, 0.12], null, 0.02, m),
+  ];
+  for (const dz of [-0.6, -0.3, 0, 0.3, 0.6])
+    out.push(box(GLASS, [x + 0.28, y + 0.32, z + dz], [0.04, 0.2, 0.12], null, 0, m));
+  return out;
+}
+
+// ---------- 外掛武器二（爆發）：腹下的卵鞘空雷發射器 ----------
+// 吊在腹部後段下面的轉輪：後端面一圈六顆半露的琥珀色空雷、中央的轉軸、兩道吊架
+const OOTH = [0, 2.35, -6.9];
+function ootheca() {
+  const [, y, z] = OOTH;
+  const out = [
+    // 吊架
+    hull(
+      SUB,
+      [
+        [0.5, y + 1.0, z + 0.9],
+        [0.5, y + 1.0, z + 0.5],
+        [0.3, y + 0.3, z + 0.9],
+        [0.3, y + 0.3, z + 0.5],
+        [0.9, y + 0.5, z + 0.9],
+        [0.9, y + 0.5, z + 0.5],
+      ],
+      true,
+    ),
+    hull(
+      SUB,
+      [
+        [0.5, y + 1.0, z - 0.5],
+        [0.5, y + 1.0, z - 0.9],
+        [0.3, y + 0.3, z - 0.5],
+        [0.3, y + 0.3, z - 0.9],
+        [0.9, y + 0.5, z - 0.5],
+        [0.9, y + 0.5, z - 0.9],
+      ],
+      true,
+    ),
+    // 轉輪
+    lathe(
+      MAIN,
+      [0, y, z + 1.2],
+      [0, 0, -1],
+      [
+        [0, 0.5],
+        [0.2, 0.92],
+        [2.1, 0.92],
+        [2.2, 0.8],
+      ],
+      12,
+    ),
+    lathe(
+      ACC,
+      [0, y, z + 0.4],
+      [0, 0, -1],
+      [
+        [0, 0.95],
+        [0.12, 0.95],
+      ],
+      12,
+    ),
+    lathe(
+      JOINT,
+      [0, y, z - 0.6],
+      [0, 0, -1],
+      [
+        [0, 0.95],
+        [0.12, 0.95],
+      ],
+      12,
+    ),
+    lathe(
+      GUN,
+      [0, y, z - 1.0],
+      [0, 0, -1],
+      [
+        [0, 0.24],
+        [0.3, 0.24],
+        [0.36, 0.14],
+      ],
+      10,
+    ),
+    cyl(GLOW, [0, y, z - 1.36], [0, y, z - 1.4], 0.1, 8),
+  ];
+  for (let k = 0; k < 6; k++) {
+    const a = ((k + 0.5) / 6) * Math.PI * 2;
+    const c = [Math.cos(a) * 0.56, y + Math.sin(a) * 0.56, z - 1.0];
+    out.push(cyl(GUN, [c[0], c[1], c[2] + 0.1], [c[0], c[1], c[2] - 0.06], 0.25, 10));
+    out.push(
+      lathe(
+        WAR,
+        c,
+        [0, 0, -1],
+        [
+          [0, 0.2],
+          [0.14, 0.17],
+          [0.24, 0.06],
+        ],
+        10,
+      ),
+    );
+  }
+  return out;
+}
+
 let DEF = null;
 export function mantisDef() {
   if (DEF) return DEF;
   const { add, pair, done } = assembler();
   add('chest', null, T.chest, chest());
   add('abdomen', 'chest', T.abdomen, abdomen());
-  add('thorax', 'chest', T.thorax, thorax());
+  add('thorax', 'chest', T.thorax, [...thorax(), ...pulseGuns()]);
+  add('ootheca', 'abdomen', OOTH, ootheca());
   add('head', 'thorax', T.head, head());
   pair('ant_l', 'ant_r', 'head', 'head', T.ant, antenna());
   // 捕捉足：基節 → 腿節 → 鐮刃

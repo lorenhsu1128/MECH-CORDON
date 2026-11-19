@@ -25,9 +25,10 @@ const MAIN = 0,
   GLOW = 4,
   GUN = 6,
   STEEL = 7,
-  BURN = 8;
+  BURN = 8,
+  WAR = 9; // 導彈與炸彈的彈頭
 // 眼（金）、玻璃、槍鐵、亮鋼、推進的光（青白）
-export const RAPTOR_COLS = ['#ffc21f!', '#0e1319', '#3a3d45', '#c8ccd3', '#7fe8ff!'];
+export const RAPTOR_COLS = ['#ffc21f!', '#0e1319', '#3a3d45', '#c8ccd3', '#7fe8ff!', '#d8342c'];
 
 const T = {
   chest: [0, 3.4, 0],
@@ -320,6 +321,119 @@ function tail() {
   return out;
 }
 
+// ---------- 外掛武器一（爆發）：翼下的空對地導彈（左；右＝鏡像）----------
+// 上臂下面兩道掛架，各掛一枚看得到全身的導彈：紅色的尖頭、細長的彈體、十字尾翼、噴口
+function missiles() {
+  const out = [];
+  for (const [x, zc] of [
+    [1.85, 0.55],
+    [2.7, 0.42],
+  ]) {
+    const y = 3.5;
+    out.push(
+      // 掛架
+      hull(SUB, [
+        [x - 0.07, y + 0.55, zc + 0.5],
+        [x + 0.07, y + 0.55, zc + 0.5],
+        [x - 0.07, y + 0.55, zc - 0.5],
+        [x + 0.07, y + 0.55, zc - 0.5],
+        [x - 0.06, y + 0.17, zc + 0.75],
+        [x + 0.06, y + 0.17, zc + 0.75],
+        [x - 0.06, y + 0.17, zc - 0.6],
+        [x + 0.06, y + 0.17, zc - 0.6],
+      ]),
+      box(GUN, [x, y + 0.19, zc + 0.05], [0.2, 0.07, 1.2], null, 0.02),
+      // 彈體
+      lathe(
+        MAIN,
+        [x, y, zc - 1.0],
+        [0, 0, 1],
+        [
+          [0, 0.13],
+          [0.08, 0.17],
+          [1.65, 0.17],
+          [1.72, 0.15],
+        ],
+        10,
+      ),
+      lathe(
+        WAR,
+        [x, y, zc + 0.72],
+        [0, 0, 1],
+        [
+          [0, 0.15],
+          [0.25, 0.13],
+          [0.5, 0.05],
+          [0.56, 0.01],
+        ],
+        10,
+      ),
+      cyl(ACC, [x, y, zc + 0.3], [x, y, zc + 0.4], 0.18, 10),
+      cyl(GUN, [x, y, zc - 1.1], [x, y, zc - 1.0], 0.11, 8),
+      // 十字尾翼
+      hull(SUB, [
+        [x - 0.4, y, zc - 1.0],
+        [x + 0.4, y, zc - 1.0],
+        [x - 0.17, y, zc - 0.5],
+        [x + 0.17, y, zc - 0.5],
+        [x, y + 0.02, zc - 0.8],
+        [x, y - 0.02, zc - 0.8],
+      ]),
+      hull(SUB, [
+        [x, y - 0.4, zc - 1.0],
+        [x, y + 0.36, zc - 1.0],
+        [x, y - 0.17, zc - 0.5],
+        [x, y + 0.17, zc - 0.5],
+        [x + 0.02, y, zc - 0.8],
+        [x - 0.02, y, zc - 0.8],
+      ]),
+    );
+  }
+  return out;
+}
+
+// ---------- 外掛武器二（爆發）：腹下的集束炸彈艙 ----------
+// 兩腿後面、貼著腹部的流線艙：艙底 2×3 個半露的圓頭子炸彈、兩側的艙門、前端的整流罩
+const BAY = [0, 2.35, -0.95];
+function bombBay() {
+  const [, y, z] = BAY;
+  const out = [
+    hullS(MAIN, [
+      [0.0, y + 0.1, z + 0.95],
+      [0.42, y + 0.1, z + 0.7],
+      [0.6, y + 0.1, z - 0.9],
+      [0.4, y + 0.1, z - 1.25],
+      [0.0, y - 0.3, z + 0.8],
+      [0.36, y - 0.42, z + 0.55],
+      [0.5, y - 0.48, z - 0.8],
+      [0.34, y - 0.34, z - 1.15],
+      [0.0, y - 0.52, z - 0.2],
+    ]),
+    box(ACC, [0.52, y - 0.14, z - 0.2], [0.03, 0.12, 1.2], null, 0, true),
+    box(SUB, [0.5, y - 0.3, z - 0.2], [0.06, 0.2, 1.5], [0, 0, 10], 0.02, true),
+    // 後端的排氣口
+    box(GUN, [0, y - 0.15, z - 1.22], [0.5, 0.26, 0.1], null, 0.03),
+  ];
+  for (const x of [-0.2, 0.2])
+    for (const dz of [0.35, -0.15, -0.65]) {
+      out.push(cyl(GUN, [x, y - 0.5, z + dz], [x, y - 0.56, z + dz], 0.17, 10));
+      out.push(
+        lathe(
+          WAR,
+          [x, y - 0.54, z + dz],
+          [0, -1, 0],
+          [
+            [0, 0.13],
+            [0.07, 0.11],
+            [0.12, 0.04],
+          ],
+          10,
+        ),
+      );
+    }
+  return out;
+}
+
 let DEF = null;
 export function raptorDef() {
   if (DEF) return DEF;
@@ -330,7 +444,8 @@ export function raptorDef() {
   add('jaw', 'head', T.jaw, jaw());
   add('tail', 'chest', T.tail, tail());
   // 翼：上臂 → 前臂 → 手
-  pair('wl_arm', 'wr_arm', 'chest', 'chest', RAPTOR_WING.S, raptorWingArm());
+  pair('wl_arm', 'wr_arm', 'chest', 'chest', RAPTOR_WING.S, [...raptorWingArm(), ...missiles()]);
+  add('bay', 'chest', BAY, bombBay());
   pair('wl_fore', 'wr_fore', 'wl_arm', 'wr_arm', RAPTOR_WING.E, raptorWingFore());
   pair('wl_hand', 'wr_hand', 'wl_fore', 'wr_fore', RAPTOR_WING.W, raptorWingHand());
   // 腿：脛 → 跗蹠 → 腳掌（後趾）→ 前三趾
