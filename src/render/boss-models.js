@@ -4395,3 +4395,4 @@ export const BP_CATALOG = [
   ['pulse', '斥力裝甲發生器'],
 ];
 for (const [k] of BP_CATALOG) BUILDERS['bp_' + k] = BP[k];
+BUILDERS.bp_none = BP.none; // 看不到的部位（機獸的外掛武器）：不列在模型庫，所以不在 BP_CATALOG

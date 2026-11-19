@@ -1187,11 +1187,15 @@ async function testBeast(browser) {
     };
     let meshes = 0;
     b.mesh.traverse((o) => o.isMesh && meshes++);
+    // 武器部位的造型是看不到的（機獸模型上本來就有那把武器）：不能有任何網格
+    let partMeshes = 0;
+    for (const e of parts()) e.mesh.traverse((o) => o.isMesh && partMeshes++);
     out.spawn = {
       boss: !!b && b.isBoss,
       kind: b.opts.bossKind,
       parts: parts().length,
       meshes,
+      partMeshes,
       tier: b.bossTier(),
     };
     // 追擊：從 90 m 外，2 秒內靠近、最高速度比玩家機甲的移動快
@@ -1266,6 +1270,7 @@ async function testBeast(browser) {
   check(r.spawn.boss && r.spawn.kind === 'beast_lion', `獅型以 Boss 生成（${r.spawn.kind}）`);
   check(r.spawn.parts === 3 && r.spawn.tier === 8, `刁鑽度 8：三個武器部位（${r.spawn.parts} 個）`);
   check(r.spawn.meshes <= 30, `網格合併（${r.spawn.meshes} 個網格）`);
+  check(r.spawn.partMeshes === 0, `武器部位沒有自己的造型（${r.spawn.partMeshes} 個網格）`);
   check(
     r.chase.tc >= 0,
     `從 90 m 追到 45 m 以內（${r.chase.tc.toFixed(1)} 秒，剩 ${r.chase.d1.toFixed(0)} m）`,
