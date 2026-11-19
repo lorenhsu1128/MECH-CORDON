@@ -19,7 +19,15 @@ import { PARTS, START_ASM } from '../data/parts.js';
 import { PALETTES, mechMats } from './materials.js';
 import { PIECE_NAMES, SIDE_NAMES, buildMech, buildPiece, partPieces } from './mech-model.js';
 import { animateBeast, clipDur } from './beast-anim.js';
-import { LION_POSES, buildBear, buildGorilla, buildLion, buildTiger, buildTurtle } from './beast-lion.js';
+import {
+  LION_POSES,
+  buildBear,
+  buildGorilla,
+  buildLion,
+  buildScorpion,
+  buildTiger,
+  buildTurtle,
+} from './beast-lion.js';
 import { THEMES } from '../world/world.js';
 import { LANDMARKS } from '../world/landmarks.js';
 import { VARIANT_CATALOG } from '../world/variants.js';
@@ -366,6 +374,43 @@ for (const [key, label, palKey, pose, st] of [
         out.tick = (dt, t) =>
           animateBeast(rig, typeof st === 'function' ? { ...st(t), t } : { ...st, t }, dt);
       return out;
+    },
+  });
+}
+
+// 暫時：蠍型機獸（原創設計；第 1 章荒野／沙丘／礦坑的大 Boss）
+for (const [key, label, palKey, pose] of [
+  ['stand', '站姿', 'boss', null],
+  ['stand_w', '站姿・白色配色', 'white', null],
+  [
+    'open',
+    '張螯、尾前刺（檢查關節）',
+    'boss',
+    {
+      cl_finger: [0, 28, 0],
+      cr_finger: [0, -28, 0],
+      cl_arm: [0, 18, 0],
+      cr_arm: [0, -18, 0],
+      tail3: [14, 0, 0],
+      tail4: [16, 0, 0],
+      tail5: [14, 0, 0],
+      sting: [18, 0, 0],
+      chel_l: [-14, 0, 0],
+      chel_r: [10, 0, 0],
+    },
+  ],
+]) {
+  add({
+    id: 'temp/scorpion_' + key,
+    cat: 'temp',
+    name: '蠍型機獸（' + label + '）',
+    note: '暫時：原創設計的蠍型機獸（低扁的身體與疊瓦的背板、一對大螯與電漿切割器、四對往兩側張開的步足、捲過背的五節尾與毒針）',
+    pal: palKey,
+    spec: 'mech-boss',
+    noGlb: true,
+    build: (k) => {
+      const rig = buildScorpion(pal(k), 1, pose);
+      return { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
     },
   });
 }
