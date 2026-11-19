@@ -1134,6 +1134,157 @@ async function testLabDemo(browser) {
 
 // 地圖預覽器（docs/map-viewer-design.md）：標題按鈕開啟、換主題／變體／種子／大小重新產生、鏡頭（自由、全圖）、
 // 滑鼠拖曳與滾輪、觸控的雙指縮放、效能面板、暫停選單離開、不寫存檔
+// 機獸（每章最後的大 Boss；docs/beast-design.md 的「接成敵人」）：獅型的生成、追擊與速度、近戰的傷害、磁軌砲、部位與換型態的修復
+async function testBeast(browser) {
+  console.log('機獸：獅型的生成、追擊、近戰與磁軌砲的傷害、可以打壞的武器與修復');
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const page = await ctx.newPage();
+  watch(page, 'beast');
+  await page.goto('file:///' + HTML.replace(/\\/g, '/') + '?test');
+  await waitVisible(page, 'title');
+  await page.evaluate(() => {
+    const g = window.__game;
+    g.save.level = 1;
+    g.startMission();
+  });
+  await page.waitForFunction(() => window.__game.state === 'play' && window.__game.player, null, {
+    timeout: 60000,
+  });
+  await wait(800);
+  await freezeLoop(page);
+  const r = await page.evaluate(() => {
+    const g = window.__game,
+      p = g.player,
+      V = window.THREE.Vector3;
+    for (const e of [...g.enemies]) e.dead || (e.depart ? e.depart() : e.die && e.die());
+    g.waves = [];
+    g.wavePend = null;
+    // 地圖是隨機的：拿掉障礙物，路線與光束才不會被擋（繞路與躍過障礙物另外用 scripts/beast-play.js 看）
+    g.world.obstacles = [];
+    for (const q of g.world.props || []) q.dead = true;
+    const out = {};
+    const b = g.beastSpawn('lion', 1, 8);
+    const parts = () => g.enemies.filter((e) => e.ai === 'part' && !e.dead);
+    const put = (dist) => {
+      b.pos.set(p.pos.x, p.pos.y, p.pos.z - dist);
+      b.pos.y = g.world.groundAt(b.pos.x, b.pos.z, p.pos.y + 1); // 和玩家同一層（不要放到障礙物頂上）
+      b.yaw = Math.PI; // 面向玩家（+z）
+      Object.assign(b.aiState, {
+        clip: null,
+        rail: null,
+        leap: null,
+        go: 0,
+        bCd: 99,
+        rCd: 99,
+        spd: 0,
+        pT: 0,
+        blk: 0,
+      });
+    };
+    let meshes = 0;
+    b.mesh.traverse((o) => o.isMesh && meshes++);
+    out.spawn = {
+      boss: !!b && b.isBoss,
+      kind: b.opts.bossKind,
+      parts: parts().length,
+      meshes,
+      tier: b.bossTier(),
+    };
+    // 追擊：從 90 m 外，2 秒內靠近、最高速度比玩家機甲的移動快
+    put(90);
+    const d0 = Math.hypot(b.pos.x - p.pos.x, b.pos.z - p.pos.z);
+    let vmax = 0;
+    // 地圖是隨機的，路上可能有障礙物要繞：最多給 6 秒，靠近到 45 m 以內就算
+    const tc = window.__pump(6, () => {
+      vmax = Math.max(vmax, b.aiState.spd || 0);
+      return Math.hypot(b.pos.x - p.pos.x, b.pos.z - p.pos.z) < 45;
+    });
+    out.chase = {
+      d0,
+      d1: Math.hypot(b.pos.x - p.pos.x, b.pos.z - p.pos.z),
+      tc,
+      vmax,
+      pv: p.stats.speed,
+      gait: b.model.beast.an && b.model.beast.an.gait,
+    };
+    // 近戰：玩家站在左爪的判定圓裡 → 出手後受傷
+    put(40);
+    const M = b.beastInfo().melee.clawL;
+    b.aiState.bCd = 99;
+    const spot = b.beastSpot(M);
+    p.pos.set(spot.x, g.world.groundAt(spot.x, spot.z, spot.y + 3), spot.z);
+    p.vel.set(0, 0, 0);
+    p.hp = p.maxHp;
+    p.iFrames = 0;
+    b.beastClip('clawL');
+    const hp0 = p.hp;
+    window.__pump(M.t + 0.25);
+    out.claw = { hp0, hp1: p.hp, clip: b.aiState.clip };
+    // 磁軌砲：瞄準 → 預警 → 貫穿
+    window.__pump(1.2);
+    put(60);
+    p.hp = p.maxHp;
+    p.iFrames = 0;
+    b.aiState.rail = { t: 0, dir: null };
+    const hp2 = p.hp;
+    let aimed = false;
+    window.__pump(1.7, () => {
+      if (b.bx) aimed = true;
+      return false;
+    });
+    out.rail = {
+      hp0: hp2,
+      hp1: p.hp,
+      aimed,
+      done: !b.aiState.rail,
+      dm: b.dmgMul,
+      stag: p.staggerT,
+      acs: p.acs,
+    };
+    // 部位：打壞磁軌砲 → 旗標、那一塊藏起來；進第二型態修復
+    const rp = parts().find((e) => e.tierSpec && e.tierSpec.flag === 'rail');
+    if (rp) {
+      rp.iFrames = 0;
+      rp.takeDamage(1e8, 0, p, rp.center(), new V(0, 0, 1));
+    }
+    window.__pump(0.3);
+    out.broke = { flag: b.tierFlag('rail'), parts: parts().length, vis: b.model.beast.nodes.guns.visible };
+    b.hp = b.maxHp * 0.6;
+    window.__pump(0.5);
+    out.fix = {
+      ph: b.bossPhase(),
+      flag: b.tierFlag('rail'),
+      parts: parts().length,
+      vis: b.model.beast.nodes.guns.visible,
+    };
+    return out;
+  });
+  check(r.spawn.boss && r.spawn.kind === 'beast_lion', `獅型以 Boss 生成（${r.spawn.kind}）`);
+  check(r.spawn.parts === 3 && r.spawn.tier === 8, `刁鑽度 8：三個武器部位（${r.spawn.parts} 個）`);
+  check(r.spawn.meshes <= 30, `網格合併（${r.spawn.meshes} 個網格）`);
+  check(
+    r.chase.tc >= 0,
+    `從 90 m 追到 45 m 以內（${r.chase.tc.toFixed(1)} 秒，剩 ${r.chase.d1.toFixed(0)} m）`,
+  );
+  check(
+    r.chase.vmax > r.chase.pv && r.chase.vmax < 186,
+    `速度比玩家機甲的移動快、比 QB 慢（最高 ${r.chase.vmax.toFixed(0)}，玩家 ${r.chase.pv.toFixed(0)}）`,
+  );
+  check(r.claw.hp1 < r.claw.hp0, `爪擊：判定圓裡的玩家受傷（${r.claw.hp0} → ${Math.round(r.claw.hp1)}）`);
+  check(r.rail.aimed && r.rail.done, '磁軌砲：砲塔瞄準、發射後結束');
+  check(
+    r.rail.hp1 < r.rail.hp0,
+    `磁軌砲：站著不動的玩家被貫穿（${r.rail.hp0} → ${Math.round(r.rail.hp1)}；火力倍率 ${r.rail.dm.toFixed(2)}）`,
+  );
+  check(r.broke.flag && r.broke.parts === 2 && !r.broke.vis, '打壞磁軌砲：機能停用、砲藏起來');
+  check(
+    r.fix.ph === 2 && !r.fix.flag && r.fix.parts === 3 && r.fix.vis,
+    `進第二型態：修復被打壞的武器（部位 ${r.fix.parts} 個）`,
+  );
+  await thawLoop(page);
+  await page.screenshot({ path: path.join(SHOT_DIR, 'beast-lion.png') });
+  await ctx.close();
+}
 async function testMapView(browser) {
   console.log('地圖預覽器：選地圖、重新產生、鏡頭、觸控、效能面板、離開');
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 760 } });
@@ -34588,6 +34739,7 @@ const STEPS = [
   ['testHangar', (c) => testHangar(c.browser)],
   ['testStyleLab', (c) => testStyleLab(c.browser)],
   ['testMapView', (c) => testMapView(c.browser)], // 地圖預覽器（docs/map-viewer-design.md）
+  ['testBeast', (c) => testBeast(c.browser)], // 機獸（docs/beast-design.md 的「接成敵人」）
   // 每個內建風格 × 13 個主題要量很久，主題分成 3 組（SMOKE_ONLY=testStyleThemes 一樣跑全部）
   ...[1, 2, 3].map((i) => [
     'testStyleThemes:' + i,

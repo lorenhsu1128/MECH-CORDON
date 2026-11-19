@@ -37,6 +37,45 @@ Object.assign(MechEntity.prototype, {
       if (pl && !pl.dead && this.atkCue) this.atkCue(pl, M.t, 0.3);
     }
   },
+  // 躍過障礙物：朝目標跳一段（最多 45 m，落在目標前方），途中不碰撞
+  beastLeap(pl, d, tyaw) {
+    const s = this.aiState,
+      w = this.game.world,
+      lim = w.lim - 3 * MS;
+    const far = Math.max(12, Math.min(d - this.radius - (pl.radius || 0) - 6, 45));
+    const tx = clamp(this.pos.x + ((pl.pos.x - this.pos.x) / (d || 1)) * far, -lim, lim),
+      tz = clamp(this.pos.z + ((pl.pos.z - this.pos.z) / (d || 1)) * far, -lim, lim);
+    const [lx, lz] = w.collide(tx, tz, pl.pos.y, this.radius * 0.8);
+    s.leap = {
+      t: 0,
+      dur: clipDur('jump') * 0.75,
+      x0: this.pos.x,
+      z0: this.pos.z,
+      y0: this.pos.y,
+      x1: lx,
+      z1: lz,
+      y1: w.groundAt(lx, lz, pl.pos.y + 2 * MS),
+      h: 9 * this.beastK(),
+      yaw: tyaw,
+    };
+    this.beastClip('jump');
+    s.pT = 0;
+  },
+  // 換型態時修復一次：被打壞的外掛武器重新裝上（使用者定案；之後再打壞就不修了）
+  beastRepair() {
+    const s = this.aiState;
+    const ph = this.bossPhase ? this.bossPhase() : 1;
+    if (s.ph === undefined) s.ph = ph;
+    if (ph === s.ph) return;
+    s.ph = ph;
+    if (s.repaired || !this.tierOn()) return;
+    const kit = this.tierKit();
+    const lost = (kit.parts || []).filter((sp) => sp.flag && this.tierFlag(sp.flag));
+    if (!lost.length) return;
+    s.repaired = true;
+    for (const sp of lost) this.game.tierSpawnPart(this, sp, true);
+    this.game.flashAlert && this.game.flashAlert('機獸修復了被打壞的武器');
+  },
   // 體型的倍率（模型的公尺 → 實際的公尺）
   beastK() {
     const rig = this.model && this.model.beast;
@@ -124,14 +163,18 @@ Object.assign(MechEntity.prototype, {
         s.rail = null;
         s.rCd = 3.5 + Math.random() * 2;
       }
-      if (!this.canAct()) s.rail = null;
+      if (!this.canAct() || this.tierFlag('rail')) s.rail = null; // 失衡或磁軌砲被打壞：中斷
       return;
     }
     this.bx = null;
     s.rCd = (s.rCd === undefined ? 4 : s.rCd) - dt;
     if (s.rCd > 0 || s.clip || !this.canAct() || s.go > 0) return;
     const far = d > 28 * DS;
-    const r = Math.random();
+    const noRail = this.tierFlag('rail'),
+      noPods = this.tierFlag('podL') && this.tierFlag('podR');
+    let r = Math.random();
+    if (noRail && r < (far ? 0.45 : 0.2)) r = noPods ? 0.9 : 0.5; // 壞掉的武器改用別把
+    if (noPods && r >= (far ? 0.45 : 0.2) && r < (far ? 0.8 : 0.65)) r = noRail ? 0.9 : 0;
     if (far ? r < 0.45 : r < 0.2) {
       s.rail = { t: 0, dir: null };
     } else if (far ? r < 0.8 : r < 0.65) {
@@ -176,8 +219,35 @@ Object.assign(MechEntity.prototype, {
       s.orbT = 6;
     }
     s.tgt = pl; // 近戰提示的對象
+    this.beastRepair();
     const tyaw = yawTo(this.pos, pl.pos);
     const off = wrap(tyaw - this.yaw); // 目標在我的哪一邊（正＝左）
+    // 躍過障礙物：連續被擋住時直接朝目標跳過去（拋物線，途中不碰撞），落在目標前方
+    if (s.leap) {
+      const L = s.leap;
+      L.t += dt;
+      const u = Math.min(1, L.t / L.dur);
+      const px0 = this.pos.x,
+        pz0 = this.pos.z;
+      this.pos.x = L.x0 + (L.x1 - L.x0) * u;
+      this.pos.z = L.z0 + (L.z1 - L.z0) * u;
+      this.pos.y = L.y0 + (L.y1 - L.y0) * u + 4 * L.h * u * (1 - u);
+      this.yaw = wrap(this.yaw + clamp(wrap(L.yaw - this.yaw), -1, 1) * B.turn * 2 * dt);
+      this.aimYaw = this.yaw;
+      s.spd = 0;
+      if (u >= 1) {
+        s.leap = null;
+        s.clip = null;
+        s.bCd = 0.5;
+        this.game.fx.dust && this.game.fx.dust(this.pos.clone(), this.radius);
+        this.game.camShake = Math.max(this.game.camShake || 0, 0.2);
+      }
+      this.bossVis = ((this.bossVis || 0) & ~31) | (s.clip ? B.clips.indexOf(s.clip) + 1 : 0);
+      this.bossTick(dt);
+      if (dt > 0) this.vel.set((this.pos.x - px0) / dt, 0, (this.pos.z - pz0) / dt);
+      r.done = true;
+      return r;
+    }
     let goalSpd = 0,
       turn = 0,
       fwdStep = 0;
@@ -202,6 +272,7 @@ Object.assign(MechEntity.prototype, {
         this.beastStrike(M);
       }
       if (s.clipT >= clipDur(s.clip)) {
+        if (s.clip === 'pounce' || s.clip === 'roar') this.bossOpen(s.clip === 'pounce' ? 2.5 : 1.5, true); // 撲空／咆哮完是破綻（Boss 改版的 D）
         s.clip = null;
         s.bCd = 0.9 + Math.random() * 0.9;
       }
@@ -223,6 +294,17 @@ Object.assign(MechEntity.prototype, {
       // 轉彎半徑＝速度÷轉身速度：方向差得多時先慢下來（差越多越慢），貼近目標要出手時也放慢，低速時轉得更快
       goalSpd *= clamp(1.25 - Math.abs(err) * 0.9, 0.12, 1);
       if (s.go > 0 && d < this.radius + (pl.radius || 0) + 10) goalSpd = Math.min(goalSpd, B.walk * 0.6);
+      // 追向目標卻沒有進展（被擋住、沿著牆滑）：每 1.2 秒看一次距離，沒縮短 4 m 以上就躍過去
+      if (!s.rail && (s.go > 0 || d >= want * 2.2)) {
+        s.pT = (s.pT || 0) + dt;
+        if (s.pD === undefined || s.pT < dt * 1.5) s.pD = d;
+        if (s.pT >= 1.2) {
+          if (s.pD - d < 4 && d > this.radius + (pl.radius || 0) + 12) this.beastLeap(pl, d, tyaw);
+          s.pT = 0;
+          s.pD = d;
+        }
+      } else s.pT = 0;
+      if (s.rail) goalSpd = 0; // 磁軌砲：停下來架砲（邊跑邊放的話鎖住方向之後砲口會跑掉）
       turn = clamp(err * 4, -1, 1) * B.turn * (1 + 1.6 * (1 - Math.min(1, s.spd / B.run)));
       if (s.go > 0) {
         s.go -= dt;
@@ -262,6 +344,11 @@ Object.assign(MechEntity.prototype, {
         s.orb *= -1;
         s.avoid = 0.7;
         s.go = 0;
+        // 3 秒內第二次被擋住：躍過去
+        if (s.blkAt !== undefined && this.t - s.blkAt < 3 && this.canAct() && !s.clip && !s.rail) {
+          this.beastLeap(pl, d, tyaw);
+          s.blkAt = undefined;
+        } else s.blkAt = this.t;
       }
       // 路上的可破壞物件直接撞碎（每 0.15 秒檢查一次前方）
       s.smT = (s.smT || 0) - dt;
@@ -314,6 +401,11 @@ Object.assign(MechEntity.prototype, {
     } else F.ct += dt;
     const name = ci && B ? B.clips[ci - 1] : null;
     const sc = rig.group.scale.x || 1;
+    if (B && B.hide)
+      for (const f in B.hide) {
+        const off = this.tierFlag(f);
+        for (const k of B.hide[f]) if (rig.nodes[k]) rig.nodes[k].visible = !off;
+      }
     animateBeast(
       rig,
       {

@@ -19,7 +19,7 @@ const $ = (id) => document.getElementById(id);
 const ROSTER = Object.keys(AC_ROSTER);
 const RES = [1, 0.85, 0.7, 0.6, 0.5];
 
-// Boss 擂台的清單：BOSS_DEFS 之後接機獸（data/beasts.js；還沒有刁鑽度的專屬內容，一律不套用）
+// Boss 擂台的清單：BOSS_DEFS 之後接機獸（data/beasts.js；刁鑽度「依自由出擊」時用定義的 tier＝主線那一章的刁鑽度）
 const MV_BOSSES = [...BOSS_DEFS, ...BEAST_DEFS];
 
 Object.assign(Game.prototype, {
@@ -45,7 +45,7 @@ Object.assign(Game.prototype, {
     this.scaleHp = sc.hp;
     this.scaleDmg = sc.dmg;
     this.isBossLevel = true;
-    const tier = bd.beast ? 0 : f.tier === 'auto' ? freeTier(bossDefIndex(bd)) : Number(f.tier) || 0;
+    const tier = f.tier === 'auto' ? (bd.beast ? bd.tier : freeTier(bossDefIndex(bd))) : Number(f.tier) || 0;
     this.spawnBossDef(bd, sc.hp, sc.dmg, tier);
     // 操作時的 HUD：Boss 的血條（同 startMission）
     $('bossBar').style.display = 'block';

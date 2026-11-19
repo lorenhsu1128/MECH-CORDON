@@ -3525,6 +3525,12 @@ function bpMount(node, M, r = 0.9, y = -0.15) {
   }
 }
 const BP = {};
+// 看不到的部位（機獸的外掛武器：模型上本來就有那把武器，這裡只要一個可以鎖定與命中的實體）
+BP.none = (pal, scale) => {
+  const M = mechMats(pal);
+  const { root, torso } = bpBase(0.5);
+  return bpEnd(root, torso, M, scale, 1.6);
+};
 // 雷達天線：格子桅杆＋旋轉的雷達板
 BP.radar = (pal, scale) => {
   const M = mechMats(pal);

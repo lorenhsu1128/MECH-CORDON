@@ -41,6 +41,7 @@ export const C_STAR = {
   deckgun: 'close',
   reactor: 'far',
   sovereign: 'air',
+  beast_lion: 'close',
 };
 // qb＝QB 連打（docs/boss-design.md 第 8 節：刁鑽度 3 起，每秒 QB 次數超過 C_QB_RATE）
 export const HABITS = ['air', 'close', 'far', 'cover', 'qb'];
@@ -698,6 +699,43 @@ K7.sovereign = {
   },
 };
 Object.assign(BOSS_KIT, K7);
+// ---------- 機獸（每章最後的大 Boss；docs/beast-design.md）----------
+// 兩把外掛武器是部位：造型用看不到的 'none'（機獸模型上本來就有那把武器，打壞時 entities/mech-beast.js 把那一塊藏起來）。
+// off 的 x：正＝機獸的右側。換型態時修復一次（mech-beast.js 的 beastRepair）。
+const KB = {};
+// 獅型：磁軌砲壞了不能砲擊、莢艙壞一邊少一輪導彈
+KB.beast_lion = {
+  parts: [
+    { id: 'rail', name: '磁軌砲', model: 'none', size: 1.5, off: [0, 0.95, -0.2], flag: 'rail' },
+    {
+      id: 'podL',
+      name: '左導彈莢艙',
+      model: 'none',
+      off: [-0.26, 0.86, 0.14],
+      flag: 'podL',
+      slots: ['lback'],
+    },
+    {
+      id: 'podR',
+      name: '右導彈莢艙',
+      model: 'none',
+      off: [0.26, 0.86, 0.14],
+      flag: 'podR',
+      slots: ['rback'],
+    },
+  ],
+  big: [
+    ['導彈彈幕', (b, pl) => b.b3Rain(pl, 8, 9, 0.18)],
+    ['雷射牢籠', (b, pl) => b.b3Cage(pl, 8, 26)],
+  ],
+  counter: {
+    air: (b, pl) => b.b3Fan(pl, 5, 0.16), // 鬃甲的雷射往上掃
+    close: (b) => b.b3Shock(16), // 踏地
+    far: (b, pl) => b.b3Line(pl, 5, 4.5, 0.16), // 磁軌砲的連續砲擊
+    cover: (b, pl) => b.b3Rain(pl, 4, 5, 0.25), // 導彈繞過掩體
+  },
+};
+Object.assign(BOSS_KIT, KB);
 
 // ---------- 各 Boss 的場地變化（第二型態／第三型態；game/boss-field.js 的新效果）----------
 // (g＝Game, b＝Boss, T＝刁鑽度的參數)：T.eZone＜1 時作戰區域另外縮小，T.eMove 時不利的效果跟著 Boss

@@ -38,6 +38,9 @@ export const BEAST_DEFS = [
     pal: 'beast_lion',
     asm: { ...BEAST_ASM, rback: 'bw_ms', lback: 'bw_ms' }, // 肩上的導彈莢艙（爆發）
     scale: BEAST_SCALE.lion,
+    tier: 8, // 主線的刁鑽度（第 8 章；地圖預覽器的「依自由出擊」用）
+    // 外掛武器的部位（BOSS_KIT 的 flag）→ 打壞時藏起來的區塊
+    hide: { rail: ['guns'], podL: ['pod_l'], podR: ['pod_r'] },
     radius: 1.3,
     hpMul: 3.4,
     stabMul: 5,
