@@ -126,7 +126,7 @@ const nozzle = (c, dir, r, len, mir) => {
 // ---------- 胸（根）----------
 function chest() {
   const R = [
-    sec(0.6, 1.45, 6.6, 3.6),
+    sec(0.1, 1.42, 6.58, 3.65),
     sec(1.8, 1.5, 6.8, 3.5),
     sec(2.8, 1.35, 6.75, 3.75),
     sec(3.5, 0.95, 6.2, 4.4),
@@ -1004,9 +1004,9 @@ export function lionDef() {
     );
     pieces.push({ name, parent, pivot: pv, prims: toLocal(moved(scaled(world, k, about), d), pv) });
   };
-  const REAR = { d: [0, 0, 1.2] },
+  const REAR = { d: [0, 0, 0.6] },
     HEADBACK = { d: [0, 0, -0.5] },
-    LEG_K = [1.32, 1, 1.18];
+    LEG_K = [1.6, 1, 1.38];
   const FL = { k: LEG_K, about: J.S },
     BL = { k: LEG_K, about: J.H, d: REAR.d };
   // 左側的區塊＋右側的鏡像
