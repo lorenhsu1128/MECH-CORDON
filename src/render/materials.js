@@ -1104,6 +1104,8 @@ export const RIVAL_PALS = new Set(
     'brant',
   ].map((k) => PALETTES[k]),
 );
+// 機獸用定案的配色（docs/beast-design.md），不換成敵人配色
+for (const k of Object.keys(BEAST_PALS)) RIVAL_PALS.add(PALETTES['beast_' + k]);
 
 // 顏色的大致名稱（模型庫的配色選單用）：依色值（設計時挑的顏色）的色相／彩度／亮度命名；
 // 彩度低的叫「沙灰、藍灰…」這類偏色的灰

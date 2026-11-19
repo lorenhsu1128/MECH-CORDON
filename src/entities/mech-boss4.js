@@ -44,7 +44,7 @@ Object.assign(MechEntity.prototype, {
         this.sovereignAI(dt, d, dir, perp, wish, pl, r);
         return r;
     }
-    return null;
+    return this.beastMove(dt, d, dir, perp, wish, pl, r); // 機獸（mech-beast.js）
   },
   boss4Fire(dt, d, aimPos, pl) {
     if (!B4.has(this.ai)) return false;

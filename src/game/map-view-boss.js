@@ -6,6 +6,7 @@
 //  - 畫面：渲染風格切換（只在預覽器，不改遊戲的選擇）、左右比較、解析度、完整的畫面設定
 // ============================================================
 import { escHtml } from '../core/html.js';
+import { BEAST_DEFS } from '../data/beasts.js';
 import { AC_ROSTER, BOSS_DEFS, BOSS_PHASES, enemyScale } from '../data/enemies.js';
 import { bossDefIndex, freeTier } from '../data/boss-tier.js';
 import { MechEntity } from '../entities/mech-entity.js';
@@ -18,11 +19,14 @@ const $ = (id) => document.getElementById(id);
 const ROSTER = Object.keys(AC_ROSTER);
 const RES = [1, 0.85, 0.7, 0.6, 0.5];
 
+// Boss 擂台的清單：BOSS_DEFS 之後接機獸（data/beasts.js；還沒有刁鑽度的專屬內容，一律不套用）
+const MV_BOSSES = [...BOSS_DEFS, ...BEAST_DEFS];
+
 Object.assign(Game.prototype, {
   // ---------- Boss 擂台 ----------
   mapvBossDef() {
     const f = this.mapv.f;
-    return BOSS_DEFS[Math.max(0, Math.min(BOSS_DEFS.length - 1, f.boss | 0))];
+    return MV_BOSSES[Math.max(0, Math.min(MV_BOSSES.length - 1, f.boss | 0))];
   },
   // 這張地圖能不能排這隻 Boss（主題的 bossBan、武裝列車要有鐵路）：不行時回傳可以的主題
   mapvBossTheme(theme) {
@@ -41,7 +45,7 @@ Object.assign(Game.prototype, {
     this.scaleHp = sc.hp;
     this.scaleDmg = sc.dmg;
     this.isBossLevel = true;
-    const tier = f.tier === 'auto' ? freeTier(bossDefIndex(bd)) : Number(f.tier) || 0;
+    const tier = bd.beast ? 0 : f.tier === 'auto' ? freeTier(bossDefIndex(bd)) : Number(f.tier) || 0;
     this.spawnBossDef(bd, sc.hp, sc.dmg, tier);
     // 操作時的 HUD：Boss 的血條（同 startMission）
     $('bossBar').style.display = 'block';
@@ -129,7 +133,7 @@ Object.assign(Game.prototype, {
     const f = this.mapv.f;
     const opt = (v, t, cur) =>
       `<option value="${v}"${String(v) === String(cur) ? ' selected' : ''}>${t}</option>`;
-    const bossOpts = BOSS_DEFS.map((b, i) => opt(i, escHtml(b.name), f.boss)).join('');
+    const bossOpts = MV_BOSSES.map((b, i) => opt(i, escHtml(b.name), f.boss)).join('');
     const tiers = opt('auto', '依自由出擊', f.tier) + opt(0, '不套用（原本的機制）', f.tier);
     let t2 = '';
     for (let i = 1; i <= 8; i++) t2 += opt(i, '刁鑽度 ' + i, f.tier);

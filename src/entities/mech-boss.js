@@ -732,6 +732,7 @@ Object.assign(MechEntity.prototype, {
     if (this.model.legNodes && this.model.legNodes.length) this.spiderFx(dt);
     this.boss2Fx(dt);
     this.boss4Fx(dt); // 主線擴充的新 Boss（mech-boss4.js）
+    this.beastFx(dt); // 機獸（mech-beast.js）
     if (this.isBoss) this.tierFx(dt); // 破綻的金色光環（mech-boss-tier.js）
   },
   // 身體各節沿著頭部走過的軌跡排列（入地的部分被地形擋住）
