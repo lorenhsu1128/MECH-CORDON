@@ -265,6 +265,7 @@ export class ModelGrid {
         d.pivot.rotation.y += dt * 0.5;
         const rig = d.built.rig;
         if (rig) animateMech(rig, dt, rig.vehicle ? { t: this.t } : animState('garage', this.t));
+        if (d.built.tick) d.built.tick(dt, this.t);
       }
       const aspect = rc.width / rc.height;
       if (Math.abs(d.cam.aspect - aspect) > 1e-3) {

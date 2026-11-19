@@ -18,6 +18,7 @@ import { FOE_CATALOG } from './foe-models.js';
 import { PARTS, START_ASM } from '../data/parts.js';
 import { PALETTES, mechMats } from './materials.js';
 import { PIECE_NAMES, SIDE_NAMES, buildMech, buildPiece, partPieces } from './mech-model.js';
+import { animateBeast } from './beast-anim.js';
 import { LION_POSES, buildLion } from './beast-lion.js';
 import { THEMES } from '../world/world.js';
 import { LANDMARKS } from '../world/landmarks.js';
@@ -175,6 +176,35 @@ for (const [key, label, palKey] of [
     build: (k) => {
       const rig = buildLion(pal(k), 1, LION_POSES[key.split('_')[0]]);
       return { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
+    },
+  });
+}
+
+// 獅型機獸的動作預覽（第 1 期；原地播放，built.tick 由檢視窗與格狀檢視每格呼叫）
+for (const [key, label, st] of [
+  ['idle', '待機', { v: 0 }],
+  ['walk', '走（5 m/s）', { v: 5 }],
+  ['trot', '小跑（11 m/s）', { v: 11 }],
+  ['run', '奔跑（24 m/s）', { v: 24 }],
+  ['turn', '原地轉身', { v: 0, w: 0.9, spin: true }],
+]) {
+  add({
+    id: 'temp/lion_anim_' + key,
+    cat: 'temp',
+    name: '獅型機獸・動作：' + label,
+    note: '暫時：動作預覽（關掉「旋轉」比較好看；側面看步伐、正面看站姿）',
+    pal: 'boss',
+    spec: 'mech-boss',
+    noGlb: true,
+    build: (k) => {
+      const rig = buildLion(pal(k), 1);
+      return {
+        obj: rig.group,
+        scaleNode: rig.group,
+        scale: v3(1),
+        rig: null,
+        tick: (dt, t) => animateBeast(rig, { ...st, t }, dt),
+      };
     },
   });
 }

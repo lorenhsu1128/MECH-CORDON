@@ -11,10 +11,10 @@ export const LION_POSES = {
   stand: {},
   // 咆哮：張嘴、抬頭、壓低前半身、尾巴揚起、砲管上仰
   roar: {
-    neck: [-14, 0, 0],
-    head: [-16, 0, 0],
-    jaw: [34, 0, 0],
-    guns: [-18, 0, 0],
+    neck: [14, 0, 0],
+    head: [16, 0, 0],
+    jaw: [-34, 0, 0],
+    guns: [18, 0, 0],
     turret: [0, 20, 0],
     fl_upper: [-16, 0, 0],
     fl_fore: [22, 0, 0],
@@ -63,5 +63,5 @@ export function buildLion(pal, scale = 1, pose = null) {
     if (nodes[k]) nodes[k].rotation.set(r[0] * d, r[1] * d, r[2] * d);
   root.scale.setScalar(scale);
   tagStyle(root);
-  return { group: root, nodes, mats: M, tris: def.tris };
+  return { group: root, nodes, piv: pivots, mats: M, tris: def.tris };
 }

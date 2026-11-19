@@ -680,6 +680,7 @@ export class Inspector {
         restPose(rig);
         applyQuick(rig, this.ref.q);
       } else if (rig) animateMech(rig, dt, rig.vehicle ? { t: this.t } : animState(this.anim, this.t));
+      if (it.built.tick) it.built.tick(dt, this.t); // 自己播動作的模型（機獸的動作預覽）
     }
     // 噴焰：整台機甲依動作的推力；單獨檢視背包時以中等推力從噴口連接點噴出
     if (this.opts.flame) {
