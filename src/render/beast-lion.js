@@ -4,6 +4,7 @@ import { OUTLINE_MAT } from './geometry.js';
 import { mechMats } from './materials.js';
 import { fixMat, primsGroup } from './proc-prims.js';
 import { lionDef } from './proc/beast_lion.js';
+import { tigerDef } from './proc/beast_tiger.js';
 import { tagStyle } from './style/shader.js';
 
 // 展示用的姿勢
@@ -33,8 +34,10 @@ export const LION_POSES = {
   },
 };
 
-export function buildLion(pal, scale = 1, pose = null) {
-  const def = lionDef();
+export const buildLion = (pal, scale = 1, pose = null) => buildBeast(lionDef(), pal, scale, pose);
+export const buildTiger = (pal, scale = 1, pose = null) => buildBeast(tigerDef(), pal, scale, pose);
+// def＝區塊表（lionDef／tigerDef）
+export function buildBeast(def, pal, scale = 1, pose = null) {
   const M = mechMats(pal);
   const root = new THREE.Group();
   const nodes = {},

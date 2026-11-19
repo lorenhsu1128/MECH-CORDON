@@ -19,7 +19,7 @@ import { PARTS, START_ASM } from '../data/parts.js';
 import { PALETTES, mechMats } from './materials.js';
 import { PIECE_NAMES, SIDE_NAMES, buildMech, buildPiece, partPieces } from './mech-model.js';
 import { animateBeast, clipDur } from './beast-anim.js';
-import { LION_POSES, buildLion } from './beast-lion.js';
+import { LION_POSES, buildLion, buildTiger } from './beast-lion.js';
 import { THEMES } from '../world/world.js';
 import { LANDMARKS } from '../world/landmarks.js';
 import { VARIANT_CATALOG } from '../world/variants.js';
@@ -105,7 +105,7 @@ export const CATEGORIES = [
   { id: 'booster', name: '推進器（背包）' },
   { id: 'weapon', name: '手持武器' },
   { id: 'back', name: '背部武器' },
-  { id: 'temp', name: '暫時（獅型機獸的程式模型）' },
+  { id: 'temp', name: '暫時（機獸的程式模型與動作）' },
   { id: 'mech', name: '完整機甲' },
   { id: 'vehicle', name: '非機甲／載具' },
   { id: 'prop', name: '地圖物件' },
@@ -176,6 +176,31 @@ for (const [key, label, palKey] of [
     build: (k) => {
       const rig = buildLion(pal(k), 1, LION_POSES[key.split('_')[0]]);
       return { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
+    },
+  });
+}
+
+// 暫時：劍齒虎型機獸（原創設計；四肢與尾巴的節沿用獅型的零件，身體、頭、劍齒、武裝另外做）
+for (const [key, label, palKey, st] of [
+  ['stand', '站姿', 'boss', null],
+  ['stand_w', '站姿・白色配色', 'white', null],
+  ['anim_idle', '動作：待機', 'boss', { v: 0 }],
+  ['anim_walk', '動作：走', 'boss', { v: 5 }],
+  ['anim_run', '動作：奔跑', 'boss', { v: 24 }],
+]) {
+  add({
+    id: 'temp/tiger_' + key,
+    cat: 'temp',
+    name: '劍齒虎型機獸（' + label + '）',
+    note: '暫時：原創設計的劍齒虎型機獸（沒有鬃甲、低伏的身形、長劍齒、肩上的飛彈莢艙）',
+    pal: palKey,
+    spec: 'mech-boss',
+    noGlb: true,
+    build: (k) => {
+      const rig = buildTiger(pal(k), 1);
+      const out = { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
+      if (st) out.tick = (dt, t) => animateBeast(rig, { ...st, t }, dt);
+      return out;
     },
   });
 }

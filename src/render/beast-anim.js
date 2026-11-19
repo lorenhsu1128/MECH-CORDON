@@ -542,7 +542,9 @@ export function animateBeast(rig, st, dt) {
     sp(n, 'x', tx + ch('tx') * 0.32, ST, dt);
   }
   // ---- 砲塔：st.aim＝[偏航, 俯仰]（之後由目標的方向決定）；沒有時待機慢慢掃視 ----
-  if (st.aim) {
+  if (!N.turret || !N.guns) {
+    // 沒有砲塔的機獸
+  } else if (st.aim) {
     sp(N.turret, 'y', st.aim[0], S_HEAD, dt);
     sp(N.guns, 'x', st.aim[1], S_HEAD, dt);
   } else {

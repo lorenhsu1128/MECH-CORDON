@@ -15,6 +15,16 @@
 - `render/beast-lion.js` 的 `buildLion(pal, scale, pose)`：組成關節群組的階層（遊戲座標 −Z 正面），回傳 `{ group, nodes, piv, eyeMat }`。
 - 繞 X 的旋轉：正的＝往前的東西往上抬（頭抬起＝正、下顎張開＝負、尾巴揚起＝負）。
 
+## 劍齒虎型機獸（`render/proc/beast_tiger.js` 的 `tigerDef()`、`buildTiger`）
+
+2026-11-19。同樣是原創設計（參考同類機獸的風格與比例的大方向，不照抄既有機體的辨識特徵）。
+
+- 和獅型的差別：沒有鬃甲、身形低伏而修長（腿壓低 8%、後半身較長）、扁寬的頭與兩頰的鰭、長劍齒（兩段、齒座強調色）、
+  背與頸的條紋（`stripe`：橫過背甲的強調色凸條）、肩上一對飛彈莢艙（`turret` 偏航、`guns` 俯仰）、臀部較大的噴嘴、尾端是上下兩片穩定翼、眼睛紅色。
+- 四肢與尾巴的節沿用獅型的零件（`beast_lion.js` 的 `LION_PARTS`），以 `tf` 調比例（前肢特別粗壯）；組裝工具 `assembler()` 兩隻共用。
+- 區塊名稱和獅型相同（沒有 `mane_a`／`mane_b`），動作 `animateBeast` 共用。
+- 模型庫：`temp/tiger_stand`、`temp/tiger_stand_w`、`temp/tiger_anim_idle`／`walk`／`run`。
+
 ## 動作（`render/beast-anim.js` 的 `animateBeast(rig, st, dt)`）
 
 使用者定案：厚重為主、只有撲擊是突然的爆發；撲擊時臀部的推進器會噴（特效還沒接）；攻擊片段先寫在程式裡。

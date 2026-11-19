@@ -993,15 +993,12 @@ function guns() {
 }
 
 // ---------- 區塊表 ----------
-let DEF = null;
-export function lionDef() {
-  if (DEF) return DEF;
+// 區塊表的組裝工具（各機獸共用）：add(名稱, 父區塊, 轉軸, 世界座標的清單, tf)、pair(左, 右, …)＝左側的區塊＋右側的鏡像。
+// tf＝{ k, about, d, sh }：整個區塊先以 about 為中心縮放 k、往外張開 sh（越往下越往外：x 依離 about 的高度差位移）、再平移 d（轉軸跟著）——比例的調整用
+export function assembler() {
   const pieces = [];
-  // tf＝{ k, about, d }：整個區塊先以 about 為中心縮放 k、再平移 d（轉軸跟著）——比例的調整：
-  // 軀幹縮短（後半身整個往前 REAR）、頭往後貼近肩膀（HEADBACK）、四肢加粗（整條腿以肩／髖為中心放寬 LEG_K）
   const add = (name, parent, pivot, world, tf = {}) => {
     const { k = [1, 1, 1], about = [0, 0, 0], d = [0, 0, 0], sh = 0 } = tf;
-    // sh＝往外張開（越往下越往外：x 依離 about 的高度差位移）
     const splay = (q) => [q[0] + (about[1] - q[1]) * sh, q[1], q[2]];
     const pv = vadd(splay(about.map((a, i) => a + (pivot[i] - a) * k[i])), d);
     pieces.push({
@@ -1021,12 +1018,6 @@ export function lionDef() {
       ),
     });
   };
-  const REAR = { d: [0, 0, 0.6] },
-    HEADBACK = { d: [0, 0, -0.5] },
-    LEG_K = [1.6, 1, 1.38];
-  const FL = { k: LEG_K, about: J.S, d: [0.22, 0, 0.2], sh: 0.09 },
-    BL = { k: LEG_K, about: J.H, d: [0.22, 0, REAR.d[2] - 0.25], sh: 0.09 };
-  // 左側的區塊＋右側的鏡像
   const pair = (l, r, parentL, parentR, pivot, world, tf) => {
     add(l, parentL, pivot, world, tf);
     const pl = pieces[pieces.length - 1];
@@ -1037,6 +1028,37 @@ export function lionDef() {
       prims: mirrored(pl.prims),
     });
   };
+  const done = (cols) => ({ pieces, cols, tris: pieces.reduce((n, q) => n + primTris(q.prims), 0) });
+  return { add, pair, done };
+}
+// 給其他機獸沿用的零件（骨架、身體的截面、四肢、尾巴的節）
+export const LION_PARTS = {
+  J,
+  sec,
+  fin,
+  nozzle,
+  disc,
+  shell,
+  flUpper,
+  flFore,
+  flMeta,
+  paw,
+  blThigh,
+  blShin,
+  blMeta,
+  tailSeg,
+};
+
+let DEF = null;
+export function lionDef() {
+  if (DEF) return DEF;
+  const { add, pair, done } = assembler();
+  // 比例的調整：軀幹縮短（後半身整個往前 REAR）、頭往後貼近肩膀（HEADBACK）、四肢加粗（整條腿以肩／髖為中心放寬 LEG_K）
+  const REAR = { d: [0, 0, 0.6] },
+    HEADBACK = { d: [0, 0, -0.5] },
+    LEG_K = [1.6, 1, 1.38];
+  const FL = { k: LEG_K, about: J.S, d: [0.22, 0, 0.2], sh: 0.09 },
+    BL = { k: LEG_K, about: J.H, d: [0.22, 0, REAR.d[2] - 0.25], sh: 0.09 };
   add('chest', null, J.chest, chest());
   add('hips', 'chest', J.hips, hips(), REAR);
   const nk = neck();
@@ -1058,6 +1080,6 @@ export function lionDef() {
   pair('bl_paw', 'br_paw', 'bl_meta', 'br_meta', J.A, paw(J.A), BL);
   for (let k = 0; k < 5; k++) add('tail' + (k + 1), k ? 'tail' + k : 'hips', J.tail[k], tailSeg(k), REAR);
   add('tail_tip', 'tail5', J.tail[5], tailTip(), REAR);
-  DEF = { pieces, cols: LION_COLS, tris: pieces.reduce((n, p) => n + primTris(p.prims), 0) };
+  DEF = done(LION_COLS);
   return DEF;
 }
