@@ -106,7 +106,7 @@
 | 獅     | 48   | 白＋金     |                         |
 
 - 配色只換色槽（主色、副色、關節、點綴）；眼睛、武器的發光色、彈頭是各隻的固定色，沒有跟著換。
-- 提案的預覽項目（`temp/pal_*`）定案後已拿掉；`temp/<獸>_stand_w` 是舊的白色配色對照。
+- 提案的預覽項目（`temp/pal_*`）定案後已拿掉；舊的白色配色對照項目（`_stand_w`）也已拿掉。
 
 ## 模型
 
@@ -128,7 +128,7 @@
   背與頸的條紋（`stripe`：橫過背甲的強調色凸條）、肩上一對飛彈莢艙（`turret` 偏航、`guns` 俯仰）、臀部較大的噴嘴、尾端是上下兩片穩定翼、眼睛紅色。
 - 四肢與尾巴在 `legs_tiger.js` 原生建模；組裝工具 `assembler()` 共用。
 - 區塊名稱和獅型相同（沒有 `mane_a`／`mane_b`），動作 `animateBeast` 共用。
-- 模型庫：`temp/tiger_stand`、`temp/tiger_stand_w` 與 `temp/tiger_anim_*`（見下面的動作）。
+- 模型庫：`temp/tiger_stand` 與 `temp/tiger_anim_*`（見下面的動作）。
 
 ## 鱷龜型機獸（`render/proc/beast_turtle.js` 的 `turtleDef()`、`buildTurtle`）
 
@@ -138,7 +138,7 @@
 - 大小不照自然界（真的鱷龜換算只有 3.7 m）：當 Boss，背甲長約 9 m、寬約 9 m、圓頂高約 6.2 m（使用者回饋：殼要夠凸、頭不要太大）。
 - 背甲與腹甲是 `chest`（一整塊），`hips` 是背甲下的骨盆（後腳與尾巴掛在它底下，動作不會有脊椎的伸縮）。
 - 四肢與尾巴在 `legs_turtle.js` 原生建模；身體整個壓低 `DOWN`（平移）、頭的大小 `HK`（等比 0.95）。
-- 模型庫：`temp/turtle_stand`、`temp/turtle_stand_w`、`temp/turtle_anim_*`（見下面的動作）。
+- 模型庫：`temp/turtle_stand`、`temp/turtle_anim_*`（見下面的動作）。
 
 ## 熊型機獸（`render/proc/beast_bear.js` 的 `bearDef()`、`buildBear`）
 
@@ -147,7 +147,7 @@
 
 - 大小照自然界的比例（棕熊肩高 1.3 m → 約 7.3 m，肩峰頂約 8 m、體長約 12 m）。
 - 四肢在 `legs_bear.js` 原生建模；沒有砲塔；尾巴只有一節短尾 `tail1`（動作程式對缺少的尾節與砲塔有保護）。
-- 模型庫：`temp/bear_stand`、`temp/bear_stand_w`、`temp/bear_open`、`temp/bear_anim_*`（見下面的動作）。
+- 模型庫：`temp/bear_stand`、`temp/bear_open`、`temp/bear_anim_*`（見下面的動作）。
 
 ## 猩猩型機獸（`render/proc/beast_gorilla.js` 的 `gorillaDef()`、`buildGorilla`；四肢 `legs_gorilla.js`）
 
@@ -157,7 +157,7 @@
 
 - 大小照自然界的比例（指節著地的肩高約 7 m、站立約 9.5 m）。
 - 所有部位各自建模（自我檢查：沒有沿用別隻的部位；共用的只有身體截面的輪廓工具 `sec`）。沒有尾巴、沒有砲塔。
-- 模型庫：`temp/gorilla_stand`、`temp/gorilla_stand_w`、`temp/gorilla_open`、動作 `temp/gorilla_anim_*`（見下面「猩猩型的動作」）。
+- 模型庫：`temp/gorilla_stand`、`temp/gorilla_open`、動作 `temp/gorilla_anim_*`（見下面「猩猩型的動作」）。
 
 ## 蠍型機獸（`render/proc/beast_scorpion.js` 的 `scorpionDef()`、`buildScorpion`；附肢 `legs_scorpion.js`）
 
@@ -170,7 +170,7 @@
 - 區塊：`chest`（整個身體）、`chel_l／r`（小鉗）、`cl_arm`→`cl_fore`→`cl_hand`→`cl_finger`（大螯，右側 `cr_*`）、
   `l<1～4>_a`→`_b`→`_c`（步足的腿節、脛節、跗節，右側 `r<n>_*`）、`tail1`～`tail5`→`sting`。
 - 所有部位各自建模（自我檢查：沒有沿用別隻的部位，連身體截面的輪廓也是自己的）。約 14,400 個三角形、230 次繪製（區塊多，之後接成敵人時要合併）。
-- 模型庫：`temp/scorpion_stand`、`temp/scorpion_stand_w`、`temp/scorpion_open`（張螯、尾前刺，檢查關節）。
+- 模型庫：`temp/scorpion_stand`、`temp/scorpion_open`（張螯、尾前刺，檢查關節）。
 - 動作在 `render/beast-anim-scorpion.js`（見下面「蠍型的動作」）。
 
 ## 螳螂型機獸（`render/proc/beast_mantis.js` 的 `mantisDef()`、`buildMantis`；附肢 `legs_mantis.js`）
@@ -183,7 +183,7 @@
 - 區塊：`chest`（中後胸）、`abdomen`、`thorax`（前胸）→`head`→`ant_l／r`（觸角）、`sl_coxa`→`sl_femur`→`sl_blade`（捕捉足，右側 `sr_*`）、
   `ml_a`→`_b`→`_c`（中足）、`hl_*`（後足；右側 `mr_*`、`hr_*`）、`wing_l／r`（翅鞘）、`fan_l／r`（膜翅）。
 - 所有部位各自建模（自我檢查：沒有沿用別隻的部位）。第一版頭太低、腿節的棘刺穿鐮刃，已把前胸加長（頸從 9.0 m 提到 10.6 m）、棘縮短。
-- 約 9,200 個三角形、155 次繪製。模型庫：`temp/mantis_stand`、`temp/mantis_stand_w`、`temp/mantis_open`（張鐮、展翅、轉頭）。
+- 約 9,200 個三角形、155 次繪製。模型庫：`temp/mantis_stand`、`temp/mantis_open`（張鐮、展翅、轉頭）。
 - 動作在 `render/beast-anim-mantis.js`（見下面「螳螂型的動作」）。
 
 ## 猛禽型機獸（`render/proc/beast_raptor.js` 的 `raptorDef()`、`buildRaptor`；翼與腿 `legs_raptor.js`）
@@ -198,7 +198,7 @@
 - 區塊：`chest`、`neck`→`head`→`jaw`（下喙）、`tail`、`wl_arm`→`wl_fore`→`wl_hand`（翼，右側 `wr_*`）、
   `l_thigh`→`l_tarsus`→`l_foot`（腳掌與後趾）→`l_toes`（前三趾一起抓握；右側 `r_*`）。
 - 所有部位各自建模（自我檢查：沒有沿用別隻的部位）。約 7,200 個三角形、96 次繪製。
-- 模型庫：`temp/raptor_spread`、`temp/raptor_spread_w`、`temp/raptor_perch`（收翼站姿）、`temp/raptor_open`（張喙、抓握、轉頭）。
+- 模型庫：`temp/raptor_spread`、`temp/raptor_perch`（收翼站姿）、`temp/raptor_open`（張喙、抓握、轉頭）。
 - 動作在 `render/beast-anim-raptor.js`（見下面「猛禽型的動作」）。
 
 ## 動作（`render/beast-anim.js` 的 `animateBeast(rig, st, dt)`）
@@ -322,8 +322,46 @@
 
 ## 在哪裡看
 
-模型庫的「暫時」分類：`temp/lion_stand`、`temp/lion_roar`、`temp/lion_stand_w`（模型）與 `temp/lion_anim_*`（動作，原地播放；
+模型庫的「暫時」分類：`temp/lion_stand`、`temp/lion_roar`（模型）與 `temp/lion_anim_*`（動作，原地播放；
 `built.tick` 由檢視窗與格狀檢視每格呼叫）。連拍總表：`node scripts/beast-shots.js temp/lion_anim_walk …`。
+
+## 接成敵人（2026-11-19 起草，分期進行）
+
+模型、動作、武器、配色都定稿之後的下一步。原則：照現有 Boss 的做法接（房主權威、`spawnBossDef`、刁鑽度與 `BOSS_KIT`、部位系統、三個型態），不另外發明一套。
+
+### 主線的配置
+
+使用者已定案：現有的 Boss 改當章中的小 Boss、每章新增一個專打小 Boss 的出擊、機獸是每章最後的大 Boss。落實成：
+
+| 章  | 最後一個出擊（終點換成機獸） | 被換下來的 Boss → 新增的小 Boss 出擊                |
+| --- | ---------------------------- | --------------------------------------------------- |
+| 1   | 蠍                           | 鑽地蟲 worm                                         |
+| 2   | 鱷龜（兩條路線共用）         | 推土要塞 rampart／武裝列車 train（依抉擇 1）        |
+| 3   | 劍齒虎                       | 脈衝刃翼 ibis                                       |
+| 4   | 猩猩（兩條路線共用）         | 電磁狩獵機 hunter／衛星砲導引塔 orbital（依抉擇 2） |
+| 5   | 猛禽                         | 雙 AC duo                                           |
+| 6   | 螳螂                         | ARCHON                                              |
+| 7   | 熊                           | 龍門吊 gantry                                       |
+| 8   | 獅                           | SOVEREIGN                                           |
+
+- 小 Boss 出擊：短（1 段一般戰鬥＋Boss 段），排在最後一個出擊之前（最後一個出擊的 `needs` 加上它）。
+- 第 3 周目 ECHO 委託的殘響 Boss 不動；機獸的強化版用在哪裡之後再定。
+
+### 分期
+
+| 期   | 內容                                                                                                                                                                                                                                        |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | 技術基礎：機獸的定義表、登記成 Boss 的程式模型（`buildBossModel`）、實體每格把移動狀態交給 `animateBeast`、網格合併（每隻約 100～240 次繪製要壓下來）、碰撞半徑與部位判定盒、快照欄位（動作片段與時間）；獅型可以在地圖預覽器生成、會走會追 |
+| 1    | 獅型的完整戰鬥：近戰招式的判定與預警、三把武器的發射（槍口節點）、兩把外掛武器是可以打壞的部位（換型態修復一次）、三個型態、最終型態的大招、`BOSS_KIT`（破綻、打斷大招、場地）、多人同步、冒煙測試                                          |
+| 2    | 獅型接進主線：第 8 章最後的出擊、SOVEREIGN 的小 Boss 出擊、簡報（寫出攻擊屬性）、通訊、載入提示、`perf-campaign`                                                                                                                            |
+| 3～9 | 其餘七隻，每隻一期（行為＋接進主線＋卡頓檢查），順序：劍齒虎、熊、鱷龜、猩猩、蠍、螳螂、猛禽（先做和獅型共用四足動作程式的，飛行的最後）                                                                                                    |
+| 10   | 自由出擊與模擬器、推進器與落地的特效、音效、腳貼地形、文件；跑一次完整的 `npm test` 與 `boss-bench`                                                                                                                                         |
+
+### 等使用者決定
+
+- 蠍、螳螂做成 Boss 尺寸、猛禽照自然界比例（站高 5.8 m）的大小。
+- 劇情上機獸是什麼（要寫進 `docs/story-script.md` 的簡報與通訊）。
+- 機獸要不要進自由出擊的 Boss 輪替與模擬器。
 
 ## 還沒做
 

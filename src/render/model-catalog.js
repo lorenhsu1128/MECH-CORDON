@@ -173,7 +173,6 @@ for (const [cat, list] of PART_LISTS)
 for (const [key, label, palKey] of [
   ['stand', '站姿', 'beast_lion'],
   ['roar', '咆哮（檢查關節）', 'beast_lion'],
-  ['stand_w', '站姿・白色配色', 'white'],
 ]) {
   add({
     id: 'temp/lion_' + key,
@@ -201,7 +200,6 @@ const lionClip = (name, gap = 0.9, st = {}) => {
 // 暫時：劍齒虎型機獸（原創設計；四肢與尾巴的節沿用獅型的零件，身體、頭、劍齒、武裝另外做）
 for (const [key, label, palKey, st] of [
   ['stand', '站姿', 'beast_tiger', null],
-  ['stand_w', '站姿・白色配色', 'white', null],
   ['anim_idle', '動作：待機', 'beast_tiger', { v: 0 }],
   ['anim_stalk', '動作：潛行', 'beast_tiger', { v: 2.4, stalk: true }],
   ['anim_walk', '動作：走', 'beast_tiger', { v: 5 }],
@@ -249,7 +247,6 @@ for (const [key, label, palKey, st] of [
 // 暫時：鱷龜型機獸（原創設計；第 2 章的大 Boss）
 for (const [key, label, palKey, st] of [
   ['stand', '站姿', 'beast_turtle', null],
-  ['stand_w', '站姿・白色配色', 'white', null],
   ['anim_idle', '動作：待機', 'beast_turtle', { v: 0 }],
   ['anim_crawl', '動作：爬行', 'beast_turtle', { v: 2.2 }],
   ['anim_turn', '動作：原地轉身', 'beast_turtle', { v: 0, w: 0.35, spin: true }],
@@ -298,7 +295,6 @@ for (const [key, label, palKey, st] of [
 // 暫時：熊型機獸（原創設計；第 7 章火山熔爐帶的大 Boss）
 for (const [key, label, palKey, st] of [
   ['stand', '站姿', 'beast_bear', null],
-  ['stand_w', '站姿・白色配色', 'white', null],
   ['anim_idle', '動作：待機', 'beast_bear', { v: 0 }],
   ['anim_walk', '動作：走', 'beast_bear', { v: 3 }],
   ['anim_trot', '動作：小跑', 'beast_bear', { v: 8 }],
@@ -339,7 +335,6 @@ for (const [key, label, palKey, st] of [
 // 暫時：猩猩型機獸（原創設計；第 4 章 Lattice-9／舊宇宙港的大 Boss）
 for (const [key, label, palKey, pose, st] of [
   ['stand', '站姿（指節著地）', 'beast_gorilla', null, null],
-  ['stand_w', '站姿・白色配色', 'white', null, null],
   [
     'open',
     '張嘴、轉頭（檢查關節）',
@@ -395,7 +390,6 @@ for (const [key, label, palKey, pose, st] of [
 // 暫時：蠍型機獸（原創設計；第 1 章荒野／沙丘／礦坑的大 Boss）
 for (const [key, label, palKey, pose, st] of [
   ['stand', '站姿', 'beast_scorpion', null, null],
-  ['stand_w', '站姿・白色配色', 'white', null, null],
   [
     'open',
     '張螯、尾前刺（檢查關節）',
@@ -454,7 +448,6 @@ for (const [key, label, palKey, pose, st] of [
 // 暫時：螳螂型機獸（原創設計；第 6 章高空軌道的大 Boss）
 for (const [key, label, palKey, pose, st] of [
   ['stand', '站姿（鐮刀收在胸前）', 'beast_mantis', null, null],
-  ['stand_w', '站姿・白色配色', 'white', null, null],
   [
     'open',
     '張鐮、展翅、轉頭（檢查關節）',
@@ -519,7 +512,6 @@ const RAPTOR_FOLD = {
 };
 for (const [key, label, palKey, pose, st] of [
   ['spread', '展翼（模型的原始姿勢）', 'beast_raptor', null, null],
-  ['spread_w', '展翼・白色配色', 'white', null, null],
   ['perch', '收翼站姿', 'beast_raptor', RAPTOR_FOLD, null],
   [
     'open',
