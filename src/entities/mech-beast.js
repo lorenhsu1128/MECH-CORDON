@@ -32,10 +32,11 @@ Object.assign(MechEntity.prototype, {
     s.spot = null;
     s.warned = false;
     s.hitSet = null;
+    s.hitN = 0;
     if (M) {
       // 目標玩家的紅色「!」（彈刀／完美 QB 的提示）；地面的預警：一般的招式現在就畫（出手時長滿），判定用這時候算好的位置；
       // live 的招式（先閃到旁邊再出手）等到出手前才知道打哪裡，beastMove 在出手前 LIVE_WARN 秒畫
-      if (!M.live) this.beastWarn(M, M.t);
+      if (!M.live && !M.hits) this.beastWarn(M, M.t);
       const pl = this.aiState.tgt;
       if (pl && !pl.dead && this.atkCue) this.atkCue(pl, M.t, 0.3);
     }
@@ -259,6 +260,32 @@ Object.assign(MechEntity.prototype, {
           A.next += G.gap;
         }
         if (A.t >= G.dur) end();
+      } else if (G.type === 'cone') {
+        // 火焰錐（配合片段：t0～t1 噴）：每 tick 秒打前方 len 公尺、半角 ang 以內的目標
+        if (A.t >= G.t1) end();
+        else if (A.t >= G.t0 && A.t >= A.next) {
+          A.next = A.t + G.tick;
+          const k = this.beastK();
+          const dir = V(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
+          const from = V(this.pos.x, this.pos.y + G.y * k, this.pos.z).addScaledVector(dir, G.f * k);
+          g.fx.flameCone(from, dir, G.len, G.ang);
+          for (const t of g.hostilesOfEnt(this)) {
+            if (!t || t.dead || !t.center) continue;
+            const ap = t.center().sub(from);
+            const L = ap.length();
+            if (L > G.len + (t.radius || 0) || ap.normalize().dot(dir) < Math.cos(G.ang)) continue;
+            t.takeDamage(
+              G.dps * G.tick * this.dmgMul,
+              G.ips * G.tick * this.dmgMul,
+              this,
+              t.center(),
+              dir.clone(),
+              undefined,
+              undefined,
+              G.attr || 'en',
+            );
+          }
+        }
       } else end();
       return;
     }
@@ -291,7 +318,7 @@ Object.assign(MechEntity.prototype, {
       this.beastClip(G.clip);
       s.clipOpen = G.open || 0;
     }
-    if (G.type === 'rail' || G.type === 'burst') s.gun = { G, t: 0, dir: null, next: 0 };
+    if (G.type === 'rail' || G.type === 'burst' || G.type === 'cone') s.gun = { G, t: 0, dir: null, next: 0 };
     else if (G.type === 'volley') {
       this.b3Volley(pl, G.n, G.gap, G.slots);
       cd();
@@ -316,23 +343,44 @@ Object.assign(MechEntity.prototype, {
       }
       cd();
     } else if (G.type === 'beam') {
-      // 從身上的一塊朝目標一道光束；打中的附加狀態效果（預警結束時看目標離光束多近）
+      // 從身上的一塊（或幾塊：nodes，nodeFlags＝各自負責的部位，壞了的不射）朝目標各一道光束；
+      // 打中的附加狀態效果（預警結束時看目標離光束多近）
       const N = this.model.beast.nodes;
-      const from = V(0, 0, 0);
-      (N[G.node] || N.chest).getWorldPosition(from);
-      const dir = pl.center().addScaledVector(pl.vel, 0.2).sub(from).normalize();
-      this.b3Beam(from, dir, G.warn, { range: G.range, dmg: G.dmg, im: G.im });
-      if (G.status)
-        g.later(G.warn + 0.02, () => {
-          if (this.dead) return;
-          for (const t of g.hostilesOfEnt(this)) {
-            if (!t || t.dead || !t.addStatus || !t.center) continue;
-            const ap = t.center().sub(from);
-            const pj = ap.dot(dir);
-            if (pj < 0 || pj > G.range * DS) continue;
-            if (ap.addScaledVector(dir, -pj).length() < (t.radius || 0) + (G.hitR || 2))
-              t.addStatus(G.status.kind, G.status.sec, { ...G.status.o });
-          }
+      const names = (G.nodes || [G.node]).filter((n, i) => !(G.nodeFlags && this.tierFlag(G.nodeFlags[i])));
+      for (const name of names) {
+        const from = V(0, 0, 0);
+        (N[name] || N.chest).getWorldPosition(from);
+        const dir = pl.center().addScaledVector(pl.vel, 0.2).sub(from).normalize();
+        this.b3Beam(from, dir, G.warn, { range: G.range, dmg: G.dmg, im: G.im });
+        if (G.status)
+          g.later(G.warn + 0.02, () => {
+            if (this.dead) return;
+            for (const t of g.hostilesOfEnt(this)) {
+              if (!t || t.dead || !t.addStatus || !t.center) continue;
+              const ap = t.center().sub(from);
+              const pj = ap.dot(dir);
+              if (pj < 0 || pj > G.range * DS) continue;
+              if (ap.addScaledVector(dir, -pj).length() < (t.radius || 0) + (G.hitR || 2))
+                t.addStatus(G.status.kind, G.status.sec, { ...G.status.o });
+            }
+          });
+      }
+      cd();
+    } else if (G.type === 'lob') {
+      // 拋射（迫擊砲彈：落點有預警圈）：n 發，第一發對準目標、其餘散在 spread 公尺內；pool＝落地後留下燃燒地面
+      const dm = this.dmgMul;
+      for (let i = 0; i < G.n; i++)
+        g.later((G.at || 0) + i * (G.gap || 0.25), () => {
+          if (this.dead || pl.dead) return;
+          const a = Math.random() * Math.PI * 2,
+            rr = i ? Math.random() * (G.spread || 0) : 0;
+          const tp = pl.pos
+            .clone()
+            .addScaledVector(pl.vel, 0.4)
+            .add(V(Math.cos(a) * rr, 0, Math.sin(a) * rr));
+          g.mortarShot(this, tp, { dmg: G.dmg * dm, im: G.im * dm, R: G.R });
+          if (G.pool)
+            g.later(2, () => !this.dead && g.addPool(this, tp, G.pool.r, G.pool.life, G.pool.dps * dm));
         });
       cd();
     } else cd();
@@ -407,12 +455,28 @@ Object.assign(MechEntity.prototype, {
       const M = B.melee && B.melee[s.clip];
       if (s.clipT < ((M && M.track) || 0.25))
         turn = clamp(off * 3, -1, 1) * B.turn * (M && M.track ? 2.5 : 1.5); // 出手前還會對準（track＝閃開之後轉回來對準的秒數）
-      if (M && M.live && !s.warned && s.clipT >= M.t - LIVE_WARN)
-        this.beastWarn(M, Math.max(0.05, M.t - s.clipT));
-      if (M && M.ram !== undefined && !s.hitDone && s.clipT >= M.ram) this.beastStrike(M, true);
-      if (M && !s.hitDone && s.clipT >= M.t) {
-        s.hitDone = true;
-        this.beastStrike(M);
+      if (M && M.hits) {
+        // 連打（hits＝每一下的時間）：每一下出手前才畫預警、各自判定
+        const n = s.hitN || 0;
+        if (n < M.hits.length) {
+          if (!s.warned && s.clipT >= M.hits[n] - LIVE_WARN)
+            this.beastWarn(M, Math.max(0.05, M.hits[n] - s.clipT));
+          if (s.clipT >= M.hits[n]) {
+            s.hitSet = null;
+            this.beastStrike(M);
+            s.hitN = n + 1;
+            s.warned = false;
+            s.spot = null;
+          }
+        }
+      } else {
+        if (M && M.live && !s.warned && s.clipT >= M.t - LIVE_WARN)
+          this.beastWarn(M, Math.max(0.05, M.t - s.clipT));
+        if (M && M.ram !== undefined && !s.hitDone && s.clipT >= M.ram) this.beastStrike(M, true);
+        if (M && !s.hitDone && s.clipT >= M.t) {
+          s.hitDone = true;
+          this.beastStrike(M);
+        }
       }
       if (s.clipT >= clipDur(s.clip)) {
         const op = (M && M.open) || s.clipOpen || 0;

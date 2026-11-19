@@ -43,6 +43,7 @@ export const C_STAR = {
   sovereign: 'air',
   beast_lion: 'close',
   beast_tiger: 'far',
+  beast_bear: 'cover',
 };
 // qb＝QB 連打（docs/boss-design.md 第 8 節：刁鑽度 3 起，每秒 QB 次數超過 C_QB_RATE）
 export const HABITS = ['air', 'close', 'far', 'cover', 'qb'];
@@ -702,16 +703,27 @@ K7.sovereign = {
 Object.assign(BOSS_KIT, K7);
 // ---------- 機獸（每章最後的大 Boss；docs/beast-design.md）----------
 // 兩把外掛武器是部位：造型用看不到的 'none'（機獸模型上本來就有那把武器，打壞時 entities/mech-beast.js 把那一塊藏起來）。
-// off 的 x：正＝機獸的右側。換型態時修復一次（mech-beast.js 的 beastRepair）。
+// off 的 x：正＝機獸的右側。back: false＋noExpose＝部位就在武器的位置、一直打得到（刁鑽度高的時候最後一個部位預設會移到背後、只在出招時露出）。換型態時修復一次（mech-beast.js 的 beastRepair）。
 const KB = {};
 // 獅型：磁軌砲壞了不能砲擊、莢艙壞一邊少一輪導彈
 KB.beast_lion = {
   parts: [
-    { id: 'rail', name: '磁軌砲', model: 'none', size: 1.5, off: [0, 0.95, -0.2], flag: 'rail' },
+    {
+      id: 'rail',
+      name: '磁軌砲',
+      model: 'none',
+      back: false,
+      noExpose: true,
+      size: 1.5,
+      off: [0, 0.95, -0.2],
+      flag: 'rail',
+    },
     {
       id: 'podL',
       name: '左導彈莢艙',
       model: 'none',
+      back: false,
+      noExpose: true,
       off: [-0.26, 0.86, 0.14],
       flag: 'podL',
       slots: ['lback'],
@@ -720,6 +732,8 @@ KB.beast_lion = {
       id: 'podR',
       name: '右導彈莢艙',
       model: 'none',
+      back: false,
+      noExpose: true,
       off: [0.26, 0.86, 0.14],
       flag: 'podR',
       slots: ['rback'],
@@ -739,8 +753,27 @@ KB.beast_lion = {
 // 劍齒虎型：機砲壞了不能掃射、莢艙壞了沒有電漿導彈
 KB.beast_tiger = {
   parts: [
-    { id: 'mg', name: '電磁機砲', model: 'none', off: [0, 0.96, -0.3], flag: 'mg', slots: ['rarm'] },
-    { id: 'pods', name: '電漿導彈莢艙', model: 'none', size: 1.6, off: [0, 0.86, 0.16], flag: 'pods', slots: ['rback', 'lback'] },
+    {
+      id: 'mg',
+      name: '電磁機砲',
+      model: 'none',
+      back: false,
+      noExpose: true,
+      off: [0, 0.96, -0.3],
+      flag: 'mg',
+      slots: ['rarm'],
+    },
+    {
+      id: 'pods',
+      name: '電漿導彈莢艙',
+      model: 'none',
+      back: false,
+      noExpose: true,
+      size: 1.6,
+      off: [0, 0.86, 0.16],
+      flag: 'pods',
+      slots: ['rback', 'lback'],
+    },
   ],
   big: [
     ['冰錐彈幕', (b, pl) => b.b3Rain(pl, 7, 8, 0.2)],
@@ -751,6 +784,50 @@ KB.beast_tiger = {
     close: (b) => b.b3Ring(20), // 迴旋的衝擊
     far: (b, pl) => b.b3Line(pl, 5, 4.5, 0.15), // 機砲沿線掃射
     cover: (b, pl) => b.b3Rain(pl, 4, 5, 0.25), // 電漿導彈繞過掩體
+  },
+};
+// 熊型：榴彈砲壞了不能砲擊、熱熔砲壞一邊少一道光束
+KB.beast_bear = {
+  parts: [
+    {
+      id: 'how',
+      name: '重榴彈砲',
+      model: 'none',
+      back: false,
+      noExpose: true,
+      size: 1.5,
+      off: [0, 0.9, 0],
+      flag: 'how',
+    },
+    {
+      id: 'heatL',
+      name: '左熱熔砲',
+      model: 'none',
+      back: false,
+      noExpose: true,
+      off: [-0.24, 0.8, 0.08],
+      flag: 'heatL',
+    },
+    {
+      id: 'heatR',
+      name: '右熱熔砲',
+      model: 'none',
+      back: false,
+      noExpose: true,
+      off: [0.24, 0.8, 0.08],
+      flag: 'heatR',
+    },
+  ],
+  big: [
+    ['熔岩暴雨', (b, pl) => b.b3Pools(pl, 5, 9)],
+    ['震地連擊', (b) => b.b3Shocks(3, 0.7)],
+  ],
+  reflect: ['mortar'],
+  counter: {
+    air: (b) => b.b3Ring(24), // 爐火的熱浪往上
+    close: (b) => b.b3Shock(18), // 拍地
+    far: (b, pl) => b.b3Rain(pl, 4, 6, 0.3), // 榴彈
+    cover: (b, pl) => b.b3Pools(pl, 3, 6), // 熔岩繞過掩體
   },
 };
 Object.assign(BOSS_KIT, KB);

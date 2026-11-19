@@ -1137,7 +1137,7 @@ async function testLabDemo(browser) {
 // 機獸（每章最後的大 Boss；docs/beast-design.md 的「接成敵人」）：每隻一個步驟（testBeast:<獸>，使用者要求每隻都要有自己的測試項目）。
 // 照 data/beasts.js 的資料跑：生成與部位、網格合併、追擊與速度、每一招近戰的傷害、每一把武器、每個部位的打壞與修復、命中的形狀、擊破的演出。
 // 新接一隻機獸時把名字加進 BEAST_TESTS；測試會檢查定義表裡的每一隻都有步驟。
-const BEAST_TESTS = ['lion', 'tiger'];
+const BEAST_TESTS = ['lion', 'tiger', 'bear'];
 async function testBeast(browser, key) {
   console.log(`機獸（${key}）：生成與部位、追擊、每一招近戰、每一把武器、打壞與修復、命中的形狀、擊破`);
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
@@ -1232,6 +1232,7 @@ async function testBeast(browser, key) {
       b.beastClip(k);
       window.__pump(Math.max(0.02, M.t - 0.12));
       const c = S.spot || b.beastSpot(M);
+      const warned = !!S.warned || !!S.spot; // 出手前已經畫了預警（連打的招式每一下出手後會重設）
       p.pos.set(c.x, 0, c.z);
       heal();
       const hp0 = p.hp;
@@ -1239,7 +1240,7 @@ async function testBeast(browser, key) {
       out.melee.push({
         k,
         dmg: Math.round(hp0 - p.hp),
-        warned: !!S.warned || !!S.spot,
+        warned,
         ci: B.clips.indexOf(k),
         // 失敗時印出來查原因
         dbg: `片段 ${S.clip || '無'} ${(S.clipT || 0).toFixed(2)} 秒、已出手 ${!!S.hitDone}、玩家離判定中心 ${Math.hypot(p.pos.x - c.x, p.pos.z - c.z).toFixed(1)} m、離地 ${p.pos.y.toFixed(1)}、無敵 ${(p.iFrames || 0).toFixed(2)}、機獸失衡 ${(b.staggerT || 0).toFixed(2)}、已命中 ${S.hitSet ? S.hitSet.size : 0} 個、機獸離玩家 ${dist().toFixed(1)} m、玩家血量 ${Math.round(p.hp)}／${Math.round(hp0)}`,
@@ -1254,7 +1255,7 @@ async function testBeast(browser, key) {
       heal();
       window.__pump(0.3);
       home();
-      put(60);
+      put(G.type === 'cone' ? 24 : 60); // 火焰錐是近距離的武器
       heal();
       const hp0 = p.hp;
       let proj = 0,
@@ -1268,7 +1269,11 @@ async function testBeast(browser, key) {
             ? G.dur + 1.2
             : G.type === 'volley'
               ? 4
-              : 2.2;
+              : G.type === 'lob'
+                ? (G.at || 0) + 4
+                : G.type === 'cone'
+                  ? G.t1 + 0.6
+                  : 2.2;
       window.__pump(T, () => {
         proj = Math.max(proj, g.projectiles.length);
         if (b.bx) aimed = true;
@@ -1292,9 +1297,12 @@ async function testBeast(browser, key) {
     put(60);
     for (const e of parts()) {
       const f = e.tierSpec && e.tierSpec.flag;
-      e.iFrames = 0;
-      e.takeDamage(1e8, 0, p, e.center(), new V(0, 0, 1));
-      window.__pump(0.3);
+      // 偶爾第一下打不掉（無敵時間、型態的保護）：最多打三次
+      for (let q = 0; q < 3 && !e.dead; q++) {
+        e.iFrames = 0;
+        e.takeDamage(1e8, 0, p, e.center(), new V(0, 0, 1));
+        window.__pump(0.3);
+      }
       out.parts.push({
         f,
         flag: b.tierFlag(f),

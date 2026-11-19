@@ -10,13 +10,15 @@
 // - balls＝命中的形狀：沿著身體的幾顆球 [前後, 高度, 半徑]（模型的公尺，再乘體型倍率）。
 // - melee＝近戰招式（片段名稱 → 判定）：t＝出手的時間（片段開始後幾秒，同時是地面預警的秒數）、f／side＝判定圓的中心相對機獸的前後／左右
 //   （模型的公尺，正＝前／左）、R＝半徑、dmg／im＝傷害與衝擊（再乘 dmgMul）、kb＝擊退、up＝往上打飛、high＝打得到多高（跳起來可以躲）、
-//   path＝預警畫成到落點的路線、open＝放完之後的破綻秒數、ram＝從這個時間起到出手為止身體撞到誰就算（撲擊在空中的那一段）、live＝判定的位置在出手前才決定（先閃開再出手的招式）、track＝轉向目標對準的秒數；
+//   path＝預警畫成到落點的路線、open＝放完之後的破綻秒數、hits＝連打（每一下的時間，各自預警與判定）、ram＝從這個時間起到出手為止身體撞到誰就算（撲擊在空中的那一段）、live＝判定的位置在出手前才決定（先閃開再出手的招式）、track＝轉向目標對準的秒數；
 //   sel＝什麼時候選這一招：d0～d1＝和目標的距離（扣掉兩邊的碰撞半徑，公尺）、a0～a1＝目標偏離正前方的角度（弧度）、sgn＝目標在左（1）／右（−1）才用、w＝權重。
 // - guns＝會發射的武器（docs/beast-design.md 的「武器」：兩把外掛＋一把長在身上）：far／near＝遠／近時被選到的權重、cd＝[放完的冷卻, 隨機再加]、
 //   flag／flags＝負責它的部位（BOSS_KIT 的 flag；全部被打壞就不能用）、hold＝放的時候停下來；type：
 //   rail＝砲塔跟著目標 track 秒 → 鎖住方向畫預警線 warn 秒 → 貫穿（attr 屬性）；volley＝asm 的武器槽各射 n 輪；
 //   burst＝邊移動邊用 asm 的武器槽點放 dur 秒；fan＝朝目標的扇形 n 道光束（clip＝同時播的片段）；
-//   beam＝從 node 這一塊朝目標一道光束（warn 秒預警；status＝打中附加的狀態效果）。
+//   beam＝從 node 這一塊（或 nodes 幾塊，nodeFlags＝各自負責的部位）朝目標一道光束（warn 秒預警；status＝打中附加的狀態效果）；
+//   lob＝拋射 n 發迫擊砲彈（落點有預警圈；at＝配合片段延後幾秒、spread＝散布、R＝爆炸半徑的公尺、pool＝落地後的燃燒地面）；
+//   cone＝火焰錐（配合片段 t0～t1 噴：前方 len 公尺、半角 ang，每秒 dps；f／y＝噴口相對機獸的前後與高度）。
 // - hide＝部位的 flag → 打壞時藏起來的區塊；aim＝[偏航的區塊, 俯仰的區塊]（瞄準時轉它們；沒寫＝獅型那種 turret／guns，交給動作程式）。
 // - atk＝攻擊的屬性（簡報寫出來）、tier＝主線那一章的刁鑽度（地圖預覽器的「依自由出擊」用）。
 const BEAST_ASM = {
@@ -275,6 +277,124 @@ export const BEAST_DEFS = [
       ...['jump', 'tHit', 'tStagger', 'tDeath'],
     ],
     intro: '劍齒虎型機獸 — 背上的機砲邊跑邊掃、肩上的電漿導彈、嘴裡的冷凍光束會讓你變慢；撲空之後是破綻',
+  },
+  // ---------- 熊型（第 7 章：火山熔爐帶）：正面硬碰的重拳手，比獅、虎慢一點但更硬、更痛 ----------
+  {
+    beast: 'bear',
+    name: '熊型機獸',
+    kind: 'beast_bear',
+    ai: 'beast',
+    modelKind: 'boss',
+    vehKey: 'beast_bear',
+    pal: 'beast_bear',
+    asm: BEAST_ASM,
+    scale: BEAST_SCALE.bear,
+    tier: 7,
+    hide: { how: ['how_turret'], heatL: ['heat_l'], heatR: ['heat_r'] },
+    stag: 'bKneel',
+    death: 'bDeath',
+    radius: 1.45,
+    hpMul: 3.8,
+    stabMul: 6,
+    dmgMul: 0.55,
+    wantDist: 5,
+    speedMul: 1,
+    res: [0, 0.2, -0.25], // 抗爆發、弱能量
+    atk: ['exp', 'en'],
+    walk: 30,
+    trot: 76,
+    run: 106,
+    turn: 2.9,
+    acc: 72,
+    dec: 140,
+    balls: [
+      [5.2, 6.0, 2.3],
+      [2.2, 5.6, 3.4],
+      [-1.0, 5.4, 3.3],
+      [-3.8, 5.0, 3.2],
+      [0.1, 8.5, 1.7], // 背上的榴彈砲
+    ],
+    melee: {
+      // 站起來掌擊連打三下（每一下往前踏一步）
+      bSlam3: {
+        ...{ t: 0.92, hits: [0.92, 1.42, 1.92], f: 6.6, side: 0, R: 5, dmg: 520, im: 900, kb: 16, high: 9 },
+        sel: { d1: 6, a1: 0.7, w: 4 },
+      },
+      // 雙掌拍地：範圍大、貼地才打得到（跳起來躲）
+      bGround: {
+        t: 1.04,
+        f: 6,
+        side: 0,
+        R: 8.5,
+        dmg: 780,
+        im: 1700,
+        kb: 30,
+        up: 10,
+        high: 4,
+        sel: { d1: 8, a1: 1.2, w: 3 },
+      },
+      // 熊抱：範圍小、很痛，放完是破綻
+      bHug: {
+        t: 0.98,
+        f: 5.6,
+        side: 0,
+        R: 4.2,
+        dmg: 1400,
+        im: 1200,
+        kb: 8,
+        high: 9,
+        open: 1.5,
+        sel: { d1: 4, a1: 0.5, w: 2 },
+      },
+      // 衝撞：直線衝 33 m，路上撞到誰就算，撞空是破綻
+      bCharge: {
+        ...{ t: 1.5, f: 24.5, side: 0, R: 5, dmg: 1000, im: 1800, kb: 36, up: 8, high: 6 },
+        ...{ path: true, ram: 0.7, open: 2.6, sel: { d0: 12, d1: 36, a1: 0.3, w: 6 } },
+      },
+    },
+    guns: [
+      // 背上的重榴彈砲（爆發，重擊）：一發大的，落點圈預警
+      {
+        ...{ id: 'how', type: 'lob', flag: 'how', n: 1, dmg: 1300, im: 1800, R: 9 },
+        ...{ far: 0.5, near: 0.15, cd: [4, 2] },
+      },
+      // 肩峰兩側的熱熔光束砲（能量，壓制）：左右各一道
+      {
+        ...{
+          id: 'heat',
+          type: 'beam',
+          flags: ['heatL', 'heatR'],
+          nodes: ['heat_l', 'heat_r'],
+          nodeFlags: ['heatL', 'heatR'],
+        },
+        ...{ warn: 0.7, range: 100, dmg: 420, im: 500, far: 0.3, near: 0.3, cd: [3, 1.5] },
+      },
+      // 丟熔岩塊（爆發，控場）：落地留燃燒地面
+      {
+        ...{ id: 'lava', type: 'lob', clip: 'bLava', at: 1.44, n: 1, dmg: 700, im: 900, R: 6 },
+        ...{ pool: { r: 5, life: 8, dps: 130 }, far: 0.2, near: 0.2, cd: [5, 2] },
+      },
+      // 口的爐火（爆發）：近距離的火焰錐，噴完是破綻
+      {
+        ...{
+          id: 'flame',
+          type: 'cone',
+          clip: 'bFlame',
+          attr: 'exp',
+          open: 1.2,
+          t0: 0.68,
+          t1: 1.5,
+          tick: 0.15,
+        },
+        ...{ f: 6.5, y: 5.5, len: 30, ang: 0.5, dps: 900, ips: 700, far: 0, near: 0.35, cd: [5, 2] },
+      },
+    ],
+    clips: [
+      ...['bSlam3', 'bGround', 'bHug', 'bCharge', 'bFlame', 'bLava', 'bRoar', 'bStand'],
+      ...['jump', 'bHit', 'bKneel', 'bDeath'],
+    ],
+    intro:
+      '熊型機獸 — 背上的榴彈砲看落點圈躲、肩上兩道熱熔光束、熔岩塊落地會燒；雙掌拍地用跳的躲，衝撞與熊抱撲空之後是破綻',
   },
 ];
 export const beastDefOf = (kind) => BEAST_DEFS.find((b) => b.kind === kind) || null;

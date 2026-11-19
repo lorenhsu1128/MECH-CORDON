@@ -226,7 +226,7 @@ Object.assign(Game.prototype, {
       // 刁鑽度 3 起：其中 1 個在背後或底下；5 起：最後一個只在出招時露出
       const last = i === list.length - 1;
       if (T.jParts >= 3 && last && s.back === undefined) s.back = true;
-      if (T.jRebuild && last) s.expose = true;
+      if (T.jRebuild && last && !s.noExpose) s.expose = true; // noExpose：機獸的外掛武器一直看得到、打得到
       this.tierSpawnPart(b, s);
     });
   },
