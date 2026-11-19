@@ -16,6 +16,7 @@ import { buildPod, buildStation } from './cine-sets.js';
 import { buildCineVeh } from './cine-vehicles.js';
 import { FOE_CATALOG } from './foe-models.js';
 import { PARTS, START_ASM } from '../data/parts.js';
+import { BEAST_SCALE } from '../data/beasts.js';
 import { PALETTES, mechMats } from './materials.js';
 import { PIECE_NAMES, SIDE_NAMES, buildMech, buildPiece, partPieces } from './mech-model.js';
 import { animateBeast, clipDur } from './beast-anim.js';
@@ -183,8 +184,8 @@ for (const [key, label, palKey] of [
     spec: 'mech-boss',
     noGlb: true,
     build: (k) => {
-      const rig = buildLion(pal(k), 1, LION_POSES[key.split('_')[0]]);
-      return { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
+      const rig = buildLion(pal(k), BEAST_SCALE.lion, LION_POSES[key.split('_')[0]]);
+      return { obj: rig.group, scaleNode: rig.group, scale: v3(BEAST_SCALE.lion), rig: null };
     },
   });
 }
@@ -234,8 +235,8 @@ for (const [key, label, palKey, st] of [
     spec: 'mech-boss',
     noGlb: true,
     build: (k) => {
-      const rig = buildTiger(pal(k), 1);
-      const out = { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
+      const rig = buildTiger(pal(k), BEAST_SCALE.tiger);
+      const out = { obj: rig.group, scaleNode: rig.group, scale: v3(BEAST_SCALE.tiger), rig: null };
       if (st)
         out.tick = (dt, t) =>
           animateBeast(rig, typeof st === 'function' ? { ...st(t), t } : { ...st, t }, dt);
@@ -282,8 +283,8 @@ for (const [key, label, palKey, st] of [
     spec: 'mech-boss',
     noGlb: true,
     build: (k) => {
-      const rig = buildTurtle(pal(k), 1);
-      const out = { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
+      const rig = buildTurtle(pal(k), BEAST_SCALE.turtle);
+      const out = { obj: rig.group, scaleNode: rig.group, scale: v3(BEAST_SCALE.turtle), rig: null };
       if (st)
         out.tick = (dt, t) =>
           animateBeast(rig, typeof st === 'function' ? { ...st(t), t } : { ...st, t }, dt);
@@ -322,8 +323,8 @@ for (const [key, label, palKey, st] of [
     spec: 'mech-boss',
     noGlb: true,
     build: (k) => {
-      const rig = buildBear(pal(k), 1);
-      const out = { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
+      const rig = buildBear(pal(k), BEAST_SCALE.bear);
+      const out = { obj: rig.group, scaleNode: rig.group, scale: v3(BEAST_SCALE.bear), rig: null };
       if (st)
         out.tick = (dt, t) =>
           animateBeast(rig, typeof st === 'function' ? { ...st(t), t } : { ...st, t }, dt);
@@ -377,8 +378,8 @@ for (const [key, label, palKey, pose, st] of [
     spec: 'mech-boss',
     noGlb: true,
     build: (k) => {
-      const rig = buildGorilla(pal(k), 1, pose);
-      const out = { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
+      const rig = buildGorilla(pal(k), BEAST_SCALE.gorilla, pose);
+      const out = { obj: rig.group, scaleNode: rig.group, scale: v3(BEAST_SCALE.gorilla), rig: null };
       if (st)
         out.tick = (dt, t) =>
           animateBeast(rig, typeof st === 'function' ? { ...st(t), t } : { ...st, t }, dt);
@@ -435,8 +436,8 @@ for (const [key, label, palKey, pose, st] of [
     spec: 'mech-boss',
     noGlb: true,
     build: (k) => {
-      const rig = buildScorpion(pal(k), 1, pose);
-      const out = { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
+      const rig = buildScorpion(pal(k), BEAST_SCALE.scorpion, pose);
+      const out = { obj: rig.group, scaleNode: rig.group, scale: v3(BEAST_SCALE.scorpion), rig: null };
       if (st)
         out.tick = (dt, t) =>
           animateBeast(rig, typeof st === 'function' ? { ...st(t), t } : { ...st, t }, dt);
@@ -491,8 +492,8 @@ for (const [key, label, palKey, pose, st] of [
     spec: 'mech-boss',
     noGlb: true,
     build: (k) => {
-      const rig = buildMantis(pal(k), 1, pose);
-      const out = { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
+      const rig = buildMantis(pal(k), BEAST_SCALE.mantis, pose);
+      const out = { obj: rig.group, scaleNode: rig.group, scale: v3(BEAST_SCALE.mantis), rig: null };
       if (st)
         out.tick = (dt, t) =>
           animateBeast(rig, typeof st === 'function' ? { ...st(t), t } : { ...st, t }, dt);
@@ -554,8 +555,8 @@ for (const [key, label, palKey, pose, st] of [
     spec: 'mech-boss',
     noGlb: true,
     build: (k) => {
-      const rig = buildRaptor(pal(k), 1, pose);
-      const out = { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
+      const rig = buildRaptor(pal(k), BEAST_SCALE.raptor, pose);
+      const out = { obj: rig.group, scaleNode: rig.group, scale: v3(BEAST_SCALE.raptor), rig: null };
       if (st)
         out.tick = (dt, t) =>
           animateBeast(rig, typeof st === 'function' ? { ...st(t), t } : { ...st, t }, dt);
@@ -616,11 +617,11 @@ for (const [key, label, st] of [
     spec: 'mech-boss',
     noGlb: true,
     build: (k) => {
-      const rig = buildLion(pal(k), 1);
+      const rig = buildLion(pal(k), BEAST_SCALE.lion);
       return {
         obj: rig.group,
         scaleNode: rig.group,
-        scale: v3(1),
+        scale: v3(BEAST_SCALE.lion),
         rig: null,
         tick: (dt, t) => animateBeast(rig, typeof st === 'function' ? { ...st(t), t } : { ...st, t }, dt),
       };

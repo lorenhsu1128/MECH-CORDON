@@ -15,6 +15,18 @@ const BEAST_ASM = {
   rback: 'bw_none',
   lback: 'bw_none',
 };
+// 體型的倍率（2026-11-19 使用者回饋：把機甲當成人來看，照自然界比例的機獸太小）：模型照自然界的比例建，當 Boss 時整隻放大。
+// 遊戲的實體（定義的 scale）與模型庫的預覽都用這張表。
+export const BEAST_SCALE = {
+  lion: 1.6, // 肩高約 10.7 m、全長約 19 m（機甲 9.7 m）
+  tiger: 1.6,
+  bear: 1.5, // 肩高約 11 m
+  gorilla: 1.5, // 指節著地的肩高約 10.5 m、站立約 14 m
+  turtle: 1.3, // 背甲寬約 11.7 m、圓頂高約 8 m
+  scorpion: 1.25, // 尾高約 12.5 m、腳張開寬約 19 m
+  mantis: 1.25, // 頭高約 15 m
+  raptor: 2.2, // 站高約 12.8 m、翼展約 31 m
+};
 export const BEAST_DEFS = [
   {
     beast: 'lion',
@@ -25,7 +37,7 @@ export const BEAST_DEFS = [
     vehKey: 'beast_lion',
     pal: 'beast_lion',
     asm: BEAST_ASM,
-    scale: 1,
+    scale: BEAST_SCALE.lion,
     radius: 1.3,
     hpMul: 3.4,
     stabMul: 5,
