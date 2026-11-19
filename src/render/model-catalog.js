@@ -237,15 +237,34 @@ for (const [key, label, palKey, st] of [
 }
 
 // 暫時：鱷龜型機獸（原創設計；第 2 章的大 Boss）
-for (const [key, label, palKey, pose] of [
+for (const [key, label, palKey, st] of [
   ['stand', '站姿', 'boss', null],
   ['stand_w', '站姿・白色配色', 'white', null],
+  ['anim_idle', '動作：待機', 'boss', { v: 0 }],
+  ['anim_crawl', '動作：爬行', 'boss', { v: 2.2 }],
+  ['anim_turn', '動作：原地轉身', 'boss', { v: 0, w: 0.35, spin: true }],
+  ['anim_hide', '動作：潛伏 → 伸出來', 'boss', lionClip('uHide')],
+  ['anim_snap', '攻擊：瞬間咬合', 'boss', lionClip('uSnap')],
   [
-    'open',
-    '張嘴（檢查關節）',
+    'anim_shake',
+    '攻擊：咬合 → 咬住甩動',
     'boss',
-    { jaw: [-38, 0, 0], neck: [6, 14, 0], head: [8, 10, 0], turret: [0, 30, 0], guns: [20, 0, 0] },
+    (t) => {
+      const u = t % 3.6;
+      return {
+        root: true,
+        act: u < 1.0 ? { name: 'uSnap', t: u } : u < 2.5 ? { name: 'uShake', t: u - 1.0 } : null,
+      };
+    },
   ],
+  ['anim_spin', '攻擊：縮殼旋轉', 'boss', lionClip('uSpin', 1.2)],
+  ['anim_tail', '攻擊：甩尾', 'boss', lionClip('uTail')],
+  ['anim_stomp', '攻擊：踏地', 'boss', lionClip('uStomp')],
+  ['anim_fire', '攻擊：砲擊（邊爬邊打）', 'boss', lionClip('uFire', 1.2, { v: 2.2 })],
+  ['anim_hit', '受擊', 'boss', lionClip('uHit', 0.8)],
+  ['anim_stagger', '失衡：咬合撲空', 'boss', lionClip('uStagger')],
+  ['anim_flip', '失衡：四腳朝天', 'boss', lionClip('uFlip')],
+  ['anim_death', '擊破', 'boss', lionClip('uDeath', 2)],
 ]) {
   add({
     id: 'temp/turtle_' + key,
@@ -256,8 +275,12 @@ for (const [key, label, palKey, pose] of [
     spec: 'mech-boss',
     noGlb: true,
     build: (k) => {
-      const rig = buildTurtle(pal(k), 1, pose);
-      return { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
+      const rig = buildTurtle(pal(k), 1);
+      const out = { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
+      if (st)
+        out.tick = (dt, t) =>
+          animateBeast(rig, typeof st === 'function' ? { ...st(t), t } : { ...st, t }, dt);
+      return out;
     },
   });
 }

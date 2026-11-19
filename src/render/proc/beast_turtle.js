@@ -41,6 +41,7 @@ const T = {
   chest: [0, 3.0, 1.0],
   hips: [0, 2.6, -1.5],
   neck: [0, 2.9, 3.9],
+  neck2: [0, 2.95, 4.9], // 伸縮的內頸（沿前後滑動）
   head: [0, 3.0, 5.3],
   jawL: [0, -0.35, 0.2],
   turret: [0, 6.6, -1.4],
@@ -205,6 +206,32 @@ function neck() {
         [
           [-0.07, 1.08],
           [0.07, 1.08],
+        ],
+        10,
+      ),
+    );
+  return out;
+}
+
+// 伸縮的內頸：平時藏在外頸裡，咬合時整節往前滑出去（動作的 ext），縮殼時往後收
+function neck2() {
+  const R = tubeRings(
+    [
+      { p: [0, 2.72, 2.2], prof: oct(0.82, 0.76, 0.76) },
+      { p: [0, 2.98, 5.2], prof: oct(0.82, 0.76, 0.76) },
+    ],
+    [0, 1, 0],
+  );
+  const out = [loft(SUB, R)];
+  for (const z of [2.8, 3.4, 4.0, 4.6])
+    out.push(
+      lathe(
+        JOINT,
+        [0, 2.72 + (z - 2.2) * 0.087, z],
+        [0, 0.087, 1],
+        [
+          [-0.06, 0.9],
+          [0.06, 0.9],
         ],
         10,
       ),
@@ -477,7 +504,8 @@ export function turtleDef() {
   add('chest', null, T.chest, shell(), DOWN);
   add('hips', 'chest', T.hips, hips(), DOWN);
   add('neck', 'chest', T.neck, neck(), DOWN);
-  add('head', 'neck', T.head, moved(scaled(headLocal(), HK), T.head), DOWN);
+  add('neck2', 'neck', T.neck2, neck2(), DOWN);
+  add('head', 'neck2', T.head, moved(scaled(headLocal(), HK), T.head), DOWN);
   add(
     'jaw',
     'head',
