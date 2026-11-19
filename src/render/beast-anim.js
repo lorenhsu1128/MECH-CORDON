@@ -21,7 +21,7 @@ const TROT_V = 7.5,
 // ---------- 動作片段 ----------
 // 關鍵影格：{ t 秒, 頻道… }，沒寫的頻道＝0；影格之間以平滑曲線內插，最後一格之後停在那一格。頻道：
 //   by 身體高度、pitch 俯仰（正＝前半身抬起）、roll 側傾、yaw 胸的偏航、flex 脊椎（正＝臀部往下收）、hy 腰臀的偏航
-//   <腳>F／L／C／X／P＝那隻腳的落點往前、抬高、掌骨收起（0～1）、往外、腳掌的角度（弧度，正＝腳尖翹起）；nx／ny 頸、hx／hdy／hz 頭、jaw 下顎（負＝張開）
+//   <腳>F／L／C／X／P／R＝那隻腳的落點往前、抬高、掌骨收起（0～1）、往外、腳掌的角度（弧度，正＝腳尖翹起）、腳掌側轉（弧度，正＝往外翻）；nx／ny 頸、hx／hdy／hz 頭、jaw 下顎（負＝張開）
 //   tx／ty 尾（tx 負＝揚起）、mane 鬃甲張開（0～1）、glow 眼睛的亮度（−1 熄滅～1）、shake 顫抖
 //   ry／rf 整隻的高度與往前的位移、free 腿放鬆（1＝不貼地，跟著身體）
 const FEET = (o) => ({ flX: o, frX: o, blX: o * 0.8, brX: o * 0.8 });
@@ -49,9 +49,9 @@ export const BEAST_CLIPS = {
     { t: 0.3, by: -0.95, pitch: -0.06, flex: 0.1, blF: 0.35, brF: 0.35, tx: 0.2 },
     {
       t: 0.44,
-      by: 1.0,
-      pitch: 0.5,
-      flex: -0.3,
+      by: 1.3,
+      pitch: 0.72,
+      flex: -0.45,
       ry: 0.9,
       flL: 1.6,
       frL: 1.6,
@@ -67,8 +67,8 @@ export const BEAST_CLIPS = {
     {
       t: 0.8,
       ry: 4.2,
-      by: 0.3,
-      pitch: 0.16,
+      by: 0.4,
+      pitch: 0.26,
       flex: 0.2,
       flL: 1.4,
       frL: 1.4,
@@ -113,9 +113,9 @@ export const BEAST_CLIPS = {
     },
     {
       t: 0.62,
-      by: 0.9,
-      pitch: 0.48,
-      flex: -0.28,
+      by: 1.2,
+      pitch: 0.7,
+      flex: -0.42,
       ry: 1.7,
       rf: 4,
       flF: 1.9,
@@ -124,6 +124,8 @@ export const BEAST_CLIPS = {
       frL: 2.4,
       flP: 0.7,
       frP: 0.7,
+      flR: 0.6,
+      frR: 0.6,
       flX: 0.3,
       frX: 0.3,
       blF: -1.7,
@@ -146,6 +148,8 @@ export const BEAST_CLIPS = {
       frL: 1.2,
       flP: -0.4,
       frP: -0.4,
+      flR: -0.3,
+      frR: -0.3,
       blL: 1.0,
       brL: 1.0,
       blC: 0.8,
@@ -162,9 +166,9 @@ export const BEAST_CLIPS = {
   clawL: [
     {
       t: 0.34,
-      by: 0.75,
-      pitch: 0.34,
-      flex: -0.3,
+      by: 1.15,
+      pitch: 0.58,
+      flex: -0.45,
       yaw: 0.2,
       roll: -0.06,
       flL: 3.6,
@@ -172,7 +176,8 @@ export const BEAST_CLIPS = {
       flC: 0.3,
       flX: 0.5,
       flP: 0.8,
-      frL: 0.8,
+      flR: 0.85,
+      frL: 1.2,
       frC: 0.3,
       ny: 0.1,
       nx: -0.12,
@@ -181,14 +186,15 @@ export const BEAST_CLIPS = {
     },
     {
       t: 0.45,
-      by: 0.3,
-      pitch: 0.1,
-      flex: -0.1,
+      by: 0.5,
+      pitch: 0.2,
+      flex: -0.15,
       yaw: -0.22,
       flL: 2.0,
       flF: 2.5,
       flX: -0.5,
       flP: -0.55,
+      flR: -0.6,
       frL: 0.2,
       jaw: -0.2,
       mane: 0.5,
@@ -503,6 +509,10 @@ export function animateBeast(rig, st, dt) {
     sp(L.n[1], 'x', wrap(A2 - A1) * f1, S_LEG, dt);
     sp(L.n[2], 'x', wrap(A3 - A2) * f1, S_LEG, dt);
     sp(L.n[3], 'x', wrap(A4 - A3) * f1, S_LEG, dt);
+    // 腳掌側轉（片段的 R，正＝掌心往外翻）：繞腳掌的前後軸翻，並帶一點偏航
+    const pr = ch(L.key + 'R') * out;
+    sp(L.n[3], 'z', pr, S_LEG, dt);
+    sp(L.n[3], 'y', pr * 0.5, S_LEG, dt);
     sp(L.n[0], 'z', Math.asin(Math.max(-0.5, Math.min(0.5, dx / L.len))) * f1, S_LEG, dt);
   }
 
