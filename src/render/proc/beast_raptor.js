@@ -444,7 +444,9 @@ export function raptorDef() {
   add('jaw', 'head', T.jaw, jaw());
   add('tail', 'chest', T.tail, tail());
   // 翼：上臂 → 前臂 → 手
-  pair('wl_arm', 'wr_arm', 'chest', 'chest', RAPTOR_WING.S, [...raptorWingArm(), ...missiles()]);
+  pair('wl_arm', 'wr_arm', 'chest', 'chest', RAPTOR_WING.S, raptorWingArm());
+  // 翼下的導彈是自己的區塊（跟著上臂；接成敵人時是可以打壞的部位）
+  pair('msl_l', 'msl_r', 'wl_arm', 'wr_arm', RAPTOR_WING.S, missiles());
   add('bay', 'chest', BAY, bombBay());
   pair('wl_fore', 'wr_fore', 'wl_arm', 'wr_arm', RAPTOR_WING.E, raptorWingFore());
   pair('wl_hand', 'wr_hand', 'wl_fore', 'wr_fore', RAPTOR_WING.W, raptorWingHand());

@@ -8,6 +8,7 @@ import {
   buildGorilla,
   buildLion,
   buildMantis,
+  buildRaptor,
   buildScorpion,
   buildTiger,
   buildTurtle,
@@ -57,6 +58,17 @@ const make = (build, o) => (pal, scale) => {
   return beastRig(b, { ...o, height: o.h * k });
 };
 export const BEAST_BUILDERS = {
+  // 猛禽：肩上武器槽＝翼下的導彈（左右各自的區塊）；炸彈從同一個槽出來
+  beast_raptor: make(buildRaptor, {
+    ...{
+      type: 'beast_raptor',
+      h: 5.8,
+      hand: 'head',
+      backL: 'msl_l',
+      backR: 'msl_r',
+      backMz: [0, -0.65, -0.7],
+    },
+  }),
   // 蠍：肩上武器槽＝背上的迫擊筒（迫擊砲彈與毒液彈從這裡出來）
   beast_scorpion: make(buildScorpion, {
     type: 'beast_scorpion',

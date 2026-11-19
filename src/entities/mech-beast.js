@@ -113,10 +113,10 @@ Object.assign(MechEntity.prototype, {
       fx = -Math.sin(this.yaw),
       fz = -Math.cos(this.yaw);
     for (let i = 0; i < out.length; i++) {
-      const [f, y, r] = B.balls[i];
-      out[i].x = this.pos.x + fx * f * k;
+      const [f, y, r, sd = 0] = B.balls[i]; // sd＝左右的偏移（正＝左；翼）
+      out[i].x = this.pos.x + fx * f * k + fz * sd * k;
       out[i].y = this.pos.y + y * k;
-      out[i].z = this.pos.z + fz * f * k;
+      out[i].z = this.pos.z + fz * f * k - fx * sd * k;
       out[i].r = r * k;
     }
     return out;
@@ -282,7 +282,7 @@ Object.assign(MechEntity.prototype, {
           const k = this.beastK();
           const dir = V(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
           const from = V(this.pos.x, this.pos.y + G.y * k, this.pos.z).addScaledVector(dir, G.f * k);
-          g.fx.flameCone(from, dir, G.len, G.ang);
+          if (!G.noFx) g.fx.flameCone(from, dir, G.len, G.ang);
           for (const t of g.hostilesOfEnt(this)) {
             if (!t || t.dead || !t.center) continue;
             const ap = t.center().sub(from);
@@ -298,6 +298,7 @@ Object.assign(MechEntity.prototype, {
               undefined,
               G.attr || 'en',
             );
+            if (G.push && t.vel && !t.dead) t.vel.addScaledVector(dir, G.push); // 強風：往外推
           }
         }
       } else end();
@@ -307,7 +308,12 @@ Object.assign(MechEntity.prototype, {
     s.rCd = (s.rCd === undefined ? 4 : s.rCd) - dt;
     if (s.rCd > 0 || s.clip || !this.canAct() || s.go > 0) return;
     const far = d > 28 * DS;
-    const list = (B.guns || []).filter((G) => this.beastGunOk(G) && (far ? G.far : G.near) > 0);
+    const list = (B.guns || []).filter(
+      (G) =>
+        this.beastGunOk(G) &&
+        (far ? G.far : G.near) > 0 &&
+        (G.air === undefined || !B.fly || !!G.air === !!s.air),
+    );
     if (!list.length) {
       s.rCd = 2;
       return;
@@ -447,6 +453,26 @@ Object.assign(MechEntity.prototype, {
     }
     s.tgt = pl; // 近戰提示的對象
     this.beastRepair();
+    // 會飛的（定義的 fly）：air＝在空中（盤旋、俯衝）／在地面（地面的招式），每隔一陣子降落或起飛；alt＝離地的高度
+    const FL = B.fly || null;
+    if (FL) {
+      if (s.air === undefined) {
+        s.air = true;
+        s.alt = FL.alt;
+        s.modeT = FL.airT[0] + Math.random() * FL.airT[1];
+      }
+      if (!this.canAct())
+        s.air = false; // 失衡：掉下來
+      else if (!s.clip && !s.gun && !s.leap && (s.modeT -= dt) <= 0) {
+        s.air = !s.air;
+        const T = s.air ? FL.airT : FL.groundT;
+        s.modeT = T[0] + Math.random() * T[1];
+        this.beastClip(s.air ? FL.takeoff : FL.land);
+      }
+      const to = s.air ? FL.alt : 0;
+      s.alt += clamp(to - s.alt, (-FL.alt / 0.9) * dt, (FL.alt / 1.3) * dt);
+      this.flying = s.alt > 3;
+    }
     const tyaw = yawTo(this.pos, pl.pos);
     const off = wrap(tyaw - this.yaw); // 目標在我的哪一邊（正＝左）
     // 躍過障礙物：連續被擋住時直接朝目標跳過去（拋物線，途中不碰撞），落在目標前方
@@ -552,11 +578,15 @@ Object.assign(MechEntity.prototype, {
       if (s.bCd <= 0 && !(s.go > 0)) s.go = 3.5;
       let head = tyaw;
       if (!(s.go > 0) && d < want * 2.2) head = tyaw + s.orb * (d < want ? 1.9 : 1.2);
+      // 在空中：不貼到目標頭頂（太近就繞開，拉開距離之後回頭才有俯衝的角度）
+      if (FL && s.air && d < this.radius + (pl.radius || 0) + 18) head = tyaw + s.orb * 2.3;
       const err = wrap(head - this.yaw);
       goalSpd = d > 30 * DS ? B.run : d > 12 * DS || s.go > 0 ? B.trot : B.walk;
       // 轉彎半徑＝速度÷轉身速度：方向差得多時先慢下來（差越多越慢），貼近目標要出手時也放慢，低速時轉得更快
       goalSpd *= clamp(1.25 - Math.abs(err) * 0.9, 0.12, 1);
-      if (s.go > 0 && d < this.radius + (pl.radius || 0) + 10) goalSpd = Math.min(goalSpd, B.walk * 0.6);
+      if (s.go > 0 && d < this.radius + (pl.radius || 0) + 10 && !(FL && s.air))
+        goalSpd = Math.min(goalSpd, B.walk * 0.6);
+      if (FL && s.air) goalSpd = Math.max(goalSpd, B.walk); // 飛行不會停在半空
       // 追向目標卻沒有進展（被擋住、沿著牆滑）：每 1.2 秒看一次距離，沒縮短 4 m 以上就躍過去
       if (!s.gun && (s.go > 0 || d >= want * 2.2)) {
         s.pT = (s.pT || 0) + dt;
@@ -581,6 +611,7 @@ Object.assign(MechEntity.prototype, {
           const S = B.melee[k].sel;
           if (!S || dd < (S.d0 || -99) || dd > S.d1 || a < (S.a0 || 0) || a > (S.a1 || 9)) continue;
           if (S.sgn && Math.sign(off || 1) !== S.sgn) continue;
+          if (FL && !!B.melee[k].air !== !!s.air) continue; // 會飛的：空中的招式只在空中用、地面的只在地面用
           if (S.d0 && s.go > 3) continue; // 撲擊這類中距離的招式：先對準一下再出
           ok.push(k);
           tot += S.w || 1;
@@ -653,9 +684,10 @@ Object.assign(MechEntity.prototype, {
       s.avoid -= dt;
       this.yaw = wrap(this.yaw + s.orb * B.turn * 1.2 * dt);
     }
-    this.pos.y = w.groundAt(this.pos.x, this.pos.z, this.pos.y + 0.6 * MS); // 只跨得上矮的東西，高的由碰撞擋住
+    const al = (FL && s.alt) || 0;
+    this.pos.y = w.groundAt(this.pos.x, this.pos.z, this.pos.y - al + 0.6 * MS) + al; // 只跨得上矮的東西，高的由碰撞擋住；飛行的加上離地的高度
     const ci = s.clip ? B.clips.indexOf(s.clip) + 1 : 0;
-    this.bossVis = ((this.bossVis || 0) & ~31) | ci;
+    this.bossVis = ((this.bossVis || 0) & ~63) | ci | (FL && s.air ? 32 : 0); // 32＝在空中（客機的動作用）
     this.beastRanged(dt, d, pl);
     this.bossTick(dt);
     if (dt > 0) this.vel.set((this.pos.x - px) / dt, 0, (this.pos.z - pz) / dt);
@@ -699,6 +731,7 @@ Object.assign(MechEntity.prototype, {
         v: name ? 0 : F.v / sc,
         w: name ? 0 : F.w,
         act: name ? { name, t: F.ct } : null,
+        fly: !!((this.bossVis || 0) & 32), // 會飛的：在空中（展翼拍動）
         aim: this.bx && this.bx.length >= 2 && !(B && B.aim) ? [this.bx[0], this.bx[1]] : null,
       },
       dt,

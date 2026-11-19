@@ -7,7 +7,7 @@
 //   walk＝貼身繞行、trot＝一般的移動與衝向目標、run＝遠距離追上；turn＝轉身（弧度／秒）、acc／dec＝加減速。
 // - clips＝這隻會放的動作片段（render/beast-anim.js 的名稱）；順序＝同步給客機的編號（bossVis 的低 5 位＝編號＋1），只能往後加。
 //   stag／death／jump＝失衡、擊破、躍過障礙物用的片段（沒寫＝'stagger'／'death'／'jump'）；leapH＝躍過障礙物的高度（模型的公尺，沒寫＝9；鑽地的寫 0）、leapT＝秒數。
-// - balls＝命中的形狀：沿著身體的幾顆球 [前後, 高度, 半徑]（模型的公尺，再乘體型倍率）。
+// - balls＝命中的形狀：沿著身體的幾顆球 [前後, 高度, 半徑, 左右]（模型的公尺，再乘體型倍率；左右沒寫＝0，正＝左）。
 // - melee＝近戰招式（片段名稱 → 判定）：t＝出手的時間（片段開始後幾秒，同時是地面預警的秒數）、f／side＝判定圓的中心相對機獸的前後／左右
 //   （模型的公尺，正＝前／左）、R＝半徑、dmg／im＝傷害與衝擊（再乘 dmgMul）、kb＝擊退、up＝往上打飛、high＝打得到多高（跳起來可以躲）、
 //   path＝預警畫成到落點的路線、open＝放完之後的破綻秒數、hits＝連打（每一下的時間，各自預警與判定）、leap＝鑽進地下從目標腳下鑽出來（t＝在地下的秒數）、ram＝從這個時間起到出手為止身體撞到誰就算（撲擊在空中的那一段）、live＝判定的位置在出手前才決定（先閃開再出手的招式）、track＝轉向目標對準的秒數；
@@ -19,7 +19,9 @@
 //   beam＝從 node 這一塊（或 nodes 幾塊，nodeFlags＝各自負責的部位）朝目標一道光束（warn 秒預警；status＝打中附加的狀態效果）；
 //   lob＝拋射 n 發迫擊砲彈（落點有預警圈；at＝配合片段延後幾秒、spread＝散布、R＝爆炸半徑的公尺、pool＝落地後的燃燒地面）；
 //   mines＝目標周圍布 n 顆地雷（air＝浮在空中）；pool 的 acid＝腐蝕區。
-//   cone＝火焰錐（配合片段 t0～t1 噴：前方 len 公尺、半角 ang，每秒 dps；f／y＝噴口相對機獸的前後與高度）。
+//   cone＝火焰錐（配合片段 t0～t1 噴：前方 len 公尺、半角 ang，每秒 dps；f／y＝噴口相對機獸的前後與高度；noFx＝不畫火、push＝往外推：強風）。
+// - fly＝會飛的：alt＝盤旋的高度（公尺）、airT／groundT＝在空中／地面待多久 [秒, 隨機再加]、land／takeoff＝降落與起飛的片段；
+//   近戰的 air＝只在空中用（沒寫＝只在地面用）、武器的 air＝true 只在空中／false 只在地面／沒寫都可以。
 // - hide＝部位的 flag → 打壞時藏起來的區塊；aim＝[偏航的區塊, 俯仰的區塊]（瞄準時轉它們；沒寫＝獅型那種 turret／guns，交給動作程式）。
 // - atk＝攻擊的屬性（簡報寫出來）、tier＝主線那一章的刁鑽度（地圖預覽器的「依自由出擊」用）。
 const BEAST_ASM = {
@@ -933,6 +935,151 @@ export const BEAST_DEFS = [
     ],
     intro:
       '螳螂型機獸 — 抗實彈、弱能量；雙鐮出手很快，捕捉抓空是破綻；會在你周圍放浮空地雷，先打掉腹下的發射器；俯衝斬落空也是破綻',
+  },
+  // ---------- 猛禽型（第 5 章：洋上都市）：八隻裡唯一會飛的——在空中盤旋、俯衝下來抓一把，偶爾降落 ----------
+  {
+    beast: 'raptor',
+    name: '猛禽型機獸',
+    kind: 'beast_raptor',
+    ai: 'beast',
+    modelKind: 'boss',
+    vehKey: 'beast_raptor',
+    pal: 'beast_raptor',
+    asm: { ...BEAST_ASM, rback: 'bw_ms', lback: 'bw_ms' }, // 翼下的空對地導彈（爆發）
+    scale: BEAST_SCALE.raptor,
+    tier: 5,
+    hide: { mslL: ['msl_l'], mslR: ['msl_r'], bay: ['bay'] },
+    fly: { alt: 14, airT: [9, 5], groundT: [6, 3], land: 'rLand', takeoff: 'rTakeoff' },
+    stag: 'rStagger',
+    death: 'rDeath',
+    jump: 'rTakeoff',
+    leapH: 6,
+    leapT: 0.9,
+    radius: 0.9,
+    hpMul: 3.0,
+    stabMul: 4,
+    dmgMul: 0.52,
+    wantDist: 8,
+    speedMul: 1,
+    res: [0, -0.25, 0.2], // 弱爆發、抗能量
+    atk: ['exp', 'kin'],
+    walk: 42,
+    trot: 104,
+    run: 150,
+    turn: 3.4,
+    acc: 120,
+    dec: 160,
+    balls: [
+      [2.2, 5.0, 1.1], // 頭
+      [0.3, 3.6, 1.6], // 身體
+      [-2.2, 3.1, 1.3], // 尾
+      [0.3, 4.2, 1.5, 3.4], // 左翼
+      [0.3, 4.2, 1.5, -3.4], // 右翼
+    ],
+    melee: {
+      rPeck: {
+        t: 0.44,
+        f: 4.2,
+        side: 0,
+        R: 2.6,
+        dmg: 720,
+        im: 900,
+        kb: 14,
+        high: 6,
+        sel: { d1: 5, a1: 0.5, w: 3 },
+      },
+      rWingSlashL: {
+        t: 0.52,
+        f: 3,
+        side: 3.6,
+        R: 5,
+        dmg: 600,
+        im: 1000,
+        kb: 30,
+        high: 6,
+        sel: { d1: 6, a1: 1.5, sgn: 1, w: 3 },
+      },
+      rWingSlashR: {
+        t: 0.52,
+        f: 3,
+        side: -3.6,
+        R: 5,
+        dmg: 600,
+        im: 1000,
+        kb: 30,
+        high: 6,
+        sel: { d1: 6, a1: 1.5, sgn: -1, w: 3 },
+      },
+      rKick: {
+        t: 0.56,
+        f: 4.6,
+        side: 0,
+        R: 3,
+        dmg: 850,
+        im: 1300,
+        kb: 26,
+        up: 8,
+        high: 7,
+        sel: { d1: 5, a1: 0.6, w: 2 },
+      },
+      // 俯衝爪擊（招牌技，只在空中）：收翼俯衝下來抓一把再拉升；路上撞到誰就算
+      rDive: {
+        ...{ air: true, t: 1.26, f: 21, side: 0, R: 4, dmg: 1100, im: 1800, kb: 34, up: 10, high: 10 },
+        ...{ path: true, ram: 1.0, sel: { d0: 6, d1: 46, a1: 0.35, w: 6 } },
+      },
+    },
+    guns: [
+      // 翼下的空對地導彈（爆發，重擊）：空中、地面都會放
+      {
+        ...{ id: 'msl', type: 'volley', flags: ['mslL', 'mslR'], slots: ['rback', 'lback'] },
+        ...{ n: 1, gap: 0.3, far: 0.45, near: 0.3, cd: [3.5, 2] },
+      },
+      // 腹下的集束炸彈艙（爆發，控場）：只在空中——一串炸彈，落地留燃燒帶
+      {
+        ...{
+          id: 'bay',
+          type: 'lob',
+          flag: 'bay',
+          air: true,
+          n: 5,
+          gap: 0.18,
+          spread: 10,
+          dmg: 480,
+          im: 700,
+          R: 5,
+        },
+        ...{ pool: { r: 4, life: 6, dps: 100 }, far: 0.3, near: 0.4, cd: [4.5, 2] },
+      },
+      // 羽刃齊射（實彈，壓制）：只在地面——雙翼一甩，扇形的鋼羽
+      {
+        ...{ id: 'feather', type: 'fan', air: false, clip: 'rFeather', attr: 'kin', color: 0xe8ecf2 },
+        ...{ n: 7, step: 0.12, warn: 0.6, range: 70, dmg: 260, im: 400, far: 0.4, near: 0.3, cd: [3.5, 2] },
+      },
+      // 振翅強風（只在地面）：把前方的目標往外推
+      {
+        ...{ id: 'gust', type: 'cone', air: false, clip: 'rGust', attr: 'kin', noFx: true, push: 16 },
+        ...{
+          t0: 0.56,
+          t1: 2.4,
+          tick: 0.2,
+          f: 2,
+          y: 3,
+          len: 42,
+          ang: 0.6,
+          dps: 110,
+          ips: 380,
+          far: 0,
+          near: 0.25,
+          cd: [5, 2],
+        },
+      },
+    ],
+    clips: [
+      ...['rPeck', 'rWingSlashL', 'rWingSlashR', 'rKick', 'rDive', 'rFeather', 'rGust', 'rScreech'],
+      ...['rTakeoff', 'rLand', 'rHit', 'rStagger', 'rDeath'],
+    ],
+    intro:
+      '猛禽型機獸 — 弱爆發、抗能量；平時在空中盤旋，俯衝下來時看地上的路線躲開；打到失衡會掉下來；翼下的導彈與腹下的炸彈艙可以打壞',
   },
 ];
 export const beastDefOf = (kind) => BEAST_DEFS.find((b) => b.kind === kind) || null;

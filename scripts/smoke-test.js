@@ -1137,7 +1137,7 @@ async function testLabDemo(browser) {
 // 機獸（每章最後的大 Boss；docs/beast-design.md 的「接成敵人」）：每隻一個步驟（testBeast:<獸>，使用者要求每隻都要有自己的測試項目）。
 // 照 data/beasts.js 的資料跑：生成與部位、網格合併、追擊與速度、每一招近戰的傷害、每一把武器、每個部位的打壞與修復、命中的形狀、擊破的演出。
 // 新接一隻機獸時把名字加進 BEAST_TESTS；測試會檢查定義表裡的每一隻都有步驟。
-const BEAST_TESTS = ['lion', 'tiger', 'bear', 'turtle', 'gorilla', 'scorpion', 'mantis'];
+const BEAST_TESTS = ['lion', 'tiger', 'bear', 'turtle', 'gorilla', 'scorpion', 'mantis', 'raptor'];
 async function testBeast(browser, key) {
   console.log(`機獸（${key}）：生成與部位、追擊、每一招近戰、每一把武器、打壞與修復、命中的形狀、擊破`);
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
@@ -1192,6 +1192,15 @@ async function testBeast(browser, key) {
       b.staggerT = 0;
       b.acs = 0;
       Object.assign(S, { clip: null, gun: null, leap: null, go: 0, bCd: 99, rCd: 99, spd: 0, pT: 0, blk: 0 });
+      setAir(false);
+    };
+    // 會飛的：指定在空中或地面（不讓牠自己起降）
+    const setAir = (on) => {
+      if (!B.fly) return;
+      S.air = !!on;
+      S.alt = on ? B.fly.alt : 0;
+      S.modeT = 99;
+      b.pos.y = S.alt;
     };
     let meshes = 0,
       partMeshes = 0;
@@ -1229,6 +1238,7 @@ async function testBeast(browser, key) {
       home();
       put(40);
       p.pos.set(0, 0, 400);
+      setAir(!!M.air);
       b.beastMelee(k, p);
       // 片段的時間照 Boss 的節奏走（不一定等於實際的秒數）：看片段自己的時間
       window.__pump(M.t + 2, () => S.clipT >= M.t - 0.12);
@@ -1262,6 +1272,7 @@ async function testBeast(browser, key) {
       let proj = 0,
         aimed = false,
         st = false;
+      setAir(!!G.air);
       b.beastGunStart(G, p);
       const T =
         G.type === 'rail'

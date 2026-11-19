@@ -47,6 +47,7 @@ export const C_STAR = {
   beast_turtle: 'close',
   beast_gorilla: 'air',
   beast_scorpion: 'cover',
+  beast_raptor: 'far',
   beast_mantis: 'close',
 };
 // qb＝QB 連打（docs/boss-design.md 第 8 節：刁鑽度 3 起，每秒 QB 次數超過 C_QB_RATE）
@@ -1028,6 +1029,52 @@ KB.beast_mantis = {
     close: (b) => b.b3Ring(22), // 迴旋的刃光
     far: (b, pl) => b.b3Cross(pl),
     cover: (b, pl) => b.b3Mines(pl, 5, 6, true), // 空雷繞到掩體後面
+  },
+};
+// 猛禽型：導彈壞一邊少一輪、炸彈艙壞了不投彈
+KB.beast_raptor = {
+  allParts: true,
+  parts: [
+    {
+      id: 'mslL',
+      name: '左翼導彈',
+      model: 'none',
+      back: false,
+      noExpose: true,
+      off: [-0.42, 0.6, 0.1],
+      flag: 'mslL',
+      slots: ['lback'],
+    },
+    {
+      id: 'mslR',
+      name: '右翼導彈',
+      model: 'none',
+      back: false,
+      noExpose: true,
+      off: [0.42, 0.6, 0.1],
+      flag: 'mslR',
+      slots: ['rback'],
+    },
+    {
+      id: 'bay',
+      name: '炸彈艙',
+      model: 'none',
+      back: false,
+      noExpose: true,
+      off: [0, 0.36, -0.18],
+      flag: 'bay',
+    },
+  ],
+  big: [
+    ['地毯轟炸', (b, pl) => b.b3Line(pl, 8, 4.5, 0.12)],
+    ['羽刃風暴', (b, pl) => (b.b3Fan(pl, 7, 0.13), b.b3Ring(26))],
+  ],
+  reflect: ['mortar'],
+  counter: {
+    air: (b, pl) => b.b3Fan(pl, 5, 0.16), // 羽刃往上
+    close: (b) => b.b3Ring(22), // 振翅的衝擊
+    far: (b, pl) => b.b3Line(pl, 5, 4.5, 0.15), // 沿線投彈
+    cover: (b, pl) => b.b3Rain(pl, 4, 5, 0.25), // 炸彈繞過掩體
   },
 };
 Object.assign(BOSS_KIT, KB);
