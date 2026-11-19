@@ -12,6 +12,7 @@ const V = (x, y, z) => new THREE.Vector3(x, y, z);
 // 種類（bossKind，沒有的用名稱開頭）→ { cd 冷卻秒數, name 招式名稱, fn(Boss, 目標) }
 const SPECIALS = {
   // 機獸（docs/beast-design.md）
+  beast_tiger: { cd: 10, name: '絕對零度', fn: (b, pl) => (b.b3Cross(pl), b.b3Rain(pl, 6, 7, 0.22), b.b3Ring(26)) },
   beast_lion: {
     cd: 11,
     name: '獸王咆哮',

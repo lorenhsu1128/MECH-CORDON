@@ -42,6 +42,7 @@ export const C_STAR = {
   reactor: 'far',
   sovereign: 'air',
   beast_lion: 'close',
+  beast_tiger: 'far',
 };
 // qb＝QB 連打（docs/boss-design.md 第 8 節：刁鑽度 3 起，每秒 QB 次數超過 C_QB_RATE）
 export const HABITS = ['air', 'close', 'far', 'cover', 'qb'];
@@ -733,6 +734,23 @@ KB.beast_lion = {
     close: (b) => b.b3Shock(16), // 踏地
     far: (b, pl) => b.b3Line(pl, 5, 4.5, 0.16), // 磁軌砲的連續砲擊
     cover: (b, pl) => b.b3Rain(pl, 4, 5, 0.25), // 導彈繞過掩體
+  },
+};
+// 劍齒虎型：機砲壞了不能掃射、莢艙壞了沒有電漿導彈
+KB.beast_tiger = {
+  parts: [
+    { id: 'mg', name: '電磁機砲', model: 'none', off: [0, 0.96, -0.3], flag: 'mg', slots: ['rarm'] },
+    { id: 'pods', name: '電漿導彈莢艙', model: 'none', size: 1.6, off: [0, 0.86, 0.16], flag: 'pods', slots: ['rback', 'lback'] },
+  ],
+  big: [
+    ['冰錐彈幕', (b, pl) => b.b3Rain(pl, 7, 8, 0.2)],
+    ['寒光掃射', (b, pl) => b.b3Fan(pl, 7, 0.13)],
+  ],
+  counter: {
+    air: (b, pl) => b.b3Fan(pl, 4, 0.16), // 冷凍光束往上掃
+    close: (b) => b.b3Ring(20), // 迴旋的衝擊
+    far: (b, pl) => b.b3Line(pl, 5, 4.5, 0.15), // 機砲沿線掃射
+    cover: (b, pl) => b.b3Rain(pl, 4, 5, 0.25), // 電漿導彈繞過掩體
   },
 };
 Object.assign(BOSS_KIT, KB);

@@ -24,6 +24,7 @@ Object.assign(MechEntity.prototype, {
     s.clip = name;
     s.clipT = 0;
     s.rf = 0;
+    s.rs = 0;
     s.hitDone = false;
     const B = this.beastInfo();
     const M = B && B.melee && B.melee[name];
@@ -48,7 +49,7 @@ Object.assign(MechEntity.prototype, {
     const [lx, lz] = w.collide(tx, tz, pl.pos.y, this.radius * 0.8);
     s.leap = {
       t: 0,
-      dur: clipDur('jump') * 0.75,
+      dur: clipDur(this.beastInfo().jump || 'jump') * 0.75,
       x0: this.pos.x,
       z0: this.pos.z,
       y0: this.pos.y,
@@ -58,7 +59,7 @@ Object.assign(MechEntity.prototype, {
       h: 9 * this.beastK(),
       yaw: tyaw,
     };
-    this.beastClip('jump');
+    this.beastClip(this.beastInfo().jump || 'jump');
     s.pT = 0;
   },
   // 換型態時修復一次：被打壞的外掛武器重新裝上（使用者定案；之後再打壞就不修了）
@@ -97,7 +98,7 @@ Object.assign(MechEntity.prototype, {
   // 擊破的演出：先播擊破的片段（倒下、光熄滅）、身上冒火花，播完才碎裂（die／dieVisual 呼叫）
   beastCollapse(end) {
     const g = this.game;
-    const T = clipDur('death') + 0.5;
+    const T = clipDur(this.beastInfo().death || 'death') + 0.5;
     let acc = 0;
     g.fx.task(
       T,
@@ -164,84 +165,143 @@ Object.assign(MechEntity.prototype, {
     (N.guns || N.chest).getWorldPosition(p);
     return p;
   },
+  // 這把武器還能不能用（負責它的部位全部被打壞了＝不能）
+  beastGunOk(G) {
+    const f = G.flags || (G.flag ? [G.flag] : []);
+    return !f.length || f.some((k) => !this.tierFlag(k));
+  },
+  // 用 asm 的武器槽射一發（不管冷卻與彈匣）
+  beastFire(slot, pl) {
+    const w = this.weapons[slot];
+    if (!w || !w.def || w.def.type === 'none' || w.tierOff) return;
+    w.cd = 0;
+    if (w.mag <= 0) w.mag = Math.max(1, Math.min(w.def.mag || 1, w.ammo || 1));
+    this.fire(slot, pl.center().addScaledVector(pl.vel, 0.15), pl);
+  },
+  // 瞄準（砲塔跟著目標）：bx＝[偏航, 俯仰]，隨快照給客機，beastFx 轉砲塔
+  beastAim(tp, from) {
+    this.bx = [
+      wrap(yawTo(this.pos, tp) - this.yaw),
+      Math.atan2(tp.y - from.y, Math.hypot(tp.x - from.x, tp.z - from.z)),
+    ];
+  },
   beastRanged(dt, d, pl) {
     const B = this.beastInfo(),
       s = this.aiState,
       g = this.game;
-    // 磁軌砲進行中：先瞄準（砲塔跟著目標）→ 鎖住方向並畫預警線 → 發射
-    const R = s.rail;
-    if (R) {
-      R.t += dt;
-      const C = B.rail;
-      const mz = this.beastGunPos();
-      if (!R.dir) {
-        const tp = pl.center().addScaledVector(pl.vel, 0.12);
-        this.bx = [
-          wrap(yawTo(this.pos, tp) - this.yaw),
-          Math.atan2(tp.y - mz.y, Math.hypot(tp.x - mz.x, tp.z - mz.z)),
-        ];
-        if (R.t >= C.track) {
-          R.dir = tp.sub(mz).normalize();
-          g.fx.warnLine(mz, mz.clone().addScaledVector(R.dir, C.range * DS), C.warn, 0xffd060, 0.14);
-          SFX.play('charge', 0.6, 1.2, 0.02, 0.02, mz);
-        }
-      } else if (R.t >= C.track + C.warn) {
-        if (this.canAct())
-          g.beamAttack(this, mz, R.dir, {
-            range: C.range,
-            dmg: C.dmg * this.dmgMul,
-            im: C.im * this.dmgMul,
+    const A = s.gun; // 進行中的武器（rail／burst）
+    if (A) {
+      const G = A.G;
+      A.t += dt;
+      if (!this.canAct() || !this.beastGunOk(G)) {
+        // 失衡或這把武器被打壞：中斷
+        s.gun = null;
+        this.bx = null;
+        return;
+      }
+      const end = () => {
+        s.gun = null;
+        s.rCd = G.cd[0] + Math.random() * G.cd[1];
+      };
+      if (G.type === 'rail') {
+        // 砲塔先跟著目標 → 鎖住方向並畫預警線 → 貫穿
+        const mz = this.beastGunPos();
+        if (!A.dir) {
+          const tp = pl.center().addScaledVector(pl.vel, 0.12);
+          this.beastAim(tp, mz);
+          if (A.t >= G.track) {
+            A.dir = tp.sub(mz).normalize();
+            g.fx.warnLine(mz, mz.clone().addScaledVector(A.dir, G.range * DS), G.warn, 0xffd060, 0.14);
+            SFX.play('charge', 0.6, 1.2, 0.02, 0.02, mz);
+          }
+        } else if (A.t >= G.track + G.warn) {
+          g.beamAttack(this, mz, A.dir, {
+            range: G.range,
+            dmg: G.dmg * this.dmgMul,
+            im: G.im * this.dmgMul,
             w: 0.8,
             color: 0xfff2c0,
             width: 0.3,
-            attr: 'kin',
+            attr: G.attr || 'en',
           });
-        SFX.play('heavy', 0.9, 1.3, 0.03, 0.03, mz);
-        g.camShake = Math.max(g.camShake || 0, 0.25);
-        s.rail = null;
-        s.rCd = 3.5 + Math.random() * 2;
-      }
-      if (!this.canAct() || this.tierFlag('rail')) s.rail = null; // 失衡或磁軌砲被打壞：中斷
+          SFX.play('heavy', 0.9, 1.3, 0.03, 0.03, mz);
+          g.camShake = Math.max(g.camShake || 0, 0.25);
+          end();
+        }
+      } else if (G.type === 'burst') {
+        // 邊移動邊點放：砲塔跟著目標
+        this.beastAim(pl.center(), this.center());
+        while (A.t >= A.next && A.next < G.dur) {
+          this.beastFire(G.slot, pl);
+          A.next += G.gap;
+        }
+        if (A.t >= G.dur) end();
+      } else end();
       return;
     }
     this.bx = null;
     s.rCd = (s.rCd === undefined ? 4 : s.rCd) - dt;
     if (s.rCd > 0 || s.clip || !this.canAct() || s.go > 0) return;
     const far = d > 28 * DS;
-    const noRail = this.tierFlag('rail'),
-      noPods = this.tierFlag('podL') && this.tierFlag('podR');
-    let r = Math.random();
-    if (noRail && r < (far ? 0.45 : 0.2)) r = noPods ? 0.9 : 0.5; // 壞掉的武器改用別把
-    if (noPods && r >= (far ? 0.45 : 0.2) && r < (far ? 0.8 : 0.65)) r = noRail ? 0.9 : 0;
-    if (far ? r < 0.45 : r < 0.2) {
-      s.rail = { t: 0, dir: null };
-    } else if (far ? r < 0.8 : r < 0.65) {
-      // 導彈莢艙：左右各一輪（asm 的肩上武器）
-      this.b3Volley(pl, B.missile.n, B.missile.gap, ['rback', 'lback']);
-      s.rCd = 4 + Math.random() * 2;
-    } else {
-      // 鬃甲的雷射陣列：咆哮（鬃甲張開）＋扇形光束
-      this.beastClip('roar');
-      // 扇形（同 mech-boss3.js 的 b3Fan，傷害照定義）：從頭的高度朝目標 n 道，預警 1.1 秒
+    const list = (B.guns || []).filter((G) => this.beastGunOk(G) && (far ? G.far : G.near) > 0);
+    if (!list.length) {
+      s.rCd = 2;
+      return;
+    }
+    let r = Math.random() * list.reduce((a, G) => a + (far ? G.far : G.near), 0);
+    let G = list[0];
+    for (const q of list) {
+      r -= far ? q.far : q.near;
+      if (r <= 0) {
+        G = q;
+        break;
+      }
+    }
+    const cd = () => (s.rCd = G.cd[0] + Math.random() * G.cd[1]);
+    if (G.clip) {
+      this.beastClip(G.clip);
+      s.clipOpen = G.open || 0;
+    }
+    if (G.type === 'rail' || G.type === 'burst') s.gun = { G, t: 0, dir: null, next: 0 };
+    else if (G.type === 'volley') {
+      this.b3Volley(pl, G.n, G.gap, G.slots);
+      cd();
+    } else if (G.type === 'fan') {
+      // 扇形（同 mech-boss3.js 的 b3Fan，傷害照定義）：從身體的高度朝目標 n 道，預警 1.1 秒
       const from = this.center();
       const d0 = pl.center().sub(from);
       const yw = Math.atan2(d0.x, d0.z),
         pt = Math.atan2(d0.y, Math.hypot(d0.x, d0.z) || 1);
-      for (let i = 0; i < B.mane.n; i++) {
-        const y = yw + (i - (B.mane.n - 1) / 2) * B.mane.step;
-        this.b3Beam(
-          from.clone(),
-          V(Math.sin(y) * Math.cos(pt), Math.sin(pt), Math.cos(y) * Math.cos(pt)),
-          1.1,
-          {
-            range: 120,
-            dmg: B.mane.dmg,
-            im: B.mane.im,
-          },
-        );
+      for (let i = 0; i < G.n; i++) {
+        const y = yw + (i - (G.n - 1) / 2) * G.step;
+        this.b3Beam(from.clone(), V(Math.sin(y) * Math.cos(pt), Math.sin(pt), Math.cos(y) * Math.cos(pt)), 1.1, {
+          range: 120,
+          dmg: G.dmg,
+          im: G.im,
+        });
       }
-      s.rCd = 5 + Math.random() * 2;
-    }
+      cd();
+    } else if (G.type === 'beam') {
+      // 從身上的一塊朝目標一道光束；打中的附加狀態效果（預警結束時看目標離光束多近）
+      const N = this.model.beast.nodes;
+      const from = V(0, 0, 0);
+      (N[G.node] || N.chest).getWorldPosition(from);
+      const dir = pl.center().addScaledVector(pl.vel, 0.2).sub(from).normalize();
+      this.b3Beam(from, dir, G.warn, { range: G.range, dmg: G.dmg, im: G.im });
+      if (G.status)
+        g.later(G.warn + 0.02, () => {
+          if (this.dead) return;
+          for (const t of g.hostilesOfEnt(this)) {
+            if (!t || t.dead || !t.addStatus || !t.center) continue;
+            const ap = t.center().sub(from);
+            const pj = ap.dot(dir);
+            if (pj < 0 || pj > G.range * DS) continue;
+            if (ap.addScaledVector(dir, -pj).length() < (t.radius || 0) + (G.hitR || 2))
+              t.addStatus(G.status.kind, G.status.sec, { ...G.status.o });
+          }
+        });
+      cd();
+    } else cd();
   },
   beastMove(dt, d, dir, perp, wish, pl, r) {
     if (this.ai !== 'beast') return null;
@@ -287,23 +347,29 @@ Object.assign(MechEntity.prototype, {
       r.done = true;
       return r;
     }
+    const SG = B.stag || 'stagger';
     let goalSpd = 0,
       turn = 0,
-      fwdStep = 0;
+      fwdStep = 0,
+      sideStep = 0;
     if (!this.canAct()) {
       // 失衡：站不穩（片段播完停在最後的姿勢）
-      if (s.clip !== 'stagger') this.beastClip('stagger');
+      if (s.clip !== SG) this.beastClip(SG);
       s.clipT += dt;
-    } else if (s.clip === 'stagger') {
+    } else if (s.clip === SG) {
       s.clip = null;
       s.bCd = 1.2;
     } else if (s.clip) {
       // 動作片段中：不走；片段自己的前進量（撲擊）照 rootF 的變化移動
       s.clipT += dt;
       const rig = this.model.beast;
-      const rf = ((rig && rig.rootF) || 0) * ((rig && rig.group.scale.x) || 1);
+      const k = (rig && rig.group.scale.x) || 1;
+      const rf = ((rig && rig.rootF) || 0) * k,
+        rs = ((rig && rig.rootS) || 0) * k;
       fwdStep = rf - (s.rf || 0);
+      sideStep = rs - (s.rs || 0); // 片段的側移（閃避；+＝機獸的右側）
       s.rf = rf;
+      s.rs = rs;
       if (s.clipT < 0.25) turn = clamp(off, -1, 1) * B.turn * 1.5; // 出手前還會對準
       const M = B.melee && B.melee[s.clip];
       if (M && !s.hitDone && s.clipT >= M.t) {
@@ -311,7 +377,10 @@ Object.assign(MechEntity.prototype, {
         this.beastStrike(M);
       }
       if (s.clipT >= clipDur(s.clip)) {
-        if (s.clip === 'pounce' || s.clip === 'roar') this.bossOpen(s.clip === 'pounce' ? 2.5 : 1.5, true); // 撲空／咆哮完是破綻（Boss 改版的 D）
+        const op = (M && M.open) || s.clipOpen || 0;
+        if (op) this.bossOpen(op, true); // 撲空、放完大動作之後是破綻（Boss 改版的 D）
+        s.clipOpen = 0;
+        this.yaw = wrap(this.yaw + ((rig && rig.rootYaw) || 0)); // 片段轉了身（迴旋）：結束時接到實體的朝向
         s.clip = null;
         s.bCd = 0.9 + Math.random() * 0.9;
       }
@@ -334,7 +403,7 @@ Object.assign(MechEntity.prototype, {
       goalSpd *= clamp(1.25 - Math.abs(err) * 0.9, 0.12, 1);
       if (s.go > 0 && d < this.radius + (pl.radius || 0) + 10) goalSpd = Math.min(goalSpd, B.walk * 0.6);
       // 追向目標卻沒有進展（被擋住、沿著牆滑）：每 1.2 秒看一次距離，沒縮短 4 m 以上就躍過去
-      if (!s.rail && (s.go > 0 || d >= want * 2.2)) {
+      if (!s.gun && (s.go > 0 || d >= want * 2.2)) {
         s.pT = (s.pT || 0) + dt;
         if (s.pD === undefined || s.pT < dt * 1.5) s.pD = d;
         if (s.pT >= 1.2) {
@@ -343,17 +412,35 @@ Object.assign(MechEntity.prototype, {
           s.pD = d;
         }
       } else s.pT = 0;
-      if (s.rail) goalSpd = 0; // 磁軌砲：停下來架砲（邊跑邊放的話鎖住方向之後砲口會跑掉）
+      if (s.gun && s.gun.G.hold) goalSpd = 0; // 磁軌砲這類：停下來架砲（邊跑邊放的話鎖住方向之後砲口會跑掉）
       turn = clamp(err * 4, -1, 1) * B.turn * (1 + 1.6 * (1 - Math.min(1, s.spd / B.run)));
       if (s.go > 0) {
         s.go -= dt;
         // 出手的距離是實際的公尺（機獸的模型不乘建模倍率）
         const a = Math.abs(off),
-          R = this.radius + (pl.radius || 0);
-        let c = null;
-        if (d < R + 7 && a > 2.2) c = 'tail';
-        else if (d < R + 5 && a < 0.6) c = Math.random() < 0.4 ? 'bite' : off > 0 ? 'clawL' : 'clawR';
-        else if (d > R + 9 && d < R + 26 && a < 0.3 && s.go < 3) c = 'pounce';
+          dd = d - this.radius - (pl.radius || 0);
+        let c = null,
+          tot = 0;
+        const ok = [];
+        for (const k in B.melee) {
+          const S = B.melee[k].sel;
+          if (!S || dd < (S.d0 || -99) || dd > S.d1 || a < (S.a0 || 0) || a > (S.a1 || 9)) continue;
+          if (S.sgn && Math.sign(off || 1) !== S.sgn) continue;
+          if (S.d0 && s.go > 3) continue; // 撲擊這類中距離的招式：先對準一下再出
+          ok.push(k);
+          tot += S.w || 1;
+        }
+        if (ok.length) {
+          let q = Math.random() * tot;
+          for (const k of ok) {
+            q -= B.melee[k].sel.w || 1;
+            if (q <= 0) {
+              c = k;
+              break;
+            }
+          }
+          c = c || ok[0];
+        }
         if (c) {
           this.beastClip(c);
           s.go = 0;
@@ -370,21 +457,26 @@ Object.assign(MechEntity.prototype, {
       fz = -Math.cos(this.yaw);
     const px = this.pos.x,
       pz = this.pos.z;
-    if (step) {
-      const [cx, cz] = w.collide(px + fx * step, pz + fz * step, this.pos.y, this.radius * 0.8);
+    if (step || sideStep) {
+      const [cx, cz] = w.collide(
+        px + fx * step - fz * sideStep,
+        pz + fz * step + fx * sideStep,
+        this.pos.y,
+        this.radius * 0.8,
+      );
       const lim = w.lim - 3 * MS;
       this.pos.x = clamp(cx, -lim, lim);
       this.pos.z = clamp(cz, -lim, lim);
       // 被擋住（實際走的不到該走的三成）：累積 0.35 秒就換繞行的方向並往旁邊轉開一陣子
       const moved = Math.hypot(this.pos.x - px, this.pos.z - pz);
-      s.blk = moved < Math.abs(step) * 0.3 && Math.abs(step) > 0.02 ? (s.blk || 0) + dt : 0;
+      s.blk = !sideStep && moved < Math.abs(step) * 0.3 && Math.abs(step) > 0.02 ? (s.blk || 0) + dt : 0;
       if (s.blk > 0.35) {
         s.blk = 0;
         s.orb *= -1;
         s.avoid = 0.7;
         s.go = 0;
         // 3 秒內第二次被擋住：躍過去
-        if (s.blkAt !== undefined && this.t - s.blkAt < 3 && this.canAct() && !s.clip && !s.rail) {
+        if (s.blkAt !== undefined && this.t - s.blkAt < 3 && this.canAct() && !s.clip && !s.gun) {
           this.beastLeap(pl, d, tyaw);
           s.blkAt = undefined;
         } else s.blkAt = this.t;
@@ -433,7 +525,7 @@ Object.assign(MechEntity.prototype, {
     F.z = this.pos.z;
     F.yaw = this.yaw;
     let ci = (this.bossVis || 0) & 31;
-    if (this.dead && B) ci = B.clips.indexOf('death') + 1;
+    if (this.dead && B) ci = B.clips.indexOf(B.death || 'death') + 1;
     if (ci !== F.ci) {
       F.ci = ci;
       F.ct = 0;
@@ -452,10 +544,19 @@ Object.assign(MechEntity.prototype, {
         v: name ? 0 : F.v / sc,
         w: name ? 0 : F.w,
         act: name ? { name, t: F.ct } : null,
-        aim: this.bx && this.bx.length >= 2 ? [this.bx[0], this.bx[1]] : null,
+        aim: this.bx && this.bx.length >= 2 && !(B && B.aim) ? [this.bx[0], this.bx[1]] : null,
       },
       dt,
     );
+    // 自己的砲塔（定義的 aim＝[偏航的區塊, 俯仰的區塊]）：瞄準時轉向目標，沒瞄準時慢慢回正
+    if (B && B.aim) {
+      const yn = rig.nodes[B.aim[0]],
+        pn = rig.nodes[B.aim[1]];
+      const on = this.bx && this.bx.length >= 2;
+      const kk = Math.min(1, dt * (on ? 12 : 3));
+      if (yn) yn.rotation.y += ((on ? this.bx[0] : 0) - yn.rotation.y) * kk;
+      if (pn) pn.rotation.x += ((on ? this.bx[1] : 0) - pn.rotation.x) * kk;
+    }
     this.mesh.position.y = this.pos.y + (rig.rootY || 0) * sc;
     this.mesh.rotation.y = this.yaw + (rig.rootYaw || 0);
   },

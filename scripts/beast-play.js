@@ -95,10 +95,12 @@ fs.mkdirSync(OUT, { recursive: true });
             hp: Math.round(b.hp),
             parts: parts().length,
             ph: b.bossPhase ? b.bossPhase() : 0,
-            flags: ['rail', 'podL', 'podR'].filter((f) => b.tierFlag(f)).join('+'),
+            flags: Object.keys(b.beastInfo().hide || {})
+              .filter((f) => b.tierFlag(f))
+              .join('+'),
             php: Math.round(p.hp),
             palt: +(p.pos.y - g.world.groundAt(p.pos.x, p.pos.z, p.pos.y + 1)).toFixed(1),
-            rail: b.aiState.rail ? 1 : 0,
+            gun: b.aiState.gun ? b.aiState.gun.G.id : '',
             proj: g.projectiles.length,
             y: +(b.pos.y - p.pos.y).toFixed(1),
             meshes,

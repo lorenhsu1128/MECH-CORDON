@@ -1175,7 +1175,7 @@ async function testBeast(browser) {
       b.yaw = Math.PI; // 面向玩家（+z）
       Object.assign(b.aiState, {
         clip: null,
-        rail: null,
+        gun: null,
         leap: null,
         go: 0,
         bCd: 99,
@@ -1233,7 +1233,7 @@ async function testBeast(browser) {
     put(60);
     p.hp = p.maxHp;
     p.iFrames = 0;
-    b.aiState.rail = { t: 0, dir: null };
+    b.aiState.gun = { G: b.beastInfo().guns.find((q) => q.id === 'rail'), t: 0, dir: null, next: 0 };
     const hp2 = p.hp;
     let aimed = false;
     window.__pump(1.7, () => {
@@ -1244,7 +1244,7 @@ async function testBeast(browser) {
       hp0: hp2,
       hp1: p.hp,
       aimed,
-      done: !b.aiState.rail,
+      done: !b.aiState.gun,
       dm: b.dmgMul,
       stag: p.staggerT,
       acs: p.acs,

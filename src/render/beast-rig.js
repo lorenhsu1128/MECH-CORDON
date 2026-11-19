@@ -3,12 +3,13 @@
 // rig.beast＝buildBeast 的回傳（nodes、piv、eyeMat…），實體每格交給 animateBeast（entities/mech-beast.js）；
 // 每個區塊的關節群組都被 rig 參照到，網格合併時當成會動的錨點（mesh-merge.js 的 rigRefs）。
 import { MS } from '../core/scale.js';
-import { buildLion } from './beast-lion.js';
+import { buildLion, buildTiger } from './beast-lion.js';
 
 function beastRig(b, o) {
   const N = b.nodes,
     M = b.mats;
   const hand = N[o.hand] || N.chest;
+  if (o.handMz && !hand.userData.mz) hand.userData.mz = o.handMz; // 手持武器槽（rarm）的槍口
   // 肩上武器的發射點：左右各自的節點（合併網格之後量不到槍口，所以寫 userData.mz＝節點座標的槍口；muzzle.js 的 rigMuzzle）
   const arm = (k) => {
     const back = N[o['back' + k]] || N[o.back] || N.chest;
@@ -44,6 +45,11 @@ const make = (build, o) => (pal, scale) => {
   return beastRig(b, { ...o, height: o.h * k });
 };
 export const BEAST_BUILDERS = {
+  // 劍齒虎：手持武器槽＝背上的電磁機砲、肩上武器槽＝電漿導彈莢艙（左右在同一塊 guns 裡）
+  beast_tiger: make(buildTiger, {
+    ...{ type: 'beast_tiger', h: 8.0, hand: 'mg_gun', handMz: [0, 0.12, -3.8] },
+    ...{ back: 'guns', backMz: [0, 0.05, -1.2] },
+  }),
   beast_lion: make(buildLion, {
     type: 'beast_lion',
     h: 8.6,
