@@ -36,7 +36,7 @@ export const BEAST_DEFS = [
     modelKind: 'boss',
     vehKey: 'beast_lion',
     pal: 'beast_lion',
-    asm: BEAST_ASM,
+    asm: { ...BEAST_ASM, rback: 'bw_ms', lback: 'bw_ms' }, // 肩上的導彈莢艙（爆發）
     scale: BEAST_SCALE.lion,
     radius: 1.3,
     hpMul: 3.4,
@@ -53,6 +53,21 @@ export const BEAST_DEFS = [
     turn: 3.4,
     acc: 90,
     dec: 160,
+    // 近戰招式（片段名稱 → 判定）：t＝出手的時間（片段開始後幾秒，同時是地面預警的秒數）、f／side＝判定圓的中心相對機獸的前後／左右
+    // （模型的公尺，正＝前／左；實際的距離再乘體型倍率）、R＝半徑、dmg／im＝傷害與衝擊（再乘 dmgMul）、kb＝擊退、up＝往上打飛、
+    // high＝打得到多高（離機獸腳下幾公尺以內；跳起來可以躲）、path＝撲擊的落點（預警畫成路線）
+    melee: {
+      clawL: { t: 0.45, f: 7.2, side: 1.6, R: 4.6, dmg: 620, im: 900, kb: 26, high: 7 },
+      clawR: { t: 0.45, f: 7.2, side: -1.6, R: 4.6, dmg: 620, im: 900, kb: 26, high: 7 },
+      bite: { t: 0.46, f: 8.2, side: 0, R: 3.6, dmg: 900, im: 1100, kb: 14, high: 8 },
+      tail: { t: 0.56, f: -8.5, side: 0, R: 5.6, dmg: 520, im: 1300, kb: 40, up: 14, high: 5 },
+      pounce: { t: 1.0, f: 16.5, side: 0, R: 5.2, dmg: 1050, im: 1700, kb: 34, up: 10, high: 6, path: true },
+    },
+    // 三把武器（docs/beast-design.md 的「武器」）：磁軌砲（實彈，瞄準 → 鎖住方向的預警線 → 貫穿）、導彈莢艙（爆發，裝在 asm 的肩上武器）、
+    // 鬃甲的雷射陣列（能量，咆哮時鬃甲張開的扇形光束）
+    rail: { track: 0.8, warn: 0.55, range: 120, dmg: 1000, im: 1500 },
+    missile: { n: 2, gap: 0.45 },
+    mane: { n: 5, step: 0.17, dmg: 380, im: 600 },
     clips: ['pounce', 'clawL', 'clawR', 'bite', 'tail', 'roar', 'jump', 'brake', 'hit', 'stagger', 'death'],
     intro: '獅型機獸 — 背上的磁軌砲、肩上的導彈莢艙、鬃甲的雷射，三種屬性的攻擊都有',
   },

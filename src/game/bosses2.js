@@ -174,8 +174,8 @@ Object.assign(Game.prototype, {
     hits.sort((a, b) => a.proj - b.proj);
     for (const h of o.pierce === false ? hits.slice(0, 1) : hits) {
       const pt = from.clone().addScaledVector(dir, h.proj);
-      if (h.t.isProp) this.damageProp(h.t, o.dmg, o.im, pt, null, 'en');
-      else h.t.takeDamage(o.dmg, o.im, owner, pt, dir.clone(), undefined, undefined, 'en');
+      if (h.t.isProp) this.damageProp(h.t, o.dmg, o.im, pt, null, o.attr || 'en');
+      else h.t.takeDamage(o.dmg, o.im, owner, pt, dir.clone(), undefined, undefined, o.attr || 'en'); // attr：機獸的磁軌砲是實彈
       this.fx.spark(pt, o.color, dir);
       if (o.pierce === false) stop = h.proj;
     }

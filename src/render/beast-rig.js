@@ -8,15 +8,19 @@ import { buildLion } from './beast-lion.js';
 function beastRig(b, o) {
   const N = b.nodes,
     M = b.mats;
-  const hand = N[o.hand] || N.chest,
-    back = N[o.back] || N.chest;
-  const arm = () => ({ hand, back, sh: new THREE.Group(), up: new THREE.Group(), fore: new THREE.Group() });
+  const hand = N[o.hand] || N.chest;
+  // 肩上武器的發射點：左右各自的節點（合併網格之後量不到槍口，所以寫 userData.mz＝節點座標的槍口；muzzle.js 的 rigMuzzle）
+  const arm = (k) => {
+    const back = N[o['back' + k]] || N[o.back] || N.chest;
+    if (o.backMz && !back.userData.mz) back.userData.mz = o.backMz;
+    return { hand, back, sh: new THREE.Group(), up: new THREE.Group(), fore: new THREE.Group() };
+  };
   return {
     group: b.group,
     legsG: new THREE.Group(),
     torso: N.chest,
     head: N.head || N.chest,
-    arms: { r: arm(), l: arm() },
+    arms: { r: arm('R'), l: arm('L') },
     legs: [],
     nozzles: [],
     hipY: 0,
@@ -40,5 +44,12 @@ const make = (build, o) => (pal, scale) => {
   return beastRig(b, { ...o, height: o.h * k });
 };
 export const BEAST_BUILDERS = {
-  beast_lion: make(buildLion, { type: 'beast_lion', h: 8.6, hand: 'guns', back: 'pod_l' }),
+  beast_lion: make(buildLion, {
+    type: 'beast_lion',
+    h: 8.6,
+    hand: 'guns',
+    backL: 'pod_l',
+    backR: 'pod_r',
+    backMz: [0, 0.7, -1.3],
+  }),
 };
