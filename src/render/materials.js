@@ -325,6 +325,17 @@ export const beastPal = (n) => {
     a = BEAST_ACCENTS[n % 10];
   return { ...b, acc: a.acc, visor: a.acc, glow: a.acc };
 };
+// 八隻機獸定案的配色編號（2026-11-19 使用者定案；有兩個候選的與猛禽由 Claude 挑）
+export const BEAST_PALS = {
+  scorpion: 12,
+  turtle: 27,
+  tiger: 35,
+  gorilla: 14,
+  raptor: 33,
+  mantis: 46,
+  bear: 21,
+  lion: 48,
+};
 export const PALETTES = {
   // 內建的玩家預設機甲的原色（src/assets/player-mech/ 的色槽 × 灰階貼圖 ≈ 原本的彩色貼圖）
   white: {
@@ -1068,6 +1079,7 @@ export const PALETTES = {
     glow: 0x80d0ff,
   },
 };
+for (const [k, n] of Object.entries(BEAST_PALS)) PALETTES['beast_' + k] = beastPal(n);
 
 // 有立繪的宿敵 AC 的配色（照駕駛員的服裝）：渲染風格的「敵人配色」不換它們，人和機體看起來是一套
 export const RIVAL_PALS = new Set(

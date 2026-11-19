@@ -16,7 +16,7 @@ import { buildPod, buildStation } from './cine-sets.js';
 import { buildCineVeh } from './cine-vehicles.js';
 import { FOE_CATALOG } from './foe-models.js';
 import { PARTS, START_ASM } from '../data/parts.js';
-import { BEAST_ACCENTS, BEAST_BASES, PALETTES, beastPal, mechMats } from './materials.js';
+import { PALETTES, mechMats } from './materials.js';
 import { PIECE_NAMES, SIDE_NAMES, buildMech, buildPiece, partPieces } from './mech-model.js';
 import { animateBeast, clipDur } from './beast-anim.js';
 import {
@@ -171,8 +171,8 @@ for (const [cat, list] of PART_LISTS)
 
 // ---------- 暫時：獅型機獸（原創設計，之後當敵人／Boss；等使用者檢查品質）----------
 for (const [key, label, palKey] of [
-  ['stand', '站姿', 'boss'],
-  ['roar', '咆哮（檢查關節）', 'boss'],
+  ['stand', '站姿', 'beast_lion'],
+  ['roar', '咆哮（檢查關節）', 'beast_lion'],
   ['stand_w', '站姿・白色配色', 'white'],
 ]) {
   add({
@@ -200,32 +200,32 @@ const lionClip = (name, gap = 0.9, st = {}) => {
 };
 // 暫時：劍齒虎型機獸（原創設計；四肢與尾巴的節沿用獅型的零件，身體、頭、劍齒、武裝另外做）
 for (const [key, label, palKey, st] of [
-  ['stand', '站姿', 'boss', null],
+  ['stand', '站姿', 'beast_tiger', null],
   ['stand_w', '站姿・白色配色', 'white', null],
-  ['anim_idle', '動作：待機', 'boss', { v: 0 }],
-  ['anim_stalk', '動作：潛行', 'boss', { v: 2.4, stalk: true }],
-  ['anim_walk', '動作：走', 'boss', { v: 5 }],
-  ['anim_trot', '動作：小跑', 'boss', { v: 11 }],
-  ['anim_run', '動作：奔跑', 'boss', { v: 26 }],
+  ['anim_idle', '動作：待機', 'beast_tiger', { v: 0 }],
+  ['anim_stalk', '動作：潛行', 'beast_tiger', { v: 2.4, stalk: true }],
+  ['anim_walk', '動作：走', 'beast_tiger', { v: 5 }],
+  ['anim_trot', '動作：小跑', 'beast_tiger', { v: 11 }],
+  ['anim_run', '動作：奔跑', 'beast_tiger', { v: 26 }],
   [
     'anim_dodge',
     '動作：側跳（左、右輪流）',
-    'boss',
+    'beast_tiger',
     (t) => {
       const u = t % 3.2;
       return { root: true, act: { name: u < 1.6 ? 'tDodgeR' : 'tDodgeL', t: u % 1.6 } };
     },
   ],
-  ['anim_spin', '動作：甩身急轉', 'boss', lionClip('tSpinL', 1.2)],
-  ['anim_fang', '攻擊：劍齒下刺', 'boss', lionClip('tFang')],
-  ['anim_lunge', '攻擊：撲咬', 'boss', lionClip('tLunge', 1.2)],
-  ['anim_claw3', '攻擊：連續爪擊', 'boss', lionClip('tClaw3')],
-  ['anim_dodgeclaw', '攻擊：側跳接爪擊', 'boss', lionClip('tDodgeClawR')],
-  ['anim_volley', '攻擊：飛彈齊射（邊小跑邊放）', 'boss', lionClip('tVolley', 1.2, { v: 10 })],
-  ['anim_snarl', '短吼（威嚇）', 'boss', lionClip('tSnarl')],
-  ['anim_hit', '受擊', 'boss', lionClip('tHit', 0.8)],
-  ['anim_stagger', '失衡', 'boss', lionClip('tStagger')],
-  ['anim_death', '擊破', 'boss', lionClip('tDeath', 2)],
+  ['anim_spin', '動作：甩身急轉', 'beast_tiger', lionClip('tSpinL', 1.2)],
+  ['anim_fang', '攻擊：劍齒下刺', 'beast_tiger', lionClip('tFang')],
+  ['anim_lunge', '攻擊：撲咬', 'beast_tiger', lionClip('tLunge', 1.2)],
+  ['anim_claw3', '攻擊：連續爪擊', 'beast_tiger', lionClip('tClaw3')],
+  ['anim_dodgeclaw', '攻擊：側跳接爪擊', 'beast_tiger', lionClip('tDodgeClawR')],
+  ['anim_volley', '攻擊：飛彈齊射（邊小跑邊放）', 'beast_tiger', lionClip('tVolley', 1.2, { v: 10 })],
+  ['anim_snarl', '短吼（威嚇）', 'beast_tiger', lionClip('tSnarl')],
+  ['anim_hit', '受擊', 'beast_tiger', lionClip('tHit', 0.8)],
+  ['anim_stagger', '失衡', 'beast_tiger', lionClip('tStagger')],
+  ['anim_death', '擊破', 'beast_tiger', lionClip('tDeath', 2)],
 ]) {
   add({
     id: 'temp/tiger_' + key,
@@ -248,17 +248,17 @@ for (const [key, label, palKey, st] of [
 
 // 暫時：鱷龜型機獸（原創設計；第 2 章的大 Boss）
 for (const [key, label, palKey, st] of [
-  ['stand', '站姿', 'boss', null],
+  ['stand', '站姿', 'beast_turtle', null],
   ['stand_w', '站姿・白色配色', 'white', null],
-  ['anim_idle', '動作：待機', 'boss', { v: 0 }],
-  ['anim_crawl', '動作：爬行', 'boss', { v: 2.2 }],
-  ['anim_turn', '動作：原地轉身', 'boss', { v: 0, w: 0.35, spin: true }],
-  ['anim_hide', '動作：潛伏 → 伸出來', 'boss', lionClip('uHide')],
-  ['anim_snap', '攻擊：瞬間咬合', 'boss', lionClip('uSnap')],
+  ['anim_idle', '動作：待機', 'beast_turtle', { v: 0 }],
+  ['anim_crawl', '動作：爬行', 'beast_turtle', { v: 2.2 }],
+  ['anim_turn', '動作：原地轉身', 'beast_turtle', { v: 0, w: 0.35, spin: true }],
+  ['anim_hide', '動作：潛伏 → 伸出來', 'beast_turtle', lionClip('uHide')],
+  ['anim_snap', '攻擊：瞬間咬合', 'beast_turtle', lionClip('uSnap')],
   [
     'anim_shake',
     '攻擊：咬合 → 咬住甩動',
-    'boss',
+    'beast_turtle',
     (t) => {
       const u = t % 3.6;
       return {
@@ -267,14 +267,14 @@ for (const [key, label, palKey, st] of [
       };
     },
   ],
-  ['anim_spin', '攻擊：縮殼旋轉', 'boss', lionClip('uSpin', 1.2)],
-  ['anim_tail', '攻擊：甩尾', 'boss', lionClip('uTail')],
-  ['anim_stomp', '攻擊：踏地', 'boss', lionClip('uStomp')],
-  ['anim_fire', '攻擊：砲擊（邊爬邊打）', 'boss', lionClip('uFire', 1.2, { v: 2.2 })],
-  ['anim_hit', '受擊', 'boss', lionClip('uHit', 0.8)],
-  ['anim_stagger', '失衡：咬合撲空', 'boss', lionClip('uStagger')],
-  ['anim_flip', '失衡：四腳朝天', 'boss', lionClip('uFlip')],
-  ['anim_death', '擊破', 'boss', lionClip('uDeath', 2)],
+  ['anim_spin', '攻擊：縮殼旋轉', 'beast_turtle', lionClip('uSpin', 1.2)],
+  ['anim_tail', '攻擊：甩尾', 'beast_turtle', lionClip('uTail')],
+  ['anim_stomp', '攻擊：踏地', 'beast_turtle', lionClip('uStomp')],
+  ['anim_fire', '攻擊：砲擊（邊爬邊打）', 'beast_turtle', lionClip('uFire', 1.2, { v: 2.2 })],
+  ['anim_hit', '受擊', 'beast_turtle', lionClip('uHit', 0.8)],
+  ['anim_stagger', '失衡：咬合撲空', 'beast_turtle', lionClip('uStagger')],
+  ['anim_flip', '失衡：四腳朝天', 'beast_turtle', lionClip('uFlip')],
+  ['anim_death', '擊破', 'beast_turtle', lionClip('uDeath', 2)],
 ]) {
   add({
     id: 'temp/turtle_' + key,
@@ -297,25 +297,25 @@ for (const [key, label, palKey, st] of [
 
 // 暫時：熊型機獸（原創設計；第 7 章火山熔爐帶的大 Boss）
 for (const [key, label, palKey, st] of [
-  ['stand', '站姿', 'boss', null],
+  ['stand', '站姿', 'beast_bear', null],
   ['stand_w', '站姿・白色配色', 'white', null],
-  ['anim_idle', '動作：待機', 'boss', { v: 0 }],
-  ['anim_walk', '動作：走', 'boss', { v: 3 }],
-  ['anim_trot', '動作：小跑', 'boss', { v: 8 }],
-  ['anim_turn', '動作：原地轉身', 'boss', { v: 0, w: 0.6, spin: true }],
-  ['anim_stand', '動作：站起 → 落回四足', 'boss', lionClip('bStand')],
-  ['anim_standwalk', '動作：站著走', 'boss', (t) => ({ v: 1.6, act: { name: 'bStandWalk', t } })],
-  ['anim_slam3', '攻擊：掌擊連打', 'boss', lionClip('bSlam3')],
-  ['anim_ground', '攻擊：雙掌拍地', 'boss', lionClip('bGround')],
-  ['anim_hug', '攻擊：熊抱', 'boss', lionClip('bHug')],
-  ['anim_charge', '攻擊：衝撞', 'boss', lionClip('bCharge', 1.2)],
-  ['anim_flame', '攻擊：噴火', 'boss', lionClip('bFlame')],
-  ['anim_lava', '攻擊：丟熔岩塊', 'boss', lionClip('bLava')],
-  ['anim_roar', '咆哮', 'boss', lionClip('bRoar')],
-  ['anim_hit', '受擊', 'boss', lionClip('bHit', 0.8)],
-  ['anim_sit', '失衡：站立時往後坐下', 'boss', lionClip('bSit')],
-  ['anim_kneel', '失衡：四足時前腳跪下', 'boss', lionClip('bKneel')],
-  ['anim_death', '擊破', 'boss', lionClip('bDeath', 2)],
+  ['anim_idle', '動作：待機', 'beast_bear', { v: 0 }],
+  ['anim_walk', '動作：走', 'beast_bear', { v: 3 }],
+  ['anim_trot', '動作：小跑', 'beast_bear', { v: 8 }],
+  ['anim_turn', '動作：原地轉身', 'beast_bear', { v: 0, w: 0.6, spin: true }],
+  ['anim_stand', '動作：站起 → 落回四足', 'beast_bear', lionClip('bStand')],
+  ['anim_standwalk', '動作：站著走', 'beast_bear', (t) => ({ v: 1.6, act: { name: 'bStandWalk', t } })],
+  ['anim_slam3', '攻擊：掌擊連打', 'beast_bear', lionClip('bSlam3')],
+  ['anim_ground', '攻擊：雙掌拍地', 'beast_bear', lionClip('bGround')],
+  ['anim_hug', '攻擊：熊抱', 'beast_bear', lionClip('bHug')],
+  ['anim_charge', '攻擊：衝撞', 'beast_bear', lionClip('bCharge', 1.2)],
+  ['anim_flame', '攻擊：噴火', 'beast_bear', lionClip('bFlame')],
+  ['anim_lava', '攻擊：丟熔岩塊', 'beast_bear', lionClip('bLava')],
+  ['anim_roar', '咆哮', 'beast_bear', lionClip('bRoar')],
+  ['anim_hit', '受擊', 'beast_bear', lionClip('bHit', 0.8)],
+  ['anim_sit', '失衡：站立時往後坐下', 'beast_bear', lionClip('bSit')],
+  ['anim_kneel', '失衡：四足時前腳跪下', 'beast_bear', lionClip('bKneel')],
+  ['anim_death', '擊破', 'beast_bear', lionClip('bDeath', 2)],
 ]) {
   add({
     id: 'temp/bear_' + key,
@@ -338,28 +338,40 @@ for (const [key, label, palKey, st] of [
 
 // 暫時：猩猩型機獸（原創設計；第 4 章 Lattice-9／舊宇宙港的大 Boss）
 for (const [key, label, palKey, pose, st] of [
-  ['stand', '站姿（指節著地）', 'boss', null, null],
+  ['stand', '站姿（指節著地）', 'beast_gorilla', null, null],
   ['stand_w', '站姿・白色配色', 'white', null, null],
-  ['open', '張嘴、轉頭（檢查關節）', 'boss', { jaw: [-30, 0, 0], neck: [4, 14, 0], head: [8, 12, 0] }, null],
-  ['anim_idle', '動作：待機', 'boss', null, { v: 0 }],
-  ['anim_walk', '動作：指節步行', 'boss', null, { v: 3.5 }],
-  ['anim_trot', '動作：快走', 'boss', null, { v: 7.5 }],
-  ['anim_run', '動作：躍進奔跑', 'boss', null, { v: 16 }],
-  ['anim_turn', '動作：原地轉身', 'boss', null, { v: 0, w: 0.7, spin: true }],
-  ['anim_stand', '動作：站起 → 落回', 'boss', null, lionClip('gStand')],
-  ['anim_standwalk', '動作：站著走', 'boss', null, (t) => ({ v: 1.8, act: { name: 'gStandWalk', t } })],
-  ['anim_jump', '動作：跳上高處', 'boss', null, lionClip('gJump', 1.2)],
-  ['anim_swing', '動作：鉤索擺盪', 'boss', null, lionClip('gSwing', 1.2)],
-  ['anim_drum', '搥胸（威嚇）', 'boss', null, lionClip('gDrum')],
-  ['anim_slam', '攻擊：雙拳搥地', 'boss', null, lionClip('gSlam')],
-  ['anim_leap', '攻擊：噴射跳躍搥地', 'boss', null, lionClip('gLeap', 1.2)],
-  ['anim_sweep', '攻擊：長臂橫掃', 'boss', null, lionClip('gSweepL')],
-  ['anim_throw', '攻擊：投擲', 'boss', null, lionClip('gThrow')],
-  ['anim_hook', '攻擊：鉤索拉扯', 'boss', null, lionClip('gHook')],
-  ['anim_hit', '受擊', 'boss', null, lionClip('gHit', 0.8)],
-  ['anim_kneel', '失衡：指節著地時趴下', 'boss', null, lionClip('gKneel')],
-  ['anim_sit', '失衡：站立時往後坐下', 'boss', null, lionClip('gSit')],
-  ['anim_death', '擊破', 'boss', null, lionClip('gDeath', 2)],
+  [
+    'open',
+    '張嘴、轉頭（檢查關節）',
+    'beast_gorilla',
+    { jaw: [-30, 0, 0], neck: [4, 14, 0], head: [8, 12, 0] },
+    null,
+  ],
+  ['anim_idle', '動作：待機', 'beast_gorilla', null, { v: 0 }],
+  ['anim_walk', '動作：指節步行', 'beast_gorilla', null, { v: 3.5 }],
+  ['anim_trot', '動作：快走', 'beast_gorilla', null, { v: 7.5 }],
+  ['anim_run', '動作：躍進奔跑', 'beast_gorilla', null, { v: 16 }],
+  ['anim_turn', '動作：原地轉身', 'beast_gorilla', null, { v: 0, w: 0.7, spin: true }],
+  ['anim_stand', '動作：站起 → 落回', 'beast_gorilla', null, lionClip('gStand')],
+  [
+    'anim_standwalk',
+    '動作：站著走',
+    'beast_gorilla',
+    null,
+    (t) => ({ v: 1.8, act: { name: 'gStandWalk', t } }),
+  ],
+  ['anim_jump', '動作：跳上高處', 'beast_gorilla', null, lionClip('gJump', 1.2)],
+  ['anim_swing', '動作：鉤索擺盪', 'beast_gorilla', null, lionClip('gSwing', 1.2)],
+  ['anim_drum', '搥胸（威嚇）', 'beast_gorilla', null, lionClip('gDrum')],
+  ['anim_slam', '攻擊：雙拳搥地', 'beast_gorilla', null, lionClip('gSlam')],
+  ['anim_leap', '攻擊：噴射跳躍搥地', 'beast_gorilla', null, lionClip('gLeap', 1.2)],
+  ['anim_sweep', '攻擊：長臂橫掃', 'beast_gorilla', null, lionClip('gSweepL')],
+  ['anim_throw', '攻擊：投擲', 'beast_gorilla', null, lionClip('gThrow')],
+  ['anim_hook', '攻擊：鉤索拉扯', 'beast_gorilla', null, lionClip('gHook')],
+  ['anim_hit', '受擊', 'beast_gorilla', null, lionClip('gHit', 0.8)],
+  ['anim_kneel', '失衡：指節著地時趴下', 'beast_gorilla', null, lionClip('gKneel')],
+  ['anim_sit', '失衡：站立時往後坐下', 'beast_gorilla', null, lionClip('gSit')],
+  ['anim_death', '擊破', 'beast_gorilla', null, lionClip('gDeath', 2)],
 ]) {
   add({
     id: 'temp/gorilla_' + key,
@@ -382,12 +394,12 @@ for (const [key, label, palKey, pose, st] of [
 
 // 暫時：蠍型機獸（原創設計；第 1 章荒野／沙丘／礦坑的大 Boss）
 for (const [key, label, palKey, pose, st] of [
-  ['stand', '站姿', 'boss', null, null],
+  ['stand', '站姿', 'beast_scorpion', null, null],
   ['stand_w', '站姿・白色配色', 'white', null, null],
   [
     'open',
     '張螯、尾前刺（檢查關節）',
-    'boss',
+    'beast_scorpion',
     {
       cl_finger: [0, 28, 0],
       cr_finger: [0, -28, 0],
@@ -402,23 +414,23 @@ for (const [key, label, palKey, pose, st] of [
     },
     null,
   ],
-  ['anim_idle', '動作：待機', 'boss', null, { v: 0 }],
-  ['anim_walk', '動作：走', 'boss', null, { v: 4 }],
-  ['anim_run', '動作：疾走', 'boss', null, { v: 13 }],
-  ['anim_back', '動作：後退', 'boss', null, { v: -3 }],
-  ['anim_turn', '動作：原地轉身', 'boss', null, { v: 0, w: 0.8, spin: true }],
-  ['anim_threat', '威嚇', 'boss', null, lionClip('sThreat')],
-  ['anim_sting', '攻擊：尾刺', 'boss', null, lionClip('sSting')],
-  ['anim_tailsweep', '攻擊：尾橫掃', 'boss', null, lionClip('sTailSweep')],
-  ['anim_pinch', '攻擊：單螯夾擊', 'boss', null, lionClip('sPinchL')],
-  ['anim_grab', '攻擊：雙螯鉗制接尾刺', 'boss', null, lionClip('sGrab')],
-  ['anim_cutter', '攻擊：電漿切割', 'boss', null, lionClip('sCutter')],
-  ['anim_venom', '攻擊：毒液噴射', 'boss', null, lionClip('sVenom')],
-  ['anim_burrow', '動作：鑽進沙裡', 'boss', null, lionClip('sBurrow', 1.2)],
-  ['anim_emerge', '攻擊：從地下鑽出', 'boss', null, lionClip('sEmerge', 1.2)],
-  ['anim_hit', '受擊', 'boss', null, lionClip('sHit', 0.8)],
-  ['anim_stagger', '失衡', 'boss', null, lionClip('sStagger')],
-  ['anim_death', '擊破', 'boss', null, lionClip('sDeath', 2)],
+  ['anim_idle', '動作：待機', 'beast_scorpion', null, { v: 0 }],
+  ['anim_walk', '動作：走', 'beast_scorpion', null, { v: 4 }],
+  ['anim_run', '動作：疾走', 'beast_scorpion', null, { v: 13 }],
+  ['anim_back', '動作：後退', 'beast_scorpion', null, { v: -3 }],
+  ['anim_turn', '動作：原地轉身', 'beast_scorpion', null, { v: 0, w: 0.8, spin: true }],
+  ['anim_threat', '威嚇', 'beast_scorpion', null, lionClip('sThreat')],
+  ['anim_sting', '攻擊：尾刺', 'beast_scorpion', null, lionClip('sSting')],
+  ['anim_tailsweep', '攻擊：尾橫掃', 'beast_scorpion', null, lionClip('sTailSweep')],
+  ['anim_pinch', '攻擊：單螯夾擊', 'beast_scorpion', null, lionClip('sPinchL')],
+  ['anim_grab', '攻擊：雙螯鉗制接尾刺', 'beast_scorpion', null, lionClip('sGrab')],
+  ['anim_cutter', '攻擊：電漿切割', 'beast_scorpion', null, lionClip('sCutter')],
+  ['anim_venom', '攻擊：毒液噴射', 'beast_scorpion', null, lionClip('sVenom')],
+  ['anim_burrow', '動作：鑽進沙裡', 'beast_scorpion', null, lionClip('sBurrow', 1.2)],
+  ['anim_emerge', '攻擊：從地下鑽出', 'beast_scorpion', null, lionClip('sEmerge', 1.2)],
+  ['anim_hit', '受擊', 'beast_scorpion', null, lionClip('sHit', 0.8)],
+  ['anim_stagger', '失衡', 'beast_scorpion', null, lionClip('sStagger')],
+  ['anim_death', '擊破', 'beast_scorpion', null, lionClip('sDeath', 2)],
 ]) {
   add({
     id: 'temp/scorpion_' + key,
@@ -441,12 +453,12 @@ for (const [key, label, palKey, pose, st] of [
 
 // 暫時：螳螂型機獸（原創設計；第 6 章高空軌道的大 Boss）
 for (const [key, label, palKey, pose, st] of [
-  ['stand', '站姿（鐮刀收在胸前）', 'boss', null, null],
+  ['stand', '站姿（鐮刀收在胸前）', 'beast_mantis', null, null],
   ['stand_w', '站姿・白色配色', 'white', null, null],
   [
     'open',
     '張鐮、展翅、轉頭（檢查關節）',
-    'boss',
+    'beast_mantis',
     {
       sl_coxa: [45, 0, 0],
       sl_femur: [-60, 0, 0],
@@ -462,20 +474,20 @@ for (const [key, label, palKey, pose, st] of [
     },
     null,
   ],
-  ['anim_idle', '動作：待機（前後搖晃、轉頭）', 'boss', null, { v: 0 }],
-  ['anim_walk', '動作：走', 'boss', null, { v: 4 }],
-  ['anim_run', '動作：快跑', 'boss', null, { v: 12 }],
-  ['anim_turn', '動作：原地轉身', 'boss', null, { v: 0, w: 0.8, spin: true }],
-  ['anim_threat', '威嚇（展翅）', 'boss', null, lionClip('mThreat')],
-  ['anim_slash', '攻擊：單鐮斬', 'boss', null, lionClip('mSlashL')],
-  ['anim_cross', '攻擊：雙鐮交叉斬', 'boss', null, lionClip('mCross')],
-  ['anim_grab', '攻擊：捕捉', 'boss', null, lionClip('mGrab')],
-  ['anim_wave', '攻擊：斬擊波', 'boss', null, lionClip('mWave')],
-  ['anim_hover', '動作：升空懸停', 'boss', null, lionClip('mHover')],
-  ['anim_dive', '攻擊：俯衝斬', 'boss', null, lionClip('mDive', 1.2)],
-  ['anim_hit', '受擊', 'boss', null, lionClip('mHit', 0.8)],
-  ['anim_stagger', '失衡', 'boss', null, lionClip('mStagger')],
-  ['anim_death', '擊破', 'boss', null, lionClip('mDeath', 2)],
+  ['anim_idle', '動作：待機（前後搖晃、轉頭）', 'beast_mantis', null, { v: 0 }],
+  ['anim_walk', '動作：走', 'beast_mantis', null, { v: 4 }],
+  ['anim_run', '動作：快跑', 'beast_mantis', null, { v: 12 }],
+  ['anim_turn', '動作：原地轉身', 'beast_mantis', null, { v: 0, w: 0.8, spin: true }],
+  ['anim_threat', '威嚇（展翅）', 'beast_mantis', null, lionClip('mThreat')],
+  ['anim_slash', '攻擊：單鐮斬', 'beast_mantis', null, lionClip('mSlashL')],
+  ['anim_cross', '攻擊：雙鐮交叉斬', 'beast_mantis', null, lionClip('mCross')],
+  ['anim_grab', '攻擊：捕捉', 'beast_mantis', null, lionClip('mGrab')],
+  ['anim_wave', '攻擊：斬擊波', 'beast_mantis', null, lionClip('mWave')],
+  ['anim_hover', '動作：升空懸停', 'beast_mantis', null, lionClip('mHover')],
+  ['anim_dive', '攻擊：俯衝斬', 'beast_mantis', null, lionClip('mDive', 1.2)],
+  ['anim_hit', '受擊', 'beast_mantis', null, lionClip('mHit', 0.8)],
+  ['anim_stagger', '失衡', 'beast_mantis', null, lionClip('mStagger')],
+  ['anim_death', '擊破', 'beast_mantis', null, lionClip('mDeath', 2)],
 ]) {
   add({
     id: 'temp/mantis_' + key,
@@ -506,13 +518,13 @@ const RAPTOR_FOLD = {
   wr_hand: [0, -158, 0],
 };
 for (const [key, label, palKey, pose, st] of [
-  ['spread', '展翼（模型的原始姿勢）', 'boss', null, null],
+  ['spread', '展翼（模型的原始姿勢）', 'beast_raptor', null, null],
   ['spread_w', '展翼・白色配色', 'white', null, null],
-  ['perch', '收翼站姿', 'boss', RAPTOR_FOLD, null],
+  ['perch', '收翼站姿', 'beast_raptor', RAPTOR_FOLD, null],
   [
     'open',
     '張喙、抓握、轉頭（檢查關節）',
-    'boss',
+    'beast_raptor',
     {
       jaw: [-28, 0, 0],
       head: [0, 30, 0],
@@ -524,22 +536,22 @@ for (const [key, label, palKey, pose, st] of [
     },
     null,
   ],
-  ['anim_idle', '動作：待機（收翼、轉頭）', 'boss', null, { v: 0 }],
-  ['anim_walk', '動作：走', 'boss', null, { v: 2.2 }],
-  ['anim_turn', '動作：原地轉身', 'boss', null, { v: 0, w: 0.8, spin: true }],
-  ['anim_fly', '動作：飛行（拍翼）', 'boss', null, { fly: true, alt: 7 }],
-  ['anim_takeoff', '動作：起飛', 'boss', null, lionClip('rTakeoff', 1.2)],
-  ['anim_land', '動作：降落', 'boss', null, lionClip('rLand', 1.2)],
-  ['anim_screech', '鳴叫（威嚇）', 'boss', null, lionClip('rScreech')],
-  ['anim_peck', '攻擊：啄擊', 'boss', null, lionClip('rPeck')],
-  ['anim_wingslash', '攻擊：翼刃斬', 'boss', null, lionClip('rWingSlashL')],
-  ['anim_kick', '攻擊：爪踢', 'boss', null, lionClip('rKick')],
-  ['anim_gust', '攻擊：振翅強風', 'boss', null, lionClip('rGust')],
-  ['anim_feather', '攻擊：羽刃齊射', 'boss', null, lionClip('rFeather')],
-  ['anim_dive', '攻擊：俯衝爪擊（飛行中）', 'boss', null, lionClip('rDive', 1.2, { alt: 8 })],
-  ['anim_hit', '受擊', 'boss', null, lionClip('rHit', 0.8)],
-  ['anim_stagger', '失衡', 'boss', null, lionClip('rStagger')],
-  ['anim_death', '擊破', 'boss', null, lionClip('rDeath', 2)],
+  ['anim_idle', '動作：待機（收翼、轉頭）', 'beast_raptor', null, { v: 0 }],
+  ['anim_walk', '動作：走', 'beast_raptor', null, { v: 2.2 }],
+  ['anim_turn', '動作：原地轉身', 'beast_raptor', null, { v: 0, w: 0.8, spin: true }],
+  ['anim_fly', '動作：飛行（拍翼）', 'beast_raptor', null, { fly: true, alt: 7 }],
+  ['anim_takeoff', '動作：起飛', 'beast_raptor', null, lionClip('rTakeoff', 1.2)],
+  ['anim_land', '動作：降落', 'beast_raptor', null, lionClip('rLand', 1.2)],
+  ['anim_screech', '鳴叫（威嚇）', 'beast_raptor', null, lionClip('rScreech')],
+  ['anim_peck', '攻擊：啄擊', 'beast_raptor', null, lionClip('rPeck')],
+  ['anim_wingslash', '攻擊：翼刃斬', 'beast_raptor', null, lionClip('rWingSlashL')],
+  ['anim_kick', '攻擊：爪踢', 'beast_raptor', null, lionClip('rKick')],
+  ['anim_gust', '攻擊：振翅強風', 'beast_raptor', null, lionClip('rGust')],
+  ['anim_feather', '攻擊：羽刃齊射', 'beast_raptor', null, lionClip('rFeather')],
+  ['anim_dive', '攻擊：俯衝爪擊（飛行中）', 'beast_raptor', null, lionClip('rDive', 1.2, { alt: 8 })],
+  ['anim_hit', '受擊', 'beast_raptor', null, lionClip('rHit', 0.8)],
+  ['anim_stagger', '失衡', 'beast_raptor', null, lionClip('rStagger')],
+  ['anim_death', '擊破', 'beast_raptor', null, lionClip('rDeath', 2)],
 ]) {
   add({
     id: 'temp/raptor_' + key,
@@ -608,7 +620,7 @@ for (const [key, label, st] of [
     cat: 'temp',
     name: '獅型機獸・動作：' + label,
     note: '暫時：動作預覽（關掉「旋轉」比較好看；側面看步伐、斜前方看攻擊）',
-    pal: 'boss',
+    pal: 'beast_lion',
     spec: 'mech-boss',
     noGlb: true,
     build: (k) => {
@@ -1386,36 +1398,5 @@ addPlain('small', 'proj_shell', '砲彈／榴彈', '發光彈體' + PROJ_NOTE, (
   measureFx: true,
   origin: '彈體中心',
 });
-
-// ---------- 暫時：機獸的配色提案（docs/beast-design.md 的「配色」）----------
-// 編號＝基礎色（十位：1 黑、2 深灰、3 淺灰、4 白）＋點綴色（個位：1 紅、2 黃、3 藍、4 橘、5 青、6 紫、7 青綠、8 金）
-// 每隻機獸：四種基礎色 × Claude 建議給牠的點綴色；獅型另外用深灰看全部八種點綴色
-const BEAST_PAL_LIST = [
-  ['scorpion', '蠍型', buildScorpion, 2],
-  ['turtle', '鱷龜型', buildTurtle, 7],
-  ['tiger', '劍齒虎型', buildTiger, 5],
-  ['gorilla', '猩猩型', buildGorilla, 4],
-  ['raptor', '猛禽型', buildRaptor, 3],
-  ['mantis', '螳螂型', buildMantis, 6],
-  ['bear', '熊型', buildBear, 1],
-  ['lion', '獅型', buildLion, 8],
-];
-for (const [key, label, fn, acc] of BEAST_PAL_LIST) {
-  const nums = [10 + acc, 20 + acc, 30 + acc, 40 + acc];
-  if (key === 'lion') for (let a = 1; a <= 7; a++) nums.push(20 + a);
-  for (const n of nums)
-    add({
-      id: `temp/pal_${key}_${n}`,
-      cat: 'temp',
-      name: `配色 ${n}：${label}（${BEAST_BASES[Math.floor(n / 10)].name}＋${BEAST_ACCENTS[n % 10].name}）`,
-      note: `暫時：機獸的配色提案 ${n}＝基礎色「${BEAST_BASES[Math.floor(n / 10)].name}」＋點綴色「${BEAST_ACCENTS[n % 10].name}」（敵對 AC ${BEAST_ACCENTS[n % 10].from} 的顏色）`,
-      spec: 'mech-boss',
-      noGlb: true,
-      build: () => {
-        const rig = fn(beastPal(n), 1);
-        return { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
-      },
-    });
-}
 
 export const MODEL_CATALOG = entries;
