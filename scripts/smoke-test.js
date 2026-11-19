@@ -1171,6 +1171,13 @@ async function testBeast(browser, key) {
     const home = () => p.pos.set(0, 0, 25);
     home();
     const out = { keys: g.beastKeys() };
+    // 專屬的聲音：記下這一段測試裡播過的鍵
+    const snd = (out.snd = {});
+    const play0 = window.__sfx.play;
+    window.__sfx.play = function (k, ...a) {
+      snd[k] = (snd[k] || 0) + 1;
+      return play0.call(this, k, ...a);
+    };
     const D = g.beastDefBy(key);
     const b = g.beastSpawn(key, 1, D.tier);
     const B = b.beastInfo(),
@@ -1333,6 +1340,108 @@ async function testBeast(browser, key) {
         .flat()
         .every((n) => b.model.beast.nodes[n].visible),
     };
+    // 彈刀：紅色「!」之後按了近戰＝這一下不受傷；一般的招式被彈開會踉蹌、露出破綻，整隻撞過來的不會停
+    out.parry = [];
+    for (const k in B.melee) {
+      const M = B.melee[k];
+      const heavy = M.ram !== undefined || !!M.leap;
+      if (out.parry.some((q) => q.heavy === heavy)) continue; // 兩種各測一招
+      home();
+      put(40);
+      p.pos.set(0, 0, 400);
+      heal();
+      window.__pump(0.05);
+      home();
+      put(40);
+      p.pos.set(0, 0, 400);
+      setAir(!!M.air);
+      S.flinch = 0;
+      b.beastMelee(k, p);
+      window.__pump(M.t + 2, () => S.clipT >= M.t - 0.15);
+      const c = S.spot || b.beastSpot(M);
+      p.pos.set(c.x, 0, c.z);
+      heal();
+      const cue = b.cueingNow();
+      p.cueArmSet('p'); // 玩家在提示中按了近戰
+      const hp0 = p.hp;
+      const log = [];
+      let mhit = 0; // 機獸的近戰打到的次數（場上其他的傷害：飛行中的彈藥、雜兵，不算）
+      const td0 = p.takeDamage;
+      p.takeDamage = function (dmg, imp, from, at, dir, melee, wid, attr) {
+        log.push(
+          `${Math.round(dmg)} 來自 ${from ? from.name || from.ai : '無'}${from === b ? '(本體)' : ''} ${wid || ''} ${attr || ''} 片段 ${S.clip} ${(S.clipT || 0).toFixed(2)}`,
+        );
+        if (from === b && attr === 'kin' && !wid) mhit++;
+        return td0.call(this, dmg, imp, from, at, dir, melee, wid, attr);
+      };
+      let flinch = 0;
+      window.__pump(0.6, () => {
+        flinch = Math.max(flinch, S.flinch || 0);
+        return false;
+      });
+      delete p.takeDamage;
+      out.parry.push({
+        k,
+        heavy,
+        cue,
+        log: log.join('；'),
+        dmg: mhit,
+        hp: Math.round(hp0 - p.hp),
+        flinch,
+        stag: S.clip === (B.stag || 'stagger'),
+      });
+      S.flinch = 0;
+      p.parryT = 0;
+      window.__pump(2.6);
+    }
+    // 腳貼斜坡：站在側向與前後的斜坡上——四足與兩足的每隻腳離地面的高度要一致，節肢的整隻順著坡面傾斜
+    {
+      const rig = b.model.beast,
+        kind = rig.kind;
+      const feet =
+        kind === 'raptor'
+          ? ['l_foot', 'r_foot']
+          : kind === 'scorpion' || kind === 'mantis'
+            ? []
+            : ['fl_paw', 'fr_paw', 'bl_paw', 'br_paw'];
+      const slope = 0.22;
+      const run = (th, flat) => {
+        g.world.terrainHeight = th;
+        g.beastFlat = flat;
+        home();
+        put(40);
+        setAir(false);
+        b.yaw = 0.4;
+        b.pos.y = g.world.groundAt(b.pos.x, b.pos.z, 99);
+        b.bossVis = 0;
+        for (let i = 0; i < 150; i++) b.beastFx(1 / 60);
+        b.mesh.updateMatrixWorld(true);
+        const hs = feet.map((n) => {
+          const w = rig.nodes[n].getWorldPosition(new V());
+          return w.y - g.world.groundAt(w.x, w.z, w.y + 9);
+        });
+        return {
+          spread: hs.length ? Math.max(...hs) - Math.min(...hs) : 0,
+          rx: b.mesh.rotation.x,
+          rz: b.mesh.rotation.z,
+          bad: hs.some((h) => !Number.isFinite(h)),
+        };
+      };
+      out.slope = {
+        kind,
+        feet: feet.length,
+        side: run((x) => slope * x, false),
+        sideOff: run((x) => slope * x, true),
+        fwd: run((x, z) => slope * z, false),
+        want: Math.atan(slope),
+      };
+      g.beastFlat = false;
+      g.world.terrainHeight = () => 0;
+      home();
+      put(40);
+      for (let i = 0; i < 60; i++) b.beastFx(1 / 60);
+      out.slope.flatBack = Math.abs(b.mesh.rotation.x) + Math.abs(b.mesh.rotation.z);
+    }
     // 命中的形狀：沿著身體的幾顆球——頭在碰撞半徑之外也打得到
     const HB = b.hitBalls();
     out.balls = {
@@ -1400,6 +1509,49 @@ async function testBeast(browser, key) {
     r.balls.n >= 4 && r.balls.dHead > r.balls.radius * 0.6 && !r.balls.bad && !r.nan,
     `命中的形狀：${r.balls.n} 顆球（頭離中心 ${r.balls.dHead.toFixed(1)} m、碰撞半徑 ${r.balls.radius.toFixed(1)} m），數值都有效`,
   );
+  for (const q of r.parry) {
+    check(
+      q.cue && q.dmg === 0,
+      `彈刀「${q.k}」：紅色「!」之後按近戰，這一下打不到（近戰命中 ${q.dmg} 次）` +
+        (q.cue && !q.dmg ? '' : ` — 提示 ${q.cue}；${q.log}`),
+    );
+    if (q.heavy) check(!(q.flinch > 0), `彈刀「${q.k}」：整隻撞過來的彈得開、但牠不會停`);
+    else check(q.flinch > 0 && q.stag, `彈刀「${q.k}」：被彈開後踉蹌（${q.flinch.toFixed(2)} 秒）`);
+  }
+  check(
+    r.parry.some((q) => !q.heavy),
+    '有可以彈開並打斷的近戰招式',
+  );
+  {
+    const L = r.slope;
+    if (L.feet) {
+      check(
+        !L.side.bad && L.side.spread < 0.7 && L.sideOff.spread > L.side.spread + 0.4,
+        `側向的斜坡：${L.feet} 隻腳離地面的高度一致（相差 ${L.side.spread.toFixed(2)} m；沒有貼合時 ${L.sideOff.spread.toFixed(2)} m）`,
+      );
+      check(
+        !L.fwd.bad && L.fwd.spread < 0.7,
+        `前後的斜坡：每隻腳都貼著地面（相差 ${L.fwd.spread.toFixed(2)} m）`,
+      );
+    } else {
+      const rollOk = Math.abs(Math.abs(L.side.rz) - L.want * Math.cos(0.4)) < 0.08,
+        pitchOk = Math.abs(Math.abs(L.fwd.rx) - L.want * Math.cos(0.4)) < 0.08;
+      check(
+        rollOk && pitchOk && Math.abs(L.sideOff.rz) < 0.01,
+        `斜坡：整隻順著坡面傾斜（側傾 ${L.side.rz.toFixed(2)}、俯仰 ${L.fwd.rx.toFixed(2)}，坡度 ${L.want.toFixed(2)}）`,
+      );
+      check(L.flatBack < 0.03, `回到平地：身體回到水平（${L.flatBack.toFixed(3)}）`);
+    }
+  }
+  {
+    const VO = { lion: '~roarL', tiger: '~roarL', bear: '~roarH', gorilla: '~roarH', turtle: '~rumble' };
+    const vk = VO[key] || (key === 'raptor' ? '~screech' : '~chitter');
+    check(r.snd[vk] >= 2, `專屬的吼聲 ${vk}（登場、換型態、失衡：${r.snd[vk] || 0} 次）`);
+    check(r.snd['~growl'] > 0, `出招前的低吼（${r.snd['~growl'] || 0} 次）`);
+    const strike = ['~claw', '~thC', '~tink3', '~zapC'].filter((k) => r.snd[k]);
+    check(strike.length >= 2, `出手的聲音依招式不同（${strike.join('、')}）`);
+    check(r.snd['~bstep'] > 0, `腳步聲（${r.snd['~bstep'] || 0} 次）`);
+  }
   check(r.die.dead && r.die.vis && r.die.ci === r.die.want, '擊破：先播擊破的片段（模型還在）');
   check(!r.gone.vis, '擊破：片段播完後碎裂');
   await thawLoop(page);

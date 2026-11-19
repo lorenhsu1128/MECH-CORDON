@@ -25,6 +25,7 @@ import './entities/mech-boss.js';
 import './entities/mech-boss2.js';
 import './entities/mech-boss4.js'; // 主線擴充的新 Boss（第 7、8 章）
 import './entities/mech-beast.js'; // 機獸（每章最後的大 Boss）
+import './entities/mech-beast-fx.js'; // 機獸的地形貼合、專屬音效與特效
 import './entities/mech-boss3.js';
 import './entities/mech-boss-tier.js'; // Boss 改版：刁鑽度、失衡遞增、破綻、打斷大招、破甲彈（docs/boss-design.md）
 import './game/map-extras.js';

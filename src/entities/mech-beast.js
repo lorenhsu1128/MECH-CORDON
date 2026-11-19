@@ -13,6 +13,8 @@ import { MechEntity } from './mech-entity.js';
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const yawTo = (from, to) => Math.atan2(-(to.x - from.x), -(to.z - from.z));
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
+const PARRY_FLINCH = 0.9, // 被彈刀：踉蹌的秒數
+  PARRY_OPEN = 1.8; // 之後破綻的秒數
 const LIVE_WARN = 0.32; // live 的近戰招式：出手前幾秒畫地面的預警
 
 Object.assign(MechEntity.prototype, {
@@ -172,13 +174,21 @@ Object.assign(MechEntity.prototype, {
         )
       : s.spot || this.beastSpot(M); // 預警畫在哪裡就打哪裡
     const R = ram ? this.radius : M.R * k;
-    let hit = false;
+    let hit = false,
+      parried = false;
     for (const t of g.hostilesOfEnt(this)) {
       if (!t || t.dead || !t.pos || hs.has(t) || t.pos.y - c.y > M.high * k) continue;
       const dx = t.pos.x - c.x,
         dz = t.pos.z - c.z;
       if (Math.hypot(dx, dz) > R + (t.radius || 0) * 0.6) continue;
       hs.add(t);
+      // 彈刀（docs/melee-combo-design.md）：玩家在紅色「!」之後按了近戰、或自己的近戰正對著打過來＝這一下彈開、不受傷。
+      // 一般的招式被彈開就中斷、踉蹌一下露出破綻；整隻撞過來的（衝撞、撲擊、鑽出）彈得開但牠不會停
+      if (t.meleeClash && t.melee && t.meleeClash(this)) {
+        this.hitStunT = 0; // meleeClash 給的硬直由機獸自己的踉蹌處理（機獸不經過 move()，不會倒數）
+        if (!ram && M.ram === undefined && !M.leap) parried = true;
+        continue;
+      }
       const dir = V(t.pos.x - this.pos.x, 0, t.pos.z - this.pos.z);
       if (dir.lengthSq() < 1e-4) dir.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
       dir.normalize();
@@ -192,10 +202,13 @@ Object.assign(MechEntity.prototype, {
       }
       hit = true;
     }
-    if (ram && !hit) return;
-    g.fx.dust && g.fx.dust(c, M.R * k * 0.5);
-    g.camShake = Math.max(g.camShake || 0, hit ? 0.35 : 0.15);
-    SFX.play('heavy', hit ? 0.8 : 0.5, 0.8, 0.05, 0.05, c);
+    if (parried) {
+      s.flinch = PARRY_FLINCH;
+      s.hitDone = true;
+      s.hitN = 99; // 連打剩下的幾下不打了
+      this.bossOpen(PARRY_OPEN, true);
+    }
+    // 出手的特效與聲音在 beastLocalFx（mech-beast-fx.js：房主與客機各自算）
   },
   // ---------- 三把武器（房主）----------
   // 磁軌砲的砲口（世界座標）
@@ -508,8 +521,6 @@ Object.assign(MechEntity.prototype, {
         s.leap = null;
         s.clip = null;
         s.bCd = L.M ? 1.2 : 0.5;
-        this.game.fx.dust && this.game.fx.dust(this.pos.clone(), this.radius);
-        this.game.camShake = Math.max(this.game.camShake || 0, 0.2);
       }
       this.bossVis = ((this.bossVis || 0) & ~31) | (s.clip ? B.clips.indexOf(s.clip) + 1 : 0);
       this.bossTick(dt);
@@ -522,8 +533,10 @@ Object.assign(MechEntity.prototype, {
       turn = 0,
       fwdStep = 0,
       sideStep = 0;
-    if (!this.canAct()) {
-      // 失衡：站不穩（片段播完停在最後的姿勢）
+    if (this.hitStunT > 0) this.hitStunT = 0; // 機獸不吃一般的硬直（不經過 move()，不會倒數）
+    if (s.flinch > 0) s.flinch -= dt;
+    if (!this.canAct() || s.flinch > 0) {
+      // 失衡、被彈刀：站不穩（片段播完停在最後的姿勢）
       if (s.clip !== SG) this.beastClip(SG);
       s.clipT += dt;
     } else if (s.clip === SG) {
@@ -547,8 +560,11 @@ Object.assign(MechEntity.prototype, {
         // 連打（hits＝每一下的時間）：每一下出手前才畫預警、各自判定
         const n = s.hitN || 0;
         if (n < M.hits.length) {
-          if (!s.warned && s.clipT >= M.hits[n] - LIVE_WARN)
+          if (!s.warned && s.clipT >= M.hits[n] - LIVE_WARN) {
             this.beastWarn(M, Math.max(0.05, M.hits[n] - s.clipT));
+            // 第 2 下之後各自的紅色「!」（每一下都能彈刀／完美迴避）
+            if (n > 0 && pl && !pl.dead) this.atkCue(pl, Math.max(0.05, M.hits[n] - s.clipT), 0.3);
+          }
           if (s.clipT >= M.hits[n]) {
             s.hitSet = null;
             this.beastStrike(M);
@@ -744,9 +760,12 @@ Object.assign(MechEntity.prototype, {
         const off = this.tierFlag(f);
         for (const k of B.hide[f]) if (rig.nodes[k]) rig.nodes[k].visible = !off;
       }
+    const air = !!((this.bossVis || 0) & 32);
+    const gy = this.beastTerrain(dt, F, rig, sc, air); // 腳貼著斜坡（mech-beast-fx.js）
     animateBeast(
       rig,
       {
+        gy,
         t: F.t,
         v: name ? 0 : F.v / sc,
         w: name ? 0 : F.w,
@@ -765,7 +784,8 @@ Object.assign(MechEntity.prototype, {
       if (yn) yn.rotation.y += ((on ? this.bx[0] : 0) - yn.rotation.y) * kk;
       if (pn) pn.rotation.x += ((on ? this.bx[1] : 0) - pn.rotation.x) * kk;
     }
-    this.mesh.position.y = this.pos.y + (rig.rootY || 0) * sc;
+    this.mesh.position.y = this.pos.y + (rig.rootY || 0) * sc + (F.dy || 0);
     this.mesh.rotation.y = this.yaw + (rig.rootYaw || 0);
+    this.beastLocalFx(dt, F, name, rig, sc, B); // 專屬的音效與特效（mech-beast-fx.js）
   },
 });

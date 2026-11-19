@@ -172,7 +172,7 @@ export const BEAST_DEFS = [
     stag: 'tStagger',
     death: 'tDeath',
     radius: 1.2,
-    hpMul: 3.0,
+    hpMul: 8.1, // 擊破時間的校正（scripts/beast-field.js：第 1 章 120 秒、每章多 10 秒）
     stabMul: 4.5,
     dmgMul: 0.5,
     wantDist: 5,
@@ -297,7 +297,7 @@ export const BEAST_DEFS = [
     stag: 'bKneel',
     death: 'bDeath',
     radius: 1.45,
-    hpMul: 3.8,
+    hpMul: 3.5, // 擊破時間的校正（scripts/beast-field.js：第 1 章 120 秒、每章多 10 秒）
     stabMul: 6,
     dmgMul: 0.55,
     wantDist: 5,
@@ -415,7 +415,7 @@ export const BEAST_DEFS = [
     stag: 'uFlip',
     death: 'uDeath',
     radius: 1.5,
-    hpMul: 3.6,
+    hpMul: 11.5, // 擊破時間的校正（scripts/beast-field.js：第 1 章 120 秒、每章多 10 秒）
     stabMul: 6,
     dmgMul: 0.5,
     wantDist: 5,
@@ -550,7 +550,7 @@ export const BEAST_DEFS = [
     death: 'gDeath',
     jump: 'gJump',
     radius: 1.45,
-    hpMul: 3.4,
+    hpMul: 7.5, // 擊破時間的校正（scripts/beast-field.js：第 1 章 120 秒、每章多 10 秒）
     stabMul: 5,
     dmgMul: 0.52,
     wantDist: 5,
@@ -668,7 +668,7 @@ export const BEAST_DEFS = [
     jump: 'sEmerge', // 被擋住時鑽地過去
     leapH: 0,
     radius: 1.5,
-    hpMul: 3.0,
+    hpMul: 14.5, // 擊破時間的校正（scripts/beast-field.js：第 1 章 120 秒、每章多 10 秒）
     stabMul: 4.5,
     dmgMul: 0.5,
     wantDist: 5,
@@ -828,7 +828,7 @@ export const BEAST_DEFS = [
     leapH: 6,
     leapT: 1.0,
     radius: 1.35,
-    hpMul: 3.2,
+    hpMul: 3.2, // 擊破時間的校正（scripts/beast-field.js：第 1 章 120 秒、每章多 10 秒）
     stabMul: 4.5,
     dmgMul: 0.55,
     wantDist: 5,
@@ -956,7 +956,7 @@ export const BEAST_DEFS = [
     leapH: 6,
     leapT: 0.9,
     radius: 0.9,
-    hpMul: 3.0,
+    hpMul: 3.45, // 擊破時間的校正（scripts/beast-field.js：第 1 章 120 秒、每章多 10 秒）
     stabMul: 4,
     dmgMul: 0.52,
     wantDist: 8,

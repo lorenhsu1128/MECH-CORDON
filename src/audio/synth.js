@@ -275,6 +275,119 @@ function stinger(sr, rnd, dur, root) {
   return y;
 }
 
+// ---------- 機獸的聲音（docs/beast-design.md 的「音效與特效」）----------
+// 機械的吼聲：鋸齒波往下滑＋粗糙的顫動（低頻調幅）→ 兩個會移動的共振峰（張嘴 → 閉嘴），再加氣流的雜訊與金屬的共鳴
+function beastRoar(sr, rnd, dur, f0, rough, breath) {
+  const n = Math.floor(sr * dur),
+    y = new Float32Array(n),
+    F1 = svf(),
+    F2 = svf(),
+    FN = svf();
+  let ph = 0,
+    ph2 = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / sr,
+      u = t / dur;
+    const f = f0 * (1.18 - 0.42 * u + 0.05 * Math.sin(t * 31)) * (u < 0.08 ? 0.7 + (u / 0.08) * 0.3 : 1);
+    ph = (ph + f / sr) % 1;
+    ph2 = (ph2 + (f * 1.503) / sr) % 1;
+    const am = 1 - rough * (0.5 + 0.5 * Math.sin(2 * Math.PI * (27 + 9 * Math.sin(t * 3.1)) * t));
+    const src = (ph * 2 - 1 + (ph2 * 2 - 1) * 0.5) * am;
+    const open = Math.sin(Math.PI * Math.min(1, u * 1.6)) * (1 - u * 0.35);
+    const a = F1(src, 380 + 520 * open, 0.35, sr).bp + F2(src, 900 + 1500 * open, 0.3, sr).bp * 0.7;
+    const air = FN(rnd() * 2 - 1, 1800 + 2600 * open, 0.5, sr).bp * breath * open;
+    const metal = Math.sin(2 * Math.PI * f0 * 7.3 * t) * 0.05 * am * open;
+    const e = Math.min(1, t / 0.07) * Math.min(1, (dur - t) / (dur * 0.35));
+    y[i] = Math.tanh((a * 1.6 + air + metal) * 1.4) * e;
+  }
+  return y;
+}
+// 猛禽的尖嘯：高頻的鋸齒波先上後下，帶一點破音
+function beastScreech(sr, rnd, dur) {
+  const n = Math.floor(sr * dur),
+    y = new Float32Array(n),
+    F = svf();
+  let ph = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / sr,
+      u = t / dur;
+    const f = 900 + 1500 * Math.sin(Math.PI * Math.min(1, u * 1.4)) - 500 * u + 60 * Math.sin(t * 90);
+    ph = (ph + f / sr) % 1;
+    const src = (ph * 2 - 1) * (0.7 + 0.3 * Math.sin(2 * Math.PI * 43 * t)) + (rnd() * 2 - 1) * 0.25;
+    const e = Math.min(1, t / 0.03) * Math.min(1, (dur - t) / (dur * 0.4));
+    y[i] = Math.tanh(F(src, 2600 + 1400 * Math.sin(Math.PI * u), 0.4, sr).bp * 2.4) * e;
+  }
+  return y;
+}
+// 節肢的喀喀聲：一串越來越密的短促敲擊（帶通雜訊＋木魚似的共鳴）
+function beastChitter(sr, rnd, dur) {
+  const n = Math.floor(sr * dur),
+    y = new Float32Array(n),
+    F = svf();
+  let next = 0,
+    t0 = -1,
+    gap = 0.085,
+    fq = 1500;
+  for (let i = 0; i < n; i++) {
+    const t = i / sr;
+    if (t >= next) {
+      t0 = t;
+      gap = Math.max(0.022, gap * 0.86);
+      next = t + gap * (0.8 + rnd() * 0.4);
+      fq = 1300 + rnd() * 1500;
+    }
+    const tt = t - t0;
+    const click = tt < 0.004 ? rnd() * 2 - 1 : 0;
+    const tone = Math.sin(2 * Math.PI * fq * tt) * Math.exp(-tt / 0.012);
+    const e = Math.min(1, t / 0.02) * Math.min(1, (dur - t) / (dur * 0.3));
+    y[i] = (F(click, 3200, 0.3, sr).bp * 1.5 + tone * 0.8) * e;
+  }
+  return y;
+}
+// 爪／鐮的揮擊：往上掃的風切聲＋尾端一聲金屬的刮擦
+function beastClaw(sr, rnd, dur) {
+  const n = Math.floor(sr * dur),
+    y = new Float32Array(n),
+    F = svf();
+  for (let i = 0; i < n; i++) {
+    const t = i / sr,
+      u = t / dur;
+    const a = Math.pow(Math.sin(Math.PI * Math.min(1, u * 1.15)), 1.5);
+    const w = F(rnd() * 2 - 1, 700 + 5200 * u * u, 0.3, sr).bp * 1.8 * a;
+    const tt = t - dur * 0.55;
+    const ring =
+      tt > 0
+        ? (Math.sin(2 * Math.PI * 2900 * tt) + Math.sin(2 * Math.PI * 4310 * tt) * 0.6) *
+          Math.exp(-tt / 0.05) *
+          0.3
+        : 0;
+    y[i] = w + ring;
+  }
+  return y;
+}
+// 拍翼：低沉的一陣風
+function beastFlap(sr, rnd, dur) {
+  const n = Math.floor(sr * dur),
+    y = new Float32Array(n),
+    F = svf();
+  for (let i = 0; i < n; i++) {
+    const u = i / n;
+    const a = Math.pow(Math.sin(Math.PI * u), 2);
+    y[i] = F(rnd() * 2 - 1, 180 + 520 * Math.sin(Math.PI * u), 0.6, sr).lp * a;
+  }
+  return y;
+}
+// 沉重的腳步：很低的重擊＋關節的金屬聲
+function beastStep(sr, rnd, dur) {
+  const y = thump(sr, rnd, 62, 30, dur);
+  for (let i = 0; i < y.length; i++) {
+    const t = i / sr;
+    y[i] +=
+      (Math.sin(2 * Math.PI * 340 * t) + Math.sin(2 * Math.PI * 517 * t) * 0.7) * Math.exp(-t / 0.035) * 0.16;
+  }
+  return y;
+}
+
 // 正規化到峰值 0.9
 function norm(y) {
   let p = 0;
@@ -334,6 +447,16 @@ export const SYNTH = {
   '~sting': (sr, r) => stinger(sr, r, 1.3, 98),
   '~horn': (sr, r) => horn(sr, r, 0.55),
   '~stingL': (sr, r) => stinger(sr, r, 2.6, 73.4),
+  // 機獸（entities/mech-beast-fx.js）
+  '~roarL': (sr, r) => beastRoar(sr, r, 1.7, 92, 0.55, 0.5), // 獅、虎
+  '~roarH': (sr, r) => beastRoar(sr, r, 2.1, 58, 0.7, 0.35), // 熊、猩猩
+  '~rumble': (sr, r) => beastRoar(sr, r, 2.0, 38, 0.8, 0.7), // 鱷龜
+  '~growl': (sr, r) => beastRoar(sr, r, 0.6, 74, 0.75, 0.25), // 出招前的低吼
+  '~screech': (sr, r) => beastScreech(sr, r, 1.15), // 猛禽
+  '~chitter': (sr, r) => beastChitter(sr, r, 0.95), // 蠍、螳螂
+  '~claw': (sr, r) => beastClaw(sr, r, 0.3),
+  '~flap': (sr, r) => beastFlap(sr, r, 0.42),
+  '~bstep': (sr, r) => beastStep(sr, r, 0.5),
 };
 
 export function synthAll(sr, rnd) {

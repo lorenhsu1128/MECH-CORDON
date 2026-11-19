@@ -1940,7 +1940,8 @@ export function animateBeast(rig, st, dt) {
     const out = L.gx > 0 ? 1 : -1; // 這隻腳的外側（遊戲座標 x 的正負）
     const df = (v + w * L.gx) * k + ch(L.key + 'F'), // 轉身時這隻腳所在的位置相對地面的速度（前後分量）
       dx = w * L.gz * k + ch(L.key + 'X') * out; // （橫向分量，遊戲座標 +x）
-    lift = lift * mv + ch(L.key + 'L') + g(L.key);
+    // 地形：這隻腳下面的地面高度；身體順著地形側傾時這隻腳已經跟著抬高（或降低）了一些，扣掉
+    lift = lift * mv + ch(L.key + 'L') + g(L.key) - L.gx * Math.sin(gRoll);
     curl = Math.min(1, curl * mv + ch(L.key + 'C'));
     const A3 = -(front ? 0.95 : 0.6) * curl; // 掌骨往後收
     const Kt = add2(L.d, [df, lift]);

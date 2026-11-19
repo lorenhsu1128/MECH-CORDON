@@ -16,6 +16,13 @@ const SIDS = only ? only.split(',') : ALL;
 const SECS = +opt('secs', 90),
   DMG = +opt('dmg', 3),
   STILL = args.includes('--still');
+// --hpk=c1b:2.5,c2b:1.8：試血量的倍率（校正擊破時間用；定下來之後寫回 data/beasts.js 的 hpMul）
+const HPK = Object.fromEntries(
+  opt('hpk', '')
+    .split(',')
+    .filter(Boolean)
+    .map((q) => [q.split(':')[0], +q.split(':')[1]]),
+);
 const OUT = path.join(__dirname, '..', 'test-results', 'beast-field');
 fs.mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -256,7 +263,7 @@ function install(cfg) {
           m.type() === 'error' &&
           (errs++, pe.push(m.text()), console.log(`[${sid}] console.error`, m.text())),
       );
-      await page.goto(url);
+      await page.goto(url, { waitUntil: 'domcontentloaded' }); // 不等外部的字型（連不到時會一直等）
       await page.waitForFunction(() => window.__game && window.__game.state === 'title', null, {
         timeout: 60000,
       });
@@ -276,10 +283,14 @@ function install(cfg) {
       await page.waitForFunction(() => window.__game.state === 'play' && window.__game.boss, null, {
         timeout: 120000,
       });
-      const meta = await page.evaluate(() => {
+      const meta = await page.evaluate((hpk) => {
         const g = window.__game,
           b = g.boss,
           w = g.world;
+        if (hpk) {
+          b.maxHp *= hpk;
+          b.hp = b.maxHp;
+        }
         window.__bf.on = true;
         return {
           beast: b.name,
@@ -290,7 +301,7 @@ function install(cfg) {
           props: (w.obstacles || []).length,
           hp: Math.round(b.maxHp),
         };
-      });
+      }, HPK[sid] || 0);
       const t0 = Date.now();
       let shot = 0;
       for (;;) {

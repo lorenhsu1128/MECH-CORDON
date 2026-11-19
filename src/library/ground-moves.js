@@ -1788,6 +1788,18 @@ const MORE_BOSS = [
     },
   },
   {
+    id: 'beast_strike',
+    name: '機獸：出手那一下的衝擊環（砸地、迴旋、尾刺、落地、登場與換型態的吼聲）',
+    who: '八隻機獸（ai beast）',
+    src: 'entities/mech-beast-fx.js 的 beastStrikeFx／beastLocalFx（shockwave：半徑＝招式的 R × 體型倍率；各端自己算、不轉送）',
+    srcAt: [0, -16],
+    run: (S) => {
+      const p = S.src.pos.clone().lerp(tp(S), 0.7);
+      S.warnCircle(p, 5 * 1.5, 0.4, 0xff4020);
+      S.at(0.4, () => S.boom(p, 5 * 1.5 * 1.15, 0xffd090));
+    },
+  },
+  {
     id: 'beast_pounce',
     name: '機獸：撲擊／衝撞／俯衝的路線（落點前的一整條）',
     who: '八隻機獸（ai beast）',

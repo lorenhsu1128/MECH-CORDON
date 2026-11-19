@@ -271,7 +271,12 @@ export function animateRaptor(rig, st, dt, clipAt) {
   const beat = Math.sin(t * FLAP_W);
 
   // ---- 身體 ----
-  const bob = 0.1 * Math.sin(2 * p2) * mv + 0.03 * breath * still + ch('by') - 0.35 * flapK * beat * fl;
+  const bob =
+    0.1 * Math.sin(2 * p2) * mv +
+    0.03 * breath * still +
+    ch('by') -
+    0.35 * flapK * beat * fl +
+    (st.gy ? Math.min(st.gy.l || 0, st.gy.r || 0, 0) * (1 - fl) : 0);
   const pitch = ch('pitch') - 0.35 * fl * (clip ? 0 : 1) + 0.03 * Math.sin(2 * p2 + 1) * mv;
   spring(N.chest.position, 'y', an.y0 + bob, SB[0] * 1.5, 0.8, dt);
   spring(N.chest.rotation, 'x', pitch + jit * 0.008, SB[0], SB[1], dt);
@@ -281,6 +286,9 @@ export function animateRaptor(rig, st, dt, clipAt) {
     pR = N.chest.rotation.x;
 
   // ---- 腿 ----
+  // 地形（st.gy＝兩隻腳下面的地面高度）：身體降到低的那隻腳、高的那隻多彎一點
+  const gy = st.gy || null;
+  const gLow = gy ? Math.min(gy.l || 0, gy.r || 0, 0) * gr : 0;
   const tuck = Math.max(0, Math.min(1, fl + ch('tuck')));
   const grip = ch('grip');
   for (const L of an.legs) {
@@ -295,7 +303,7 @@ export function animateRaptor(rig, st, dt, clipAt) {
     }
     const k = (0.5 - s) * stanceT * mv;
     const df = (v + w * L.gx) * k + ch(L.s + 'F'),
-      up = lift * mv + ch(L.s + 'L');
+      up = lift * mv + ch(L.s + 'L') + ((gy && gy[L.s]) || 0) * gr - gLow;
     // 髖的位置（跟著身體的俯仰與起伏）→ 兩段骨頭
     const hip = [an.C[0] + rot2(pR, sub2(L.a, an.C))[0], an.C[1] + rot2(pR, sub2(L.a, an.C))[1] + bobR];
     const q = [L.c[0] + df - hip[0], L.c[1] + up - hip[1]];
