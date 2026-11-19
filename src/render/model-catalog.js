@@ -18,7 +18,7 @@ import { FOE_CATALOG } from './foe-models.js';
 import { PARTS, START_ASM } from '../data/parts.js';
 import { PALETTES, mechMats } from './materials.js';
 import { PIECE_NAMES, SIDE_NAMES, buildMech, buildPiece, partPieces } from './mech-model.js';
-import { animateBeast } from './beast-anim.js';
+import { animateBeast, clipDur } from './beast-anim.js';
 import { LION_POSES, buildLion } from './beast-lion.js';
 import { THEMES } from '../world/world.js';
 import { LANDMARKS } from '../world/landmarks.js';
@@ -180,19 +180,61 @@ for (const [key, label, palKey] of [
   });
 }
 
-// 獅型機獸的動作預覽（第 1 期；原地播放，built.tick 由檢視窗與格狀檢視每格呼叫）
+// 獅型機獸的動作預覽（原地播放，built.tick 由檢視窗與格狀檢視每格呼叫）：st＝狀態，或 (t) => 狀態；clip＝重複播放的動作片段
+const lionClip = (name, gap = 0.9, st = {}) => {
+  const dur = clipDur(name) + gap;
+  return (t) => {
+    const u = t % dur;
+    return { ...st, root: true, act: u < dur - gap ? { name, t: u } : null };
+  };
+};
 for (const [key, label, st] of [
   ['idle', '待機', { v: 0 }],
   ['walk', '走（5 m/s）', { v: 5 }],
   ['trot', '小跑（11 m/s）', { v: 11 }],
   ['run', '奔跑（24 m/s）', { v: 24 }],
   ['turn', '原地轉身', { v: 0, w: 0.9, spin: true }],
+  [
+    'brake',
+    '奔跑 → 急停',
+    (t) => {
+      const u = t % 3.2;
+      return { v: u < 1.6 ? 24 : 0, act: u >= 1.6 && u < 2.35 ? { name: 'brake', t: u - 1.6 } : null };
+    },
+  ],
+  ['jump', '跳躍與落地', lionClip('jump')],
+  [
+    'terrain',
+    '走在起伏的地面（腳掌貼地，地面沒有畫出來）',
+    (t) => ({
+      v: 5,
+      gy: {
+        fl: 0.5 * Math.sin(t * 0.9),
+        fr: 0.5 * Math.sin(t * 0.9 + 1.2),
+        bl: 0.5 * Math.sin(t * 0.9 - 1.6),
+        br: 0.5 * Math.sin(t * 0.9 - 0.4),
+      },
+    }),
+  ],
+  ['pounce', '攻擊：撲擊', lionClip('pounce', 1.2)],
+  ['claw_l', '攻擊：爪擊（左）', lionClip('clawL')],
+  ['claw_r', '攻擊：爪擊（右）', lionClip('clawR')],
+  ['bite', '攻擊：咬', lionClip('bite')],
+  ['tail', '攻擊：甩尾', lionClip('tail')],
+  ['roar', '攻擊：咆哮', lionClip('roar')],
+  [
+    'hit',
+    '受擊（左、右輪流）',
+    (t) => ({ act: { name: Math.floor(t / 1.2) % 2 ? 'hitR' : 'hitL', t: t % 1.2 } }),
+  ],
+  ['stagger', '失衡', lionClip('stagger')],
+  ['death', '擊破', lionClip('death', 2)],
 ]) {
   add({
     id: 'temp/lion_anim_' + key,
     cat: 'temp',
     name: '獅型機獸・動作：' + label,
-    note: '暫時：動作預覽（關掉「旋轉」比較好看；側面看步伐、正面看站姿）',
+    note: '暫時：動作預覽（關掉「旋轉」比較好看；側面看步伐、斜前方看攻擊）',
     pal: 'boss',
     spec: 'mech-boss',
     noGlb: true,
@@ -203,7 +245,7 @@ for (const [key, label, st] of [
         scaleNode: rig.group,
         scale: v3(1),
         rig: null,
-        tick: (dt, t) => animateBeast(rig, { ...st, t }, dt),
+        tick: (dt, t) => animateBeast(rig, typeof st === 'function' ? { ...st(t), t } : { ...st, t }, dt),
       };
     },
   });

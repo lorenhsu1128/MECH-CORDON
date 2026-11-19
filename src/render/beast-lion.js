@@ -2,7 +2,7 @@
 // 每個區塊一個群組（原點＝轉軸、名稱＝區塊名稱），站姿＝旋轉全 0；pose＝{ 區塊名稱: [rx, ry, rz]（角度）}。遊戲的座標（−Z 正面），原點在地面。
 import { OUTLINE_MAT } from './geometry.js';
 import { mechMats } from './materials.js';
-import { primsGroup } from './proc-prims.js';
+import { fixMat, primsGroup } from './proc-prims.js';
 import { lionDef } from './proc/beast_lion.js';
 import { tagStyle } from './style/shader.js';
 
@@ -63,5 +63,6 @@ export function buildLion(pal, scale = 1, pose = null) {
     if (nodes[k]) nodes[k].rotation.set(r[0] * d, r[1] * d, r[2] * d);
   root.scale.setScalar(scale);
   tagStyle(root);
-  return { group: root, nodes, piv: pivots, mats: M, tris: def.tris };
+  // eyeMat＝眼睛與感測器的自發光材質（動作改它的亮度）
+  return { group: root, nodes, piv: pivots, mats: M, eyeMat: fixMat(M, def.cols[0]), tris: def.tris };
 }

@@ -45,6 +45,7 @@ const J = {
   neck: [0, 5.7, 3.1],
   head: [0, 6.75, 4.7],
   jaw: [0, 6.348, 4.868],
+  mane: [0, 6.62, 3.9], // 鬃甲（頸環的中心）
   turret: [0, 6.5, -2.45],
   guns: [0, 7.62, -2.45],
   // 前腳（左）：肩 → 肘 → 腕 → 掌
@@ -289,7 +290,9 @@ function neck() {
   // 鬃甲：往後掃的刀形甲片，兩層交錯（後層長、前層短），繞著頸子上方約 250°
   const dn = vnorm([0, 0.6, 0.8]); // 頸子的軸
   const up = vnorm([0, 0.8, -0.6]);
-  const C = [0, 6.62, 3.9];
+  const C = J.mane;
+  const maneA = [],
+    maneB = [];
   const blade = (slot, th, back, len, hw, rise, rad = 0.7) => {
     const a = (th * Math.PI) / 180;
     const r = vadd(vmul(up, Math.cos(a)), [Math.sin(a), 0, 0]); // 繞頸軸的徑向
@@ -319,9 +322,9 @@ function neck() {
     ]);
   };
   for (const th of [-114, -76, -38, 0, 38, 76, 114])
-    out.push(blade(MAIN, th, 0.5, 1.95 - Math.abs(th) * 0.004, 0.86, 0.75, 1.1));
+    maneA.push(blade(MAIN, th, 0.5, 1.95 - Math.abs(th) * 0.004, 0.86, 0.75, 1.1));
   for (const th of [-133, -95, -57, -19, 19, 57, 95, 133])
-    out.push(blade(SUB, th, -0.02, 1.3 - Math.abs(th) * 0.002, 0.72, 1.35, 1.1));
+    maneB.push(blade(SUB, th, -0.02, 1.3 - Math.abs(th) * 0.002, 0.72, 1.35, 1.1));
   // 頸環
   out.push(
     lathe(
@@ -336,7 +339,7 @@ function neck() {
       14,
     ),
   );
-  return out;
+  return { base: out, maneA, maneB };
 }
 
 // 頭與下顎整個放寬、加高一點（公獅的頭又寬又厚）
@@ -1036,7 +1039,11 @@ export function lionDef() {
   };
   add('chest', null, J.chest, chest());
   add('hips', 'chest', J.hips, hips(), REAR);
-  add('neck', 'chest', J.neck, neck());
+  const nk = neck();
+  add('neck', 'chest', J.neck, nk.base);
+  // 鬃甲：兩層各一個區塊（動作以縮放表現張開）
+  add('mane_a', 'neck', J.mane, nk.maneA);
+  add('mane_b', 'neck', J.mane, nk.maneB);
   add('head', 'neck', J.head, head(), HEADBACK);
   add('jaw', 'head', J.jaw, jaw(), HEADBACK);
   add('turret', 'hips', J.turret, turret(), REAR);
