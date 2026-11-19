@@ -16,7 +16,7 @@
 | 3   | 冰原、研究特區         | 劍齒虎型                                                                           | 模型與動作完成                 |
 | 4   | Lattice-9、舊宇宙港    | 猩猩型（擺盪、跳躍、搥地、投擲）                                                   | 模型＋動作（動作等使用者檢查） |
 | 5   | 洋上都市               | 猛禽型（飛行、俯衝）                                                               | 還沒做                         |
-| 6   | 高空軌道               | 螳螂型（雙鐮、短距離飛跳）                                                         | 模型第一版（等使用者檢查）     |
+| 6   | 高空軌道               | 螳螂型（雙鐮、短距離飛跳）                                                         | 模型＋動作（動作等使用者檢查） |
 | 7   | 火山熔爐帶             | 熊型（站立、巨掌拍擊、丟熔岩塊；使用者否決了暴龍型，並在穿山甲／公牛／熊之中選熊） | 模型與動作完成                 |
 | 8   | 方舟（終章）           | 獅型                                                                               | 模型與動作完成                 |
 
@@ -118,7 +118,7 @@
   `ml_a`→`_b`→`_c`（中足）、`hl_*`（後足；右側 `mr_*`、`hr_*`）、`wing_l／r`（翅鞘）、`fan_l／r`（膜翅）。
 - 所有部位各自建模（自我檢查：沒有沿用別隻的部位）。第一版頭太低、腿節的棘刺穿鐮刃，已把前胸加長（頸從 9.0 m 提到 10.6 m）、棘縮短。
 - 約 9,200 個三角形、155 次繪製。模型庫：`temp/mantis_stand`、`temp/mantis_stand_w`、`temp/mantis_open`（張鐮、展翅、轉頭）。
-- 動作還沒做：六足（四隻步足＋兩把鐮刀）要另外寫，做法會比照蠍型（`beast-anim-scorpion.js`）。
+- 動作在 `render/beast-anim-mantis.js`（見下面「螳螂型的動作」）。
 
 ## 動作（`render/beast-anim.js` 的 `animateBeast(rig, st, dt)`）
 
@@ -205,6 +205,21 @@
   `sBurrow` 鑽進沙裡、`sEmerge` 從地下鑽出、`sHit` 小受擊、`sStagger` 趴下、尾倒向一側、`sDeath` 最後一次威嚇後光熄滅、尾倒下、八隻腳蜷起。
 - 模型庫：`temp/scorpion_anim_*`（idle、walk、run、back、turn、threat、sting、tailsweep、pinch、grab、cutter、venom、burrow、emerge、hit、stagger、death）。
 - 還沒有的：毒液、切割器的光束、沙塵都是特效；鑽沙在預覽裡是整隻往下沉（沒有地面遮住）；腳還不會貼地形。
+
+### 螳螂型的動作（2026-11-19；`render/beast-anim-mantis.js` 的 `animateMantis`）
+
+做法同蠍型（另外一個檔案、`animateBeast` 依 `rig.kind` 轉過去、片段併進 `BEAST_CLIPS`）。使用者確認模型後直接做的，招式沒有逐項確認。
+定位：平時幾乎不動、前後搖晃盯著目標，出手是全部機獸裡最快的；會飛（第 6 章高空軌道）。
+
+- 步伐：對角兩腳一組交替（走、快跑 8 m/s 起、原地轉身）。待機時整個身體前後搖（腳留在原地）、頭轉來轉去偶爾歪頭、觸角擺動。
+- 頻道（檔頭有說明）：`thx`／`thy` 前胸、`hx／hy／hz` 頭、`ab` 腹、`ant` 觸角、`slC／srC` 鐮刀的基節（正＝舉起）、`slO／srO` 往外張、
+  `slF／srF` 腿節（負＝往前伸直）、`slB／srB` 鐮刃張開、`wing` 展翅、`flut` 膜翅振動、`curl` 腳蜷起。鐮刀在片段裡動的時候用很快的彈簧（`S_STRIKE`）。
+- 片段（`m` 開頭）：`mThreat` 威嚇（前胸立起、雙鐮高舉外張、展翅振動）、`mSlashL／R` 單鐮斬、`mCross` 雙鐮交叉斬、
+  `mGrab` 捕捉（招牌技：往後縮蓄力 0.55 秒，雙鐮彈出去到夾合只有 0.14 秒，之後拉回嘴邊啃）、`mWave` 斬擊波（右鐮水平掃過）、
+  `mHover` 升空懸停（離地 7 m、腳收起）、`mDive` 俯衝斬（升空、舉鐮、往前 18 m 俯衝劈下）、`mHit` 小受擊、
+  `mStagger` 前胸往前栽、雙鐮攤在地上、`mDeath` 最後一次威嚇後光熄滅、往側面倒下蜷起。
+- 模型庫：`temp/mantis_anim_*`（idle、walk、run、turn、threat、slash、cross、grab、wave、hover、dive、hit、stagger、death）。
+- 還沒有的：斬擊波、推進翼的光、落地的衝擊是特效；被捕捉的一方的動作等接成敵人時做；腳還不會貼地形。
 
 ## 在哪裡看
 

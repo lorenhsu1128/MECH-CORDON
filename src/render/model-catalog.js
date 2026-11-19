@@ -439,19 +439,19 @@ for (const [key, label, palKey, pose, st] of [
 }
 
 // 暫時：螳螂型機獸（原創設計；第 6 章高空軌道的大 Boss）
-for (const [key, label, palKey, pose] of [
-  ['stand', '站姿（鐮刀收在胸前）', 'boss', null],
-  ['stand_w', '站姿・白色配色', 'white', null],
+for (const [key, label, palKey, pose, st] of [
+  ['stand', '站姿（鐮刀收在胸前）', 'boss', null, null],
+  ['stand_w', '站姿・白色配色', 'white', null, null],
   [
     'open',
     '張鐮、展翅、轉頭（檢查關節）',
     'boss',
     {
-      sl_coxa: [30, 0, 0],
-      sl_femur: [25, 0, 0],
-      sl_blade: [-95, 0, 0],
+      sl_coxa: [45, 0, 0],
+      sl_femur: [-60, 0, 0],
+      sl_blade: [100, 0, 0],
       sr_coxa: [10, 0, 0],
-      sr_blade: [-40, 0, 0],
+      sr_blade: [40, 0, 0],
       wing_l: [-20, 0, -40],
       wing_r: [-20, 0, 40],
       fan_l: [-12, 0, -68],
@@ -459,7 +459,22 @@ for (const [key, label, palKey, pose] of [
       head: [0, 30, 0],
       abdomen: [-8, 0, 0],
     },
+    null,
   ],
+  ['anim_idle', '動作：待機（前後搖晃、轉頭）', 'boss', null, { v: 0 }],
+  ['anim_walk', '動作：走', 'boss', null, { v: 4 }],
+  ['anim_run', '動作：快跑', 'boss', null, { v: 12 }],
+  ['anim_turn', '動作：原地轉身', 'boss', null, { v: 0, w: 0.8, spin: true }],
+  ['anim_threat', '威嚇（展翅）', 'boss', null, lionClip('mThreat')],
+  ['anim_slash', '攻擊：單鐮斬', 'boss', null, lionClip('mSlashL')],
+  ['anim_cross', '攻擊：雙鐮交叉斬', 'boss', null, lionClip('mCross')],
+  ['anim_grab', '攻擊：捕捉', 'boss', null, lionClip('mGrab')],
+  ['anim_wave', '攻擊：斬擊波', 'boss', null, lionClip('mWave')],
+  ['anim_hover', '動作：升空懸停', 'boss', null, lionClip('mHover')],
+  ['anim_dive', '攻擊：俯衝斬', 'boss', null, lionClip('mDive', 1.2)],
+  ['anim_hit', '受擊', 'boss', null, lionClip('mHit', 0.8)],
+  ['anim_stagger', '失衡', 'boss', null, lionClip('mStagger')],
+  ['anim_death', '擊破', 'boss', null, lionClip('mDeath', 2)],
 ]) {
   add({
     id: 'temp/mantis_' + key,
@@ -471,7 +486,11 @@ for (const [key, label, palKey, pose] of [
     noGlb: true,
     build: (k) => {
       const rig = buildMantis(pal(k), 1, pose);
-      return { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
+      const out = { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
+      if (st)
+        out.tick = (dt, t) =>
+          animateBeast(rig, typeof st === 'function' ? { ...st(t), t } : { ...st, t }, dt);
+      return out;
     },
   });
 }
