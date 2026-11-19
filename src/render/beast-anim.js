@@ -1000,6 +1000,7 @@ export function animateBeast(rig, st, dt) {
   // ---- 尾：一節一節延遲的擺動；跑起來往後平伸 ----
   for (let i = 1; i <= 5; i++) {
     const n = N['tail' + i];
+    if (!n) continue; // 短尾的機獸只有前幾節
     const lag = i * 0.55;
     const sway = 0.1 * Math.sin(p2 - lag) * mv;
     const idle = 0.14 * Math.sin(t * 0.9 - lag) * still;
@@ -1045,7 +1046,7 @@ export function animateBeast(rig, st, dt) {
       for (const ax of ['x', 'y', 'z']) spring(L.n[0].scale, ax, k, 20, 0.8, dt);
     }
     const kt = 1 - 0.85 * tuck;
-    for (const ax of ['x', 'y', 'z']) spring(N.tail1.scale, ax, kt, 20, 0.8, dt);
+    if (N.tail1) for (const ax of ['x', 'y', 'z']) spring(N.tail1.scale, ax, kt, 20, 0.8, dt);
   }
   // 莢艙的蓋子（片段的 lid：0 關～1 全開）
   for (const name of ['lid_l', 'lid_r']) if (N[name]) sp(N[name], 'x', ch('lid') * 1.9, [26, 0.6], dt);
