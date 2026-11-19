@@ -36,8 +36,9 @@ const MAIN = 0,
   GLOW = 4,
   GLASS = 5,
   GUN = 6,
-  STEEL = 7;
-export const TIGER_COLS = ['#ff3524!', '#0e1319', '#3a3d45', '#c8ccd3', '#ffb050!'];
+  STEEL = 7,
+  PLASMA = 9; // 電漿導彈的彈頭與冷凍光束的發射鏡（自發光）
+export const TIGER_COLS = ['#ff3524!', '#0e1319', '#3a3d45', '#c8ccd3', '#ffb050!', '#6fe6ff!'];
 const { sec, fin, nozzle } = LION_PARTS;
 const G = TIGER_LEG;
 
@@ -210,6 +211,29 @@ function headLocal() {
       [0, -0.38, 2.44],
       [0, 0.2, 2.47],
     ]),
+    // 身上的武器（能量）：吻的前端、兩支劍齒之間的冷凍光束發射鏡
+    lathe(
+      GLASS,
+      [0, -0.08, 2.4],
+      [0, 0, 1],
+      [
+        [0, 0.24],
+        [0.09, 0.24],
+        [0.12, 0.17],
+      ],
+      8,
+    ),
+    lathe(
+      PLASMA,
+      [0, -0.08, 2.5],
+      [0, 0, 1],
+      [
+        [0, 0.16],
+        [0.05, 0.14],
+        [0.08, 0.06],
+      ],
+      8,
+    ),
     // 鼻樑上的一階（吻的上蓋）
     hullS(MAIN, [
       [0, 0.7, 1.3],
@@ -463,19 +487,122 @@ function turret() {
     cyl(JOINT, [-1.3, T.guns[1], z], [1.3, T.guns[1], z], 0.2, 10),
   ];
 }
+// 外掛武器一（能量）：肩上的電漿導彈莢艙。八角截面的匣體、側面的冷卻鰭片、後端的電容線圈；正面 3×2 個發射管裡是發光的電漿彈頭
 function guns() {
   const [, y, z] = T.guns;
+  const X = 1.78,
+    Y = y + 0.05;
   const out = [
-    box(MAIN, [1.78, y + 0.05, z + 0.1], [0.96, 0.82, 2.0], null, 0.1, true),
-    box(SUB, [1.78, y + 0.05, z - 0.95], [0.8, 0.66, 0.16], null, 0.04, true),
-    box(ACC, [1.78, y + 0.47, z + 0.1], [0.5, 0.06, 1.5], null, 0, true),
-    box(GLASS, [1.78, y + 0.05, z + 1.08], [0.84, 0.7, 0.04], null, 0, true),
+    hull(
+      MAIN,
+      [z - 0.9, z + 1.1].flatMap((zz) => [
+        [X - 0.34, Y + 0.41, zz],
+        [X + 0.34, Y + 0.41, zz],
+        [X + 0.48, Y + 0.24, zz],
+        [X + 0.48, Y - 0.24, zz],
+        [X + 0.34, Y - 0.41, zz],
+        [X - 0.34, Y - 0.41, zz],
+        [X - 0.48, Y - 0.24, zz],
+        [X - 0.48, Y + 0.24, zz],
+      ]),
+      true,
+    ),
+    box(ACC, [X, Y + 0.42, z + 0.1], [0.4, 0.05, 1.5], null, 0, true),
+    box(GLASS, [X, Y, z + 1.08], [0.84, 0.7, 0.04], null, 0, true),
+    // 後端的電容線圈（三道環）與尾蓋
+    ...[-1.0, -1.18, -1.36].map((dz) =>
+      cyl(JOINT, [X, Y, z + dz - 0.06], [X, Y, z + dz + 0.06], 0.36, 12, true),
+    ),
+    cyl(GUN, [X, Y, z - 1.45], [X, Y, z - 0.9], 0.26, 10, true),
+    cyl(PLASMA, [X, Y, z - 1.5], [X, Y, z - 1.45], 0.14, 8, true),
   ];
+  // 外側的冷卻鰭片
+  for (const dz of [-0.5, -0.2, 0.1, 0.4, 0.7])
+    out.push(box(SUB, [X + 0.52, Y, z + dz], [0.12, 0.5, 0.1], null, 0.02, true));
   for (const dx of [-0.26, 0, 0.26])
-    for (const dy of [-0.17, 0.17])
-      out.push(
-        cyl(GUN, [1.78 + dx, y + 0.05 + dy, z + 1.1], [1.78 + dx, y + 0.05 + dy, z + 1.16], 0.1, 8, true),
-      );
+    for (const dy of [-0.17, 0.17]) {
+      out.push(cyl(GUN, [X + dx, Y + dy, z + 0.95], [X + dx, Y + dy, z + 1.13], 0.115, 8, true));
+      out.push(cyl(PLASMA, [X + dx, Y + dy, z + 1.1], [X + dx, Y + dy, z + 1.15], 0.075, 8, true));
+    }
+  return out;
+}
+// 外掛武器二（實彈）：背上的電磁機砲。細高的砲座＋單支長砲：一圈一圈的加速線圈、砲尾外側的彈鼓、砲座上的觀瞄頭
+const MG = { t: [0, 6.4, -1.9], g: [0, 7.3, -1.9] };
+function mgTurret() {
+  const [, y, z] = MG.t;
+  const yg = MG.g[1];
+  return [
+    lathe(
+      JOINT,
+      [0, y - 0.85, z],
+      [0, 1, 0],
+      [
+        [0, 0.66],
+        [0.2, 0.66],
+        [0.32, 0.4],
+        [1.2, 0.4],
+      ],
+      12,
+    ),
+    cyl(ACC, [0, y - 0.3, z], [0, y - 0.2, z], 0.44, 12),
+    hullS(MAIN, [
+      [0.36, y + 0.3, z + 0.5],
+      [0.5, y + 0.3, z - 0.5],
+      [0.3, y + 1.25, z + 0.3],
+      [0.36, y + 1.25, z - 0.4],
+      [0.2, y + 0.3, z + 0.62],
+      [0.2, y + 0.3, z - 0.66],
+    ]),
+    cyl(JOINT, [-0.62, yg, z], [0.62, yg, z], 0.18, 12),
+    box(SUB, [-0.5, y + 1.15, z + 0.1], [0.3, 0.36, 0.46], null, 0.05),
+    box(GLOW, [-0.5, y + 1.17, z + 0.34], [0.16, 0.12, 0.03]),
+  ];
+}
+function mgGun() {
+  const [, y, z] = MG.g;
+  const out = [
+    box(GUN, [0, y + 0.12, z - 0.1], [0.44, 0.5, 1.5], null, 0.07),
+    box(MAIN, [0, y + 0.42, z - 0.05], [0.34, 0.12, 1.0], null, 0.04),
+    box(ACC, [0, y + 0.49, z - 0.05], [0.14, 0.03, 0.8]),
+    // 彈鼓（右側）與配重（後）
+    cyl(SUB, [0.24, y + 0.05, z - 0.2], [0.62, y + 0.05, z - 0.2], 0.36, 12),
+    cyl(ACC, [0.62, y + 0.05, z - 0.2], [0.66, y + 0.05, z - 0.2], 0.2, 10),
+    box(SUB, [0, y + 0.12, z - 1.0], [0.36, 0.36, 0.34], null, 0.06),
+    // 砲管與加速線圈
+    cyl(GUN, [0, y + 0.12, z + 0.65], [0, y + 0.12, z + 3.5], 0.085, 10),
+    lathe(
+      GUN,
+      [0, y + 0.12, z + 3.5],
+      [0, 0, 1],
+      [
+        [0, 0.14],
+        [0.22, 0.14],
+        [0.26, 0.09],
+      ],
+      10,
+    ),
+    lathe(
+      SUB,
+      [0, y + 0.12, z + 0.65],
+      [0, 0, 1],
+      [
+        [0, 0.24],
+        [0.5, 0.2],
+        [0.56, 0.12],
+      ],
+      10,
+    ),
+  ];
+  for (let k = 0; k < 6; k++)
+    out.push(
+      cyl(
+        k % 2 ? STEEL : JOINT,
+        [0, y + 0.12, z + 1.4 + k * 0.34],
+        [0, y + 0.12, z + 1.56 + k * 0.34],
+        0.16,
+        10,
+      ),
+    );
   return out;
 }
 // 莢艙的蓋子（左）：轉軸在莢艙前緣的上邊，往前上方掀開
@@ -547,6 +674,8 @@ export function tigerDef() {
   add('turret', 'chest', T.turret, turret());
   add('guns', 'turret', T.guns, guns());
   pair('lid_l', 'lid_r', 'guns', 'guns', LID, lid());
+  add('mg_turret', 'hips', MG.t, mgTurret(), REAR);
+  add('mg_gun', 'mg_turret', MG.g, mgGun(), REAR);
   pair('fl_upper', 'fr_upper', 'chest', 'chest', G.S, tigerFlUpper());
   pair('fl_fore', 'fr_fore', 'fl_upper', 'fr_upper', G.E, tigerFlFore());
   pair('fl_meta', 'fr_meta', 'fl_fore', 'fr_fore', G.W, tigerFlMeta());

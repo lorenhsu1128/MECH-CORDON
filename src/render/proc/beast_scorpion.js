@@ -27,9 +27,10 @@ const MAIN = 0,
   GLOW = 4,
   GUN = 6,
   STEEL = 7,
-  BURN = 8;
+  BURN = 8,
+  WAR = 9; // 迫擊砲彈的彈頭（警示黃）
 // 眼（紅）、玻璃、槍鐵、亮鋼、毒液與切割器的光（螢光綠）
-export const SCORPION_COLS = ['#ff3b2e!', '#0e1319', '#3a3d45', '#c8ccd3', '#9dff3a!'];
+export const SCORPION_COLS = ['#ff3b2e!', '#0e1319', '#3a3d45', '#c8ccd3', '#9dff3a!', '#e8a81e'];
 
 // 身體的輪廓：z → [半寬, 背的高度, 側緣的高度, 腹的高度]
 const ST = [
@@ -267,6 +268,162 @@ function chelicera() {
   ];
 }
 
+// ---------- 外掛武器一（能量）：螯臂上的電漿切割砲（左；右＝鏡像）----------
+// 壓在前臂背上的長匣：後段的電容鼓、中段的匣體與散熱縫、前段三爪的聚焦器夾著發光的電漿芯
+function cutter() {
+  const x = 4.22,
+    y = 3.85;
+  const out = [
+    // 鞍座（跨在前臂背上）
+    hull(SUB, [
+      [x - 0.62, y - 0.62, 5.25],
+      [x + 0.62, y - 0.62, 5.25],
+      [x - 0.62, y - 0.62, 7.0],
+      [x + 0.62, y - 0.62, 7.0],
+      [x - 0.4, y - 0.3, 5.2],
+      [x + 0.4, y - 0.3, 5.2],
+      [x - 0.4, y - 0.3, 7.1],
+      [x + 0.4, y - 0.3, 7.1],
+    ]),
+    // 匣體：前窄後寬的六角長匣
+    hull(MAIN, [
+      ...[
+        [5.0, 0.5, 0.42],
+        [6.9, 0.44, 0.38],
+        [7.5, 0.3, 0.28],
+      ].flatMap(([z, w, h]) => [
+        [x - w, y + h * 0.3, z],
+        [x + w, y + h * 0.3, z],
+        [x - w, y - h * 0.8, z],
+        [x + w, y - h * 0.8, z],
+        [x - w * 0.5, y + h, z],
+        [x + w * 0.5, y + h, z],
+      ]),
+    ]),
+    box(ACC, [x, y + 0.42, 5.9], [0.22, 0.05, 1.3]),
+    ...[5.4, 5.75, 6.1, 6.45].map((z) => box(GUN, [x + 0.5, y - 0.1, z], [0.05, 0.3, 0.16], null, 0, false)),
+    // 後段的電容鼓與纜線
+    cyl(JOINT, [x, y, 4.35], [x, y, 5.05], 0.46, 12),
+    cyl(ACC, [x, y, 4.5], [x, y, 4.62], 0.5, 12),
+    cyl(GUN, [x, y, 4.2], [x, y, 4.35], 0.3, 12),
+    cyl(GUN, [x - 0.35, y - 0.3, 4.6], [x - 0.5, y - 0.95, 5.3], 0.07, 6),
+    // 砲管與聚焦器：三片爪夾著電漿芯
+    cyl(GUN, [x, y, 7.4], [x, y, 8.0], 0.24, 12),
+    cyl(STEEL, [x, y, 8.0], [x, y, 8.12], 0.3, 12),
+    cyl(BURN, [x, y, 8.1], [x, y, 9.0], 0.1, 8),
+    lathe(
+      BURN,
+      [x, y, 9.0],
+      [0, 0, 1],
+      [
+        [0, 0.1],
+        [0.12, 0.16],
+        [0.24, 0.1],
+        [0.32, 0.02],
+      ],
+      8,
+    ),
+  ];
+  for (const a of [90, 210, 330]) {
+    const c = Math.cos((a * Math.PI) / 180),
+      sn = Math.sin((a * Math.PI) / 180);
+    const q = (r, z) => [x + c * r, y + sn * r, z];
+    const t = [-sn * 0.07, c * 0.07, 0];
+    const pts = [q(0.2, 8.05), q(0.34, 8.05), q(0.3, 8.7), q(0.4, 8.7), q(0.2, 9.25), q(0.26, 9.25)];
+    out.push(
+      hull(GUN, [
+        ...pts.map((v) => [v[0] + t[0], v[1] + t[1], v[2]]),
+        ...pts.map((v) => [v[0] - t[0], v[1] - t[1], v[2]]),
+      ]),
+    );
+  }
+  return out;
+}
+
+// ---------- 外掛武器二（爆發）：背上的採礦爆破迫擊筒 ----------
+// 一座轉盤上左右兩排各三支粗短的筒，往前上方斜；筒口露出警示黃的彈頭，後方是裝彈的彈匣箱
+function mortar() {
+  const y0 = 3.5,
+    z0 = 0.1;
+  const out = [
+    lathe(
+      JOINT,
+      [0, y0, z0],
+      [0, 1, 0],
+      [
+        [0, 1.5],
+        [0.14, 1.5],
+        [0.26, 1.2],
+        [0.4, 1.2],
+      ],
+      16,
+    ),
+    // 底座：低矮的梯形台
+    hullS(MAIN, [
+      [1.55, y0 + 0.35, z0 + 1.05],
+      [1.55, y0 + 0.35, z0 - 1.25],
+      [1.2, y0 + 0.9, z0 + 0.8],
+      [1.2, y0 + 1.05, z0 - 1.1],
+      [0, y0 + 0.95, z0 + 0.9],
+      [0, y0 + 1.15, z0 - 1.15],
+    ]),
+    box(ACC, [0, y0 + 1.08, z0 - 0.15], [0.3, 0.06, 1.5], [-6, 0, 0]),
+    // 後方的彈匣箱
+    box(SUB, [0, y0 + 0.85, z0 - 1.55], [2.3, 0.9, 0.7], null, 0.1),
+    ...[-0.75, 0, 0.75].map((x) => box(GUN, [x, y0 + 0.85, z0 - 1.92], [0.5, 0.6, 0.05])),
+  ];
+  const dir = (sx) => {
+    const d = [sx * 0.2, 1, 0.42];
+    const n = Math.hypot(...d);
+    return d.map((v) => v / n);
+  };
+  for (const sx of [-1, 1])
+    for (let k = 0; k < 3; k++) {
+      const b = [sx * 0.82, y0 + 0.8, z0 + 0.62 - k * 0.72];
+      const d = dir(sx);
+      out.push(
+        lathe(
+          GUN,
+          b,
+          d,
+          [
+            [0, 0.36],
+            [0.3, 0.36],
+            [0.36, 0.3],
+            [1.5, 0.3],
+            [1.55, 0.37],
+            [1.75, 0.37],
+            [1.8, 0.3],
+          ],
+          12,
+        ),
+        lathe(
+          STEEL,
+          b,
+          d,
+          [
+            [0.7, 0.33],
+            [0.82, 0.33],
+          ],
+          12,
+        ),
+        lathe(
+          WAR,
+          b,
+          d,
+          [
+            [1.5, 0.22],
+            [1.78, 0.2],
+            [1.95, 0.12],
+            [2.0, 0.03],
+          ],
+          10,
+        ),
+      );
+    }
+  return out;
+}
+
 let DEF = null;
 export function scorpionDef() {
   if (DEF) return DEF;
@@ -275,7 +432,7 @@ export function scorpionDef() {
   pair('chel_l', 'chel_r', 'chest', 'chest', CHEL, chelicera());
   // 大螯
   pair('cl_arm', 'cr_arm', 'chest', 'chest', SCORP_ARM.P0, scorpArmUpper());
-  pair('cl_fore', 'cr_fore', 'cl_arm', 'cr_arm', SCORP_ARM.P1, scorpArmFore());
+  pair('cl_fore', 'cr_fore', 'cl_arm', 'cr_arm', SCORP_ARM.P1, [...scorpArmFore(), ...cutter()]);
   pair('cl_hand', 'cr_hand', 'cl_fore', 'cr_fore', SCORP_ARM.P2, scorpHand());
   pair('cl_finger', 'cr_finger', 'cl_hand', 'cr_hand', SCORP_ARM.F, scorpFinger());
   // 四對步足：l<對>_a 腿節、_b 脛節、_c 跗節
@@ -287,6 +444,7 @@ export function scorpionDef() {
   });
   // 尾
   for (let i = 0; i < 5; i++) add('tail' + (i + 1), i ? 'tail' + i : 'chest', SCORP_TAIL[i], scorpTailSeg(i));
+  add('mortar', 'chest', [0, 3.5, 0.1], mortar());
   add('sting', 'tail5', SCORP_TAIL[5], scorpSting());
   DEF = done(SCORPION_COLS, 'scorpion');
   return DEF;
