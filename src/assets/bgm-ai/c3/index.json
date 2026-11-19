@@ -166,5 +166,17 @@
   "calm": false,
   "pick": "theme__f1",
   "score": 0.853
+ },
+ "beast_tiger": {
+  "title": "氷牙の狩人",
+  "zh": "冰牙的獵人",
+  "voice": "diva",
+  "bpm": 176,
+  "key": "F# minor",
+  "dur": 120.0,
+  "chorus": 32.1,
+  "calm": false,
+  "pick": "beast_tiger__f2",
+  "score": 0.86
  }
 }

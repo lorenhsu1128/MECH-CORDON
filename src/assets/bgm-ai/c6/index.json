@@ -178,5 +178,17 @@
   "calm": false,
   "pick": "theme__f0",
   "score": 0.88
+ },
+ "beast_mantis": {
+  "title": "月下の鎌",
+  "zh": "月下之鐮",
+  "voice": "girl",
+  "bpm": 160,
+  "key": "B minor",
+  "dur": 120.0,
+  "chorus": 29.9,
+  "calm": false,
+  "pick": "beast_mantis__f2",
+  "score": 0.869
  }
 }

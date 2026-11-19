@@ -178,5 +178,17 @@
   "calm": false,
   "pick": "theme__f1",
   "score": 0.865
+ },
+ "beast_raptor": {
+  "title": "蒼穹の爪",
+  "zh": "蒼穹之爪",
+  "voice": "duet",
+  "bpm": 172,
+  "key": "A minor",
+  "dur": 120.0,
+  "chorus": 61.7,
+  "calm": false,
+  "pick": "beast_raptor__f2",
+  "score": 0.861
  }
 }

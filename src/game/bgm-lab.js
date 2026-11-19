@@ -7,6 +7,7 @@ import { SFX } from '../audio/audio.js';
 import { escHtml } from '../core/html.js';
 import { Game } from './game.js';
 import { SEG_TYPES } from '../data/campaign.js';
+import { beastDefOf } from '../data/beasts.js';
 
 const $ = (id) => document.getElementById(id);
 const KEY = 'mech_cordon_bgm_aud';
@@ -61,19 +62,22 @@ function loadScript(src, ok) {
   });
 }
 // AI 配樂（lib/bgm-c<章>.js，scripts/bgm-gen.py）：每章的類型順序與名稱
-const AI_TYPES = [
-  'theme',
-  'battle',
-  'front',
-  'elite',
-  'destroy',
-  'colossus',
-  'defend',
-  'escort',
-  'extract',
-].concat(['breakthrough', 'chase', 'intel', 'supply', 'boss', 'air']);
+const AI_TYPES = ['theme', 'battle', 'front', 'elite', 'destroy', 'colossus', 'defend', 'escort', 'extract']
+  .concat(['breakthrough', 'chase', 'intel', 'supply', 'boss', 'air'])
+  // 機獸的專屬 Boss 曲（每章一隻，docs/audio-design.md 的「機獸的專屬曲」）
+  .concat([
+    'beast_scorpion',
+    'beast_turtle',
+    'beast_tiger',
+    'beast_gorilla',
+    'beast_raptor',
+    'beast_mantis',
+    'beast_bear',
+    'beast_lion',
+  ]);
 const VOICE_NAME = { girl: '少女型', diva: '歌姬型', duet: '二重唱' };
-const aiTypeName = (t) => (t === 'theme' ? '主題歌' : SEG_TYPES[t] ? SEG_TYPES[t].name : t);
+const aiTypeName = (t) =>
+  t === 'theme' ? '主題歌' : SEG_TYPES[t] ? SEG_TYPES[t].name : beastDefOf(t) ? beastDefOf(t).name : t;
 const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
 Object.assign(Game.prototype, {
@@ -327,7 +331,11 @@ Object.assign(Game.prototype, {
       const btn = (key, lbl, tip) =>
         `<button class="blPlay" data-p="${key}" data-lbl="${lbl}" title="${tip}">▶ ${lbl}</button>`;
       const btns =
-        btn(id, t === 'supply' || t === 'theme' || t === 'boss' ? '播放' : '交戰', '播放（完整的歌）') +
+        btn(
+          id,
+          t === 'supply' || t === 'theme' || t === 'boss' || !c.calm ? '播放' : '交戰',
+          '播放（完整的歌）',
+        ) +
         (c.calm ? btn(id + '_calm', '輕快', '探索、警戒時播的輕快版') : '') +
         (t === 'theme' && c.chorus ? btn(id + '_chorus', '副歌', 'Boss 最終型態從這裡開始播') : '');
       const info = `${escHtml(c.zh)}・${VOICE_NAME[c.voice] || c.voice}・${c.bpm} BPM・${escHtml(c.key)}・${fmt(c.dur)}`;

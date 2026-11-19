@@ -21,7 +21,7 @@ FF = imageio_ffmpeg.get_ffmpeg_exe()
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 OUT = os.path.join(ROOT, 'tools', 'acestep', 'out')
 WORK = os.path.join(ROOT, 'tools', 'bgm-work')
-NAME = re.compile(r'([a-z]+)__(f\d+|calm)')
+NAME = re.compile(r'([a-z]+(?:_[a-z]+)*)__(f\d+|calm)')  # 類型可以有底線（機獸的 beast_<獸>）
 
 
 def chapters(base, opt):

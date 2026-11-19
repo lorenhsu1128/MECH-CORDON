@@ -46,7 +46,7 @@ def once():
             pass
         idx, data = [], {}
         for f in sorted(os.listdir(src)):
-            mm = re.fullmatch(r'([a-z]+)__(f\d+|calm)\.wav', f)
+            mm = re.fullmatch(r'([a-z]+(?:_[a-z]+)*)__(f\d+|calm)\.wav', f)
             if not mm:
                 continue
             name = f[:-4]

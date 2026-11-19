@@ -21,7 +21,15 @@
   "intel": "stealthy trip-hop, dusty slow breakbeat, mysterious rhodes piano, whispered breathy vocal, tension",
   "supply": "calm lo-fi hip-hop, warm felt piano, soft vinyl texture, gentle humming vocal, rest and nostalgia",
   "boss": "climactic boss battle anime song, hybrid orchestral electronic, choir, distorted bass, fast drum and bass",
-  "air": "soaring sky battle anime song, fast uplifting trance and drum and bass, wide strings, flight and freedom"
+  "air": "soaring sky battle anime song, fast uplifting trance and drum and bass, wide strings, flight and freedom",
+  "beast_scorpion": "creeping boss battle song, skittering metallic percussion, phrygian plucked synth, burrowing sub bass rumble, explosive chorus",
+  "beast_turtle": "heavy sludgy half-time industrial boss song, sudden snapping hits, deep low brass, rusty metal clangs, crushing chorus",
+  "beast_tiger": "predatory boss song, stalking pulse bursting into fast neurofunk, icy glassy bells, sharp staccato strings, hunting tension",
+  "beast_gorilla": "primal boss song, tribal war drums and chest-pounding toms fused with glitch electronics, heavy guitar riffs, wild chorus",
+  "beast_raptor": "soaring boss song, wide sweeping strings and brass over fast drum and bass, rushing wind, diving synth risers, majestic chorus",
+  "beast_mantis": "elegant and deadly boss song, baroque harpsichord arpeggios, celestial choir, sudden silence then razor sharp synth stabs",
+  "beast_bear": "colossal crushing boss song, slow heavy doom metal riffs, taiko and anvil strikes, roaring brass, molten distorted synths",
+  "beast_lion": "majestic regal boss song, heroic brass fanfare and timpani over fast drum and bass, roaring choir, epic key change"
  },
  "CALM": "light bouncy upbeat version, funky city-pop groove, electric piano, clean guitar, light drums, clear lead vocal",
  "PALETTE": {
@@ -49,7 +57,15 @@
   "intel": "girl",
   "supply": "girl",
   "boss": "diva",
-  "air": "duet"
+  "air": "duet",
+  "beast_scorpion": "diva",
+  "beast_turtle": "duet",
+  "beast_tiger": "diva",
+  "beast_gorilla": "diva",
+  "beast_raptor": "duet",
+  "beast_mantis": "girl",
+  "beast_bear": "diva",
+  "beast_lion": "duet"
  },
  "BPM_OF": {
   "theme": 150,
@@ -66,6 +82,14 @@
   "intel": 92,
   "supply": 84,
   "boss": 174,
-  "air": 174
+  "air": 174,
+  "beast_scorpion": 166,
+  "beast_turtle": 140,
+  "beast_tiger": 176,
+  "beast_gorilla": 150,
+  "beast_raptor": 172,
+  "beast_mantis": 160,
+  "beast_bear": 132,
+  "beast_lion": 168
  }
 }

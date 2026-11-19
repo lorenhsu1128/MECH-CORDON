@@ -14,17 +14,19 @@ const fs = require('fs'),
   path = require('path'),
   { spawn, spawnSync } = require('child_process');
 
-const TYPES = [
-  'theme',
-  'battle',
-  'front',
-  'elite',
-  'destroy',
-  'colossus',
-  'defend',
-  'escort',
-  'extract',
-].concat(['breakthrough', 'chase', 'intel', 'supply', 'boss', 'air']);
+const TYPES = ['theme', 'battle', 'front', 'elite', 'destroy', 'colossus', 'defend', 'escort', 'extract']
+  .concat(['breakthrough', 'chase', 'intel', 'supply', 'boss', 'air'])
+  // 機獸的專屬 Boss 曲（每章一隻，docs/audio-design.md 的「機獸的專屬曲」）
+  .concat([
+    'beast_scorpion',
+    'beast_turtle',
+    'beast_tiger',
+    'beast_gorilla',
+    'beast_raptor',
+    'beast_mantis',
+    'beast_bear',
+    'beast_lion',
+  ]);
 
 module.exports = function bgmgen({ base, env, readBody, writeAtomic, log }) {
   const DEV = !process.pkg && !env('MODELS_DIR');
@@ -51,7 +53,7 @@ module.exports = function bgmgen({ base, env, readBody, writeAtomic, log }) {
     }
   };
   const chOk = (ch) => Number.isInteger(ch) && fs.existsSync(path.join(SONGS, `c${ch}.json`));
-  const nameOk = (n) => typeof n === 'string' && /^[a-z]+__(f\d+|calm)$/.test(n);
+  const nameOk = (n) => typeof n === 'string' && /^[a-z]+(?:_[a-z]+)*__(f\d+|calm)$/.test(n);
   const body = async (req) => {
     const b = await readBody(req, 1 << 20);
     try {
@@ -104,7 +106,7 @@ module.exports = function bgmgen({ base, env, readBody, writeAtomic, log }) {
       files = fs.readdirSync(dir);
     } catch (e) {}
     for (const f of files) {
-      const m = f.match(/^([a-z]+)__(f\d+|calm)\.wav$/);
+      const m = f.match(/^([a-z]+(?:_[a-z]+)*)__(f\d+|calm)\.wav$/);
       if (!m) continue;
       const name = f.slice(0, -4);
       const o = (out[m[1]] = out[m[1]] || { cands: [], calm: false });

@@ -154,5 +154,17 @@
   "calm": false,
   "pick": "theme__f0",
   "score": 0.829
+ },
+ "beast_turtle": {
+  "title": "鋼の甲羅",
+  "zh": "鋼之甲殼",
+  "voice": "duet",
+  "bpm": 140,
+  "key": "E minor",
+  "dur": 120.0,
+  "chorus": 54.8,
+  "calm": false,
+  "pick": "beast_turtle__f0",
+  "score": 0.835
  }
 }

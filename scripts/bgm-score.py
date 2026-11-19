@@ -213,7 +213,7 @@ def main():
     # 每種類型挑總分最高的（只看正式候選 <類型>__f<i>，測試用的 _tag 不算）
     picks = {}
     for n, s in scores.items():
-        m = re.fullmatch(r'([a-z]+)__f\d+', n)
+        m = re.fullmatch(r'([a-z]+(?:_[a-z]+)*)__f\d+', n)  # 類型可以帶底線（機獸的 beast_<獸>）
         if not m:
             continue
         t = m.group(1)

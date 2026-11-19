@@ -1,6 +1,7 @@
 """AI 配樂（scripts/bgm-gen.py 產生、scripts/bgm-score.py 挑好的）→ 遊戲用的 src/assets/bgm-ai/c<章>/
 
-用法：npm run bgm:gen -- --ch=<章> 的最後一步會自動跑（或 python scripts/bgm-ai-pack.py --ch=<章>，要 numpy 與 imageio-ffmpeg）
+用法：npm run bgm:gen -- --ch=<章> 的最後一步會自動跑（或 python scripts/bgm-ai-pack.py --ch=<章>，要 numpy 與 imageio-ffmpeg）；
+--songs=<類型>,… 只打包這幾首、其他照 index.json 原本的（新增一首時不必把整章重新轉檔）
 每種類型：挑中的交戰版 → <類型>.mp3、輕快版 → <類型>_calm.mp3；index.json 記歌名、聲線、長度、副歌的時間（Boss 最終型態
 切到主題歌的副歌用）、有沒有輕快版。響度照 RMS 正規化（每首差不多大聲）、峰值限制、頭尾 0.4 秒淡入淡出（循環的接縫）、
 44.1 kHz 立體聲 96 kbps。建置時每章寫成一個 lib/bgm-c<章>.js（window.MECH_CORDON_BGM_C<章>），進到那一章的任務才載入。
@@ -55,8 +56,12 @@ def main():
         scores = json.load(open(os.path.join(src, 'scores.json'), encoding='utf8'))
         dst = os.path.join(DST, f'c{ch}')
         os.makedirs(dst, exist_ok=True)
-        idx = {}
+        only = opt['songs'].split(',') if opt.get('songs') else None
+        ip = os.path.join(dst, 'index.json')
+        idx = json.load(open(ip, encoding='utf8')) if only and os.path.exists(ip) else {}
         for typ, name in sorted(picks.items()):
+            if only and typ not in only:
+                continue
             meta = json.load(open(os.path.join(src, name + '.json'), encoding='utf8'))
             dur = write(load(os.path.join(src, name + '.wav')), os.path.join(dst, typ + '.mp3'))
             calm = os.path.join(src, typ + '__calm.wav')
