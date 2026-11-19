@@ -463,7 +463,10 @@ Object.assign(MechEntity.prototype, {
         s.alt = FL.alt;
         s.modeT = FL.airT[0] + Math.random() * FL.airT[1];
       }
-      if (!this.canAct())
+      // 腳下是虛空（洋上都市）：一律留在空中——失衡也不掉下去（掉到底就上不來、玩家也打不到）
+      const overVoid = !!(w.isVoid && w.isVoid(this.pos.x, this.pos.z));
+      if (overVoid) s.air = true;
+      else if (!this.canAct())
         s.air = false; // 失衡：掉下來
       else if (!s.clip && !s.gun && !s.leap && (s.modeT -= dt) <= 0) {
         // 腳下是虛空就不降落（再飛一下）
@@ -694,6 +697,12 @@ Object.assign(MechEntity.prototype, {
     if (s.avoid > 0) {
       s.avoid -= dt;
       this.yaw = wrap(this.yaw + s.orb * B.turn * 1.2 * dt);
+    }
+    // 不會飛的不知怎麼到了虛空上（被推、招式的位移）：放回最近的實地
+    if (!FL && !s.leap && w.isVoid && w.nearSolid && w.isVoid(this.pos.x, this.pos.z)) {
+      const [sx, sz] = w.nearSolid(this.pos.x, this.pos.z);
+      this.pos.x = sx;
+      this.pos.z = sz;
     }
     const al = (FL && s.alt) || 0;
     this.pos.y = w.groundAt(this.pos.x, this.pos.z, this.pos.y - al + 0.6 * MS) + al; // 只跨得上矮的東西，高的由碰撞擋住；飛行的加上離地的高度
