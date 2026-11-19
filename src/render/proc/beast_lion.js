@@ -3,6 +3,16 @@
 // 大小照自然界的比例（機甲 9.72 m＝人 1.75 m，×5.55）：公獅肩高 1.2 m → 6.7 m、頭＋身體 2 m → 約 11 m、尾巴 0.9 m → 約 5 m。
 // 座標是 glTF（+Z 正面、+X＝機體的左側）、公尺；左側（+x）建模、右側＝左側的鏡像。
 import {
+  LION_LEG,
+  lionBlMeta,
+  lionBlShin,
+  lionBlThigh,
+  lionFlFore,
+  lionFlMeta,
+  lionFlUpper,
+  lionPaw,
+} from './legs_lion.js';
+import {
   ball,
   bodyRing,
   box,
@@ -345,11 +355,12 @@ function neck() {
 // 頭與下顎整個放寬、加高一點（公獅的頭又寬又厚）
 const HEAD_K = [1.5, 1.4, 1.12],
   HEAD_C = [0, 6.6, 4.7];
+// 放大之前的點 → 放大之後的位置
+const headPt = (q) => q.map((v, i) => HEAD_C[i] + (v - HEAD_C[i]) * HEAD_K[i]);
 
 // ---------- 頭（上顎）----------
 function head() {
   const out = [
-    ball(JOINT, [0, 6.66, 4.6], 0.62, 10),
     // 顱
     hullS(MAIN, [
       [0, 7.6, 4.85],
@@ -484,19 +495,6 @@ function head() {
       ],
       true,
     ),
-    // 上犬齒
-    lathe(
-      STEEL,
-      [0.41, 6.34, 6.42],
-      [0.04, -1, 0.1],
-      [
-        [0, 0.085],
-        [0.25, 0.055],
-        [0.42, 0.008],
-      ],
-      6,
-      true,
-    ),
   ];
   // 臼齒與門齒
   for (let k = 0; k < 4; k++)
@@ -505,7 +503,23 @@ function head() {
   // 吻側的散熱縫
   for (let k = 0; k < 3; k++)
     out.push(box(JOINT, [0.5 - k * 0.03, 6.74, 5.82 + k * 0.17], [0.05, 0.22, 0.06], [0, -8, 0], 0, true));
-  return scaled(out, HEAD_K, HEAD_C);
+  // 頭是不等比放大的（寬而厚）；圓形的零件放大之後才建，保持正圓：頸的圓球、上犬齒
+  return [
+    ...scaled(out, HEAD_K, HEAD_C),
+    ball(JOINT, headPt([0, 6.66, 4.6]), 0.86, 12),
+    lathe(
+      STEEL,
+      headPt([0.41, 6.34, 6.42]),
+      [0.04, -1, 0.1],
+      [
+        [0, 0.115],
+        [0.34, 0.075],
+        [0.6, 0.01],
+      ],
+      8,
+      true,
+    ),
+  ];
 }
 
 // ---------- 下顎 ----------
@@ -532,358 +546,25 @@ function jaw() {
       [0, 5.68, 6.2],
       [0.2, 5.7, 6.2],
     ]),
-    cyl(JOINT, [0.5, 6.42, 4.85], [0.76, 6.42, 4.85], 0.2, 10, true),
-    lathe(
-      STEEL,
-      [0.27, 6.2, 6.42],
-      [0, 1, 0.05],
-      [
-        [0, 0.06],
-        [0.18, 0.04],
-        [0.3, 0.006],
-      ],
-      6,
-      true,
-    ),
   ];
   for (let k = 0; k < 4; k++)
     out.push(box(STEEL, [0.44 - k * 0.03, 6.3, 5.7 + k * 0.17], [0.05, 0.12, 0.1], null, 0, true));
-  return scaled(out, HEAD_K, HEAD_C);
-}
-
-// 關節的圓盤（肩、髖的外側）
-const disc = (c, r) => [
-  lathe(
-    SUB,
-    c,
-    [1, 0, 0],
-    [
-      [0, r],
-      [0.12, r],
-      [0.18, r * 0.72],
-    ],
-    12,
-  ),
-  lathe(
-    ACC,
-    vadd(c, [0.18, 0, 0]),
-    [1, 0, 0],
-    [
-      [0, r * 0.58],
-      [0.06, r * 0.58],
-      [0.09, r * 0.25],
-    ],
-    8,
-  ),
-];
-// 往內補一層（x＝xin）的外甲：outer＝外側的點
-const shell = (slot, outer, xin) => hull(slot, [...outer, ...outer.map((p) => [xin, p[1], p[2]])]);
-
-// ---------- 前腳（左）----------
-function flUpper() {
-  const { S, E } = J;
-  const R = tubeRings([
-    { p: vlerp(S, E, -0.2), prof: oct(0.34, 0.45, 0.45) },
-    { p: S, prof: oct(0.46, 0.72, 0.68) },
-    { p: vlerp(S, E, 0.5), prof: oct(0.45, 0.6, 0.6) },
-    { p: E, prof: oct(0.4, 0.48, 0.5) },
-    { p: vlerp(S, E, 1.12), prof: oct(0.3, 0.3, 0.32) },
-  ]);
+  // 圓形的零件放大之後才建：下顎的轉軸、下犬齒
   return [
-    loft(JOINT, R),
-    // 肩甲
-    shell(
-      MAIN,
-      [
-        [1.98, 5.75, 2.25],
-        [1.92, 5.1, 1.95],
-        [1.92, 5.15, 2.6],
-        [1.8, 6.45, 2.35],
-        [1.74, 6.3, 1.6],
-        [1.74, 6.3, 3.0],
-        [1.82, 4.62, 1.55],
-        [1.82, 4.5, 2.25],
-        [1.7, 4.9, 2.95],
-        [1.72, 5.5, 1.25],
-        [1.72, 5.6, 3.15],
-      ],
-      1.42,
-    ),
-    // 肩甲下緣的飾條
-    shell(
-      ACC,
-      [
-        [1.86, 4.56, 1.5],
-        [1.86, 4.44, 2.25],
-        [1.74, 4.84, 3.0],
-        [1.86, 4.38, 1.55],
-        [1.86, 4.26, 2.25],
-        [1.74, 4.66, 2.98],
-      ],
-      1.5,
-    ),
-    shell(
-      MAIN,
-      [
-        [1.9, 6.36, 2.35],
-        [1.84, 6.22, 1.75],
-        [1.84, 6.22, 2.9],
-        [2.0, 6.0, 2.3],
-        [1.93, 5.85, 1.5],
-        [1.93, 5.92, 3.05],
-      ],
-      1.75,
-    ),
-    ...[0, 1, 2].map((k) =>
-      box(GLASS, [1.9, 4.95 - k * 0.02, 1.5 + k * 0.17], [0.1, 0.5, 0.07], [0, -14, 0]),
-    ),
-    ...disc([1.95, 5.55, 2.25], 0.42),
-    ...piston(GUN, STEEL, [1.45, 5.1, 1.18], [1.45, 3.95, 1.12], 0.08),
-    cyl(JOINT, [1.0, E[1], E[2]], [1.9, E[1], E[2]], 0.36, 10),
-    cyl(ACC, [1.9, E[1], E[2]], [1.98, E[1], E[2]], 0.28, 10),
-  ];
-}
-function flFore() {
-  const { E, W } = J;
-  const R = tubeRings([
-    { p: E, prof: oct(0.34, 0.4, 0.46) },
-    { p: vlerp(E, W, 0.3), prof: oct(0.44, 0.56, 0.62) },
-    { p: vlerp(E, W, 0.75), prof: oct(0.32, 0.38, 0.4) },
-    { p: W, prof: oct(0.28, 0.32, 0.34) },
-  ]);
-  return [
-    loft(JOINT, R),
-    panel(ACC, R, 0.3, 0.75, 7, 10, { t: 0.1 }),
-    panel(MAIN, R, 0.75, 3, 7, 10, { t: 0.11 }),
-    ...piston(GUN, STEEL, vadd(E, [0, -0.35, -0.56]), vadd(W, [0, 0.25, -0.4]), 0.07),
-    // 肘後的突刺
-    hull(SUB, [
-      vadd(E, [0.2, 0.12, -0.4]),
-      vadd(E, [-0.2, 0.12, -0.4]),
-      vadd(E, [0, 0.4, -0.9]),
-      vadd(E, [0.15, -0.3, -0.5]),
-      vadd(E, [-0.15, -0.3, -0.5]),
-      vadd(E, [0, -0.05, -0.3]),
-    ]),
-    // 前臂外側的護甲
-    shell(
-      MAIN,
-      [
-        [2.02, 3.3, 1.75],
-        [1.97, 3.72, 1.32],
-        [1.97, 2.3, 1.62],
-        [1.97, 2.2, 2.25],
-        [1.97, 3.45, 2.2],
-      ],
-      1.8,
-    ),
-    shell(
-      ACC,
-      [
-        [2.0, 2.24, 1.6],
-        [2.0, 2.14, 2.27],
-        [2.0, 2.06, 1.62],
-        [2.0, 1.98, 2.25],
-      ],
-      1.82,
-    ),
-    cyl(JOINT, [1.12, W[1], W[2]], [1.78, W[1], W[2]], 0.3, 10),
-    cyl(ACC, [1.78, W[1], W[2]], [1.85, W[1], W[2]], 0.21, 10),
-  ];
-}
-function flMeta() {
-  const { W, K } = J;
-  const R = tubeRings([
-    { p: W, prof: oct(0.27, 0.3, 0.32) },
-    { p: K, prof: oct(0.3, 0.36, 0.3) },
-  ]);
-  return [
-    loft(JOINT, R),
-    panel(MAIN, R, 0.15, 0.9, 6, 9, { t: 0.09, gap: 0.03 }),
-    panel(ACC, R, 0.4, 0.6, 9, 14, { t: 0.06, gap: 0.01, ch: 0.02 }),
-  ];
-}
-// 掌：c＝踝的位置（y 是離地高）
-function paw(c) {
-  const [x, , z] = c;
-  const pm = (pts) => pts.flatMap(([a, b, d]) => [[x + a, b, z + d], ...(a ? [[x - a, b, z + d]] : [])]);
-  const out = [
-    cyl(JOINT, [x - 0.38, 0.55, z], [x + 0.38, 0.55, z], 0.27, 10),
-    cyl(ACC, [x + 0.38, 0.55, z], [x + 0.44, 0.55, z], 0.18, 10),
-    hull(
-      MAIN,
-      pm([
-        [0.4, 0.05, -0.35],
-        [0.36, 0.5, -0.3],
-        [0.48, 0.05, 0.38],
-        [0.46, 0.5, 0.3],
-        [0.3, 0.74, -0.05],
-        [0.3, 0.68, 0.2],
-      ]),
-    ),
-    box(SUB, [x, 0.035, z + 0.02], [0.84, 0.07, 0.66], null, 0.02),
-    hull(
-      SUB,
-      pm([
-        [0.2, 0.3, -0.3],
-        [0.14, 0.1, -0.56],
-        [0, 0.46, -0.5],
-        [0.16, 0.08, -0.3],
-      ]),
-    ),
-  ];
-  [-0.36, -0.12, 0.12, 0.36].forEach((ox, i) => {
-    const zo = z + (i === 0 || i === 3 ? -0.07 : 0);
-    const tx = x + ox;
-    const tm = (pts) =>
-      pts.flatMap(([a, b, d]) => [[tx + a, b, zo + d], ...(a ? [[tx - a, b, zo + d]] : [])]);
-    out.push(
-      hull(
-        MAIN,
-        tm([
-          [0.105, 0.03, 0.3],
-          [0.105, 0.42, 0.3],
-          [0.1, 0.03, 0.82],
-          [0.085, 0.3, 0.84],
-          [0.1, 0.45, 0.55],
-        ]),
-      ),
-      hull(
-        STEEL,
-        tm([
-          [0.045, 0.3, 0.8],
-          [0.045, 0.1, 0.84],
-          [0, 0.02, 1.08],
-          [0, 0.2, 0.96],
-        ]),
-      ),
-    );
-  });
-  return out;
-}
-
-// ---------- 後腳（左）----------
-function blThigh() {
-  const { H, N } = J;
-  const R = tubeRings([
-    { p: vlerp(H, N, -0.2), prof: oct(0.36, 0.5, 0.55) },
-    { p: H, prof: oct(0.5, 0.8, 0.85) },
-    { p: vlerp(H, N, 0.5), prof: oct(0.47, 0.66, 0.68) },
-    { p: N, prof: oct(0.4, 0.48, 0.48) },
-    { p: vlerp(H, N, 1.1), prof: oct(0.3, 0.3, 0.3) },
-  ]);
-  return [
-    loft(JOINT, R),
-    shell(
-      MAIN,
-      [
-        [1.95, 5.5, -2.9],
-        [1.88, 4.9, -2.5],
-        [1.88, 4.9, -3.3],
-        [1.76, 6.4, -3.0],
-        [1.72, 6.25, -2.1],
-        [1.72, 6.2, -3.9],
-        [1.8, 5.2, -4.05],
-        [1.8, 4.45, -3.3],
-        [1.84, 4.3, -2.3],
-        [1.78, 5.1, -1.65],
-      ],
-      1.4,
-    ),
-    shell(
-      ACC,
-      [
-        [1.84, 4.38, -3.35],
-        [1.88, 4.22, -2.3],
-        [1.82, 4.6, -1.68],
-        [1.84, 4.2, -3.3],
-        [1.88, 4.04, -2.3],
-        [1.82, 4.42, -1.66],
-      ],
-      1.5,
-    ),
-    shell(
-      MAIN,
-      [
-        [1.86, 6.32, -3.0],
-        [1.8, 6.18, -2.25],
-        [1.8, 6.14, -3.75],
-        [1.98, 5.98, -2.95],
-        [1.9, 5.8, -1.95],
-        [1.9, 5.75, -3.95],
-      ],
-      1.72,
-    ),
-    ...[0, 1, 2].map((k) => box(GLASS, [1.87, 4.85, -3.6 + k * 0.17], [0.1, 0.5, 0.07], [0, 10, 0])),
-    ...disc([1.92, 5.55, -2.9], 0.44),
-    cyl(JOINT, [0.98, N[1], N[2]], [1.84, N[1], N[2]], 0.38, 10),
-    cyl(ACC, [1.84, N[1], N[2]], [1.92, N[1], N[2]], 0.29, 10),
-    // 膝蓋
-    hull(MAIN, [
-      vadd(N, [0.3, 0.32, 0.36]),
-      vadd(N, [-0.3, 0.32, 0.36]),
-      vadd(N, [0.25, -0.22, 0.5]),
-      vadd(N, [-0.25, -0.22, 0.5]),
-      vadd(N, [0, 0.05, 0.66]),
-      vadd(N, [0.3, -0.1, 0.2]),
-      vadd(N, [-0.3, -0.1, 0.2]),
-      vadd(N, [0, 0.4, 0.2]),
-    ]),
-  ];
-}
-function blShin() {
-  const { N, T } = J;
-  const R = tubeRings([
-    { p: N, prof: oct(0.34, 0.42, 0.44) },
-    { p: vlerp(N, T, 0.35), prof: oct(0.36, 0.46, 0.46) },
-    { p: T, prof: oct(0.28, 0.3, 0.32) },
-  ]);
-  const back = [0, 0.728, -0.685];
-  return [
-    loft(JOINT, R),
-    panel(ACC, R, 0.25, 0.6, 7, 10, { t: 0.1 }),
-    panel(MAIN, R, 0.6, 2, 7, 10, { t: 0.11 }),
-    ...piston(
-      GUN,
+    ...scaled(out, HEAD_K, HEAD_C),
+    cyl(JOINT, headPt([0.5, 6.42, 4.85]), headPt([0.76, 6.42, 4.85]), 0.27, 14, true),
+    lathe(
       STEEL,
-      vadd(vlerp(N, T, 0.08), vmul(back, 0.52)),
-      vadd(vlerp(N, T, 0.9), vmul(back, 0.38)),
-      0.07,
-    ),
-    shell(
-      MAIN,
+      headPt([0.27, 6.2, 6.42]),
+      [0, 1, 0.05],
       [
-        [1.9, 3.35, -2.05],
-        [1.86, 3.7, -2.5],
-        [1.86, 2.5, -3.62],
-        [1.86, 2.35, -3.1],
-        [1.86, 3.1, -1.85],
+        [0, 0.08],
+        [0.25, 0.055],
+        [0.42, 0.008],
       ],
-      1.68,
+      8,
+      true,
     ),
-    cyl(JOINT, [1.1, T[1], T[2]], [1.72, T[1], T[2]], 0.3, 10),
-    cyl(ACC, [1.72, T[1], T[2]], [1.79, T[1], T[2]], 0.21, 10),
-    // 跗關節後面的突刺
-    hull(SUB, [
-      vadd(T, [0.16, 0.1, -0.28]),
-      vadd(T, [-0.16, 0.1, -0.28]),
-      vadd(T, [0, 0.6, -0.78]),
-      vadd(T, [0.12, -0.22, -0.34]),
-      vadd(T, [-0.12, -0.22, -0.34]),
-      vadd(T, [0, 0, -0.15]),
-    ]),
-  ];
-}
-function blMeta() {
-  const { T, A } = J;
-  const R = tubeRings([
-    { p: T, prof: oct(0.26, 0.3, 0.3) },
-    { p: A, prof: oct(0.29, 0.34, 0.3) },
-  ]);
-  return [
-    loft(JOINT, R),
-    panel(MAIN, R, 0.15, 0.9, 6, 9, { t: 0.09, gap: 0.03 }),
-    panel(ACC, R, 0.4, 0.6, 9, 14, { t: 0.06, gap: 0.01, ch: 0.02 }),
   ];
 }
 
@@ -1036,34 +717,17 @@ export function assembler() {
   });
   return { add, pair, done };
 }
-// 給其他機獸沿用的零件（骨架、身體的截面、四肢、尾巴的節）
-export const LION_PARTS = {
-  J,
-  sec,
-  fin,
-  nozzle,
-  disc,
-  shell,
-  flUpper,
-  flFore,
-  flMeta,
-  paw,
-  blThigh,
-  blShin,
-  blMeta,
-  tailSeg,
-};
+// 身體用的輪廓工具（其他機獸共用的只有這些工具；各部位的造型各自建模）
+export const LION_PARTS = { sec, fin, nozzle };
 
 let DEF = null;
 export function lionDef() {
   if (DEF) return DEF;
   const { add, pair, done } = assembler();
-  // 比例的調整：軀幹縮短（後半身整個往前 REAR）、頭往後貼近肩膀（HEADBACK）、四肢加粗（整條腿以肩／髖為中心放寬 LEG_K）
+  // 比例的調整（只有平移，不縮放）：軀幹縮短（後半身整個往前 REAR）、頭往後貼近肩膀（HEADBACK）；四肢在 legs_lion.js 原生建模
   const REAR = { d: [0, 0, 0.6] },
-    HEADBACK = { d: [0, 0, -0.5] },
-    LEG_K = [1.6, 1, 1.38];
-  const FL = { k: LEG_K, about: J.S, d: [0.22, 0, 0.2], sh: 0.09 },
-    BL = { k: LEG_K, about: J.H, d: [0.22, 0, REAR.d[2] - 0.25], sh: 0.09 };
+    HEADBACK = { d: [0, 0, -0.5] };
+  const G = LION_LEG;
   add('chest', null, J.chest, chest());
   add('hips', 'chest', J.hips, hips(), REAR);
   const nk = neck();
@@ -1075,14 +739,14 @@ export function lionDef() {
   add('jaw', 'head', J.jaw, jaw(), HEADBACK);
   add('turret', 'hips', J.turret, turret(), REAR);
   add('guns', 'turret', J.guns, guns(), REAR);
-  pair('fl_upper', 'fr_upper', 'chest', 'chest', J.S, flUpper(), FL);
-  pair('fl_fore', 'fr_fore', 'fl_upper', 'fr_upper', J.E, flFore(), FL);
-  pair('fl_meta', 'fr_meta', 'fl_fore', 'fr_fore', J.W, flMeta(), FL);
-  pair('fl_paw', 'fr_paw', 'fl_meta', 'fr_meta', J.K, paw(J.K), FL);
-  pair('bl_thigh', 'br_thigh', 'hips', 'hips', J.H, blThigh(), BL);
-  pair('bl_shin', 'br_shin', 'bl_thigh', 'br_thigh', J.N, blShin(), BL);
-  pair('bl_meta', 'br_meta', 'bl_shin', 'br_shin', J.T, blMeta(), BL);
-  pair('bl_paw', 'br_paw', 'bl_meta', 'br_meta', J.A, paw(J.A), BL);
+  pair('fl_upper', 'fr_upper', 'chest', 'chest', G.S, lionFlUpper());
+  pair('fl_fore', 'fr_fore', 'fl_upper', 'fr_upper', G.E, lionFlFore());
+  pair('fl_meta', 'fr_meta', 'fl_fore', 'fr_fore', G.W, lionFlMeta());
+  pair('fl_paw', 'fr_paw', 'fl_meta', 'fr_meta', G.K, lionPaw(G.K));
+  pair('bl_thigh', 'br_thigh', 'hips', 'hips', G.H, lionBlThigh());
+  pair('bl_shin', 'br_shin', 'bl_thigh', 'br_thigh', G.N, lionBlShin());
+  pair('bl_meta', 'br_meta', 'bl_shin', 'br_shin', G.Tk, lionBlMeta());
+  pair('bl_paw', 'br_paw', 'bl_meta', 'br_meta', G.A, lionPaw(G.A));
   for (let k = 0; k < 5; k++) add('tail' + (k + 1), k ? 'tail' + k : 'hips', J.tail[k], tailSeg(k), REAR);
   add('tail_tip', 'tail5', J.tail[5], tailTip(), REAR);
   DEF = done(LION_COLS, 'lion');

@@ -1,7 +1,18 @@
 // 劍齒虎型機獸（原創設計，2026-11-19；docs/beast-design.md）：格式與做法同獅型機獸（beast_lion.js）。
 // 和獅型的差別：沒有鬃甲、身形低伏而修長、扁寬的頭與兩頰的鰭、長劍齒、背上與腿上的條紋、肩上一對飛彈莢艙、尾端是穩定翼。
-// 四肢與尾巴的節沿用獅型的零件（LION_PARTS），以 tf 調整比例（腿壓低 8%、前肢特別粗壯）；區塊名稱和獅型相同，動作（beast-anim.js）共用。
+// 四肢與尾巴在 legs_tiger.js 原生建模（不沿用別隻的零件）；區塊名稱和獅型相同，動作（beast-anim.js）共用。
 import { LION_PARTS, assembler } from './beast_lion.js';
+import {
+  TIGER_LEG,
+  tigerBlMeta,
+  tigerBlShin,
+  tigerBlThigh,
+  tigerFlFore,
+  tigerFlMeta,
+  tigerFlUpper,
+  tigerPaw,
+  tigerTailSeg,
+} from './legs_tiger.js';
 import {
   ball,
   box,
@@ -27,20 +38,8 @@ const MAIN = 0,
   GUN = 6,
   STEEL = 7;
 export const TIGER_COLS = ['#ff3524!', '#0e1319', '#3a3d45', '#c8ccd3', '#ffb050!'];
-const {
-  J: LJ,
-  sec,
-  fin,
-  nozzle,
-  flUpper,
-  flFore,
-  flMeta,
-  paw,
-  blThigh,
-  blShin,
-  blMeta,
-  tailSeg,
-} = LION_PARTS;
+const { sec, fin, nozzle } = LION_PARTS;
+const G = TIGER_LEG;
 
 // 骨架（站姿，套用 tf 之前的世界座標）
 const T = {
@@ -54,7 +53,6 @@ const T = {
   hipZ: -3.65, // 髖關節的座（套用 REAR 之前）
   tail: [0, 5.45, -5.0],
 };
-const LEG_Y = 0.917; // 腿壓低的比例（肩高 5.4 → 4.95）
 // 條紋：橫過背甲的細長凸條
 const stripe = (R, i, j0 = 0.4, j1 = 3.6) =>
   panel(ACC, R, i, i + 0.2, j0, j1, { mir: true, t: 0.19, sink: -0.09, gap: 0.01, ch: 0.02 });
@@ -490,7 +488,7 @@ function lid() {
     cyl(JOINT, [1.36, LID[1], LID[2]], [2.2, LID[1], LID[2]], 0.06, 6),
   ];
 }
-// 尾端：上下兩片穩定翼＋感測器（照獅型的尾端位置建，之後和尾巴一起平移）
+// 尾端：上下兩片穩定翼＋感測器
 function tailTip() {
   const local = [
     hullS(MAIN, [
@@ -526,36 +524,19 @@ function tailTip() {
       8,
     ),
   ];
-  return xf(local, [18, 0, 0], LJ.tail[5]);
+  return xf(local, [4, 0, 0], G.tail[5]);
 }
 
 let DEF = null;
 export function tigerDef() {
   if (DEF) return DEF;
   const { add, pair, done } = assembler();
-  const REAR = { d: [0, 0, 0.6] };
-  // 腿：以腳下的地面為中心縮放（壓低 LEG_Y、放寬加厚），往外張開，再平移（sh 以地面為基準，所以 x 另外補回肩高 × sh）
-  const SH = 0.09;
-  const FL = {
-    k: [1.75, LEG_Y, 1.48],
-    about: [LJ.S[0], 0, LJ.S[2]],
-    d: [0.22 + LJ.S[1] * LEG_Y * SH, 0, 0.3],
-    sh: SH,
-  };
-  const BL = {
-    k: [1.5, LEG_Y, 1.3],
-    about: [LJ.H[0], 0, LJ.H[2]],
-    d: [0.22 + LJ.H[1] * LEG_Y * SH, 0, REAR.d[2] + (T.hipZ - LJ.H[2])],
-    sh: SH,
-  };
-  const TAIL = {
-    d: [T.tail[0] - LJ.tail[0][0], T.tail[1] - LJ.tail[0][1], T.tail[2] - LJ.tail[0][2] + REAR.d[2]],
-  };
+  const REAR = { d: [0, 0, 0.6] }; // 後半身的身體往前（只有平移）；四肢與尾巴在 legs_tiger.js 原生建模
   add('chest', null, T.chest, chest());
   add('hips', 'chest', T.hips, hips(), REAR);
   add('neck', 'chest', T.neck, neck());
   // 頭與下顎整個放大（頭要有份量）
-  const HK = [1.22, 1.22, 1.16];
+  const HK = [1.2, 1.2, 1.2]; // 等比（圓形的零件才不會被壓扁）
   add('head', 'neck', T.head, moved(scaled(headLocal(), HK), T.head));
   add(
     'jaw',
@@ -566,16 +547,16 @@ export function tigerDef() {
   add('turret', 'chest', T.turret, turret());
   add('guns', 'turret', T.guns, guns());
   pair('lid_l', 'lid_r', 'guns', 'guns', LID, lid());
-  pair('fl_upper', 'fr_upper', 'chest', 'chest', LJ.S, flUpper(), FL);
-  pair('fl_fore', 'fr_fore', 'fl_upper', 'fr_upper', LJ.E, flFore(), FL);
-  pair('fl_meta', 'fr_meta', 'fl_fore', 'fr_fore', LJ.W, flMeta(), FL);
-  pair('fl_paw', 'fr_paw', 'fl_meta', 'fr_meta', LJ.K, paw(LJ.K), FL);
-  pair('bl_thigh', 'br_thigh', 'hips', 'hips', LJ.H, blThigh(), BL);
-  pair('bl_shin', 'br_shin', 'bl_thigh', 'br_thigh', LJ.N, blShin(), BL);
-  pair('bl_meta', 'br_meta', 'bl_shin', 'br_shin', LJ.T, blMeta(), BL);
-  pair('bl_paw', 'br_paw', 'bl_meta', 'br_meta', LJ.A, paw(LJ.A), BL);
-  for (let k = 0; k < 5; k++) add('tail' + (k + 1), k ? 'tail' + k : 'hips', LJ.tail[k], tailSeg(k), TAIL);
-  add('tail_tip', 'tail5', LJ.tail[5], tailTip(), TAIL);
+  pair('fl_upper', 'fr_upper', 'chest', 'chest', G.S, tigerFlUpper());
+  pair('fl_fore', 'fr_fore', 'fl_upper', 'fr_upper', G.E, tigerFlFore());
+  pair('fl_meta', 'fr_meta', 'fl_fore', 'fr_fore', G.W, tigerFlMeta());
+  pair('fl_paw', 'fr_paw', 'fl_meta', 'fr_meta', G.K, tigerPaw(G.K));
+  pair('bl_thigh', 'br_thigh', 'hips', 'hips', G.H, tigerBlThigh());
+  pair('bl_shin', 'br_shin', 'bl_thigh', 'br_thigh', G.N, tigerBlShin());
+  pair('bl_meta', 'br_meta', 'bl_shin', 'br_shin', G.Tk, tigerBlMeta());
+  pair('bl_paw', 'br_paw', 'bl_meta', 'br_meta', G.A, tigerPaw(G.A));
+  for (let k = 0; k < 5; k++) add('tail' + (k + 1), k ? 'tail' + k : 'hips', G.tail[k], tigerTailSeg(k));
+  add('tail_tip', 'tail5', G.tail[5], tailTip());
   DEF = done(TIGER_COLS, 'tiger');
   return DEF;
 }

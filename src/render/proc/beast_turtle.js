@@ -1,8 +1,20 @@
 // 鱷龜型機獸（原創設計，2026-11-19；docs/beast-design.md，第 2 章的大 Boss）：格式與做法同獅型機獸（beast_lion.js）。
 // 造型取真實鱷龜的特徵：三道稜狀的背甲（每片盾板一個往後的尖錐）、鋸齒狀的後緣、大而呈三角形的頭與鉤狀的喙、嘴裡一條發光的誘餌、
 // 往外撐的粗短四肢、拖地的粗尾；背甲上一座低矮的雙管砲塔。大小不照自然界（真的鱷龜換算只有 3.7 m）：當 Boss，背甲長約 9 m。
-// 四肢與尾巴的節沿用獅型的零件（壓短、放寬、往外撐）；區塊名稱和獅型相同（腰臀是背甲下的骨盆）。
-import { LION_PARTS, assembler } from './beast_lion.js';
+// 四肢與尾巴在 legs_turtle.js 原生建模（不沿用別隻的零件）；區塊名稱和獅型相同（腰臀是背甲下的骨盆）。
+import { assembler } from './beast_lion.js';
+import {
+  TURTLE_LEG,
+  turtleBlMeta,
+  turtleBlShin,
+  turtleBlThigh,
+  turtleFlFore,
+  turtleFlMeta,
+  turtleFlUpper,
+  turtlePaw,
+  turtleTailSeg,
+  turtleTailTip,
+} from './legs_turtle.js';
 import {
   ball,
   bodyRing,
@@ -35,7 +47,7 @@ const MAIN = 0,
   GUN = 6,
   STEEL = 7;
 export const TURTLE_COLS = ['#b4ff3a!', '#0e1319', '#3a3d45', '#c8ccd3', '#ffb050!'];
-const { J: LJ, flUpper, flFore, flMeta, paw, blThigh, blShin, blMeta, tailSeg } = LION_PARTS;
+const G = TURTLE_LEG;
 
 const T = {
   chest: [0, 3.0, 1.0],
@@ -442,65 +454,13 @@ function guns() {
     box(ACC, [0.72, y + 0.3, z - 0.1], [0.3, 0.06, 0.9], null, 0, true),
   ];
 }
-// 尾端：一根粗的尖錐（照獅型的尾端位置建，之後和尾巴一起平移）
-function tailTip() {
-  const local = [
-    hullS(MAIN, [
-      [0, 0.16, 0],
-      [0.16, 0, 0],
-      [0, -0.16, 0],
-      [0, 0, -1.3],
-    ]),
-    hullS(SUB, [
-      [0, 0.14, -0.1],
-      [0.05, 0.14, -0.4],
-      [0, 0.5, -0.5],
-      [0, 0.12, -0.7],
-    ]),
-  ];
-  return xf(local, [10, 0, 0], LJ.tail[5]);
-}
-// 尾巴每一節上面的稜刺（照獅型的尾巴位置建）
-function tailSpike(k) {
-  const a = LJ.tail[k],
-    b = LJ.tail[k + 1];
-  const c = vmul(vadd(a, b), 0.5);
-  const r = 0.3 - k * 0.035;
-  return hullS(SUB, [
-    [0.1, c[1] + r, c[2] + 0.3],
-    [0.1, c[1] + r, c[2] - 0.2],
-    [0, c[1] + r + 0.5 - k * 0.06, c[2] - 0.35],
-    [0, c[1] + r - 0.1, c[2] - 0.4],
-  ]);
-}
-
 let DEF = null;
 export function turtleDef() {
   if (DEF) return DEF;
   const { add, pair, done } = assembler();
-  // 腿：以腳下的地面為中心壓短 LEG_Y、放寬加厚，再大幅往外撐（sh）；d 把肩／髖放到背甲下的關節座
-  // 身體整個壓低 DOWN（龜是貼著地面的）、腿跟著更短；頭放大 HK
+  // 身體整個壓低 DOWN（龜是貼著地面的；只有平移）、頭的大小 HK（等比）；四肢與尾巴在 legs_turtle.js 原生建模
   const DOWN = { d: [0, -0.6, 0] },
     HK = [0.95, 0.95, 0.95];
-  const LEG_Y = 0.435,
-    SH = 0.5;
-  const FL = {
-    k: [1.9, LEG_Y, 1.6],
-    about: [LJ.S[0], 0, LJ.S[2]],
-    d: [2.9 - LJ.S[0] + LJ.S[1] * LEG_Y * SH, 0, 3.0 - LJ.S[2]],
-    sh: SH,
-  };
-  const BL = {
-    k: [1.9, LEG_Y, 1.5],
-    about: [LJ.H[0], 0, LJ.H[2]],
-    d: [2.7 - LJ.H[0] + LJ.H[1] * LEG_Y * SH, 0, -3.2 - LJ.H[2]],
-    sh: SH,
-  };
-  const TAIL = {
-    k: [1.9, 1, 1],
-    about: LJ.tail[0],
-    d: [T.tail[0] - LJ.tail[0][0], T.tail[1] - LJ.tail[0][1] + DOWN.d[1], T.tail[2] - LJ.tail[0][2]],
-  };
   add('chest', null, T.chest, shell(), DOWN);
   add('hips', 'chest', T.hips, hips(), DOWN);
   add('neck', 'chest', T.neck, neck(), DOWN);
@@ -518,17 +478,16 @@ export function turtleDef() {
   );
   add('turret', 'chest', T.turret, turret(), DOWN);
   add('guns', 'turret', T.guns, guns(), DOWN);
-  pair('fl_upper', 'fr_upper', 'chest', 'chest', LJ.S, flUpper(), FL);
-  pair('fl_fore', 'fr_fore', 'fl_upper', 'fr_upper', LJ.E, flFore(), FL);
-  pair('fl_meta', 'fr_meta', 'fl_fore', 'fr_fore', LJ.W, flMeta(), FL);
-  pair('fl_paw', 'fr_paw', 'fl_meta', 'fr_meta', LJ.K, paw(LJ.K), FL);
-  pair('bl_thigh', 'br_thigh', 'hips', 'hips', LJ.H, blThigh(), BL);
-  pair('bl_shin', 'br_shin', 'bl_thigh', 'br_thigh', LJ.N, blShin(), BL);
-  pair('bl_meta', 'br_meta', 'bl_shin', 'br_shin', LJ.T, blMeta(), BL);
-  pair('bl_paw', 'br_paw', 'bl_meta', 'br_meta', LJ.A, paw(LJ.A), BL);
-  for (let k = 0; k < 5; k++)
-    add('tail' + (k + 1), k ? 'tail' + k : 'hips', LJ.tail[k], [...tailSeg(k), tailSpike(k)], TAIL);
-  add('tail_tip', 'tail5', LJ.tail[5], tailTip(), TAIL);
+  pair('fl_upper', 'fr_upper', 'chest', 'chest', G.S, turtleFlUpper());
+  pair('fl_fore', 'fr_fore', 'fl_upper', 'fr_upper', G.E, turtleFlFore());
+  pair('fl_meta', 'fr_meta', 'fl_fore', 'fr_fore', G.W, turtleFlMeta());
+  pair('fl_paw', 'fr_paw', 'fl_meta', 'fr_meta', G.K, turtlePaw(G.K));
+  pair('bl_thigh', 'br_thigh', 'hips', 'hips', G.H, turtleBlThigh());
+  pair('bl_shin', 'br_shin', 'bl_thigh', 'br_thigh', G.N, turtleBlShin());
+  pair('bl_meta', 'br_meta', 'bl_shin', 'br_shin', G.Tk, turtleBlMeta());
+  pair('bl_paw', 'br_paw', 'bl_meta', 'br_meta', G.A, turtlePaw(G.A));
+  for (let k = 0; k < 5; k++) add('tail' + (k + 1), k ? 'tail' + k : 'hips', G.tail[k], turtleTailSeg(k));
+  add('tail_tip', 'tail5', G.tail[5], turtleTailTip());
   DEF = done(TURTLE_COLS, 'turtle');
   return DEF;
 }

@@ -1,8 +1,18 @@
 // 熊型機獸（原創設計，2026-11-19；docs/beast-design.md，第 7 章火山熔爐帶的大 Boss）：格式與做法同獅型機獸（beast_lion.js）。
 // 造型取真實棕熊的特徵：高聳的肩峰（比臀高）、桶狀的厚實身軀、粗短的頸、寬顱與方而長的吻、小而圓的耳、巨大的掌與長爪、幾乎看不到的短尾。
 // 配合火山的主題：肩峰上兩排排煙管、胸口與喉嚨裡的爐火（張嘴才看得到，之後的噴火）。大小照自然界的比例（棕熊肩高 1.3 m → 約 7.3 m）。
-// 四肢沿用獅型的零件（放寬加厚成熊的粗腿）；沒有砲塔，尾巴只有一節短尾（tail1）。區塊名稱和獅型相同。
+// 四肢在 legs_bear.js 原生建模（不沿用別隻的零件）；沒有砲塔，尾巴只有一節短尾（tail1）。區塊名稱和獅型相同。
 import { LION_PARTS, assembler } from './beast_lion.js';
+import {
+  BEAR_LEG,
+  bearBlMeta,
+  bearBlShin,
+  bearBlThigh,
+  bearFlFore,
+  bearFlMeta,
+  bearFlUpper,
+  bearPaw,
+} from './legs_bear.js';
 import {
   ball,
   box,
@@ -29,7 +39,8 @@ const MAIN = 0,
   STEEL = 7,
   BURN = 8;
 export const BEAR_COLS = ['#ff5a14!', '#0e1319', '#3a3d45', '#c8ccd3', '#ff9a30!'];
-const { J: LJ, sec, fin, flUpper, flFore, flMeta, paw, blThigh, blShin, blMeta } = LION_PARTS;
+const { sec, fin } = LION_PARTS;
+const G = BEAR_LEG;
 
 const T = {
   chest: [0, 5.5, 1.5],
@@ -392,23 +403,8 @@ let DEF = null;
 export function bearDef() {
   if (DEF) return DEF;
   const { add, pair, done } = assembler();
-  // 腿：以腳下的地面為中心放寬加厚成熊的粗腿、稍微往外張；d 把肩／髖放到身體的關節座
-  const SH = 0.06,
-    FY = T.shoulder[1] / LJ.S[1],
-    BY = T.hip[1] / LJ.H[1];
-  const FL = {
-    k: [2.4, FY, 2.05],
-    about: [LJ.S[0], 0, LJ.S[2]],
-    d: [T.shoulder[0] - LJ.S[0] + T.shoulder[1] * SH, 0, T.shoulder[2] - LJ.S[2]],
-    sh: SH,
-  };
-  const BL = {
-    k: [2.9, BY, 2.45],
-    about: [LJ.H[0], 0, LJ.H[2]],
-    d: [T.hip[0] - LJ.H[0] + T.hip[1] * SH, 0, T.hip[2] - LJ.H[2]],
-    sh: SH,
-  };
-  const HK = [1.12, 1.12, 1.1];
+  // 四肢在 legs_bear.js 原生建模；頭的大小 HK（等比）
+  const HK = [1.12, 1.12, 1.12];
   add('chest', null, T.chest, chest());
   add('hips', 'chest', T.hips, hips());
   add('neck', 'chest', T.neck, neck());
@@ -422,14 +418,14 @@ export function bearDef() {
     ),
     moved(scaled(jawLocal(), HK), T.head),
   );
-  pair('fl_upper', 'fr_upper', 'chest', 'chest', LJ.S, flUpper(), FL);
-  pair('fl_fore', 'fr_fore', 'fl_upper', 'fr_upper', LJ.E, flFore(), FL);
-  pair('fl_meta', 'fr_meta', 'fl_fore', 'fr_fore', LJ.W, flMeta(), FL);
-  pair('fl_paw', 'fr_paw', 'fl_meta', 'fr_meta', LJ.K, paw(LJ.K), FL);
-  pair('bl_thigh', 'br_thigh', 'hips', 'hips', LJ.H, blThigh(), BL);
-  pair('bl_shin', 'br_shin', 'bl_thigh', 'br_thigh', LJ.N, blShin(), BL);
-  pair('bl_meta', 'br_meta', 'bl_shin', 'br_shin', LJ.T, blMeta(), BL);
-  pair('bl_paw', 'br_paw', 'bl_meta', 'br_meta', LJ.A, paw(LJ.A), BL);
+  pair('fl_upper', 'fr_upper', 'chest', 'chest', G.S, bearFlUpper());
+  pair('fl_fore', 'fr_fore', 'fl_upper', 'fr_upper', G.E, bearFlFore());
+  pair('fl_meta', 'fr_meta', 'fl_fore', 'fr_fore', G.W, bearFlMeta());
+  pair('fl_paw', 'fr_paw', 'fl_meta', 'fr_meta', G.K, bearPaw(G.K));
+  pair('bl_thigh', 'br_thigh', 'hips', 'hips', G.H, bearBlThigh());
+  pair('bl_shin', 'br_shin', 'bl_thigh', 'br_thigh', G.N, bearBlShin());
+  pair('bl_meta', 'br_meta', 'bl_shin', 'br_shin', G.Tk, bearBlMeta());
+  pair('bl_paw', 'br_paw', 'bl_meta', 'br_meta', G.A, bearPaw(G.A, 1.6));
   add('tail1', 'hips', T.tail, tail());
   DEF = done(BEAR_COLS, 'bear');
   return DEF;

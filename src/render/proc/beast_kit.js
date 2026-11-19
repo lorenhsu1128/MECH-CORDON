@@ -277,7 +277,8 @@ export function panel(slot, grid, i0, i1, j0, j1, o = {}) {
   const im = (i0 + i1) / 2,
     jm = (j0 + j1) / 2;
   const li = vlen(vsub(at(i1, jm), at(i0, jm))) / (i1 - i0),
-    lj = vlen(vsub(at(im, j1), at(im, j0))) / (j1 - j0);
+    // 沿 j 的長度分兩半量（繞一整圈的板，頭尾是同一點）
+    lj = (vlen(vsub(at(im, jm), at(im, j0))) + vlen(vsub(at(im, j1), at(im, jm)))) / (j1 - j0) || 1;
   const span = (a0, a1, inset) => {
     const out = [a0 + inset];
     for (let a = Math.floor(a0) + 1; a < a1; a++)
@@ -348,3 +349,39 @@ export const scaled = (prims, k, about = [0, 0, 0]) =>
     q[2] = p[2].map((v) => v.map((x, i) => r4(about[i] + (x - about[i]) * k[i])));
     return q;
   });
+// ---------- 四肢的建模工具（每隻機獸的四肢各自建模，這裡只有工具）----------
+// 以 o 為原點的點
+export const rel = (o, pts) => pts.map((q) => vadd(o, q));
+// 骨頭 a → b 上的管：list＝[[沿骨頭的比例 t, 截面]…]（t 可以小於 0 或大於 1）
+export const seg = (a, b, list, hint) =>
+  tubeRings(
+    list.map(([t, prof]) => ({ p: vlerp(a, b, t), prof, d: vsub(b, a) })),
+    hint,
+  );
+// 正圓的關節：軸沿左右（x）的圓柱（半徑 r、半寬 hw）＋外側（+x）的軸蓋與軸心；不可以拿去不等比縮放
+export const roundJoint = (c, r, hw, cap = 3) => [
+  cyl(2, [c[0] - hw, c[1], c[2]], [c[0] + hw, c[1], c[2]], r, 16),
+  lathe(
+    cap,
+    [c[0] + hw, c[1], c[2]],
+    [1, 0, 0],
+    [
+      [0, r * 0.74],
+      [0.07, r * 0.74],
+      [0.11, r * 0.52],
+    ],
+    16,
+  ),
+  lathe(
+    1,
+    [c[0] + hw + 0.11, c[1], c[2]],
+    [1, 0, 0],
+    [
+      [0, r * 0.3],
+      [0.04, r * 0.3],
+    ],
+    10,
+  ),
+];
+// 外甲：outer＝外側的點，往內補一層（x＝xin）成一塊
+export const shellX = (slot, outer, xin) => hull(slot, [...outer, ...outer.map((p) => [xin, p[1], p[2]])]);
