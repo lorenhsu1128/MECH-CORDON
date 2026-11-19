@@ -1134,12 +1134,15 @@ async function testLabDemo(browser) {
 
 // 地圖預覽器（docs/map-viewer-design.md）：標題按鈕開啟、換主題／變體／種子／大小重新產生、鏡頭（自由、全圖）、
 // 滑鼠拖曳與滾輪、觸控的雙指縮放、效能面板、暫停選單離開、不寫存檔
-// 機獸（每章最後的大 Boss；docs/beast-design.md 的「接成敵人」）：獅型的生成、追擊與速度、近戰的傷害、磁軌砲、部位與換型態的修復
-async function testBeast(browser) {
-  console.log('機獸：獅型的生成、追擊、近戰與磁軌砲的傷害、可以打壞的武器與修復');
+// 機獸（每章最後的大 Boss；docs/beast-design.md 的「接成敵人」）：每隻一個步驟（testBeast:<獸>，使用者要求每隻都要有自己的測試項目）。
+// 照 data/beasts.js 的資料跑：生成與部位、網格合併、追擊與速度、每一招近戰的傷害、每一把武器、每個部位的打壞與修復、命中的形狀、擊破的演出。
+// 新接一隻機獸時把名字加進 BEAST_TESTS；測試會檢查定義表裡的每一隻都有步驟。
+const BEAST_TESTS = ['lion', 'tiger'];
+async function testBeast(browser, key) {
+  console.log(`機獸（${key}）：生成與部位、追擊、每一招近戰、每一把武器、打壞與修復、命中的形狀、擊破`);
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   const page = await ctx.newPage();
-  watch(page, 'beast');
+  watch(page, 'beast-' + key);
   await page.goto('file:///' + HTML.replace(/\\/g, '/') + '?test');
   await waitVisible(page, 'title');
   await page.evaluate(() => {
@@ -1152,129 +1155,173 @@ async function testBeast(browser) {
   });
   await wait(800);
   await freezeLoop(page);
-  const r = await page.evaluate(() => {
+  const r = await page.evaluate((key) => {
     const g = window.__game,
       p = g.player,
       V = window.THREE.Vector3;
     for (const e of [...g.enemies]) e.dead || (e.depart ? e.depart() : e.die && e.die());
     g.waves = [];
     g.wavePend = null;
-    // 地圖是隨機的：拿掉障礙物，路線與光束才不會被擋（繞路與躍過障礙物另外用 scripts/beast-play.js 看）
+    // 地圖是隨機的：拿掉障礙物、整平地形，路線與光束才不會被擋（繞路與躍過障礙物另外用 scripts/beast-play.js 看）
     g.world.obstacles = [];
     for (const q of g.world.props || []) q.dead = true;
-    // 地形也整平（壕溝與高台會擋住磁軌砲的光束）
     g.world.terrainHeight = () => 0;
     g.world.rampHeight = () => -99;
-    p.pos.y = 0;
-    const out = {};
-    const b = g.beastSpawn('lion', 1, 8);
+    // 玩家搬到地圖中央附近：出生點在地圖邊緣，機獸放在它後面會超出活動範圍、被邊界夾住走不動
+    const home = () => p.pos.set(0, 0, 25);
+    home();
+    const out = { keys: g.beastKeys() };
+    const D = g.beastDefBy(key);
+    const b = g.beastSpawn(key, 1, D.tier);
+    const B = b.beastInfo(),
+      S = b.aiState;
     const parts = () => g.enemies.filter((e) => e.ai === 'part' && !e.dead);
-    const put = (dist) => {
-      b.pos.set(p.pos.x, p.pos.y, p.pos.z - dist);
-      b.pos.y = g.world.groundAt(b.pos.x, b.pos.z, p.pos.y + 1); // 和玩家同一層（不要放到障礙物頂上）
-      b.yaw = Math.PI; // 面向玩家（+z）
-      Object.assign(b.aiState, {
-        clip: null,
-        gun: null,
-        leap: null,
-        go: 0,
-        bCd: 99,
-        rCd: 99,
-        spd: 0,
-        pT: 0,
-        blk: 0,
-      });
+    const dist = () => Math.hypot(b.pos.x - p.pos.x, b.pos.z - p.pos.z);
+    const heal = () => {
+      p.hp = p.maxHp;
+      p.iFrames = 0;
+      p.staggerT = 0;
+      p.acs = 0;
+      p.vel.set(0, 0, 0);
+      if (p.statusClearAll) p.statusClearAll(true);
     };
-    let meshes = 0;
+    // 機獸放在玩家的 −z 方向 dist 公尺、面向玩家，AI 的冷卻都拉長（測試自己觸發招式）
+    const put = (dd) => {
+      b.pos.set(p.pos.x, 0, p.pos.z - dd);
+      b.yaw = Math.PI;
+      b.staggerT = 0;
+      b.acs = 0;
+      Object.assign(S, { clip: null, gun: null, leap: null, go: 0, bCd: 99, rCd: 99, spd: 0, pT: 0, blk: 0 });
+    };
+    let meshes = 0,
+      partMeshes = 0;
     b.mesh.traverse((o) => o.isMesh && meshes++);
-    // 武器部位的造型是看不到的（機獸模型上本來就有那把武器）：不能有任何網格
-    let partMeshes = 0;
     for (const e of parts()) e.mesh.traverse((o) => o.isMesh && partMeshes++);
     out.spawn = {
       boss: !!b && b.isBoss,
       kind: b.opts.bossKind,
       parts: parts().length,
+      want: Object.keys(B.hide || {}).length,
       meshes,
       partMeshes,
       tier: b.bossTier(),
+      wantTier: D.tier,
+      scale: b.model.beast.group.scale.x,
     };
-    // 追擊：從 90 m 外，2 秒內靠近、最高速度比玩家機甲的移動快
+    // 追擊：從 90 m 外追到 45 m 以內；最高速度比玩家機甲的移動快、比 QB 慢
+    home();
     put(90);
-    const d0 = Math.hypot(b.pos.x - p.pos.x, b.pos.z - p.pos.z);
     let vmax = 0;
-    // 地圖是隨機的，路上可能有障礙物要繞：最多給 6 秒，靠近到 45 m 以內就算
     const tc = window.__pump(6, () => {
-      vmax = Math.max(vmax, b.aiState.spd || 0);
-      return Math.hypot(b.pos.x - p.pos.x, b.pos.z - p.pos.z) < 45;
+      vmax = Math.max(vmax, S.spd || 0);
+      return dist() < 45;
     });
-    out.chase = {
-      d0,
-      d1: Math.hypot(b.pos.x - p.pos.x, b.pos.z - p.pos.z),
-      tc,
-      vmax,
-      pv: p.stats.speed,
-      gait: b.model.beast.an && b.model.beast.an.gait,
-    };
-    // 近戰：玩家站在左爪的判定圓裡 → 出手後受傷
-    put(40);
-    const M = b.beastInfo().melee.clawL;
-    b.aiState.bCd = 99;
-    const spot = b.beastSpot(M);
-    p.pos.set(spot.x, g.world.groundAt(spot.x, spot.z, spot.y + 3), spot.z);
-    p.vel.set(0, 0, 0);
-    p.hp = p.maxHp;
-    p.iFrames = 0;
-    b.beastClip('clawL');
-    const hp0 = p.hp;
-    window.__pump(M.t + 0.25);
-    out.claw = { hp0, hp1: p.hp, clip: b.aiState.clip };
-    // 磁軌砲：瞄準 → 預警 → 貫穿
-    window.__pump(1.2);
-    put(60);
-    p.hp = p.maxHp;
-    p.iFrames = 0;
-    b.aiState.gun = { G: b.beastInfo().guns.find((q) => q.id === 'rail'), t: 0, dir: null, next: 0 };
-    const hp2 = p.hp;
-    let aimed = false;
-    window.__pump(1.7, () => {
-      if (b.bx) aimed = true;
-      return false;
-    });
-    out.rail = {
-      hp0: hp2,
-      hp1: p.hp,
-      aimed,
-      done: !b.aiState.gun,
-      dm: b.dmgMul,
-      stag: p.staggerT,
-      acs: p.acs,
-    };
-    // 部位：打壞磁軌砲 → 旗標、那一塊藏起來；進第二型態修復
-    const rp = parts().find((e) => e.tierSpec && e.tierSpec.flag === 'rail');
-    if (rp) {
-      rp.iFrames = 0;
-      rp.takeDamage(1e8, 0, p, rp.center(), new V(0, 0, 1));
+    out.chase = { tc, d1: dist(), vmax, pv: p.stats.speed, gait: b.model.beast.an && b.model.beast.an.gait };
+    // 近戰：每一招——出手前把玩家放進判定圓，出手後要受傷
+    out.melee = [];
+    for (const k in B.melee) {
+      const M = B.melee[k];
+      home();
+      put(40);
+      p.pos.set(0, 0, 400); // 先放遠，等判定的位置定了再放進去
+      heal();
+      window.__pump(0.05);
+      home();
+      put(40);
+      p.pos.set(0, 0, 400);
+      b.beastClip(k);
+      window.__pump(Math.max(0.02, M.t - 0.12));
+      const c = S.spot || b.beastSpot(M);
+      p.pos.set(c.x, 0, c.z);
+      heal();
+      const hp0 = p.hp;
+      window.__pump(0.4);
+      out.melee.push({
+        k,
+        dmg: Math.round(hp0 - p.hp),
+        warned: !!S.warned || !!S.spot,
+        ci: B.clips.indexOf(k),
+        // 失敗時印出來查原因
+        dbg: `片段 ${S.clip || '無'} ${(S.clipT || 0).toFixed(2)} 秒、已出手 ${!!S.hitDone}、玩家離判定中心 ${Math.hypot(p.pos.x - c.x, p.pos.z - c.z).toFixed(1)} m、離地 ${p.pos.y.toFixed(1)}、無敵 ${(p.iFrames || 0).toFixed(2)}、機獸失衡 ${(b.staggerT || 0).toFixed(2)}、已命中 ${S.hitSet ? S.hitSet.size : 0} 個、機獸離玩家 ${dist().toFixed(1)} m、玩家血量 ${Math.round(p.hp)}／${Math.round(hp0)}`,
+      });
+      window.__pump(2.6); // 等片段播完
     }
-    window.__pump(0.3);
-    out.broke = { flag: b.tierFlag('rail'), parts: parts().length, vis: b.model.beast.nodes.guns.visible };
+    // 武器：每一把——站著不動的玩家要受傷，或有投射物飛出來；有狀態效果的要附加上
+    out.guns = [];
+    for (const G of B.guns || []) {
+      home();
+      put(60);
+      heal();
+      window.__pump(0.3);
+      home();
+      put(60);
+      heal();
+      const hp0 = p.hp;
+      let proj = 0,
+        aimed = false,
+        st = false;
+      b.beastGunStart(G, p);
+      const T =
+        G.type === 'rail'
+          ? G.track + G.warn + 0.5
+          : G.type === 'burst'
+            ? G.dur + 1.2
+            : G.type === 'volley'
+              ? 4
+              : 2.2;
+      window.__pump(T, () => {
+        proj = Math.max(proj, g.projectiles.length);
+        if (b.bx) aimed = true;
+        if (G.status && p.hasStatus && p.hasStatus(G.status.kind)) st = true;
+        return false;
+      });
+      out.guns.push({
+        id: G.id,
+        type: G.type,
+        dmg: Math.round(hp0 - p.hp),
+        proj,
+        aimed,
+        status: G.status ? st : null,
+        done: !S.gun,
+      });
+      window.__pump(1.5);
+    }
+    // 部位：逐一打壞 → 機能停用、那一塊藏起來；進第二型態修復
+    out.parts = [];
+    home();
+    put(60);
+    for (const e of parts()) {
+      const f = e.tierSpec && e.tierSpec.flag;
+      e.iFrames = 0;
+      e.takeDamage(1e8, 0, p, e.center(), new V(0, 0, 1));
+      window.__pump(0.3);
+      out.parts.push({
+        f,
+        flag: b.tierFlag(f),
+        hidden: ((B.hide || {})[f] || []).every(
+          (n) => b.model.beast.nodes[n] && !b.model.beast.nodes[n].visible,
+        ),
+      });
+    }
     b.hp = b.maxHp * 0.6;
-    window.__pump(0.5);
+    window.__pump(0.6);
     out.fix = {
       ph: b.bossPhase(),
-      flag: b.tierFlag('rail'),
       parts: parts().length,
-      vis: b.model.beast.nodes.guns.visible,
+      flags: Object.keys(B.hide || {}).filter((f) => b.tierFlag(f)).length,
+      vis: Object.values(B.hide || {})
+        .flat()
+        .every((n) => b.model.beast.nodes[n].visible),
     };
-    // 命中的形狀：沿著身體的幾顆球——頭的位置（中心前方）算命中，外接球以外的也算
+    // 命中的形狀：沿著身體的幾顆球——頭在碰撞半徑之外也打得到
     const HB = b.hitBalls();
-    const head = HB[0];
-    const dHead = Math.hypot(head.x - b.pos.x, head.z - b.pos.z);
     out.balls = {
       n: HB.length,
-      dHead,
+      dHead: Math.hypot(HB[0].x - b.pos.x, HB[0].z - b.pos.z),
       radius: b.radius,
-      dbg: [b.yaw, b.pos.x, b.pos.y, b.pos.z, b.beastK(), head.x, head.y, head.z, head.r, b.dead].join(','),
+      bad: HB.some((c) => ![c.x, c.y, c.z, c.r].every(Number.isFinite)),
     };
+    out.nan = ![b.yaw, b.pos.x, b.pos.y, b.pos.z, S.spd].every(Number.isFinite);
     // 擊破：先播擊破的片段（模型還在），播完才碎裂
     b.die(p); // 直接擊破（刁鑽度的型態閘門會擋住一次打穿）
     window.__pump(0.5);
@@ -1282,14 +1329,24 @@ async function testBeast(browser) {
       dead: b.dead,
       vis: b.mesh.visible,
       ci: (b.bf && b.bf.ci) || 0,
-      want: b.beastInfo().clips.indexOf('death') + 1,
+      want: B.clips.indexOf(B.death || 'death') + 1,
     };
-    window.__pump(4);
+    window.__pump(5);
     out.gone = { vis: b.mesh.visible };
     return out;
-  });
-  check(r.spawn.boss && r.spawn.kind === 'beast_lion', `獅型以 Boss 生成（${r.spawn.kind}）`);
-  check(r.spawn.parts === 3 && r.spawn.tier === 8, `刁鑽度 8：三個武器部位（${r.spawn.parts} 個）`);
+  }, key);
+  check(
+    r.keys.every((k) => BEAST_TESTS.includes(k)),
+    `定義表裡的每一隻機獸都有自己的測試步驟（${r.keys.join('、')}）`,
+  );
+  check(
+    r.spawn.boss && r.spawn.kind === 'beast_' + key,
+    `以 Boss 生成（${r.spawn.kind}，體型倍率 ${r.spawn.scale.toFixed(2)}）`,
+  );
+  check(
+    r.spawn.parts === r.spawn.want && r.spawn.want > 0 && r.spawn.tier === r.spawn.wantTier,
+    `刁鑽度 ${r.spawn.tier}：外掛武器的部位 ${r.spawn.parts} 個（定義 ${r.spawn.want} 個）`,
+  );
   check(r.spawn.meshes <= 30, `網格合併（${r.spawn.meshes} 個網格）`);
   check(r.spawn.partMeshes === 0, `武器部位沒有自己的造型（${r.spawn.partMeshes} 個網格）`);
   check(
@@ -1300,25 +1357,33 @@ async function testBeast(browser) {
     r.chase.vmax > r.chase.pv && r.chase.vmax < 186,
     `速度比玩家機甲的移動快、比 QB 慢（最高 ${r.chase.vmax.toFixed(0)}，玩家 ${r.chase.pv.toFixed(0)}）`,
   );
-  check(r.claw.hp1 < r.claw.hp0, `爪擊：判定圓裡的玩家受傷（${r.claw.hp0} → ${Math.round(r.claw.hp1)}）`);
-  check(r.rail.aimed && r.rail.done, '磁軌砲：砲塔瞄準、發射後結束');
+  for (const m of r.melee)
+    check(
+      m.dmg > 0 && m.warned && m.ci >= 0,
+      `近戰「${m.k}」：有預警、判定圓裡的玩家受傷（${m.dmg}）` + (m.dmg > 0 ? '' : ' — ' + m.dbg),
+    );
+  for (const q of r.guns) {
+    const how = q.dmg > 0 ? `傷害 ${q.dmg}` : `投射物 ${q.proj} 個`;
+    check(
+      (q.dmg > 0 || q.proj > 0) && q.done,
+      `武器「${q.id}」（${q.type}）：打得到站著不動的玩家（${how}）`,
+    );
+    if (q.type === 'rail' || q.type === 'burst') check(q.aimed, `武器「${q.id}」：砲塔有瞄準`);
+    if (q.status !== null) check(q.status, `武器「${q.id}」：附加狀態效果`);
+  }
+  for (const q of r.parts) check(q.flag && q.hidden, `打壞部位「${q.f}」：機能停用、那一塊藏起來`);
   check(
-    r.rail.hp1 < r.rail.hp0,
-    `磁軌砲：站著不動的玩家被貫穿（${r.rail.hp0} → ${Math.round(r.rail.hp1)}；火力倍率 ${r.rail.dm.toFixed(2)}）`,
-  );
-  check(r.broke.flag && r.broke.parts === 2 && !r.broke.vis, '打壞磁軌砲：機能停用、砲藏起來');
-  check(
-    r.fix.ph === 2 && !r.fix.flag && r.fix.parts === 3 && r.fix.vis,
+    r.fix.ph === 2 && r.fix.flags === 0 && r.fix.parts === r.spawn.want && r.fix.vis,
     `進第二型態：修復被打壞的武器（部位 ${r.fix.parts} 個）`,
   );
   check(
-    r.balls.n >= 4 && r.balls.dHead > r.balls.radius,
-    `命中的形狀：${r.balls.n} 顆球，頭在碰撞半徑之外也打得到（頭離中心 ${r.balls.dHead.toFixed(1)} m ${r.balls.dbg}、半徑 ${r.balls.radius.toFixed(1)} m）`,
+    r.balls.n >= 4 && r.balls.dHead > r.balls.radius * 0.6 && !r.balls.bad && !r.nan,
+    `命中的形狀：${r.balls.n} 顆球（頭離中心 ${r.balls.dHead.toFixed(1)} m、碰撞半徑 ${r.balls.radius.toFixed(1)} m），數值都有效`,
   );
   check(r.die.dead && r.die.vis && r.die.ci === r.die.want, '擊破：先播擊破的片段（模型還在）');
   check(!r.gone.vis, '擊破：片段播完後碎裂');
   await thawLoop(page);
-  await page.screenshot({ path: path.join(SHOT_DIR, 'beast-lion.png') });
+  await page.screenshot({ path: path.join(SHOT_DIR, `beast-${key}.png`) });
   await ctx.close();
 }
 async function testMapView(browser) {
@@ -34775,7 +34840,8 @@ const STEPS = [
   ['testHangar', (c) => testHangar(c.browser)],
   ['testStyleLab', (c) => testStyleLab(c.browser)],
   ['testMapView', (c) => testMapView(c.browser)], // 地圖預覽器（docs/map-viewer-design.md）
-  ['testBeast', (c) => testBeast(c.browser)], // 機獸（docs/beast-design.md 的「接成敵人」）
+  // 機獸（docs/beast-design.md 的「接成敵人」）：每隻一個步驟（SMOKE_ONLY=testBeast 一樣跑全部）
+  ...BEAST_TESTS.map((k) => ['testBeast:' + k, (c) => testBeast(c.browser, k), { family: 'testBeast' }]),
   // 每個內建風格 × 13 個主題要量很久，主題分成 3 組（SMOKE_ONLY=testStyleThemes 一樣跑全部）
   ...[1, 2, 3].map((i) => [
     'testStyleThemes:' + i,

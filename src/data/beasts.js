@@ -10,7 +10,7 @@
 // - balls＝命中的形狀：沿著身體的幾顆球 [前後, 高度, 半徑]（模型的公尺，再乘體型倍率）。
 // - melee＝近戰招式（片段名稱 → 判定）：t＝出手的時間（片段開始後幾秒，同時是地面預警的秒數）、f／side＝判定圓的中心相對機獸的前後／左右
 //   （模型的公尺，正＝前／左）、R＝半徑、dmg／im＝傷害與衝擊（再乘 dmgMul）、kb＝擊退、up＝往上打飛、high＝打得到多高（跳起來可以躲）、
-//   path＝預警畫成到落點的路線、open＝放完之後的破綻秒數；
+//   path＝預警畫成到落點的路線、open＝放完之後的破綻秒數、ram＝從這個時間起到出手為止身體撞到誰就算（撲擊在空中的那一段）、live＝判定的位置在出手前才決定（先閃開再出手的招式）、track＝轉向目標對準的秒數；
 //   sel＝什麼時候選這一招：d0～d1＝和目標的距離（扣掉兩邊的碰撞半徑，公尺）、a0～a1＝目標偏離正前方的角度（弧度）、sgn＝目標在左（1）／右（−1）才用、w＝權重。
 // - guns＝會發射的武器（docs/beast-design.md 的「武器」：兩把外掛＋一把長在身上）：far／near＝遠／近時被選到的權重、cd＝[放完的冷卻, 隨機再加]、
 //   flag／flags＝負責它的部位（BOSS_KIT 的 flag；全部被打壞就不能用）、hold＝放的時候停下來；type：
@@ -80,13 +80,54 @@ export const BEAST_DEFS = [
       [-1.8, 8.2, 1.7], // 背上的砲
     ],
     melee: {
-      clawL: { t: 0.45, f: 7.2, side: 1.6, R: 4.6, dmg: 620, im: 900, kb: 26, high: 7, sel: { d1: 5, a1: 0.6, sgn: 1, w: 3 } },
-      clawR: { t: 0.45, f: 7.2, side: -1.6, R: 4.6, dmg: 620, im: 900, kb: 26, high: 7, sel: { d1: 5, a1: 0.6, sgn: -1, w: 3 } },
-      bite: { t: 0.46, f: 8.2, side: 0, R: 3.6, dmg: 900, im: 1100, kb: 14, high: 8, sel: { d1: 5, a1: 0.6, w: 2 } },
-      tail: { t: 0.56, f: -8.5, side: 0, R: 5.6, dmg: 520, im: 1300, kb: 40, up: 14, high: 5, sel: { d1: 7, a0: 2.2, w: 6 } },
+      clawL: {
+        t: 0.45,
+        f: 7.2,
+        side: 1.6,
+        R: 4.6,
+        dmg: 620,
+        im: 900,
+        kb: 26,
+        high: 7,
+        sel: { d1: 5, a1: 0.6, sgn: 1, w: 3 },
+      },
+      clawR: {
+        t: 0.45,
+        f: 7.2,
+        side: -1.6,
+        R: 4.6,
+        dmg: 620,
+        im: 900,
+        kb: 26,
+        high: 7,
+        sel: { d1: 5, a1: 0.6, sgn: -1, w: 3 },
+      },
+      bite: {
+        t: 0.46,
+        f: 8.2,
+        side: 0,
+        R: 3.6,
+        dmg: 900,
+        im: 1100,
+        kb: 14,
+        high: 8,
+        sel: { d1: 5, a1: 0.6, w: 2 },
+      },
+      tail: {
+        t: 0.56,
+        f: -8.5,
+        side: 0,
+        R: 5.6,
+        dmg: 520,
+        im: 1300,
+        kb: 40,
+        up: 14,
+        high: 5,
+        sel: { d1: 7, a0: 2.2, w: 6 },
+      },
       pounce: {
         ...{ t: 1.0, f: 16.5, side: 0, R: 5.2, dmg: 1050, im: 1700, kb: 34, up: 10, high: 6 },
-        ...{ path: true, open: 2.5, sel: { d0: 9, d1: 26, a1: 0.3, w: 6 } },
+        ...{ path: true, ram: 0.62, open: 2.5, sel: { d0: 9, d1: 26, a1: 0.3, w: 6 } },
       },
     },
     guns: [
@@ -147,23 +188,81 @@ export const BEAST_DEFS = [
       [-1.9, 7.4, 1.4], // 背上的機砲
     ],
     melee: {
-      tFang: { t: 0.5, f: 7.8, side: 0, R: 3.6, dmg: 820, im: 1000, kb: 14, high: 7, sel: { d1: 6, a1: 0.6, w: 3 } },
-      // 先往側面閃再出爪（片段自己的側移）
-      tDodgeClawL: { t: 0.82, f: 6.6, side: 1.5, R: 4.8, dmg: 560, im: 800, kb: 24, high: 7, sel: { d1: 9, a1: 0.9, w: 2 } },
-      tDodgeClawR: { t: 0.82, f: 6.6, side: -1.5, R: 4.8, dmg: 560, im: 800, kb: 24, high: 7, sel: { d1: 9, a1: 0.9, w: 2 } },
+      tFang: {
+        t: 0.5,
+        f: 7.8,
+        side: 0,
+        R: 3.6,
+        dmg: 820,
+        im: 1000,
+        kb: 14,
+        high: 7,
+        sel: { d1: 6, a1: 0.6, w: 3 },
+      },
+      // 先往側面閃再出爪（片段自己的側移）：閃的時候轉回來對準目標（track），出手前才畫預警（live）
+      tDodgeClawL: {
+        ...{ t: 0.82, f: 6.6, side: 1.5, R: 4.8, dmg: 560, im: 800, kb: 24, high: 7 },
+        ...{ live: true, track: 0.7, sel: { d1: 9, a1: 0.9, w: 2 } },
+      },
+      tDodgeClawR: {
+        ...{ t: 0.82, f: 6.6, side: -1.5, R: 4.8, dmg: 560, im: 800, kb: 24, high: 7 },
+        ...{ live: true, track: 0.7, sel: { d1: 9, a1: 0.9, w: 2 } },
+      },
       // 原地迴旋甩尾（轉 180°）：目標在側面或背後
-      tSpinL: { t: 0.36, f: 0, side: 0, R: 8.2, dmg: 460, im: 1200, kb: 38, up: 12, high: 5, sel: { d1: 7, a0: 1.5, sgn: 1, w: 6 } },
-      tSpinR: { t: 0.36, f: 0, side: 0, R: 8.2, dmg: 460, im: 1200, kb: 38, up: 12, high: 5, sel: { d1: 7, a0: 1.5, sgn: -1, w: 6 } },
+      tSpinL: {
+        t: 0.36,
+        f: 0,
+        side: 0,
+        R: 8.2,
+        dmg: 460,
+        im: 1200,
+        kb: 38,
+        up: 12,
+        high: 5,
+        sel: { d1: 7, a0: 1.5, sgn: 1, w: 6 },
+      },
+      tSpinR: {
+        t: 0.36,
+        f: 0,
+        side: 0,
+        R: 8.2,
+        dmg: 460,
+        im: 1200,
+        kb: 38,
+        up: 12,
+        high: 5,
+        sel: { d1: 7, a0: 1.5, sgn: -1, w: 6 },
+      },
       tLunge: {
         ...{ t: 0.86, f: 19.5, side: 0, R: 5, dmg: 980, im: 1600, kb: 32, up: 9, high: 6 },
-        ...{ path: true, open: 2.2, sel: { d0: 9, d1: 30, a1: 0.3, w: 6 } },
+        ...{ path: true, ram: 0.56, open: 2.2, sel: { d0: 9, d1: 30, a1: 0.3, w: 6 } },
       },
     },
     guns: [
       // 背上的電磁機砲（實彈，壓制）：繞著玩家跑時點放
-      { id: 'mg', type: 'burst', flag: 'mg', slot: 'rarm', dur: 1.6, gap: 0.09, far: 0.45, near: 0.4, cd: [2.5, 1.5] },
+      {
+        id: 'mg',
+        type: 'burst',
+        flag: 'mg',
+        slot: 'rarm',
+        dur: 1.6,
+        gap: 0.09,
+        far: 0.45,
+        near: 0.4,
+        cd: [2.5, 1.5],
+      },
       // 肩上的電漿導彈莢艙（能量，控場）
-      { id: 'pods', type: 'volley', flag: 'pods', slots: ['rback', 'lback'], n: 1, gap: 0.3, far: 0.35, near: 0.25, cd: [4, 2] },
+      {
+        id: 'pods',
+        type: 'volley',
+        flag: 'pods',
+        slots: ['rback', 'lback'],
+        n: 1,
+        gap: 0.3,
+        far: 0.35,
+        near: 0.25,
+        cd: [4, 2],
+      },
       // 劍齒之間的冷凍光束（能量，重擊）：停下來低吼、預警後一道光束，打中緩速
       {
         ...{ id: 'freeze', type: 'beam', node: 'head', clip: 'tSnarl', hold: true, open: 1.2 },

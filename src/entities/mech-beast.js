@@ -13,6 +13,7 @@ import { MechEntity } from './mech-entity.js';
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const yawTo = (from, to) => Math.atan2(-(to.x - from.x), -(to.z - from.z));
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
+const LIVE_WARN = 0.32; // live 的近戰招式：出手前幾秒畫地面的預警
 
 Object.assign(MechEntity.prototype, {
   beastInfo() {
@@ -28,15 +29,25 @@ Object.assign(MechEntity.prototype, {
     s.hitDone = false;
     const B = this.beastInfo();
     const M = B && B.melee && B.melee[name];
+    s.spot = null;
+    s.warned = false;
+    s.hitSet = null;
     if (M) {
-      // 地面的預警（出手時長滿）＋目標玩家的紅色「!」（彈刀／完美 QB 的提示）
-      const g = this.game,
-        c = this.beastSpot(M);
-      if (M.path) g.fx.warnPath(this.pos.clone(), c, M.R * 2 * this.beastK(), M.t, 0xff4020);
-      else g.fx.warnCircle(c, M.R * this.beastK(), M.t, 0xff4020);
+      // 目標玩家的紅色「!」（彈刀／完美 QB 的提示）；地面的預警：一般的招式現在就畫（出手時長滿），判定用這時候算好的位置；
+      // live 的招式（先閃到旁邊再出手）等到出手前才知道打哪裡，beastMove 在出手前 LIVE_WARN 秒畫
+      if (!M.live) this.beastWarn(M, M.t);
       const pl = this.aiState.tgt;
       if (pl && !pl.dead && this.atkCue) this.atkCue(pl, M.t, 0.3);
     }
+  },
+  beastWarn(M, sec) {
+    const s = this.aiState,
+      g = this.game,
+      c = this.beastSpot(M);
+    s.spot = c;
+    s.warned = true;
+    if (M.path) g.fx.warnPath(this.pos.clone(), c, M.R * 2 * this.beastK(), sec, 0xff4020);
+    else g.fx.warnCircle(c, M.R * this.beastK(), sec, 0xff4020);
   },
   // 躍過障礙物：朝目標跳一段（最多 45 m，落在目標前方），途中不碰撞
   beastLeap(pl, d, tyaw) {
@@ -129,17 +140,28 @@ Object.assign(MechEntity.prototype, {
     return V(x, this.game.world.groundAt(x, z, this.pos.y + 2 * MS), z);
   },
   // 近戰出手：判定圓裡、離地不太高的敵對機體受傷並被打飛（房主）
-  beastStrike(M) {
+  // ram＝衝撞中（撲擊在空中的那一段）：判定跟著身體的前半走，撞到誰就算（否則身體先把目標推開，落地時判定圓裡已經沒有人）
+  beastStrike(M, ram) {
     const g = this.game,
+      s = this.aiState,
       k = this.beastK(),
       dm = this.dmgMul;
-    const c = this.beastSpot(M);
+    const hs = s.hitSet || (s.hitSet = new Set());
+    const c = ram
+      ? V(
+          this.pos.x - Math.sin(this.yaw) * this.radius * 0.7,
+          this.pos.y,
+          this.pos.z - Math.cos(this.yaw) * this.radius * 0.7,
+        )
+      : s.spot || this.beastSpot(M); // 預警畫在哪裡就打哪裡
+    const R = ram ? this.radius : M.R * k;
     let hit = false;
     for (const t of g.hostilesOfEnt(this)) {
-      if (!t || t.dead || !t.pos || t.pos.y - c.y > M.high * k) continue;
+      if (!t || t.dead || !t.pos || hs.has(t) || t.pos.y - c.y > M.high * k) continue;
       const dx = t.pos.x - c.x,
         dz = t.pos.z - c.z;
-      if (Math.hypot(dx, dz) > M.R * k + (t.radius || 0) * 0.6) continue;
+      if (Math.hypot(dx, dz) > R + (t.radius || 0) * 0.6) continue;
+      hs.add(t);
       const dir = V(t.pos.x - this.pos.x, 0, t.pos.z - this.pos.z);
       if (dir.lengthSq() < 1e-4) dir.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
       dir.normalize();
@@ -153,6 +175,7 @@ Object.assign(MechEntity.prototype, {
       }
       hit = true;
     }
+    if (ram && !hit) return;
     g.fx.dust && g.fx.dust(c, M.R * k * 0.5);
     g.camShake = Math.max(g.camShake || 0, hit ? 0.35 : 0.15);
     SFX.play('heavy', hit ? 0.8 : 0.5, 0.8, 0.05, 0.05, c);
@@ -257,6 +280,12 @@ Object.assign(MechEntity.prototype, {
         break;
       }
     }
+    this.beastGunStart(G, pl);
+  },
+  // 開始放一把武器（beastRanged 選好之後呼叫；冒煙測試也直接呼叫）
+  beastGunStart(G, pl) {
+    const s = this.aiState,
+      g = this.game;
     const cd = () => (s.rCd = G.cd[0] + Math.random() * G.cd[1]);
     if (G.clip) {
       this.beastClip(G.clip);
@@ -274,11 +303,16 @@ Object.assign(MechEntity.prototype, {
         pt = Math.atan2(d0.y, Math.hypot(d0.x, d0.z) || 1);
       for (let i = 0; i < G.n; i++) {
         const y = yw + (i - (G.n - 1) / 2) * G.step;
-        this.b3Beam(from.clone(), V(Math.sin(y) * Math.cos(pt), Math.sin(pt), Math.cos(y) * Math.cos(pt)), 1.1, {
-          range: 120,
-          dmg: G.dmg,
-          im: G.im,
-        });
+        this.b3Beam(
+          from.clone(),
+          V(Math.sin(y) * Math.cos(pt), Math.sin(pt), Math.cos(y) * Math.cos(pt)),
+          1.1,
+          {
+            range: 120,
+            dmg: G.dmg,
+            im: G.im,
+          },
+        );
       }
       cd();
     } else if (G.type === 'beam') {
@@ -370,8 +404,12 @@ Object.assign(MechEntity.prototype, {
       sideStep = rs - (s.rs || 0); // 片段的側移（閃避；+＝機獸的右側）
       s.rf = rf;
       s.rs = rs;
-      if (s.clipT < 0.25) turn = clamp(off, -1, 1) * B.turn * 1.5; // 出手前還會對準
       const M = B.melee && B.melee[s.clip];
+      if (s.clipT < ((M && M.track) || 0.25))
+        turn = clamp(off * 3, -1, 1) * B.turn * (M && M.track ? 2.5 : 1.5); // 出手前還會對準（track＝閃開之後轉回來對準的秒數）
+      if (M && M.live && !s.warned && s.clipT >= M.t - LIVE_WARN)
+        this.beastWarn(M, Math.max(0.05, M.t - s.clipT));
+      if (M && M.ram !== undefined && !s.hitDone && s.clipT >= M.ram) this.beastStrike(M, true);
       if (M && !s.hitDone && s.clipT >= M.t) {
         s.hitDone = true;
         this.beastStrike(M);

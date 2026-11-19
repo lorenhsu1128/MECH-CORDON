@@ -9,6 +9,10 @@ Object.assign(Game.prototype, {
   beastDefBy(key) {
     return BEAST_DEFS.find((b) => b.beast === key || b.kind === key) || null;
   },
+  // 已經接成敵人的機獸（冒煙測試用來確認每一隻都有自己的測試步驟）
+  beastKeys() {
+    return BEAST_DEFS.map((b) => b.beast);
+  },
   // 生成一隻機獸當 Boss（量測腳本與之後的主線用）：L＝等級（血量與火力的倍率）、tier＝刁鑽度（還沒有專屬內容，預設不套用）
   beastSpawn(key, L = 1, tier = 0) {
     const bd = this.beastDefBy(key);
