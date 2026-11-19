@@ -1,4 +1,5 @@
 // 主線任務模式的資料（設計見 docs/campaign-design.md）：出擊、主題的轉場方式、轉場演出、區段類型、出口獎勵、陣營抉擇
+import { BEAST_DEFS } from './beasts.js';
 import { BOSS_DEFS } from './enemies.js';
 
 // 主題的區段串接方式：relay 橫向接力、down 垂直下降、up 垂直上升、mixed 先接力再下降、sim 只當模擬器
@@ -197,6 +198,7 @@ export const SEG_TYPES = {
 const bossOf = (key) =>
   (/^#\d+$/.test(key || '') && BOSS_DEFS[+key.slice(1)]) ||
   BOSS_DEFS.find((b) => b.kind === key || b.name.startsWith(key + ' ')) ||
+  BEAST_DEFS.find((b) => b.kind === key) || // 機獸（每章最後的大 Boss；data/beasts.js）：區段的 boss 寫 'beast_<獸>'
   BOSS_DEFS[0];
 
 // 陣營抉擇（docs/campaign-design.md 第 2 節）：區段的 choice＝這一段清除後出現的是互斥的抉擇出口（每個選項一個），

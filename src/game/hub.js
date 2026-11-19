@@ -62,6 +62,10 @@ const resChips = (res, laserK) =>
     ? `<i class="brR">雷射 ${Math.round(laserK * 100)}%</i>`
     : '');
 
+// 攻擊的屬性（機獸的定義有 atk；docs/beast-design.md：簡報寫出來，玩家可以針對性換裝甲）
+const atkChips = (atk) =>
+  (atk || []).map((k) => `<i class="brR" style="--c:${ATTRS[k].color}">攻 ${ATTRS[k].name}</i>`).join('');
+
 Object.assign(Game.prototype, {
   // 簡報的情報：這次出擊會遇到的主題專屬敵人（依預排的主題與深度）、宿敵 AC、終點 Boss 的弱點與打法
   briefIntelHtml(sid, pre) {
@@ -97,7 +101,7 @@ Object.assign(Game.prototype, {
         'boss',
         boss.name,
         '終點 Boss',
-        resChips(boss.res),
+        atkChips(boss.atk) + resChips(boss.res),
         tactic(boss.intro) || '三個型態，第三型態有專屬招式',
       );
     for (const [k, i] of aces) {
