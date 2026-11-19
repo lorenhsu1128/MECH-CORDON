@@ -33,11 +33,16 @@ export const BEAST_DEFS = [
     wantDist: 5,
     speedMul: 1,
     res: [0, 0, 0],
-    // 速度（公尺／秒，實際尺度）：走、小跑、奔跑；轉身（弧度／秒）
-    walk: 5,
-    trot: 11,
-    run: 24,
-    turn: 1.6,
+    // 速度（公尺／秒，實際尺度）。使用者定案（2026-11-19）：機獸要靈活，比玩家機甲的移動快（約 64～80）、比 QB 慢（約 186）。
+    // walk＝貼身繞行、trot＝一般的移動與衝向目標、run＝遠距離追上；turn＝轉身（弧度／秒）、acc／dec＝加減速
+    walk: 34,
+    trot: 84,
+    run: 125,
+    turn: 3.4,
+    acc: 90,
+    dec: 160,
+    // 步伐動畫的速度＝實際速度 ÷ animK（動作的步態門檻照自然界的速度寫：獅型奔跑 24）
+    animK: 5.2,
     clips: ['pounce', 'clawL', 'clawR', 'bite', 'tail', 'roar', 'jump', 'brake', 'hit', 'stagger', 'death'],
     intro: '獅型機獸 — 背上的磁軌砲、肩上的導彈莢艙、鬃甲的雷射，三種屬性的攻擊都有',
   },

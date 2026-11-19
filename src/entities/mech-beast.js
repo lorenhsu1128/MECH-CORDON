@@ -58,7 +58,7 @@ Object.assign(MechEntity.prototype, {
       if (s.clipT < 0.25) turn = clamp(off, -1, 1) * B.turn * 1.5; // 出手前還會對準
       if (s.clipT >= clipDur(s.clip)) {
         s.clip = null;
-        s.bCd = 1.4 + Math.random() * 1.2;
+        s.bCd = 0.9 + Math.random() * 0.9;
       }
     } else {
       // 走位：遠了直接追；近了繞著目標走（每隔一陣子換方向）
@@ -74,9 +74,11 @@ Object.assign(MechEntity.prototype, {
       let head = tyaw;
       if (!(s.go > 0) && d < want * 2.2) head = tyaw + s.orb * (d < want ? 1.9 : 1.2);
       const err = wrap(head - this.yaw);
-      goalSpd = d > 42 * DS ? B.run : d > 20 * DS || s.go > 0 ? B.trot : B.walk;
-      if (Math.abs(err) > 1.1) goalSpd = Math.min(goalSpd, B.walk * 0.7); // 要轉大彎時先慢下來
-      turn = clamp(err * 3, -1, 1) * B.turn * (goalSpd > B.trot ? 0.7 : 1);
+      goalSpd = d > 30 * DS ? B.run : d > 12 * DS || s.go > 0 ? B.trot : B.walk;
+      // 轉彎半徑＝速度÷轉身速度：方向差得多時先慢下來（差越多越慢），貼近目標要出手時也放慢，低速時轉得更快
+      goalSpd *= clamp(1.25 - Math.abs(err) * 0.9, 0.12, 1);
+      if (s.go > 0 && d < this.radius + (pl.radius || 0) + 10) goalSpd = Math.min(goalSpd, B.walk * 0.6);
+      turn = clamp(err * 4, -1, 1) * B.turn * (1 + 1.6 * (1 - Math.min(1, s.spd / B.run)));
       if (s.go > 0) {
         s.go -= dt;
         // 出手的距離是實際的公尺（機獸的模型不乘建模倍率）
@@ -94,8 +96,8 @@ Object.assign(MechEntity.prototype, {
       }
     }
     // 速度與位置
-    s.spd += clamp(goalSpd - s.spd, -30 * dt, 14 * dt);
-    if (s.clip) s.spd = Math.max(0, s.spd - 40 * dt);
+    s.spd += clamp(goalSpd - s.spd, -B.dec * dt, B.acc * dt);
+    if (s.clip) s.spd = Math.max(0, s.spd - B.dec * 1.5 * dt);
     this.yaw = wrap(this.yaw + turn * dt);
     this.aimYaw = this.yaw;
     const step = s.spd * dt + fwdStep;
@@ -144,7 +146,12 @@ Object.assign(MechEntity.prototype, {
     const sc = rig.group.scale.x || 1;
     animateBeast(
       rig,
-      { t: F.t, v: name ? 0 : F.v / sc, w: name ? 0 : F.w, act: name ? { name, t: F.ct } : null },
+      {
+        t: F.t,
+        v: name ? 0 : F.v / sc / ((B && B.animK) || 1),
+        w: name ? 0 : F.w,
+        act: name ? { name, t: F.ct } : null,
+      },
       dt,
     );
     this.mesh.position.y = this.pos.y + (rig.rootY || 0) * sc;
