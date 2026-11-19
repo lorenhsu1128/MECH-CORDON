@@ -3,7 +3,15 @@
 // rig.beast＝buildBeast 的回傳（nodes、piv、eyeMat…），實體每格交給 animateBeast（entities/mech-beast.js）；
 // 每個區塊的關節群組都被 rig 參照到，網格合併時當成會動的錨點（mesh-merge.js 的 rigRefs）。
 import { MS } from '../core/scale.js';
-import { buildBear, buildGorilla, buildLion, buildTiger, buildTurtle } from './beast-lion.js';
+import {
+  buildBear,
+  buildGorilla,
+  buildLion,
+  buildMantis,
+  buildScorpion,
+  buildTiger,
+  buildTurtle,
+} from './beast-lion.js';
 
 function beastRig(b, o) {
   const N = b.nodes,
@@ -49,6 +57,19 @@ const make = (build, o) => (pal, scale) => {
   return beastRig(b, { ...o, height: o.h * k });
 };
 export const BEAST_BUILDERS = {
+  // 蠍：肩上武器槽＝背上的迫擊筒（迫擊砲彈與毒液彈從這裡出來）
+  beast_scorpion: make(buildScorpion, {
+    type: 'beast_scorpion',
+    h: 6,
+    hand: 'sting',
+    back: 'mortar',
+    backMz: [0, 2.6, -0.6],
+  }),
+  // 螳螂：手持武器槽＝前胸盾兩側的脈衝雷射機砲、肩上武器槽＝腹下的空雷發射器
+  beast_mantis: make(buildMantis, {
+    ...{ type: 'beast_mantis', h: 12, handL: 'pg_l', handR: 'pg_r', handMz: [0, 0, -2.7] },
+    ...{ back: 'ootheca', backMz: [0, 0, 1.4] },
+  }),
   // 猩猩：手持武器槽＝兩隻前臂的轉管機砲（各自的區塊）
   beast_gorilla: make(buildGorilla, {
     ...{ type: 'beast_gorilla', h: 8.8, handL: 'rot_l', handR: 'rot_r', handMz: [0, -2.6, -2.9] },

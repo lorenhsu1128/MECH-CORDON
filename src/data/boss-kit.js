@@ -46,6 +46,8 @@ export const C_STAR = {
   beast_bear: 'cover',
   beast_turtle: 'close',
   beast_gorilla: 'air',
+  beast_scorpion: 'cover',
+  beast_mantis: 'close',
 };
 // qb＝QB 連打（docs/boss-design.md 第 8 節：刁鑽度 3 起，每秒 QB 次數超過 C_QB_RATE）
 export const HABITS = ['air', 'close', 'far', 'cover', 'qb'];
@@ -935,6 +937,97 @@ KB.beast_gorilla = {
     close: (b) => b.b3Shock(18), // 搥地
     far: (b, pl) => b.b3Line(pl, 5, 4.5, 0.16),
     cover: (b) => b.b3Ring(26), // 搥胸的衝擊波穿過掩體
+  },
+};
+// 蠍型：切割砲壞一邊少一道光束、迫擊筒壞了沒有砲雨
+KB.beast_scorpion = {
+  allParts: true,
+  parts: [
+    {
+      id: 'cutL',
+      name: '左切割砲',
+      model: 'none',
+      back: false,
+      noExpose: true,
+      off: [-0.72, 0.64, 1.02],
+      flag: 'cutL',
+    },
+    {
+      id: 'cutR',
+      name: '右切割砲',
+      model: 'none',
+      back: false,
+      noExpose: true,
+      off: [0.72, 0.64, 1.02],
+      flag: 'cutR',
+    },
+    {
+      id: 'mortar',
+      name: '爆破迫擊筒',
+      model: 'none',
+      back: false,
+      noExpose: true,
+      size: 1.4,
+      off: [0, 0.76, 0.02],
+      flag: 'mortar',
+    },
+  ],
+  big: [
+    ['爆破砲雨', (b, pl) => b.b3Rain(pl, 6, 9, 0.22)],
+    ['毒霧噴發', (b, pl) => b.b3Erupt(pl, 3, 7)],
+  ],
+  reflect: ['mortar'],
+  counter: {
+    air: (b, pl) => b.b3Fan(pl, 4, 0.18), // 切割砲往上掃
+    close: (b) => b.b3Shock(16), // 甩尾拍地
+    far: (b, pl) => b.b3Rain(pl, 4, 6, 0.3), // 迫擊筒
+    cover: (b, pl) => b.b3Erupt(pl, 2, 3), // 從掩體底下鑽出
+  },
+};
+// 螳螂型：雷射機砲壞一邊少一半火力、空雷發射器壞了不布雷
+KB.beast_mantis = {
+  allParts: true,
+  parts: [
+    {
+      id: 'pgL',
+      name: '左雷射機砲',
+      model: 'none',
+      back: false,
+      noExpose: true,
+      off: [-0.2, 0.76, 0.38],
+      flag: 'pgL',
+      slots: ['larm'],
+    },
+    {
+      id: 'pgR',
+      name: '右雷射機砲',
+      model: 'none',
+      back: false,
+      noExpose: true,
+      off: [0.2, 0.76, 0.38],
+      flag: 'pgR',
+      slots: ['rarm'],
+    },
+    {
+      id: 'ooth',
+      name: '空雷發射器',
+      model: 'none',
+      back: false,
+      noExpose: true,
+      size: 1.3,
+      off: [0, 0.2, -0.58],
+      flag: 'ooth',
+    },
+  ],
+  big: [
+    ['空雷封鎖', (b, pl) => b.b3Mines(pl, 8, 10, true)],
+    ['刃光十字', (b, pl) => (b.b3Cross(pl), b.b3Fan(pl, 5, 0.16))],
+  ],
+  counter: {
+    air: (b, pl) => b.b3Fan(pl, 5, 0.16), // 斬擊波往上
+    close: (b) => b.b3Ring(22), // 迴旋的刃光
+    far: (b, pl) => b.b3Cross(pl),
+    cover: (b, pl) => b.b3Mines(pl, 5, 6, true), // 空雷繞到掩體後面
   },
 };
 Object.assign(BOSS_KIT, KB);

@@ -432,7 +432,9 @@ export function scorpionDef() {
   pair('chel_l', 'chel_r', 'chest', 'chest', CHEL, chelicera());
   // 大螯
   pair('cl_arm', 'cr_arm', 'chest', 'chest', SCORP_ARM.P0, scorpArmUpper());
-  pair('cl_fore', 'cr_fore', 'cl_arm', 'cr_arm', SCORP_ARM.P1, [...scorpArmFore(), ...cutter()]);
+  pair('cl_fore', 'cr_fore', 'cl_arm', 'cr_arm', SCORP_ARM.P1, scorpArmFore());
+  // 螯臂上的電漿切割砲是自己的區塊（跟著前臂；接成敵人時是可以打壞的部位）
+  pair('cut_l', 'cut_r', 'cl_fore', 'cr_fore', SCORP_ARM.P1, cutter());
   pair('cl_hand', 'cr_hand', 'cl_fore', 'cr_fore', SCORP_ARM.P2, scorpHand());
   pair('cl_finger', 'cr_finger', 'cl_hand', 'cr_hand', SCORP_ARM.F, scorpFinger());
   // 四對步足：l<對>_a 腿節、_b 脛節、_c 跗節

@@ -41,6 +41,19 @@ Object.assign(MechEntity.prototype, {
       if (pl && !pl.dead && this.atkCue) this.atkCue(pl, M.t, 0.3);
     }
   },
+  // 開始一招近戰（AI 與冒煙測試都從這裡）：一般的＝播片段；leap＝鑽進地下、從目標腳下鑽出來（沿用躍過障礙物的移動，落地時判定）
+  beastMelee(k, pl) {
+    const B = this.beastInfo(),
+      s = this.aiState,
+      M = B.melee[k];
+    if (!M.leap) return this.beastClip(k);
+    const d = Math.hypot(pl.pos.x - this.pos.x, pl.pos.z - this.pos.z);
+    this.beastLeap(pl, d + this.radius + (pl.radius || 0) + 6, yawTo(this.pos, pl.pos), M, k);
+    s.spot = V(s.leap.x1, s.leap.y1, s.leap.z1);
+    s.warned = true;
+    this.game.fx.warnCircle(s.spot.clone(), M.R * this.beastK(), s.leap.dur, 0xff4020);
+    if (this.atkCue) this.atkCue(pl, s.leap.dur, 0.3);
+  },
   beastWarn(M, sec) {
     const s = this.aiState,
       g = this.game,
@@ -51,7 +64,7 @@ Object.assign(MechEntity.prototype, {
     else g.fx.warnCircle(c, M.R * this.beastK(), sec, 0xff4020);
   },
   // 躍過障礙物：朝目標跳一段（最多 45 m，落在目標前方），途中不碰撞
-  beastLeap(pl, d, tyaw) {
+  beastLeap(pl, d, tyaw, M, clip) {
     const s = this.aiState,
       w = this.game.world,
       lim = w.lim - 3 * MS;
@@ -61,17 +74,18 @@ Object.assign(MechEntity.prototype, {
     const [lx, lz] = w.collide(tx, tz, pl.pos.y, this.radius * 0.8);
     s.leap = {
       t: 0,
-      dur: clipDur(this.beastInfo().jump || 'jump') * 0.75,
+      dur: M ? M.t : this.beastInfo().leapT || clipDur(this.beastInfo().jump || 'jump') * 0.75,
+      M: M || null,
       x0: this.pos.x,
       z0: this.pos.z,
       y0: this.pos.y,
       x1: lx,
       z1: lz,
       y1: w.groundAt(lx, lz, pl.pos.y + 2 * MS),
-      h: 9 * this.beastK(),
+      h: (M ? 0 : this.beastInfo().leapH === undefined ? 9 : this.beastInfo().leapH) * this.beastK(), // 鑽地的不走拋物線
       yaw: tyaw,
     };
-    this.beastClip(this.beastInfo().jump || 'jump');
+    this.beastClip(clip || this.beastInfo().jump || 'jump');
     s.pT = 0;
   },
   // 換型態時修復一次：被打壞的外掛武器重新裝上（使用者定案；之後再打壞就不修了）
@@ -376,6 +390,25 @@ Object.assign(MechEntity.prototype, {
           });
       }
       cd();
+    } else if (G.type === 'mines') {
+      // 空雷／地雷：目標周圍 n 顆（air＝浮在空中）
+      const dm = this.dmgMul;
+      for (let i = 0; i < G.n; i++) {
+        const a = (i / G.n) * Math.PI * 2 + Math.random() * 0.5,
+          rr = (0.5 + Math.random() * 0.5) * G.spread;
+        const p = pl.pos
+          .clone()
+          .add(V(Math.cos(a) * rr, G.air ? (2 + Math.random() * 5) * MS : 0, Math.sin(a) * rr));
+        g.layMine(this, p, {
+          dmg: G.dmg * dm,
+          im: G.im * dm,
+          R: G.R,
+          life: G.life || 9,
+          air: !!G.air,
+          quiet: i > 0,
+        });
+      }
+      cd();
     } else if (G.type === 'lob') {
       // 拋射（迫擊砲彈：落點有預警圈）：n 發，第一發對準目標、其餘散在 spread 公尺內；pool＝落地後留下燃燒地面
       const dm = this.dmgMul;
@@ -390,7 +423,10 @@ Object.assign(MechEntity.prototype, {
             .add(V(Math.cos(a) * rr, 0, Math.sin(a) * rr));
           g.mortarShot(this, tp, { dmg: G.dmg * dm, im: G.im * dm, R: G.R });
           if (G.pool)
-            g.later(2, () => !this.dead && g.addPool(this, tp, G.pool.r, G.pool.life, G.pool.dps * dm));
+            g.later(
+              2,
+              () => !this.dead && g.addPool(this, tp, G.pool.r, G.pool.life, G.pool.dps * dm, !!G.pool.acid),
+            );
         });
       cd();
     } else cd();
@@ -426,10 +462,17 @@ Object.assign(MechEntity.prototype, {
       this.yaw = wrap(this.yaw + clamp(wrap(L.yaw - this.yaw), -1, 1) * B.turn * 2 * dt);
       this.aimYaw = this.yaw;
       s.spd = 0;
+      s.clipT = L.t;
       if (u >= 1) {
+        if (L.M) {
+          // 鑽地突襲：鑽出來的那一下判定
+          s.hitSet = null;
+          this.beastStrike(L.M);
+          if (L.M.open) this.bossOpen(L.M.open, true);
+        }
         s.leap = null;
         s.clip = null;
-        s.bCd = 0.5;
+        s.bCd = L.M ? 1.2 : 0.5;
         this.game.fx.dust && this.game.fx.dust(this.pos.clone(), this.radius);
         this.game.camShake = Math.max(this.game.camShake || 0, 0.2);
       }
@@ -554,7 +597,7 @@ Object.assign(MechEntity.prototype, {
           c = c || ok[0];
         }
         if (c) {
-          this.beastClip(c);
+          this.beastMelee(c, pl);
           s.go = 0;
         } else if (s.go <= 0) s.bCd = 1;
       }

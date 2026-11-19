@@ -258,14 +258,21 @@ export function animateMantis(rig, st, dt, clipAt) {
   const SB = clip ? S_ACT : S_BODY;
   an.gait = Math.abs(v) > RUN_V * (an.gait === 'run' ? 0.9 : 1.05) ? 'run' : 'walk';
   const G = GAITS[an.gait];
-  let T = G.T;
-  if (Math.abs(v) * T * G.b > MAX_STRIDE) T = MAX_STRIDE / (Math.abs(v) * G.b);
+  // 腳著地的那一段要和地面的速度一致（不滑）：超過腿伸得到的 MAX_STRIDE 時先把步頻加快到 0.72 倍，
+  // 再縮短著地的比例（最低 0.14），還不夠才繼續加快步頻（同 beast-anim.js）
+  let T = G.T,
+    gb = G.b;
+  if (Math.abs(v) * T * gb > MAX_STRIDE) {
+    T = Math.max(G.T * 0.72, MAX_STRIDE / (Math.abs(v) * gb));
+    gb = Math.max(0.14, Math.min(G.b, MAX_STRIDE / (Math.abs(v) * T)));
+    if (Math.abs(v) * T * gb > MAX_STRIDE) T = MAX_STRIDE / (Math.abs(v) * gb);
+  }
   if (moving) an.ph = (an.ph + dt / T) % 1;
   an.mv += ((moving ? 1 : 0) - an.mv) * Math.min(1, dt * 6);
   const mv = an.mv * (1 - aw),
     p2 = an.ph * TAU,
     still = (1 - an.mv) * (1 - aw);
-  const stanceT = T * G.b;
+  const stanceT = T * gb;
   const shake = ch('shake');
   const jit = shake * Math.sin(t * 47);
   // 待機的搖晃：整個身體前後搖（腳不動），有時停一下
@@ -297,9 +304,9 @@ export function animateMantis(rig, st, dt, clipAt) {
     const ph = (an.ph + L.ph) % 1;
     let s,
       lift = 0;
-    if (ph < G.b) s = ph / G.b;
+    if (ph < gb) s = ph / gb;
     else {
-      const u = (ph - G.b) / (1 - G.b);
+      const u = (ph - gb) / (1 - gb);
       s = 1 - u * u * (3 - 2 * u);
       lift = G.lift * Math.sin(Math.PI * Math.pow(u, 0.8));
     }

@@ -12,6 +12,12 @@ const V = (x, y, z) => new THREE.Vector3(x, y, z);
 // 種類（bossKind，沒有的用名稱開頭）→ { cd 冷卻秒數, name 招式名稱, fn(Boss, 目標) }
 const SPECIALS = {
   // 機獸（docs/beast-design.md）
+  beast_scorpion: { cd: 11, name: '毒沙風暴', fn: (b, pl) => (b.b3Rain(pl, 7, 9, 0.2), b.b3Pools(pl, 3, 7)) },
+  beast_mantis: {
+    cd: 10,
+    name: '千刃亂舞',
+    fn: (b, pl) => (b.b3Cage(pl, 8, 24), b.b3Mines(pl, 6, 9, true), b.b3Ring(26)),
+  },
   beast_gorilla: {
     cd: 11,
     name: '狂暴連擊',

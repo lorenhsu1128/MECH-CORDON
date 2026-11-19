@@ -446,7 +446,7 @@ function pulseGuns() {
   const x = 1.95,
     y = 9.05,
     z = 4.3;
-  const m = true;
+  const m = false; // 左側；右側由區塊表的 pair 鏡像
   const out = [
     // 支架（從盾緣斜出來）
     hull(
@@ -610,7 +610,9 @@ export function mantisDef() {
   const { add, pair, done } = assembler();
   add('chest', null, T.chest, chest());
   add('abdomen', 'chest', T.abdomen, abdomen());
-  add('thorax', 'chest', T.thorax, [...thorax(), ...pulseGuns()]);
+  add('thorax', 'chest', T.thorax, thorax());
+  // 前胸盾兩側的脈衝雷射機砲是自己的區塊（跟著前胸；接成敵人時是可以打壞的部位）
+  pair('pg_l', 'pg_r', 'thorax', 'thorax', [1.95, 9.05, 4.2], pulseGuns());
   add('ootheca', 'abdomen', OOTH, ootheca());
   add('head', 'thorax', T.head, head());
   pair('ant_l', 'ant_r', 'head', 'head', T.ant, antenna());
