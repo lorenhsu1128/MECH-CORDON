@@ -331,7 +331,25 @@ for (const [key, label, palKey, pose, st] of [
   ['stand', '站姿（指節著地）', 'boss', null, null],
   ['stand_w', '站姿・白色配色', 'white', null, null],
   ['open', '張嘴、轉頭（檢查關節）', 'boss', { jaw: [-30, 0, 0], neck: [4, 14, 0], head: [8, 12, 0] }, null],
-  ['anim_walk', '動作：走（先用獅型的步伐）', 'boss', null, { v: 4 }],
+  ['anim_idle', '動作：待機', 'boss', null, { v: 0 }],
+  ['anim_walk', '動作：指節步行', 'boss', null, { v: 3.5 }],
+  ['anim_trot', '動作：快走', 'boss', null, { v: 7.5 }],
+  ['anim_run', '動作：躍進奔跑', 'boss', null, { v: 16 }],
+  ['anim_turn', '動作：原地轉身', 'boss', null, { v: 0, w: 0.7, spin: true }],
+  ['anim_stand', '動作：站起 → 落回', 'boss', null, lionClip('gStand')],
+  ['anim_standwalk', '動作：站著走', 'boss', null, (t) => ({ v: 1.8, act: { name: 'gStandWalk', t } })],
+  ['anim_jump', '動作：跳上高處', 'boss', null, lionClip('gJump', 1.2)],
+  ['anim_swing', '動作：鉤索擺盪', 'boss', null, lionClip('gSwing', 1.2)],
+  ['anim_drum', '搥胸（威嚇）', 'boss', null, lionClip('gDrum')],
+  ['anim_slam', '攻擊：雙拳搥地', 'boss', null, lionClip('gSlam')],
+  ['anim_leap', '攻擊：噴射跳躍搥地', 'boss', null, lionClip('gLeap', 1.2)],
+  ['anim_sweep', '攻擊：長臂橫掃', 'boss', null, lionClip('gSweepL')],
+  ['anim_throw', '攻擊：投擲', 'boss', null, lionClip('gThrow')],
+  ['anim_hook', '攻擊：鉤索拉扯', 'boss', null, lionClip('gHook')],
+  ['anim_hit', '受擊', 'boss', null, lionClip('gHit', 0.8)],
+  ['anim_kneel', '失衡：指節著地時趴下', 'boss', null, lionClip('gKneel')],
+  ['anim_sit', '失衡：站立時往後坐下', 'boss', null, lionClip('gSit')],
+  ['anim_death', '擊破', 'boss', null, lionClip('gDeath', 2)],
 ]) {
   add({
     id: 'temp/gorilla_' + key,
@@ -344,7 +362,9 @@ for (const [key, label, palKey, pose, st] of [
     build: (k) => {
       const rig = buildGorilla(pal(k), 1, pose);
       const out = { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
-      if (st) out.tick = (dt, t) => animateBeast(rig, { ...st, t }, dt);
+      if (st)
+        out.tick = (dt, t) =>
+          animateBeast(rig, typeof st === 'function' ? { ...st(t), t } : { ...st, t }, dt);
       return out;
     },
   });

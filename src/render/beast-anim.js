@@ -41,6 +41,21 @@ const PROFILES = {
     bobK: 0.55,
     flexK: 1.3,
   },
+  // 猩猩型：指節著地的步行（四拍、肩左右晃）、快的時候前後各一組的躍進；站立與手臂的動作在片段
+  gorilla: {
+    gaits: {
+      walk: { T: 1.25, b: 0.66, ph: { bl: 0, fl: 0.25, br: 0.5, fr: 0.75 }, lift: 0.55 },
+      trot: { T: 0.9, b: 0.56, ph: { bl: 0, fr: 0.06, br: 0.5, fl: 0.56 }, lift: 0.7 },
+      run: { T: 0.66, b: 0.34, ph: { bl: 0, br: 0.1, fr: 0.48, fl: 0.58 }, lift: 0.9 },
+    },
+    trotV: 5,
+    runV: 10,
+    maxStride: 4.2,
+    base: { by: 0, nx: 0, hx: 0 },
+    bobK: 1.2,
+    flexK: 0.55,
+    sway: 0.05,
+  },
   // 鱷龜型：只會爬（對角兩腳同步、很慢）、背甲左右搖、不跑不跳；待機時嘴微張露出誘餌
   // 熊型：蹠行的沉重步伐、肩峰左右晃；能小跑但不快；沒有脊椎伸縮
   bear: (() => {
@@ -79,7 +94,7 @@ const PROFILES = {
 //   <腳>F／L／C／X／P／R＝那隻腳的落點往前、抬高、掌骨收起（0～1）、往外、腳掌的角度（弧度，正＝腳尖翹起）、腳掌側轉（弧度，正＝往外翻）；nx／ny 頸、hx／hdy／hz 頭、jaw 下顎（負＝張開）
 //   tx／ty 尾（tx 負＝揚起）、mane 鬃甲張開（0～1）、glow 眼睛的亮度（−1 熄滅～1）、shake 顫抖
 //   ry／rf／rs／ryaw 整隻的高度、往前與往側面的位移、轉向；free 腿放鬆（1＝不貼地，跟著身體）、kick 放鬆時亂蹬
-//   bz 身體往前（公尺）、arm 手臂模式（0～1：前肢不貼地，照 <腳>S／A／E 擺：肩的前後、往外張、肘彎）、fire 爐火（−1～2）
+//   bz 身體往前（公尺）、arm 手臂模式（0～1：前肢不貼地，照 <腳>S／A／E／T 擺：肩的前後、往外張、肘彎、上臂繞自己的軸轉（正＝前臂往內））、fire 爐火（−1～2）
 //   wig 臀部左右微擺、gun 莢艙／砲管的俯仰、lid 莢艙的蓋子（0～1）、ext 內頸伸縮（公尺）、tuck 四肢與尾巴縮進殼裡（0～1）
 const FEET = (o) => ({ flX: o, frX: o, blX: o * 0.8, brX: o * 0.8 });
 const ROAR = { by: -0.25, pitch: 0.1, nx: 0.36, hx: 0.28, jaw: -0.78, mane: 1, glow: 1, tx: -0.5, shake: 1 };
@@ -1202,6 +1217,471 @@ BEAST_CLIPS.bStandWalk = [
 ];
 BEAST_CLIPS.bStandWalk.keepGait = true;
 
+// ---------- 猩猩型的片段（在平台之間移動的投擲手；招牌是搥胸與噴射跳躍搥地）----------
+// 站立：胸立起來約 50°（猩猩站著還是駝的）、退到後腳上方，前肢變成手臂，垂在身體兩側略往前
+const G_STAND = { pitch: 0.88, by: 1.55, bz: -2.6, arm: 1, nx: -0.55, hx: -0.2 };
+const G_HANG = { flS: -0.75, frS: -0.75, flE: 0.35, frE: 0.35, flA: 0.25, frA: 0.25 };
+const GU = { ...G_STAND, ...G_HANG };
+// 搥胸：左右拳輪流搥胸前的鼓板
+const drum = (n, t0) => {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const a = i % 2 ? 'fr' : 'fl',
+      b = i % 2 ? 'fl' : 'fr';
+    out.push({
+      t: t0 + i * 0.15,
+      ...G_STAND,
+      pitch: 1.05,
+      by: 1.8,
+      nx: -0.35,
+      hx: -0.05,
+      jaw: -0.8,
+      [a + 'S']: -0.9,
+      [a + 'E']: 1.9,
+      [a + 'A']: 0.35,
+      [a + 'T']: 1.35,
+      [b + 'S']: -0.9,
+      [b + 'E']: 1.4,
+      [b + 'A']: 0.6,
+      [b + 'T']: 0.3,
+      yaw: i % 2 ? -0.08 : 0.08,
+      glow: 1,
+      fire: 1.5,
+      shake: 0.7,
+    });
+  }
+  return out;
+};
+const G_KNEEL = {
+  by: -1.9,
+  pitch: -0.3,
+  nx: -0.2,
+  hx: -0.25,
+  flX: 0.7,
+  frX: 0.7,
+  jaw: -0.3,
+  glow: -0.6,
+  fire: -0.7,
+};
+const G_SIT = {
+  pitch: 0.75,
+  by: -2.3,
+  bz: -2.6,
+  flex: -0.45,
+  arm: 1,
+  nx: -0.85,
+  hx: -0.3,
+  flS: -1.0,
+  frS: -1.0,
+  flA: 0.5,
+  frA: 0.5,
+  flE: 0.2,
+  frE: 0.2,
+  blF: 2.4,
+  brF: 2.4,
+  blX: 0.5,
+  brX: 0.5,
+  glow: -0.6,
+  fire: -0.7,
+  jaw: -0.25,
+};
+const G_BACK = {
+  pitch: 3.0,
+  by: -4.1,
+  bz: -6.5,
+  arm: 1,
+  flS: 0.5,
+  frS: 0.5,
+  flA: 1.1,
+  frA: 1.1,
+  flE: 0.3,
+  frE: 0.3,
+  free: 1,
+  nx: 0.2,
+  jaw: -0.4,
+  glow: -1,
+  fire: -1,
+};
+Object.assign(BEAST_CLIPS, {
+  // 站起 → 站著 → 落回指節著地
+  gStand: [
+    { t: 0.22, by: -0.5, pitch: -0.05 },
+    { t: 0.6, ...GU, shake: 0.3 },
+    { t: 2.0, ...GU },
+    { t: 2.45, by: -0.5, pitch: -0.05, shake: 0.6 },
+    { t: 2.8 },
+  ],
+  // 搥胸（威嚇；之後的攻擊變快的預告）：站起、仰頭吼、雙拳輪流搥鼓板
+  gDrum: [{ t: 0.5, ...GU, glow: 0.5 }, ...drum(8, 0.72), { t: 2.2, ...GU }, { t: 2.8 }],
+  // 雙拳搥地：站起、雙拳高舉過頭 → 砸下並落回指節著地（衝擊波）
+  gSlam: [
+    { t: 0.45, ...GU },
+    {
+      t: 0.85,
+      ...G_STAND,
+      pitch: 1.1,
+      by: 2.2,
+      flS: 2.5,
+      frS: 2.5,
+      flE: 0.35,
+      frE: 0.35,
+      flA: 0.2,
+      frA: 0.2,
+      glow: 0.8,
+      jaw: -0.35,
+    },
+    { t: 0.97, by: -0.9, pitch: -0.14, rf: 1.5, flF: 0.8, frF: 0.8, jaw: -0.2, shake: 1 },
+    { t: 1.3, by: -0.5, pitch: -0.05, rf: 1.5 },
+    { t: 1.9, rf: 1.5 },
+  ],
+  // 噴射跳躍搥地（招牌技）：蹲下、噴射筒點火 → 高高跳起、雙拳舉過頭 → 落到目標處砸下
+  gLeap: [
+    { t: 0.4, by: -1.1, pitch: 0.06, flex: 0.12, fire: 1.6, glow: 0.6 },
+    {
+      t: 0.62,
+      ...G_STAND,
+      pitch: 0.55,
+      by: 1,
+      bz: -1,
+      ry: 5,
+      rf: 4,
+      flS: 1.0,
+      frS: 1.0,
+      flE: 0.5,
+      frE: 0.5,
+      free: 0.9,
+      fire: 2,
+      shake: 0.4,
+    },
+    {
+      t: 0.98,
+      ...G_STAND,
+      pitch: 0.85,
+      ry: 12,
+      rf: 10,
+      flS: 2.5,
+      frS: 2.5,
+      flE: 0.35,
+      frE: 0.35,
+      flA: 0.2,
+      frA: 0.2,
+      free: 0.9,
+      fire: 0.6,
+      glow: 1,
+      jaw: -0.4,
+    },
+    {
+      t: 1.24,
+      ...G_STAND,
+      pitch: 0.5,
+      by: 0.6,
+      bz: -1,
+      ry: 6,
+      rf: 15.5,
+      flS: 2.3,
+      frS: 2.3,
+      flE: 0.2,
+      frE: 0.2,
+      free: 0.6,
+      glow: 1,
+      jaw: -0.5,
+    },
+    { t: 1.36, by: -1.1, pitch: -0.16, rf: 17, flF: 0.8, frF: 0.8, jaw: -0.3, shake: 1 },
+    { t: 1.75, by: -0.5, pitch: -0.05, rf: 17 },
+    { t: 2.4, rf: 17 },
+  ],
+  // 跳上高處：蹲下、噴射 → 垂直跳到上一層的平台、雙拳先著地
+  gJump: [
+    { t: 0.35, by: -1.1, pitch: 0.08, flex: 0.12, fire: 1.6, glow: 0.4 },
+    {
+      t: 0.55,
+      ...G_STAND,
+      pitch: 0.7,
+      by: 1,
+      bz: -1,
+      ry: 4,
+      rf: 1,
+      flS: 1.6,
+      frS: 1.6,
+      flE: 0.4,
+      frE: 0.4,
+      free: 0.9,
+      fire: 2,
+    },
+    {
+      t: 0.95,
+      ...G_STAND,
+      pitch: 0.5,
+      by: 0.6,
+      bz: -1,
+      ry: 10.5,
+      rf: 4.5,
+      flS: 1.3,
+      frS: 1.3,
+      flE: 0.3,
+      frE: 0.3,
+      free: 0.8,
+      fire: 0.4,
+    },
+    { t: 1.15, by: -0.8, pitch: -0.1, ry: 9, rf: 6.5, shake: 0.7 },
+    { t: 1.5, by: -0.3, ry: 9, rf: 6.5 },
+    { t: 2.0, ry: 9, rf: 6.5 },
+  ],
+  // 擺盪：左臂射出鉤索鉤住上方 → 整隻盪過去（腿收起）→ 放開、落地
+  gSwing: [
+    { t: 0.35, ...G_STAND, flS: 2.6, flE: 0.1, flA: 0.1, frS: -0.7, frE: 0.4, frA: 0.25, glow: 0.5 },
+    { t: 0.55, ...G_STAND, flS: 2.6, flE: 0.1, flA: 0.1, frS: -0.7, frE: 0.4, frA: 0.25, shake: 0.4 },
+    {
+      t: 0.85,
+      ...G_STAND,
+      pitch: 0.45,
+      by: 1.2,
+      bz: -1.2,
+      ry: 3,
+      rf: 2.5,
+      flS: 2.2,
+      flE: 0.1,
+      frS: -1.0,
+      frE: 0.5,
+      free: 1,
+      fire: 0.8,
+    },
+    {
+      t: 1.2,
+      ...G_STAND,
+      pitch: 0.95,
+      ry: 1.8,
+      rf: 9,
+      flS: 2.6,
+      flE: 0.05,
+      frS: -0.4,
+      frE: 0.6,
+      free: 1,
+      blC: 1,
+      brC: 1,
+    },
+    {
+      t: 1.55,
+      ...G_STAND,
+      pitch: 1.35,
+      by: 2.4,
+      ry: 5.5,
+      rf: 15.5,
+      flS: 3.0,
+      flE: 0.3,
+      frS: 1.6,
+      frE: 0.3,
+      free: 1,
+      glow: 0.6,
+    },
+    {
+      t: 1.85,
+      ...G_STAND,
+      pitch: 0.45,
+      by: 0.6,
+      bz: -1,
+      ry: 3,
+      rf: 19.5,
+      flS: 1.3,
+      frS: 1.3,
+      flE: 0.3,
+      frE: 0.3,
+      free: 0.7,
+    },
+    { t: 2.02, by: -0.9, pitch: -0.1, rf: 21, shake: 0.8 },
+    { t: 2.4, by: -0.3, rf: 21 },
+    { t: 2.9, rf: 21 },
+  ],
+  // 投擲：左手往地上抓起一塊（平台的碎塊、貨櫃）→ 舉過頭、右手指向目標 → 丟出
+  gThrow: [
+    { t: 0.45, ...GU },
+    {
+      t: 0.8,
+      ...G_STAND,
+      pitch: 0.45,
+      by: 0.3,
+      bz: -1.5,
+      nx: -0.3,
+      flS: -0.3,
+      flE: 0.1,
+      frS: -0.9,
+      frE: 0.5,
+      yaw: 0.15,
+    },
+    {
+      t: 1.2,
+      ...G_STAND,
+      pitch: 1.05,
+      by: 2.1,
+      flS: 2.3,
+      flE: 0.9,
+      flA: 0.3,
+      frS: 0.35,
+      frE: 0.2,
+      yaw: 0.35,
+      glow: 0.7,
+    },
+    {
+      t: 1.33,
+      ...G_STAND,
+      pitch: 0.65,
+      by: 1.4,
+      rf: 0.8,
+      flS: 0.45,
+      flE: 0.1,
+      frS: -1.2,
+      frE: 0.5,
+      yaw: -0.4,
+      jaw: -0.4,
+      shake: 0.6,
+    },
+    { t: 1.75, ...GU, rf: 0.8 },
+    { t: 2.3, rf: 0.8 },
+  ],
+  // 鉤索拉扯：右臂往前射出鉤索 → 鉤住 → 整條手臂往回扯（把目標拉過來）→ 左拳迎上去
+  gHook: [
+    { t: 0.4, ...GU, yaw: 0.3, frS: -1.0, frE: 1.6, glow: 0.5 },
+    { t: 0.52, ...G_STAND, yaw: -0.35, frS: 0.78, frE: 0.05, flS: -1.0, flE: 0.6, flA: 0.25, shake: 0.4 },
+    { t: 1.0, ...G_STAND, yaw: -0.35, frS: 0.78, frE: 0.05, flS: -1.0, flE: 0.6, flA: 0.25 },
+    {
+      t: 1.22,
+      ...G_STAND,
+      pitch: 1.05,
+      yaw: 0.4,
+      frS: -0.9,
+      frE: 1.7,
+      flS: -0.5,
+      flE: 1.5,
+      flA: 0.2,
+      shake: 0.5,
+    },
+    {
+      t: 1.36,
+      ...G_STAND,
+      pitch: 0.7,
+      by: 1.5,
+      yaw: -0.3,
+      rf: 1,
+      flS: 0.75,
+      flE: 0.1,
+      frS: -1.0,
+      frE: 0.8,
+      jaw: -0.35,
+      shake: 0.8,
+    },
+    { t: 1.8, ...GU, rf: 1 },
+    { t: 2.4, rf: 1 },
+  ],
+  // 長臂橫掃（左臂由左往右）：半站、上身往左扭、左臂往外張 → 貼著地面掃過正面
+  gSweepL: [
+    {
+      t: 0.42,
+      ...G_STAND,
+      pitch: 0.65,
+      by: 1.2,
+      bz: -2,
+      yaw: 0.75,
+      flS: 0.15,
+      flA: 1.25,
+      flE: 0.15,
+      frS: -0.8,
+      frE: 0.6,
+      frA: 0.25,
+      glow: 0.6,
+    },
+    {
+      t: 0.56,
+      ...G_STAND,
+      pitch: 0.6,
+      by: 1.1,
+      bz: -2,
+      yaw: -0.8,
+      hy: -0.2,
+      rf: 0.8,
+      flS: 0.5,
+      flA: -0.3,
+      flE: 0.1,
+      frS: -1.1,
+      frE: 0.6,
+      frA: 0.4,
+      jaw: -0.3,
+      shake: 0.6,
+    },
+    {
+      t: 0.8,
+      ...G_STAND,
+      pitch: 0.6,
+      by: 1.1,
+      bz: -2,
+      yaw: -0.95,
+      rf: 0.8,
+      flS: 0.4,
+      flA: -0.5,
+      flE: 0.2,
+      frS: -1.1,
+      frE: 0.6,
+      frA: 0.4,
+    },
+    { t: 1.25, ...GU, rf: 0.8 },
+    { t: 1.8, rf: 0.8 },
+  ],
+  // 小受擊：身體幾乎不動，頭與肩甩一下
+  gHit: [{ t: 0.07, hdy: -0.25, hz: -0.1, by: -0.08, yaw: -0.06, jaw: -0.12 }, { t: 0.45 }],
+  // 失衡（指節著地時）：雙臂一軟、胸口砸到地上、頭垂下
+  gKneel: [{ t: 0.3, ...G_KNEEL, shake: 0.5 }, { t: 2.3, ...G_KNEEL, by: -1.95 }, { t: 3.0 }],
+  // 失衡（站立時）：踉蹌往後一屁股坐下、雙拳撐在身後、胸前的鼓板與反應爐縫暴露
+  gSit: [
+    { t: 0.3, ...GU, pitch: 1.05, shake: 0.6 },
+    { t: 0.65, ...G_SIT, shake: 0.5 },
+    { t: 2.6, ...G_SIT, jaw: -0.2 },
+    { t: 3.0, pitch: 0.3, by: -0.6, bz: -1, arm: 0.3, shake: 0.4 },
+    { t: 3.5 },
+  ],
+  // 擊破：站起來最後一次搥胸、火光熄滅、雙臂垂下 → 往後仰倒
+  gDeath: [
+    { t: 0.5, ...GU, shake: 0.5 },
+    ...drum(3, 0.72),
+    {
+      t: 1.7,
+      ...G_STAND,
+      pitch: 1.0,
+      nx: -0.7,
+      hx: -0.3,
+      jaw: -0.4,
+      flS: -0.9,
+      frS: -0.9,
+      flA: 0.2,
+      frA: 0.2,
+      fire: -1,
+      glow: -0.7,
+    },
+    {
+      t: 2.2,
+      ...G_STAND,
+      pitch: 1.5,
+      by: 1.0,
+      bz: -3.6,
+      nx: -0.2,
+      jaw: -0.4,
+      flS: -0.3,
+      frS: -0.3,
+      flA: 0.6,
+      frA: 0.6,
+      free: 0.4,
+      fire: -1,
+      glow: -0.9,
+    },
+    { t: 2.55, ...G_BACK, shake: 1 },
+    { t: 3.0, ...G_BACK },
+  ],
+});
+// 站著走：站立的姿勢不擋步伐（後腳照步態踏，前肢是手臂）
+BEAST_CLIPS.gStandWalk = [
+  { t: 0.5, ...GU },
+  { t: 1e9, ...GU },
+];
+BEAST_CLIPS.gStandWalk.keepGait = true;
+
 // 左右對調的片段（右前腳的爪擊、從右邊被打）
 const SWAP = { fl: 'fr', fr: 'fl', bl: 'br', br: 'bl' };
 const NEG = new Set(['roll', 'yaw', 'hy', 'ny', 'hdy', 'hz', 'ty', 'rs', 'ryaw']);
@@ -1220,6 +1700,7 @@ BEAST_CLIPS.hitR = mirrorClip(BEAST_CLIPS.hitL);
 BEAST_CLIPS.tDodgeL = mirrorClip(BEAST_CLIPS.tDodgeR);
 BEAST_CLIPS.tDodgeClawL = mirrorClip(BEAST_CLIPS.tDodgeClawR);
 BEAST_CLIPS.tSpinR = mirrorClip(BEAST_CLIPS.tSpinL);
+BEAST_CLIPS.gSweepR = mirrorClip(BEAST_CLIPS.gSweepL);
 export const clipDur = (name) => {
   const c = BEAST_CLIPS[name];
   return c ? c[c.length - 1].t : 0;
@@ -1474,6 +1955,7 @@ export function animateBeast(rig, st, dt) {
     sp(L.n[3], 'z', pr, S_LEG, dt);
     sp(L.n[3], 'y', pr * 0.5, S_LEG, dt);
     sp(L.n[0], 'z', lat * leg + ch(L.key + 'A') * out * arm, S_LEG, dt);
+    sp(L.n[0], 'y', ch(L.key + 'T') * out * arm, S_LEG, dt); // 上臂繞自己的軸轉（正＝前臂往內，搥胸）
   }
 
   // ---- 頸、頭：抵銷身體的俯仰，待機時左右張望 ----
