@@ -45,6 +45,7 @@ export const C_STAR = {
   beast_tiger: 'far',
   beast_bear: 'cover',
   beast_turtle: 'close',
+  beast_gorilla: 'air',
 };
 // qb＝QB 連打（docs/boss-design.md 第 8 節：刁鑽度 3 起，每秒 QB 次數超過 C_QB_RATE）
 export const HABITS = ['air', 'close', 'far', 'cover', 'qb'];
@@ -880,6 +881,60 @@ KB.beast_turtle = {
     close: (b) => b.b3Shock(18), // 踏地
     far: (b, pl) => b.b3Line(pl, 5, 4.5, 0.18), // 魚雷沿線
     cover: (b, pl) => b.b3Rain(pl, 4, 5, 0.25), // 深水炸彈繞過掩體
+  },
+};
+// 猩猩型：前臂的機砲壞一隻少一半火力、魚叉砲壞一邊少一發
+KB.beast_gorilla = {
+  allParts: true,
+  parts: [
+    {
+      id: 'rotL',
+      name: '左臂機砲',
+      model: 'none',
+      back: false,
+      noExpose: true,
+      off: [-0.42, 0.28, 0.3],
+      flag: 'rotL',
+      slots: ['larm'],
+    },
+    {
+      id: 'rotR',
+      name: '右臂機砲',
+      model: 'none',
+      back: false,
+      noExpose: true,
+      off: [0.42, 0.28, 0.3],
+      flag: 'rotR',
+      slots: ['rarm'],
+    },
+    {
+      id: 'harpL',
+      name: '左魚叉砲',
+      model: 'none',
+      back: false,
+      noExpose: true,
+      off: [-0.28, 0.95, 0.1],
+      flag: 'harpL',
+    },
+    {
+      id: 'harpR',
+      name: '右魚叉砲',
+      model: 'none',
+      back: false,
+      noExpose: true,
+      off: [0.28, 0.95, 0.1],
+      flag: 'harpR',
+    },
+  ],
+  big: [
+    ['搥地震波', (b) => b.b3Shocks(3, 0.6)],
+    ['彈雨掃射', (b, pl) => b.b3Fan(pl, 7, 0.13)],
+  ],
+  counter: {
+    air: (b, pl) => b.b3Fan(pl, 5, 0.16), // 機砲往上掃
+    close: (b) => b.b3Shock(18), // 搥地
+    far: (b, pl) => b.b3Line(pl, 5, 4.5, 0.16),
+    cover: (b) => b.b3Ring(26), // 搥胸的衝擊波穿過掩體
   },
 };
 Object.assign(BOSS_KIT, KB);

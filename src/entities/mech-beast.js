@@ -256,7 +256,7 @@ Object.assign(MechEntity.prototype, {
         // 邊移動邊點放：砲塔跟著目標
         this.beastAim(pl.center(), this.center());
         while (A.t >= A.next && A.next < G.dur) {
-          this.beastFire(G.slot, pl);
+          for (const k of G.slots || [G.slot]) this.beastFire(k, pl);
           A.next += G.gap;
         }
         if (A.t >= G.dur) end();
@@ -355,7 +355,13 @@ Object.assign(MechEntity.prototype, {
         const from = V(0, 0, 0);
         (N[name] || N.chest).getWorldPosition(from);
         const dir = pl.center().addScaledVector(pl.vel, 0.2).sub(from).normalize();
-        this.b3Beam(from, dir, G.warn, { range: G.range, dmg: G.dmg, im: G.im });
+        this.b3Beam(from, dir, G.warn, {
+          range: G.range,
+          dmg: G.dmg,
+          im: G.im,
+          attr: G.attr,
+          color: G.color,
+        });
         if (G.status)
           g.later(G.warn + 0.02, () => {
             if (this.dead) return;
@@ -365,7 +371,7 @@ Object.assign(MechEntity.prototype, {
               const pj = ap.dot(dir);
               if (pj < 0 || pj > G.range * DS) continue;
               if (ap.addScaledVector(dir, -pj).length() < (t.radius || 0) + (G.hitR || 2))
-                t.addStatus(G.status.kind, G.status.sec, { ...G.status.o });
+                t.addStatus(G.status.kind, G.status.sec, { ...G.status.o, src: this }); // src：鉤住是往機獸這邊拉
             }
           });
       }

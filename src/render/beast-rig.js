@@ -3,18 +3,22 @@
 // rig.beast＝buildBeast 的回傳（nodes、piv、eyeMat…），實體每格交給 animateBeast（entities/mech-beast.js）；
 // 每個區塊的關節群組都被 rig 參照到，網格合併時當成會動的錨點（mesh-merge.js 的 rigRefs）。
 import { MS } from '../core/scale.js';
-import { buildBear, buildLion, buildTiger, buildTurtle } from './beast-lion.js';
+import { buildBear, buildGorilla, buildLion, buildTiger, buildTurtle } from './beast-lion.js';
 
 function beastRig(b, o) {
   const N = b.nodes,
     M = b.mats;
-  const hand = N[o.hand] || N.chest;
-  if (o.handMz && !hand.userData.mz) hand.userData.mz = o.handMz; // 手持武器槽（rarm）的槍口
+  // 手持武器槽的發射點：左右可以各自一個節點（handL／handR；猩猩兩隻前臂的機砲）
+  const handOf = (k) => {
+    const h = N[o['hand' + k]] || N[o.hand] || N.chest;
+    if (o.handMz && !h.userData.mz) h.userData.mz = o.handMz;
+    return h;
+  };
   // 肩上武器的發射點：左右各自的節點（合併網格之後量不到槍口，所以寫 userData.mz＝節點座標的槍口；muzzle.js 的 rigMuzzle）
   const arm = (k) => {
     const back = N[o['back' + k]] || N[o.back] || N.chest;
     if (o.backMz && !back.userData.mz) back.userData.mz = o.backMz;
-    return { hand, back, sh: new THREE.Group(), up: new THREE.Group(), fore: new THREE.Group() };
+    return { hand: handOf(k), back, sh: new THREE.Group(), up: new THREE.Group(), fore: new THREE.Group() };
   };
   return {
     group: b.group,
@@ -45,6 +49,10 @@ const make = (build, o) => (pal, scale) => {
   return beastRig(b, { ...o, height: o.h * k });
 };
 export const BEAST_BUILDERS = {
+  // 猩猩：手持武器槽＝兩隻前臂的轉管機砲（各自的區塊）
+  beast_gorilla: make(buildGorilla, {
+    ...{ type: 'beast_gorilla', h: 8.8, handL: 'rot_l', handR: 'rot_r', handMz: [0, -2.6, -2.9] },
+  }),
   // 鱷龜：手持武器槽＝背甲砲塔的重機砲、肩上武器槽＝左右的魚雷架
   beast_turtle: make(buildTurtle, {
     ...{ type: 'beast_turtle', h: 7.6, hand: 'guns', handMz: [0.78, 0, -3.5] },

@@ -530,5 +530,122 @@ export const BEAST_DEFS = [
     intro:
       '鱷龜型機獸 — 背甲抗實彈、弱爆發；嘴的咬合非常快，咬空是破綻；縮殼旋轉會滑過來橫掃，轉完會暈；背甲的砲塔與兩側的魚雷架可以打壞',
   },
+  // ---------- 猩猩型（第 4 章：Lattice-9、舊宇宙港）：跳躍與擺盪，用魚叉把人拉過來 ----------
+  {
+    beast: 'gorilla',
+    name: '猩猩型機獸',
+    kind: 'beast_gorilla',
+    ai: 'beast',
+    modelKind: 'boss',
+    vehKey: 'beast_gorilla',
+    pal: 'beast_gorilla',
+    asm: { ...BEAST_ASM, rarm: 'w_mg', larm: 'w_mg' }, // 兩隻前臂的轉管機砲（實彈）
+    scale: BEAST_SCALE.gorilla,
+    tier: 4,
+    hide: { rotL: ['rot_l'], rotR: ['rot_r'], harpL: ['harp_l'], harpR: ['harp_r'] },
+    stag: 'gKneel',
+    death: 'gDeath',
+    jump: 'gJump',
+    radius: 1.45,
+    hpMul: 3.4,
+    stabMul: 5,
+    dmgMul: 0.52,
+    wantDist: 5,
+    speedMul: 1,
+    res: [-0.25, 0.2, 0], // 弱實彈、抗爆發
+    atk: ['kin', 'en'],
+    walk: 34,
+    trot: 86,
+    run: 122,
+    turn: 3.2,
+    acc: 95,
+    dec: 170,
+    balls: [
+      [3.4, 7.6, 2.2], // 頭
+      [1.6, 6.2, 3.6], // 胸與肩
+      [-0.8, 4.9, 3.0], // 腰臀
+      [3.0, 3.0, 2.7], // 前臂
+    ],
+    melee: {
+      // 雙拳搥地：範圍大、貼地才打得到（跳起來躲）
+      gSlam: {
+        t: 0.97,
+        f: 6.5,
+        side: 0,
+        R: 8,
+        dmg: 820,
+        im: 1700,
+        kb: 28,
+        up: 10,
+        high: 4,
+        sel: { d1: 7, a1: 0.9, w: 3 },
+      },
+      // 橫掃：目標在哪一側就用哪一隻手
+      gSweepL: {
+        t: 0.56,
+        f: 4.5,
+        side: 3,
+        R: 6.5,
+        dmg: 600,
+        im: 1000,
+        kb: 34,
+        high: 8,
+        sel: { d1: 6, a1: 1.5, sgn: 1, w: 3 },
+      },
+      gSweepR: {
+        t: 0.56,
+        f: 4.5,
+        side: -3,
+        R: 6.5,
+        dmg: 600,
+        im: 1000,
+        kb: 34,
+        high: 8,
+        sel: { d1: 6, a1: 1.5, sgn: -1, w: 3 },
+      },
+      // 跳躍搥擊
+      gLeap: {
+        ...{ t: 1.36, f: 19.5, side: 0, R: 6, dmg: 1000, im: 1700, kb: 30, up: 9, high: 7 },
+        ...{ path: true, ram: 0.98, open: 2.2, sel: { d0: 9, d1: 26, a1: 0.3, w: 5 } },
+      },
+      // 擺盪飛踢：從更遠的地方盪過來
+      gSwing: {
+        ...{ t: 2.02, f: 23.5, side: 0, R: 6, dmg: 1100, im: 1900, kb: 38, up: 8, high: 8 },
+        ...{ path: true, ram: 1.2, open: 2.4, sel: { d0: 26, d1: 42, a1: 0.3, w: 4 } },
+      },
+    },
+    guns: [
+      // 前臂的轉管機砲（實彈，壓制）：兩隻手一起掃
+      {
+        ...{ id: 'rotary', type: 'burst', flags: ['rotL', 'rotR'], slots: ['rarm', 'larm'] },
+        ...{ dur: 1.8, gap: 0.1, far: 0.5, near: 0.35, cd: [2.5, 1.5] },
+      },
+      // 肩上的絞盤魚叉砲（實彈，控場）：預警線之後射出，打中會被鉤住往牠那邊拉（QB 掙脫）
+      {
+        ...{ id: 'harpoon', type: 'beam', attr: 'kin', color: 0xe8ecf2, flags: ['harpL', 'harpR'] },
+        ...{
+          nodes: ['harp_l', 'harp_r'],
+          nodeFlags: ['harpL', 'harpR'],
+          warn: 0.75,
+          range: 80,
+          dmg: 260,
+          im: 500,
+          hitR: 3,
+        },
+        ...{ status: { kind: 'hook', sec: 2.6, o: { pull: 55 } }, far: 0.35, near: 0.2, cd: [4, 2] },
+      },
+      // 胸口反應爐的胸砲（能量，重擊）：搥胸蓄力之後一道粗光束，放完是破綻
+      {
+        ...{ id: 'chest', type: 'beam', node: 'chest', clip: 'gDrum', hold: true, open: 1.4 },
+        ...{ warn: 1.5, range: 110, dmg: 1250, im: 1600, far: 0.15, near: 0.3, cd: [5, 2] },
+      },
+    ],
+    clips: [
+      ...['gSlam', 'gSweepL', 'gSweepR', 'gLeap', 'gSwing', 'gDrum', 'gHook', 'gThrow', 'gStand'],
+      ...['gJump', 'gHit', 'gKneel', 'gSit', 'gDeath'],
+    ],
+    intro:
+      '猩猩型機獸 — 弱實彈、抗爆發；被魚叉鉤住用 QB 掙脫；搥胸是胸砲的蓄力，放完是破綻；雙拳搥地用跳的躲',
+  },
 ];
 export const beastDefOf = (kind) => BEAST_DEFS.find((b) => b.kind === kind) || null;

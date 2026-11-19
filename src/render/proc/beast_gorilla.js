@@ -639,7 +639,9 @@ export function gorillaDef() {
   add('head', 'neck', T.head, moved(headLocal(), T.head));
   add('jaw', 'head', vadd(T.head, T.jawL), moved(jawLocal(), T.head));
   pair('fl_upper', 'fr_upper', 'chest', 'chest', G.S, gorillaFlUpper());
-  pair('fl_fore', 'fr_fore', 'fl_upper', 'fr_upper', G.E, [...gorillaFlFore(), ...rotary()]);
+  pair('fl_fore', 'fr_fore', 'fl_upper', 'fr_upper', G.E, gorillaFlFore());
+  // 前臂的轉管機砲是自己的區塊（跟著前臂；接成敵人時是可以打壞的部位）
+  pair('rot_l', 'rot_r', 'fl_fore', 'fr_fore', G.E, rotary());
   pair('fl_meta', 'fr_meta', 'fl_fore', 'fr_fore', G.W, gorillaFlMeta());
   pair('fl_paw', 'fr_paw', 'fl_meta', 'fr_meta', G.K, gorillaFist(G.K));
   pair('bl_thigh', 'br_thigh', 'hips', 'hips', G.H, gorillaBlThigh());
