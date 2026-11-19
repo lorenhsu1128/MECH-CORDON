@@ -1162,6 +1162,10 @@ async function testBeast(browser) {
     // 地圖是隨機的：拿掉障礙物，路線與光束才不會被擋（繞路與躍過障礙物另外用 scripts/beast-play.js 看）
     g.world.obstacles = [];
     for (const q of g.world.props || []) q.dead = true;
+    // 地形也整平（壕溝與高台會擋住磁軌砲的光束）
+    g.world.terrainHeight = () => 0;
+    g.world.rampHeight = () => -99;
+    p.pos.y = 0;
     const out = {};
     const b = g.beastSpawn('lion', 1, 8);
     const parts = () => g.enemies.filter((e) => e.ai === 'part' && !e.dead);
