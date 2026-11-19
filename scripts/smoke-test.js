@@ -1265,6 +1265,27 @@ async function testBeast(browser) {
       parts: parts().length,
       vis: b.model.beast.nodes.guns.visible,
     };
+    // 命中的形狀：沿著身體的幾顆球——頭的位置（中心前方）算命中，外接球以外的也算
+    const HB = b.hitBalls();
+    const head = HB[0];
+    const dHead = Math.hypot(head.x - b.pos.x, head.z - b.pos.z);
+    out.balls = {
+      n: HB.length,
+      dHead,
+      radius: b.radius,
+      dbg: [b.yaw, b.pos.x, b.pos.y, b.pos.z, b.beastK(), head.x, head.y, head.z, head.r, b.dead].join(','),
+    };
+    // 擊破：先播擊破的片段（模型還在），播完才碎裂
+    b.die(p); // 直接擊破（刁鑽度的型態閘門會擋住一次打穿）
+    window.__pump(0.5);
+    out.die = {
+      dead: b.dead,
+      vis: b.mesh.visible,
+      ci: (b.bf && b.bf.ci) || 0,
+      want: b.beastInfo().clips.indexOf('death') + 1,
+    };
+    window.__pump(4);
+    out.gone = { vis: b.mesh.visible };
     return out;
   });
   check(r.spawn.boss && r.spawn.kind === 'beast_lion', `獅型以 Boss 生成（${r.spawn.kind}）`);
@@ -1290,6 +1311,12 @@ async function testBeast(browser) {
     r.fix.ph === 2 && !r.fix.flag && r.fix.parts === 3 && r.fix.vis,
     `進第二型態：修復被打壞的武器（部位 ${r.fix.parts} 個）`,
   );
+  check(
+    r.balls.n >= 4 && r.balls.dHead > r.balls.radius,
+    `命中的形狀：${r.balls.n} 顆球，頭在碰撞半徑之外也打得到（頭離中心 ${r.balls.dHead.toFixed(1)} m ${r.balls.dbg}、半徑 ${r.balls.radius.toFixed(1)} m）`,
+  );
+  check(r.die.dead && r.die.vis && r.die.ci === r.die.want, '擊破：先播擊破的片段（模型還在）');
+  check(!r.gone.vis, '擊破：片段播完後碎裂');
   await thawLoop(page);
   await page.screenshot({ path: path.join(SHOT_DIR, 'beast-lion.png') });
   await ctx.close();

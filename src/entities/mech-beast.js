@@ -76,6 +76,44 @@ Object.assign(MechEntity.prototype, {
     for (const sp of lost) this.game.tierSpawnPart(this, sp, true);
     this.game.flashAlert && this.game.flashAlert('機獸修復了被打壞的武器');
   },
+  // 命中的形狀（world/prop-hit.js 的 targetSegT／targetDist）：沿著身體的幾顆球；不是機獸時回傳 null（照原本的外接球）
+  hitBalls() {
+    if (this.ai !== 'beast') return null;
+    const B = this.beastInfo();
+    if (!B || !B.balls || !this.model || !this.model.beast) return null;
+    const out = this.beastHb || (this.beastHb = B.balls.map(() => ({ x: 0, y: 0, z: 0, r: 0 })));
+    const k = this.beastK(),
+      fx = -Math.sin(this.yaw),
+      fz = -Math.cos(this.yaw);
+    for (let i = 0; i < out.length; i++) {
+      const [f, y, r] = B.balls[i];
+      out[i].x = this.pos.x + fx * f * k;
+      out[i].y = this.pos.y + y * k;
+      out[i].z = this.pos.z + fz * f * k;
+      out[i].r = r * k;
+    }
+    return out;
+  },
+  // 擊破的演出：先播擊破的片段（倒下、光熄滅）、身上冒火花，播完才碎裂（die／dieVisual 呼叫）
+  beastCollapse(end) {
+    const g = this.game;
+    const T = clipDur('death') + 0.5;
+    let acc = 0;
+    g.fx.task(
+      T,
+      (e, t, dt) => {
+        this.beastFx(dt);
+        acc += dt;
+        if (acc > 0.12) {
+          acc = 0;
+          const B = this.hitBalls();
+          const c = B ? B[Math.floor(Math.random() * B.length)] : null;
+          if (c) g.fx.spark(new THREE.Vector3(c.x, c.y, c.z), 0xffb040);
+        }
+      },
+      end,
+    );
+  },
   // 體型的倍率（模型的公尺 → 實際的公尺）
   beastK() {
     const rig = this.model && this.model.beast;
@@ -212,8 +250,9 @@ Object.assign(MechEntity.prototype, {
     const s = this.aiState,
       w = this.game.world;
     wish.set(0, 0, 0);
-    if (s.bCd === undefined) {
-      s.bCd = 2.5;
+    if (!s.bInit) {
+      s.bInit = true;
+      if (s.bCd === undefined) s.bCd = 2.5;
       s.orb = Math.random() < 0.5 ? 1 : -1;
       s.spd = 0;
       s.orbT = 6;

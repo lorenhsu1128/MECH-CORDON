@@ -148,8 +148,28 @@ const _c = new THREE.Vector3();
 
 // 線段 a → a+v 碰到目標的 t（-1＝沒碰到）；pad：球的加寬（radius＋pad），物件用 propPad
 // 球的 t 是線段上離球心最近的點（和原本的判定相同）
+// 身體很長的目標（機獸）：t.hitBalls()＝沿著身體的幾顆球 [{ x, y, z, r }]，取代單一的外接球（entities/mech-beast.js）
+const _b = new THREE.Vector3();
+function ballsSegT(B, a, v, pad) {
+  const L2 = v.lengthSq();
+  let best = -1;
+  for (const c of B) {
+    const tt =
+      L2 > 1e-9
+        ? Math.min(1, Math.max(0, ((c.x - a.x) * v.x + (c.y - a.y) * v.y + (c.z - a.z) * v.z) / L2))
+        : 0;
+    _b.copy(a).addScaledVector(v, tt);
+    const r = c.r + pad;
+    if (_b.distanceToSquared(c) < r * r && (best < 0 || tt < best)) best = tt;
+  }
+  return best;
+}
 export function targetSegT(t, a, v, pad, propPad = PROP_PAD) {
   if (t.shape) return shapeSegT(t.shape, a, v, propPad);
+  if (t.hitBalls) {
+    const B = t.hitBalls();
+    if (B) return ballsSegT(B, a, v, pad);
+  }
   const c = t.center();
   const L2 = v.lengthSq();
   const tt =
@@ -164,6 +184,14 @@ export function targetSegT(t, a, v, pad, propPad = PROP_PAD) {
 // 點 p 到目標表面的距離（爆炸、近戰）：物件＝到形狀的距離，其他＝到球心的距離減半徑
 export function targetDist(t, p) {
   if (t.shape) return shapeClosest(t.shape, p, _c).distanceTo(p);
+  if (t.hitBalls) {
+    const B = t.hitBalls();
+    if (B) {
+      let d = Infinity;
+      for (const c of B) d = Math.min(d, Math.hypot(c.x - p.x, c.y - p.y, c.z - p.z) - c.r);
+      return d;
+    }
+  }
   return t.center().distanceTo(p) - t.radius;
 }
 

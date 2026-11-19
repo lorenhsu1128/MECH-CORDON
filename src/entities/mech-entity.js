@@ -2642,7 +2642,9 @@ export class MechEntity {
     if (this.canCollapse()) {
       g.fx.explosion(c, (1.6 * (this.scale || 1)) / g.fx.k, 0xff8030);
       g.fx.collapse(this, brk);
-    } else brk();
+    } else if (this.model && this.model.beast)
+      this.beastCollapse(brk); // 機獸：先播擊破的片段（mech-beast.js）
+    else brk();
     g.camShake = Math.max(g.camShake, this.isBoss ? 0.5 : 0.2);
     // 最後一個 Boss 擊破：慢動作與橫幅
     if (

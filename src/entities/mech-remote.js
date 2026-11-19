@@ -143,6 +143,8 @@ Object.assign(MechEntity.prototype, {
       this.mesh.visible = false;
     };
     if (this.canCollapse()) g.fx.collapse(this, brk);
+    else if (this.model && this.model.beast)
+      this.beastCollapse(brk); // 機獸：先播擊破的片段（mech-beast.js）
     else brk();
     g.camShake = Math.max(g.camShake, this.isBoss ? 0.5 : 0.2);
     if (this.isPlayer) {
