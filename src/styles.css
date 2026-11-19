@@ -3066,8 +3066,12 @@ body.mvGame #mvPanel {
   align-items: center;
   margin: -46px 0 0 -70px;
   width: 140px;
-  pointer-events: auto;
+  /* 只有圖示與標籤接得到點擊：140 px 寬的容器在節點密的地方會蓋住旁邊的節點（機獸的出擊加進來之後更密） */
+  pointer-events: none;
   cursor: pointer;
+}
+.hubNode > * {
+  pointer-events: auto;
 }
 .hubNode .hnI {
   width: 22px;

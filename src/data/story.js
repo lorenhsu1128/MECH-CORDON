@@ -199,7 +199,7 @@ export const BRIEFINGS = {
   c2s1: {
     client: 'aetheric',
     node: { x: 42, y: 56 },
-    needs: ['c1s2'],
+    needs: ['c1b'],
     lines: [
       '初次見面，R-07。我是艾瑟立克的薩奇。……喔，抱歉，我習慣叫登錄號。',
       '你在礦坑的戰鬥紀錄，我全部看過了。有意思。',
@@ -251,7 +251,7 @@ export const BRIEFINGS = {
     client: 'sancta',
     node: { x: 13, y: 48 },
     needs: [],
-    needsAny: ['c2s3a', 'c2s3b'],
+    needsAny: ['c2b'],
     lines: [
       '我是聖域的諾拉。我先說清楚：我不喜歡傭兵。',
       {
@@ -303,7 +303,7 @@ export const BRIEFINGS = {
   c4s1: {
     client: 'veerwell',
     node: { x: 45, y: 22 },
-    needs: ['c3s3'],
+    needs: ['c3b'],
     lines: [
       '傭兵！發射設施的電力來自 Lattice-9 的底層。底層有一顆深脈反應爐，讀數跟研究所一模一樣。',
       '構造體裡的掘骸者把平台改造成了要塞，底層還有一台多足要塞在巡邏。',
@@ -353,7 +353,7 @@ export const BRIEFINGS = {
     client: 'castron',
     node: { x: 80, y: 52 },
     needs: [],
-    needsAny: ['c4s3a', 'c4s3b'],
+    needsAny: ['c4b'],
     lines: [
       {
         c2: {
@@ -409,7 +409,7 @@ export const BRIEFINGS = {
   c6s1: {
     client: { c4: { veerwell: 'veerwell', sancta: 'sancta' } },
     node: { x: 72, y: 13 },
-    needs: ['c5s3'],
+    needs: ['c5b'],
     lines: [
       {
         c4: {
@@ -456,7 +456,7 @@ export const BRIEFINGS = {
   c7s1: {
     client: 'castron',
     node: { x: 74, y: 71 },
-    needs: ['c6s3'],
+    needs: ['c6b'],
     lines: [
       '中樞是空的，對吧。……我知道。我一直都知道。',
       '方舟停在火山熔爐帶，卡斯特隆的熔爐替它供熱。我父親的記憶也在那艘船上。',
@@ -497,11 +497,91 @@ export const BRIEFINGS = {
     ],
     goal: '在方舟起航前突破船塢，擊破船塢起重要塞 GANTRY',
   },
+  // ---- 機獸的出擊（每章的最後；data/campaign.js 的 c<章>b）。劇情先不寫（使用者定案）：只有戰術資訊 ----
+  c1b: {
+    client: 'veerwell',
+    node: { x: 66, y: 77 },
+    needs: ['c1s2'],
+    lines: [
+      '這一帶還有一個大型反應，不是機甲。偵察隊拍到的影像只有一個輪廓——四周的東西全被它掃平了。',
+      '它的攻擊是爆發與能量，裝甲照這個準備。身上外掛的武器可以打壞，先拆哪一把你自己判斷。',
+      '打倒它，這一區才算真的清乾淨。',
+    ],
+    goal: '擊破蠍型機獸',
+  },
+  c2b: {
+    client: { c2: { castron: 'castron', aetheric: 'aetheric' } },
+    node: { x: 68, y: 61 },
+    needs: [],
+    needsAny: ['c2s3a', 'c2s3b'],
+    lines: [
+      '這一帶還有一個大型反應，不是機甲。偵察隊拍到的影像只有一個輪廓——四周的東西全被它掃平了。',
+      '它的攻擊是實彈與爆發，裝甲照這個準備。身上外掛的武器可以打壞，先拆哪一把你自己判斷。',
+      '打倒它，這一區才算真的清乾淨。',
+    ],
+    goal: '擊破鱷龜型機獸',
+  },
+  c3b: {
+    client: { c2: { castron: 'castron', aetheric: 'aetheric' } },
+    node: { x: 2, y: 50 },
+    needs: ['c3s3'],
+    lines: [
+      '這一帶還有一個大型反應，不是機甲。偵察隊拍到的影像只有一個輪廓——四周的東西全被它掃平了。',
+      '它的攻擊是能量與實彈，裝甲照這個準備。身上外掛的武器可以打壞，先拆哪一把你自己判斷。',
+      '打倒它，這一區才算真的清乾淨。',
+    ],
+    goal: '擊破劍齒虎型機獸',
+  },
+  c4b: {
+    client: { c4: { veerwell: 'veerwell', sancta: 'sancta' } },
+    node: { x: 51, y: 6 },
+    needs: [],
+    needsAny: ['c4s3a', 'c4s3b'],
+    lines: [
+      '這一帶還有一個大型反應，不是機甲。偵察隊拍到的影像只有一個輪廓——四周的東西全被它掃平了。',
+      '它的攻擊是實彈與能量，裝甲照這個準備。身上外掛的武器可以打壞，先拆哪一把你自己判斷。',
+      '打倒它，這一區才算真的清乾淨。',
+    ],
+    goal: '擊破猩猩型機獸',
+  },
+  c5b: {
+    client: 'castron',
+    node: { x: 97, y: 60 },
+    needs: ['c5s3'],
+    lines: [
+      '這一帶還有一個大型反應，不是機甲。偵察隊拍到的影像只有一個輪廓——四周的東西全被它掃平了。',
+      '它的攻擊是爆發與實彈，裝甲照這個準備。身上外掛的武器可以打壞，先拆哪一把你自己判斷。',
+      '打倒它，這一區才算真的清乾淨。',
+    ],
+    goal: '擊破猛禽型機獸',
+  },
+  c6b: {
+    client: 'castron',
+    node: { x: 97, y: 23 },
+    needs: ['c6s3'],
+    lines: [
+      '這一帶還有一個大型反應，不是機甲。偵察隊拍到的影像只有一個輪廓——四周的東西全被它掃平了。',
+      '它的攻擊是能量與爆發，裝甲照這個準備。身上外掛的武器可以打壞，先拆哪一把你自己判斷。',
+      '打倒它，這一區才算真的清乾淨。',
+    ],
+    goal: '擊破螳螂型機獸',
+  },
+  c7b: {
+    client: { c4: { veerwell: 'veerwell', sancta: 'sancta' } },
+    node: { x: 95, y: 79 },
+    needs: ['c7s3'],
+    lines: [
+      '這一帶還有一個大型反應，不是機甲。偵察隊拍到的影像只有一個輪廓——四周的東西全被它掃平了。',
+      '它的攻擊是爆發與能量，裝甲照這個準備。身上外掛的武器可以打壞，先拆哪一把你自己判斷。',
+      '打倒它，這一區才算真的清乾淨。',
+    ],
+    goal: '擊破熊型機獸',
+  },
   // ---- 第 8 章：方舟（主線擴充）。c8s3 是終章：最後的抉擇 ----
   c8s1: {
     client: 'sancta',
     node: { x: 14, y: 64 },
-    needs: ['c7s3'],
+    needs: ['c7b'],
     lines: [
       '方舟上沒有乘客，只有守衛和機器。我們的人試過三次，沒有一個回來。',
       '我不是要你去搶它，也不是要你去守它。我只是想知道：它要把我們帶去哪裡。',

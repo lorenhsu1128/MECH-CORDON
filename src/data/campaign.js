@@ -818,6 +818,85 @@ SORTIES.c7s3 = {
     { theme: 'volcano', pool: ['boss'], boss: 'gantry', variants: ['foundry'] },
   ],
 };
+// ---- 機獸（每章最後的大 Boss；docs/beast-design.md 的「接成敵人」）：第 1～7 章各新增一個出擊，接在原本的最後一個出擊後面。
+// 原本的出擊、Boss、簡報、通訊都不動（原 Boss 變成章中的 Boss）；第 2、4 章兩條路線共用同一隻。第 8 章不放（使用者定案）。----
+SORTIES.c1b = {
+  name: '礦坑最深處 — 蠍型機獸',
+  chapter: 1,
+  level: 3,
+  reward: 46000,
+  beast: true,
+  segs: [
+    { theme: 'desert', pool: ['battle'], variants: ['openpit', 'vein'] },
+    { theme: 'desert', pool: ['boss'], boss: 'beast_scorpion', variants: ['openpit'] },
+  ],
+};
+SORTIES.c2b = {
+  name: '淹沒城區外緣 — 鱷龜型機獸',
+  chapter: 2,
+  level: 6,
+  reward: 84000,
+  beast: true,
+  segs: [
+    { theme: 'flooded', pool: ['battle'], variants: ['suburb', 'highway'] },
+    { theme: 'flooded', pool: ['boss'], boss: 'beast_turtle', variants: ['suburb'] },
+  ],
+};
+SORTIES.c3b = {
+  name: '冰原裂谷 — 劍齒虎型機獸',
+  chapter: 3,
+  level: 9,
+  reward: 120000,
+  beast: true,
+  segs: [
+    { theme: 'snow', pool: ['battle'], variants: ['icefield', 'outpost'] },
+    { theme: 'snow', pool: ['boss'], boss: 'beast_tiger', variants: ['icefield'] },
+  ],
+};
+SORTIES.c4b = {
+  name: '舊宇宙港跑道 — 猩猩型機獸',
+  chapter: 4,
+  level: 12,
+  reward: 166000,
+  beast: true,
+  segs: [
+    { theme: 'spaceport', pool: ['battle'], variants: ['runway', 'ruins'] },
+    { theme: 'spaceport', pool: ['boss'], boss: 'beast_gorilla', variants: ['runway'] },
+  ],
+};
+SORTIES.c5b = {
+  name: '洋上都市上空 — 猛禽型機獸',
+  chapter: 5,
+  level: 15,
+  reward: 220000,
+  beast: true,
+  segs: [
+    { theme: 'xylem', pool: ['battle'], variants: ['harbor', 'open'] },
+    { theme: 'xylem', pool: ['boss'], boss: 'beast_raptor', variants: ['open'] },
+  ],
+};
+SORTIES.c6b = {
+  name: '軌道站外環 — 螳螂型機獸',
+  chapter: 6,
+  level: 18,
+  reward: 330000,
+  beast: true,
+  segs: [
+    { theme: 'orbit', pool: ['battle'], variants: ['dock', 'cluster'] },
+    { theme: 'orbit', pool: ['boss'], boss: 'beast_mantis', variants: ['dock'] },
+  ],
+};
+SORTIES.c7b = {
+  name: '熔爐底層 — 熊型機獸',
+  chapter: 7,
+  level: 21,
+  reward: 370000,
+  beast: true,
+  segs: [
+    { theme: 'volcano', pool: ['battle'], variants: ['foundry', 'caldera'] },
+    { theme: 'volcano', pool: ['boss'], boss: 'beast_bear', variants: ['caldera'] },
+  ],
+};
 // ---- 第 8 章：方舟（移動要塞「方舟」；主線擴充）。最後的抉擇從 c6s3 搬到 c8s3 ----
 SORTIES.c8s1 = {
   name: '方舟甲板 — 登艦',

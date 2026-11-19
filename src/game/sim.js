@@ -5,6 +5,7 @@
 import { SFX } from '../audio/audio.js';
 import { escHtml } from '../core/html.js';
 import { SORTIES } from '../data/campaign.js';
+import { BEAST_DEFS } from '../data/beasts.js';
 import { AC_ROSTER, BOSS_DEFS, ENEMY_TYPES } from '../data/enemies.js';
 import { ACES, FOES } from '../data/foes.js';
 import { MechEntity } from '../entities/mech-entity.js';
@@ -93,7 +94,13 @@ Object.assign(Game.prototype, {
     h += bosses.length
       ? bosses
           .map((k) =>
-            row('boss', k, (BOSS_DEFS.find((b) => b.kind === k) || { name: k }).name, '主線打過的 Boss'),
+            row(
+              'boss',
+              k,
+              (BOSS_DEFS.find((b) => b.kind === k) || BEAST_DEFS.find((b) => b.kind === k) || { name: k })
+                .name,
+              '主線打過的 Boss',
+            ),
           )
           .join('')
       : '<p class="dim">主線打過 Boss 後，這裡就能練習。</p>';
@@ -166,7 +173,9 @@ Object.assign(Game.prototype, {
       document.getElementById('bossName').textContent = r.name;
     } else if (kind === 'boss') {
       // 沒有 kind 的（MONOLITH、TETRARCH、ARCHON）用名稱開頭（scripts/boss-bench.js）
-      const bd = BOSS_DEFS.find((b) => b.kind === key || (!b.kind && b.name.split(' ')[0] === key));
+      const bd =
+        BOSS_DEFS.find((b) => b.kind === key || (!b.kind && b.name.split(' ')[0] === key)) ||
+        BEAST_DEFS.find((b) => b.kind === key); // 機獸（主線打過才會在清單裡）
       if (bd) {
         const bt = this.simSeen().bossT || {};
         this.spawnBossDef(bd, sh, sd, bt[key] || 3); // 刁鑽度照遇到那一隻時的章（沒有紀錄時 3）

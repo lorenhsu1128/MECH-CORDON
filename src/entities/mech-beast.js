@@ -49,6 +49,7 @@ Object.assign(MechEntity.prototype, {
     if (!M.leap) return this.beastClip(k);
     const d = Math.hypot(pl.pos.x - this.pos.x, pl.pos.z - this.pos.z);
     this.beastLeap(pl, d + this.radius + (pl.radius || 0) + 6, yawTo(this.pos, pl.pos), M, k);
+    if (!s.leap) return;
     s.spot = V(s.leap.x1, s.leap.y1, s.leap.z1);
     s.warned = true;
     this.game.fx.warnCircle(s.spot.clone(), M.R * this.beastK(), s.leap.dur, 0xff4020);
@@ -72,6 +73,7 @@ Object.assign(MechEntity.prototype, {
     const tx = clamp(this.pos.x + ((pl.pos.x - this.pos.x) / (d || 1)) * far, -lim, lim),
       tz = clamp(this.pos.z + ((pl.pos.z - this.pos.z) / (d || 1)) * far, -lim, lim);
     const [lx, lz] = w.collide(tx, tz, pl.pos.y, this.radius * 0.8);
+    if (w.isVoid && w.isVoid(lx, lz)) return; // 落點是虛空：不跳
     s.leap = {
       t: 0,
       dur: M ? M.t : this.beastInfo().leapT || clipDur(this.beastInfo().jump || 'jump') * 0.75,
@@ -464,10 +466,14 @@ Object.assign(MechEntity.prototype, {
       if (!this.canAct())
         s.air = false; // 失衡：掉下來
       else if (!s.clip && !s.gun && !s.leap && (s.modeT -= dt) <= 0) {
-        s.air = !s.air;
-        const T = s.air ? FL.airT : FL.groundT;
-        s.modeT = T[0] + Math.random() * T[1];
-        this.beastClip(s.air ? FL.takeoff : FL.land);
+        // 腳下是虛空就不降落（再飛一下）
+        if (s.air && w.isVoid && w.isVoid(this.pos.x, this.pos.z)) s.modeT = 1.5;
+        else {
+          s.air = !s.air;
+          const T = s.air ? FL.airT : FL.groundT;
+          s.modeT = T[0] + Math.random() * T[1];
+          this.beastClip(s.air ? FL.takeoff : FL.land);
+        }
       }
       const to = s.air ? FL.alt : 0;
       s.alt += clamp(to - s.alt, (-FL.alt / 0.9) * dt, (FL.alt / 1.3) * dt);
@@ -653,6 +659,11 @@ Object.assign(MechEntity.prototype, {
       const lim = w.lim - 3 * MS;
       this.pos.x = clamp(cx, -lim, lim);
       this.pos.z = clamp(cz, -lim, lim);
+      // 虛空的地圖（洋上都市、高空軌道）：在地面上的不走出去（退回原位，當成被擋住）；飛在空中的不管
+      if (!(FL && s.alt > 3) && w.isVoid && w.isVoid(this.pos.x, this.pos.z) && !w.isVoid(px, pz)) {
+        this.pos.x = px;
+        this.pos.z = pz;
+      }
       // 被擋住（實際走的不到該走的三成）：累積 0.35 秒就換繞行的方向並往旁邊轉開一陣子
       const moved = Math.hypot(this.pos.x - px, this.pos.z - pz);
       s.blk = !sideStep && moved < Math.abs(step) * 0.3 && Math.abs(step) > 0.02 ? (s.blk || 0) + dt : 0;

@@ -1406,6 +1406,126 @@ async function testBeast(browser, key) {
   await page.screenshot({ path: path.join(SHOT_DIR, `beast-${key}.png`) });
   await ctx.close();
 }
+// 機獸接進主線（docs/beast-design.md 的「接成敵人」）：第 1～7 章各一個機獸的出擊，接在原本的最後一個出擊後面；第 8 章沒有
+async function testBeastCampaign(browser) {
+  console.log('機獸的主線出擊：七章各一個、開放的順序、簡報的攻擊屬性、Boss 區段生成機獸、模擬器');
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const page = await ctx.newPage();
+  watch(page, 'beast-camp');
+  await page.goto('file:///' + HTML.replace(/\\/g, '/') + '?test');
+  await waitVisible(page, 'title');
+  const r = await page.evaluate(() => {
+    const g = window.__game;
+    const st = g.campStory();
+    st.storySeen = { p1: 1, i1_1: 1, i1_2: 1, i1_3: 1 };
+    g.storyTest = false;
+    const out = {};
+    const W = {
+      c1b: 'scorpion',
+      c2b: 'turtle',
+      c3b: 'tiger',
+      c4b: 'gorilla',
+      c5b: 'raptor',
+      c6b: 'mantis',
+      c7b: 'bear',
+    };
+    // 開放的順序：原本的最後一個出擊完成才開放機獸的出擊；機獸的出擊完成才算整章完成、開放下一章
+    st.done = { c1s1: 1 };
+    out.s0 = [g.hubSortieState('c1b'), g.hubSortieState('c2s1')].join('/');
+    st.done = { c1s1: 1, c1s2: 1 };
+    out.s1 = [g.hubSortieState('c1b'), g.hubSortieState('c2s1'), g.campChapterCheck(1)].join('/');
+    st.done = { c1s1: 1, c1s2: 1, c1b: 1 };
+    out.s2 = [g.hubSortieState('c1b'), g.hubSortieState('c2s1'), g.campChapterCheck(1)].join('/');
+    // 第 2 章：兩條路線共用同一個機獸的出擊
+    st.choices = { c2: 'castron' };
+    st.done = { c1s1: 1, c1s2: 1, c1b: 1, c2s1: 1, c2s2: 1, c2s3a: 1 };
+    out.r2a = g.hubSortieState('c2b');
+    st.choices = { c2: 'aetheric' };
+    st.done = { c1s1: 1, c1s2: 1, c1b: 1, c2s1: 1, c2s2: 1, c2s3b: 1 };
+    out.r2b = g.hubSortieState('c2b');
+    // 第 8 章：終點照舊是 SOVEREIGN，簡報裡沒有機獸
+    out.c8 = g.briefIntelHtml('c8s3', { type0: 'battle', plan: [] }).includes('機獸');
+    // 簡報：終點 Boss 是機獸、寫出攻擊屬性
+    out.brief = {};
+    for (const sid in W) {
+      const pre = g.campPreplan ? g.campPreplan(sid) : null;
+      let html = '';
+      try {
+        html = g.briefIntelHtml(sid, pre || { type0: 'battle', plan: [] });
+      } catch (e) {
+        html = 'ERR ' + e.message;
+      }
+      out.brief[sid] = {
+        beast: html.includes('機獸'),
+        atk: (html.match(/攻 /g) || []).length,
+        err: html.startsWith('ERR') ? html : '',
+      };
+    }
+    return out;
+  });
+  check(r.s0 === 'locked/locked', `第 1 章沒打完：機獸的出擊與第 2 章都鎖著（${r.s0}）`);
+  check(r.s1 === 'open/locked/false', `原本的最後一個出擊完成：開放機獸的出擊，還不算整章完成（${r.s1}）`);
+  check(r.s2 === 'done/open/true', `機獸的出擊完成：整章完成、開放下一章（${r.s2}）`);
+  check(r.r2a === 'open' && r.r2b === 'open', `第 2 章兩條路線都接到同一個機獸的出擊（${r.r2a}／${r.r2b}）`);
+  check(!r.c8, '第 8 章沒有機獸的出擊');
+  for (const sid in r.brief) {
+    const b = r.brief[sid];
+    check(b.beast && b.atk >= 2 && !b.err, `${sid} 的簡報：終點是機獸、寫出攻擊屬性（${b.atk} 種）${b.err}`);
+  }
+  // 實際進 Boss 區段：生成的是那一章的機獸、刁鑽度＝章
+  const W = {
+    c1b: 'scorpion',
+    c2b: 'turtle',
+    c3b: 'tiger',
+    c4b: 'gorilla',
+    c5b: 'raptor',
+    c6b: 'mantis',
+    c7b: 'bear',
+  };
+  for (const sid of Object.keys(W)) {
+    await page.evaluate((sid) => {
+      const g = window.__game;
+      const st = g.campStory();
+      st.cycle = 1;
+      st.choices = { c2: 'castron', c4: 'veerwell' };
+      g.state = 'play';
+      g.campBegin(sid);
+      g.camp.seg = g.campSortie().segs.length - 1;
+      g.campEnterSeg();
+    }, sid);
+    await page.waitForFunction(() => window.__game.state === 'play' && window.__game.boss, null, {
+      timeout: 90000,
+    });
+    const b = await page.evaluate(() => {
+      const g = window.__game,
+        b = g.boss;
+      const parts = g.enemies.filter((e) => e.ai === 'part' && !e.dead).length;
+      const o = {
+        kind: b.opts.bossKind,
+        tier: b.bossTier(),
+        ch: g.campSortie().chapter,
+        parts,
+        want: Object.keys(b.beastInfo().hide || {}).length,
+        theme: g.worldTheme,
+        seen: Object.keys((g.save.story.seen2 || {}).bosses || {}),
+      };
+      g.campEnd(false, true);
+      return o;
+    });
+    check(
+      b.kind === 'beast_' + W[sid] && b.tier === b.ch && b.parts === b.want,
+      `${sid}：Boss 區段生成 ${b.kind}（${b.theme}），刁鑽度 ${b.tier}＝第 ${b.ch} 章，部位 ${b.parts} 個`,
+    );
+    check(b.seen.includes('beast_' + W[sid]), `${sid}：遇過之後記進模擬器的清單`);
+    await waitVisible(page, 'result').catch(() => {});
+    await page.evaluate(() => {
+      const g = window.__game;
+      if (g.state === 'result') g.showScreen ? g.showScreen('title') : (g.state = 'title');
+    });
+    await wait(300);
+  }
+  await ctx.close();
+}
 async function testMapView(browser) {
   console.log('地圖預覽器：選地圖、重新產生、鏡頭、觸控、效能面板、離開');
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 760 } });
@@ -11720,7 +11840,7 @@ async function testChapter2(browser, base) {
   // 總覽圖：第 1 章完成後開放第 2 章；依抉擇的出擊在抉擇前不出現
   await page.evaluate(() => {
     const g = window.__game;
-    g.save.story.done = { c1s1: 1, c1s2: 1 };
+    g.save.story.done = { c1s1: 1, c1s2: 1, c1b: 1 }; // c1b＝第 1 章最後的機獸出擊（docs/beast-design.md）
     g.save.story.choices = {};
     g.openHub();
   });
@@ -11842,6 +11962,7 @@ async function testChapter2(browser, base) {
   const done = await page.evaluate(() => {
     const g = window.__game;
     g.save.story.done.c2s3b = 1;
+    g.save.story.done.c2b = 1; // 兩條路線共用的機獸出擊
     return g.campChapterCheck(2);
   });
   check(done, '依抉擇的路線完成就算整章完成（另一條不用打）');
@@ -12244,7 +12365,7 @@ async function testChapter3(browser, base) {
   // 總覽圖：第 2 章任一路線完成後開放第 3 章
   const h3 = await page.evaluate(() => {
     const g = window.__game;
-    g.save.story.done = { c1s1: 1, c1s2: 1, c2s1: 1, c2s2: 1, c2s3a: 1 };
+    g.save.story.done = { c1s1: 1, c1s2: 1, c1b: 1, c2s1: 1, c2s2: 1, c2s3a: 1, c2b: 1 };
     g.save.story.choices = { c2: 'castron' };
     return { s1: g.hubSortieState('c3s1'), s2: g.hubSortieState('c3s2'), ch: g.hubChapter() };
   });
@@ -12483,7 +12604,10 @@ async function testChapter4(browser, base) {
   // 抉擇 2：宇宙港的發射台區段清除後出現抉擇出口；之後往地下機庫是下降
   await page.evaluate(() => {
     const g = window.__game;
-    g.save.story.done = { c1s1: 1, c1s2: 1, c2s1: 1, c2s2: 1, c2s3a: 1, c3s1: 1, c3s2: 1, c3s3: 1, c4s1: 1 };
+    g.save.story.done = {
+      ...{ c1s1: 1, c1s2: 1, c1b: 1, c2s1: 1, c2s2: 1, c2s3a: 1, c2b: 1 },
+      ...{ c3s1: 1, c3s2: 1, c3s3: 1, c3b: 1, c4s1: 1 },
+    };
     g.save.story.choices = { c2: 'castron' };
     g.campBegin('c4s2');
     g.camp.seg = 3;
@@ -15310,7 +15434,7 @@ async function testNavFlow(browser, base) {
     g.ctrl.cine = 'off';
     g.save.coam = 9e6;
     const st = g.campStory();
-    st.done = { c1s1: 1, c1s2: 1 };
+    st.done = { c1s1: 1, c1s2: 1, c1b: 1 }; // c1b＝第 1 章最後的機獸出擊：整章完成才進第 2 章
     st.storySeen = Object.assign(st.storySeen || {}, { p1: 1, i1_1: 1, i1_2: 1 });
     g.storyTest = false;
     g.autoPickMod = true;
@@ -21434,7 +21558,7 @@ async function testCycle2(browser, base) {
     st.done = { c1s1: 1 };
     const c2a = X.map((s) => g.hubSortieState(s)).join('/');
     // 第 1 章的必要委託都完成：整章完成不需要周目限定的 c1x
-    st.done = { c1s1: 1, c1s2: 1 };
+    st.done = { c1s1: 1, c1s2: 1, c1b: 1 };
     const chap = g.campChapterCheck(1);
     g.openHub();
     const node = document.querySelector('#hubMap .hubNode[data-sid="c1x"] circle');
@@ -21661,7 +21785,7 @@ async function testCycle3(browser, base) {
     const c3 = Y.map((s) => g.hubSortieState(s)).join('/');
     st.done = { c1s2: 1 };
     const c3a = Y.map((s) => g.hubSortieState(s)).join('/');
-    st.done = { c1s1: 1, c1s2: 1 };
+    st.done = { c1s1: 1, c1s2: 1, c1b: 1 };
     const chap = g.campChapterCheck(1);
     st.memories = {};
     g.openHub();
@@ -21936,9 +22060,9 @@ async function testStory(browser, base) {
   // 整章完成 → 結果畫面之後播章末 → 下一章的開場
   await page.evaluate(() => {
     const g = window.__game;
-    g.campStory().done = { c1s1: 1 };
+    g.campStory().done = { c1s1: 1, c1s2: 1 };
     g.state = 'play';
-    g.campBegin('c1s2');
+    g.campBegin('c1b'); // 第 1 章的最後一個出擊（機獸）
     g.campEnterSeg();
     g.campEnd(true);
   });
@@ -24438,6 +24562,7 @@ async function testModules(browser, base) {
     const st = g.campStory();
     st.done.c1s2 = 1;
     st.done.c1s1 = 1;
+    st.done.c1b = 1; // 第 1 章最後的機獸出擊
     const reset = g.campChapterCheck(1);
     return { ab, reset, after: g.campMods().length };
   });
@@ -34862,6 +34987,7 @@ const STEPS = [
   ['testMapView', (c) => testMapView(c.browser)], // 地圖預覽器（docs/map-viewer-design.md）
   // 機獸（docs/beast-design.md 的「接成敵人」）：每隻一個步驟（SMOKE_ONLY=testBeast 一樣跑全部）
   ...BEAST_TESTS.map((k) => ['testBeast:' + k, (c) => testBeast(c.browser, k), { family: 'testBeast' }]),
+  ['testBeastCampaign', (c) => testBeastCampaign(c.browser)], // 機獸的主線出擊
   // 每個內建風格 × 13 個主題要量很久，主題分成 3 組（SMOKE_ONLY=testStyleThemes 一樣跑全部）
   ...[1, 2, 3].map((i) => [
     'testStyleThemes:' + i,

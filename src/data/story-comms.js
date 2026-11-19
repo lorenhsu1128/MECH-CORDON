@@ -10,6 +10,63 @@
 const variants = (base, sp, list) => list.map((t) => ({ ...base, lines: [[sp, t]] }));
 
 export const COMMS = [
+  // ---- 機獸的出擊（c<章>b）：劇情先不寫，只有不涉及來歷的戰術句 ----
+  {
+    event: 'segStart',
+    sid: 'c1b',
+    type: 'boss',
+    lines: [['echo', '大型反應，不是機甲——它在動！攻擊是爆發與能量，注意地上的預警。']],
+  },
+  { event: 'bossHalf', sid: 'c1b', lines: [['echo', '它慢下來了。外掛的武器壞了就不能用，繼續打！']] },
+  { event: 'sortieEnd', sid: 'c1b', lines: [['echo', '反應消失。……這一區清乾淨了。']] },
+  {
+    event: 'segStart',
+    sid: 'c2b',
+    type: 'boss',
+    lines: [['echo', '大型反應，不是機甲——它在動！攻擊是實彈與爆發，注意地上的預警。']],
+  },
+  { event: 'bossHalf', sid: 'c2b', lines: [['echo', '它慢下來了。外掛的武器壞了就不能用，繼續打！']] },
+  { event: 'sortieEnd', sid: 'c2b', lines: [['echo', '反應消失。……這一區清乾淨了。']] },
+  {
+    event: 'segStart',
+    sid: 'c3b',
+    type: 'boss',
+    lines: [['echo', '大型反應，不是機甲——它在動！攻擊是能量與實彈，注意地上的預警。']],
+  },
+  { event: 'bossHalf', sid: 'c3b', lines: [['echo', '它慢下來了。外掛的武器壞了就不能用，繼續打！']] },
+  { event: 'sortieEnd', sid: 'c3b', lines: [['echo', '反應消失。……這一區清乾淨了。']] },
+  {
+    event: 'segStart',
+    sid: 'c4b',
+    type: 'boss',
+    lines: [['echo', '大型反應，不是機甲——它在動！攻擊是實彈與能量，注意地上的預警。']],
+  },
+  { event: 'bossHalf', sid: 'c4b', lines: [['echo', '它慢下來了。外掛的武器壞了就不能用，繼續打！']] },
+  { event: 'sortieEnd', sid: 'c4b', lines: [['echo', '反應消失。……這一區清乾淨了。']] },
+  {
+    event: 'segStart',
+    sid: 'c5b',
+    type: 'boss',
+    lines: [['echo', '大型反應，不是機甲——它在動！攻擊是爆發與實彈，注意地上的預警。']],
+  },
+  { event: 'bossHalf', sid: 'c5b', lines: [['echo', '它慢下來了。外掛的武器壞了就不能用，繼續打！']] },
+  { event: 'sortieEnd', sid: 'c5b', lines: [['echo', '反應消失。……這一區清乾淨了。']] },
+  {
+    event: 'segStart',
+    sid: 'c6b',
+    type: 'boss',
+    lines: [['echo', '大型反應，不是機甲——它在動！攻擊是能量與爆發，注意地上的預警。']],
+  },
+  { event: 'bossHalf', sid: 'c6b', lines: [['echo', '它慢下來了。外掛的武器壞了就不能用，繼續打！']] },
+  { event: 'sortieEnd', sid: 'c6b', lines: [['echo', '反應消失。……這一區清乾淨了。']] },
+  {
+    event: 'segStart',
+    sid: 'c7b',
+    type: 'boss',
+    lines: [['echo', '大型反應，不是機甲——它在動！攻擊是爆發與能量，注意地上的預警。']],
+  },
+  { event: 'bossHalf', sid: 'c7b', lines: [['echo', '它慢下來了。外掛的武器壞了就不能用，繼續打！']] },
+  { event: 'sortieEnd', sid: 'c7b', lines: [['echo', '反應消失。……這一區清乾淨了。']] },
   // ---- 區段類型的通用台詞 ----
   ...variants({ event: 'segStart', type: 'destroy' }, 'echo', [
     '目標設施確認。全部炸掉。',
