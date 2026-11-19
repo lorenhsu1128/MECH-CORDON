@@ -5,6 +5,7 @@
 //   act: { name, t } 動作片段與它開始後的秒數, gy: { fl, fr, bl, br } 各腳的地面高度差（貼地形）, root: true 時片段的位移直接套在整隻上（預覽用）}。
 // 只改關節群組的旋轉、胸的高度、鬃甲的縮放、眼睛的亮度；片段要整隻移動的量寫在 rig.rootY／rig.rootF（遊戲的實體自己用）。
 // 平面的座標：f＝往前（glTF 的 +Z）、y＝往上；繞 X 的旋轉角（遊戲座標）正的＝往前的東西往上抬（在 f–y 平面逆時針）。
+import { SCORP_CLIPS, animateScorpion } from './beast-anim-scorpion.js';
 import { spring } from './mech-spring.js';
 
 const TAU = Math.PI * 2;
@@ -1682,6 +1683,9 @@ BEAST_CLIPS.gStandWalk = [
 ];
 BEAST_CLIPS.gStandWalk.keepGait = true;
 
+// 蠍型（八足）的片段與動作在 beast-anim-scorpion.js
+Object.assign(BEAST_CLIPS, SCORP_CLIPS);
+
 // 左右對調的片段（右前腳的爪擊、從右邊被打）
 const SWAP = { fl: 'fr', fr: 'fl', bl: 'br', br: 'bl' };
 const NEG = new Set(['roll', 'yaw', 'hy', 'ny', 'hdy', 'hz', 'ty', 'rs', 'ryaw']);
@@ -1796,6 +1800,7 @@ const S_LEG = [48, 0.85],
 const sp = (node, key, to, s, dt) => spring(node.rotation, key, to, s[0], s[1], dt);
 
 export function animateBeast(rig, st, dt) {
+  if (rig.kind === 'scorpion') return animateScorpion(rig, st, dt, clipAt);
   const an = rig.an || (rig.an = init(rig));
   const N = rig.nodes;
   const t = st.t || 0;

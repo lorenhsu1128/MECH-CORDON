@@ -379,9 +379,9 @@ for (const [key, label, palKey, pose, st] of [
 }
 
 // 暫時：蠍型機獸（原創設計；第 1 章荒野／沙丘／礦坑的大 Boss）
-for (const [key, label, palKey, pose] of [
-  ['stand', '站姿', 'boss', null],
-  ['stand_w', '站姿・白色配色', 'white', null],
+for (const [key, label, palKey, pose, st] of [
+  ['stand', '站姿', 'boss', null, null],
+  ['stand_w', '站姿・白色配色', 'white', null, null],
   [
     'open',
     '張螯、尾前刺（檢查關節）',
@@ -398,7 +398,25 @@ for (const [key, label, palKey, pose] of [
       chel_l: [-14, 0, 0],
       chel_r: [10, 0, 0],
     },
+    null,
   ],
+  ['anim_idle', '動作：待機', 'boss', null, { v: 0 }],
+  ['anim_walk', '動作：走', 'boss', null, { v: 4 }],
+  ['anim_run', '動作：疾走', 'boss', null, { v: 13 }],
+  ['anim_back', '動作：後退', 'boss', null, { v: -3 }],
+  ['anim_turn', '動作：原地轉身', 'boss', null, { v: 0, w: 0.8, spin: true }],
+  ['anim_threat', '威嚇', 'boss', null, lionClip('sThreat')],
+  ['anim_sting', '攻擊：尾刺', 'boss', null, lionClip('sSting')],
+  ['anim_tailsweep', '攻擊：尾橫掃', 'boss', null, lionClip('sTailSweep')],
+  ['anim_pinch', '攻擊：單螯夾擊', 'boss', null, lionClip('sPinchL')],
+  ['anim_grab', '攻擊：雙螯鉗制接尾刺', 'boss', null, lionClip('sGrab')],
+  ['anim_cutter', '攻擊：電漿切割', 'boss', null, lionClip('sCutter')],
+  ['anim_venom', '攻擊：毒液噴射', 'boss', null, lionClip('sVenom')],
+  ['anim_burrow', '動作：鑽進沙裡', 'boss', null, lionClip('sBurrow', 1.2)],
+  ['anim_emerge', '攻擊：從地下鑽出', 'boss', null, lionClip('sEmerge', 1.2)],
+  ['anim_hit', '受擊', 'boss', null, lionClip('sHit', 0.8)],
+  ['anim_stagger', '失衡', 'boss', null, lionClip('sStagger')],
+  ['anim_death', '擊破', 'boss', null, lionClip('sDeath', 2)],
 ]) {
   add({
     id: 'temp/scorpion_' + key,
@@ -410,7 +428,11 @@ for (const [key, label, palKey, pose] of [
     noGlb: true,
     build: (k) => {
       const rig = buildScorpion(pal(k), 1, pose);
-      return { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
+      const out = { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
+      if (st)
+        out.tick = (dt, t) =>
+          animateBeast(rig, typeof st === 'function' ? { ...st(t), t } : { ...st, t }, dt);
+      return out;
     },
   });
 }
