@@ -253,7 +253,7 @@ export function bodyRing(z, half) {
 
 // 裝甲板：貼在放樣表面（grid＝rings）第 i0～i1 圈、第 j0～j1 點之間的那一片上；四周留縫 gap、倒角 ch、厚 t（往外）。j 可以超過一圈的點數（繞回去）
 export function panel(slot, grid, i0, i1, j0, j1, o = {}) {
-  const { t = 0.1, gap = 0.04, ch = 0.05, mir = false, sink = 0.05 } = o;
+  const { t = 0.1, gap = 0.06, ch = 0.05, mir = false, sink = 0.05 } = o;
   const m = grid[0].length;
   const g = (i, j) => grid[i][((j % m) + m) % m];
   const cen = grid.map((r) => vmul(r.reduce(vadd, [0, 0, 0]), 1 / m));

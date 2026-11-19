@@ -12,6 +12,7 @@ import {
   lathe,
   loft,
   mirrored,
+  moved,
   oct,
   panel,
   piston,
@@ -125,7 +126,6 @@ const nozzle = (c, dir, r, len, mir) => {
 // ---------- 胸（根）----------
 function chest() {
   const R = [
-    sec(-0.4, 1.25, 6.45, 3.95),
     sec(0.6, 1.45, 6.6, 3.6),
     sec(1.8, 1.5, 6.8, 3.5),
     sec(2.8, 1.35, 6.75, 3.75),
@@ -135,28 +135,22 @@ function chest() {
   return [
     loft(JOINT, R),
     // 背甲
-    panel(MAIN, R, 0, 1, 0, 2, { ...m, t: 0.12 }),
-    panel(MAIN, R, 1, 3, 0, 2, { ...m, t: 0.15 }),
-    panel(MAIN, R, 3, 4, 0, 2, { ...m, t: 0.12 }),
+    panel(MAIN, R, 0, 2, 0, 2, { ...m, t: 0.15 }),
+    panel(MAIN, R, 2, 3, 0, 2, { ...m, t: 0.12 }),
     // 側面
-    panel(MAIN, R, 0, 1, 2, 4, { ...m, t: 0.11 }),
-    panel(SUB, R, 1, 3, 2, 4, { ...m, t: 0.07 }),
-    panel(MAIN, R, 3, 4, 2, 4, { ...m, t: 0.1 }),
-    // 腹
-    panel(SUB, R, 0, 1, 4, 6, { ...m, t: 0.08 }),
-    panel(SUB, R, 1, 3, 4, 6, { ...m, t: 0.1 }),
-    panel(SUB, R, 3, 4, 4, 6, { ...m, t: 0.08 }),
+    panel(SUB, R, 0, 2, 2, 4, { ...m, t: 0.07 }),
+    panel(MAIN, R, 2, 3, 2, 4, { ...m, t: 0.1 }),
+    // 腹（露出骨架：管線與橫肋）
+    cyl(GUN, [0.6, 3.72, 0.7], [0.52, 3.98, 3.0], 0.13, 8, true),
+    cyl(STEEL, [0.95, 4.05, 0.7], [0.8, 4.3, 3.1], 0.07, 6, true),
+    ...[1.0, 1.6, 2.2, 2.8].map((z) => box(SUB, [0, 3.78, z], [2.1, 0.18, 0.16], null, 0.04)),
     // 脊線的鰭
     // 背甲的第二層與飾條
-    panel(MAIN, R, 1.12, 2.88, 0.3, 1.7, { ...m, t: 0.27, sink: -0.1, ch: 0.07 }),
-    panel(ACC, R, 0.12, 0.42, 0.25, 1.9, { ...m, t: 0.17, sink: -0.08, gap: 0.01, ch: 0.02 }),
-    panel(ACC, R, 3.1, 3.5, 0.3, 1.8, { ...m, t: 0.16, sink: -0.08, gap: 0.01, ch: 0.02 }),
-    panel(MAIN, R, 0.15, 0.85, 2.2, 3.1, { ...m, t: 0.17, sink: -0.07, ch: 0.04 }),
-    fin(ACC, -0.05, 6.62, 0.5, 0.22),
-    fin(ACC, 0.65, 6.78, 0.55, 0.26),
+    panel(MAIN, R, 0.12, 1.88, 0.3, 1.7, { ...m, t: 0.27, sink: -0.1, ch: 0.07 }),
+    panel(ACC, R, 2.08, 2.3, 2.2, 3.8, { ...m, t: 0.17, sink: -0.08, gap: 0.01, ch: 0.02 }),
+    panel(ACC, R, 2.1, 2.5, 0.3, 1.8, { ...m, t: 0.16, sink: -0.08, gap: 0.01, ch: 0.02 }),
+    fin(ACC, 0.9, 6.82, 0.5, 0.24),
     // 側腹下緣的排氣管
-    cyl(GUN, [1.2, 4.12, 1.0], [1.12, 4.36, -0.32], 0.13, 8, true),
-    cyl(GUN, [1.02, 3.86, 0.9], [0.98, 4.1, -0.32], 0.1, 8, true),
     fin(ACC, 1.35, 6.92, 0.55, 0.26),
     fin(ACC, 2.1, 6.95, 0.6, 0.32),
     fin(ACC, 2.85, 6.86, 0.55, 0.26),
@@ -182,9 +176,6 @@ function chest() {
     // 肩關節的座
     cyl(JOINT, [0.9, 5.4, 2.2], [1.42, 5.4, 2.2], 0.55, 12, true),
     // 側腹的散熱柵
-    ...[0, 1, 2, 3].map((k) =>
-      box(JOINT, [1.5, 5.3, -0.12 + k * 0.2], [0.1, 0.75, 0.08], [0, 0, 6], 0, true),
-    ),
     // 胸底的龍骨
     hullS(SUB, [
       [0, 3.42, 2.7],
@@ -215,8 +206,6 @@ function hips() {
     panel(MAIN, R, 3, 4, 0, 2, { ...m, t: 0.12 }),
     panel(SUB, R, 1, 3, 2, 4, { ...m, t: 0.07 }),
     panel(MAIN, R, 3, 4, 2, 4, { ...m, t: 0.1 }),
-    panel(SUB, R, 0, 1, 4, 6, { ...m, t: 0.07 }),
-    panel(SUB, R, 1, 3, 4, 6, { ...m, t: 0.09 }),
     panel(SUB, R, 3, 4, 4, 6, { ...m, t: 0.08 }),
     // 腰（可動的地方）露出骨架：三道肋環
     ...[-0.7, -1.0, -1.3].map((z) => box(SUB, [1.13, 5.35, z], [0.12, 1.3, 0.12], [0, 0, 4], 0.03, true)),
@@ -286,8 +275,8 @@ function neck() {
   const R = tubeRings(
     [
       { p: [0, 5.45, 2.9], prof: oct(0.85, 0.95, 0.95) },
-      { p: [0, 6.05, 3.8], prof: oct(0.9, 0.95, 0.95) },
-      { p: [0, 6.6, 4.55], prof: oct(0.95, 1.0, 0.95) },
+      { p: [0, 6.0, 3.55], prof: oct(0.9, 0.95, 0.95) },
+      { p: [0, 6.55, 4.1], prof: oct(0.95, 1.0, 0.95) },
     ],
     [0, 1, 0],
   );
@@ -300,7 +289,7 @@ function neck() {
   // 鬃甲：往後掃的刀形甲片，兩層交錯（後層長、前層短），繞著頸子上方約 250°
   const dn = vnorm([0, 0.6, 0.8]); // 頸子的軸
   const up = vnorm([0, 0.8, -0.6]);
-  const C = [0, 6.62, 4.4];
+  const C = [0, 6.62, 3.9];
   const blade = (slot, th, back, len, hw, rise, rad = 0.7) => {
     const a = (th * Math.PI) / 180;
     const r = vadd(vmul(up, Math.cos(a)), [Math.sin(a), 0, 0]); // 繞頸軸的徑向
@@ -322,17 +311,17 @@ function neck() {
       at(0.4, -hw * 0.8, -0.1),
       at(0, hw * 0.6, -0.16),
       at(0, -hw * 0.6, -0.16),
-      at(1, hw * 0.3, 0),
-      at(1, -hw * 0.3, 0),
-      at(1.04, 0, 0.04),
+      at(1, hw * 0.55, -0.02),
+      at(1, -hw * 0.55, -0.02),
+      at(1.03, 0, 0.07),
+      at(0.98, hw * 0.5, -0.1),
+      at(0.98, -hw * 0.5, -0.1),
     ]);
   };
-  for (const th of [-120, -90, -60, -30, 0, 30, 60, 90, 120])
-    out.push(blade(MAIN, th, 0.6, 2.9 - Math.abs(th) * 0.008, 0.68, 0.5 - Math.abs(th) * 0.001, 1.1));
-  for (const th of [-135, -105, -75, -45, -15, 15, 45, 75, 105, 135])
-    out.push(blade(SUB, th, 0.25, 2.1 - Math.abs(th) * 0.004, 0.62, 0.85, 1.12));
-  for (const th of [-150, -120, -90, -60, -30, 0, 30, 60, 90, 120, 150])
-    out.push(blade(MAIN, th, -0.08, 1.45 - Math.abs(th) * 0.003, 0.52, 1.25, 1.1));
+  for (const th of [-114, -76, -38, 0, 38, 76, 114])
+    out.push(blade(MAIN, th, 0.5, 1.95 - Math.abs(th) * 0.004, 0.86, 0.75, 1.1));
+  for (const th of [-133, -95, -57, -19, 19, 57, 95, 133])
+    out.push(blade(SUB, th, -0.02, 1.3 - Math.abs(th) * 0.002, 0.72, 1.35, 1.1));
   // 頸環
   out.push(
     lathe(
@@ -377,12 +366,12 @@ function head() {
     // 吻
     hullS(MAIN, [
       [0, 7.2, 5.5],
-      [0.4, 7.08, 5.5],
+      [0.47, 7.12, 5.5],
       [0.56, 6.6, 5.5],
       [0.5, 6.34, 5.5],
-      [0, 7.02, 6.3],
-      [0.27, 6.95, 6.45],
-      [0.4, 6.6, 6.6],
+      [0, 7.08, 6.4],
+      [0.37, 6.98, 6.5],
+      [0.45, 6.62, 6.6],
       [0.38, 6.34, 6.6],
       [0, 6.34, 6.72],
       [0, 6.62, 6.78],
@@ -521,24 +510,24 @@ function jaw() {
   const out = [
     hullS(MAIN, [
       [0.56, 6.3, 4.75],
-      [0.62, 5.98, 4.95],
-      [0, 5.85, 5.0],
+      [0.62, 5.86, 4.95],
+      [0, 5.72, 5.0],
       [0.5, 6.26, 5.6],
-      [0.48, 5.88, 5.8],
-      [0, 5.78, 5.8],
+      [0.5, 5.76, 5.8],
+      [0, 5.64, 5.8],
       [0.33, 6.22, 6.52],
-      [0.3, 5.95, 6.5],
-      [0, 5.92, 6.58],
+      [0.34, 5.82, 6.5],
+      [0, 5.8, 6.58],
       [0, 6.22, 6.6],
       [0, 6.26, 4.75],
     ]),
     hullS(ACC, [
-      [0, 5.9, 6.61],
-      [0.2, 5.93, 6.57],
+      [0, 5.78, 6.61],
+      [0.2, 5.81, 6.57],
       [0.22, 6.08, 6.58],
       [0, 6.1, 6.65],
-      [0, 5.84, 6.2],
-      [0.2, 5.85, 6.2],
+      [0, 5.68, 6.2],
+      [0.2, 5.7, 6.2],
     ]),
     cyl(JOINT, [0.5, 6.42, 4.85], [0.76, 6.42, 4.85], 0.2, 10, true),
     lathe(
@@ -577,8 +566,8 @@ const disc = (c, r) => [
     vadd(c, [0.18, 0, 0]),
     [1, 0, 0],
     [
-      [0, r * 0.4],
-      [0.06, r * 0.4],
+      [0, r * 0.58],
+      [0.06, r * 0.58],
       [0.09, r * 0.25],
     ],
     8,
@@ -648,7 +637,7 @@ function flUpper() {
     ...disc([1.95, 5.55, 2.25], 0.42),
     ...piston(GUN, STEEL, [1.45, 5.1, 1.18], [1.45, 3.95, 1.12], 0.08),
     cyl(JOINT, [1.0, E[1], E[2]], [1.9, E[1], E[2]], 0.36, 10),
-    cyl(SUB, [1.9, E[1], E[2]], [1.97, E[1], E[2]], 0.24, 10),
+    cyl(ACC, [1.9, E[1], E[2]], [1.98, E[1], E[2]], 0.28, 10),
   ];
 }
 function flFore() {
@@ -663,7 +652,6 @@ function flFore() {
     loft(JOINT, R),
     panel(ACC, R, 0.3, 0.75, 7, 10, { t: 0.1 }),
     panel(MAIN, R, 0.75, 3, 7, 10, { t: 0.11 }),
-    panel(SUB, R, 0.3, 3, 5, 7, { t: 0.07 }),
     ...piston(GUN, STEEL, vadd(E, [0, -0.35, -0.56]), vadd(W, [0, 0.25, -0.4]), 0.07),
     // 肘後的突刺
     hull(SUB, [
@@ -697,6 +685,7 @@ function flFore() {
       1.82,
     ),
     cyl(JOINT, [1.12, W[1], W[2]], [1.78, W[1], W[2]], 0.3, 10),
+    cyl(ACC, [1.78, W[1], W[2]], [1.85, W[1], W[2]], 0.21, 10),
   ];
 }
 function flMeta() {
@@ -717,6 +706,7 @@ function paw(c) {
   const pm = (pts) => pts.flatMap(([a, b, d]) => [[x + a, b, z + d], ...(a ? [[x - a, b, z + d]] : [])]);
   const out = [
     cyl(JOINT, [x - 0.38, 0.55, z], [x + 0.38, 0.55, z], 0.27, 10),
+    cyl(ACC, [x + 0.38, 0.55, z], [x + 0.44, 0.55, z], 0.18, 10),
     hull(
       MAIN,
       pm([
@@ -824,7 +814,7 @@ function blThigh() {
     ...[0, 1, 2].map((k) => box(GLASS, [1.87, 4.85, -3.6 + k * 0.17], [0.1, 0.5, 0.07], [0, 10, 0])),
     ...disc([1.92, 5.55, -2.9], 0.44),
     cyl(JOINT, [0.98, N[1], N[2]], [1.84, N[1], N[2]], 0.38, 10),
-    cyl(SUB, [1.84, N[1], N[2]], [1.91, N[1], N[2]], 0.25, 10),
+    cyl(ACC, [1.84, N[1], N[2]], [1.92, N[1], N[2]], 0.29, 10),
     // 膝蓋
     hull(MAIN, [
       vadd(N, [0.3, 0.32, 0.36]),
@@ -850,7 +840,6 @@ function blShin() {
     loft(JOINT, R),
     panel(ACC, R, 0.25, 0.6, 7, 10, { t: 0.1 }),
     panel(MAIN, R, 0.6, 2, 7, 10, { t: 0.11 }),
-    panel(SUB, R, 0.25, 2, 5, 7, { t: 0.07 }),
     ...piston(
       GUN,
       STEEL,
@@ -870,6 +859,7 @@ function blShin() {
       1.68,
     ),
     cyl(JOINT, [1.1, T[1], T[2]], [1.72, T[1], T[2]], 0.3, 10),
+    cyl(ACC, [1.72, T[1], T[2]], [1.79, T[1], T[2]], 0.21, 10),
     // 跗關節後面的突刺
     hull(SUB, [
       vadd(T, [0.16, 0.1, -0.28]),
@@ -981,11 +971,11 @@ function guns() {
     cyl(SUB, [0, y + 0.08, z - 1.3], [0, y + 0.08, z - 0.7], 0.34, 10),
     box(GUN, [0.5, y, z - 0.35], [0.42, 0.46, 1.5], null, 0.06, true),
     box(MAIN, [0.5, y + 0.03, z + 0.58], [0.38, 0.42, 0.7], null, 0.08, true),
-    cyl(GUN, [0.5, y, z + 0.9], [0.5, y, z + 3.0], 0.11, 10, true),
+    cyl(GUN, [0.5, y, z + 0.9], [0.5, y, z + 2.4], 0.11, 10, true),
     cyl(STEEL, [0.5, y, z + 0.93], [0.5, y, z + 1.5], 0.14, 10, true),
     lathe(
       GUN,
-      [0.5, y, z + 3.0],
+      [0.5, y, z + 2.4],
       [0, 0, 1],
       [
         [0, 0.17],
@@ -1004,36 +994,49 @@ let DEF = null;
 export function lionDef() {
   if (DEF) return DEF;
   const pieces = [];
-  const add = (name, parent, pivot, world) =>
-    pieces.push({ name, parent, pivot, prims: toLocal(world, pivot) });
+  // tf＝{ k, about, d }：整個區塊先以 about 為中心縮放 k、再平移 d（轉軸跟著）——比例的調整：
+  // 軀幹縮短（後半身整個往前 REAR）、頭往後貼近肩膀（HEADBACK）、四肢加粗（整條腿以肩／髖為中心放寬 LEG_K）
+  const add = (name, parent, pivot, world, tf = {}) => {
+    const { k = [1, 1, 1], about = [0, 0, 0], d = [0, 0, 0] } = tf;
+    const pv = vadd(
+      about.map((a, i) => a + (pivot[i] - a) * k[i]),
+      d,
+    );
+    pieces.push({ name, parent, pivot: pv, prims: toLocal(moved(scaled(world, k, about), d), pv) });
+  };
+  const REAR = { d: [0, 0, 1.2] },
+    HEADBACK = { d: [0, 0, -0.5] },
+    LEG_K = [1.32, 1, 1.18];
+  const FL = { k: LEG_K, about: J.S },
+    BL = { k: LEG_K, about: J.H, d: REAR.d };
   // 左側的區塊＋右側的鏡像
-  const pair = (l, r, parentL, parentR, pivot, world) => {
-    add(l, parentL, pivot, world);
+  const pair = (l, r, parentL, parentR, pivot, world, tf) => {
+    add(l, parentL, pivot, world, tf);
     const pl = pieces[pieces.length - 1];
     pieces.push({
       name: r,
       parent: parentR,
-      pivot: [-pivot[0], pivot[1], pivot[2]],
+      pivot: [-pl.pivot[0], pl.pivot[1], pl.pivot[2]],
       prims: mirrored(pl.prims),
     });
   };
   add('chest', null, J.chest, chest());
-  add('hips', 'chest', J.hips, hips());
+  add('hips', 'chest', J.hips, hips(), REAR);
   add('neck', 'chest', J.neck, neck());
-  add('head', 'neck', J.head, head());
-  add('jaw', 'head', J.jaw, jaw());
-  add('turret', 'hips', J.turret, turret());
-  add('guns', 'turret', J.guns, guns());
-  pair('fl_upper', 'fr_upper', 'chest', 'chest', J.S, flUpper());
-  pair('fl_fore', 'fr_fore', 'fl_upper', 'fr_upper', J.E, flFore());
-  pair('fl_meta', 'fr_meta', 'fl_fore', 'fr_fore', J.W, flMeta());
-  pair('fl_paw', 'fr_paw', 'fl_meta', 'fr_meta', J.K, paw(J.K));
-  pair('bl_thigh', 'br_thigh', 'hips', 'hips', J.H, blThigh());
-  pair('bl_shin', 'br_shin', 'bl_thigh', 'br_thigh', J.N, blShin());
-  pair('bl_meta', 'br_meta', 'bl_shin', 'br_shin', J.T, blMeta());
-  pair('bl_paw', 'br_paw', 'bl_meta', 'br_meta', J.A, paw(J.A));
-  for (let k = 0; k < 5; k++) add('tail' + (k + 1), k ? 'tail' + k : 'hips', J.tail[k], tailSeg(k));
-  add('tail_tip', 'tail5', J.tail[5], tailTip());
+  add('head', 'neck', J.head, head(), HEADBACK);
+  add('jaw', 'head', J.jaw, jaw(), HEADBACK);
+  add('turret', 'hips', J.turret, turret(), REAR);
+  add('guns', 'turret', J.guns, guns(), REAR);
+  pair('fl_upper', 'fr_upper', 'chest', 'chest', J.S, flUpper(), FL);
+  pair('fl_fore', 'fr_fore', 'fl_upper', 'fr_upper', J.E, flFore(), FL);
+  pair('fl_meta', 'fr_meta', 'fl_fore', 'fr_fore', J.W, flMeta(), FL);
+  pair('fl_paw', 'fr_paw', 'fl_meta', 'fr_meta', J.K, paw(J.K), FL);
+  pair('bl_thigh', 'br_thigh', 'hips', 'hips', J.H, blThigh(), BL);
+  pair('bl_shin', 'br_shin', 'bl_thigh', 'br_thigh', J.N, blShin(), BL);
+  pair('bl_meta', 'br_meta', 'bl_shin', 'br_shin', J.T, blMeta(), BL);
+  pair('bl_paw', 'br_paw', 'bl_meta', 'br_meta', J.A, paw(J.A), BL);
+  for (let k = 0; k < 5; k++) add('tail' + (k + 1), k ? 'tail' + k : 'hips', J.tail[k], tailSeg(k), REAR);
+  add('tail_tip', 'tail5', J.tail[5], tailTip(), REAR);
   DEF = { pieces, cols: LION_COLS, tris: pieces.reduce((n, p) => n + primTris(p.prims), 0) };
   return DEF;
 }
