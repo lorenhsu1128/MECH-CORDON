@@ -44,6 +44,7 @@ export const C_STAR = {
   beast_lion: 'close',
   beast_tiger: 'far',
   beast_bear: 'cover',
+  beast_turtle: 'close',
 };
 // qb＝QB 連打（docs/boss-design.md 第 8 節：刁鑽度 3 起，每秒 QB 次數超過 C_QB_RATE）
 export const HABITS = ['air', 'close', 'far', 'cover', 'qb'];
@@ -707,6 +708,7 @@ Object.assign(BOSS_KIT, K7);
 const KB = {};
 // 獅型：磁軌砲壞了不能砲擊、莢艙壞一邊少一輪導彈
 KB.beast_lion = {
+  allParts: true,
   parts: [
     {
       id: 'rail',
@@ -752,6 +754,7 @@ KB.beast_lion = {
 };
 // 劍齒虎型：機砲壞了不能掃射、莢艙壞了沒有電漿導彈
 KB.beast_tiger = {
+  allParts: true,
   parts: [
     {
       id: 'mg',
@@ -788,6 +791,7 @@ KB.beast_tiger = {
 };
 // 熊型：榴彈砲壞了不能砲擊、熱熔砲壞一邊少一道光束
 KB.beast_bear = {
+  allParts: true,
   parts: [
     {
       id: 'how',
@@ -828,6 +832,54 @@ KB.beast_bear = {
     close: (b) => b.b3Shock(18), // 拍地
     far: (b, pl) => b.b3Rain(pl, 4, 6, 0.3), // 榴彈
     cover: (b, pl) => b.b3Pools(pl, 3, 6), // 熔岩繞過掩體
+  },
+};
+// 鱷龜型：砲塔壞了不能掃射、魚雷架壞一邊少一輪魚雷（兩邊都壞了沒有魚雷與深水炸彈）
+KB.beast_turtle = {
+  allParts: true,
+  parts: [
+    {
+      id: 'cannon',
+      name: '重機砲塔',
+      model: 'none',
+      back: false,
+      noExpose: true,
+      size: 1.4,
+      off: [0, 0.9, -0.18],
+      flag: 'cannon',
+      slots: ['rarm'],
+    },
+    {
+      id: 'rackL',
+      name: '左魚雷架',
+      model: 'none',
+      back: false,
+      noExpose: true,
+      off: [-0.55, 0.66, 0.03],
+      flag: 'rackL',
+      slots: ['lback'],
+    },
+    {
+      id: 'rackR',
+      name: '右魚雷架',
+      model: 'none',
+      back: false,
+      noExpose: true,
+      off: [0.55, 0.66, 0.03],
+      flag: 'rackR',
+      slots: ['rback'],
+    },
+  ],
+  big: [
+    ['深水炸彈雨', (b, pl) => b.b3Rain(pl, 8, 9, 0.2)],
+    ['稜刺風暴', (b) => (b.b3Ring(28), b.b3Shock(20))],
+  ],
+  reflect: ['mortar'],
+  counter: {
+    air: (b, pl) => b.b3Fan(pl, 4, 0.18), // 砲塔往上掃
+    close: (b) => b.b3Shock(18), // 踏地
+    far: (b, pl) => b.b3Line(pl, 5, 4.5, 0.18), // 魚雷沿線
+    cover: (b, pl) => b.b3Rain(pl, 4, 5, 0.25), // 深水炸彈繞過掩體
   },
 };
 Object.assign(BOSS_KIT, KB);

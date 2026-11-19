@@ -12,6 +12,7 @@ const V = (x, y, z) => new THREE.Vector3(x, y, z);
 // 種類（bossKind，沒有的用名稱開頭）→ { cd 冷卻秒數, name 招式名稱, fn(Boss, 目標) }
 const SPECIALS = {
   // 機獸（docs/beast-design.md）
+  beast_turtle: { cd: 12, name: '怒濤旋殼', fn: (b, pl) => (b.b3Shocks(3, 0.6), b.b3Rain(pl, 6, 8, 0.25)) },
   beast_bear: {
     cd: 12,
     name: '熔爐爆發',
@@ -218,8 +219,9 @@ Object.assign(MechEntity.prototype, {
         dmg: (o.dmg || 520) * dm,
         im: (o.im || 900) * dm,
         w: 0.9,
-        color: 0xff4060,
+        color: o.color || 0xff4060,
         width: 0.35,
+        attr: o.attr, // 機獸的刺彈是實彈（沒給＝能量）
       });
       SFX.play('laserBig', 0.8, 0.9, 0.05, 0.05, from);
     });

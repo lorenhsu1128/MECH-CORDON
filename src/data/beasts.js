@@ -15,7 +15,7 @@
 // - guns＝會發射的武器（docs/beast-design.md 的「武器」：兩把外掛＋一把長在身上）：far／near＝遠／近時被選到的權重、cd＝[放完的冷卻, 隨機再加]、
 //   flag／flags＝負責它的部位（BOSS_KIT 的 flag；全部被打壞就不能用）、hold＝放的時候停下來；type：
 //   rail＝砲塔跟著目標 track 秒 → 鎖住方向畫預警線 warn 秒 → 貫穿（attr 屬性）；volley＝asm 的武器槽各射 n 輪；
-//   burst＝邊移動邊用 asm 的武器槽點放 dur 秒；fan＝朝目標的扇形 n 道光束（clip＝同時播的片段）；
+//   burst＝邊移動邊用 asm 的武器槽點放 dur 秒；fan＝朝目標的扇形 n 道光束（clip＝同時播的片段；full＝改成朝四面八方一整圈，第一道對準目標）；
 //   beam＝從 node 這一塊（或 nodes 幾塊，nodeFlags＝各自負責的部位）朝目標一道光束（warn 秒預警；status＝打中附加的狀態效果）；
 //   lob＝拋射 n 發迫擊砲彈（落點有預警圈；at＝配合片段延後幾秒、spread＝散布、R＝爆炸半徑的公尺、pool＝落地後的燃燒地面）；
 //   cone＝火焰錐（配合片段 t0～t1 噴：前方 len 公尺、半角 ang，每秒 dps；f／y＝噴口相對機獸的前後與高度）。
@@ -395,6 +395,140 @@ export const BEAST_DEFS = [
     ],
     intro:
       '熊型機獸 — 背上的榴彈砲看落點圈躲、肩上兩道熱熔光束、熔岩塊落地會燒；雙掌拍地用跳的躲，衝撞與熊抱撲空之後是破綻',
+  },
+  // ---------- 鱷龜型（第 2 章：集散場、水壩、淹沒城區）：背甲難打動，嘴的咬合是最快的一擊；靠縮殼旋轉移動 ----------
+  {
+    beast: 'turtle',
+    name: '鱷龜型機獸',
+    kind: 'beast_turtle',
+    ai: 'beast',
+    modelKind: 'boss',
+    vehKey: 'beast_turtle',
+    pal: 'beast_turtle',
+    asm: { ...BEAST_ASM, rarm: 'w_mg', rback: 'bw_ms', lback: 'bw_ms' }, // 背甲砲塔的重機砲（實彈）、兩側的魚雷架（爆發）
+    scale: BEAST_SCALE.turtle,
+    tier: 2,
+    hide: { cannon: ['turret'], rackL: ['rack_l'], rackR: ['rack_r'] },
+    stag: 'uFlip',
+    death: 'uDeath',
+    radius: 1.5,
+    hpMul: 3.6,
+    stabMul: 6,
+    dmgMul: 0.5,
+    wantDist: 5,
+    speedMul: 1,
+    res: [0.2, -0.25, 0], // 抗實彈、弱爆發
+    atk: ['kin', 'exp'],
+    walk: 24,
+    trot: 70,
+    run: 92,
+    turn: 2.4,
+    acc: 60,
+    dec: 120,
+    balls: [
+      [5.6, 3.0, 1.9], // 頭
+      [2.4, 4.0, 3.6],
+      [-0.5, 4.4, 4.0],
+      [-3.2, 3.8, 3.4],
+      [-1.4, 6.9, 1.6], // 背甲頂的砲塔
+    ],
+    melee: {
+      // 瞬間咬合（招牌技）：出手很快，咬空之後脖子收不回來是破綻
+      uSnap: {
+        t: 0.58,
+        f: 9.2,
+        side: 0,
+        R: 3.6,
+        dmg: 1250,
+        im: 1400,
+        kb: 10,
+        high: 6,
+        open: 1.6,
+        sel: { d1: 7, a1: 0.45, w: 4 },
+      },
+      uTail: {
+        t: 0.6,
+        f: -8.5,
+        side: 0,
+        R: 5.6,
+        dmg: 520,
+        im: 1300,
+        kb: 38,
+        up: 12,
+        high: 5,
+        sel: { d1: 7, a0: 2.0, w: 6 },
+      },
+      uStomp: {
+        t: 0.52,
+        f: 3,
+        side: 0,
+        R: 9,
+        dmg: 560,
+        im: 1500,
+        kb: 26,
+        up: 9,
+        high: 4,
+        sel: { d1: 6, a1: 1.6, w: 2 },
+      },
+      // 縮殼旋轉：滑出去再橫掃，路上撞到誰就算；轉完暈眩是破綻
+      uSpin: {
+        ...{ t: 2.5, f: 14, side: -10, R: 6, dmg: 900, im: 1700, kb: 40, up: 10, high: 5 },
+        ...{ path: true, ram: 0.9, open: 2.2, sel: { d0: 6, d1: 32, a1: 0.6, w: 6 } },
+      },
+    },
+    guns: [
+      // 背甲砲塔的雙管重機砲（實彈，壓制）
+      {
+        id: 'cannon',
+        type: 'burst',
+        flag: 'cannon',
+        slot: 'rarm',
+        dur: 1.8,
+        gap: 0.1,
+        far: 0.45,
+        near: 0.3,
+        cd: [2.5, 1.5],
+      },
+      // 兩側的魚雷（爆發，重擊）
+      {
+        ...{ id: 'torp', type: 'volley', flags: ['rackL', 'rackR'], slots: ['rback', 'lback'] },
+        ...{ n: 1, gap: 0.3, far: 0.3, near: 0.15, cd: [4, 2] },
+      },
+      // 兩側的深水炸彈（爆發）：三發拋射，落點圈
+      {
+        ...{ id: 'dc', type: 'lob', flags: ['rackL', 'rackR'], n: 3, gap: 0.3, spread: 9 },
+        ...{ dmg: 600, im: 900, R: 6, far: 0.15, near: 0.25, cd: [5, 2] },
+      },
+      // 背甲稜刺的四射刺彈（實彈，控場）：朝四面八方一整圈
+      {
+        ...{
+          id: 'spikes',
+          type: 'fan',
+          full: true,
+          attr: 'kin',
+          color: 0xfff0c0,
+          n: 10,
+          warn: 0.9,
+          range: 55,
+        },
+        ...{ dmg: 300, im: 500, far: 0, near: 0.3, cd: [5, 2] },
+      },
+    ],
+    clips: [
+      'uSnap',
+      'uTail',
+      'uStomp',
+      'uSpin',
+      'uShake',
+      'uFire',
+      'jump',
+      'uHit',
+      'uStagger',
+      'uFlip',
+      'uDeath',
+    ],
+    intro:
+      '鱷龜型機獸 — 背甲抗實彈、弱爆發；嘴的咬合非常快，咬空是破綻；縮殼旋轉會滑過來橫掃，轉完會暈；背甲的砲塔與兩側的魚雷架可以打壞',
   },
 ];
 export const beastDefOf = (kind) => BEAST_DEFS.find((b) => b.kind === kind) || null;

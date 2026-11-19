@@ -220,7 +220,8 @@ Object.assign(Game.prototype, {
     );
     const have = kinds.size + (b.opts.bossKind === 'funnel' ? 1 : 0);
     const mine = (kit.parts || GENERIC_PARTS).filter((sp) => !sp.on || String(b.name).startsWith(sp.on)); // 雙 AC：各自的部位
-    const list = mine.slice(0, Math.max(0, T.jParts - have));
+    // allParts：機獸的外掛武器不管刁鑽度一律都是部位（使用者定案：兩把外掛武器可以打壞）
+    const list = kit.allParts ? mine : mine.slice(0, Math.max(0, T.jParts - have));
     list.forEach((sp, i) => {
       const s = { ...sp };
       // 刁鑽度 3 起：其中 1 個在背後或底下；5 起：最後一個只在出招時露出

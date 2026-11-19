@@ -329,15 +329,19 @@ Object.assign(MechEntity.prototype, {
       const yw = Math.atan2(d0.x, d0.z),
         pt = Math.atan2(d0.y, Math.hypot(d0.x, d0.z) || 1);
       for (let i = 0; i < G.n; i++) {
-        const y = yw + (i - (G.n - 1) / 2) * G.step;
+        // full＝朝四面八方一整圈（背甲的刺彈）；否則以目標為中心、間隔 step
+        const y = G.full ? yw + (i / G.n) * Math.PI * 2 : yw + (i - (G.n - 1) / 2) * G.step;
+        const pp = G.full ? 0 : pt;
         this.b3Beam(
           from.clone(),
-          V(Math.sin(y) * Math.cos(pt), Math.sin(pt), Math.cos(y) * Math.cos(pt)),
-          1.1,
+          V(Math.sin(y) * Math.cos(pp), Math.sin(pp), Math.cos(y) * Math.cos(pp)),
+          G.warn || 1.1,
           {
-            range: 120,
+            range: G.range || 120,
             dmg: G.dmg,
             im: G.im,
+            attr: G.attr,
+            color: G.color,
           },
         );
       }
