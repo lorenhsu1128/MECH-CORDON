@@ -81,7 +81,7 @@ Object.assign(Game.prototype, {
     const fo = this.foCur();
     const L = this.save.level || 1;
     if (fo.mode === 'level' && !mp) {
-      const b = isBossLevel(L) ? `（決戰：${bossForLevel(L).name.split(' ')[0]}）` : '';
+      const b = isBossLevel(L) ? `（決戰：${this.freeBoss(L).name.split(' ')[0]}）` : '';
       return `${FO_MODES.level}・任務 ${String(L).padStart(2, '0')}${b}・${this.mapName(this.mapPref())}`;
     }
     if (fo.mode === 'sortie') {
@@ -208,7 +208,7 @@ Object.assign(Game.prototype, {
     const map = this.mapPref();
     const vs = map ? variantKeys(map).filter((k) => !VARIANTS[map][k].border) : [];
     const v = this.variantPref();
-    const next = isBossLevel(L) ? `決戰任務：${bossForLevel(L).name}` : '一般任務（分波增援、據點）';
+    const next = isBossLevel(L) ? `決戰任務：${this.freeBoss(L).name}` : '一般任務（分波增援、據點）';
     return (
       `<div class="foNote">任務 ${String(L).padStart(2, '0')}：${escHtml(next)}</div>` +
       this.foSel(
@@ -464,7 +464,7 @@ Object.assign(Game.prototype, {
       );
     if (fo.mode === 'level') {
       line('等級', `任務 ${String(L).padStart(2, '0')}（完成後推進）`);
-      if (isBossLevel(L)) line('Boss', bossForLevel(L).intro || bossForLevel(L).name);
+      if (isBossLevel(L)) line('Boss', this.freeBoss(L).intro || this.freeBoss(L).name);
       return rows.join('');
     }
     if (fo.mode === 'sortie') {

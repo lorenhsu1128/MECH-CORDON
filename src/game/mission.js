@@ -319,7 +319,7 @@ Object.assign(Game.prototype, {
     const air0 = !mp0 && !this.paceLab && this.mapPref() === 'airspace';
     const pvp0 = !!(mp0 && this.net.pvpSet && this.net.pvpSet.mode === 'pvp');
     const boss = isBossLevel(L) && !pvp0 && !this.paceLab;
-    const bd0 = boss ? (air0 ? this.airBossDef() : bossForLevel(L)) : null;
+    const bd0 = boss ? (air0 ? this.airBossDef() : mp0 ? bossForLevel(L) : this.freeBoss(L)) : null; // 單人：主線打過的機獸進輪替（game/beasts.js）
     this.clearMission();
     // 地圖：單人用車庫選的，多人用房主在大廳選的；沒選（隨機）或不認得時隨機
     const want = this.paceLab ? this.paceLab.cfg.theme : mp0 ? (this.net.pvpSet || {}).map : this.mapPref();

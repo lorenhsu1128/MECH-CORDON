@@ -1524,6 +1524,27 @@ async function testBeastCampaign(browser) {
     });
     await wait(300);
   }
+  // 自由出擊：主線打過的機獸進 Boss 的輪替（單人；沒打過的時候沒有）
+  const fr = await page.evaluate(() => {
+    const g = window.__game;
+    const pick = () => {
+      const o = [];
+      for (let L = 3; L <= 60; L++) {
+        const b = g.beastFreeDef(L);
+        if (b) o.push(b.beast);
+      }
+      return o;
+    };
+    const s2 = g.save.story.seen2;
+    const keep = s2.bosses;
+    const have = pick();
+    s2.bosses = {};
+    const none = pick();
+    s2.bosses = keep;
+    return { have: [...new Set(have)], n: have.length, none: none.length };
+  });
+  check(fr.n > 0 && fr.have.length >= 7, `自由出擊：打過的機獸進 Boss 的輪替（${fr.have.join('、')}）`);
+  check(fr.none === 0, '自由出擊：主線沒打過的時候不出現機獸');
   await ctx.close();
 }
 async function testMapView(browser) {
@@ -23840,7 +23861,7 @@ async function testCine(browser, base) {
     st.cycle = 1;
     st.choices = {};
     st.storySeen = {};
-    st.done = { c1s1: 1, c1s2: 1, c1x: 0 };
+    st.done = { c1s1: 1, c1s2: 1, c1b: 1, c1x: 0 }; // c1b＝第 1 章最後的機獸出擊（整章完成才有章末與下一章的開場）
     const k = Object.keys(g.storyUnlocked()).filter((x) => g.storyItem(x));
     g.hubStory(true);
     const n = document.querySelectorAll('#hubStoryList .storyItem').length;

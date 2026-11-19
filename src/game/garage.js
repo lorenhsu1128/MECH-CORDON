@@ -104,7 +104,7 @@ Object.assign(Game.prototype, {
     $('mcTitle').textContent = (boss ? '決戰任務 ' : '任務 ') + String(L).padStart(2, '0');
     $('mcDesc').textContent =
       (boss
-        ? `目標：擊破 ${bossForLevel(L).name}`
+        ? `目標：擊破 ${this.freeBoss(L).name}`
         : `目標：肅清隨機戰區內所有敵對兵力（預估 ${Math.round(6 + L * 2.2)} 戰力點，分波來襲）`) +
       '　每擊破一台即時入帳 SP，無修理費';
     this.garageFireCache = null; // 理論火力（range.js）：每次重畫重新計算

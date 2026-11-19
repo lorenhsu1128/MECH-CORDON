@@ -1774,6 +1774,58 @@ const MORE_BOSS = [
       S.at(1.6, () => (S.boom(S.src.pos, 14 * MS, 0xff8030), S.ring(S.src.center(), 20 * MS, 0xffb060, 0.8)));
     },
   },
+  // 機獸（entities/mech-beast.js；資料在 data/beasts.js）
+  {
+    id: 'beast_melee',
+    name: '機獸：近戰的判定圓（爪、咬、甩尾、拍地）',
+    who: '八隻機獸（ai beast）',
+    src: 'entities/mech-beast.js 的 beastWarn（warnCircle：半徑＝招式的 R × 體型倍率，出手時長滿）→ beastStrike',
+    srcAt: [0, -16],
+    run: (S) => {
+      const p = S.src.pos.clone().lerp(tp(S), 0.7);
+      S.warnCircle(p, 4.6 * 1.6, 0.45, 0xff4020);
+      S.at(0.45, () => S.boom(p, 4.6 * 1.6, 0xffa060));
+    },
+  },
+  {
+    id: 'beast_pounce',
+    name: '機獸：撲擊／衝撞／俯衝的路線（落點前的一整條）',
+    who: '八隻機獸（ai beast）',
+    src: 'entities/mech-beast.js 的 beastWarn（warnPath：起點 → 落點，寬＝招式的 R × 2 × 體型倍率）',
+    srcAt: [0, -30],
+    run: (S) => {
+      const a = S.src.pos.clone(),
+        b = tp(S);
+      S.warnPath(a, b, 5.2 * 2 * 1.6, 1.0, 0xff4020);
+      S.at(1.0, () => S.boom(b, 5.2 * 1.6, 0xffa060));
+    },
+  },
+  {
+    id: 'beast_rail',
+    name: '機獸：磁軌砲（砲塔瞄準 → 鎖住方向的預警線 → 貫穿）',
+    who: '獅型機獸（beast_lion）',
+    src: 'entities/mech-beast.js 的 beastRanged（rail：warnLine 0.55 秒 → beamAttack 實彈）',
+    srcAt: [0, -40],
+    run: (S) => {
+      const a = S.src.center(),
+        d = dirTo(a, tc(S));
+      const b = a.clone().addScaledVector(d, 120 * MS);
+      S.at(0.8, () => S.warnLine(a, b, 0.55, 0xffd060, 0.14));
+      S.at(1.35, () => S.beamFx(a, b, 0xfff2c0, 0.3));
+    },
+  },
+  {
+    id: 'beast_leap',
+    name: '機獸：鑽地突襲（從目標腳下鑽出來）',
+    who: '蠍型機獸（beast_scorpion）',
+    src: 'entities/mech-beast.js 的 beastMelee（leap：warnCircle 在落點、鑽在地下的秒數）',
+    srcAt: [0, -34],
+    run: (S) => {
+      const p = tp(S);
+      S.warnCircle(p, 7 * 1.25, 0.95, 0xff4020);
+      S.at(0.95, () => (S.boom(p, 7 * 1.25, 0xffa060), S.ring(p.clone().setY(0.3), 7, 0xffa060)));
+    },
+  },
 ];
 const MORE_MISSION = [
   {
