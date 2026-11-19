@@ -1,0 +1,67 @@
+// 獅型機獸（原創設計；之後當敵人／Boss）的組裝：render/proc/beast_lion.js 的區塊（基本形體清單）→ 關節群組的階層。
+// 每個區塊一個群組（原點＝轉軸、名稱＝區塊名稱），站姿＝旋轉全 0；pose＝{ 區塊名稱: [rx, ry, rz]（角度）}。遊戲的座標（−Z 正面），原點在地面。
+import { OUTLINE_MAT } from './geometry.js';
+import { mechMats } from './materials.js';
+import { primsGroup } from './proc-prims.js';
+import { lionDef } from './proc/beast_lion.js';
+import { tagStyle } from './style/shader.js';
+
+// 展示用的姿勢
+export const LION_POSES = {
+  stand: {},
+  // 咆哮：張嘴、抬頭、壓低前半身、尾巴揚起、砲管上仰
+  roar: {
+    neck: [-14, 0, 0],
+    head: [-16, 0, 0],
+    jaw: [34, 0, 0],
+    guns: [-18, 0, 0],
+    turret: [0, 20, 0],
+    fl_upper: [-16, 0, 0],
+    fl_fore: [22, 0, 0],
+    fl_meta: [-6, 0, 0],
+    fr_upper: [14, 0, 0],
+    fr_fore: [-18, 0, 0],
+    fr_meta: [10, 0, 0],
+    bl_thigh: [10, 0, 0],
+    bl_shin: [-14, 0, 0],
+    bl_meta: [8, 0, 0],
+    tail1: [-22, 8, 0],
+    tail2: [-18, 10, 0],
+    tail3: [-14, 12, 0],
+    tail4: [-10, 10, 0],
+    tail5: [-8, 8, 0],
+  },
+};
+
+export function buildLion(pal, scale = 1, pose = null) {
+  const def = lionDef();
+  const M = mechMats(pal);
+  const root = new THREE.Group();
+  const nodes = {},
+    pivots = {};
+  for (const pc of def.pieces) {
+    const g = new THREE.Group();
+    g.name = pc.name;
+    const pp = pc.parent ? pivots[pc.parent] : [0, 0, 0];
+    g.position.set(-(pc.pivot[0] - pp[0]), pc.pivot[1] - pp[1], -(pc.pivot[2] - pp[2]));
+    const pg = primsGroup(pc.prims, M, true, def.cols);
+    const pos = [];
+    for (const c of pg.children) pos.push(...c.geometry.attributes.position.array);
+    const og = new THREE.BufferGeometry();
+    og.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    og.computeVertexNormals();
+    const o = new THREE.Mesh(og, OUTLINE_MAT);
+    o.castShadow = false;
+    pg.add(o);
+    g.add(pg);
+    (pc.parent ? nodes[pc.parent] : root).add(g);
+    nodes[pc.name] = g;
+    pivots[pc.name] = pc.pivot;
+  }
+  const d = Math.PI / 180;
+  for (const [k, r] of Object.entries(pose || {}))
+    if (nodes[k]) nodes[k].rotation.set(r[0] * d, r[1] * d, r[2] * d);
+  root.scale.setScalar(scale);
+  tagStyle(root);
+  return { group: root, nodes, mats: M, tris: def.tris };
+}

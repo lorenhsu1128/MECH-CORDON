@@ -18,6 +18,7 @@ import { FOE_CATALOG } from './foe-models.js';
 import { PARTS, START_ASM } from '../data/parts.js';
 import { PALETTES, mechMats } from './materials.js';
 import { PIECE_NAMES, SIDE_NAMES, buildMech, buildPiece, partPieces } from './mech-model.js';
+import { LION_POSES, buildLion } from './beast-lion.js';
 import { THEMES } from '../world/world.js';
 import { LANDMARKS } from '../world/landmarks.js';
 import { VARIANT_CATALOG } from '../world/variants.js';
@@ -103,6 +104,7 @@ export const CATEGORIES = [
   { id: 'booster', name: '推進器（背包）' },
   { id: 'weapon', name: '手持武器' },
   { id: 'back', name: '背部武器' },
+  { id: 'temp', name: '暫時（獅型機獸的程式模型）' },
   { id: 'mech', name: '完整機甲' },
   { id: 'vehicle', name: '非機甲／載具' },
   { id: 'prop', name: '地圖物件' },
@@ -155,6 +157,27 @@ for (const [cat, list] of PART_LISTS)
           return { obj: wrap, scaleNode: wrap, scale: v3(1), rig: null, piece: info };
         },
       });
+
+// ---------- 暫時：獅型機獸（原創設計，之後當敵人／Boss；等使用者檢查品質）----------
+for (const [key, label, palKey] of [
+  ['stand', '站姿', 'boss'],
+  ['roar', '咆哮（檢查關節）', 'boss'],
+  ['stand_w', '站姿・白色配色', 'white'],
+]) {
+  add({
+    id: 'temp/lion_' + key,
+    cat: 'temp',
+    name: '獅型機獸（' + label + '）',
+    note: '暫時：原創設計的獅型機獸，29 個區塊（頭、下顎、頸、胸、腰臀、四肢各 4 節、尾 6 節、砲塔）',
+    pal: palKey,
+    spec: 'mech-boss',
+    noGlb: true,
+    build: (k) => {
+      const rig = buildLion(pal(k), 1, LION_POSES[key.split('_')[0]]);
+      return { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
+    },
+  });
+}
 
 // ---------- 完整機甲 ----------
 const addMech = (key, name, asm, palKey, scale, note = '', boss = false) =>
