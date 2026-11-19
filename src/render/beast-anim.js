@@ -21,7 +21,7 @@ const TROT_V = 7.5,
 // ---------- 動作片段 ----------
 // 關鍵影格：{ t 秒, 頻道… }，沒寫的頻道＝0；影格之間以平滑曲線內插，最後一格之後停在那一格。頻道：
 //   by 身體高度、pitch 俯仰（正＝前半身抬起）、roll 側傾、yaw 胸的偏航、flex 脊椎（正＝臀部往下收）、hy 腰臀的偏航
-//   <腳>F／L／C／X＝那隻腳的落點往前、抬高、掌骨收起（0～1）、往外；nx／ny 頸、hx／hdy／hz 頭、jaw 下顎（負＝張開）
+//   <腳>F／L／C／X／P＝那隻腳的落點往前、抬高、掌骨收起（0～1）、往外、腳掌的角度（弧度，正＝腳尖翹起）；nx／ny 頸、hx／hdy／hz 頭、jaw 下顎（負＝張開）
 //   tx／ty 尾（tx 負＝揚起）、mane 鬃甲張開（0～1）、glow 眼睛的亮度（−1 熄滅～1）、shake 顫抖
 //   ry／rf 整隻的高度與往前的位移、free 腿放鬆（1＝不貼地，跟著身體）
 const FEET = (o) => ({ flX: o, frX: o, blX: o * 0.8, brX: o * 0.8 });
@@ -44,25 +44,31 @@ export const BEAST_CLIPS = {
     { t: 0.4, by: -0.3, pitch: 0.05, flex: 0.08, flF: 0.7, frF: 0.7, blF: 0.4, brF: 0.4, tx: -0.15 },
     { t: 0.75 },
   ],
-  // 跳躍：蹲壓 → 蹬出 → 空中收腳 → 前腳先著地、壓低緩衝
+  // 跳躍：蹲壓 → 前半身先揚起、後腳蹬出 → 空中收腳 → 前腳先著地、壓低緩衝
   jump: [
-    { t: 0.3, by: -0.95, pitch: -0.05, flex: 0.1, blF: 0.35, brF: 0.35, tx: 0.2 },
+    { t: 0.3, by: -0.95, pitch: -0.06, flex: 0.1, blF: 0.35, brF: 0.35, tx: 0.2 },
     {
       t: 0.44,
-      by: 0.25,
-      pitch: 0.24,
+      by: 1.0,
+      pitch: 0.5,
+      flex: -0.3,
       ry: 0.9,
-      flL: 1.2,
-      frL: 1.2,
+      flL: 1.6,
+      frL: 1.6,
+      flF: 0.8,
+      frF: 0.8,
       flC: 1,
       frC: 1,
       blF: -1.5,
       brF: -1.5,
+      nx: -0.15,
       tx: -0.3,
     },
     {
       t: 0.8,
       ry: 4.2,
+      by: 0.3,
+      pitch: 0.16,
       flex: 0.2,
       flL: 1.4,
       frL: 1.4,
@@ -91,7 +97,7 @@ export const BEAST_CLIPS = {
     { t: 1.34, by: -0.9, pitch: 0.05, flex: 0.1, blF: 0.3, brF: 0.3, tx: 0.2 },
     { t: 1.7 },
   ],
-  // 撲擊：壓低前半身、臀部抬高、尾巴繃直 → 撲出 → 落地
+  // 撲擊：壓低前半身、臀部抬高、尾巴繃直 → 前半身揚起撲出（前腳張開、爪子朝前）→ 落地
   pounce: [
     {
       t: 0.5,
@@ -107,16 +113,22 @@ export const BEAST_CLIPS = {
     },
     {
       t: 0.62,
-      by: 0.2,
-      pitch: 0.2,
+      by: 0.9,
+      pitch: 0.48,
+      flex: -0.28,
       ry: 1.7,
       rf: 4,
-      flF: 1.7,
-      frF: 1.7,
-      flL: 1.7,
-      frL: 1.7,
+      flF: 1.9,
+      frF: 1.9,
+      flL: 2.4,
+      frL: 2.4,
+      flP: 0.7,
+      frP: 0.7,
+      flX: 0.3,
+      frX: 0.3,
       blF: -1.7,
       brF: -1.7,
+      nx: -0.2,
       jaw: -0.55,
       mane: 1,
       glow: 1,
@@ -124,13 +136,16 @@ export const BEAST_CLIPS = {
     },
     {
       t: 0.86,
-      ry: 1.2,
+      ry: 1.4,
       rf: 11.5,
-      pitch: -0.12,
-      flF: 1.5,
-      frF: 1.5,
-      flL: 0.5,
-      frL: 0.5,
+      by: 0.3,
+      pitch: 0.05,
+      flF: 1.9,
+      frF: 1.9,
+      flL: 1.2,
+      frL: 1.2,
+      flP: -0.4,
+      frP: -0.4,
       blL: 1.0,
       brL: 1.0,
       blC: 0.8,
@@ -143,36 +158,45 @@ export const BEAST_CLIPS = {
     { t: 1.25, rf: 14, by: -0.4, pitch: 0.03 },
     { t: 1.7, rf: 14 },
   ],
-  // 爪擊（左前腳）：抬腳、肩膀後拉 → 往前下方揮
+  // 爪擊（左前腳）：前半身揚起、前腳高舉、腳掌翹起約 45° → 往前下方揮（腳掌往下扣）→ 拍在地上
   clawL: [
     {
-      t: 0.32,
-      by: -0.2,
+      t: 0.34,
+      by: 0.75,
+      pitch: 0.34,
+      flex: -0.3,
       yaw: 0.2,
       roll: -0.06,
-      flL: 2.4,
-      flF: -0.5,
-      flC: 0.5,
+      flL: 3.6,
+      flF: 0.2,
+      flC: 0.3,
       flX: 0.5,
+      flP: 0.8,
+      frL: 0.8,
+      frC: 0.3,
       ny: 0.1,
-      mane: 0.5,
-      glow: 0.4,
+      nx: -0.12,
+      mane: 0.6,
+      glow: 0.5,
     },
     {
-      t: 0.42,
-      by: -0.25,
+      t: 0.45,
+      by: 0.3,
+      pitch: 0.1,
+      flex: -0.1,
       yaw: -0.22,
-      pitch: -0.07,
-      flL: 1.5,
-      flF: 2.2,
+      flL: 2.0,
+      flF: 2.5,
       flX: -0.5,
+      flP: -0.55,
+      frL: 0.2,
       jaw: -0.2,
       mane: 0.5,
       glow: 0.6,
     },
-    { t: 0.52, by: -0.35, yaw: -0.26, pitch: -0.1, flF: 1.6, flX: -0.6, jaw: -0.15 },
-    { t: 0.75, by: -0.2, yaw: -0.1, flF: 1.0, flX: -0.3 },
-    { t: 1.1 },
+    { t: 0.55, by: -0.35, yaw: -0.26, pitch: -0.12, flF: 1.8, flX: -0.6, jaw: -0.15 },
+    { t: 0.8, by: -0.2, yaw: -0.1, flF: 1.0, flX: -0.3 },
+    { t: 1.15 },
   ],
   // 咬：頭後縮張嘴 → 往前咬合
   bite: [
@@ -473,7 +497,7 @@ export function animateBeast(rig, st, dt) {
     const th2 = ang(sub2(dir, e1));
     const A1 = wrap(th1 - L.a1),
       A2 = wrap(th2 - L.a2);
-    const A4 = A3 * 1.1; // 腳掌垂下
+    const A4 = A3 * 1.1 + ch(L.key + 'P'); // 腳掌垂下；片段的 P＝腳掌另外轉的角度（正＝腳尖翹起）
     const f1 = 1 - free; // 放鬆：回到站姿的相對角度（跟著身體）
     sp(L.n[0], 'x', (A1 - Ap) * f1, S_LEG, dt);
     sp(L.n[1], 'x', wrap(A2 - A1) * f1, S_LEG, dt);
