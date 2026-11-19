@@ -83,6 +83,8 @@ fs.mkdirSync(OUT, { recursive: true });
           d: +Math.hypot(b.pos.x - p.pos.x, b.pos.z - p.pos.z).toFixed(1),
           spd: +(b.aiState.spd || 0).toFixed(1),
           clip: b.aiState.clip || '',
+          gait: (b.model.beast.an && b.model.beast.an.gait) || '',
+          av: +((b.bf && b.bf.v) || 0).toFixed(1),
           hp: Math.round(b.hp),
           y: +(b.pos.y - p.pos.y).toFixed(1),
           meshes,

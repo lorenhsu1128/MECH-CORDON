@@ -1836,13 +1836,20 @@ export function animateBeast(rig, st, dt) {
         : 'walk';
   const G = PF.gaits[an.gait];
   an.sk = (an.sk || 0) + ((stalking ? 1 : 0) - (an.sk || 0)) * Math.min(1, dt * 3);
-  let T = G.T;
-  if (v * T * G.b > PF.maxStride) T = PF.maxStride / (v * G.b);
+  // 腳著地的那一段要和地面的速度一致（不滑）：一步在地上走的距離＝v × T × 著地比例，不能超過腿伸得到的 maxStride。
+  // 超過時先把步頻加快到 minT，再縮短著地的比例（騰空變長，像全速奔跑時腳只點一下地）；還不夠才繼續加快步頻。
+  let T = G.T,
+    gb = G.b;
+  if (v * T * gb > PF.maxStride) {
+    T = Math.max(G.T * (PF.minT || 0.72), PF.maxStride / (v * gb));
+    gb = Math.max(0.1, Math.min(G.b, PF.maxStride / (v * T)));
+    if (v * T * gb > PF.maxStride) T = PF.maxStride / (v * gb);
+  }
   if (moving) an.ph = (an.ph + dt / T) % 1;
   an.mv += ((moving ? 1 : 0) - an.mv) * Math.min(1, dt * 6);
   const mv = an.mv * (1 - aw),
     p2 = an.ph * TAU;
-  const stanceT = T * G.b;
+  const stanceT = T * gb;
 
   // ---- 身體：起伏、俯仰、脊椎伸縮、左右搖 ----
   let bob = 0,
@@ -1918,12 +1925,12 @@ export function animateBeast(rig, st, dt) {
     // 相位 → 落點（df 往前、dx 往側、lift 抬高）與掌骨的收起
     const ph = (an.ph + G.ph[L.key]) % 1;
     let s, lift, curl;
-    if (ph < G.b) {
-      s = ph / G.b; // 著地：由前往後
+    if (ph < gb) {
+      s = ph / gb; // 著地：由前往後
       lift = 0;
       curl = 0;
     } else {
-      const u = (ph - G.b) / (1 - G.b); // 騰空：由後往前
+      const u = (ph - gb) / (1 - gb); // 騰空：由後往前
       const e = u * u * (3 - 2 * u);
       s = 1 - e;
       lift = G.lift * Math.sin(Math.PI * Math.pow(u, 0.8));

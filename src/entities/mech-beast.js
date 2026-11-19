@@ -148,7 +148,7 @@ Object.assign(MechEntity.prototype, {
       rig,
       {
         t: F.t,
-        v: name ? 0 : F.v / sc / ((B && B.animK) || 1),
+        v: name ? 0 : F.v / sc,
         w: name ? 0 : F.w,
         act: name ? { name, t: F.ct } : null,
       },

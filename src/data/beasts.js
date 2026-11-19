@@ -53,8 +53,6 @@ export const BEAST_DEFS = [
     turn: 3.4,
     acc: 90,
     dec: 160,
-    // 步伐動畫的速度＝實際速度 ÷ animK（動作的步態門檻照自然界的速度寫：獅型奔跑 24）
-    animK: 5.2,
     clips: ['pounce', 'clawL', 'clawR', 'bite', 'tail', 'roar', 'jump', 'brake', 'hit', 'stagger', 'death'],
     intro: '獅型機獸 — 背上的磁軌砲、肩上的導彈莢艙、鬃甲的雷射，三種屬性的攻擊都有',
   },
