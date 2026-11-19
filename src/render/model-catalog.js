@@ -505,10 +505,10 @@ const RAPTOR_FOLD = {
   wl_hand: [0, 158, 0],
   wr_hand: [0, -158, 0],
 };
-for (const [key, label, palKey, pose] of [
-  ['spread', '展翼（模型的原始姿勢）', 'boss', null],
-  ['spread_w', '展翼・白色配色', 'white', null],
-  ['perch', '收翼站姿', 'boss', RAPTOR_FOLD],
+for (const [key, label, palKey, pose, st] of [
+  ['spread', '展翼（模型的原始姿勢）', 'boss', null, null],
+  ['spread_w', '展翼・白色配色', 'white', null, null],
+  ['perch', '收翼站姿', 'boss', RAPTOR_FOLD, null],
   [
     'open',
     '張喙、抓握、轉頭（檢查關節）',
@@ -522,7 +522,24 @@ for (const [key, label, palKey, pose] of [
       l_tarsus: [-30, 0, 0],
       tail: [-15, 0, 0],
     },
+    null,
   ],
+  ['anim_idle', '動作：待機（收翼、轉頭）', 'boss', null, { v: 0 }],
+  ['anim_walk', '動作：走', 'boss', null, { v: 2.2 }],
+  ['anim_turn', '動作：原地轉身', 'boss', null, { v: 0, w: 0.8, spin: true }],
+  ['anim_fly', '動作：飛行（拍翼）', 'boss', null, { fly: true, alt: 7 }],
+  ['anim_takeoff', '動作：起飛', 'boss', null, lionClip('rTakeoff', 1.2)],
+  ['anim_land', '動作：降落', 'boss', null, lionClip('rLand', 1.2)],
+  ['anim_screech', '鳴叫（威嚇）', 'boss', null, lionClip('rScreech')],
+  ['anim_peck', '攻擊：啄擊', 'boss', null, lionClip('rPeck')],
+  ['anim_wingslash', '攻擊：翼刃斬', 'boss', null, lionClip('rWingSlashL')],
+  ['anim_kick', '攻擊：爪踢', 'boss', null, lionClip('rKick')],
+  ['anim_gust', '攻擊：振翅強風', 'boss', null, lionClip('rGust')],
+  ['anim_feather', '攻擊：羽刃齊射', 'boss', null, lionClip('rFeather')],
+  ['anim_dive', '攻擊：俯衝爪擊（飛行中）', 'boss', null, lionClip('rDive', 1.2, { alt: 8 })],
+  ['anim_hit', '受擊', 'boss', null, lionClip('rHit', 0.8)],
+  ['anim_stagger', '失衡', 'boss', null, lionClip('rStagger')],
+  ['anim_death', '擊破', 'boss', null, lionClip('rDeath', 2)],
 ]) {
   add({
     id: 'temp/raptor_' + key,
@@ -534,7 +551,11 @@ for (const [key, label, palKey, pose] of [
     noGlb: true,
     build: (k) => {
       const rig = buildRaptor(pal(k), 1, pose);
-      return { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
+      const out = { obj: rig.group, scaleNode: rig.group, scale: v3(1), rig: null };
+      if (st)
+        out.tick = (dt, t) =>
+          animateBeast(rig, typeof st === 'function' ? { ...st(t), t } : { ...st, t }, dt);
+      return out;
     },
   });
 }
