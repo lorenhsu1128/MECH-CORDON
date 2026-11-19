@@ -997,18 +997,32 @@ export function lionDef() {
   // tf＝{ k, about, d }：整個區塊先以 about 為中心縮放 k、再平移 d（轉軸跟著）——比例的調整：
   // 軀幹縮短（後半身整個往前 REAR）、頭往後貼近肩膀（HEADBACK）、四肢加粗（整條腿以肩／髖為中心放寬 LEG_K）
   const add = (name, parent, pivot, world, tf = {}) => {
-    const { k = [1, 1, 1], about = [0, 0, 0], d = [0, 0, 0] } = tf;
-    const pv = vadd(
-      about.map((a, i) => a + (pivot[i] - a) * k[i]),
-      d,
-    );
-    pieces.push({ name, parent, pivot: pv, prims: toLocal(moved(scaled(world, k, about), d), pv) });
+    const { k = [1, 1, 1], about = [0, 0, 0], d = [0, 0, 0], sh = 0 } = tf;
+    // sh＝往外張開（越往下越往外：x 依離 about 的高度差位移）
+    const splay = (q) => [q[0] + (about[1] - q[1]) * sh, q[1], q[2]];
+    const pv = vadd(splay(about.map((a, i) => a + (pivot[i] - a) * k[i])), d);
+    pieces.push({
+      name,
+      parent,
+      pivot: pv,
+      prims: toLocal(
+        moved(
+          scaled(world, k, about).map((h) => {
+            const c = h.slice();
+            c[2] = h[2].map(splay);
+            return c;
+          }),
+          d,
+        ),
+        pv,
+      ),
+    });
   };
   const REAR = { d: [0, 0, 0.6] },
     HEADBACK = { d: [0, 0, -0.5] },
     LEG_K = [1.6, 1, 1.38];
-  const FL = { k: LEG_K, about: J.S },
-    BL = { k: LEG_K, about: J.H, d: REAR.d };
+  const FL = { k: LEG_K, about: J.S, d: [0.22, 0, 0.2], sh: 0.09 },
+    BL = { k: LEG_K, about: J.H, d: [0.22, 0, REAR.d[2] - 0.25], sh: 0.09 };
   // 左側的區塊＋右側的鏡像
   const pair = (l, r, parentL, parentR, pivot, world, tf) => {
     add(l, parentL, pivot, world, tf);
