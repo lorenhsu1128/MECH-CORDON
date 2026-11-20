@@ -11937,3 +11937,7 @@ body.vpad #pacePanel.mini {
   bottom: auto;
   width: auto;
 }
+/* 作戰室節點：已擊退獅型機獸（隱藏目標，game/beast-raid.js）——圖示右上角的金色菱形 */
+.hubNode .hnR {
+  filter: drop-shadow(0 0 2px rgba(255, 192, 64, 0.9));
+}

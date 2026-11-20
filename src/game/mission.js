@@ -924,6 +924,7 @@ Object.assign(Game.prototype, {
     if (!this.isClient && e.nemId) this.nemKilled(e); // 宿敵（nemesis.js）
     if (!this.isClient) this.barkAllyDown(e); // 敵兵的喊話（game/voice.js）
     if (!this.isClient) this.tierPartDown(e); // Boss 改版的 J：部位破壞（boss-tier.js）
+    if (!this.isClient && e.raidLion && this.camp) this.raidWon(e); // 獅型亂入：隱藏目標達成（beast-raid.js）
     // 自訂關卡：沒有擊破獎金、不寫存檔（擊破音、連殺、彈藥箱照常）
     if (this.lv) {
       if (!this.isClient) this.dropAmmo(e);
@@ -952,7 +953,7 @@ Object.assign(Game.prototype, {
       if (!this.bosses || this.bosses.every((b) => b.dead)) {
         this.save.bosses++;
         this.waves = [];
-      } else
+      } else if (!this.raidQuiet)
         this.flashMsg(
           `${e.name} 已擊破 — 剩餘 ${this.bosses
             .filter((b) => !b.dead)

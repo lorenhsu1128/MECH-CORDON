@@ -60,6 +60,8 @@ const CK_KEYS = [
   'modNext',
   'carryBy',
   'replay',
+  'raid', // 獅型亂入（game/beast-raid.js）：這一場有沒有抽中、已經出現過
+  'raidUsed',
   'heat',
   'rmods',
   'choice',
@@ -262,6 +264,7 @@ Object.assign(Game.prototype, {
       heat: o.heat || {},
       rmods: [],
     };
+    this.raidRoll(so, o); // 獅型亂入：這一場有沒有（game/beast-raid.js）
     if (o.free) {
       this.camp.free = o.free;
       if (o.free.wing) {
@@ -964,6 +967,7 @@ Object.assign(Game.prototype, {
     const p = this.player;
     if (!p) return;
     this.wingTick(dt); // 僚機的指令與救援（wing.js）
+    if (c.raid) this.raidTick(dt); // 獅型亂入（beast-raid.js）
     this.nemTick(dt); // 宿敵闖入（nemesis.js）
     w.tickZone(dt);
     // 危險條款：限時 25 分鐘

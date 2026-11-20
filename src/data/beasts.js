@@ -1082,4 +1082,15 @@ export const BEAST_DEFS = [
       '猛禽型機獸 — 弱爆發、抗能量；平時在空中盤旋，俯衝下來時看地上的路線躲開；打到失衡會掉下來；翼下的導彈與腹下的炸彈艙可以打壞',
   },
 ];
+// 獅型亂入（game/beast-raid.js，2026-11-20 使用者定案）：第 minCh 章起的機獸出擊，出擊開始時抽——基礎 p0、每次沒抽中 +pity、抽中歸零；
+// 原本的機獸降到 hpAt 的 AP 時獅型衝進來；獅型的刁鑽度＝那一章＋1、擊破時間＝那一章的目標 × 0.7（hp＝每章的 hpMul，
+// 以 scripts/beast-field.js --raid 校正）；heal＝原本的機獸被咬死時玩家回復的 AP 比例
+export const RAID = {
+  p0: 0.25,
+  pity: 0.15,
+  minCh: 2,
+  hpAt: 0.5,
+  heal: 0.3,
+  hp: { 2: 5.7, 3: 5.7, 4: 3.8, 5: 4.0, 6: 3.6, 7: 3.05 },
+};
 export const beastDefOf = (kind) => BEAST_DEFS.find((b) => b.kind === kind) || null;

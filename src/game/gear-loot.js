@@ -105,6 +105,11 @@ Object.assign(Game.prototype, {
     const cap = Math.max(1, qCap(this.gearCh()));
     this.gearGive(pickOne(ALL_GEAR), rollQ(cap, 1, Math.random), null, null, src);
   },
+  // 獅型亂入的隱藏目標（beast-raid.js）：保底一件特製（紫）以上，有機率是傳說（金）
+  gearRaid(e) {
+    const gold = Math.random() < Math.max(0.15, goldChance(this.gearCh(), false));
+    this.gearGive(pickOne(ALL_GEAR), gold ? 4 : 3, e.center(), null, 'raid');
+  },
   // ---------- 給一件 ----------
   // id／q＝零件與品級、at＝掉落的位置（null＝直接入帳）、ax＝沿用的詞條（敵人身上的）
   gearGive(id, q, at, ax, src) {

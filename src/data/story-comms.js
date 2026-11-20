@@ -10,6 +10,9 @@
 const variants = (base, sp, list) => list.map((t) => ({ ...base, lines: [[sp, t]] }));
 
 export const COMMS = [
+  // ---- 獅型亂入（機獸出擊的隱藏任務，game/beast-raid.js）：只有不涉及來歷的戰術句 ----
+  { event: 'raidIn', lines: [['echo', '等一下——另一個大型反應，高速接近！它不是衝著你來的……']] },
+  { event: 'raidGo', lines: [['echo', '目標換了。它沒有弱點，三種屬性都會用——打倒它才能離開！']] },
   // ---- 機獸的出擊（c<章>b）：劇情先不寫，只有不涉及來歷的戰術句 ----
   {
     event: 'segStart',

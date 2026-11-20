@@ -430,7 +430,7 @@ export const BRIEFINGS = {
   },
   c6s2: {
     client: 'aetheric',
-    node: { x: 82, y: 7 },
+    node: { x: 80, y: 3 },
     needs: ['c6s1'],
     lines: [
       '外環的防衛系統讀取了你所有的戰鬥紀錄，做出了一台和你一模一樣的機體。',
@@ -500,7 +500,7 @@ export const BRIEFINGS = {
   // ---- 機獸的出擊（每章的最後；data/campaign.js 的 c<章>b）。劇情先不寫（使用者定案）：只有戰術資訊 ----
   c1b: {
     client: 'veerwell',
-    node: { x: 66, y: 77 },
+    node: { x: 61, y: 84 },
     needs: ['c1s2'],
     lines: [
       '這一帶還有一個大型反應，不是機甲。偵察隊拍到的影像只有一個輪廓——四周的東西全被它掃平了。',
@@ -557,7 +557,7 @@ export const BRIEFINGS = {
   },
   c6b: {
     client: 'castron',
-    node: { x: 97, y: 23 },
+    node: { x: 97, y: 32 },
     needs: ['c6s3'],
     lines: [
       '這一帶還有一個大型反應，不是機甲。偵察隊拍到的影像只有一個輪廓——四周的東西全被它掃平了。',

@@ -1,7 +1,8 @@
 // 機獸在主線出擊的實際地圖上和機甲對戰的檢查（docs/beast-design.md 的「接成敵人」）：
 // 直接進每個機獸出擊（c1b～c7b）的 Boss 區段，自動操作的玩家繞著機獸邊閃邊打，逐格記錄機獸有沒有
 // 卡住、浮空、陷進地裡、走進虛空、跑出作戰區域、位置不是有限值，以及牠出了幾招、打中多少、被打多少。
-//   node scripts/beast-field.js [c1b,c5b] [--secs=90] [--dmg=3] [--still]   要先 npm run build
+//   node scripts/beast-field.js [c1b,c5b] [--secs=90] [--dmg=3] [--still] [--raid] [--lhpk=1.2]   要先 npm run build
+// --raid＝這一場一定有獅型亂入（game/beast-raid.js；第 2 章起），另外印出獅型接手到被擊破的秒數；--lhpk＝試獅型血量的倍率
 // 截圖在 test-results/beast-field/<出擊>-<編號>.png；--still＝玩家站著不動（只開火）。
 /* global window, THREE -- page.evaluate 的回呼在瀏覽器端執行 */
 const path = require('path');
@@ -15,7 +16,9 @@ const only = args.find((a) => !a.startsWith('--'));
 const SIDS = only ? only.split(',') : ALL;
 const SECS = +opt('secs', 90),
   DMG = +opt('dmg', 3),
-  STILL = args.includes('--still');
+  STILL = args.includes('--still'),
+  RAID = args.includes('--raid'),
+  LHPK = +opt('lhpk', 0);
 // --hpk=c1b:2.5,c2b:1.8：試血量的倍率（校正擊破時間用；定下來之後寫回 data/beasts.js 的 hpMul）
 const HPK = Object.fromEntries(
   opt('hpk', '')
@@ -122,12 +125,33 @@ function install(cfg) {
     R.t += dt;
     if (!b) return;
     patch(p, b);
+    // 獅型亂入：出現、接手、被擊破的時間
+    const RD = g.camp && g.camp.ss && g.camp.ss.raid;
+    if (RD && !R.raidAt) {
+      R.raidAt = +R.t.toFixed(1);
+      R.raidD0 = Math.round(g.raidDist());
+      if (cfg.lhpk) {
+        RD.lion.maxHp *= cfg.lhpk;
+        RD.lion.hp = RD.lion.maxHp;
+      }
+      R.lionHp = Math.round(RD.lion.maxHp);
+      R.lionTier = RD.lion.bossTier ? RD.lion.bossTier() : 0;
+      R.tookV = R.took;
+      R.took = 0;
+      R.dealtV = R.dealt;
+    }
+    if (RD && RD.killed && !R.raidKill) R.raidKill = +R.t.toFixed(1);
+    if (RD && RD.done && !R.raidGo) R.raidGo = +R.t.toFixed(1);
     if (b.dead) {
-      if (!R.dead) R.dead = +R.t.toFixed(1);
+      if (!R.dead) {
+        R.dead = +R.t.toFixed(1);
+        R.won = !!(g.camp && g.camp.raidWon);
+      }
       g.tutVirt = { wish: new THREE.Vector3() };
       return;
     }
     // 玩家不會被擊破、彈藥無限
+    if (p.scar) p.scar = 0; // 結構損傷（高刁鑽度的 Boss）：不累積，不然 AP 上限一直掉、最後被打死
     p.hp = p.maxHp;
     p.dead = false;
     for (const wp of Object.values(p.weapons || {}))
@@ -267,19 +291,23 @@ function install(cfg) {
       await page.waitForFunction(() => window.__game && window.__game.state === 'title', null, {
         timeout: 60000,
       });
-      await page.evaluate(install, { dmg: DMG, still: STILL });
-      await page.evaluate((sid) => {
-        const g = window.__game;
-        const st = g.campStory();
-        st.cycle = 1;
-        st.choices = { c2: 'castron', c4: 'veerwell' };
-        g.storyTest = false;
-        g.autoPickMod = true;
-        g.state = 'play';
-        g.campBegin(sid);
-        g.camp.seg = g.campSortie().segs.length - 1;
-        g.campEnterSeg();
-      }, sid);
+      await page.evaluate(install, { dmg: DMG, still: STILL, lhpk: LHPK });
+      await page.evaluate(
+        ([sid, raid]) => {
+          const g = window.__game;
+          const st = g.campStory();
+          st.cycle = 1;
+          st.choices = { c2: 'castron', c4: 'veerwell' };
+          g.storyTest = false;
+          g.autoPickMod = true;
+          g.state = 'play';
+          g.raidForce = raid ? 1 : 0;
+          g.campBegin(sid);
+          g.camp.seg = g.campSortie().segs.length - 1;
+          g.campEnterSeg();
+        },
+        [sid, RAID],
+      );
       await page.waitForFunction(() => window.__game.state === 'play' && window.__game.boss, null, {
         timeout: 120000,
       });
@@ -339,6 +367,20 @@ function install(cfg) {
           hpK: b ? +(b.hp / b.maxHp).toFixed(2) : 0,
           pmax: Math.round(window.__game.player ? window.__game.player.maxHp : 0),
           err: R.err || '',
+          raid: R.raidAt
+            ? {
+                at: R.raidAt,
+                d0: R.raidD0,
+                kill: R.raidKill || 0,
+                go: R.raidGo || 0,
+                hp: R.lionHp,
+                tier: R.lionTier,
+                tookV: Math.round(R.tookV),
+                dealtV: Math.round(R.dealtV),
+                won: !!R.won,
+                state: window.__game.state,
+              }
+            : null,
         };
       });
       rows.push({ sid, ...meta, ...r, pe });
@@ -352,6 +394,15 @@ function install(cfg) {
           `  近戰 ${JSON.stringify(r.clips)}\n  武器 ${JSON.stringify(r.guns)}、躍過障礙 ${r.leaps} 次、在空中 ${r.air} 秒、走了 ${r.path} m\n` +
           `  打中玩家 ${r.hits} 次共 ${r.dealt}（玩家 AP ${r.pmax}）、本體受傷 ${r.took}（剩 ${Math.round(r.hpK * 100)}%、到第 ${r.ph} 型態${r.dead ? `、${r.dead} 秒擊破` : ''}）\n` +
           `  距離 最近 ${r.d[0]}／平均 ${r.d[1]}／最遠 ${r.d[2]} m、視線被擋 ${r.los} 秒；玩家走不過去 ${r.pStuck} 秒、瞬移 ${r.pTp} 次、掉進虛空 ${r.pVoid} 秒` +
+          (r.raid
+            ? `\n  獅型亂入：${r.raid.at} 秒出現（離原本的機獸 ${r.raid.d0} m）、${r.raid.kill} 秒咬死、${r.raid.go} 秒接手；刁鑽度 ${r.raid.tier}、AP ${r.raid.hp}；` +
+              (r.dead
+                ? `接手後 ${(r.dead - r.raid.go).toFixed(0)} 秒被擊破`
+                : `還沒被擊破（剩 ${Math.round(r.hpK * 100)}%）`) +
+              `；原本的機獸打了 ${r.raid.tookV}、之前玩家挨 ${r.raid.dealtV}；隱藏目標 ${r.raid.won ? '達成' : '未達成'}、結束時的狀態 ${r.raid.state}`
+            : RAID
+              ? '\n  獅型亂入：沒有出現'
+              : '') +
           (r.err ? `\n  紀錄出錯：${r.err}` : ''),
       );
       await ctx.close();

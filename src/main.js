@@ -36,6 +36,7 @@ import './game/bosses.js';
 import './game/bosses2.js';
 import './game/bosses4.js'; // 主線擴充的新 Boss（第 7、8 章）
 import './game/beasts.js'; // 機獸（每章最後的大 Boss）
+import './game/beast-raid.js'; // 獅型亂入（機獸出擊的隨機隱藏任務）
 import './game/boss-tier.js'; // Boss 改版：雜兵小隊、破甲充能、擊破評價、HUD
 import './game/boss-field.js'; // Boss 改版：場地效果（流沙、冰面、電擊地面、塌陷、熔岩、燃燒帶、地雷區、煙霧、蒸氣、變暗）
 import './game/hazards2.js';

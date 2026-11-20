@@ -452,6 +452,98 @@ Object.assign(MechEntity.prototype, {
       cd();
     } else cd();
   },
+  // 獅型亂入的進場（game/beast-raid.js 的 raidStart 設定 aiState.raid＝{ v 原本的機獸, st, t }）：
+  // run 全速衝向牠 → leap 撲上去（沿用躍過障礙物的拋物線）→ bite 咬住（那一下牠被擊破）→ roar 吼一聲 → 交回一般的行為
+  beastRaidMove(dt, r) {
+    const s = this.aiState,
+      R = s.raid,
+      v = R.v,
+      g = this.game,
+      w = g.world,
+      B = this.beastInfo();
+    const px0 = this.pos.x,
+      pz0 = this.pos.z;
+    R.t += dt;
+    this.iFrames = Math.max(this.iFrames || 0, 0.5);
+    const d = Math.hypot(v.pos.x - this.pos.x, v.pos.z - this.pos.z);
+    const tyaw = yawTo(this.pos, v.pos);
+    if (R.st === 'run') {
+      this.yaw = wrap(this.yaw + clamp(wrap(tyaw - this.yaw), -1, 1) * B.turn * 3 * dt);
+      s.spd = Math.min(B.run * 1.15, (s.spd || 0) + B.acc * 2 * dt);
+      const fx = -Math.sin(this.yaw),
+        fz = -Math.cos(this.yaw);
+      const [cx, cz] = w.collide(
+        this.pos.x + fx * s.spd * dt,
+        this.pos.z + fz * s.spd * dt,
+        this.pos.y,
+        this.radius * 0.8,
+      );
+      const blocked = (w.isVoid && w.isVoid(cx, cz)) || Math.hypot(cx - px0, cz - pz0) < s.spd * dt * 0.3;
+      if (!blocked) {
+        this.pos.x = cx;
+        this.pos.z = cz;
+      }
+      this.pos.y = w.groundAt(this.pos.x, this.pos.z, this.pos.y + 0.6 * MS);
+      const reach = this.radius + (v.radius || 0);
+      if (d < reach + 34 || R.t > 3 || (blocked && R.t > 0.4)) {
+        // 撲上去：落在牠身上靠自己這一側
+        const k = Math.max(0, d - reach * 0.7) / (d || 1);
+        let lx = this.pos.x + (v.pos.x - this.pos.x) * k,
+          lz = this.pos.z + (v.pos.z - this.pos.z) * k;
+        if (w.isVoid && w.isVoid(lx, lz) && w.nearSolid) [lx, lz] = w.nearSolid(lx, lz);
+        s.leap = {
+          t: 0,
+          dur: clamp(d / 110, 0.55, 1.1),
+          M: null,
+          x0: this.pos.x,
+          z0: this.pos.z,
+          y0: this.pos.y,
+          x1: lx,
+          z1: lz,
+          y1: w.groundAt(lx, lz, v.pos.y + 2 * MS),
+          h: clamp(d * 0.16, 6, 16),
+          yaw: tyaw,
+        };
+        s.clip = 'pounce';
+        s.clipT = 0;
+        R.st = 'leap';
+      }
+    } else if (R.st === 'leap') {
+      // 落地（躍起的那一段由 beastMove 的 leap 處理）：咬住
+      this.yaw = this.aimYaw = tyaw;
+      s.spd = 0;
+      s.clip = 'bite';
+      s.clipT = 0;
+      R.st = 'bite';
+      g.camShake = Math.max(g.camShake || 0, 0.45);
+    } else if (R.st === 'bite') {
+      s.clipT += dt;
+      if (!R.killed && s.clipT >= 0.45) {
+        R.killed = true;
+        g.raidKill(this, v);
+      }
+      if (s.clipT >= clipDur('bite')) {
+        s.clip = 'roar';
+        s.clipT = 0;
+        R.st = 'roar';
+      }
+    } else {
+      s.clipT += dt;
+      if (s.clipT >= clipDur('roar')) {
+        s.clip = null;
+        s.raid = null;
+        s.bCd = 1.2;
+        g.raidDone(this);
+      }
+    }
+    this.aimYaw = this.yaw;
+    this.bossVis = ((this.bossVis || 0) & ~63) | (s.clip ? B.clips.indexOf(s.clip) + 1 : 0);
+    this.bossTick(dt);
+    if (dt > 0) this.vel.set((this.pos.x - px0) / dt, 0, (this.pos.z - pz0) / dt);
+    this.grounded = true;
+    r.done = true;
+    return r;
+  },
   beastMove(dt, d, dir, perp, wish, pl, r) {
     if (this.ai !== 'beast') return null;
     const B = this.beastInfo();
@@ -468,6 +560,7 @@ Object.assign(MechEntity.prototype, {
     }
     s.tgt = pl; // 近戰提示的對象
     this.beastRepair();
+    if (s.raid && !s.leap) return this.beastRaidMove(dt, r); // 獅型亂入的進場（game/beast-raid.js）
     // 會飛的（定義的 fly）：air＝在空中（盤旋、俯衝）／在地面（地面的招式），每隔一陣子降落或起飛；alt＝離地的高度
     const FL = B.fly || null;
     if (FL) {

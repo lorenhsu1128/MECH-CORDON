@@ -437,6 +437,9 @@ Object.assign(Game.prototype, {
       case 'fb':
         this.fbEvent(e);
         break;
+      case 'raid':
+        this.raidClient(e); // 獅型亂入（beast-raid.js）
+        break;
       case 'bossDown': {
         this.fx.hitStop = Math.max(this.fx.hitStop, 0.5);
         this.tierClientRank(e.r); // Boss 改版：擊破速度的評價（房主的計時）

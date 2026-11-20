@@ -1558,6 +1558,254 @@ async function testBeast(browser, key) {
   await page.screenshot({ path: path.join(SHOT_DIR, `beast-${key}.png`) });
   await ctx.close();
 }
+// 獅型亂入（docs/beast-design.md 的「獅型亂入」）：機獸出擊的隨機隱藏任務——抽的規則、原本的機獸降到一半時獅型衝進來咬死牠、
+// 變成這一關的 Boss、打死才過關、獎勵與紀錄；亂入之後從紀錄點重打不再出現
+async function testBeastRaid(browser) {
+  console.log('獅型亂入：抽的規則、進場、接手、過關與獎勵、重打不再出現');
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const page = await ctx.newPage();
+  watch(page, 'beast-raid');
+  await page.goto('file:///' + HTML.replace(/\\/g, '/') + '?test');
+  await waitVisible(page, 'title');
+  // 抽的規則：基礎 25%、每次沒抽中 +15%、抽中歸零；第 1 章不出現
+  const roll = await page.evaluate(() => {
+    const g = window.__game;
+    const st = g.campStory();
+    st.cycle = 1;
+    st.choices = { c2: 'castron', c4: 'veerwell' };
+    g.storyTest = false;
+    g.autoPickMod = true;
+    const out = { seq: [] };
+    const rnd0 = Math.random;
+    g.raidRollTest = true;
+    const R = g.raidState();
+    R.pity = 0;
+    const one = (v) => {
+      g.camp = {};
+      Math.random = () => v;
+      g.raidRoll({ beast: true, chapter: 2 });
+      Math.random = rnd0;
+      return `${g.camp.raid ? 1 : 0}/${R.pity}`;
+    };
+    out.seq.push(one(0.3)); // 25%：沒中，保底 1
+    out.seq.push(one(0.45)); // 40%：沒中，保底 2
+    out.seq.push(one(0.5)); // 55%：中，歸零
+    out.seq.push(one(0.2)); // 25%：中
+    g.camp = {};
+    Math.random = () => 0;
+    g.raidRoll({ beast: true, chapter: 1 });
+    out.ch1 = !!g.camp.raid;
+    g.camp = {};
+    g.raidRoll({ beast: false, chapter: 3 });
+    out.notBeast = !!g.camp.raid;
+    g.camp = {};
+    g.raidRoll({ beast: true, chapter: 3 }, { free: {} });
+    out.free = !!g.camp.raid;
+    Math.random = rnd0;
+    g.raidRollTest = false;
+    g.camp = null;
+    R.pity = 0;
+    return out;
+  });
+  check(
+    roll.seq.join(' ') === '0/1 0/2 1/0 1/0',
+    `抽的規則：25%、沒抽中 +15%、抽中歸零（${roll.seq.join(' ')}）`,
+  );
+  check(!roll.ch1 && !roll.notBeast && !roll.free, '第 1 章、不是機獸的出擊、自由出擊都不會有');
+  // 進 Boss 區段（這一場一定有）
+  const enter = async (force) => {
+    await page.evaluate((force) => {
+      const g = window.__game;
+      g.state = 'play';
+      g.raidForce = force;
+      g.campBegin('c2b');
+      g.camp.seg = g.campSortie().segs.length - 1;
+      g.campEnterSeg();
+    }, force);
+    await page.waitForFunction(() => window.__game.state === 'play' && window.__game.boss, null, {
+      timeout: 90000,
+    });
+    await wait(600);
+    await freezeLoop(page);
+  };
+  await enter(1);
+  const r = await page.evaluate(() => {
+    const g = window.__game,
+      p = g.player,
+      c = g.camp;
+    const out = {};
+    const v = g.boss;
+    g.campCheckpoint();
+    out.start = { raid: c.raid, kind: v.opts.bossKind, tier: v.bossTier() };
+    // 還沒到一半：不出現
+    v.hp = v.maxHp * 0.6;
+    window.__pump(1);
+    out.early = !!c.ss.raid;
+    // 放幾台雜兵：亂入時要撤走
+    g.spawnType && g.spawnType('mt');
+    g.spawnType && g.spawnType('mt');
+    const grunts0 = g.enemies.filter((e) => !e.dead && !e.isBoss && e.ai !== 'part').length;
+    // 玩家先受一點傷（之後看回復）
+    p.hp = p.maxHp * 0.4;
+    v.hp = v.maxHp * 0.49;
+    const t0 = window.__pump(4, () => !!c.ss.raid);
+    const R = c.ss.raid;
+    out.in = {
+      t0,
+      on: !!R,
+      lion: R ? R.lion.opts.bossKind : '',
+      tier: R ? R.lion.bossTier() : 0,
+      bosses: g.bosses.length,
+      boss: g.boss === (R && R.lion),
+      grunts0,
+      grunts: g.enemies.filter((e) => !e.dead && !e.isBoss && e.ai !== 'part').length,
+      d0: R ? Math.hypot(R.lion.pos.x - v.pos.x, R.lion.pos.z - v.pos.z) : 0,
+      used: c.raidUsed,
+      ck: (g.campStory().sortie || {}).raidUsed,
+      name: document.getElementById('bossName').textContent,
+    };
+    if (!R) return out;
+    const lion = R.lion;
+    // 進場中：玩家不受傷、原本的機獸打不死
+    const php = p.hp;
+    p.takeDamage(500, 0, lion, p.center(), new window.THREE.Vector3(0, 0, 1), undefined, undefined, 'kin');
+    v.takeDamage(1e9, 0, p, v.center(), new window.THREE.Vector3(0, 0, 1), undefined, undefined, 'kin');
+    out.hold = { php: p.hp === php, vAlive: !v.dead };
+    // 咬死
+    const tk = window.__pump(9, () => R.killed);
+    out.kill = {
+      tk,
+      vDead: v.dead,
+      state: g.state,
+      cleared: !!c.cleared,
+      heal: p.hp / p.maxHp,
+      lionClip: lion.aiState.clip,
+    };
+    const td = window.__pump(8, () => R.done);
+    out.go = {
+      td,
+      done: !!R.done,
+      raidOff: !lion.aiState.raid,
+      state: g.state,
+      name: document.getElementById('bossName').textContent,
+      lionName: lion.name,
+      phase: lion.bossPhase(),
+      full: lion.hp >= lion.maxHp * 0.99,
+    };
+    // 接手之後會打玩家：追上來
+    p.iFrames = 0;
+    const d1 = Math.hypot(lion.pos.x - p.pos.x, lion.pos.z - p.pos.z);
+    window.__pump(4, () => Math.hypot(lion.pos.x - p.pos.x, lion.pos.z - p.pos.z) < d1 - 15 || d1 < 30);
+    out.chase = { d1, d2: Math.hypot(lion.pos.x - p.pos.x, lion.pos.z - p.pos.z) };
+    // 打死獅型：隱藏目標達成、紀錄、保底的零件、過關
+    const gears = [];
+    const gg = g.gearGive;
+    g.gearGive = function (id, q, at, ax, src) {
+      gears.push([q, src || '']);
+      return gg.call(this, id, q, at, ax, src);
+    };
+    p.hp = p.maxHp;
+    lion.die(p);
+    window.__pump(1);
+    const st = g.campStory();
+    out.won = {
+      won: (st.raid.won || {})[2] || 0,
+      seen: !!((st.seen2 || {}).bosses || {}).beast_lion,
+      gear: gears.filter((q) => q[1] === 'raid').map((q) => q[0]),
+      badge: g.raidBadge('c2b'),
+      badge3: g.raidBadge('c3b'),
+      camp: c.raidWon,
+    };
+    window.__pump(8, () => g.state !== 'play');
+    out.end = { state: g.state };
+    delete g.gearGive;
+    return out;
+  });
+  // 出擊結束（結果畫面）之後才記完成
+  await thawLoop(page);
+  await page
+    .waitForFunction(() => window.__game.state === 'result' || window.__game.state === 'modpick', null, {
+      timeout: 30000,
+    })
+    .catch(() => {});
+  if (r.end) {
+    const e2 = await page.evaluate(() => ({
+      state: window.__game.state,
+      done: (window.__game.campStory().done || {}).c2b || 0,
+    }));
+    r.end.done = e2.done;
+    r.end.state2 = e2.state;
+  }
+  check(
+    r.start.raid === 1 && r.start.kind === 'beast_turtle',
+    `這一場抽中：先打原本的機獸（${r.start.kind}）`,
+  );
+  check(!r.early, '原本的機獸還沒降到一半：獅型不出現');
+  check(
+    r.in.on && r.in.lion === 'beast_lion' && r.in.bosses === 2 && r.in.boss,
+    `降到一半：獅型出現（${r.in.t0 >= 0 ? r.in.t0.toFixed(1) : '逾時'} 秒，離原本的機獸 ${r.in.d0.toFixed(0)} m），兩隻都登記成 Boss`,
+  );
+  if (!r.in.on) {
+    await ctx.close();
+    return;
+  }
+  check(r.in.tier === r.start.tier + 1, `獅型的刁鑽度＝那一章＋1（${r.in.tier}）`);
+  check(r.in.grunts0 >= 2 && r.in.grunts === 0, `場上的雜兵撤走（${r.in.grunts0} → ${r.in.grunts}）`);
+  check(r.in.used === 1 && r.in.ck === 1, '已經出現過：立刻寫進紀錄點');
+  check(r.hold.php && r.hold.vAlive, '進場中：玩家不受傷、原本的機獸不會先被打死');
+  check(
+    r.kill.tk >= 0 && r.kill.vDead && r.kill.state === 'play' && !r.kill.cleared,
+    `獅型咬死原本的機獸（${r.kill.tk.toFixed(1)} 秒），區段沒有結束`,
+  );
+  check(r.kill.heal > 0.65, `玩家回復一部分 AP（${Math.round(r.kill.heal * 100)}%）`);
+  check(
+    r.go.done && r.go.raidOff && r.go.state === 'play' && r.go.name === r.go.lionName && r.go.full,
+    `獅型接手（${r.go.td.toFixed(1)} 秒）：血條換成「${r.go.name}」、滿血`,
+  );
+  check(
+    r.chase.d2 < r.chase.d1 - 10 || r.chase.d2 < 35,
+    `接手之後衝向玩家（${r.chase.d1.toFixed(0)} → ${r.chase.d2.toFixed(0)} m）`,
+  );
+  check(
+    r.won.won === 1 && r.won.camp === 1 && r.won.seen,
+    '打死獅型：隱藏目標達成、進模擬器與自由出擊的輪替',
+  );
+  check(
+    r.won.gear.length === 1 && r.won.gear[0] >= 3,
+    `保底一件特製以上的零件（品級 ${r.won.gear.join('、')}）`,
+  );
+  check(r.won.badge && !r.won.badge3, '作戰室的節點：這一章有記號、別章沒有');
+  check(
+    r.end.state !== 'play' && r.end.done >= 1,
+    `打死獅型才過關（${r.end.state} → ${r.end.state2}，完成 ${r.end.done} 次）`,
+  );
+  await page.screenshot({ path: path.join(SHOT_DIR, 'beast-raid.png') });
+  // 亂入之後從紀錄點重打：獅型不再出現（原本的機獸照常打到死）
+  await enter(1);
+  const r2 = await page.evaluate(() => {
+    const g = window.__game,
+      c = g.camp;
+    c.raidUsed = 1; // 紀錄點帶回來的
+    const v = g.boss;
+    v.hp = v.maxHp * 0.4;
+    window.__pump(4);
+    return { raid: !!c.ss.raid, bosses: g.bosses.length, kind: g.boss.opts.bossKind };
+  });
+  check(!r2.raid && r2.bosses === 1 && r2.kind === 'beast_turtle', '亂入過的那一場重打：獅型不再出現');
+  // 沒抽中的那一場：不出現
+  await thawLoop(page);
+  await enter(0);
+  const r3 = await page.evaluate(() => {
+    const g = window.__game;
+    const v = g.boss;
+    v.hp = v.maxHp * 0.4;
+    window.__pump(3);
+    return { raid: !!g.camp.ss.raid, bosses: g.bosses.length };
+  });
+  check(!r3.raid && r3.bosses === 1, '沒抽中的那一場：照常只有原本的機獸');
+  await thawLoop(page);
+  await ctx.close();
+}
 // 機獸接進主線（docs/beast-design.md 的「接成敵人」）：第 1～7 章各一個機獸的出擊，接在原本的最後一個出擊後面；第 8 章沒有
 async function testBeastCampaign(browser) {
   console.log('機獸的主線出擊：七章各一個、開放的順序、簡報的攻擊屬性、Boss 區段生成機獸、模擬器');
@@ -35161,6 +35409,7 @@ const STEPS = [
   // 機獸（docs/beast-design.md 的「接成敵人」）：每隻一個步驟（SMOKE_ONLY=testBeast 一樣跑全部）
   ...BEAST_TESTS.map((k) => ['testBeast:' + k, (c) => testBeast(c.browser, k), { family: 'testBeast' }]),
   ['testBeastCampaign', (c) => testBeastCampaign(c.browser)], // 機獸的主線出擊
+  ['testBeastRaid', (c) => testBeastRaid(c.browser)], // 獅型亂入（機獸出擊的隱藏任務）
   // 每個內建風格 × 13 個主題要量很久，主題分成 3 組（SMOKE_ONLY=testStyleThemes 一樣跑全部）
   ...[1, 2, 3].map((i) => [
     'testStyleThemes:' + i,
