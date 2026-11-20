@@ -268,7 +268,8 @@ function install(cfg) {
   const url =
     'file:///' +
     path.resolve(__dirname, '..', 'dist', 'mech-cordon.html').split(path.sep).join('/') +
-    '?test';
+    '?test' +
+    (args.includes('--preview') ? '&raid' : ''); // --preview＝網址的暫時開關 ?raid（每一場都亂入，含第 1 章）
   const rows = [];
   let errs = 0;
   try {

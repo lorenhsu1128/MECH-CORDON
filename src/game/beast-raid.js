@@ -10,6 +10,9 @@ import { SORTIES } from '../data/campaign.js';
 import { Game } from './game.js';
 
 const hyp = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+// 暫時的開關（2026-11-20 使用者要先看演出）：網址加 ?raid —— 每一場機獸出擊（含第 1 章）一定有獅型亂入，
+// 從紀錄點重打也會再來一次；不動保底的計數。看完演出之後可以拿掉
+const RAID_PREVIEW = typeof location !== 'undefined' && /[?&]raid(?:[=&]|$)/.test(location.search);
 
 Object.assign(Game.prototype, {
   raidState() {
@@ -19,7 +22,12 @@ Object.assign(Game.prototype, {
   // 出擊開始（campBegin）：抽這一場有沒有亂入
   raidRoll(so, o = {}) {
     const c = this.camp;
-    if (!c || !so || !so.beast || so.chapter < RAID.minCh || o.free) return;
+    if (!c || !so || !so.beast || o.free) return;
+    if (RAID_PREVIEW) {
+      c.raid = 1;
+      return;
+    }
+    if (so.chapter < RAID.minCh) return;
     if (this.raidForce !== undefined && this.raidForce !== null) {
       c.raid = this.raidForce ? 1 : 0; // 測試用
       return;
@@ -38,7 +46,7 @@ Object.assign(Game.prototype, {
     if (!ss || this.isClient) return;
     const R = ss.raid;
     if (!R) {
-      if (!c.raid || c.raidUsed || !this.isBossLevel) return;
+      if (!c.raid || (c.raidUsed && !RAID_PREVIEW) || !this.isBossLevel) return;
       const v = this.boss;
       if (!v || v.dead || v.ai !== 'beast' || v.raidLion || v.hp > v.maxHp * RAID.hpAt) return;
       const s = v.aiState || {},
