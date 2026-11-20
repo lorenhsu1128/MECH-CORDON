@@ -1800,6 +1800,19 @@ const MORE_BOSS = [
     },
   },
   {
+    id: 'beast_raid',
+    name: '獅型亂入：衝向原本機獸的路線、咬死那一下的衝擊環',
+    who: '獅型機獸（機獸出擊的隱藏任務）',
+    src: 'game/beast-raid.js 的 raidStart（warnPath：出現點 → 原本的機獸，寬＝獅型的半徑 × 2）與 raidKill（shockwave：半徑 16）',
+    srcAt: [0, -40],
+    run: (S) => {
+      const a = S.src.pos.clone(),
+        b = tp(S);
+      S.warnPath(a, b, 4.5 * 2, 1.2, 0xff4020);
+      S.at(1.2, () => S.boom(b, 16, 0xff3020));
+    },
+  },
+  {
     id: 'beast_pounce',
     name: '機獸：撲擊／衝撞／俯衝的路線（落點前的一整條）',
     who: '八隻機獸（ai beast）',
