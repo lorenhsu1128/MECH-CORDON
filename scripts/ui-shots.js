@@ -1,7 +1,7 @@
 // 介面改版（docs/zzz-ui-design.md）的截圖：每個畫面 × 三種畫面大小（電腦 1920×1080、平板 1180×820 觸控、手機橫式 844×390 觸控）
 // 用法：node scripts/ui-shots.js [畫面,…] [--size=pc,tab,phone] [--tag=名稱]
 // 輸出 test-results/ui/<tag>/<畫面>-<大小>.png（tag 預設 now）；直接開 dist/mech-cordon.html（file://、?test）
-/* global window, document, getComputedStyle, innerWidth, THREE, Element */
+/* global window, document, getComputedStyle, innerWidth, THREE, Element, localStorage */
 const fs = require('fs');
 const path = require('path');
 const { launch } = require('./perf-lib.js');
