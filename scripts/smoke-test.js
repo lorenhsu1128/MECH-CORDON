@@ -17262,6 +17262,18 @@ async function testAudio2(browser, base) {
       const cx = g.bgmCtx();
       fake.dead = true;
       const cxDead = g.bgmCtx();
+      // 獅型亂入：原本的機獸還活著時照牠的歌、被咬死後換成獅型（第 8 章）、獅型也擊破後停在獅型
+      const lion = { opts: { bossKind: 'beast_lion' }, dead: false, bossPhase: () => 1 };
+      fake.dead = false;
+      g.bosses = [fake, lion];
+      const raid0 = g.bgmCtx();
+      fake.dead = true;
+      const raid1 = g.bgmCtx();
+      lion.dead = true;
+      const raid2 = g.bgmCtx();
+      const rs = (c) => c && `${c.ch}/${c.type}`;
+      const raid = [rs(raid0), rs(raid1), rs(raid2)].join(',');
+      g.bosses = [fake];
       const ok = await g.bgmLoadCh(7);
       const B0 = g.bgm;
       g.bgm = { ai: window.MECH_CORDON_BGM_C7, ctx: cx };
@@ -17275,6 +17287,7 @@ async function testAudio2(browser, base) {
         p3: p3 && p3.name,
         p4: p4 && p4.name,
         off4: p4 && p4.off,
+        raid,
       };
     }
     // 日文語音：ECHO、其他角色、敵兵都換成 <聲音>_ja；沒有日文的句子改唸中文（載入日文的語音包要一段時間，放在最後，不影響前面依戰況的檢查）
@@ -17404,7 +17417,8 @@ async function testAudio2(browser, base) {
       r.beast.dead === 'beast_bear' &&
       r.beast.p3 === 'beast_bear' &&
       r.beast.p4 === 'theme' &&
-      r.beast.off4 > 0,
+      r.beast.off4 > 0 &&
+      r.beast.raid === '7/beast_bear,8/beast_lion,8/beast_lion',
     `機獸的專屬曲（熊：${JSON.stringify(r.beast)}）`,
   );
   await ctx.close();

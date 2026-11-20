@@ -104,14 +104,17 @@ Object.assign(Game.prototype, {
     }
     return ch ? { ch, type } : null;
   },
-  // 這一段的機獸的定義（客機的實體也有 opts.bossKind）。擊破之後也算（還在 bosses 裡）：
-  // 否則一擊破類型就變回 boss、配樂整首重來
+  // 這一段的機獸的定義（客機的實體也有 opts.bossKind）：活著的優先（獅型亂入咬死原本的機獸之後換成獅型的歌），
+  // 都擊破了用最後一隻（還在 bosses 裡）：否則一擊破類型就變回 boss、配樂整首重來
   bgmBeast() {
+    let last = null;
     for (const b of this.bosses || []) {
       const k = b.opts && b.opts.bossKind;
-      if (k && k.startsWith('beast_')) return beastDefOf(k);
+      if (!k || !k.startsWith('beast_')) continue;
+      if (!b.dead) return beastDefOf(k);
+      last = k;
     }
-    return null;
+    return last ? beastDefOf(last) : null;
   },
   // 第一次進到那一章時以 <script> 載入 lib/bgm-c<章>.js（每章約 25 MB）。先載 lib/bgm-ai.js（有哪些章與版本，
   // 建置產生）：沒有的章不去載；網址帶版本（伺服器給 lib/ 的檔案 1 小時快取，重新產生之後要拿新的）
