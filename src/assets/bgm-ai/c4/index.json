@@ -178,5 +178,17 @@
   "calm": false,
   "pick": "theme__f1",
   "score": 0.865
+ },
+ "beast_gorilla": {
+  "title": "拳の雷鳴",
+  "zh": "拳之雷鳴",
+  "voice": "diva",
+  "bpm": 150,
+  "key": "G minor",
+  "dur": 120.0,
+  "chorus": 50.5,
+  "calm": false,
+  "pick": "beast_gorilla__f0",
+  "score": 0.855
  }
 }

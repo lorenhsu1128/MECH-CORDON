@@ -17254,6 +17254,29 @@ async function testAudio2(browser, base) {
     out.bKey = g.bgm && g.bgm.key;
     g.bgmStop(0.1);
     g.bgmFrame = frame0;
+    // 機獸的專屬曲：機獸在場（擊破後也算）＝類型 beast_<獸>、章＝牠的章；Boss 強度播專屬曲、最終型態切到主題歌的副歌
+    {
+      const bosses0 = g.bosses;
+      const fake = { opts: { bossKind: 'beast_bear' }, dead: false, bossPhase: () => 1 };
+      g.bosses = [fake];
+      const cx = g.bgmCtx();
+      fake.dead = true;
+      const cxDead = g.bgmCtx();
+      const ok = await g.bgmLoadCh(7);
+      const B0 = g.bgm;
+      g.bgm = { ai: window.MECH_CORDON_BGM_C7, ctx: cx };
+      const p3 = ok && g.bgmAiPick(3);
+      const p4 = ok && g.bgmAiPick(4);
+      g.bgm = B0;
+      g.bosses = bosses0;
+      out.beast = {
+        cx: cx && `${cx.ch}/${cx.type}`,
+        dead: cxDead && cxDead.type,
+        p3: p3 && p3.name,
+        p4: p4 && p4.name,
+        off4: p4 && p4.off,
+      };
+    }
     // 日文語音：ECHO、其他角色、敵兵都換成 <聲音>_ja；沒有日文的句子改唸中文（載入日文的語音包要一段時間，放在最後，不影響前面依戰況的檢查）
     g.ctrl.voiceLang = 'ja';
     g.voiceStop();
@@ -17374,6 +17397,15 @@ async function testAudio2(browser, base) {
   check(
     r.bLoad && r.lv0 === 0 && r.lv2 === 2 && r.bCur && r.bKey === 2,
     `動態配樂（探索 ${r.lv0} → 交戰 ${r.lv2}、播放中 ${r.bKey}）${r.lv0Why ? JSON.stringify(r.lv0Why) : ''}`,
+  );
+  check(
+    r.beast &&
+      r.beast.cx === '7/beast_bear' &&
+      r.beast.dead === 'beast_bear' &&
+      r.beast.p3 === 'beast_bear' &&
+      r.beast.p4 === 'theme' &&
+      r.beast.off4 > 0,
+    `機獸的專屬曲（熊：${JSON.stringify(r.beast)}）`,
   );
   await ctx.close();
 }

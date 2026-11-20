@@ -1,2 +1,2 @@
 // AI 配樂有哪些章，由 scripts/build.js 產生
-window.MECH_CORDON_BGM_AI_CH = {"1":"75180604ac","2":"355fec41d2","3":"ee304b0c88","4":"1c4a5e1d5a","5":"bfb6de80ee","6":"d8c6ebc7d7","7":"bddc7c3b02","8":"aa1e53ba5f"};
+window.MECH_CORDON_BGM_AI_CH = {"1":"c67fabb3df","2":"0f642de9a4","3":"78a3347e1f","4":"8b79135491","5":"190211493c","6":"493fe773e5","7":"962b03f9b8","8":"c2239b571e"};

@@ -166,5 +166,17 @@
   "calm": false,
   "pick": "theme__f1",
   "score": 0.866
+ },
+ "beast_bear": {
+  "title": "熔岩の咆哮",
+  "zh": "熔岩的咆哮",
+  "voice": "diva",
+  "bpm": 132,
+  "key": "C minor",
+  "dur": 120.0,
+  "chorus": null,
+  "calm": false,
+  "pick": "beast_bear__f2",
+  "score": 0.817
  }
 }

@@ -166,5 +166,17 @@
   "calm": false,
   "pick": "theme__f0",
   "score": 0.887
+ },
+ "beast_lion": {
+  "title": "黄金の王",
+  "zh": "黃金之王",
+  "voice": "duet",
+  "bpm": 168,
+  "key": "D minor",
+  "dur": 120.0,
+  "chorus": 42.9,
+  "calm": false,
+  "pick": "beast_lion__f1",
+  "score": 0.83
  }
 }

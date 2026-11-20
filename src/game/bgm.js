@@ -9,6 +9,7 @@ import { Game } from './game.js';
 import { SFX } from '../audio/audio.js';
 import { makeRng } from '../core/math.js';
 import { REGIONS } from '../data/story.js';
+import { beastDefOf } from '../data/beasts.js';
 
 // 選曲用自己的亂數（不動 Math.random：冒煙測試固定種子時，遊戲邏輯拿到的亂數不受配樂影響）
 const brnd = makeRng(0x6b6d);
@@ -25,6 +26,8 @@ const AIR_SET = ['air1', 'air2', 'air3'];
 // 探索／警戒＝輕快版（<類型>_calm，同樣的歌詞、速度與調），交戰＝交戰版，Boss＝這一章的 Boss 曲，
 // Boss 最終型態（強度 4）＝這一章主題歌的副歌（超時空要塞式）。同一首的輕快版↔交戰版從同一個位置交叉淡化。
 // 沒有那一章的檔案或那種類型時用上面的 SETS。
+// 機獸（每章最後的大 Boss，docs/beast-design.md）在場時：類型＝beast_<獸>、章＝那隻機獸的章（data/beasts.js 的 tier），
+// 第一、二型態播牠的專屬曲，最終型態照舊切到那一章主題歌的副歌；沒有專屬曲時退回那一章的 Boss 曲。
 const CH_OF_THEME = {};
 for (const r of REGIONS) for (const t of r.themes) CH_OF_THEME[t] = r.chapter;
 const AIR_CH = [4, 5, 6]; // 有空戰曲的章
@@ -94,7 +97,21 @@ Object.assign(Game.prototype, {
       if (!AIR_CH.includes(ch)) ch = 5;
     }
     if (!type) type = this.isBossLevel ? 'boss' : 'battle';
+    const bd = this.bgmBeast();
+    if (bd) {
+      type = bd.kind;
+      ch = bd.tier;
+    }
     return ch ? { ch, type } : null;
+  },
+  // 這一段的機獸的定義（客機的實體也有 opts.bossKind）。擊破之後也算（還在 bosses 裡）：
+  // 否則一擊破類型就變回 boss、配樂整首重來
+  bgmBeast() {
+    for (const b of this.bosses || []) {
+      const k = b.opts && b.opts.bossKind;
+      if (k && k.startsWith('beast_')) return beastDefOf(k);
+    }
+    return null;
   },
   // 第一次進到那一章時以 <script> 載入 lib/bgm-c<章>.js（每章約 25 MB）。先載 lib/bgm-ai.js（有哪些章與版本，
   // 建置產生）：沒有的章不去載；網址帶版本（伺服器給 lib/ 的檔案 1 小時快取，重新產生之後要拿新的）
@@ -189,7 +206,8 @@ Object.assign(Game.prototype, {
     if (key === 4 && I.theme) {
       name = 'theme';
       off = I.theme.chorus || 0;
-    } else if (key === 3 || key === 4) name = I.boss ? 'boss' : t;
+    } else if ((key === 3 || key === 4) && t && t.startsWith('beast_')) name = t;
+    else if (key === 3 || key === 4) name = I.boss ? 'boss' : t;
     else if (key === 'air') name = I.air ? 'air' : t;
     else if (t) name = key === 2 || !I[t].calm ? t : t + '_calm';
     if (!name || !P[name]) return null;

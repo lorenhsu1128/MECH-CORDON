@@ -10,5 +10,6 @@
  "extract": "extract__f1",
  "intel": "intel__f1",
  "supply": "supply__f1",
- "theme": "theme__f0"
+ "theme": "theme__f0",
+ "beast_scorpion": "beast_scorpion__f0"
 }

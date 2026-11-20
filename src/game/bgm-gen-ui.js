@@ -5,11 +5,13 @@
 import { SFX } from '../audio/audio.js';
 import { escHtml } from '../core/html.js';
 import { SEG_TYPES } from '../data/campaign.js';
+import { beastDefOf } from '../data/beasts.js';
 import { Game } from './game.js';
 
 const $ = (id) => document.getElementById(id);
 const VOICE_NAME = { girl: '少女型', diva: '歌姬型', duet: '二重唱' };
-const typeName = (t) => (t === 'theme' ? '主題歌' : SEG_TYPES[t] ? SEG_TYPES[t].name : t);
+const typeName = (t) =>
+  t === 'theme' ? '主題歌' : SEG_TYPES[t] ? SEG_TYPES[t].name : beastDefOf(t) ? beastDefOf(t).name : t;
 const MODE_NAME = {
   all: '一次跑完',
   fight: '產生候選',

@@ -201,8 +201,8 @@ def main():
                 k += 1
         elif stage == 'calm':
             src = picks.get(typ)
-            if not src or typ in ('supply', 'boss', 'theme'):
-                continue  # 補給本身就是平靜的編曲、Boss 與主題歌只有一個版本
+            if not src or typ in ('supply', 'boss', 'theme') or typ.startswith('beast_'):
+                continue  # 補給本身就是平靜的編曲、Boss（含機獸的 beast_<獸>）與主題歌只有一個版本
             # --cover=<強度>（0＝不 cover，直接用文字產生）、--calmcap=<描述>（取代 common.json 的 CALM）、--tag、
             # --calmtry=<k>（換種子重做：分數太低的輕快版）
             cov = float(opt.get('cover', COVER_CALM))

@@ -142,5 +142,17 @@
   "calm": false,
   "pick": "theme__f0",
   "score": 0.881
+ },
+ "beast_scorpion": {
+  "title": "砂底の鼓動",
+  "zh": "砂底的鼓動",
+  "voice": "diva",
+  "bpm": 166,
+  "key": "D minor",
+  "dur": 120.0,
+  "chorus": 56.5,
+  "calm": false,
+  "pick": "beast_scorpion__f0",
+  "score": 0.879
  }
 }
