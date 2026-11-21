@@ -1468,7 +1468,11 @@
                 </select>
               </div>
             </section>
-            <section class="setPage" data-st="adv" data-intro="地圖物件的破壞、眼動追蹤、本地模型庫">
+            <section
+              class="setPage"
+              data-st="adv"
+              data-intro="地圖物件的破壞、敵人的閃避、眼動追蹤、本地模型庫"
+            >
               <h4>遊戲</h4>
               <div class="krow" data-host="1">
                 <span>地圖物件的破壞</span
@@ -1479,6 +1483,18 @@
                   <option value="easy">易破壞（預設）</option>
                   <option value="normal">可破壞</option>
                   <option value="off">不可破壞（只有小物件）</option>
+                </select>
+              </div>
+              <div class="krow" data-host="1">
+                <span>敵人的閃避</span
+                ><select
+                  id="ctrlDodge"
+                  title="敵人與 Boss 看到子彈、導彈、蓄力射擊或近戰衝過來時閃開的頻率；多人時以房主的設定為準。閃完有破綻：這時打中是 CRITICAL"
+                >
+                  <option value="std">標準（預設）</option>
+                  <option value="high">多</option>
+                  <option value="low">少</option>
+                  <option value="off">關閉</option>
                 </select>
               </div>
               <h4>眼動追蹤（攝影機）</h4>

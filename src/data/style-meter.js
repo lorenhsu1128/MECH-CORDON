@@ -38,6 +38,7 @@ export const SY_EV = {
   pw: [25, ''], // 強力彈：文字用名稱
   stag: [25, 'BREAK'],
   pqb: [30, '完美迴避'],
+  read: [20, '讀招'], // 打中閃完破綻中的敵人（docs/enemy-dodge-design.md）
   parry: [35, '彈刀'],
   link: [20, '近戰 ▸ 射擊'],
   resume: [12, 'QB 接回'],

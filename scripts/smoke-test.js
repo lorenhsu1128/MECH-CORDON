@@ -14638,6 +14638,204 @@ async function testGoals(browser, base) {
 }
 
 // 敵人 AI：視線、感知（視角與距離、聲音、受到攻擊、無線電）、攻擊權杖（同時最多 3 台主攻、輪替）、預警招式
+async function testAiDodge(browser, base) {
+  console.log(
+    '敵人的閃避：看子彈軌跡、反應時間、側閃、破綻（CRITICAL、讀招）、彈道修正失效、導彈甩脫、蓄力、設定',
+  );
+  const { ctx, page } = await newPage(browser, 'ai-dodge');
+  await seededRandom(page);
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await freezeLoop(page);
+  const r = await page.evaluate((SC) => {
+    window.__reseed(7);
+    const g = window.__game;
+    g.save.level = 3;
+    g.startMission();
+    g.state = 'ai-test';
+    const pl = g.player;
+    pl.hp = pl.maxHp = 1e7;
+    g.waves = [];
+    g.wavePend = null;
+    for (const e of g.enemies) e.takeDamage(1e9, 0, null, e.center());
+    g.enemies = g.enemies.filter((e) => !e.dead);
+    const W = g.world;
+    const obs = W.obstacles;
+    W.obstacles = []; // 閃避的方向不被障礙物擋住（另外有 dgSafe）
+    g.destructiblesF = () => []; // 子彈不會先打到地圖物件
+    W.obsAt = () => []; // 障礙物的空間索引（hitsWorld、collide）
+    const dt = 1 / 60;
+    const out = {};
+    const x0 = (W.zone[0] + W.zone[1]) / 2,
+      z0 = (W.zone[2] + W.zone[3]) / 2;
+    const mk = (type) => {
+      const e = g.spawnType(type, 1, 1, null, 1);
+      e.pos.set(x0, W.groundAt(x0, z0, 999), z0);
+      e.vel.set(0, 0, 0);
+      if (e.sn) {
+        e.sn.st = 2;
+        e.sn.tgt = pl;
+      }
+      e.en = e.enMax;
+      return e;
+    };
+    const step = (list, sec, until) => {
+      for (let t = 0; t < sec; t += dt) {
+        g.time += dt;
+        for (const e of list) if (!e.dead) e.updateAI(dt);
+        for (let i = g.projectiles.length - 1; i >= 0; i--) {
+          const p = g.projectiles[i];
+          p.update(dt);
+          if (p.dead) g.projectiles.splice(i, 1);
+        }
+        if (until && until()) return t;
+      }
+      return -1;
+    };
+    // 子彈：從玩家打向目標（用遊戲的投射物類別）
+    let PJ = null;
+    const shoot = (e, kind = 'bullet', o = {}) => {
+      if (!PJ) {
+        const w = pl.weapons.rarm;
+        w.cd = 0;
+        w.mag = 99;
+        pl.fire('rarm', e.center(), e);
+        PJ = g.projectiles.length ? g.projectiles[g.projectiles.length - 1].constructor : null;
+        for (const p of g.projectiles) p.dead = true;
+        g.projectiles.length = 0;
+      }
+      // 從目標旁邊、同高度發射：挑一個路上沒有地形擋住的方向（地圖物件已經拿掉）
+      const L = (kind === 'missile' ? 45 : 55) * SC;
+      const c0 = e.center();
+      // 地形擋住時從高一點的地方往下打（挑最低的高度）
+      let from = null;
+      for (let h = 0; h <= 40 && !from; h += 4)
+        for (let i = 0; i < 16 && !from; i++) {
+          const a = (i / 16) * Math.PI * 2;
+          const q = c0.clone().add(new THREE.Vector3(Math.cos(a) * L, h * SC, Math.sin(a) * L));
+          let ok = true;
+          for (let f = 0.08; f <= 1 && ok; f += 0.04) {
+            const s = c0.clone().lerp(q, f);
+            ok = W.terrainHeight(s.x, s.z) < s.y - 1.5 * SC;
+          }
+          if (ok) from = q;
+        }
+      from = from || c0.clone().add(new THREE.Vector3(L, 0, 0));
+      const v = e
+        .center()
+        .sub(from)
+        .normalize()
+        .multiplyScalar((kind === 'missile' ? 70 : 125) * SC); // 步槍的彈速
+      const p = new PJ(g, {
+        kind,
+        pos: from,
+        vel: v,
+        dmg: 50,
+        team: 'player',
+        owner: pl,
+        target: e,
+        life: 4,
+        bend: 0.4,
+        turn: kind === 'missile' ? 4 : 0,
+        ...o,
+      });
+      g.projectiles.push(p);
+      return p;
+    };
+    // 1) 一般 MT：一定閃（dgForce＝1），往子彈軌跡的側面、離開 6 m 以上，子彈的彈道修正失效
+    g.dgForce = 1;
+    const e1 = mk('mt');
+    pl.pos.set(e1.pos.x + 70 * SC, e1.pos.y, e1.pos.z);
+    step([e1], 0.4); // 冷卻（剛生成時有一小段）
+    e1.dg.cd = 0;
+    const p1 = e1.pos.clone();
+    const b1 = shoot(e1);
+    const bd = b1.vel.clone().setY(0).normalize();
+    const tDg = step([e1], 1.0, () => (e1.dgN || 0) > 0);
+    out.dodged = e1.dgN || 0;
+    out.react = +tDg.toFixed(2);
+    out.bend = b1.bend;
+    out.pop = g.popups.some((x) => x.val === '閃避');
+    step([e1], 0.35);
+    const mv = e1.pos.clone().sub(p1).setY(0);
+    out.side = +(Math.abs(mv.x * -bd.z + mv.z * bd.x) / SC).toFixed(1); // 離開子彈軌跡的距離
+    // 破綻：閃完是弱點露出（CRITICAL），第一下讀招
+    step([e1], 0.6, () => e1.dg.open > 0);
+    out.open = e1.wpOpen();
+    const hp0 = e1.hp;
+    e1.takeDamage(100, 0, pl, e1.center(), new THREE.Vector3(-1, 0, 0), null, 'w_rifle');
+    out.crit = g.popups.some((x) => x.val === 'CRITICAL');
+    out.read = !!e1.dg.read && g.popups.some((x) => x.val === '讀招');
+    out.dmg = Math.round(hp0 - e1.hp);
+    e1.takeDamage(1e9, 0, null, e1.center());
+    // 2) 導彈：追著它的導彈在最後一刻閃開＝失去追蹤
+    const e2 = mk('mt');
+    pl.pos.set(e2.pos.x + 60 * SC, e2.pos.y, e2.pos.z);
+    step([e2], 0.3);
+    e2.dg.cd = 0;
+    const m2 = shoot(e2, 'missile');
+    step([e2], 1.5, () => (e2.dgN || 0) > 0);
+    out.mslDodged = e2.dgN || 0;
+    out.mslTarget = m2.target === e2;
+    e2.takeDamage(1e9, 0, null, e2.center());
+    // 3) 蓄力：鎖定它的玩家蓄力快滿 → 提前閃
+    for (const p of g.projectiles) p.dead = true;
+    g.projectiles.length = 0;
+    const e3 = mk('ac_duelist');
+    pl.pos.set(e3.pos.x + 50 * SC, e3.pos.y, e3.pos.z);
+    step([e3], 0.3);
+    e3.dg.cd = 0;
+    e3.dg.roll = 0;
+    pl.lock = e3;
+    pl.weapons.rarm.pwCh = 10;
+    step([e3], 0.8, () => (e3.dgN || 0) > 0);
+    pl.weapons.rarm.pwCh = 0;
+    out.charge = e3.dgN || 0;
+    out.cls3 = e3.dgClass();
+    e3.takeDamage(1e9, 0, null, e3.center());
+    // 4) 設定關閉：不閃
+    g.dgForce = undefined;
+    g.ctrl.dodge = 'off';
+    const e4 = mk('mt');
+    pl.pos.set(e4.pos.x + 70 * SC, e4.pos.y, e4.pos.z);
+    step([e4], 0.3);
+    e4.dg.cd = 0;
+    for (let i = 0; i < 6; i++) {
+      shoot(e4);
+      step([e4], 0.5);
+    }
+    out.off = e4.dgN || 0;
+    g.ctrl.dodge = 'std';
+    e4.takeDamage(1e9, 0, null, e4.center());
+    // 5) 標準：一串子彈裡會閃一些、不是每發都閃
+    const e5 = mk('ac_duelist');
+    let n5 = 0;
+    for (let i = 0; i < 24; i++) {
+      pl.pos.set(e5.pos.x + 70 * SC, e5.pos.y, e5.pos.z);
+      shoot(e5);
+      step([e5], 0.4);
+    }
+    n5 = e5.dgN || 0;
+    out.std = n5;
+    e5.takeDamage(1e9, 0, null, e5.center());
+    W.obstacles = obs;
+    delete g.destructiblesF;
+    delete W.obsAt;
+    g.enemies = g.enemies.filter((e) => !e.dead);
+    return out;
+  }, SC);
+  check(r.dodged > 0 && r.react >= 0.05, `一般 MT 看到會打中的子彈會閃（反應 ${r.react} 秒）`);
+  check(r.side >= 6, `往子彈軌跡的側面閃開（${r.side} m）`);
+  check(r.bend === 0, '閃開的子彈失去彈道修正');
+  check(r.pop, '頭上跳「閃避」');
+  check(r.open && r.crit && r.read, `閃完的破綻：打中是 CRITICAL、第一下讀招（傷害 ${r.dmg}）`);
+  check(r.mslDodged > 0 && !r.mslTarget, '追著它的導彈在最後一刻閃開時失去追蹤');
+  check(r.charge > 0 && r.cls3 === 'ace', '玩家鎖定它、蓄力快滿時提前閃（敵對 AC）');
+  check(r.off === 0, '設定「敵人的閃避」關閉時不閃');
+  check(r.std > 0 && r.std < 24, `標準：24 發裡閃了 ${r.std} 次（會閃、但不是每發都閃）`);
+  await ctx.close();
+}
+
 async function testEnemyAI(browser, base) {
   console.log('敵人 AI：感知、警戒、仇恨、視線、攻擊權杖、預警招式');
   const { ctx, page } = await newPage(browser, 'enemy-ai');
@@ -35714,6 +35912,7 @@ const STEPS = [
   ['testLevelBossPhase', (c) => testLevelBossPhase(c.browser, c.base)],
   ['testWaves', (c) => testWaves(c.browser, c.base)],
   ['testEnemyAI', (c) => testEnemyAI(c.browser, c.base)],
+  ['testAiDodge', (c) => testAiDodge(c.browser, c.base)],
   ['testGoals', (c) => testGoals(c.browser, c.base)],
   ['testGaze', (c) => testGaze(c.browser, c.base)],
   ['testOutposts', (c) => testOutposts(c.browser, c.base)],
@@ -36015,6 +36214,7 @@ async function launchBrowser() {
                 destruct: 'normal',
                 topCtl: 'classic',
                 modelSrc: 'set',
+                dodge: 'off', // 敵人的閃避：舊的測試假設敵人不會閃（testAiDodge 自己打開）
               }),
             );
         } catch (e) {

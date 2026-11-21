@@ -106,6 +106,7 @@ import './entities/mech-foe.js';
 import './entities/mech-status.js';
 import './entities/mech-ranged.js'; // 遠程射擊：邊閃邊打的加成（docs/ranged-design.md）
 import './entities/mech-weak.js'; // 遠程射擊：弱點、打斷預警、QB 甩掉導彈
+import './entities/mech-dodge.js'; // 敵人與 Boss 的閃避（docs/enemy-dodge-design.md）
 import './entities/mech-charge.js'; // 遠程射擊：蓄力射擊（強力彈、連發、充能）
 import './entities/mech-react.js'; // 遠程射擊：屬性反應
 import './entities/mech-feel.js'; // 遠程射擊：手感（受擊反應、命中標記、主動裝填）

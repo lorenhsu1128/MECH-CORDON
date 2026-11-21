@@ -28,6 +28,7 @@ Object.assign(MechEntity.prototype, {
   },
   // 時機型弱點：預警招式的準備中（房主看 sn.mv，客機看快照的 aw）
   wpOpen() {
+    if (this.dg && this.dg.open > 0) return true; // 閃完的破綻（mech-dodge.js）
     if (this.sn) return !!(this.sn.mv && this.sn.mv.ph === 'wind');
     return !!((this.aw || 0) & 32);
   },

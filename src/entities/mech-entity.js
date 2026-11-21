@@ -2341,6 +2341,7 @@ export class MechEntity {
       return;
     }
     if (this.iFrames > 0) {
+      if (this.dg) this.dgAbsorb(from); // 敵人閃避中：「閃避」字（mech-dodge.js）
       this.pqbCheck(from); // 完美 QB：QB 的無敵剛開始時躲掉了敵人的攻擊（docs/melee-combo-design.md 第 4 期）
       return;
     }
@@ -2416,6 +2417,9 @@ export class MechEntity {
       dmg *= this.game.bossGuardK(this); // 刁鑽度 7～8：Boss 附近的雜兵減傷（game/boss-tier.js）
     if (this.laserK !== 1 && isLaserWeapon(W)) dmg *= this.laserK; // 雷射類的傷害倍率（laserK）
     if (this.sn && this.sn.vuln > 0) dmg *= 1.25; // 招式後的破綻（過熱，mech-moves.js）
+    if (this.dg) dmg = this.dgHit(dmg, from, melee); // 閃完的破綻：讀招、Boss 的倍率（mech-dodge.js）
+    if (this.dg && from && from.pilotEnt && from.pilotEnt() && isLaserWeapon(W))
+      this.dgLaserT = this.game.time; // 被雷射打中：之後提前閃
     // 弱點（mech-weak.js）：玩家操作的機體的遠程攻擊打在弱點的那一面、準備中露出的弱點 → CRITICAL
     if (
       !melee &&
@@ -2851,6 +2855,7 @@ export class MechEntity {
       this.aiLast = { wish: wish.clone(), hover: wantHover, ab: wantAB, tgt: targetEnt };
     }
     if (this.wpOff && this.wpOff.thr) wantQB = wantAB = false; // 推進器被打壞（mech-weak.js）
+    if (this.dgClass && this.dgOn()) [wish, wantHover, wantQB] = this.dgMove(dt, wish, wantHover, wantQB); // 敵人的閃避（mech-dodge.js）
     // 在固定砲台上（game/devices-guns.js）：不能移動、跳躍、QB
     if (this.devMount) {
       wish = new THREE.Vector3();
@@ -3075,6 +3080,7 @@ export class MechEntity {
       g.fx.chevrons(this.pos.clone(), this.qbDir.clone().negate(), 0xffffff);
       if (this.grounded) g.fx.dust(this.pos.clone(), (2.2 * this.scale) / g.fx.k, 7);
       this.iFrames = (0.14 + this.pmv('qbIF')) * pk(this, 'pQbIF');
+      if (this.dg && this.dg.act) this.dgQbStart(); // 閃避的 QB：長一點、無敵也長一點（mech-dodge.js）
       this.qbCdT = PACE.on && this.pilotEnt() ? pv('pQbCd') + 0.16 : 0; // 節奏調整室的 QB 冷卻
       if (this.pmv('qbRam') > 0) {
         this.ramT = 0.35;
@@ -3994,8 +4000,10 @@ export class MechEntity {
       else wish.copy(perp);
       wish.normalize();
       s.qbT -= dt;
+      // 有新的閃避（mech-dodge.js）時看子彈的軌跡，這裡不再看附近有沒有子彈
       if (
         s.qbT <= 0 &&
+        !this.dgClass() &&
         g.projectiles.some((p) => p.team !== this.team && p.pos.distanceToSquared(this.center()) < 80 * K * K)
       ) {
         qb = true;
@@ -4010,9 +4018,11 @@ export class MechEntity {
       else wish.copy(perp);
       wish.normalize();
       s.qbT -= dt;
-      const threat = g.projectiles.some(
-        (p) => p.team !== this.team && p.pos.distanceToSquared(this.center()) < 120 * K * K,
-      );
+      const threat =
+        !this.dgClass() &&
+        g.projectiles.some(
+          (p) => p.team !== this.team && p.pos.distanceToSquared(this.center()) < 120 * K * K,
+        );
       if (s.qbT <= 0 && ((threat && Math.random() < dt * 7) || Math.random() < dt * 0.5)) {
         qb = true;
         s.qbT = rnd(0.7, 1.4);
@@ -4093,9 +4103,13 @@ export class MechEntity {
       }
       // dodge: quick boost occasionally / when player fires
       s.qbT -= dt;
+      // 敵人看子彈軌跡的閃避在 mech-dodge.js；這裡只剩友軍與沒有新閃避的
       const threat =
-        (this.team === 'enemy' && g.playerFiredAt > 0) ||
-        g.projectiles.some((p) => p.team === 'player' && p.pos.distanceToSquared(this.center()) < 64 * K * K);
+        !this.dgClass() &&
+        ((this.team === 'enemy' && g.playerFiredAt > 0) ||
+          g.projectiles.some(
+            (p) => p.team === 'player' && p.pos.distanceToSquared(this.center()) < 64 * K * K,
+          ));
       if (
         this.ai !== 'mt' &&
         s.qbT <= 0 &&
