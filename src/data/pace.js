@@ -106,6 +106,11 @@ export function paceStoreRead() {
 }
 // 部位判定的「擦過不算」（調整室的開關；render/hit-parts.js）：人形機甲的命中只看各區塊的外框，不看外接球
 export const strictHit = () => PACE.on && PACE.strict;
+// 這個目標打不打得中只看模型的外框（render/hit-parts.js 的 rig.hb；2026-11-21 使用者定案 C）：
+// 有外框的目標一律是；玩家操作的機體照舊用判定球，除非調整室開了「擦過不算」
+export const strictFor = (t) => !!(t.model && t.model.hb) && (strictHit() || !(t.pilotEnt && t.pilotEnt()));
+// 掛在 Boss 身上的部位（獨立的實體）和本體的外框重疊時部位優先：比較命中的先後時部位往前算這麼多公尺
+export const PART_BIAS = 2;
 export const paceDefault = (k) => {
   for (const g of PACE_GROUPS) for (const it of g.items) if (it[0] === k) return it[5] ?? 1;
   return 1;

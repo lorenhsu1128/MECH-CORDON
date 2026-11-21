@@ -140,23 +140,51 @@ const scaleOf = (e) => Math.sqrt(e[0] * e[0] + e[1] * e[1] + e[2] * e[2]) || 1;
 
 // 線段 a → a＋v（世界座標）打到的第一個區塊：{ i（區塊）, part, t（0～1）, n（世界座標的表面法線） }，沒有＝null。
 // pad＝外框往外擴（公尺）
+// 外框跟著節點的 matrixWorld，而它只在算繪時更新：不算繪的時候（房主的分頁在背景、測試直接逐格推進 AI）
+// 外框會停在舊位置、子彈全部打不中。所以檢查前自己更新這一台的矩陣——每一格（hbFrame，Game.loop 每格呼叫）
+// 每台最多一次，模型被搬動或轉向時也重算
+let HB_N = 0;
+export const hbFrame = () => {
+  HB_N++;
+};
+function fresh(rig) {
+  const g = rig.group,
+    p = g.position,
+    r = g.rotation;
+  const k = p.x + p.y * 1.7 + p.z * 2.3 + r.x * 3.1 + r.y * 4.3 + r.z * 5.9;
+  if (rig.hbF === HB_N && rig.hbK === k) return;
+  rig.hbF = HB_N;
+  rig.hbK = k;
+  g.updateMatrixWorld(true);
+}
 const _hit = { i: -1, part: 0, t: 0, n: new THREE.Vector3() };
 export function hitRay(rig, a, v, pad = 0) {
   const L = rig && rig.hb;
   if (!L) return null;
+  fresh(rig);
   const root = rig.group;
   let best = -1,
     bt = Infinity,
     bax = 0,
     bsg = 0;
+  let ln = null,
+    lok = false,
+    p = 0;
   for (let i = 0; i < L.length; i++) {
     const h = L[i];
-    if (!h.ok || !h.node.visible || !isUnder(h.node, root)) continue; // 丟出去的武器
-    const e = h.node.matrixWorld.elements;
-    _m.copy(h.node.matrixWorld).invert();
-    _a.copy(a).applyMatrix4(_m);
-    _d.copy(a).add(v).applyMatrix4(_m).sub(_a);
-    const p = pad / scaleOf(e);
+    if (!h.ok) continue;
+    if (h.node !== ln) {
+      // 同一個節點的外框連在一起（體素化的外框一個節點很多個）：反矩陣只算一次
+      ln = h.node;
+      lok = ln.visible && isUnder(ln, root); // 丟出去的武器、藏起來的部位
+      if (lok) {
+        _m.copy(ln.matrixWorld).invert();
+        _a.copy(a).applyMatrix4(_m);
+        _d.copy(a).add(v).applyMatrix4(_m).sub(_a);
+        p = pad / scaleOf(ln.matrixWorld.elements);
+      }
+    }
+    if (!lok) continue;
     let t0 = 0,
       t1 = 1,
       ax = -1,
@@ -213,10 +241,302 @@ export function hitRay(rig, a, v, pad = 0) {
   return _hit;
 }
 
+// 區塊外框上離 src 最近的點 outP 與朝 src 的方向 outN（沒有彈道的攻擊：近戰、爆炸…的火花與碎片從這裡噴出）；
+// src 在外框裡時 outN＝0（呼叫端自己決定方向）
+const _ps = new THREE.Vector3();
+export function pieceSurface(rig, i, src, outP, outN) {
+  const h = rig && rig.hb && rig.hb[i];
+  if (!h || !h.ok) return false;
+  fresh(rig);
+  _m.copy(h.node.matrixWorld).invert();
+  _ps.copy(src).applyMatrix4(_m).clamp(h.min, h.max);
+  outP.copy(_ps).applyMatrix4(h.node.matrixWorld);
+  outN.copy(src).sub(outP);
+  if (outN.lengthSq() < 1e-4) outN.set(0, 0, 0);
+  else outN.normalize();
+  return true;
+}
+
+// ---------- 沒有區塊的模型（載具、專屬敵人、Boss、機獸、Boss 的部位）：體素化的外框（2026-11-21）----------
+// 每個錨點（根、會動的節點＝網格合併的錨點）把自己的網格切成格子，表面經過的格子各一個外框
+// （縮到表面在那一格裡實際佔的範圍、沿 x 相鄰又差不多大的併起來），所以外框貼著表面，不是整台一個大方塊。
+// 格子的邊長：小的錨點＝最長邊的 1/GRID_N（不小於 CELL_MIN），大的（機身、船體）約 CELL_BIG、每個軸最多 GRID_MAX 格；
+// 大的三角形（比半格大）在面上取樣，斜的薄板（機翼、腳）不會把整個外接方塊都算進去。
+// rig.hb 的格式和人形機甲的相同（part＝−1），hitRay／nearestSurface 共用；rig.hbGen＝true、rig.hbR＝蓋住全部外框的半徑
+const GEN_CACHE = new Map();
+const GRID_N = 6,
+  GRID_MAX = 14,
+  CELL_MIN = 0.6, // 格子最小的邊長（公尺）
+  CELL_BIG = 1.2, // 大的錨點的格子（公尺）
+  TRI_MAX = 40000;
+const hitMesh = (c) => {
+  const mt = c.material;
+  return (
+    c.isMesh &&
+    c.geometry &&
+    mt &&
+    !Array.isArray(mt) &&
+    !isOutline(mt) &&
+    mt.blending !== THREE.AdditiveBlending &&
+    // 護盾罩、光束、雷射柵欄這類特效（半透明而且不寫深度、很淡、或不受光的）不算機體
+    !(mt.transparent && (mt.depthWrite === false || mt.opacity < 0.5 || mt.isMeshBasicMaterial))
+  );
+};
+function anchorBoxes(node, aset) {
+  const inv = new THREE.Matrix4().copy(node.matrixWorld).invert();
+  const meshes = [];
+  const walk = (o) => {
+    for (const c of o.children) {
+      if (aset.has(c) || !c.visible) continue;
+      const u = c.userData || {};
+      if (u.conn || u.helper || u.xray) continue;
+      if (hitMesh(c)) meshes.push(c);
+      walk(c);
+    }
+  };
+  if (hitMesh(node)) meshes.push(node);
+  walk(node);
+  if (!meshes.length) return [];
+  const rel = meshes.map((c) => new THREE.Matrix4().multiplyMatrices(inv, c.matrixWorld));
+  const key = meshes
+    .map((c, k) => c.geometry.uuid + ':' + rel[k].elements.map((x) => x.toFixed(3)).join(','))
+    .join('|');
+  const hit = GEN_CACHE.get(key);
+  if (hit) return hit;
+  // 每個網格的頂點換到錨點座標
+  const P = [];
+  const U = new THREE.Box3();
+  meshes.forEach((c, k) => {
+    if (c.isInstancedMesh) {
+      c.computeBoundingBox();
+      const b = new THREE.Box3().copy(c.boundingBox).applyMatrix4(rel[k]);
+      U.union(b);
+      P.push({ box: b });
+      return;
+    }
+    const pa = c.geometry.attributes.position;
+    if (!pa || !pa.count) return;
+    const a = new Float32Array(pa.count * 3);
+    for (let i = 0; i < pa.count; i++) {
+      _v.fromBufferAttribute(pa, i).applyMatrix4(rel[k]);
+      a[i * 3] = _v.x;
+      a[i * 3 + 1] = _v.y;
+      a[i * 3 + 2] = _v.z;
+      U.expandByPoint(_v);
+    }
+    P.push({ a, ix: c.geometry.index ? c.geometry.index.array : null, n: pa.count });
+  });
+  if (U.isEmpty()) return [];
+  const sz = U.getSize(new THREE.Vector3());
+  const wsc = scaleOf(node.matrixWorld.elements),
+    big = Math.max(sz.x, sz.y, sz.z);
+  const cell = Math.max(CELL_MIN / wsc, Math.min(big / GRID_N, Math.max(CELL_BIG / wsc, big / GRID_MAX)));
+  const nx = Math.min(GRID_MAX, Math.max(1, Math.ceil(sz.x / cell))),
+    ny = Math.min(GRID_MAX, Math.max(1, Math.ceil(sz.y / cell))),
+    nz = Math.min(GRID_MAX, Math.max(1, Math.ceil(sz.z / cell)));
+  const N = [nx, ny, nz],
+    o0 = [U.min.x, U.min.y, U.min.z],
+    cs = [sz.x / nx || 1, sz.y / ny || 1, sz.z / nz || 1];
+  const cells = new Array(nx * ny * nz).fill(null);
+  const lo = [0, 0, 0],
+    hi = [0, 0, 0],
+    i0 = [0, 0, 0],
+    i1 = [0, 0, 0];
+  // 一個軸對齊的範圍（三角形的外框）：經過的格子各自記下它在格子裡佔的範圍
+  const mark = () => {
+    for (let k = 0; k < 3; k++) {
+      i0[k] = Math.min(N[k] - 1, Math.max(0, Math.floor((lo[k] - o0[k]) / cs[k])));
+      i1[k] = Math.min(N[k] - 1, Math.max(0, Math.floor((hi[k] - o0[k]) / cs[k])));
+    }
+    for (let x = i0[0]; x <= i1[0]; x++)
+      for (let y = i0[1]; y <= i1[1]; y++)
+        for (let z = i0[2]; z <= i1[2]; z++) {
+          const id = (x * ny + y) * nz + z;
+          let c = cells[id];
+          if (!c) c = cells[id] = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
+          const g = [x, y, z];
+          for (let k = 0; k < 3; k++) {
+            const a = o0[k] + g[k] * cs[k];
+            c[k] = Math.min(c[k], Math.max(lo[k], a));
+            c[k + 3] = Math.max(c[k + 3], Math.min(hi[k], a + cs[k]));
+          }
+        }
+  };
+  for (const m of P) {
+    if (m.box) {
+      m.box.min.toArray(lo);
+      m.box.max.toArray(hi);
+      mark();
+      continue;
+    }
+    const tris = (m.ix ? m.ix.length : m.n) / 3,
+      step = Math.max(1, Math.ceil(tris / TRI_MAX));
+    const half = Math.min(cs[0], cs[1], cs[2]) * 0.5;
+    const A = m.a;
+    for (let t = 0; t < tris; t += step) {
+      const ia = (m.ix ? m.ix[t * 3] : t * 3) * 3,
+        ib = (m.ix ? m.ix[t * 3 + 1] : t * 3 + 1) * 3,
+        ic = (m.ix ? m.ix[t * 3 + 2] : t * 3 + 2) * 3;
+      let edge = 0;
+      for (let k = 0; k < 3; k++) {
+        const a = A[ia + k],
+          b = A[ib + k],
+          c = A[ic + k];
+        lo[k] = Math.min(a, b, c);
+        hi[k] = Math.max(a, b, c);
+        edge = Math.max(edge, hi[k] - lo[k]);
+      }
+      const n = Math.min(24, Math.ceil(edge / half));
+      if (n <= 1) {
+        mark();
+        continue;
+      }
+      // 大的三角形：在面上取樣（間隔不超過半格），每個取樣點記到它所在的格子
+      for (let u = 0; u <= n; u++)
+        for (let w = 0; w <= n - u; w++) {
+          const fu = u / n,
+            fw = w / n;
+          for (let k = 0; k < 3; k++)
+            lo[k] = hi[k] = A[ia + k] + (A[ib + k] - A[ia + k]) * fu + (A[ic + k] - A[ia + k]) * fw;
+          mark();
+        }
+    }
+  }
+  // 沿 x 相鄰、y／z 的範圍差不多的併成一個
+  const tol = 0.25;
+  const out = [];
+  for (let y = 0; y < ny; y++)
+    for (let z = 0; z < nz; z++) {
+      let run = null;
+      for (let x = 0; x < nx; x++) {
+        const c = cells[(x * ny + y) * nz + z];
+        if (!c) {
+          run = null;
+          continue;
+        }
+        if (
+          run &&
+          Math.abs(run[1] - c[1]) < tol * cs[1] &&
+          Math.abs(run[4] - c[4]) < tol * cs[1] &&
+          Math.abs(run[2] - c[2]) < tol * cs[2] &&
+          Math.abs(run[5] - c[5]) < tol * cs[2]
+        ) {
+          run[3] = c[3];
+          run[1] = Math.min(run[1], c[1]);
+          run[2] = Math.min(run[2], c[2]);
+          run[4] = Math.max(run[4], c[4]);
+          run[5] = Math.max(run[5], c[5]);
+        } else out.push((run = c.slice()));
+      }
+    }
+  const res = out.map((c) => ({
+    min: new THREE.Vector3(c[0], c[1], c[2]),
+    max: new THREE.Vector3(c[3], c[4], c[5]),
+  }));
+  if (GEN_CACHE.size > 1500) GEN_CACHE.clear();
+  GEN_CACHE.set(key, res);
+  return res;
+}
+// moving＝會動的節點（網格合併的錨點：render/mesh-merge.js 的 rigRefs、foe-merge.js 的 moving）；要在合併網格之前量
+export function measureBodyBoxes(rig, moving) {
+  if (!rig || !rig.group || rig.hb) return;
+  const root = rig.group;
+  root.updateMatrixWorld(true);
+  const anchors = [root];
+  if (moving)
+    for (const o of moving) if (o && o.isObject3D && o !== root && isUnder(o, root)) anchors.push(o);
+  const aset = new Set(anchors);
+  const hb = [];
+  let r2 = 0;
+  _a.setFromMatrixPosition(root.matrixWorld);
+  _a.y += (rig.height || 0) * 0.5; // 實體的 center()
+  for (const node of anchors)
+    for (const b of anchorBoxes(node, aset)) {
+      hb.push({ node, slot: '', part: -1, min: b.min, max: b.max, ok: true });
+      for (let i = 0; i < 8; i++) {
+        _v.set(i & 1 ? b.max.x : b.min.x, i & 2 ? b.max.y : b.min.y, i & 4 ? b.max.z : b.min.z);
+        r2 = Math.max(r2, _v.applyMatrix4(node.matrixWorld).distanceToSquared(_a));
+      }
+    }
+  if (!hb.length) return;
+  rig.hb = hb;
+  rig.hbGen = true;
+  rig.hbR = Math.sqrt(r2);
+  // 實體的中心（原點＋身高的一半）離機體很遠（中心是空的：多足要塞的腳之間、起重要塞的門架中間）：
+  // 改用最靠近「外框的體積重心」的那個外框的中心（rig.hbC，模型座標；MechEntity.center() 用）
+  const c0 = new THREE.Vector3().copy(_a);
+  const P = new THREE.Vector3(),
+    N = new THREE.Vector3();
+  if (nearestSurface(rig, c0, P, N) >= 0 && P.distanceTo(c0) > Math.max(1, rig.hbR * 0.08)) {
+    const cg = new THREE.Vector3();
+    let vol = 0;
+    for (const h of hb) {
+      const sc = scaleOf(h.node.matrixWorld.elements);
+      const w =
+        Math.max(1e-4, (h.max.x - h.min.x) * (h.max.y - h.min.y) * (h.max.z - h.min.z)) * sc * sc * sc;
+      cg.addScaledVector(_v.copy(h.min).add(h.max).multiplyScalar(0.5).applyMatrix4(h.node.matrixWorld), w);
+      vol += w;
+    }
+    cg.multiplyScalar(1 / vol);
+    const i = nearestSurface(rig, cg, P, N);
+    if (i >= 0) {
+      const h = hb[i];
+      const cw = new THREE.Vector3()
+        .copy(h.min)
+        .add(h.max)
+        .multiplyScalar(0.5)
+        .applyMatrix4(h.node.matrixWorld);
+      rig.hbC = cw.clone().applyMatrix4(new THREE.Matrix4().copy(root.matrixWorld).invert());
+      r2 = 0;
+      for (const b of hb)
+        for (let k = 0; k < 8; k++) {
+          _v.set(k & 1 ? b.max.x : b.min.x, k & 2 ? b.max.y : b.min.y, k & 4 ? b.max.z : b.min.z);
+          r2 = Math.max(r2, _v.applyMatrix4(b.node.matrixWorld).distanceToSquared(cw));
+        }
+      rig.hbR = Math.sqrt(r2);
+    }
+  }
+}
+
+// 外框表面上離 src 最近的點 outP 與朝 src 的方向 outN（全部的外框裡找）：回傳外框的索引，沒有＝−1。
+// src 在外框裡時 outN＝0（呼叫端自己決定方向）
+export function nearestSurface(rig, src, outP, outN) {
+  const L = rig && rig.hb;
+  if (!L) return -1;
+  fresh(rig);
+  let best = -1,
+    bd = Infinity,
+    ln = null,
+    lok = false,
+    sc = 1;
+  for (let i = 0; i < L.length; i++) {
+    const h = L[i];
+    if (!h.ok) continue;
+    if (h.node !== ln) {
+      ln = h.node;
+      lok = ln.visible && isUnder(ln, rig.group);
+      if (lok) {
+        _m.copy(ln.matrixWorld).invert();
+        _a.copy(src).applyMatrix4(_m);
+        sc = scaleOf(ln.matrixWorld.elements);
+      }
+    }
+    if (!lok) continue;
+    const d = _ps.copy(_a).clamp(h.min, h.max).distanceToSquared(_a) * sc * sc;
+    if (d < bd) {
+      bd = d;
+      best = i;
+    }
+  }
+  if (best >= 0) pieceSurface(rig, best, src, outP, outN);
+  return best;
+}
+
 // 離 p 最近的區塊（爆炸、近戰、沒打中外框時）：比外框中心的距離
 export function nearestPiece(rig, p) {
   const L = rig && rig.hb;
   if (!L) return -1;
+  fresh(rig);
   let best = -1,
     bd = Infinity;
   for (let i = 0; i < L.length; i++) {
@@ -242,6 +562,7 @@ const REP = {
 export function partPoint(rig, part, out) {
   const L = rig && rig.hb;
   if (!L) return false;
+  fresh(rig);
   const c = rig.hbRep || (rig.hbRep = {});
   let i = c[part];
   if (i === undefined) {
@@ -372,9 +693,9 @@ function buildFlash(m) {
   m.pfx = F;
   return F;
 }
-// 被打中的區塊閃紅（i＝rig.hb 的索引）；機體整台閃白照舊（mechFlash）
+// 被打中的區塊閃紅（i＝rig.hb 的索引）；整台閃白在 2026-11-21 拿掉，改成命中點的火花與碎片（MechEntity.hitSparks）
 export function partFlash(m, i) {
-  if (!m || !m.hb || !(i >= 0) || i >= m.hb.length) return;
+  if (!m || !m.hb || m.hbGen || !(i >= 0) || i >= m.hb.length) return; // 體素化的外框（載具、Boss…）沒有閃紅
   let F = m.pfx;
   if (!F || F.ov.some((o) => !isUnder(o.x, m.group))) F = buildFlash(m); // 合併改過（丟武器、碎裂）就重掛
   const b = F.bones.get(i) || [];
@@ -396,4 +717,13 @@ export function partFlashTick(m, dt) {
 
 // 冒煙測試與量測
 if (typeof location !== 'undefined' && /[?&]test\b/.test(location.search))
-  window.__HITP = { hitRay, nearestPiece, partPoint, partFlash, measureHitBoxes, BOX_CACHE };
+  window.__HITP = {
+    hitRay,
+    nearestPiece,
+    nearestSurface,
+    partPoint,
+    partFlash,
+    measureHitBoxes,
+    measureBodyBoxes,
+    BOX_CACHE,
+  };

@@ -1,4 +1,4 @@
-import { pv, strictHit } from '../data/pace.js';
+import { PART_BIAS, pv, strictFor } from '../data/pace.js';
 import { KIN_FALL_MIN, weaponAttr } from '../data/attrs.js';
 import { weaponById } from '../data/parts.js';
 // ============================================================
@@ -10,9 +10,10 @@ import { DS, MS } from '../core/scale.js';
 import { buildProjectileMesh } from '../render/extra-models.js';
 import { shotColor } from '../fx/palette.js';
 import { targetDist, targetSegT } from '../world/prop-hit.js';
-import { hitRay, nearestPiece } from '../render/hit-parts.js';
+import { hitRay, nearestPiece, nearestSurface } from '../render/hit-parts.js';
 
-const _pjN = new THREE.Vector3(),
+const _pjS = new THREE.Vector3(),
+  _pjN = new THREE.Vector3(),
   _pjC = new THREE.Vector3();
 
 const AAM_LOSE = 1.3; // 空戰導彈失去追蹤的夾角（data/air.js 的 AAM_LOSE）
@@ -193,38 +194,41 @@ export class Projectile {
     const pad = 0.4 + (this.hitR || 0); // hitR：玩家實彈加大的判定（對物件不加：物件用命中形狀，world/prop-hit.js）
     const eK = this.team === 'enemy' ? pv('eSize') : 1; // 節奏調整室的敵人子彈大小（data/pace.js）
     // 部位判定的「擦過不算」（調整室的開關）：人形機甲只看各區塊的外框；玩家的子彈外擴 0.5 m＋hitR、其他 0.25 m
-    const strict = strictHit();
-    const fpad = strict
-      ? this.owner && this.owner.pilotEnt && this.owner.pilotEnt()
-        ? 0.5 + (this.hitR || 0)
-        : 0.25 * eK
-      : 0;
+    // 打不打得中只看模型的外框（strictFor）：玩家的子彈外擴 0.5 m＋hitR、其他 0.25 m
+    const fpad =
+      this.owner && this.owner.pilotEnt && this.owner.pilotEnt() ? 0.5 + (this.hitR || 0) : 0.25 * eK;
+    const segL = seg.length() || 1;
+    let bestK = 2; // 比較先後用的（部位往前算 PART_BIAS）
     for (let li = 0; li < 2; li++) {
       const L = li ? ds : hs;
       for (let i = 0; i < L.length; i++) {
         const t = L[i];
         if (t.dead || t.id === this.pierced) continue; // 貫穿彈已經打過的（mech-legend.js）
-        if (strict && !li && t.model && t.model.hb) {
-          // 外接球放大到蓋住整台（頭頂、腳掌）只當粗判定，再對區塊的外框
-          const rc = Math.max(t.radius, t.model.height * 0.62);
+        const bias = t.ai === 'part' ? PART_BIAS / segL : 0;
+        if (!li && strictFor(t)) {
+          // 外接球放大到蓋住整台（頭頂、腳掌、尾巴）只當粗判定，再對外框
+          const rc = Math.max(t.radius, t.model.hbR || t.model.height * 0.62);
           if (targetSegT(t, prev, seg, rc - t.radius + fpad) < 0) continue;
           const h = hitRay(t.model, prev, seg, fpad);
-          if (!h || h.t >= bestT) continue;
+          if (!h || h.t - bias >= bestK) continue;
           best = t;
           bestT = h.t;
+          bestK = h.t - bias;
           bestP = h.i;
           _pjN.copy(h.n);
           continue;
         }
         const tt = targetSegT(t, prev, seg, eK === 1 || li ? pad : (t.radius + pad) * eK - t.radius);
-        if (tt >= 0 && tt < bestT) {
+        if (tt >= 0 && tt - bias < bestK) {
           best = t;
           bestT = tt;
+          bestK = tt - bias;
           bestP = -1;
         }
       }
     }
     if (best) {
+      let snap = false;
       // 人形機甲：打中哪一塊、真正的表面位置（外框）與法線；彈道沒碰到外框（擦過外接球）時取最近的區塊
       if (bestP < 0 && !best.isProp && best.model && best.model.hb) {
         const h = hitRay(best.model, prev, seg, 0);
@@ -232,6 +236,14 @@ export class Projectile {
           bestP = h.i;
           bestT = h.t;
           _pjN.copy(h.n);
+        } else if (best.model.hbGen) {
+          // 載具、專屬敵人、Boss、機獸：彈道只碰到判定球、沒碰到外框 → 命中點移到最近的表面上
+          _pjC.copy(prev).addScaledVector(seg, bestT);
+          bestP = nearestSurface(best.model, _pjC, _pjS, _pjN);
+          if (bestP >= 0) {
+            if (_pjN.lengthSq() < 0.5) _pjN.copy(seg).normalize().negate();
+            snap = true;
+          }
         } else {
           _pjC.copy(prev).addScaledVector(seg, bestT);
           bestP = nearestPiece(best.model, _pjC);
@@ -240,7 +252,8 @@ export class Projectile {
       }
       this.hitPI = bestP;
       if (bestP >= 0) (this.hitN || (this.hitN = new THREE.Vector3())).copy(_pjN);
-      this.pos.copy(prev).addScaledVector(seg, bestT);
+      if (snap) this.pos.copy(_pjS);
+      else this.pos.copy(prev).addScaledVector(seg, bestT);
       // 傳說模組「貫穿彈」：第一個目標打中後繼續飛
       if (this.pierce && !best.isProp && !(this.splash > 0)) {
         this.pierce = false;
@@ -357,6 +370,7 @@ export class Projectile {
       }
     } else if (direct) {
       const dir = this.vel.clone().normalize();
+      g.hitFxOff = true; // 直接打中的：火花與碎片在下面自己噴（知道彈道與表面）
       if (direct.isProp)
         g.damageProp(direct, this.dmg, this.impactV, this.pos, this.owner, this.attr, this.wid);
       else {
@@ -395,11 +409,19 @@ export class Projectile {
           if (this.pwk) this.owner.pwHitPop(direct, this.pwk);
         }
       }
+      g.hitFxOff = false;
       if (this.hitPI >= 0 && this.hitN) {
         // 人形機甲：火花沿表面法線往外濺，加上小碎片（從真正的命中點）
         g.fx.spark(this.pos, this.color || 0xffe0a0, _pjC.copy(this.hitN).negate());
         g.fx.mechChips(this.pos, this.hitN);
-      } else g.fx.spark(this.pos, this.color || 0xffe0a0, dir);
+      } else {
+        // 其他（載具、專屬敵人、Boss、地圖物件）：命中點在判定的表面上，碎片往外（中心 → 命中點）
+        g.fx.spark(this.pos, this.color || 0xffe0a0, dir);
+        _pjC.copy(this.pos);
+        if (direct.center) _pjC.sub(direct.center());
+        if (!direct.center || _pjC.lengthSq() < 1e-4) _pjC.copy(dir).negate();
+        g.fx.mechChips(this.pos, _pjC.normalize());
+      }
       this.hitPI = -1;
       // 能量武器打中機體：電弧（docs/vfx-design.md）
       if ((this.attr || (this.wid && weaponAttr(weaponById(this.wid)))) === 'en')

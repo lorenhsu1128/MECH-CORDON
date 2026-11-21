@@ -20,7 +20,7 @@ import { SHARED_GEO, mergeGeos } from '../render/geometry.js';
 import { FxBatch } from './batch.js';
 import { GpuFx } from './gpu.js';
 import { setFxLights, clearFxLights } from '../render/style/shader.js';
-import { FXC, FXG, pickCell, SOFT, LINE, BEAM, CRATER, RIM, RING } from './atlas.js';
+import { FXC, FXG, pickCell, SOFT, LINE, BEAM, CRATER, RIM, RING, SHARD } from './atlas.js';
 import { emitPreset } from './presets.js';
 import { beamColor } from './palette.js';
 import { GhostFx } from '../render/ghost.js';
@@ -155,7 +155,9 @@ export function heatFacingK(p, dir, cam) {
   return 1 - t * t * (3 - 2 * t);
 }
 
-const _noEmis = new THREE.Color(0, 0, 0);
+const _mcT1 = new THREE.Vector3(),
+  _mcT2 = new THREE.Vector3();
+const CHIP_COLS = [0x2b2e33, 0x8c9198, 0x55595f];
 export class Effects {
   constructor(scene) {
     this.scene = scene;
@@ -1233,32 +1235,82 @@ export class Effects {
   mechChips(p, n) {
     if (this.skip(p, 3)) return;
     const K = this.k;
-    const N = this.far(p) ? 1 : this.rich ? 4 : 3;
+    // 效能：0.1 秒內第 6 次起（機槍、多人同時打同一區）和遠處的一樣只噴 2 片、沒有火花與碎屑
+    const now = this.time || 0;
+    if (!(now - this.chipT0 < 0.1) || now < this.chipT0) {
+      this.chipT0 = now;
+      this.chipN = 0;
+    }
+    const far = this.far(p) || ++this.chipN > 5;
+    // 表面上互相垂直的兩個方向（碎片與貼著表面竄的火花用）
+    const t1 = _mcT1.set(n.z, 0, -n.x);
+    if (t1.lengthSq() < 0.01) t1.set(1, 0, 0);
+    t1.normalize();
+    const t2 = _mcT2.crossVectors(n, t1).normalize();
+    // 碎片（2026-11-21 確認後調整：原本太小、飛太快，離表面好幾公尺才看得到）：大一點、慢一點、
+    // 主要沿表面的法線，帶一點沿著表面的速度；深淺三種灰
+    const N = far ? 2 : this.rich ? 6 : 4;
     for (let i = 0; i < N; i++) {
-      const v = new THREE.Vector3(rnd(-1, 1), rnd(-0.2, 1), rnd(-1, 1))
-        .multiplyScalar(0.7)
-        .add(n)
-        .normalize()
-        .multiplyScalar(rnd(5, 10) * K);
-      v.y += rnd(2, 4) * K;
-      const sz = rnd(0.09, 0.17) * K;
+      const a = frand() * 6.2832,
+        ts = rnd(1.5, 5) * K;
+      const v = new THREE.Vector3()
+        .copy(n)
+        .multiplyScalar(rnd(3, 6) * K)
+        .addScaledVector(t1, Math.cos(a) * ts)
+        .addScaledVector(t2, Math.sin(a) * ts);
+      v.y += rnd(1.5, 3.5) * K;
+      const sz = rnd(0.16, 0.3) * K;
       this.g.sm.emit({
         p,
         v,
-        life: rnd(0.45, 0.8),
+        life: rnd(0.6, 1.0),
         s0: sz,
-        s1: sz * 0.85,
-        c0: i % 2 ? 0x2b2e33 : 0x8c9198,
+        s1: sz * 0.8,
+        c0: CHIP_COLS[i % 3],
         a: 1,
         occ: 1,
-        cell: pickCell(FXG.dirt),
+        cell: i % 3 === 2 ? pickCell(FXG.dirt) : SHARD, // 實心的尖角碎片為主，混一點碎屑
         fade: 2,
-        g: 26 * K,
-        drag: 0.4,
+        g: 14 * K,
+        drag: 0.5,
         rot: frand() * 6.28,
-        rv: rnd(-14, 14),
+        rv: rnd(-12, 12),
       });
     }
+    if (far) return;
+    // 貼著表面往四周竄的短火花（沿表面）
+    const M = this.rich ? 5 : 3;
+    for (let i = 0; i < M; i++) {
+      const a = frand() * 6.2832;
+      const d = new THREE.Vector3()
+        .addScaledVector(t1, Math.cos(a))
+        .addScaledVector(t2, Math.sin(a))
+        .addScaledVector(n, 0.18);
+      this.streaks(p, 1, 0xffd9a0, rnd(7, 11), 0.16, 8, d, 0.15);
+    }
+    // 燒紅的小碎屑：亮的、往下掉
+    if (this.rich)
+      for (let i = 0; i < 3; i++) {
+        const v = new THREE.Vector3(rnd(-1, 1), rnd(-0.2, 1), rnd(-1, 1))
+          .multiplyScalar(0.8)
+          .add(n)
+          .normalize()
+          .multiplyScalar(rnd(3, 6) * K);
+        this.g.gl.emit({
+          p,
+          v,
+          life: rnd(0.4, 0.7),
+          s0: 0.16 * K,
+          s1: 0.05 * K,
+          c0: 0xffc070,
+          c1: 0xff4a10,
+          a: 0.95,
+          k: 1.4,
+          cell: SOFT,
+          g: 22 * K,
+          drag: 0.6,
+        });
+      }
   }
   // 子彈打在地形上（第 8.4 期）：依地面材質；金屬照舊是火花（回傳 false）
   groundHit(p, dir) {
@@ -2369,14 +2421,6 @@ export class Effects {
   shatter(ent, world) {
     // 合併過的網格（render/mesh-merge.js 的 mergeRig）先還原成各關節底下的網格，才拆得成碎片
     if (ent.model.unmerge) ent.model.unmerge();
-    // 受擊閃光（mechFlash 的白色自發光）靠 animateMech 每格倒數關掉；擊碎之後不再更新，
-    // 最後一擊的閃光會一直留在碎片上（白色發亮的碎片），所以先關掉
-    const md = ent.model;
-    if (md.mats && md.flashT > 0) {
-      for (const mm of md.mats)
-        if (mm.emissive) mm.emissive.copy((mm.userData && mm.userData.emis0) || _noEmis);
-      md.flashT = 0;
-    }
     const root = ent.model.group;
     root.updateMatrixWorld(true);
     const center = ent.center();

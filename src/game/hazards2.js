@@ -490,11 +490,6 @@ Object.assign(Game.prototype, {
       W.t += dt;
       W.life -= dt;
       if (W.grp.scale.y < 1) W.grp.scale.y = Math.min(1, W.grp.scale.y + dt / 0.3); // 升起
-      if (W.flashT > 0) {
-        W.flashT -= dt;
-        if (W.flashT <= 0)
-          for (const m of W.ob.mats) if (m.emissive) m.emissive.setHex(W.k === 'ice' ? 0x2a6a90 : 0);
-      }
       if (W.life <= 0) {
         this.tempWallRemove(W, false);
         if (host) this.netEv({ t: 'twX', i: W.i, b: 0 });
@@ -526,8 +521,17 @@ Object.assign(Game.prototype, {
   tempWallDamage(W, dmg, at) {
     W.hp -= Math.round(dmg);
     this.twStage(W);
-    W.flashT = 0.07;
-    for (const m of W.ob.mats) if (m.emissive) m.emissive.setRGB(0.6, 0.6, 0.6);
+    // 受擊：火花與碎片從命中點往外（不再閃白）
+    const now = performance.now();
+    if (at && this.fx && now - (W.fxAt || 0) >= 80) {
+      W.fxAt = now;
+      const n = at.clone().sub(W.ob.box.getCenter(new THREE.Vector3()));
+      n.y = Math.max(n.y, 0);
+      if (n.lengthSq() < 1e-4) n.set(0, 1, 0);
+      n.normalize();
+      this.fx.spark(at, W.k === 'ice' ? 0xbfeaff : 0xffe0a0, n.clone().negate());
+      this.fx.mechChips(at, n);
+    }
     this.popDamage(at, Math.round(dmg), false, false, false, 0, -1);
     if (W.hp <= 0) {
       this.tempWallRemove(W, true);
@@ -758,8 +762,6 @@ Object.assign(Game.prototype, {
         if (W) {
           W.hp = e.h;
           this.twStage(W);
-          W.flashT = 0.07;
-          for (const m of W.ob.mats) if (m.emissive) m.emissive.setRGB(0.6, 0.6, 0.6);
         }
         return true;
       }

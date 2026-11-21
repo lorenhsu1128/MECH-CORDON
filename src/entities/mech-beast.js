@@ -164,7 +164,7 @@ Object.assign(MechEntity.prototype, {
     const g = this.game,
       s = this.aiState,
       k = this.beastK(),
-      dm = this.dmgMul;
+      dm = this.dmgMul * this.bodyMeleeK(s.clip); // 前爪壞了爪擊變弱…（mech-body.js）
     const hs = s.hitSet || (s.hitSet = new Set());
     const c = ram
       ? V(
@@ -363,9 +363,10 @@ Object.assign(MechEntity.prototype, {
       const d0 = pl.center().sub(from);
       const yw = Math.atan2(d0.x, d0.z),
         pt = Math.atan2(d0.y, Math.hypot(d0.x, d0.z) || 1);
-      for (let i = 0; i < G.n; i++) {
+      const fn = this.bodyOf('gunN', G.id, G.n); // 身體區域壞了發數變少（鬃甲，mech-body.js）
+      for (let i = 0; i < fn; i++) {
         // full＝朝四面八方一整圈（背甲的刺彈）；否則以目標為中心、間隔 step
-        const y = G.full ? yw + (i / G.n) * Math.PI * 2 : yw + (i - (G.n - 1) / 2) * G.step;
+        const y = G.full ? yw + (i / fn) * Math.PI * 2 : yw + (i - (fn - 1) / 2) * G.step;
         const pp = G.full ? 0 : pt;
         this.b3Beam(
           from.clone(),
@@ -699,7 +700,7 @@ Object.assign(MechEntity.prototype, {
       // 在空中：不貼到目標頭頂（太近就繞開，拉開距離之後回頭才有俯衝的角度）
       if (FL && s.air && d < this.radius + (pl.radius || 0) + 18) head = tyaw + s.orb * 2.3;
       const err = wrap(head - this.yaw);
-      goalSpd = d > 30 * DS ? B.run : d > 12 * DS || s.go > 0 ? B.trot : B.walk;
+      goalSpd = (d > 30 * DS ? B.run : d > 12 * DS || s.go > 0 ? B.trot : B.walk) * this.bodyK('spd'); // 後腿壞了變慢
       // 轉彎半徑＝速度÷轉身速度：方向差得多時先慢下來（差越多越慢），貼近目標要出手時也放慢，低速時轉得更快
       goalSpd *= clamp(1.25 - Math.abs(err) * 0.9, 0.12, 1);
       if (s.go > 0 && d < this.radius + (pl.radius || 0) + 10 && !(FL && s.air))
@@ -727,7 +728,14 @@ Object.assign(MechEntity.prototype, {
         const ok = [];
         for (const k in B.melee) {
           const S = B.melee[k].sel;
-          if (!S || dd < (S.d0 || -99) || dd > S.d1 || a < (S.a0 || 0) || a > (S.a1 || 9)) continue;
+          if (!S || this.bodyOff(k)) continue; // 身體區域壞了停用的招式（尾巴斷了不掃尾）
+          if (
+            dd < (S.d0 || -99) ||
+            dd > S.d1 * this.bodyOf('reach', k, 1) ||
+            a < (S.a0 || 0) ||
+            a > (S.a1 || 9)
+          )
+            continue;
           if (S.sgn && Math.sign(off || 1) !== S.sgn) continue;
           if (FL && !!B.melee[k].air !== !!s.air) continue; // 會飛的：空中的招式只在空中用、地面的只在地面用
           if (S.d0 && s.go > 3) continue; // 撲擊這類中距離的招式：先對準一下再出

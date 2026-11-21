@@ -35,7 +35,6 @@ function rigOf(root, torso, M, o) {
     height: o.height,
     coreH: (o.coreK || 0.5) * o.height,
     mats: [M.main, M.main2, M.main3, M.sub, M.acc, M.joint, M.gun],
-    flashT: 0,
     mounts: [],
     dmg: o.dmg || null,
     body: null,

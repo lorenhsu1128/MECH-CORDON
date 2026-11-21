@@ -7,6 +7,10 @@
 //   斜放的物件，圓柱比實際大），高度也取外框的
 // 先用外框的外接球粗篩，再做精確判定。world.hitsWorld 對物件也用同一個形狀（shapeContains），
 // 所以點取樣的視線（rayClear／losClear）和投射物的判定一致；投射物另外以線段判定（shapeSegT），不會穿過細的柱子。
+import { strictFor } from '../data/pace.js';
+import { nearestSurface } from '../render/hit-parts.js';
+
+const _n = new THREE.Vector3();
 export const PROP_PAD = 0.15; // 投射物、光束對物件的判定加寬（公尺）：只擦過邊緣的也算打中，但不會隔空命中
 
 export function propShape(w, ob) {
@@ -184,6 +188,14 @@ export function targetSegT(t, a, v, pad, propPad = PROP_PAD) {
 // 點 p 到目標表面的距離（爆炸、近戰）：物件＝到形狀的距離，其他＝到球心的距離減半徑
 export function targetDist(t, p) {
   if (t.shape) return shapeClosest(t.shape, p, _c).distanceTo(p);
+  // 有外框的機體（玩家操作的除外）：到外框表面的距離（在外框裡＝0）；很遠的不用細算。
+  // 和判定球的距離取近的：爆炸不會比以前難波及；外框的位置是上一格算繪時的（剛被搬動的目標還在舊位置）
+  if (strictFor(t)) {
+    const cd = t.center().distanceTo(p);
+    if (cd - (t.model.hbR || t.radius) > 80) return cd - t.radius;
+    if (nearestSurface(t.model, p, _c, _n) >= 0)
+      return Math.min(_c.distanceTo(p), Math.max(0, cd - t.radius));
+  }
   if (t.hitBalls) {
     const B = t.hitBalls();
     if (B) {

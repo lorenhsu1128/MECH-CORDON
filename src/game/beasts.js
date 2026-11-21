@@ -1,7 +1,14 @@
 // ---------- Game 擴充：機獸（每章最後的大 Boss；docs/beast-design.md 的「接成敵人」）----------
 // 定義在 data/beasts.js、行為在 entities/mech-beast.js；這裡是 Game 端的入口。
 import { BEAST_DEFS } from '../data/beasts.js';
-import { bossForLevel, bossIndexForLevel, enemyScale, isBossLevel } from '../data/enemies.js';
+import {
+  BOSS_DEFS,
+  ENEMY_TYPES,
+  bossForLevel,
+  bossIndexForLevel,
+  enemyScale,
+  isBossLevel,
+} from '../data/enemies.js';
 import { Game } from './game.js';
 
 Object.assign(Game.prototype, {
@@ -35,3 +42,6 @@ Object.assign(Game.prototype, {
     return this.boss;
   },
 });
+// 量測腳本（scripts/hit-surface.js）：全部的敵人類型與 Boss 的定義
+if (typeof location !== 'undefined' && /[?&]test\b/.test(location.search))
+  window.__SPAWN = { ENEMY_TYPES, BOSS_DEFS, BEAST_DEFS };

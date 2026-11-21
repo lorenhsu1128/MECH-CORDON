@@ -5,7 +5,6 @@ import { escHtml } from '../core/html.js';
 import { clamp } from '../core/math.js';
 import { MechEntity } from '../entities/mech-entity.js';
 import { PALETTES } from '../render/materials.js';
-import { mechFlash } from '../render/mech-model.js';
 import { hrKindOf } from '../data/hit-react.js';
 import { REACT_T, meleeAll, meleeReactOf } from '../data/melee.js';
 import { FIST_DEF, partById } from '../data/parts.js';
@@ -67,6 +66,12 @@ const meleeMoves = (D, t, dt, g) => {
   D.mi = i + 1;
   D.mWait = 0.15;
 };
+// 展示的受擊：火花與碎片從機體正面的命中點噴出（真的被打時由 takeDamage 的 hitSparks 噴；2026-11-21 起不再閃白）
+const _dhP = new THREE.Vector3();
+const demoHit = (e) => {
+  const y = e.yaw || 0;
+  e.hitSparks(_dhP.copy(e.center()).add({ x: -Math.sin(y) * 8, y: 1, z: -Math.cos(y) * 8 }));
+};
 // 受擊反應的段落（docs/melee-combo-design.md 的打擊感改版第 2 期）：依序做每一種反應，最後被挑飛
 const REACTS = ['light', 'slash', 'thrust', 'spin', 'blow', 'down', 'held'];
 const reacts = (D, t, dt, g) => {
@@ -77,12 +82,12 @@ const reacts = (D, t, dt, g) => {
   D.ri = i;
   if (i < REACTS.length) {
     p.reactSet(REACTS[i], 0.95, i % 2 ? -1 : 1);
-    mechFlash(p.model);
+    demoHit(p);
   } else if (i === REACTS.length) {
     p.vel.y = 22 * p.dk; // 被挑飛：空中往後翻，落地蹲一下
     p.grounded = false;
     p.reactSet('launch', 1, 1);
-    mechFlash(p.model);
+    demoHit(p);
   }
 };
 // ---------- 受擊展示（docs/hit-react-design.md 第 6 期）：依序被每把武器、每一招打，說明列顯示現在是哪一個 ----------
@@ -123,7 +128,7 @@ const hrRanged = (list) => (D, t, dt, g) => {
   D.hrT = id === 'w_mg' || id === 'bw_gat' ? 0.07 : 0.1;
   const k = hrKindOf(W, null, false);
   p.hrAdd(k, 0.25 * flip(i, 1), 1, 0, false, 1);
-  mechFlash(p.model);
+  demoHit(p);
 };
 const hrExtra = (D, t, dt, g) => {
   const p = g.player;
@@ -133,7 +138,7 @@ const hrExtra = (D, t, dt, g) => {
   if (i === D.ri) return;
   D.ri = i;
   HR_EXTRA[i][1](p);
-  mechFlash(p.model);
+  demoHit(p);
 };
 // 近戰：被這把武器的每一招打（招式的基本反應＋這一招自己的變化）
 const hrMelee = (wid) => (D, t, dt, g) => {
@@ -148,7 +153,7 @@ const hrMelee = (wid) => (D, t, dt, g) => {
   let rk = meleeReactOf(all[i]);
   if (rk === 'slam' || rk === 'launch') rk = rk === 'slam' ? 'down' : 'blow'; // 展示不讓它飛起來
   p.reactSet(rk, REACT_T[rk] || 0.4, i % 2 ? -1 : 1, false, wid + ':' + i);
-  mechFlash(p.model);
+  demoHit(p);
 };
 const hrMeleeT = (wid) => meleeAll(wid === 'w_fist' ? FIST_DEF : partById('arm', wid)).length * 1.2 + 0.4;
 // 其他身體：在旁邊生成一台（不動、AP 無限），鏡頭看它；每一台被火箭筒、霰彈、EMP、近戰打
@@ -186,7 +191,7 @@ const hrBodies = (D, t, dt, g) => {
     else if (s === 1) e.hrAdd('shotgun', -0.4, 1, 0, false);
     else if (s === 2) e.hrAdd('emp', 0, 1, 0, false);
     else e.reactSet('blow', 0.65, 1, false, 'w_pile:1');
-    mechFlash(e.model);
+    demoHit(e);
   }
   g.labDemoBodyTick(dt);
 };
@@ -601,7 +606,7 @@ Object.assign(Game.prototype, {
     // 機體座標 → 世界：從前面打＝推力往機體後方（+Z）
     const dir = V(Math.cos(B) * d[0] + Math.sin(B) * d[1], 0, -Math.sin(B) * d[0] + Math.cos(B) * d[1]);
     p.hitAnim(dir, k);
-    mechFlash(p.model);
+    p.hitSparks(_dhP.copy(p.center()).addScaledVector(dir, -8));
     this.fx.flash(p.center().addScaledVector(dir, -1.5), 1.4, 0xffc070, 0.12);
     if (stag) {
       p.staggerT = stag;

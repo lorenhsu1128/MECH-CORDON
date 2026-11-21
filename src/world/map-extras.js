@@ -7,7 +7,19 @@ import { pick, rnd, rndi } from '../core/math.js';
 import { MS } from '../core/scale.js';
 import { buildPickupMesh, buildTransport } from '../render/extra-models.js';
 
-const BLACK = new THREE.Color(0);
+// 載具被打中（2026-11-21 使用者定案：不再閃白）：火花與小碎片從命中點往外噴；
+// 投射物直接打中的自己噴（g.hitFxOff），同一台 0.06 秒內只噴一次
+export function hitChips(g, t, at) {
+  if (!at || !g || !g.fx || g.hitFxOff) return;
+  const now = performance.now();
+  if (now - (t.fxAt || 0) < 60) return;
+  t.fxAt = now;
+  const n = at.clone().sub(t.center());
+  if (n.lengthSq() < 1e-4) n.set(0, 1, 0);
+  n.normalize();
+  g.fx.spark(at, 0xffe0a0, n.clone().negate());
+  g.fx.mechChips(at, n);
+}
 
 export const PICKUP_DEFS = {
   repair: { name: '修補包', color: 0x7ee081 },
@@ -43,7 +55,6 @@ export class Vehicle {
     this.name = kind === 'train' ? '運輸列車' : '運輸貨車';
     this.radius = 2.6;
     this.hitCd = {};
-    this.flashT = 0;
     this.cars = kind === 'train' ? rndi(3, 5) + 1 : 1;
     this.carLen = Vehicle.carLenOf(kind);
     this.build();
@@ -120,20 +131,13 @@ export class Vehicle {
     this.mesh.rotation.y = Math.atan2(t.x, t.y) + (this.dirSign > 0 ? 0 : Math.PI);
     // 車輪依行駛距離轉動（車頭朝 +Z，render/extra-models.js 的 wheels）
     if (this.mesh.wheels) for (const w of this.mesh.wheels) w.o.rotation.x += (this.speed * dt) / w.r;
-    if (this.flashT > 0) {
-      this.flashT -= dt;
-      if (this.flashT <= 0) for (const m of this.mats) m.emissive.copy(m.userData.emis0 || BLACK);
-    }
     if (Math.abs(this.s) > w.corridorHalf + 14 + this.cars * this.carLen) this.gone = true;
   }
   takeDamage(dmg, impact, from, at) {
     if (this.dead) return;
     this.hp -= Math.round(dmg);
-    this.flashT = 0.06;
-    for (const m of this.mats) {
-      m.emissive.setRGB(0.8, 0.8, 0.8);
-    }
     const g = this.game;
+    hitChips(g, this, at); // 火花與碎片從命中點往外（不再閃白）
     g.popDamage(at || this.center(), Math.round(dmg), false, false, false, 0, -1, impact);
     if (this.hp <= 0) this.die();
   }

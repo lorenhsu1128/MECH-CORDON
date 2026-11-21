@@ -20,6 +20,7 @@
 // skinAwareSSAO）、冰殼（mech-status.js）都有蒙皮版。只改外觀的網格數，不影響判定與協定。
 // 合併本身（錨點、蒙皮、材質複本）在 mesh-merge.js，機甲與載具也共用。
 
+import { measureBodyBoxes } from './hit-parts.js';
 import { withBakeKey } from './geometry.js';
 import { isUnder, mergeStatic, pathsOf, rigMats, rigRefs, shareDecals } from './mesh-merge.js';
 
@@ -159,6 +160,7 @@ export function foeMerged(key, build0) {
           if (o && o.isObject3D && o.parent && isUnder(o, root)) s.add(o);
       return s;
     };
+    measureBodyBoxes(rig, moving); // 命中用的外框（render/hit-parts.js）：合併網格之前量
     const restore = mergeStatic(root, moving, detach());
     rig.merged = true; // 遊戲實體的 mergeRig 不再合併一次
     if (d && restore) {
