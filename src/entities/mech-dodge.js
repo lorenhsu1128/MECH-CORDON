@@ -140,7 +140,7 @@ Object.assign(MechEntity.prototype, {
           C.chain &&
           !A.chained &&
           A.th &&
-          (this.bossTier() || 0) >= DG.CHAIN_TIER &&
+          (!this.isBoss || (this.bossTier() || 0) >= DG.CHAIN_TIER) &&
           Math.random() < DG.CHAIN_P
         ) {
           s.pend = { t: 0.04, th: A.th, chained: true };
@@ -174,13 +174,15 @@ Object.assign(MechEntity.prototype, {
     let p = C.p * clamp(this.aiSkill || 1, 0.6, 1.4) * this.dgSetK() * (th.k || 1);
     if (this.isBoss && this.bossTier) p *= 0.75 + 0.07 * (this.bossTier() || 1); // 刁鑽度越高越會閃
     const tgt = th.from && th.from.isPlayer !== undefined ? th.from : g.player;
-    if (tgt && g.aiStress) p *= 1 - (1 - DG.STRESS_K) * g.aiStress(tgt);
+    if (tgt && g.aiStress) p *= 1 - (1 - (C.eager ? DG.EAGER_STRESS_K : DG.STRESS_K)) * g.aiStress(tgt);
     if (g.dgForce !== undefined) p = g.dgForce; // 自動化測試：直接指定機率
-    if (!(Math.random() < p) || !this.dgCapOk()) {
-      s.roll = DG.REROLL;
+    if (!(Math.random() < p) || (!C.eager && !this.dgCapOk())) {
+      s.roll = C.eager ? DG.EAGER_REROLL : DG.REROLL;
       return [wish, hover, qb];
     }
-    const react = th.now ? 0.02 : rnd(...DG.REACT) / clamp(this.aiSkill || 1, 0.7, 1.4);
+    const react = th.now
+      ? 0.02
+      : (rnd(...DG.REACT) / clamp(this.aiSkill || 1, 0.7, 1.4)) * (C.eager ? DG.EAGER_REACT_K : 1);
     if (th.p && th.t - react < 0.03 && !th.now) {
       s.roll = DG.REROLL * 0.5; // 來不及
       return [wish, hover, qb];

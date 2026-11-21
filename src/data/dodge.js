@@ -28,9 +28,13 @@ export const DG = {
   BLINK_D: 14, // 瞬移的距離（舊尺度的公尺）
   BEAST_IF: 0.35, // 機獸閃避的無敵
   // 第 6 期：Boss
-  BOSS_READ_TIER: 3, // 刁鑽度這個以上才讀蓄力射擊、雷射，才用熱焰彈反制導彈
-  CHAIN_TIER: 5, // 刁鑽度這個以上的機甲型 Boss 會連續閃避
-  CHAIN_P: 0.5,
+  BOSS_READ_TIER: 1, // 刁鑽度這個以上才讀蓄力射擊、雷射，才用熱焰彈反制導彈（2026-11-21 使用者要求更積極：全部都讀）
+  CHAIN_TIER: 3, // 刁鑽度這個以上的機甲型 Boss 會連續閃避（敵對 AC 不看刁鑽度）
+  CHAIN_P: 0.65,
+  // 積極的（敵對 AC、所有 Boss 與機獸，DG_CLASS 的 eager）：反應快、擲失敗很快再擲、不受全場上限、玩家吃緊時只少一點
+  EAGER_REACT_K: 0.7, // 反應時間的倍率
+  EAGER_REROLL: 0.2, // 擲失敗後幾秒再擲
+  EAGER_STRESS_K: 0.8, // 玩家吃緊（壓力 1）時機率的倍率
   HOV_D: 5, // 升降閃避：目標高度改變（舊尺度的公尺，×dk）
   HOV_T: 0.6, // 升降閃避的秒數
   GUARD_T: 1.4, // 防禦：護盾架起的秒數
@@ -66,7 +70,7 @@ export const DG_ANIM = {
 // 各種類（dgClass）：p＝每次威脅的基本機率、cd＝冷卻（秒）、qb＝閃避的 QB 秒數（距離；預設 DG.QB_T）、
 // kinds＝會的閃避（權重）：side 側閃、back 後撤、jump 跳躍閃避
 export const DG_CLASS = {
-  ace: { p: 0.8, cd: [0.8, 1.6], kinds: { side: 6, back: 2, jump: 2 } }, // 敵對 AC、精英、具名 AC
+  ace: { p: 1, cd: [0.45, 0.9], eager: true, chain: true, kinds: { side: 6, back: 2, jump: 2 } }, // 敵對 AC、精英、具名 AC
   mt: { p: 0.45, cd: [1.8, 3.2], qb: 0.11, kinds: { side: 6, back: 2, jump: 1 } }, // 一般的人形步行機
   heavy: { p: 0.3, cd: [2.8, 4.5], qb: 0.11, kinds: { side: 5, back: 2 } }, // 戰車腳（不能跳）
   quad: { p: 0.45, cd: [1.6, 3], qb: 0.12, kinds: { side: 5, back: 2, jump: 2 } }, // 四足
@@ -83,13 +87,20 @@ export const DG_CLASS = {
   fguard: { p: 0.45, cd: [2.5, 4], kinds: { guard: 1 } }, // 固定的、重裝的：架起護盾
   fspec: { p: 0.6, cd: [3, 5], kinds: { spec: 1 } }, // 有自己的躲藏的：潛航、鑽地、埋雪、潛入熔岩、收回甲板、瞬移
   // 第 5 期：機獸（片段：dgSideL／R、dgBack、dgDuck）；機率另外依刁鑽度
-  beast: { p: 0.4, cd: [2.4, 4], kinds: { side: 6, back: 3, duck: 2 } },
+  beast: { p: 0.85, cd: [1.1, 2], eager: true, kinds: { side: 6, back: 3, duck: 2 } },
   // 第 6 期：Boss（機率另外依刁鑽度）
-  bmech: { p: 0.5, cd: [1.6, 3], chain: true, kinds: { side: 6, back: 2, jump: 2 } }, // 機甲型：連續閃避
-  bheli: { p: 0.45, cd: [2.2, 3.6], qb: 0.14, msl: 'flare', kinds: { side: 5, rise: 2, dive: 2 } }, // 母艦直升機、刃翼
-  bjet: { p: 0.45, cd: [2.2, 3.6], qb: 0.12, msl: 'flare', kinds: { side: 5, rise: 2, dive: 2 } }, // 高速突擊機：橫滾
-  bguard: { p: 0.4, cd: [5, 8], kinds: { guard: 1 } }, // 巨型：防禦（冷卻長：防禦的時間約占一成五）
-  bworm: { p: 0.35, cd: [6, 9], kinds: { spec: 1 } }, // 鑽地蟲：提早下潛
+  bmech: { p: 1, cd: [0.5, 1], eager: true, chain: true, kinds: { side: 6, back: 2, jump: 2 } }, // 機甲型：連續閃避
+  bheli: {
+    p: 0.9,
+    cd: [0.9, 1.8],
+    qb: 0.14,
+    eager: true,
+    msl: 'flare',
+    kinds: { side: 5, rise: 2, dive: 2 },
+  }, // 母艦直升機、刃翼
+  bjet: { p: 0.9, cd: [0.9, 1.8], qb: 0.12, eager: true, msl: 'flare', kinds: { side: 5, rise: 2, dive: 2 } }, // 高速突擊機：橫滾
+  bguard: { p: 0.75, cd: [3, 4.5], eager: true, kinds: { guard: 1 } }, // 巨型：防禦（約占三成的時間）
+  bworm: { p: 0.65, cd: [3.5, 5.5], eager: true, kinds: { spec: 1 } }, // 鑽地蟲：提早下潛
 };
 
 // Boss 的種類（boss3Key：kind 或名稱開頭）；沒列的＝bguard 巨型的防禦
