@@ -34656,7 +34656,9 @@ async function testServerSeed() {
   console.log('伺服器預設組的自動匯入：第一次匯入、刪掉不補回、來源更新與移除');
   // 2026-11-13 起地圖物件先改用程式模型（GLB 搬到 src/assets/server-default-off/）：內建來源沒有 GLB 時用那一份測
   let src = path.join(ROOT, 'dist', 'server-default');
-  if (!fs.existsSync(path.join(src, 'prop'))) src = path.join(ROOT, 'src', 'assets', 'server-default-off');
+  // dist 的 prop 資料夾要真的有 GLB（只有空資料夾時：搬走 GLB 之後留在本機的 src/assets/server-default/prop，建置照樣複製）
+  const hasGlb = (d) => fs.existsSync(d) && fs.readdirSync(d).some((f) => f.endsWith('.glb'));
+  if (!hasGlb(path.join(src, 'prop'))) src = path.join(ROOT, 'src', 'assets', 'server-default-off');
   if (!fs.existsSync(src)) return check(false, '找不到 dist/server-default');
   const base = path.join(WORK_DIR, 'seed-test');
   const seed = path.join(base, 'seed'),

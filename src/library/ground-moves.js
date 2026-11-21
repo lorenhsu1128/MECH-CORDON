@@ -134,6 +134,18 @@ const FOE = [
 // ---------- 特殊一般敵人（entities/mech-special.js、mech-entity.js）----------
 const SPECIAL = [
   {
+    id: 'sp_dgsmoke',
+    name: '閃避：煙幕彈',
+    who: '裝甲車與車輛類的敵人（導彈打過來時）',
+    src: 'entities/mech-dodge.js（dgCounter：addZone smoke，半徑 DG.SMOKE_R 9、4 秒；docs/enemy-dodge-design.md）',
+    srcAt: [0, -30],
+    run: (S) => {
+      const p = S.src.pos.clone();
+      S.fx.dust(p.clone(), 6, 18, 0xb8bcc2);
+      S.zone('smoke', p, 9 * DS, 4);
+    },
+  },
+  {
     id: 'sp_mortar',
     name: '迫擊砲',
     who: '迫擊砲步行機（mortar）',

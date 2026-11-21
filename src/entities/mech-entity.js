@@ -4013,7 +4013,7 @@ export class MechEntity {
       // 有新的閃避（mech-dodge.js）時看子彈的軌跡，這裡不再看附近有沒有子彈
       if (
         s.qbT <= 0 &&
-        !this.dgClass() &&
+        !(this.dgClass() && this.dgOn()) &&
         g.projectiles.some((p) => p.team !== this.team && p.pos.distanceToSquared(this.center()) < 80 * K * K)
       ) {
         qb = true;
@@ -4029,7 +4029,7 @@ export class MechEntity {
       wish.normalize();
       s.qbT -= dt;
       const threat =
-        !this.dgClass() &&
+        !(this.dgClass() && this.dgOn()) &&
         g.projectiles.some(
           (p) => p.team !== this.team && p.pos.distanceToSquared(this.center()) < 120 * K * K,
         );
@@ -4115,7 +4115,7 @@ export class MechEntity {
       s.qbT -= dt;
       // 敵人看子彈軌跡的閃避在 mech-dodge.js；這裡只剩友軍與沒有新閃避的
       const threat =
-        !this.dgClass() &&
+        !(this.dgClass() && this.dgOn()) &&
         ((this.team === 'enemy' && g.playerFiredAt > 0) ||
           g.projectiles.some(
             (p) => p.team === 'player' && p.pos.distanceToSquared(this.center()) < 64 * K * K,
