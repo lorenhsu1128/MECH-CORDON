@@ -155,7 +155,10 @@ Object.assign(MechEntity.prototype, {
     if (!this.isBoss && !(this.ai === 'part' && this.opts.parent)) return 1;
     const b = this.isBoss ? this : this.parentEnt && this.parentEnt();
     if (!b || !b.bossPhase) return 1;
-    return BOSS_TEMPO[b.bossPhase() - 1] + (b.enraged ? BOSS_ENRAGE_TEMPO : 0);
+    // 身體區域壞了動作變慢（mech-body.js 的 fx.tempo）
+    return (
+      (BOSS_TEMPO[b.bossPhase() - 1] + (b.enraged ? BOSS_ENRAGE_TEMPO : 0)) * (b.body ? b.bodyK('tempo') : 1)
+    );
   },
   // ---------- 附屬部位 ----------
   partAI(dt, d, pl) {

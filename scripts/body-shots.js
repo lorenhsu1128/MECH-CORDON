@@ -1,6 +1,6 @@
 // Boss 身體部位破壞的截圖（docs/boss-part-break-design.md）：生成一隻、搬到空中（沒有東西擋住鏡頭），
 // 拍「完好」、每個區域打壞的那一刻（0.08 秒後）、全部打壞之後冒煙的樣子。
-//   node scripts/body-shots.js [beast_lion]   要先 npm run build；輸出 test-results/body/<種類>-*.png
+//   node scripts/body-shots.js [beast_lion｜boss:<BOSS_DEFS 的索引>]   要先 npm run build；輸出 test-results/body/<種類>-*.png
 /* global window, document, localStorage, THREE -- page.evaluate 的回呼在瀏覽器端執行 */
 const path = require('path');
 const fs = require('fs');
@@ -58,7 +58,9 @@ fs.mkdirSync(OUT, { recursive: true });
       g.enemies.length = 0;
       g.bosses = [];
       g.fx.clear && g.fx.clear();
-      g.beastSpawn(key, 1, 0);
+      // boss:<BOSS_DEFS 的索引>＝一般的 Boss，其他＝機獸的種類
+      if (key.startsWith('boss:')) g.spawnBossDef(window.__SPAWN.BOSS_DEFS[+key.slice(5)], 1, 1, 0);
+      else g.beastSpawn(key, 1, 0);
       const b = g.enemies.find((x) => x.ai !== 'part') || g.enemies[0];
       for (const x of g.enemies) if (x !== b && x.model) x.model.group.visible = false;
       b.pos.set(0, 400, 0);
@@ -85,6 +87,7 @@ fs.mkdirSync(OUT, { recursive: true });
         cam.lookAt(c);
         cam.updateMatrixWorld();
       };
+      window.__dist = Math.max(34, (b.model.hbR || b.radius) * 2.4); // 鏡頭的距離依體型
       return D.map((R) => R.name);
     }, KEY);
     const shot = async (name, ax, el, dist, dt) => {
@@ -92,7 +95,7 @@ fs.mkdirSync(OUT, { recursive: true });
         ([ax, el, dist, dt]) => {
           const g = window.__game,
             b = window.__b;
-          window.__cam(ax, el, dist);
+          window.__cam(ax, el, Math.max(dist, window.__dist));
           const n = Math.max(1, Math.round(dt / 0.0167));
           for (let i = 0; i < n; i++) {
             b.bodyTick(dt / n);
@@ -102,7 +105,7 @@ fs.mkdirSync(OUT, { recursive: true });
         },
         [ax, el, dist, dt],
       );
-      await page.screenshot({ path: path.join(OUT, `${KEY}-${name}.png`) });
+      await page.screenshot({ path: path.join(OUT, `${KEY.replace(':', '-')}-${name}.png`) });
     };
     // 兩個角度（機獸的正面朝 −Z）：A＝背面斜後方、B＝正面斜前方
     const A = [0.9, 0.3, 34],

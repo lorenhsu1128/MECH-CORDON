@@ -1135,6 +1135,108 @@ async function testLabDemo(browser) {
 // 地圖預覽器（docs/map-viewer-design.md）：標題按鈕開啟、換主題／變體／種子／大小重新產生、鏡頭（自由、全圖）、
 // 滑鼠拖曳與滾輪、觸控的雙指縮放、效能面板、暫停選單離開、不寫存檔
 // 機獸（每章最後的大 Boss；docs/beast-design.md 的「接成敵人」）：每隻一個步驟（testBeast:<獸>，使用者要求每隻都要有自己的測試項目）。
+// Boss 的身體部位破壞（mech-body.js、data/boss-body.js）：28 隻 Boss 逐一生成，每個區域都對得到外框、
+// 打到門檻就壞、之後是弱點、火力與節奏的削弱有套上，過程沒有頁面錯誤
+async function testBossBody(browser, base) {
+  console.log('Boss 的身體部位破壞：每一隻的每個區域');
+  const { ctx, page } = await newPage(browser, 'bossbody');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await freezeLoop(page);
+  await page.evaluate(() => {
+    const g = window.__game;
+    g.clearMission();
+    g.save.level = 1;
+    g.startMission();
+    g.player.hp = g.player.maxHp = 1e8;
+  });
+  const n = await page.evaluate(() => window.__SPAWN.BOSS_DEFS.length);
+  for (let bi = 0; bi < n; bi++) {
+    const r = await page.evaluate((bi) => {
+      const g = window.__game,
+        S0 = window.__SPAWN;
+      g.waves = [];
+      g.wavePend = null;
+      for (const e of [...g.enemies]) if (e.depart) e.depart();
+      g.enemies.length = 0;
+      g.bosses = [];
+      g.tierTestOff = true;
+      g.spawnBossDef(S0.BOSS_DEFS[bi], 1, 1, 0);
+      const p = g.player;
+      const out = [];
+      for (const b of g.enemies.filter((e) => e.isBoss && e.ai !== 'part')) {
+        const D = b.bodyDefs && b.bodyDefs();
+        if (!D) {
+          out.push({ name: b.name, none: true });
+          continue;
+        }
+        b.model.group.position.copy(b.pos);
+        const S = b.bodyState();
+        const dmg0 = b.dmgMul,
+          t0 = b.bossTempo();
+        const regs = D.map((R, i) => {
+          const hi = Array.from(S.reg).indexOf(i);
+          const hit = (d) => {
+            b.iFrames = 0;
+            b.staggerT = 0;
+            b.hp = b.maxHp;
+            b.hitPart = hi;
+            const before = b.hp;
+            b.takeDamage(d, 0, p, b.center(), new THREE.Vector3(0, 0, 1), undefined, undefined, 'none');
+            return before - b.hp;
+          };
+          const d1 = hit(1000);
+          b.bodyBreak(i);
+          const d2 = hit(1000);
+          return {
+            id: R.id,
+            boxes: hi >= 0,
+            broke: b.bodyFlag(R.id),
+            weak: d1 > 0 ? d2 / d1 : 0,
+            want: R.weak || 1.25,
+          };
+        });
+        const wantDmg = D.reduce((k, R) => k * ((R.fx && R.fx.dmg) || 1), 1),
+          wantT = D.reduce((k, R) => k * ((R.fx && R.fx.tempo) || 1), 1);
+        b.bodyTick(1);
+        out.push({
+          name: b.name,
+          regs,
+          dmg: Math.abs(b.dmgMul / dmg0 - wantDmg) < 0.01,
+          tempo: Math.abs(b.bossTempo() / t0 - wantT) < 0.01,
+          mask: S.mask === (1 << D.length) - 1,
+        });
+      }
+      return out;
+    }, bi);
+    for (const q of r) {
+      if (q.none) {
+        check(false, `${q.name}：有身體區域的定義`);
+        continue;
+      }
+      // 複製機甲的適應裝甲會讓連續兩下的傷害不同（越打越硬），弱點倍率只看沒有變小太多
+      const adapt = /^DOPPEL/.test(q.name);
+      const bad = q.regs.filter(
+        (x) =>
+          !x.boxes ||
+          !x.broke ||
+          !(x.weak === 0 || (adapt ? x.weak > 0.85 : Math.abs(x.weak - x.want) < 0.1)),
+      );
+      check(
+        !bad.length && q.dmg && q.tempo && q.mask,
+        `${q.name}：${q.regs.length} 個區域都對得到外框、打壞後是弱點、火力與節奏的削弱${
+          bad.length
+            ? '（' +
+              bad.map((x) => `${x.id}:${x.boxes ? '' : '沒有外框'}${x.weak.toFixed(2)}`).join('、') +
+              '）'
+            : ''
+        }`,
+      );
+    }
+  }
+  await ctx.close();
+}
+
 // 照 data/beasts.js 的資料跑：生成與部位、網格合併、追擊與速度、每一招近戰的傷害、每一把武器、每個部位的打壞與修復、命中的形狀、擊破的演出。
 // 新接一隻機獸時把名字加進 BEAST_TESTS；測試會檢查定義表裡的每一隻都有步驟。
 const BEAST_TESTS = ['lion', 'tiger', 'bear', 'turtle', 'gorilla', 'scorpion', 'mantis', 'raptor'];
@@ -35653,6 +35755,7 @@ const STEPS = [
   ['testBoard', (c) => testBoard(c.browser, c.base)],
   ['testVolcano', (c) => testVolcano(c.browser, c.base)],
   ['testArk', (c) => testArk(c.browser, c.base)],
+  ['testBossBody', (c) => testBossBody(c.browser, c.base)],
   ['testBossTier2', (c) => testBossTier2(c.browser, c.base)],
   ['testBoss4', (c) => testBoss4(c.browser, c.base)],
   [

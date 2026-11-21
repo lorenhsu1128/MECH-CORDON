@@ -636,7 +636,8 @@ const flagOv = (x) => {
 // ---------- 焦黑（Boss 的身體部位破壞，entities/mech-body.js）----------
 // 壞掉的區域蓋一層半透明的焦黑：和閃紅一樣是共用幾何的覆蓋網格，蒙皮的那份在著色器裡只留屬於那些節點的骨頭
 // （網格合併的骨頭就是錨點本身：skeleton.bones[i]＝節點）。每台一份材質（骨頭的編號是每台自己的），程式共用。
-const CHAR_N = 32;
+const CHAR_N = 32,
+  CHAR_B = 6;
 function charMat() {
   const m = new THREE.MeshBasicMaterial({
     color: 0x0b0a0a,
@@ -656,8 +657,15 @@ function charMat() {
   });
   const uC = { value: new Float32Array(CHAR_N).fill(-9) };
   m.userData.uC = uC;
+  // 模型座標的範圍（不會動的機身上的區域）：最多 CHAR_B 個方塊
+  const uB0 = { value: Array.from({ length: CHAR_B }, () => new THREE.Vector3(9e9, 9e9, 9e9)) },
+    uB1 = { value: Array.from({ length: CHAR_B }, () => new THREE.Vector3(-9e9, -9e9, -9e9)) };
+  m.userData.uB0 = uB0;
+  m.userData.uB1 = uB1;
   m.onBeforeCompile = (sh) => {
     sh.uniforms.uC = uC;
+    sh.uniforms.uB0 = uB0;
+    sh.uniforms.uB1 = uB1;
     sh.vertexShader =
       `uniform float uC[${CHAR_N}];\nvarying float vCh;\nvarying vec3 vChP;\n` +
       sh.vertexShader.replace(
@@ -668,18 +676,21 @@ function charMat() {
   vCh = 0.0;
   for (int i = 0; i < ${CHAR_N}; i++) if (abs(skinIndex.x - uC[i]) < 0.5) vCh = 1.0;
 #else
-  vCh = 1.0;
+  vCh = 0.0;
 #endif`,
       );
     // 不是整片一樣黑：依模型座標的雜訊留一些沒燒到的地方
     sh.fragmentShader =
-      'varying float vCh;\nvarying vec3 vChP;\n' +
+      `varying float vCh;\nvarying vec3 vChP;\nuniform vec3 uB0[${CHAR_B}];\nuniform vec3 uB1[${CHAR_B}];\n` +
       sh.fragmentShader
         .replace(
           'void main() {',
           `float chN(vec3 p) { return fract(sin(dot(floor(p), vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
 void main() {
-  if (vCh < 0.5) discard;`,
+  float chIn = vCh;
+  for (int i = 0; i < ${CHAR_B}; i++)
+    if (all(greaterThanEqual(vChP, uB0[i])) && all(lessThanEqual(vChP, uB1[i]))) chIn = 1.0;
+  if (chIn < 0.5) discard;`,
         )
         .replace(
           '#include <opaque_fragment>',
@@ -690,15 +701,30 @@ void main() {
   m.customProgramCacheKey = () => 'mc-char';
   return m;
 }
-// nodes＝要焦黑的節點（連同底下的）；再呼叫一次＝換成新的一組（網格重新合併之後也要再呼叫）
-export function charParts(rig, nodes) {
+const _far = new THREE.Vector3(9e9, 9e9, 9e9),
+  _near = new THREE.Vector3(-9e9, -9e9, -9e9);
+// 沒有蒙皮、整個都要焦黑的網格用的材質：範圍蓋住全部
+function charAll() {
+  const m = charMat();
+  m.userData.uB0.value[0].copy(_near);
+  m.userData.uB1.value[0].copy(_far);
+  return m;
+}
+// nodes＝要焦黑的節點（連同底下的）；boxes＝模型座標的範圍 [{ min, max }]（Vector3；網格的頂點座標＝合併時的模型座標）；
+// 再呼叫一次＝換成新的一組（網格重新合併之後也要再呼叫）
+export function charParts(rig, nodes, boxes = []) {
   if (!rig || !rig.group) return;
   const old = rig.chx;
   if (old) for (const x of old.ov) if (x.parent) x.parent.remove(x);
   const C = { mat: old ? old.mat : charMat(), ov: [] };
   rig.chx = C;
   const set = new Set(nodes);
-  if (!set.size) return;
+  const nb = Math.min(CHAR_B, boxes.length);
+  for (let i = 0; i < CHAR_B; i++) {
+    C.mat.userData.uB0.value[i].copy(i < nb ? boxes[i].min : _far);
+    C.mat.userData.uB1.value[i].copy(i < nb ? boxes[i].max : _near);
+  }
+  if (!set.size && !nb) return;
   const under = (o) => {
     for (let p = o; p && p !== rig.group; p = p.parent) if (set.has(p)) return true;
     return false;
@@ -718,13 +744,14 @@ export function charParts(rig, nodes) {
     if (o.isSkinnedMesh) {
       const idx = [];
       o.skeleton.bones.forEach((b, bi) => under(b) && idx.push(bi));
-      if (!idx.length) continue;
+      if (!idx.length && !nb) continue;
       for (const bi of idx) if (n < CHAR_N && !u.includes(bi)) u[n++] = bi;
       x = new THREE.SkinnedMesh(o.geometry, C.mat);
       x.bind(o.skeleton, o.bindMatrix);
     } else {
-      if (!under(o)) continue;
-      x = new THREE.Mesh(o.geometry, C.mat);
+      // 沒有蒙皮的：整個網格在節點底下才蓋；用範圍的只蓋直接掛在根底下的（頂點是模型座標）
+      if (!under(o) && !(nb && o.parent === rig.group)) continue;
+      x = new THREE.Mesh(o.geometry, under(o) ? C.matAll || (C.matAll = charAll(C.mat)) : C.mat);
     }
     flagOv(x);
     x.renderOrder = 20;

@@ -42,20 +42,58 @@ Object.assign(MechEntity.prototype, {
     if (!D || !m || !m.hb) return null;
     const of = new Map();
     D.forEach((R, i) => {
-      for (const n of R.nodes) {
+      for (const n of R.nodes || []) {
         const o = this.bodyNode(n);
         if (o) of.set(o, i);
       }
     });
     const reg = new Int8Array(m.hb.length).fill(-1);
+    // 模型座標裡全部外框的範圍（frac 的區域用）
+    m.group.updateMatrixWorld(true);
+    const inv = new THREE.Matrix4().copy(m.group.matrixWorld).invert();
+    const all = new THREE.Box3();
+    const ctr = m.hb.map((h) => {
+      const c = new THREE.Vector3().copy(h.min).add(h.max).multiplyScalar(0.5);
+      c.applyMatrix4(h.node.matrixWorld).applyMatrix4(inv);
+      for (let i = 0; i < 8; i++)
+        all.expandByPoint(
+          _bs
+            .set(i & 1 ? h.max.x : h.min.x, i & 2 ? h.max.y : h.min.y, i & 4 ? h.max.z : h.min.z)
+            .applyMatrix4(h.node.matrixWorld)
+            .applyMatrix4(inv),
+        );
+      return c;
+    });
+    const sz = all.getSize(new THREE.Vector3());
+    // frac → 模型座標的方塊（沒寫的軸＝全部）
+    const boxes = D.map((R) => {
+      if (!R.frac) return null;
+      const b = new THREE.Box3(all.min.clone(), all.max.clone());
+      for (const ax of ['x', 'y', 'z'])
+        if (R.frac[ax]) {
+          b.min[ax] = all.min[ax] + sz[ax] * R.frac[ax][0];
+          b.max[ax] = all.min[ax] + sz[ax] * R.frac[ax][1];
+        }
+      return b;
+    });
     m.hb.forEach((h, k) => {
+      // 節點：外框的節點往上找到第一個屬於某個區域的
       for (let p = h.node; p && p !== m.group; p = p.parent)
         if (of.has(p)) {
           reg[k] = of.get(p);
-          break;
+          return;
         }
+      // 人形機甲：照部位（render/hit-parts.js 的 HP）
+      const pi = D.findIndex((R) => R.parts && R.parts.includes(h.part));
+      if (pi >= 0) {
+        reg[k] = pi;
+        return;
+      }
+      // 模型座標的範圍
+      const bi = boxes.findIndex((b) => b && b.containsPoint(ctr[k]));
+      if (bi >= 0) reg[k] = bi;
     });
-    return (this.body = { reg, acc: D.map(() => 0), mask: 0, shown: 0, t: 0, n: 0 });
+    return (this.body = { reg, boxes, acc: D.map(() => 0), mask: 0, shown: 0, t: 0, n: 0 });
   },
   // 這一下打在哪個區域：累積、打壞；回傳傷害（壞掉的區域是弱點）。takeDamage 在各種減傷之後呼叫（房主／單機）
   bodyDmg(dmg, at, dir, from) {
@@ -102,12 +140,34 @@ Object.assign(MechEntity.prototype, {
       if (this.tierShellBreak) this.tierShellBreak('part'); // 打開裝甲殼
     }
     this.bodyShow();
-    const o = this.bodyNode(R.at || R.nodes[0]);
-    const c = o ? o.getWorldPosition(new THREE.Vector3()) : this.center();
+    const c = this.bodySpot(r, 0, new THREE.Vector3());
+    if (R.fx && R.fx.dmg) this.dmgMul *= R.fx.dmg; // 火力下降（一次算進去）
     if (g.spawnPickup && g.world && !g.lab && !g.mapv)
       g.spawnPickup('ammo', new THREE.Vector3(c.x, g.world.groundAt(c.x, c.z, c.y + 1) + 0.6, c.z));
     SFX.explode(false, c);
     if (g.flashMsg) g.flashMsg(`部位破壞：${R.name}${R.tip ? ' — ' + R.tip : ''}`, 0xffe070, 1.8);
+  },
+  // 區域的位置（冒煙、掉落）：at／at2 的節點；人形＝那個部位的外框；範圍＝方塊的中心
+  bodySpot(r, alt, out) {
+    const D = this.bodyDefs(),
+      S = this.body,
+      m = this.model,
+      R = D[r];
+    const names = R.nodes || [];
+    const o = this.bodyNode(alt && R.at2 ? R.at2 : R.at || names[0]);
+    if (o) return o.getWorldPosition(out);
+    // 人形的部位、機身上的範圍：屬於這個區域的外框裡挑一個（外框貼著表面；alt 換別的，大的機身才會到處冒煙）
+    const L = S.regL || (S.regL = []);
+    if (!L[r]) {
+      L[r] = [];
+      S.reg.forEach((q, k) => q === r && m.hb[k].ok && L[r].push(m.hb[k]));
+    }
+    if (L[r].length) {
+      const h = L[r][(alt * 7) % L[r].length];
+      return out.copy(h.min).add(h.max).multiplyScalar(0.5).applyMatrix4(h.node.matrixWorld);
+    }
+    if (S.boxes[r]) return S.boxes[r].getCenter(out).applyMatrix4(m.group.matrixWorld);
+    return out.copy(this.center());
   },
   // 客機：照快照的遮罩
   bodySet(mask) {
@@ -162,24 +222,31 @@ Object.assign(MechEntity.prototype, {
       if (um && rm) rm();
     }
     // 焦黑：壞掉的區域還在的節點（合併改過之後也要重掛）
-    const burnt = [];
+    const burnt = [],
+      bx = [];
     D.forEach((R, i) => {
       if (!(S.mask & (1 << i))) return;
-      for (const n of R.nodes) {
+      for (const n of R.nodes || []) {
         const o = this.bodyNode(n);
         if (o && o.visible) burnt.push(o);
       }
+      if (R.parts) S.reg.forEach((q, k) => q === i && burnt.push(m.hb[k].node)); // 人形：那些區塊
+      if (S.boxes[i]) bx.push(S.boxes[i]);
     });
-    charParts(m, burnt);
+    charParts(m, burnt, bx);
     if (fx)
       local(fx, () => {
         for (const R of fresh) {
           const spots = [];
-          for (const n of R.cut && R.cut.length ? R.cut : [R.at, R.at2]) {
+          for (const n of R.cut || []) {
             const o = this.bodyNode(n);
             if (o) spots.push(o.getWorldPosition(new THREE.Vector3()));
           }
-          if (!spots.length) spots.push(c.clone());
+          if (!spots.length) {
+            const ri = D.indexOf(R);
+            spots.push(this.bodySpot(ri, 0, new THREE.Vector3()));
+            if (R.at2 || R.parts) spots.push(this.bodySpot(ri, 1, new THREE.Vector3()));
+          }
           for (const p of spots) {
             _bn.copy(p).sub(c);
             if (_bn.lengthSq() < 1e-4) _bn.set(0, 1, 0);
@@ -207,14 +274,12 @@ Object.assign(MechEntity.prototype, {
       m = this.model;
     if (!fx || !m.group.visible || this.fogHid) return;
     const D = this.bodyDefs();
-    const sm = Math.max(1, this.radius / (4 * fx.k)); // 依體型
+    const sm = Math.max(1, this.radius / (4 * fx.k), (m.hbR || 0) / (6 * fx.k)); // 依體型（很長、很寬的看外框的範圍）
     S.n++;
     local(fx, () => {
       D.forEach((R, i) => {
         if (!(S.mask & (1 << i))) return;
-        const o = this.bodyNode(S.n % 2 && R.at2 ? R.at2 : R.at || R.nodes[0]);
-        if (!o) return;
-        o.getWorldPosition(_bp);
+        this.bodySpot(i, S.n % 2 ? 1 + (S.n >> 1) : 0, _bp);
         if (fx.skip(_bp, 2)) return;
         // 明顯的黑煙＋火舌，偶爾竄火花
         fx.smoke(_bp, 2.6 * sm, 0x0e0f11, 2.2, 5);
