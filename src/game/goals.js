@@ -6,7 +6,7 @@ import { SEG_TYPES } from '../data/campaign.js';
 import { Game } from './game.js';
 
 const GOAL_DELAY = 2.6; // 開場橫幅退場之後才出現（自訂關卡的開場觸發器也已經設好目標文字）
-const GOAL_SHOW = 6; // 卡片顯示的秒數
+const GOAL_SHOW = 3; // 卡片顯示的秒數（2026-11-21 使用者回報 6 秒太久；之後左上的任務資訊一直顯示一行）
 
 const hasEv = (L, k) => L.triggers.some((t) => t.ev.k === k);
 const hasAct = (L, k) => L.triggers.some((t) => t.act.some((a) => a.k === k));
