@@ -239,12 +239,16 @@ export function pieceSurface(rig, i, src, outP, outN) {
 }
 
 // ---------- 沒有區塊的模型（載具、專屬敵人、Boss、機獸、Boss 的部位）：體素化的外框（2026-11-21）----------
-// 每個錨點（根、會動的節點＝網格合併的錨點）把自己的網格切成最多 GRID_N³ 格，有三角形經過的格子各一個外框
-// （縮到三角形實際佔的範圍、沿 x 相鄰又差不多大的併起來），所以外框貼著表面，不是整台一個大方塊。
+// 每個錨點（根、會動的節點＝網格合併的錨點）把自己的網格切成格子，表面經過的格子各一個外框
+// （縮到表面在那一格裡實際佔的範圍、沿 x 相鄰又差不多大的併起來），所以外框貼著表面，不是整台一個大方塊。
+// 格子的邊長：小的錨點＝最長邊的 1/GRID_N（不小於 CELL_MIN），大的（機身、船體）約 CELL_BIG、每個軸最多 GRID_MAX 格；
+// 大的三角形（比半格大）在面上取樣，斜的薄板（機翼、腳）不會把整個外接方塊都算進去。
 // rig.hb 的格式和人形機甲的相同（part＝−1），hitRay／nearestSurface 共用；rig.hbGen＝true、rig.hbR＝蓋住全部外框的半徑
 const GEN_CACHE = new Map();
 const GRID_N = 6,
-  CELL_MIN = 0.35, // 格子最小的邊長（公尺）
+  GRID_MAX = 14,
+  CELL_MIN = 0.6, // 格子最小的邊長（公尺）
+  CELL_BIG = 1.2, // 大的錨點的格子（公尺）
   TRI_MAX = 40000;
 const hitMesh = (c) => {
   const mt = c.material;
@@ -305,10 +309,12 @@ function anchorBoxes(node, aset) {
   });
   if (U.isEmpty()) return [];
   const sz = U.getSize(new THREE.Vector3());
-  const cell = Math.max(Math.max(sz.x, sz.y, sz.z) / GRID_N, CELL_MIN / scaleOf(node.matrixWorld.elements));
-  const nx = Math.min(GRID_N, Math.max(1, Math.ceil(sz.x / cell))),
-    ny = Math.min(GRID_N, Math.max(1, Math.ceil(sz.y / cell))),
-    nz = Math.min(GRID_N, Math.max(1, Math.ceil(sz.z / cell)));
+  const wsc = scaleOf(node.matrixWorld.elements),
+    big = Math.max(sz.x, sz.y, sz.z);
+  const cell = Math.max(CELL_MIN / wsc, Math.min(big / GRID_N, Math.max(CELL_BIG / wsc, big / GRID_MAX)));
+  const nx = Math.min(GRID_MAX, Math.max(1, Math.ceil(sz.x / cell))),
+    ny = Math.min(GRID_MAX, Math.max(1, Math.ceil(sz.y / cell))),
+    nz = Math.min(GRID_MAX, Math.max(1, Math.ceil(sz.z / cell)));
   const N = [nx, ny, nz],
     o0 = [U.min.x, U.min.y, U.min.z],
     cs = [sz.x / nx || 1, sz.y / ny || 1, sz.z / nz || 1];
@@ -346,20 +352,35 @@ function anchorBoxes(node, aset) {
     }
     const tris = (m.ix ? m.ix.length : m.n) / 3,
       step = Math.max(1, Math.ceil(tris / TRI_MAX));
+    const half = Math.min(cs[0], cs[1], cs[2]) * 0.5;
+    const A = m.a;
     for (let t = 0; t < tris; t += step) {
+      const ia = (m.ix ? m.ix[t * 3] : t * 3) * 3,
+        ib = (m.ix ? m.ix[t * 3 + 1] : t * 3 + 1) * 3,
+        ic = (m.ix ? m.ix[t * 3 + 2] : t * 3 + 2) * 3;
+      let edge = 0;
       for (let k = 0; k < 3; k++) {
-        lo[k] = Infinity;
-        hi[k] = -Infinity;
+        const a = A[ia + k],
+          b = A[ib + k],
+          c = A[ic + k];
+        lo[k] = Math.min(a, b, c);
+        hi[k] = Math.max(a, b, c);
+        edge = Math.max(edge, hi[k] - lo[k]);
       }
-      for (let j = 0; j < 3; j++) {
-        const vi = (m.ix ? m.ix[t * 3 + j] : t * 3 + j) * 3;
-        for (let k = 0; k < 3; k++) {
-          const q = m.a[vi + k];
-          if (q < lo[k]) lo[k] = q;
-          if (q > hi[k]) hi[k] = q;
+      const n = Math.min(24, Math.ceil(edge / half));
+      if (n <= 1) {
+        mark();
+        continue;
+      }
+      // 大的三角形：在面上取樣（間隔不超過半格），每個取樣點記到它所在的格子
+      for (let u = 0; u <= n; u++)
+        for (let w = 0; w <= n - u; w++) {
+          const fu = u / n,
+            fw = w / n;
+          for (let k = 0; k < 3; k++)
+            lo[k] = hi[k] = A[ia + k] + (A[ib + k] - A[ia + k]) * fu + (A[ic + k] - A[ia + k]) * fw;
+          mark();
         }
-      }
-      mark();
     }
   }
   // 沿 x 相鄰、y／z 的範圍差不多的併成一個

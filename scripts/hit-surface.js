@@ -2,7 +2,7 @@
 // 比較判定球（半徑 radius、球心 center()）和模型實際的外框（render/hit-parts.js 的 rig.hb）：
 // 外框數、外框離球心最遠的點、外框有多少比例（依體積）在判定球外面、外框體積佔判定球的比例。
 //   node scripts/hit-surface.js [--only=boss|foe|type]   要先 npm run build；報告 test-results/hit-surface.md
-/* global window, localStorage, THREE, performance -- page.evaluate 的回呼在瀏覽器端執行 */
+/* global window, localStorage, THREE -- page.evaluate 的回呼在瀏覽器端執行 */
 const path = require('path');
 const fs = require('fs');
 const { chromium } = require('playwright-core');
@@ -124,6 +124,33 @@ const ONLY = (args.find((a) => a.startsWith('--only=')) || '').slice(7);
               out: vol ? Math.round((outV / vol) * 100) : -1,
               fill: vol ? Math.round((vol / ((4 / 3) * Math.PI * R * R * R)) * 100) : -1,
               ms: +ms.toFixed(1),
+              ...(() => {
+                // 效能：300 條隨機的射線（打中判定球範圍）與 300 次找最近的表面，平均每次幾微秒
+                if (!hb) return { ray: 0, near: 0 };
+                const H = window.__HITP,
+                  o = new THREE.Vector3(),
+                  d = new THREE.Vector3(),
+                  P = new THREE.Vector3(),
+                  N = new THREE.Vector3();
+                let sd = 3;
+                const rr = () => ((sd = (sd * 16807) % 2147483647) / 2147483647) * 2 - 1;
+                const ext = Math.max(R, far);
+                const rays = [];
+                for (let i = 0; i < 300; i++) {
+                  d.set(rr(), rr() * 0.5, rr()).normalize();
+                  o.copy(c).addScaledVector(d, -ext * 2);
+                  o.x += rr() * ext * 0.4;
+                  o.y += rr() * ext * 0.4;
+                  rays.push([o.clone(), d.clone().multiplyScalar(ext * 4)]);
+                }
+                let t1 = performance.now();
+                for (const [a, b] of rays) H.hitRay(m, a, b, 0);
+                const ray = ((performance.now() - t1) / 300) * 1000;
+                t1 = performance.now();
+                for (const [a] of rays) H.nearestSurface(m, a, P, N);
+                const near = ((performance.now() - t1) / 300) * 1000;
+                return { ray: +ray.toFixed(1), near: +near.toFixed(1) };
+              })(),
             });
           }
           return out;
@@ -142,12 +169,12 @@ const ONLY = (args.find((a) => a.startsWith('--only=')) || '').slice(7);
   const md = [
     '# 命中外框的量測',
     '',
-    '| 類別 | 生成的 | 實體 | 部位 | 外框數 | 判定球半徑 | 外框最遠點 | 外框在球外 | 外框體積／球體積 | 生成 ms |',
-    '|---|---|---|---|---|---|---|---|---|---|',
+    '| 類別 | 生成的 | 實體 | 部位 | 外框數 | 判定球半徑 | 外框最遠點 | 外框在球外 | 外框體積／球體積 | 生成 ms | 射線檢查 µs | 找最近表面 µs |',
+    '|---|---|---|---|---|---|---|---|---|---|---|---|',
     ...rows.map((r) =>
       r.err
         ? `| ${r.cls} | ${r.name} | 錯誤：${r.err} | | | | | | | |`
-        : `| ${r.cls} | ${r.name} | ${r.ent} | ${r.part || ''} | ${r.n}${r.gen ? '' : '（區塊）'} | ${r.R} | ${r.far} | ${r.out}% | ${r.fill}% | ${r.ms} |`,
+        : `| ${r.cls} | ${r.name} | ${r.ent} | ${r.part || ''} | ${r.n}${r.gen ? '' : '（區塊）'} | ${r.R} | ${r.far} | ${r.out}% | ${r.fill}% | ${r.ms} | ${r.ray} | ${r.near} |`,
     ),
   ].join('\n');
   const out = path.join(__dirname, '..', 'test-results', 'hit-surface.md');
