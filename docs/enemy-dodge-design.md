@@ -95,3 +95,10 @@
 - `dgReady`：躲著（`noLock`）的不閃。
 - 修正：蓄力、雷射、近戰這種沒有子彈的威脅不套「來不及」的判斷（技巧低的敵人反應時間比預估的到達時間長，以前會一直判成來不及）。
 - 冒煙測試 `testAiDodge`：58 種逐一生成、強制閃避，檢查都有反應、6 種躲藏的切回躲藏。
+
+### 第 5 期（2026-11-21）：機獸 8 隻
+
+- 片段（`render/beast-anim.js`，八隻共用、只用身體的通用頻道）：`dgSideR`／`dgSideL` 側跳（約一個身長）、`dgBack` 後跳、`dgDuck` 伏低；接在各隻的片段清單後面（`data/beasts.js` 的 `BEAST_DODGE_CLIPS`，快照的 `bossVis` 低 5 位照索引播，客機不用另外同步動作）。
+- `dgClass0`：`ai` 'beast'＝`beast`（`DG_CLASS.beast`：側跳 6、後跳 3、伏低 2）；機率乘刁鑽度（`0.75＋0.07×刁鑽度`，Boss 共用）。
+- 行為（`mech-beast.js` 的 `beastMove`，`hitStunT` 歸零之後每格呼叫 `dgMove`，不用它回傳的移動）：沒有在出招、躍過、闖入、架砲時才找威脅（`dgReady`）；`dgBeastStart` 選片段（側跳往遠離軌跡的那一側、那一側或後面不安全就換）、前進速度歸零（不然後跳會被往前跑的速度抵掉）、無敵 `BEAST_IF`、彈道修正與導彈、殘影（`beastFx` 呼叫 `evBody`；`dgv` 事件帶片段的秒數）；片段播完才是破綻（`dg.beastEnd`）。
+- 冒煙測試 `testAiDodge`：八隻都播閃避的片段、閃避期間有位移（伏低除外）。

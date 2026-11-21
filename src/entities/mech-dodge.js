@@ -6,6 +6,7 @@ import { clamp, rnd } from '../core/math.js';
 import { DG, DG_ANIM, DG_CLASS, DG_FOE, DG_SPEC_POP } from '../data/dodge.js';
 import { PW } from '../data/charge.js';
 import { MechEntity } from './mech-entity.js';
+import { clipDur } from '../render/beast-anim.js';
 import { hexShieldHit, hexShieldMat } from '../render/hex-shield.js';
 
 const _r = new THREE.Vector3(),
@@ -38,6 +39,7 @@ Object.assign(MechEntity.prototype, {
   dgClass0() {
     const m = this.model,
       ai = this.ai || '';
+    if (this.ai === 'beast' && this.team === 'enemy' && m && m.beast) return 'beast'; // 機獸（第 5 期）
     if (this.team !== 'enemy' || this.isBoss || this.decoy || this.isProp || !m) return null;
     if (/^(part|objective|convoy|colossus|holo|holofake|sub)$/.test(ai)) return null;
     if (this.themeFoe) return DG_FOE[ai] || null; // 專屬敵人（第 4 期）
@@ -94,6 +96,11 @@ Object.assign(MechEntity.prototype, {
       s.open -= dt;
       if (s.open <= 0) s.read = false;
     }
+    // 機獸：片段播完才是破綻
+    if (s.beastEnd && this.t >= s.beastEnd) {
+      s.beastEnd = 0;
+      s.open = DG.OPEN;
+    }
     // 閃避中：照決定的方向移動
     if (s.act) {
       const A = s.act;
@@ -147,6 +154,7 @@ Object.assign(MechEntity.prototype, {
     const g = this.game;
     const C = DG_CLASS[this.dgClass()];
     let p = C.p * clamp(this.aiSkill || 1, 0.6, 1.4) * this.dgSetK() * (th.k || 1);
+    if (this.isBoss && this.bossTier) p *= 0.75 + 0.07 * (this.bossTier() || 1); // 刁鑽度越高越會閃
     const tgt = th.from && th.from.isPlayer !== undefined ? th.from : g.player;
     if (tgt && g.aiStress) p *= 1 - (1 - DG.STRESS_K) * g.aiStress(tgt);
     if (g.dgForce !== undefined) p = g.dgForce; // 自動化測試：直接指定機率
@@ -171,6 +179,10 @@ Object.assign(MechEntity.prototype, {
   // 可以閃嗎：察覺玩家（交戰中）、沒有在出招的準備、失衡、硬直、近戰、被處決
   dgReady() {
     if (!this.canAct() || this.melee.active || this.execBy != null || this.noLock) return false;
+    if (this.ai === 'beast') {
+      const a = this.aiState;
+      if (a.clip || a.leap || a.raid || (a.gun && a.gun.G && a.gun.G.hold)) return false; // 出招、躍過、闖入、架砲中不閃
+    }
     if (this.sn && this.sn.on && this.sn.st !== 2) return false;
     if (this.sn && this.sn.mv && this.sn.mv.ph === 'wind') return false;
     if (this.empLockT > 0) return false;
@@ -279,6 +291,7 @@ Object.assign(MechEntity.prototype, {
     if (melee && k === 'jump' && Math.random() < 0.5) k = 'back';
     if (k === 'guard') return this.dgGuardStart(th);
     if (k === 'spec') return this.dgSpecial(th);
+    if (this.dgClass() === 'beast') return this.dgBeastStart(k, th);
     // 側閃的方向：和威脅垂直、往遠離軌跡的那一側
     const f = th.dir;
     const side = _r.set(-f.z, 0, f.x);
@@ -371,7 +384,8 @@ Object.assign(MechEntity.prototype, {
   // 其他的由 evBody 轉整台；殘影與護盾也在 evBody（poseTail／remoteUpdate 每格，各端）
   evadeGo(k, f, s) {
     if (HUMAN_EV.has(k)) this.evQ = { k, f, s };
-    this.evK = { k, f, s, t: 0, gT: 0, T: DG.EV_T[k] || DG.GHOST_T };
+    // 機獸：s＝片段的秒數（片段本身照 bossVis 的索引播，這裡只有殘影）
+    this.evK = { k, f, s, t: 0, gT: 0, T: k === 'beast' ? s : DG.EV_T[k] || DG.GHOST_T };
   },
   evadeTake() {
     const q = this.evQ;
@@ -604,6 +618,60 @@ Object.assign(MechEntity.prototype, {
     if (th.from && th.from.pilotEnt && th.from.pilotEnt() && this.t - st.popT > DG.POP_GAP) {
       st.popT = this.t;
       g.popDamage(c.setY(c.y + 3 * this.dk), DG_SPEC_POP[this.ai] || '閃避', false, false, false, 0, this.id);
+    }
+  },
+  // 機獸（第 5 期）：播純閃避的片段（片段的根部位移就是閃開的距離，mech-beast.js 的 fwdStep／sideStep）
+  dgBeastStart(k, th) {
+    const g = this.game,
+      s = this.dg;
+    const B = this.beastInfo();
+    const sc = (this.model.beast && this.model.beast.group.scale.x) || 1;
+    let clip = k === 'back' ? 'dgBack' : k === 'duck' ? 'dgDuck' : null;
+    // 後跳：後面被擋住、是虛空或作戰區域外就改側跳
+    if (clip === 'dgBack') {
+      const y = this.yaw || 0;
+      if (!this.dgSafe(new THREE.Vector3(Math.sin(y), 0, Math.cos(y)), 10 * sc)) clip = null;
+    }
+    if (!clip) {
+      // 側跳：往遠離軌跡的那一側（機獸的右＝+x 的那一側），那一側不安全就換邊
+      const f = th.dir;
+      const y = this.yaw || 0;
+      const rx = Math.cos(y),
+        rz = -Math.sin(y);
+      let sg = Math.random() < 0.5 ? 1 : -1;
+      if (th.p) {
+        const off = (this.pos.x - th.p.pos.x) * -f.z + (this.pos.z - th.p.pos.z) * f.x;
+        const side = -f.z * rx + f.x * rz;
+        if (Math.abs(off) > 0.3 * this.dk) sg = Math.sign(off * side) || sg;
+      }
+      const D = 11 * sc;
+      if (!this.dgSafe(new THREE.Vector3(rx * sg, 0, rz * sg), D)) sg = -sg;
+      clip = sg > 0 ? 'dgSideR' : 'dgSideL';
+    }
+    if (!B || B.clips.indexOf(clip) < 0) return;
+    this.beastClip(clip);
+    this.aiState.spd = 0; // 原本往前跑的速度不帶進閃避（後跳會被抵掉）
+    s.beastEnd = this.t + clipDur(clip);
+    s.cd = rnd(...DG_CLASS.beast.cd);
+    this.iFrames = Math.max(this.iFrames, DG.BEAST_IF);
+    for (const q of g.projectiles)
+      if (!q.dead && q.target === this) {
+        if (q.kind === 'missile') {
+          if (q.pos.distanceTo(this.center()) / Math.max(1, q.vel.length()) < DG.MSL_LAST + 0.3) {
+            q.target = null;
+            q.dodged = true;
+          }
+        } else if (q.bend) q.bend = 0;
+      }
+    if (th.p) th.p.dgDodged = this;
+    this.evK = { k: 'beast', t: 0, gT: 0, T: clipDur(clip) }; // 殘影（evBody）
+    if (g.net && g.net.role === 'host') g.netEv({ t: 'dgv', i: this.id, k: 'beast', f: 0, s: clipDur(clip) });
+    this.dgN = (this.dgN || 0) + 1; // 測試用
+    this.dgLast = th;
+    if (th.from && th.from.pilotEnt && th.from.pilotEnt() && this.t - s.popT > DG.POP_GAP) {
+      s.popT = this.t;
+      const c = this.center();
+      g.popDamage(c.setY(c.y + 4 * this.dk), '閃避', false, false, false, 0, this.id);
     }
   },
   // 往 d 方向閃 dist 遠安全嗎：作戰區域內、不是虛空、沒被障礙物擋住

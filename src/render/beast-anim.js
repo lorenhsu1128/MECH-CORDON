@@ -1704,6 +1704,28 @@ const mirrorClip = (clip) =>
 BEAST_CLIPS.clawR = mirrorClip(BEAST_CLIPS.clawL);
 BEAST_CLIPS.hitR = mirrorClip(BEAST_CLIPS.hitL);
 BEAST_CLIPS.tDodgeL = mirrorClip(BEAST_CLIPS.tDodgeR);
+// 敵人的閃避（docs/enemy-dodge-design.md 第 5 期）：八隻共用、只用身體的通用頻道（身體高度、俯仰、側傾、根部的位移）
+// 側跳（往右約一個身長）、後跳、伏低（壓低身體讓子彈從上面過去）
+BEAST_CLIPS.dgSideR = [
+  { t: 0.08, by: -0.6, roll: 0.1 },
+  { t: 0.2, by: 0.5, rs: 3.5, roll: -0.22 },
+  { t: 0.36, by: 0.25, rs: 9, roll: -0.12 },
+  { t: 0.48, by: -0.6, rs: 11, roll: 0.1 },
+  { t: 0.72, by: 0, rs: 11, roll: 0 },
+];
+BEAST_CLIPS.dgSideL = mirrorClip(BEAST_CLIPS.dgSideR);
+BEAST_CLIPS.dgBack = [
+  { t: 0.08, by: -0.6, pitch: 0.1 },
+  { t: 0.22, by: 0.6, rf: -3.5, pitch: -0.22 },
+  { t: 0.4, by: 0.2, rf: -9, pitch: -0.08 },
+  { t: 0.52, by: -0.6, rf: -10, pitch: 0.08 },
+  { t: 0.78, by: 0, rf: -10, pitch: 0 },
+];
+BEAST_CLIPS.dgDuck = [
+  { t: 0.1, by: -1.3, pitch: 0.12 },
+  { t: 0.6, by: -1.3, pitch: 0.1 },
+  { t: 0.85, by: 0, pitch: 0 },
+];
 BEAST_CLIPS.tDodgeClawL = mirrorClip(BEAST_CLIPS.tDodgeClawR);
 BEAST_CLIPS.tSpinR = mirrorClip(BEAST_CLIPS.tSpinL);
 BEAST_CLIPS.gSweepR = mirrorClip(BEAST_CLIPS.gSweepL);

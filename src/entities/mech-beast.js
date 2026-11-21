@@ -17,6 +17,8 @@ const PARRY_FLINCH = 0.9, // 被彈刀：踉蹌的秒數
   PARRY_OPEN = 1.8; // 之後破綻的秒數
 const LIVE_WARN = 0.32; // live 的近戰招式：出手前幾秒畫地面的預警
 
+const _dgZ = new THREE.Vector3(); // 閃避的 dgMove 不用的移動
+
 Object.assign(MechEntity.prototype, {
   beastInfo() {
     return this.beastDef || (this.beastDef = beastDefOf(this.opts.bossKind));
@@ -628,6 +630,7 @@ Object.assign(MechEntity.prototype, {
       fwdStep = 0,
       sideStep = 0;
     if (this.hitStunT > 0) this.hitStunT = 0; // 機獸不吃一般的硬直（不經過 move()，不會倒數）
+    if (this.dgOn()) this.dgMove(dt, _dgZ, false, false); // 敵人的閃避：側跳、後跳、伏低（mech-dodge.js）
     if (s.flinch > 0) s.flinch -= dt;
     if (!this.canAct() || s.flinch > 0) {
       // 失衡、被彈刀：站不穩（片段播完停在最後的姿勢）
@@ -835,6 +838,7 @@ Object.assign(MechEntity.prototype, {
   beastFx(dt) {
     const rig = this.model && this.model.beast;
     if (!rig || !(dt > 0)) return;
+    if (this.evK) this.evBody(dt); // 閃避的殘影（mech-dodge.js；各端）
     const B = this.beastInfo();
     const F =
       this.bf || (this.bf = { x: this.pos.x, z: this.pos.z, yaw: this.yaw, v: 0, w: 0, ci: 0, ct: 0, t: 0 });

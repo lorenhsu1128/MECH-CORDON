@@ -14909,6 +14909,49 @@ async function testAiDodge(browser, base) {
       g.enemies = g.enemies.filter((e) => !e.dead);
     }
     out.foes = foes;
+    // 3e) 第 5 期：八隻機獸（蓄力的威脅、一定閃）：播純閃避的片段、有位移
+    const bst = { n: 0, ok: 0, bad: [], clips: {} };
+    for (const key of g.beastKeys()) {
+      const D = g.beastDefBy(key);
+      const b = g.beastSpawn(key, 1, D.tier);
+      b.pos.set(x0, W.groundAt(x0, z0, 999), z0);
+      b.vel.set(0, 0, 0);
+      const S = b.aiState;
+      S.bCd = 99;
+      S.go = 0;
+      pl.pos.set(b.pos.x + 60 * SC, b.pos.y, b.pos.z);
+      step([b], 0.3);
+      S.bCd = 99;
+      S.go = 0;
+      S.clip = null;
+      b.dg.cd = 0;
+      b.dg.roll = 0;
+      pl.lock = b;
+      pl.weapons.rarm.pwCh = 10;
+      const p0 = b.pos.clone();
+      let clip = null,
+        mx = 0,
+        other = '';
+      step([b], 1.0, () => {
+        if (S.clip && /^dg/.test(S.clip)) {
+          clip = S.clip;
+          mx = Math.max(mx, b.pos.distanceTo(p0));
+        } else if (S.clip && clip) other = S.clip;
+        return false;
+      });
+      pl.weapons.rarm.pwCh = 0;
+      bst.n++;
+      const mv = +(mx / SC).toFixed(1);
+      if (other) bst.clips[key + '後'] = other;
+      if ((b.dgN || 0) > 0 && clip && (mv > 3 || clip === 'dgDuck')) bst.ok++;
+      else bst.bad.push(key + ':' + (b.dgN || 0) + '/' + clip + '/' + mv);
+      bst.clips[key] = clip;
+      b.takeDamage(1e9, 0, null, b.center());
+      g.enemies = g.enemies.filter((e) => !e.dead);
+      for (const e of g.enemies) e.takeDamage(1e9, 0, null, e.center()); // 部位
+      g.enemies = g.enemies.filter((e) => !e.dead);
+    }
+    out.beast = bst;
     // 4) 設定關閉：不閃
     g.dgForce = undefined;
     g.ctrl.dodge = 'off';
@@ -14978,6 +15021,12 @@ async function testAiDodge(browser, base) {
     `有自己的躲藏的切回躲藏：${Object.entries(FO.spec)
       .map(([k, v]) => k + (v ? '✓' : '✗'))
       .join('、')}`,
+  );
+  check(
+    r.beast.n === 8 && r.beast.ok === 8,
+    `機獸：${r.beast.ok}／${r.beast.n} 隻播閃避的片段並閃開（${Object.entries(r.beast.clips)
+      .map(([k, v]) => k + ' ' + v)
+      .join('、')}）${r.beast.bad.length ? '；沒有：' + r.beast.bad.join('、') : ''}`,
   );
   check(r.off === 0, '設定「敵人的閃避」關閉時不閃');
   check(r.std > 0 && r.std < 24, `標準：24 發裡閃了 ${r.std} 次（會閃、但不是每發都閃）`);

@@ -1116,3 +1116,6 @@ export const BEAST_TIPS = {
   bear: ['它靠近會站起來；拍地時跳，熊抱撲空再打。', '熔岩塊落地會燒，榴彈砲看落點圈躲。'],
   lion: ['機獸打到一半時，可能會有別的東西衝進來。', 'REGENT 三種屬性都會用；磁軌砲的預警線一出現就橫移。'],
 };
+// 敵人的閃避（docs/enemy-dodge-design.md 第 5 期）：八隻共用的純閃避片段，接在各自的清單後面（客機照索引播）
+export const BEAST_DODGE_CLIPS = ['dgSideL', 'dgSideR', 'dgBack', 'dgDuck'];
+for (const b of BEAST_DEFS) b.clips.push(...BEAST_DODGE_CLIPS);

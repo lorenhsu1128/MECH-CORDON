@@ -26,6 +26,7 @@ export const DG = {
   EV_T: { drift: 0.55, bank: 0.6, broll: 0.45, guard: 1.4, hop: 0.45 }, // 整台的動作（evBody）的秒數
   HOP_H: 2.2, // 步行的專屬敵人側跳的高度（舊尺度的公尺，×dk；只有外觀）
   BLINK_D: 14, // 瞬移的距離（舊尺度的公尺）
+  BEAST_IF: 0.35, // 機獸閃避的無敵
   HOV_D: 5, // 升降閃避：目標高度改變（舊尺度的公尺，×dk）
   HOV_T: 0.6, // 升降閃避的秒數
   GUARD_T: 1.4, // 防禦：護盾架起的秒數
@@ -77,6 +78,8 @@ export const DG_CLASS = {
   ffly: { p: 0.5, cd: [1.4, 2.6], qb: 0.12, msl: 'flare', kinds: { side: 5, rise: 2, dive: 2 } }, // 飛的：傾斜、橫滾、熱焰彈
   fguard: { p: 0.45, cd: [2.5, 4], kinds: { guard: 1 } }, // 固定的、重裝的：架起護盾
   fspec: { p: 0.6, cd: [3, 5], kinds: { spec: 1 } }, // 有自己的躲藏的：潛航、鑽地、埋雪、潛入熔岩、收回甲板、瞬移
+  // 第 5 期：機獸（片段：dgSideL／R、dgBack、dgDuck）；機率另外依刁鑽度
+  beast: { p: 0.4, cd: [2.4, 4], kinds: { side: 6, back: 3, duck: 2 } },
 };
 
 // 專屬敵人（themeFoe）依 ai 的種類；人形（buildMech）的專屬敵人用一般的 mt
