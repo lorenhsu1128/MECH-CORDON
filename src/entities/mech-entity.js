@@ -82,7 +82,7 @@ import { applyPilotStats, pilotWeaponDef } from '../data/pilot.js';
 import { MeleeAnim } from '../render/melee-anim.js';
 import { animateMech, buildMech } from '../render/mech-model.js';
 import { rigMuzzle } from '../render/muzzle.js';
-import { PACE, paceDef, pk, pv, strictHit } from '../data/pace.js';
+import { PACE, PART_BIAS, paceDef, pk, pv, strictFor } from '../data/pace.js';
 import { applyIK, ikMeasure, ikOn, ikRestore } from '../render/mech-ik.js';
 import { hrBodyRestore } from '../render/hit-react-pose.js';
 import { dmgOn } from '../render/foe-damage.js';
@@ -579,7 +579,14 @@ export class MechEntity {
     this.oob = ex;
   }
   center() {
-    return new THREE.Vector3(this.pos.x, this.pos.y + this.model.height * 0.5, this.pos.z);
+    const m = this.model;
+    // 中心是空的模型（多足要塞、起重要塞…）：改用外框上靠近重心的點（render/hit-parts.js 的 rig.hbC，模型座標），
+    // 瞄準、爆炸、特效才會落在機體上
+    if (m.hbC) {
+      const G = m.group;
+      return new THREE.Vector3().copy(m.hbC).multiply(G.scale).applyEuler(G.rotation).add(this.pos);
+    }
+    return new THREE.Vector3(this.pos.x, this.pos.y + m.height * 0.5, this.pos.z);
   }
   // 槍口（render/muzzle.js：buildMech 量模型掛的節點；2026-11-18 以前一律是手腕／肩上武器座）。
   // part：'rear' 尾端（火箭筒的後焰、莢艙的煙）、'mid' 機匣（彈殼）。沒有節點的（步行機、載具、Boss 的模型）照舊用手與武器座
@@ -1124,8 +1131,21 @@ export class MechEntity {
             const proj = ap.dot(bdir);
             if (proj < 0 || proj > stop) continue;
             const perp = ap.clone().sub(bdir.clone().multiplyScalar(proj)).length();
-            if (perp < t.radius + 0.8) {
-              const pt = muzzle.clone().addScaledVector(bdir, proj);
+            let pr = proj,
+              ok = perp < t.radius + 0.8;
+            if (strictFor(t)) {
+              // 打不打得中只看外框（光束加寬 0.5 m）
+              ok = false;
+              if (perp < Math.max(t.radius, t.model.hbR || 0) + 0.8) {
+                const h = hitRay(t.model, muzzle, bdir.clone().multiplyScalar(stop), 0.5);
+                if (h) {
+                  ok = true;
+                  pr = h.t * stop;
+                }
+              }
+            }
+            if (ok) {
+              const pt = muzzle.clone().addScaledVector(bdir, pr);
               if (t.isProp) g.damageProp(t, dmg * dtb, imp * dtb, pt, this, undefined, d.id);
               else {
                 t.empTickT = (t.empTickT || 0) + dtb;
@@ -1178,7 +1198,6 @@ export class MechEntity {
             stop *= pf[1];
             hits.push({ t: pf[0], proj: stop });
           }
-          const strict = strictHit(); // 部位判定的「擦過不算」（調整室的開關）
           const lpad = 0.3 + (charged ? 0.6 : 0);
           for (const t of targets) {
             if (t.dead || t.shape) continue;
@@ -1188,7 +1207,8 @@ export class MechEntity {
             if (proj < 0 || proj > stop) continue;
             const perp = ap.clone().sub(bdir.clone().multiplyScalar(proj)).length();
             const hb = t.model && t.model.hb;
-            const rc = strict && hb ? Math.max(t.radius, t.model.hbR || t.model.height * 0.62) : t.radius;
+            const strict = strictFor(t); // 打不打得中只看外框
+            const rc = strict ? Math.max(t.radius, t.model.hbR || t.model.height * 0.62) : t.radius;
             if (perp >= rc + 0.6 + (charged ? 0.6 : 0)) continue;
             if (hb) {
               // 人形機甲：打中哪一塊、表面的位置（render/hit-parts.js）；擦過不算時沒碰到外框就穿過去
@@ -1201,7 +1221,8 @@ export class MechEntity {
             }
             hits.push({ t, proj });
           }
-          hits.sort((a, b) => a.proj - b.proj);
+          const hk = (h) => h.proj - (h.t.ai === 'part' ? PART_BIAS : 0); // 掛在 Boss 身上的部位優先
+          hits.sort((a, b) => hk(a) - hk(b));
           let n = 0;
           for (const h of hits) {
             const pt = muzzle.clone().addScaledVector(bdir, h.proj);
@@ -2375,6 +2396,7 @@ export class MechEntity {
     const sd = this.specialDefense(dmg, impact, from, at, melee, wid);
     if (!sd) return;
     [dmg, impact] = sd;
+    if (this.isBoss && this.bodyDmg) dmg = this.bodyDmg(dmg, at, dir, from); // 身體部位破壞（mech-body.js）
     const W = weaponById(wid);
     // 傳說模組：殘影、反應裝甲、堡壘（mech-legend.js）
     if (this.pm) {
@@ -2466,7 +2488,8 @@ export class MechEntity {
     this.hitPart = undefined;
     if (hpi === undefined && this.model && this.model.hb && !this.model.hbGen)
       hpi = nearestPiece(this.model, at || this.center());
-    if (hpi >= 0) partFlash(this.model, hpi); // 被打中的部位閃紅
+    // 被打中的部位閃紅：敵人與 Boss 不閃（2026-11-21 使用者定案），只有我方的機體
+    if (hpi >= 0 && this.team !== 'enemy') partFlash(this.model, hpi);
     if (attr !== 'none' && (at || from)) this.hitSparks(at, hpi, from, dir); // 命中點的火花與碎片（取代整台閃白）
     // 依武器的受擊反應（mech-hit-react.js）：有的時候通用的推一下減半
     const hrk = melee ? null : this.hrFromHit(W, attr, at, dir, from);

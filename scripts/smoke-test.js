@@ -1340,6 +1340,41 @@ async function testBeast(browser, key) {
         .flat()
         .every((n) => b.model.beast.nodes[n].visible),
     };
+    // 身體部位破壞（mech-body.js、data/boss-body.js）：打在那個區域的外框上累積到門檻 → 壞掉、拆掉的節點藏起來、
+    // 之後那一塊是弱點；快照帶遮罩
+    out.body = [];
+    const BD = b.bodyDefs && b.bodyDefs();
+    if (BD) {
+      const S = b.bodyState();
+      BD.forEach((R, i) => {
+        const hi = Array.from(S.reg).indexOf(i);
+        const hit = (d) => {
+          b.iFrames = 0;
+          b.staggerT = 0;
+          b.hp = b.maxHp;
+          b.hitPart = hi;
+          b.takeDamage(d, 0, p, b.center(), new V(0, 0, 1));
+          return b.maxHp - b.hp;
+        };
+        const before = !!(S.mask & (1 << i));
+        const d1 = hit(1000);
+        for (let n = 0; n < 60 && !(S.mask & (1 << i)); n++) hit(b.maxHp * 0.02);
+        const d2 = hit(1000);
+        out.body.push({
+          id: R.id,
+          boxes: hi >= 0,
+          before,
+          broke: !!(S.mask & (1 << i)),
+          flag: b.bodyFlag(R.id),
+          weak: d1 > 0 ? d2 / d1 : 0,
+          cut: (R.cut || []).every((n) => b.bodyNode(n) && !b.bodyNode(n).visible),
+        });
+      });
+      b.staggerT = 0;
+      b.hp = b.maxHp * 0.6;
+      out.bodyMask = S.mask;
+      out.bodyAll = (1 << BD.length) - 1;
+    }
     // 彈刀：紅色「!」之後按了近戰＝這一下不受傷；一般的招式被彈開會踉蹌、露出破綻，整隻撞過來的不會停
     out.parry = [];
     for (const k in B.melee) {
@@ -1505,6 +1540,13 @@ async function testBeast(browser, key) {
     r.fix.ph === 2 && r.fix.flags === 0 && r.fix.parts === r.spawn.want && r.fix.vis,
     `進第二型態：修復被打壞的武器（部位 ${r.fix.parts} 個）`,
   );
+  for (const q of r.body || [])
+    check(
+      q.boxes && !q.before && q.broke && q.flag && q.cut && Math.abs(q.weak - 1.25) < 0.08,
+      `身體區域「${q.id}」：打到門檻就壞、拆掉的節點藏起來、之後是弱點（×${q.weak.toFixed(2)}）`,
+    );
+  if (r.body && r.body.length)
+    check(r.bodyMask === r.bodyAll, `身體區域全部打壞（${r.body.length} 個，不修復）`);
   check(
     r.balls.n >= 4 && r.balls.dHead > r.balls.radius * 0.6 && !r.balls.bad && !r.nan,
     `命中的形狀：${r.balls.n} 顆球（頭離中心 ${r.balls.dHead.toFixed(1)} m、碰撞半徑 ${r.balls.radius.toFixed(1)} m），數值都有效`,
@@ -2661,6 +2703,9 @@ async function testStyleLab(browser) {
       const e = g.spawnType(k, 1, 1);
       e.pos.set(dx * SC, e.flying ? e.hoverH : 0, (30 + dz) * SC);
       e.yaw = e.aimYaw = Math.atan2(dx, -dz);
+      // 模型跟著搬（命中只看模型的外框；updateAI 被換掉的目標不會自己同步）
+      e.model.group.position.copy(e.pos);
+      e.model.group.rotation.y = e.yaw;
       mine.push(e);
       return e;
     };
@@ -2777,7 +2822,8 @@ async function testStyleLab(browser) {
     };
     const d0 = gen.domeHp;
     r.domeOut = [shoot(12), d0 - gen.domeHp];
-    pl.pos.set(gen.pos.x + 2 * SC, 0, gen.pos.z + 5 * SC);
+    // 站在目標的外側（護盾裡）：命中只看模型的外框之後，產生器本身的機體（天線、支架）會擋住從另一側打過來的子彈
+    pl.pos.set(gen.pos.x + 4.6 * SC, 0, gen.pos.z + 3.1 * SC);
     r.domeIn = shoot(8);
     // 運輸機：投放 3 台後飛走
     reset();

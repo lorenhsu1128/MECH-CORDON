@@ -140,10 +140,28 @@ const scaleOf = (e) => Math.sqrt(e[0] * e[0] + e[1] * e[1] + e[2] * e[2]) || 1;
 
 // 線段 a → a＋v（世界座標）打到的第一個區塊：{ i（區塊）, part, t（0～1）, n（世界座標的表面法線） }，沒有＝null。
 // pad＝外框往外擴（公尺）
+// 外框跟著節點的 matrixWorld，而它只在算繪時更新：不算繪的時候（房主的分頁在背景、測試直接逐格推進 AI）
+// 外框會停在舊位置、子彈全部打不中。所以檢查前自己更新這一台的矩陣——每一格（hbFrame，Game.loop 每格呼叫）
+// 每台最多一次，模型被搬動或轉向時也重算
+let HB_N = 0;
+export const hbFrame = () => {
+  HB_N++;
+};
+function fresh(rig) {
+  const g = rig.group,
+    p = g.position,
+    r = g.rotation;
+  const k = p.x + p.y * 1.7 + p.z * 2.3 + r.x * 3.1 + r.y * 4.3 + r.z * 5.9;
+  if (rig.hbF === HB_N && rig.hbK === k) return;
+  rig.hbF = HB_N;
+  rig.hbK = k;
+  g.updateMatrixWorld(true);
+}
 const _hit = { i: -1, part: 0, t: 0, n: new THREE.Vector3() };
 export function hitRay(rig, a, v, pad = 0) {
   const L = rig && rig.hb;
   if (!L) return null;
+  fresh(rig);
   const root = rig.group;
   let best = -1,
     bt = Infinity,
@@ -229,6 +247,7 @@ const _ps = new THREE.Vector3();
 export function pieceSurface(rig, i, src, outP, outN) {
   const h = rig && rig.hb && rig.hb[i];
   if (!h || !h.ok) return false;
+  fresh(rig);
   _m.copy(h.node.matrixWorld).invert();
   _ps.copy(src).applyMatrix4(_m).clamp(h.min, h.max);
   outP.copy(_ps).applyMatrix4(h.node.matrixWorld);
@@ -443,6 +462,40 @@ export function measureBodyBoxes(rig, moving) {
   rig.hb = hb;
   rig.hbGen = true;
   rig.hbR = Math.sqrt(r2);
+  // 實體的中心（原點＋身高的一半）離機體很遠（中心是空的：多足要塞的腳之間、起重要塞的門架中間）：
+  // 改用最靠近「外框的體積重心」的那個外框的中心（rig.hbC，模型座標；MechEntity.center() 用）
+  const c0 = new THREE.Vector3().copy(_a);
+  const P = new THREE.Vector3(),
+    N = new THREE.Vector3();
+  if (nearestSurface(rig, c0, P, N) >= 0 && P.distanceTo(c0) > Math.max(1, rig.hbR * 0.08)) {
+    const cg = new THREE.Vector3();
+    let vol = 0;
+    for (const h of hb) {
+      const sc = scaleOf(h.node.matrixWorld.elements);
+      const w =
+        Math.max(1e-4, (h.max.x - h.min.x) * (h.max.y - h.min.y) * (h.max.z - h.min.z)) * sc * sc * sc;
+      cg.addScaledVector(_v.copy(h.min).add(h.max).multiplyScalar(0.5).applyMatrix4(h.node.matrixWorld), w);
+      vol += w;
+    }
+    cg.multiplyScalar(1 / vol);
+    const i = nearestSurface(rig, cg, P, N);
+    if (i >= 0) {
+      const h = hb[i];
+      const cw = new THREE.Vector3()
+        .copy(h.min)
+        .add(h.max)
+        .multiplyScalar(0.5)
+        .applyMatrix4(h.node.matrixWorld);
+      rig.hbC = cw.clone().applyMatrix4(new THREE.Matrix4().copy(root.matrixWorld).invert());
+      r2 = 0;
+      for (const b of hb)
+        for (let k = 0; k < 8; k++) {
+          _v.set(k & 1 ? b.max.x : b.min.x, k & 2 ? b.max.y : b.min.y, k & 4 ? b.max.z : b.min.z);
+          r2 = Math.max(r2, _v.applyMatrix4(b.node.matrixWorld).distanceToSquared(cw));
+        }
+      rig.hbR = Math.sqrt(r2);
+    }
+  }
 }
 
 // 外框表面上離 src 最近的點 outP 與朝 src 的方向 outN（全部的外框裡找）：回傳外框的索引，沒有＝−1。
@@ -450,6 +503,7 @@ export function measureBodyBoxes(rig, moving) {
 export function nearestSurface(rig, src, outP, outN) {
   const L = rig && rig.hb;
   if (!L) return -1;
+  fresh(rig);
   let best = -1,
     bd = Infinity,
     ln = null,
@@ -482,6 +536,7 @@ export function nearestSurface(rig, src, outP, outN) {
 export function nearestPiece(rig, p) {
   const L = rig && rig.hb;
   if (!L) return -1;
+  fresh(rig);
   let best = -1,
     bd = Infinity;
   for (let i = 0; i < L.length; i++) {
@@ -507,6 +562,7 @@ const REP = {
 export function partPoint(rig, part, out) {
   const L = rig && rig.hb;
   if (!L) return false;
+  fresh(rig);
   const c = rig.hbRep || (rig.hbRep = {});
   let i = c[part];
   if (i === undefined) {

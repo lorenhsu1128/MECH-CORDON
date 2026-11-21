@@ -67,6 +67,7 @@ function serSpecial(e) {
     const t = e.serTier();
     if (t) o.bt = t;
   }
+  if (e.body && e.body.mask) o.bd = e.body.mask; // 身體部位破壞（mech-body.js）
   if (e.bk && e.game) o.bk = Math.round(e.bkFrac(e.game.tierFightTier()) * 100);
   return o;
 }
@@ -138,6 +139,7 @@ export function applyEnt(e, s, g) {
   e.aw = s.aw || 0;
   e.afs = s.af || 0;
   e.btC = s.bt || null;
+  if ((s.bd || e.body) && e.bodySet) e.bodySet(s.bd || 0);
   e.bkC = (s.bk || 0) / 100;
   if (s.su || e.sts) e.statusApply(s.su);
   if (sx[2] & 4) e.empLockT = Math.max(e.empLockT || 0, 0.25); // 客機自己的機體：移動預測也封鎖 QB 與懸浮

@@ -1,4 +1,4 @@
-import { pv, strictHit } from '../data/pace.js';
+import { PART_BIAS, pv, strictFor } from '../data/pace.js';
 import { KIN_FALL_MIN, weaponAttr } from '../data/attrs.js';
 import { weaponById } from '../data/parts.js';
 // ============================================================
@@ -194,33 +194,35 @@ export class Projectile {
     const pad = 0.4 + (this.hitR || 0); // hitR：玩家實彈加大的判定（對物件不加：物件用命中形狀，world/prop-hit.js）
     const eK = this.team === 'enemy' ? pv('eSize') : 1; // 節奏調整室的敵人子彈大小（data/pace.js）
     // 部位判定的「擦過不算」（調整室的開關）：人形機甲只看各區塊的外框；玩家的子彈外擴 0.5 m＋hitR、其他 0.25 m
-    const strict = strictHit();
-    const fpad = strict
-      ? this.owner && this.owner.pilotEnt && this.owner.pilotEnt()
-        ? 0.5 + (this.hitR || 0)
-        : 0.25 * eK
-      : 0;
+    // 打不打得中只看模型的外框（strictFor）：玩家的子彈外擴 0.5 m＋hitR、其他 0.25 m
+    const fpad =
+      this.owner && this.owner.pilotEnt && this.owner.pilotEnt() ? 0.5 + (this.hitR || 0) : 0.25 * eK;
+    const segL = seg.length() || 1;
+    let bestK = 2; // 比較先後用的（部位往前算 PART_BIAS）
     for (let li = 0; li < 2; li++) {
       const L = li ? ds : hs;
       for (let i = 0; i < L.length; i++) {
         const t = L[i];
         if (t.dead || t.id === this.pierced) continue; // 貫穿彈已經打過的（mech-legend.js）
-        if (strict && !li && t.model && t.model.hb) {
-          // 外接球放大到蓋住整台（頭頂、腳掌）只當粗判定，再對區塊的外框
+        const bias = t.ai === 'part' ? PART_BIAS / segL : 0;
+        if (!li && strictFor(t)) {
+          // 外接球放大到蓋住整台（頭頂、腳掌、尾巴）只當粗判定，再對外框
           const rc = Math.max(t.radius, t.model.hbR || t.model.height * 0.62);
           if (targetSegT(t, prev, seg, rc - t.radius + fpad) < 0) continue;
           const h = hitRay(t.model, prev, seg, fpad);
-          if (!h || h.t >= bestT) continue;
+          if (!h || h.t - bias >= bestK) continue;
           best = t;
           bestT = h.t;
+          bestK = h.t - bias;
           bestP = h.i;
           _pjN.copy(h.n);
           continue;
         }
         const tt = targetSegT(t, prev, seg, eK === 1 || li ? pad : (t.radius + pad) * eK - t.radius);
-        if (tt >= 0 && tt < bestT) {
+        if (tt >= 0 && tt - bias < bestK) {
           best = t;
           bestT = tt;
+          bestK = tt - bias;
           bestP = -1;
         }
       }
