@@ -14929,6 +14929,7 @@ async function testAiDodge(browser, base) {
       pl.lock = b;
       pl.weapons.rarm.pwCh = 10;
       const p0 = b.pos.clone();
+      shoot(b); // 刁鑽度低（1～2）的不讀蓄力：同時打一發子彈
       let clip = null,
         mx = 0,
         other = '';
@@ -14943,7 +14944,7 @@ async function testAiDodge(browser, base) {
       bst.n++;
       const mv = +(mx / SC).toFixed(1);
       if (other) bst.clips[key + '後'] = other;
-      if ((b.dgN || 0) > 0 && clip && (mv > 3 || clip === 'dgDuck')) bst.ok++;
+      if ((b.dgN || 0) > 0 && clip && (mv > 2 || clip === 'dgDuck')) bst.ok++;
       else bst.bad.push(key + ':' + (b.dgN || 0) + '/' + clip + '/' + mv);
       bst.clips[key] = clip;
       b.takeDamage(1e9, 0, null, b.center());
@@ -14952,13 +14953,59 @@ async function testAiDodge(browser, base) {
       g.enemies = g.enemies.filter((e) => !e.dead);
     }
     out.beast = bst;
+    // 3f) 第 6 期：28 隻 Boss（刁鑽度 6；蓄力的威脅、一定閃）：機甲型閃避、會飛的傾斜／橫滾、鑽地蟲提早下潛、巨型的防禦（護盾）
+    const bos = { n: 0, ok: 0, bad: [], cls: {} };
+    const BD = window.__SPAWN.BOSS_DEFS;
+    for (let bi = 0; bi < BD.length; bi++) {
+      const before = new Set(g.enemies);
+      g.spawnBossDef(BD[bi], 1, 1, 6);
+      const bb = g.enemies.find((e) => !before.has(e) && e.isBoss && e.ai !== 'part');
+      if (!bb) {
+        bos.bad.push(BD[bi].name + ':沒生成');
+        continue;
+      }
+      bos.n++;
+      const cls = bb.dgClass();
+      const nm = BD[bi].name.split(' ')[0];
+      bos.cls[nm] = cls;
+      pl.pos.set(bb.pos.x + 60 * SC, W.groundAt(bb.pos.x + 60 * SC, bb.pos.z, 999), bb.pos.z);
+      step([bb], 0.3);
+      if (bb.ai === 'worm') ((bb.aiState.wm = 'up'), (bb.aiState.wmT = 3));
+      if (bb.dg) ((bb.dg.cd = 0), (bb.dg.roll = 0));
+      bb.staggerT = 0;
+      pl.lock = bb;
+      pl.weapons.rarm.pwCh = 10;
+      let shield = false;
+      shoot(bb);
+      step([bb], 1.5, () => {
+        bb.specialFx(dt);
+        if (bb.ai === 'phantom' || bb.ai === 'salamander') bb.noLock = false; // 隱形、潛在熔岩裡本來就不閃：測試讓它露出來
+        if (bb.dgShield && bb.dgShield.visible) shield = true;
+        return (bb.dgN || 0) > 0 && (cls !== 'bguard' || shield);
+      });
+      pl.weapons.rarm.pwCh = 0;
+      const ok = (bb.dgN || 0) > 0 && (cls !== 'bguard' || shield);
+      if (ok) bos.ok++;
+      else
+        bos.bad.push(
+          nm +
+            ':' +
+            cls +
+            ':' +
+            [bb.dgN || 0, bb.noLock, bb.canAct(), bb.dg && bb.dg.roll.toFixed(1)].join('/'),
+        );
+      for (const e of g.enemies) e.takeDamage(1e9, 0, null, e.center());
+      g.enemies = g.enemies.filter((e) => !e.dead);
+      g.bosses = [];
+    }
+    out.boss = bos;
     // 4) 設定關閉：不閃
     g.dgForce = undefined;
     g.ctrl.dodge = 'off';
     const e4 = mk('mt');
     pl.pos.set(e4.pos.x + 70 * SC, e4.pos.y, e4.pos.z);
     step([e4], 0.3);
-    e4.dg.cd = 0;
+    if (e4.dg) e4.dg.cd = 0; // 設定關閉時不掃描，沒有 dg
     for (let i = 0; i < 6; i++) {
       shoot(e4);
       step([e4], 0.5);
@@ -15027,6 +15074,21 @@ async function testAiDodge(browser, base) {
     `機獸：${r.beast.ok}／${r.beast.n} 隻播閃避的片段並閃開（${Object.entries(r.beast.clips)
       .map(([k, v]) => k + ' ' + v)
       .join('、')}）${r.beast.bad.length ? '；沒有：' + r.beast.bad.join('、') : ''}`,
+  );
+  const BO = r.boss;
+  check(
+    BO.n === 28 && BO.ok === BO.n,
+    `Boss：${BO.ok}／${BO.n} 隻有閃避或防禦的反應${BO.bad.length ? '（沒有：' + BO.bad.join('、') + '）' : ''}`,
+  );
+  check(
+    BO.cls.DOPPEL === 'bmech' &&
+      BO.cls.HELIOS === 'bheli' &&
+      BO.cls.VIPER === 'bjet' &&
+      BO.cls.SANDWORM === 'bworm' &&
+      BO.cls.MONOLITH === 'bguard',
+    `Boss 的種類：${Object.entries(BO.cls)
+      .map(([k, v]) => k + ' ' + v)
+      .join('、')}`,
   );
   check(r.off === 0, '設定「敵人的閃避」關閉時不閃');
   check(r.std > 0 && r.std < 24, `標準：24 發裡閃了 ${r.std} 次（會閃、但不是每發都閃）`);

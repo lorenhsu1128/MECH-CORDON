@@ -144,6 +144,7 @@ const _hsS = new THREE.Vector3(),
   _hsP = new THREE.Vector3(),
   _hsN = new THREE.Vector3(),
   _hsT = new THREE.Vector3();
+const _dgZero = new THREE.Vector3(); // 不用移動的閃避（防禦）
 export class MechEntity {
   constructor(game, asm, pal, opts = {}) {
     this.game = game;
@@ -2856,7 +2857,10 @@ export class MechEntity {
       this.aiLast = { wish: wish.clone(), hover: wantHover, ab: wantAB, tgt: targetEnt };
     }
     if (this.wpOff && this.wpOff.thr) wantQB = wantAB = false; // 推進器被打壞（mech-weak.js）
-    if (this.dgClass && this.dgOn()) [wish, wantHover, wantQB] = this.dgMove(dt, wish, wantHover, wantQB); // 敵人的閃避（mech-dodge.js）
+    if (this.dgClass && this.dgOn()) {
+      this.dgInMove = true; // 經過 move() 的：閃避在這裡算（mech-dodge.js）
+      [wish, wantHover, wantQB] = this.dgMove(dt, wish, wantHover, wantQB);
+    }
     // 在固定砲台上（game/devices-guns.js）：不能移動、跳躍、QB
     if (this.devMount) {
       wish = new THREE.Vector3();
@@ -3852,6 +3856,9 @@ export class MechEntity {
       pl = g.player;
     if (this.wing) pl = this.wingTarget(pl); // 僚機：集中攻擊玩家鎖定的目標、跟著我時不追遠的（mech-wing.js）
     this.lockAge(pl); // 導彈的鎖定時間
+    // 不經過 move() 的 Boss（鑽地蟲、高速突擊機…）：閃避在這裡算，只有動作、防禦、反制（mech-dodge.js）
+    if (this.isBoss && pl && !this.dgInMove && this.ai !== 'beast' && this.dgOn())
+      this.dgMove(dt, _dgZero.set(0, 0, 0), false, false);
     // 第三型態的專屬招式（mech-boss3.js）；有刁鑽度時每個型態的大招都先蓄力、可以打斷（mech-boss-tier.js）
     // 空域的空中要塞改用空戰的招式（mech-air.js 的 airFortressTick），不放這兩套
     if (this.isBoss && g.airMode) {

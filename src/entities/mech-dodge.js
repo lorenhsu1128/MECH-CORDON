@@ -3,7 +3,7 @@
 // → 閃避（側閃、後撤、跳躍）→ 破綻（wpOpen＝CRITICAL、快照的 aw 32）。閃開的子彈失去彈道修正、導彈失去追蹤。
 // 客機看快照的 QB 狀態與 aw；「閃避」字是房主的 popDamage（會轉送）。
 import { clamp, rnd } from '../core/math.js';
-import { DG, DG_ANIM, DG_CLASS, DG_FOE, DG_SPEC_POP } from '../data/dodge.js';
+import { DG, DG_ANIM, DG_BOSS, DG_CLASS, DG_FOE, DG_SPEC_POP } from '../data/dodge.js';
 import { PW } from '../data/charge.js';
 import { MechEntity } from './mech-entity.js';
 import { clipDur } from '../render/beast-anim.js';
@@ -40,6 +40,10 @@ Object.assign(MechEntity.prototype, {
     const m = this.model,
       ai = this.ai || '';
     if (this.ai === 'beast' && this.team === 'enemy' && m && m.beast) return 'beast'; // 機獸（第 5 期）
+    if (this.isBoss && this.team === 'enemy' && m && ai !== 'part' && ai !== 'sub') {
+      const bk = (this.boss3Key && this.boss3Key()) || this.opts.bossKind || '';
+      return DG_BOSS[bk] || 'bguard'; // Boss（第 6 期）：其他的都是巨型＝防禦
+    }
     if (this.team !== 'enemy' || this.isBoss || this.decoy || this.isProp || !m) return null;
     if (/^(part|objective|convoy|colossus|holo|holofake|sub)$/.test(ai)) return null;
     if (this.themeFoe) return DG_FOE[ai] || null; // 專屬敵人（第 4 期）
@@ -70,6 +74,9 @@ Object.assign(MechEntity.prototype, {
     )
       return false;
     if (g.net && g.net.role === 'client') return false;
+    // 設定關閉：不掃描（閃避中的照樣做完）
+    if (g.dgForce === undefined && this.dgSetK() === 0 && !(this.dg && (this.dg.act || this.dg.pend)))
+      return false;
     return !!this.dgClass();
   },
   dgSetK() {
@@ -128,6 +135,17 @@ Object.assign(MechEntity.prototype, {
       if (A.t >= end) {
         if (A.h0 !== undefined) this.hoverH = A.h0;
         s.act = null;
+        // 連續閃避：機甲型 Boss 刁鑽度高時馬上再往反方向閃一次（每次最多接一下）
+        if (
+          C.chain &&
+          !A.chained &&
+          A.th &&
+          (this.bossTier() || 0) >= DG.CHAIN_TIER &&
+          Math.random() < DG.CHAIN_P
+        ) {
+          s.pend = { t: 0.04, th: A.th, chained: true };
+          return [wish, hover, false];
+        }
         s.open = DG.OPEN; // 破綻
         s.cd = rnd(...DG_CLASS[this.dgClass()].cd);
         if (this.grounded) this.game.fx.dust(this.pos.clone(), (1.6 * this.scale) / this.game.fx.k, 5);
@@ -250,7 +268,8 @@ Object.assign(MechEntity.prototype, {
       const dist = _d.length();
       if (dist < 1e-3) continue;
       _d.multiplyScalar(1 / dist);
-      if (h.lock === this) {
+      const low = this.isBoss && this.bossTier && (this.bossTier() || 0) < DG.BOSS_READ_TIER;
+      if (h.lock === this && !low) {
         for (const sl of SLOTS) {
           const w = h.weapons && h.weapons[sl];
           if (!w || !w.def) continue;
@@ -296,7 +315,8 @@ Object.assign(MechEntity.prototype, {
     const f = th.dir;
     const side = _r.set(-f.z, 0, f.x);
     let sg = Math.random() < 0.5 ? 1 : -1;
-    if (th.p) {
+    if (pend.chained && this.dgLastSg) sg = -this.dgLastSg;
+    else if (th.p) {
       _c.copy(this.pos).sub(th.p.pos);
       const off = _c.x * side.x + _c.z * side.z;
       if (Math.abs(off) > 0.3 * this.dk) sg = Math.sign(off);
@@ -314,9 +334,11 @@ Object.assign(MechEntity.prototype, {
       }
     if (!dir) dir = cand[0];
     if (dir === cand[cand.length - 1] && k === 'side') k = 'back';
+    this.dgLastSg = dir === cand[0] ? sg : -sg;
     // 反制（第 3 期）：導彈打過來時載具丟煙幕彈、會飛的丟熱焰彈（導彈一律失去追蹤）
-    if (th.kind === 'msl' && C.msl) this.dgCounter(C.msl, th.p);
-    s.act = { k, t: 0, dir: dir.normalize(), kind: th.kind };
+    if (th.kind === 'msl' && C.msl && !(this.isBoss && (this.bossTier() || 0) < DG.BOSS_READ_TIER))
+      this.dgCounter(C.msl, th.p);
+    s.act = { k, t: 0, dir: dir.normalize(), kind: th.kind, th, chained: !!pend.chained };
     // 閃開的子彈失去彈道修正；追著自己的導彈在最後一刻閃開時失去追蹤
     for (const p of g.projectiles) {
       if (p.dead || p.target !== this) continue;
@@ -364,13 +386,14 @@ Object.assign(MechEntity.prototype, {
     const cls = this.dgClass();
     // 載具甩尾、直升機傾斜急閃、無人機橫滾（evBody 轉整台）
     if (cls === 'veh' || cls === 'fveh') return 'drift';
-    if (cls === 'heli') return 'bank';
+    if (cls === 'heli' || cls === 'bheli') return 'bank';
+    if (cls === 'bjet') return 'broll';
     if (cls === 'drone' || cls === 'ffly') return k === 'side' && Math.random() < 0.6 ? 'broll' : 'bank';
     if (cls === 'fwalk') return 'hop';
     if (!m || (m.type !== 'biped' && m.type !== 'reverse')) return null;
     const F = this.game.dgAnimForce; // 自動化測試
     if (F) return F === 'qb' ? null : F;
-    const W = DG_ANIM[this.dgClass()] || DG_ANIM.mt;
+    const W = DG_ANIM[cls] || (cls === 'bmech' ? DG_ANIM.ace : DG_ANIM.mt);
     const L = !this.grounded ? W.air : k === 'back' ? W.back : k === 'jump' ? W.jump : W.side;
     const r = Math.random();
     let acc = 0;
@@ -385,7 +408,15 @@ Object.assign(MechEntity.prototype, {
   evadeGo(k, f, s) {
     if (HUMAN_EV.has(k)) this.evQ = { k, f, s };
     // 機獸：s＝片段的秒數（片段本身照 bossVis 的索引播，這裡只有殘影）
-    this.evK = { k, f, s, t: 0, gT: 0, T: k === 'beast' ? s : DG.EV_T[k] || DG.GHOST_T };
+    this.evK = {
+      k,
+      f,
+      s,
+      t: 0,
+      t0: this.game.time || 0,
+      gT: -9,
+      T: k === 'beast' ? s : DG.EV_T[k] || DG.GHOST_T,
+    };
   },
   evadeTake() {
     const q = this.evQ;
@@ -404,10 +435,9 @@ Object.assign(MechEntity.prototype, {
   // 每格（前傾 lerp 之後）：甩尾、傾斜急閃、橫滾、殘影、防禦的護盾
   evBody(dt) {
     const E = this.evK;
-    if (E || this.dgShield) this.dgShieldTick();
     if (!E) return;
-    E.t += dt;
     const g = this.game;
+    E.t = (g.time || 0) - E.t0;
     const ph = clamp(E.t / E.T, 0, 1);
     const sg = (E.s || 0) >= 0 ? 1 : -1;
     let x = 0,
@@ -434,8 +464,8 @@ Object.assign(MechEntity.prototype, {
     }
     // 殘影（設定「殘影」關閉時不留；防禦不留）
     if (E.k !== 'guard' && E.t < DG.GHOST_T && g.ctrl.ghost !== 'off' && g.fx.ghosts && this.model) {
-      if ((E.gT -= dt) <= 0) {
-        E.gT = DG.GHOST_GAP;
+      if (E.t - E.gT >= DG.GHOST_GAP) {
+        E.gT = E.t;
         g.fx.ghosts.snap(this.model.group, DG.GHOST_COL);
       }
     }
@@ -467,9 +497,14 @@ Object.assign(MechEntity.prototype, {
     }
   },
   // 護盾的外觀（各端）：evK 是 guard 時顯示，淡入淡出
+  // specialFx 每格（各端、所有實體）呼叫
   dgShieldTick() {
     const E = this.evK;
-    const on = !!(E && E.k === 'guard' && E.t < E.T);
+    if (E && E.k === 'guard') {
+      E.t = (this.game.time || 0) - E.t0;
+      if (E.t >= E.T) this.evK = null;
+    }
+    const on = !!(this.evK && this.evK.k === 'guard');
     let M = this.dgShield;
     if (!M && on && this.mesh) {
       M = this.dgShield = new THREE.Mesh(SHIELD_GEO(), hexShieldMat(DG.GUARD_COL));
@@ -483,7 +518,7 @@ Object.assign(MechEntity.prototype, {
     if (!on) return;
     const sc = this.mesh.scale.x || 1;
     const h = (this.model && this.model.height) || this.radius * 2;
-    const R = Math.max(this.radius * 1.6, h * 0.75);
+    const R = Math.max(this.radius * 1.6, h * 0.75, ((this.model && this.model.hbR) || 0) * 1.1);
     M.position.set(0, (h * 0.5) / sc, 0);
     M.scale.setScalar(R / sc);
     const U = M.material.uniforms;
@@ -579,6 +614,13 @@ Object.assign(MechEntity.prototype, {
         }
         break;
       }
+      case 'worm':
+        if (s.wm === 'up' && s.wmT > 0.8) {
+          s.wmT = 0.35; // 提早鑽回地下（露出的時間變短，但不是馬上）
+          g.fx.dust(this.pos.clone().setY(g.world.terrainHeight(this.pos.x, this.pos.z)), 5, 14, 0xb09070);
+          ok = true;
+        }
+        break;
       case 'holoproj': {
         // 瞬移：往威脅的側面跳開，原地與新位置各一個閃光
         const f = th.dir;
@@ -604,7 +646,7 @@ Object.assign(MechEntity.prototype, {
       return;
     }
     st.open = DG.OPEN * 0.5; // 躲完的破綻比較短（大多直接看不到了）
-    st.cd = rnd(...DG_CLASS.fspec.cd);
+    st.cd = rnd(...DG_CLASS[this.dgClass()].cd);
     if (th.p) th.p.dgDodged = this;
     for (const q of g.projectiles)
       if (!q.dead && q.target === this) {

@@ -46,7 +46,7 @@
 | 5   | 機獸 8 隻                                   | 野獸式的側跳、後跳、伏低（純閃避的片段），閃完可以接反撲                                               |
 | 6   | Boss 28 隻                                  | 機甲型連續閃避；巨型改防禦反應（專屬姿勢或光效＋「防禦」字）；依刁鑽度讀蓄力射擊、甩導彈；量測擊破時間 |
 
-每期做完：lint、format、build、相關的冒煙測試步驟（`testAiDodge` 等），提交並推送。
+每期做完：lint、format、build、相關的冒煙測試步驟（`testAiDodge` 等），提交並推送。6 期在 2026-11-21 全部完成。
 
 ## 5. 實作紀錄
 
@@ -102,3 +102,17 @@
 - `dgClass0`：`ai` 'beast'＝`beast`（`DG_CLASS.beast`：側跳 6、後跳 3、伏低 2）；機率乘刁鑽度（`0.75＋0.07×刁鑽度`，Boss 共用）。
 - 行為（`mech-beast.js` 的 `beastMove`，`hitStunT` 歸零之後每格呼叫 `dgMove`，不用它回傳的移動）：沒有在出招、躍過、闖入、架砲時才找威脅（`dgReady`）；`dgBeastStart` 選片段（側跳往遠離軌跡的那一側、那一側或後面不安全就換）、前進速度歸零（不然後跳會被往前跑的速度抵掉）、無敵 `BEAST_IF`、彈道修正與導彈、殘影（`beastFx` 呼叫 `evBody`；`dgv` 事件帶片段的秒數）；片段播完才是破綻（`dg.beastEnd`）。
 - 冒煙測試 `testAiDodge`：八隻都播閃避的片段、閃避期間有位移（伏低除外）。
+
+### 第 6 期（2026-11-21）：Boss 28 隻
+
+- `data/dodge.js` 的 `DG_BOSS`（`boss3Key`：kind 或名稱開頭；沒列的＝`bguard`）：
+  - `bmech` 機甲型（ARCHON、DOPPEL、SERAPHIM、MIRAGE、NULLIFIER、KESTREL & BRANT、CERBERUS、SOVEREIGN）：敵對 AC 的閃避與動作；刁鑽度 `CHAIN_TIER` 以上一半的機會馬上往反方向再閃一次（連續閃避）。
+  - `bheli`（HELIOS、PULSAR）傾斜急閃＋升降＋熱焰彈；`bjet`（VIPER）橫滾＋熱焰彈。
+  - `bworm`（SANDWORM）：露出來（`wm` 'up'）的時候被瞄準就提早鑽回地下（剩 0.35 秒，不是馬上）。
+  - `bguard` 其他的巨型 Boss：架起大型六角護盾（大小照外框 `hbR`）`GUARD_T` 秒、傷害 ×`GUARD_K`、頭上「防禦」；冷卻 5～8 秒（防禦的時間約占一成五）。
+- 刁鑽度：機率 ×(0.75＋0.07×刁鑽度)；`BOSS_READ_TIER` 以下不讀蓄力射擊與雷射、不用熱焰彈反制導彈（只閃看得到的子彈）。
+- 呼叫的位置：經過 `move()` 的照舊（`dgInMove` 記下）；沒經過的 Boss（鑽地蟲、高速突擊機…）在 `updateAI` 的 `lockAge` 之後呼叫 `dgMove`（只有動作、防禦、反制，沒有位移）。
+- 動作的進度改用遊戲時間（`evK.t0`，同一格被呼叫兩次也不會變快）；防禦護盾的顯示搬到 `specialFx`（各端、所有實體每格都跑，包含不經過 `poseTail` 的 Boss）。
+- 設定「敵人的閃避」關閉時 `dgOn` 直接回傳 false（不掃描投射物）。
+- 冒煙測試 `testAiDodge`：28 隻逐一生成（刁鑽度 6），都有閃避或防禦（巨型的護盾顯示出來）、種類正確；機獸與 Boss 同時打一發子彈（刁鑽度低的不讀蓄力）。
+- 量測：`node scripts/beast-field.js c1b,c4b,c7b`＝46／57／99 秒擊破，每場閃一次左右，沒有拖長很多。28 隻 Boss 的 `boss-bench`（約 1 小時）沒有跑。

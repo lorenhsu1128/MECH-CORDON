@@ -267,6 +267,7 @@ Object.assign(MechEntity.prototype, {
     if (this.body) this.bodyTick(dt); // 壞掉的身體區域冒火花與煙（mech-body.js）
     if (this.ai === 'colossus') this.colFx(dt); // 大型兵器的倒下與甲板（mech-colossus.js）
     g.energyTick(this, dt); // 護罩：脈衝裝甲、無敵時間、正面護盾（game/energy.js，第 9.2 期）
+    if (this.dgShield || (this.evK && this.evK.k === 'guard')) this.dgShieldTick(); // 閃避的防禦護盾（mech-dodge.js）
     // 主題專屬敵人的顯示（房主與客機都跑）：
     const m = this.model;
     if (m) foeDamageTick(this, dt); // 受損狀態與擊破碎片（render/foe-damage.js：所有敵人＋有 rig.dmg 的模型）

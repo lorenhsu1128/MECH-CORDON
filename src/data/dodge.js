@@ -27,6 +27,10 @@ export const DG = {
   HOP_H: 2.2, // 步行的專屬敵人側跳的高度（舊尺度的公尺，×dk；只有外觀）
   BLINK_D: 14, // 瞬移的距離（舊尺度的公尺）
   BEAST_IF: 0.35, // 機獸閃避的無敵
+  // 第 6 期：Boss
+  BOSS_READ_TIER: 3, // 刁鑽度這個以上才讀蓄力射擊、雷射，才用熱焰彈反制導彈
+  CHAIN_TIER: 5, // 刁鑽度這個以上的機甲型 Boss 會連續閃避
+  CHAIN_P: 0.5,
   HOV_D: 5, // 升降閃避：目標高度改變（舊尺度的公尺，×dk）
   HOV_T: 0.6, // 升降閃避的秒數
   GUARD_T: 1.4, // 防禦：護盾架起的秒數
@@ -80,6 +84,29 @@ export const DG_CLASS = {
   fspec: { p: 0.6, cd: [3, 5], kinds: { spec: 1 } }, // 有自己的躲藏的：潛航、鑽地、埋雪、潛入熔岩、收回甲板、瞬移
   // 第 5 期：機獸（片段：dgSideL／R、dgBack、dgDuck）；機率另外依刁鑽度
   beast: { p: 0.4, cd: [2.4, 4], kinds: { side: 6, back: 3, duck: 2 } },
+  // 第 6 期：Boss（機率另外依刁鑽度）
+  bmech: { p: 0.5, cd: [1.6, 3], chain: true, kinds: { side: 6, back: 2, jump: 2 } }, // 機甲型：連續閃避
+  bheli: { p: 0.45, cd: [2.2, 3.6], qb: 0.14, msl: 'flare', kinds: { side: 5, rise: 2, dive: 2 } }, // 母艦直升機、刃翼
+  bjet: { p: 0.45, cd: [2.2, 3.6], qb: 0.12, msl: 'flare', kinds: { side: 5, rise: 2, dive: 2 } }, // 高速突擊機：橫滾
+  bguard: { p: 0.4, cd: [5, 8], kinds: { guard: 1 } }, // 巨型：防禦（冷卻長：防禦的時間約占一成五）
+  bworm: { p: 0.35, cd: [6, 9], kinds: { spec: 1 } }, // 鑽地蟲：提早下潛
+};
+
+// Boss 的種類（boss3Key：kind 或名稱開頭）；沒列的＝bguard 巨型的防禦
+export const DG_BOSS = {
+  ARCHON: 'bmech',
+  mirror: 'bmech', // DOPPEL
+  funnel: 'bmech', // SERAPHIM
+  phantom: 'bmech', // MIRAGE
+  hunter: 'bmech', // NULLIFIER
+  duo: 'bmech', // KESTREL & BRANT
+  trinity: 'bmech', // CERBERUS（合體中）
+  sovereign: 'bmech',
+  heli: 'bheli', // HELIOS
+  ibis: 'bheli', // PULSAR
+  interceptor: 'bjet', // VIPER
+  worm: 'bworm', // SANDWORM
+  fortress: 'bguard', // LEVIATHAN
 };
 
 // 專屬敵人（themeFoe）依 ai 的種類；人形（buildMech）的專屬敵人用一般的 mt
@@ -143,6 +170,7 @@ export const DG_FOE = {
 };
 export const DG_SPEC_POP = {
   gunboat: '下潛',
+  worm: '下潛',
   burrow: '鑽地',
   lurker: '潛伏',
   magmadrone: '潛入熔岩',
