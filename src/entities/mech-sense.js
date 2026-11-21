@@ -373,6 +373,12 @@ Object.assign(MechEntity.prototype, {
   senseAw() {
     const sn = this.sn;
     if (!sn || !sn.on) return 0;
-    return 1 + sn.st + (sn.tok ? 8 : 0) + (sn.vuln > 0 ? 16 : 0) + (sn.mv && sn.mv.ph === 'wind' ? 32 : 0); // 32＝準備中（弱點露出，mech-weak.js）
+    return (
+      1 +
+      sn.st +
+      (sn.tok ? 8 : 0) +
+      (sn.vuln > 0 ? 16 : 0) +
+      ((sn.mv && sn.mv.ph === 'wind') || (this.dg && this.dg.open > 0) ? 32 : 0)
+    ); // 32＝準備中（弱點露出，mech-weak.js）
   },
 });

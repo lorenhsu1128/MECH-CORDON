@@ -977,6 +977,10 @@ Object.assign(Game.prototype, {
       this.ctrl.destruct = e.target.value;
       this.saveKeys();
     };
+    document.getElementById('ctrlDodge').onchange = (e) => {
+      this.ctrl.dodge = e.target.value;
+      this.saveKeys();
+    };
     document.getElementById('ctrlPopTag').onchange = (e) => {
       this.ctrl.popTag = e.target.value;
       this.saveKeys();

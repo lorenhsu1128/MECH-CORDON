@@ -85,6 +85,7 @@ const QUICK = [
   ['傷害數字', '#ctrlDmgNum'],
   ['劇情動畫', '#ctrlCine'],
   ['地圖物件的破壞', '#ctrlDestruct'],
+  ['敵人的閃避', '#ctrlDodge'],
 ];
 let lastTab = 'quick';
 
@@ -403,6 +404,7 @@ Object.assign(Game.prototype, {
     $('ctrlDmgNum').value = this.ctrl.dmgNum || 'full';
     $('ctrlPopTag').value = this.ctrl.popTag || 'imp';
     $('ctrlDestruct').value = this.ctrl.destruct || 'easy';
+    $('ctrlDodge').value = this.ctrl.dodge || 'std';
     $('ctrlBlood').value = this.ctrl.blood || 'red';
     $('ctrlMapVeh').value = this.ctrl.mapVeh || 'many';
     $('ctrlDmgSelf').value = this.ctrl.dmgSelf === false ? 'off' : 'on';
@@ -418,6 +420,7 @@ Object.assign(Game.prototype, {
     $('ctrlPace').disabled = cli;
     this.renderPaceSet();
     $('ctrlDestruct').disabled = cli;
+    $('ctrlDodge').disabled = cli;
     this.setMarks();
   },
   // 聲音的音量（ctrl.vol：m 主音量、s 音效、b 配樂、v 語音、u 介面；docs/audio-design.md）：下拉選單，手把左右就能改
