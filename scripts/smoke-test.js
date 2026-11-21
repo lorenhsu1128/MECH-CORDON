@@ -14859,6 +14859,56 @@ async function testAiDodge(browser, base) {
       ev.takeDamage(1e9, 0, null, ev.center());
     }
     out.body = body;
+    // 3d) 第 4 期：每一種專屬敵人（蓄力的威脅、一定閃）：有對應的反應；有自己的躲藏的切回躲藏
+    const foes = { n: 0, ok: 0, bad: [], spec: {} };
+    // 專屬敵人的鍵（data/foes*.js 的 FOES，58 種）
+    const FOE_KEYS =
+      'scav junk crane forklift gategun patrol gunboat sprayer lurker skater blob chimera laserpost crawler underturret testrig spacemt rammer flak vacuum marker burrow jammer drill cart crystal harpoon smoker ridgesniper twister blaster lamp riveter welder watercannon turbine eel buoy cryo icemortar holo parasite anchor zipline fueler missilerack netter boomer mirror focus slagger heatguard magmadrone bellows popturret boarder railgunner spotter'.split(
+        ' ',
+      );
+    for (const k of FOE_KEYS) {
+      let ef = null;
+      try {
+        ef = mk(k);
+      } catch (err) {
+        foes.bad.push(k + ':生成失敗');
+        continue;
+      }
+      const cls = ef.dgClass();
+      if (!cls) {
+        ef.takeDamage(1e9, 0, null, ef.center());
+        continue;
+      }
+      foes.n++;
+      if (ef.flying) ef.pos.y += ef.hoverH;
+      step([ef], 0.2);
+      // 有自己的躲藏的：先讓它露出來
+      const S = ef.aiState;
+      if (ef.ai === 'gunboat') ((S.gb = 'up'), (S.gbT = 5));
+      if (ef.ai === 'burrow') ((S.bw = 'up'), (S.bwT = 5));
+      if (ef.ai === 'lurker') ef.foeLurkerRise();
+      if (ef.ai === 'magmadrone') S.e1 = { under: false, ph: 2, t: 5, n: 0, st: 9 };
+      if (ef.ai === 'popturret') S.e2 = { under: false, ph: 2, t: 5, n: 0, st: 9, started: true };
+      ef.noLock = false;
+      if (ef.ai === 'gunboat' || ef.ai === 'burrow' || ef.ai === 'lurker') ef.bossVis = 0;
+      if (ef.sn) ((ef.sn.st = 2), (ef.sn.tgt = pl));
+      ef.dg.cd = 0;
+      ef.dg.roll = 0;
+      ef.staggerT = 0;
+      pl.lock = ef;
+      pl.weapons.rarm.pwCh = 10;
+      step([ef], 1.0, () => (ef.dgN || 0) > 0);
+      pl.weapons.rarm.pwCh = 0;
+      if ((ef.dgN || 0) > 0) foes.ok++;
+      else foes.bad.push(k + ':' + cls);
+      if (cls === 'fspec')
+        foes.spec[ef.ai] =
+          (ef.dgN || 0) > 0 &&
+          (ef.noLock || ef.ai === 'holoproj' || ef.ai === 'magmadrone' || ef.ai === 'popturret');
+      ef.takeDamage(1e9, 0, null, ef.center());
+      g.enemies = g.enemies.filter((e) => !e.dead);
+    }
+    out.foes = foes;
     // 4) 設定關閉：不閃
     g.dgForce = undefined;
     g.ctrl.dodge = 'off';
@@ -14917,6 +14967,17 @@ async function testAiDodge(browser, base) {
   check(
     B.turret.cls === 'fixed' && B.turret.shield && B.turret.guardDmg !== null && B.turret.guardDmg < 60,
     `固定砲台：架起護盾防禦、傷害變少（100 → ${B.turret.guardDmg}）`,
+  );
+  const FO = r.foes;
+  check(
+    FO.n >= 55 && FO.ok === FO.n,
+    `專屬敵人：${FO.ok}／${FO.n} 種有閃避的反應${FO.bad.length ? '（沒有：' + FO.bad.join('、') + '）' : ''}`,
+  );
+  check(
+    Object.keys(FO.spec).length === 6 && Object.values(FO.spec).every(Boolean),
+    `有自己的躲藏的切回躲藏：${Object.entries(FO.spec)
+      .map(([k, v]) => k + (v ? '✓' : '✗'))
+      .join('、')}`,
   );
   check(r.off === 0, '設定「敵人的閃避」關閉時不閃');
   check(r.std > 0 && r.std < 24, `標準：24 發裡閃了 ${r.std} 次（會閃、但不是每發都閃）`);

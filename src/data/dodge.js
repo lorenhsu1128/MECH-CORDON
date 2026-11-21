@@ -23,7 +23,9 @@ export const DG = {
   GHOST_GAP: 0.07, // 殘影的間隔
   GHOST_COL: 0xff9a66, // 殘影的顏色（敵人：橘紅）
   // 第 3 期：載具、直升機、無人機、固定的
-  EV_T: { drift: 0.55, bank: 0.6, broll: 0.45, guard: 1.4 }, // 整台的動作（evBody）的秒數
+  EV_T: { drift: 0.55, bank: 0.6, broll: 0.45, guard: 1.4, hop: 0.45 }, // 整台的動作（evBody）的秒數
+  HOP_H: 2.2, // 步行的專屬敵人側跳的高度（舊尺度的公尺，×dk；只有外觀）
+  BLINK_D: 14, // 瞬移的距離（舊尺度的公尺）
   HOV_D: 5, // 升降閃避：目標高度改變（舊尺度的公尺，×dk）
   HOV_T: 0.6, // 升降閃避的秒數
   GUARD_T: 1.4, // 防禦：護盾架起的秒數
@@ -69,4 +71,78 @@ export const DG_CLASS = {
   heli: { p: 0.5, cd: [1.8, 3], qb: 0.14, msl: 'flare', kinds: { side: 5, rise: 2, dive: 2 } }, // 直升機：傾斜急閃、升降
   drone: { p: 0.5, cd: [1.4, 2.6], qb: 0.12, msl: 'flare', kinds: { side: 5, rise: 2, dive: 2 } }, // 無人機：橫滾、升降
   fixed: { p: 0.45, cd: [2.5, 4], kinds: { guard: 1 } }, // 固定砲台、護盾產生器：架起護盾
+  // 第 4 期：專屬敵人（程式模型）
+  fwalk: { p: 0.45, cd: [1.8, 3.2], qb: 0.1, kinds: { side: 6, back: 2 } }, // 步行、爬行的：側跳（整台跳起來傾斜）
+  fveh: { p: 0.4, cd: [2.2, 3.8], qb: 0.11, msl: 'smoke', kinds: { side: 5, back: 3 } }, // 車輛類：甩尾、煙幕彈
+  ffly: { p: 0.5, cd: [1.4, 2.6], qb: 0.12, msl: 'flare', kinds: { side: 5, rise: 2, dive: 2 } }, // 飛的：傾斜、橫滾、熱焰彈
+  fguard: { p: 0.45, cd: [2.5, 4], kinds: { guard: 1 } }, // 固定的、重裝的：架起護盾
+  fspec: { p: 0.6, cd: [3, 5], kinds: { spec: 1 } }, // 有自己的躲藏的：潛航、鑽地、埋雪、潛入熔岩、收回甲板、瞬移
+};
+
+// 專屬敵人（themeFoe）依 ai 的種類；人形（buildMech）的專屬敵人用一般的 mt
+export const DG_FOE = {
+  mt: 'mt', // 拾荒步行機
+  boarder: 'mt',
+  railgunner: 'mt',
+  heatguard: 'fguard', // 耐熱重裝：架盾
+  junk: 'fguard', // 廢鐵合成體：外殼硬化
+  forklift: 'fguard', // 叉架：舉起貨櫃擋
+  crane: 'fguard',
+  gategun: 'fguard',
+  laserpost: 'fguard',
+  testrig: 'fguard',
+  flak: 'fguard',
+  focus: 'fguard',
+  missilerack: 'fguard',
+  turbine: 'fguard',
+  anchor: 'fguard',
+  twister: 'fguard',
+  lamp: 'fguard',
+  bellows: 'fguard',
+  underturret: 'fguard',
+  strider: 'fveh', // 壩頂巡邏砲車
+  skater: 'fveh',
+  kamikaze: 'fveh', // 炸藥礦車
+  harpoon: 'fveh',
+  smoker: 'fveh',
+  watercannon: 'fveh',
+  fueler: 'fveh',
+  drill: 'fveh',
+  sprayer: 'fwalk',
+  blob: 'fwalk',
+  crawler: 'fwalk',
+  hopper: 'fwalk',
+  ridgesniper: 'fwalk',
+  blaster: 'fwalk',
+  riveter: 'fwalk',
+  welder: 'fwalk',
+  cryo: 'fwalk',
+  icemortar: 'fwalk',
+  parasite: 'fwalk',
+  zipline: 'fwalk',
+  slagger: 'fwalk',
+  rammer: 'ffly',
+  vacuum: 'ffly',
+  marker: 'ffly',
+  drone: 'ffly', // 沙暴干擾機、結晶寄生無人機
+  eel: 'ffly',
+  netter: 'ffly',
+  boomer: 'ffly',
+  mirror: 'ffly',
+  spotter: 'ffly',
+  gunboat: 'fspec', // 下潛
+  burrow: 'fspec', // 鑽回沙裡
+  lurker: 'fspec', // 埋回雪裡
+  magmadrone: 'fspec', // 潛入熔岩
+  popturret: 'fspec', // 收回甲板下
+  holoproj: 'fspec', // 瞬移
+  // buoy 漂流水雷浮標：不閃
+};
+export const DG_SPEC_POP = {
+  gunboat: '下潛',
+  burrow: '鑽地',
+  lurker: '潛伏',
+  magmadrone: '潛入熔岩',
+  popturret: '收回',
+  holoproj: '瞬移',
 };

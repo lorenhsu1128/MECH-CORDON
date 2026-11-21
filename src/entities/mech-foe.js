@@ -418,7 +418,9 @@ Object.assign(MechEntity.prototype, {
       this.noLock = true;
       if (d > 20 * DS) wish.copy(dir).multiplyScalar(0.35);
       if (Math.random() < dt * 2) g.fx.dust(this.pos.clone().setY(this.pos.y + 0.5), 0.8, 2, 0xffffff);
-      if (d < 16 * DS || s.hit) this.foeLurkerRise();
+      if (s.dgHide > 0)
+        s.dgHide -= dt; // 閃避（mech-dodge.js）埋回雪裡：一段時間內不現身
+      else if (d < 16 * DS || s.hit) this.foeLurkerRise();
     } else {
       s.upT = (s.upT || 0) + dt;
       if (d > s.want + 4 * DS) wish.copy(dir);

@@ -3,7 +3,7 @@
 // → 閃避（側閃、後撤、跳躍）→ 破綻（wpOpen＝CRITICAL、快照的 aw 32）。閃開的子彈失去彈道修正、導彈失去追蹤。
 // 客機看快照的 QB 狀態與 aw；「閃避」字是房主的 popDamage（會轉送）。
 import { clamp, rnd } from '../core/math.js';
-import { DG, DG_ANIM, DG_CLASS } from '../data/dodge.js';
+import { DG, DG_ANIM, DG_CLASS, DG_FOE, DG_SPEC_POP } from '../data/dodge.js';
 import { PW } from '../data/charge.js';
 import { MechEntity } from './mech-entity.js';
 import { hexShieldHit, hexShieldMat } from '../render/hex-shield.js';
@@ -38,8 +38,9 @@ Object.assign(MechEntity.prototype, {
   dgClass0() {
     const m = this.model,
       ai = this.ai || '';
-    if (this.team !== 'enemy' || this.isBoss || this.themeFoe || this.decoy || this.isProp || !m) return null;
-    if (/^(part|objective|convoy|colossus|holo|sub)$/.test(ai)) return null;
+    if (this.team !== 'enemy' || this.isBoss || this.decoy || this.isProp || !m) return null;
+    if (/^(part|objective|convoy|colossus|holo|holofake|sub)$/.test(ai)) return null;
+    if (this.themeFoe) return DG_FOE[ai] || null; // 專屬敵人（第 4 期）
     const mk = this.opts.modelKind;
     if (mk === 'vehicle') return 'veh'; // 裝甲車
     if (mk === 'heli') return 'heli'; // 武裝直升機、運輸機
@@ -154,7 +155,7 @@ Object.assign(MechEntity.prototype, {
       return [wish, hover, qb];
     }
     const react = th.now ? 0.02 : rnd(...DG.REACT) / clamp(this.aiSkill || 1, 0.7, 1.4);
-    if (th.t !== undefined && th.t - react < 0.03 && !th.now) {
+    if (th.p && th.t - react < 0.03 && !th.now) {
       s.roll = DG.REROLL * 0.5; // 來不及
       return [wish, hover, qb];
     }
@@ -169,7 +170,7 @@ Object.assign(MechEntity.prototype, {
   },
   // 可以閃嗎：察覺玩家（交戰中）、沒有在出招的準備、失衡、硬直、近戰、被處決
   dgReady() {
-    if (!this.canAct() || this.melee.active || this.execBy != null) return false;
+    if (!this.canAct() || this.melee.active || this.execBy != null || this.noLock) return false;
     if (this.sn && this.sn.on && this.sn.st !== 2) return false;
     if (this.sn && this.sn.mv && this.sn.mv.ph === 'wind') return false;
     if (this.empLockT > 0) return false;
@@ -277,6 +278,7 @@ Object.assign(MechEntity.prototype, {
     );
     if (melee && k === 'jump' && Math.random() < 0.5) k = 'back';
     if (k === 'guard') return this.dgGuardStart(th);
+    if (k === 'spec') return this.dgSpecial(th);
     // 側閃的方向：和威脅垂直、往遠離軌跡的那一側
     const f = th.dir;
     const side = _r.set(-f.z, 0, f.x);
@@ -348,9 +350,10 @@ Object.assign(MechEntity.prototype, {
     const m = this.model;
     const cls = this.dgClass();
     // 載具甩尾、直升機傾斜急閃、無人機橫滾（evBody 轉整台）
-    if (cls === 'veh') return 'drift';
+    if (cls === 'veh' || cls === 'fveh') return 'drift';
     if (cls === 'heli') return 'bank';
-    if (cls === 'drone') return k === 'side' && Math.random() < 0.6 ? 'broll' : 'bank';
+    if (cls === 'drone' || cls === 'ffly') return k === 'side' && Math.random() < 0.6 ? 'broll' : 'bank';
+    if (cls === 'fwalk') return 'hop';
     if (!m || (m.type !== 'biped' && m.type !== 'reverse')) return null;
     const F = this.game.dgAnimForce; // 自動化測試
     if (F) return F === 'qb' ? null : F;
@@ -403,7 +406,12 @@ Object.assign(MechEntity.prototype, {
     } else if (E.k === 'bank') {
       z = -sg * 0.7 * bell; // 往閃的方向傾斜
       x = 0.15 * bell;
-    } else if (E.k === 'broll') z = -sg * Math.PI * 2 * (ph * ph * (3 - 2 * ph)); // 橫滾一圈
+    } else if (E.k === 'broll')
+      z = -sg * Math.PI * 2 * (ph * ph * (3 - 2 * ph)); // 橫滾一圈
+    else if (E.k === 'hop') {
+      z = -sg * 0.4 * bell; // 側跳：跳起來往閃的方向傾斜（位置每格由 pos 重設，所以高度直接加）
+      if (this.mesh) this.mesh.position.y += DG.HOP_H * this.dk * bell;
+    }
     if ((x || y || z) && this.mesh) {
       this.mesh.rotation.x += x;
       this.mesh.rotation.y += y;
@@ -493,6 +501,110 @@ Object.assign(MechEntity.prototype, {
         q.dodged = true;
       }
     if (p) p.dgDodged = this;
+  },
+  // 有自己的躲藏的專屬敵人（第 4 期）：露出來的時候被瞄準 → 切回躲藏（狀態都在各自的 AI 裡，bossVis 隨快照同步）
+  // 潛航砲艇下潛、沙中伏擊者鑽回沙裡、雪中潛伏 MT 埋回雪裡、熔岩無人機潛入熔岩、甲板升降砲塔收回、全像投影器瞬移
+  dgSpecial(th) {
+    const g = this.game;
+    const s = this.aiState;
+    let ok = false;
+    const c = this.center();
+    switch (this.ai) {
+      case 'gunboat':
+        if (s.gb === 'up') {
+          s.gb = 'under';
+          s.gbT = rnd(2, 3);
+          this.bossVis = 1;
+          this.noLock = true;
+          g.fx.dust(this.pos.clone(), 3.5, 12, 0xb8dcf0);
+          ok = true;
+        }
+        break;
+      case 'burrow':
+        if (s.bw === 'up') {
+          s.bw = 'under';
+          s.bwT = rnd(1.5, 2.5);
+          this.bossVis = 1;
+          this.noLock = true;
+          g.fx.dust(this.pos.clone(), 3.5, 12, 0xc9a06a);
+          ok = true;
+        }
+        break;
+      case 'lurker':
+        if (s.lk === 'up') {
+          s.lk = 'hide';
+          s.hit = false;
+          s.dgHide = rnd(1.5, 2.5);
+          this.bossVis = 1;
+          this.noLock = true;
+          g.fx.dust(this.pos.clone(), 3.5, 12, 0xf0f4f8);
+          ok = true;
+        }
+        break;
+      case 'magmadrone': {
+        const e = s.e1;
+        if (e && !e.under) {
+          e.under = true;
+          e.ph = 0;
+          e.t = rnd(1.2, 2);
+          this.bossVis = 0;
+          g.fx.explosion(this.pos.clone().setY(this.pos.y + 1), 2, 0xff7a20, false);
+          ok = true;
+        }
+        break;
+      }
+      case 'popturret': {
+        const e = s.e2;
+        if (e && !e.under) {
+          e.under = true;
+          e.ph = 0;
+          e.t = rnd(1.2, 2);
+          this.bossVis = 0;
+          g.fx.dust(this.pos.clone(), 2.5, 8, 0xb0b8c0);
+          ok = true;
+        }
+        break;
+      }
+      case 'holoproj': {
+        // 瞬移：往威脅的側面跳開，原地與新位置各一個閃光
+        const f = th.dir;
+        const side = new THREE.Vector3(-f.z, 0, f.x).multiplyScalar(Math.random() < 0.5 ? 1 : -1);
+        const D = DG.BLINK_D * this.dk;
+        for (const d of [side, side.clone().negate(), f.clone()])
+          if (this.dgSafe(d, D)) {
+            g.fx.flash(c, (2.5 * this.scale) / g.fx.k, 0x9fe8ff, 0.25);
+            this.pos.x += d.x * D;
+            this.pos.z += d.z * D;
+            this.pos.y = g.world.groundAt(this.pos.x, this.pos.z, this.pos.y + 4 * this.dk);
+            this.mesh.position.copy(this.pos);
+            g.fx.flash(this.center(), (2.5 * this.scale) / g.fx.k, 0x9fe8ff, 0.25);
+            ok = true;
+            break;
+          }
+        break;
+      }
+    }
+    const st = this.dg;
+    if (!ok) {
+      st.roll = DG.REROLL; // 現在沒辦法躲（已經躲著、還沒露出來）
+      return;
+    }
+    st.open = DG.OPEN * 0.5; // 躲完的破綻比較短（大多直接看不到了）
+    st.cd = rnd(...DG_CLASS.fspec.cd);
+    if (th.p) th.p.dgDodged = this;
+    for (const q of g.projectiles)
+      if (!q.dead && q.target === this) {
+        if (q.kind === 'missile') {
+          q.target = null;
+          q.dodged = true;
+        } else if (q.bend) q.bend = 0;
+      }
+    this.dgN = (this.dgN || 0) + 1; // 測試用
+    this.dgLast = th;
+    if (th.from && th.from.pilotEnt && th.from.pilotEnt() && this.t - st.popT > DG.POP_GAP) {
+      st.popT = this.t;
+      g.popDamage(c.setY(c.y + 3 * this.dk), DG_SPEC_POP[this.ai] || '閃避', false, false, false, 0, this.id);
+    }
   },
   // 往 d 方向閃 dist 遠安全嗎：作戰區域內、不是虛空、沒被障礙物擋住
   dgSafe(d, dist) {
