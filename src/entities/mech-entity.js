@@ -3308,6 +3308,7 @@ export class MechEntity {
     this.dmgRestore(); // 受損姿勢（mech-damage.js）：在 IK 還原之前扣掉
     ikRestore(this.model); // IK 改過的關節回到動作層的結果（animateMech 從那裡平滑）
     hrBodyRestore(this.model); // 載具與飛行的受擊偏移（hit-react-pose.js）在前傾的 lerp 之前扣掉
+    if (this.evOff) this.evBodyRestore(); // 閃避的整台轉動（mech-dodge.js）
     this.mesh.position.copy(this.pos);
     if (this.air) this.airOrient(dt);
     else {
@@ -3318,6 +3319,7 @@ export class MechEntity {
         this.mesh.rotation.z = lerp(this.mesh.rotation.z, this.leanZ || 0, Math.min(1, dt * 8));
       }
     }
+    if (this.evK || this.dgShield) this.evBody(dt); // 閃避：甩尾、傾斜、橫滾、殘影、防禦的護盾（mech-dodge.js）
     {
       // 人形：上半身與下半身同向；只有載具砲塔（vehicle）獨立旋轉
       if (this.model.vehicle) {

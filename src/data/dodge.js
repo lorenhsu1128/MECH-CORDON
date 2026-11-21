@@ -22,6 +22,15 @@ export const DG = {
   GHOST_T: 0.4, // 閃避的殘影：留幾秒
   GHOST_GAP: 0.07, // 殘影的間隔
   GHOST_COL: 0xff9a66, // 殘影的顏色（敵人：橘紅）
+  // 第 3 期：載具、直升機、無人機、固定的
+  EV_T: { drift: 0.55, bank: 0.6, broll: 0.45, guard: 1.4 }, // 整台的動作（evBody）的秒數
+  HOV_D: 5, // 升降閃避：目標高度改變（舊尺度的公尺，×dk）
+  HOV_T: 0.6, // 升降閃避的秒數
+  GUARD_T: 1.4, // 防禦：護盾架起的秒數
+  GUARD_K: 0.3, // 防禦中的傷害倍率
+  GUARD_COL: 0xffb060, // 防禦護盾的顏色（敵人：橘）
+  SMOKE_R: 9, // 煙幕彈的半徑（舊尺度的公尺）
+  SMOKE_T: 4, // 煙幕彈的秒數
 };
 
 // 閃避的動作（第 2 期，人形的二足／逆關節）：[動作, 機率]，剩下的＝只有 QB 的姿勢
@@ -55,4 +64,9 @@ export const DG_CLASS = {
   heavy: { p: 0.3, cd: [2.8, 4.5], qb: 0.11, kinds: { side: 5, back: 2 } }, // 戰車腳（不能跳）
   quad: { p: 0.45, cd: [1.6, 3], qb: 0.12, kinds: { side: 5, back: 2, jump: 2 } }, // 四足
   fly: { p: 0.5, cd: [1.4, 2.6], qb: 0.12, kinds: { side: 5, back: 2 } }, // 會飛的人形（偵察機）
+  // 第 3 期：msl＝導彈打過來時的反制（smoke 煙幕彈、flare 熱焰彈）
+  veh: { p: 0.4, cd: [2.2, 3.8], qb: 0.12, msl: 'smoke', kinds: { side: 5, back: 3 } }, // 裝甲車：甩尾
+  heli: { p: 0.5, cd: [1.8, 3], qb: 0.14, msl: 'flare', kinds: { side: 5, rise: 2, dive: 2 } }, // 直升機：傾斜急閃、升降
+  drone: { p: 0.5, cd: [1.4, 2.6], qb: 0.12, msl: 'flare', kinds: { side: 5, rise: 2, dive: 2 } }, // 無人機：橫滾、升降
+  fixed: { p: 0.45, cd: [2.5, 4], kinds: { guard: 1 } }, // 固定砲台、護盾產生器：架起護盾
 };

@@ -14817,6 +14817,48 @@ async function testAiDodge(browser, base) {
     }
     g.dgAnimForce = null;
     out.anim = anim;
+    // 3c) 第 3 期：裝甲車甩尾＋煙幕彈、直升機傾斜＋熱焰彈、無人機、固定砲台的防禦
+    const body = {};
+    for (const [type, w] of [
+      ['tank', 'msl'],
+      ['heli', 'msl'],
+      ['minelayer', 'shot'],
+      ['turret', 'shot'],
+    ]) {
+      const ev = mk(type);
+      if (ev.flying) ev.pos.y += ev.hoverH;
+      step([ev], 0.3);
+      ev.dg.cd = 0;
+      ev.dg.roll = 0;
+      const zones0 = (g.zones || []).filter((z) => z.k === 'smoke').length;
+      const pr = shoot(ev, w === 'msl' ? 'missile' : 'bullet');
+      let off = 0,
+        shield = false,
+        guardDmg = null;
+      step([ev], 1.6, () => {
+        if (ev.evOff) off = Math.max(off, Math.abs(ev.evOff.y), Math.abs(ev.evOff.z));
+        if (ev.dgShield && ev.dgShield.visible) {
+          shield = true;
+          if (guardDmg === null) {
+            const h0 = ev.hp;
+            ev.takeDamage(100, 0, pl, ev.center(), null, null, 'w_rifle');
+            guardDmg = Math.round(h0 - ev.hp);
+          }
+        }
+        return false;
+      });
+      body[type] = {
+        cls: ev.dgClass(),
+        n: ev.dgN || 0,
+        off: +off.toFixed(2),
+        shield,
+        guardDmg,
+        msl: w === 'msl' ? pr.target === ev : null,
+        smoke: (g.zones || []).filter((z) => z.k === 'smoke').length - zones0,
+      };
+      ev.takeDamage(1e9, 0, null, ev.center());
+    }
+    out.body = body;
     // 4) 設定關閉：不閃
     g.dgForce = undefined;
     g.ctrl.dodge = 'off';
@@ -14862,6 +14904,20 @@ async function testAiDodge(browser, base) {
   );
   check(A.slide.sl > 0.2 && A.slide.rot < 1, `滑鏟：壓低往後仰、不翻（${A.slide.rot}）`);
   check(A.cart.gh > 0 && A.slide.gh > 0, `閃避留下殘影（${A.cart.gh}／${A.slide.gh}）`);
+  const B = r.body;
+  check(
+    B.tank.cls === 'veh' && B.tank.n > 0 && B.tank.off > 0.2 && B.tank.smoke > 0 && !B.tank.msl,
+    `裝甲車：甩尾（${B.tank.off}）、導彈打過來丟煙幕彈、導彈失去追蹤`,
+  );
+  check(
+    B.heli.cls === 'heli' && B.heli.n > 0 && B.heli.off > 0.2 && !B.heli.msl,
+    `直升機：傾斜急閃（${B.heli.off}）、熱焰彈甩掉導彈`,
+  );
+  check(B.minelayer.cls === 'drone' && B.minelayer.n > 0, `無人機會閃（動作 ${B.minelayer.off}）`);
+  check(
+    B.turret.cls === 'fixed' && B.turret.shield && B.turret.guardDmg !== null && B.turret.guardDmg < 60,
+    `固定砲台：架起護盾防禦、傷害變少（100 → ${B.turret.guardDmg}）`,
+  );
   check(r.off === 0, '設定「敵人的閃避」關閉時不閃');
   check(r.std > 0 && r.std < 24, `標準：24 發裡閃了 ${r.std} 次（會閃、但不是每發都閃）`);
   await ctx.close();

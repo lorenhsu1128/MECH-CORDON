@@ -77,7 +77,6 @@ Object.assign(MechEntity.prototype, {
         fx.ghosts.snap(m.group, flameCol);
       }
     }
-    if (this.evK) this.evadeFx(dt); // 敵人閃避的殘影（mech-dodge.js）
     V.qb = qb;
     V.ab = ab;
   },

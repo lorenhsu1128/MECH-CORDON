@@ -37,6 +37,7 @@ Object.assign(MechEntity.prototype, {
     if (this.sts || this.stsV) this.statusFx(dt); // 狀態效果的顯示（mech-status.js）
     this.moving = Math.hypot(this.vel.x, this.vel.z) > 1.5;
     ikRestore(this.model);
+    if (this.evOff) this.evBodyRestore(); // 閃避的整台轉動（mech-dodge.js）
     this.mesh.position.copy(this.pos);
     this.mesh.rotation.order = 'YXZ';
     this.mesh.rotation.y = this.yaw;
@@ -44,6 +45,7 @@ Object.assign(MechEntity.prototype, {
       this.mesh.rotation.x = lerp(this.mesh.rotation.x, this.leanTilt(), Math.min(1, dt * 8));
       this.mesh.rotation.z = lerp(this.mesh.rotation.z, this.leanZ || 0, Math.min(1, dt * 8));
     }
+    if (this.evK || this.dgShield) this.evBody(dt); // 閃避：甩尾、傾斜、橫滾、殘影、防禦的護盾
     if (this.model.vehicle) {
       const rel =
         ((((this.aimYaw - this.yaw + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) - Math.PI;
