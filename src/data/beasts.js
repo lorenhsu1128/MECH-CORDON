@@ -53,7 +53,7 @@ export const BEAST_DEFS = [
   // ---------- 獅型（主線的位置未定：使用者決定第 8 章不放機獸）----------
   {
     beast: 'lion',
-    name: '獅型機獸',
+    name: '獅型機獸 REGENT',
     kind: 'beast_lion',
     ai: 'beast',
     modelKind: 'boss',
@@ -153,12 +153,13 @@ export const BEAST_DEFS = [
       },
     ],
     clips: ['pounce', 'clawL', 'clawR', 'bite', 'tail', 'roar', 'jump', 'brake', 'hit', 'stagger', 'death'],
-    intro: '獅型機獸 — 背上的磁軌砲、肩上的導彈莢艙、鬃甲的雷射，三種屬性的攻擊都有；外掛的兩把武器可以打壞',
+    intro:
+      '獅型機獸 REGENT — 背上的磁軌砲、肩上的導彈莢艙、鬃甲的雷射，三種屬性的攻擊都有；外掛的兩把武器可以打壞',
   },
   // ---------- 劍齒虎型（第 3 章：冰原、研究特區）：比獅型更快、更會閃 ----------
   {
     beast: 'tiger',
-    name: '劍齒虎型機獸',
+    name: '劍齒虎型機獸 RIME',
     kind: 'beast_tiger',
     ai: 'beast',
     modelKind: 'boss',
@@ -279,12 +280,12 @@ export const BEAST_DEFS = [
       ...['tFang', 'tDodgeClawL', 'tDodgeClawR', 'tSpinL', 'tSpinR', 'tLunge', 'tSnarl', 'tVolley'],
       ...['jump', 'tHit', 'tStagger', 'tDeath'],
     ],
-    intro: '劍齒虎型機獸 — 背上的機砲邊跑邊掃、肩上的電漿導彈、嘴裡的冷凍光束會讓你變慢；撲空之後是破綻',
+    intro: '劍齒虎型機獸 RIME — 背上的機砲邊跑邊掃、肩上的電漿導彈、嘴裡的冷凍光束會讓你變慢；撲空之後是破綻',
   },
   // ---------- 熊型（第 7 章：火山熔爐帶）：正面硬碰的重拳手，比獅、虎慢一點但更硬、更痛 ----------
   {
     beast: 'bear',
-    name: '熊型機獸',
+    name: '熊型機獸 SCORIA',
     kind: 'beast_bear',
     ai: 'beast',
     modelKind: 'boss',
@@ -397,12 +398,12 @@ export const BEAST_DEFS = [
       ...['jump', 'bHit', 'bKneel', 'bDeath'],
     ],
     intro:
-      '熊型機獸 — 背上的榴彈砲看落點圈躲、肩上兩道熱熔光束、熔岩塊落地會燒；雙掌拍地用跳的躲，衝撞與熊抱撲空之後是破綻',
+      '熊型機獸 SCORIA — 背上的榴彈砲看落點圈躲、肩上兩道熱熔光束、熔岩塊落地會燒；雙掌拍地用跳的躲，衝撞與熊抱撲空之後是破綻',
   },
   // ---------- 鱷龜型（第 2 章：集散場、水壩、淹沒城區）：背甲難打動，嘴的咬合是最快的一擊；靠縮殼旋轉移動 ----------
   {
     beast: 'turtle',
-    name: '鱷龜型機獸',
+    name: '鱷龜型機獸 SILT',
     kind: 'beast_turtle',
     ai: 'beast',
     modelKind: 'boss',
@@ -531,12 +532,12 @@ export const BEAST_DEFS = [
       'uDeath',
     ],
     intro:
-      '鱷龜型機獸 — 背甲抗實彈、弱爆發；嘴的咬合非常快，咬空是破綻；縮殼旋轉會滑過來橫掃，轉完會暈；背甲的砲塔與兩側的魚雷架可以打壞',
+      '鱷龜型機獸 SILT — 背甲抗實彈、弱爆發；嘴的咬合非常快，咬空是破綻；縮殼旋轉會滑過來橫掃，轉完會暈；背甲的砲塔與兩側的魚雷架可以打壞',
   },
   // ---------- 猩猩型（第 4 章：Lattice-9、舊宇宙港）：跳躍與擺盪，用魚叉把人拉過來 ----------
   {
     beast: 'gorilla',
-    name: '猩猩型機獸',
+    name: '猩猩型機獸 WRECKER',
     kind: 'beast_gorilla',
     ai: 'beast',
     modelKind: 'boss',
@@ -648,12 +649,12 @@ export const BEAST_DEFS = [
       ...['gJump', 'gHit', 'gKneel', 'gSit', 'gDeath'],
     ],
     intro:
-      '猩猩型機獸 — 弱實彈、抗爆發；被魚叉鉤住用 QB 掙脫；搥胸是胸砲的蓄力，放完是破綻；雙拳搥地用跳的躲',
+      '猩猩型機獸 WRECKER — 弱實彈、抗爆發；被魚叉鉤住用 QB 掙脫；搥胸是胸砲的蓄力，放完是破綻；雙拳搥地用跳的躲',
   },
   // ---------- 蠍型（第 1 章：荒野、沙丘、礦坑）：八足疾走，鑽地突襲 ----------
   {
     beast: 'scorpion',
-    name: '蠍型機獸',
+    name: '蠍型機獸 UNDERTAKER',
     kind: 'beast_scorpion',
     ai: 'beast',
     modelKind: 'boss',
@@ -807,12 +808,12 @@ export const BEAST_DEFS = [
       ...['sHit', 'sStagger', 'sDeath'],
     ],
     intro:
-      '蠍型機獸 — 弱實彈、抗能量；會鑽進地下從你腳下鑽出來，看到地上的紅圈就跑開；尾刺刺空是破綻；螯上的切割砲與背上的迫擊筒可以打壞',
+      '蠍型機獸 UNDERTAKER — 弱實彈、抗能量；會鑽進地下從你腳下鑽出來，看到地上的紅圈就跑開；尾刺刺空是破綻；螯上的切割砲與背上的迫擊筒可以打壞',
   },
   // ---------- 螳螂型（第 6 章：高空軌道）：雙鐮的近戰最快，會飛起來俯衝 ----------
   {
     beast: 'mantis',
-    name: '螳螂型機獸',
+    name: '螳螂型機獸 VESPER',
     kind: 'beast_mantis',
     ai: 'beast',
     modelKind: 'boss',
@@ -934,12 +935,12 @@ export const BEAST_DEFS = [
       ...['mHit', 'mStagger', 'mDeath'],
     ],
     intro:
-      '螳螂型機獸 — 抗實彈、弱能量；雙鐮出手很快，捕捉抓空是破綻；會在你周圍放浮空地雷，先打掉腹下的發射器；俯衝斬落空也是破綻',
+      '螳螂型機獸 VESPER — 抗實彈、弱能量；雙鐮出手很快，捕捉抓空是破綻；會在你周圍放浮空地雷，先打掉腹下的發射器；俯衝斬落空也是破綻',
   },
   // ---------- 猛禽型（第 5 章：洋上都市）：八隻裡唯一會飛的——在空中盤旋、俯衝下來抓一把，偶爾降落 ----------
   {
     beast: 'raptor',
-    name: '猛禽型機獸',
+    name: '猛禽型機獸 SHRIKE',
     kind: 'beast_raptor',
     ai: 'beast',
     modelKind: 'boss',
@@ -1079,7 +1080,7 @@ export const BEAST_DEFS = [
       ...['rTakeoff', 'rLand', 'rHit', 'rStagger', 'rDeath'],
     ],
     intro:
-      '猛禽型機獸 — 弱爆發、抗能量；平時在空中盤旋，俯衝下來時看地上的路線躲開；打到失衡會掉下來；翼下的導彈與腹下的炸彈艙可以打壞',
+      '猛禽型機獸 SHRIKE — 弱爆發、抗能量；平時在空中盤旋，俯衝下來時看地上的路線躲開；打到失衡會掉下來；翼下的導彈與腹下的炸彈艙可以打壞',
   },
 ];
 // 獅型亂入（game/beast-raid.js，2026-11-20 使用者定案）：第 minCh 章起的機獸出擊，出擊開始時抽——基礎 p0、每次沒抽中 +pity、抽中歸零；
@@ -1094,3 +1095,24 @@ export const RAID = {
   hp: { 2: 5.7, 3: 5.7, 4: 3.8, 5: 4.0, 6: 3.6, 7: 3.05 },
 };
 export const beastDefOf = (kind) => BEAST_DEFS.find((b) => b.kind === kind) || null;
+
+// 載入提示（docs/beast-script.md；game/tips.js 的情報：打過才出現，下一段就是這隻時加權）
+export const BEAST_TIPS = {
+  scorpion: [
+    '地上的紅圈是它要鑽出來的地方，先離開再回頭打；尾刺刺空就是破綻。',
+    '實彈打得動、能量打不太動。螯上的切割砲和背上的迫擊筒可以拆。',
+  ],
+  turtle: ['背甲吃實彈，用爆發的打；咬合很快，看到它張嘴就橫移。', '縮殼轉起來就跳開，轉完它會暈。'],
+  tiger: [
+    '雷達上太乾淨的時候，它就在附近；撲空之後是破綻。',
+    '冷凍光束會讓你變慢，被打中先拉開距離，不要往前衝。',
+  ],
+  gorilla: ['被魚叉鉤住立刻 QB 掙脫；搥胸之後是破綻。', '實彈有效、爆發沒用；雙拳搥地時跳起來。'],
+  raptor: [
+    '俯衝前地上會有路線；打到失衡它會掉下來。',
+    '爆發有效、能量沒用；翼下的導彈和腹下的炸彈艙可以拆。',
+  ],
+  mantis: ['先打掉腹下的發射器，浮空地雷才會停。', '抗實彈、弱能量；捕捉和俯衝斬落空都是破綻。'],
+  bear: ['它靠近會站起來；拍地時跳，熊抱撲空再打。', '熔岩塊落地會燒，榴彈砲看落點圈躲。'],
+  lion: ['機獸打到一半時，可能會有別的東西衝進來。', 'REGENT 三種屬性都會用；磁軌砲的預警線一出現就橫移。'],
+};

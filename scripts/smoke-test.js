@@ -1635,6 +1635,15 @@ async function testBeastRaid(browser) {
       c = g.camp;
     const out = {};
     const v = g.boss;
+    // 通訊（docs/beast-script.md）：記下每個事件挑到的說話者
+    const evs = [];
+    const cc0 = g.campComm;
+    g.campComm = function (ev, cx, show) {
+      const e = cc0.call(this, ev, cx, show);
+      evs.push(ev + ':' + (e ? e.lines.map((l) => l[0]).join('+') : '-'));
+      return e;
+    };
+    out.evs = evs;
     g.campCheckpoint();
     out.start = { raid: c.raid, kind: v.opts.bossKind, tier: v.bossTier() };
     // 還沒到一半：不出現
@@ -1705,8 +1714,11 @@ async function testBeastRaid(browser) {
       return gg.call(this, id, q, at, ax, src);
     };
     p.hp = p.maxHp;
+    lion.hp = lion.maxHp * 0.45; // REGENT 剩一半的通訊
+    window.__pump(0.3);
     lion.die(p);
     window.__pump(1);
+    g.campComm = cc0;
     const st = g.campStory();
     out.won = {
       won: (st.raid.won || {})[2] || 0,
@@ -1775,6 +1787,18 @@ async function testBeastRaid(browser) {
     `保底一件特製以上的零件（品級 ${r.won.gear.join('、')}）`,
   );
   check(r.won.badge && !r.won.badge3, '作戰室的節點：這一章有記號、別章沒有');
+  {
+    const ev = r.evs.join(' ');
+    check(
+      /raidIn:echo/.test(ev) &&
+        /raidBite:echo/.test(ev) &&
+        /raidGo:echo/.test(ev) &&
+        /bossHalf:echo/.test(ev) &&
+        ev.includes('raidWon:echo+castron') &&
+        /REGENT/.test(r.go.lionName),
+      `REGENT 的通訊：衝進來、咬死、接手、剩一半、打倒（卡斯特隆路線是霍斯特）（${ev}）`,
+    );
+  }
   check(
     r.end.state !== 'play' && r.end.done >= 1,
     `打死獅型才過關（${r.end.state} → ${r.end.state2}，完成 ${r.end.done} 次）`,
@@ -1845,6 +1869,11 @@ async function testBeastCampaign(browser) {
     out.r2b = g.hubSortieState('c2b');
     // 第 8 章：終點照舊是 SOVEREIGN，簡報裡沒有機獸
     out.c8 = g.briefIntelHtml('c8s3', { type0: 'battle', plan: [] }).includes('機獸');
+    // 第 8 章 c8s1 的第 1 段：機獸機庫的通訊依有沒有打倒過 REGENT
+    out.c8h = [false, true].map((w) => {
+      const e = g.commPick('segStart', { sid: 'c8s1', seg: 0, type: 'battle', cycle: 1, raidWon: w });
+      return e ? e.lines.length + ':' + e.lines[3][1].slice(0, 6) : '-';
+    });
     // 簡報：終點 Boss 是機獸、寫出攻擊屬性
     out.brief = {};
     for (const sid in W) {
@@ -1868,6 +1897,10 @@ async function testBeastCampaign(browser) {
   check(r.s2 === 'done/open/true', `機獸的出擊完成：整章完成、開放下一章（${r.s2}）`);
   check(r.r2a === 'open' && r.r2b === 'open', `第 2 章兩條路線都接到同一個機獸的出擊（${r.r2a}／${r.r2b}）`);
   check(!r.c8, '第 8 章沒有機獸的出擊');
+  check(
+    r.c8h[0] !== r.c8h[1] && r.c8h.every((x) => x.startsWith('4:')),
+    `第 8 章的機獸機庫：依有沒有打倒過 REGENT 換最後一句（${r.c8h.join('／')}）`,
+  );
   for (const sid in r.brief) {
     const b = r.brief[sid];
     check(b.beast && b.atk >= 2 && !b.err, `${sid} 的簡報：終點是機獸、寫出攻擊屬性（${b.atk} 種）${b.err}`);
@@ -1909,6 +1942,24 @@ async function testBeastCampaign(browser) {
         theme: g.worldTheme,
         seen: Object.keys((g.save.story.seen2 || {}).bosses || {}),
       };
+      // 通訊（docs/beast-script.md）：Boss 段開始說出代號、打壞第一個外掛武器、最後型態
+      o.log = (g.save.story.log || [])
+        .slice(-4)
+        .map((l) => l.text)
+        .join(' ');
+      const evs = [];
+      const cc0 = g.campComm;
+      g.campComm = function (ev, cx, show) {
+        const e = cc0.call(this, ev, cx, show);
+        evs.push(ev + ':' + (e ? e.lines.map((l) => l[0]).join('+') : '-'));
+        return e;
+      };
+      const pt = g.enemies.find((e) => e.ai === 'part' && !e.dead && e.parentEnt && e.parentEnt() === b);
+      if (pt) pt.die(g.player);
+      g.bossPhaseShift(b, 3);
+      g.campComm = cc0;
+      o.evs = evs.join(' ');
+      o.name = b.name;
       g.campEnd(false, true);
       return o;
     });
@@ -1917,6 +1968,13 @@ async function testBeastCampaign(browser) {
       `${sid}：Boss 區段生成 ${b.kind}（${b.theme}），刁鑽度 ${b.tier}＝第 ${b.ch} 章，部位 ${b.parts} 個`,
     );
     check(b.seen.includes('beast_' + W[sid]), `${sid}：遇過之後記進模擬器的清單`);
+    {
+      const code = b.name.split(' ')[1] || '?';
+      check(
+        b.log.includes(code) && /beastPart:echo/.test(b.evs) && /bossP3:echo/.test(b.evs),
+        `${sid}：${b.name} 的通訊（Boss 段開始說出代號、外掛武器打壞、最後型態）（${b.evs}）`,
+      );
+    }
     await waitVisible(page, 'result').catch(() => {});
     await page.evaluate(() => {
       const g = window.__game;

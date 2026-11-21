@@ -8,68 +8,489 @@
 //       prevC2／prevC4／prevEnd（上一周目的抉擇 1、抉擇 2、結局）、truth（真結局的條件：紫色委託全部完成過）
 // 每次都會聽到的通用台詞：同一組條件寫 10 則，commPick 在條件相同的候選裡隨機挑（台灣口語）
 const variants = (base, sp, list) => list.map((t) => ({ ...base, lines: [[sp, t]] }));
+// 周目的版本（docs/beast-script.md）：{ 周目: 追加的句子 } → 基本的一則＋每個周目一則（基本句之後接追加句；條件多了 cycle，會優先）
+const cy = (e, extra) => [
+  e,
+  ...Object.entries(extra).map(([c, ls]) => ({ ...e, cycle: +c, lines: [...e.lines, ...ls] })),
+];
+// 打倒 REGENT 時那一章的委託方
+const RAID_WON = {
+  castron: 'REGENT 倒了？……這種事，我爸那一代都沒聽說過。',
+  aetheric: '兩台樣本，一次到手。有意思——非常有意思。',
+  veerwell: '等等，這也算我的戰果吧？發票要開給誰？',
+  sancta: '你沒事吧？……好，那就好。我只問這個。',
+};
 
 export const COMMS = [
-  // ---- 獅型亂入（機獸出擊的隱藏任務，game/beast-raid.js）：只有不涉及來歷的戰術句 ----
-  { event: 'raidIn', lines: [['echo', '等一下——另一個大型反應，高速接近！它不是衝著你來的……']] },
-  { event: 'raidGo', lines: [['echo', '目標換了。它沒有弱點，三種屬性都會用——打倒它才能離開！']] },
-  // ---- 機獸的出擊（c<章>b）：劇情先不寫，只有不涉及來歷的戰術句 ----
+  // ======== 機獸（docs/beast-script.md）：機獸的出擊 c<章>b、獅型 REGENT 亂入、第 8 章的機獸機庫 ========
+  // 同一個事件只挑一則播：周目（cycle）與路線（c2／c4）的版本把基本的句子一起寫進去
+  // 事件 beastPart＝第一個外掛武器被打壞、bossP3＝進入最後型態（game/boss-tier.js、bosses.js）；
+  // raidBite＝REGENT 咬死原本的機獸、raidWon＝打倒 REGENT（game/beast-raid.js）；條件 raid＝REGENT 在場、raidWon＝存檔裡打倒過 REGENT
+  // ---- 獅型亂入：REGENT（清掃單位的回收者）----
+  {
+    event: 'raidIn',
+    once: true,
+    lines: [
+      ['echo', '等一下——另一個大型反應，高速接近！識別碼……REGENT。'],
+      ['echo', '它不是衝著你來的。它的目標是那台受傷的。'],
+    ],
+  },
+  ...variants({ event: 'raidIn' }, 'echo', [
+    'REGENT 的訊號！它又來了——目標不是你。',
+    '高速接近的大型反應……是 REGENT。',
+    '又是它。REGENT，正在衝向那台受傷的。',
+  ]),
+  { event: 'raidIn', cycle: 3, lines: [['echo', '它的命令裡沒有你的登錄號。……它從來就不是衝著你來的。']] },
+  {
+    event: 'raidBite',
+    once: true,
+    lines: [
+      ['echo', '它……把那台咬碎了。它在回收自己的同類？'],
+      ['echo', '殘骸總是「不見了」。……原來是它。'],
+    ],
+  },
+  ...variants({ event: 'raidBite' }, 'echo', ['回收完成。……下一個，是你擋在它前面。', '又被它吃掉一台了。']),
+  {
+    event: 'raidGo',
+    lines: [['echo', '目標換了。REGENT 沒有弱點，三種屬性都會用；外掛的武器可以拆——打倒它才能離開！']],
+  },
+  {
+    event: 'bossHalf',
+    raid: true,
+    lines: [['echo', '它開始認真了。導彈彈幕之後是雷射牢籠，不要被圍住。']],
+  },
+  { event: 'raidWon', lines: [['echo', 'REGENT，沉默。……這一次，沒有人來回收它了。']] },
+  ...[
+    [{ chapter: 2, c2: 'castron' }, 'castron'],
+    [{ chapter: 2, c2: 'aetheric' }, 'aetheric'],
+    [{ chapter: 3, c2: 'castron' }, 'castron'],
+    [{ chapter: 3, c2: 'aetheric' }, 'aetheric'],
+    [{ chapter: 4, c4: 'veerwell' }, 'veerwell'],
+    [{ chapter: 4, c4: 'sancta' }, 'sancta'],
+    [{ chapter: 5 }, 'castron'],
+    [{ chapter: 6 }, 'aetheric'],
+    [{ chapter: 7, c4: 'veerwell' }, 'veerwell'],
+    [{ chapter: 7, c4: 'sancta' }, 'sancta'],
+  ].map(([cond, sp]) => ({
+    event: 'raidWon',
+    ...cond,
+    lines: [
+      ['echo', 'REGENT，沉默。……這一次，沒有人來回收它了。'],
+      [sp, RAID_WON[sp]],
+    ],
+  })),
+  {
+    event: 'fail',
+    killedBy: 'REGENT',
+    lines: [['echo', '它比其他的都快。磁軌砲的預警線一出現就橫移，不要直線往後退。']],
+  },
+  // ---- c1b 礦坑最深處 — UNDERTAKER（派克）----
+  ...cy(
+    {
+      event: 'sortieStart',
+      sid: 'c1b',
+      lines: [['veerwell', '探勘隊的信標還在響。……經過的話，幫我看一眼。']],
+    },
+    { 2: [['echo', '又是 UNDERTAKER。……上一次，它也走了同一條路。']] },
+  ),
+  {
+    event: 'segStart',
+    sid: 'c1b',
+    seg: 0,
+    lines: [['echo', '這一層被翻過了。坑道是新的，從我們剛才走的路線一路挖下來。']],
+  },
   {
     event: 'segStart',
     sid: 'c1b',
     type: 'boss',
-    lines: [['echo', '大型反應，不是機甲——它在動！攻擊是爆發與能量，注意地上的預警。']],
+    lines: [
+      ['echo', '地底下有東西跟著你的足跡走。……出來了。UNDERTAKER。'],
+      ['echo', '紅圈是它要鑽出來的地方。尾刺刺空的時候，就是你的時間。'],
+    ],
   },
-  { event: 'bossHalf', sid: 'c1b', lines: [['echo', '它慢下來了。外掛的武器壞了就不能用，繼續打！']] },
-  { event: 'sortieEnd', sid: 'c1b', lines: [['echo', '反應消失。……這一區清乾淨了。']] },
+  { event: 'beastPart', sid: 'c1b', lines: [['echo', '拆掉一把了。它的火力少一塊，繼續拆。']] },
+  { event: 'bossHalf', sid: 'c1b', lines: [['echo', '它鑽得更頻繁了。別停在同一個地方。']] },
+  { event: 'bossP3', sid: 'c1b', lines: [['echo', '它的訊號變了。大招要來了——看地面。']] },
+  ...cy(
+    {
+      event: 'sortieEnd',
+      sid: 'c1b',
+      lines: [
+        ['echo', '反應消失。……它的路線，跟你進礦坑的路線一模一樣。'],
+        ['veerwell', '殘骸我派人去收。……什麼？已經不見了？'],
+        ['veerwell', '……探勘隊的事，算了。尾款照付，傭兵。'],
+      ],
+    },
+    { 3: [['echo', 'R-07，這次我不瞞你。它們的命令，是從我這裡轉出去的。']] },
+  ),
+  {
+    event: 'fail',
+    sid: 'c1b',
+    killedBy: 'UNDERTAKER',
+    lines: [['echo', '紅圈一出現就離開，不要等它鑽出來才跑。實彈打得動它。']],
+  },
+  // ---- c2b 淹沒城區外緣 — SILT（依抉擇 1：霍斯特／薩奇）----
+  ...cy(
+    {
+      event: 'sortieStart',
+      sid: 'c2b',
+      c2: 'castron',
+      lines: [['castron', '……如果它朝你開口說話，別回答。開玩笑的。大概。']],
+    },
+    { 3: [['echo', '它們每一台出動，我的系統都會收到一份副本。我一直都看得到。']] },
+  ),
+  ...cy(
+    {
+      event: 'sortieStart',
+      sid: 'c2b',
+      c2: 'aetheric',
+      lines: [['aetheric', '請記錄它的行為。哪怕一點點也好。']],
+    },
+    { 3: [['echo', '它們每一台出動，我的系統都會收到一份副本。我一直都看得到。']] },
+  ),
+  {
+    event: 'segStart',
+    sid: 'c2b',
+    seg: 0,
+    lines: [['echo', '水面下有東西經過的痕跡。很大。往你剛打過的地方去了。']],
+  },
   {
     event: 'segStart',
     sid: 'c2b',
     type: 'boss',
-    lines: [['echo', '大型反應，不是機甲——它在動！攻擊是實彈與爆發，注意地上的預警。']],
+    lines: [
+      ['echo', '水裡的那塊不是瓦礫——是背甲。SILT，浮上來了。'],
+      ['echo', '它咬得很快。看到它張嘴就橫移，咬空再打。'],
+    ],
   },
-  { event: 'bossHalf', sid: 'c2b', lines: [['echo', '它慢下來了。外掛的武器壞了就不能用，繼續打！']] },
-  { event: 'sortieEnd', sid: 'c2b', lines: [['echo', '反應消失。……這一區清乾淨了。']] },
+  { event: 'beastPart', sid: 'c2b', lines: [['echo', '一個武器架沒了。背甲還硬，用爆發的繼續打。']] },
+  { event: 'bossHalf', sid: 'c2b', lines: [['echo', '它要縮殼了。轉起來就跳開，等它暈。']] },
+  { event: 'bossP3', sid: 'c2b', lines: [['echo', '它沉下去了……不對，它在準備什麼。離開水邊。']] },
+  ...cy(
+    {
+      event: 'sortieEnd',
+      sid: 'c2b',
+      c2: 'castron',
+      lines: [
+        ['echo', '反應消失。……它推倒的是研究機構的紀錄庫。你兩個小時前才去過的那一棟。'],
+        ['castron', '……清掃單位清的從來不是垃圾。合約就是合約，錢照算。'],
+      ],
+    },
+    { 2: [['echo', 'SILT 的背甲上有舊的彈痕。……跟你的武器口徑一樣。']] },
+  ),
+  ...cy(
+    {
+      event: 'sortieEnd',
+      sid: 'c2b',
+      c2: 'aetheric',
+      lines: [
+        ['echo', '反應消失。……它推倒的是研究機構的紀錄庫。你兩個小時前才去過的那一棟。'],
+        ['aetheric', '殘骸呢？……被拖走了？我們的人到的時候只剩一道刮痕。有意思。'],
+      ],
+    },
+    { 2: [['echo', 'SILT 的背甲上有舊的彈痕。……跟你的武器口徑一樣。']] },
+  ),
+  {
+    event: 'fail',
+    sid: 'c2b',
+    killedBy: 'SILT',
+    lines: [['echo', '背甲吃實彈，換爆發的武器。它張嘴就閃，不要正面硬拼。']],
+  },
+  // ---- c3b 冰原裂谷 — RIME（依抉擇 1：霍斯特／薩奇）----
+  ...cy(
+    {
+      event: 'sortieStart',
+      sid: 'c3b',
+      c2: 'castron',
+      lines: [['castron', '裂谷裡有我們的人。……如果還有的話。']],
+    },
+    { 2: [['echo', 'RIME 的潛伏位置和上一次一樣。……它記得，還是我記得？']] },
+  ),
+  ...cy(
+    {
+      event: 'sortieStart',
+      sid: 'c3b',
+      c2: 'aetheric',
+      lines: [['aetheric', '請不要讓它靠近研究特區的主入口。裡面的東西，我還需要。']],
+    },
+    { 2: [['echo', 'RIME 的潛伏位置和上一次一樣。……它記得，還是我記得？']] },
+  ),
+  {
+    event: 'segStart',
+    sid: 'c3b',
+    seg: 0,
+    lines: [['echo', '冰層是新結的。底下凍著東西——機甲的殘骸，還有……別看了，往前走。']],
+  },
   {
     event: 'segStart',
     sid: 'c3b',
     type: 'boss',
-    lines: [['echo', '大型反應，不是機甲——它在動！攻擊是能量與實彈，注意地上的預警。']],
+    lines: [
+      ['echo', '雷達上什麼都沒有。……太乾淨了。它在這裡。'],
+      ['echo', 'RIME 現身了。冷凍光束打中會變慢，別硬吃。等它撲空。'],
+    ],
   },
-  { event: 'bossHalf', sid: 'c3b', lines: [['echo', '它慢下來了。外掛的武器壞了就不能用，繼續打！']] },
-  { event: 'sortieEnd', sid: 'c3b', lines: [['echo', '反應消失。……這一區清乾淨了。']] },
+  { event: 'beastPart', sid: 'c3b', lines: [['echo', '拆掉一把了。它的追擊會少一層。']] },
+  { event: 'bossHalf', sid: 'c3b', lines: [['echo', '它又躲起來了。停下來聽——它撲過來之前會壓低身子。']] },
+  { event: 'bossP3', sid: 'c3b', lines: [['echo', '溫度在掉。它要放大的了，保持移動。']] },
+  ...cy(
+    {
+      event: 'sortieEnd',
+      sid: 'c3b',
+      c2: 'castron',
+      lines: [
+        ['echo', '反應消失。……傭兵，它凍住的是研究特區的出口。你剛從那裡出來。'],
+        ['castron', '巧合一次是巧合，三次就是有人在算。……我知道是誰在算。'],
+      ],
+    },
+    { 3: [['echo', '凍住出口的命令，我轉發的時間是你進研究特區後的第十一分鐘。……我當時沒多想。']] },
+  ),
+  ...cy(
+    {
+      event: 'sortieEnd',
+      sid: 'c3b',
+      c2: 'aetheric',
+      lines: [
+        ['echo', '反應消失。……傭兵，它凍住的是研究特區的出口。你剛從那裡出來。'],
+        ['aetheric', '規律成立了。它們清的是你的足跡。……謝謝你，這是很好的數據。'],
+      ],
+    },
+    { 3: [['echo', '凍住出口的命令，我轉發的時間是你進研究特區後的第十一分鐘。……我當時沒多想。']] },
+  ),
+  {
+    event: 'fail',
+    sid: 'c3b',
+    killedBy: 'RIME',
+    lines: [['echo', '它撲空就是破綻。被凍住的時候不要往前衝，先拉開。']],
+  },
+  // ---- c4b 舊宇宙港跑道 — WRECKER（依抉擇 2：派克／諾拉）----
+  ...cy(
+    {
+      event: 'sortieStart',
+      sid: 'c4b',
+      c4: 'veerwell',
+      lines: [['veerwell', '它身上的零件，一個都別打爛。好啦，打爛一點沒關係。']],
+    },
+    { 3: [['echo', '發信位址是空的，是因為我把它擦掉了。我一直在替它們擦。']] },
+  ),
+  ...cy(
+    {
+      event: 'sortieStart',
+      sid: 'c4b',
+      c4: 'sancta',
+      lines: [['sancta', '如果看到營地的東西……能留的就留下來。']],
+    },
+    { 3: [['echo', '發信位址是空的，是因為我把它擦掉了。我一直在替它們擦。']] },
+  ),
+  {
+    event: 'segStart',
+    sid: 'c4b',
+    seg: 0,
+    lines: [['echo', '跑道被一塊一塊掀起來了。不是爆炸，是用手拆的。']],
+  },
   {
     event: 'segStart',
     sid: 'c4b',
     type: 'boss',
-    lines: [['echo', '大型反應，不是機甲——它在動！攻擊是實彈與能量，注意地上的預警。']],
+    lines: [
+      ['echo', 'WRECKER。它在高處移動，別讓它一直在你頭上。'],
+      ['echo', '搥胸就是胸砲在蓄力，等它放完再進去。'],
+    ],
   },
-  { event: 'bossHalf', sid: 'c4b', lines: [['echo', '它慢下來了。外掛的武器壞了就不能用，繼續打！']] },
-  { event: 'sortieEnd', sid: 'c4b', lines: [['echo', '反應消失。……這一區清乾淨了。']] },
+  { event: 'beastPart', sid: 'c4b', lines: [['echo', '拆掉一把了。它丟得更兇了，注意頭上。']] },
+  { event: 'bossHalf', sid: 'c4b', lines: [['echo', '它開始丟東西了。看落點，別站在它下面。']] },
+  { event: 'bossP3', sid: 'c4b', lines: [['echo', '它在搥地蓄力——跳！']] },
+  ...cy(
+    {
+      event: 'sortieEnd',
+      sid: 'c4b',
+      c4: 'veerwell',
+      lines: [
+        ['echo', '反應消失。……它的命令，跟站的格式一樣。只有發信的位址是空的。'],
+        ['veerwell', '殘骸呢？我的殘骸呢？……我們的人說被「一個很大的影子」叼走了。這什麼鬼報告。'],
+      ],
+    },
+    { 2: [['veerwell', '……上次也是這樣？等等，我怎麼會知道上次？']] },
+  ),
+  ...cy(
+    {
+      event: 'sortieEnd',
+      sid: 'c4b',
+      c4: 'sancta',
+      lines: [
+        ['echo', '反應消失。……它的命令，跟站的格式一樣。只有發信的位址是空的。'],
+        ['sancta', '十二個名字。我都記下來了。……謝謝你。'],
+      ],
+    },
+    { 2: [['sancta', '又是十二個名字。……跟上次一樣。為什麼會一樣？']] },
+  ),
+  {
+    event: 'fail',
+    sid: 'c4b',
+    killedBy: 'WRECKER',
+    lines: [['echo', '實彈有效，爆發沒用。被魚叉鉤住立刻 QB，不要等。']],
+  },
+  // ---- c5b 洋上都市上空 — SHRIKE（霍斯特）----
+  ...cy(
+    {
+      event: 'sortieStart',
+      sid: 'c5b',
+      lines: [['castron', '塔上那些機甲的駕駛員，我認得兩個。……去吧。']],
+    },
+    { 2: [['castron', '上一次我也違約了，對吧。……我記得。']] },
+  ),
+  {
+    event: 'segStart',
+    sid: 'c5b',
+    seg: 0,
+    lines: [['echo', '頭頂有東西在繞圈。還沒下來——它在等你先動。']],
+  },
   {
     event: 'segStart',
     sid: 'c5b',
     type: 'boss',
-    lines: [['echo', '大型反應，不是機甲——它在動！攻擊是爆發與實彈，注意地上的預警。']],
+    lines: [
+      ['echo', 'SHRIKE，俯衝！看地上的路線，橫移躲開。'],
+      ['echo', '它在天上很難打。打到失衡，它就會掉下來。'],
+    ],
   },
-  { event: 'bossHalf', sid: 'c5b', lines: [['echo', '它慢下來了。外掛的武器壞了就不能用，繼續打！']] },
-  { event: 'sortieEnd', sid: 'c5b', lines: [['echo', '反應消失。……這一區清乾淨了。']] },
+  { event: 'beastPart', sid: 'c5b', lines: [['echo', '拆掉一把了。它在天上能做的事變少了。']] },
+  { event: 'bossHalf', sid: 'c5b', lines: [['echo', '它飛得更低了。俯衝的間隔在縮短——別停下來。']] },
+  { event: 'bossP3', sid: 'c5b', lines: [['echo', '它爬升到最高了……要整個壓下來。找掩護。']] },
+  ...cy(
+    {
+      event: 'sortieEnd',
+      sid: 'c5b',
+      lines: [
+        ['echo', '反應消失。……塔上的機甲，我會把識別碼傳回給各家。'],
+        ['castron', '謝了。……違約的事，我自己會去跟上面說。'],
+      ],
+    },
+    { 3: [['echo', '霍斯特說的那一條合約，我讀過。上面也有我的名字——管制系統，負責轉發。']] },
+  ),
+  {
+    event: 'fail',
+    sid: 'c5b',
+    killedBy: 'SHRIKE',
+    lines: [['echo', '不要一直對天上開火，等它俯衝下來。路線出現就橫移，打到失衡它就會掉下來。']],
+  },
+  // ---- c6b 軌道站外環 — VESPER（薩奇）----
+  ...cy(
+    { event: 'sortieStart', sid: 'c6b', lines: [['aetheric', '核心請盡量完整。……拜託你了。']] },
+    { 3: [['echo', '薩奇讀到的「方舟」是真的。我轉發的命令，最後都是從那裡送出來的。']] },
+  ),
+  {
+    event: 'segStart',
+    sid: 'c6b',
+    seg: 0,
+    lines: [['echo', '船塢的艙壁被切開了。切口很平，像刀。']],
+  },
   {
     event: 'segStart',
     sid: 'c6b',
     type: 'boss',
-    lines: [['echo', '大型反應，不是機甲——它在動！攻擊是能量與爆發，注意地上的預警。']],
+    lines: [
+      ['echo', 'VESPER。它在祈禱……不，那是起手的姿勢。'],
+      ['echo', '雙鐮很快。捕捉抓空的時候，就是你的時間。'],
+    ],
   },
-  { event: 'bossHalf', sid: 'c6b', lines: [['echo', '它慢下來了。外掛的武器壞了就不能用，繼續打！']] },
-  { event: 'sortieEnd', sid: 'c6b', lines: [['echo', '反應消失。……這一區清乾淨了。']] },
+  { event: 'beastPart', sid: 'c6b', lines: [['echo', '發射器少一個。浮空地雷會變少，繼續拆。']] },
+  { event: 'bossHalf', sid: 'c6b', lines: [['echo', '它開始跳了。落點附近不要停。']] },
+  { event: 'bossP3', sid: 'c6b', lines: [['echo', '四周的地雷在增加。它要把你圍起來——先打出一條路。']] },
+  ...cy(
+    {
+      event: 'sortieEnd',
+      sid: 'c6b',
+      lines: [
+        ['echo', '反應消失。……核心的訊號還在，薩奇博士的人正在接近。'],
+        ['aetheric', '讀出來了。命令來源：方舟。'],
+        ['aetheric', '……有意思。原來它們一直是從那艘船上下來的。'],
+        ['echo', '方舟……它們從那裡來。'],
+      ],
+    },
+    { 2: [['aetheric', '方舟。和上一次讀出來的一樣。……我其實不需要再讀一次。']] },
+  ),
+  {
+    event: 'fail',
+    sid: 'c6b',
+    killedBy: 'VESPER',
+    lines: [['echo', '它抗實彈，換能量武器。先打掉腹下的發射器，地雷才會停。']],
+  },
+  // ---- c7b 熔爐底層 — SCORIA（依抉擇 2：派克／諾拉）----
+  {
+    event: 'sortieStart',
+    sid: 'c7b',
+    c4: 'veerwell',
+    lines: [['veerwell', '它燒掉的紀錄裡，說不定有方舟的船票價格。開玩笑的。……大概。']],
+  },
+  { event: 'sortieStart', sid: 'c7b', c4: 'sancta', lines: [['sancta', '名冊能救一頁是一頁。']] },
+  {
+    event: 'segStart',
+    sid: 'c7b',
+    seg: 0,
+    lines: [['echo', '熔岩裡浮著紙……不，是記錄晶片。還在冒煙。']],
+  },
   {
     event: 'segStart',
     sid: 'c7b',
     type: 'boss',
-    lines: [['echo', '大型反應，不是機甲——它在動！攻擊是爆發與能量，注意地上的預警。']],
+    lines: [
+      ['echo', 'SCORIA。最後一台了，傭兵。'],
+      ['echo', '它靠近會站起來。拍地的時候跳，熊抱撲空再打。'],
+    ],
   },
-  { event: 'bossHalf', sid: 'c7b', lines: [['echo', '它慢下來了。外掛的武器壞了就不能用，繼續打！']] },
-  { event: 'sortieEnd', sid: 'c7b', lines: [['echo', '反應消失。……這一區清乾淨了。']] },
+  { event: 'beastPart', sid: 'c7b', lines: [['echo', '拆掉一把了。熔岩塊會少一點，可是它的拳頭還在。']] },
+  { event: 'bossHalf', sid: 'c7b', lines: [['echo', '它越來越常站起來了。站起來的時候，別待在它面前。']] },
+  { event: 'bossP3', sid: 'c7b', lines: [['echo', '熔岩在沸騰……它要把整片地面掀起來。']] },
+  ...['veerwell', 'sancta'].flatMap((r) =>
+    cy(
+      {
+        event: 'sortieEnd',
+        sid: 'c7b',
+        c4: r,
+        lines: [
+          ['echo', '反應消失。……它最後丟進熔岩的，是方舟機獸機庫的配置圖。'],
+          ['echo', '八個籠位。我們打倒的是七個。'],
+          r === 'veerwell' ? ['veerwell', '八個？……那第八個在哪？'] : ['sancta', '八個……那最後一個呢？'],
+        ],
+      },
+      {
+        2: [['echo', '配置圖和上次的一樣。……連燒掉的頁數都一樣。']],
+        3: [
+          [
+            'echo',
+            'R-07，它們的武器從來沒有對準你的駕駛艙。命令寫的是：保全鑰匙，清除其他一切。……你，從來不在「其他」裡面。',
+          ],
+        ],
+      },
+    ),
+  ),
+  {
+    event: 'fail',
+    sid: 'c7b',
+    killedBy: 'SCORIA',
+    lines: [['echo', '它站起來的時候退開。拍地就跳，熔岩塊落下的地方別站。']],
+  },
+  // ---- 第 8 章 c8s1 的第 1 段：方舟的機獸機庫（world/themes/ark-hangar.js 的籠位）----
+  ...[true, false].flatMap((won) =>
+    cy(
+      {
+        event: 'segStart',
+        sid: 'c8s1',
+        seg: 0,
+        raidWon: won,
+        lines: [
+          ['echo', '這裡……是它們的機庫。八個籠位。'],
+          ['sancta', '名牌上的字……UNDERTAKER、SILT、RIME……我會記下來。'],
+          ['echo', '七個是你打倒的。'],
+          won
+            ? ['echo', '第八個，REGENT 的籠位也空著。它不會回來了。']
+            : ['echo', '第八個籠位的門是開著的。……REGENT 還在外面。'],
+        ],
+      },
+      { 3: [['echo', '下一個週期，這八個籠位會再滿起來。……除非這次不一樣。']] },
+    ),
+  ),
   // ---- 區段類型的通用台詞 ----
   ...variants({ event: 'segStart', type: 'destroy' }, 'echo', [
     '目標設施確認。全部炸掉。',

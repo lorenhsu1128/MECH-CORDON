@@ -134,6 +134,7 @@ Object.assign(Game.prototype, {
       truth: this.campTruth().ok,
       wing: c.wingK || '', // 僚機（wing.js）
       bondHi: !!(c.wingK && this.wingBond(c.wingK) >= 3),
+      raidWon: !!(this.campStory().raid && Object.keys(this.campStory().raid.won || {}).length), // docs/beast-script.md
       ...extra,
     };
   },

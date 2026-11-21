@@ -218,6 +218,9 @@ Object.assign(Game.prototype, {
     }
   },
   bossPhaseShift(b, ph) {
+    // 機獸的出擊：進入最後型態時的通訊（docs/beast-script.md；REGENT 亂入時不播）
+    if (ph === 3 && this.camp && !this.isClient && b.ai === 'beast' && !b.raidLion)
+      this.campComm('bossP3', this.campCtx());
     b.tierPhaseReset(); // Boss 改版：失衡的次數重置、蓄力取消（mech-boss-tier.js）
     this.tierFieldShift(b, ph); // Boss 改版的 E：型態改變場地（boss-tier.js）
     b.iFrames = Math.max(b.iFrames || 0, 1.5);

@@ -904,7 +904,7 @@ SORTIES.c8s1 = {
   level: 22,
   reward: 360000,
   segs: [
-    { theme: 'ark', pool: ['battle'], variants: ['fore', 'hangar'] },
+    { theme: 'ark', pool: ['battle'], variants: ['hangar'] }, // 機獸機庫（docs/beast-script.md）：第 1 段固定是艦內維修機庫
     { theme: 'ark', pool: ['battle', 'destroy', 'intel'], variants: ['flank', 'engine'] },
     { theme: 'ark', pool: ['supply', 'escort', 'defend', 'chase', 'front'], variants: ['storm', 'hangar'] },
     { theme: 'ark', pool: ['elite'], ace: 'keel', variants: ['fore', 'engine'] },

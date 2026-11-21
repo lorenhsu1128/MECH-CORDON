@@ -1,6 +1,6 @@
 # 機獸出擊的劇本（文案與語音）
 
-2026-11-21 起草，**等使用者審閱**。範圍：第 1～7 章的機獸出擊 `c<章>b`、獅型亂入、第 8 章的機獸機庫、載入提示。
+2026-11-21 起草，使用者同意照草稿做（「依建議一次做到完」），同一天接進遊戲並產生語音（第八節是實作紀錄）。範圍：第 1～7 章的機獸出擊 `c<章>b`、獅型亂入、第 8 章的機獸機庫、載入提示。
 之前的簡報與通訊是佔位用的範本句（`docs/beast-design.md` 的「劇情先不寫」），這份取代它們。
 
 ## 使用者的決定（2026-11-21）
@@ -420,3 +420,26 @@
 
 - 合計約 200 句，ECHO 兩個聲音合計約 230 次產生。
 - 時間：每句產 3 次挑最好的，中日文約 3～4 小時（RTX 4070）。
+
+## 八、實作紀錄（2026-11-21）
+
+- **簡報**：`data/story.js` 的 `BRIEFINGS.c1b`～`c7b`（依抉擇的出擊以 `{ c2: { 選項: [...] } }` 寫在 `lines` 裡，`pickLines` 展開）；c6b 的委託方是 `aetheric`。
+- **通訊**：`data/story-comms.js` 開頭的「機獸」區。同一個事件只挑一則（`commPick` 取條件最多的），所以周目的版本用 `cy(基本, { 周目: 追加句 })` 產生「基本句＋追加句」的一則；REGENT 打倒時的委託方句子在 `RAID_WON`。
+- **新事件**：
+  - `beastPart`：`game/boss-tier.js` 的 `tierPartDown`，這一段第一次、REGENT 不算。
+  - `bossP3`：`game/bosses.js` 的 `bossPhaseShift`，第三型態、REGENT 不算。
+  - `raidBite`：`raidKill`。
+  - `raidWon`：`raidWon`。
+  - REGENT 的剩一半：`raidTick` 在接手之後自己判斷，原本的 bossHalf 在亂入前就播過了。
+- **新條件**（`game/comms.js` 的 `COND`）：`raid`（REGENT 的事件都帶）、`raidWon`（`campCtx`：存檔裡打倒過 REGENT）。
+- **代號**：`data/beasts.js` 的 `name`／`intro`＝「〇型機獸 代號」，失敗通訊的 `killedBy` 比對代號；`NET_VERSION` 11.53。
+- **載入提示**：`data/beasts.js` 的 `BEAST_TIPS`，由 `game/tips.js` 的情報產生（介紹＋兩則對策，打過才出現）。
+- **機獸機庫**：`world/themes/ark-hangar.js` 的 `beastBerths`＋`BERTHS`：
+  - 位置：+Z 端的牆前、坡道兩側各四個，坡道的底部留空，才走得上去。
+  - 外觀：名牌是畫布貼圖（`markAuthoredTex`），背牆與柱子有碰撞，不用亂數。
+  - c8s1 的第 1 段固定是 `hangar` 變體。
+- **語音**：日文翻譯在 `lines-ja.json`，代號寫成片假名給 TTS 唸，字幕以 `JA_DISP` 換回英文；表情在 `data/line-expr.js` 的「機獸的出擊與獅型 REGENT」與 `EVENT_EXPR`。
+- **產生**：`voice-gen.py --v3 --lang zh|ja --takes 3 --voice gentle,ai,castron,aetheric,veerwell,sancta`（只產生還沒有的句子）。
+- **測試**：
+  - `testBeastCampaign`：七章 Boss 段開始說出代號、外掛武器打壞、最後型態的通訊；c8s1 依 `raidWon` 換句。
+  - `testBeastRaid`：REGENT 的五個通訊，卡斯特隆路線打倒時是霍斯特。

@@ -549,7 +549,7 @@ Object.assign(Game.prototype, {
         `<svg viewBox="0 0 24 24" class="hnI hnZ" aria-hidden="true"><title>${escHtml(tip.join('\n'))}</title>` +
         `<circle cx="12" cy="12" r="8" fill="${s === 'open' ? col : '#17181b'}" stroke="${col}" stroke-width="2.2"${s === 'locked' ? ' stroke-dasharray="3 2"' : ''}/>` +
         `<circle cx="12" cy="12" r="10" fill="none" stroke="#000" stroke-width="2.4"/>` +
-        `<text x="12" y="16" text-anchor="middle" font-size="11" font-weight="900" font-style="italic" fill="${s === 'open' ? '#000' : col}">${s === 'done' ? '✓' : s === 'open' ? '!' : '·'}</text>${this.raidBadge(sid) ? '<path class="hnR" d="M19.5 0.5 L23.5 4.5 L19.5 8.5 L15.5 4.5 Z" fill="#ffc040" stroke="#000" stroke-width="1.2"><title>已擊退獅型機獸</title></path>' : ''}</svg>` +
+        `<text x="12" y="16" text-anchor="middle" font-size="11" font-weight="900" font-style="italic" fill="${s === 'open' ? '#000' : col}">${s === 'done' ? '✓' : s === 'open' ? '!' : '·'}</text>${this.raidBadge(sid) ? '<path class="hnR" d="M19.5 0.5 L23.5 4.5 L19.5 8.5 L15.5 4.5 Z" fill="#ffc040" stroke="#000" stroke-width="1.2"><title>已擊退獅型機獸 REGENT</title></path>' : ''}</svg>` +
         `<span class="hnT" style="color:${col}">${chs ? '<i class="hnF">⚑</i>' : ''}${escHtml(name)}</span>`;
       el.onclick = () => this.hubNodeClick(sid);
       el.onpointerenter = () => (this.hubHover = sid);
