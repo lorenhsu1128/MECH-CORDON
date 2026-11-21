@@ -47,7 +47,6 @@ function rig(root, torso, M, o) {
     height: o.height,
     coreH: o.height * 0.5,
     mats: [M.main, M.main2, M.main3, M.sub, M.acc, M.joint, M.gun],
-    flashT: 0,
     mounts: [],
     body: null,
     legNodes: [],

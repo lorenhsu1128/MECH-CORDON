@@ -189,7 +189,6 @@ function rigOf(root, torso, M, o) {
     height: o.height,
     coreH: o.height * 0.5,
     mats: [M.main, M.main2, M.main3, M.sub, M.acc, M.joint, M.gun],
-    flashT: 0,
     mounts: o.mounts || [],
     // 受損：AP ≤ 50% 時在機體上方冒煙（render/foe-damage.js；沒有自己指定時依外框取三個點）
     dmg: o.dmg || autoSmoke(root),

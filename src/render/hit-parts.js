@@ -213,6 +213,21 @@ export function hitRay(rig, a, v, pad = 0) {
   return _hit;
 }
 
+// 區塊外框上離 src 最近的點 outP 與朝 src 的方向 outN（沒有彈道的攻擊：近戰、爆炸…的火花與碎片從這裡噴出）；
+// src 在外框裡時 outN＝0（呼叫端自己決定方向）
+const _ps = new THREE.Vector3();
+export function pieceSurface(rig, i, src, outP, outN) {
+  const h = rig && rig.hb && rig.hb[i];
+  if (!h || !h.ok) return false;
+  _m.copy(h.node.matrixWorld).invert();
+  _ps.copy(src).applyMatrix4(_m).clamp(h.min, h.max);
+  outP.copy(_ps).applyMatrix4(h.node.matrixWorld);
+  outN.copy(src).sub(outP);
+  if (outN.lengthSq() < 1e-4) outN.set(0, 0, 0);
+  else outN.normalize();
+  return true;
+}
+
 // 離 p 最近的區塊（爆炸、近戰、沒打中外框時）：比外框中心的距離
 export function nearestPiece(rig, p) {
   const L = rig && rig.hb;
@@ -372,7 +387,7 @@ function buildFlash(m) {
   m.pfx = F;
   return F;
 }
-// 被打中的區塊閃紅（i＝rig.hb 的索引）；機體整台閃白照舊（mechFlash）
+// 被打中的區塊閃紅（i＝rig.hb 的索引）；整台閃白在 2026-11-21 拿掉，改成命中點的火花與碎片（MechEntity.hitSparks）
 export function partFlash(m, i) {
   if (!m || !m.hb || !(i >= 0) || i >= m.hb.length) return;
   let F = m.pfx;

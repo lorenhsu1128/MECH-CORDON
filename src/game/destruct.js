@@ -18,6 +18,7 @@ import { fling, local } from '../render/foe-damage.js';
 import { isOutline } from '../render/geometry.js';
 import { CH0, cellHash, cutHeight, splitTris, tierBoxes } from '../world/prop-split.js';
 import { WRECK_SLOT } from '../world/prop-wreck.js';
+import { targetNear } from '../world/prop-hit.js';
 import { providedModel } from '../render/model-provider.js';
 import { Game } from './game.js';
 
@@ -26,7 +27,6 @@ const MAX_ACTIVE = 12; // 同時演出持續效果的物件數（離鏡頭最近
 const TABLE_DT = 2; // 房主送血量表的間隔（秒）
 const WRECK_BURN = 22; // 可燃物的殘骸繼續燒幾秒
 const WRECK_SMOKE = 7; // 其他殘骸冒煙／揚塵幾秒
-const FLASH_MS = 70;
 const CRUSH_SLOW = 0.85; // 踩平時機甲的速度倍率
 const COL_MAX = 2; // 每格最多開始倒幾個結構（連鎖倒塌排到之後幾格：propLater）
 const WORK_MS = 4; // 排隊的工作（壓壞底下的物件、碎裂特效）每格最多做幾毫秒
@@ -61,7 +61,9 @@ const BREACH_FLOW_T = 40; // 壩體缺口的水流持續幾秒
 const ROOF_HP = 9000; // 岩頂每一格的血量
 
 const GEO_OWNER = new WeakMap(); // 幾何 → 改了它的物件（共用的幾何先複製一份）
-const BLACK = new THREE.Color(0);
+const _phP = new THREE.Vector3(),
+  _phN = new THREE.Vector3(),
+  _phT = new THREE.Vector3();
 const SHARD_GEO = new THREE.BoxGeometry(1, 0.16, 0.75);
 
 // 頂點位置的雜湊（0～1）：焦黑一塊一塊的
@@ -128,7 +130,7 @@ Object.assign(Game.prototype, {
     if (!(d > 0)) return;
     if (p.noDie && p.hp - d <= 0) p.hp = Math.min(p.hp, 1);
     else p.hp -= d;
-    this.propFlash(p);
+    this.propHitFx(p, at, from);
     if (!this.propXfer) this.popDamage(at || p.center(), d, false, false, false, 0, -1, impact);
     // 打在大型結構本體或甲板上：同時算給離命中點最近、還沒壞的承重柱（所以打哪裡都倒得了；2026-11-06）
     if (p.noDie && p.sup && p.sup.length && DM.sup > 0 && !this.propXfer) {
@@ -201,13 +203,22 @@ Object.assign(Game.prototype, {
     this.propCrowdDown(p); // 小人
     if (!o.cr) this.rumbleAt(p.center(), 0.5, 0.3, 160, 30);
   },
-  // 受擊閃光（只對可淡出的材質有效；propDmgTick 還原）
-  propFlash(p) {
-    this.world.propUnmerge(p); // 合併池裡的：拿出來（之後一直在外面；world.js 的 mergeProps）
-    if (!p.ob.mats || !p.ob.mats.length) return;
-    for (const m of p.ob.mats) if (m.emissive) m.emissive.setRGB(0.6, 0.6, 0.6);
-    p.flashUntil = performance.now() + FLASH_MS;
-    (this.propFlashing || (this.propFlashing = new Set())).add(p);
+  // 受擊（2026-11-21 使用者定案：不再閃白）：火花與小碎片從命中形狀上的點往外噴。
+  // 投射物直接打中的自己噴（hitFxOff）；轉給承重柱的那一份不噴；同一個物件 0.08 秒內只噴一次
+  propHitFx(p, at, from) {
+    if (!at || this.hitFxOff || this.propXfer || !this.fx) return;
+    const now = performance.now();
+    if (now - (p.fxAt || 0) < 80) return;
+    p.fxAt = now;
+    const P = targetNear(p, at, _phP),
+      N = _phN.copy(at).sub(P);
+    // 命中點就在形狀上（或裡面）：朝攻擊者，沒有就從中心往外
+    if (N.lengthSq() < 1e-4 && from && from.pos) N.copy(from.pos).sub(P);
+    if (N.lengthSq() < 1e-4) N.copy(P).sub(p.center());
+    if (N.lengthSq() < 1e-4) N.set(0, 1, 0);
+    N.normalize();
+    this.fx.spark(P, 0xffe0a0, _phT.copy(N).negate());
+    this.fx.mechChips(P, N);
   },
   // 血量變了：進入新的階段時套外觀（quiet＝不拋碎片，重連時直接套用）
   propStageCheck(p, quiet) {
@@ -434,14 +445,6 @@ Object.assign(Game.prototype, {
       w = this.world;
     this.propQTick();
     if (!fx || !w) return;
-    if (this.propFlashing && this.propFlashing.size) {
-      const now = performance.now();
-      for (const p of this.propFlashing)
-        if (now >= p.flashUntil) {
-          for (const m of p.ob.mats || []) if (m.emissive) m.emissive.copy(m.userData.emis0 || BLACK);
-          this.propFlashing.delete(p);
-        }
-    }
     if (this.propW !== w) {
       this.propW = w;
       this.propActive = [];
@@ -1538,7 +1541,6 @@ Object.assign(Game.prototype, {
     if (p.dead) return;
     if (p.hp === h) return;
     p.hp = h;
-    if (flash) this.propFlash(p);
     this.propStageCheck(p, quiet);
   },
   propApplyTable(t) {

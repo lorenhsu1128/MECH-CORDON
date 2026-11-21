@@ -40,11 +40,6 @@ import { addPose, hrBody, hrKicks, hrPose } from './hit-react-pose.js';
 import { meleeHrOf } from '../data/hit-react.js';
 import { LAUNCH_PITCH, measureMuzzle, muzzleFromPoints } from './muzzle.js';
 import { partFlashTick } from './hit-parts.js';
-// 受擊閃光結束後還原的自發光（GLB 材質記錄在 userData.emis0，程式材質為黑）
-const BLACK = new THREE.Color(0);
-const unflash = (m) => {
-  for (const mm of m.mats) mm.emissive.copy(mm.userData.emis0 || BLACK);
-};
 
 // 武器的機匣：切角截面沿 Z 放樣（兩端收小），w×h×l，中心 (x, y, z)
 function recv(node, m, w, h, l, x = 0, y = 0, z = 0, k = 0.18) {
@@ -2400,7 +2395,6 @@ export function buildMech(asm, pal, scale = 1, opts = {}) {
     height: (waistY(type) + LAY.upperH) * MB * scale, // 判定身高（世界座標）
     coreH: PIECE_BOX.core[1][4] * MB,
     mats,
-    flashT: 0,
   };
   // 戰車腳的會動零件（輪子、履帶片）：animateMech 的 tankRoll 依移動距離更新
   for (const slot in PROC_PARTS) {
@@ -2722,10 +2716,6 @@ export function animateMech(m, dt, st) {
     for (const n of m.nozzles) {
       n.scale.y = lerp(n.scale.y, 1.2 + Math.random() * 0.5, 0.4);
     }
-    if (m.flashT > 0) {
-      m.flashT -= dt;
-      if (m.flashT <= 0) unflash(m);
-    }
     if (m.cls === 'heli') {
       m.torso.rotation.x = lerp(m.torso.rotation.x, -(st.leanX || 0) * 0.6, 0.1); // 加速時機頭下壓（正面 −Z）
       m.torso.rotation.z = lerp(m.torso.rotation.z, (st.leanZ || 0) * 0.8, 0.1);
@@ -2771,10 +2761,6 @@ export function animateMech(m, dt, st) {
     P(L.up, 0.05, 0, -0.3);
     P(L.fore, 0.35, 0, 0); // 雙手外張（A 字站姿）自然下垂
     m.thrust = lerp(m.thrust || 0, 0.05, 0.2);
-    if (m.flashT > 0) {
-      m.flashT -= dt;
-      if (m.flashT <= 0) unflash(m);
-    }
     return;
   }
   const strafe = st.strafe || 0,
@@ -3573,10 +3559,6 @@ export function animateMech(m, dt, st) {
       a.up.rotation.z = lerp(a.up.rotation.z, (kk2 === 'r' ? 1 : -1) * 0.7 * kd, kk); // 手往外甩
     }
   }
-  if (m.flashT > 0) {
-    m.flashT -= dt;
-    if (m.flashT <= 0) unflash(m);
-  }
 }
 
 // 受擊反應（st.react＝{ k, ph 0～1, sd 往哪一側推, w 強度 }）的姿勢偏移：rx／rz＝全身傾斜（lift，正 x＝後仰、
@@ -3672,11 +3654,4 @@ export function reactPose(R) {
   for (const k of ['rx', 'rz', 'yaw', 'flip', 'tx', 'tz', 'tw', 'crouch']) o[k] *= e;
   if (V && V.osc) o[V.osc[0]] += Math.sin(ph * (R.T || 0.5) * V.osc[2]) * V.osc[1] * (1 - ph) * R.w;
   return o;
-}
-
-export function mechFlash(m, color, dur = 0.07) {
-  if (!m || !m.mats) return;
-  m.flashT = dur;
-  const c = color !== undefined ? new THREE.Color(color) : new THREE.Color(0.9, 0.9, 0.9);
-  for (const mm of m.mats) mm.emissive.copy(c);
 }

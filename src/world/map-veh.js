@@ -10,13 +10,13 @@ import { buildCineVeh } from '../render/cine-vehicles.js';
 import { local } from '../render/foe-damage.js';
 import { isOutline } from '../render/geometry.js';
 import { tagStyle } from '../render/style/shader.js';
+import { hitChips } from './map-extras.js';
 
 let MV_ID = 1;
 const STEER = 0.6; // 最大的前輪轉角（弧度）
 const ACC = 2.5,
   BRAKE = 7; // 加速、煞車（m/s²）
 const REV_V = 2.5; // 倒車的速度
-const FLASH_T = 0.07;
 const _f = new THREE.Vector3(),
   _e = new THREE.Euler(0, 0, 0, 'YXZ');
 
@@ -100,7 +100,6 @@ export class MapVeh {
     this.revN = 0;
     this.tilt = { x: 0, z: 0 };
     this.shape = { b: true, x: 0, z: 0, r: 0, x0: 0, x1: 0, z0: 0, z1: 0, y0: 0, y1: 0 };
-    this.flashT = 0;
     // 作業（第 2 期）：line＝在 route 的兩點之間來回（堆高機、礦用卡車、推土機）；dig／lift＝原地作業（挖土機、吊車）
     this.job = o.job || null;
     if (this.job) {
@@ -278,10 +277,6 @@ export class MapVeh {
   }
   // 一格：blocked＝前方被擋住（Game 端判定：機甲、人、別的車、障礙物）
   tick(dt, blocked) {
-    if (this.flashT > 0) {
-      this.flashT -= dt;
-      if (this.flashT <= 0 && this.om) for (const r of this.om) if (r.e0) r.m.emissive.copy(r.e0);
-    }
     if (this.dead) {
       if (this.T.air && !this.landed) this.fallTick(dt);
       return;
@@ -779,7 +774,7 @@ export class MapVeh {
     const d = Math.round(dmg * Math.max(DM.floor, propAttrK(this.mat, attr === 'none' ? 'none' : a)) * DM.k);
     if (!(d > 0)) return;
     this.hp -= d;
-    this.flash();
+    hitChips(g, this, at); // 火花與碎片從命中點往外（不再閃白）
     if (at) this.alarm(at);
     g.popDamage(at || this.center(), d, false, false, false, 0, -1, impact);
     if (this.hp <= 0) {
@@ -805,10 +800,6 @@ export class MapVeh {
     });
     tagStyle(this.mesh); // 材質分類（機體類）跟著換
     return (this.om = L);
-  }
-  flash() {
-    for (const r of this.own()) if (r.e0) r.m.emissive.setRGB(0.6, 0.6, 0.6);
-    this.flashT = FLASH_T;
   }
   char(k) {
     this.charK = k;

@@ -259,7 +259,6 @@ export function buildVehicle(pal, scale = 1, key = 'tank') {
     height: 3.0 * scale,
     coreH: 1.0,
     mats,
-    flashT: 0,
   };
   // 脫落零件前還原合併的網格（MechEntity.mergeModel 的 mergeRig）
   tankDmg.unmerge = () => rig.unmerge && rig.unmerge();
@@ -507,7 +506,6 @@ export function buildHeli(pal, scale = 1, key = 'heli') {
     height: 2.9 * scale,
     coreH: 1.3,
     mats,
-    flashT: 0,
   };
 }
 // 無人機的尾翼（區域 X＝往外、Y＝沿機身往後）
@@ -623,7 +621,6 @@ export function buildDrone(pal, scale = 1, key = 'swarm') {
     height: 1.1 * scale,
     coreH: 0.5,
     mats,
-    flashT: 0,
   };
 }
 

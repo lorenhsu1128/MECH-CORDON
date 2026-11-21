@@ -80,7 +80,7 @@ import {
 } from '../data/ai.js';
 import { applyPilotStats, pilotWeaponDef } from '../data/pilot.js';
 import { MeleeAnim } from '../render/melee-anim.js';
-import { animateMech, buildMech, mechFlash } from '../render/mech-model.js';
+import { animateMech, buildMech } from '../render/mech-model.js';
 import { rigMuzzle } from '../render/muzzle.js';
 import { PACE, paceDef, pk, pv, strictHit } from '../data/pace.js';
 import { applyIK, ikMeasure, ikOn, ikRestore } from '../render/mech-ik.js';
@@ -88,7 +88,15 @@ import { hrBodyRestore } from '../render/hit-react-pose.js';
 import { dmgOn } from '../render/foe-damage.js';
 import { fireClass } from '../render/mech-fire.js';
 import { mergeRig } from '../render/mesh-merge.js';
-import { HP, hitRay, measureHitBoxes, nearestPiece, partFlash, partPoint } from '../render/hit-parts.js';
+import {
+  HP,
+  hitRay,
+  measureHitBoxes,
+  nearestPiece,
+  partFlash,
+  partPoint,
+  pieceSurface,
+} from '../render/hit-parts.js';
 import { nozzleWorld } from '../fx/thruster.js';
 import { measureBlades } from '../fx/trail.js';
 import { buildDrone, buildHeli, buildVehicle } from '../render/vehicle-models.js';
@@ -129,6 +137,11 @@ function meleeSwingOf(st) {
 const _ptA = new THREE.Vector3(),
   _ptF = new THREE.Vector3(),
   _ptR = new THREE.Vector3();
+const _hsS = new THREE.Vector3(),
+  _hsD = new THREE.Vector3(),
+  _hsP = new THREE.Vector3(),
+  _hsN = new THREE.Vector3(),
+  _hsT = new THREE.Vector3();
 export class MechEntity {
   constructor(game, asm, pal, opts = {}) {
     this.game = game;
@@ -1196,8 +1209,10 @@ export class MechEntity {
               if (h.pi !== undefined) {
                 h.t.hitPart = h.pi; // 打中的區塊閃紅
                 g.fx.mechChips(pt, h.n);
+                g.hitFxOff = true; // 碎片已經從真正的命中點噴了（hitSparks 不再噴）
               }
               h.t.takeDamage(ldmg * fall, limp * fall, this, pt, bdir.clone(), undefined, d.id);
+              g.hitFxOff = false;
               h.t.rbGold = false;
               h.t.wpAimK = null;
               this.feelHit(h.t, 'laser', bdir, limp * fall); // 手感（mech-feel.js）
@@ -1723,7 +1738,6 @@ export class MechEntity {
       s: hs,
       r: this.pos.distanceTo(hp) + 2 * this.dk,
     });
-    mechFlash(tg.model, d.color, 0.2);
     this.hitStopLocal(hs, tg);
     if (this.isPlayer) {
       g.camShake = Math.max(g.camShake, last ? 0.34 : 0.16);
@@ -1973,7 +1987,6 @@ export class MechEntity {
           s: HITSTOP[wgt],
           r: this.pos.distanceTo(hp) + 2 * this.dk,
         });
-        mechFlash(t.model, d.color, 0.16);
         this.tutE('hit', {
           stage: m.stage,
           st,
@@ -2229,6 +2242,52 @@ export class MechEntity {
     const la = this.lockAge(t) * (this.gxF ? this.gearLockK(d, t) : 1); // 鎖定時間（mech-gear-fx.js）
     return clamp(Math.ceil(((n + x) * la) / full), 1, n + x);
   }
+  // 被打中的火花與小碎片（2026-11-21 使用者定案：取代整台閃白；docs/hit-react-design.md）：從命中點沿表面往外噴。
+  // 投射物與雷射知道彈道，自己噴（g.hitFxOff）；這裡是其他的（近戰、爆炸、光束、衝擊波…）。
+  // 人形機甲＝被打中的區塊外框上朝攻擊來向最近的點；其他（載具、專屬敵人、Boss）沒有外框，用判定球的 0.75 倍
+  hitSparks(at, hpi, from, dir) {
+    const g = this.game,
+      fx = g && g.fx;
+    if (!fx || g.hitFxOff || !this.model) return;
+    const now = performance.now();
+    if (now - (this.hitFxAt || 0) < 60) return; // 同一台 0.06 秒內只噴一次（持續傷害、多段命中）
+    this.hitFxAt = now;
+    const c = this.center();
+    const src = _hsS.copy(at || (from && from.center ? from.center() : c));
+    const hasDir = !!(dir && dir.lengthSq() > 1e-6);
+    if (hasDir) _hsD.copy(dir).normalize();
+    const P = _hsP,
+      N = _hsN;
+    let ok = false;
+    if (this.model.hb) {
+      if (hpi === undefined) hpi = nearestPiece(this.model, src);
+      // 有方向的（光束）：從來的那一側找表面
+      if (hpi >= 0)
+        ok = pieceSurface(this.model, hpi, hasDir ? _hsT.copy(src).addScaledVector(_hsD, -20) : src, P, N);
+      if (ok && N.lengthSq() < 0.5) {
+        // 命中點在外框裡：朝攻擊者，沒有就往上
+        if (from && from.center && from !== this) N.copy(from.center()).sub(P);
+        if (N.lengthSq() < 1e-4) N.set(0, 1, 0);
+        N.normalize();
+      }
+    }
+    if (!ok) {
+      const R = (this.radius || 1) * 0.75;
+      if (hasDir) {
+        N.copy(_hsD).negate();
+        P.copy(src).addScaledVector(N, Math.sqrt(Math.max(0, R * R - src.distanceToSquared(c))));
+      } else {
+        N.copy(src).sub(c);
+        if (N.lengthSq() < 1e-4 && from && from.center && from !== this) N.copy(from.center()).sub(c);
+        const L = N.length();
+        if (L < 1e-3) N.set(0, 1, 0);
+        else N.multiplyScalar(1 / L);
+        P.copy(c).addScaledVector(N, at ? Math.min(R, L) : R);
+      }
+    }
+    fx.spark(P, 0xffe0a0, _hsT.copy(N).negate());
+    fx.mechChips(P, N);
+  }
   takeDamage(dmg, impact, from, at, dir, melee, wid, attr) {
     if (this.dead) return;
     if (this.ai === 'colossus') return; // 大型兵器的本體打不動：打部位與動力核心（mech-colossus.js）
@@ -2394,8 +2453,8 @@ export class MechEntity {
     let hpi = this.hitPart;
     this.hitPart = undefined;
     if (hpi === undefined && this.model && this.model.hb) hpi = nearestPiece(this.model, at || this.center());
-    mechFlash(this.model);
     if (hpi >= 0) partFlash(this.model, hpi); // 被打中的部位閃紅
+    if (attr !== 'none' && (at || from)) this.hitSparks(at, hpi, from, dir); // 命中點的火花與碎片（取代整台閃白）
     // 依武器的受擊反應（mech-hit-react.js）：有的時候通用的推一下減半
     const hrk = melee ? null : this.hrFromHit(W, attr, at, dir, from);
     this.hitAnim(

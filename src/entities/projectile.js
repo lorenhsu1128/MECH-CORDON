@@ -357,6 +357,7 @@ export class Projectile {
       }
     } else if (direct) {
       const dir = this.vel.clone().normalize();
+      g.hitFxOff = true; // 直接打中的：火花與碎片在下面自己噴（知道彈道與表面）
       if (direct.isProp)
         g.damageProp(direct, this.dmg, this.impactV, this.pos, this.owner, this.attr, this.wid);
       else {
@@ -395,11 +396,19 @@ export class Projectile {
           if (this.pwk) this.owner.pwHitPop(direct, this.pwk);
         }
       }
+      g.hitFxOff = false;
       if (this.hitPI >= 0 && this.hitN) {
         // 人形機甲：火花沿表面法線往外濺，加上小碎片（從真正的命中點）
         g.fx.spark(this.pos, this.color || 0xffe0a0, _pjC.copy(this.hitN).negate());
         g.fx.mechChips(this.pos, this.hitN);
-      } else g.fx.spark(this.pos, this.color || 0xffe0a0, dir);
+      } else {
+        // 其他（載具、專屬敵人、Boss、地圖物件）：命中點在判定的表面上，碎片往外（中心 → 命中點）
+        g.fx.spark(this.pos, this.color || 0xffe0a0, dir);
+        _pjC.copy(this.pos);
+        if (direct.center) _pjC.sub(direct.center());
+        if (!direct.center || _pjC.lengthSq() < 1e-4) _pjC.copy(dir).negate();
+        g.fx.mechChips(this.pos, _pjC.normalize());
+      }
       this.hitPI = -1;
       // 能量武器打中機體：電弧（docs/vfx-design.md）
       if ((this.attr || (this.wid && weaponAttr(weaponById(this.wid)))) === 'en')
