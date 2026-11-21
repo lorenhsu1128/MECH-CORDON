@@ -140,6 +140,15 @@ export const JA_DISP = [
   ['イーエムピー', 'EMP'],
   ['エムティー', '歩行機'],
   ['ビックリマーク', '「!」'],
+  // 機獸的代號（docs/beast-script.md）
+  ['アンダーテイカー', 'UNDERTAKER'],
+  ['シルト', 'SILT'],
+  ['ライム', 'RIME'],
+  ['レッカー', 'WRECKER'],
+  ['シュライク', 'SHRIKE'],
+  ['ヴェスパー', 'VESPER'],
+  ['スコリア', 'SCORIA'],
+  ['リージェント', 'REGENT'],
 ];
 // 日文字幕的說話者名稱（沒有列的照中文：ECHO 與宿敵是代號）
 export const SPEAKER_JA = {

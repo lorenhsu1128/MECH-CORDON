@@ -58,7 +58,15 @@ Object.assign(Game.prototype, {
       }
       return this.raidStart(v);
     }
-    if (R.done) return;
+    if (R.done) {
+      // REGENT 剩一半時的通訊（原本的 bossHalf 在亂入之前就播過了）
+      const L = R.lion;
+      if (!R.half && L && !L.dead && L.hp < L.maxHp * 0.5) {
+        R.half = true;
+        this.campComm('bossHalf', this.campCtx({ raid: true }));
+      }
+      return;
+    }
     R.t += dt;
     // 進場的這幾秒：原本的機獸動不了也打不死、玩家不受傷
     const v = R.v;
@@ -141,7 +149,7 @@ Object.assign(Game.prototype, {
     this.bossEnraged = false;
     this.bossAdds = { 2: true };
     this.fx.warnPath(at.clone(), v.pos.clone(), lion.radius * 2, 1.2, 0xff4020);
-    this.campComm('raidIn', this.campCtx());
+    this.campComm('raidIn', this.campCtx({ raid: true }));
     this.netEv({ t: 'raid', k: 'in', n: lion.name });
     this.raidShow('in', lion.name);
     if (!this.net && this.camCloseup) this.camCloseup(lion, 3);
@@ -165,6 +173,7 @@ Object.assign(Game.prototype, {
     for (const p of this.players || [])
       if (p && !p.dead) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * RAID.heal);
     this.dropAmmoAt(v);
+    if (this.camp) this.campComm('raidBite', this.campCtx({ raid: true })); // docs/beast-script.md
   },
   // 進場結束：獅型開始打玩家
   raidDone(lion) {
@@ -174,7 +183,7 @@ Object.assign(Game.prototype, {
     this.bossDef = { ...(this.bossDef || {}), name: lion.name };
     this.netEv({ t: 'raid', k: 'go', n: lion.name });
     this.raidShow('go', lion.name);
-    this.campComm('raidGo', this.campCtx());
+    this.campComm('raidGo', this.campCtx({ raid: true }));
   },
   // 顯示（房主、單機、客機）：橫幅、血條的名稱、過關條件卡
   raidShow(k, name) {
@@ -219,6 +228,7 @@ Object.assign(Game.prototype, {
     this.gearRaid(e); // gear-loot.js
     this.netEv({ t: 'raid', k: 'won', n: e.name, ch });
     this.raidShow('won', e.name);
+    if (this.camp) this.campComm('raidWon', this.campCtx({ raid: true }));
   },
   // 這個出擊的節點要不要畫「已擊退獅型」的記號（作戰室）
   raidBadge(sid) {

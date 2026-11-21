@@ -267,6 +267,12 @@ Object.assign(Game.prototype, {
       0xffe070,
       1.8,
     );
+    // 機獸的出擊：第一個外掛武器被打壞時的通訊（docs/beast-script.md；REGENT 亂入時不播）
+    const ss = this.camp && this.camp.ss;
+    if (ss && !ss.beastPart && b.ai === 'beast' && !b.raidLion) {
+      ss.beastPart = 1;
+      this.campComm('beastPart', this.campCtx());
+    }
     const [x, z] = this.world.nearSolid ? this.world.nearSolid(c.x, c.z) : [c.x, c.z];
     this.spawnPickup('bossPart', new THREE.Vector3(x, this.world.groundAt(x, z, c.y) + 0.6, z));
     this.tierIntro('part', '部位破壞 — 打壞 Boss 的部位會停用它負責的招式並掉落補給，結算時每個部位 SP +8%');

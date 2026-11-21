@@ -6,6 +6,7 @@ import { MB, MS } from '../../core/scale.js';
 import { START_ASM } from '../../data/parts.js';
 import { animateMech, buildMech } from '../../render/mech-model.js';
 import { PALETTES } from '../../render/materials.js';
+import { markAuthoredTex } from '../../render/style/shader.js';
 import { PK, mat } from './kit.js';
 import { GM, HULL, HULL_D } from './ark-hull.js';
 
@@ -96,6 +97,125 @@ function decoMech(r, x, z, ry) {
   m.group.rotation.y = ry;
   mergeKeep(m.group);
   return m.group;
+}
+
+// 機獸機庫（docs/beast-script.md 的第 8 章）：+Z 那一端的牆前、高架走道的坡道兩側各四個空的籠位，
+// 名牌是八隻清掃單位的代號（第 8 個是回收者 REGENT）。外觀不用亂數（版面固定），背牆與四根柱子有碰撞。
+export const BERTHS = ['UNDERTAKER', 'SILT', 'RIME', 'WRECKER', 'SHRIKE', 'VESPER', 'SCORIA', 'REGENT'];
+function berthPlate(name, gold) {
+  const c = document.createElement('canvas');
+  c.width = 512;
+  c.height = 96;
+  const x = c.getContext('2d');
+  x.fillStyle = '#050607';
+  x.fillRect(0, 0, 512, 96);
+  x.fillStyle = gold ? '#ffb020' : '#ffd860';
+  x.fillRect(0, 0, 512, 8);
+  x.fillRect(0, 88, 512, 8);
+  x.font = '900 62px Rubik, "Arial Black", sans-serif';
+  x.textAlign = 'center';
+  x.textBaseline = 'middle';
+  x.fillText(name, 256, 50);
+  const t = new THREE.CanvasTexture(c);
+  t.anisotropy = 8;
+  markAuthoredTex(t);
+  return new THREE.MeshStandardMaterial({
+    map: t,
+    emissiveMap: t,
+    emissive: 0xffffff,
+    emissiveIntensity: 0.3,
+    roughness: 0.6,
+  });
+}
+function beastBerths(w, k, Hw, plates) {
+  const L = GM.light(),
+    Md = GM.mid(),
+    Dk = GM.dark(),
+    lamp = GM.lamp(),
+    stripe = GM.stripe(),
+    red = GM.red(),
+    gold = mat(0xc89a30, { roughness: 0.45, metalness: 0.6 });
+  const BW = 24, // 寬
+    BD = 30, // 深
+    H = 26, // 框架高
+    zb = Hw - 17; // 背牆（高架走道的前面）
+  const zf = zb - BD,
+    zm = zb - BD / 2;
+  const obs = (x, z, wd, dd, top) =>
+    w.obstacles.push({
+      kind: 'box',
+      x,
+      z,
+      w: wd,
+      d: dd,
+      y: 0,
+      top,
+      box: new THREE.Box3(
+        new THREE.Vector3(x - wd / 2, 0, z - dd / 2),
+        new THREE.Vector3(x + wd / 2, top, z + dd / 2),
+      ),
+      hull: true,
+    });
+  BERTHS.forEach((name, i) => {
+    const sx = i < 4 ? -1 : 1,
+      j = i < 4 ? 3 - i : i - 4;
+    const cx = sx * (42 + j * 27),
+      lion = name === 'REGENT',
+      acc = lion ? gold : stripe;
+    // 地板：整備台、四邊的警示線、排水格柵、腳掌的固定座（打開）
+    k.box(Dk, BW, 0.3, BD, cx, 0.15, zm);
+    for (const s of [-1, 1]) {
+      k.box(acc, BW, 0.1, 0.6, cx, 0.35, zm + s * (BD / 2 - 0.3));
+      k.box(acc, 0.6, 0.1, BD, cx + s * (BW / 2 - 0.3), 0.35, zm);
+    }
+    for (let q = 0; q < 4; q++) k.box(Md, 3, 0.12, 1.2, cx + (q - 1.5) * 5, 0.36, zm + 6);
+    for (const fx of [-5, 5])
+      for (const fz of [-7, 5]) {
+        k.box(Md, 3.2, 1.2, 3.2, cx + fx, 1.4, zm + fz);
+        k.box(Dk, 1.2, 0.6, 3.6, cx + fx + Math.sign(fx) * 2.2, 1.6, zm + fz, 0, 0, Math.sign(fx) * 0.6);
+      }
+    // 背牆：面板、肋條、燈帶、兩盞紅色的狀態燈（籠位是空的）
+    k.box(Md, BW, H - 4, 1.2, cx, (H - 4) / 2, zb);
+    for (let q = -2; q <= 2; q++) k.box(L, 0.8, H - 4, 0.6, cx + q * 5, (H - 4) / 2, zb - 0.9);
+    k.box(L, BW, 0.8, 0.6, cx, 7, zb - 0.9);
+    k.box(lamp, BW - 2, 0.4, 0.3, cx, H - 6, zb - 1.3);
+    for (const s of [-1, 1]) k.box(red, 1, 1, 0.4, cx + s * 8, 12, zb - 1.3);
+    k.pipe(Dk, [cx - 7, 18, zb - 1], [cx - 4, 1, zb - 5], 0.45, 6);
+    k.pipe(Dk, [cx + 6, 16, zb - 1], [cx + 9, 1, zb - 4], 0.35, 6);
+    obs(cx, zb, BW, 1.4, H - 4);
+    // 兩側的框架：前後的柱子、三層橫樑、斜撐、往內伸的固定臂（張開）
+    for (const s of [-1, 1]) {
+      const xs = cx + s * (BW / 2 - 0.7);
+      for (const z of [zf + 0.7, zb - 1.4]) {
+        k.box(Md, 1.4, H, 1.4, xs, H / 2, z);
+        obs(xs, z, 1.6, 1.6, H);
+      }
+      for (const y of [6, 13, 20]) k.box(L, 0.8, 0.8, BD - 2, xs, y, zm);
+      k.bar(L, [xs, 6, zf + 1.5], [xs, 13, zb - 2], 0.3);
+      k.bar(L, [xs, 13, zf + 1.5], [xs, 20, zb - 2], 0.3);
+      for (const [y, z] of [
+        [9, zm - 5],
+        [15, zm + 4],
+      ]) {
+        k.box(L, 5, 1.2, 1.6, xs - s * 2.8, y, z);
+        k.box(Dk, 2.6, 1, 1.2, xs - s * 5.6, y + 0.9, z, 0, 0, s * 0.7);
+        k.box(Dk, 2.6, 1, 1.2, xs - s * 5.6, y - 0.9, z, 0, 0, -s * 0.7);
+        k.box(acc, 0.5, 0.5, 1.7, xs - s * 0.6, y, z);
+      }
+    }
+    // 前方的頂樑與名牌的底座、垂下的電纜
+    k.box(Md, BW + 2, 2.4, 2.4, cx, H, zf + 0.7);
+    k.box(Md, BW + 2, 1.2, 1.2, cx, H, zb - 1.4);
+    for (const s of [-1, 1]) k.box(L, 1, 1, BD, cx + s * (BW / 2 - 0.7), H, zm);
+    k.box(Dk, 14, 3, 0.3, cx, H - 2.6, zf - 0.2);
+    for (const [dx, y1] of [
+      [-6, 14],
+      [-1, 18],
+      [5, 12],
+    ])
+      k.pipe(Dk, [cx + dx, H - 1, zm], [cx + dx + 1.5, y1, zm + 2], 0.25, 5);
+    plates.push({ name, gold: lion, x: cx, y: H - 2.6, z: zf - 0.4 });
+  });
 }
 
 export function buildHangar(w) {
@@ -194,6 +314,9 @@ export function buildHangar(w) {
         k.box(r() < 0.5 ? Md : mat(0x8a2a22), 3, 2, 2.4, mx + (r() - 0.5) * 10, 1, z + (r() - 0.5) * 12);
     }
   });
+  // 機獸機庫的八個籠位（docs/beast-script.md）
+  const plates = [];
+  beastBerths(w, k, Hw, plates);
   // 天車：橫跨機庫的軌道（架在兩側的牆頂）＋吊車
   for (let z = -Hw + 90; z < Hw - 60; z += 150) {
     k.box(Md, 2 * Hw + 20, 3, 4, 0, top + 2, z);
@@ -224,6 +347,13 @@ export function buildHangar(w) {
   });
   g.userData.noFade = true;
   g.userData.cat = 'struct';
+  // 籠位的名牌（各自的貼圖，不併進上面的網格）
+  for (const pl of typeof document === 'undefined' ? [] : plates) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(13, 2.44), berthPlate(pl.name, pl.gold));
+    m.position.set(pl.x, pl.y, pl.z);
+    m.rotation.y = Math.PI; // 面向 −Z（機庫裡面）
+    g.add(m);
+  }
   w.scene.add(g);
   w.meshes.push(g);
   for (const m of mechs) {

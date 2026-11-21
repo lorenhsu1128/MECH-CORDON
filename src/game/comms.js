@@ -26,6 +26,8 @@ const COND = [
   'truth',
   'wing', // 僚機（game/wing.js）
   'bondHi', // 僚機的好感度高
+  'raid', // 獅型 REGENT 在場（game/beast-raid.js）
+  'raidWon', // 存檔裡打倒過 REGENT（第 8 章的機獸機庫）
 ];
 const PREV = ['prevC2', 'prevC4', 'prevEnd'];
 const keyOf = (e) => e.event + '|' + e.lines[0][1];

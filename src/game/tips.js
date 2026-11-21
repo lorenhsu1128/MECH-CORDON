@@ -5,6 +5,7 @@
 import { escHtml } from '../core/html.js';
 import { weakText, weaponAttr } from '../data/attrs.js';
 import { SORTIES, sortieBoss } from '../data/campaign.js';
+import { BEAST_DEFS, BEAST_TIPS } from '../data/beasts.js';
 import { BOSS_DEFS, ENEMY_TYPES } from '../data/enemies.js';
 import { ACES, FOES } from '../data/foes.js';
 import { weaponById } from '../data/parts.js';
@@ -73,6 +74,14 @@ function intelTips() {
       bkind: b.kind,
       w: 0.6,
     });
+  }
+  // 機獸（docs/beast-script.md）：介紹＋手寫的對策，主線打過才出現
+  for (const b of BEAST_DEFS) {
+    const o = { seen: { kind: 'bosses', key: b.kind }, bkind: b.kind, w: 0.6 };
+    add('ib_' + b.kind, b.name, b.intro, b.res, null, o);
+    (BEAST_TIPS[b.beast] || []).forEach((t, i) =>
+      add(`ib_${b.kind}_${i}`, b.name, `${b.name} — ${t}`, null, null, o),
+    );
   }
   return INTEL;
 }
