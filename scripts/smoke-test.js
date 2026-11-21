@@ -1367,6 +1367,7 @@ async function testBeast(browser, key) {
           broke: !!(S.mask & (1 << i)),
           flag: b.bodyFlag(R.id),
           weak: d1 > 0 ? d2 / d1 : 0,
+          want: R.weak || 1.25,
           cut: (R.cut || []).every((n) => b.bodyNode(n) && !b.bodyNode(n).visible),
         });
       });
@@ -1542,7 +1543,7 @@ async function testBeast(browser, key) {
   );
   for (const q of r.body || [])
     check(
-      q.boxes && !q.before && q.broke && q.flag && q.cut && Math.abs(q.weak - 1.25) < 0.08,
+      q.boxes && !q.before && q.broke && q.flag && q.cut && Math.abs(q.weak - q.want) < 0.08,
       `身體區域「${q.id}」：打到門檻就壞、拆掉的節點藏起來、之後是弱點（×${q.weak.toFixed(2)}）`,
     );
   if (r.body && r.body.length)
