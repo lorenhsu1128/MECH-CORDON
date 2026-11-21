@@ -293,6 +293,8 @@ function install(cfg) {
         timeout: 60000,
       });
       await page.evaluate(install, { dmg: DMG, still: STILL, lhpk: LHPK });
+      // --sphere：命中改回判定球（比較「只看外框」對擊破時間的影響）
+      if (args.includes('--sphere')) await page.evaluate(() => (window.__PACE.PACE.sphere = true));
       await page.evaluate(
         ([sid, raid]) => {
           const g = window.__game;

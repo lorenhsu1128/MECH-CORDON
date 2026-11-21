@@ -108,7 +108,9 @@ export function paceStoreRead() {
 export const strictHit = () => PACE.on && PACE.strict;
 // 這個目標打不打得中只看模型的外框（render/hit-parts.js 的 rig.hb；2026-11-21 使用者定案 C）：
 // 有外框的目標一律是；玩家操作的機體照舊用判定球，除非調整室開了「擦過不算」
-export const strictFor = (t) => !!(t.model && t.model.hb) && (strictHit() || !(t.pilotEnt && t.pilotEnt()));
+// PACE.sphere：量測用，改回判定球（scripts/beast-field.js --sphere）
+export const strictFor = (t) =>
+  !PACE.sphere && !!(t.model && t.model.hb) && (strictHit() || !(t.pilotEnt && t.pilotEnt()));
 // 掛在 Boss 身上的部位（獨立的實體）和本體的外框重疊時部位優先：比較命中的先後時部位往前算這麼多公尺
 export const PART_BIAS = 2;
 export const paceDefault = (k) => {

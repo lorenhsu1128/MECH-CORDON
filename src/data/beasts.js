@@ -957,7 +957,7 @@ export const BEAST_DEFS = [
     leapH: 6,
     leapT: 0.9,
     radius: 0.9,
-    hpMul: 3.45, // 擊破時間的校正（scripts/beast-field.js：第 1 章 120 秒、每章多 10 秒）
+    hpMul: 2.95, // 擊破時間的校正（scripts/beast-field.js：第 1 章 120 秒、每章多 10 秒）
     stabMul: 4,
     dmgMul: 0.52,
     wantDist: 8,
