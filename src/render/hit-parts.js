@@ -633,6 +633,107 @@ const flagOv = (x) => {
   x.raycast = () => {};
   x.visible = false;
 };
+// ---------- 焦黑（Boss 的身體部位破壞，entities/mech-body.js）----------
+// 壞掉的區域蓋一層半透明的焦黑：和閃紅一樣是共用幾何的覆蓋網格，蒙皮的那份在著色器裡只留屬於那些節點的骨頭
+// （網格合併的骨頭就是錨點本身：skeleton.bones[i]＝節點）。每台一份材質（骨頭的編號是每台自己的），程式共用。
+const CHAR_N = 32;
+function charMat() {
+  const m = new THREE.MeshBasicMaterial({
+    color: 0x0b0a0a,
+    transparent: true,
+    opacity: 0.86,
+    depthWrite: false,
+    depthFunc: THREE.LessEqualDepth,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1,
+    fog: false,
+    blending: THREE.CustomBlending,
+    blendSrc: THREE.SrcAlphaFactor,
+    blendDst: THREE.OneMinusSrcAlphaFactor,
+    blendSrcAlpha: THREE.ZeroFactor,
+    blendDstAlpha: THREE.OneFactor,
+  });
+  const uC = { value: new Float32Array(CHAR_N).fill(-9) };
+  m.userData.uC = uC;
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uC = uC;
+    sh.vertexShader =
+      `uniform float uC[${CHAR_N}];\nvarying float vCh;\nvarying vec3 vChP;\n` +
+      sh.vertexShader.replace(
+        '#include <skinning_vertex>',
+        `#include <skinning_vertex>
+  vChP = position;
+#ifdef USE_SKINNING
+  vCh = 0.0;
+  for (int i = 0; i < ${CHAR_N}; i++) if (abs(skinIndex.x - uC[i]) < 0.5) vCh = 1.0;
+#else
+  vCh = 1.0;
+#endif`,
+      );
+    // 不是整片一樣黑：依模型座標的雜訊留一些沒燒到的地方
+    sh.fragmentShader =
+      'varying float vCh;\nvarying vec3 vChP;\n' +
+      sh.fragmentShader
+        .replace(
+          'void main() {',
+          `float chN(vec3 p) { return fract(sin(dot(floor(p), vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
+void main() {
+  if (vCh < 0.5) discard;`,
+        )
+        .replace(
+          '#include <opaque_fragment>',
+          `#include <opaque_fragment>
+  gl_FragColor.a *= 0.62 + 0.38 * step(0.25, chN(vChP * 1.7)) * (0.65 + 0.35 * chN(vChP * 4.3));`,
+        );
+  };
+  m.customProgramCacheKey = () => 'mc-char';
+  return m;
+}
+// nodes＝要焦黑的節點（連同底下的）；再呼叫一次＝換成新的一組（網格重新合併之後也要再呼叫）
+export function charParts(rig, nodes) {
+  if (!rig || !rig.group) return;
+  const old = rig.chx;
+  if (old) for (const x of old.ov) if (x.parent) x.parent.remove(x);
+  const C = { mat: old ? old.mat : charMat(), ov: [] };
+  rig.chx = C;
+  const set = new Set(nodes);
+  if (!set.size) return;
+  const under = (o) => {
+    for (let p = o; p && p !== rig.group; p = p.parent) if (set.has(p)) return true;
+    return false;
+  };
+  const list = [];
+  rig.group.traverse((o) => {
+    if (!o.isMesh || o.isInstancedMesh || !o.geometry || o.userData.xray || o.userData.helper) return;
+    const mt = o.material;
+    if (!mt || Array.isArray(mt) || mt.transparent || isOutline(mt) || mt.blending === THREE.AdditiveBlending)
+      return;
+    list.push(o);
+  });
+  const u = C.mat.userData.uC.value.fill(-9);
+  let n = 0;
+  for (const o of list) {
+    let x;
+    if (o.isSkinnedMesh) {
+      const idx = [];
+      o.skeleton.bones.forEach((b, bi) => under(b) && idx.push(bi));
+      if (!idx.length) continue;
+      for (const bi of idx) if (n < CHAR_N && !u.includes(bi)) u[n++] = bi;
+      x = new THREE.SkinnedMesh(o.geometry, C.mat);
+      x.bind(o.skeleton, o.bindMatrix);
+    } else {
+      if (!under(o)) continue;
+      x = new THREE.Mesh(o.geometry, C.mat);
+    }
+    flagOv(x);
+    x.renderOrder = 20;
+    x.visible = true;
+    o.add(x);
+    C.ov.push(x);
+  }
+}
+
 // 著色器預熱（Game.shaderWarm）：一般與蒙皮各一個
 export function partFlashWarm() {
   const g = new THREE.Group();
@@ -647,6 +748,12 @@ export function partFlashWarm() {
   sm.add(b);
   sm.bind(new THREE.Skeleton([b]));
   g.add(sm);
+  // 焦黑（charMat）：蒙皮的那一份
+  const b2 = new THREE.Bone();
+  const cm = new THREE.SkinnedMesh(sg, charMat());
+  cm.add(b2);
+  cm.bind(new THREE.Skeleton([b2]));
+  g.add(cm);
   return g;
 }
 function buildFlash(m) {

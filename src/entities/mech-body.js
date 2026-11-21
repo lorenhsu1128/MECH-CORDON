@@ -7,8 +7,9 @@
 // ============================================================
 import { SFX } from '../audio/audio.js';
 import { BODY, BODY_HP, BODY_SMOKE_DT, BODY_STUN, BODY_WEAK } from '../data/boss-body.js';
-import { local } from '../render/foe-damage.js';
-import { nearestSurface } from '../render/hit-parts.js';
+import { rnd } from '../core/math.js';
+import { fling, local } from '../render/foe-damage.js';
+import { charParts, nearestSurface } from '../render/hit-parts.js';
 import { MechEntity } from './mech-entity.js';
 
 const _bp = new THREE.Vector3(),
@@ -115,43 +116,83 @@ Object.assign(MechEntity.prototype, {
     S.mask = mask;
     this.bodyShow();
   },
-  // 外觀（各端）：新壞掉的區域拆掉 cut 的節點、噴一次碎片
+  // 外觀（各端）：新壞掉的區域——cut 的節點拆下來飛出去、噴一次大的火花與碎片；壞掉的區域全部蓋上焦黑
   bodyShow() {
     const D = this.bodyDefs(),
       S = this.body,
-      g = this.game;
+      g = this.game,
+      m = this.model;
     if (!D || !S || S.shown === S.mask) return;
     const fx = g && g.fx;
+    const c = this.center();
+    const fresh = [];
     D.forEach((R, i) => {
       const bit = 1 << i;
-      if (!(S.mask & bit) || S.shown & bit) return;
-      const spots = [];
+      if (S.mask & bit && !(S.shown & bit)) fresh.push(R);
+    });
+    // 拆下來的那一塊：網格合併過，先還原成各節點底下的網格，複製一份丟出去，原本的藏起來，再合併回去
+    const cuts = [];
+    for (const R of fresh)
       for (const n of R.cut || []) {
         const o = this.bodyNode(n);
-        if (!o) continue;
-        spots.push(o.getWorldPosition(new THREE.Vector3()));
+        if (o && o.visible) cuts.push(o);
+      }
+    if (cuts.length) {
+      const um = m.unmerge ? () => m.unmerge() : m.dmg && m.dmg.unmerge ? () => m.dmg.unmerge() : null;
+      const rm = m.remerge ? () => m.remerge() : m.dmg && m.dmg.remerge ? () => m.dmg.remerge() : null;
+      if (um && rm) um();
+      m.group.updateMatrixWorld(true);
+      for (const o of cuts) {
+        if (fx && g.scene && um && rm) {
+          const piece = o.clone(true);
+          o.matrixWorld.decompose(piece.position, piece.quaternion, piece.scale);
+          piece.traverse((q) => {
+            q.visible = true;
+            if (q.userData && (q.userData.xray || q.userData.helper)) q.visible = false;
+          });
+          const v = piece.position.clone().sub(c);
+          v.y = 0;
+          if (v.lengthSq() < 0.01) v.set(rnd(-1, 1), 0, rnd(-1, 1));
+          v.normalize().multiplyScalar(rnd(9, 15));
+          v.y = rnd(10, 16);
+          local(fx, () => fling(fx, g.world, piece, v, 6));
+        }
         o.traverse((q) => (q.visible = false)); // 連同底下的節點（外框的射線檢查看節點自己的 visible）
       }
-      if (!spots.length) {
-        const o = this.bodyNode(R.at || R.nodes[0]);
-        spots.push(o ? o.getWorldPosition(new THREE.Vector3()) : this.center());
+      if (um && rm) rm();
+    }
+    // 焦黑：壞掉的區域還在的節點（合併改過之後也要重掛）
+    const burnt = [];
+    D.forEach((R, i) => {
+      if (!(S.mask & (1 << i))) return;
+      for (const n of R.nodes) {
+        const o = this.bodyNode(n);
+        if (o && o.visible) burnt.push(o);
       }
-      if (!fx) return;
-      const c = this.center();
+    });
+    charParts(m, burnt);
+    if (fx)
       local(fx, () => {
-        for (const p of spots) {
-          _bn.copy(p).sub(c);
-          if (_bn.lengthSq() < 1e-4) _bn.set(0, 1, 0);
-          _bn.normalize();
-          fx.flash(p, 2.2, 0xffd090, 0.16);
-          for (let k = 0; k < 4; k++) {
-            fx.spark(p, 0xffc070, _bp.copy(_bn).negate());
-            fx.mechChips(p, _bn);
+        for (const R of fresh) {
+          const spots = [];
+          for (const n of R.cut && R.cut.length ? R.cut : [R.at, R.at2]) {
+            const o = this.bodyNode(n);
+            if (o) spots.push(o.getWorldPosition(new THREE.Vector3()));
           }
-          fx.smoke(p, 1.6, 0x2c2f34, 1.4, 3);
+          if (!spots.length) spots.push(c.clone());
+          for (const p of spots) {
+            _bn.copy(p).sub(c);
+            if (_bn.lengthSq() < 1e-4) _bn.set(0, 1, 0);
+            _bn.normalize();
+            fx.flash(p, 2.2, 0xffd090, 0.16);
+            for (let k = 0; k < 4; k++) {
+              fx.spark(p, 0xffc070, _bp.copy(_bn).negate());
+              fx.mechChips(p, _bn);
+            }
+            fx.smoke(p, 1.6, 0x2c2f34, 1.4, 3);
+          }
         }
       });
-    });
     S.shown = S.mask;
   },
   // 壞掉的區域一直冒火花與煙（各端，specialFx 每格）
@@ -166,6 +207,7 @@ Object.assign(MechEntity.prototype, {
       m = this.model;
     if (!fx || !m.group.visible || this.fogHid) return;
     const D = this.bodyDefs();
+    const sm = Math.max(1, this.radius / (4 * fx.k)); // 依體型
     S.n++;
     local(fx, () => {
       D.forEach((R, i) => {
@@ -174,8 +216,11 @@ Object.assign(MechEntity.prototype, {
         if (!o) return;
         o.getWorldPosition(_bp);
         if (fx.skip(_bp, 2)) return;
-        fx.smoke(_bp, 0.9, 0x2c2f34, 1.1, 3);
-        if (S.n % 3 === i % 3) fx.streaks(_bp, 3, 0xffc070, 8, 0.25, 22, null, 1);
+        // 明顯的黑煙＋火舌，偶爾竄火花
+        fx.smoke(_bp, 2.6 * sm, 0x0e0f11, 2.2, 5);
+        fx.smoke(_bp, 1.6 * sm, 0x1c1d20, 1.4, 7);
+        fx.fire(_bp, 1.2 * sm, 0);
+        if (S.n % 3 === i % 3) fx.streaks(_bp, 4, 0xffc070, 9, 0.3, 22, null, 1);
       });
     });
   },
