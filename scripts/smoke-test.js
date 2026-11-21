@@ -14793,6 +14793,30 @@ async function testAiDodge(browser, base) {
     out.charge = e3.dgN || 0;
     out.cls3 = e3.dgClass();
     e3.takeDamage(1e9, 0, null, e3.center());
+    // 3b) 動作（第 2 期）：側翻（地面也翻、繞髖轉一圈）、後空翻、滑鏟；殘影
+    const anim = {};
+    for (const ev of ['cart', 'bflip', 'slide']) {
+      g.dgAnimForce = ev;
+      const ea = mk('mt');
+      step([ea], 0.3);
+      ea.dg.cd = 0;
+      ea.dg.roll = 0;
+      g.fx.ghosts.clear();
+      shoot(ea);
+      step([ea], 1.0, () => (ea.dgN || 0) > 0);
+      let rot = 0,
+        sl = 0;
+      step([ea], 0.5, () => {
+        const L = ea.model.lift.rotation;
+        rot = Math.max(rot, Math.abs(L.x), Math.abs(L.z));
+        sl = Math.max(sl, ea.model.an.slide || 0);
+        return false;
+      });
+      anim[ev] = { rot: +rot.toFixed(2), sl: +sl.toFixed(2), gh: g.fx.ghosts.list.length, gr: ea.grounded };
+      ea.takeDamage(1e9, 0, null, ea.center());
+    }
+    g.dgAnimForce = null;
+    out.anim = anim;
     // 4) 設定關閉：不閃
     g.dgForce = undefined;
     g.ctrl.dodge = 'off';
@@ -14831,6 +14855,13 @@ async function testAiDodge(browser, base) {
   check(r.open && r.crit && r.read, `閃完的破綻：打中是 CRITICAL、第一下讀招（傷害 ${r.dmg}）`);
   check(r.mslDodged > 0 && !r.mslTarget, '追著它的導彈在最後一刻閃開時失去追蹤');
   check(r.charge > 0 && r.cls3 === 'ace', '玩家鎖定它、蓄力快滿時提前閃（敵對 AC）');
+  const A = r.anim;
+  check(
+    A.cart.rot > 2.5 && A.bflip.rot > 2.5,
+    `地面側翻、後空翻：整台翻過去（${A.cart.rot}／${A.bflip.rot} 弧度）`,
+  );
+  check(A.slide.sl > 0.2 && A.slide.rot < 1, `滑鏟：壓低往後仰、不翻（${A.slide.rot}）`);
+  check(A.cart.gh > 0 && A.slide.gh > 0, `閃避留下殘影（${A.cart.gh}／${A.slide.gh}）`);
   check(r.off === 0, '設定「敵人的閃避」關閉時不閃');
   check(r.std > 0 && r.std < 24, `標準：24 發裡閃了 ${r.std} 次（會閃、但不是每發都閃）`);
   await ctx.close();

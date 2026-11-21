@@ -277,6 +277,7 @@ export class MechEntity {
       landV: this.landV || 14,
       aj: this.remote ? undefined : this.airJumps, // 空中跳的次數（減少＝空中跳，動作的翻轉）
       flipGo: this.airFlipTake(), // 空域的機動：翻的方向（mech-air.js）
+      evade: this.evQ ? this.evadeTake() : null, // 敵人的閃避動作（mech-dodge.js）
       airStand: !!this.air, // 空域：站立微蹲的姿勢
       heavy: this.animHeavy,
       hits: this.takeHits(),

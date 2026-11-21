@@ -644,6 +644,8 @@ const ROOT_GLIDE = 0.32,
   QB_ANT = 0.06, // QB 起步前的預備（秒）
   SKID_T = 0.32, // QB 結束後的滑停（秒）
   FLIP_T = 0.42, // 空中跳的翻轉（秒）
+  SLIDE_T = 0.5, // 敵人閃避的滑鏟（秒，docs/enemy-dodge-design.md）
+  EV_FLIP_T = { cart: 0.5, bflip: 0.56, aflip: 0.46 }, // 敵人閃避的翻轉：地面側翻、後空翻、空中側翻（秒）
   ROOT_BANK = 0.8,
   ROOT_MAX = 0.42;
 const LEG_YAW = 0.7,
@@ -2881,8 +2883,28 @@ export function animateMech(m, dt, st) {
     an.flipS = st.flipGo.s || 0;
     an.flipT = st.flipGo.T || FLIP_T;
   }
+  // 敵人的閃避（entities/mech-dodge.js 的 evadeGo）：地面側翻、後空翻、空中側翻（地面也翻：繞髖轉，頭碰不到地）、滑鏟
+  if (st.evade && legged && !ML) {
+    const E = st.evade;
+    if (E.k === 'slide') {
+      an.slide = SLIDE_T;
+      an.slF = E.f || 0;
+      an.slS = E.s || 0;
+    } else if (EV_FLIP_T[E.k]) {
+      an.flip = 0;
+      an.flipF = E.k === 'bflip' ? -1 : 0;
+      an.flipS = E.k === 'bflip' ? 0 : (E.s || 0) >= 0 ? 1 : -1;
+      an.flipT = EV_FLIP_T[E.k];
+      an.flipGround = true;
+    }
+  }
   an.vy0 = vy;
-  if (an.flip < 1) an.flip = grounded || ML ? 1 : Math.min(1, an.flip + dt / (an.flipT || FLIP_T));
+  if (an.flip < 1)
+    an.flip = (grounded && !an.flipGround) || ML ? 1 : Math.min(1, an.flip + dt / (an.flipT || FLIP_T));
+  if (!(an.flip < 1)) an.flipGround = false;
+  an.slide = ML ? 0 : Math.max(0, (an.slide || 0) - dt);
+  // 滑鏟（1 秒內：壓低、往後仰，往滑的方向側傾）
+  const slW = an.slide > 0 ? Math.min(1, (SLIDE_T - an.slide) / 0.08) * Math.min(1, an.slide / 0.16) : 0;
   if (land < 0.02) an.landK = clamp(((st.landV || 14) - 4) / 18, 0.35, 1.25);
   const lDur = 0.2 + 0.25 * an.landK;
   const squat = land < lDur ? Math.sin((land / lDur) * Math.PI) * 0.62 * an.landK : 0; // 落地蹲踞：壓下再彈回
@@ -3011,7 +3033,8 @@ export function animateMech(m, dt, st) {
   const crouch =
     (0.08 * an.gW + 0.08 * an.bW + 0.08 * an.qW + 0.05 * an.brW + 0.09 * antW) * (grounded ? 1 : 0) +
     (CP && CP.drop ? CP.drop[0] : 0) + // 滑行／煞車／QB（含預備）的壓低（屈膝的部分由 IK 壓低骨盆）
-    RE.crouch * (grounded ? 1 : 0); // 受擊反應的屈膝
+    RE.crouch * (grounded ? 1 : 0) + // 受擊反應的屈膝
+    0.34 * slW; // 敵人閃避的滑鏟
   // ===== 全身傾斜（第四期）：lift 繞腳底（原點＝地面）轉，整台連腿一起倒向移動方向，轉彎往內側傾 =====
   // 軀幹的前傾（tX）疊在上面；IK 的地形傾斜只加坡度、不再把這個傾斜拉回垂直（mech-ik.js）
   if (legged && m.lift) {
@@ -3041,10 +3064,10 @@ export function animateMech(m, dt, st) {
       rx = clamp(rx, -ROOT_MAX, ROOT_MAX);
       rz = clamp(rz, -ROOT_MAX, ROOT_MAX);
     }
-    rx += RE.rx;
-    rz += RE.rz;
+    rx += RE.rx + 0.42 * slW * (an.slF >= -0.3 ? 1 : -0.6); // 滑鏟：往後仰（往後滑時往前趴）
+    rz += RE.rz - 0.22 * slW * Math.sign(an.slS || 0);
     // QB、預備、滑停、受擊時彈簧加快（短時間的動作也要倒得下去）
-    const rw = SP.root[0] * (1 + 1.6 * clamp(an.qW + antW + skW + RE.on * 1.2, 0, 1.6));
+    const rw = SP.root[0] * (1 + 1.6 * clamp(an.qW + antW + skW + RE.on * 1.2 + slW, 0, 1.6));
     spring(rr, 'x', rx, rw, SP.root[1], dt);
     spring(rr, 'z', rz, rw, SP.root[1], dt);
     // 空中跳的翻轉：往前移動＝前空翻（−x）、往側移動＝側翻（往移動方向，−z 是往右）

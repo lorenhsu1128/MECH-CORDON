@@ -380,6 +380,12 @@ Object.assign(Game.prototype, {
             tgt.hrAdd(HR_KEYS[e.k], e.x, e.z, e.y, false, e.w || 0, e.a || 1);
         }
         break;
+      case 'dgv': // 敵人的閃避動作（mech-dodge.js 的 dgStart）
+        {
+          const tgt = this.entById(e.i);
+          if (tgt && tgt.evadeGo) tgt.evadeGo(e.k, e.f, e.s);
+        }
+        break;
       case 'rx': // 受擊反應（房主的 MechEntity.reactSet）
         {
           const tgt = this.entById(e.i);

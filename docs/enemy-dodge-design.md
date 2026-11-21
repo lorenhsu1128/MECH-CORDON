@@ -64,3 +64,12 @@
 - 舊的隨機閃避（一般分支、DUELIST、雨型）在有 `dgClass` 時不再看附近的子彈（隨機的換位 QB 保留）。
 - 設定「敵人的閃避」`ctrl.dodge`：遊戲與進階的「遊戲」、快速設定的常用項目、客機停用。
 - 冒煙測試 `testAiDodge`（`g.dgForce`＝直接指定機率）；測試環境的預設 `dodge: 'off'`（舊的測試假設敵人不閃）。
+
+### 第 2 期（2026-11-21）：人形機甲的閃避動作、殘影、同步
+
+- 閃避的動作（`data/dodge.js` 的 `DG_ANIM`，人形的二足／逆關節）：`cart` 地面側翻、`slide` 滑鏟、`bflip` 後空翻、`aflip` 空中側翻，剩下的機率是只有 QB 的姿勢；敵對 AC 翻得比 MT 多。
+- `render/mech-model.js` 的 `animateMech`：`st.evade`（`animExtra` 的 `evade`＝`evadeTake`）一次觸發。翻轉沿用空中跳的繞髖翻轉（`an.flip`），`an.flipGround` 讓它在地面也翻（繞髖轉，頭碰不到地）；滑鏟 `an.slide`（`SLIDE_T`）壓低、往後仰、往滑的方向側傾。
+- 翻轉的閃避無敵 `FLIP_IF`（看得到在翻、子彈穿過去）；閃避的殘影 `evadeFx`（`mech-vfx.js` 的 `mvfxTick` 每格，各端；橘紅色，設定「殘影」關閉時不留）。
+- 距離：閃避的 QB 和一般 QB 差不多長（敵對 AC 0.15 秒、一般敵人 0.11～0.12 秒，`DG_CLASS` 的 `qb`）；拉長到 0.26 秒會滑 60 m，太遠。
+- 同步：房主送 `dgv` 事件（動作、機體座標的前後與左右），客機 `evadeGo`；`NET_VERSION` 11.55。
+- 冒煙測試 `testAiDodge` 加上側翻、後空翻（整台翻過去）、滑鏟（不翻）、殘影；`g.dgAnimForce` 指定動作。

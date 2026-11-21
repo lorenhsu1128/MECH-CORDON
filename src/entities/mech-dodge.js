@@ -3,7 +3,7 @@
 // → 閃避（側閃、後撤、跳躍）→ 破綻（wpOpen＝CRITICAL、快照的 aw 32）。閃開的子彈失去彈道修正、導彈失去追蹤。
 // 客機看快照的 QB 狀態與 aw；「閃避」字是房主的 popDamage（會轉送）。
 import { clamp, rnd } from '../core/math.js';
-import { DG, DG_CLASS } from '../data/dodge.js';
+import { DG, DG_ANIM, DG_CLASS } from '../data/dodge.js';
 import { PW } from '../data/charge.js';
 import { MechEntity } from './mech-entity.js';
 
@@ -103,7 +103,7 @@ Object.assign(MechEntity.prototype, {
         wish = _d.copy(A.dir).multiplyScalar(0.8);
       } else wish = _d.copy(A.dir);
       qb = A.t <= dt * 1.5 && A.k !== 'jump'; // 第一格按 QB
-      const end = A.k === 'jump' ? DG.JUMP_T + 0.15 : DG.QB_T + 0.04;
+      const end = A.k === 'jump' ? DG.JUMP_T + 0.15 : (DG_CLASS[this.dgClass()].qb || DG.QB_T) + 0.04;
       if (A.t >= end) {
         s.act = null;
         s.open = DG.OPEN; // 破綻
@@ -292,6 +292,17 @@ Object.assign(MechEntity.prototype, {
     }
     if (th.p) th.p.dgDodged = this;
     if (k === 'jump') this.iFrames = Math.max(this.iFrames, DG.QB_IF * 0.6);
+    // 動作（第 2 期）：人形的二足／逆關節依種類挑側翻、滑鏟、後空翻、空中側翻；其他照 QB 的姿勢
+    const ev = this.dgAnimPick(k);
+    if (ev) {
+      const y = this.yaw || 0;
+      const df = dir.x * -Math.sin(y) + dir.z * -Math.cos(y),
+        ds = dir.x * Math.cos(y) + dir.z * -Math.sin(y);
+      this.evadeGo(ev, df, ds);
+      if (g.net && g.net.role === 'host')
+        g.netEv({ t: 'dgv', i: this.id, k: ev, f: +df.toFixed(2), s: +ds.toFixed(2) });
+      if (ev !== 'slide') this.iFrames = Math.max(this.iFrames, DG.FLIP_IF); // 翻轉中子彈穿過去（看得到在翻）
+    }
     // 「閃避」字
     if (th.from && th.from.pilotEnt && th.from.pilotEnt() && this.t - s.popT > DG.POP_GAP) {
       s.popT = this.t;
@@ -308,6 +319,48 @@ Object.assign(MechEntity.prototype, {
     }
     this.dgN = (this.dgN || 0) + 1; // 測試用
     this.dgLast = th; // 測試用
+  },
+  // 閃避的動作：qb＝只有 QB 的姿勢（null）
+  dgAnimPick(k) {
+    const m = this.model;
+    if (!m || (m.type !== 'biped' && m.type !== 'reverse')) return null;
+    const F = this.game.dgAnimForce; // 自動化測試
+    if (F) return F === 'qb' ? null : F;
+    const W = DG_ANIM[this.dgClass()] || DG_ANIM.mt;
+    const L = !this.grounded ? W.air : k === 'back' ? W.back : k === 'jump' ? W.jump : W.side;
+    const r = Math.random();
+    let acc = 0;
+    for (const [ev, w] of L) {
+      acc += w;
+      if (r < acc) return ev === 'qb' ? null : ev;
+    }
+    return null;
+  },
+  // 閃避的動作（房主在 dgStart、客機收到 dgv 事件）：交給動作層一次（animExtra 的 evade），殘影 evadeFx
+  evadeGo(k, f, s) {
+    this.evQ = { k, f, s };
+    this.evK = { k, t: 0, gT: 0 };
+  },
+  evadeTake() {
+    const q = this.evQ;
+    this.evQ = null;
+    return q;
+  },
+  // 每格（mech-vfx.js 的 mvfxTick，各端）：閃避中留下殘影（設定「殘影」關閉時不留）
+  evadeFx(dt) {
+    const E = this.evK;
+    if (!E) return;
+    E.t += dt;
+    if (E.t > DG.GHOST_T) {
+      this.evK = null;
+      return;
+    }
+    const g = this.game;
+    if (g.ctrl.ghost === 'off' || !g.fx.ghosts || !this.model) return;
+    if ((E.gT -= dt) <= 0) {
+      E.gT = DG.GHOST_GAP;
+      g.fx.ghosts.snap(this.model.group, DG.GHOST_COL);
+    }
   },
   // 往 d 方向閃 dist 遠安全嗎：作戰區域內、不是虛空、沒被障礙物擋住
   dgSafe(d, dist) {
@@ -330,7 +383,7 @@ Object.assign(MechEntity.prototype, {
   dgQbStart() {
     const A = this.dg && this.dg.act;
     if (!A) return;
-    this.qbT = DG.QB_T;
+    this.qbT = DG_CLASS[this.dgClass()].qb || DG.QB_T;
     this.iFrames = Math.max(this.iFrames, DG.QB_IF);
     const g = this.game;
     if (this.grounded) g.fx.dust(this.pos.clone(), (2.6 * this.scale) / g.fx.k, 10);
