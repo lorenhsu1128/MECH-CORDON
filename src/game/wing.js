@@ -83,7 +83,7 @@ Object.assign(Game.prototype, {
       const M = WING_MODES[(i + 1) % WING_MODES.length];
       this.wingMode = M.k;
       if (M.k === 'hold') this.wingHold = p.pos.clone();
-      SFX.ui();
+      if (!SFX.aiPlay('wing_command', 0.6, 1, 0.03, 0.05, null, 'ui')) SFX.ui();
       this.flashMsg(`僚機指令：${M.name}（${M.tip}）`, 0x80ffb0, 1.6);
     }
     this._wingK = on;
@@ -109,7 +109,7 @@ Object.assign(Game.prototype, {
       this.wingRingDrop();
       a.wingRevive(WING.REVIVE_HP);
       this.fx.ring(a.center(), 6, 0x80ffb0);
-      SFX.kit();
+      if (!SFX.aiPlay('wing_revive', 0.7, 1, 0.03, 0.05, null, 'ui')) SFX.kit();
       this.wingBondAdd(a.wing, 1);
       this.campComm('wingRevive', this.campCtx({ wing: a.wing }));
     }

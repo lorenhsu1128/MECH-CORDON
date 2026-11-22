@@ -6,6 +6,7 @@
 // 設定「視角切換的運鏡」ctrl.viewTr（on／off）；介面動畫關閉時 HUD 直接切換。自動化測試（webdriver）不播，要看時設 window.__viewTr
 import { clamp, lerp } from '../core/math.js';
 import { Game } from './game.js';
+import { SFX } from '../audio/audio.js';
 
 const VT_T = 0.5; // 運鏡的秒數
 const ease = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
@@ -18,6 +19,7 @@ Object.assign(Game.prototype, {
   },
   // setView 換完旗標之前呼叫：記下舊鏡頭（相對機體）與 HUD 的畫面
   viewTrStart(from, to) {
+    SFX.aiPlay('view_switch', 0.45, 1, 0.03, 0.1, null, 'ui');
     if (!this.viewTrOn()) return;
     const p = this.player,
       cam = this.camera;

@@ -99,7 +99,7 @@ Object.assign(Game.prototype, {
     this.save.items[id] = n - 1;
     this.csCd[slot] = 4;
     this.writeSave();
-    SFX.ui();
+    if (!SFX.aiPlay('consumable_use', 0.6, 1, 0.03, 0.05, null, 'ui')) SFX.ui();
     if (id === 'cs_bomber') this.callBomber();
     else if (id === 'cs_ally') this.callAlly(def);
   },

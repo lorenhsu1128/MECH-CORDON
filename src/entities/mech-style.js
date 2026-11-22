@@ -3,6 +3,7 @@
 // syHurt 被打中掉分、syTick 隨時間掉分與升級時的 ACS 回復。只在房主／單機計算，客機由 fb 事件 'sty' 顯示。
 import { SY, SY_EV, SY_HIT_MAX, syRank } from '../data/style-meter.js';
 import { MechEntity } from './mech-entity.js';
+import { SFX } from '../audio/audio.js';
 import { tierRow } from '../data/boss-tier.js';
 
 Object.assign(MechEntity.prototype, {
@@ -111,6 +112,16 @@ Object.assign(MechEntity.prototype, {
     const s = this.sy;
     const r = syRank(s.pts);
     if (r > s.rank && r >= 0) this.acs = Math.max(0, this.acs - this.acsMax * SY.ACS_UP * r);
+    if (this.isPlayer && r !== s.rank && s.rank >= -1 && !(r < 0 && s.rank < 0))
+      SFX.aiPlay(
+        r > s.rank ? 'style_rank_up' : 'style_rank_down',
+        0.5,
+        r > s.rank ? 1 + Math.max(0, r) * 0.03 : 1,
+        0.02,
+        0.3,
+        null,
+        'ui',
+      );
     s.rank = r;
   },
   // 主線：擊破獎金的倍率（擊破時的等級）

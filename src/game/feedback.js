@@ -228,7 +228,19 @@ Object.assign(Game.prototype, {
     // EN 用完：推進器過熱的嘶＋警示音
     const enOut = p.en < (p.enMax || 1) * 0.03;
     if (enOut && !a.enOut) SFX.overheat();
+    if (!enOut && a.enOut) a.enWait = true;
+    if (a.enWait && p.en >= (p.enMax || 1) * 0.98) {
+      a.enWait = false;
+      SFX.aiPlay('en_recover', 0.5, 1, 0.02, 0.5, null, 'ui');
+    }
     a.enOut = enOut;
+    if ((p.hoverMode || 0) > (a.hov || 0))
+      SFX.aiPlay('hover_engage', 0.6, p.hoverMode === 2 ? 1.1 : 1, 0.04, 0.2);
+    a.hov = p.hoverMode || 0;
+    const tank = !!(p.stats && p.stats.parts && p.stats.parts.legs && p.stats.parts.legs.type === 'tank');
+    const tsp = tank ? Math.min(1, Math.hypot(p.vel.x, p.vel.z) / (20 * DS)) : 0;
+    SFX.loopSet('tankTread', '@tank_tread_loop', tsp * 0.5, 0.8 + tsp * 0.4);
+    SFX.loopSet('tankEng', '@tank_engine_loop', tank ? 0.18 + tsp * 0.3 : 0, 0.85 + tsp * 0.35);
     this.audioWeaponTick(p, a, dt);
     // 附近機體的推進器（AC6 的評論：玩家靠聲音追蹤畫面外的高速機體）：最近的 4 台正在推進／懸浮的
     const L = [];
@@ -243,7 +255,7 @@ Object.assign(Game.prototype, {
     for (const [, e, on] of L.slice(0, 4))
       SFX.loopAt(
         'th' + e.id,
-        'thrustLoop',
+        ['@thrust_loop', 'thrustLoop'],
         on * 0.55 * (e.isBoss ? 1.3 : 1),
         e.abT > 0 ? 1.3 : e.boost ? 1.2 : 0.95,
         e.pos,

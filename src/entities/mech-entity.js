@@ -2555,6 +2555,8 @@ export class MechEntity {
       if (from && from.team !== this.team) {
         this.shieldHitT = SHIELD_BASH_T; // 盾擊的時機（meleeStartIdx）
         if (from.pos) this.shieldFlareAt(from.pos.clone().sub(this.pos)); // 脈衝盾擋下的閃光（第 9.2 期）
+        if (this.isPlayer || (g.player && this.pos.distanceTo(g.player.pos) < 60 * this.dk))
+          SFX.aiPlay('shield_absorb', 0.6, 1, 0.05, 0.08, this.isPlayer ? null : this.center());
         this.tutE('shieldHit', {});
       }
     }

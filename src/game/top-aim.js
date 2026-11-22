@@ -181,7 +181,7 @@ Object.assign(Game.prototype, {
         best = e;
       }
     }
-    if (best && best !== cur) SFX.ui();
+    if (best && best !== cur && !SFX.aiPlay('lock_switch', 0.4, 1.1, 0.03, 0.05, null, 'ui')) SFX.ui();
     this.topSnap = best;
   },
   // 切換鎖定（cycleLock）時放開吸附：游標移開之前不重新吸附

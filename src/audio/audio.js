@@ -934,6 +934,7 @@ export const SFX = {
     this.hbT -= dt;
     if (this.hbT > 0) return;
     this.hbT = lerp(1.05, 0.55, k);
+    if (this.aiPlay('heartbeat', 0.6 + k * 0.4, 1, 0.02, 0.2, null, 'ui')) return;
     this.tone(70, 40, 0.16, 0.9 * (0.5 + k * 0.5), 'sine', 'ui');
     this.tone(64, 38, 0.14, 0.6 * (0.5 + k * 0.5), 'sine', 'ui', 0.17);
   },
@@ -1376,6 +1377,11 @@ export const SFX = {
   },
   // QB：預備（吸氣）→ 噴發（＋低頻）→ 收尾的嘶（docs/audio-design.md 第 3 期）
   qb(pos) {
+    if (this.aiPlay('qb_dash', pos ? 0.8 : 1, 1, 0.06, 0.03, pos)) {
+      this.play('@sub_thump_mid', pos ? 0.35 : 0.55, 1.2, 0.05, 0.05, pos, null, 0.04);
+      this.aiPlay('jet_tail', 0.4, 1, 0.08, 0.05, pos, null, 0.18);
+      return;
+    }
     this.play('~qbPre', 0.4, 1, 0.08, 0.05, pos);
     this.play('boostUp', 0.8, 1.15, 0.08, 0.03, pos, null, 0.04);
     this.play('thrBurst', 0.55, 1.1, 0.08, 0.05, pos, null, 0.04);
@@ -1384,6 +1390,11 @@ export const SFX = {
   },
   // 起跳：推進器往下蹬（2026-11-06 跳躍手感改版：加重，疊一層 QB 的推力低音與尾音）
   jump(pos) {
+    if (this.aiPlay('jump', pos ? 0.7 : 0.9, 1, 0.06, 0.1, pos)) {
+      this.play('@sub_thump_mid', pos ? 0.25 : 0.4, 1.05, 0.05, 0.05, pos, null, 0.02);
+      this.aiPlay('jet_tail', 0.3, 0.95, 0.08, 0.05, pos, null, 0.12);
+      return;
+    }
     this.play('boostUp', 0.75, 0.95, 0.08, 0.1, pos);
     this.play('thrBurst', 0.5, 0.9, 0.08, 0.1, pos);
     this.play('~thB', pos ? 0.25 : 0.4, 1.05, 0.05, 0.05, pos, null, 0.02);
@@ -1392,6 +1403,11 @@ export const SFX = {
   },
   // 落地：依落下速度決定重量（v 0～1）
   land(pos, v = 0.5) {
+    if (this.aiPlay(v > 0.55 ? 'land_heavy' : 'land_light', 0.5 + v * 0.5, 1.05 - v * 0.1, 0.06, 0.15, pos)) {
+      this.play('@sub_thump_heavy', 0.3 + v * 0.6, 1.15 - v * 0.3, 0.04, 0.15, pos);
+      if (v > 0.4) this.aiPlay('hydraulic_hiss', 0.2 + v * 0.25, 1, 0.06, 0.2, pos, null, 0.12);
+      return;
+    }
     this.play('boostDown', 0.5, 1.1, 0.08, 0.2, pos);
     this.pickPlay(['thud1', 'thud2'], 0.4 + v * 0.6, 0.9 - v * 0.25, pos, 0.06, 0.15);
     if (v > 0.6) this.pickPlay(['plate1', 'plate2'], 0.35, 0.55, pos, 0.06, 0.15);
@@ -1402,6 +1418,30 @@ export const SFX = {
   // 腳步：surf＝地面材質，w＝機體重量（0 輕～1 重）；kind＝腳部類型（reverse 逆關節、quad 四足、其他二足）
   step(surf, w, pos, kind) {
     const r = 1.15 - w * 0.4;
+    // AI 音效：腳部類型的踩踏＋地面材質層＋超低頻
+    const sk =
+      kind === 'reverse'
+        ? 'step_reverse'
+        : kind === 'quad'
+          ? 'step_quad'
+          : w > 0.7
+            ? 'step_biped_heavy'
+            : 'step_biped';
+    if (this.aiVar(sk).length || this.aiVar('step_biped').length) {
+      const k0 = this.aiVar(sk).length ? sk : 'step_biped';
+      this.play('@' + k0, (pos ? 0.55 : 0.45) * (0.75 + w * 0.5), 1.05 - w * 0.12, 0.06, 0.05, pos, null, 0, {
+        max: 3,
+      });
+      const sf =
+        { water: 'surf_water', snow: 'surf_snow', sand: 'surf_sand', metal: 'surf_metal', ice: 'surf_ice' }[
+          surf
+        ] || 'surf_conc';
+      this.aiPlay(sf, pos ? 0.4 : 0.32, 1, 0.08, 0.05, pos, null, 0.01, { max: 3 });
+      this.play('@sub_thump_step', (pos ? 0.3 : 0.4) * (0.6 + w), 1.1 - w * 0.3, 0.05, 0.05, pos, null, 0, {
+        max: 3,
+      });
+      return;
+    }
     this.pickPlay(['thud1', 'thud2'], 0.32 + w * 0.3, r * 0.9, pos, 0.08, 0.05);
     const v = pos ? 0.5 : 0.35;
     // 機甲的踩踏（Barkovich 的機器人腳步、qubodup 的 stomp）＋超低頻
@@ -1436,6 +1476,13 @@ export const SFX = {
   },
   // 伺服馬達與液壓（第 3 期）：kind＝'turn' 轉身、'start' 起步、'stop' 急停、'aim' 舉槍；k＝強度 0～1
   servo(kind, pos, k = 1) {
+    if (
+      this.aiPlay('servo_' + kind, (pos ? 0.35 : 0.5) * k, 1, 0.08, 0.22, pos, null, 0, { max: 2, pr: 0.7 })
+    ) {
+      if (kind === 'stop')
+        this.aiPlay('hydraulic_hiss', 0.25 * k, 1, 0.08, 0.25, pos, null, 0.05, { max: 2, pr: 0.6 });
+      return;
+    }
     const sm = this.pickKey(['servo1', 'servo2', 'servo4', 'servo5', 'servo6']);
     const v = (pos ? 0.6 : 1) * k;
     if (kind === 'stop') {
@@ -1452,6 +1499,10 @@ export const SFX = {
     }
   },
   ab(pos) {
+    if (this.aiPlay('ab_start', 0.95, 1, 0.05, 0.3, pos)) {
+      this.play('@sub_thump_heavy', 0.5, 1.2, 0.05, 0.3, pos, null, 0.06);
+      return;
+    }
     this.play('~qbPre', 0.5, 0.7, 0.05, 0.3, pos);
     this.play('boostUp', 0.9, 0.75, 0.05, 0.3, pos, null, 0.06);
     this.play('thrBurst', 0.6, 0.7, 0.05, 0.3, pos, null, 0.06);
@@ -1459,10 +1510,12 @@ export const SFX = {
   },
   // 突擊推進結束：降頻的收尾
   abEnd(pos) {
+    if (this.aiPlay('ab_end', 0.6, 1, 0.05, 0.3, pos)) return;
     this.play('~jetTailL', 0.45, 0.9, 0.05, 0.3, pos);
     this.play('boostDown', 0.3, 0.7, 0.05, 0.3, pos);
   },
   stagger(pos) {
+    if (this.aiPlay('stagger', 0.95, 1, 0.04, 0.03, pos)) return;
     this.play('overload', 0.9, 1.0, 0.04, 0.03, pos);
     this.play('stagger', 0.5, 0.9, 0.06, 0.03, pos);
     if (this.buf.wobble) this.play('wobble', 0.35, 1.3, 0.05, 0.1, pos);
@@ -1491,12 +1544,17 @@ export const SFX = {
   },
   // EN 用完（推進器過熱）
   overheat() {
+    if (this.aiPlay('en_overheat', 0.6, 1, 0.05, 0.4, null, 'ui')) return;
     this.play('~hissL', 0.5, 1.3, 0.05, 0.4, null, 'ui');
     this.play('uiErr', 0.3, 0.7, 0.03, 0.4, null, 'ui');
   },
   // ---- 回饋音（自己打出的效果，不分位置） ----
   // 打出失衡：低音重擊＋鐘聲＋碎裂＋上升的「叮」
   breakFx() {
+    if (this.aiPlay('break_fx', 0.8, 1, 0.03, 0.1, null, 'ui')) {
+      this.play('@sub_thump_heavy', 0.6, 1.1, 0.03, 0.1, null, null, 0, { pr: 3 });
+      return;
+    }
     this.play('bell', 0.55, 0.75, 0.03, 0.1, null, 'ui');
     this.play('glass', 0.6, 0.8, 0.05, 0.1, null, 'ui');
     this.play('boom2', 0.55, 1.2, 0.05, 0.1);
@@ -1505,18 +1563,38 @@ export const SFX = {
   },
   // Boss 的 BREAK、Boss 擊破：一段短的配樂重音（stinger）
   stinger(big) {
+    if (this.aiPlay(big ? 'stinger_long' : 'stinger_short', big ? 0.85 : 0.7, 1, 0.01, 0.5, null, 'ui')) {
+      this.duckBgm(0.6, big ? 2.2 : 1.0);
+      return;
+    }
     this.play(big ? '~stingL' : '~sting', big ? 0.75 : 0.6, 1, 0.01, 0.5, null, 'ui');
     this.play('~thC', 0.6, 0.8, 0.02, 0.5, null, 'ui');
     this.duckBgm(0.6, big ? 2.2 : 1.0);
   },
   // 邊閃邊打的加成打中（data/ranged.js 的位元）：清脆的金屬聲，反擊多一聲鐘
   rangedBonus(tags) {
+    if (this.aiPlay('ranged_bonus', 0.5, 1, 0.03, 0.07, null, 'ui')) {
+      if (tags & 2) this.aiPlay('ranged_bonus_ctr', 0.4, 1, 0.02, 0.15, null, 'ui');
+      return;
+    }
     this.play('uiTick', 0.45, 1.5, 0.03, 0.07, null, 'ui');
     this.play('plate1', 0.35, 1.25, 0.05, 0.07, null, 'ui');
     if (tags & 2) this.play('bell', 0.3, 1.4, 0.02, 0.15, null, 'ui');
   },
   // 屬性反應（data/react.js）：過熱＝低沉的轟、爆裂＝鐘＋碎裂、干擾＝電子的嗶
   reaction(id) {
+    if (
+      this.aiPlay(
+        { hot: 'reaction_hot', burst: 'reaction_burst' }[id] || 'reaction_jam',
+        0.6,
+        1,
+        0.04,
+        0.1,
+        null,
+        'ui',
+      )
+    )
+      return;
     if (id === 'hot') this.play('heavy', 0.5, 1.3, 0.05, 0.1, null, 'ui');
     else if (id === 'burst') this.play('bell', 0.45, 1.1, 0.03, 0.1, null, 'ui');
     else this.play('glitch', 0.5, 1.2, 0.05, 0.1, null, 'ui');
@@ -1558,6 +1636,15 @@ export const SFX = {
   // 擊破確認：連續擊破時音高一級級往上（n＝連擊數），精英／AC 多一聲重音並短暫壓低其他聲音
   killConfirm(n, big) {
     const st = Math.min(Math.max(0, n - 1), 9);
+    // AI 音效：同一個聲音依連殺數一級級往上移調（每級 2 個半音）
+    if (this.aiPlay('kill_confirm', 0.5, Math.pow(2, (st * 2) / 12), 0, 0.03, null, 'ui')) {
+      this.play('@sub_thump_mid', 0.45, 0.9, 0.03, 0.05, null, 'ui');
+      if (big) {
+        this.aiPlay('kill_confirm_big', 0.7, 1, 0.02, 0.1, null, 'ui');
+        this.duck(0.35, 0.4);
+      }
+      return;
+    }
     const f = 660 * Math.pow(2, (st * 2) / 12);
     this.tone(f, f * 0.98, 0.22, 0.32, 'sine', 'ui');
     this.tone(f * 1.5, f * 1.49, 0.16, 0.16, 'triangle', 'ui', 0.04);
@@ -1588,6 +1675,7 @@ export const SFX = {
     else this.play('uiClick', 0.7, 1.0, 0.04, 0.03, null, 'ui');
   },
   kit() {
+    if (this.aiPlay('repair_kit', 0.8, 1, 0.04, 0.05, null, 'ui')) return;
     this.play('ui2', 0.8, 1.0, 0.06, 0.03, null, 'ui');
     this.play('uiOpen', 0.4, 0.8, 0.03, 0.05, null, 'ui');
   },

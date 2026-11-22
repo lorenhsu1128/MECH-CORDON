@@ -357,6 +357,7 @@ Object.assign(MechEntity.prototype, {
       me = this.statusLocal();
     const pos = me ? null : c;
     localSfx(() => {
+      if (SFX.aiPlay('status_' + kind, 0.9, 1, 0.05, 0.05, pos)) return;
       if (kind === 'hook') {
         SFX.play('plate1', 0.9, 0.7, 0.05, 0.05, pos);
         SFX.play('clatter1', 0.7, 0.8, 0.05, 0.05, pos);
@@ -408,6 +409,7 @@ Object.assign(MechEntity.prototype, {
     const D = STATUS_DEFS[kind];
     if (why === 'esc' || why === 'cut') {
       localSfx(() => {
+        if (SFX.aiPlay(why === 'cut' ? 'status_cut' : 'status_escape', 0.85, 1, 0.05, 0.05, pos)) return;
         if (why === 'cut') SFX.play('glass', 0.7, 1.1, 0.05, 0.05, pos);
         else SFX.play('plate2', 0.8, 1.2, 0.05, 0.05, pos);
         SFX.play('uiOk', 0.5, 1.3, 0.02, 0.05, me ? null : pos, me ? 'ui' : null);
@@ -433,7 +435,10 @@ Object.assign(MechEntity.prototype, {
     if (!g.world) return;
     const c = this.center();
     localFx(g, (fx) => fx.streaks(c, 6, STATUS_DEFS[kind].hex, 10, 0.25, 20));
-    localSfx(() => SFX.play('clatter1', 0.6, 1.3, 0.05, 0.05, this.statusLocal() ? null : c));
+    localSfx(() => {
+      const P = this.statusLocal() ? null : c;
+      if (!SFX.aiPlay('status_end', 0.6, 1, 0.05, 0.05, P)) SFX.play('clatter1', 0.6, 1.3, 0.05, 0.05, P);
+    });
   },
   // ---------- 機體上的 3D 效果（move／remoteUpdate 的結尾呼叫） ----------
   statusFx(dt) {
@@ -497,7 +502,12 @@ Object.assign(MechEntity.prototype, {
         if (v.ph >= 1) {
           v.ph -= Math.floor(v.ph);
           const me = this.statusLocal();
-          if (me || (g.player && g.player.pos.distanceTo(this.pos) < 45 * DS))
+          if (
+            (me || (g.player && g.player.pos.distanceTo(this.pos) < 45 * DS)) &&
+            SFX.aiVar('status_stick_beep').length
+          )
+            SFX.play('@status_stick_beep', 0.6, s.t < 1 ? 1.25 : 1, 0, 0.05, me ? null : this.center());
+          else if (me || (g.player && g.player.pos.distanceTo(this.pos) < 45 * DS))
             SFX.tone(
               s.t < 1 ? 2200 : 1700,
               s.t < 1 ? 2200 : 1700,

@@ -448,7 +448,7 @@ Object.assign(Game.prototype, {
     if (best && best !== p.lock && g.candT >= C.dwell) {
       p.lock = best;
       p.lockT = 0;
-      SFX.ui();
+      if (!SFX.aiPlay('lock_switch', 0.5, 1, 0.03, 0.05, null, 'ui')) SFX.ui();
     }
     if (best && best === p.lock) g.held = best;
     if (g.held && (g.held.dead || g.held !== p.lock)) g.held = null;

@@ -162,16 +162,20 @@ export class Game {
     this.audioT = now;
     const p = this.player;
     if (!p || p.dead || p.downed) {
-      SFX.loopSet('thrust', 'thrustLoop', 0);
-      SFX.loopSet('thrustHi', '~jetLoop', 0);
-      SFX.loopSet('engine', 'engineHi', 0);
+      SFX.loopSet('thrust', ['@thrust_loop', 'thrustLoop'], 0);
+      SFX.loopSet('thrustHi', ['@thrust_hiss_loop', '~jetLoop'], 0);
+      SFX.loopSet('engine', ['@ab_engine_loop', 'engineHi'], 0);
+      SFX.loopSet('skid', '@boost_skid_loop', 0);
       return;
     }
     const thr = p.abT > 0 ? 0 : p.boost ? 0.9 : p.hover ? 0.75 : !p.grounded ? 0.45 : p.moving ? 0.25 : 0;
     // 推進器兩層：低沉的轟（thrustLoop）＋高頻的嘶（合成），推得越用力嘶越多（docs/audio-design.md 第 3 期）
-    SFX.loopSet('thrust', 'thrustLoop', thr * 0.6, p.boost ? 1.25 : 1.0);
-    SFX.loopSet('thrustHi', '~jetLoop', thr * thr * 0.22, p.boost ? 1.15 : 0.9);
-    SFX.loopSet('engine', 'engineHi', p.abT > 0 ? 0.9 : 0, 1.1);
+    SFX.loopSet('thrust', ['@thrust_loop', 'thrustLoop'], thr * 0.6, p.boost ? 1.25 : 1.0);
+    SFX.loopSet('thrustHi', ['@thrust_hiss_loop', '~jetLoop'], thr * thr * 0.22, p.boost ? 1.15 : 0.9);
+    SFX.loopSet('engine', ['@ab_engine_loop', 'engineHi'], p.abT > 0 ? 0.9 : 0, 1.1);
+    // 推進滑行時腳底擦地（AI 音效，docs/sfx-gen-design.md）
+    const sk = p.boost && p.grounded ? Math.min(1, Math.hypot(p.vel.x, p.vel.z) / (40 * p.dk)) : 0;
+    SFX.loopSet('skid', '@boost_skid_loop', sk * 0.35, 0.85 + sk * 0.3);
   }
   // 機體之間的碰撞分離（無傷害）：兩兩相互推開；第一人稱時本地玩家與敵人保持更大距離
   separateMechs(dt, list) {

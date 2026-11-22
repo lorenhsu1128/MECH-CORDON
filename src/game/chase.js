@@ -122,7 +122,7 @@ Object.assign(Game.prototype, {
   toggleAssist() {
     if (!this.chase || this.spectator) return;
     this.assist = !this.assist;
-    SFX.ui();
+    if (!SFX.aiPlay('assist_toggle', 0.5, this.assist ? 1.1 : 0.9, 0.02, 0.05, null, 'ui')) SFX.ui();
     this.flashMsg(this.assist ? '目標輔助 ON' : '目標輔助 OFF', 0xffb020, 0.9, {
       k: 'sys',
       m: this.assist ? 'TARGET ASSIST' : 'ASSIST OFF',
@@ -419,7 +419,7 @@ Object.assign(Game.prototype, {
     if (best) {
       p.lock = best;
       p.lockT = 0;
-      SFX.ui();
+      if (!SFX.aiPlay('lock_switch', 0.5, 1, 0.03, 0.05, null, 'ui')) SFX.ui();
     }
   },
   // ---------- HUD：準星、鎖定框、四把武器、EN／ACS、目標資訊 ----------

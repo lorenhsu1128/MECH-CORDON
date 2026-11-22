@@ -104,7 +104,7 @@ Object.assign(Game.prototype, {
     const i = list.indexOf(p.lock);
     p.lock = list[(i + 1) % list.length];
     p.lockT = 0;
-    SFX.ui();
+    if (!SFX.aiPlay('lock_switch', 0.5, 1, 0.03, 0.05, null, 'ui')) SFX.ui();
   },
 
   // ---------- player control ----------
