@@ -85,6 +85,18 @@ import { propShape, shapeContains, shapeSegT } from './prop-hit.js';
 import { Weather } from './weather.js';
 import { buildWaterMesh, disposeWater } from '../fx/water/surface.js';
 import { FAR_R, OOB_BUF, buildBackdrop, edgeDelta, planEdges } from './edges.js';
+import {
+  SEAM_B,
+  TORUS_BIG,
+  TORUS_K,
+  TORUS_SIZE,
+  buildFarTerrain,
+  disposeFar,
+  seamBlend,
+  tileize,
+  wrapData,
+  wrapView,
+} from './torus.js';
 
 // 鏡頭遮擋：擋住時淡到的不透明度。大型建築（外框高 FADE_BIG_H 以上）有很多層樓板與牆，每層都留一點就疊成一片白霧，
 // 所以淡得更透明（2026-11-03 使用者定案）
@@ -223,6 +235,7 @@ function scaleTheme(T) {
 }
 export const THEMES = {
   snow: {
+    torus: true, // 無邊界（上下左右相接，docs/torus-map-design.md）
     name: '極地封鎖區',
     corridor: { p: 0.6, kinds: ['road', 'rail'] },
     ground: 0xbfc8d1,
@@ -254,6 +267,7 @@ export const THEMES = {
     hasRocks: false,
   },
   grid: {
+    torus: true, // 無邊界（上下左右相接，docs/torus-map-design.md）
     name: '模擬訓練場',
     corridor: { p: 0.5, kinds: ['road'] },
     ground: 0x9ea6b3,
@@ -270,6 +284,7 @@ export const THEMES = {
     grid: true,
   },
   desert: {
+    torus: true, // 無邊界（上下左右相接，docs/torus-map-design.md）
     name: '礦坑遺跡',
     corridor: { p: 0.6, kinds: ['road', 'rail'] },
     ground: 0x9c8360,
@@ -287,6 +302,7 @@ export const THEMES = {
   // terrain：地形輪廓（canyon 峽谷台地、dunes 沙丘）；weather：天氣粒子（只有外觀）；
   // props：專屬的物件組（buildThemeProps）與主題版的地形特徵；size：場地邊長（m，預設 MAP_SIZE）
   wasteland: {
+    torus: true, // 無邊界（上下左右相接，docs/torus-map-design.md）
     name: '荒涼工業荒野',
     corridor: { p: 0.7, kinds: ['rail', 'rail', 'road'] },
     ground: 0x8a6f52,
@@ -304,6 +320,7 @@ export const THEMES = {
     props: 'wasteland',
   },
   dunes: {
+    torus: true, // 無邊界（上下左右相接，docs/torus-map-design.md）
     name: '沙丘地帶',
     corridor: { p: 0.4, kinds: ['road'] },
     ground: 0xc9a06a,
@@ -429,6 +446,7 @@ function propMatSig(m) {
       ].join(',');
 }
 
+const _tc = new THREE.Color();
 export class World {
   constructor(scene, theme, seed, level, feat, opt = {}) {
     this.scene = scene;
@@ -444,6 +462,7 @@ export class World {
     this.theme =
       this.variant && this.variant.theme ? { ...THEMES[theme], ...this.variant.theme } : THEMES[theme];
     this.theme = scaleTheme(this.theme);
+    this._fogCap = 0;
     if (LV && LV.water !== null && LV.water !== undefined) {
       const W0 = this.theme.water || { color: 0x37586a, opacity: 0.85, rough: 0.12 };
       this.theme = { ...this.theme, water: { ...W0, level: LV.water } };
@@ -451,12 +470,23 @@ export class World {
     this.tod = opt.tod || ''; // 時間（主線）：'' 或 day／dusk／night／dawn
     this.depth = opt.depth || 0; // 垂直下降的深度（主線）：越深越暗
     this.themeKey = theme;
-    this.size = this.theme.size || (opt.big && !LV ? MAP_BIG : MAP_SIZE);
-    this.k = this.size / ARENA;
+    // 無邊界（上下左右相接，docs/torus-map-design.md）：主題改好才打開（torus）；自訂關卡與 opt.bounded（過場的地圖）照舊有邊界
+    this.torus = !!this.theme.torus && !LV && !opt.bounded;
+    this.fx = this.fz = 0; // 參考點：資料都搬到離它最近的那一份（wrap）
+    this.size = this.torus
+      ? this.theme.torusSize || (opt.big ? TORUS_BIG : TORUS_SIZE)
+      : this.theme.size || (opt.big && !LV ? MAP_BIG : MAP_SIZE);
+    this.k = this.size / (this.torus ? TORUS_K : ARENA);
     this.cell = this.theme.cell || CELL; // 空域的格子比較粗（themes/airspace.js）
     this.cells = Math.round(this.size / this.cell);
-    this.lim = 62 * this.k; // 作戰區域（電腦機體 collide 限制在 ±lim）
-    this.limOut = this.lim + OOB_BUF; // 玩家可以超出作戰區域到這裡（警告並推回），collide 的 soft
+    if (this.torus) {
+      // 物件只在離鏡頭半格以內出現：霧的最遠距離夾在半格多一點
+      const ff = Math.min(this.theme.fogFar, (this.size / 2) * 1.1);
+      this._fogCap = (this.size / 2) * 1.1;
+      this.theme = { ...this.theme, fogFar: ff, fogNear: Math.min(this.theme.fogNear, ff * 0.45) };
+    }
+    this.lim = this.torus ? this.size / 2 : 62 * this.k; // 作戰區域（電腦機體 collide 限制在 ±lim）；相接時＝半格
+    this.limOut = this.torus ? this.lim : this.lim + OOB_BUF; // 玩家可以超出作戰區域到這裡（警告並推回），collide 的 soft
     this.setZone(opt.zone, opt.zoneAxis);
     this.trackS = (this.size / 2) * 0.86; // 公路／鐵路兩端隧道口
     this.level = level;
@@ -470,6 +500,7 @@ export class World {
     // 純裝飾的小物件（碎石、廢鐵…）：建好地圖後依材質合併成少數網格（自訂關卡不合併：編輯器要能逐一移除）
     this.decorG = new THREE.Group();
     this.decorG.userData.noFade = true;
+    this.decorG.userData.wrapKids = true; // 相接的地圖：底下每一塊各自搬（torus.js 的 wrapView）
     scene.add(this.decorG);
     this.meshes.push(this.decorG);
     this.h = new Float32Array((this.cells + 1) * (this.cells + 1));
@@ -517,6 +548,7 @@ export class World {
             bend: cf.bend || null,
           };
           this.featureNames.push(cf.kind === 'road' ? '穿越公路' : '穿越鐵路');
+          this.corridorTorus();
         }
       } else if (LV && LV.blank) {
         this.features = [];
@@ -563,6 +595,16 @@ export class World {
       this.mergeGridPillars();
       this.mergeProps();
     }
+    if (this.torus) {
+      // 相接的地圖：沒有邊界外的景觀與邊界線；跨整張地圖的網格切成小塊、遠處用低解析度的地形補
+      const big = tileize(this);
+      if (big.length && typeof window !== 'undefined' && window.__torusLog)
+        window.__torusLog.push(...big.map((o) => `[tileize] 切不了：${o.type} ${o.name || ''}`));
+      buildFarTerrain(this, (ny, y, out) => this.terrainColor(ny, y, out));
+      const wk = opt.weather === 'none' ? null : opt.weather || this.theme.weather;
+      this.weather = wk ? new Weather(scene, wk, this.theme) : null;
+      return;
+    }
     // 邊界外的遠景地形與剪影物件（edges.js，獨立的亂數串，不影響上面的生成）
     withRng(seed * 97 + 41, () => {
       for (const o of buildBackdrop(this) || []) {
@@ -578,9 +620,75 @@ export class World {
     this.weather = wk ? new Weather(scene, wk, this.theme) : null;
   }
   hAt(i, j) {
+    if (this.torus) {
+      const n = this.cells;
+      i = ((i % n) + n) % n;
+      j = ((j % n) + n) % n;
+      return this.h[j * (n + 1) + i];
+    }
     i = clamp(i, 0, this.cells);
     j = clamp(j, 0, this.cells);
     return this.h[j * (this.cells + 1) + i];
+  }
+  // ---------- 無邊界（上下左右相接，docs/torus-map-design.md）----------
+  // 換回原格（−S/2～S/2）的座標：解析函式（由座標算結果、產生時的資料沒搬過的）開頭用
+  cx(x) {
+    return this.torus ? x - this.size * Math.round(x / this.size) : x;
+  }
+  // 離參考點最近的那一份：回傳位置的函式用
+  ix(x) {
+    return this.torus ? x + this.size * Math.round((this.fx - x) / this.size) : x;
+  }
+  iz(z) {
+    return this.torus ? z + this.size * Math.round((this.fz - z) / this.size) : z;
+  }
+  // 位置 p（Vector3 或 { x, z }）搬到參考點附近，回傳 p
+  img(p) {
+    if (this.torus) {
+      p.x = this.ix(p.x);
+      p.z = this.iz(p.z);
+    }
+    return p;
+  }
+  // a 相對 ref 最近的那一份的座標差（繞過接縫比較近就繞過去）
+  dx(a, ref) {
+    const d = a - ref;
+    return this.torus ? d - this.size * Math.round(d / this.size) : d;
+  }
+  // 每格：資料搬到參考點 (fx, fz) 附近（遊戲端的東西由 Game.wrapTick 搬）
+  wrap(fx, fz) {
+    if (!this.torus) return 0;
+    return wrapData(this, fx, fz);
+  }
+  // 每格：網格搬到鏡頭注視的位置附近；R＝看得到多遠
+  wrapSee(cx, cz, R) {
+    if (!this.torus) return 0;
+    return wrapView(this, cx, cz, R || this.size / 2);
+  }
+  get zone() {
+    if (!this.torus) return this._zone;
+    // 相接的地圖沒有作戰區域的邊：回傳參考點周圍的一格（「在區域裡隨機挑一點」「夾在區域裡」照舊可用）
+    const Z = this._tz || (this._tz = [0, 0, 0, 0]),
+      h = this.size / 2;
+    Z[0] = this.fx - h;
+    Z[1] = this.fx + h;
+    Z[2] = this.fz - h;
+    Z[3] = this.fz + h;
+    return Z;
+  }
+  set zone(z) {
+    this._zone = z;
+  }
+  // 地形的顏色（依坡度與高度；遠景地形用，和 buildTerrainMesh 的規則相同、沒有每個面的明暗跳動）
+  terrainColor(ny, y, out) {
+    const T = this.theme;
+    const steep = clamp((0.93 - ny) * 6, 0, 1);
+    out.set(T.ground).lerp(_tc.set(T.slope), steep);
+    const RY = T.rockY || ROCK_Y;
+    if (T.shore && y < T.shore[0]) out.lerp(_tc.set(T.shore[1]), 0.75);
+    if (y > RY[0]) out.lerp(_tc.set(T.rock), clamp((y - RY[0]) / RY[1], 0, 0.7));
+    if (T.snowY && y > T.snowY) out.lerp(SNOW_C, clamp((y - T.snowY) / 60, 0, 0.85) * (1 - steep * 0.6));
+    return out;
   }
   terrainHeight(x, z) {
     const fx = (x + this.size / 2) / this.cell,
@@ -640,12 +748,39 @@ export class World {
         : T.flat
           ? 0
           : (n((x / G) * 0.03, (z / G) * 0.03) * 1.2 + n2((x / G) * 0.1, (z / G) * 0.1) * 0.3) * G;
-    this.edges = planEdges(this);
+    this.edges = this.torus ? null : planEdges(this);
     const vt = this.variant && this.variant.terrain ? this.variant.terrain(this) : null;
+    // 相接的地圖：自然地形照舊算（不相接），在接縫兩側和另一側往外延伸的高度交叉淡化（torus.js 的 seamBlend）
+    const TOR = this.torus,
+      NC = this.cells;
+    const raw = (x, z) => {
+      let h = this.baseH(x, z);
+      for (const p of plateaus) {
+        const dx = Math.max(Math.abs(x - p.x) - p.w / 2, 0),
+          dz = Math.max(Math.abs(z - p.z) - p.d / 2, 0);
+        const d = Math.sqrt(dx * dx + dz * dz);
+        const t = clamp(1 - d / p.r, 0, 1);
+        h += p.h * (t * t * (3 - 2 * t));
+      }
+      for (const c of cliffPts) {
+        const d = Math.hypot(x - c.x, z - c.z);
+        const t = clamp(1 - d / c.r, 0, 1);
+        h += c.h * t * t;
+      }
+      if (lake) h = lake.apply(x, z, h);
+      if (vt) h = vt(x, z, h);
+      return h;
+    };
+    const HT = TOR ? (T.noSeam ? raw : seamBlend(raw, this.size, SEAM_B)) : null;
     for (let j = 0; j <= this.cells; j++)
       for (let i = 0; i <= this.cells; i++) {
         const x = i * this.cell - this.size / 2,
           z = j * this.cell - this.size / 2;
+        if (TOR) {
+          // 最後一排＝第一排（同一個點；平滑之後再補）
+          this.h[j * (NC + 1) + i] = i === NC || j === NC ? 0 : this.featureHeight(x, z, HT(x, z));
+          continue;
+        }
         let h = this.baseH(x, z);
         for (const p of plateaus) {
           const dx = Math.max(Math.abs(x - p.x) - p.w / 2, 0),
@@ -667,7 +802,23 @@ export class World {
       }
     // smooth a little（方舟的船體不平滑：甲板各層的邊緣要俐落，docs/ark-redesign.md）
     const s = new Float32Array(this.h);
-    if (!T.noSmooth)
+    if (TOR) {
+      if (!T.noSmooth)
+        for (let j = 0; j < NC; j++)
+          for (let i = 0; i < NC; i++)
+            s[j * (NC + 1) + i] =
+              (this.hAt(i, j) * 4 +
+                this.hAt(i - 1, j) +
+                this.hAt(i + 1, j) +
+                this.hAt(i, j - 1) +
+                this.hAt(i, j + 1)) /
+              8;
+      for (let q = 0; q <= NC; q++) {
+        s[q * (NC + 1) + NC] = s[q * (NC + 1)];
+        s[NC * (NC + 1) + q] = s[q];
+      }
+      s[NC * (NC + 1) + NC] = s[0];
+    } else if (!T.noSmooth)
       for (let j = 1; j < this.cells; j++)
         for (let i = 1; i < this.cells; i++) {
           s[j * (this.cells + 1) + i] =
@@ -700,6 +851,7 @@ export class World {
       gh.position.y = 0.04;
       gh.material.transparent = true;
       gh.material.opacity = 0.35;
+      gh.userData.uniform = true; // 相接的地圖：跟著鏡頭以整格移動（格線的間距整除地圖邊長）
       this.scene.add(gh);
       this.meshes.push(gh);
     }
@@ -745,13 +897,32 @@ export class World {
     // 平滑的法線（另一個屬性 stNrm2；原本的 normal 照舊是面法線，SSAO 的法線等其他地方不變）：
     // 渲染風格的「場景平滑」（絕區零）才用（style/shader.js，docs/zzz-style-design.md）
     geo.computeVertexNormals();
+    // 相接的地圖：邊上的頂點和對面的是同一個點（法線、顏色合起來算，接縫才看不出來）
+    const NV = this.cells + 1,
+      NCC = this.cells,
+      canon = this.torus ? (v) => (Math.floor(v / NV) % NCC) * NV + ((v % NV) % NCC) : (v) => v;
+    if (this.torus) {
+      const N0 = geo.attributes.normal,
+        sum = new Float32Array(N0.count * 3);
+      for (let v = 0; v < N0.count; v++) {
+        const c = canon(v) * 3;
+        sum[c] += N0.getX(v);
+        sum[c + 1] += N0.getY(v);
+        sum[c + 2] += N0.getZ(v);
+      }
+      for (let v = 0; v < N0.count; v++) {
+        const c = canon(v) * 3,
+          l = Math.hypot(sum[c], sum[c + 1], sum[c + 2]) || 1;
+        N0.setXYZ(v, sum[c] / l, sum[c + 1] / l, sum[c + 2] / l);
+      }
+    }
     ng.setAttribute('stNrm2', geo.toNonIndexed().attributes.normal);
     // 平滑的顏色（每個頂點取周圍面的平均，沒有每個面的明暗跳動）：同樣只給「場景平滑」用
     const vn = (this.cells + 1) * (this.cells + 1),
       acc = new Float32Array(vn * 4),
       idx = geo.index;
     for (let t = 0; t < idx.count; t++) {
-      const v = idx.getX(t),
+      const v = canon(idx.getX(t)),
         f = t - (t % 3);
       acc[v * 4] += col[f * 3];
       acc[v * 4 + 1] += col[f * 3 + 1];
@@ -760,7 +931,7 @@ export class World {
     }
     const col2 = new Float32Array(col.length);
     for (let t = 0; t < idx.count; t++) {
-      const v = idx.getX(t),
+      const v = canon(idx.getX(t)),
         n = acc[v * 4 + 3] || 1;
       col2[t * 3] = acc[v * 4] / n;
       col2[t * 3 + 1] = acc[v * 4 + 1] / n;
@@ -908,12 +1079,15 @@ export class World {
   corridorBend(s) {
     const b = this.corridor && this.corridor.bend;
     if (!b) return 0;
+    if (this.corridor.per) return b[0] * Math.sin((2 * Math.PI * s) / this.corridor.per); // 週期的 S 形
     const t = clamp(s / (this.corridor.len / 2 + 18), -1, 1);
     return b[1] ? b[0] * Math.sin(Math.PI * t) : b[0] * (1 - t * t);
   }
   corridorSlope(s) {
     const b = this.corridor && this.corridor.bend;
     const L = this.corridor ? this.corridor.len / 2 + 18 : 1;
+    if (b && this.corridor.per)
+      return ((b[0] * 2 * Math.PI) / this.corridor.per) * Math.cos((2 * Math.PI * s) / this.corridor.per);
     if (!b || Math.abs(s) > L) return 0;
     const t = s / L;
     return b[1] ? ((b[0] * Math.PI) / L) * Math.cos(Math.PI * t) : (-2 * b[0] * t) / L;
@@ -921,14 +1095,17 @@ export class World {
   // (x, z) 離通道中心線的橫向距離（有正負，沿 perp）
   corridorU(x, z) {
     const c = this.corridor;
-    return x * c.perp.x + z * c.perp.y - c.off - this.corridorBend(x * c.dir.x + z * c.dir.y);
+    const u = x * c.perp.x + z * c.perp.y - c.off - this.corridorBend(x * c.dir.x + z * c.dir.y);
+    // 相接的地圖：路繞一圈回到自己，橫向距離以 per 為週期（沿軸＝S、45°＝S／√2）
+    return c.per ? u - c.per * Math.round(u / c.per) : u;
   }
-  corridorPoint(s, u = 0) {
+  corridorPoint(s, u = 0, raw = false) {
     const c = this.corridor;
     const o = c.off + this.corridorBend(s) + u;
     const x = c.dir.x * s + c.perp.x * o,
       z = c.dir.y * s + c.perp.y * o;
-    return new THREE.Vector3(x, this.terrainHeight(x, z), z);
+    // raw：不搬到參考點附近（產生路面時要連續的座標）
+    return new THREE.Vector3(raw ? x : this.ix(x), this.terrainHeight(x, z), raw ? z : this.iz(z));
   }
   // 參數 s 處的行進方向（單位向量，XZ）
   corridorDir(s) {
@@ -1182,8 +1359,8 @@ export class World {
   safePoint() {
     for (let r = 0; r < 60 * this.k; r += 3 * G)
       for (let a = 0; a < 12; a++) {
-        const x = Math.cos(a * 0.5236) * r,
-          z = Math.sin(a * 0.5236) * r;
+        const x = this.fx + Math.cos(a * 0.5236) * r,
+          z = this.fz + Math.sin(a * 0.5236) * r;
         if (
           !this.isVoid(x, z) &&
           !this.isReserved(x, z, 2 * G) &&
@@ -1192,7 +1369,7 @@ export class World {
         )
           return new THREE.Vector3(x, this.terrainHeight(x, z), z);
       }
-    return new THREE.Vector3(0, this.terrainHeight(0, 0), 0);
+    return new THREE.Vector3(this.fx, this.terrainHeight(this.fx, this.fz), this.fz);
   }
   // 從 (x, z) 往外找最近不是虛空的位置（不是虛空地圖時原樣回傳）
   // firm：周圍 2G 也都不是虛空（街區邊緣的斜坡上放不住機體：玩家墜落後放回去的位置）
@@ -1211,7 +1388,11 @@ export class World {
       for (let a = 0; a < 16; a++) {
         const px = x + Math.cos(a * 0.3927) * r,
           pz = z + Math.sin(a * 0.3927) * r;
-        if (Math.abs(px) < this.lim - 2 * G && Math.abs(pz) < this.lim - 2 * G && ok(px, pz)) return [px, pz];
+        if (
+          (this.torus || (Math.abs(px) < this.lim - 2 * G && Math.abs(pz) < this.lim - 2 * G)) &&
+          ok(px, pz)
+        )
+          return [px, pz];
       }
     const p = this.safePoint();
     return [p.x, p.z];
@@ -1222,6 +1403,8 @@ export class World {
   }
   isReserved(x, z, m = 0) {
     if (!this.reserved) return false;
+    x = this.cx(x);
+    z = this.cx(z);
     return this.reserved.some((r) => x > r[0] - m && x < r[1] + m && z > r[2] - m && z < r[3] + m);
   }
   // 水面（只有外觀）：{ level, color, opacity, rough, wide, cloud }。網格與著色器在 fx/water/surface.js，
@@ -1238,6 +1421,7 @@ export class World {
       m.renderOrder = 0;
       m.userData.noFade = true;
       m.userData.noAO = true;
+      m.userData.uniform = true;
       this.scene.add(m);
       this.meshes.push(m);
       this.waterMesh = m;
@@ -1245,6 +1429,7 @@ export class World {
       return;
     }
     const g = buildWaterMesh(W, ext, G);
+    g.userData.uniform = true; // 相接的地圖：跟著鏡頭以整格移動
     this.scene.add(g);
     this.meshes.push(g);
     this.waterMesh = g;
@@ -1452,11 +1637,13 @@ export class World {
     if (done) this.zoneGoal = null;
   }
   inZone(x, z, m = 0) {
+    if (this.torus) return true;
     const Z = this.zone;
     return x > Z[0] + m && x < Z[1] - m && z > Z[2] + m && z < Z[3] - m;
   }
   // 超出作戰區域的距離（場內為 0）
   zoneExcess(x, z) {
+    if (this.torus) return 0;
     const Z = this.zone;
     return Math.max(0, Z[0] - x, x - Z[1], Z[2] - z, z - Z[3]);
   }
@@ -1541,6 +1728,8 @@ export class World {
   // 變體不能放東西的地方（坑道網的岩壁…）
   offLimits(x, z) {
     // 主題自己的（火山熔爐帶的熔岩）＋變體的
+    x = this.cx(x);
+    z = this.cx(z);
     if (this.theme.offLimits && this.theme.offLimits(this, x, z)) return true;
     return !!(this.variant && this.variant.offLimits && this.variant.offLimits(this, x, z));
   }
@@ -2209,6 +2398,17 @@ export class World {
   planFeatures() {
     withRng(this.seed * 17 + 5, () => this.planFeatures0());
   }
+  // 相接的地圖：公路／鐵路繞一圈接回自己（沿軸一圈＝S、45° 一圈＝S√2，在原格裡是兩段）；
+  // per＝橫向與彎度的週期，彎度一律是週期的 S 形（幅度減半：週期比原本的長度短）
+  corridorTorus() {
+    const c = this.corridor;
+    if (!c || !this.torus) return;
+    const m = Math.max(Math.abs(c.dir.x), Math.abs(c.dir.y));
+    c.per = this.size * m;
+    c.len = this.size / m;
+    c.loop = true;
+    if (c.bend) c.bend = [c.bend[0] * 0.5 * m, 1];
+  }
   planFeatures0() {
     this.features = [];
     this.featureNames = [];
@@ -2239,6 +2439,7 @@ export class World {
         bend,
       };
       this.featureNames.push(this.corridor.kind === 'road' ? '穿越公路' : '穿越鐵路');
+      this.corridorTorus();
     }
     for (const k of chosen) {
       const ang = RNG() < 0.5 ? 0 : Math.PI / 2;
@@ -2330,7 +2531,7 @@ export class World {
       const u = this.corridorU(x, z);
       const inside = clamp(1 - (Math.abs(u) - c.width / 2) / (3.5 * G), 0, 1); // 路肩的整地（地形的起伏放大了，過渡帶跟著加寬）
       const edge = Math.max(Math.abs(x), Math.abs(z));
-      if (inside > 0 && edge < (this.size / 2) * 0.88) {
+      if (inside > 0 && (c.loop || edge < (this.size / 2) * 0.88)) {
         const t = inside * inside * (3 - 2 * inside);
         h = lerp(h, 0.25, t);
       }
@@ -2866,6 +3067,7 @@ export class World {
     }
     if (!buckets.size) return;
     const root = (this.pillarG = new THREE.Group());
+    root.userData.wrapKids = true;
     root.userData.noFade = true;
     root.userData.cat = 'prop'; // 地圖預覽器的場景分類（game/map-view-perf.js）
     this.scene.add(root);
@@ -2955,6 +3157,7 @@ export class World {
       }
     }
     const root = (this.poolG = new THREE.Group());
+    root.userData.wrapKids = true;
     root.userData.noFade = true;
     root.userData.cat = 'prop'; // 地圖預覽器的場景分類（game/map-view-perf.js）
     this.scene.add(root);
@@ -3435,12 +3638,12 @@ export class World {
   buildCorridor() {
     const c = this.corridor;
     if (!c) return;
-    const half = c.len / 2 + 18;
+    const half = c.loop ? c.len / 2 : c.len / 2 + 18;
     const L = [];
     const pts = (u) => {
       const out = [];
-      for (let s = -half; s <= half; s += 2)
-        out.push(this.corridorPoint(s, u).add(new THREE.Vector3(0, 0.06, 0)));
+      for (let s = -half; s <= half + 0.01; s += 2)
+        out.push(this.corridorPoint(s, u, true).add(new THREE.Vector3(0, 0.06, 0)));
       return out;
     };
     const road = c.kind === 'road';
@@ -3457,7 +3660,7 @@ export class World {
     const o3 = new THREE.Object3D();
     let i = 0;
     for (let s = -half; s < half && i < n; s += P.step, i++) {
-      const p = this.corridorPoint(s),
+      const p = this.corridorPoint(s, 0, true),
         t = this.corridorDir(s);
       o3.position.set(p.x, p.y + P.y, p.z);
       o3.rotation.set(0, Math.atan2(t.x, t.y), 0);
@@ -3469,8 +3672,8 @@ export class World {
     im.userData.noFade = true; // 貼在地面上，不擋鏡頭
     this.scene.add(im);
     this.meshes.push(im);
-    // 隧道口：地圖兩端各一座（拱門＋門柱＋黑洞＋山體）
-    for (const sgn of [-1, 1]) {
+    // 隧道口：地圖兩端各一座（拱門＋門柱＋黑洞＋山體）；相接的地圖沒有（路繞一圈）
+    for (const sgn of c.loop ? [] : [-1, 1]) {
       const s = sgn * ((this.size / 2) * 0.86);
       const p = this.corridorPoint(s),
         t = this.corridorDir(s);
@@ -3752,6 +3955,8 @@ export class World {
     if (G && G.ref === L && G.n === L.length && G.last === last) return G;
     const m = new Map();
     let bad = false;
+    // 相接的地圖：格子的索引取餘數（地圖邊長是格子的整數倍），資料搬了 ±S 還是在同一格、不用重建
+    const NG = this.torus ? Math.round(this.size / OG_C) : 0;
     for (const o of L) {
       const hw = o.kind === 'box' ? o.w / 2 : o.r,
         hd = o.kind === 'box' ? o.d / 2 : o.r;
@@ -3765,18 +3970,24 @@ export class World {
         z1 = Math.floor((o.z + hd + OG_PAD) / OG_C);
       for (let i = x0; i <= x1; i++)
         for (let j = z0; j <= z1; j++) {
-          const k = i * 65536 + j;
+          const k = NG ? (((i % NG) + NG) % NG) * 65536 + (((j % NG) + NG) % NG) : i * 65536 + j;
           let c = m.get(k);
           if (!c) m.set(k, (c = []));
           c.push(o);
         }
     }
-    return (this._og = { ref: L, n: L.length, last, m, bad });
+    return (this._og = { ref: L, n: L.length, last, m, bad, NG });
   }
   // 點 (x, z) 半徑 r 以內可能碰到的障礙物（照陣列的順序）；r 超過 OG_PAD 時是整個陣列
   obsAt(x, z, r = 0) {
     const G = this.obsGrid();
     if (G.bad || r > OG_PAD) return this.obstacles;
+    const N = G.NG;
+    if (N) {
+      const i = Math.floor(x / OG_C),
+        j = Math.floor(z / OG_C);
+      return G.m.get((((i % N) + N) % N) * 65536 + (((j % N) + N) % N)) || OG_EMPTY;
+    }
     return G.m.get(Math.floor(x / OG_C) * 65536 + Math.floor(z / OG_C)) || OG_EMPTY;
   }
   groundAt(x, z, y) {
@@ -3838,10 +4049,12 @@ export class World {
       }
     }
     // 場地邊界：電腦機體限制在作戰區域（一般任務 ±lim）、玩家可以再往外 OOB_BUF（±limOut）
-    const Z = this.zone,
-      b = soft ? OOB_BUF : 0;
-    x = clamp(x, Math.max(Z[0] - b, -this.limOut), Math.min(Z[1] + b, this.limOut));
-    z = clamp(z, Math.max(Z[2] - b, -this.limOut), Math.min(Z[3] + b, this.limOut));
+    if (!this.torus) {
+      const Z = this.zone,
+        b = soft ? OOB_BUF : 0;
+      x = clamp(x, Math.max(Z[0] - b, -this.limOut), Math.min(Z[1] + b, this.limOut));
+      z = clamp(z, Math.max(Z[2] - b, -this.limOut), Math.min(Z[3] + b, this.limOut));
+    }
     // 回傳共用的陣列（每格呼叫很多次，不要每次配置；呼叫端一律立刻解構，不要留著它）
     const out = this._col || (this._col = [0, 0]);
     out[0] = x;
@@ -3872,7 +4085,9 @@ export class World {
     // 地圖外用遠景地形的高度（山脊、斷崖）
     const S = this.size / 2;
     const th =
-      Math.abs(p.x) > S || Math.abs(p.z) > S ? this.farHeight(p.x, p.z) : this.terrainHeight(p.x, p.z);
+      !this.torus && (Math.abs(p.x) > S || Math.abs(p.z) > S)
+        ? this.farHeight(p.x, p.z)
+        : this.terrainHeight(p.x, p.z);
     if (p.y < th || p.y < this.rampHeight(p.x, p.z, p.y)) return true;
     for (const o of this.obsAt(p.x, p.z)) {
       if (o.prop && o.prop.shape && !o.prop.dead) {
@@ -3897,7 +4112,15 @@ export class World {
       M = 4 * MS;
     for (let t = 0; t < (near ? 60 : 40); t++) {
       let x, z;
-      if (near) {
+      if (near && this.torus) {
+        const r = (6 + t * 0.6) * DS;
+        x = near.x + rnd(-r, r);
+        z = near.z + rnd(-r, r);
+      } else if (this.torus) {
+        // 相接的地圖：參考點周圍的一格裡任意一點
+        x = this.fx + rnd(-this.lim, this.lim);
+        z = this.fz + rnd(-this.lim, this.lim);
+      } else if (near) {
         const r = (6 + t * 0.6) * DS;
         x = clamp(near.x + rnd(-r, r), Z[0] + M, Z[1] - M);
         z = clamp(near.z + rnd(-r, r), Z[2] + M, Z[3] - M);
@@ -3939,6 +4162,7 @@ export class World {
   dispose() {
     if (this.weather) this.weather.dispose();
     disposeWater(this.waterMesh);
+    disposeFar(this);
     if (this._fading) for (const f of this._fading.values()) f.m.dispose();
     for (const m of [...this.meshes, ...(this.pillarHide || [])]) {
       this.scene.remove(m);
@@ -3950,6 +4174,7 @@ export class World {
   // 作戰區域的邊界線：貼在地面上的發光線（往外有一條淡出的光暈帶、流動的斜紋），只在機體附近亮起，
   // 離邊界越近越亮；不立牆（2026-10-28 使用者定案：拿掉大片的警示光幕，改成地面線＋HUD 提示 game/hud.js 的 zoneEdgeHud）
   buildBoundary() {
+    if (this.torus) return;
     this.bLine = new THREE.Mesh(
       new THREE.BufferGeometry(),
       new THREE.ShaderMaterial({

@@ -158,6 +158,7 @@ Object.assign(Game.prototype, {
   },
   renderMain() {
     const lab = this.lab;
+    this.wrapTick(); // 無邊界地圖：資料與網格搬到參考點附近（game/torus.js）
     // 透視洞：這一格的鏡頭沒有設定（選單、編輯器、觀戰、過場）就關掉（game/camera.js 的 camCut）
     this.frameN = (this.frameN || 0) + 1;
     if (this.camCutFrame !== this.frameN - 1 && this.camCutFrame !== this.frameN) {

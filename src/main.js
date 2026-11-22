@@ -162,5 +162,6 @@ import './game/top-aim.js';
 import './game/free-ops.js';
 import './game/tips.js'; // 載入畫面與轉場畫面的提示
 import './game/view-tr.js'; // 視角切換的運鏡
+import './game/torus.js'; // 無邊界地圖：遊戲端的東西搬到參考點附近
 
 new Game();

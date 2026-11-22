@@ -123,6 +123,8 @@ const ANIM_SLOTS = [
   ['lback', 'bl', true],
 ];
 const NO_KEY = { k: '', side: 0 };
+// 無邊界地圖：機體身上記著世界位置的欄位（shiftBy 一起搬；速度、方向這類向量不能列在這裡）
+const ENT_POS = ['safePos'];
 const MSL_GAP = 0.07; // 多連導彈：每個發射管之間的間隔（秒）
 
 // 近戰武器的音色（audio.js 的 meleeSwing／meleeHit）
@@ -2867,6 +2869,23 @@ export class MechEntity {
     return this.opts.amphib ? 1.1 : 0.85;
   }
   // ---------- physics ----------
+  // 無邊界地圖（game/torus.js）：整台搬 (dx, dz)＝地圖邊長的整數倍，連同它記著的位置（ENT_POS）
+  shiftBy(dx, dz) {
+    this.pos.x += dx;
+    this.pos.z += dz;
+    const g = this.model && this.model.group;
+    if (g) {
+      g.position.x += dx;
+      g.position.z += dz;
+    }
+    for (const k of ENT_POS) {
+      const v = this[k];
+      if (v && typeof v.x === 'number' && v !== this.pos) {
+        v.x += dx;
+        v.z += dz;
+      }
+    }
+  }
   move(dt, wish, wantHover, wantQB, wantAB, targetEnt) {
     if (this.mslQ && this.mslQ.length) this.mslTick();
     const g = this.game,

@@ -403,6 +403,7 @@ Object.assign(Game.prototype, {
         tod: S.tod || '',
         rail: !!S.rail,
         road: !!S.road,
+        bounded: true, // 過場的地圖照舊有邊界（鏡位是照原本的地圖排的；docs/torus-map-design.md）
         zone: 'full',
         noMerge: true, // 常駐好幾張地圖：地圖物件不合併（world.js）
       }));
