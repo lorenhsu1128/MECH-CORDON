@@ -13,6 +13,9 @@ export const TORUS_K = 124; // k＝S／124：原本寫成 ±62k 的範圍＝整�
 export const SEAM_B = 20 * WS; // 接縫兩側交叉淡化的寬度（各 60 m）
 export const WRAP_HYS = 8 * WS; // 超過半格再多這麼遠才搬（切口附近不來回跳）
 export const TILE_N = 8; // 分塊：每邊幾塊
+// 遊戲從第 TILE0 格開始（座標約 TILE0 × S）：真正的位置數值都很大，速度、方向、尺寸這類向量都很小，
+// 所以「記著的位置」光看數值就分得出來（deepWrap），不用逐一列舉每個子系統的欄位
+export const TILE0 = 32;
 const FAR_STEP = 4; // 遠景地形：每幾個地形格子取一點
 
 const sm = (t) => t * t * (3 - 2 * t);
@@ -134,8 +137,12 @@ export function tileize(w) {
   const cell = w.size / TILE_N,
     big = [];
   const L = w.meshes;
-  for (let i = L.length - 1; i >= 0; i--) {
-    const o = L[i];
+  // 有障礙物、遮擋物指著的群組不能拆（淡出、破壞要整個群組）
+  const held = new Set();
+  for (const o of w.obstacles) if (o.group) held.add(o.group);
+  const work = L.slice();
+  while (work.length) {
+    const o = work.pop();
     if (o.userData.wrapKids || o.userData.uniform || !o.parent) continue;
     _b.setFromObject(o);
     if (_b.isEmpty()) continue;
@@ -144,15 +151,27 @@ export function tileize(w) {
     if (Math.max(sx, sz) <= cell * 1.5) continue;
     let parts = null;
     if (o.isInstancedMesh) parts = splitInstanced(o, cell);
-    else if (o.isMesh && !o.isSkinnedMesh) parts = splitMeshCells(o, cell);
+    else if (o.isMesh && !o.isSkinnedMesh && !o.children.length) parts = splitMeshCells(o, cell);
+    else if (!held.has(o) && o.children.length && !o.isMesh) {
+      // 純外觀的大群組（很長的管線…）：拆開，底下每一個各自處理
+      o.updateMatrixWorld(true);
+      parts = o.children.slice();
+      for (const c of parts) {
+        c.matrix.copy(c.matrixWorld);
+        c.matrix.decompose(c.position, c.quaternion, c.scale);
+        if (o.userData.noFade) c.userData.noFade = true;
+        if (o.userData.cat) c.userData.cat = o.userData.cat;
+      }
+      work.push(...parts);
+    }
     if (!parts) {
       big.push(o);
       continue;
     }
     const par = o.parent;
     par.remove(o);
-    if (!o.isInstancedMesh) o.geometry.dispose();
-    L.splice(i, 1, ...parts);
+    if (o.isMesh && !o.isInstancedMesh) o.geometry.dispose();
+    L.splice(L.indexOf(o), 1, ...parts);
     for (const p of parts) par.add(p);
     if (w.terrainMesh === o) {
       w.terrainMesh = parts[0];
@@ -178,7 +197,7 @@ function shiftOb(o, dx, dz, done) {
     }
   }
 }
-const BOX_KEYS = ['box', 'fbox'];
+const BOX_KEYS = ['box', 'fbox', 'base'];
 const SHAPE_X = ['x', 'x0', 'x1', 'cx'],
   SHAPE_Z = ['z', 'z0', 'z1', 'cz'];
 // 障礙物、可破壞物件、坡道搬到 (fx, fz) 附近；回傳搬了幾個
@@ -219,22 +238,146 @@ export function wrapData(w, fx, fz) {
         for (const k of SHAPE_X) sh[k] += dx;
         for (const k of SHAPE_Z) sh[k] += dz;
       }
+      // 不在 obstacles 裡的障礙物（踩得平的小物件、已經拿掉碰撞的）跟著物件走
+      const pb = p.base;
+      if (pb && pb.isBox3 && !done.has(pb)) {
+        done.add(pb);
+        pb.min.x += dx;
+        pb.max.x += dx;
+        pb.min.z += dz;
+        pb.max.z += dz;
+      }
+      if (p.ob && !done.has(p.ob)) {
+        done.add(p.ob);
+        shiftOb(p.ob, dx, dz, done);
+      }
+      if (p.obs)
+        for (const o of p.obs)
+          if (!done.has(o)) {
+            done.add(o);
+            shiftOb(o, dx, dz, done);
+          }
     }
   for (const fn of w.wrapHooks || []) n += fn(fx, fz, S, H, hop) || 0;
   return n;
 }
 
+// ---------- 通用：物件圖裡「記著的位置」搬到 (fx, fz) 附近 ----------
+// 位置＝有數字的 x、z，而且兩個都很大（> T）又在參考點附近幾格內；Box3 與有 x0／x1／z0／z1 的外框整個一起搬。
+// Object3D、材質、幾何、型別陣列不進去（網格由 wrapView 與遊戲端各自搬）。skip＝不進去的鍵（正規表示式）
+export function deepWrap(root, C, depth = 0) {
+  if (!root || typeof root !== 'object' || C.seen.has(root)) return;
+  C.seen.add(root);
+  if (Array.isArray(root)) {
+    for (let i = 0; i < root.length; i++) {
+      const v = root[i];
+      if (v && typeof v === 'object') deepWrap(v, C, depth + 1);
+    }
+    return;
+  }
+  if (
+    root.isObject3D ||
+    root.isMaterial ||
+    root.isBufferGeometry ||
+    root.isTexture ||
+    ArrayBuffer.isView(root)
+  )
+    return;
+  if (root.isBox3) {
+    const m = root.min;
+    if (isPos(m.x, m.z, C)) {
+      const dx = hop(C.fx - m.x, C.S, C.H),
+        dz = hop(C.fz - m.z, C.S, C.H);
+      if (dx || dz) {
+        m.x += dx;
+        m.z += dz;
+        root.max.x += dx;
+        root.max.z += dz;
+        C.n++;
+      }
+    }
+    return;
+  }
+  if (root.isVector3) {
+    if (isPos(root.x, root.z, C)) {
+      const dx = hop(C.fx - root.x, C.S, C.H),
+        dz = hop(C.fz - root.z, C.S, C.H);
+      if (dx || dz) {
+        root.x += dx;
+        root.z += dz;
+        C.n++;
+      }
+    }
+    return;
+  }
+  const deeper = depth < C.depth;
+  if (root instanceof Map) {
+    if (deeper) for (const v of root.values()) if (v && typeof v === 'object') deepWrap(v, C, depth + 1);
+    return;
+  }
+  if (root instanceof Set || root instanceof WeakMap || root instanceof WeakSet) return;
+  if (typeof Node !== 'undefined' && root instanceof Node) return;
+  for (const k in root) {
+    const v = root[k];
+    if (typeof v === 'number') {
+      // 成對的座標欄位：x／z、hx／hz、tx／tz、x0／z0…（鍵名的最後一個 x 換成 z）
+      if (v > C.T || v < -C.T) {
+        const i = k.lastIndexOf('x');
+        if (i < 0 || (i < k.length - 1 && !(k.charCodeAt(i + 1) >= 48 && k.charCodeAt(i + 1) <= 57)))
+          continue;
+        const kz = k.slice(0, i) + 'z' + k.slice(i + 1),
+          z = root[kz];
+        if (typeof z !== 'number' || !isPos(v, z, C)) continue;
+        const dx = hop(C.fx - v, C.S, C.H),
+          dz = hop(C.fz - z, C.S, C.H);
+        if (dx || dz) {
+          root[k] = v + dx;
+          root[kz] = z + dz;
+          C.n++;
+        }
+      }
+      continue;
+    }
+    if (deeper && v && typeof v === 'object' && !C.skip.test(k)) deepWrap(v, C, depth + 1);
+  }
+}
+function isPos(x, z, C) {
+  return (
+    (x > C.T || x < -C.T) && (z > C.T || z < -C.T) && Math.abs(x - C.fx) < C.W && Math.abs(z - C.fz) < C.W
+  );
+}
+// deepWrap 的參數：T＝多大才算位置、W＝離參考點多遠以內；參考點離原點太近（玩家繞了十幾格）時回傳 null（分不出來，不掃）
+export function deepCtx(w, fx, fz, skip, depth = 4) {
+  const S = w.size,
+    T = (TILE0 * S) / 4,
+    W = 4 * S;
+  if (Math.abs(fx) < T + W || Math.abs(fz) < T + W) return null;
+  const C = w._dc || (w._dc = { seen: new Set() });
+  C.seen.clear();
+  C.fx = fx;
+  C.fz = fz;
+  C.S = S;
+  C.H = S / 2 + WRAP_HYS;
+  C.T = T;
+  C.W = W;
+  C.skip = skip;
+  C.depth = depth;
+  C.n = 0;
+  return C;
+}
+
 // ---------- 搬畫面 ----------
-// 網格的中心（相對它的位置）：位置不在原點的當成在地建模的；在原點的量外框（頂點是世界座標的合併網格、分塊）
+// 網格的中心（相對它的位置）：量外框，只量一次
 function ctrOf(w, o) {
   let c = w._ctr.get(o);
   if (c) return c;
   c = { x: 0, z: 0 };
-  if (o.position.x === 0 && o.position.z === 0 && !o.userData.uniform) {
+  if (!o.userData.uniform) {
+    // 外框的中心（頂點是世界座標的合併網格與分塊位置在原點；切開的長條物件位置在原本的中心）
     _b.setFromObject(o);
     if (!_b.isEmpty()) {
-      c.x = (_b.min.x + _b.max.x) / 2;
-      c.z = (_b.min.z + _b.max.z) / 2;
+      c.x = (_b.min.x + _b.max.x) / 2 - o.position.x;
+      c.z = (_b.min.z + _b.max.z) / 2 - o.position.z;
     }
   }
   w._ctr.set(o, c);
@@ -257,7 +400,10 @@ function hopObj(w, o, cx, cz, S, H) {
 export function wrapView(w, cx, cz, R) {
   const S = w.size,
     H = S / 2 + WRAP_HYS;
-  if (!w._ctr) w._ctr = new WeakMap();
+  if (!w._ctr) {
+    w._ctr = new WeakMap();
+    w._big = new WeakMap();
+  }
   let n = 0;
   for (const o of w.meshes) {
     if (o.userData.wrapKids) for (const k of o.children) n += hopObj(w, k, cx, cz, S, H);
@@ -274,7 +420,46 @@ export function wrapView(w, cx, cz, R) {
     } else n += hopObj(w, o, cx, cz, S, H);
   }
   farTick(w, cx, cz, R);
+  if (w.bigs) for (const o of w.bigs) bigTick(w, o, cx, cz, R, S);
   return n;
+}
+// 切不了的大型物件（很長的管線、整座結構）：本體在離鏡頭最近的那一份，看得到範圍內的其他幾份用複製的外觀補上
+// （幾何與材質共用；最多 3 份，用到才建）
+function bigTick(w, o, cx, cz, R, S) {
+  if (!o.parent) return;
+  let I = w._big.get(o);
+  if (!I) {
+    _b.setFromObject(o);
+    I = { ex: (_b.max.x - _b.min.x) / 2, ez: (_b.max.z - _b.min.z) / 2, ghosts: [] };
+    w._big.set(o, I);
+  }
+  const c = ctrOf(w, o);
+  const px = o.position.x + c.x,
+    pz = o.position.z + c.z;
+  const sx = px > cx ? -S : S,
+    sz = pz > cz ? -S : S;
+  let g = 0;
+  for (let q = 1; q < 4; q++) {
+    const dx = q & 1 ? sx : 0,
+      dz = q & 2 ? sz : 0;
+    if (Math.abs(px + dx - cx) > R + I.ex || Math.abs(pz + dz - cz) > R + I.ez || !o.visible) continue;
+    let m = I.ghosts[g];
+    if (!m) {
+      m = I.ghosts[g] = o.clone();
+      m.userData = { ...o.userData, far: true, noFade: true };
+      o.parent.add(m);
+    }
+    m.visible = true;
+    const x = o.position.x + dx,
+      z = o.position.z + dz;
+    if (m.position.x !== x || m.position.z !== z || m.position.y !== o.position.y) {
+      m.position.set(x, o.position.y, z);
+      m.updateMatrix();
+      m.updateMatrixWorld(true);
+    }
+    g++;
+  }
+  for (; g < I.ghosts.length; g++) I.ghosts[g].visible = false;
 }
 
 // ---------- 遠景地形 ----------
@@ -361,6 +546,11 @@ function farTick(w, cx, cz, R) {
   }
 }
 export function disposeFar(w) {
+  if (w.bigs && w._big)
+    for (const o of w.bigs) {
+      const I = w._big.get(o);
+      if (I) for (const m of I.ghosts) if (m.parent) m.parent.remove(m);
+    }
   if (!w.far) return;
   for (const t of w.far.tiles) {
     for (const m of t.ghosts) w.scene.remove(m);

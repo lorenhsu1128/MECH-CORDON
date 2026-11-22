@@ -113,8 +113,9 @@ Object.assign(Game.prototype, {
       Z = W.zone;
     const cx = (Z[0] + Z[1]) / 2,
       cz = (Z[2] + Z[3]) / 2;
-    const hx = (Z[1] - Z[0]) / 2 - 8,
-      hz = (Z[3] - Z[2]) / 2 - 8;
+    // 相接的地圖沒有邊緣：從玩家周圍看不清楚的距離（約 300 m）進場
+    const hx = W.torus ? 118 * DS : (Z[1] - Z[0]) / 2 - 8,
+      hz = W.torus ? 118 * DS : (Z[3] - Z[2]) / 2 - 8;
     const a0 = Math.random() * Math.PI * 2;
     const cands = [];
     for (let k = 0; k < 8; k++) {

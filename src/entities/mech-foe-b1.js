@@ -498,8 +498,8 @@ Object.assign(MechEntity.prototype, {
       const to = pl.pos.clone().sub(T.p).setY(0);
       if (to.lengthSq() > 0.01) T.v.lerp(to.normalize().multiplyScalar(TW_SP), Math.min(1, dt * 0.8));
       T.p.addScaledVector(T.v, dt);
-      T.p.x = clamp(T.p.x, -w.lim, w.lim);
-      T.p.z = clamp(T.p.z, -w.lim, w.lim);
+      T.p.x = w.clampX(T.p.x);
+      T.p.z = w.clampZ(T.p.z);
       T.p.y = w.terrainHeight(T.p.x, T.p.z);
       if (T.zone !== undefined && T.zone !== null) g.moveZone?.(T.zone, T.p.clone(), T.v.clone());
       T.dmgT -= dt;

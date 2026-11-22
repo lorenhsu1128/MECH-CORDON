@@ -1128,7 +1128,7 @@ Object.assign(Game.prototype, {
       const q = lead.opts.path[i];
       const side = Math.random() < 0.5 ? 1 : -1;
       const at = new THREE.Vector3(q.x + side * rnd(12, 20), 0, q.z + side * rnd(-6, 6));
-      const [x, z] = w.nearSolid(clamp(at.x, -w.lim + 4, w.lim - 4), clamp(at.z, -w.lim + 4, w.lim - 4));
+      const [x, z] = w.nearSolid(w.clampX(at.x, 4), w.clampZ(at.z, 4));
       at.set(x, w.terrainHeight(x, z), z);
       this.spawnLater(this.rollComp(Math.max(1, this.campLevel() - 1), 1).slice(0, 3), at); // 一格一台
       SFX.aiPlay('objective_alarm', 0.7, 1, 0.02, 1, null, 'ui');

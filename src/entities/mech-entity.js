@@ -123,8 +123,6 @@ const ANIM_SLOTS = [
   ['lback', 'bl', true],
 ];
 const NO_KEY = { k: '', side: 0 };
-// 無邊界地圖：機體身上記著世界位置的欄位（shiftBy 一起搬；速度、方向這類向量不能列在這裡）
-const ENT_POS = ['safePos'];
 const MSL_GAP = 0.07; // 多連導彈：每個發射管之間的間隔（秒）
 
 // 近戰武器的音色（audio.js 的 meleeSwing／meleeHit）
@@ -566,6 +564,10 @@ export class MechEntity {
   }
   // 超出作戰區域（±lim）：往場內推回；最外到 limOut（collide 的 soft）。oob＝超出的距離
   oobPush(w, dt) {
+    if (w.torus) {
+      this.oob = 0; // 相接的地圖沒有作戰區域的邊
+      return;
+    }
     let ex = 0;
     const Z = w.zone;
     for (const a of ['x', 'z']) {
@@ -2869,7 +2871,7 @@ export class MechEntity {
     return this.opts.amphib ? 1.1 : 0.85;
   }
   // ---------- physics ----------
-  // 無邊界地圖（game/torus.js）：整台搬 (dx, dz)＝地圖邊長的整數倍，連同它記著的位置（ENT_POS）
+  // 無邊界地圖（game/torus.js）：整台搬 (dx, dz)＝地圖邊長的整數倍；它記著的位置由通用的掃描搬（wrapDeep）
   shiftBy(dx, dz) {
     this.pos.x += dx;
     this.pos.z += dz;
@@ -2878,13 +2880,15 @@ export class MechEntity {
       g.position.x += dx;
       g.position.z += dz;
     }
-    for (const k of ENT_POS) {
-      const v = this[k];
-      if (v && typeof v.x === 'number' && v !== this.pos) {
-        v.x += dx;
-        v.z += dz;
-      }
-    }
+  }
+  // 不在參考點周圍的那一格（剛生成在原格算出來的位置、走過了切口）就搬過去：每格在 AI 之前，
+  // 所以之後記下來的位置（錨點、巡邏點…）一開始就在對的那一份
+  wrapSelf() {
+    const w = this.game.world;
+    if (!w || !w.torus) return;
+    const dx = w.offX(this.pos.x),
+      dz = w.offZ(this.pos.z);
+    if (dx || dz) this.shiftBy(dx, dz);
   }
   move(dt, wish, wantHover, wantQB, wantAB, targetEnt) {
     if (this.mslQ && this.mslQ.length) this.mslTick();
@@ -3862,6 +3866,7 @@ export class MechEntity {
 
   // ---------- AI ----------
   updateAI(dt) {
+    this.wrapSelf(); // 無邊界地圖：先搬到參考點周圍的那一格
     const g = this.game,
       s = this.aiState,
       K = DS; // 距離的倍率（下面的數字照舊尺度）

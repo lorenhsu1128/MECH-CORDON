@@ -317,8 +317,8 @@ Object.assign(Game.prototype, {
       const q = path[Math.min((lead.pathI || 0) + 5, path.length - 1)];
       const side = Math.random() < 0.5 ? 1 : -1;
       const [x, z] = w.nearSolid(
-        clamp(q.x + side * 14 * DS, -w.lim + 4, w.lim - 4),
-        clamp(q.z + side * 6 * DS, -w.lim + 4, w.lim - 4),
+        w.clampX(q.x + side * 14 * DS, 4),
+        w.clampZ(q.z + side * 6 * DS, 4),
       );
       this.spawnLater(
         this.rollComp(Math.max(1, this.campLevel() - 1), ss.np || 1)

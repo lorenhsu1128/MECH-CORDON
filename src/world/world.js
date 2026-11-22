@@ -93,6 +93,8 @@ import {
   buildFarTerrain,
   disposeFar,
   seamBlend,
+  TILE0,
+  WRAP_HYS,
   tileize,
   wrapData,
   wrapView,
@@ -447,6 +449,7 @@ function propMatSig(m) {
 }
 
 const _tc = new THREE.Color();
+const _hw = new THREE.Vector3();
 export class World {
   constructor(scene, theme, seed, level, feat, opt = {}) {
     this.scene = scene;
@@ -597,10 +600,14 @@ export class World {
     }
     if (this.torus) {
       // 相接的地圖：沒有邊界外的景觀與邊界線；跨整張地圖的網格切成小塊、遠處用低解析度的地形補
-      const big = tileize(this);
+      const big = (this.bigs = tileize(this));
       if (big.length && typeof window !== 'undefined' && window.__torusLog)
         window.__torusLog.push(...big.map((o) => `[tileize] 切不了：${o.type} ${o.name || ''}`));
       buildFarTerrain(this, (ny, y, out) => this.terrainColor(ny, y, out));
+      // 遊戲從第 TILE0 格開始（座標都很大：位置和向量分得出來，torus.js 的 deepWrap）；資料與網格先搬過去
+      this.wrap(TILE0 * this.size, TILE0 * this.size);
+      if (this.start) this.img(this.start); // 出生點（產生時算的原格座標）
+      this.wrapSee(this.fx, this.fz);
       const wk = opt.weather === 'none' ? null : opt.weather || this.theme.weather;
       this.weather = wk ? new Weather(scene, wk, this.theme) : null;
       return;
@@ -641,6 +648,28 @@ export class World {
   }
   iz(z) {
     return this.torus ? z + this.size * Math.round((this.fz - z) / this.size) : z;
+  }
+  // 要搬幾公尺才會在參考點周圍的那一格（超過半格＋緩衝才搬，切口附近不來回跳；不用搬＝0）
+  offX(x) {
+    const d = this.fx - x,
+      H = this.size / 2 + WRAP_HYS;
+    return d > H || d < -H ? this.size * Math.round(d / this.size) : 0;
+  }
+  offZ(z) {
+    const d = this.fz - z,
+      H = this.size / 2 + WRAP_HYS;
+    return d > H || d < -H ? this.size * Math.round(d / this.size) : 0;
+  }
+  // 夾在場地裡（離邊 m；相接的地圖沒有邊，不夾）
+  clampX(x, m = 0) {
+    return this.torus ? x : clamp(x, -this.lim + m, this.lim - m);
+  }
+  clampZ(z, m = 0) {
+    return this.torus ? z : clamp(z, -this.lim + m, this.lim - m);
+  }
+  // 超出場地（離邊 m 以內也算；相接的地圖一律不算）
+  outLim(x, z, m = 0) {
+    return !this.torus && (Math.abs(x) > this.lim - m || Math.abs(z) > this.lim - m);
   }
   // 位置 p（Vector3 或 { x, z }）搬到參考點附近，回傳 p
   img(p) {
@@ -3991,6 +4020,10 @@ export class World {
     return G.m.get(Math.floor(x / OG_C) * 65536 + Math.floor(z / OG_C)) || OG_EMPTY;
   }
   groundAt(x, z, y) {
+    if (this.torus) {
+      x = this.ix(x);
+      z = this.iz(z);
+    }
     let g = Math.max(this.terrainHeight(x, z), this.rampHeight(x, z, y));
     for (const o of this.obsAt(x, z, 0.3 * MS)) {
       if (o.kind !== 'box') continue;
@@ -4007,6 +4040,15 @@ export class World {
   // horizontal collision push-out; returns [x,z]
   // soft：玩家機體可以超出作戰區域到 limOut（MechEntity.oobPush 推回）
   collide(x, z, y, r, soft = false) {
+    // 相接的地圖：輸入可以是任何一份（搬到參考點附近算，結果搬回去）
+    let tx = 0,
+      tz = 0;
+    if (this.torus) {
+      tx = this.ix(x) - x;
+      tz = this.iz(z) - z;
+      x += tx;
+      z += tz;
+    }
     // 只看所在那一格的障礙物；被推出那一格時再用新的那一格檢查一次（推出去之後碰到的鄰居）
     const x0 = x,
       z0 = z;
@@ -4057,8 +4099,8 @@ export class World {
     }
     // 回傳共用的陣列（每格呼叫很多次，不要每次配置；呼叫端一律立刻解構，不要留著它）
     const out = this._col || (this._col = [0, 0]);
-    out[0] = x;
-    out[1] = z;
+    out[0] = x - tx;
+    out[1] = z - tz;
     return out;
   }
   // 線段 a → b 碰到還在的可破壞物件（命中形狀加寬 pad）：點取樣的視線（rayClear／losClear）補上細的柱子與薄牆
@@ -4082,6 +4124,8 @@ export class World {
   }
   // projectile vs world
   hitsWorld(p) {
+    if (this.torus && (Math.abs(p.x - this.fx) > this.lim + 24 || Math.abs(p.z - this.fz) > this.lim + 24))
+      p = _hw.set(this.ix(p.x), p.y, this.iz(p.z));
     // 地圖外用遠景地形的高度（山脊、斷崖）
     const S = this.size / 2;
     const th =

@@ -266,7 +266,7 @@ Object.assign(Game.prototype, {
       ]) {
         const x = cx + dx * u + px * v,
           z = cz + dz * u + pz * v;
-        if (Math.abs(x) > W.lim - 6 * DS || Math.abs(z) > W.lim - 6 * DS || W.isVoid(x, z)) return false;
+        if (W.outLim(x, z, 6 * DS) || W.isVoid(x, z)) return false;
       }
       // 沒有碰到障礙物
       for (const o of W.obstacles) {

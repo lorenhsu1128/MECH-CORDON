@@ -627,7 +627,7 @@ Object.assign(Game.prototype, {
       const tx = cx + dx * (half + H),
         tz = cz + dz * (half + H);
       let sc = dir ? dir.x * dx + dir.z * dz : -i * 0.01;
-      if (Math.abs(tx) > w.limOut - 2 || Math.abs(tz) > w.limOut - 2) sc -= 10;
+      if (!w.torus && (Math.abs(tx) > w.limOut - 2 || Math.abs(tz) > w.limOut - 2)) sc -= 10;
       // 倒下的範圍裡還站著的結構（建築、甲板、橋墩、地形特徵）：避開（以前會直接穿過去）
       const a0 = dx ? cx + dx * half : cz + dz * half,
         a1 = a0 + (dx || dz) * H;

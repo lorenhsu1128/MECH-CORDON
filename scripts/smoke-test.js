@@ -3791,44 +3791,105 @@ async function testMaps(browser, base) {
         theme: g.worldTheme,
         size: w.size,
         lim: w.lim,
+        torus: !!w.torus,
         kinds: [...new Set((w.props || []).map((p) => p.kind))],
         weather: !w.theme.weather || !!(w.weather && w.weather.points),
       };
     });
     check(
       // 一般戰鬥是大地圖（320 m × 倍率，docs/map-pacing-design.md）
-      info.theme === key && info.size === 320 * SC && info.lim > 62 * SC && info.weather,
-      `${key}：場地 ${info.size} m（活動範圍 ±${info.lim.toFixed(0)}）、天氣粒子`,
+      // 無邊界的地圖（docs/torus-map-design.md）：大地圖 400 m × 倍率，整格都能走
+      info.theme === key &&
+        (info.torus
+          ? info.size === 400 * SC && info.lim === info.size / 2
+          : info.size === 320 * SC && info.lim > 62 * SC) &&
+        info.weather,
+      `${key}：場地 ${info.size} m（活動範圍 ±${info.lim.toFixed(0)}${info.torus ? '、上下左右相接' : ''}）、天氣粒子`,
     );
     await mapMechanics(page, key);
-    // 邊界（world/edges.js）：分段處理至少兩種、不是整圈隆起、有遠景地形；虛空地圖不改地形
-    const eg = await page.evaluate(() => {
-      const w = window.__game.world,
-        E = w.edges;
-      const far = w.meshes.some((m) => m.userData.farTerrain);
-      if (E.none) return { none: true, far };
-      let up = 0,
-        flat = 0;
-      const N = 72;
-      for (let i = 0; i < N; i++) {
-        const th = (i / N) * Math.PI * 2,
-          c = Math.cos(th),
-          s = Math.sin(th);
-        const k = (E.e0 + 30) / Math.max(Math.abs(c), Math.abs(s));
-        const x = c * k,
-          z = s * k;
-        const d = w.farHeight(x, z) - w.featureHeight(x, z, w.baseH(x, z));
-        if (d > 4) up++;
-        else if (d < 1.5) flat++;
-      }
-      return { kinds: new Set(E.arcs.map((a) => a.kind)).size, up, flat, N, far };
-    });
-    check(
-      eg.none ? !eg.far : eg.kinds >= 2 && eg.flat >= 4 && eg.up < eg.N * 0.8 && eg.far,
-      eg.none
-        ? `${key}：邊界是虛空（不改地形、沒有遠景地形）`
-        : `${key}：邊界分段 ${eg.kinds} 種處理、隆起 ${eg.up}／平地或往下 ${eg.flat}（共 ${eg.N} 個方向）、有遠景地形`,
-    );
+    if (info.torus) {
+      // 相接的地圖：沒有邊界線與邊界外的景觀；地形在接縫兩側連續；資料都在參考點周圍的一格裡；走過接縫沒有被擋住
+      await freezeLoop(page); // 自己推進主迴圈（直接呼叫 g.loop 會多出一條 requestAnimationFrame 的鏈）
+      const tr = await page.evaluate(() => {
+        const g = window.__game,
+          w = g.world,
+          S = w.size,
+          p = g.player;
+        let jump = 0;
+        for (let i = 0; i < 40; i++) {
+          const t = (i / 40 - 0.5) * S;
+          for (const [ax, az, bx, bz] of [
+            [S / 2 - 1, t, S / 2 + 1, t],
+            [t, S / 2 - 1, t, S / 2 + 1],
+          ])
+            jump = Math.max(jump, Math.abs(w.terrainHeight(ax, az) - w.terrainHeight(bx, bz)));
+        }
+        const out = (L, f) =>
+          L.filter((o) => Math.max(Math.abs(f(o).x - w.fx), Math.abs(f(o).z - w.fz)) > S / 2 + 30).length;
+        // 往 +x 走過接縫（一格 12 m）
+        const x0 = p.pos.x;
+        p.invuln = 99;
+        for (let i = 0; i < S / 12 + 4; i++) {
+          const nx = p.pos.x + 12;
+          p.pos.set(nx, w.groundAt(nx, p.pos.z, 1e9) + 0.1, p.pos.z);
+          window.__pump(1 / 60);
+        }
+        return {
+          jump,
+          line: !!w.bLine,
+          far: !!(w.far && w.far.tiles.length),
+          edges: !!w.edges,
+          moved: p.pos.x - x0,
+          obOut: out(w.obstacles, (o) => o),
+          enOut: out(
+            g.enemies.filter((e) => !e.dead),
+            (e) => e.pos,
+          ),
+          oob: p.oob || 0,
+        };
+      });
+      await thawLoop(page);
+      check(
+        tr.jump < 3 &&
+          !tr.line &&
+          tr.far &&
+          !tr.edges &&
+          tr.moved > info.size &&
+          !tr.obOut &&
+          !tr.enOut &&
+          !tr.oob,
+        `${key}：上下左右相接（接縫兩側的地形差 ${tr.jump.toFixed(2)} m、沒有邊界線、遠處有低解析度的地形、往同一個方向走了 ${tr.moved.toFixed(0)} m 沒有被擋住、障礙物與敵人都跟到玩家周圍的一格）`,
+      );
+    } else {
+      // 邊界（world/edges.js）：分段處理至少兩種、不是整圈隆起、有遠景地形；虛空地圖不改地形
+      const eg = await page.evaluate(() => {
+        const w = window.__game.world,
+          E = w.edges;
+        const far = w.meshes.some((m) => m.userData.farTerrain);
+        if (E.none) return { none: true, far };
+        let up = 0,
+          flat = 0;
+        const N = 72;
+        for (let i = 0; i < N; i++) {
+          const th = (i / N) * Math.PI * 2,
+            c = Math.cos(th),
+            s = Math.sin(th);
+          const k = (E.e0 + 30) / Math.max(Math.abs(c), Math.abs(s));
+          const x = c * k,
+            z = s * k;
+          const d = w.farHeight(x, z) - w.featureHeight(x, z, w.baseH(x, z));
+          if (d > 4) up++;
+          else if (d < 1.5) flat++;
+        }
+        return { kinds: new Set(E.arcs.map((a) => a.kind)).size, up, flat, N, far };
+      });
+      check(
+        eg.none ? !eg.far : eg.kinds >= 2 && eg.flat >= 4 && eg.up < eg.N * 0.8 && eg.far,
+        eg.none
+          ? `${key}：邊界是虛空（不改地形、沒有遠景地形）`
+          : `${key}：邊界分段 ${eg.kinds} 種處理、隆起 ${eg.up}／平地或往下 ${eg.flat}（共 ${eg.N} 個方向）、有遠景地形`,
+      );
+    }
     check(
       want.every((k) => info.kinds.includes(k)) && !info.kinds.some((k) => OLD.includes(k)),
       `${key}：專屬物件（${info.kinds.join('、')}），沒有舊地圖的貨櫃／卡車／岩石／路燈`,

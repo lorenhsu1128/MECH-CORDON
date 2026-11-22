@@ -584,8 +584,9 @@ Object.assign(Game.prototype, {
     const s = this.world.start;
     const a = (Math.PI * 2 * i) / Math.max(1, n);
     const r = s ? (n > 1 ? 5 * MS : 0) : mp ? 4 : 0;
-    const x = (s ? s.x : 0) + Math.cos(a) * r,
-      z = (s ? s.z : 0) + Math.sin(a) * r;
+    // 沒有指定起點時在地圖中央（相接的地圖＝參考點：world.fx／fz，有邊界的地圖是 0）
+    const x = (s ? s.x : this.world.fx) + Math.cos(a) * r,
+      z = (s ? s.z : this.world.fz) + Math.sin(a) * r;
     e.pos.set(x, this.world.terrainHeight(x, z), z);
     if (s) e.yaw = Math.atan2(-s.fx, -s.fz);
   },
