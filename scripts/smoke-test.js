@@ -17837,7 +17837,8 @@ async function testAudio2(browser, base) {
     g.voiceStop();
     g.voiceCd = {};
     g.voiceCue('missile');
-    await new Promise((res) => setTimeout(res, 1500));
+    // 最多等 5 秒（素材包解碼時 CPU 忙，第一句可能比較慢）
+    for (let i = 0; i < 25 && !g.voiceCur; i++) await new Promise((res) => setTimeout(res, 200));
     out.vCue = !!g.voiceCur;
     g.ctrl.voice = 'off';
     g.voiceStop();
@@ -18016,11 +18017,13 @@ async function testAudio2(browser, base) {
   check(r.nPack >= 100 && r.syn, `分層素材 ${r.nPack} 個、合成音`);
   check(r.env === 'snow', `冰原的反射（${r.env}）`);
   check(
-    r.own.some((k) => /^rifleN/.test(k)) && r.own.includes('bRifle') && r.own.includes('~thA'),
+    // 自製的 AI 音效（sfx3）載入之後：近距離是 gun_rifle_near_*、不疊舊的 body、超低頻是 sub_thump_light_*
+    (r.own.some((k) => /^rifleN/.test(k)) && r.own.includes('bRifle') && r.own.includes('~thA')) ||
+      (r.own.some((k) => /^gun_rifle_near_/.test(k)) && r.own.some((k) => /^sub_thump_light_/.test(k))),
     `自機的步槍：近距離＋本體＋超低頻（${r.own.join('+')}）`,
   );
   check(
-    r.far.some((k) => /^rifleF/.test(k)) && !r.far.includes('~thA'),
+    r.far.some((k) => /^(rifleF|gun_rifle_far_)/.test(k)) && !r.far.some((k) => /^(~thA|sub_thump)/.test(k)),
     `遠處敵人的步槍：遠距離層（${r.far.join('+')}）`,
   );
   check(
@@ -18029,15 +18032,15 @@ async function testAudio2(browser, base) {
   );
   check(r.voices <= 48, `發聲上限（同時 ${r.voices} 個）`);
   check(
-    r.whiz.some((k) => /^~whiz/.test(k)),
+    r.whiz.some((k) => /^(~whiz|whiz_)/.test(k)),
     `子彈掠過（${r.whiz.join('+')}）`,
   );
   check(
-    r.casing.length >= 1 && r.hitW.some((k) => /^stepSnow/.test(k)),
+    r.casing.length >= 1 && r.hitW.some((k) => /^(stepSnow|@?hitw_snow)/.test(k)),
     `彈殼（${r.casing.join('+')}）、雪地的命中（${r.hitW.join('+')}）`,
   );
   check(
-    r.mc.join() === 'explode,shot' && r.single === 0 && r.net.some((k) => /^rifle/.test(k)),
+    r.mc.join() === 'explode,shot' && r.single === 0 && r.net.some((k) => /^(rifle|gun_rifle)/.test(k)),
     `多人只轉送高階呼叫（${r.mc.join(',')}、個別 ${r.single}）、客機重播（${r.net.join('+')}）`,
   );
   check(
