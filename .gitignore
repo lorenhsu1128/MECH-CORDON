@@ -11,6 +11,7 @@ tools/comfyui/nodes/**/__pycache__/
 tools/charwork/.moved
 tools/voicelab/
 tools/acestep/
+tools/sfxgen/
 .cache/acestep/
 dist/lib/bgm-cand*.js
 
