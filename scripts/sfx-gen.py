@@ -3,8 +3,8 @@
 用法（環境由 npm run sfx:setup 裝在 tools/sfxgen/）：
   tools/sfxgen/venv/Scripts/python scripts/sfx-gen.py --trial [--model=moss|sao] [--n=3] [--only=rifle,laser]
 第 0 期的試做：TRIAL 的 10 個聲音 × 兩個模型 × n 個候選（同一句英文提示詞），
-修剪前後的靜音、淡出、峰值 −1 dB → tools/sfxgen/trial/<模型>/<鍵>_<n>.wav／.mp3，
-最後寫 tools/sfxgen/trial/index.html（並排試聽，含目前遊戲裡對應的舊聲音）。
+修剪前後的靜音、淡出、峰值 −1 dB → tools/sfx-trial/<模型>/<鍵>_<n>.wav／.mp3（mp3 進 git），
+最後寫 tools/sfx-trial/index.html（並排試聽，含目前遊戲裡對應的舊聲音）。
 已經有的檔案不重做（--force 重做）。
 """
 import html
@@ -19,7 +19,7 @@ os.environ.setdefault('TORCHDYNAMO_DISABLE', '1')  # Windows 沒有 Triton
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 TOOLS = os.path.join(ROOT, 'tools', 'sfxgen')
 os.environ.setdefault('HF_HOME', os.path.join(TOOLS, 'hf'))
-TRIAL_DIR = os.path.join(TOOLS, 'trial')
+TRIAL_DIR = os.path.join(ROOT, 'tools', 'sfx-trial')  # 試聽用的 mp3 與試聽頁進 git（跨電腦試聽）；wav 在 .gitignore
 
 import numpy as np  # noqa: E402
 import soundfile as sf  # noqa: E402

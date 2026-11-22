@@ -186,8 +186,8 @@ const CHARGEN = require('./server-studio.js')({
 });
 // 配樂產生器：AI 配樂的歌曲設定、產生、試聽（server-bgmgen.js，只在開發模式）
 const BGMGEN = require('./server-bgmgen.js')({ base: BASE, env, readBody, writeAtomic, log: (s) => log(s) });
-// 自製音效的試做試聽頁（docs/sfx-gen-design.md）：/sfx-trial/ 提供 gitignore 的 tools/sfxgen/trial/，只在開發模式
-const SFX_TRIAL = path.join(BASE, 'tools', 'sfxgen', 'trial');
+// 自製音效的試做試聽頁（docs/sfx-gen-design.md）：/sfx-trial/ 提供 tools/sfx-trial/（進 git），只在開發模式
+const SFX_TRIAL = path.join(BASE, 'tools', 'sfx-trial');
 const SFX_TYPES = { '.html': 'text/html; charset=utf-8', '.mp3': 'audio/mpeg', '.wav': 'audio/wav' };
 function sfxTrial(req, resp, u) {
   if (u !== '/sfx-trial' && !u.startsWith('/sfx-trial/')) return false;

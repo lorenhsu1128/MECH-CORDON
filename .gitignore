@@ -12,6 +12,7 @@ tools/charwork/.moved
 tools/voicelab/
 tools/acestep/
 tools/sfxgen/
+tools/sfx-trial/**/*.wav
 .cache/acestep/
 dist/lib/bgm-cand*.js
 

@@ -52,10 +52,10 @@
 
 ### 第 0 期：試做（2026-11-22）
 
-- `scripts/sfx-gen.py --trial`：10 個聲音 × 兩個模型 × 3 個候選（同一句英文提示詞），修剪前後的靜音、淡出、峰值 −1 dB，輸出到 `tools/sfxgen/trial/`，`index.html` 是並排的試聽頁（含目前遊戲裡對應的舊聲音）。
+- `scripts/sfx-gen.py --trial`：10 個聲音 × 兩個模型 × 3 個候選（同一句英文提示詞），修剪前後的靜音、淡出、峰值 −1 dB，輸出到 `tools/sfx-trial/`（mp3 與試聽頁進 git，另一台電腦 pull 之後也能試聽；wav 在 .gitignore），`index.html` 是並排的試聽頁（含目前遊戲裡對應的舊聲音）。
 - 結果（RTX 4070 12 GB、系統記憶體 32 GB）：Stable Audio Open 每個聲音 3 個候選一次產生約 70 秒（顯示卡最多 11 GB）；MOSS 每個候選約 37 秒（最多 9.3 GB），不論要的長度都對 30 秒的潛在空間去噪再裁切。
 - **MOSS 的坑**：
   - 載入後 DiT 是 fp32（14.5 GB 超出 12 GB 的顯示卡、慢 10 倍）。不能 `.to(bfloat16)`，會把複數的位置編碼 freqs 變成實數。`sfx-gen.py` 的 `bf16()` 只轉浮點的參數與緩衝區。
   - 原本的 `from_pretrained` 用 `load_file` 讀進 5.6 GB 的 fp32 權重，再建一份 fp32 的 DiT。系統記憶體的高峰太高，Claude Code 會以記憶體不足停掉背景程序。`gen_moss` 換掉 `wan_audio` 模組的 `load_file`（逐一讀、轉 bf16），並以預設型別 bf16 建立 `WanAudioModel`（位置編碼明確用 float64 算，不受影響）。
   - 兩個模型分開跑（`--model=sao`，再 `--model=moss`），不要同時載入。
-- 試聽：標題「工具與其他」的「音效試做試聽」（只在從伺服器開啟時顯示），新分頁開 `/sfx-trial/`。`server.js` 的 `sfxTrial` 只在開發模式提供 gitignore 的 `tools/sfxgen/trial/`。
+- 試聽：標題「工具與其他」的「音效試做試聽」（只在從伺服器開啟時顯示），新分頁開 `/sfx-trial/`。`server.js` 的 `sfxTrial` 只在開發模式提供 `tools/sfx-trial/`。
