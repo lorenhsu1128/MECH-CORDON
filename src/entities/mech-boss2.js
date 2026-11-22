@@ -179,7 +179,7 @@ Object.assign(MechEntity.prototype, {
         s.charge = 0;
         s.lost = 0;
         s.chargeMax = (s.burst ? 1.0 : p2 ? 2.0 : 2.6) * (this.tierFlag('cap') ? 1.5 : 1); // 電容器組壞了充能變慢
-        SFX.play('charge', 1, 0.6, 0.05, 0.05, this.center());
+        if (!this.bossSnd('lock', 1)) SFX.play('charge', 1, 0.6, 0.05, 0.05, this.center());
         if (!s.burst) g.alertAll('電磁砲鎖定 — 躲到掩體後面擋住射線！');
       }
     } else if (s.rg === 'aim') {
@@ -203,6 +203,7 @@ Object.assign(MechEntity.prototype, {
           s.rgT = 1.4;
           s.burst = false;
           g.msgAll('電磁砲失去目標 — 充能中斷', 0x7ee081);
+          this.bossSnd('lost', 1);
         }
         this.bx = [1, ...s.tp.toArray().map((x) => +x.toFixed(2)), +(s.charge / s.chargeMax).toFixed(2)];
         if (s.charge >= s.chargeMax) {
@@ -217,7 +218,7 @@ Object.assign(MechEntity.prototype, {
           });
           g.fx.shockwave(mz.clone(), 7, 0x9fe8ff, 0.4);
           g.fx.flash(mz.clone(), 4, 0xffffff, 0.15);
-          SFX.play('laserBig', 1, 0.5, 0.05, 0.05, mz);
+          if (!this.bossSnd('fire', 1.2, mz)) SFX.play('laserBig', 1, 0.5, 0.05, 0.05, mz);
           g.camShake = Math.max(g.camShake, 0.3);
           this.bx = null;
           if (p2 && !s.burst) {
@@ -228,6 +229,7 @@ Object.assign(MechEntity.prototype, {
             s.burst = false;
             s.rg = 'vent';
             s.rgT = this.tierFlag('vent') ? 6 : 3.5; // 散熱片壞了冷卻更久（破綻更長）
+            this.bossSnd('vent', 1);
             if (!s.ventSaid) {
               s.ventSaid = true;
               g.alertAll('散熱片展開 — 現在攻擊！');
@@ -289,6 +291,7 @@ Object.assign(MechEntity.prototype, {
         s.fmT = 1.6;
         s.a0 = Math.random() * Math.PI * 2;
         g.alertAll('浮游砲展開 — 保持移動！');
+        this.bossSnd('deploy', 1);
       }
     } else if (s.fm === 'place') {
       s.fmT -= dt;
@@ -310,6 +313,7 @@ Object.assign(MechEntity.prototype, {
         s.fm = 'recall';
         s.fmT = 6;
         g.msgAll('浮游砲回收充能 — 攻擊本體！', 0x7ee081);
+        this.bossSnd('recall', 1);
       }
     } else {
       s.fmT -= dt;
@@ -365,7 +369,7 @@ Object.assign(MechEntity.prototype, {
               const mid = g.world.corridorPoint(s.ts + s.td * 30 * DS);
               const td = g.world.corridorDir(s.ts + s.td * 30 * DS);
               g.fx.warnRect(mid, Math.atan2(-td.x * s.td, -td.y * s.td), 6 * MS, 56 * DS, 1.2);
-              SFX.play('heavy', 1, 0.5, 0.05, 0.05, this.center());
+              if (!this.bossSnd('horn', 1.1)) SFX.play('heavy', 1, 0.5, 0.05, 0.05, this.center());
               g.alertAll('武裝列車全速衝撞 — 離開軌道！');
               break;
             }
@@ -378,6 +382,7 @@ Object.assign(MechEntity.prototype, {
         if ((s.stT -= dt) <= 0) {
           s.st = 'ram';
           s.stT = 2.4;
+          this.bossSnd('ram', 1.1);
         }
         break;
       case 'ram':
@@ -387,6 +392,7 @@ Object.assign(MechEntity.prototype, {
           s.st = 'hot';
           s.stT = this.tierFlag('valve') ? 6 : 3.5; // Boss 改版：煙囪閥壞了過熱更久
           g.msgAll('鍋爐過熱 — 列車減速！', 0x7ee081);
+          this.bossSnd('overheat', 1);
         }
         break;
       case 'hot':
@@ -437,6 +443,9 @@ Object.assign(MechEntity.prototype, {
       }
     }
     this.bossVis = (Math.abs(s.ts) > TRACK(this) + 1 ? 1 : 0) | (s.st === 'hot' ? 2 : 0);
+    if ((this.bossVis & 1) !== (s.tunSnd === undefined ? this.bossVis & 1 : s.tunSnd))
+      this.bossSnd('tunnel', 1); // 進出隧道
+    s.tunSnd = this.bossVis & 1;
     this.bx = [s.st === 'ram' || s.st === 'warn' ? 1 : 0];
     this.bossTick(dt);
     this.vel.set(tdir.x * s.td * s.spd, 0, tdir.y * s.td * s.spd);
@@ -503,7 +512,7 @@ Object.assign(MechEntity.prototype, {
             color: 0xff4a8a,
             width: 0.5,
           });
-          SFX.play('laserBig', 0.8, 0.8, 0.05, 0.05, s.lzFrom);
+          if (!this.bossSnd('car_laser', 0.9, s.lzFrom)) SFX.play('laserBig', 0.8, 0.8, 0.05, 0.05, s.lzFrom);
         }
       } else if (s.lzT <= 0 && live) {
         const rel = pl.pos.clone().sub(this.pos);
@@ -529,6 +538,7 @@ Object.assign(MechEntity.prototype, {
       if (s.mnT <= 0 && live && (ps.spd || 0) > 4 && g.minesOf(this) < 8) {
         s.mnT = 2.2;
         g.layMine(this, this.muzzle('rback'), { dmg: 420 * dm, im: 650 * dm, R: 4.5 * MS, life: 25 });
+        this.bossSnd('car_mine', 0.8, undefined, 0.5); // 疊在布雷的聲音上（自製音效）
       }
     }
     const rel = this.aimYaw - this.yaw;
@@ -571,7 +581,7 @@ Object.assign(MechEntity.prototype, {
         s.done = false;
         if (s.act !== 'heat') {
           s.mouthT = (s.act === 'flame' ? 2.8 : 2.4) + (this.tierFlag('hinge') ? 1.6 : 0); // 爐門鉸鏈壞了開得更久
-          SFX.play('charge', 0.9, 0.5, 0.05, 0.05, this.center());
+          if (!this.bossSnd('mouth_open', 1)) SFX.play('charge', 0.9, 0.5, 0.05, 0.05, this.center());
           if (!s.mouthSaid) {
             s.mouthSaid = true;
             g.alertAll('熔爐口打開 — 弱點暴露！');
@@ -588,6 +598,7 @@ Object.assign(MechEntity.prototype, {
       case 'slag':
         if (!s.done && s.actT > 1.2) {
           s.done = true;
+          this.bossSnd('slag', 1, mz); // 熔渣高拋（疊在發射的聲音上）
           const n = p2 ? 7 : 5;
           const lead = pl.vel.clone().setY(0).multiplyScalar(0.6);
           if (lead.length() > 6 * DS) lead.setLength(6 * DS);
@@ -625,6 +636,7 @@ Object.assign(MechEntity.prototype, {
           g.fx.warnPath(pts[0], pts[6], 5.6 * DS, 0.9, 0xff6a20);
           g.later(0.9, () => {
             if (this.dead) return;
+            this.bossSnd('firewall', 1, c0);
             pts.forEach((p, i) => g.later(i * 0.08, () => g.addPool(this, p, 2.8, p2 ? 10 : 8, 200 * dm)));
           });
           g.fx.flameCone(mz, dir.clone().setY(0.3).normalize(), 10 * DS, 0.3, 14);
@@ -634,6 +646,7 @@ Object.assign(MechEntity.prototype, {
       case 'flame':
         if (s.actT > 0.7) {
           const f = fwdOf(this.yaw);
+          if (!s.flSnd) s.flSnd = this.bossSnd('flame', 1, mz, 1) || 1; // 近身火焰噴射（一次）
           s.flT = (s.flT || 0) - dt;
           if (s.flT <= 0) {
             s.flT = 0.07;
@@ -652,7 +665,10 @@ Object.assign(MechEntity.prototype, {
             }
           }
         }
-        if (s.actT > 2.7) s.act = null;
+        if (s.actT > 2.7) {
+          s.act = null;
+          s.flSnd = 0;
+        }
         break;
       case 'heat':
         if (!s.done) {
@@ -664,6 +680,7 @@ Object.assign(MechEntity.prototype, {
           g.alertAll('熱浪上升 — 離開橘色圈！');
           g.later(1.0, () => {
             if (this.dead) return;
+            this.bossSnd('heatwave', 1, p);
             g.fx.flameCone(p.clone().setY(p.y + 0.5), V(0, 1, 0), 14 * DS, 0.35, 24);
             g.fx.shockwave(p.clone().setY(p.y + 0.3), 10, 0xff8a30, 0.5);
             for (const t of g.hostilesOfEnt(this)) {
@@ -698,6 +715,7 @@ Object.assign(MechEntity.prototype, {
       if (n < nMax) {
         g.spawnHolos(this, nMax - n);
         g.alertAll('MIRAGE 展開全息分身 — 只有本體有影子');
+        this.bossSnd('holo_spawn', 1);
       }
     }
     s.cycT -= dt;
@@ -705,6 +723,7 @@ Object.assign(MechEntity.prototype, {
       s.cycT = (this.phase2() ? rnd(6, 8) : rnd(8, 10)) * (this.tierFlag('cloak') ? 0.55 : 1); // 迷彩發生器壞了迷彩時間變短
       s.reveal = 2.6;
       g.alertAll('MIRAGE 現形齊射！');
+      this.bossSnd('reveal_volley', 1);
     }
     if (s.reveal > 0) {
       s.reveal -= dt;
@@ -722,6 +741,8 @@ Object.assign(MechEntity.prototype, {
       }
     } else s.stagSeen = false;
     const cloaked = s.reveal <= 0 && s.selfRev <= 0;
+    if (s.clkSnd !== undefined && s.clkSnd !== cloaked) this.bossSnd(cloaked ? 'cloak' : 'decloak', 1); // 進入迷彩／現形
+    s.clkSnd = cloaked;
     this.bossVis = cloaked ? 1 : 0;
   },
   holoAI() {
@@ -760,7 +781,7 @@ Object.assign(MechEntity.prototype, {
           const a = Math.random() * Math.PI * 2;
           s.pp = V(pl.pos.x + Math.cos(a) * 20 * DS, 0, pl.pos.z + Math.sin(a) * 20 * DS);
           s.pv = V(pl.pos.x - s.pp.x, 0, pl.pos.z - s.pp.z).setLength(5 * DS);
-          SFX.play('charge', 1, 0.4, 0.05, 0.05, this.center());
+          if (!this.bossSnd('beam_start', 1)) SFX.play('charge', 1, 0.4, 0.05, 0.05, this.center());
           g.alertAll('衛星砲照射 — 光柱追蹤中，QB 急轉甩開！');
         }
         s.n++;
@@ -795,12 +816,14 @@ Object.assign(MechEntity.prototype, {
         s.om = 'cool';
         s.omT = 4.5;
         g.msgAll('導引鏡冷卻中 — 現在攻擊！', 0x7ee081);
+        this.bossSnd('cooldown', 1);
       }
     } else if (s.om === 'grid') {
       if ((s.omT -= dt) <= 0) {
         s.om = 'cool';
         s.omT = 4.5;
         g.msgAll('導引鏡冷卻中 — 現在攻擊！', 0x7ee081);
+        this.bossSnd('cooldown', 1);
       }
     } else if ((s.omT -= dt) <= 0) {
       s.om = 'idle';
@@ -820,6 +843,7 @@ Object.assign(MechEntity.prototype, {
       cz = clamp(pl.pos.z, -48 * KS(this), 48 * KS(this));
     let lane = Math.floor(Math.random() * 5);
     g.alertAll('衛星砲格子砲擊 — 待在沒有預警的直行！');
+    this.bossSnd('grid_warn', 1);
     for (let w = 0; w < 4; w++) {
       const safe = lane;
       g.later(w * 1.5, () => {
@@ -837,7 +861,8 @@ Object.assign(MechEntity.prototype, {
         }
         g.later(1.2, () => {
           if (this.dead) return;
-          SFX.play('laserBig', 0.9, 0.6, 0.05, 0.05, V(cx, cells[0].y, cz));
+          const gp = V(cx, cells[0].y, cz);
+          if (!this.bossSnd('grid_strike', 1.1, gp)) SFX.play('laserBig', 0.9, 0.6, 0.05, 0.05, gp);
           for (const p of cells) g.fx.pillarStrike(p, 2.4 * MS);
           for (const t of g.hostilesOfEnt(this)) {
             if (t.dead || !t.pos) continue;
@@ -868,6 +893,7 @@ Object.assign(MechEntity.prototype, {
       this.bossVis = 0;
       if (this.hp < s.nextSplit && s.nextSplit > 0 && this.canAct()) {
         g.trinitySplit(this);
+        this.bossSnd('split', 1.1);
         this.bossOpen(); // Boss 改版：分離的瞬間＝破綻（本體藏起來之前）
         s.split = true;
         s.splitT = 30;
@@ -921,12 +947,14 @@ Object.assign(MechEntity.prototype, {
         g.fx.explosion(this.center(), 6, 0xff7040, true);
         g.fx.ring(this.center(), 10, 0xff7040);
         g.msgAll('CERBERUS 重新合體 — AP 回復！', 0xff4d4d);
+        this.bossSnd('merge', 1.1);
       }
     } else {
       s.splitT -= dt;
       if (s.splitT <= s.say - 10 && s.splitT > 0) {
         s.say -= 10;
         g.msgAll(`CERBERUS 合體倒數 ${Math.ceil(s.splitT)} 秒`, 0xffb020);
+        this.bossSnd('countdown', 1, null);
       }
       if (s.splitT <= 0) {
         s.merge = 2.2;
@@ -934,6 +962,7 @@ Object.assign(MechEntity.prototype, {
         for (const e of subs) c.add(e.pos);
         s.mp = c.divideScalar(subs.length);
         g.alertAll('CERBERUS 開始合體 — 合體中無防備！');
+        this.bossSnd('merge_start', 1, s.mp);
       }
     }
     if (s.merge <= 0) this.pos.y = gy - 40 * MS; // 分離中：本體藏在地下（不擋子彈）
@@ -975,6 +1004,7 @@ Object.assign(MechEntity.prototype, {
       s.vmT = 4;
       s.v.multiplyScalar(0.3);
       g.msgAll('VIPER 失速 — 集中攻擊！', 0x7ee081);
+      this.bossSnd('stall', 1);
     }
     switch (s.vm) {
       case 'loiter': {
@@ -991,7 +1021,7 @@ Object.assign(MechEntity.prototype, {
           const c = pl.pos.clone();
           c.y = g.world.groundAt(c.x, c.z, c.y);
           g.fx.warnRect(c, yawOf(s.runDir), 8 * MS, 120 * DS, 1.6);
-          SFX.play('missile', 1, 0.5, 0.05, 0.05, this.center());
+          if (!this.bossSnd('approach_warn', 1.1)) SFX.play('missile', 1, 0.5, 0.05, 0.05, this.center());
           g.alertAll(`VIPER 從${compass(this.pos.clone().sub(pl.pos))}方進場 — 往側邊閃開！`);
         }
         break;
@@ -1008,6 +1038,7 @@ Object.assign(MechEntity.prototype, {
           s.boomed = new Set();
           s.runO = this.pos.clone(); // 航線起點：之後一直貼著這條線飛（和警示線平行）
           s.v.copy(s.runDir).multiplyScalar(40 * DS);
+          this.bossSnd('strafe', 1.1); // 高速掃射（疊在機砲的槍聲上）
         }
         break;
       }
@@ -1057,13 +1088,14 @@ Object.assign(MechEntity.prototype, {
             'exp',
           );
           g.fx.shockwave(this.center(), 10, 0xffffff, 0.35);
-          SFX.explode(true, this.center());
+          if (!this.bossSnd('sonic_boom', 1.2)) SFX.explode(true, this.center());
           g.camShake = Math.max(g.camShake, 0.3);
         }
         if (p2 && (s.mineT = (s.mineT || 0) - dt) <= 0) {
           s.mineT = 0.3;
           const p = this.pos.clone();
           p.y = gy + rnd(2, 6) * MS;
+          this.bossSnd('airmine', 0.7, p, 0.25);
           g.layMine(this, p, { dmg: 380 * dm, im: 600 * dm, R: 4 * MS, life: 7, air: true, quiet: true });
         }
         const past = this.pos.clone().sub(pl.pos).setY(0).dot(s.runDir);
@@ -1073,6 +1105,7 @@ Object.assign(MechEntity.prototype, {
         if (past > 15 * DS || leaving || (s.vmT -= dt) <= 0) {
           s.vm = 'turn';
           s.vmT = this.tierFlag('wing') ? 4.2 : 3; // Boss 改版：機翼壞了掉頭更慢（破綻更長）
+          this.bossSnd('turn', 1);
           // 往航線的哪一側掉頭：目標在左邊就往左繞
           s.orbS = V(-s.runDir.z, 0, s.runDir.x).dot(pl.pos.clone().sub(this.pos)) >= 0 ? -1 : 1;
         }
@@ -1191,6 +1224,7 @@ Object.assign(MechEntity.prototype, {
             if (!p.isProp || p.dead || !p.center) continue;
             if (p.center().setY(front.y).distanceTo(front) < 5 * MS + (p.radius || 1)) {
               g.damageProp(p, 1e5, 2000, p.center(), this, 'none');
+              if (!broke) this.bossSnd('crush', 1, p.center(), 0.25); // 撞碎地圖物件（疊在物件的崩落聲上）
               broke = true;
             }
           }
@@ -1224,6 +1258,8 @@ Object.assign(MechEntity.prototype, {
           g.fx.dust(this.pos.clone(), 7, 22, 0xb09070);
           g.camShake = Math.max(g.camShake, 0.45);
           g.msgAll('BEHEMOTH 撞擊 — 背後散熱口打開！', 0x7ee081);
+          this.sndStag = true; // 撞擊的硬直不另外響失衡的提示訊號
+          this.bossSnd('crash', 1.2, fp);
           g.netEv({ t: 'stag', i: this.id });
         } else {
           this.pos.x = nx;
@@ -1238,6 +1274,7 @@ Object.assign(MechEntity.prototype, {
             } else {
               s.rm = 'recover';
               s.rmT = 1.4;
+              this.bossSnd('slide', 1);
               if (!s.hitSet.size) this.bossOpen(); // Boss 改版：衝撞落空的滑停＝破綻
             }
           }
@@ -1284,7 +1321,7 @@ Object.assign(MechEntity.prototype, {
     const c = this.pos.clone().addScaledVector(s.cdir, L / 2);
     c.y = w.groundAt(c.x, c.z, this.pos.y + 1 * MS);
     g.fx.warnRect(c, yawOf(s.cdir), 9 * MS, L, tele);
-    SFX.play('heavy', 1, 0.6, 0.05, 0.05, this.center());
+    if (!this.bossSnd('aim', 1.1)) SFX.play('heavy', 1, 0.6, 0.05, 0.05, this.center());
     g.alertAll('BEHEMOTH 衝撞 — 離開警示線！');
   },
   // ---------- 脈衝刃翼：擴散能量環（只能用 QB 穿過）、雷射扇形、直線突刺 ----------
@@ -1319,7 +1356,7 @@ Object.assign(MechEntity.prototype, {
         s.paT = 0;
         s.done = false;
         if (s.pa === 'pulse') {
-          SFX.play('charge', 1, 0.9, 0.05, 0.05, this.center());
+          if (!this.bossSnd('ring_charge', 1)) SFX.play('charge', 1, 0.9, 0.05, 0.05, this.center());
           if (!s.pulseSaid) {
             s.pulseSaid = true;
             g.alertAll('脈衝環充能 — 碰到的瞬間 QB 穿過去！');
@@ -1345,6 +1382,7 @@ Object.assign(MechEntity.prototype, {
                   band: 1.8,
                   dmg: 420 * dm,
                   im: 900 * dm,
+                  snd: 'ring',
                 }); // 環發生器壞了能量環變慢
             });
           s.overT = 2.5 + 0.55 * (n - 1);
@@ -1374,7 +1412,7 @@ Object.assign(MechEntity.prototype, {
               color: 0xff5070,
               width: 0.22,
             });
-          SFX.play('laserBig', 0.8, 1.1, 0.05, 0.05, s.fanFrom);
+          if (!this.bossSnd('fan', 1, s.fanFrom)) SFX.play('laserBig', 0.8, 1.1, 0.05, 0.05, s.fanFrom);
           s.fan = null;
           s.pa = null;
         }
@@ -1396,6 +1434,7 @@ Object.assign(MechEntity.prototype, {
           s.pa = 'dashing';
           s.dGone = 0;
           s.hitSet = new Set();
+          this.bossSnd('dash', 1.1);
         }
         break;
       case 'dashing': {
@@ -1426,6 +1465,7 @@ Object.assign(MechEntity.prototype, {
         if (s.dGone >= s.dLen) {
           s.pa = null;
           s.overT = 0.7;
+          this.bossSnd('overheat', 1); // 突刺之後過熱（破綻）
           this.hoverH = clamp(this.pos.y - gy, 3 * DS, 10 * DS);
         }
         break;
@@ -1496,7 +1536,7 @@ Object.assign(MechEntity.prototype, {
           width: 0.14,
           pierce: false,
         });
-        SFX.play('laser', 0.5, 1.3, 0.05, 0.05, from);
+        if (!this.bossSnd('bit_fire', 0.6, from, 0.05)) SFX.play('laser', 0.5, 1.3, 0.05, 0.05, from);
         s.aim = null;
         this.bx = null;
       }
@@ -1617,6 +1657,13 @@ Object.assign(MechEntity.prototype, {
     if (!s.ad) s.ad = [0, 0, 0, 0];
     const k = 1 - this.mirrorRes(cat);
     s.ad[cat] += dmg;
+    // 自製音效：抗性生效的命中、某一種累積到明顯的抗性（發光變色）
+    if (k < 0.75) this.bossSnd('resist_hit', 0.6, undefined, 0.25);
+    const ar = s.adSnd || (s.adSnd = [0, 0, 0, 0]);
+    if (!ar[cat] && this.mirrorRes(cat) > 0.35) {
+      ar[cat] = 1;
+      this.bossSnd('adapt', 1);
+    }
     return k;
   },
   mirrorRes(cat) {
@@ -1638,6 +1685,7 @@ Object.assign(MechEntity.prototype, {
       const c = this.center();
       const par = this.parentEnt();
       const dm = par ? par.dmgMul : this.dmgMul;
+      this.bossSnd('holo_pop', 1, c);
       g.fx.shockwave(c, 6, 0x60fff0, 0.4);
       g.fx.flash(c, 3, 0xbffff8, 0.2);
       for (const t of g.hostilesOfEnt(this)) {

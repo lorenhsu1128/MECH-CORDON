@@ -339,6 +339,7 @@ Object.assign(Game.prototype, {
       }
     }
     this.zoneNear = near; // 冒煙測試看它
+    if (near > 0.3) SFX.loopAt('zoneEdge', '@zone_edge_warn', near * 0.3, 1, p.pos); // 靠近邊界（AI 音效）
   },
   // 虛空地圖（洋上都市、高空軌道）：掉出平台（虛空上方、比街區低）或站在下層平台上時，
   // 畫面中央上方顯示提示、機體旁的箭頭指向最近的平台（2026-11-07）
@@ -422,6 +423,8 @@ Object.assign(Game.prototype, {
     const oob = this.world ? this.world.zoneExcess(p.pos.x, p.pos.z) : 0;
     const ob = document.getElementById('oob');
     if (ob) ob.classList.toggle('on', oob > 0 && !p.dead);
+    // 離開作戰區域：警示音的循環（AI 音效；靠近邊界時小聲、出去了大聲）
+    if (oob > 0 && !p.dead) SFX.loopAt('zoneEdge', '@zone_edge_warn', 0.5, 1.1, p.pos);
     if (!oob) this.zoneEdgeHud(c, p, W, H, dt); // 靠近邊界：朝邊界那一側的畫面邊緣發光
     this.voidHud(c, p, W, H, dt); // 虛空地圖：掉出平台時指向最近的平台
     this.rbHud(c, p, W, H, dt); // 邊閃邊打：反擊時間、繞射（game/ranged.js）

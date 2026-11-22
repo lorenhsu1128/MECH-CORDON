@@ -318,7 +318,7 @@ Object.assign(Game.prototype, {
     if (box) box.classList.remove('on');
     if (this.tuneCur) this.tunePreview(null);
     this.tuneCur = null;
-    SFX.ui();
+    SFX.ui('back');
   },
   tuneAfford(c) {
     const S = this.save,
@@ -337,7 +337,7 @@ Object.assign(Game.prototype, {
     t[k] = lv + 1;
     this.gearTuneSet(id, u, t);
     this.writeSave();
-    SFX.cue('pickup');
+    SFX.cue('pickup', 'tune_up');
     const o = TUNE[g].find((x) => x.k === k);
     this.flashMsg(`調校：${o.name} Lv${lv + 1}`, 0x7ee081, 1.4);
     this.renderGarage();
@@ -356,7 +356,7 @@ Object.assign(Game.prototype, {
     t._x = nx + 1;
     this.gearTuneSet(id, u, t);
     this.writeSave();
-    SFX.cue('pickup');
+    SFX.cue('pickup', 'tune_break');
     this.flashMsg(`限界突破：合計上限 ${tuneCap(t)} 級`, 0xffd060, 1.6);
     this.renderGarage();
     this.tuneRender();

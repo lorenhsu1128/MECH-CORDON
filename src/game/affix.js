@@ -95,17 +95,18 @@ Object.assign(Game.prototype, {
         this.spawnEnemy(o);
       }
       this.fx.shockwave(c, 4 * e.dk, 0xffd060, 0.35);
+      SFX.aiPlay('af_split', 1, 1, 0.05, 0.1, c);
       this.flashAlert(`${base} 分裂了！`);
     }
     if (e.af & B('volatile')) {
       const R = AF.VOL_R;
       this.fx.warnCircle(c.clone().setY(e.pos.y + 0.3), R, AF.VOL_DELAY, 0xff5020);
-      SFX.play('alarm', 0.5, 1.6, 0.05, 0.2, c);
+      if (!SFX.aiPlay('af_volatile_warn', 0.9, 1, 0.05, 0.2, c)) SFX.play('alarm', 0.5, 1.6, 0.05, 0.2, c);
       this.later(AF.VOL_DELAY, () => {
         if (!this.world) return;
         this.fx.explosion(c, R * 0.5, 0xff8030, true);
         this.fx.shockwave(c, R, 0xffb060, 0.5);
-        SFX.explode(true, c);
+        if (!SFX.aiPlay('af_volatile_blast', 1, 1, 0.05, 0.05, c)) SFX.explode(true, c);
         for (const t of [...(this.players || []), ...(this.allies || [])]) {
           if (!t || t.dead) continue;
           const d = t.center().distanceTo(c);

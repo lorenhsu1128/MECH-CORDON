@@ -368,7 +368,7 @@ Object.assign(Game.prototype, {
     if (!canInc(P.skills, id, L)) return false;
     P.skills = incSkill(P.skills, id);
     this.writeSave();
-    SFX.ui();
+    SFX.ui(null, 'pilot_point_add');
     this.renderPilot();
     const el = document.querySelector(`#pTree .pNode[data-skill="${id}"]`);
     if (el) {
@@ -383,7 +383,7 @@ Object.assign(Game.prototype, {
     if (!canDec(P.skills, id, this.pilotLevel())) return;
     P.skills = decSkill(P.skills, id);
     this.writeSave();
-    SFX.ui();
+    SFX.ui(null, 'pilot_point_remove');
     this.renderPilot();
   },
   // 按住：每 HOLD 秒投一點（進度圈在節點與詳細列的按鈕上）
@@ -408,6 +408,8 @@ Object.assign(Game.prototype, {
         }
       }
       this.pilotHoldShow(this.pHoldT / HOLD);
+      // 按住投點的進度（AI 音效的循環，音高跟著進度上升；放開就淡出）
+      SFX.menuLoop('pilotHold', '@pilot_hold_fill', 0.35, 0.85 + (this.pHoldT / HOLD) * 0.4);
       this.pHoldRaf = requestAnimationFrame(tick);
     };
     this.pHoldRaf = requestAnimationFrame(tick);
@@ -603,7 +605,7 @@ Object.assign(Game.prototype, {
       t: Date.now(),
     };
     this.writeSave();
-    SFX.ui();
+    SFX.ui(null, 'pilot_preset');
     this.flashMsg(`已儲存到「${P.presets[i].name}」`, 0x7ee081, 1.2);
     this.renderPilot();
   },
@@ -625,14 +627,14 @@ Object.assign(Game.prototype, {
     this.save.asm = { ...pr.asm };
     P.skills = sanitizeSkills(pr.skills, xpProgress(P.xp).level);
     this.writeSave();
-    SFX.ui();
+    SFX.ui(null, 'pilot_preset');
     this.flashMsg(`已載入「${pr.name}」`, 0x7ee081, 1.2);
     this.renderPilot();
   },
   pilotPresetClear(i) {
     this.save.pilot[this.pilotMode].presets[i] = null;
     this.writeSave();
-    SFX.ui();
+    SFX.ui(null, 'pilot_preset');
     this.renderPilot();
   },
   // ---------- 武器熟練度 ----------

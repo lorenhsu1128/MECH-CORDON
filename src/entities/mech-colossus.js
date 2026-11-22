@@ -2,7 +2,8 @@
 // 本體（ai 'colossus'）沿路線緩慢移動、本身打不動（noLock）；身上的部位（腳部關節／引擎、砲塔）是獨立的敵方實體。
 // 打斷足夠的腳部關節或引擎＝停機（倒下、甲板可以站上去），露出動力核心。col＝{ kind, path, i, dir, spd, ph }（房主）。
 // bossVis：低 6 位＝打斷的腳（多足巨兵的腿隱藏，mech-boss.js 的 spiderFx）、64＝停機（倒下）；甲板的碰撞各端依 64 建立（colFx）。
-import { MS } from '../core/scale.js';
+import { SFX } from '../audio/audio.js';
+import { DS, MS } from '../core/scale.js';
 import { MechEntity } from './mech-entity.js';
 
 Object.assign(MechEntity.prototype, {
@@ -55,6 +56,29 @@ Object.assign(MechEntity.prototype, {
     this.bossTick(dt);
     return true;
   },
+  // 自製音效（各端，colFx 每格；不轉送）：多足巨兵的腳步、陸上戰艦的行進循環、停機時露出的動力核心
+  colSnd(dt, down) {
+    if (this.dead || !this.mesh || !dt) return;
+    const c = this.center();
+    if (SFX.dist(c) > 160 * DS) return;
+    const walker = this.opts.vehKey === 'spider';
+    const S = this.sndCol || (this.sndCol = { x: this.pos.x, z: this.pos.z, step: 0 });
+    const v = Math.hypot(this.pos.x - S.x, this.pos.z - S.z) / dt;
+    S.x = this.pos.x;
+    S.z = this.pos.z;
+    if (down) SFX.loopAt('colCore' + this.id, '@colossus_core_loop', 0.7, 1, c);
+    else if (!walker) SFX.loopAt('colShip' + this.id, '@colossus_ship_loop', v > 0.3 ? 0.8 : 0.4, 1, c);
+    else if (v > 0.3 && (S.step -= dt) <= 0) {
+      S.step = 1.5; // 一步一聲
+      const m = SFX.mirror;
+      SFX.mirror = null;
+      try {
+        SFX.aiPlay('colossus_walker_step', 1, 1, 0.06, 0.4, this.pos.clone());
+      } finally {
+        SFX.mirror = m;
+      }
+    }
+  },
   // 甲板的高度（停機後）
   colTop() {
     return this.pos.y + this.model.height * (this.col && this.col.kind === 'ship' ? 0.62 : 0.38);
@@ -63,6 +87,7 @@ Object.assign(MechEntity.prototype, {
   colFx(dt) {
     const down = !!(this.bossVis & 64);
     const m = this.model;
+    this.colSnd(dt, down);
     // 陸上戰艦沒有腳：停機時車身下沉、往一側傾
     if (this.opts.vehKey !== 'spider' && m && m.torso) {
       const k = Math.min(1, dt * 1.5);

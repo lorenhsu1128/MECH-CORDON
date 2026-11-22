@@ -37,6 +37,7 @@ Object.assign(Game.prototype, {
       n.wins++;
       n.lv = Math.min(NEM.LV_MAX, n.lv + 1);
       n.place = place;
+      SFX.aiPlay('nemesis_levelup', 0.9, 1, 0.02, 1, null, 'ui'); // 宿敵升級（自製音效）
       this.commSay('enemy', fill(pick(NEM_LINES.win), n), '宿敵 ' + n.name);
       this.writeSave();
       return;
@@ -70,6 +71,7 @@ Object.assign(Game.prototype, {
     list.push(n);
     // 最多 NEM.MAX 個：拿掉等級最低的
     if (list.length > NEM.MAX) list.splice(list.indexOf(list.reduce((a, b) => (b.lv < a.lv ? b : a))), 1);
+    SFX.aiPlay('nemesis_levelup', 0.9, 1, 0.02, 1, null, 'ui'); // 新的宿敵（擊倒玩家後記下）
     this.commSay('enemy', fill(pick(NEM_LINES.born), n), '宿敵 ' + n.name);
     this.writeSave();
   },
@@ -116,7 +118,7 @@ Object.assign(Game.prototype, {
     });
     e.nemesis = true;
     e.nemId = n.id;
-    SFX.play('alarm', 0.7, 0.9, 0, 0.3, p.pos);
+    if (!SFX.aiPlay('nemesis_intrude', 1, 1, 0.02, 1, p.pos)) SFX.play('alarm', 0.7, 0.9, 0, 0.3, p.pos);
     this.flashMsg(`宿敵 ${n.name} 闖入`, 0xff4d4d, 2.8, { k: 'ace', m: n.name, s: `宿敵 Lv${n.lv}・闖入` });
     this.commSay('enemy', fill(pick(NEM_LINES.back), { ...n, n: n.wins }), '宿敵 ' + n.name);
     return e;
@@ -132,6 +134,7 @@ Object.assign(Game.prototype, {
     this.save.coam += v;
     this.missionEarned = (this.missionEarned || 0) + v;
     this.bountyPops.push({ txt: '+' + v.toLocaleString() + ' SP', life: 2.2, y: 0 });
+    SFX.aiPlay('nemesis_down', 1, 1, 0.02, 1, null, 'ui'); // 宿敵擊破（自製音效；只有單人）
     this.flashMsg(`宿敵 ${n.name} 擊破 — +${v.toLocaleString()} SP`, 0xffd060, 2.6, {
       k: 'good',
       m: '宿敵擊破',

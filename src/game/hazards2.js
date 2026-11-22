@@ -26,6 +26,19 @@ const SHOT_BASE = 900000; // 可以打掉的投射物的代理 id（地圖物件
 const MV_DT = 0.1; // moveZone 的同步間隔
 const v3 = (a) => new THREE.Vector3(a[0], a[1], a[2]);
 const arr = (v) => [+v.x.toFixed(2), +v.y.toFixed(2), +v.z.toFixed(2)];
+// 區域的循環音（AI 音效，各端自己算；docs/sfx-inventory/enemies.md）：[區域種類][放出它的敵人的 ai]，'' 是其他
+const ZONE_LOOP = {
+  smoke: { '': 'hz_smoke_loop' },
+  suction: { twister: 'foe_twister_vortex', turbine: 'foe_turbine_suck_loop', '': 'hz_suction_loop' },
+  spot: { lamp: 'foe_lamp_sweep', '': 'hz_spot_loop' },
+  gravity: { anchor: 'foe_anchor_field' },
+  electro: { eel: 'foe_eel_field' },
+  beam: { focus: 'foe_focus_beam' },
+};
+const zoneLoopKey = (z) => {
+  const L = ZONE_LOOP[z.k];
+  return L ? L[z.sa] || L[''] || null : null;
+};
 
 // 區域的顯示（各端）在 render/zone-fx.js（模型庫的地面標示頁也用）
 Object.assign(Game.prototype, ZONE_FX);
@@ -68,6 +81,7 @@ Object.assign(Game.prototype, {
       tick: 0,
       mvT: 0,
       lockT: 0,
+      sa: (src && src.ai) || o.sa || '', // 放出它的敵人的 ai（循環音用）
     };
     if (kind === 'beam') {
       const from = fromEnt ? fromEnt.center() : o.from && o.from.isVector3 ? o.from.clone() : pos.clone();
@@ -98,6 +112,7 @@ Object.assign(Game.prototype, {
         ig: z.ig,
         end: z.end ? arr(z.end) : null,
         fe: fromEnt ? fromEnt.id : -1,
+        sa: z.sa || undefined,
       },
     });
     return z.i;
@@ -217,12 +232,24 @@ Object.assign(Game.prototype, {
     if (z.lit) return;
     z.lit = true;
     this.addPool(z.src && !z.src.dead ? z.src : null, z.p, z.r / this.fx.k, z.burn, z.dps || 150); // addPool 的半徑照舊尺度
+    this.poolSfx('foe_fueler_burn');
     this.fx.explosion(z.p.clone().setY(z.p.y + 0.8), (z.r * 0.5) / this.fx.k, 0xff7a20, z.r > 5 * this.fx.k);
-    SFX.explode(false, z.p);
+    if (!SFX.aiPlay('foe_fueler_ignite', 1, 1, 0.05, 0.05, z.p)) SFX.explode(false, z.p);
     this.removeZone(z.i);
+  },
+  // 剛放的燃燒地面（bosses2.js 的 addPool）掛上循環音的鍵（AI 音效）。燃燒地面只在房主，所以客機聽不到
+  poolSfx(key) {
+    const P = this.hzPools && this.hzPools[this.hzPools.length - 1];
+    if (!P || P.sk) return;
+    P.sk = key;
+    this.poolSeq = (this.poolSeq || 0) + 1;
+    P.sid = this.poolSeq;
   },
   // ----- 每格（房主與客機：updateSupport 呼叫）-----
   hazards2Tick(dt) {
+    for (const P of this.hzPools || [])
+      if (P.sk && SFX.dist(P.p) < 90 * this.fx.k)
+        SFX.loopAt(P.sk + P.sid, '@' + P.sk, 0.7 * Math.min(1, P.life / 1.2), 1, P.p);
     if (this.zones && this.zones.length) this.zonesTick(dt);
     if (this.tWalls && this.tWalls.length) this.tempWallsTick(dt);
   },
@@ -268,7 +295,22 @@ Object.assign(Game.prototype, {
         if (z.k === 'beam') z.end.lerp(z.dT, a);
         else z.dir.lerp(z.dT, a).normalize();
       }
-      if (this.zones.includes(z)) this.zoneAnim(z, dt, w);
+      if (this.zones.includes(z)) {
+        this.zoneAnim(z, dt, w);
+        // 循環音：停止呼叫（區域消失）時自動淡出
+        const lk = zoneLoopKey(z);
+        if (lk) {
+          const lp = z.k === 'beam' && z.end ? z.end : z.p;
+          if (SFX.dist(lp) < 90 * this.fx.k)
+            SFX.loopAt(
+              lk + z.i,
+              '@' + lk,
+              0.8 * (z.fade || 0),
+              z.k === 'beam' ? 0.9 + 0.3 * (z.frac || 0) : 1,
+              lp,
+            );
+        }
+      }
     }
   },
   zoneHostTick(z, dt, w) {
@@ -411,8 +453,10 @@ Object.assign(Game.prototype, {
       rec.k === 'ice' ? 0xdff4ff : 0x9a8a78,
     );
     this.fx._nested = nest;
-    if (rec.k === 'ice') SFX.play('shield', 0.6, 1.6, 0.05, 0.03, p);
-    else SFX.wreck(p); // 岩牆碎裂
+    if (rec.k === 'ice') {
+      if (!SFX.aiPlay('foe_icemortar_wall', 0.9, 1, 0.05, 0.03, p))
+        SFX.play('shield', 0.6, 1.6, 0.05, 0.03, p);
+    } else if (rec.k !== 'rock' || !SFX.aiPlay('foe_blaster_rock', 1, 1, 0.05, 0.03, p)) SFX.wreck(p); // 岩牆碎裂
   },
   // 外觀：冰（半透明的冰塊＋上緣的冰刺）、岩（崎嶇的岩塊＋碎石）；原點在底面中心、寬沿 X、厚沿 Z
   tempWallMesh(rec) {
@@ -579,7 +623,8 @@ Object.assign(Game.prototype, {
       if (w) flingDebris(this.fx, w, pieces, c.clone().setY(W.y0), 6);
       this.fx.explosion(c, Math.max(2, W.w * 0.35), ice ? 0xcff0ff : 0xc0a080, false);
       this.fx.dust(c.clone().setY(W.y0 + 0.2), Math.max(W.w, W.d) * 0.6, 12, ice ? 0xe8f8ff : 0x9a8a78);
-      SFX.explode(false, c);
+      if (!SFX.aiPlay(ice ? 'foe_icemortar_wall_break' : 'hz_wall_rock_break', 1, 1, 0.05, 0.05, c))
+        SFX.explode(false, c);
     } else {
       this.fx.dust(c.clone().setY(W.y0 + 0.2), Math.max(W.w, W.d) * 0.6, 10, ice ? 0xe8f8ff : 0x9a8a78);
       const y0 = g.position.y;
@@ -674,11 +719,14 @@ Object.assign(Game.prototype, {
       rb.tierReflect(pr, from);
       return;
     }
-    if (pr.popDmg > 0)
+    // 擊落的聲音（AI 音效）：誘導飛彈架的飛彈有自己的
+    const dk = pr.owner && pr.owner.ai === 'missilerack' ? 'foe_missilerack_downed' : 'hz_shot_down';
+    if (pr.popDmg > 0) {
+      SFX.aiPlay(dk, 0.9, 1, 0.05, 0.05, p);
       this.explodeAt(p, pr.popDmg, 300, Math.max(3 * this.fx.k, pr.splash || 0), pr.owner, true);
-    else {
+    } else {
       this.fx.explosion(p, 1.6, 0xffc060, false);
-      SFX.explode(false, p);
+      if (!SFX.aiPlay(dk, 1, 1, 0.05, 0.05, p)) SFX.explode(false, p);
     }
     this.popDamage(p.clone().setY(p.y + 1), '擊落', false, false, false, 0, -1);
     if (this.tut && this.player) this.player.tutE('shotDown', {}); // 遠程訓練（只有玩家在開火）
@@ -732,6 +780,7 @@ Object.assign(Game.prototype, {
           end: o.end ? v3(o.end) : null,
           fromEnt: fe,
           frac: 0,
+          sa: o.sa || '',
         };
         this.zones.push(z);
         this.zoneVisual(z);

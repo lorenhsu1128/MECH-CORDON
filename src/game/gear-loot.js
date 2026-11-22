@@ -17,6 +17,9 @@ import {
 } from '../data/gear-loot.js';
 import { Game } from './game.js';
 
+// 拿到零件的 AI 音效（依品級 q：1 綠、2 藍、3 紫、4 金）
+const GEAR_GET_AI = ['gear_get_green', 'gear_get_green', 'gear_get_blue', 'gear_get_purple', 'gear_get_gold'];
+
 const pickOne = (a) => a[Math.floor(Math.random() * a.length)];
 
 Object.assign(Game.prototype, {
@@ -162,7 +165,7 @@ Object.assign(Game.prototype, {
         this.gearOwn(g.id);
         this.writeSave();
         if (this.lootRun) this.lootRun.parts.push(g.id);
-        SFX.cue('pickup');
+        SFX.cue('pickup', 'gear_get_green');
         this.flashMsg(`取得零件「${p.name}」`, 0xffd060, 2.4, { k: 'good', m: '取得零件', s: p.name });
       } else {
         this.lootMat('alloy', 1);
@@ -171,6 +174,7 @@ Object.assign(Game.prototype, {
       return true;
     }
     if (!this.invAdd(g)) {
+      SFX.aiPlay('gear_inv_full', 0.6, 1, 0.02, 0.5, null, 'ui');
       this.flashMsg(`倉庫已滿，無法拾取「${GRADES[g.q].n}」${p.name}`, 0xff6060, 2.2, {
         k: 'warn',
         m: '倉庫已滿',
@@ -181,7 +185,7 @@ Object.assign(Game.prototype, {
     }
     if (this.lootRun)
       (this.lootRun.gear = this.lootRun.gear || []).push({ id: g.id, q: g.q, ax: g.ax.slice() });
-    SFX.cue('pickup');
+    SFX.cue('pickup', GEAR_GET_AI[g.q] || 'gear_get_green'); // 依品級
     const col = parseInt(GRADES[g.q].c.slice(1), 16);
     // 極品（詞條的位置不寫數字，看機甲庫的位置條；docs/gear-rarity-design.md 第 11 節）
     const tail = g.ax.some((a) => a[2]) ? '・極品★' : '';
@@ -241,6 +245,15 @@ Object.assign(Game.prototype, {
       d.core.position.y = (1.2 + Math.sin(d.t * 3) * 0.25) * MS;
       d.beam.material.color.copy(full ? new THREE.Color(0x777777) : d.col);
       d.beam.material.opacity = full ? (Math.floor(d.t * 4) % 2 ? 0.15 : 0.45) : 0.5;
+      // 地上的光柱（AI 音效的有位置循環；品級越高越大聲）
+      if (!d.got && SFX.lpos && SFX.dist(d.pos) < 50 * SFX.dk)
+        SFX.loopAt(
+          d.sk || (d.sk = 'gearBeam' + Math.random().toString(36).slice(2)),
+          '@gear_drop_beam',
+          0.15 + (d.g.q || 0) * 0.07,
+          0.9 + (d.g.q || 0) * 0.05,
+          d.pos,
+        );
       if (!p || p.dead || d.got) continue;
       if (
         Math.hypot(p.pos.x - d.pos.x, p.pos.z - d.pos.z) < 2.6 * MS &&

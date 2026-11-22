@@ -162,7 +162,11 @@ Object.assign(Game.prototype, {
     );
     this.fx.muzzle(mz, new THREE.Vector3(0, 1, 0), 0xff8040, 2.2);
     this.fx.smoke(mz.clone(), 1.2, 0x9a9ea6, 0.9, 3);
-    SFX.shot('grenade', undefined, mz);
+    // 迫擊砲 MT 的 AI 音效：發射＋落下前的呼嘯（延遲到落地前 1.2 秒，在落點播）
+    if (src.ai !== 'mortar' || !SFX.aiPlay('e_mtmortar_fire', 1, 1, 0.05, 0.05, mz))
+      SFX.shot('grenade', undefined, mz);
+    if (src.ai === 'mortar')
+      SFX.aiPlay('e_mtmortar_incoming', 0.8, 1, 0.05, 0.05, land, null, Math.max(0, T - 1.2));
     this.fx.warnCircle(land, o.R, T);
     this.netEv({ t: 'warn', p: land.toArray().map((x) => +x.toFixed(2)), R: o.R, dl: T });
   },
@@ -191,7 +195,9 @@ Object.assign(Game.prototype, {
         gravity: G,
       }),
     );
-    SFX.shot('grenade', undefined, mz);
+    // 起重機砲台、叉架 MT 的 AI 音效
+    const ck = src.ai === 'crane' ? 'foe_crane_throw' : src.ai === 'forklift' ? 'foe_forklift_throw' : null;
+    if (!ck || !SFX.aiPlay(ck, 1, 1, 0.05, 0.05, mz)) SFX.shot('grenade', undefined, mz);
     this.fx.warnCircle(land, o.R, T);
     this.netEv({ t: 'warn', p: land.toArray().map((x) => +x.toFixed(2)), R: o.R, dl: T });
   },
@@ -222,7 +228,8 @@ Object.assign(Game.prototype, {
         splash: o.R,
       }),
     );
-    SFX.shot('missile', undefined, from);
+    if (src.ai !== 'gunboat' || !SFX.aiPlay('foe_gunboat_torpedo', 0.9, 1, 0.05, 0.08, from))
+      SFX.shot('missile', undefined, from);
     this.fx.dust(from.clone(), 1.2, 4, 0xb8dcf0);
   },
   // ----- 閘門砲台的開閘水流 -----
@@ -230,7 +237,8 @@ Object.assign(Game.prototype, {
   // 在 move 裡用自己的位置算），傷害只在房主
   addFlow(f) {
     if (!this.flows) this.flows = [];
-    this.flows.push({ ...f, dmgT: 0 });
+    this.flowSeq = (this.flowSeq || 0) + 1;
+    this.flows.push({ ...f, dmgT: 0, sid: this.flowSeq });
     if (!this.isClient)
       this.netEv({
         t: 'flow',
@@ -268,6 +276,14 @@ Object.assign(Game.prototype, {
         this.flows.splice(k, 1);
         continue;
       }
+      // 水流的循環音（AI 音效，各端自己算）：在水流的中段
+      SFX.loopAt(
+        'foe_gategun_flow' + f.sid,
+        '@foe_gategun_flow',
+        0.9 * Math.min(1, f.t / 0.6),
+        1,
+        new THREE.Vector3(f.x + (f.dx * f.len) / 2, w.terrainHeight(f.x, f.z) + 1, f.z + (f.dz * f.len) / 2),
+      );
       // 水花（各端自己畫，不轉送給客機）
       const nest = this.fx._nested;
       this.fx._nested = true;
@@ -315,18 +331,20 @@ Object.assign(Game.prototype, {
     if (!o.air) p.y = this.world.groundAt(p.x, p.z, p.y + 1.5 * MS);
     this.mineSeq = (this.mineSeq || 0) + 1;
     const m = { i: this.mineSeq, p, owner: src, team: src.team, arm: 0.8, life: 30, trig: -1, t: 0, ...o };
+    m.ml = src.ai === 'minelayer'; // 布雷無人機的地雷：AI 音效 e_minelayer_*
     m.mesh = this.mineMesh(p, o.air);
     this.mines.push(m);
     if (!o.quiet) {
       this.fx.beam(src.center(), p.clone().setY(p.y + 0.2 * MS), 0xff4030, 0.05);
       this.fx.dust(p.clone(), 1.2, 5);
-      SFX.play('ui2', 0.5, 1.6, 0.05, 0.05, p);
+      if (!m.ml || !SFX.aiPlay('e_minelayer_drop', 0.8, 1, 0.05, 0.05, p))
+        SFX.play('ui2', 0.5, 1.6, 0.05, 0.05, p);
     }
     this.netEv({
       t: 'mine',
       i: m.i,
       p: p.toArray().map((x) => +x.toFixed(2)),
-      o: { dmg: o.dmg, im: o.im, R: o.R, air: o.air ? 1 : 0 },
+      o: { dmg: o.dmg, im: o.im, R: o.R, air: o.air ? 1 : 0, ml: m.ml ? 1 : 0 },
     });
   },
   mineMesh(p, air) {
@@ -345,14 +363,15 @@ Object.assign(Game.prototype, {
     this.scene.remove(m.mesh);
     if (boom) {
       const p = m.p.clone().setY(m.p.y + 0.3 * MS);
-      this.blastTeam(p, m.dmg, m.im, m.R, m.team, m.owner);
+      this.blastTeam(p, m.dmg, m.im, m.R, m.team, m.owner, m.ml ? 'e_minelayer_mine_boom' : null);
     }
     this.netEv({ t: 'mineX', i: m.i, b: boom ? 1 : 0 });
   },
   // 只傷害 team 的敵人的爆炸（地雷：不會炸到自己人；擁有者已被擊破也照樣）
-  blastTeam(p, dmg, impact, splash, team, owner) {
+  // sk：AI 音效的鍵（有素材時取代 SFX.explode）
+  blastTeam(p, dmg, impact, splash, team, owner, sk = null) {
     this.fx.explosion(p, (splash * 0.9) / this.fx.k, 0xffa040, splash > 4 * MS);
-    SFX.explode(splash > 4 * MS, p);
+    if (!sk || !SFX.aiPlay(sk, 1, 1, 0.05, 0.05, p)) SFX.explode(splash > 4 * MS, p);
     const src = owner && !owner.dead ? owner : null;
     this.hz2Blast(p, dmg, splash, 'exp'); // 臨時障礙物、油漬（hazards2.js）
     const targets = (src ? this.hostilesOfEnt(src) : this.hostilesOf(team, null)).concat(
@@ -418,14 +437,16 @@ Object.assign(Game.prototype, {
           if (!t || t.dead || t.isProp || !t.pos || t.center().distanceTo(m.p) > AIR_TRIG + t.radius * 0.5)
             continue;
           m.trig = 0.15;
-          SFX.play('ui2', 0.9, 2.2, 0, 0, m.p);
+          if (!m.ml || !SFX.aiPlay('e_minelayer_mine_trig', 1, 1, 0, 0, m.p))
+            SFX.play('ui2', 0.9, 2.2, 0, 0, m.p);
           break;
         }
         if (!t || t.dead || t.flying || t.isProp || !t.pos) continue;
         if (Math.hypot(t.pos.x - m.p.x, t.pos.z - m.p.z) > MINE_TRIG + t.radius * 0.4) continue;
         if (t.pos.y - w.groundAt(t.pos.x, t.pos.z, t.pos.y) > MINE_ALT) continue;
         m.trig = 0.3;
-        SFX.play('ui2', 0.9, 2.2, 0, 0, m.p);
+        if (!m.ml || !SFX.aiPlay('e_minelayer_mine_trig', 1, 1, 0, 0, m.p))
+          SFX.play('ui2', 0.9, 2.2, 0, 0, m.p);
         break;
       }
     }
@@ -442,7 +463,8 @@ Object.assign(Game.prototype, {
       this.spawnType(t, sh, sd, at, 1);
     });
     this.fx.smoke(ship.pos.clone().setY(ship.pos.y - 2 * MS), 2, 0x9a9ea6, 1, 2);
-    SFX.play('door', 0.9, 0.8, 0.05, 0.03, ship.pos);
+    if (!SFX.aiPlay('e_dropship_drop', 1, 1, 0.05, 0.03, ship.pos))
+      SFX.play('door', 0.9, 0.8, 0.05, 0.03, ship.pos);
     this.alertAll(`運輸機投放 — 敵機 ×${list.length}`);
   },
   // 客機：顯示用事件
@@ -471,7 +493,8 @@ Object.assign(Game.prototype, {
         if (e.b) {
           const p = m.p.clone().setY(m.p.y + 0.3 * MS);
           this.fx.explosion(p, (m.R * 0.9) / this.fx.k, 0xffa040, m.R > 4 * MS);
-          SFX.explode(m.R > 4 * MS, p);
+          if (!m.ml || !SFX.aiPlay('e_minelayer_mine_boom', 1, 1, 0.05, 0.05, p))
+            SFX.explode(m.R > 4 * MS, p);
         }
         return true;
       }

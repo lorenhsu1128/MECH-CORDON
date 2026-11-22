@@ -41,7 +41,8 @@ Object.assign(MechEntity.prototype, {
       if ((this.afRefT || 0) < this.t) {
         this.afRefT = this.t + 0.25;
         g.fx.spark(at || this.center(), 0xbfe8ff);
-        SFX.play('shield', 0.6, 1.5, 0.05, 0.05, this.center());
+        if (!SFX.aiPlay('af_reflect', 0.8, 1, 0.05, 0.05, at || this.center()))
+          SFX.play('shield', 0.6, 1.5, 0.05, 0.05, this.center());
         g.popDamage(at || this.center(), '反射', false, false, false, 0, this.id);
       }
       return null;
@@ -55,6 +56,7 @@ Object.assign(MechEntity.prototype, {
       if (k < 0.2 && ad[A] >= 0.2) {
         const nm = { kin: '實彈', exp: '爆發', en: '能量' }[A] || A;
         g.popDamage(at || this.center(), `適應：${nm}`, false, false, false, 0, this.id);
+        SFX.aiPlay('af_adapt', 0.9, 1, 0.05, 0.3, this.center());
       }
     }
     // 正面護盾：從正面打來的遠程攻擊（攻擊者沒有高很多）大幅減傷；近戰照常
@@ -66,6 +68,7 @@ Object.assign(MechEntity.prototype, {
       const fwd = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
       const hi = from.center ? from.center().y - this.center().y : 0;
       if (to.lengthSq() > 0.01 && to.normalize().dot(fwd) > AF.SHIELD_DOT && hi < 4 * this.dk) {
+        SFX.aiPlay('af_shield_hit', 0.7, 1, 0.1, 0.08, at || this.center());
         this.afShieldHit = (this.afShieldHit || 0) + 1; // 客機的漣漪靠快照（afs 不帶，各端只在房主看得到漣漪）
         if (this.afCap && this.afCap.material.uniforms)
           hexShieldHit(this.afCap.material, new THREE.Vector3(0, 0, -1));
@@ -97,7 +100,8 @@ Object.assign(MechEntity.prototype, {
         this.speedMul *= AF.BERSERK_SPD;
         this.dmgMul *= AF.BERSERK_DMG;
         g.fx.shockwave(this.center(), 5 * this.dk, 0xff4030, 0.4);
-        SFX.play('alarm', 0.4, 1.2, 0.05, 0.3, this.center());
+        if (!SFX.aiPlay('af_berserk', 1, 1, 0.05, 0.3, this.center()))
+          SFX.play('alarm', 0.4, 1.2, 0.05, 0.3, this.center());
       }
       // 反射：每 REFLECT_CD 秒有 REFLECT_T 秒
       if (this.afHas('reflect')) {
@@ -120,6 +124,9 @@ Object.assign(MechEntity.prototype, {
           if (pr.dead || pr.kind !== 'missile' || pr.team === this.team || pr.target === this) continue;
           if (pr.pos.distanceTo(this.pos) < AF.MAGNET_R) pr.target = this;
         }
+      // 隱形的切換（AI 音效）
+      if ((s ^ (this.afs || 0)) & AFS.CLOAK)
+        SFX.aiPlay(s & AFS.CLOAK ? 'af_cloak_on' : 'af_cloak_off', 0.8, 1, 0.05, 0.2, this.center());
       this.afs = s;
     }
     const s = this.afs || 0;
@@ -219,8 +226,15 @@ Object.assign(MechEntity.prototype, {
       this.afRing.scale.setScalar(AF.LEADER_R / sc);
       this.afRing.visible = !(s & AFS.CLOAK);
     }
+    // 循環音（AI 音效，各端自己算）：疾風（移動中）、磁力、指揮
+    if (!this.dead) {
+      if (this.afHas('swift') && (this.sfxV || 0) > 3 * this.dk) this.aiLoop('af_swift', 0.5);
+      if (this.afHas('magnet')) this.aiLoop('af_magnet', 0.45);
+      if (this.afHas('leader')) this.aiLoop('af_leader', 0.4);
+    }
     // 再生中：綠色的小光點
     if (this.afHas('regen') && this.hp < this.maxHp && this.t - (this.afHitT || 0) > AF.REGEN_WAIT) {
+      if (!this.dead) this.aiLoop('af_regen', 0.5);
       this.afSpT = (this.afSpT || 0) - dt;
       if (this.afSpT <= 0) {
         this.afSpT = 0.25;

@@ -250,7 +250,7 @@ Object.assign(Game.prototype, {
     for (const b of el.querySelectorAll('[data-pal]'))
       b.onclick = () => {
         this.save.mechPal = b.dataset.pal;
-        SFX.ui();
+        SFX.ui(null, 'garage_part_select');
         this.renderGarage();
       };
   },

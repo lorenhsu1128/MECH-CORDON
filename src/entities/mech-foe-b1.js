@@ -161,7 +161,8 @@ Object.assign(MechEntity.prototype, {
         s.hk = 'warn';
         s.hkT = HOOK_WARN;
         g.fx.warnLine(this.harpoonMz_b1(this.pos, tc), tc, HOOK_WARN, 0xff3020, 0.05);
-        SFX.play('charge', 0.7, 1.4, 0.05, 0.05, this.center());
+        if (!SFX.aiPlay('foe_harpoon_warn', 0.9, 1, 0.05, 0.05, this.center()))
+          SFX.play('charge', 0.7, 1.4, 0.05, 0.05, this.center());
       }
     } else if (s.hk === 'warn') {
       wish.set(0, 0, 0);
@@ -197,7 +198,7 @@ Object.assign(MechEntity.prototype, {
         s.hk = 'fly';
         s.hkT = 1.5;
         g.fx.muzzle(mz, v.clone().normalize(), 0xff6040, 1.6);
-        SFX.shot('missile', undefined, mz, this);
+        if (!SFX.aiPlay('foe_harpoon_fire', 1, 1, 0.05, 0.05, mz)) SFX.shot('missile', undefined, mz, this);
       }
     } else if (s.hk === 'fly') {
       wish.set(0, 0, 0);
@@ -208,6 +209,7 @@ Object.assign(MechEntity.prototype, {
         const hit = !pl.dead && s.hkMiss < pl.radius + 1.8 * MS;
         if (hit) {
           pl.addStatus?.('hook', HOOK_T, { src: this.id, pull: 14, cable: true });
+          SFX.aiPlay('foe_harpoon_hook', 1, 1, 0.05, 0.05, pl.center());
           s.hk = 'hook';
           s.hkT = HOOK_T;
           s.hkHp = this.hp;
@@ -226,7 +228,7 @@ Object.assign(MechEntity.prototype, {
         g.fx.spark(p, 0xffd080);
         g.fx.flash(p, 1.4, 0xffc060, 0.15);
         g.popDamage(p, 'CABLE CUT', false, true, false, 0);
-        SFX.play('clatter1', 0.9, 1, 0.05, 0.05, p);
+        if (!SFX.aiPlay('foe_harpoon_cut', 1, 1, 0.05, 0.05, p)) SFX.play('clatter1', 0.9, 1, 0.05, 0.05, p);
         s.cut = (s.cut || 0) + 1;
         this.harpoonEnd_b1(3);
       } else if (s.hkT <= 0 || t.dead || (t.hasStatus && !t.hasStatus('hook'))) this.harpoonEnd_b1(1.5);
@@ -279,7 +281,8 @@ Object.assign(MechEntity.prototype, {
       } else if (!s.sm && s.smT <= 0 && d < 62 * DS && this.canAct()) {
         s.sm = 'warn';
         s.smT = 1;
-        SFX.play('door', 0.6, 1.3, 0.05, 0.05, this.center());
+        if (!SFX.aiPlay('foe_smoker_warn', 0.9, 1, 0.05, 0.05, this.center()))
+          SFX.play('door', 0.6, 1.3, 0.05, 0.05, this.center());
       }
     }
     this.bossVis = s.sm === 'warn' ? 1 : s.sm === 'cool' ? 2 : 0;
@@ -311,7 +314,7 @@ Object.assign(MechEntity.prototype, {
       }),
     );
     g.fx.muzzle(mz, v.clone().normalize(), 0xd0d4dc, 1.8);
-    SFX.shot('grenade', undefined, mz, this);
+    if (!SFX.aiPlay('foe_smoker_fire', 1, 1, 0.05, 0.05, mz)) SFX.shot('grenade', undefined, mz, this);
     g.fx.warnCircle(land, 8 * MS, T, 0xd0d4dc);
     g.netEv({ t: 'warn', p: land.toArray().map(r2), R: 8 * MS, dl: T, c: 0xd0d4dc });
     const s = this.aiState;
@@ -319,6 +322,7 @@ Object.assign(MechEntity.prototype, {
     g.later(T, () => {
       g.fx.dust(land.clone(), 8, 26, 0xb8bcc2);
       g.addZone?.('smoke', land.clone(), 8 * MS, 10);
+      SFX.aiPlay('foe_smoker_cloud', 1, 1, 0.05, 0.05, land);
       s.smoked = (s.smoked || 0) + 1;
     });
   },
@@ -393,9 +397,15 @@ Object.assign(MechEntity.prototype, {
         s.aim = tc;
         s.aimT = SNIPE_AIM;
         s.blk = 0;
-        SFX.play('charge', 0.8, 0.8, 0.05, 0.05, this.center());
+        if (!SFX.aiPlay('foe_ridgesniper_aim', 0.9, 1, 0.05, 0.05, this.center()))
+          SFX.play('charge', 0.8, 0.8, 0.05, 0.05, this.center());
       }
     }
+    // 趴下架槍／起身換稜線
+    const pr = prone || !!s.aim;
+    if (s.prS !== undefined && pr !== s.prS)
+      SFX.aiPlay('foe_ridgesniper_prone', 0.7, 1, 0.05, 0.8, this.center());
+    s.prS = pr;
     s.flashT = Math.max(0, (s.flashT || 0) - dt);
     // 瞄準中機身轉向瞄準點（感知系統看不到目標時 setAim 會改朝最後已知位置，砲口就和架槍的位置對不上）
     if (s.aim) this.setAim(s.aim);
@@ -468,7 +478,8 @@ Object.assign(MechEntity.prototype, {
     g.fx.beam(mz, end, 0x60b8ff, 0.28);
     g.fx.flash(mz, 2.4, 0x9fd4ff, 0.15);
     g.fx.spark(end, 0x9fd4ff);
-    SFX.play('laserBig', 1, 0.85, 0.05, 0.05, mz);
+    if (!SFX.aiPlay('foe_ridgesniper_fire', 1, 1, 0.05, 0.05, mz))
+      SFX.play('laserBig', 1, 0.85, 0.05, 0.05, mz);
   },
 
   // ---------- 旋風產生機：預警 1.2 秒（葉片打開）→ 放出追蹤的沙塵旋風（8 秒）；捲進去持續受傷並被帶著走 ----------
@@ -522,13 +533,15 @@ Object.assign(MechEntity.prototype, {
         s.tw = { p, v: dir.clone().multiplyScalar(3 * DS), age: 0, dmgT: 0.3, hits: 0 };
         s.tw.zone = g.addZone?.('suction', p.clone(), 5 * MS, TW_LIFE, { to: p.clone(), pull: 9 * DS });
         s.made = (s.made || 0) + 1;
-        SFX.play('thrBurst', 1, 0.7, 0.05, 0.05, p);
+        if (!SFX.aiPlay('foe_twister_spawn', 1, 1, 0.05, 0.05, p))
+          SFX.play('thrBurst', 1, 0.7, 0.05, 0.05, p);
       }
     } else {
       s.twT -= dt * k;
       if (s.twT <= 0 && d < 75 * DS && this.canAct()) {
         s.twW = 1.2;
-        SFX.play('engineHi', 0.7, 0.8, 0.05, 0.05, this.center());
+        if (!SFX.aiPlay('foe_twister_warn', 0.9, 1, 0.05, 0.05, this.center()))
+          SFX.play('engineHi', 0.7, 0.8, 0.05, 0.05, this.center());
         g.fx.ring(this.pos.clone().setY(this.pos.y + 0.3), 3, 0xffb050);
       }
     }
@@ -538,7 +551,10 @@ Object.assign(MechEntity.prototype, {
     const s = this.aiState,
       g = this.game;
     if (s.tw && s.tw.zone !== undefined && s.tw.zone !== null) g.removeZone?.(s.tw.zone);
-    if (s.tw) g.fx.dust(s.tw.p.clone(), 4, 10, 0xd8b680);
+    if (s.tw) {
+      g.fx.dust(s.tw.p.clone(), 4, 10, 0xd8b680);
+      SFX.aiPlay('foe_twister_end', 0.9, 1, 0.05, 0.05, s.tw.p);
+    }
     s.tw = null;
     s.twT = rnd(6, 9);
     this.bx = null;
@@ -556,7 +572,8 @@ Object.assign(MechEntity.prototype, {
       if ((B.fl -= dt) <= 0) {
         B.fl = Math.max(0.12, B.t * 0.2); // 越接近越快
         g.fx.flash(B.top, 1.3, 0xff4020, 0.12);
-        SFX.play('ui2', 0.5, 1.6, 0.02, 0.05, B.p);
+        if (!SFX.aiPlay('foe_blaster_beep', 0.7, 1, 0.02, 0.05, B.p))
+          SFX.play('ui2', 0.5, 1.6, 0.02, 0.05, B.p);
       }
       if (B.t <= 0) this.collapse_b1(B);
     } else {
@@ -576,7 +593,8 @@ Object.assign(MechEntity.prototype, {
         g.fx.warnLine(this.muzzle('rarm'), top, 0.5, 0xffa030, 0.05);
         g.fx.warnCircle(p, BL_R, BL_WARN, 0xffa020);
         g.netEv({ t: 'warn', p: p.toArray().map(r2), R: BL_R, dl: BL_WARN, c: 0xffa020 });
-        SFX.play('pistol', 0.7, 0.7, 0.05, 0.05, this.center());
+        if (!SFX.aiPlay('foe_blaster_shoot', 0.9, 1, 0.05, 0.05, this.center()))
+          SFX.play('pistol', 0.7, 0.7, 0.05, 0.05, this.center());
       }
     }
     if (s.blF > 0) s.blF -= dt;
@@ -592,7 +610,7 @@ Object.assign(MechEntity.prototype, {
     g.fx.explosion(B.top, 3, 0xffa040);
     g.fx.streaks(B.top, 16, 0x8a7a66, 18, 0.9, 30, DOWN, 0.5);
     g.fx.dust(B.p.clone(), 5.5, 20, 0xa89070);
-    SFX.explode(true, B.p);
+    if (!SFX.aiPlay('foe_blaster_collapse', 1, 1, 0.05, 0.05, B.p)) SFX.explode(true, B.p);
     g.rumbleAt?.(B.p, 0.8, 0.4, 220, 30);
     for (const t of g.hostilesOfEnt(this)) {
       if (t.dead) continue;
@@ -635,6 +653,7 @@ Object.assign(MechEntity.prototype, {
     let lit = false;
     if (s.lmOff > 0) {
       s.lmOff -= dt;
+      if (s.lmOff <= 0) SFX.aiPlay('foe_lamp_relight', 0.8, 1, 0.05, 0.3, lp); // 燈重新亮起
       if (s.zone !== undefined && s.zone !== null) {
         g.removeZone?.(s.zone);
         s.zone = null;
@@ -669,7 +688,7 @@ Object.assign(MechEntity.prototype, {
         lit = true;
         if (!s.lit) {
           s.spotted = (s.spotted || 0) + 1;
-          SFX.play('alarm', 0.5, 1.3, 0.05, 0.3, lp);
+          if (!SFX.aiPlay('foe_lamp_spot', 0.8, 1, 0.05, 0.3, lp)) SFX.play('alarm', 0.5, 1.3, 0.05, 0.3, lp);
         }
       }
     }
@@ -711,7 +730,7 @@ Object.assign(MechEntity.prototype, {
       g.fx.flash(lp, 1.8, 0xffe8a0, 0.2);
       g.fx.streaks(lp, 10, 0xfff0c0, 8, 0.4, 20);
       g.popDamage(lp, 'LAMP BREAK', false, true, false, 0);
-      SFX.play('glass', 1, 1, 0.05, 0.05, lp);
+      if (!SFX.aiPlay('foe_lamp_break', 1, 1, 0.05, 0.05, lp)) SFX.play('glass', 1, 1, 0.05, 0.05, lp);
     }
     return [dmg * 1.5, impact * 1.2];
   },

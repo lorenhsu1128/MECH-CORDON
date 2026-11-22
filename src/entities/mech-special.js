@@ -27,6 +27,8 @@ const FOE_FX = new Set([
   'laserpost',
   'specimen',
 ]); // 主題專屬敵人的顯示（mech-foe.js 的 foeFx）
+// 有位置的循環音（AI 音效）只在聽得到的距離內呼叫
+const LOOP_R = 80 * DS;
 const SHIELD_DOT = 0.35; // 盾牌涵蓋的正面角度（cos，約 ±70°）
 
 // 連線光束的顏色（linkKind）：0 修理、1 電磁牽引、2 護盾發生器 → 指揮艦
@@ -136,7 +138,7 @@ Object.assign(MechEntity.prototype, {
     // 六角格護盾的命中波紋（specialFx；客機不知道命中點，改從自己的機體的方向）
     this.domeHitN = (this.domeHitN || 0) + 1;
     this.domeHitP = at ? at.clone() : null;
-    if (at) SFX.hitDome(at);
+    if (at && !SFX.aiPlay('e_dome_absorb', 0.7, 1, 0.08, 0.05, at)) SFX.hitDome(at);
     if (this.domeInf) {
       if (at) g.fx.spark(at, 0x80e0ff);
       return;
@@ -152,7 +154,8 @@ Object.assign(MechEntity.prototype, {
       this.staggerT = 2.2;
       g.fx.ring(this.center(), DOME_R, 0x80e0ff);
       g.fx.flash(this.center(), 4, 0xbfefff, 0.25);
-      SFX.play('overload', 0.9, 1.2, 0.05, 0.05, this.center());
+      if (!SFX.aiPlay('e_dome_break', 1, 1, 0.05, 0.05, this.center()))
+        SFX.play('overload', 0.9, 1.2, 0.05, 0.05, this.center());
       g.msgAll('護盾破壞 — 產生器過載', 0x80e0ff);
       g.netEv({ t: 'stag', i: this.id });
     } else this.domeFrac = this.domeHp / this.domeMax;
@@ -193,14 +196,18 @@ Object.assign(MechEntity.prototype, {
           this.guardBreakT = 2.5;
           g.fx.flash(p, 1.6, 0xffb020, 0.18);
           g.fx.streaks(p, 12, 0xffd080, 16, 0.35, 20);
-          SFX.play('shield', 1, 0.7, 0.05, 0.03, p);
-          SFX.hitShield(p, true);
+          if (!SFX.aiPlay('e_mtshield_break', 1, 1, 0.05, 0.03, p)) {
+            SFX.play('shield', 1, 0.7, 0.05, 0.03, p);
+            SFX.hitShield(p, true);
+          }
           g.popDamage(p, 'GUARD BREAK', false, true, false, 0);
           return [dmg, impact * 1.6];
         }
         g.fx.spark(p, 0xffd080);
-        SFX.play('shield', 0.5, 1.3, 0.1, 0.06, p);
-        SFX.hitShield(p);
+        if (!SFX.aiPlay('e_mtshield_block', 0.6, 1, 0.1, 0.06, p)) {
+          SFX.play('shield', 0.5, 1.3, 0.1, 0.06, p);
+          SFX.hitShield(p);
+        }
         return [dmg * 0.12, impact * 0.4];
       }
     }
@@ -261,6 +268,40 @@ Object.assign(MechEntity.prototype, {
     const r = Math.max(this.radius * 1.6, this.model.height * 0.75);
     g.fx.shieldFlare(this.center(), dir, r, this.team);
   },
+  // AI 音效的循環音（房主與客機各自算，loopAt 不轉送）：名稱＝鍵＋實體 id，停止呼叫時自動淡出
+  aiLoop(key, vol, rate = 1, pos = null) {
+    const p = pos || this.center();
+    if (SFX.dist(p) > LOOP_R) return;
+    SFX.loopAt(key + this.id, '@' + key, vol, rate, p);
+  },
+  // 這一格的水平速度（m/s，以位置的變化算：客機的實體沒有可靠的速度）
+  sfxSpeed(dt) {
+    const lp = this.sfxLp || (this.sfxLp = this.pos.clone());
+    const v = Math.hypot(this.pos.x - lp.x, this.pos.z - lp.z) / Math.max(dt, 1e-3);
+    lp.copy(this.pos);
+    this.sfxV = (this.sfxV || 0) + (Math.min(v, 200) - (this.sfxV || 0)) * Math.min(1, dt * 6);
+    return this.sfxV;
+  },
+  // 一般敵人（ENEMY_TYPES）的循環音：履帶、引擎、旋翼、砲塔、修理光束、護盾、指揮信號
+  sfxLoops(dt) {
+    if (this.dead || this.team !== 'enemy') return;
+    const o = this.opts || {};
+    const v = this.sfxSpeed(dt);
+    const mv = clamp(v / (12 * DS), 0, 1);
+    const legs = this.asm && this.asm.legs;
+    if (this.ai === 'heli' && o.modelKind === 'heli' && !o.vehKey)
+      this.aiLoop('e_heli_rotor', 0.7, 0.95 + mv * 0.1);
+    else if (this.ai === 'mt' && o.modelKind === 'vehicle')
+      this.aiLoop('e_tank_engine', 0.35 + 0.45 * mv, 0.9 + mv * 0.2);
+    else if (this.ai === 'mt' && legs === 'l_tk' && !o.modelKind && mv > 0.05)
+      this.aiLoop('e_mth_move', 0.25 + 0.5 * mv, 0.9 + mv * 0.2);
+    else if (this.ai === 'turret') this.aiLoop('e_turret_idle', 0.35);
+    else if (this.ai === 'commander') this.aiLoop('e_mtcmd_aura', 0.35);
+    if (this.ai === 'repair' && this.linkId >= 0 && (this.linkKind || 0) === 0)
+      this.aiLoop('e_repair_beam', 0.6);
+    if (this.ai === 'dome' && this.domeFrac > 0) this.aiLoop('e_dome_hum', 0.3 + 0.3 * this.domeFrac);
+    this.foeLoops(dt, v); // 專屬敵人（mech-foe.js）
+  },
   specialFx(dt) {
     const g = this.game;
     if (this.af) this.afFx(dt); // 詞綴（mech-affix.js）
@@ -276,6 +317,7 @@ Object.assign(MechEntity.prototype, {
     if (m && m.anim_d2) this.foeAnim_d2(dt); // 第 3～6 章模型的動作（mech-foe-d2.js）
     this.foeExt('foeFx', dt); // 擴充組的新敵人（mech-foe-<組>.js）
     const host = !this.remote;
+    if (dt > 0) this.sfxLoops(dt); // 一般敵人的循環音（AI 音效）
     const sx = this.sx || (this.sx = {});
     if (this.guardBreakT > 0) this.guardBreakT -= dt;
     if (sx.plate) sx.plate.visible = !(this.guardBreakT > 0) && this.staggerT <= 0;
@@ -636,7 +678,8 @@ Object.assign(MechEntity.prototype, {
         this.domeHp = this.domeMax;
         this.domeFrac = 1;
         g.fx.ring(this.center(), DOME_R, 0x80e0ff);
-        SFX.play('charge', 0.8, 1.2, 0.05, 0.05, this.center());
+        if (!SFX.aiPlay('e_dome_restore', 0.9, 1, 0.05, 0.05, this.center()))
+          SFX.play('charge', 0.8, 1.2, 0.05, 0.05, this.center());
       }
     }
     const c = new THREE.Vector3();
@@ -668,6 +711,7 @@ Object.assign(MechEntity.prototype, {
       else {
         s.ds = 'drop';
         s.dsT = 2.2;
+        SFX.aiPlay('e_dropship_hover', 0.9, 1, 0.05, 0.3, this.center());
         g.alertAll('運輸機投放中 — 現在擊落！');
       }
     } else if (s.ds === 'drop') {
@@ -679,6 +723,7 @@ Object.assign(MechEntity.prototype, {
         s.dropped = true;
         s.outDir = dir.clone().negate();
         g.dropCargo(this);
+        SFX.aiPlay('e_dropship_depart', 0.9, 1, 0.05, 0.3, this.center());
       }
     } else {
       wish.copy(s.outDir);

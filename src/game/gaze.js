@@ -760,7 +760,7 @@ Object.assign(Game.prototype, {
       this.gazeCalStep(cal, dt);
     };
     requestAnimationFrame(step);
-    SFX.ui();
+    if (!SFX.aiPlay('gaze_cal_point', 0.5, 1, 0.02, 0.05, null, 'ui')) SFX.ui();
   },
   gazeCalClose(keep) {
     const cal = this.gzCal;
@@ -992,7 +992,7 @@ Object.assign(Game.prototype, {
     $('gcRedo').hidden = !bad.length;
     $('gcRedo').textContent = `重做差的點（${bad.length}）`;
     this.gazeCalPlot(cal);
-    SFX.ui();
+    if (!SFX.aiPlay('gaze_cal_point', 0.5, 1, 0.02, 0.05, null, 'ui')) SFX.ui();
   },
   // 差的點：誤差超過畫面高度的 BAD_K 或沒有資料
   gazeCalBad(cal) {

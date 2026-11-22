@@ -9,10 +9,12 @@ import { Game } from './game.js';
 import { BF_FX } from '../render/boss-field-fx.js';
 import { SFX } from '../audio/audio.js';
 import { buildField, conformField } from '../render/boss-field-models.js';
-import { MS } from '../core/scale.js';
+import { DS, MS } from '../core/scale.js';
 import { frnd } from '../fx/rand.js';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
+// 自製音效的循環（各端，bfVis 每格）：場地種類 → 音量
+const BF_LOOP = { magma: 0.5, belt: 0.6, steam: 0.45, quicksand: 0.45, ice: 0.3, haze: 0.4 };
 const arr = (v) => [+v.x.toFixed(2), +v.y.toFixed(2), +v.z.toFixed(2)];
 
 // 場地效果的粒子（各端）在 render/boss-field-fx.js（模型庫的地面標示頁也用）
@@ -133,6 +135,7 @@ Object.assign(Game.prototype, {
   // 全場變暗（sec 秒）：畫面暗下來、鎖定距離 ×0.75
   bfDarkness(sec) {
     this.bfDarkT = sec;
+    SFX.aiPlay('field_darkness', 1, 1, 0.02, 1); // 不分位置（客機在 bfdark 事件自己播）
     if (this.bfHost()) this.netEv({ t: 'bfdark', d: sec });
   },
   // ---------- 房主每格 ----------
@@ -168,9 +171,11 @@ Object.assign(Game.prototype, {
           const ph = c < 1.2 ? 0 : c < 2.2 ? 1 : 2;
           if (ph !== f.st.ph) {
             f.st.ph = ph;
+            if (ph === 1) SFX.aiPlay('field_shock_warn', 0.8, 1, 0.05, 0.3, f.p); // 預警
             if (ph === 2) {
               f.st.n = (f.st.n || 0) + 1;
-              SFX.play('laser2', 0.8, 0.7, 0.05, 0.05, f.p);
+              if (!SFX.aiPlay('field_shock', 1, 1, 0.05, 0.1, f.p))
+                SFX.play('laser2', 0.8, 0.7, 0.05, 0.05, f.p);
               // 天上劈下的閃電（fx.bolt 會轉送給客機；砲火特效「華麗」時畫）
               const sky = (p) => this.fx.bolt(p.clone().setY(p.y + 50 * MS), p, 0x9fe8ff, 0.3, 's');
               for (let i = 0; i < 2; i++) {
@@ -196,7 +201,8 @@ Object.assign(Game.prototype, {
             f.st.open = true;
             this.fx.dust(f.p.clone(), f.r / K, 18, 0x6e5e4c);
             this.fx.shockwave(f.p.clone(), f.r / K, 0x9a8a70, 0.4);
-            SFX.play('explode2', 0.8, 0.6, 0.05, 0.05, f.p);
+            if (!SFX.aiPlay('field_collapse', 1, 1, 0.05, 0.1, f.p))
+              SFX.play('explode2', 0.8, 0.6, 0.05, 0.05, f.p);
             for (const t of hs) {
               if (!this.bfIn(f, t)) continue;
               const out = V(t.pos.x - f.p.x, 0, t.pos.z - f.p.z);
@@ -243,6 +249,7 @@ Object.assign(Game.prototype, {
             const R = 4.5 * K;
             this.fx.warnCircle(at, R, 0.7);
             this.netEv({ t: 'warn', p: arr(at), R, dl: 0.7 });
+            SFX.aiPlay('field_minefield', 0.9, 1, 0.05, 0.1, at); // 踩到（預警；疊在之後的爆炸上）
             this.later(0.7, () =>
               this.blastTeam(
                 at.clone().setY(at.y + 1 * K),
@@ -308,6 +315,9 @@ Object.assign(Game.prototype, {
       f.vis.group.position.lerp(f.p, f.o.dir || f.o.follow ? Math.min(1, dt * 10) : 1);
       if (f.o.dir) f.vis.group.rotation.y = Math.atan2(-f.o.dir[0], -f.o.dir[1]);
       f.vis.update(t, dt, f.st);
+      // 循環音（自製音效；沒有素材時什麼都不做）
+      if (BF_LOOP[f.k] && this.state === 'play' && SFX.dist(f.p) < 120 * DS)
+        SFX.loopAt('bf' + f.i, '@field_' + f.k + '_loop', BF_LOOP[f.k], 1, f.p);
       // 砲火特效「華麗」（docs/vfx-design.md 第 9 期）：煙霧、蒸氣、火焰、火星、電弧、閃燈改用顯示卡粒子
       const rich = this.fx.rich;
       for (const o of f.vis.hide || []) if (rich) o.visible = false;
@@ -353,6 +363,7 @@ Object.assign(Game.prototype, {
         return true;
       case 'bfdark':
         this.bfDarkT = e.d;
+        SFX.aiPlay('field_darkness', 1, 1, 0.02, 1);
         return true;
     }
     return false;
@@ -379,6 +390,7 @@ Object.assign(Game.prototype, {
         life: o.life || 70,
       });
     }
+    if (n > 0) SFX.aiPlay('field_cover_rise', 1, 1, 0.05, 0.3, mid); // 新掩體升起（自製音效）
   },
   // 一種場地放 n 處：where＝'player'（玩家周圍）、'boss'、'line'（兩者之間）、'center'（作戰區域中央）
   bfAround(b, kind, where, n, R, life, o = {}) {

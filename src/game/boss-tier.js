@@ -92,6 +92,7 @@ Object.assign(Game.prototype, {
   },
   // 大招「投放空降兵」：Boss 附近空降 n 台雜兵
   tierDrop(b, n) {
+    b.bossSnd('drop', 1); // HELIOS 的投放空降兵（自製音效）
     this.waveAt = { pos: b.pos.clone(), drop: true };
     const list = [];
     for (let i = 0; i < n; i++) list.push(i ? 'mt' : 'mt_shot');
@@ -259,7 +260,12 @@ Object.assign(Game.prototype, {
     if (sp) b.tierPartLost(sp, true);
     b.tierShellBreak('part'); // 第 8 節：部位破壞打開裝甲殼
     const kit = b.tierKit();
+    const knelt = !!b.aiState.knelt;
     if (sp && kit.onLost) kit.onLost(this, b, sp); // 這隻自己的（TETRARCH 兩隻前腳都壞了跪下…）
+    if (!knelt && b.aiState.knelt) {
+      b.sndStag = true; // 跪下的失衡不另外響失衡的提示訊號
+      b.bossSnd('kneel', 1.1); // 自製音效
+    }
     const c = e.center();
     this.popDamage(c.clone().setY(c.y + 2 * DS), '部位破壞', false, true, false, 0, e.id);
     this.flashMsg(

@@ -117,6 +117,7 @@ Object.assign(Game.prototype, {
       });
     this.spawnComp(comp(L - 2), 1, sh, sd, false);
     this.flashMsg(`${K.name} 接近`, 0xff4d4d, 2.6, { k: 'warn', m: K.name, s: '大型兵器接近' });
+    SFX.aiPlay('colossus_approach', 1.2, 1, 0.02, 1, body.center()); // 自製音效（位置音效：轉送給客機）
     this.alertAll(
       kind === 'walker'
         ? `${K.name}：打斷 ${K.stop} 條腳部關節讓它停機，再擊破露出的動力核心`
@@ -175,7 +176,7 @@ Object.assign(Game.prototype, {
         S.t = COL.CORE_T;
         this.fx.explosion(b.center(), 8, 0xffa040, true);
         this.fx.shockwave(b.pos.clone(), 14 * MS, 0xffd090, 0.6);
-        SFX.explode(true, b.center());
+        if (!SFX.aiPlay('colossus_shutdown', 1.3, 1, 0.03, 0.5, b.center())) SFX.explode(true, b.center());
         S.core = this.colPart(b, 'engine', { off: [0, 0.55, 0], k: COL.CORE_HP, vehKey: 'pylon' });
         S.core.name = '動力核心';
         this.flashMsg(`${K.name} 停機 — 擊破動力核心！`, 0xffd060, 2.6, {
@@ -185,6 +186,7 @@ Object.assign(Game.prototype, {
         });
       } else if (b.arrived && this.state === 'play') {
         this.flashMsg(`${K.name} 突破了防衛線`, 0xff4d4d, 3, { k: 'warn', m: '防衛線失守' });
+        SFX.aiPlay('colossus_breach', 1.2, 1, 0.02, 1, b.center());
         this.state = 'ending';
         return this.campDead(true);
       }
@@ -196,7 +198,7 @@ Object.assign(Game.prototype, {
       b.bossVis |= 64;
       this.fx.explosion(b.center(), 14, 0xff8030, true);
       this.fx.shockwave(b.center(), 20 * MS, 0xffb060, 0.8);
-      SFX.explode(true, b.center());
+      if (!SFX.aiPlay('colossus_destroyed', 1.4, 1, 0.03, 0.5, b.center())) SFX.explode(true, b.center());
       b.hp = 0;
       b.die(this.player);
       this.flashMsg(`${K.name} 擊破`, 0x7ee081, 2.8, { k: 'good', m: '大型兵器擊破', s: K.name });
@@ -218,6 +220,7 @@ Object.assign(Game.prototype, {
       });
       b.col.ph = 1;
       b.bossVis &= ~64;
+      SFX.aiPlay('colossus_reboot', 1.2, 1, 0.02, 1, b.center());
       this.flashMsg(`${K.name} 重新啟動`, 0xff4d4d, 2.4, {
         k: 'warn',
         m: '重新啟動',

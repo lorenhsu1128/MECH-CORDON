@@ -1,5 +1,6 @@
 // Game：駕駛員成長——戰鬥中累積經驗與熟練度（房主／單機計算）、任務結算、結果畫面
 import { clamp } from '../core/math.js';
+import { SFX } from '../audio/audio.js';
 import {
   WEAPON_IDS,
   computePilotMods,
@@ -132,6 +133,8 @@ Object.assign(Game.prototype, {
     const before = levelOf(P.xp);
     P.xp += Math.max(0, entry.x || 0);
     const after = levelOf(P.xp);
+    // 駕駛員升級（結果畫面出來之後；AI 音效）
+    if (after > before) SFX.aiPlay('level_up', 0.8, 1, 0.02, 0.5, null, 'ui', 1.6);
     const ups = [];
     for (const wid in entry.pf || {}) {
       if (!WEAPON_IDS.has(wid)) continue;

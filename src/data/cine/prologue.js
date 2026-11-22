@@ -93,6 +93,8 @@ const VISTAS = [
       },
     ],
     ev: [
+      { t: 0.2, ai: 'heli_flyby', vol: 0.7 }, // 直升機低空掠過（只有 AI 音效）
+      { t: 0.8, ai: 'crowd_camp_amb', vol: 0.4 }, // 前景換班的礦工
       { t: 1.4, boom: [55, 4, -60], big: true },
       { t: 2.3, boom: [48, 4, -70] },
     ],
@@ -174,6 +176,7 @@ const VISTAS = [
       { t: 0.4, fx: 'flame', at: [12, 3, -12], to: [12, 12, -12], len: 14, ang: 0.25, n: 14 },
       { t: 1.6, fx: 'flame', at: [12, 3, -12], to: [12, 12, -12], len: 14, ang: 0.25, n: 14 },
       { t: 0.4, sfx: 'thrBurst', vol: 0.7, rate: 0.7 },
+      { t: 0, ai: 'transport_flyby', vol: 0.8 }, // 運輸機、直升機編隊飛過（只有 AI 音效）
     ],
     name: '維爾威動態',
     s: '買賣它。',
@@ -421,13 +424,13 @@ export function prologueCine(ctx) {
       follow: 6,
     },
     ev: [
-      { t: 0, sfx: 'heavy', vol: 1, rate: 0.7 },
-      { t: 0, sfx: 'door', vol: 0.9, rate: 0.6 },
+      { t: 0, sfx: 'heavy', vol: 1, rate: 0.7, ai: 'pod_clamp_release' },
+      { t: 0, sfx: 'door', vol: 0.9, rate: 0.6, aiOff: 'pod_clamp_release' },
       { t: 0, shake: 0.35 },
       { t: 0.85, sfx: 'thrBurst', vol: 1, rate: 0.7 },
       { t: 0.9, sfx: 'boostUp', vol: 0.9, rate: 0.6 },
       { t: 0.9, shake: 0.5 },
-      { t: 1, loop: 0.5, loopKey: 'thrustLoop', rate: 0.7 },
+      { t: 1, loop: 0.5, loopKey: 'thrustLoop', loopAi: 'pod_thruster_loop', rate: 0.7 },
       { t: 1.2, sub: '投放座標：南部荒野。', who: 'station', dur: 2.8 },
     ],
   });
@@ -455,7 +458,7 @@ export function prologueCine(ctx) {
       ],
       follow: 8,
     },
-    ev: [{ t: 0.2, sfx: 'boostDown', vol: 0.7, rate: 0.5 }],
+    ev: [{ t: 0.2, sfx: 'boostDown', vol: 0.7, rate: 0.5, ai: 'pod_fall_wind' }],
   });
   // ---- 0:38 大氣層突入：熱罩發紅、速度線、震動 → 0:45.8 撞擊的閃白 ----
   shots.push({
@@ -485,13 +488,13 @@ export function prologueCine(ctx) {
       snap: true,
     },
     ev: [
-      { t: 0, loop: 0.8, loopKey: 'engineLoop', rate: 0.6 },
+      { t: 0, loop: 0.8, loopKey: 'engineLoop', loopAi: 'pod_reentry_loop', rate: 0.6 },
       { t: 0.3, sfx: 'debris', vol: 0.8, rate: 0.6 },
       { t: 3, sfx: 'distant', vol: 0.8, rate: 0.7 },
       { t: 7.2, loop: 0 },
       { t: 7.78, flash: '#ffffff', in: 0.04, hold: 0.45, out: 0.9 },
-      { t: 7.78, sfx: 'explodeBig', vol: 1, rate: 0.75 },
-      { t: 7.8, sfx: 'boom2', vol: 1, rate: 0.6 },
+      { t: 7.78, sfx: 'explodeBig', vol: 1, rate: 0.75, ai: 'pod_impact' },
+      { t: 7.8, sfx: 'boom2', vol: 1, rate: 0.6, aiOff: 'pod_impact' },
       { t: 7.78, shake: 1.2 },
     ],
   });
@@ -585,10 +588,10 @@ export function prologueCine(ctx) {
         dur: 3,
         cls: 'boot',
       },
-      { t: 0.1, sfx: 'uiOpen', vol: 0.6, rate: 0.6 },
-      { t: 1.0, sfx: 'charge', vol: 0.5, rate: 0.7 },
+      { t: 0.1, sfx: 'uiOpen', vol: 0.6, rate: 0.6, ai: 'cockpit_boot' },
+      { t: 1.0, sfx: 'charge', vol: 0.5, rate: 0.7, aiOff: 'cockpit_boot' },
       { t: 1.3, sub: T.boot, dur: 2.1 },
-      { t: 2.2, sfx: 'ui2', vol: 0.6, rate: 0.8 },
+      { t: 2.2, sfx: 'ui2', vol: 0.6, rate: 0.8, aiOff: 'cockpit_boot' },
       { t: 0, a: 'hero', rise: 3.2 },
     ],
   });
@@ -629,12 +632,12 @@ export function prologueCine(ctx) {
     },
     ev: [
       { t: 0, fx: 'smoke', at: [7, 2, -9], r: 3, life: 4, rise: 3 },
-      { t: 0.2, sfx: 'heavy', vol: 0.8, rate: 0.6, at: [0, 1, 0] },
+      { t: 0.2, sfx: 'heavy', vol: 0.8, rate: 0.6, at: [0, 1, 0], ai: 'mech_standup' },
       { t: 0.4, sub: T.echo1, who: 'echo', dur: 3.2 },
       { t: 0.9, fx: 'smoke', at: [0, 0.6, 1], r: 2.2, life: 3, rise: 1.5, color: 0x8a7a68 },
       { t: 1.1, fx: 'smoke', at: [-1.5, 0.6, -1], r: 1.8, life: 3, rise: 1.2, color: 0x8a7a68 },
       { t: 1.4, fx: 'smoke', at: [8, 2.5, -9], r: 2.5, life: 4, rise: 4 },
-      { t: 1.8, sfx: 'boostDown', vol: 0.6, rate: 0.7, at: [0, 3, 0] },
+      { t: 1.8, sfx: 'boostDown', vol: 0.6, rate: 0.7, at: [0, 3, 0], aiOff: 'mech_standup' },
     ],
   });
   // ---- 1:15 頭部特寫，轉向遠方 → 閃白進入蒙太奇 ----
@@ -833,7 +836,7 @@ export function prologueCine(ctx) {
       follow: 6,
     },
     ev: [
-      { t: 0, sfx: 'engineHi', vol: 1, rate: 0.45, at: { a: 'train' } },
+      { t: 0, sfx: 'engineHi', vol: 1, rate: 0.45, at: { a: 'train' }, ai: 'train_pass' },
       { t: 0.5, card: 'IRON CITADEL', s: '武裝列車', style: 'name', kind: 'boss', dur: 2.4 },
       { t: 1.4, boom: { a: 'train', o: [3, 4, 2] } },
       { t: 2.2, boom: { a: 'train', o: [12, 5, -2] } },
@@ -905,12 +908,12 @@ export function prologueCine(ctx) {
       ],
     },
     ev: [
-      { t: 0, sfx: 'rock1', vol: 1, rate: 0.5 },
+      { t: 0, sfx: 'rock1', vol: 1, rate: 0.5, ai: 'worm_burst' },
       { t: 0, shake: 0.8 },
       { t: 0.3, boom: [0, 0, -30], big: true },
       { t: 0.3, fx: 'dust', at: [0, 0, -30], r: 16, n: 40, color: 0xdde6ee },
       { t: 0.5, card: 'SANDWORM', s: '巨型鑽地蟲', style: 'name', kind: 'boss', dur: 2.4 },
-      { t: 0.6, sfx: 'rock2', vol: 1, rate: 0.6 },
+      { t: 0.6, sfx: 'rock2', vol: 1, rate: 0.6, aiOff: 'worm_burst' },
       { t: 1.0, fx: 'dust', at: [6, 0, -24], r: 10, n: 30, color: 0xdde6ee },
     ],
   });

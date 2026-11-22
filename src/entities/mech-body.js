@@ -144,7 +144,8 @@ Object.assign(MechEntity.prototype, {
     if (R.fx && R.fx.dmg) this.dmgMul *= R.fx.dmg; // 火力下降（一次算進去）
     if (g.spawnPickup && g.world && !g.lab && !g.mapv)
       g.spawnPickup('ammo', new THREE.Vector3(c.x, g.world.groundAt(c.x, c.z, c.y + 1) + 0.6, c.z));
-    SFX.explode(false, c);
+    this.sndStag = true; // 這次的失衡不另外響失衡的提示訊號（mech-boss3.js 的 bossStagSnd）
+    if (!(this.bossCue && this.bossCue('body_break', 1, c))) SFX.explode(false, c);
     if (g.flashMsg) g.flashMsg(`部位破壞：${R.name}${R.tip ? ' — ' + R.tip : ''}`, 0xffe070, 1.8);
   },
   // 區域的位置（冒煙、掉落）：at／at2 的節點；人形＝那個部位的外框；範圍＝方塊的中心

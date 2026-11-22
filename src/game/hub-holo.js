@@ -634,6 +634,7 @@ Object.assign(Game.prototype, {
       cap.classList.add('warn');
       return;
     }
+    SFX.aiPlay('hub_holo_select', 0.6, 1, 0.02, 0.1, null, 'ui');
     this.openBrief(sid);
   },
   // 區域地形的佇列：取樣一塊（瀏覽器存過的直接拿）、放上戰略桌
@@ -756,6 +757,8 @@ Object.assign(Game.prototype, {
     else this.renderer.render(this.hubScene, cam);
     // 游標停留的設施：發光輪廓（標籤或模型；淡入淡出）
     const hv = this.state === 'hub' ? this.hubHoverSpot() : null;
+    if (hv && hv !== this.hubHvPrev) SFX.aiPlay('hub_holo_hover', 0.3, 1, 0.03, 0.08, null, 'ui');
+    this.hubHvPrev = hv;
     if (hv) this.hubOlId = hv;
     this.hubOlK = clamp((this.hubOlK || 0) + (hv ? dt * 6 : -dt * 6), 0, 1);
     const osp = this.hubOlId && R.spots[this.hubOlId];

@@ -192,6 +192,16 @@ Object.assign(Game.prototype, {
       this.waveAt = null;
     }
     if (!k) for (const p of this.playersAlive()) p.lgWaveShield(); // 傳說模組「增援壁壘」
+    // 增援空降、從邊緣進入（AI 音效；房主播，會轉送）
+    if (!k)
+      SFX.aiPlay(
+        'wave_dropin',
+        0.9,
+        1,
+        0.04,
+        0.3,
+        new THREE.Vector3(w.pos.x, this.world.groundAt(w.pos.x, w.pos.z, 999), w.pos.z),
+      );
     if (w.drop && !k)
       this.fx.shockwave(
         new THREE.Vector3(w.pos.x, this.world.groundAt(w.pos.x, w.pos.z, 999), w.pos.z),

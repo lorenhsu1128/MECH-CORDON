@@ -276,6 +276,7 @@ Object.assign(Game.prototype, {
     if (d.val <= 0.001) {
       d.st = ST_USED;
       d.prog = 0;
+      SFX.aiPlay('dev_recharge_empty', 0.7, 1, 0.03, 0.3, d.pos);
       this.flashMsg('回復站的能量用完了', 0x8a97a6, 1.8);
     }
   },
@@ -347,6 +348,9 @@ Object.assign(Game.prototype, {
         this.devIntro(d, p);
         continue;
       }
+      // 回復站回復中（AI 音效的循環；各端照 prog 自己算）
+      if (d.kind === 'recharge' && d.prog > 0 && d.st !== ST_USED)
+        SFX.loopAt('devRc' + d.id, '@dev_recharge_loop', 0.5, 1, d.pos);
       if (d.kind === 'recharge' && m.core) {
         m.core.rotation.y += dt * (d.prog > 0 ? 3 : 0.5);
         m.core.position.y = 1.6 + Math.sin(this.time * 2) * 0.08;
@@ -359,6 +363,9 @@ Object.assign(Game.prototype, {
       this.devIntro(d, p);
     }
     this.devNear = near;
+    // 互動鍵按住的進度（上砲台、控制台、撿重武器；AI 音效的循環，音高跟著進度）
+    if (near && p && near.kind !== 'recharge' && near.prog > 0 && near.prog < 1 && this.act('interact'))
+      SFX.loopAt('devHold', '@dev_interact_hold', 0.4, 0.85 + near.prog * 0.4, p.pos);
     document.body.classList.toggle('devNear', !!near);
     if (p) {
       p.itHeld = !!near && this.act('interact'); // 單機／房主自己的機體（客機另外送輸入）

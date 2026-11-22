@@ -110,7 +110,8 @@ Object.assign(MechEntity.prototype, {
         const mz = this.muzzle('rarm');
         g.fx.warnLine(mz, pl.center(), 0.7, 0xffa030);
         g.fx.flash(mz, 0.9, 0xffa030, 0.7);
-        SFX.play('charge', 0.6, 1.4, 0.05, 0.05, this.center());
+        if (!SFX.aiPlay('foe_riveter_warn', 0.8, 1, 0.05, 0.05, this.center()))
+          SFX.play('charge', 0.6, 1.4, 0.05, 0.05, this.center());
       }
     } else if (s.rv === 1) {
       if (!this.canAct()) {
@@ -154,13 +155,14 @@ Object.assign(MechEntity.prototype, {
       imp.call(this, direct);
       if (direct && !direct.isProp && !direct.dead) {
         direct.addStatus?.('stick', 3, { dmg: 420 * me.dmgMul, impact: 750 * me.dmgMul });
+        SFX.aiPlay('foe_riveter_stick', 0.9, 1, 0.05, 0.05, direct.center());
         g.fx.ring(direct.center(), 1.2, 0xffa030);
         me.aiState.stuckN = (me.aiState.stuckN || 0) + 1; // 冒煙測試用：黏上幾次
       }
     };
     g.projectiles.push(p);
     g.fx.muzzle(mz, v.clone().normalize(), 0xffa030, 1.4);
-    SFX.play('pistol', 0.8, 0.7, 0.05, 0.05, mz);
+    if (!SFX.aiPlay('foe_riveter_fire', 0.9, 1, 0.05, 0.05, mz)) SFX.play('pistol', 0.8, 0.7, 0.05, 0.05, mz);
   },
   // ---------- 電焊 MT ----------
   welderFire_b2(dt, d, pl) {
@@ -178,7 +180,8 @@ Object.assign(MechEntity.prototype, {
         const tp = this.muzzle('rarm');
         g.fx.warnLine(tp, pl.center(), 0.8, 0x60a8ff);
         g.fx.streaks(tp, 8, 0x9fd0ff, 6, 0.3, 10);
-        SFX.play('charge', 0.6, 1.8, 0.05, 0.05, this.center());
+        if (!SFX.aiPlay('foe_welder_warn', 0.8, 1, 0.05, 0.05, this.center()))
+          SFX.play('charge', 0.6, 1.8, 0.05, 0.05, this.center());
       }
     } else if (s.wd === 1) {
       if (!this.canAct()) {
@@ -191,7 +194,8 @@ Object.assign(MechEntity.prototype, {
           s.tick = 0;
           s.drT = 0;
           s.arcTgt = pl;
-          SFX.play('laser2', 0.7, 0.8, 0.05, 0.05, this.center());
+          if (!SFX.aiPlay('foe_welder_arc_start', 0.9, 1, 0.05, 0.05, this.center()))
+            SFX.play('laser2', 0.7, 0.8, 0.05, 0.05, this.center());
         } else {
           s.wd = 0;
           s.wdT = 1.5;
@@ -201,7 +205,10 @@ Object.assign(MechEntity.prototype, {
       const t = s.arcTgt;
       const gone = !t || t.dead || t.pos.distanceTo(this.pos) > ARC_R || !this.canAct();
       if (gone || s.wdT <= 0) {
-        if (gone && t && !t.dead) g.fx.spark(this.muzzle('rarm'), 0x9fd0ff);
+        if (gone && t && !t.dead) {
+          g.fx.spark(this.muzzle('rarm'), 0x9fd0ff);
+          SFX.aiPlay('foe_welder_arc_break', 0.8, 1, 0.05, 0.05, this.muzzle('rarm'));
+        }
         s.wd = 0;
         s.wdT = rnd(4, 5);
         s.arcTgt = null;
@@ -247,7 +254,8 @@ Object.assign(MechEntity.prototype, {
         s.mistT = 0;
         s.aimP = pl.center();
         g.fx.warnLine(this.muzzle('rarm'), pl.center(), 1.2, 0xe8f4ff, 0.1);
-        SFX.play('splash', 0.7, 0.6, 0.05, 0.05, this.center());
+        if (!SFX.aiPlay('foe_watercannon_charge', 0.9, 1, 0.05, 0.05, this.center()))
+          SFX.play('splash', 0.7, 0.6, 0.05, 0.05, this.center());
       }
     } else if (s.wc === 1) {
       // 蓄水：瞄準點跟著目標，發射前 0.2 秒鎖住
@@ -315,11 +323,13 @@ Object.assign(MechEntity.prototype, {
         'kin',
       );
       s.hitN = (s.hitN || 0) + 1; // 冒煙測試用
+      SFX.aiPlay('foe_watercannon_hit', 1, 1, 0.05, 0.05, best.center());
     }
     g.fx.beam(mz, end, 0x9fd0f0, 0.3);
     g.fx.streaks(end, 16, 0xe8f6ff, 14, 0.6, 20, dv.clone().negate(), 0.9);
     g.fx.dust(end, 2.2, 10, 0xe8f6ff);
-    SFX.play('splash', 1, 1.1, 0.05, 0.05, mz);
+    if (!SFX.aiPlay('foe_watercannon_blast', 1, 1, 0.05, 0.05, mz))
+      SFX.play('splash', 1, 1.1, 0.05, 0.05, mz);
     this.bx = [+(best ? bu : L).toFixed(1)];
   },
   // ---------- 渦輪吸入機 ----------
@@ -355,7 +365,8 @@ Object.assign(MechEntity.prototype, {
         const p = this.pos.clone();
         g.fx.warnCircle(p, SUCK_R, 1.5, 0x60c0ff);
         g.netEv({ t: 'warn', p: p.toArray().map((x) => +x.toFixed(2)), R: SUCK_R, dl: 1.5, c: 0x60c0ff });
-        SFX.play('engineHi', 0.8, 0.7, 0.05, 0.05, this.center());
+        if (!SFX.aiPlay('foe_turbine_warn', 0.9, 1, 0.05, 0.05, this.center()))
+          SFX.play('engineHi', 0.8, 0.7, 0.05, 0.05, this.center());
       }
     } else if (s.tb === 1) {
       if (!this.canAct()) {
@@ -369,7 +380,8 @@ Object.assign(MechEntity.prototype, {
         const p = this.pos.clone();
         s.zone = g.addZone?.('suction', p, SUCK_R, 6, { to: p.clone(), pull: 9 * DS }) ?? null;
         s.suckN = (s.suckN || 0) + 1; // 冒煙測試用
-        SFX.play('engineHi', 1, 1.1, 0.05, 0.05, this.center());
+        if (!SFX.aiPlay('foe_turbine_suck', 1, 1, 0.05, 0.05, this.center()))
+          SFX.play('engineHi', 1, 1.1, 0.05, 0.05, this.center());
       }
     } else {
       // 吸入中：葉片附近的機體受傷；水面的漩渦（會轉送的 fx）
@@ -451,7 +463,8 @@ Object.assign(MechEntity.prototype, {
         g.fx.warnCircle(p, 14 * MS, 1.5, 0x60e8ff);
         g.netEv({ t: 'warn', p: p.toArray().map((x) => +x.toFixed(2)), R: 14 * MS, dl: 1.5, c: 0x60e8ff });
         g.fx.streaks(this.center(), 10, 0x9ff4ff, 8, 0.4, 6);
-        SFX.play('charge', 0.8, 1.2, 0.05, 0.05, this.center());
+        if (!SFX.aiPlay('foe_eel_charge', 0.9, 1, 0.05, 0.05, this.center()))
+          SFX.play('charge', 0.8, 1.2, 0.05, 0.05, this.center());
       }
     } else if (s.el === 1) {
       wish.set(0, 0, 0);
@@ -466,7 +479,8 @@ Object.assign(MechEntity.prototype, {
         s.zapN = (s.zapN || 0) + 1; // 冒煙測試用
         g.fx.shockwave(p, 14, 0x60e8ff, 0.5);
         g.fx.flash(this.center(), 3, 0x9ff4ff, 0.2);
-        SFX.play('laser2', 1, 0.6, 0.05, 0.05, this.center());
+        if (!SFX.aiPlay('foe_eel_discharge', 1, 1, 0.05, 0.05, this.center()))
+          SFX.play('laser2', 1, 0.6, 0.05, 0.05, this.center());
       }
     } else {
       wish.set(0, 0, 0);
@@ -493,7 +507,8 @@ Object.assign(MechEntity.prototype, {
     const near = d < BUOY_R + pl.radius && Math.abs(pl.pos.y - this.pos.y) < 3.5 * MS;
     if (near) {
       s.fuse = 0.4;
-      SFX.play('bell', 0.9, 1.6, 0.05, 0.05, this.center());
+      if (!SFX.aiPlay('foe_buoy_fuse', 1, 1, 0.05, 0.05, this.center()))
+        SFX.play('bell', 0.9, 1.6, 0.05, 0.05, this.center());
       this.game.fx.flash(this.center(), 1.4, 0xff3020, 0.4);
     }
     this.bossVis = d < 12 * DS ? 1 : 0;

@@ -4,7 +4,8 @@
 //  - 主線的敘事：章名卡、轉場標題與說明、簡報、抉擇、記憶片段、結局、片尾、下一周目
 //  - 結果畫面的標題與評價
 // 設定「文字演出」（ctrl.tfx）：full 完整／simple 簡化（較低解析度、沒有光暈與模糊）／off 關閉（原本的畫面）
-import { TextFx, preloadFonts, revealDom, revealFinish } from '../render/textfx.js';
+import { SFX } from '../audio/audio.js';
+import { TextFx, preloadFonts, revealDom, revealFinish, revealTickPump } from '../render/textfx.js';
 import { SORTIES } from '../data/campaign.js';
 import { FACTIONS, REGIONS, SPEAKERS } from '../data/story.js';
 import { Game } from './game.js';
@@ -60,6 +61,7 @@ Object.assign(Game.prototype, {
     this.tfxLast = now;
     // 全畫面的載入畫面蓋著時（render-setup.js 的 loadCover）時間不走：作戰開始的橫幅等載入畫面拿掉才開始播
     this.textfx.tick(this.lcOn ? 0 : dt, this.state);
+    revealTickPump(); // 逐字的打字聲
   },
   // 播一個演出；回傳 false＝關閉（呼叫端改用原本的畫面）
   tfx(cue, main, sub, opt) {
@@ -120,6 +122,11 @@ Object.assign(Game.prototype, {
               ? 'ABORTED'
               : 'MISSION FAILED';
     $('rKick').textContent = kick;
+    // 結果畫面的聲音（AI 音效；沒有時照舊不出聲）：出現（失敗＝失敗音）→ 數字 → 評價蓋章
+    if (res === 'fail') SFX.aiPlay('mission_fail', 0.8, 1, 0.02, 0.5, null, 'ui');
+    else SFX.aiPlay('result_show', 0.7, 1, 0.02, 0.5, null, 'ui');
+    SFX.aiPlay('result_count', 0.35, 1, 0.02, 0.5, null, 'ui', 0.35);
+    if (/^[SABCD]$/.test(rank)) SFX.aiPlay('result_rank', 0.8, 1, 0.02, 0.5, null, 'ui', 0.9);
     box.dataset.res = res;
     box.dataset.rank = /^[SABCD]$/.test(rank) ? rank : rank === 'WIN' || rank === 'LOSE' ? 'word' : 'none';
   },

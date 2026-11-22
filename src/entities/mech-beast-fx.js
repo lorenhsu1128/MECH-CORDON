@@ -22,6 +22,8 @@ const VOICE = {
   scorpion: ['~chitter', 0.82, 0.5],
   mantis: ['~chitter', 1.2, 0.45],
 };
+// 只有一個片段的動作的自製音效（beast_<獸>_<事件>）
+const CLIP_SND = { uFlip: 'flip', gThrow: 'throw', mHover: 'hover', rTakeoff: 'takeoff' };
 // 出手那一下的特效種類（照招式的名稱）：claw 爪／鐮／翼刃、bite 咬／啄／夾、sting 尾刺、spin 迴旋與甩尾、slam 砸地（其他）
 const kindOf = (name, M) =>
   /Sting/.test(name)
@@ -120,6 +122,8 @@ Object.assign(MechEntity.prototype, {
       v = this.beastVoiceOf(),
       wt = v[2];
     const kind = kindOf(name, M);
+    // 自製音效：每一招自己的聲音（beast_<獸>_<招式名稱的小寫>）；有的話不播下面合成的兩層
+    const ai = this.bossSnd(name.toLowerCase(), 1, c, 0.05);
     const up = V(c.x, c.y + Math.min(2.5, R * 0.35), c.z);
     const left = /L$/.test(name);
     if (kind === 'claw') {
@@ -137,23 +141,23 @@ Object.assign(MechEntity.prototype, {
         );
       fx.streaks(up, 14, 0xffe0b0, 26, 0.3, 26);
       fx.flash(up, (R * 0.35) / K, acc, 0.1);
-      this.beastSnd('~claw', 0.9, 0.85 + (1 - wt) * 0.5, up);
-      this.beastSnd('~thB', 0.5 * wt + 0.2, 0.9, up);
+      if (!ai) this.beastSnd('~claw', 0.9, 0.85 + (1 - wt) * 0.5, up);
+      if (!ai) this.beastSnd('~thB', 0.5 * wt + 0.2, 0.9, up);
     } else if (kind === 'spin') {
       // 迴旋：一整圈的刀光＋貼地的衝擊環與揚塵
       fx.slash(up, this.yaw, 360, R, acc, false, 0.12, 0.34, true);
       fx.shockwave(c, R / K, acc, 0.4);
       fx.dust(c, (R * 0.5) / K, 12);
-      this.beastSnd('~claw', 1, 0.6 + (1 - wt) * 0.3, up);
-      this.beastSnd('~thC', 0.6, 1, c);
+      if (!ai) this.beastSnd('~claw', 1, 0.6 + (1 - wt) * 0.3, up);
+      if (!ai) this.beastSnd('~thC', 0.6, 1, c);
     } else if (kind === 'bite') {
       // 咬合／夾：白色的閃光＋往兩側噴的火花＋金屬的喀
       fx.flash(up, (R * 0.4) / K, 0xfff0d0, 0.09);
       fx.star && fx.star(up, (R * 0.3) / K, 0xfff0d0);
       fx.streaks(up, 18, 0xffd890, 30, 0.28, 30);
       fx.spark(up, acc);
-      this.beastSnd('~tink3', 1, 0.55, up);
-      this.beastSnd('~thB', 0.7, 0.8, up);
+      if (!ai) this.beastSnd('~tink3', 1, 0.55, up);
+      if (!ai) this.beastSnd('~thB', 0.7, 0.8, up);
     } else if (kind === 'sting') {
       // 尾刺：從上往下的一道光＋點綴色的濺射＋地上的坑
       fx.streaks(V(c.x, c.y + R * 1.2, c.z), 10, acc, 40, 0.22, 0, V(0, -1, 0), 0.25);
@@ -161,8 +165,8 @@ Object.assign(MechEntity.prototype, {
       fx.shockwave(c, (R * 0.7) / K, acc, 0.3);
       fx.streaks(c, 12, acc, 18, 0.4, 24);
       if (fx.rich && fx.crater) fx.crater(c.x, c.y, c.z, R * 0.8);
-      this.beastSnd('~zapC', 0.8, 0.7, c);
-      this.beastSnd('~thB', 0.8, 0.75, c);
+      if (!ai) this.beastSnd('~zapC', 0.8, 0.7, c);
+      if (!ai) this.beastSnd('~thB', 0.8, 0.75, c);
     } else {
       // 砸地／衝撞：衝擊環、沙柱與揚塵、裂開的坑、飛起來的碎屑
       const big = kind === 'slam';
@@ -174,8 +178,8 @@ Object.assign(MechEntity.prototype, {
       }
       fx.streaks(V(c.x, c.y + 0.5, c.z), big ? 16 : 8, 0xd8c8a8, 22, 0.5, 40);
       if (big) fx.flash(V(c.x, c.y + 1, c.z), (R * 0.3) / K, acc, 0.1);
-      this.beastSnd('~thC', 1, 0.75 + (1 - wt) * 0.3, c);
-      this.beastSnd('heavy', 0.7, 0.75, c);
+      if (!ai) this.beastSnd('~thC', 1, 0.75 + (1 - wt) * 0.3, c);
+      if (!ai) this.beastSnd('heavy', 0.7, 0.75, c);
     }
     // 近的時候鏡頭震動（各端依自己的玩家）
     const p = g.player;
@@ -216,7 +220,7 @@ Object.assign(MechEntity.prototype, {
     if (!S.born) {
       S.born = true;
       if (!this.dead) {
-        this.beastVoice(1, 1);
+        if (!this.bossSnd('roar_intro', 1, c0, 0.25)) this.beastVoice(1, 1);
         fx.shockwave(this.pos.clone(), (this.radius * 1.6) / K, acc, 0.6);
       }
     }
@@ -224,7 +228,7 @@ Object.assign(MechEntity.prototype, {
     const ph = this.dead ? S.ph : this.bossPhase ? this.bossPhase() : 1;
     if (ph > S.ph) {
       S.ph = ph;
-      this.beastVoice(1, 0.86);
+      if (!this.bossSnd('roar_phase', 1, c0, 0.25)) this.beastVoice(1, 0.86);
       fx.shockwave(this.pos.clone(), (this.radius * 2.2) / K, acc, 0.7);
       fx.flash(c0, (this.radius * 0.9) / K, acc, 0.25);
       fx.streaks(c0, 26, acc, 30, 0.6, 12);
@@ -234,16 +238,24 @@ Object.assign(MechEntity.prototype, {
     const M = name && B.melee ? B.melee[name] : null;
     if (name !== S.name) {
       S.name = name;
-      if (name === (B.death || 'death')) this.beastVoice(1, 0.7);
-      else if (name === (B.stag || 'stagger')) {
-        this.beastVoice(0.8, 1.35);
+      // 自製音效（beast_<獸>_<事件>）有的話不播合成的吼聲；獅型亂入（房主與單機才知道）用亂入的咬與吼
+      const raid = !!(this.aiState && this.aiState.raid);
+      if (name && CLIP_SND[name]) this.bossSnd(CLIP_SND[name], 1, c0, 0.2); // 翻倒、丟東西、飛起來、起飛
+      if (name === (B.death || 'death')) {
+        if (!this.bossSnd('death', 1, c0, 0.25)) this.beastVoice(1, 0.7);
+      } else if (name === (B.stag || 'stagger')) {
+        if (!this.bossSnd('stagger', 1, c0, 0.25)) this.beastVoice(0.8, 1.35);
         fx.streaks(c0, 16, 0xffe0a0, 24, 0.4, 30);
-      } else if (M)
-        this.beastVoice(0.55, 1, '~growl'); // 出招前的低吼（每隻的音高不同）
-      else if (name && ROAR.test(name)) {
-        this.beastVoice(0.95, 1);
+      } else if (raid && name === 'bite') this.bossSnd('raid_bite', 1, c0, 0.25);
+      else if (raid && name === 'roar') {
+        if (!this.bossSnd('raid_roar', 1, c0, 0.25)) this.beastVoice(0.95, 1);
+      } else if (M) {
+        if (!this.bossSnd('growl', 0.8, c0, 0.25)) this.beastVoice(0.55, 1, '~growl'); // 出招前的低吼（每隻的音高不同）
+      } else if (name && ROAR.test(name)) {
+        if (!this.bossSnd('roar_clip', 1, c0, 0.25)) this.beastVoice(0.95, 1);
         fx.shockwave(c0, (this.radius * 1.4) / K, acc, 0.5);
-      }
+      } else if (name && /^[a-z]?Hit$|^hit$/.test(name)) this.bossSnd('hurt', 0.9, c0, 0.25);
+      else if (name && /^dg/.test(name)) this.bossSnd('dodge', 0.9, c0, 0.25); // 閃避（側跳、後跳、伏低）
     }
     // ---- 出手那一下（片段的時間跨過出手的時間；連打每一下都有）----
     if (M && !this.dead) {
@@ -266,16 +278,24 @@ Object.assign(MechEntity.prototype, {
       fx.dust(this.pos.clone(), (this.radius * 0.8) / K, 14);
       fx.shockwave(this.pos.clone(), (this.radius * 1.1) / K, 0xd8c8a8, 0.4);
       if (fx.rich && fx.groundBlast) fx.groundBlast(this.pos.clone(), (this.radius * 0.4) / K, false);
-      this.beastSnd('~thC', 0.9, 0.8 + (1 - wt) * 0.3, this.pos);
-      this.beastSnd('~bstep', 0.8, 0.9, this.pos);
+      if (!this.bossSnd('land', 1, this.pos.clone(), 0.2)) {
+        this.beastSnd('~thC', 0.9, 0.8 + (1 - wt) * 0.3, this.pos);
+        this.beastSnd('~bstep', 0.8, 0.9, this.pos);
+      }
     }
     S.air = air;
+    // ---- 循環音：在空中盤旋（猛禽）、鑽在地下移動（蠍）----
+    if (!this.dead) {
+      if ((this.bossVis || 0) & 32) this.bossLoop('glide_loop', 0.6);
+      if (name === 'sBurrow' || (rig.kind === 'scorpion' && !this.mesh.visible))
+        this.bossLoop('burrow_loop', 0.7);
+    }
     // ---- 拍翼（在空中飛的）----
     if ((this.bossVis || 0) & 32 && !this.dead) {
       S.flap -= dt;
       if (S.flap <= 0) {
         S.flap = 0.58;
-        this.beastSnd('~flap', 0.7, 1, c0, 0.2);
+        if (!this.bossSnd('flap', 0.8, c0, 0.2)) this.beastSnd('~flap', 0.7, 1, c0, 0.2);
         // 飛得低的時候把地上的沙塵吹開
         if (gap < 14 && fx.downwash)
           fx.downwash(this.pos.x, this.pos.y - gap, this.pos.z, sc, clamp(1 - gap / 14, 0, 1));
@@ -297,7 +317,8 @@ Object.assign(MechEntity.prototype, {
         p.y = w.groundAt(p.x, p.z, this.pos.y + 1.2 * MS);
         const run = clamp(Math.abs(F.v) / ((B.run || 60) * 0.8), 0.3, 1);
         fx.dust(p, (this.radius * 0.16 * (0.6 + run * 0.6)) / K, run > 0.7 ? 6 : 4);
-        this.beastSnd('~bstep', (0.25 + 0.5 * wt) * (0.6 + 0.4 * run), 1.5 - 0.6 * wt, p, 0.04);
+        const sv = (0.25 + 0.5 * wt) * (0.6 + 0.4 * run);
+        if (!this.bossSnd('step', sv * 1.3, p, 0.04)) this.beastSnd('~bstep', sv, 1.5 - 0.6 * wt, p, 0.04);
         const pl = g.player;
         if (pl && !pl.dead && wt > 0.6) {
           const d = Math.hypot(pl.pos.x - p.x, pl.pos.z - p.z);

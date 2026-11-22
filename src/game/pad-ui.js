@@ -111,7 +111,7 @@ Object.assign(Game.prototype, {
     try {
       el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     } catch (e) {}
-    if (!quiet) SFX.ui && SFX.ui();
+    if (!quiet) SFX.ui && SFX.ui('focus');
   },
   padUiClear() {
     if (this.puEl) this.puEl.classList.remove('padFocus');
@@ -195,7 +195,7 @@ Object.assign(Game.prototype, {
       el.selectedIndex = i;
       el.dispatchEvent(new Event('input', { bubbles: true }));
       el.dispatchEvent(new Event('change', { bubbles: true }));
-      SFX.ui && SFX.ui();
+      SFX.ui && SFX.ui('adjust');
       return true;
     }
     if (el.tagName === 'INPUT' && (el.type === 'range' || el.type === 'number')) {
@@ -206,6 +206,7 @@ Object.assign(Game.prototype, {
       el.value = String(+v.toFixed(6));
       el.dispatchEvent(new Event('input', { bubbles: true }));
       el.dispatchEvent(new Event('change', { bubbles: true }));
+      SFX.ui && SFX.ui('adjust');
       return true;
     }
     return false;
@@ -258,6 +259,7 @@ Object.assign(Game.prototype, {
       );
       if (i < 0) i = items.indexOf(this.puEl);
       const nx = items[(i + d + items.length) % items.length];
+      SFX.uiBtn && SFX.uiBtn('tab'); // 之後 click 的全域按鈕音在 0.05 秒內不重複
       nx.click();
       this.padUiFocus(nx, true);
       return;
@@ -385,6 +387,7 @@ Object.assign(Game.prototype, {
     }
     el.innerHTML = `<div class="panel"><p>${escHtml(text)}</p><div class="row"><button class="primary" data-um="1">${escHtml(yes)}</button><button data-um="0">${escHtml(no)}</button></div></div>`;
     el.classList.add('on');
+    SFX.ui && SFX.ui(null, 'ui_panel_open');
     this.uiModalOn = { el, onYes };
     el.onclick = (e) => {
       const b = e.target.closest('[data-um]');

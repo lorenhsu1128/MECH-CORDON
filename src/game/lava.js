@@ -10,7 +10,9 @@ Object.assign(Game.prototype, {
   lavaTick(dt) {
     const w = this.world,
       L = w && w.theme && w.theme.lava;
-    if (!L || this.isClient) return;
+    if (!L) return;
+    this.lavaSndTick(dt, L.y * WS);
+    if (this.isClient) return;
     const y0 = L.y * WS;
     this.lavaAcc = (this.lavaAcc || 0) + dt;
     if (this.lavaAcc < LAVA_DT) return;
@@ -24,11 +26,42 @@ Object.assign(Game.prototype, {
       if (w.terrainHeight(e.pos.x, e.pos.z) > y0 + 0.2 * MS) continue; // 站在熔岩上的結構（橋、平台）
       e.takeDamage(e.maxHp * L.dps * step, 0, null, e.center(), null, null, null, 'none');
       this.fx.spark(e.pos.clone().setY(y0 + 0.5), 0xff8030);
+      if (e === this.player) this.lavaBurnT = LAVA_DT + 0.15; // 受傷中的循環（lavaSndTick）
       if (e.isPlayer && !this.lavaTold) {
         this.lavaTold = true;
         this.flashAlert('熔岩：站在裡面會持續受傷 — 跳起來或離開');
-        SFX.play('alarm', 0.4, 1.4, 0.05, 0.3, e.pos);
+        if (!SFX.aiVar('lava_burn').length) SFX.play('alarm', 0.4, 1.4, 0.05, 0.3, e.pos);
       }
+    }
+  },
+  // 熔岩的聲音（AI 音效的循環；各端自己算）：附近熔岩的冒泡與流動、自己站在熔岩裡受傷
+  lavaSndTick(dt, y0) {
+    if (!SFX.lpos) return;
+    const w = this.world,
+      L = SFX.lpos;
+    this.lavaSndT = (this.lavaSndT || 0) - dt;
+    if (this.lavaSndT <= 0) {
+      // 每 0.5 秒找一次聽者附近最近的熔岩（中心與周圍兩圈取樣）
+      this.lavaSndT = 0.5;
+      let best = null,
+        bd = 1e9;
+      for (const r of [0, 12 * MS, 28 * MS])
+        for (let i = 0; i < (r ? 8 : 1); i++) {
+          const a = (i / 8) * Math.PI * 2;
+          const x = L.x + Math.cos(a) * r,
+            z = L.z + Math.sin(a) * r;
+          if (w.terrainHeight(x, z) > y0 - 0.05 * MS) continue;
+          if (r < bd) {
+            bd = r;
+            best = { x, z };
+          }
+        }
+      this.lavaSndP = best ? new THREE.Vector3(best.x, y0, best.z) : null;
+    }
+    if (this.lavaSndP) SFX.loopAt('lavaBub', '@lava_bubble_loop', 0.5, 1, this.lavaSndP);
+    if (this.lavaBurnT > 0 && this.player) {
+      this.lavaBurnT -= dt;
+      SFX.loopAt('lavaBurn', '@lava_burn', 0.6, 1, this.player.pos);
     }
   },
 });

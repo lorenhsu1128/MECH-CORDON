@@ -50,6 +50,23 @@ import { CINE_EXPO, shotKey } from '../data/cine/exposure.js';
 import { CINE_CROWD } from '../data/cine/crowd.js';
 import { Game } from './game.js';
 
+// 劇本的音效鍵 → AI 音效（docs/sfx-inventory/general.md 第 6-C 節）；事件自己的 ai 優先
+const CINE_AI = {
+  thud1: 'cine_hit',
+  thud2: 'cine_hit',
+  heavy: 'cine_heavy',
+  glitch: 'cine_glitch',
+  distant: 'cine_distant_war',
+  alarm: 'cine_alarm',
+  alarmBig: 'cine_alarm',
+  bell: 'cine_bell',
+  door: 'cine_hatch',
+  boostUp: 'cine_mech_boost',
+  thrBurst: 'cine_mech_boost',
+  boom1: 'cine_hit',
+  explode: 'cine_explosion',
+};
+
 const $ = (id) => document.getElementById(id);
 const V = (a) => new THREE.Vector3(a[0], a[1], a[2]);
 const smooth = (x) => x * x * (3 - 2 * x);
@@ -1309,20 +1326,26 @@ Object.assign(Game.prototype, {
       const A = c.actors.get(ev.a);
       if (A) this.cineDo(A, ev);
     }
-    if (ev.sfx) {
+    if (ev.sfx || ev.ai) {
       const pos = ev.at ? this.cinePt(ev.at) : null;
-      SFX.play(
-        ev.sfx,
-        ev.vol == null ? 1 : ev.vol,
-        ev.rate || 1,
-        0.02,
-        0,
-        pos,
-        pos ? null : 'ui',
-        ev.delay || 0,
-      );
+      const vol = ev.vol == null ? 1 : ev.vol;
+      // AI 音效（docs/sfx-inventory/general.md 第 6-C 節）：ev.ai＝這個事件專屬的鍵，沒有時照舊鍵對應（CINE_AI）；
+      // aiOff＝那個 AI 音效有的時候這一聲不播（組合音的其他層）。AI 音效照原本的音高做，不套 rate
+      const ak = ev.ai || (ev.aiOff ? null : CINE_AI[ev.sfx]);
+      const off = ev.aiOff && SFX.aiVar(ev.aiOff).length;
+      const ok = !off && ak && SFX.aiPlay(ak, vol, 1, 0.02, 0, pos, pos ? null : 'ui', ev.delay || 0);
+      if (!off && !ok && ev.sfx)
+        SFX.play(ev.sfx, vol, ev.rate || 1, 0.02, 0, pos, pos ? null : 'ui', ev.delay || 0);
     }
-    if (ev.loop !== undefined) SFX.loopSet('cine', ev.loopKey || 'engineLoop', ev.loop, ev.rate || 1);
+    if (ev.loop !== undefined) {
+      // 循環：loopAi＝AI 音效的鍵（有就用它）；停止（loop 0）用開始時的那一個
+      if (ev.loop > 0) {
+        const ai = ev.loopAi && SFX.aiVar(ev.loopAi).length;
+        c.loopK = ai ? '@' + ev.loopAi : ev.loopKey || 'engineLoop';
+        c.loopR = ai ? 1 : ev.rate || 1;
+      }
+      SFX.loopSet('cine', c.loopK || ev.loopKey || 'engineLoop', ev.loop, c.loopR || ev.rate || 1);
+    }
     if (ev.boom) {
       const p = this.cinePt(ev.boom);
       const big = !!ev.big;
@@ -1334,7 +1357,8 @@ Object.assign(Game.prototype, {
           big,
           this.world ? this.world.groundAt(p.x, p.z, p.y) : null,
         );
-      SFX.explode(big ? 'huge' : true, ev.near ? null : p);
+      if (!SFX.aiPlay('cine_explosion', big ? 1 : 0.8, 1, 0.05, 0, ev.near ? null : p))
+        SFX.explode(big ? 'huge' : true, ev.near ? null : p);
       c.shake = Math.max(c.shake, ev.shake == null ? (big ? 0.6 : 0.3) : ev.shake);
     }
     if (ev.fx) this.cineFx(ev);
@@ -1461,6 +1485,7 @@ Object.assign(Game.prototype, {
       c.commEx = lineExpr(text, { sp: who });
     }
     if (who && who !== 'station' && radio) SFX.radio();
+    else if (who === 'station') SFX.aiPlay('radio_station', 0.45, 1, 0.03, 0.15, null, 'ui'); // 軌道站的機械語音段落
     c.subUntil = c.t + dur;
     // 對白：語音還在解碼時配樂就先開始壓低（唸出來之後由 voicePlay 延長到唸完）
     const M = this.voiceMix ? this.voiceMix() : null;

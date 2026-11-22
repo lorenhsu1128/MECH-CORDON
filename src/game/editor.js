@@ -596,6 +596,7 @@ Object.assign(Game.prototype, {
     const def = placeById(ed.place);
     if (!def) return;
     this.edPush();
+    SFX.aiPlay('editor_place', 0.6, 1, 0.04, 0.04, null, 'ui');
     const sn = (v) => (ed.snap ? Math.round(v / ed.snap) * ed.snap : v);
     const p = {
       t: def.id,
@@ -621,6 +622,7 @@ Object.assign(Game.prototype, {
     if (ed.unitKind === 'boss' && cur.units.some((u) => u.kind === 'boss'))
       return this.edMsg('每一段最多放一隻 Boss', true);
     this.edPush();
+    SFX.aiPlay('editor_place', 0.6, 1, 0.04, 0.04, null, 'ui');
     if (!cur.groups.length) cur.groups.push({ id: 'g1', name: 'A 隊', color: GROUP_COLORS[0] });
     if (!cur.groups.some((g) => g.id === ed.grp)) ed.grp = cur.groups[0].id;
     let n = cur.units.length + 1;
@@ -657,6 +659,7 @@ Object.assign(Game.prototype, {
     if (K.max && cur.marks.filter((m) => m.k === ed.markKind).length >= K.max)
       return this.edMsg(`${K.name}最多 ${K.max} 個`, true);
     this.edPush();
+    SFX.aiPlay('editor_place', 0.6, 1, 0.04, 0.04, null, 'ui');
     let n = cur.marks.length + 1;
     while (cur.marks.some((m) => m.id === 'm' + n)) n++;
     const cnt = cur.marks.filter((m) => m.k === ed.markKind).length + 1;
@@ -793,6 +796,7 @@ Object.assign(Game.prototype, {
     }
   },
   edBrushStep(dt) {
+    SFX.menuLoop('edBrush', '@editor_brush_loop', 0.35); // 地形筆刷拖曳中（放開就淡出）
     const ed = this.ed,
       w = this.world,
       S = ed.stroke,
@@ -963,6 +967,7 @@ Object.assign(Game.prototype, {
     const from = redo ? ed.redo : ed.undo,
       to = redo ? ed.undo : ed.redo;
     if (!from.length) return this.edMsg(redo ? '沒有可以重做的' : '沒有可以復原的');
+    SFX.aiPlay('editor_undo', 0.5, redo ? 1.08 : 1, 0.02, 0.04, null, 'ui');
     const prevBase = JSON.parse(JSON.stringify(this.edCur().base));
     to.push(this.edSnap());
     const o = JSON.parse(from.pop());
@@ -1200,6 +1205,7 @@ Object.assign(Game.prototype, {
       s = ed.sel;
     if (!s) return;
     this.edPush();
+    SFX.aiPlay('editor_delete', 0.6, 1, 0.04, 0.04, null, 'ui');
     if (s.t === 'prop') cur.props.splice(s.i, 1);
     else if (s.t === 'unit') cur.units.splice(s.i, 1);
     else if (s.t === 'mark') {

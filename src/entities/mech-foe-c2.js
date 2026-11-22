@@ -161,7 +161,8 @@ Object.assign(MechEntity.prototype, {
     at.y = g.world.groundAt(at.x, at.z, at.y + 1.5 * MS);
     const nz = this.pos.clone().setY(this.pos.y + 1.0 * MS);
     g.fx.streaks(nz, 16, 0x8a5a20, 11, 0.6, 12, at.clone().sub(nz).normalize(), 0.6);
-    SFX.play('door', 0.6, 1.4, 0.05, 0.05, this.center());
+    if (!SFX.aiPlay('foe_fueler_spill', 0.9, 1, 0.05, 0.05, this.center()))
+      SFX.play('door', 0.6, 1.4, 0.05, 0.05, this.center());
     const dps = FUEL.dps * this.dmgMul;
     // 油漬（game/hazards2.js）：FUEL.ignite 秒後變成燃燒地面，被爆發攻擊打到提早點燃
     g.addZone('fuel', at, FUEL.R, FUEL.life, {
@@ -185,7 +186,8 @@ Object.assign(MechEntity.prototype, {
         c.ph = 1;
         c.t = RACK.warn;
         g.fx.warnLine(this.muzzle('rarm'), pl.center(), RACK.warn, 0xff7030, 0.09);
-        SFX.play('ui2', 0.8, 0.7, 0.05, 0.05, this.center());
+        if (!SFX.aiPlay('foe_missilerack_warn', 0.9, 1, 0.05, 0.05, this.center()))
+          SFX.play('ui2', 0.8, 0.7, 0.05, 0.05, this.center());
       }
     } else if (c.ph === 1) {
       if (c.t <= 0) {
@@ -278,7 +280,8 @@ Object.assign(MechEntity.prototype, {
           c.aim = aim;
           const end = c.aim.clone().add(c.aim.clone().sub(mz).setLength(8));
           g.fx.warnLine(mz, end, NET.warn, NET_COL, 0.07);
-          SFX.play('ui2', 0.6, 1.3, 0.05, 0.05, this.center());
+          if (!SFX.aiPlay('foe_netter_warn', 0.8, 1, 0.05, 0.05, this.center()))
+            SFX.play('ui2', 0.6, 1.3, 0.05, 0.05, this.center());
         }
       }
     } else if (c.ph === 1) {
@@ -310,6 +313,7 @@ Object.assign(MechEntity.prototype, {
         if (!t.dead && !t.isProp && t.center().distanceTo(n.pos) < t.radius + NET.hitR) hit = t;
       if (hit) {
         hit.addStatus?.('net', NET.sec, { src: this.id });
+        SFX.aiPlay('foe_netter_hit', 1, 1, 0.05, 0.05, hit.center());
         c.hits = (c.hits || 0) + 1;
         g.fx.ring(hit.center(), 2.4, NET_COL);
         g.fx.streaks(hit.center(), 12, NET_COL, 6, 0.4, 4);
@@ -339,7 +343,7 @@ Object.assign(MechEntity.prototype, {
     c.net = p;
     c.n = (c.n || 0) + 1;
     g.fx.muzzle(mz, v.clone().normalize(), NET_COL, 1.6);
-    SFX.shot('grenade', undefined, mz);
+    if (!SFX.aiPlay('foe_netter_fire', 1, 1, 0.05, 0.05, mz)) SFX.shot('grenade', undefined, mz);
   },
   // ---------- 迴旋刃無人機 ----------
   boomerAI_c2(dt, d, dir, perp, wish, pl, c) {
@@ -362,7 +366,8 @@ Object.assign(MechEntity.prototype, {
           c.aimP = aim;
           c.to = aim.clone().add(aim.clone().sub(mz).setLength(BLADE.over));
           g.fx.warnLine(mz, c.to, BLADE.warn, BLADE_COL, 0.08);
-          SFX.play('ui2', 0.7, 1.6, 0.05, 0.05, this.center());
+          if (!SFX.aiPlay('foe_boomer_warn', 0.8, 1, 0.05, 0.05, this.center()))
+            SFX.play('ui2', 0.7, 1.6, 0.05, 0.05, this.center());
         }
       }
     } else if (c.ph === 1) {
@@ -378,7 +383,8 @@ Object.assign(MechEntity.prototype, {
           c.hitOut = new Set();
           c.hitBack = new Set();
           c.n = (c.n || 0) + 1;
-          SFX.meleeSwing('blade', 's', null, c.bp); // 迴旋刃擲出的風切聲
+          if (!SFX.aiPlay('foe_boomer_throw', 1, 1, 0.05, 0.05, c.bp))
+            SFX.meleeSwing('blade', 's', null, c.bp); // 迴旋刃擲出的風切聲
         } else {
           c.ph = 0;
           c.t = 1;
@@ -425,10 +431,12 @@ Object.assign(MechEntity.prototype, {
         'kin',
       );
       g.fx.meleeHit(c.bp.clone(), BLADE_COL, false, vdir.clone());
+      SFX.aiPlay('foe_boomer_hit', 1, 1, 0.05, 0.05, c.bp);
     }
     if (!c.back && L <= step + 0.5 * MS) c.back = true;
     else if (c.back && c.wp && L <= step + 0.5 * MS) c.wp = null;
     else if (c.back && !c.wp && c.bp.distanceTo(this.center()) < 1.2 * MS) {
+      SFX.aiPlay('foe_boomer_catch', 0.9, 1, 0.05, 0.05, this.center()); // 刃飛回來接住
       c.ph = 0;
       c.t = rnd(...BLADE.cd);
     }
@@ -457,7 +465,8 @@ Object.assign(MechEntity.prototype, {
           c.t = MIRROR.warn;
           c.aim = aim;
           g.fx.warnLine(mz, c.aim, MIRROR.warn, 0xfff080, 0.07);
-          SFX.play('charge', 0.6, 1.4, 0.05, 0.05, this.center());
+          if (!SFX.aiPlay('foe_mirror_charge', 0.9, 1, 0.05, 0.05, this.center()))
+            SFX.play('charge', 0.6, 1.4, 0.05, 0.05, this.center());
         }
       }
     } else if (c.ph === 1) {
@@ -480,6 +489,7 @@ Object.assign(MechEntity.prototype, {
             width: 0.14,
             pierce: false,
           });
+          SFX.aiPlay('foe_mirror_fire', 1, 1, 0.05, 0.05, mz); // beamAttack 本身沒有聲音
           c.n = (c.n || 0) + 1;
         }
         c.ph = 2;
@@ -512,7 +522,8 @@ Object.assign(MechEntity.prototype, {
           c.t = FOCUS.warn;
           c.tgt = pl;
           g.fx.warnLine(fz, tc, FOCUS.warn, 0xfff080, 0.09);
-          SFX.play('charge', 0.8, 0.8, 0.05, 0.05, this.center());
+          if (!SFX.aiPlay('foe_focus_warn', 0.9, 1, 0.05, 0.05, this.center()))
+            SFX.play('charge', 0.8, 0.8, 0.05, 0.05, this.center());
         }
       }
     } else if (c.ph === 1) {
@@ -535,7 +546,8 @@ Object.assign(MechEntity.prototype, {
           ramp: FOCUS.ramp,
           team: this.team,
         });
-        SFX.play('laserBig', 0.7, 0.9, 0.05, 0.05, mz);
+        if (!SFX.aiPlay('foe_focus_fire', 1, 1, 0.05, 0.05, mz))
+          SFX.play('laserBig', 0.7, 0.9, 0.05, 0.05, mz);
       }
     } else if (c.ph === 2) {
       const t = c.tgt;
@@ -546,6 +558,7 @@ Object.assign(MechEntity.prototype, {
       if (!tc || !this.canAct() || mz.distanceTo(tc) > FOCUS.range || !g.losClear(mz, tc)) {
         this.focusStop_c2(c, FOCUS.brk);
         c.broke = (c.broke || 0) + 1;
+        SFX.aiPlay('foe_focus_break', 0.8, 1, 0.05, 0.05, mz);
         if (tc) g.fx.spark(tc, 0xfff080);
       } else {
         g.moveZone(c.zone, mz); // 光束的起點跟著槍口（傷害與追蹤在 game/hazards2.js）

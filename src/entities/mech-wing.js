@@ -2,6 +2,7 @@
 // 僚機是友軍 AC（team ally、不會離場），wing＝角色的鍵。updateAI 的兩個掛勾（只在房主／單機）：
 // wingTarget（選好目標之後：集中攻擊時改成玩家鎖定的目標，跟著我／守住時不追遠的敵人）、
 // wingMove（離錨點太遠時先回去；倒地時什麼都不做）。倒地（wingDowned）：AP 歸零時不擊破，跪著等玩家救援。
+import { SFX } from '../audio/audio.js';
 import { DS } from '../core/scale.js';
 import { WING } from '../data/wingmen.js';
 import { MechEntity } from './mech-entity.js';
@@ -55,6 +56,7 @@ Object.assign(MechEntity.prototype, {
     this.hp = 1;
     this.noLock = true; // 敵人不再瞄準它
     this.iFrames = 1e9;
+    SFX.aiPlay('wing_downed', 1, 1, 0.03, 1, this.center()); // 僚機倒地（自製音效）
     this.game.wingOnDown(this);
     return true;
   },

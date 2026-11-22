@@ -175,7 +175,7 @@ Object.assign(Game.prototype, {
     else list.push({ id: o.id, lv: o.lv });
     this.campSetMods(list);
     this.writeSave();
-    SFX.ui();
+    SFX.ui(null, 'mod_take');
     this.flashMsg(`取得戰術模組：${modLabel(o.id, o.lv)}`, 0xffd060, 2.6);
     this.campClosePick();
   },
@@ -257,7 +257,7 @@ Object.assign(Game.prototype, {
           this.save.coam -= price;
           this.writeSave();
         }
-        SFX.ui();
+        SFX.ui(null, 'mod_take');
         onPick(this.modOpts[Number(b.dataset.i)]);
         this.campClosePick();
       };

@@ -277,6 +277,7 @@ Object.assign(Game.prototype, {
       if (!this.airBomberTold) {
         this.airBomberTold = true;
         this.flashAlert('轟炸機正飛向友軍雷達站 — 優先擊落！');
+        SFX.aiPlay('air_bomber_warn', 1, 1, 0.02, 1, null, 'ui'); // 自製音效
       }
     }
   },
@@ -446,6 +447,7 @@ Object.assign(Game.prototype, {
     if (hit) {
       S.chain += hit;
       this.flashMsg(`殘骸連鎖 ×${hit}`, 0xffc040, 1.2);
+      SFX.aiPlay('air_chain', 1, 1, 0.03, 0.3, c);
     }
   },
   // 結果畫面的列（endMission）
@@ -481,6 +483,7 @@ Object.assign(Game.prototype, {
     if (this.airBase && this.airBase.dead && this.state === 'play') {
       this.state = 'ending';
       this.flashMsg('友軍雷達站被摧毀', 0xff4d4d, 2.4, { k: 'warn', m: '任務失敗', s: '友軍雷達站被摧毀' });
+      SFX.aiPlay('air_radar_lost', 1, 1, 0.02, 1, null, 'ui');
       if (this.camp) return this.campDead(true); // 主線的空戰區段（seg-air.js）
       setTimeout(() => this.state === 'ending' && this.endMission(false, false), 1800);
       return;
@@ -491,7 +494,9 @@ Object.assign(Game.prototype, {
     this.airMlTick(p, dt);
     this.airSupplyTick(p, dt);
     if (this.airBase && this.airBase.dead && this.airBase.airZone) this.airBase.airZone.visible = false;
-    this.airInFlak = this.enemies.some((e) => !e.dead && e.ai === 'flak' && e.airFlakIn(p));
+    const flak = this.enemies.some((e) => !e.dead && e.ai === 'flak' && e.airFlakIn(p));
+    if (flak && !this.airInFlak) SFX.aiPlay('air_flak_dome', 0.9, 1, 0.02, 2, null, 'ui'); // 進入防空區
+    this.airInFlak = flak;
     if (!p.aam) return;
     p.aamTick(dt);
     const held = this.act('aam');
@@ -500,7 +505,8 @@ Object.assign(Game.prototype, {
     if (held && (!this.aamHeld || ok) && p.aamLaunch(p.lock)) this.playerFiredAt = 0.3;
     else if (held && !this.aamHeld && p.aam.n <= 0) this.flashMsg('空戰導彈用完了', 0xff8a8a, 1);
     this.aamHeld = held;
-    if (ok && !this.aamLockWas) SFX.tone(1760, 1760, 0.07, 0.16, 'square', 'ui'); // 鎖定音
+    if (ok && !this.aamLockWas && !SFX.aiPlay('air_lock_on', 0.8, 1, 0.01, 0.05, null, 'ui'))
+      SFX.tone(1760, 1760, 0.07, 0.16, 'square', 'ui'); // 鎖定音
     this.aamLockWas = ok;
     // 追著自己的導彈：警報（越近嗶得越快）
     const inc = [];
@@ -516,11 +522,13 @@ Object.assign(Game.prototype, {
       this.airMslT = (this.airMslT || 0) - dt;
       if (this.airMslT <= 0) {
         this.airMslT = clamp(tMin * 0.22, 0.07, 0.45);
-        SFX.tone(1180, 1180, 0.05, 0.2, 'square', 'ui');
+        if (!SFX.aiPlay('air_msl_warn', 0.8, 1, 0.01, 0.04, null, 'ui'))
+          SFX.tone(1180, 1180, 0.05, 0.2, 'square', 'ui');
       }
       // 第三級：快要打中（docs/audio-design.md 第 5 期）＝急促的警報＋ECHO
       if (tMin < 1.2 && !this.airMslHi) {
-        SFX.play('warnB', 0.5, 1.1, 0.02, 0.6, null, 'ui');
+        if (!SFX.aiPlay('air_msl_warn_hi', 0.9, 1, 0.01, 0.6, null, 'ui'))
+          SFX.play('warnB', 0.5, 1.1, 0.02, 0.6, null, 'ui');
         this.voiceCue('missile');
       }
       this.airMslHi = tMin < 1.2;
@@ -546,10 +554,19 @@ Object.assign(Game.prototype, {
         v = Math.hypot(vx, vy, vz);
       if (d > R || v < 25 * p.dk || this.time - (e.fbT || -9) < 2) continue;
       e.fbT = this.time;
+      const rate = clamp(0.85 + v / (180 * p.dk), 0.85, 1.35);
+      const fv = clamp(1.1 - d / R, 0.3, 1);
+      // 自製音效（照遊戲要的音高做的：只帶一點都卜勒）
+      if (
+        SFX.aiPlay('air_flyby', fv, 0.92 + (rate - 0.85) * 0.3, 0.03, 0.05, e.pos.clone(), null, 0, {
+          pr: 2,
+          send: 0.2,
+        })
+      )
+        continue;
       const k = SFX.pickKey(
         e.isBoss ? ['fly3', 'fly5'] : v > 70 * p.dk ? ['flyHi1', 'flyHi2', 'fly4'] : ['fly1', 'fly2', 'fly4'],
       );
-      const rate = clamp(0.85 + v / (180 * p.dk), 0.85, 1.35);
       if (k)
         SFX.play(k, clamp(1.1 - d / R, 0.3, 1), rate, 0.04, 0.05, e.pos.clone(), null, 0, {
           pr: 2,
@@ -637,6 +654,7 @@ Object.assign(Game.prototype, {
       D.told = true;
       this.commSay('echo', '敵機編隊發現我們了。牠們會輪流進攻，盯住正在咬你的那一台。');
     } else this.flashAlert('敵機編隊開始交戰');
+    SFX.aiPlay('air_wake', 1, 1, 0.02, 1, null, 'ui'); // 敵機編隊開始交戰（自製音效）
   },
   // 被咬尾（B3）：拿到名額的敵機在背後、機首對著自己、在射程附近
   airTailTick(p, dt) {
@@ -657,7 +675,8 @@ Object.assign(Game.prototype, {
       if (this.airTailT <= 0) {
         this.airTailT = 0.9;
         this.voiceCue('airLock');
-        SFX.tone(560, 470, 0.12, 0.14, 'triangle', 'ui');
+        if (!SFX.aiPlay('air_tail', 0.8, 1, 0.01, 0.5, null, 'ui'))
+          SFX.tone(560, 470, 0.12, 0.14, 'triangle', 'ui');
       }
     } else this.airTailT = 0;
   },
@@ -675,8 +694,11 @@ Object.assign(Game.prototype, {
     pr.whz = true;
     if (this.time - (this.airWhizT || -9) < 0.12) return;
     this.airWhizT = this.time;
-    SFX.tone(1500, 380, 0.18, 0.06, 'sawtooth', 'ui');
-    SFX.whiz(_v.copy(prev).addScaledVector(seg, t), pr.kind !== 'bullet' && pr.kind !== 'shell');
+    const wp = _v.copy(prev).addScaledVector(seg, t);
+    if (!SFX.aiPlay('air_whiz', 0.8, 1, 0.08, 0.1, wp.clone())) {
+      SFX.tone(1500, 380, 0.18, 0.06, 'sawtooth', 'ui');
+      SFX.whiz(wp, pr.kind !== 'bullet' && pr.kind !== 'shell');
+    }
     this.camShake = Math.max(this.camShake || 0, 0.05);
   },
   // MS-4／MS-8 的多目標鎖定（C3）：機首前方 ML_CONE、ML_R 內，每 ML_STEP 秒多鎖一台（最多 ML_MAX），ML_LOCK 秒鎖滿
@@ -700,7 +722,11 @@ Object.assign(Game.prototype, {
     for (let i = L.length - 1; i >= 0; i--) {
       const x = L[i];
       if (cloud || !ok(x.e, true)) L.splice(i, 1);
-      else if (x.t < AIR.ML_LOCK && (x.t += dt) >= AIR.ML_LOCK)
+      else if (
+        x.t < AIR.ML_LOCK &&
+        (x.t += dt) >= AIR.ML_LOCK &&
+        !SFX.aiPlay('air_multilock', 0.7, 1, 0.01, 0.05, null, 'ui')
+      )
         SFX.tone(1320, 1320, 0.05, 0.12, 'square', 'ui');
     }
     if ((this.airMlT -= dt) > 0 || cloud || L.length >= AIR.ML_MAX) return;
@@ -728,10 +754,12 @@ Object.assign(Game.prototype, {
       this.airRegen = true;
     }
     const B = this.airBase;
+    this.airSupplyWas = this.airSupply;
     this.airSupply = false;
     if (!B || B.dead) return;
     const bc = B.center();
     if (Math.hypot(p.pos.x - bc.x, p.pos.z - bc.z) > AIR.BASE_R || p.pos.y - bc.y > AIR.BASE_H) return;
+    if (!this.airSupplyWas) SFX.aiPlay('air_supply', 0.9, 1, 0.02, 2, null, 'ui'); // 補給開始（自製音效）
     this.airSupply = true;
     p.hp = Math.min(p.maxHp, p.hp + p.maxHp * AIR.BASE_AP * dt);
     this.airSupAcc += AIR.BASE_AAM * dt;
@@ -792,6 +820,10 @@ Object.assign(Game.prototype, {
     if (!this.airCloud || !this.airMode) return;
     this.airCloudT += dt;
     this.airCloud.update(this.airCloudT, dt);
+    // 在雲裡（自製音效的循環：風聲；停止呼叫就淡出）
+    const p = this.player;
+    if (p && !p.dead && this.state === 'play' && this.airInCloud(p.center()))
+      SFX.loopAt('airCloud', '@air_cloud_loop', 0.6, 1, p.center());
   },
   // 在不在雲裡（第 3 期：雲裡不能鎖定）
   airInCloud(pos) {

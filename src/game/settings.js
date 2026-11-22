@@ -129,6 +129,8 @@ Object.assign(Game.prototype, {
     const root = $('settings');
     for (const b of $('setTabs').querySelectorAll('button')) b.onclick = () => this.settingsTab(b.dataset.st);
     root.addEventListener('change', (e) => {
+      // 切換開關（勾選框）：AI 音效 ui_tog（沒有時不另外出聲；選單的改值照舊）
+      if (e.target.type === 'checkbox') SFX.aiPlay('ui_tog', 0.6, 1, 0.03, 0.04, null, 'ui');
       this.setTrack(e.target);
       this.setMarks();
       if (lastTab === 'quick') this.renderQuick();

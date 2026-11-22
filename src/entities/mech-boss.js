@@ -184,8 +184,10 @@ Object.assign(MechEntity.prototype, {
       const w = this.weapons.rarm;
       // 空域：不打正後方與機腹（mech-air.js 的 airTurretOk），射速放慢
       const ok = g.airMode ? this.airTurretOk(par, pl) : d < 75 * DS;
-      if (this.canAct() && ok && Math.random() < dt * (p2 ? 5 : 3.5) * (g.airMode ? 0.45 : 1))
+      if (this.canAct() && ok && Math.random() < dt * (p2 ? 5 : 3.5) * (g.airMode ? 0.45 : 1)) {
         this.fire('rarm', aimPos, pl);
+        this.partSnd('turret', 0.7);
+      }
       if (w.mag <= 0 && w.reloadT <= 0 && w.ammo > 0) w.reloadT = w.def.reload;
     } else if (k === 'cannon') {
       // 三發一組的砲擊（落點有預警圈）
@@ -199,6 +201,7 @@ Object.assign(MechEntity.prototype, {
           .multiplyScalar(par && par.tierFlag('lead') ? 0 : 0.5);
         if (lead.length() > 6 * DS) lead.setLength(6 * DS);
         const c = pl.pos.clone().add(lead);
+        this.partSnd('cannon', 0.9);
         for (let i = 0; i < 3; i++) {
           const a = Math.random() * Math.PI * 2,
             rr = (i ? rnd(3, 6) : rnd(0, 1.5)) * DS;
@@ -220,6 +223,12 @@ Object.assign(MechEntity.prototype, {
     }
     if (this.model.rotor) this.model.rotor.rotation.y += dt * 1.5;
     this.bossTick(dt);
+  },
+  // 部位開火的自製音效（疊在武器本身的槍聲上）：大型兵器的砲塔與主砲、砲兵陣地的砲台、空中要塞的懸吊砲塔
+  partSnd(ev, vol) {
+    const par = this.parentEnt();
+    if (par && par.ai === 'colossus') return SFX.aiPlay('colossus_turret', vol, 1, 0.05, 0.15, this.center());
+    return this.bossSnd(ev, vol, undefined, 0.15);
   },
   // Boss 被擊破時，剩下的部位一起毀壞（不給賞金）
   partBreak() {
@@ -270,6 +279,7 @@ Object.assign(MechEntity.prototype, {
           if (p2 && !s.sweep && !this.tierFlag('bite') && dd < 25 * DS && Math.random() < dt * 0.4) {
             s.sweep = to.clone().multiplyScalar(26 * DS);
             s.sweepT = 2.2;
+            this.bossSnd('sweep', 1);
             g.alertAll('鑽地蟲地下衝刺 — 沿路噴發！');
           }
         }
@@ -287,7 +297,7 @@ Object.assign(MechEntity.prototype, {
             R: 7 * MS,
             dl: 1.0,
           });
-          SFX.play('heavy', 0.9, 0.6, 0.05, 0.05, gp());
+          if (!this.bossSnd('warn', 1, gp())) SFX.play('heavy', 0.9, 0.6, 0.05, 0.05, gp());
         }
         if (Math.random() < dt * 14) g.fx.dust(gp(), 1.6, 3);
         break;
@@ -315,6 +325,7 @@ Object.assign(MechEntity.prototype, {
             }
           }
           g.shockStart(this, { R: 18, sp: 22, dl: 0, dmg: 220 * dm, im: 600 * dm, at: gp() });
+          this.bossSnd('emerge', 1, gp());
           g.fx.explosion(gp().setY(gy + 1 * MS), 6, 0xc8a070, true);
           g.fx.dust(gp(), 6, 22, 0xb09070);
           g.camShake = Math.max(g.camShake, 0.3);
@@ -326,6 +337,7 @@ Object.assign(MechEntity.prototype, {
         if (s.wmT <= 0) {
           s.wm = 'up';
           s.wmT = p2 ? 3.5 : 4.5;
+          this.bossSnd('hover', 0.9);
           // Boss 改版：鑽出撲空＝身體卡在地上（停留更久、破綻）
           if (s.whiff && this.tierOn()) {
             s.wmT += 2;
@@ -360,6 +372,7 @@ Object.assign(MechEntity.prototype, {
         if (!s.hitGround && this.pos.y < gy + 1 * MS) {
           s.hitGround = true;
           g.shockStart(this, { R: 14, sp: 18, dl: 0, dmg: 240 * dm, im: 700 * dm, at: gp() });
+          this.bossSnd('dive', 1, gp());
           g.fx.dust(gp(), 5, 18, 0xb09070);
         }
         if (this.pos.y < gy - 5 * MS || s.wmT <= 0) {
@@ -404,6 +417,7 @@ Object.assign(MechEntity.prototype, {
       this.acs = this.acsMax;
       this.staggerT = 7;
       g.msgAll('多足要塞失去平衡 — 核心暴露！', 0xffb020);
+      this.bossSnd('collapse', 1);
       this.bossOpen(7); // Boss 改版：倒下＝破綻
       g.fx.dust(this.pos.clone(), 8, 24, 0xb09070);
       g.camShake = Math.max(g.camShake, 0.35);
@@ -422,6 +436,7 @@ Object.assign(MechEntity.prototype, {
       this.vel.y = 20 * DS;
       this.grounded = false;
       g.alertAll('多足要塞躍起 — 準備跳躍閃避落地衝擊波！');
+      this.bossSnd('leap', 1);
     }
     if (s.slamAir) {
       if (!this.grounded) s.wasAir = true;
@@ -429,6 +444,7 @@ Object.assign(MechEntity.prototype, {
         s.slamAir = false;
         this.bossOpen(); // Boss 改版：跳躍落地＝破綻
         g.shockStart(this, { R: 26, sp: 22, dl: 0.2, dmg: 420 * this.dmgMul, im: 1000 * this.dmgMul });
+        this.bossSnd('slam', 1);
         g.fx.dust(this.pos.clone(), 7, 20, 0xb09070);
         g.camShake = Math.max(g.camShake, 0.4);
       }
@@ -445,6 +461,7 @@ Object.assign(MechEntity.prototype, {
       this.hoverH = 10 * DS;
       this.speedMul *= 0.7;
       g.msgAll('引擎全毀 — 空中要塞高度下降！', 0xffb020);
+      this.bossSnd('engine_lost', 1);
       if (this.airAlt !== undefined) this.airAlt = Math.max(160, this.airAlt * 0.55); // 空域
       this.bossOpen(6); // Boss 改版：降下之後＝破綻
     }
@@ -466,6 +483,7 @@ Object.assign(MechEntity.prototype, {
           1,
         );
         g.alertAll('空中要塞放出運輸機');
+        this.bossSnd('drop', 1);
       }
     }
     s.swT = (s.swT === undefined ? 20 : s.swT) - dt;
@@ -486,6 +504,7 @@ Object.assign(MechEntity.prototype, {
       s.bombDir = f.lengthSq() > 1 ? f.normalize() : perp.clone();
       s.bombAt = pl.pos.clone();
       g.alertAll('空中要塞投彈！');
+      this.bossSnd('bomb', 1);
     }
     if (s.bombN > 0) {
       s.bombI -= dt;
@@ -514,6 +533,7 @@ Object.assign(MechEntity.prototype, {
       if (!s.rebuildT) {
         s.rebuildT = 25;
         g.msgAll('護盾發生器全毀 — 指揮艦護盾解除（25 秒後重建）', 0x7ee081);
+        this.bossSnd('dome_down', 1);
       }
       s.rebuildT -= dt;
       this.bossOpen(0.25, true); // Boss 改版：發生器重建中＝破綻
@@ -524,6 +544,7 @@ Object.assign(MechEntity.prototype, {
         const n = Math.max(2, 4 - s.rebuilds);
         g.spawnPylons(this, n);
         g.alertAll(`護盾發生器重建完成（${n} 座）`);
+        this.bossSnd('pylon_rebuild', 1);
       }
     } else s.rebuildT = 0;
     // 待在原地附近，面向目標橫移
@@ -532,8 +553,16 @@ Object.assign(MechEntity.prototype, {
     else wish.copy(perp).multiplyScalar(0.3);
     if (d < 12 * DS) wish.addScaledVector(dir, -1);
     // 強化附近友軍、呼叫運輸機
+    let nb = 0;
     for (const f of this.friendsOf())
-      if (f !== this && !f.dead && f.ai !== 'part' && f.pos.distanceTo(this.pos) < 40 * DS) f.buffT = 0.3;
+      if (f !== this && !f.dead && f.ai !== 'part' && f.pos.distanceTo(this.pos) < 40 * DS) {
+        if (!(f.buffT > 0)) nb++;
+        f.buffT = 0.3;
+      }
+    if (nb && this.t - (s.buffSndT || -99) > 6) {
+      s.buffSndT = this.t; // 強化附近友軍（新進入範圍的；最多 6 秒一次）
+      this.bossSnd('buff', 0.7);
+    }
     s.dropT = (s.dropT === undefined ? 15 : s.dropT) - dt;
     if (s.dropT <= 0) {
       s.dropT = this.phase2() ? 24 : 32;
@@ -544,6 +573,7 @@ Object.assign(MechEntity.prototype, {
       ) {
         g.spawnType('dropship', g.scaleHp || 1, g.scaleDmg || 1);
         g.alertAll('指揮艦呼叫運輸機');
+        this.bossSnd('dropship', 1);
       }
     }
   },
@@ -555,6 +585,7 @@ Object.assign(MechEntity.prototype, {
     if (!cannons && !s.open) {
       s.open = true;
       g.msgAll('砲台全滅 — 指揮所裝甲解除！', 0x7ee081);
+      this.bossSnd('unarmored', 1);
     }
     s.barT = (s.barT === undefined ? 12 : s.barT) - dt;
     if (s.barT <= 0 && this.canAct()) {
@@ -563,6 +594,7 @@ Object.assign(MechEntity.prototype, {
       s.barI = 0;
       s.barAt = pl.pos.clone();
       g.alertAll('砲擊彈幕來襲 — 注意地面預警圈！');
+      this.bossSnd('barrage', 1);
     }
     if (s.barN > 0) {
       s.barI -= dt;
@@ -582,8 +614,10 @@ Object.assign(MechEntity.prototype, {
     if (s.mlT <= 0 && !this.tierFlag('mines')) {
       // Boss 改版：布雷器壞了不再補布雷無人機
       s.mlT = 25;
-      if (g.enemies.filter((e) => !e.dead && e.ai === 'minelayer').length < 2)
+      if (g.enemies.filter((e) => !e.dead && e.ai === 'minelayer').length < 2) {
         g.spawnType('minelayer', g.scaleHp || 1, g.scaleDmg || 1, this.center().setY(this.pos.y + 8 * MS), 1);
+        this.bossSnd('minelayer', 0.9);
+      }
     }
     if (this.model.rotor) this.model.rotor.rotation.y += dt * 1.2;
   },
@@ -610,7 +644,7 @@ Object.assign(MechEntity.prototype, {
       const p = this.pos.clone();
       g.fx.warnCircle(p, 20 * MS, 1.3, 0x40a0ff);
       g.netEv({ t: 'warn', p: p.toArray().map((x) => +x.toFixed(2)), R: 20 * MS, dl: 1.3, c: 0x40a0ff });
-      SFX.play('charge', 1, 0.8, 0.05, 0.05, this.center());
+      if (!this.bossSnd('emp_charge', 1)) SFX.play('charge', 1, 0.8, 0.05, 0.05, this.center());
       g.alertAll('電磁脈衝充能 — 拉開距離或跳高！');
       return;
     }
@@ -631,7 +665,7 @@ Object.assign(MechEntity.prototype, {
     if (s.pullCd <= 0 && d > 10 * DS && d < 40 * DS && this.canAct() && !this.tierFlag('anchor')) {
       s.pullCd = p2 ? rnd(6, 8) : rnd(9, 12);
       s.pull = 2.0;
-      SFX.play('laser2', 0.8, 0.5, 0.05, 0.05, this.center());
+      if (!this.bossSnd('pull', 1)) SFX.play('laser2', 0.8, 0.5, 0.05, 0.05, this.center());
       g.alertAll('電磁牽引 — 往反方向移動或 QB 掙脫！');
       return;
     }
@@ -699,6 +733,7 @@ Object.assign(MechEntity.prototype, {
         this.domeFrac = this.partsOf('pylon').length ? 1 : 0; // 發生器剛被拆光的同一格也立刻解除
         if (this.domeFrac) {
           if (at) g.fx.spark(at, 0x80e0ff);
+          this.bossSnd('dome_hit', 0.7, at || undefined, 0.12); // 護盾擋下打本體的子彈（自製音效）
           hint('護盾無法穿透 — 先拆除護盾發生器');
           return null;
         }
@@ -717,6 +752,7 @@ Object.assign(MechEntity.prototype, {
     const g = this.game;
     this.boss2Die(from);
     this.boss4Die(from);
+    this.bossDieSnd();
     if (!this.isBoss) return;
     for (const p of this.partsOf()) p.partBreak();
     g.removeMinesOf(this);
@@ -731,6 +767,7 @@ Object.assign(MechEntity.prototype, {
       this.noLock = hide;
       if (this.model.rotor) this.model.rotor.rotation.y += dt * 1.6; // 雷達、旋翼轂、環
     }
+    this.bossSndTick(dt); // 自製音效：登場、移動與蓄力的循環（mech-boss3.js）
     if (this.ai === 'worm') this.wormFx();
     if (this.model.legNodes && this.model.legNodes.length) this.spiderFx(dt);
     this.boss2Fx(dt);

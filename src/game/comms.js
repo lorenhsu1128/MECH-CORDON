@@ -94,6 +94,7 @@ Object.assign(Game.prototype, {
     const q = this.commQ || [];
     const ln = q.shift();
     if (!ln) {
+      if (this.commBusy) SFX.radioClose(); // 通訊結束
       this.commBusy = false;
       el.classList.remove('on');
       return;
@@ -129,7 +130,8 @@ Object.assign(Game.prototype, {
       cls: 'ptComm',
       talk: () => (this.commCur === ln ? this.ptTalk(sp, this.commTalkEnd > performance.now()) : null),
     });
-    SFX.radio();
+    if (sp === 'station') SFX.radioStation();
+    else SFX.radio();
     let show = 1.8 + text.length * 0.09;
     this.commCur = ln;
     // 文字演出：預告「打字機」的逐字（沒有語音＝最多花顯示時間的 45%；有語音＝語音開始時才開始、花唸的時間的 80%）

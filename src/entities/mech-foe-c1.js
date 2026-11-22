@@ -120,7 +120,8 @@ Object.assign(MechEntity.prototype, {
         c.y = g.world.terrainHeight(c.x, c.z);
         g.fx.warnRect(c, Math.atan2(s.cyDir.x, s.cyDir.z), CRYO.w, CRYO.len, CRYO.warn + CRYO.t, 0x9fe8ff);
         g.fx.flash(this.muzzle('rarm'), 1.4, FROST, CRYO.warn);
-        SFX.play('charge', 0.7, 1.5, 0.05, 0.05, this.center());
+        if (!SFX.aiPlay('foe_cryo_warn', 0.9, 1, 0.05, 0.05, this.center()))
+          SFX.play('charge', 0.7, 1.5, 0.05, 0.05, this.center());
       }
     } else {
       wish.set(0, 0, 0);
@@ -130,7 +131,8 @@ Object.assign(MechEntity.prototype, {
         s.cyT = CRYO.t;
         s.tick = 0;
         s.fxT = 0;
-        SFX.play('thrBurst', 0.9, 0.7, 0.05, 0.05, this.center());
+        if (!SFX.aiPlay('foe_cryo_spray', 1, 1, 0.05, 0.05, this.center()))
+          SFX.play('thrBurst', 0.9, 0.7, 0.05, 0.05, this.center());
       } else if (s.cy === 2) {
         if ((s.fxT -= dt) <= 0) {
           s.fxT = 0.1;
@@ -190,7 +192,8 @@ Object.assign(MechEntity.prototype, {
       if (s.mmT <= 0 && d > 14 * DS && d < 75 * DS && this.canAct()) {
         s.mm = 1;
         s.mmT = MORTAR.warn;
-        SFX.play('charge', 0.6, 0.8, 0.05, 0.05, this.center());
+        if (!SFX.aiPlay('foe_icemortar_warn', 0.8, 1, 0.05, 0.05, this.center()))
+          SFX.play('charge', 0.6, 0.8, 0.05, 0.05, this.center());
       }
     } else {
       wish.set(0, 0, 0);
@@ -236,7 +239,7 @@ Object.assign(MechEntity.prototype, {
     );
     g.fx.muzzle(mz, V(0, 1, 0), FROST, 2);
     g.fx.dust(mz.clone(), 1.2, 6, 0xf0f8ff);
-    SFX.shot('grenade', undefined, mz);
+    if (!SFX.aiPlay('foe_icemortar_fire', 1, 1, 0.05, 0.05, mz)) SFX.shot('grenade', undefined, mz);
     warnAt(g, land, MORTAR.R, T, 0xffffff);
     this.c1Shots = (this.c1Shots || 0) + 1; // 測試用
     // 落地：冰牆（面向砲台、落點往砲台側 1.8 m，不把站在落點的機體卡在牆裡；可以當掩體、打得碎）
@@ -248,7 +251,8 @@ Object.assign(MechEntity.prototype, {
     g.later(T, () => {
       g.fx.explosion(land.clone().setY(land.y + 0.8), 2.2, FROST);
       g.fx.dust(land.clone(), 3, 12, 0xe8f4ff);
-      SFX.play('glass', 0.9, 0.8, 0.05, 0.05, land);
+      if (!SFX.aiPlay('foe_icemortar_land', 1, 1, 0.05, 0.05, land))
+        SFX.play('glass', 0.9, 0.8, 0.05, 0.05, land);
     });
     // 冰錐落地爆炸之後才長出冰牆（同時出現的話冰錐會先撞上牆、爆炸被牆擋住）
     g.later(T + 0.15, () => {
@@ -275,7 +279,8 @@ Object.assign(MechEntity.prototype, {
         s.hp = 1;
         s.hpT = HOLO.warn;
         g.fx.flash(this.muzzle('rarm'), 1.6, CYAN, HOLO.warn);
-        SFX.play('glitch', 0.8, 0.8, 0.05, 0.05, this.center());
+        if (!SFX.aiPlay('foe_holo_warn', 0.9, 1, 0.05, 0.05, this.center()))
+          SFX.play('glitch', 0.8, 0.8, 0.05, 0.05, this.center());
       }
     } else {
       wish.set(0, 0, 0);
@@ -340,7 +345,10 @@ Object.assign(MechEntity.prototype, {
       out.sort((a, b) => a.pos.distanceTo(me.pos) - b.pos.distanceTo(me.pos));
       me.lock = out[0];
     }
-    if (out.length) g.alertAll('全像投影：出現的敵機有假的——打一下就會消失');
+    if (out.length) {
+      g.alertAll('全像投影：出現的敵機有假的——打一下就會消失');
+      SFX.aiPlay('foe_holo_project', 1, 1, 0.05, 0.05, this.center());
+    }
     return out;
   },
   // 假敵人：繞著目標移動、偶爾開槍的閃光（沒有傷害）；投影器不在了、超過時間就消失
@@ -361,7 +369,8 @@ Object.assign(MechEntity.prototype, {
       s.flT = rnd(0.6, 1.3);
       const mz = this.muzzle('rarm');
       this.game.fx.muzzle(mz, pl.center().sub(mz).normalize(), 0x9ffff0, 1);
-      SFX.play('mg', 0.35, 1.3, 0.05, 0.05, mz);
+      if (!SFX.aiPlay('foe_holo_fake_fire', 0.5, 1, 0.05, 0.05, mz))
+        SFX.play('mg', 0.35, 1.3, 0.05, 0.05, mz);
     }
     return r;
   },
@@ -371,7 +380,8 @@ Object.assign(MechEntity.prototype, {
       c = this.center();
     g.fx.streaks(c, 16, CYAN, 7, 0.5, 0, null, 1);
     g.fx.flash(c, 2, CYAN, 0.2);
-    SFX.play('glitch', 0.7, 1.4, 0.05, 0.03, c);
+    if (!SFX.aiPlay('foe_holo_fake_vanish', 0.9, 1, 0.05, 0.05, c))
+      SFX.play('glitch', 0.7, 1.4, 0.05, 0.03, c);
     this.depart();
   },
 
@@ -402,7 +412,8 @@ Object.assign(MechEntity.prototype, {
         s.pz = 'crouch';
         s.pzT = PARA.crouch;
         g.fx.warnLine(this.center(), pl.center(), PARA.crouch, 0xff3a30);
-        SFX.play('charge', 0.5, 2.2, 0.05, 0.05, this.center());
+        if (!SFX.aiPlay('foe_parasite_crouch', 0.8, 1, 0.05, 0.05, this.center()))
+          SFX.play('charge', 0.5, 2.2, 0.05, 0.05, this.center());
       }
     } else if (s.pz === 'crouch') {
       wish.set(0, 0, 0);
@@ -415,7 +426,8 @@ Object.assign(MechEntity.prototype, {
         s.l0 = this.pos.clone();
         s.l1 = V(to.x, to.y - this.model.height * 0.4, to.z);
         s.tgt = pl;
-        SFX.play('punch1', 0.6, 1.6, 0.05, 0.05, this.center());
+        if (!SFX.aiPlay('foe_parasite_pounce', 0.9, 1, 0.05, 0.05, this.center()))
+          SFX.play('punch1', 0.6, 1.6, 0.05, 0.05, this.center());
       }
     } else if (s.pz === 'leap') {
       s.pzT += dt / PARA.leap;
@@ -434,6 +446,7 @@ Object.assign(MechEntity.prototype, {
         this.vel.set(0, 0, 0);
         this.staggerT = Math.max(this.staggerT, 0.6);
         g.fx.dust(this.pos.clone(), 1.5, 6, 0x9a8a80);
+        SFX.aiPlay('foe_parasite_miss', 0.8, 1, 0.05, 0.05, this.pos);
       }
       this.bossVis = 0;
       r.done = true;
@@ -476,7 +489,8 @@ Object.assign(MechEntity.prototype, {
     t.takeDamage(PARA.bite * dm, PARA.biteIm * dm, this, t.center(), fwdOf(this.yaw), BITE);
     t.addStatus?.('latch', 4, { dps: PARA.dps * dm, src: this.id });
     g.fx.meleeHit(t.center(), 0xff3a30, false, fwdOf(this.yaw));
-    SFX.play('crunch1', 0.9, 1.2, 0.05, 0.05, t.center());
+    if (!SFX.aiPlay('foe_parasite_latch', 1, 1, 0.05, 0.05, t.center()))
+      SFX.play('crunch1', 0.9, 1.2, 0.05, 0.05, t.center());
     if (t === g.player || t.isPlayer) g.flashAlert('寄生纏附體纏上了機體 — QB 兩次或近戰甩掉');
     this.c1Latched = (this.c1Latched || 0) + 1; // 測試用
   },
@@ -494,7 +508,8 @@ Object.assign(MechEntity.prototype, {
     this.bossVis = 4;
     g.fx.spark(this.center(), 0xff6040);
     g.fx.dust(this.pos.clone(), 1.5, 6, 0x9a8a80);
-    SFX.play('thud1', 0.8, 1.3, 0.05, 0.05, this.center());
+    if (!SFX.aiPlay('foe_parasite_shaken', 0.9, 1, 0.05, 0.05, this.center()))
+      SFX.play('thud1', 0.8, 1.3, 0.05, 0.05, this.center());
     this.c1Shaken = (this.c1Shaken || 0) + 1; // 測試用
   },
 
@@ -523,7 +538,8 @@ Object.assign(MechEntity.prototype, {
         s.at = p;
         warnAt(g, p, ANCHOR.R, ANCHOR.warn, PURPLE);
         g.fx.warnLine(this.muzzle('rarm'), p.clone().setY(p.y + 0.5), ANCHOR.warn, PURPLE);
-        SFX.play('charge', 0.8, 0.6, 0.05, 0.05, this.center());
+        if (!SFX.aiPlay('foe_anchor_warn', 0.9, 1, 0.05, 0.05, this.center()))
+          SFX.play('charge', 0.8, 0.6, 0.05, 0.05, this.center());
       }
     } else {
       wish.set(0, 0, 0);
@@ -532,7 +548,7 @@ Object.assign(MechEntity.prototype, {
         g.fx.beam(this.muzzle('rarm'), p.clone().setY(p.y + 0.3), PURPLE, 0.14);
         g.fx.shockwave(p.clone().setY(p.y + 0.3), ANCHOR.R / MS, PURPLE, 0.6);
         g.fx.ring(p.clone().setY(p.y + 0.2), ANCHOR.R / MS, PURPLE);
-        SFX.play('heavy', 1, 0.7, 0.05, 0.05, p);
+        if (!SFX.aiPlay('foe_anchor_impact', 1, 1, 0.05, 0.05, p)) SFX.play('heavy', 1, 0.7, 0.05, 0.05, p);
         g.c1Zones = (g.c1Zones || 0) + 1; // 測試用
         g.addZone?.('gravity', p.clone(), ANCHOR.R, ANCHOR.life);
         s.an = 0;
@@ -578,7 +594,8 @@ Object.assign(MechEntity.prototype, {
         s.zp = 'zip';
         s.zk = 0;
         s.spT = 0;
-        SFX.play('boostUp', 0.8, 1.5, 0.05, 0.05, this.center());
+        if (!SFX.aiPlay('foe_zipline_zip', 0.9, 1, 0.05, 0.05, this.center()))
+          SFX.play('boostUp', 0.8, 1.5, 0.05, 0.05, this.center());
       }
     } else if (s.zp === 'zip') {
       s.zk += (dt * ZIP.speed) / Math.max(1, s.z0.distanceTo(s.z1));
@@ -597,7 +614,8 @@ Object.assign(MechEntity.prototype, {
           s.vulnT = ZIP.vuln;
           s.zT = ZIP.vuln;
           g.fx.dust(this.pos.clone(), 3, 10, 0x9aa0a8);
-          SFX.play('thud2', 1, 1, 0.05, 0.05, this.center());
+          if (!SFX.aiPlay('foe_zipline_land', 1, 1, 0.05, 0.05, this.center()))
+            SFX.play('thud2', 1, 1, 0.05, 0.05, this.center());
         } else {
           s.zp = 'perch';
           s.zT = rnd(2.5, 4);
@@ -661,7 +679,8 @@ Object.assign(MechEntity.prototype, {
     g.fx.warnLine(hook, dest.clone().setY(dest.y + 1.2 * MS), ZIP.warn + dur + 0.1, ZIPC, 0.08);
     g.fx.flash(hook, 1.6, 0xffe080, 0.3);
     g.fx.flash(dest.clone().setY(dest.y + 1), 1.2, 0xffe080, ZIP.warn);
-    SFX.play('clatter1', 0.9, 1.6, 0.05, 0.05, this.center());
+    if (!SFX.aiPlay('foe_zipline_cable', 1, 1, 0.05, 0.05, this.center()))
+      SFX.play('clatter1', 0.9, 1.6, 0.05, 0.05, this.center());
     if (down) this.c1Zips = (this.c1Zips || 0) + 1; // 測試用
   },
 

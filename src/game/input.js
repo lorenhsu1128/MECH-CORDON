@@ -646,6 +646,7 @@ Object.assign(Game.prototype, {
     document.body.classList.toggle('rsfire', on && this.chase && !this.airMode && !this.spectator);
   },
   pollGamepad(dt) {
+    this.menuAmbTick(); // 選單畫面的氣氛音（feedback.js；主迴圈每格都會經過這裡）
     const gps = navigator.getGamepads ? navigator.getGamepads() : null;
     if (!gps) return;
     let gp = null;
@@ -1274,6 +1275,7 @@ Object.assign(Game.prototype, {
     $('btnSortie').onclick = () => {
       // 單機出擊前重新讀取本地模型庫（伺服器預設組還在讀時先顯示進度、讀完再按一次）
       if (this.lmBusy || this.srvGate(() => $('btnSortie').onclick())) return;
+      SFX.aiPlay('sortie_go', 0.7, 1, 0.02, 0.3, null, 'ui');
       this.lmBusy = true;
       this.lmRefresh()
         .catch((e) => console.warn('本地模型庫讀取失敗', e))
@@ -1292,6 +1294,7 @@ Object.assign(Game.prototype, {
     };
     $('btnStory').onclick = () => {
       SFX.init();
+      SFX.aiPlay('title_start', 0.7, 1, 0.02, 0.3, null, 'ui');
       this.useSlot(this.saveSlot);
       this.navSet('hub', 'title');
       this.openHub();
@@ -1374,7 +1377,9 @@ Object.assign(Game.prototype, {
         ? 'back'
         : b.classList.contains('primary')
           ? 'ok'
-          : 'click';
+          : b.closest('[data-padtabs], #setTabs, #gTabs, #hubFacTabs')
+            ? 'tab' // 分頁（AI 音效 ui_tab；沒有時照舊一般按鈕音）
+            : 'click';
     document.addEventListener(
       'click',
       (e) => {

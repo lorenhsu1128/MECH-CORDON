@@ -2914,24 +2914,24 @@ Object.assign(Effects.prototype, {
     const r = Math.max(1.2, Math.min(9, (Math.max(W, D, H * 0.6) * 0.45) / (this.k || 1)));
     if (o.cr) {
       this.dust(ground, Math.min(2.5, r), 6, M.col !== undefined ? M.col : 0x9aa0a8);
-      SFX.hitWorld(c);
+      if (!SFX.aiPlay('prop_crush', 0.7, 1, 0.06, 0.05, c)) SFX.hitWorld(c);
       return;
     }
     if (M.boom === 'fire') {
       this.explosion(c, r, 0xffa040, big);
       if (size > 3) this.killBurst(c, Math.min(2.4, size / 5), big, gy);
-      SFX.explode(big, c);
+      if (!SFX.aiPlay('prop_break_fire', 1, 1, 0.05, 0.05, c)) SFX.explode(big, c);
     } else if (M.boom === 'arc') {
       this.arc(c, r * 0.8, 0x9fe0ff);
       this.flash(c, r * 0.5, 0xbfe8ff, 0.2);
       this.streaks(c, 14, 0xbfe8ff, 14, 0.4, 20);
       this.explosion(c, r * 0.5, 0xffc060, false);
-      SFX.explode(false, c);
+      if (!SFX.aiPlay('prop_break_arc', 0.9, 1, 0.05, 0.05, c)) SFX.explode(false, c);
     } else if (M.boom === 'coral') {
       this.flash(c, r * 0.8, 0xff3040, 0.35);
       this.star(c, r, 0xff5060);
       this.streaks(c, 16, 0xff4050, 12, 0.6, 8);
-      SFX.explode(false, c);
+      if (!SFX.aiPlay('prop_break_coral', 0.9, 1, 0.05, 0.05, c)) SFX.explode(false, c);
     } else {
       // 混凝土、岩石、冰、金屬的崩落：粉塵為主
       const dc = M.col !== undefined ? M.col : 0xa09a90;
@@ -2944,7 +2944,9 @@ Object.assign(Effects.prototype, {
           2.2,
           1.4,
         );
-      SFX.wreck(c);
+      const bk =
+        M.deb === 'ice' ? 'prop_break_ice' : M.fx === 'dust' ? 'prop_break_rubble' : 'prop_break_metal';
+      if (!SFX.aiPlay(bk, 0.9, 1, 0.05, 0.05, c)) SFX.wreck(c);
     }
     this.dust(ground, r, big ? 12 : 8, M.col !== undefined ? M.col : 0x9aa0a8);
   },

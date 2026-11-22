@@ -9,6 +9,7 @@ import { createScene, envelope, Renderer } from '../../mech_cordon_apng_gen/js/e
 import { clearMeasureCache } from '../../mech_cordon_apng_gen/js/engine/layout.js';
 import * as Fonts from '../../mech_cordon_apng_gen/js/fonts.js';
 import { merge } from '../../mech_cordon_apng_gen/js/util.js';
+import { SFX } from '../audio/audio.js';
 
 const preset = (id) => (STYLE_PRESETS.find((p) => p.id === id) || {}).patch || {};
 
@@ -258,6 +259,9 @@ export class TextFx {
       if (same.length >= 3) this.items.splice(this.items.indexOf(same[same.length - 1]), 1);
     }
     this.items.push(it);
+    // 橫幅、中央訊息出現（AI 音效 banner_in；全畫面的章名、片尾不出聲）
+    if (it.slot !== 'full' && !(opt.states && !opt.states.includes('play')))
+      SFX.aiPlay('banner_in', it.slot === 'banner' ? 0.55 : 0.35, 1, 0.03, 0.2, null, 'ui');
     return it;
   }
   // DOM 元素裡的標題：元素的文字保留（變透明），畫布疊在上面
@@ -465,6 +469,7 @@ export function revealDom(el, id, opt = {}) {
   const dur = s.inFx === 'typewriter' ? 0.01 : s.glyphDur;
   let t = opt.delay || 0,
     end = t;
+  const ticks = []; // 逐字的打字聲（revealTickPump）
   rows.forEach((row, li) => {
     const text = row.textContent;
     row.textContent = '';
@@ -484,6 +489,7 @@ export function revealDom(el, id, opt = {}) {
       }
       sp.style.animation = `${anim} ${dur}s ${d.toFixed(3)}s both`;
       row.appendChild(sp);
+      if (ch.trim() && !PUNCT.has(ch)) ticks.push(d);
       end = Math.max(end, d + dur);
     });
     t += s.linePause * k;
@@ -495,7 +501,34 @@ export function revealDom(el, id, opt = {}) {
     cur.style.animationDelay = `${end.toFixed(2)}s`;
     rows[rows.length - 1].appendChild(cur);
   }
+  // 打字聲：一行一行（sweep／line）的不逐字播
+  if (s.reveal !== 'sweep' && s.reveal !== 'line' && ticks.length) {
+    const i = TYPE_TICKS.findIndex((x) => x.el === el);
+    if (i >= 0) TYPE_TICKS.splice(i, 1);
+    TYPE_TICKS.push({ el, t0: performance.now() / 1000, ticks, i: 0 });
+  }
   return end;
+}
+// 逐字的打字聲（AI 音效 text_type_tick；沒有時不出聲）：每格呼叫（game/textfx.js 的 tfxTick），
+// 跳過（tqDone）、元素不在畫面上時停止；每兩個字一聲
+const TYPE_TICKS = [];
+export function revealTickPump() {
+  if (!TYPE_TICKS.length) return;
+  const now = performance.now() / 1000;
+  for (let k = TYPE_TICKS.length - 1; k >= 0; k--) {
+    const R = TYPE_TICKS[k];
+    if (R.el.classList.contains('tqDone') || !R.el.isConnected || !R.el.offsetParent) {
+      TYPE_TICKS.splice(k, 1);
+      continue;
+    }
+    let play = false;
+    while (R.i < R.ticks.length && R.ticks[R.i] <= now - R.t0) {
+      if (R.i % 2 === 0) play = true;
+      R.i++;
+    }
+    if (play) SFX.aiPlay('text_type_tick', 0.25, 1, 0.08, 0.04, null, 'ui');
+    if (R.i >= R.ticks.length) TYPE_TICKS.splice(k, 1);
+  }
 }
 // 跳過：全部直接顯示
 export function revealFinish(el) {

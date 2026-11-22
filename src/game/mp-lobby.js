@@ -243,6 +243,10 @@ Object.assign(Game.prototype, {
     $('mpAuto').checked = n.autoApprove;
     $('mpAutoWrap').style.display = n.role === 'host' ? '' : 'none';
     const order = n.players.filter((p) => p.online).sort((a, b) => a.order - b.order);
+    // 有人加入（人數變多）：AI 音效
+    if (this.lobbyN != null && order.length > this.lobbyN)
+      SFX.aiPlay('lobby_join', 0.6, 1, 0.02, 0.3, null, 'ui');
+    this.lobbyN = order.length;
     $('lobbySlots').innerHTML = [0, 1, 2, 3]
       .map((s) => {
         const p = n.players.find((x) => x.slot === s);
@@ -403,6 +407,6 @@ Object.assign(Game.prototype, {
     const p = this.net.playerBySlot(slot);
     const txt = `${p ? p.nick : '?'}：${SIGNALS[n] || ''}`;
     this.flashMsg(txt, parseInt(this.net.slotColor(p ? p.color : 0).slice(1), 16), 1.6);
-    SFX.ui();
+    SFX.ui(null, 'lobby_join');
   },
 });

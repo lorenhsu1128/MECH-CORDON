@@ -107,6 +107,7 @@ Object.assign(MechEntity.prototype, {
     if (!lost.length) return;
     s.repaired = true;
     for (const sp of lost) this.game.tierSpawnPart(this, sp, true);
+    this.bossSnd('repair', 1);
     this.game.flashAlert && this.game.flashAlert('機獸修復了被打壞的武器');
   },
   // 命中的形狀（world/prop-hit.js 的 targetSegT／targetDist）：沿著身體的幾顆球；不是機獸時回傳 null（照原本的外接球）
@@ -144,7 +145,10 @@ Object.assign(MechEntity.prototype, {
           if (c) g.fx.spark(new THREE.Vector3(c.x, c.y, c.z), 0xffb040);
         }
       },
-      end,
+      () => {
+        this.bossSnd('collapse', 1.2, undefined, 0.5, true); // 倒下後的碎裂（各端自己算，自製音效）
+        end();
+      },
     );
   },
   // 體型的倍率（模型的公尺 → 實際的公尺）
@@ -267,7 +271,7 @@ Object.assign(MechEntity.prototype, {
           if (A.t >= G.track) {
             A.dir = tp.sub(mz).normalize();
             g.fx.warnLine(mz, mz.clone().addScaledVector(A.dir, G.range * DS), G.warn, 0xffd060, 0.14);
-            SFX.play('charge', 0.6, 1.2, 0.02, 0.02, mz);
+            if (!this.bossSnd('rail_lock', 0.8, mz)) SFX.play('charge', 0.6, 1.2, 0.02, 0.02, mz);
           }
         } else if (A.t >= G.track + G.warn) {
           g.beamAttack(this, mz, A.dir, {
@@ -279,7 +283,7 @@ Object.assign(MechEntity.prototype, {
             width: 0.3,
             attr: G.attr || 'en',
           });
-          SFX.play('heavy', 0.9, 1.3, 0.03, 0.03, mz);
+          if (!this.bossSnd('rail_fire', 1, mz)) SFX.play('heavy', 0.9, 1.3, 0.03, 0.03, mz);
           g.camShake = Math.max(g.camShake || 0, 0.25);
           end();
         }
@@ -300,6 +304,7 @@ Object.assign(MechEntity.prototype, {
           const dir = V(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
           const from = V(this.pos.x, this.pos.y + G.y * k, this.pos.z).addScaledVector(dir, G.f * k);
           if (!G.noFx) g.fx.flameCone(from, dir, G.len, G.ang);
+          if (!A.snd) A.snd = this.bossSnd(G.id, 0.9, from, 0.3) || 1; // 火焰錐、強風：噴出的那一下
           for (const t of g.hostilesOfEnt(this)) {
             if (!t || t.dead || !t.center) continue;
             const ap = t.center().sub(from);
@@ -357,6 +362,7 @@ Object.assign(MechEntity.prototype, {
     }
     if (G.type === 'rail' || G.type === 'burst' || G.type === 'cone') s.gun = { G, t: 0, dir: null, next: 0 };
     else if (G.type === 'volley') {
+      this.bossSnd(G.id, 0.9); // 魚雷…：疊在武器本身的槍聲上（自製音效）
       this.b3Volley(pl, G.n, G.gap, G.slots);
       cd();
     } else if (G.type === 'fan') {
@@ -380,6 +386,7 @@ Object.assign(MechEntity.prototype, {
             im: G.im,
             attr: G.attr,
             color: G.color,
+            snd: G.id, // 自製音效：鬃甲、刺彈、羽刃（mech-boss3.js 的 b3Beam）
           },
         );
       }
@@ -399,6 +406,7 @@ Object.assign(MechEntity.prototype, {
           im: G.im,
           attr: G.attr,
           color: G.color,
+          snd: G.id, // 自製音效：冷凍光束、熱熔砲、魚叉、胸砲、切割砲、斬擊波
         });
         if (G.status)
           g.later(G.warn + 0.02, () => {
@@ -417,6 +425,7 @@ Object.assign(MechEntity.prototype, {
     } else if (G.type === 'mines') {
       // 空雷／地雷：目標周圍 n 顆（air＝浮在空中）
       const dm = this.dmgMul;
+      this.bossSnd(G.id, 0.9); // 卵鞘空雷（自製音效）
       for (let i = 0; i < G.n; i++) {
         const a = (i / G.n) * Math.PI * 2 + Math.random() * 0.5,
           rr = (0.5 + Math.random() * 0.5) * G.spread;
@@ -446,6 +455,7 @@ Object.assign(MechEntity.prototype, {
             .addScaledVector(pl.vel, 0.4)
             .add(V(Math.cos(a) * rr, 0, Math.sin(a) * rr));
           g.mortarShot(this, tp, { dmg: G.dmg * dm, im: G.im * dm, R: G.R });
+          this.bossSnd(G.id, 0.85, undefined, 0.12); // 熔岩塊、深水炸彈、迫擊筒、毒液、集束炸彈（自製音效）
           if (G.pool)
             g.later(
               2,

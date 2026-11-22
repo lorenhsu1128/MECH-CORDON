@@ -196,7 +196,7 @@ Object.assign(Game.prototype, {
     return ch;
   },
   openHub() {
-    SFX.ui();
+    SFX.ui(null, 'brief_open');
     this.camp = null;
     if (this.storyHubCheck()) return; // 還沒看過的序章與章節開場（game/story.js）
     this.state = 'hub';
@@ -280,7 +280,7 @@ Object.assign(Game.prototype, {
   },
   // 簡報：委託方、內容、預定路線、報酬
   openBrief(sid) {
-    SFX.ui();
+    SFX.ui(null, 'brief_open');
     const $ = (id) => document.getElementById(id);
     const so = SORTIES[sid],
       B = BRIEFINGS[sid] || { lines: [], goal: '', client: 'castron' };
@@ -379,7 +379,7 @@ Object.assign(Game.prototype, {
       this.saveBackup(sid);
     }
     st.sortie = null;
-    SFX.ui();
+    SFX.ui(null, 'sortie_go');
     this.campBegin(sid);
   },
   // 車庫（從機庫進入時，左下的按鈕變成「返回機庫」）
@@ -393,7 +393,7 @@ Object.assign(Game.prototype, {
   // 結局畫面（第 6 章完成、結果畫面按確定之後）：標題、台詞、進入下一周目（最多 3 周目）或回機庫
   // 多人時（房主與隊友都看）：周目是房主的，不能進下一周目，按鈕回大廳
   openEpilogue(key) {
-    SFX.ui();
+    SFX.ui(null, 'epilogue_open');
     const $ = (id) => document.getElementById(id);
     const E = ENDINGS[key] || ENDINGS.open;
     const st = this.campStory();
@@ -470,7 +470,7 @@ Object.assign(Game.prototype, {
     const el = document.getElementById('hubEchoBox');
     el.style.display = open ? '' : 'none';
     if (!open) return;
-    SFX.ui();
+    SFX.ui(null, 'ui_panel_open');
     const st = this.campStory();
     const mem = st.memories || {};
     const T = this.campTruth();

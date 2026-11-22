@@ -96,6 +96,7 @@ Object.assign(Game.prototype, {
       Math.abs(p.pos.y - a.pos.y) < WING.REVIVE_Y * MS;
     c.wingRev = near ? (c.wingRev || 0) + dt : Math.max(0, (c.wingRev || 0) - dt * WING.REVIVE_DECAY);
     if (near) c.hint = `救援 ${a.name}… ${Math.min(100, Math.round((c.wingRev / WING.REVIVE_T) * 100))}%`;
+    if (near) SFX.loopAt('wingRev', '@wing_revive_loop', 0.6, 1, a.center()); // 救援中（自製音效的循環）
     // 地上的綠色圈：範圍＋進度
     if (this.wingRing && this.wingRing.parent !== this.scene) this.wingRing = null;
     if (!this.wingRing) {
@@ -109,7 +110,11 @@ Object.assign(Game.prototype, {
       this.wingRingDrop();
       a.wingRevive(WING.REVIVE_HP);
       this.fx.ring(a.center(), 6, 0x80ffb0);
-      if (!SFX.aiPlay('wing_revive', 0.7, 1, 0.03, 0.05, null, 'ui')) SFX.kit();
+      if (
+        !SFX.aiPlay('wing_revived', 0.8, 1, 0.03, 0.05, null, 'ui') && // 救援完成（自製音效）
+        !SFX.aiPlay('wing_revive', 0.7, 1, 0.03, 0.05, null, 'ui')
+      )
+        SFX.kit();
       this.wingBondAdd(a.wing, 1);
       this.campComm('wingRevive', this.campCtx({ wing: a.wing }));
     }

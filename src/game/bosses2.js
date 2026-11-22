@@ -213,7 +213,8 @@ Object.assign(Game.prototype, {
     o = { ...o, R: o.R * K, sp: o.sp * K, band: (o.band || 0) * K };
     this.hzRings.push({ ...o, c, r: 0, owner: src, hit: new Set() });
     this.fx.pulseShell(c, o.R, o.sp, 0xff5070);
-    SFX.play('laserBig', 0.8, 1.4, 0.05, 0.05, c);
+    // o.snd＝這隻 Boss 自己的能量環音效（脈衝刃翼、機關心臟）
+    if (!(o.snd && src.bossSnd && src.bossSnd(o.snd, 1, c))) SFX.play('laserBig', 0.8, 1.4, 0.05, 0.05, c);
   },
   updateHazards(dt) {
     if (this.bfTick) this.bfTick(dt); // Boss 改版的場地效果（boss-field.js）

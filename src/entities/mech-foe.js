@@ -44,6 +44,52 @@ for (const [k, T] of [
 const _d1v = new THREE.Vector3();
 const HIDE_AI = new Set(['burrow', 'gunboat', 'marsh', 'lurker', 'whiteout']); // 會隱藏（不能鎖定）的
 const DRILL_R = 3.6 * MS; // 鑽擊距離
+// ---- 專屬敵人的循環音（AI 音效，docs/sfx-inventory/enemies.md；foeLoops，房主與客機各自算）----
+// 移動時才有（依 ai）
+const MOVE_LOOP = {
+  junk: 'foe_junk_move',
+  forklift: 'foe_forklift_move',
+  sprayer: 'foe_sprayer_move',
+  harpoon: 'foe_harpoon_move',
+  smoker: 'foe_smoker_move',
+  riveter: 'foe_riveter_move',
+  welder: 'foe_welder_move',
+  watercannon: 'foe_watercannon_move',
+  cryo: 'foe_cryo_move',
+  parasite: 'foe_parasite_move',
+  fueler: 'foe_fueler_move',
+  slagger: 'foe_slagger_move',
+};
+// 移動時才有（依模型 vehKey）
+const VEH_MOVE_LOOP = { patrol_cart: 'foe_patrol_move', chimera: 'foe_chimera_move', cart: 'foe_cart_roll' };
+// 一直有（依 ai）
+const IDLE_LOOP = {
+  crane: 'foe_crane_idle',
+  skater: 'foe_skater_fan',
+  laserpost: 'foe_laserpost_hum',
+  underturret: 'foe_underturret_idle',
+  drill: 'foe_drill_idle',
+  zenith: 'ace_zenith_hover',
+  holoproj: 'foe_holo_hum',
+  bellows: 'foe_bellows_idle',
+};
+// 依同步的 bossVis（客機也有）：[ai, 條件, 鍵]
+const STATE_LOOP = [
+  ['gunboat', (v) => v & 1, 'foe_gunboat_sub'],
+  ['lurker', (v) => v & 1, 'foe_lurker_hide'],
+  ['burrow', (v) => v & 1, 'foe_burrow_under'],
+  ['marsh', (v) => v & 2, 'ace_marsh_submerge'],
+  ['testrig', (v) => (v & 15) === 2, 'foe_testrig_flame'],
+  ['harpoon', (v) => v === 2, 'foe_harpoon_cable'],
+  ['harpoon', (v) => v === 3, 'foe_harpoon_reel'],
+  ['welder', (v) => v === 2, 'foe_welder_arc_loop'],
+  ['turbine', (v) => v !== 2, 'foe_turbine_idle'],
+  ['cryo', (v) => v === 2, 'foe_cryo_spray_loop'],
+  ['zipline', (v) => v === 2, 'foe_zipline_slide'],
+  ['heatguard', (v) => v === 1, 'foe_heatguard_flame'],
+  ['magmadrone', (v) => v === 0, 'foe_magmadrone_under'],
+];
+let PJ_SEQ = 0;
 // 近戰命中的參數（takeDamage 的 melee：kb＝擊退速度；不能只傳 true，否則擊退是 NaN）
 const DRILL_HIT = { kb: 9 * DS },
   RAM_HIT = { kb: 20 * DS },
@@ -73,7 +119,7 @@ Object.assign(MechEntity.prototype, {
         const at = pl.center();
         pl.takeDamage(420 * this.dmgMul, 1500 * this.dmgMul, this, at, dir.clone(), DRILL_HIT);
         this.game.fx.meleeHit(at, 0xffc070, true, dir.clone());
-        SFX.meleeHit(true, at);
+        if (!SFX.aiPlay('foe_drill_hit', 1, 1, 0.05, 0.05, at)) SFX.meleeHit(true, at);
         s.spin = 0.6;
       }
       s.spin = Math.max(0, (s.spin || 0) - dt);
@@ -135,6 +181,7 @@ Object.assign(MechEntity.prototype, {
           this.game.damageProp(p, p.hp + 1, 0, p.pos.clone(), this, 'none');
           this.shell = Math.min(this.shellMax, this.shell + this.shellMax * 0.35);
           this.game.fx.ring(this.center(), 5, 0xc07040);
+          SFX.aiPlay('foe_junk_absorb', 1, 1, 0.05, 0.1, this.center());
           this.game.netEv({ t: 'alert', txt: '廢鐵合成體吸附物件補強外殼' });
           if (!this.game.isClient) this.game.flashAlert('廢鐵合成體吸附物件補強外殼');
         }
@@ -164,6 +211,7 @@ Object.assign(MechEntity.prototype, {
         s.bwT = 0.9;
         s.at = pl.pos.clone();
         g.fx.warnCircle(s.at, 4 * MS, 0.9);
+        SFX.aiPlay('foe_burrow_warn', 0.9, 1, 0.05, 0.1, s.at);
       }
     } else if (s.bw === 'rise') {
       wish.set(0, 0, 0);
@@ -175,6 +223,7 @@ Object.assign(MechEntity.prototype, {
         this.bossVis = 0;
         this.noLock = false;
         g.fx.dust(this.pos.clone(), 5, 14, 0xc9a06a);
+        SFX.aiPlay('foe_burrow_erupt', 1, 1, 0.05, 0.1, this.pos);
         for (const t of g.hostilesOfEnt(this))
           if (
             !t.dead &&
@@ -194,6 +243,7 @@ Object.assign(MechEntity.prototype, {
         s.bw = 'under';
         s.bwT = 2.5 + Math.random() * 2;
         g.fx.dust(this.pos.clone(), 3, 10, 0xc9a06a);
+        SFX.aiPlay('foe_burrow_dive', 0.9, 1, 0.05, 0.1, this.pos);
       }
     }
     return r;
@@ -218,7 +268,14 @@ Object.assign(MechEntity.prototype, {
       s.crT = rnd(5, 6.5);
       s.loaded = false;
     }
-    if (!s.loaded && s.crT < 2.5) s.loaded = true;
+    if (!s.loaded && s.crT < 2.5) {
+      s.loaded = true;
+      SFX.aiPlay('foe_crane_reload', 0.8, 1, 0.05, 0.1, this.center()); // 重新吊起貨櫃
+    }
+    // 快要丟出的預警（1.2 秒前）
+    const cw = s.loaded && s.crT < 1.2 && d < 70 * DS;
+    if (cw && !s.crW) SFX.aiPlay('foe_crane_warn', 0.9, 1, 0.05, 0.1, this.center());
+    s.crW = cw;
     // 2＝快要丟出（模型的預警動作：render/foe-models.js 的 animD1）
     this.bossVis = (s.loaded ? 1 : 0) | (s.loaded && s.crT < 1.2 && d < 70 * DS ? 2 : 0);
     return true;
@@ -233,6 +290,7 @@ Object.assign(MechEntity.prototype, {
     if (!s.hold && (s.reT -= dt) <= 0) {
       s.hold = true;
       this.game.fx.dust(this.pos.clone(), 2, 6);
+      SFX.aiPlay('foe_forklift_lift', 0.9, 1, 0.05, 0.1, this.center());
     }
     if (s.hold) {
       if (d > 9 * DS) wish.copy(dir).multiplyScalar(0.9);
@@ -305,10 +363,12 @@ Object.assign(MechEntity.prototype, {
       const c = new THREE.Vector3(fl.x + (fl.dx * fl.len) / 2, 0, fl.z + (fl.dz * fl.len) / 2);
       c.y = w.terrainHeight(c.x, c.z);
       g.fx.warnRect(c, Math.atan2(fl.dx, fl.dz), fl.hw * 2, fl.len, 2, 0x40a0ff);
-      SFX.play('ui2', 0.7, 0.6, 0.05, 0.05, this.center());
+      if (!SFX.aiPlay('foe_gategun_warn', 0.9, 1, 0.05, 0.05, this.center()))
+        SFX.play('ui2', 0.7, 0.6, 0.05, 0.05, this.center());
     } else if (s.warn && s.gT <= 0) {
       g.addFlow({ ...s.warn, t: 4.5, dps: 110 * this.dmgMul, team: this.team, src: this });
-      SFX.play('door', 1, 0.6, 0.05, 0.05, this.center());
+      if (!SFX.aiPlay('foe_gategun_open', 1, 1, 0.05, 0.05, this.center()))
+        SFX.play('door', 1, 0.6, 0.05, 0.05, this.center());
       s.warn = null;
       s.gT = rnd(9, 12);
     }
@@ -347,6 +407,7 @@ Object.assign(MechEntity.prototype, {
         this.bossVis = 0;
         this.noLock = false;
         g.fx.dust(this.pos.clone(), 3, 10, 0xb8dcf0);
+        SFX.aiPlay('foe_gunboat_surface', 1, 1, 0.05, 0.1, this.pos);
       }
     } else {
       wish.copy(perp).multiplyScalar(0.3);
@@ -360,6 +421,7 @@ Object.assign(MechEntity.prototype, {
         s.gb = 'under';
         s.gbT = rnd(3, 5);
         g.fx.dust(this.pos.clone(), 3, 10, 0xb8dcf0);
+        SFX.aiPlay('foe_gunboat_dive', 0.9, 1, 0.05, 0.1, this.pos);
       }
     }
     return r;
@@ -380,11 +442,17 @@ Object.assign(MechEntity.prototype, {
       at.y = g.world.groundAt(at.x, at.z, at.y + 1.5 * MS);
       const mz = this.muzzle('rarm');
       g.fx.streaks(mz, 12, 0x9aff40, 18, 0.5, 14, at.clone().sub(mz).normalize(), 0.35);
+      SFX.aiPlay('foe_sprayer_spray', 1, 1, 0.05, 0.1, mz);
       g.fx.warnCircle(at, 4.5, 1, 0x9aff40);
       g.netEv({ t: 'warn', p: at.toArray().map((x) => +x.toFixed(2)), R: 4.5, dl: 1, c: 0x9aff40 });
-      g.later(1, () => g.addPool(this, at, 4.5, 10, 50 * this.dmgMul, true));
+      g.later(1, () => {
+        g.addPool(this, at, 4.5, 10, 50 * this.dmgMul, true);
+        g.poolSfx('foe_sprayer_pool'); // 腐蝕區的循環音（hazards2.js）
+      });
     }
     this.bossVis = s.spT < 1 && d < 26 * DS ? 1 : 0; // 1＝快要噴（模型的預警：噴嘴臂抬起、噴口變亮）
+    if (this.bossVis && !s.spW) SFX.aiPlay('foe_sprayer_warn', 0.8, 1, 0.05, 0.1, this.center());
+    s.spW = !!this.bossVis;
     this.stuckJump(dt, r);
     return r;
   },
@@ -402,6 +470,7 @@ Object.assign(MechEntity.prototype, {
     if (sub && d < 26 * DS && Math.random() < dt * 1.5) {
       r.qb = true;
       wish.copy(dir);
+      SFX.aiPlay('ace_marsh_ambush', 1, 1, 0.05, 0.5, this.center()); // 從水裡 QB 突襲
     } else if (!sub && Math.random() < dt * 0.8) r.qb = true;
     if (sub && Math.random() < dt * 5) this.game.fx.dust(this.pos.clone(), 1.4, 2, 0x9fb8a8);
     this.stuckJump(dt, r);
@@ -429,6 +498,7 @@ Object.assign(MechEntity.prototype, {
         s.lk = 'hide';
         s.hit = false;
         g.fx.dust(this.pos.clone(), 3, 10, 0xf0f4f8);
+        SFX.aiPlay('foe_lurker_rehide', 0.9, 1, 0.05, 0.1, this.pos);
       }
     }
     this.stuckJump(dt, r);
@@ -441,6 +511,7 @@ Object.assign(MechEntity.prototype, {
     this.bossVis = 0;
     this.noLock = false;
     this.game.fx.dust(this.pos.clone(), 4, 14, 0xf0f4f8);
+    SFX.aiPlay('foe_lurker_rise', 1, 1, 0.05, 0.1, this.pos);
   },
   // 冰面滑行砲車：在 24 m 左右繞著目標高速滑行（冰面上 ×1.4），機砲照常開火
   foeSkater(dt, d, dir, perp, wish, r) {
@@ -483,6 +554,9 @@ Object.assign(MechEntity.prototype, {
     if (this.recoil.r + this.recoil.l > 0.05) s.seenT = 2.5;
     const hidden = s.seenT <= 0 && d > 14 * DS;
     this.bossVis = hidden ? 2 : 0;
+    if (s.woH !== undefined && hidden !== s.woH)
+      SFX.aiPlay('ace_whiteout_cloak', 0.9, 1, 0.05, 0.3, this.center());
+    s.woH = hidden;
     if (hidden && Math.random() < dt * 3) this.game.fx.dust(this.pos.clone(), 1.5, 3, 0xf4f8fc);
     return r;
   },
@@ -507,6 +581,7 @@ Object.assign(MechEntity.prototype, {
         big ? BITE_BIG : BITE,
       );
       g.fx.meleeHit(at, 0xff3a30, big, dir.clone());
+      SFX.aiPlay(big ? 'foe_chimera_bite' : 'foe_blob_bite', 1, 1, 0.08, 0.1, at);
     }
     if (!big) {
       s.mergeT = (s.mergeT === undefined ? 1.5 : s.mergeT) - dt;
@@ -531,6 +606,7 @@ Object.assign(MechEntity.prototype, {
     }
     const e = g.spawnType('chimera', g.scaleHp || 1, g.scaleDmg || 1, at, 1);
     g.fx.shockwave(at.clone().setY(at.y + 1), 6, 0xff3a30, 0.5);
+    SFX.aiPlay('foe_blob_merge', 1, 1, 0.05, 0.1, at);
     g.alertAll(`實驗體 ×${list.length} 融合成大型個體`);
     return e;
   },
@@ -572,10 +648,12 @@ Object.assign(MechEntity.prototype, {
         'en',
       );
       g.fx.spark(t.center(), 0xff3a30);
+      SFX.aiPlay('foe_laserpost_touch', 0.8, 1, 0.08, 0.2, t.center());
       if (s.alarmT <= 0) {
         s.alarmT = 15;
         g.alertAll('保全警報：增援接近');
-        SFX.play('ui2', 1, 0.5, 0.05, 0.05, this.center());
+        if (!SFX.aiPlay('foe_laserpost_alarm', 1, 1, 0.05, 0.05, this.center()))
+          SFX.play('ui2', 1, 0.5, 0.05, 0.05, this.center());
         for (let i = 0; i < 2; i++) {
           const a = Math.random() * Math.PI * 2;
           const p = this.pos.clone().add(new THREE.Vector3(Math.cos(a) * 8 * DS, 0, Math.sin(a) * 8 * DS));
@@ -606,6 +684,7 @@ Object.assign(MechEntity.prototype, {
       s.ov = true;
       s.ovT = 5;
       g.alertAll('SPECIMEN 過載');
+      SFX.aiPlay('ace_specimen_overload', 1, 1, 0.05, 0.1, this.center());
       g.fx.shockwave(this.center(), 5, 0xff3a30, 0.4);
     } else if (s.ov && s.ovT <= 0) {
       s.ov = false;
@@ -613,6 +692,7 @@ Object.assign(MechEntity.prototype, {
       this.staggerT = Math.max(this.staggerT, 3);
       s.tired = 3;
       g.alertAll('SPECIMEN 過載結束 — 硬直');
+      SFX.aiPlay('ace_specimen_tired', 0.9, 1, 0.05, 0.1, this.center());
     }
     s.tired = Math.max(0, (s.tired || 0) - dt);
     this.speedMul = s.sp0 * (s.ov ? 1.5 : 1);
@@ -696,6 +776,13 @@ Object.assign(MechEntity.prototype, {
         if (!best || o.top > best.top + 1 * MS || (Math.abs(o.top - best.top) < 1 * MS && dd < best.dd))
           best = { ...o, dd };
       }
+      // 換到新的高處：往最高的平台爬
+      if (
+        best &&
+        (!s.perch || best.x !== s.perch.x || best.z !== s.perch.z) &&
+        this.pos.y < best.top - 0.5 * MS
+      )
+        SFX.aiPlay('ace_spire_perch', 0.9, 1, 0.05, 0.5, this.center());
       s.perch = best;
     }
     const P = s.perch;
@@ -728,11 +815,13 @@ Object.assign(MechEntity.prototype, {
       const c = this.pos.clone().add(new THREE.Vector3(fx * 15 * DS, 0, fz * 15 * DS));
       c.y = g.world.terrainHeight(c.x, c.z);
       g.fx.warnRect(c, Math.atan2(fx, fz), 8, 26, 1.5, 0xff8a30);
+      SFX.aiPlay('foe_testrig_warn', 0.9, 1, 0.05, 0.1, this.center());
     } else if (s.ph === 1 && s.trT <= 0) {
       s.ph = 2;
       s.trT = 2.5;
       s.tick = 0;
-      SFX.play('overload', 0.8, 0.6, 0.05, 0.05, this.center());
+      if (!SFX.aiPlay('foe_testrig_ignite', 1, 1, 0.05, 0.05, this.center()))
+        SFX.play('overload', 0.8, 0.6, 0.05, 0.05, this.center());
     } else if (s.ph === 2) {
       // 噴火中：方向固定在預警時的方向
       const [ax, az] = s.dir;
@@ -766,6 +855,7 @@ Object.assign(MechEntity.prototype, {
       if (s.trT <= 0) {
         s.ph = 0;
         s.trT = 7;
+        SFX.aiPlay('foe_testrig_shutdown', 0.8, 1, 0.05, 0.1, this.center());
       }
     }
     this.bossVis = s.ph;
@@ -813,6 +903,7 @@ Object.assign(MechEntity.prototype, {
         s.rmT = 0.8;
         s.at = pl.pos.clone();
         g.fx.warnLine(this.center(), pl.center(), 0.8, 0x60e0ff);
+        SFX.aiPlay('foe_rammer_warn', 0.9, 1, 0.05, 0.1, this.center());
       }
     } else if (s.ph === 1) {
       wish.set(0, 0, 0);
@@ -821,6 +912,7 @@ Object.assign(MechEntity.prototype, {
         s.rmT = 1.2;
         s.dv = s.at.clone().sub(this.pos).setY(0).normalize();
         s.hit = false;
+        SFX.aiPlay('foe_rammer_charge', 1, 1, 0.05, 0.1, this.center());
       }
     } else {
       this.vel.x = s.dv.x * 42 * DS;
@@ -830,6 +922,7 @@ Object.assign(MechEntity.prototype, {
         s.hit = true;
         pl.takeDamage(260 * this.dmgMul, 900 * this.dmgMul, this, pl.center(), this.foeOutward(pl), RAM_HIT);
         g.fx.meleeHit(pl.center(), 0x60e0ff, true, s.dv.clone());
+        SFX.aiPlay('foe_rammer_hit', 1, 1, 0.05, 0.1, pl.center());
       }
       if (s.rmT <= 0 || s.hit) {
         s.ph = 0;
@@ -874,6 +967,7 @@ Object.assign(MechEntity.prototype, {
         }),
       );
       g.fx.muzzle(mz, v.clone().normalize(), 0x60e0ff, 1.6);
+      SFX.aiPlay('foe_flak_fire', 0.9, 1, 0.05, 0.1, mz);
       return true;
     }
     return air; // 空中的目標只用空炸彈；地面的照常用機砲
@@ -890,6 +984,7 @@ Object.assign(MechEntity.prototype, {
       s.shT = 3;
       pl.takeDamage(320 * this.dmgMul, 1100 * this.dmgMul, this, pl.center(), this.foeOutward(pl), SHOVE_HIT);
       g.fx.shockwave(pl.center(), 4, 0x40c0e0, 0.3);
+      SFX.aiPlay('ace_undertow_shove', 1, 1, 0.05, 0.1, pl.center());
       g.fx.meleeHit(pl.center(), 0x40c0e0, true, dir.clone());
     }
     this.stuckJump(dt, r);
@@ -903,6 +998,7 @@ Object.assign(MechEntity.prototype, {
     if (s.hT <= 0) {
       s.hT = rnd(1.5, 2.5);
       this.hoverH = rnd(4, 12) * DS;
+      SFX.aiPlay('foe_vacuum_shift', 0.7, 1, 0.05, 0.3, this.center());
     }
     wish
       .copy(perp)
@@ -924,6 +1020,7 @@ Object.assign(MechEntity.prototype, {
       pl.markT = 5;
       g.fx.beam(this.muzzle('rarm'), pl.center(), 0xff5050, 0.12);
       g.fx.ring(pl.center(), 3, 0xff5050);
+      SFX.aiPlay('foe_marker_mark', 1, 1, 0.05, 0.1, pl.center());
       if (pl.isPlayer || pl.slot !== undefined) g.alertAll('被軌道衛星標定 — 受到的傷害增加');
     }
     return r;
@@ -940,6 +1037,44 @@ Object.assign(MechEntity.prototype, {
     if (Math.random() < dt * 1.2) r.qb = true;
     if (d > 45 * DS && Math.random() < dt * 0.6) r.ab = true;
     return r;
+  },
+  // 專屬敵人的循環音（mech-special.js 的 sfxLoops 每格呼叫；v＝水平速度 m/s）。停止呼叫時 loopAt 自動淡出
+  foeLoops(dt, v) {
+    const g = this.game,
+      o = this.opts || {},
+      bv = this.bossVis || 0;
+    const mv = clamp(v / (10 * DS), 0, 1);
+    let k = MOVE_LOOP[this.ai] || VEH_MOVE_LOOP[o.vehKey];
+    if (k && mv > 0.05) this.aiLoop(k, 0.2 + 0.6 * mv, 0.9 + 0.2 * mv);
+    k = IDLE_LOOP[this.ai];
+    if (k) this.aiLoop(k, 0.45);
+    for (const [ai, f, key] of STATE_LOOP) if (ai === this.ai && f(bv)) this.aiLoop(key, 0.7);
+    if (this.ai === 'buoy') this.aiLoop('foe_buoy_drift', 0.4, bv & 1 ? 1.4 : 1); // 靠近時閃燈變快
+    // 爬行機：垂直往上爬
+    const py = this.sfxPy === undefined ? this.pos.y : this.sfxPy;
+    const vy = (this.pos.y - py) / Math.max(dt, 1e-3);
+    this.sfxPy = this.pos.y;
+    if (this.ai === 'crawler' && vy > 3 * DS) this.aiLoop('foe_crawler_climb', 0.7);
+    // 迴旋刃在飛（位置在 bx）
+    if (this.ai === 'boomer' && bv === 2 && this.bx)
+      this.aiLoop('foe_boomer_spin', 0.8, 1, new THREE.Vector3(this.bx[0], this.bx[1], this.bx[2]));
+    // 誘導飛彈架的飛彈（客機的投射物沒有 owner：以大型飛彈的外觀認）
+    if (this.ai === 'missilerack')
+      for (const pj of g.projectiles || []) {
+        if (pj.dead || pj.kind !== 'missile' || !(pj.owner === this || (!pj.owner && pj.scale > 2.3)))
+          continue;
+        if (!pj.sfxId) pj.sfxId = ++PJ_SEQ;
+        if (SFX.dist(pj.pos) < 90 * DS)
+          SFX.loopAt('foe_missilerack_flight' + pj.sfxId, '@foe_missilerack_flight', 0.8, 1, pj.pos);
+      }
+    // 沙暴干擾機：本機的玩家進入干擾範圍（鎖定距離減半，player.js 的 lockReach）
+    if (o.vehKey === 'jammer') {
+      const me = g.player;
+      const inJam = !!me && !me.dead && me.pos.distanceTo(this.pos) < 25 * DS;
+      if (inJam && !this.sfxJam) SFX.aiPlay('foe_jammer_jam', 0.8, 1, 0.05, 1, null, 'ui');
+      this.sfxJam = inJam;
+      this.aiLoop('foe_jammer_hum', 0.45);
+    }
   },
   // 地下時打不到；房主與客機都呼叫（specialFx）：依 bossVis 隱藏、外殼大小
   foeFx(dt) {
@@ -1052,8 +1187,10 @@ Object.assign(MechEntity.prototype, {
     this.foeShellInit();
     if (!(this.shell > 0)) return [dmg, impact];
     this.shell -= dmg * SHELL_K;
+    if (at) SFX.aiPlay('foe_junk_shell_hit', 0.6, 1, 0.1, 0.08, at);
     if (this.shell <= 0) {
       this.shell = 0;
+      SFX.aiPlay('foe_junk_shell_break', 1, 1, 0.05, 0.1, this.center());
       this.game.flashAlert('廢鐵合成體的外殼剝落');
       this.game.netEv({ t: 'alert', txt: '廢鐵合成體的外殼剝落' });
       this.game.fx.explosion(this.center(), 3, 0xc07040);
@@ -1076,9 +1213,11 @@ Object.assign(MechEntity.prototype, {
       this.bossVis = 0;
       this.game.fx.flash(p, 1.6, 0xffb020, 0.18);
       this.game.popDamage(p, 'GUARD BREAK', false, true, false, 0);
+      SFX.aiPlay('foe_forklift_guardbreak', 1, 1, 0.05, 0.1, p);
       return [dmg, impact * 1.5];
     }
     this.game.fx.spark(p, 0xffd080);
+    SFX.aiPlay('foe_forklift_guard', 0.7, 1, 0.1, 0.08, p);
     return [dmg * 0.15, impact * 0.4];
   },
 });

@@ -118,7 +118,7 @@ Object.assign(Game.prototype, {
         if (!this.forgePay(c)) return;
         this.forgeUp(g);
         this.writeSave();
-        SFX.cue('pickup');
+        SFX.cue('pickup', 'forge_ascend');
         this.flashMsg(`升階：${GRADES[g.q].n}・${p.name}`, parseInt(GRADES[g.q].c.slice(1), 16), 1.8);
         this.renderGarage();
         if (after) after();
@@ -209,7 +209,7 @@ Object.assign(Game.prototype, {
         c.k = a[0];
         c.opts = null;
         this.writeSave();
-        SFX.cue('pickup');
+        SFX.cue('pickup', 'forge_reroll');
         this.flashMsg(`重骰：${axText(a)}`, 0x7fc8ff, 1.6);
         this.forgeDone();
       };

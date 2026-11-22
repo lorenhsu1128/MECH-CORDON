@@ -176,6 +176,7 @@ Object.assign(Game.prototype, {
     if (d.def.gun) return this.gunDamage(d, dmg, at, from); // 敵方佔著的固定砲台（devices-guns.js）
     if (d.st !== ST_IDLE) return;
     d.hp -= Math.max(1, Math.round(dmg));
+    SFX.aiPlay('trap_weakpoint_hit', 0.6, 1, 0.06, 0.06, at || t.center()); // 打中陷阱的弱點
     this.popDamage(at || t.center(), Math.round(dmg), false, false, false, 0, t.id);
     this.fx.spark(t.center(), 0xffe080);
     if (d.hp <= 0) this.devTrigger(d, from);
@@ -193,7 +194,8 @@ Object.assign(Game.prototype, {
     const def = d.def;
     this.devLvEmit(d); // 自訂關卡的觸發器
     if (by && by.isPlayer) this.flashMsg(`${def.name} — ${def.act}`, def.color, 1.6);
-    SFX.explode(false, d.tgt ? d.tgt.pos : d.pos);
+    // 有 AI 音效時改由各端的 trapVis 播預警（trap_warn）
+    if (!SFX.aiVar('trap_warn').length) SFX.explode(false, d.tgt ? d.tgt.pos : d.pos);
   },
   // ---------- 效果（房主／單機，devTick 呼叫） ----------
   trapActTick(d, dt) {
@@ -247,7 +249,7 @@ Object.assign(Game.prototype, {
       if (w0.vis === 'blast' || w0.vis === 'energy')
         this.fx.explosion(c.clone().setY(c.y + 1.5 * MS), 3, def.boomColor || WAVE_COL[w0.vis], true);
       this.fx.dust(c.clone().setY(c.y + 0.3), 4, 14, def.dustColor || 0x9a8e80);
-      SFX.explode(true, c);
+      this.trapBoom(d, c);
       this.camShakeAt(c, 0.45);
     }
     if (E.blast) {
@@ -255,7 +257,8 @@ Object.assign(Game.prototype, {
       this.fx.explosion(c.clone().setY(c.y + 1.5 * MS), E.blast * 0.6, def.boomColor || 0xffa040, true);
       this.fx.shockwave(c.clone().setY(c.y + 0.5 * MS), E.blast, 0xffd090, 0.5);
       this.fx.dust(c.clone().setY(c.y + 0.3), E.blast * 0.8, 14, def.dustColor || 0x9a8e80);
-      SFX.explode(true, c);
+      if (!E.wave) this.trapBoom(d, c);
+      else SFX.explode(true, c);
       this.devArea(c, E.blast * MS, (t, k) =>
         this.devHurt(t, E.frac * k, E.imp || 600, by, c, E.attr || 'exp'),
       );
@@ -268,7 +271,8 @@ Object.assign(Game.prototype, {
       const tip = d.pos.clone().addScaledVector(fwd, L);
       this.fx.dust(tip.clone().setY(tip.y + 0.3), 8, 16, 0x8a8478);
       this.fx.shockwave(tip.clone().setY(tip.y + 0.5), 6, 0xffe080, 0.5);
-      SFX.explode(true, tip);
+      if (!E.wave && !E.blast) this.trapBoom(d, tip);
+      else SFX.explode(true, tip);
       for (const t of this.everyone()) {
         if (!t || t.dead || t.isProp) continue;
         const rx = t.pos.x - d.pos.x,
@@ -321,6 +325,10 @@ Object.assign(Game.prototype, {
     if (E.pool) this.fx.firePool(d.pos.clone(), E.zone.R, E.zone.dur, 0);
     if (E.pillar) this.fx.pillarStrike(d.pos.clone(), E.pillar, def.color);
   },
+  // 陷阱的主打擊聲（房主／單機，會轉送）：每種陷阱自己的 AI 音效（trap_<種類>），沒有時照舊爆炸
+  trapBoom(d, c) {
+    if (!SFX.aiPlay('trap_' + d.kind, 1.1, 1, 0.04, 0.1, c)) SFX.explode(true, c);
+  },
   // ---------- 擴散波（第二版：docs/map-devices-design.md） ----------
   trapWaveCenter(d) {
     const c = d.pos.clone().add(this.devRot(d, d.def.fx.at || [0, 0, 0]));
@@ -346,7 +354,7 @@ Object.assign(Game.prototype, {
       if (i > 0 && el >= 0 && !hit.has('boom')) {
         hit.add('boom');
         this.fx.explosion(c.clone().setY(c.y + 1.5 * MS), 3 + i, def.boomColor || WAVE_COL[w.vis], true);
-        SFX.explode(true, c);
+        if (!SFX.aiPlay('trap_wave', 1, 1, 0.05, 0.1, c)) SFX.explode(true, c); // 之後每一圈的波
         this.camShakeAt(c, 0.35);
       }
       for (const t of this.everyone()) {
@@ -579,8 +587,20 @@ Object.assign(Game.prototype, {
       d.vst = d.st;
       d.vt = 0;
       if (d.st === ST_ACT && def.fx.wave) this.trapWaveVisStart(d);
+      // 預警（AI 音效；各端自己播）
+      if (d.st === ST_ACT) {
+        SFX.netDepth++;
+        try {
+          SFX.aiPlay('trap_warn', 0.8, 1, 0.03, 0.1, d.tgt ? d.tgt.pos : d.pos);
+        } finally {
+          SFX.netDepth--;
+        }
+      }
     }
     d.vt = (d.vt || 0) + dt;
+    // 陷阱之後的持續區域（電、火、水、煙）：AI 音效的循環
+    if (d.st === ST_ACT && def.fx.zone && d.vt >= trapTimes(def).zs)
+      SFX.loopAt('trapZ' + d.id, '@trap_zone_loop', 0.5, 1, d.pos);
     if (d.st === ST_ACT && def.fx.wave) this.trapWaveVisTick(d, dt);
     const act = d.st === ST_ACT,
       used = d.st === ST_USED || (d.st === ST_CD && def.trig !== 'use');

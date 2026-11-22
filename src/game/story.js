@@ -243,7 +243,7 @@ Object.assign(Game.prototype, {
     const el = document.getElementById('hubStoryBox');
     el.style.display = open ? '' : 'none';
     if (!open) return;
-    SFX.ui();
+    SFX.ui(null, 'ui_panel_open');
     const seen = this.storyUnlocked();
     const order = (k) => {
       const m = /^([pio])(\d)(?:_(\d))?$/.exec(k);

@@ -308,6 +308,14 @@ Object.assign(Game.prototype, {
   // ---------- 每格 ----------
   hangarTick(dt, t) {
     if (!this.hg) this.hangarEnsure();
+    // 技師走動、工具聲（AI 音效；偶爾一聲）
+    if (this.state === 'garage' && SFX.ctx) {
+      this.hgStepT = (this.hgStepT || 4) - dt;
+      if (this.hgStepT <= 0) {
+        this.hgStepT = 5 + Math.random() * 8;
+        SFX.aiPlay('hg_tech_steps', 0.25, 1, 0.08, 1, null, 'ui');
+      }
+    }
     // 外部素材載入完成：沒有在播演出時換成細緻的場景
     {
       const g = this.hg;
@@ -490,7 +498,8 @@ Object.assign(Game.prototype, {
     this.garageScene.add(band);
     const dur = this.hangarFx() === 'short' ? 0.45 : 0.75;
     hg.swap = { old, t: 0, dur, y0: box.min.y - 0.05, y1: box.max.y + 0.05, pNew, pOld, restore, band };
-    SFX.tone(380, 1500, dur, 0.04, 'sine', 'ui');
+    if (!SFX.aiPlay('hg_holo_scan', 0.6, 1, 0.02, 0.1, null, 'ui'))
+      SFX.tone(380, 1500, dur, 0.04, 'sine', 'ui');
     this.hangarSwapTick(0);
   },
   // ---------- 實體換裝 ----------
@@ -582,7 +591,9 @@ Object.assign(Game.prototype, {
     G.tgt.copy(V.tgt);
     hg.idle = 99;
     hg.swap = S;
-    SFX.tone(110, 170, 0.5, 0.035, 'sawtooth', 'ui');
+    if (!SFX.aiPlay('hg_rig_start', 0.6, 1, 0.02, 0.1, null, 'ui'))
+      SFX.tone(110, 170, 0.5, 0.035, 'sawtooth', 'ui');
+    if (S.robots && S.robots.length) SFX.aiPlay('hg_floor_hatch', 0.5, 1, 0.03, 0.2, null, 'ui', 0.05); // 地板升降口打開
     this.hangarSwapTick(0);
   },
   // 零件離開原位的位移（世界座標）：u＝0 在原位、1 在地板下／天花板
@@ -664,11 +675,25 @@ Object.assign(Game.prototype, {
         emitSparks(H.sparks, p, new THREE.Vector3(0, 0.6, 1), big ? 26 : 14);
         if (big) puff(H, new THREE.Vector3(p.x, Math.max(0.3, g.box.min.y + 0.3), p.z + 0.2), 5, 0.45);
       }
-      SFX.noise(big ? 0.22 : 0.12, big ? 500 : 900, big ? 0.09 : 0.06, 'bandpass', 'ui', 3);
+      if (!SFX.aiPlay(big ? 'hg_clamp_lock' : 'hg_clamp_grab', 0.7, 1, 0.04, 0.1, null, 'ui'))
+        SFX.noise(big ? 0.22 : 0.12, big ? 500 : 900, big ? 0.09 : 0.06, 'bandpass', 'ui', 3);
     };
     once('grab', RT.grab, () => S.items.some((i) => !i.isNew) && burst(false));
-    once('out', RT.out0, () => SFX.tone(140, 220, 0.5, 0.03, 'sawtooth', 'ui'));
-    once('in', RT.in0, () => SFX.tone(220, 140, 0.55, 0.03, 'sawtooth', 'ui'));
+    // 舊零件被拿走、新零件送進來：AI 音效的循環（長度跟著動作），沒有時照舊一聲
+    if (t >= RT.out0 && t < RT.in0) SFX.menuLoop('hgRig', '@hg_rig_out', 0.4);
+    else if (t >= RT.in0 && t < RT.lock) SFX.menuLoop('hgRig', '@hg_rig_in', 0.4);
+    once(
+      'out',
+      RT.out0,
+      () => SFX.aiVar('hg_rig_out').length || SFX.tone(140, 220, 0.5, 0.03, 'sawtooth', 'ui'),
+    );
+    once(
+      'in',
+      RT.in0,
+      () => SFX.aiVar('hg_rig_in').length || SFX.tone(220, 140, 0.55, 0.03, 'sawtooth', 'ui'),
+    );
+    if (S.robots && S.robots.length)
+      once('hatch', RT.back0 + 0.05, () => SFX.aiPlay('hg_floor_hatch', 0.5, 0.9, 0.03, 0.2, null, 'ui'));
     once('lock', RT.lock, () => burst(true));
     if (t >= RT.end) this.hangarFinish();
   },
@@ -724,7 +749,8 @@ Object.assign(Game.prototype, {
       if (o.geometry && !SHARED_GEO.has(o.geometry)) o.geometry.dispose();
       if (o.material) o.material.dispose();
     });
-    SFX.noise(0.12, 900, 0.05, 'bandpass', 'ui', 2);
+    if (!SFX.aiPlay('hg_swap_done', 0.6, 1, 0.03, 0.1, null, 'ui'))
+      SFX.noise(0.12, 900, 0.05, 'bandpass', 'ui', 2);
   },
   // ---------- 受損與維修 ----------
   // k＝受損程度 0～1：挑幾個區塊（不含武器）變黑、冒煙；auto＝稍後自動派無人機修好（否則等 hangarRepairStart）
@@ -846,13 +872,15 @@ Object.assign(Game.prototype, {
       d.g.rotation.y +=
         (((look - d.g.rotation.y + Math.PI * 3) % (Math.PI * 2)) - Math.PI) * Math.min(1, dt * 8);
       if (J.ph === 'fly') {
+        SFX.menuLoop('hgDrone', '@hg_drone_fly', 0.3); // 無人機飛過來（AI 音效的循環）
         if (fly(d, at, 5) < 0.04) {
           J.ph = 'weld';
           J.t = 0;
-          SFX.noise(0.7, 2400, 0.025, 'highpass', 'ui');
+          if (!SFX.aiVar('hg_drone_fly').length) SFX.noise(0.7, 2400, 0.025, 'highpass', 'ui');
         }
       } else {
         J.t += dt;
+        SFX.menuLoop('hgDrone', '@hg_drone_weld', 0.35); // 焊接中
         d.tip.visible = Math.random() < 0.8;
         d.tip.getWorldPosition(_tp);
         emitSparks(
@@ -868,7 +896,8 @@ Object.assign(Game.prototype, {
           sp.done = true;
           this.hangarDamageRestore(sp);
           puff(H, sp.p, 2, 0.3);
-          SFX.noise(0.1, 900, 0.05, 'bandpass', 'ui', 2);
+          if (!SFX.aiPlay('hg_repair_done', 0.6, 1, 0.03, 0.1, null, 'ui'))
+            SFX.noise(0.1, 900, 0.05, 'bandpass', 'ui', 2);
           d.job = null;
         }
       }
@@ -886,7 +915,7 @@ Object.assign(Game.prototype, {
     this.hg.idle = 0;
     c.onStop = (cc) => {
       if (cc.stops++) return;
-      SFX.ui();
+      SFX.ui(null, 'hg_supply_truck');
       emitSparks(
         this.hg.H.sparks,
         cc.crate.getWorldPosition(new THREE.Vector3()),
@@ -935,8 +964,9 @@ Object.assign(Game.prototype, {
     }
     hg.launch = L;
     hg.idle = 99;
-    SFX.alert();
-    SFX.noise(L.T, 110, 0.08, 'lowpass', 'ui');
+    // 警報與低鳴：有 AI 音效時由 hangarLaunchTick 每格播循環
+    if (!SFX.aiVar('hg_launch_alarm').length) SFX.alert();
+    if (!SFX.aiVar('hg_launch_rumble').length) SFX.noise(L.T, 110, 0.08, 'lowpass', 'ui');
   },
   hangarLaunchTick(dt) {
     const hg = this.hg,
@@ -952,6 +982,8 @@ Object.assign(Game.prototype, {
         fn();
       }
     };
+    if (t < 1.4) SFX.menuLoop('hgLaunchA', '@hg_launch_alarm', 0.35);
+    SFX.menuLoop('hgLaunchR', '@hg_launch_rumble', 0.5);
     for (const [i, c] of H.beds[0].clamps.entries())
       c.userData.arm.position.x = (i ? 1 : -1) * 0.2 * seg(t, 0, 0.4);
     if (L.kind === 'lift') {
@@ -964,7 +996,13 @@ Object.assign(Game.prototype, {
       L.plate.position.y = y;
       G.tgt.set(0, y + 1.8, 0);
       Object.assign(G, { yaw: 0.45, pitch: -0.45, dist: 10 });
-      once('go', 0.8, () => SFX.tone(70, 140, 2, 0.05, 'sawtooth', 'ui'));
+      once(
+        'go',
+        0.8,
+        () =>
+          SFX.aiPlay('hg_lift_rise', 0.8, 1, 0.02, 0.5, null, 'ui') ||
+          SFX.tone(70, 140, 2, 0.05, 'sawtooth', 'ui'),
+      );
     } else if (L.kind === 'cat') {
       const o = seg(t, 0.1, 0.7);
       if (H.gate)
@@ -975,9 +1013,16 @@ Object.assign(Game.prototype, {
       for (const g of L.glows) g.scale.set(1, 0.01 + seg(t, 0.4, 0.8) * 1.4, 1);
       G.tgt.set(0, 1.8, z);
       Object.assign(G, { yaw: 0.85, pitch: 0.1, dist: 7.5 });
-      once('go', 0.7, () => SFX.tone(120, 60, 1.6, 0.06, 'sawtooth', 'ui'));
+      once(
+        'go',
+        0.7,
+        () =>
+          SFX.aiPlay('hg_catapult', 0.8, 1, 0.02, 0.5, null, 'ui') ||
+          SFX.tone(120, 60, 1.6, 0.06, 'sawtooth', 'ui'),
+      );
     } else {
       const u = seg(t, 0.6, L.T);
+      once('go', 0.6, () => SFX.aiPlay('hg_tent_launch', 0.8, 1, 0.02, 0.5, null, 'ui')); // 野戰帳篷：往前衝出再爬升
       m.group.position.y = 13 * u * u;
       m.group.position.z = 10 * Math.pow(u, 0.6); // 先往前衝出帳篷再爬升
       for (const g of L.glows) g.scale.set(1, 0.01 + seg(t, 0.1, 0.5) * (1.2 + 0.2 * Math.sin(t * 40)), 1);

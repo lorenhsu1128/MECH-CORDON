@@ -313,6 +313,12 @@ Object.assign(MechEntity.prototype, {
     if (k === 'guard') return this.dgGuardStart(th);
     if (k === 'spec') return this.dgSpecial(th);
     if (this.dgClass() === 'beast') return this.dgBeastStart(k, th);
+    if (this.isBoss) {
+      // 自製音效：Boss 的閃避（雙機各自有一個，其他共用）
+      const nm = String(this.name || '');
+      const ev = /^KESTREL/.test(nm) ? 'kestrel_dodge' : /^BRANT/.test(nm) ? 'brant_dodge' : null;
+      if (!(ev && this.bossSnd(ev, 1, undefined, 0.3))) this.bossCue('dodge', 1, undefined, 0.3);
+    }
     // 側閃的方向：和威脅垂直、往遠離軌跡的那一側
     const f = th.dir;
     const side = _r.set(-f.z, 0, f.x);
@@ -481,6 +487,7 @@ Object.assign(MechEntity.prototype, {
     const g = this.game;
     s.act = { k: 'guard', t: 0, dir: new THREE.Vector3(), kind: th.kind };
     this.evadeGo('guard', 0, 0);
+    if (this.isBoss) this.bossCue('guard_up', 1, undefined, 0.5); // 自製音效：架起六角護盾
     if (g.net && g.net.role === 'host') g.netEv({ t: 'dgv', i: this.id, k: 'guard', f: 0, s: 0 });
     this.dgN = (this.dgN || 0) + 1; // 測試用
     this.dgLast = th;
@@ -544,6 +551,7 @@ Object.assign(MechEntity.prototype, {
         g.fx.spark(c.clone().addScaledVector(d, 1.5 * this.dk), 0xfff0b0, d);
       }
       g.fx.flash(c, (3 * this.scale) / g.fx.k, 0xffe090, 0.3);
+      if (this.isBoss) this.bossSnd('flare', 1, c); // 高速突擊機的熱焰彈（自製音效）
       g.popDamage(c.clone().setY(c.y + 3 * this.dk), '熱焰彈', false, false, false, 0, this.id);
     }
     for (const q of g.projectiles)
@@ -619,6 +627,7 @@ Object.assign(MechEntity.prototype, {
       case 'worm':
         if (s.wm === 'up' && s.wmT > 0.8) {
           s.wmT = 0.35; // 提早鑽回地下（露出的時間變短，但不是馬上）
+          this.bossSnd('dive_early', 1);
           g.fx.dust(this.pos.clone().setY(g.world.terrainHeight(this.pos.x, this.pos.z)), 5, 14, 0xb09070);
           ok = true;
         }
@@ -755,6 +764,7 @@ Object.assign(MechEntity.prototype, {
     if (s && s.act && s.act.k === 'guard') {
       if (this.dgShield && this.dgShield.material.uniforms && from && from.center)
         hexShieldHit(this.dgShield.material, from.center().sub(this.center()));
+      if (this.isBoss) this.bossCue('guard_hit', 0.6, undefined, 0.12);
       return dmg * DG.GUARD_K;
     }
     if (!s || !(s.open > 0) || !from || !from.pilotEnt || !from.pilotEnt() || from.team === this.team)

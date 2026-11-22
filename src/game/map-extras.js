@@ -5,6 +5,9 @@ import { MS } from '../core/scale.js';
 import { PICKUP_DEFS, Pickup, Vehicle } from '../world/map-extras.js';
 import { Game } from './game.js';
 
+// 撿到東西的 AI 音效（種類 → 鍵；素材 mat_* 與其他消耗品另外判斷）
+const PICKUP_AI = { repair: 'pickup_repair', ammo: 'pickup_ammo', bossPart: 'pickup_ammo' };
+
 Object.assign(Game.prototype, {
   mapExtrasInit() {
     this.vehicles = [];
@@ -120,7 +123,11 @@ Object.assign(Game.prototype, {
         this.renderWeaponHud(true);
       }
     }
-    if (ent.isPlayer) SFX.cue('pickup');
+    if (ent.isPlayer)
+      SFX.cue(
+        'pickup',
+        PICKUP_AI[pk.kind] || (pk.kind.startsWith('mat_') ? 'pickup_material' : 'pickup_consumable'),
+      );
     else SFX.kit();
     this.flashMsg(`${ent.name} 取得 ${d.name}`, d.color, 1.5);
     if (this.net.role === 'host') {

@@ -195,12 +195,13 @@ Object.assign(Game.prototype, {
         m: 'WARNING',
         s: '不明的大型反應 高速接近',
       });
-      SFX.stinger && SFX.stinger(false);
+      if (!SFX.aiPlay('beast_lion_raid_in', 1, 1, 0.02, 1)) SFX.stinger && SFX.stinger(false);
     } else if (k === 'go') {
       this.bossDef = { ...(this.bossDef || {}), name };
       this.goalIntro(); // 過關條件換成擊破獅型
       this.flashMsg(`隱藏目標 — 擊破 ${name}`, 0xffb020, 3, { k: 'warn', m: '隱藏目標', s: `擊破 ${name}` });
     } else if (k === 'won') {
+      SFX.aiPlay('beast_lion_raid_won', 1, 1, 0.02, 1); // 隱藏目標達成（自製音效）
       this.flashMsg(`隱藏目標達成 — ${name} 擊退`, 0xffc040, 3.5, {
         k: 'good',
         m: '隱藏目標達成',

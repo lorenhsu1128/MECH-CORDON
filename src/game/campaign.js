@@ -306,6 +306,7 @@ Object.assign(Game.prototype, {
     for (const k of CK_KEYS) ck[k] = this.camp[k];
     this.campCkSet(clone(ck));
     if (!this.camp.free) this.writeSave();
+    if (this.camp.seg > 0) SFX.aiPlay('checkpoint_saved', 0.5, 1, 0.02, 0.5, null, 'ui'); // 紀錄點記下
     // 多人：紀錄點也給客機一份（房主遷移時由新房主接手）
     // 自由出擊：臨時出擊的定義與作戰設定也給（新房主接手時要用）
     if (this.campMp())
@@ -523,6 +524,7 @@ Object.assign(Game.prototype, {
       const body = base.filter((t) => t !== 'ac' && !(ENEMY_TYPES[t] || {}).roster);
       const extra = body.slice(0, Math.round(body.length * 0.4));
       this.spawnComp([...extra, ...base], ss.np || 1, sh, sd, false);
+      setTimeout(() => SFX.aiPlay('objective_alarm', 0.7, 1, 0.02, 1, null, 'ui'), 1500);
       this.flashAlert('防衛目標遭到攻擊 — 擊退所有敵軍');
     } else if (type === 'escort' && this.world.corridor) {
       this.campConvoy();
@@ -706,7 +708,7 @@ Object.assign(Game.prototype, {
       m: '區段清除',
       s: 'AREA CLEAR — 選擇出口前往下一區',
     });
-    SFX.ui();
+    SFX.ui(null, 'exit_open');
     // 這一段沒有專屬的通訊時，ECHO 以系統提示說出口開了（輪流換說法）
     if (!this.campComm('exitsOpen', this.campCtx())) this.voiceCue('exits');
   },
@@ -998,6 +1000,7 @@ Object.assign(Game.prototype, {
       if (dead >= Math.ceil((ss.n0 || 1) / 2)) {
         ss.expanded = true;
         w.expandZone();
+        SFX.aiPlay('zone_expand', 0.7, 1, 0.02, 0.5, null, 'ui');
         this.flashAlert('作戰區域擴大');
       }
     }
@@ -1017,7 +1020,10 @@ Object.assign(Game.prototype, {
         : !p.dead && this.campStand(ss.pad, dt, PAD_R)
           ? p
           : null;
-      if (who && who === p) c.hint = '補給中…';
+      if (who && who === p) {
+        c.hint = '補給中…';
+        SFX.loopAt('campPad', '@supply_pad_progress', 0.5, 1, p.pos); // 站著補給中（離開就淡出）
+      }
       if (ss.pad.t >= 1.5 && who) {
         ss.pad.used = true;
         const p = who;
@@ -1029,7 +1035,7 @@ Object.assign(Game.prototype, {
             wp.ammo = Math.min(wp.def.ammo, wp.ammo + Math.ceil(wp.def.ammo * 0.5));
         }
         this.fx.ring(p.center(), 6, 0x7ee081);
-        SFX.kit();
+        if (!SFX.aiPlay('supply_pad_done', 0.8, 1, 0.03, 0.1, null, 'ui')) SFX.kit();
         this.flashMsg('補給完成：AP 50%、彈藥 50%、修復套件 +1', 0x7ee081, 2.4);
         this.campDisposeGroup(ss.pad.group);
         ss.pad.group = null;
@@ -1043,10 +1049,13 @@ Object.assign(Game.prototype, {
         mp
           ? this.campStandAny(ss.intel, dt, PAD_R, false)
           : !p.dead && this.campStand(ss.intel, dt, PAD_R, false)
-      )
+      ) {
         c.hint = `下載情報… ${Math.min(100, Math.round((ss.intel.t / 4) * 100))}%`;
+        if (!p.dead) SFX.loopAt('campIntel', '@intel_download_loop', 0.5, 1, p.pos); // 下載中（離開就淡出）
+      }
       if (ss.intel.t >= 4) {
         ss.intel.done = true;
+        SFX.aiPlay('intel_done', 0.7, 1, 0.02, 0.2, null, 'ui');
         const v = 150 + this.campLevel() * 30;
         c.xpBonus += v;
         const seg = this.campSortie().segs[c.seg];
@@ -1076,6 +1085,7 @@ Object.assign(Game.prototype, {
     if (p.dead) return;
     for (const ex of c.exits) {
       ex.group.userData.ring.rotation.z += dt * 0.8;
+      if (ex.pos) SFX.loopAt('exitRing' + c.exits.indexOf(ex), '@exit_ring_loop', 0.35, 1, ex.pos); // 出口光環的持續聲
       if (this.campStand(ex, dt, EXIT_R)) {
         c.hint = `進入出口：${SEG_TYPES[ex.type].name}・${EXIT_REWARDS[ex.reward].name}…`;
         if (ex.t >= EXIT_HOLD) return this.campLeave(ex);
@@ -1088,6 +1098,8 @@ Object.assign(Game.prototype, {
       ss = c.ss;
     if (ss.convoyDone) return;
     const alive = ss.convoy.filter((a) => !a.dead);
+    // 車隊的引擎（有位置的循環；AI 音效）
+    for (const a of alive) if (!a.arrived) SFX.loopAt('convoy' + a.id, '@convoy_engine_loop', 0.6, 1, a.pos);
     if (!alive.length && this.state === 'play') {
       this.flashMsg('護送車隊全滅', 0xff4d4d, 3);
       this.state = 'ending';
@@ -1103,6 +1115,7 @@ Object.assign(Game.prototype, {
           e.mesh.visible = false;
           n++;
         }
+      SFX.aiPlay('convoy_arrive', 0.7, 1, 0.02, 0.5, null, 'ui');
       if (n) this.flashAlert('車隊抵達 — 敵軍撤退');
       return;
     }
@@ -1118,12 +1131,13 @@ Object.assign(Game.prototype, {
       const [x, z] = w.nearSolid(clamp(at.x, -w.lim + 4, w.lim - 4), clamp(at.z, -w.lim + 4, w.lim - 4));
       at.set(x, w.terrainHeight(x, z), z);
       this.spawnLater(this.rollComp(Math.max(1, this.campLevel() - 1), 1).slice(0, 3), at); // 一格一台
+      SFX.aiPlay('objective_alarm', 0.7, 1, 0.02, 1, null, 'ui');
       this.flashAlert('敵軍襲擊車隊');
     }
   },
   campLeave(ex) {
     const c = this.camp;
-    SFX.ui();
+    SFX.ui(null, 'exit_enter');
     if (!c.cleared && c.pending) {
       this.state = 'leaving';
       this.campGrant(c.pending); // 突破：沒有全滅也發放（模組延到下一段選）
@@ -1181,6 +1195,7 @@ Object.assign(Game.prototype, {
     const $ = (id) => document.getElementById(id);
     this.state = 'camptrans';
     this.showScreen('campTrans');
+    SFX.aiPlay('seg_transition', 0.7, 1, 0.02, 0.5, null, 'ui'); // 轉場演出
     $('ctTitle').textContent = tr.title;
     $('ctSub').textContent = tr.sub;
     this.campTransInfo({
@@ -1287,7 +1302,7 @@ Object.assign(Game.prototype, {
   campGo() {
     if (this.campIsClient()) return this.campClientReady();
     if (!this.camp) return;
-    SFX.ui();
+    SFX.ui(null, 'sortie_go');
     if (this.campMp()) {
       // 多人：等全員準備（campaign-mp.js 的 campWaitCheck 開始下一段）
       document.getElementById('ctBtns').style.visibility = 'hidden';
@@ -1468,6 +1483,7 @@ Object.assign(Game.prototype, {
     c.fails++;
     this.clearMission();
     this.campClearExits();
+    SFX.aiPlay('mission_fail', 0.8, 1, 0.02, 0.5, null, 'ui');
     this.state = 'campfail';
     this.showScreen('campFail');
     const so = this.campSortie(),
@@ -1581,6 +1597,7 @@ Object.assign(Game.prototype, {
     if (this.state === 'play' || this.state === 'ending') {
       c.earned += this.missionEarned || 0;
     }
+    if (success && !aborted) SFX.aiPlay('sortie_complete', 0.8, 1, 0.02, 0.5, null, 'ui'); // 整個出擊完成
     this.wingSortieEnd(success); // 僚機的好感度（wing.js）
     this.boardEnd(success); // 委託板：素材、零件、換新的委託（board.js）
     this.mpStats = c.stats;

@@ -48,6 +48,21 @@ const NET_FNS = {
 // 介面（ui）、語音（voice）、配樂（mus 過場、bgm 任務中）不受壓低與變悶，各自的音量直接進 master。
 // 音效另外送一份到殘響（依地圖主題，地下長、空曠短）與反射（env：兩條延遲線，依主題）。
 // master → 壓縮 → 限幅 → 輸出。
+// 按鈕的種類 → AI 音效（SFX.ui）
+const UI_AI = {
+  back: 'ui_back',
+  ok: 'ui_ok',
+  err: 'ui_err',
+  tog: 'ui_tog',
+  hover: 'ui_hover',
+  focus: 'ui_focus',
+  adjust: 'ui_adjust',
+  tab: 'ui_tab',
+  panel: 'ui_panel_open',
+};
+// 事件提示的種類 → AI 音效（SFX.cue；phase 是 Boss 換型態，另外處理，這裡不列）
+const CUE_AI = { exit: 'exit_open', cache: 'cache_open', mod: 'mod_pick_open', clear: 'area_clear' };
+
 export const SFX = {
   dk: DS, // 3D 音效的距離倍率
   ctx: null,
@@ -749,6 +764,30 @@ export const SFX = {
       delete this.loops[name];
     }
   },
+  // 選單與介面的循環音（不分位置；作戰室、標題、格納庫的氣氛、按住投點、編輯器的筆刷…）：每格呼叫，
+  // 沒有再呼叫的自動淡出（計時器檢查，選單畫面沒有 loopsAtTick）；key 同 loopSet（'@鍵' 或陣列）
+  menuLoops: {},
+  menuLoopIv: 0,
+  menuLoop(name, key, target, rate = 1) {
+    if (!this.ctx || !this.on) return;
+    const k = this.loopKey(key);
+    if (!k) return;
+    this.loopSet(name, k, target, rate);
+    this.menuLoops[name] = performance.now();
+    if (!this.menuLoopIv) this.menuLoopIv = setInterval(() => this.menuLoopTick(), 100);
+  },
+  menuLoopTick() {
+    const now = performance.now();
+    for (const n in this.menuLoops) {
+      if (now - this.menuLoops[n] < 200) continue;
+      if (this.loops[n]) this.loopSet(n, this.loops[n].key, 0);
+      else delete this.menuLoops[n];
+    }
+    if (!Object.keys(this.menuLoops).length) {
+      clearInterval(this.menuLoopIv);
+      this.menuLoopIv = 0;
+    }
+  },
   // 有位置的循環音（敵人的推進器，第 3 期）：每格呼叫，沒有再呼叫的由 loopsAtTick 淡出
   loopsAt: {},
   loopAt(name, key, target, rate, pos) {
@@ -840,7 +879,7 @@ export const SFX = {
       g.connect(this.amb);
       const nodes = [g];
       if (L.k) {
-        const b = this.buf[L.k];
+        const b = this.buf[this.loopKey(L.k)];
         if (!b) continue;
         const s = c.createBufferSource();
         s.buffer = b;
@@ -1659,14 +1698,26 @@ export const SFX = {
   },
   // ---- 介面與通訊 ----
   // 按鈕（input.js 的全域監聽，在各按鈕自己的 SFX.ui() 之前）：依按鈕種類換聲音，之後的 SFX.ui() 不重複
-  btnT: 0,
+  btnT: -1,
   uiBtn(kind) {
     if (!this.ctx) return;
+    if (this.ctx.currentTime - this.btnT < 0.05) return; // 手把換分頁時先播了 'tab'
     this.btnT = this.ctx.currentTime;
     this.ui(kind || 'click');
   },
-  ui(kind) {
-    if (!kind && this.ctx && this.ctx.currentTime - this.btnT < 0.1) return;
+  // ai＝這個時機專屬的 AI 音效鍵（有就只播它，例如升階成功 'forge_ascend'）；沒有時照種類播一般的按鈕音
+  ui(kind, ai) {
+    if (ai && this.aiPlay(ai, 0.6, 1, 0.02, 0.05, null, 'ui')) return;
+    // 剛按過按鈕（全域的按鈕音）0.1 秒內：一般與手把焦點的聲音不重複
+    if (
+      (!kind || kind === 'focus' || kind === 'adjust') &&
+      this.ctx &&
+      this.ctx.currentTime - this.btnT < 0.1
+    )
+      return;
+    const uk = UI_AI[kind] || 'ui_click';
+    if (this.aiPlay(uk, kind === 'hover' ? 0.25 : 0.65, 1, 0.03, kind === 'hover' ? 0.06 : 0.03, null, 'ui'))
+      return;
     if (kind === 'back') this.play('uiBack', 0.7, 1.0, 0.02, 0.03, null, 'ui');
     else if (kind === 'ok') this.play('uiOk', 0.55, 1.0, 0.02, 0.05, null, 'ui');
     else if (kind === 'err') this.play('uiErr', 0.6, 1.0, 0.02, 0.05, null, 'ui');
@@ -1680,19 +1731,36 @@ export const SFX = {
     this.play('uiOpen', 0.4, 0.8, 0.03, 0.05, null, 'ui');
   },
   alert() {
+    if (this.aiPlay('hud_alert', 0.6, 1, 0.03, 0.1, null, 'ui')) return;
     this.play('ui2', 0.6, 0.7, 0.06, 0.03, null, 'ui');
   },
   // 無線電開頭：雜訊＋嗶（通訊期間世界的聲音稍微壓低）
   radio() {
+    if (this.aiPlay('radio_open', 0.5, 1, 0.03, 0.1, null, 'ui')) {
+      this.duck(0.2, 1.2);
+      return;
+    }
     this.noise(0.09, 2400, 0.35, 'bandpass', 'ui', 1.5);
     this.play('glitch', 0.35, 1.0, 0.1, 0.1, null, 'ui');
     this.tone(1320, 1320, 0.07, 0.25, 'square', 'ui', 0.08);
     this.duck(0.2, 1.2);
   },
+  // 通訊結束（主線的通訊、過場的對白一句播完）
+  radioClose() {
+    this.aiPlay('radio_close', 0.4, 1, 0.03, 0.15, null, 'ui');
+  },
+  // 軌道站的機械語音段落
+  radioStation() {
+    if (this.aiPlay('radio_station', 0.45, 1, 0.03, 0.15, null, 'ui')) return;
+    this.play('glitch', 0.35, 1.0, 0.1, 0.1, null, 'ui');
+  },
   // 增援預告（pan：-1 左～1 右，依預告方向）；last＝最後一波
   waveAlert(pan, last) {
     if (!this.ctx || !this.on) return;
-    const b = this.buf[last ? 'alarmBig' : 'alarm'];
+    const k =
+      this.pickKey(['@' + (last ? 'wave_alarm_last' : 'wave_alarm')]) || (last ? 'alarmBig' : 'alarm');
+    const ai = k !== 'alarmBig' && k !== 'alarm';
+    const b = this.buf[k];
     if (!b) return;
     const c = this.ctx,
       s = c.createBufferSource(),
@@ -1706,10 +1774,16 @@ export const SFX = {
       g.connect(p).connect(this.uiBus);
     } else g.connect(this.uiBus);
     s.start();
-    if (last) this.play('boom1', 0.5, 0.7, 0.03, 0.2);
+    if (last && !ai) this.play('boom1', 0.5, 0.7, 0.03, 0.2);
   },
   // 事件提示：出口開啟、開箱、拾取、Boss 第二型態、戰術模組、區域清除
-  cue(kind) {
+  // ai＝專屬的 AI 音效鍵（例如拿到金色零件 'gear_get_gold'）；沒給時依種類（CUE_AI），都沒有時照舊
+  cue(kind, ai) {
+    if (ai && this.aiPlay(ai, 0.65, 1, 0.02, 0.1, null, 'ui')) {
+      if (kind === 'phase') this.duck(0.4, 0.8);
+      return;
+    }
+    if (CUE_AI[kind] && this.aiPlay(CUE_AI[kind], 0.65, 1, 0.02, 0.1, null, 'ui')) return;
     if (kind === 'exit') {
       this.play('uiOpen', 0.6, 0.7, 0.02, 0.1, null, 'ui');
       this.play('dome1', 0.4, 0.9, 0.02, 0.1, null, 'ui');

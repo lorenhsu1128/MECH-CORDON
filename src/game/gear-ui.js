@@ -250,7 +250,7 @@ Object.assign(Game.prototype, {
     this.gTipU = { id, u: u || null };
     this.gTipPid = id;
     this.gTipPin = id;
-    SFX.ui();
+    SFX.ui(null, 'garage_equip');
     this.writeSave();
     this.renderGarage();
   },
@@ -414,7 +414,7 @@ Object.assign(Game.prototype, {
       S.inv = S.inv.filter((x) => x.u !== u);
     }
     this.writeSave();
-    SFX.cue('pickup');
+    SFX.cue('pickup', 'forge_dismantle');
     if (Object.keys(got).length) this.flashMsg(`分解：得到 ${matTxt(got)}`, 0x7fc8ff, 1.6);
     this.renderGarage();
   },

@@ -173,6 +173,8 @@ Object.assign(Game.prototype, {
   },
   // 存檔畫面與作戰室的存檔終端共用
   savesMsg(t, err) {
+    // 存入／讀取／刪除／匯出的結果（AI 音效 save_done；錯誤＝錯誤音；沒有時照舊不出聲）
+    if (t) SFX.aiPlay(err ? 'ui_err' : 'save_done', 0.6, 1, 0.02, 0.1, null, 'ui');
     for (const id of ['savesMsg', 'hubSaveMsg']) {
       const el = document.getElementById(id);
       if (!el) continue;
@@ -354,7 +356,7 @@ Object.assign(Game.prototype, {
     const el = document.getElementById('hubSaveBox');
     el.style.display = open ? '' : 'none';
     if (!open) return;
-    SFX.ui();
+    SFX.ui(null, 'ui_panel_open');
     this.savesMsg('');
     this.hubSaveRender();
   },
@@ -528,6 +530,7 @@ Object.assign(Game.prototype, {
     };
     $('btnContinue').onclick = () => {
       SFX.init();
+      SFX.aiPlay('title_start', 0.7, 1, 0.02, 0.3, null, 'ui');
       this.useSlot(this.saveSlot);
       this.openFreeGarage(); // nav.js：返回標題
     };

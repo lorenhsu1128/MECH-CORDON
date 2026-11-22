@@ -12,6 +12,19 @@ import { DS, MS } from '../core/scale.js';
 import { MechEntity } from './mech-entity.js';
 
 const SLOTS = ['rarm', 'larm', 'rback', 'lback'];
+// 招式準備時的 AI 音效（docs/sfx-inventory/enemies.md）：[招式][敵人類型]＝鍵；沒有的不播
+const MV_SFX = {
+  burst: { mt: 'e_mt_burst_warn', mt_shield: 'e_mtshield_burst_warn', mt_cmd: 'e_mtcmd_burst_warn' },
+  aimShot: { mth: 'e_mth_aim_warn', tank: 'e_tank_aim_warn', heli: 'e_heli_aim_warn' },
+  volley: { mth: 'e_mth_volley_warn', turret: 'e_turret_volley_warn' },
+  charge: { drone: 'e_drone_charge', strider: 'e_strider_charge' },
+  sweep: { turret: 'e_turret_sweep_warn', tank: 'e_tank_gat_spin' },
+  dash: { mt_shot: 'e_mtshot_dash_warn' },
+  lob: { mt_gren: 'e_mtgren_lob_warn' },
+  beep: { kami: 'e_kami_beep', swarm: 'e_swarm_beep' },
+  strafeRun: { heli: 'e_heli_strafe_warn' },
+};
+const mvSfx = (k, et) => (MV_SFX[k] && MV_SFX[k][et]) || null;
 // 每個招式用的武器類型
 const NEED = {
   burst: ['bullet'],
@@ -106,6 +119,9 @@ Object.assign(MechEntity.prototype, {
   },
   moveStart(mv, pl) {
     const g = this.game;
+    // 準備的聲音（AI 音效；雷射蓄力沒有時照舊用 charge）
+    const sk = mv.k !== 'beep' && mvSfx(mv.k, this.etype);
+    const sOk = sk && SFX.aiPlay(sk, 0.8, 1, 0.05, 0.1, this.center());
     if (mv.k === 'lob') {
       // 落點：目標腳下＋一點預判（最多 18 m）
       const lead = pl.vel.clone().setY(0).multiplyScalar(0.6);
@@ -126,8 +142,9 @@ Object.assign(MechEntity.prototype, {
       const c = a.clone().lerp(mv.end, 0.5);
       c.y = g.world.terrainHeight(c.x, c.z);
       g.fx.warnRect(c, Math.atan2(-dir.x, -dir.z), 5 * MS, L, 1.1 * pv('eWarn'), 0xff4020);
-    } else if (mv.k === 'charge') SFX.play('charge', 0.5, 1.2, 0, 0, this.center());
-    else if (mv.k === 'sweep') mv.side = Math.random() < 0.5 ? 1 : -1;
+    } else if (mv.k === 'charge') {
+      if (!sOk) SFX.play('charge', 0.5, 1.2, 0, 0, this.center());
+    } else if (mv.k === 'sweep') mv.side = Math.random() < 0.5 ? 1 : -1;
     else if (mv.k === 'dash') {
       // 衝刺的路線：地面上機體寬的長條
       g.fx.warnPath(this.pos.clone(), pl.pos.clone(), 3 * MS, 0.55, 0xff6020);
@@ -237,6 +254,7 @@ Object.assign(MechEntity.prototype, {
       if (mv.t > 1.8) {
         Object.assign(mv, { ph: 'rec', t: 0 });
         this.sn.vuln = 2;
+        if (this.etype === 'turret') SFX.aiPlay('e_turret_overheat', 0.8, 1, 0.05, 0.2, this.center());
       }
     } else {
       if (mv.fxT <= 0) {
@@ -283,7 +301,9 @@ Object.assign(MechEntity.prototype, {
       if (mv.fxT <= 0) {
         mv.fxT = 0.18;
         this.game.fx.flash(this.center(), (1.1 * (this.scale || 1)) / this.game.fx.k, 0xff2020, 0.1);
-        SFX.play('bell', 0.35, 1.9, 0, 0, this.center());
+        const bk = mvSfx('beep', this.etype);
+        if (!bk || !SFX.aiPlay(bk, 0.6, 1, 0.03, 0.05, this.center()))
+          SFX.play('bell', 0.35, 1.9, 0, 0, this.center());
       }
       if (mv.t > 0.75) Object.assign(mv, { ph: 'act', t: 0 });
     } else {

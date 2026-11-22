@@ -88,7 +88,9 @@ Object.assign(MechEntity.prototype, {
         c.at = pl.pos.clone().add(lead);
         c.at.y = g.world.groundAt(c.at.x, c.at.z, c.at.y + 2 * MS);
         g.fx.warnCircle(c.at, SLAG.R, SLAG.warn, 0xff6a20);
-        SFX.play('ui2', 0.6, 0.8, 0.05, 0.05, this.center());
+        SFX.aiPlay('foe_slagger_lob', 0.8, 1, 0.05, 0.05, c.at, null, Math.max(0, SLAG.warn - 1)); // 熔渣在空中
+        if (!SFX.aiPlay('foe_slagger_warn', 0.9, 1, 0.05, 0.05, this.center()))
+          SFX.play('ui2', 0.6, 0.8, 0.05, 0.05, this.center());
       } else if (c.t <= 0) c.t = 0.6;
     } else if (c.ph === 1) {
       this.bossVis = 1;
@@ -108,9 +110,10 @@ Object.assign(MechEntity.prototype, {
   slagHit_e1(at) {
     const g = this.game;
     g.fx.explosion(at.clone().setY(at.y + 1), 3, 0xff6a20, true);
-    SFX.explode(false, at);
+    if (!SFX.aiPlay('foe_slagger_impact', 1, 1, 0.05, 0.05, at)) SFX.explode(false, at);
     g.explodeAt(at, SLAG.dmg * this.dmgMul, SLAG.im * this.dmgMul, SLAG.R, this, false);
     g.addPool(this, at.clone(), SLAG.pool, SLAG.poolLife, SLAG.poolDps * this.dmgMul);
+    g.poolSfx('foe_slagger_pool'); // 燃燒地面的循環音（hazards2.js）
   },
   // ---------- 耐熱重裝 MT ----------
   heatAI_e1(dt, d, dir, perp, wish, pl, c, r) {
@@ -128,7 +131,8 @@ Object.assign(MechEntity.prototype, {
         c.ph = 1;
         c.t = FLAME.dur;
         c.tick = 0;
-        SFX.play('ab', 0.8, 0.8, 0.05, 0.1, this.center());
+        if (!SFX.aiPlay('foe_heatguard_ignite', 1, 1, 0.05, 0.05, this.center()))
+          SFX.play('ab', 0.8, 0.8, 0.05, 0.1, this.center());
       }
     } else if (c.ph === 1) {
       this.bossVis = 1;
@@ -149,6 +153,7 @@ Object.assign(MechEntity.prototype, {
       if (c.t <= 0) {
         c.ph = 2;
         c.t = FLAME.cool;
+        SFX.aiPlay('foe_heatguard_overheat', 0.9, 1, 0.05, 0.1, this.center());
       }
     } else {
       this.bossVis = 2; // 過熱：受傷 ×1.5
@@ -177,6 +182,7 @@ Object.assign(MechEntity.prototype, {
         c.ph = 1;
         c.t = DIVE.warn;
         g.fx.warnCircle(this.pos.clone(), 3 * MS, DIVE.warn, 0xff7a20);
+        SFX.aiPlay('foe_magmadrone_warn', 0.9, 1, 0.05, 0.1, this.pos);
       } else if (c.t <= 0) c.t = 0.5;
       return;
     }
@@ -189,6 +195,7 @@ Object.assign(MechEntity.prototype, {
         c.n = DIVE.shots;
         c.st = 0.15;
         g.fx.explosion(this.pos.clone().setY(this.pos.y + 1), 2, 0xff7a20, false);
+        SFX.aiPlay('foe_magmadrone_emerge', 1, 1, 0.05, 0.1, this.pos);
       }
     } else {
       this.bossVis = 2; // 浮出：射熔岩彈
@@ -214,8 +221,10 @@ Object.assign(MechEntity.prototype, {
             attr: 'exp',
           }),
         );
+        SFX.aiPlay('foe_magmadrone_shot', 0.8, 1, 0.05, 0.05, o);
       }
       if (c.t <= 0) {
+        SFX.aiPlay('foe_magmadrone_dive', 0.9, 1, 0.05, 0.1, this.pos);
         c.under = true;
         c.ph = 0;
         c.t = rnd(...DIVE.under);
@@ -235,7 +244,8 @@ Object.assign(MechEntity.prototype, {
         c.ph = 1;
         c.t = BLOW.warn;
         c.dir = dir.clone();
-        SFX.play('charge', 0.6, 0.6, 0.05, 0.1, this.center());
+        if (!SFX.aiPlay('foe_bellows_charge', 0.9, 1, 0.05, 0.05, this.center()))
+          SFX.play('charge', 0.6, 0.6, 0.05, 0.1, this.center());
       } else if (c.t <= 0) c.t = 0.5;
     } else if (c.ph === 1) {
       this.bossVis = 1;
@@ -257,7 +267,7 @@ Object.assign(MechEntity.prototype, {
     const o = this.center();
     g.fx.streaks(o, 26, 0xffb070, 18, 0.7, 20, dir, 0.6);
     g.fx.flameCone(o, dir, BLOW.R * 0.4, BLOW.ang * 0.5, 6);
-    SFX.play('explode', 0.5, 0.6, 0.05, 0.1, o);
+    if (!SFX.aiPlay('foe_bellows_blow', 1, 1, 0.05, 0.05, o)) SFX.play('explode', 0.5, 0.6, 0.05, 0.1, o);
     for (const t of g.hostilesOfEnt(this)) {
       if (t.dead || t.isProp) continue;
       const v = t.pos.clone().sub(this.pos).setY(0);

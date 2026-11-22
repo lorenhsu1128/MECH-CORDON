@@ -89,7 +89,7 @@ Object.assign(Game.prototype, {
         }
         this.gTipPid = null;
         this.gTipPin = null; // 換部位：解除小卡片的釘選
-        SFX.ui();
+        SFX.ui(null, 'garage_part_select');
         this.renderGarage();
       };
       return b;
@@ -190,17 +190,21 @@ Object.assign(Game.prototype, {
       asm[key] = p.id;
       const other = key === 'c1' ? 'c2' : 'c1';
       if (p.id !== 'cs_none' && asm[other] === p.id) asm[other] = 'cs_none';
+      SFX.aiPlay('garage_equip', 0.6, 1, 0.02, 0.05, null, 'ui');
     } else if (!S.owned.includes(p.id)) {
       if (S.coam >= p.price) {
         S.coam -= p.price;
         S.owned.push(p.id);
         asm[key] = p.id;
-        SFX.ui();
+        SFX.ui(null, 'garage_buy');
       } else {
         this.flashMsg('SP 不足', 0xff4d4d, 1);
         return;
       }
-    } else asm[key] = p.id;
+    } else {
+      if (asm[key] !== p.id) SFX.aiPlay('garage_equip', 0.6, 1, 0.02, 0.05, null, 'ui');
+      asm[key] = p.id;
+    }
     this.writeSave();
     this.renderGarage();
   },
@@ -211,7 +215,7 @@ Object.assign(Game.prototype, {
     if (S.coam < p.price) return this.flashMsg('SP 不足', 0xff4d4d, 1);
     S.coam -= p.price;
     S.items[p.id] = n + 1;
-    SFX.ui();
+    SFX.ui(null, 'garage_buy');
     this.writeSave();
     this.renderGarage();
   },

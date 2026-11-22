@@ -6,6 +6,7 @@ import { CloudSea } from '../fx/cloudsea.js';
 import { emitPreset } from '../fx/presets.js';
 import { SU } from '../render/style/shader.js';
 import { DS } from '../core/scale.js';
+import { SFX } from '../audio/audio.js';
 import { Game } from './game.js';
 
 const _p = new THREE.Vector3(),
@@ -42,6 +43,7 @@ Object.assign(Game.prototype, {
       if (this.stylePipe) this.stylePipe.keepPrev = false;
       return;
     }
+    this.waterSnd(dt);
     if (W.simOn) this.waterSources(dt);
     const P = this.styleThemed(this.lab ? this.lab.P : this.cine ? this.cine.P : this.styleP);
     W.update(dt, {
@@ -112,6 +114,39 @@ Object.assign(Game.prototype, {
     W.drop(p.x, p.z, (big ? 1.6 : 0.6) * DS, -(big ? 0.35 : 0.08) * DS);
     if (!this.fx.skip(p, 2))
       emitPreset(this.fx.g, 'g_water', p, { S: DS * (big ? 0.9 : 0.35), n: big ? 1 : 0.4 });
+    // 穿過水面的聲音（AI 音效；各端自己算，不轉送）
+    SFX.netDepth++;
+    try {
+      SFX.aiPlay('water_bullet_cross', big ? 0.7 : 0.35, 1, 0.1, 0.05, p.clone ? p.clone() : p, null, 0, {
+        max: 3,
+      });
+    } finally {
+      SFX.netDepth--;
+    }
+  },
+  // 自機的涉水聲（AI 音效的循環，依速度）與衝進水面（各端自己的機體）
+  waterSnd(dt) {
+    const p = this.player,
+      w = this.world;
+    if (!p || p.dead || !w || !w.waterDepth || this.cine) return;
+    const d = w.waterDepth(p.pos.x, p.pos.z);
+    const L = w.theme.water ? w.theme.water.level : -1e9;
+    const inW = d > 0.3 * DS && p.pos.y < L + 0.5 * DS;
+    const v = p.vel ? Math.hypot(p.vel.x, p.vel.z) : 0;
+    if (inW && !this.wadeIn) {
+      const vy = p.vel ? -p.vel.y : 0;
+      if (vy > 6 * DS || v > 30 * DS)
+        SFX.aiPlay('water_enter', Math.min(1, 0.5 + vy / (30 * DS)), 1, 0.06, 0.4, p.pos.clone());
+    }
+    this.wadeIn = inW;
+    if (inW && v > 1.5 * DS)
+      SFX.loopAt(
+        'wade',
+        '@water_wade_loop',
+        Math.min(0.6, 0.15 + v / (40 * DS)),
+        0.9 + Math.min(0.3, v / (100 * DS)),
+        p.pos,
+      );
   },
   // 高空軌道的雲海：World.cloud（粒子的煙霧，fx/cloudsea.js）
   cloudTick(dt) {

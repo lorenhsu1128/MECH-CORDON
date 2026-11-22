@@ -2421,7 +2421,11 @@ export class MechEntity {
     if (this.markT > 0) dmg *= 1.3; // 被軌道標定衛星標定（mech-foe.js）
     if (this.team === 'enemy' && !this.isBoss && this.game.bosses && this.game.bosses.length)
       dmg *= this.game.bossGuardK(this); // 刁鑽度 7～8：Boss 附近的雜兵減傷（game/boss-tier.js）
-    if (this.laserK !== 1 && isLaserWeapon(W)) dmg *= this.laserK; // 雷射類的傷害倍率（laserK）
+    if (this.laserK !== 1 && isLaserWeapon(W)) {
+      dmg *= this.laserK; // 雷射類的傷害倍率（laserK）
+      if (this.laserK < 1 && this.etype === 'mirror')
+        SFX.aiPlay('foe_mirror_deflect', 0.7, 1, 0.05, 0.15, this.center()); // 反射鏡衛星把雷射彈開
+    }
     if (this.sn && this.sn.vuln > 0) dmg *= 1.25; // 招式後的破綻（過熱，mech-moves.js）
     if (this.dg) dmg = this.dgHit(dmg, from, melee); // 閃完的破綻：讀招、Boss 的倍率（mech-dodge.js）
     if (this.dg && from && from.pilotEnt && from.pilotEnt() && isLaserWeapon(W))
@@ -2725,9 +2729,19 @@ export class MechEntity {
       const E = this.explodeOnDeath;
       g.explodeAt(c, E.dmg, E.impact, E.splash * this.dk, this, true);
     }
-    SFX.explode(this.isBoss ? 'huge' : true, this.isPlayer ? null : c);
-    SFX.wreck(this.isPlayer ? null : c);
-    if (this.isPlayer) SFX.aiPlay('self_destroyed', 0.9, 1, 0.02, 0.5); // 自機被擊破：駕駛艙警報與系統停止
+    // Boss 有自己的擊破音（boss_<種類>_death，mech-boss3.js 的 bossSnd）時不再疊一般的大爆炸
+    const bossAi =
+      this.isBoss &&
+      this.bossSndPre &&
+      this.bossSndPre() &&
+      SFX.aiVar(this.bossSndPre() + '_death').length > 0;
+    if (!bossAi) {
+      SFX.explode(this.isBoss ? 'huge' : true, this.isPlayer ? null : c);
+      SFX.wreck(this.isPlayer ? null : c);
+    }
+    if (this.isPlayer)
+      SFX.aiPlay('self_destroyed', 0.9, 1, 0.02, 0.5); // 自機被擊破：駕駛艙警報與系統停止
+    else this.dieSfx(c);
     g.rumbleAt(
       c,
       this.isBoss ? 1.0 : 0.8,
@@ -4310,6 +4324,39 @@ export class MechEntity {
     if (this.ai === 'drone' || this.ai === 'heli') this.flying = true;
   }
   // Boss（地面型）與重型 AC（bastion）的踏地衝擊波：目標在範圍內且自己貼地時才用，預警期間停下
+  // 每種敵人自己的擊破聲（自製 AI 音效，docs/sfx-inventory/enemies.md 的 *_die／自爆類）：疊在一般的爆炸上
+  dieSfx(c) {
+    const t = this.etype;
+    if (!t) return;
+    const BLAST = {
+      kami: 'e_kami_blast',
+      swarm: 'e_swarm_blast',
+      cart: 'foe_cart_blast',
+      crystal: 'foe_crystal_shatter',
+      buoy: 'foe_buoy_blast',
+    };
+    if (BLAST[t] && SFX.aiPlay(BLAST[t], 1, 1, 0.05, 0.05, c)) return;
+    const k = t === 'mt_dome' ? 'e_dome_die' : 'e_' + t.replace(/_/g, '') + '_die';
+    if (!SFX.aiPlay(k, 0.9, 1, 0.05, 0.05, c)) SFX.aiPlay('foe_' + t + '_die', 0.9, 1, 0.05, 0.05, c);
+  }
+  // 地面衝擊波的預備與放出的聲音（重踏機甲、bastion 型 AC、專屬 AC）
+  shockSfx(dl) {
+    const n = (this.name || '').toUpperCase();
+    const key =
+      this.ai === 'stomper'
+        ? 'e_mtstomp'
+        : n.includes('VOLKER')
+          ? 'ac_volker'
+          : n.includes('STEVEDORE')
+            ? 'ace_stevedore'
+            : n.includes('KEEL')
+              ? 'ace_keel'
+              : 'ac_bastion';
+    const c = this.center();
+    SFX.aiPlay(key + '_windup', 0.8, 1, 0.03, 0.3, c) ||
+      SFX.aiPlay('ac_bastion_shock_windup', 0.8, 1, 0.03, 0.3, c);
+    SFX.aiPlay(key + '_shock', 1, 1, 0.03, 0.3, c, null, dl);
+  }
   aiShock(dt, d, wish) {
     const s = this.aiState;
     const boss = this.isBoss && !this.opts.bossKind;
@@ -4328,6 +4375,7 @@ export class MechEntity {
     s.shockT = (boss ? rnd(7, 11) : stomp ? rnd(5, 8) : rnd(10, 15)) * (s.phase >= 2 ? 0.7 : 1);
     const dl = boss ? 0.9 : stomp ? 0.7 : 0.8;
     s.stompT = dl;
+    if (!boss) this.shockSfx(dl);
     this.game.shockStart(this, {
       R,
       sp: boss ? 24 : stomp ? 16 : 20,

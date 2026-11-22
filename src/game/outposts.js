@@ -122,10 +122,17 @@ Object.assign(Game.prototype, {
           Math.abs(p.pos.y - c.pos.y) < 4 * MS,
       );
       c.t = who ? c.t + dt : Math.max(0, c.t - dt);
+      // 開箱的進度（AI 音效的循環；自己站在旁邊時）
+      if (who && who === this.player && c.t < OPEN_T)
+        SFX.loopAt('cacheProg', '@cache_progress', 0.4, 0.85 + (c.t / OPEN_T) * 0.3, who.pos);
       if (c.t >= OPEN_T) this.cacheOpen(c, who);
     }
     if (this.extract > 0) {
+      const sec0 = Math.ceil(this.extract);
       this.extract -= dt;
+      // 撤離倒數：最後 10 秒每秒一聲（AI 音效）
+      if (sec0 <= 10 && Math.ceil(this.extract) < sec0 && this.extract > 0)
+        SFX.aiPlay('extract_tick', 0.5, 1, 0.02, 0.5, null, 'ui');
       if ((this.extract <= 0 || !this.cachesLeft()) && this.state === 'play') {
         this.extract = 0;
         this.state = 'ending';
@@ -207,6 +214,7 @@ Object.assign(Game.prototype, {
     const near = this.playersAlive().some((p) => p.pos.distanceTo(e.pos) < ALERT_R);
     if (near || e.hp < e.maxHp) {
       for (const o of this.enemies) if (o.guardOf === e.guardOf) o.guardAlert = true;
+      SFX.aiPlay('guard_alerted', 0.8, 1, 0.03, 0.5, e.pos.clone()); // 守衛整隊出動
       return false;
     }
     return true;

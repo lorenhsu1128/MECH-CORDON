@@ -121,7 +121,8 @@ Object.assign(MechEntity.prototype, {
         if (this.isPlayer && g.airRevCam) g.airRevCam();
       }
       this.tutE('qb', {});
-      SFX.qb(this.isPlayer ? null : this.center());
+      if (!SFX.aiPlay('air_roll', 0.9, 1, 0.05, 0.1, this.isPlayer ? null : this.center()))
+        SFX.qb(this.isPlayer ? null : this.center());
       if (this.isPlayer) g.rumble(0.12, 0.4, 90);
     }
     if (this.qbT > 0) this.qbT -= dt;
@@ -135,7 +136,11 @@ Object.assign(MechEntity.prototype, {
     if (thr > 0.3 && !useEn(AIR.EN_BOOST)) vT = AIR.CRUISE * sk;
     let abTo = null;
     if (wantAB && !down && this.en > 5 && useEn(AIR.EN_AB)) {
-      if (this.abT <= 0) SFX.ab(this.isPlayer ? null : this.center());
+      if (
+        this.abT <= 0 &&
+        !SFX.aiPlay('air_afterburner', 0.9, 1, 0.04, 0.2, this.isPlayer ? null : this.center())
+      )
+        SFX.ab(this.isPlayer ? null : this.center());
       this.abT = 0.1;
       vT = AIR.AB * sk;
       if (targetEnt && !targetEnt.dead) abTo = targetEnt.center().sub(this.center());
@@ -268,7 +273,8 @@ Object.assign(MechEntity.prototype, {
       const wet = W && W.level >= w.terrainHeight(this.pos.x, this.pos.z);
       if (wet && g.water && g.water.g) g.water.drop(this.pos.x, this.pos.z, 4 * this.scale, -1.2);
       g.fx.dust(this.pos.clone(), 3.5 * this.scale, 12);
-      SFX.land(this.isPlayer ? null : this.center(), 1);
+      if (!SFX.aiPlay('air_crash', 1, 1, 0.05, 0.3, this.isPlayer ? null : this.center()))
+        SFX.land(this.isPlayer ? null : this.center(), 1);
       if (this.isPlayer) {
         g.fpPitch = Math.max(g.fpPitch, 0.3); // 機首跟著鏡頭：彈開時鏡頭也抬起來
         g.camShake = Math.max(g.camShake, 0.35);
@@ -555,6 +561,7 @@ Object.assign(MechEntity.prototype, {
         .setLength(at.distanceTo(muzzle) * 0.6), // 只畫到 60%：目標往前飛時終點會跑到鏡頭旁邊，透視下變得很粗
     );
     this.game.fx.warnLine(muzzle.clone(), end, AIR.BEAM_WARN, 0xff3030, 0.06);
+    if (t.isPlayer) SFX.aiPlay('air_beam_warn', 0.9, 1, 0.02, 0.4, muzzle.clone()); // 雷射預警（自製音效）
     return null;
   },
   // MS-4／MS-8 在空域的齊射（C3）：回傳鎖定的目標（可能是空陣列＝打目前的鎖定目標）；不是這兩把時回傳 null
@@ -567,6 +574,9 @@ Object.assign(MechEntity.prototype, {
     const g = this.game,
       S = this.airAiS,
       B = g.airBase;
+    // 飛行的循環音（自製音效；空域只有單人）
+    if (!this.dead && SFX.dist(this.center()) < 600)
+      SFX.loopAt('bomber' + this.id, '@air_bomber_loop', 0.7, 1, this.center());
     const fwd = dirOf(this.yaw, this.airPit || 0, _f);
     const aim = _t.copy(fwd);
     if (B && !B.dead) {
@@ -604,6 +614,7 @@ Object.assign(MechEntity.prototype, {
           );
         }
         g.alertAll('轟炸機投彈！');
+        SFX.aiPlay('air_bomber_drop', 1, 1, 0.04, 0.5, this.center());
       }
     }
     const floor = Math.max(
@@ -697,7 +708,7 @@ Object.assign(MechEntity.prototype, {
           width: 0.5,
         });
         g.fx.shockwave(S.ch.from, 6, 0xff7050, 0.4);
-        SFX.play('laser2', 1, 0.5, 0.05, 0.05, S.ch.from);
+        if (!this.bossSnd('air_main_fire', 1.2, S.ch.from)) SFX.play('laser2', 1, 0.5, 0.05, 0.05, S.ch.from);
         this.bossOpen(2.5);
         S.ch = null;
       }
@@ -717,6 +728,7 @@ Object.assign(MechEntity.prototype, {
         0.12,
       );
       g.alertAll('空中要塞主砲充能 — 離開紅線！');
+      this.bossSnd('air_main_charge', 1.1, nose.clone());
       return;
     }
     // 彈幕：慢速、大顆的彈往前方扇形射出，從縫隙飛過去
@@ -750,7 +762,7 @@ Object.assign(MechEntity.prototype, {
         );
       }
       g.fx.muzzle(nose, base, 0xff60d0, 3, 'bz');
-      SFX.shot('shell', 'air_cannon', nose, this);
+      if (!this.bossSnd('air_barrage', 1, nose.clone())) SFX.shot('shell', 'air_cannon', nose, this);
     }
   },
   // 懸吊砲塔（部位）在空域能不能打：不打正後方、太近（機腹）與射程外

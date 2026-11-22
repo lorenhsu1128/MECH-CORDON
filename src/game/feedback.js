@@ -118,6 +118,15 @@ const AMB = {
     rev: [1.2, 0.12],
   },
 };
+// AI 的環境音（docs/sfx-inventory/general.md 第 7 節）：主題＝'amb_<主題>'，天候 → 鍵
+const WEATHER_AI = {
+  rain: 'weather_rain',
+  snow: 'weather_snowfall',
+  sand: 'weather_sandstorm',
+  dust: 'weather_sandstorm',
+  ash: 'weather_ash',
+  coral: 'weather_coral',
+};
 // 地面材質：金屬地板的主題（一般地面也是金屬／混凝土構造）
 const METAL_THEMES = { grid: 1, grid086: 1, orbit: 1, xylem: 1, spaceport: 1, institute: 1, ark: 1 };
 
@@ -127,7 +136,13 @@ Object.assign(Game.prototype, {
     const w = this.world;
     if (!w) return;
     const T = w.theme || {};
-    const key = `${w.themeKey}|${T.roof ? 1 : 0}|${T.weather || ''}`;
+    const night = !!(T.nightV || (!T.roof && !T.noTod && w.tod === 'night'));
+    // AI 的環境音（'@amb_<主題>'）：載入之後鍵會變，環境音跟著重建
+    const ak = 'amb_' + w.themeKey,
+      wk = WEATHER_AI[T.weather] || '',
+      ai = SFX.aiVar(T.roof ? 'amb_underground' : ak).length ? 1 : 0;
+    if (wk === 'weather_rain') this.thunderTick();
+    const key = `${w.themeKey}|${T.roof ? 1 : 0}|${T.weather || ''}|${ai}|${night ? 1 : 0}`;
     if (SFX.ambKey === key) return;
     const A = AMB[w.themeKey] || AMB.industrial;
     let L = A.L.slice(),
@@ -137,7 +152,15 @@ Object.assign(Game.prototype, {
       L = L.filter((x) => !x.syn).concat([{ k: 'ambCave', v: 0.4 }]);
       rev = [2.6, 0.3];
     }
-    if (T.weather === 'rain' && !L.some((x) => x.k === 'ambRain')) L.push({ k: 'ambRain', v: 0.3 });
+    if (ai) {
+      // 有 AI 的環境音：主題一層（地下＝洞窟的低鳴）取代原本的組合
+      L = [{ k: '@' + (T.roof ? 'amb_underground' : ak), v: 0.55 }];
+      if (night && SFX.aiVar('amb_night_layer').length) L.push({ k: '@amb_night_layer', v: 0.3 });
+    }
+    if (wk && !T.roof && SFX.aiVar(wk).length) {
+      L = L.filter((x) => x.k !== 'ambRain');
+      L.push({ k: '@' + wk, v: 0.35 });
+    } else if (T.weather === 'rain' && !L.some((x) => x.k === 'ambRain')) L.push({ k: 'ambRain', v: 0.3 });
     SFX.ambient(L, key);
     SFX.setReverb(rev[0], rev[1]);
     // 槍聲、爆炸的反射（docs/audio-design.md）：依主題，有岩頂＝室內
@@ -145,6 +168,23 @@ Object.assign(Game.prototype, {
     SFX.surfAt = (p) => this.surfAt(p.x, p.z, p.y);
     SFX.barkSrc = (k, p) => this.barkPlay(k, p); // 敵兵的喊話（game/voice.js）
     SFX.threatOf = (e) => this.sfxThreat(e);
+  },
+  // 選單畫面的氣氛音（AI 音效的循環；沒有時不出聲）：標題、作戰室與簡報、機甲庫的格納庫
+  menuAmbTick() {
+    if (!SFX.ctx) return;
+    const s = this.state;
+    if (s === 'title') SFX.menuLoop('menuAmb', '@title_ambience', 0.35);
+    else if (s === 'hub' || s === 'brief') SFX.menuLoop('menuAmb', '@hub_ambience', 0.35);
+    else if (s === 'garage') SFX.menuLoop('menuAmb', '@hg_ambience', 0.35);
+  },
+  // 雨天的遠雷（audioScene 每格呼叫）：平均 25 秒一次
+  thunderTick() {
+    if (!SFX.ctx || this.state !== 'play') return;
+    const t = SFX.ctx.currentTime;
+    if (!this.thunderAt) this.thunderAt = t + 8 + Math.random() * 20;
+    if (t < this.thunderAt) return;
+    this.thunderAt = t + 12 + Math.random() * 30;
+    SFX.aiPlay('weather_thunder', 0.35 + Math.random() * 0.3, 1, 0.08, 1);
   },
   // 威脅導向的混音：正在攻擊玩家的敵人（主攻、預警中、Boss、敵對 AC）大聲一點、優先度高
   sfxThreat(e) {

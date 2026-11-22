@@ -56,6 +56,19 @@ function digPose(t, dump) {
   return [L(1) * dump, L(2), L(3), L(4)];
 }
 
+// 地圖載具的引擎聲（AI 音效的鍵）：依車種分類
+const MV_HEAVY = { bulldozer: 1, forklift: 1, apc: 1, lavahauler: 1, excavator: 1, crane: 1 };
+const MV_TRUCK = { tanker: 1, hauler: 1, lowboy: 1, truck: 1, semi: 1, bus: 1, mixer: 1, firetruck: 1 };
+function mvEngineKey(kind, T) {
+  if (T.empty) return '';
+  if (T.hover) return 'mveh_hover_loop';
+  if (T.boat) return 'mveh_boat_loop';
+  if (T.air) return 'mveh_shuttle_loop';
+  if (MV_HEAVY[kind]) return 'mveh_heavy_loop';
+  if (MV_TRUCK[kind]) return 'mveh_truck_loop';
+  return 'mveh_car_loop';
+}
+
 export class MapVeh {
   // route：[[x, z]…] 環狀路線；o：{ i 起點的索引、dir 方向 ±1、v 變化 }
   constructor(game, key, route, o = {}) {
@@ -282,6 +295,7 @@ export class MapVeh {
       return;
     }
     this.age = (this.age || 0) + dt;
+    this.engineSnd();
     const VP = this.v.parts;
     if (VP.drum && !this.abandoned) VP.drum.rotation.z += dt * 1.3; // 攪拌車：攪拌筒一直轉
     if (VP.propL && !this.abandoned) {
@@ -618,12 +632,26 @@ export class MapVeh {
     }
     this.placeFloat(dt);
   }
+  // 引擎與警笛（AI 音效的有位置循環；各端自己算，不轉送）：有人開、附近的才播
+  engineSnd() {
+    const T = this.T;
+    if (this.abandoned || !(this.occ > 0) || !SFX.lpos) return;
+    const c = this.center();
+    if (SFX.dist(c) > 80 * SFX.dk) return;
+    const k = mvEngineKey(this.key, T);
+    if (k) {
+      const v = T.spd ? Math.min(1, Math.abs(this.spd || 0) / T.spd) : 0;
+      SFX.loopAt('mv' + this.id, '@' + k, 0.25 + v * 0.35, 0.85 + v * 0.3, c);
+    }
+    if (T.siren) SFX.loopAt('mvs' + this.id, '@mveh_siren', 0.45, 1, c);
+  }
   padGo() {
     const J = this.job;
     if (J.ph !== 'park') return;
     J.ph = 'up';
     J.pt = 0;
-    SFX.play('~jetTailL', 0.8, 0.7, 0.03, 0.05, this.center());
+    if (!SFX.aiPlay('mveh_heli_takeoff', 0.8, 1, 0.03, 0.05, this.center()))
+      SFX.play('~jetTailL', 0.8, 0.7, 0.03, 0.05, this.center());
   }
   // 高空軌道的穿梭機：從作戰區域的一邊飛到另一邊（60 m 高），出去之後 40 秒再從另一邊飛回來
   transitTick(dt) {
@@ -721,7 +749,8 @@ export class MapVeh {
     this.fleeTo(src, ((this.id % 5) - 2) * 0.18);
     this.mode = 'drive';
     this.blockT = 0;
-    SFX.play('~horn', 0.55, this.len > 7 ? 0.8 : 1.05, 0.03, 0.05, this.center());
+    if (!SFX.aiPlay('mveh_horn', 0.55, this.len > 7 ? 0.85 : 1.05, 0.03, 0.05, this.center()))
+      SFX.play('~horn', 0.55, this.len > 7 ? 0.8 : 1.05, 0.03, 0.05, this.center());
   }
   // 逃走的目標：從威脅往車子的方向（再轉 a 弧度）延伸到作戰區域外
   fleeTo(src, a) {
@@ -752,6 +781,7 @@ export class MapVeh {
     if (t - (F.turnT || -9) < 1.2) return;
     F.turnT = t;
     F.n = (F.n || 0) + 1;
+    if (!this.remote) SFX.aiPlay('mveh_skid', 0.6, 1, 0.06, 0.3, this.center()); // 急轉
     if (F.n > 4) return this.abandon(F.src);
     const a = (F.n % 2 ? 1 : -1) * 0.87 * Math.ceil(F.n / 2);
     this.fleeTo(F.src, a);
@@ -836,7 +866,8 @@ export class MapVeh {
           g.fx.dust(c, Math.max(1.2, this.w * 0.7), 6, 0x8a8478);
           g.propShards(this, 2);
         });
-      if (!this.remote) SFX.pickPlay(['crunch1', 'crunch2', 'crunch3'], 0.8, 0.85, c);
+      if (!this.remote && !SFX.aiPlay('mveh_crush', 0.8, 1, 0.06, 0.03, c))
+        SFX.pickPlay(['crunch1', 'crunch2', 'crunch3'], 0.8, 0.85, c);
     } else {
       this.char(1); // 燒黑的殘骸
       this.wreckRoll = (this.id % 2 ? 1 : -1) * 0.05;
@@ -846,7 +877,7 @@ export class MapVeh {
           g.fx.explosion(c, big ? 6 : 4, 0xffa040, big);
           g.propShards(this, big ? 5 : 3);
         });
-      if (!this.remote) SFX.explode(big, c);
+      if (!this.remote && !SFX.aiPlay('mveh_explode', big ? 1.2 : 0.9, 1, 0.05, 0.03, c)) SFX.explode(big, c);
       g.rumbleAt(c, big ? 0.7 : 0.4, 0.4, 220, 40);
     }
     this.wreckT = o.cr ? 7 : 22; // 殘骸繼續冒煙／燒幾秒（propDmgTick）

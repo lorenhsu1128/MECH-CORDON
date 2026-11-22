@@ -162,7 +162,11 @@ Object.assign(Game.prototype, {
       c.vote.hold += dt;
       if (c.vote.hold >= 0.8) return this.campLeave(c.exits[all]);
     } else c.vote.hold = 0;
+    const sec0 = Math.ceil(c.vote.t);
     c.vote.t -= dt;
+    // 出口投票的倒數：每秒一聲（AI 音效）
+    if (Math.ceil(c.vote.t) < sec0 && c.vote.t > 0)
+      SFX.aiPlay('lobby_countdown', 0.5, 1, 0.02, 0.5, null, 'ui');
     c.hint = `出口投票：${Math.max(0, Math.ceil(c.vote.t))} 秒（${c.exits
       .map((ex, i) => `${EXIT_REWARDS[ex.reward].name} ${cnt[i]}`)
       .join('・')}）`;
@@ -430,7 +434,7 @@ Object.assign(Game.prototype, {
   campClientReady() {
     const C = this.campC;
     if (!C) return;
-    SFX.ui();
+    SFX.ui(null, 'sortie_go');
     C.ready = true;
     C.inGarage = false;
     this.net.tr.send(this.net.hostPeer, {

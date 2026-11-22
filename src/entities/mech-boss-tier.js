@@ -169,6 +169,10 @@ Object.assign(MechEntity.prototype, {
     s.stagN++;
     const kit = this.tierKit();
     if (kit.onStag) kit.onStag(this); // 這隻自己的（雙 AC：另一台來救＝破綻）
+    if (this.opts.bossKind === 'duo') {
+      const o = (this.game.bosses || []).find((x) => x !== this && !x.dead);
+      if (o) o.bossSnd('rescue', 1); // 另一台來救（自製音效）
+    }
     return t;
   },
   // 換型態：重置（bosses.js 的 bossPhaseShift）
@@ -216,7 +220,7 @@ Object.assign(MechEntity.prototype, {
         c = this.center();
       g.fx.shockwave(c, 12 * (this.scale || 1), 0x9fb8ff, 0.6);
       g.popDamage(c.clone().setY(c.y + 3 * DS), '裝甲殼', false, true, false, 0, this.id);
-      SFX.play('bell', 0.5, 0.7, 0.02, 0.2, c);
+      if (!this.bossCue('shell_on', 1, c)) SFX.play('bell', 0.5, 0.7, 0.02, 0.2, c);
       g.flashMsg('裝甲殼展開 — 打壞部位、打斷大招，或趁破綻打開', 0x9fb8ff, 2.4, {
         k: 'warn',
         m: '裝甲殼展開',
@@ -243,7 +247,7 @@ Object.assign(MechEntity.prototype, {
     g.fx.flash(c, 5, 0xffe0a0, 0.25);
     const txt = why === 'time' ? '裝甲殼解除' : '裝甲殼破壞！';
     g.popDamage(c.clone().setY(c.y + 3 * DS), txt, false, true, false, 0, this.id);
-    SFX.stagger(c);
+    if (!this.bossCue('shell_break', 1, c)) SFX.stagger(c);
   },
   // ---------- 第 8 節：不看防禦的大招 ----------
   // 被打的玩家機體的 takeDamage 開頭（this＝Boss）：大招期間的一發 → 依對方最大 AP 的比例（0＝不是大招）
@@ -325,7 +329,7 @@ Object.assign(MechEntity.prototype, {
     if (!nat || !s.natShown) {
       g.popDamage(this.center().setY(this.center().y + 3 * DS), '破綻！', false, true, false, 0, this.id);
       g.fx.shockwave(this.center(), 7 * (this.scale || 1), 0xffd040, 0.45);
-      SFX.play('bell', 0.6, 1.3, 0.02, 0.2, this.center());
+      if (!this.bossCue('open', 1)) SFX.play('bell', 0.6, 1.3, 0.02, 0.2, this.center());
       g.tierIntro('open', '破綻 — Boss 身上出現金色光環時傷害加倍，趁收招猛攻');
     }
     if (nat) s.natShown = true;
@@ -364,6 +368,7 @@ Object.assign(MechEntity.prototype, {
   // ---------- I 打斷大招 ----------
   // updateAI 每格（dt 已乘上節奏）：型態開頭等 I_CD[0] 秒，之後每 I_CD[1] 秒蓄力一次
   tierTick(dt, pl) {
+    this.bossStagSnd(); // 失衡的提示訊號（mech-boss3.js）
     const s = this.tierState(),
       g = this.game,
       T = tierRow(this.bossTier());
@@ -414,7 +419,9 @@ Object.assign(MechEntity.prototype, {
         if (ch.broke || (s.lostW && s.lostW[ch.id] > 0)) s.halfT = 4; // 只斷一次、負責的部位壞了：減半
         s.cdI = I_CD[1] * rnd(0.85, 1.15);
         g.flashMsg(`${this.name.split(' ')[0]}：${ch.name}！`, 0xff4030, 1.4);
-        SFX.play('alarm', 0.5, 0.9, 0.02, 0.5, this.center());
+        if (!this.bossSnd('big_release', 1, undefined, 0.5))
+          SFX.play('alarm', 0.5, 0.9, 0.02, 0.5, this.center());
+        if (this.boss3Spec() && ch.fn === this.boss3Spec().fn) this.bossSpecialSnd(); // 最終型態的專屬招式
         this.bigT = this.t + BIG_WIN; // 第 8 節：這段時間的攻擊算大招（依最大 AP 比例、不看防禦）
         if (pl && !pl.dead) ch.fn(this, pl);
         g.later(1.6, () => !this.dead && this.tierMoveEnd(ch.id));
@@ -448,7 +455,8 @@ Object.assign(MechEntity.prototype, {
     };
     g.flashMsg(`${this.name.split(' ')[0]} 蓄力中：${mv[0]} — 打斷它！`, 0xff8030, 1.8);
     g.fx.shockwave(this.center(), 8 * (this.scale || 1), 0xff6020, 0.6);
-    SFX.play('alarm', 0.45, 0.7, 0.02, 0.3, this.center());
+    if (!this.bossCue('charge_start', 1, undefined, 0.3))
+      SFX.play('alarm', 0.45, 0.7, 0.02, 0.3, this.center());
     g.tierIntro('charge', '打斷大招 — Boss 蓄力時（畫面上方的量表）集中火力打滿就能打斷，打斷後長時間失衡');
   },
   // 這個型態的大招：[名稱, fn]
@@ -508,7 +516,8 @@ Object.assign(MechEntity.prototype, {
     g.fx.shockwave(c, 14 * (this.scale || 1), 0x7fd8ff, 0.7);
     g.fx.flash(c, 5, 0xbfe8ff, 0.2);
     g.camShake = Math.max(g.camShake, 0.3);
-    SFX.stagger(c);
+    this.sndStag = true; // 失衡的提示訊號不再另外響（bossStagSnd）
+    if (!this.bossCue('interrupt', 1, c)) SFX.stagger(c);
     g.netEv({ t: 'stag', i: this.id });
     g.flashMsg(`打斷成功 — ${this.name.split(' ')[0]} 失衡`, 0x7fd8ff, 2);
     g.tierDropAmmo(this);
@@ -532,6 +541,7 @@ Object.assign(MechEntity.prototype, {
   tierArmor(frac, sec) {
     const s = this.tierState();
     s.pa = { hp: this.maxHp * frac, t: sec };
+    this.bossSnd('pa_up', 1);
     this.game.flashMsg(`${this.name.split(' ')[0]} 展開斥力裝甲 — 打破它！`, 0x60e0ff, 1.8);
   },
   // bossDefense：脈衝裝甲吸收（回傳打得進去的倍率）
@@ -541,14 +551,17 @@ Object.assign(MechEntity.prototype, {
     s.pa.hp -= dmg * 0.7;
     if (at && Math.random() < 0.4) this.game.fx.spark(at, 0x60e0ff);
     this.game.energyHit(this, 0); // 脈衝裝甲的能量層閃一下（第 9.2 期）
-    if (s.pa.hp > 0) return 0.3;
+    if (s.pa.hp > 0) {
+      this.bossSnd('pa_hit', 0.6, at || undefined, 0.12);
+      return 0.3;
+    }
     // 打破：破綻
     s.pa = null;
     const g = this.game,
       c = this.center();
     g.popDamage(c.clone().setY(c.y + 3 * DS), '斥力裝甲破壞', false, true, false, 0, this.id);
     g.fx.shockwave(c, 9 * (this.scale || 1), 0x60e0ff, 0.5);
-    SFX.stagger(c);
+    if (!this.bossSnd('pa_break', 1, c)) SFX.stagger(c);
     this.bossOpen();
     return 0.3;
   },
@@ -818,7 +831,7 @@ Object.assign(MechEntity.prototype, {
     g.projectiles.push(r);
     g.popDamage(p.clone().setY(p.y + 1), '打回去！', false, true, false, 0, -1);
     g.fx.shockwave(p, 3, 0x7fd8ff, 0.3);
-    SFX.play('shield', 0.9, 1.4, 0.03, 0.05, p);
+    if (!this.bossCue('reflect', 1, p, 0.05)) SFX.play('shield', 0.9, 1.4, 0.03, 0.05, p);
     if (from && from.syEvent) from.syEvent('shotDown', '打回去');
     g.tierIntro('reflect', '打回去 — Boss 的金色彈體打掉之後會飛回去打中 Boss（紅色的是打不掉的假彈）');
   },
@@ -928,6 +941,9 @@ Object.assign(MechEntity.prototype, {
   tierCounterMove(h, pl) {
     const kit = this.tierKit();
     const fn = kit.counter && kit.counter[h];
+    // ARCHON 的火焰噴射器（部位還在時）：貼身的反制
+    if (fn && h === 'close' && this.boss3Key() === 'ARCHON' && !this.tierFlag('flame'))
+      this.bossSnd('flame', 1);
     if (fn) return fn(this, pl);
     if (h === 'air') return this.b3Fan(pl, 3, 0.14); // 對空：朝空中的目標掃射
     if (h === 'close') return this.b3Shock(18); // 貼身：周圍的衝擊波

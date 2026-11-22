@@ -14,6 +14,10 @@ import { BC, FB, FD, FL, FM, slantTag } from '../render/cine-brand.js';
 import { drawArt } from '../render/cine-art.js';
 import { Portrait, Portraits } from '../render/portraits.js';
 import { Game } from './game.js';
+import { SFX } from '../audio/audio.js';
+
+// 狀聲詞的音效：元素 → 播過的那一次過場
+const ONOM_SEEN = new WeakMap();
 
 const $ = (id) => document.getElementById(id);
 const VW = 1600,
@@ -961,7 +965,14 @@ Object.assign(Game.prototype, {
   //   onom（漫畫的狀聲詞：逐字歪斜，en＝英文擬音） }
   cine2d_text(x, e, lt, v) {
     // 漫畫的狀聲詞（onom）：逐字歪斜的排版（game/cine-type.js）
-    if (e.onom) return this.cine2dOnom(x, e, lt, v);
+    if (e.onom) {
+      // 狀聲詞出現時一聲（AI 音效；每次播放過場各一次）
+      if (ONOM_SEEN.get(e) !== this.cine) {
+        ONOM_SEEN.set(e, this.cine);
+        SFX.aiPlay('cine_onomatopoeia', 0.8, 1, 0.05, 0.1, null, 'ui');
+      }
+      return this.cine2dOnom(x, e, lt, v);
+    }
     const [px, py] = e.at || [VW / 2, VH / 2];
     this.cine2dIn(x, e, v, px, py);
     // 文字風格（render/cine-brand.js）：預設＝標題字、title＝英數的粗斜體、mono＝機器文字

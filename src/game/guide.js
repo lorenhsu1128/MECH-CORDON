@@ -76,7 +76,7 @@ Object.assign(Game.prototype, {
       this.state = 'modpick';
     }
     this.modOpts = [];
-    SFX.cue('phase');
+    SFX.cue('phase', 'choice_card');
     $('mpTitle').textContent = `⚑ ${CH.name}`;
     $('mpSub').textContent = '走進其中一個出口＝做出選擇。這一周目選了就不能更改（下一周目可以重選）。';
     $('mpCards').innerHTML = opts
@@ -181,7 +181,7 @@ Object.assign(Game.prototype, {
     const el = document.getElementById('hubFacBox');
     el.style.display = open ? '' : 'none';
     if (!open) return;
-    SFX.ui();
+    SFX.ui(null, 'ui_panel_open');
     this.hubBoardRender();
     this.hubFacRender();
     this.hubFacTab(tab || this.hubFacT || 'board');

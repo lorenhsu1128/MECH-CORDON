@@ -826,7 +826,8 @@ Object.assign(Game.prototype, {
     });
     if (!any) return;
     T.reps++;
-    SFX.play('uiOk', 0.5, 1.2, 0.02, 0.02, null, 'ui');
+    if (!SFX.aiPlay('tut_goal', 0.5, 1, 0.02, 0.02, null, 'ui'))
+      SFX.play('uiOk', 0.5, 1.2, 0.02, 0.02, null, 'ui');
     const done = (step.goal || []).every((G, i) => T.prog[i] >= G.n);
     if (done) this.tutPass();
     else {
@@ -847,7 +848,8 @@ Object.assign(Game.prototype, {
     T.okT = 1.4;
     this.tutVirt = null;
     T.scr = null;
-    SFX.play('bell', 0.7, 1, 0.02, 0.02, null, 'ui');
+    if (!SFX.aiPlay('tut_pass', 0.7, 1, 0.02, 0.02, null, 'ui'))
+      SFX.play('bell', 0.7, 1, 0.02, 0.02, null, 'ui');
     this.flashMsg('過關 — ' + T.step.t, 0x7ee081, 1.3, { k: 'good', m: '過關', s: T.step.t });
     this.tutPanelRender(true);
   },
@@ -927,7 +929,8 @@ Object.assign(Game.prototype, {
       Q.want = null;
       T.prog[0] = Q.i;
       T.reps++;
-      SFX.play('uiOk', 0.5, 1.2, 0.02, 0.02, null, 'ui');
+      if (!SFX.aiPlay('tut_goal', 0.5, 1, 0.02, 0.02, null, 'ui'))
+        SFX.play('uiOk', 0.5, 1.2, 0.02, 0.02, null, 'ui');
       if (Q.i >= Q.seq.length) this.tutPass();
       this.tutPanelRender(true);
     }
@@ -947,7 +950,8 @@ Object.assign(Game.prototype, {
       X.kinds.add(t);
       const nm = (EXAM_KINDS.find((q) => q[0] === t) || [t, t])[1];
       this.flashMsg(`技巧：${nm}（${X.kinds.size}）`, 0x7fc8ff, 1.1);
-      SFX.play('uiOk', 0.55, 1.3, 0.02, 0.02, null, 'ui');
+      if (!SFX.aiPlay('tut_goal', 0.55, 1, 0.02, 0.02, null, 'ui'))
+        SFX.play('uiOk', 0.55, 1.3, 0.02, 0.02, null, 'ui');
       this.tutPanelRender(true);
     };
     if (k === 'hit') {
@@ -1098,7 +1102,8 @@ Object.assign(Game.prototype, {
     const c = e.center();
     this.fx.flash(c, 2.2, 0xff4030, 0.25);
     this.fx.ring(c, 3 * DS, 0xff4030);
-    SFX.play('alarm', 0.35, e.tutD.tele && e.tutD.tele.k === 'shot' ? 1.4 : 1.1, 0.02, 0.02, null, 'ui');
+    if (!SFX.aiPlay('tut_cue', 0.5, 1, 0.02, 0.02, null, 'ui'))
+      SFX.play('alarm', 0.35, e.tutD.tele && e.tutD.tele.k === 'shot' ? 1.4 : 1.1, 0.02, 0.02, null, 'ui');
     if (this.popDamage)
       this.popDamage(c.clone().add(new THREE.Vector3(0, 2.5 * DS, 0)), '!', false, true, false, 0, e.id);
   },
@@ -1186,6 +1191,7 @@ Object.assign(Game.prototype, {
     const card = $('tutDoneCard');
     card.innerHTML = `<div class="panel">${h}</div>`;
     this.showScreen('tutDoneCard');
+    SFX.aiPlay('tut_lesson_done', 0.8, 1, 0.02, 0.5, null, 'ui');
     for (const b of card.querySelectorAll('.tutPrize'))
       b.onclick = () => {
         SFX.ui();

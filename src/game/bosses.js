@@ -22,6 +22,7 @@ Object.assign(Game.prototype, {
       const ps = (this.players && this.players.length ? this.players : [this.player]).filter(Boolean);
       const src = ps[Math.floor(Math.random() * ps.length)];
       if (src && src.asm) asm = { ...src.asm };
+      if (src) SFX.aiPlay('boss_doppel_mimic', 1, 1, 0.03, 1, src.center()); // 複製完成（自製音效）
     }
     const b = this.spawnEnemy({
       name: bd.name,
@@ -134,8 +135,10 @@ Object.assign(Game.prototype, {
     this.fx.flash(src.center(), 6, 0xbfe0ff, 0.25);
     this.fx.arc(src.center(), 4, 0x80c8ff); // 電弧（docs/vfx-design.md）
     for (let i = 0; i < 16; i++) this.fx.streaks(src.center(), 2, 0x80c8ff, rr * 0.9, 0.35, rr * 1.5);
-    SFX.play('overload', 1, 0.8, 0.05, 0.05, c);
-    SFX.play('laserBig', 0.7, 0.5, 0.05, 0.05, c);
+    if (!src.bossSnd('emp', 1.1, c)) {
+      SFX.play('overload', 1, 0.8, 0.05, 0.05, c);
+      SFX.play('laserBig', 0.7, 0.5, 0.05, 0.05, c);
+    }
     const chain = []; // 鋸齒電弧的連鎖（juice.js 的 boltChain）
     for (const t of this.hostilesOfEnt(src)) {
       if (t.dead || t.isProp || !t.pos) continue;
@@ -193,6 +196,7 @@ Object.assign(Game.prototype, {
       }
       this.flashMsg('Boss 狂暴化 — 火力與速度上升', 0xff3020, 3, { k: 'enrage', m: '狂暴化', s: 'ENRAGE' });
       for (const b of live) this.fx.shockwave(b.center(), 22, 0xff2010, 0.8);
+      if (live[0]) live[0].bossCue('enrage', 1, live[0].center(), 1); // 自製音效（Boss 共用的提示訊號）
     }
     // 雙 AC：一台倒下時另一台狂暴（火力 ×1.3、節奏加快）。不再回復 25%，型態閘門也不再擋（mech-boss-tier.js 的
     // tierGate 看 duoRage）：2026-11-10 量測，倖存的一台回滿之後從第一型態重跑閘門與裝甲殼，等於連打兩場
@@ -203,6 +207,7 @@ Object.assign(Game.prototype, {
       b.dmgMul *= BOSS_ENRAGE_DMG;
       if (b.bt) b.bt.shell = null;
       this.fx.shockwave(b.center(), 18, 0xff2010, 0.7);
+      if (!b.bossSnd('rage', 1)) b.bossCue('enrage', 1, b.center(), 1); // 雙機：一台倒下、另一台狂暴
       this.flashMsg(`${b.name.split(' ')[0]} 狂暴化 — 僚機被擊破`, 0xff3020, 2.5, {
         k: 'enrage',
         m: `${b.name.split(' ')[0]} 狂暴化`,
@@ -229,6 +234,7 @@ Object.assign(Game.prototype, {
     b.acs = 0;
     b.stagGuardT = BOSS_STAG_GUARD;
     const c = b.center();
+    if (b.ai !== 'beast') b.bossCue('phase', 1.1, c, 1); // 換型態（機獸是吼聲：mech-beast-fx.js）
     this.fx.shockwave(c, 20, 0xff3020, 0.7);
     this.fx.flash(c, 5, 0xff6040, 0.25);
     this.camShake = Math.max(this.camShake, 0.3);

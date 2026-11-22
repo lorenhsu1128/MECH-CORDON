@@ -93,7 +93,8 @@ Object.assign(MechEntity.prototype, {
         c.under = false;
         c.ph = 1;
         c.t = POP.warn;
-        SFX.play('ui2', 0.5, 0.6, 0.05, 0.05, this.center());
+        if (!SFX.aiPlay('foe_popturret_warn', 0.8, 1, 0.05, 0.05, this.center()))
+          SFX.play('ui2', 0.5, 0.6, 0.05, 0.05, this.center());
       } else if (c.t <= 0) c.t = 0.5;
       return;
     }
@@ -104,6 +105,7 @@ Object.assign(MechEntity.prototype, {
         c.t = POP.up;
         c.n = POP.shots;
         c.st = 0.3;
+        SFX.aiPlay('foe_popturret_rise', 0.9, 1, 0.05, 0.1, this.center());
       }
     } else {
       this.bossVis = 2;
@@ -129,9 +131,11 @@ Object.assign(MechEntity.prototype, {
           }),
         );
         g.fx.muzzle?.(o, v.clone().normalize(), 0xffb040);
-        SFX.play('heavy', 0.5, 1.1, 0.05, 0.05, o);
+        if (!SFX.aiPlay('foe_popturret_fire', 0.9, 1, 0.05, 0.05, o))
+          SFX.play('heavy', 0.5, 1.1, 0.05, 0.05, o);
       }
       if (c.t <= 0) {
+        SFX.aiPlay('foe_popturret_lower', 0.8, 1, 0.05, 0.1, this.center());
         c.under = true;
         c.ph = 0;
         c.t = rnd(...POP.under);
@@ -153,7 +157,8 @@ Object.assign(MechEntity.prototype, {
         c.at = pl.pos.clone();
         c.at.y = g.world.groundAt(c.at.x, c.at.z, c.at.y + 2 * MS);
         g.fx.warnCircle(c.at, LEAP.R, LEAP.warn, 0xff3020);
-        SFX.play('charge', 0.5, 1.2, 0.05, 0.1, this.center());
+        if (!SFX.aiPlay('foe_boarder_warn', 0.8, 1, 0.05, 0.05, this.center()))
+          SFX.play('charge', 0.5, 1.2, 0.05, 0.1, this.center());
       } else if (c.t <= 0) c.t = 0.6;
     } else if (c.ph === 1) {
       this.bossVis = 1;
@@ -177,7 +182,7 @@ Object.assign(MechEntity.prototype, {
         if (this.canAct()) {
           const p = this.pos.clone();
           g.fx.shockwave(p.clone().setY(p.y + 0.3), LEAP.R, 0xff6040, 0.4);
-          SFX.explode(false, p);
+          if (!SFX.aiPlay('foe_boarder_slam', 1, 1, 0.05, 0.05, p)) SFX.explode(false, p);
           g.explodeAt(p, LEAP.dmg * this.dmgMul, LEAP.im * this.dmgMul, LEAP.R, this, false);
         }
       }
@@ -205,7 +210,8 @@ Object.assign(MechEntity.prototype, {
         c.ph = 1;
         c.t = RAIL.charge;
         c.tp = pl.center();
-        SFX.play('charge', 0.6, 0.7, 0.05, 0.1, this.center());
+        if (!SFX.aiPlay('foe_railgunner_charge', 0.9, 1, 0.05, 0.05, this.center()))
+          SFX.play('charge', 0.6, 0.7, 0.05, 0.1, this.center());
       } else if (c.t <= 0) c.t = 0.5;
     } else if (c.ph === 1) {
       this.bossVis = 1;
@@ -222,6 +228,7 @@ Object.assign(MechEntity.prototype, {
         c.ph = 2;
         c.t = RAIL.cool;
         c.lt = 0;
+        SFX.aiPlay('foe_railgunner_cool', 0.8, 1, 0.05, 0.1, this.center(), null, 0.4); // 散熱（射擊之後）
         if (this.canAct()) {
           const dirv = c.tp.clone().sub(mz).normalize();
           g.beamAttack(this, mz, dirv, {
@@ -232,7 +239,8 @@ Object.assign(MechEntity.prototype, {
             color: 0x9fe8ff,
             width: 0.5,
           });
-          SFX.play('laserBig', 0.7, 0.8, 0.05, 0.05, mz);
+          if (!SFX.aiPlay('foe_railgunner_fire', 1, 1, 0.05, 0.05, mz))
+            SFX.play('laserBig', 0.7, 0.8, 0.05, 0.05, mz);
         }
       }
     } else {
@@ -256,7 +264,8 @@ Object.assign(MechEntity.prototype, {
       if (c.t <= 0 && d < SPOT.range && g.losClear(this.center(), pl.center()) && this.canAct()) {
         c.ph = 1;
         c.t = SPOT.aim;
-        SFX.play('ui2', 0.5, 1.4, 0.05, 0.05, this.center());
+        if (!SFX.aiPlay('foe_spotter_light', 0.8, 1, 0.05, 0.05, this.center()))
+          SFX.play('ui2', 0.5, 1.4, 0.05, 0.05, this.center());
       } else if (c.t <= 0) c.t = 0.6;
     } else if (c.ph === 1) {
       this.bossVis = 1;
@@ -277,6 +286,7 @@ Object.assign(MechEntity.prototype, {
   spotStrike_e2(pl) {
     const g = this.game;
     pl.addStatus?.('spotted', SPOT.mark, { src: this.id });
+    SFX.aiPlay('foe_spotter_mark', 0.9, 1, 0.05, 0.1, this.center());
     for (let i = 0; i < SPOT.n; i++) {
       const a = Math.random() * Math.PI * 2,
         rr = i === 0 ? 0 : rnd(4, 9) * MS;
@@ -284,12 +294,14 @@ Object.assign(MechEntity.prototype, {
       at.y = g.world.groundAt(at.x, at.z, at.y + 3 * MS);
       const dl = SPOT.warn + i * 0.25;
       g.fx.warnCircle(at, SPOT.R, dl, 0xffd040);
+      // 砲擊的預警（呼嘯；落下前 1.2 秒）
+      SFX.aiPlay('foe_spotter_incoming', 0.8, 1, 0.05, 0, at, null, Math.max(0, dl - 1.2));
       const dmg = SPOT.dmg * this.dmgMul,
         im = SPOT.im * this.dmgMul,
         R = SPOT.R;
       g.later(dl, () => {
         g.fx.explosion(at.clone().setY(at.y + 1), 3, 0xffa040, true);
-        SFX.explode(false, at);
+        if (!SFX.aiPlay('foe_spotter_strike', 1, 1, 0.05, 0.05, at)) SFX.explode(false, at);
         g.explodeAt(at, dmg, im, R, this, false);
       });
     }

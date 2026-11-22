@@ -922,7 +922,7 @@ Object.assign(Game.prototype, {
         break;
       case 'obj':
         st.obj = a.text || '';
-        if (a.text) SFX.ui();
+        if (a.text && !SFX.aiPlay('radio_open', 0.5, 1, 0.02, 0.1, null, 'ui')) SFX.ui();
         break;
       case 'dev':
         this.devLvOp(a.m, a.op || 'fire');
@@ -1168,6 +1168,10 @@ Object.assign(Game.prototype, {
     if (st.obj) txt += `<div class="lvGoal">${escHtml(st.obj)}</div>`;
     if (st.timer) {
       const s = Math.max(0, Math.ceil(st.timer.t));
+      // 最後 10 秒每秒一聲（自製 AI 音效）
+      if (s <= 10 && s > 0 && s !== this.lvTickS)
+        SFX.aiPlay('lv_countdown', 0.5, s <= 3 ? 1.15 : 1, 0, 0.5, null, 'ui');
+      this.lvTickS = s;
       txt += `<div class="lvTimer${s <= 10 ? ' hot' : ''}">${escHtml(st.timer.text || '倒數')}　${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}</div>`;
     }
     for (const id in st.marks) {

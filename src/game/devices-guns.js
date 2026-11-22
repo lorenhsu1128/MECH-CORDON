@@ -144,7 +144,7 @@ Object.assign(Game.prototype, {
     const c = d.pos.clone().setY(d.pos.y + 1.5 * MS);
     this.fx.explosion(c, 4, 0xffa040, true);
     this.fx.shockwave(c, 5, 0xffd090, 0.4);
-    SFX.explode(true, c);
+    if (!SFX.aiPlay('gun_destroy', 1.1, 1, 0.04, 0.1, c)) SFX.explode(true, c);
     this.flashMsg(`${d.def.name}被摧毀`, 0xff8040, 1.6);
   },
   // 上砲台受到的傷害：砲台分擔一半（MechEntity.takeDamage 呼叫，回傳自己要受的）
@@ -174,10 +174,11 @@ Object.assign(Game.prototype, {
     p.vel.set(0, 0, 0);
     this.devLvEmit(d); // 自訂關卡的觸發器
     if (p.isPlayer) this.flashMsg(`上${d.def.name} — 射擊鍵開火，再按一次互動鍵離開`, d.def.color, 2);
-    SFX.ui();
+    SFX.ui(null, 'gun_mount');
   },
   gunDismount(d, p) {
     p.devMount = 0;
+    SFX.aiPlay('gun_dismount', 0.6, 1, 0.04, 0.1, p.pos.clone()); // 離開砲台
     if (d.st === ST_ON) {
       d.st = ST_IDLE;
       d.user = 0;
@@ -309,13 +310,16 @@ Object.assign(Game.prototype, {
     }
     const fd = aimPos.clone().sub(mz).normalize();
     this.fx.muzzle(mz, fd, def.color, W.kind === 'bullet' ? 1.6 : 3);
-    SFX.shot(SHOT_KIND[W.kind] || 'bullet', undefined, mz, owner && owner.isPlayer ? owner : null);
+    // 砲台的開火（AI 音效 gun_<種類>_shot；沒有時照舊用武器配方）
+    if (!SFX.aiPlay(d.kind + '_shot', 0.9, 1, 0.05, 0.03, mz))
+      SFX.shot(SHOT_KIND[W.kind] || 'bullet', undefined, mz, owner && owner.isPlayer ? owner : null);
     d.cd = W.rof * (npc ? GUN_NPC.rof : 1);
     d.shots = (d.shots || 0) + 1;
     d.heat += W.heat;
     if (d.heat >= 1) {
       d.heat = 1;
       d.ohT = OVERHEAT_T;
+      SFX.aiPlay('gun_overheat', 0.7, 1, 0.03, 0.3, mz);
       if (owner && owner.isPlayer) this.flashMsg('砲台過熱', 0xff8040, 1.2);
     }
   },
@@ -353,7 +357,7 @@ Object.assign(Game.prototype, {
         holder.hw = { k, ammo: H.ammo, cd: 0.3 };
         if (holder.isPlayer)
           this.flashMsg(`撿起${H.name} — 自動攻擊鎖定的目標（彈藥 ${H.ammo}）`, H.color, 2.2);
-        SFX.ui();
+        SFX.ui(null, 'hw_pickup');
         d.st = ST_USED;
         d.gone = true;
       }
@@ -365,6 +369,11 @@ Object.assign(Game.prototype, {
       const h = p.hw;
       if (!h || p.downed) continue;
       const H = HEAVY_WEAPONS[h.k];
+      // 火焰放射器：噴的期間一直響（AI 音效的循環）
+      if (H.flame && h.fT > 0) {
+        h.fT -= dt;
+        SFX.loopAt('hwF' + p.id, '@hw_flame_loop', 0.7, 1, p.center());
+      }
       h.cd -= dt;
       if (h.cd > 0 || p.devMount) continue;
       const R = (H.flame ? H.range * MS : H.range * DS) * 1.0;
@@ -376,6 +385,7 @@ Object.assign(Game.prototype, {
       h.cd = H.rof;
       h.ammo--;
       if (H.flame) {
+        h.fT = H.rof + 0.12;
         this.fx.flameCone(mz, dir, R * 0.5, H.ang * 0.5, 6);
         for (const e of this.hostilesOfEnt(p)) {
           if (e.dead || e.isProp) continue;
@@ -413,10 +423,12 @@ Object.assign(Game.prototype, {
           );
         }
         this.fx.muzzle(mz, dir, H.color, 2.4);
-        SFX.shot(SHOT_KIND[H.kind] || 'shell', undefined, mz, p.isPlayer ? p : null);
+        if (!SFX.aiPlay(h.k + '_shot', 0.9, 1, 0.05, 0.03, mz))
+          SFX.shot(SHOT_KIND[H.kind] || 'shell', undefined, mz, p.isPlayer ? p : null);
       }
       if (h.ammo <= 0) {
         p.hw = null;
+        SFX.aiPlay('hw_discard', 0.6, 1, 0.04, 0.1, p.pos.clone()); // 打完丟掉
         if (p.isPlayer) this.flashMsg(`${H.name}的彈藥打完了`, 0x8a97a6, 1.6);
       }
     }
@@ -442,6 +454,9 @@ Object.assign(Game.prototype, {
       const want = (d.aim || 0) - (d.yaw || 0);
       let da = want - m.head.rotation.y;
       da = Math.atan2(Math.sin(da), Math.cos(da));
+      // 砲台轉動（AI 音效的循環；各端自己算）
+      if (d.def.gun && Math.abs(da) > 0.03 && d.st !== ST_USED)
+        SFX.loopAt('gunTr' + d.id, '@gun_turret_traverse', Math.min(0.5, Math.abs(da) * 2), 1, d.pos);
       m.head.rotation.y += da * Math.min(1, dt * 10);
       m.visible = true;
     }

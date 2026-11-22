@@ -5,6 +5,7 @@
 //  不影響遊戲其他部分的亂數順序）。自由出擊、主線、自訂關卡才有；靶場、模擬器、訓練、實驗室、過場、PvP 沒有。
 //  第 2 期只在單機（多人在第 5 期：各端依種子生成、房主判定死亡）。
 // ============================================================
+import { SFX } from '../audio/audio.js';
 import { Game } from './game.js';
 import { CrowdMesh } from '../render/crowd-model.js';
 import { makeRng, withRng } from '../core/math.js';
@@ -364,6 +365,11 @@ Object.assign(Game.prototype, {
       h.t = Math.max(h.t, 2);
     }
     h.reT = this.time || 0;
+    // 受驚尖叫（AI 音效；房主／單機播，有位置的會轉送給客機）
+    if (h.st !== 'run' && Math.random() < 0.35 && !(this.net && this.net.role === 'client'))
+      SFX.aiPlay('crowd_scream', 0.45, 1, 0.12, 0.25, new THREE.Vector3(h.x, h.y + 1.5, h.z), null, 0, {
+        max: 2,
+      });
     let dx = h.x - sx,
       dz = h.z - sz;
     const d = Math.hypot(dx, dz) || 1;
@@ -499,8 +505,10 @@ Object.assign(Game.prototype, {
         h.x = c.x;
         h.z = c.z;
         h.y = h.ej.y0;
+        SFX.aiPlay('crew_eject', 0.6, 1, 0.08, 0.1, c, null, 0, { max: 2 }); // 逃出（彈射座椅點火）
         quiet(rng, () => this.fx.flash(new THREE.Vector3(c.x, h.ej.y0, c.z), 0.35, 0xfff0c0, 0.12));
       }
+      if (h && air) SFX.aiPlay('chute_open', 0.5, 1, 0.08, 0.1, e.pos, null, 0, { max: 2 }); // 降落傘打開
       if (h && air)
         quiet(rng, () => {
           h.chute = chuteMesh();
@@ -555,6 +563,7 @@ Object.assign(Game.prototype, {
       fx.flash(a, 0.12, 0xffd080, 0.06);
       fx.spark(b, 0xffd080);
     });
+    SFX.aiPlay('crowd_rifle', 0.45, 1, 0.1, 0.05, a, null, 0, { max: 3 }); // 人用的步槍
     const dir = b.clone().sub(a).normalize();
     tp.takeDamage(CREW_K.SHOOT_DMG, 1, null, b, dir, undefined, undefined, 'kin');
   },
@@ -571,6 +580,7 @@ Object.assign(Game.prototype, {
       this.fx.smoke(a, 0.8, 0x8a8a8a, 0.8, 1);
     });
     C.rockets.push({ p: a, v, life: 4, sm: 0 });
+    SFX.aiPlay('crowd_rocket', 0.6, 1, 0.08, 0.05, a, null, 0, { max: 2 });
   },
   crowdRocketTick(dt, pls) {
     const C = this.crowd;
@@ -594,6 +604,7 @@ Object.assign(Game.prototype, {
       if (!hit) continue;
       C.rockets.splice(i, 1);
       quiet(C.rng, () => fx.explosion(r.p, 0.5, 0xffa040, false));
+      SFX.aiPlay('crowd_rocket_hit', 0.7, 1, 0.08, 0.05, r.p.clone(), null, 0, { max: 2 });
       for (const p of pls)
         if (p.center().distanceTo(r.p) < INF_K.ROCKET_R + (p.radius || 3))
           p.takeDamage(
@@ -827,6 +838,14 @@ Object.assign(Game.prototype, {
       fx._nested = nest;
     }
     if (mode !== 'off') quiet(C.rng, () => this.crowdBlood(h.x, gy, h.z, mode));
+    // 踩死／炸死、血跡濺出（AI 音效；各端自己演出，不轉送）
+    SFX.netDepth++;
+    try {
+      SFX.aiPlay(how === 'blast' ? 'crowd_blast' : 'crowd_stomp', 0.6, 1, 0.1, 0.05, p, null, 0, { max: 3 });
+      if (mode !== 'off') SFX.aiPlay('crowd_blood', 0.35, 1, 0.1, 0.08, p, null, 0.05, { max: 2 });
+    } finally {
+      SFX.netDepth--;
+    }
     // 只有玩家造成的算進擊殺數（多人：房主送 hkill 事件，記在動手的那位玩家名下）
     if (this.crowdHost()) {
       const s = by && by.team === 'player' && by.slot !== undefined && !by.isAI ? by.slot : -1;
@@ -911,10 +930,43 @@ Object.assign(Game.prototype, {
       b.m.material.dispose();
     }
   },
+  // 小人的持續聲（AI 音效的有位置循環；房主與客機各自算）：附近做事的人聲、奔跑的腳步、降落傘
+  crowdSndTick(dt) {
+    const C = this.crowd;
+    if (!SFX.lpos) return;
+    C.sndT = (C.sndT || 0) - dt;
+    if (C.sndT <= 0) {
+      C.sndT = 0.25;
+      const R = 45 * SFX.dk,
+        L = SFX.lpos;
+      const acc = () => ({ n: 0, x: 0, y: 0, z: 0 });
+      const mu = acc(),
+        ru = acc(),
+        ch = acc();
+      for (const h of C.list) {
+        if (!h.alive || Math.hypot(h.x - L.x, h.z - L.z) > R) continue;
+        const a = h.st === 'chute' ? ch : h.st === 'run' || h.st === 'flee' ? ru : h.soldier ? null : mu;
+        if (!a) continue;
+        a.n++;
+        a.x += h.x;
+        a.y += h.y + 1;
+        a.z += h.z;
+      }
+      C.snd = [mu, ru, ch].map((a) =>
+        a.n ? { n: a.n, p: new THREE.Vector3(a.x / a.n, a.y / a.n, a.z / a.n) } : null,
+      );
+    }
+    const S = C.snd;
+    if (!S) return;
+    if (S[0]) SFX.loopAt('crowdMur', '@crowd_murmur_loop', Math.min(0.5, 0.12 + S[0].n * 0.04), 1, S[0].p);
+    if (S[1]) SFX.loopAt('crowdRun', '@crowd_run_loop', Math.min(0.6, 0.15 + S[1].n * 0.06), 1, S[1].p);
+    if (S[2]) SFX.loopAt('crowdChute', '@chute_flutter_loop', 0.35, 1, S[2].p);
+  },
   // 每格（房主／單機的主迴圈）
   crowdTick(dt) {
     const C = this.crowd;
     if (!C) return;
+    this.crowdSndTick(dt);
     if (this.net && this.net.role === 'client') return this.crowdClientTick(dt);
     if (this.crowdHost()) {
       // 多人：每 0.5 秒送位置與狀態、每 5 秒送完整清單（中途加入、房主遷移）

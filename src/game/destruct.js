@@ -22,6 +22,9 @@ import { targetNear } from '../world/prop-hit.js';
 import { providedModel } from '../render/model-provider.js';
 import { Game } from './game.js';
 
+// 地圖物件的持續聲（propEmit）的循環名稱編號
+let PROP_SND = 0;
+
 const NEAR = 170; // 持續效果：離鏡頭多遠以內（公尺）
 const MAX_ACTIVE = 12; // 同時演出持續效果的物件數（離鏡頭最近的）
 const TABLE_DT = 2; // 房主送血量表的間隔（秒）
@@ -281,6 +284,13 @@ Object.assign(Game.prototype, {
       c = p.center(),
       M = PMAT[p.mat] || PMAT.metal;
     this.propFling(p, r.pieces);
+    // 受損階段：零件分批脫落、變矮（AI 音效；各端自己算，不轉送）
+    SFX.netDepth++;
+    try {
+      SFX.aiPlay('prop_stage_break', s >= 3 ? 0.8 : 0.55, 1, 0.08, 0.08, c);
+    } finally {
+      SFX.netDepth--;
+    }
     local(fx, () => {
       const q = new THREE.Vector3(c.x, cut !== null ? cut : sh.y1, c.z);
       if (M.spark) fx.streaks(q, 8, 0xffe090, 12, 0.35, 26);
@@ -537,6 +547,15 @@ Object.assign(Game.prototype, {
       } else if (M.fx === 'dust' && st >= 2)
         fx.dust(q, Math.min(2.2, S), 4, M.col !== undefined ? M.col : 0x9a958a);
     }
+    // 燃燒中／冒電弧的持續聲（AI 音效的循環，有位置；只有附近的）
+    if ((burning || (M.fx === 'spark' && !dead)) && SFX.lpos) {
+      const q = new THREE.Vector3((sh.x0 + sh.x1) / 2, top, (sh.z0 + sh.z1) / 2);
+      if (SFX.dist(q) < 60 * SFX.dk) {
+        const k = p.sndK || (p.sndK = 'prop' + ++PROP_SND);
+        if (burning) SFX.loopAt(k, '@prop_fire_loop', 0.5, 1, q);
+        else SFX.loopAt(k, '@prop_spark_loop', 0.4, 1, q);
+      }
+    }
     if (burning)
       fx.glow(
         p,
@@ -578,7 +597,18 @@ Object.assign(Game.prototype, {
     });
     SFX.netDepth++;
     try {
-      SFX.wreck(c);
+      if (!SFX.aiPlay('pillar_collapse', 0.9, 1, 0.05, 0.1, c)) SFX.wreck(c);
+    } finally {
+      SFX.netDepth--;
+    }
+  },
+  // 結構快倒前的吱嘎（AI 音效；各端自己算）
+  propCreak(b) {
+    const bb = b.base;
+    if (!bb) return;
+    SFX.netDepth++;
+    try {
+      SFX.aiPlay('creak_warning', 0.9, 1, 0.08, 0.3, bb.getCenter(new THREE.Vector3()));
     } finally {
       SFX.netDepth--;
     }
@@ -642,6 +672,7 @@ Object.assign(Game.prototype, {
       fx = this.fx;
     w.propUnmerge(b);
     if (!quiet) this.tallyProp('col'); // 結果畫面的戰果（loot.js）
+    if (!quiet) this.propCreak(b); // 快倒前的吱嘎
     b.collapsed = true;
     b.dead = true;
     b.hp = 0;
@@ -747,8 +778,10 @@ Object.assign(Game.prototype, {
       );
       SFX.netDepth++;
       try {
-        SFX.explode(true, mid);
-        SFX.wreck(mid);
+        if (!SFX.aiPlay('pillar_collapse', 1.1, 1, 0.05, 0.1, mid)) {
+          SFX.explode(true, mid);
+          SFX.wreck(mid);
+        }
       } finally {
         SFX.netDepth--;
       }
@@ -776,6 +809,7 @@ Object.assign(Game.prototype, {
   // 往下塌：預警（範圍＝外框再往外 4 m）、晃動 → 往下壓扁並沉下去（大量揚塵蓋住）→ 換成殘骸（prop-wreck.js）與殘骸的碰撞；
   // 屋頂上與旁邊的機體受到爆發傷害
   propSink(b, quiet) {
+    if (!quiet) this.propCreak(b);
     const w = this.world,
       fx = this.fx,
       bb = b.base;
@@ -814,8 +848,10 @@ Object.assign(Game.prototype, {
       });
       SFX.netDepth++;
       try {
-        SFX.explode(true, ob.box.getCenter(new THREE.Vector3()));
-        SFX.wreck(new THREE.Vector3(cx, y0, cz));
+        if (!SFX.aiPlay('structure_sink', 1.1, 1, 0.05, 0.1, new THREE.Vector3(cx, y0, cz))) {
+          SFX.explode(true, ob.box.getCenter(new THREE.Vector3()));
+          SFX.wreck(new THREE.Vector3(cx, y0, cz));
+        }
       } finally {
         SFX.netDepth--;
       }
@@ -898,6 +934,7 @@ Object.assign(Game.prototype, {
   // 之後幾秒淡出消失（不留殘骸與碰撞：一直蓋在地上會遮住底下的物件、和下面的殘骸穿模；2026-11-07 使用者定案）。
   // 上面的物件摔壞、站在上面的機體跟著掉、底下的受到爆發傷害；撐在上面的承重柱與結構跟著倒（Lattice-9 的第二層）
   propDrop(b, quiet) {
+    if (!quiet) this.propCreak(b);
     const w = this.world,
       fx = this.fx,
       bb = b.base;
@@ -1053,8 +1090,10 @@ Object.assign(Game.prototype, {
       );
       SFX.netDepth++;
       try {
-        SFX.explode(true, new THREE.Vector3(cx, gy, cz));
-        SFX.wreck(new THREE.Vector3(cx, gy, cz));
+        if (!SFX.aiPlay('bridge_drop', 1.1, 1, 0.05, 0.1, new THREE.Vector3(cx, gy, cz))) {
+          SFX.explode(true, new THREE.Vector3(cx, gy, cz));
+          SFX.wreck(new THREE.Vector3(cx, gy, cz));
+        }
       } finally {
         SFX.netDepth--;
       }
@@ -1313,8 +1352,10 @@ Object.assign(Game.prototype, {
     });
     SFX.netDepth++;
     try {
-      SFX.explode(true, c);
-      SFX.wreck(c);
+      if (!SFX.aiPlay('segment_down', 1.1, 1, 0.05, 0.1, c)) {
+        SFX.explode(true, c);
+        SFX.wreck(c);
+      }
     } finally {
       SFX.netDepth--;
     }
@@ -1408,8 +1449,10 @@ Object.assign(Game.prototype, {
     });
     SFX.netDepth++;
     try {
-      SFX.explode(true, new THREE.Vector3(cx, w.roofLow, cz));
-      SFX.wreck(new THREE.Vector3(cx, gy, cz));
+      if (!SFX.aiPlay('roof_break', 1.1, 1, 0.05, 0.1, new THREE.Vector3(cx, w.roofLow, cz))) {
+        SFX.explode(true, new THREE.Vector3(cx, w.roofLow, cz));
+        SFX.wreck(new THREE.Vector3(cx, gy, cz));
+      }
     } finally {
       SFX.netDepth--;
     }
