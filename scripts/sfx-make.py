@@ -54,6 +54,45 @@ def phase_of(fname, section, key):
     return 4
 
 
+# 第 4 期的合併規則（2026-11-22 使用者定案）：
+# 1. Boss 的提示訊號（玩家要學會的：被打斷、失衡、破綻、裝甲殼、換型態、狂暴、最終型態、部位破壞、打回去、防禦、閃避、
+#    大招蓄力開始）所有 Boss 共用一個；登場、移動、大招的蓄力循環與放出、各招式、擊破各自一個
+# 2. 敵人的開火聲照武器分（第 2 期的槍聲）；腳步、推進器、QB 照機體（第 3 期）——清單裡這類的列不產生
+BOSS_SHARED = {
+    'interrupt': 'Heavy machine power failure: a charging energy weapon abruptly cut off, electric crackle and descending whine, metallic clank',
+    'stagger': 'Giant war machine systems overloaded and stunned: deep metallic groan, sparking electrical failure, servo motors whining down',
+    'open': 'Armor plates sliding open to expose a glowing weak point: heavy mechanical unlatching, hydraulic hiss, bright energy hum swelling',
+    'shell_on': 'Heavy armor shell slamming shut around a giant machine: thick metal plates locking with a deep clang and hydraulic hiss',
+    'shell_break': 'Thick armor shell shattering: huge metal crack, plates bursting apart, debris clatter, satisfying heavy impact',
+    'phase': 'Giant boss machine transforming into its next form: deep rising mechanical roar, energy surge, heavy shockwave boom',
+    'enrage': 'Giant machine going berserk: distorted alarm-like mechanical howl, reactor overdrive surge, aggressive rising whine',
+    'final_call': 'Final form awakening of a giant war machine: massive reactor ignition, deep ominous rumble building to a roaring energy burst',
+    'part_break': 'A weapon part blown off a giant machine: sharp metal rupture, small explosion, sparking cables, debris falling',
+    'body_break': 'A large armor section torn off a giant robot body: tearing steel, heavy crunch, fire burst, plates clattering on the ground',
+    'reflect': 'Projectile knocked back and deflected: sharp energy parry ping with a metallic ricochet whoosh',
+    'guard_up': 'Massive hexagonal energy shield deploying: anime sci-fi barrier activation, rising electric hum and shimmering chime',
+    'guard_hit': 'Bullets and blasts hitting a huge energy barrier: rippling sci-fi shield impact with glassy resonant hum',
+    'dodge': 'Heavy boss mech evading with a sudden thruster sidestep: sharp jet burst whoosh, metallic servo snap',
+    'charge_start': 'Warning: a giant machine begins charging its ultimate attack, ominous rising energy hum with a low pulsing alarm tone',
+}
+WEAPON_RE = re.compile(r'(GT-70|BZ-31|MS-4|MS-8|LC-055|LCB|LR-40|GL-90|GL-12|SG-33|RF-31|MG-18|HG-22|PM-6|EMP-9|機槍|機砲|霰彈|雷射步槍|榴彈砲|火箭筒|導彈|飛彈|榴彈|狙擊|步槍|手槍|加特林)')
+AC_SKIP = re.compile(r'^(ac|ace)_[a-z0-9]+_(boost|qb|ab|step|die|shield|lc|hg|sg|ms8|ms|rifle|mg|bz|gat|gr|blade|lr|claw|pile|saber|lsg|emp|pm)$')
+
+
+def p4_rule(key, desc, cur):
+    """回傳 None＝不產生、字串＝改用這個鍵（共用的）、True＝照原樣"""
+    if AC_SKIP.match(key):
+        return None
+    if re.match(r'^(W-|C-STEP|C-THR|C-QB)', cur):
+        return None
+    if re.search(r'shot\(', cur) and WEAPON_RE.search(desc) and '最終型態' not in desc:
+        return None
+    m = re.match(r'^boss_[a-z0-9]+_(.+)$', key)
+    if m and m.group(1) in BOSS_SHARED and not key.startswith('boss_common'):
+        return 'boss_common_' + m.group(1)
+    return True
+
+
 def parse():
     items = []
     seen = set()
@@ -82,12 +121,21 @@ def parse():
             vm = re.search(r'\d+', c[-2])
             var = int(vm.group()) if vm else 1
             loop = '循環' in line
+            ph = phase_of(fname, sec, key)
+            if ph == 4:
+                r = p4_rule(key, c[1], c[2])
+                if r is None:
+                    continue
+                if isinstance(r, str):
+                    key = r
+                    prompt = BOSS_SHARED[r[len('boss_common_'):]]
+                    var = 3
             if key in seen:
                 continue
             seen.add(key)
             items.append(
                 dict(key=key, desc=c[1], cur=c[2], secs=max(0.2, secs), var=max(1, var), prompt=prompt, loop=loop,
-                     src=fname, sec=sec, phase=phase_of(fname, sec, key))
+                     src=fname, sec=sec, phase=ph)
             )
     return items
 
