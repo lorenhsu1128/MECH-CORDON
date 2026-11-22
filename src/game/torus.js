@@ -53,6 +53,23 @@ Object.assign(Game.prototype, {
       }
       fx = F.x;
       fz = F.z;
+      // 多人的房主：資料的參考點放在所有玩家的中間（切口離每個玩家都遠，隊友附近的敵人不會被分到另一份）；
+      // 畫面照樣跟著自己（下面的 wrapSee）
+      if (this.net && this.net.role === 'host' && this.players && this.players.length > 1) {
+        let sx = 0,
+          sz = 0,
+          n = 0;
+        for (const q of this.players) {
+          if (!q || !q.pos || q.dead) continue;
+          sx += w.dx(q.pos.x, F.x);
+          sz += w.dx(q.pos.z, F.z);
+          n++;
+        }
+        if (n > 1) {
+          fx += sx / n;
+          fz += sz / n;
+        }
+      }
     }
     // 測試的第 0 格：參考點換格的那一格才搬（平常什麼都不動：測試把東西放在這一格的邊上也不會被搬到另一邊）
     const sweep = !!TILE0 || fx !== w.fx || fz !== w.fz;
@@ -113,6 +130,15 @@ Object.assign(Game.prototype, {
     const fog = this.scene.fog;
     if (fog && fog.far > w._fogCap) fog.far = w._fogCap; // 更遠的物件不出現：霧不超過半格多一點
     w.wrapSee(F.x, F.z, fog ? fog.far : S / 2);
+  },
+  // 連線收到的位置陣列 [x, y, z]（房主的座標）搬到自己的參考點附近
+  wrapArr(a) {
+    const w = this.world;
+    if (w && w.torus && a && typeof a[0] === 'number' && a.length >= 3) {
+      a[0] = w.ix(a[0]);
+      a[2] = w.iz(a[2]);
+    }
+    return a;
   },
   // 通用的掃描：Game 與每台機體記著的位置、直接掛在場景上的遊戲端網格
   wrapDeep(fx, fz, hopTo) {

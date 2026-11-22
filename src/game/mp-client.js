@@ -163,6 +163,7 @@ Object.assign(Game.prototype, {
     e.kills = 0;
     e.deaths = 0;
     e.isPlayer = r.team === 'player' && r.slot === this.net.me;
+    this.wrapArr(r.p);
     e.pos.set(r.p[0], r.p[1], r.p[2]);
     e.mesh.position.copy(e.pos);
     e.prevYaw = e.yaw;
@@ -238,6 +239,7 @@ Object.assign(Game.prototype, {
     for (const es of s.ents) {
       let e = this.entById(es.i);
       if (!e) continue;
+      this.wrapArr(es.p); // 無邊界地圖：房主的座標搬到自己的參考點附近（game/torus.js）
       e.snaps = e.snaps || [];
       e.snaps.push({ t: st, p: es.p, y: es.y, a: es.a, v: es.v });
       if (e.snaps.length > 12) e.snaps.shift();
@@ -302,6 +304,7 @@ Object.assign(Game.prototype, {
     if (s.prs) this.propApplyTable(s.prs); // 受損物件的血量表（game/destruct.js）
   },
   clientEvent(e) {
+    if (e.p) this.wrapArr(e.p); // 無邊界地圖：事件的位置搬到自己的參考點附近
     if (CROWD_EV.has(e.t)) return this.crowdNetEvent(e); // 地圖上的小人（crowd.js）：放最前面，別的處理不會先接走
     if (MV_EV.has(e.t)) return this.mvNetEvent(e); // 地圖上會動的載具（map-veh.js）
     if (this.clientMapEvent(e)) return;
