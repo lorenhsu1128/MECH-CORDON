@@ -58,4 +58,4 @@
   - 載入後 DiT 是 fp32（14.5 GB 超出 12 GB 的顯示卡、慢 10 倍）。不能 `.to(bfloat16)`，會把複數的位置編碼 freqs 變成實數。`sfx-gen.py` 的 `bf16()` 只轉浮點的參數與緩衝區。
   - 原本的 `from_pretrained` 用 `load_file` 讀進 5.6 GB 的 fp32 權重，再建一份 fp32 的 DiT。系統記憶體的高峰太高，Claude Code 會以記憶體不足停掉背景程序。`gen_moss` 換掉 `wan_audio` 模組的 `load_file`（逐一讀、轉 bf16），並以預設型別 bf16 建立 `WanAudioModel`（位置編碼明確用 float64 算，不受影響）。
   - 兩個模型分開跑（`--model=sao`，再 `--model=moss`），不要同時載入。
-- 試聽：標題「工具與其他」的「音效試做試聽」（只在從伺服器開啟時顯示），新分頁開 `/sfx-trial/`。`server.js` 的 `sfxTrial` 只在開發模式提供 `tools/sfx-trial/`。
+- 試聽：標題「工具與其他」的「音效試做試聽」（只在從伺服器開啟時顯示），新分頁開 `/sfx-trial/`。`server.js` 的 `sfxTrial` 提供專案的 `tools/sfx-trial/`（不限開發模式：exe 在 dist/ 裡執行時往上一層找；找不到時 404 列出找過的路徑）。
