@@ -4219,7 +4219,15 @@ export class World {
       M = 4 * MS;
     for (let t = 0; t < (near ? 60 : 40); t++) {
       let x, z;
-      if (near && this.torus) {
+      if (this.torus && this._arena && near) {
+        // Boss 縮小的作戰區域：夾在裡面
+        const r = (6 + t * 0.6) * DS;
+        x = clamp(near.x + rnd(-r, r), Z[0] + M, Z[1] - M);
+        z = clamp(near.z + rnd(-r, r), Z[2] + M, Z[3] - M);
+      } else if (this.torus && this._arena) {
+        x = rnd(Z[0] + M, Z[1] - M);
+        z = rnd(Z[2] + M, Z[3] - M);
+      } else if (near && this.torus) {
         const r = (6 + t * 0.6) * DS;
         x = near.x + rnd(-r, r);
         z = near.z + rnd(-r, r);
@@ -4442,7 +4450,11 @@ export class World {
         if (o.group && o.group.parent) o.fbox.union(new THREE.Box3().setFromObject(o.group));
       }
       let hit = false;
-      for (let i = 0; i < nR; i++) {
+      // 離鏡頭比機體還遠一大截的不用打射線（地圖變大後遮擋物多了好幾倍）
+      const fdx = o.x - camPos.x,
+        fdz = o.z - camPos.z,
+        fr = rays[0].dist + ((o.w || o.r * 2 || 0) + (o.d || o.r * 2 || 0)) / 2 + 40;
+      for (let i = 0; i < nR && fdx * fdx + fdz * fdz < fr * fr; i++) {
         const R = rays[i];
         const r = R.ray.intersectBox(o.fbox, tmp);
         if (r && r.distanceTo(camPos) < R.dist - MS) {

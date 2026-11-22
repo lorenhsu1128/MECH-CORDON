@@ -7,8 +7,10 @@
 import { lerp } from '../core/math.js';
 import { WS } from '../core/scale.js';
 
-export const TORUS_SIZE = 320 * WS; // 一般的地圖（960 m；要是地形格子 5 m 與障礙物格子 24 m 的整數倍）
-export const TORUS_BIG = 400 * WS; // 大地圖（1200 m）
+// 一般的地圖 840 m（原本 690 m、可以走的 570 m）、大地圖 960 m（原本 960／794 m）：整格都能走。要是地形格子 5 m 與
+// 障礙物格子 24 m 的整數倍（120 的倍數）。物件數照面積增加（幀時間跟著增加），所以沒有放得更大
+export const TORUS_SIZE = 280 * WS;
+export const TORUS_BIG = 320 * WS;
 export const TORUS_K = 124; // k＝S／124：原本寫成 ±62k 的範圍＝整格
 export const SEAM_B = 20 * WS; // 接縫兩側交叉淡化的寬度（各 60 m）
 export const WRAP_HYS = 8 * WS; // 超過半格再多這麼遠才搬（切口附近不來回跳）

@@ -8,6 +8,7 @@
 import { WRAP_HYS, deepCtx, deepWrap } from '../world/torus.js';
 import { Game } from './game.js';
 
+const DEEP_STEP = 60; // 參考點每走這麼遠（m）做一次通用的掃描
 // Game 上不進去掃的鍵：地圖與畫面的物件、存檔、連線、各個選單場景、特效（只在玩家附近）
 const SKIP_G =
   /^(world|scene|renderer|camera|save|net|fx|sfx|stylePipe|garagePipe|post|water|garageScene|hub|hubS|hangar|hg|cine|cineSets|lab|mapv|ed|ctrl|keys|pad|mouse|touch|styleP|tfx|textFx|gaze|player|players|enemies|allies|vehicles|projectiles|popups|bountyPops|wrapHooks|crushW)$/;
@@ -82,8 +83,11 @@ Object.assign(Game.prototype, {
           const dx = hopTo(e.pos.x, fx),
             dz = hopTo(e.pos.z, fz);
           if (!dx && !dz) continue;
-          if (e.shiftBy) e.shiftBy(dx, dz);
-          else {
+          if (e.shiftBy) {
+            e.shiftBy(dx, dz);
+            this.wrapEnt(e, fx, fz); // 它記著的位置（錨點、巡邏點…）跟著搬
+          }
+          if (!e.shiftBy) {
             e.pos.x += dx;
             e.pos.z += dz;
             const m = e.group || e.mesh;
@@ -115,21 +119,23 @@ Object.assign(Game.prototype, {
       v.x += hopTo(v.x, F.x);
       v.z += hopTo(v.z, F.z);
     }
-    // 其他記著的位置：參考點每走 WRAP_HYS 的一半掃一次（或每半秒）
-    const t = performance.now();
-    if (
-      w._gs === undefined ||
-      Math.abs(fx - w._gsx) + Math.abs(fz - w._gsz) > WRAP_HYS / 2 ||
-      t - w._gs > 500
-    ) {
-      w._gs = t;
+    // 其他記著的位置：參考點每走 DEEP_STEP 掃一次（掃一次幾毫秒；站著不動時沒有東西會過切口，不用掃。
+    // 晚一點搬的東西這段時間在另一份＝離參考點 300 m 以上的另一側，一樣在互動距離之外）
+    if (w._gs === undefined || Math.abs(fx - w._gsx) + Math.abs(fz - w._gsz) > DEEP_STEP) {
+      w._gs = 1;
       w._gsx = fx;
       w._gsz = fz;
       this.wrapDeep(fx, fz, hopTo);
     }
     const fog = this.scene.fog;
     if (fog && fog.far > w._fogCap) fog.far = w._fogCap; // 更遠的物件不出現：霧不超過半格多一點
-    w.wrapSee(F.x, F.z, fog ? fog.far : S / 2);
+    // 網格與遠景地形：鏡頭走了 4 m 以上才掃（切口離得遠，差幾公尺看不出來）
+    if (w._vs === undefined || Math.abs(F.x - w._vsx) + Math.abs(F.z - w._vsz) > 4) {
+      w._vs = 1;
+      w._vsx = F.x;
+      w._vsz = F.z;
+      w.wrapSee(F.x, F.z, fog ? fog.far : S / 2);
+    }
   },
   // 連線收到的位置陣列 [x, y, z]（房主的座標）搬到自己的參考點附近
   wrapArr(a) {
@@ -139,6 +145,21 @@ Object.assign(Game.prototype, {
       a[2] = w.iz(a[2]);
     }
     return a;
+  },
+  // 一台機體記著的位置（剛被搬到另一份的那一台）
+  wrapEnt(e, fx, fz) {
+    const w = this.world,
+      C = deepCtx(w, fx, fz, SKIP_E, 3);
+    if (!C) return;
+    C.seen.add(this);
+    C.seen.add(w);
+    C.seen.add(this.scene);
+    C.seen.add(e);
+    for (const k in e) {
+      if (SKIP_E.test(k)) continue;
+      const v = e[k];
+      if (v && typeof v === 'object') deepWrap(v, C, 1);
+    }
   },
   // 通用的掃描：Game 與每台機體記著的位置、直接掛在場景上的遊戲端網格
   wrapDeep(fx, fz, hopTo) {

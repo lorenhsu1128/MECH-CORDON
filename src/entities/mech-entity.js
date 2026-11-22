@@ -2888,7 +2888,10 @@ export class MechEntity {
     if (!w || !w.torus || !w.tile0) return; // 測試的第 0 格不搬（game/torus.js）
     const dx = w.offX(this.pos.x),
       dz = w.offZ(this.pos.z);
-    if (dx || dz) this.shiftBy(dx, dz);
+    if (dx || dz) {
+      this.shiftBy(dx, dz);
+      if (this.game.wrapEnt) this.game.wrapEnt(this, w.fx, w.fz); // 它記著的位置跟著搬（game/torus.js）
+    }
   }
   move(dt, wish, wantHover, wantQB, wantAB, targetEnt) {
     if (this.mslQ && this.mslQ.length) this.mslTick();

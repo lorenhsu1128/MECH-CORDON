@@ -3798,10 +3798,10 @@ async function testMaps(browser, base) {
     });
     check(
       // 一般戰鬥是大地圖（320 m × 倍率，docs/map-pacing-design.md）
-      // 無邊界的地圖（docs/torus-map-design.md）：大地圖 400 m × 倍率，整格都能走
+      // 無邊界的地圖（docs/torus-map-design.md）：大地圖一樣 320 m × 倍率，但整格都能走
       info.theme === key &&
         (info.torus
-          ? info.size === 400 * SC && info.lim === info.size / 2
+          ? info.size === 320 * SC && info.lim === info.size / 2
           : info.size === 320 * SC && info.lim > 62 * SC) &&
         info.weather,
       `${key}：場地 ${info.size} m（活動範圍 ±${info.lim.toFixed(0)}${info.torus ? '、上下左右相接' : ''}）、天氣粒子`,
@@ -11392,8 +11392,7 @@ async function testCampaign(browser, base) {
     };
   });
   check(
-    adv.type !== 'battle' ||
-      (adv.start && adv.size === (adv.torus ? 400 : 320) * SC && adv.prog.every((q) => q >= 0.55)),
+    adv.type !== 'battle' || (adv.start && adv.size === 320 * SC && adv.prog.every((q) => q >= 0.55)),
     `推進路線：${adv.type} 區段是大地圖、邊緣進場，出口在前方深度 ${(adv.prog || []).join('／')}`,
   );
   // 截圖：玩家走到兩個出口之間、面向第一個出口
@@ -14904,7 +14903,7 @@ async function testAiDodge(browser, base) {
   await waitVisible(page, 'title');
   await freezeLoop(page);
   const r = await page.evaluate((SC) => {
-    window.__reseed(7);
+    window.__reseed(21); // 地圖的種子：中央夠平、閃避不被地形擋住的一張（無邊界地圖改版後原本的 7 不行）
     const g = window.__game;
     g.save.level = 3;
     g.startMission();
@@ -21029,7 +21028,29 @@ async function testArk(browser, base) {
     const p = g.player;
     p.hp = p.maxHp = 1e7;
     // 艦首的中央是開闊的擂台（主砲座之間的上層甲板在 z＝−0.12 lim，避開它）
-    const spot = { x: 0, z: w.lim * 0.2 };
+    let spot = { x: 0, z: w.lim * 0.2 };
+    // 版面跟著地圖大小變：在附近找一塊平的甲板（周圍 60 m 同一個高度、沒有障礙物與虛空）
+    {
+      const flat = (x, z) => {
+        const h0 = w.terrainHeight(x, z);
+        for (let a = -60; a <= 60; a += 15)
+          for (let b = -60; b <= 60; b += 15)
+            if (Math.abs(w.terrainHeight(x + a, z + b) - h0) > 0.5 || w.isVoid(x + a, z + b)) return false;
+        return !w.obstacles.some(
+          (o) => Math.hypot(o.x - x, o.z - z) < 70 + Math.max(o.w || 0, o.d || 0, o.r || 0),
+        );
+      };
+      let found = flat(spot.x, spot.z);
+      for (let r = 30; r < w.lim * 0.8 && !found; r += 30)
+        for (let a = 0; a < 16 && !found; a++) {
+          const x = Math.cos((a / 16) * Math.PI * 2) * r,
+            z = w.lim * 0.2 + Math.sin((a / 16) * Math.PI * 2) * r;
+          if (flat(x, z)) {
+            spot = { x, z };
+            found = true;
+          }
+        }
+    }
     p.pos.set(spot.x, w.groundAt(spot.x, spot.z, 50), spot.z);
     p.vel.set(0, 0, 0);
     // 擂台是平的主甲板：直接放在玩家的側邊（不用隨機的 spawnPoint，結果才穩定）

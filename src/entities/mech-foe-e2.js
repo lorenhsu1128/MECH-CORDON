@@ -170,13 +170,14 @@ Object.assign(MechEntity.prototype, {
     } else if (c.ph === 2) {
       this.bossVis = 2;
       // 撲過去：朝落點突擊推進
-      const v = c.at.clone().sub(this.pos).setY(0);
-      if (v.length() > 2 * MS) {
+      const v = c.at.clone().sub(this.pos).setY(0),
+        vl = v.length(); // 先量距離（normalize 會改掉 v：以前撲擊的第一格就被當成「到了」，在原地爆炸、根本沒撲過去）
+      if (vl > 2 * MS) {
         wish.copy(v.normalize());
         r.qb = true;
         r.ab = true;
       } else wish.set(0, 0, 0);
-      if (c.t <= 0 || v.length() <= 2 * MS) {
+      if (c.t <= 0 || vl <= 2 * MS) {
         c.ph = 3;
         c.t = LEAP.rest;
         if (this.canAct()) {

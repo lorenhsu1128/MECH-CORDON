@@ -376,7 +376,9 @@ const buildDefs = (L) => ({
           window.__reseed = (s) => (a = s >>> 0);
           localStorage.setItem('mech_cordon_map', 'industrial');
         });
-        await page.goto(require('url').pathToFileURL(path.join(DIST, 'mech-cordon.html')).href + '?test&tile=32');
+        await page.goto(
+          require('url').pathToFileURL(path.join(DIST, 'mech-cordon.html')).href + '?test&tile=32',
+        );
         await page.waitForFunction(() => window.__game && window.__skills && window.__mods, null, {
           timeout: 60000,
         });
