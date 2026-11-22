@@ -186,6 +186,38 @@ const CHARGEN = require('./server-studio.js')({
 });
 // 配樂產生器：AI 配樂的歌曲設定、產生、試聽（server-bgmgen.js，只在開發模式）
 const BGMGEN = require('./server-bgmgen.js')({ base: BASE, env, readBody, writeAtomic, log: (s) => log(s) });
+// 自製音效的試做試聽頁（docs/sfx-gen-design.md）：/sfx-trial/ 提供 gitignore 的 tools/sfxgen/trial/，只在開發模式
+const SFX_TRIAL = path.join(BASE, 'tools', 'sfxgen', 'trial');
+const SFX_TYPES = { '.html': 'text/html; charset=utf-8', '.mp3': 'audio/mpeg', '.wav': 'audio/wav' };
+function sfxTrial(req, resp, u) {
+  if (u !== '/sfx-trial' && !u.startsWith('/sfx-trial/')) return false;
+  const dev = !process.pkg && !env('MODELS_DIR');
+  let rel = '';
+  try {
+    rel = decodeURIComponent(u.slice('/sfx-trial'.length).replace(/^\/+/, '')) || 'index.html';
+  } catch (e) {
+    rel = '';
+  }
+  const f = path.resolve(SFX_TRIAL, rel);
+  const type = SFX_TYPES[path.extname(f).toLowerCase()];
+  if (
+    !dev ||
+    !rel ||
+    !type ||
+    !f.startsWith(SFX_TRIAL + path.sep) ||
+    !fs.existsSync(f) ||
+    !fs.statSync(f).isFile()
+  ) {
+    resp.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+    resp.end(
+      dev ? '還沒有試做的音效：先跑 scripts/sfx-gen.py --trial' : '只在開發模式（從專案執行 server.js）提供',
+    );
+    return true;
+  }
+  resp.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-store' });
+  fs.createReadStream(f).pipe(resp);
+  return true;
+}
 // 機甲三倍高改版：伺服器預設組裡的機甲區塊與武器（MECH_CATS）是舊尺度（機甲 3.24 m）做的，啟動時換成新尺度（9.72 m）一次：
 // GLB 的場景根節點乘 MECH_K（只改 JSON 區塊，Draco 壓縮的也可以）、關節設定的位置乘 MECH_K；manifest.mechK 記下做過
 const MECH_K = 3;
@@ -720,6 +752,7 @@ function startGame(port) {
       const u = req.url.split('?')[0];
       if (CHARGEN.handle(req, resp, u)) return;
       if (BGMGEN.handle(req, resp, u)) return;
+      if (sfxTrial(req, resp, u)) return;
       if (
         u.startsWith('/api/models/') ||
         u.startsWith('/api/sets/') ||

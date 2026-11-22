@@ -774,6 +774,10 @@ Object.assign(Game.prototype, {
     const bg = document.getElementById('btnBgmGen');
     if (window.MECH_CORDON_SERVER) bg.style.display = '';
     bg.onclick = () => this.openBgmGen();
+    // 自製音效的試做試聽頁（伺服器的 /sfx-trial/，開發模式；docs/sfx-gen-design.md）：新分頁開啟
+    const st = document.getElementById('btnSfxTrial');
+    if (window.MECH_CORDON_SERVER) st.style.display = '';
+    st.onclick = () => window.open('/sfx-trial/', 'mech-cordon-sfx-trial');
     // 從模型庫回來（分頁重新取得焦點）：停在標題或車庫時重新讀取本地模型（沒變動就不解析）
     const back = () => {
       if (document.hidden || (this.net && this.net.role)) return;
