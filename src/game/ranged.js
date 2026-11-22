@@ -18,16 +18,20 @@ Object.assign(Game.prototype, {
     const c = p.center();
     this.fx.flash(c, 2.6, 0x7fd8ff, 0.2);
     this.fx.shockwave(c, 7, 0x7fd8ff, 0.4);
-    SFX.play('bell', 0.45, 1.1, 0.02, 0.2, null, 'ui');
-    SFX.play('thrBurst', 0.9, 1.5, 0.04, 0.1, null, 'ui');
+    if (!SFX.aiPlay('counter_start', 0.8, 1, 0.02, 0.2, null, 'ui')) {
+      SFX.play('bell', 0.45, 1.1, 0.02, 0.2, null, 'ui');
+      SFX.play('thrBurst', 0.9, 1.5, 0.04, 0.1, null, 'ui');
+    }
     this.rumble(0.5, 0.8, 160);
   },
   // 蓄力射擊的充能完成（只給本人：房主／單機直接呼叫，客機由 fb 事件 'pwr'）
   pwReadyLocal(p, slot) {
     const w = p.weapons[slot];
     if (w) w.pwFlashT = 0.6;
-    SFX.play('uiOk', 0.5, 1.4, 0.02, 0.1, null, 'ui');
-    SFX.play('bell', 0.25, 1.8, 0.02, 0.1, null, 'ui');
+    if (!SFX.aiPlay('charge_ready', 0.6, 1, 0.02, 0.1, null, 'ui')) {
+      SFX.play('uiOk', 0.5, 1.4, 0.02, 0.1, null, 'ui');
+      SFX.play('bell', 0.25, 1.8, 0.02, 0.1, null, 'ui');
+    }
   },
   // HUD：鎖定目標上的屬性反應（上一次打中的屬性與剩下的時間、效果中）；判定在房主，客機沒有
   rxHud(c, p, W, H) {

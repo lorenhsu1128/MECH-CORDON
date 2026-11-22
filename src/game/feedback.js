@@ -229,6 +229,7 @@ Object.assign(Game.prototype, {
     const enOut = p.en < (p.enMax || 1) * 0.03;
     if (enOut && !a.enOut) SFX.overheat();
     a.enOut = enOut;
+    this.audioWeaponTick(p, a, dt);
     // 附近機體的推進器（AC6 的評論：玩家靠聲音追蹤畫面外的高速機體）：最近的 4 台正在推進／懸浮的
     const L = [];
     for (const e of this.enemies || []) {
@@ -248,6 +249,58 @@ Object.assign(Game.prototype, {
         e.pos,
       );
     SFX.loopsAtTick();
+  },
+  // 武器的持續音（自製 AI 音效，docs/sfx-gen-design.md）：加特林的轉管、飛行中的導彈、導彈的鎖定與來襲警報
+  audioWeaponTick(p, a, dt) {
+    // 轉管：最近 0.4 秒開過火的加特林（自機）
+    for (const k in p.weapons || {}) {
+      const w = p.weapons[k],
+        d = w && w.def;
+      if (!d || !d.spin) continue;
+      const on = (p.t || 0) - (w.lastShot === undefined ? -99 : w.lastShot) < 0.4 ? 1 : 0;
+      SFX.loopAt(
+        'spin' + k,
+        k.endsWith('back') ? '@gun_gat_hvy_spin' : '@gun_mg_spin',
+        on * 0.45,
+        0.8 + 0.4 * clamp((w.streak || 0) / Math.max(0.3, d.spin), 0, 1),
+        p.center(),
+      );
+    }
+    // 導彈：最近的 4 發的飛行聲；追著自己的導彈 → 警報（越近越急）
+    const L = [];
+    let near = Infinity;
+    for (const pr of this.projectiles || []) {
+      if (pr.dead || pr.kind !== 'missile' || !pr.pos) continue;
+      const d = SFX.dist(pr.pos);
+      if (d < 60 * DS) L.push([d, pr]);
+      const tg = pr.target || (pr.tg >= 0 && this.entById ? this.entById(pr.tg) : null);
+      if (tg === p) near = Math.min(near, d);
+    }
+    L.sort((x, y) => x[0] - y[0]);
+    for (const [, pr] of L.slice(0, 4))
+      SFX.loopAt(
+        'ms' + (pr.sndId || (pr.sndId = ++this.sndPid || (this.sndPid = 1))),
+        '@missile_fly_loop',
+        0.4,
+        1,
+        pr.pos,
+      );
+    a.msT = (a.msT || 0) - dt;
+    if (near < 80 * DS && a.msT <= 0) {
+      SFX.missileIncoming();
+      a.msT = clamp(near / (60 * DS), 0.18, 0.8);
+    }
+    // 導彈鎖定：多連導彈的「鎖定 n／N」每多一發一聲（自機有鎖定目標時）
+    const t = p.lock && !p.lock.dead ? p.lock : null;
+    for (const k in p.weapons || {}) {
+      const w = p.weapons[k],
+        d = w && w.def;
+      if (!d || d.type !== 'missile' || !(d.count > 1) || !p.missileN) continue;
+      const n = t ? p.missileN(d, t) : 0;
+      const N = d.count;
+      if (t && n !== w.lockSndN && n > (w.lockSndN || 0)) SFX.missileLock(n, N);
+      w.lockSndN = n;
+    }
   },
   // 主迴圈（任務中）每格：環境音、低 AP 心跳、Boss 第二型態
   audioTick(dt) {
@@ -374,7 +427,8 @@ Object.assign(Game.prototype, {
     if (p === this.player && this.ctrl.ghost !== 'off' && p.model)
       this.fx.ghosts.snap(p.model.group, 0x9fe8ff); // 殘影
     this.fx.shockwave(c, 6, 0x9fe8ff, 0.35);
-    SFX.play('thrBurst', 1.2, 1.3, 0.04, 0.03, null, 'ui');
+    if (!SFX.aiPlay('pqb_dodge', 1, 1, 0.04, 0.03, null, 'ui'))
+      SFX.play('thrBurst', 1.2, 1.3, 0.04, 0.03, null, 'ui');
     this.popDamage(c.clone().add(new THREE.Vector3(0, 2 * p.dk, 0)), '完美迴避', false, true, false, 0, p.id);
     this.rumble(0.4, 0.9, 140);
     if (p === this.player) this.comicHit(0.7);

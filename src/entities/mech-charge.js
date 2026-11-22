@@ -127,7 +127,8 @@ Object.assign(MechEntity.prototype, {
     const g = this.game;
     g.fx.flash(muzzle, 2.2, 0x9fe8ff, 0.14);
     g.fx.shockwave(muzzle.clone().addScaledVector(dir, 1.5 * this.dk), 2.2, 0x9fe8ff, 0.25);
-    SFX.play('boom2', 0.45, 1.6, 0.05, 0.05, this.isPlayer ? null : muzzle);
+    if (!SFX.aiPlay('power_shot', 0.7, 1, 0.05, 0.05, this.isPlayer ? null : muzzle))
+      SFX.play('boom2', 0.45, 1.6, 0.05, 0.05, this.isPlayer ? null : muzzle);
     if (this.isPlayer) {
       g.camShake = Math.max(g.camShake, 0.12);
       g.rumble(0.8, 0.6, 160);

@@ -175,6 +175,13 @@ function writeSounds() {
     'MECH_CORDON_SFX2',
     '分層的音效素材（src/assets/sfx2/）',
   );
+  // 自製的 AI 音效（scripts/sfx-make.py，docs/sfx-gen-design.md）：audio.js 的 '@鍵'
+  writeAudio(
+    path.join(SRC, 'assets', 'sfx3'),
+    'sfx3-assets.js',
+    'MECH_CORDON_SFX3',
+    '自製的 AI 音效（src/assets/sfx3/，MOSS-SoundEffect v2.0 產生）',
+  );
   writeAudio(
     path.join(SRC, 'assets', 'bgm'),
     'bgm-assets.js',

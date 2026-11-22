@@ -1100,7 +1100,7 @@ export class MechEntity {
             w.firing = false;
             if (this.isPlayer) {
               g.flashAlert('電磁槍過載 — EN 回滿前無法發射');
-              SFX.play('overload', 0.8, 1.0);
+              if (!SFX.aiPlay('emp_overload', 0.8)) SFX.play('overload', 0.8, 1.0);
             }
             return false;
           }
@@ -1161,7 +1161,10 @@ export class MechEntity {
           }
           const end = muzzle.clone().addScaledVector(bdir, stop);
           g.fx.empBeam(w, muzzle, end, d.color);
-          if (!w.sndT || w.sndT <= 0) {
+          // 電磁光束的持續照射：AI 音效的循環（每格續命，停止照射由 loopsAtTick 淡出）；沒有時照舊每 0.12 秒重播
+          if (SFX.aiVar('emp_beam_loop').length && SFX.lpos)
+            SFX.loopAt('emp' + this.id, '@emp_beam_loop', 0.5, 1, SP || this.center());
+          else if (!w.sndT || w.sndT <= 0) {
             SFX.play('laser2', 0.35, 0.6, 0.1, 0.05, SP);
             SFX.play('~empS', 0.3, 1.2, 0.1, 0.2, SP);
             w.sndT = 0.12;
@@ -1439,7 +1442,8 @@ export class MechEntity {
       );
       g.renderWeaponHud(true);
     }
-    SFX.play('hit3', 0.6, 0.7, 0.05, 0.03, this.isPlayer ? null : this.center());
+    if (!SFX.aiPlay('weapon_drop', 0.7, 1, 0.05, 0.03, this.isPlayer ? null : this.center()))
+      SFX.play('hit3', 0.6, 0.7, 0.05, 0.03, this.isPlayer ? null : this.center());
   }
   // 方向派生的方向（玩家）：這一格按著的方向鍵本身（data/melee.js 的 meleeKeyDir；player.js／mp-host.js 設定 inKey）
   meleeDirKey() {
@@ -1541,7 +1545,7 @@ export class MechEntity {
     g.fx.ring(c, 3 * (this.scale || 1), 0xff4030);
     if (g.popDamage)
       g.popDamage(c.clone().add(new THREE.Vector3(0, 2.5 * this.dk, 0)), '!', false, true, false, 0, this.id);
-    SFX.play('alarm', 0.4, 1.15, 0.02, 0.02, c);
+    if (!SFX.aiPlay('atk_cue', 0.55, 1, 0.02, 0.02, c)) SFX.play('alarm', 0.4, 1.15, 0.02, 0.02, c);
   }
   // 招式中斷（失衡、失去權杖）：不出「!」、按了也不算
   cueCancel() {
@@ -2932,6 +2936,8 @@ export class MechEntity {
         ww.reloadT -= dt;
         if (ww.reloadT <= 0) {
           ww.mag = Math.min(ww.def.mag, ww.ammo);
+          if (this.isPlayer)
+            SFX.reloadDone(ww.def.type === 'missile' || ww.def.type === 'shell' || ww.def.type === 'grenade');
           // 主動裝填（mech-feel.js）：成功的話這個彈匣傷害加成；下次換彈重新一次機會
           ww.arN = ww.arBuff ? ww.mag : 0;
           ww.arBuff = false;

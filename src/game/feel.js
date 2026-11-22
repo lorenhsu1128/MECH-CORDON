@@ -28,7 +28,8 @@ Object.assign(Game.prototype, {
     const p = this.player;
     const w = p && p.weapons[slot];
     if (w) w.arFxT = { ok, t: 0.8 };
-    if (ok) {
+    if (SFX.aiPlay(ok ? 'ar_ok' : 'ar_fail', 0.6, 1, 0.02, 0.05, null, 'ui'));
+    else if (ok) {
       SFX.play('uiOk', 0.55, 1.3, 0.02, 0.05, null, 'ui');
       SFX.play('plate1', 0.4, 1.4, 0.03, 0.05, null, 'ui');
     } else SFX.play('uiErr', 0.5, 0.8, 0.02, 0.05, null, 'ui');

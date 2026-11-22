@@ -194,6 +194,7 @@ export const SFX = {
   loadPack() {
     if (this.packLoading) return;
     this.packLoading = true;
+    this.loadAiPack('sfx3-assets.js', 'MECH_CORDON_SFX3');
     const go = () => {
       const P = window.MECH_CORDON_SFX2;
       if (!P) return;
@@ -215,6 +216,32 @@ export const SFX = {
     if (typeof document === 'undefined') return;
     const s = document.createElement('script');
     s.src = 'lib/sfx-assets.js';
+    s.onload = go;
+    s.onerror = () => {};
+    document.head.appendChild(s);
+  },
+  // 自製的 AI 音效（src/assets/sfx3/ → lib/<file>，window.<name>）：遊戲啟動後載入，載到之前 '@' 退回舊素材
+  aiPacks: {},
+  loadAiPack(file, name) {
+    if (this.aiPacks[file] || typeof document === 'undefined') return;
+    this.aiPacks[file] = 1;
+    const go = () => {
+      const P = window[name];
+      if (!P) return;
+      this.aiV = {};
+      for (const k of Object.keys(P))
+        this.ctx.decodeAudioData(
+          this.b64(P[k]),
+          (b) => {
+            this.buf[k] = b;
+            this.aiV = {};
+          },
+          () => {},
+        );
+    };
+    if (window[name]) return go();
+    const s = document.createElement('script');
+    s.src = 'lib/' + file;
     s.onload = go;
     s.onerror = () => {};
     document.head.appendChild(s);
@@ -482,7 +509,8 @@ export const SFX = {
   play(k, vol = 1, rate = 1, detune = 0.06, minGap = 0.03, pos = null, bus = null, delay = 0, o = null) {
     if (pos && this.mirror && !this.netDepth) this.mirror(k, vol, rate, pos);
     if (!this.ctx || !this.on) return;
-    const b = this.buf[k];
+    if (k[0] === '@') k = this.pickKey([k]);
+    const b = k && this.buf[k];
     if (!b) return;
     const t = this.ctx.currentTime;
     const gk = k + (pos ? '@' : '');
@@ -586,8 +614,32 @@ export const SFX = {
   },
   // 從清單裡輪流挑（不連續兩次同一個）；只挑已經有的素材
   rr: {},
+  // '@鍵'＝自製的 AI 音效（src/assets/sfx3/<鍵>_<n>.mp3，docs/sfx-gen-design.md）的全部變化版本；
+  // 清單裡有 '@' 的項目而且已經載入時只從它們挑，否則退回清單裡的舊素材
+  aiVar(k) {
+    let a = this.aiV[k];
+    if (a && a.length) return a;
+    a = [];
+    for (let i = 0; i < 32 && this.buf[k + '_' + i]; i++) a.push(k + '_' + i);
+    if (a.length) this.aiV[k] = a;
+    return a;
+  },
+  aiV: {},
+  // 有 AI 音效（'@鍵'）時播它並回傳 true（呼叫端就不再疊舊的分層）；參數同 play
+  aiPlay(k, vol = 1, rate = 1, detune = 0.05, minGap = 0.03, pos = null, bus = null, delay = 0, o = null) {
+    if (!this.aiVar(k).length) return false;
+    this.play('@' + k, vol, rate, detune, minGap, pos, bus, delay, o);
+    return true;
+  },
   pickKey(list) {
-    const ok = list.filter((k) => this.buf[k]);
+    let ok = null;
+    if (list.some((k) => k[0] === '@')) {
+      const ai = [];
+      for (const k of list) if (k[0] === '@') ai.push(...this.aiVar(k.slice(1)));
+      if (ai.length) ok = ai;
+    }
+    this.pickAi = !!ok;
+    if (!ok) ok = list.filter((k) => k[0] !== '@' && this.buf[k]);
     if (!ok.length) return null;
     if (ok.length === 1) return ok[0];
     const id = list.join(',');
@@ -604,7 +656,8 @@ export const SFX = {
     if (!L || vk <= 0.003) return false;
     const k = this.pickKey(L[0]);
     if (!k) return false;
-    this.play(k, L[1] * vk, L[2] * rk, detune, gap, pos, null, delay, o);
+    // AI 音效是照遊戲要的音高做的：配方的音高（給舊素材移調用）不套用
+    this.play(k, L[1] * vk, (this.pickAi ? 1 : L[2]) * rk, detune, gap, pos, null, delay, o);
     return true;
   },
   // ---- 合成音（短促的提示音、心跳、無線電雜訊）----
@@ -646,8 +699,22 @@ export const SFX = {
   },
   // ---- 循環音（推進器／引擎）：玩家專用，gain 平滑 ----
   loops: {},
+  // '@鍵'＝AI 音效的第一個變化版本；陣列＝依序第一個有的（AI 音效、舊素材）
+  loopKey(key) {
+    if (Array.isArray(key)) {
+      for (const k of key) {
+        const r = this.loopKey(k);
+        if (r) return r;
+      }
+      return null;
+    }
+    if (key && key[0] === '@') return this.aiVar(key.slice(1))[0] || null;
+    return key;
+  },
   loopSet(name, key, target, rate = 1) {
     if (!this.ctx || !this.on) return;
+    key = this.loopKey(key);
+    if (!key) return;
     let L = this.loops[name];
     const b = this.buf[key];
     if (!b) return;
@@ -686,6 +753,8 @@ export const SFX = {
   loopsAt: {},
   loopAt(name, key, target, rate, pos) {
     if (!this.ctx || !this.on || !this.lpos) return;
+    key = this.loopKey(key);
+    if (!key) return;
     const b = this.buf[key];
     if (!b) return;
     let L = this.loopsAt[name];
@@ -913,18 +982,28 @@ export const SFX = {
         this.layer(R.far, vk * (0.35 + 0.65 * u), rk, P, o, (Math.max(0, d - 60) / SND_V) * 0.5, 0.05, gap) ||
         ok;
     if (!ok) this.layer(R.fb, vk * (own ? 1 : 0.9), rk, P, o, 0, 0.06, gap);
+    // near 換成 AI 音效之後不再疊舊的 body 層（AI 的近距離已經含厚度）
+    const aiNear = R.near && R.near[0][0][0] === '@' && this.aiVar(R.near[0][0].slice(1)).length > 0;
     if (own) {
-      this.layer(R.body, 1, rk, null, o, 0.004, 0.05, gap);
+      if (!aiNear) this.layer(R.body, 1, rk, null, o, 0.004, 0.05, gap);
       this.layer(R.low, 1, 1, null, { pr: 3, max: 3 }, 0, 0.03, gap);
       this.layer(R.mech, 1, rk, null, o, 0.03, 0.08, 0.12); // 機械聲：最多每 0.12 秒一次
-    } else if (u < 0.5 && R.body) this.layer(R.body, vk * 0.35 * (1 - u * 2), rk, P, o, 0.004, 0.05, gap);
+    } else if (u < 0.5 && R.body && !aiNear)
+      this.layer(R.body, vk * 0.35 * (1 - u * 2), rk, P, o, 0.004, 0.05, gap);
   },
   charge(pos) {
+    if (this.aiPlay('charge_loop', 0.8, 1, 0.03, 0.2, pos)) return;
     this.play('charge', 0.7, 1.0, 0.03, 0.2, pos);
     this.play('phUp', 0.35, 0.7, 0.03, 0.2, pos);
   },
   // EMP 的爆發（電磁脈衝、EMP 光束的命中）
   empBlast(pos, big) {
+    if (
+      this.aiPlay(big ? 'emp_blast_big' : 'emp_blast_small', big ? 1 : 0.8, 1, 0.05, 0.08, pos, null, 0, {
+        send: 0.4,
+      })
+    )
+      return;
     this.play('~emp', big ? 0.9 : 0.6, big ? 0.85 : 1.1, 0.05, 0.08, pos, null, 0, { send: 0.4 });
     this.play('overload', 0.5, 1.2, 0.05, 0.08, pos);
     this.play(big ? 'wobble' : 'zap2', 0.5, 1, 0.05, 0.08, pos, null, 0.03);
@@ -934,6 +1013,19 @@ export const SFX = {
     const d = this.dist(pos);
     const far = d > 60 * this.dk;
     const dl = (Math.max(0, d - 60) / SND_V) * 0.5;
+    // AI 音效：本體（大小三種）＋遠的回響＋近的金屬撕裂＋碎屑
+    const ak = big === 'huge' ? 'exp_huge' : big ? 'exp_big' : 'exp_small';
+    if (this.aiVar(ak).length) {
+      const pr = big === 'huge' ? 2.5 : big ? 2 : 1;
+      this.play('@' + ak, far ? 0.6 : 1, 1, 0.05, 0.03, pos, null, dl, { pr, send: big ? 0.7 : 0.45 });
+      if (big || far)
+        this.aiPlay('exp_far', far ? 0.8 : 0.4, 1, 0.05, 0.05, pos, null, dl + 0.06, { send: 0.5 });
+      if (!far && big) this.aiPlay('exp_crunch', 0.6, 1, 0.08, 0.05, pos);
+      if (big) this.debrisRain(pos, big === 'huge' ? 4 : 2, big === 'huge' ? 0.35 : 0.25);
+      if (big === 'huge') this.duck(0.55, 0.7);
+      else if (big && d < 30 * this.dk) this.duck(0.35, 0.35);
+      return;
+    }
     if (big === 'huge') {
       this.play('explodeBig', 1.0, 0.8, 0.05, 0.03, pos, null, dl, { pr: 2.5, send: 0.9 });
       this.play('exHuge', 0.9, 0.85, 0.05, 0.05, pos, null, dl, { pr: 2.5, send: 0.6 });
@@ -967,7 +1059,7 @@ export const SFX = {
     if (!pos || this.dist(pos) > 70 * this.dk) return;
     for (let i = 0; i < n; i++) {
       const p = { x: pos.x + (arnd() - 0.5) * 18, y: pos.y, z: pos.z + (arnd() - 0.5) * 18 };
-      const k = this.pickKey(['mHit1', 'mHit3', 'mHit5', 'impStone', 'clink1', 'iron3']);
+      const k = this.pickKey(['@debris_fall', 'mHit1', 'mHit3', 'mHit5', 'impStone', 'clink1', 'iron3']);
       if (k)
         this.play(k, vol * (0.6 + arnd() * 0.5), 0.6 + arnd() * 0.4, 0.1, 0.01, p, null, 0.3 + arnd() * 0.6, {
           max: 6,
@@ -977,6 +1069,10 @@ export const SFX = {
   },
   // 擊破時的殘骸散落（爆炸之後）
   wreck(pos) {
+    if (this.aiPlay('wreck_collapse', 0.9, 1, 0.08, 0.05, pos, null, 0.05)) {
+      this.debrisRain(pos, 3, 0.35);
+      return;
+    }
     this.play('debris', 0.7, 1.0, 0.08, 0.05, pos, null, 0.05);
     this.pickPlay(['clatter1', 'clatter2'], 0.45, 0.9, pos, 0.1, 0.05);
     this.play('mHvy1', 0.5, 0.7, 0.08, 0.05, pos, null, 0.18);
@@ -985,6 +1081,7 @@ export const SFX = {
   // 命中：依目標分類（t 是被打中的實體；自己被打中＝駕駛艙的悶響）
   hit(pos, t) {
     if (t && t.isPlayer) {
+      if (this.aiPlay('hit_self', 0.9, 1, 0.08, 0.06)) return;
       this.pickPlay(['hit', 'hit2', 'hit3'], 0.55, 0.9, null);
       this.pickPlay(['punch1', 'punch2'], 0.55, 0.8, null, 0.08, 0.06);
       this.play('thud1', 0.4, 0.8, 0.08, 0.08);
@@ -993,10 +1090,12 @@ export const SFX = {
       return;
     }
     if (t && t.isProp) {
+      if (this.aiPlay('hit_prop_stone', 0.7, 1, 0.1, 0.04, pos)) return;
       this.pickPlay(['rock1', 'rock2'], 0.55, 1.0, pos, 0.1, 0.04);
       this.play(this.pickKey(['impStone']) || 'rock2', 0.3, 0.8, 0.1, 0.05, pos);
       return;
     }
+    if (this.aiPlay('hit_armor', 0.75, 1, 0.08, 0.03, pos, null, 0, { max: 5 })) return;
     this.pickPlay(['hit', 'hit2', 'hit3'], 0.5, 1.0, pos);
     this.pickPlay(['armor1', 'armor2', 'armor3'], 0.45, 0.85, pos, 0.1, 0.04);
     const k = this.pickKey(['mHit1', 'mHit2', 'mHit3', 'mHit4']);
@@ -1005,6 +1104,17 @@ export const SFX = {
   // 子彈打到地形、建築：依地面材質（Game 的 surfAt）
   hitWorld(pos) {
     const surf = this.surfAt && pos ? this.surfAt(pos) : 'conc';
+    const hk = {
+      water: 'hitw_water',
+      snow: 'hitw_snow',
+      sand: 'hitw_sand',
+      metal: 'hitw_metal',
+      ice: 'hitw_ice',
+    }[surf];
+    if (this.aiPlay(hk || 'hitw_conc', 0.4, 1, 0.12, 0.05, pos, null, 0, { max: 5 })) {
+      if ((surf === 'metal' || surf === 'conc' || surf === 'ice') && arnd() < 0.22) this.ricochet(pos);
+      return;
+    }
     if (surf === 'water') this.pickPlay(['splash', 'stepWet1', 'stepWet2'], 0.35, 1.2, pos, 0.12, 0.05);
     else if (surf === 'snow') this.pickPlay(['stepSnow1', 'stepSnow2'], 0.3, 1.3, pos, 0.12, 0.05);
     else if (surf === 'sand') this.pickPlay(['stepSnow1', 'stepSnow2'], 0.32, 0.8, pos, 0.12, 0.05);
@@ -1017,30 +1127,55 @@ export const SFX = {
   },
   ricochet(pos) {
     if (pos && this.dist(pos) > 45 * this.dk) return;
-    const k = this.pickKey(['~ric1', '~ric2', '~ric3']);
-    if (k) this.play(k, 0.28, 0.85 + arnd() * 0.4, 0.05, 0.12, pos, null, 0.01, { max: 2, pr: 0.6 });
+    const k = this.pickKey(['@ricochet', '~ric1', '~ric2', '~ric3']);
+    if (k)
+      this.play(
+        k,
+        0.28,
+        this.pickAi ? 0.92 + arnd() * 0.16 : 0.85 + arnd() * 0.4,
+        0.05,
+        0.12,
+        pos,
+        null,
+        0.01,
+        { max: 2, pr: 0.6 },
+      );
   },
   // 子彈從身邊飛過（projectile.js：敵人的子彈離聽者最近的那一刻）；energy＝雷射、能量彈
   whiz(pos, energy) {
-    const k = energy ? '~whizE' : this.pickKey(['~whizK1', '~whizK2']);
+    const k = energy
+      ? this.pickKey(['@whiz_en', '~whizE'])
+      : this.pickKey(['@whiz_kin', '~whizK1', '~whizK2']);
     if (k)
-      this.play(k, energy ? 0.5 : 0.55, 0.85 + arnd() * 0.35, 0.05, 0.05, pos, null, 0, {
-        max: 3,
-        pr: 2,
-        vr: 2,
-      });
+      this.play(
+        k,
+        energy ? 0.5 : 0.55,
+        this.pickAi ? 0.94 + arnd() * 0.12 : 0.85 + arnd() * 0.35,
+        0.05,
+        0.05,
+        pos,
+        null,
+        0,
+        {
+          max: 3,
+          pr: 2,
+          vr: 2,
+        },
+      );
   },
   // 彈殼落地（機甲尺度：比真的低），surf＝地面材質
   casing(pos, big, surf) {
     if (pos && this.dist(pos) > 25 * this.dk) return;
     if (surf === 'water') return;
     const soft = surf === 'sand' || surf === 'snow';
-    const k = this.pickKey(big ? ['~tink3', 'iron1', 'iron3'] : ['~tink1', '~tink2', 'iron2', 'iron4']);
+    const old = big ? ['~tink3', 'iron1', 'iron3'] : ['~tink1', '~tink2', 'iron2', 'iron4'];
+    const k = this.pickKey([soft ? '@casing_soft' : big ? '@casing_big' : '@casing_small', ...old]);
+    const ai = this.pickAi;
     if (k)
       this.play(
         k,
-        soft ? 0.12 : 0.22,
-        (soft ? 0.6 : 1) * (0.9 + arnd() * 0.2),
+        soft && !ai ? 0.12 : 0.22,
+        (soft && !ai ? 0.6 : 1) * (0.9 + arnd() * 0.2),
         0.06,
         0.04,
         pos,
@@ -1050,11 +1185,13 @@ export const SFX = {
       );
   },
   hitShield(pos, big) {
+    if (this.aiPlay('hit_shield', big ? 1 : 0.6, big ? 0.85 : 1, 0.08, 0.04, pos)) return;
     this.pickPlay(['plate1', 'plate2'], big ? 0.9 : 0.5, big ? 0.7 : 1.0, pos, 0.08, 0.04);
     const k = this.pickKey(['eHi2', 'eHi3']);
     if (k) this.play(k, big ? 0.35 : 0.2, 1.3, 0.08, 0.06, pos);
   },
   hitDome(pos) {
+    if (this.aiPlay('hit_dome', 0.6, 1, 0.1, 0.06, pos)) return;
     this.pickPlay(['dome1', 'dome2'], 0.5, 1.4, pos, 0.1, 0.06);
     const k = this.pickKey(['eHi1', 'eHi3']);
     if (k) this.play(k, 0.25, 1.5, 0.08, 0.08, pos);
@@ -1063,6 +1200,14 @@ export const SFX = {
   // cat＝派生的種類（data/melee.js 的 meleeCat：n 連段、f 前、s 側、b 後（上挑）、a 空中、d 下劈、x 衝刺斬、e 處決、h 盾擊）
   meleeSwing(fam, cat, st, pos) {
     const P = (k, v, r, dl = 0) => this.play(k, v, r, 0.08, 0.02, pos, null, dl);
+    // AI 音效：武器的揮擊＋派生的疊加
+    if (
+      this.aiPlay('melee_swing_' + (fam || 'blade'), 0.8, 1, 0.06, 0.02, pos) ||
+      this.aiPlay('melee_swing_blade', 0.8, 1, 0.06, 0.02, pos)
+    ) {
+      if (cat && cat !== 'n') this.aiPlay('melee_acc_' + cat, 0.6, 1, 0.06, 0.02, pos, null, 0.02);
+      return;
+    }
     switch (fam) {
       case 'saber':
         P('laserBig2', 0.35, 0.75);
@@ -1130,6 +1275,29 @@ export const SFX = {
   meleeHit(big, pos, cat, fam, w) {
     if (w === undefined) w = big ? 2 : 1;
     const P = (k, v, r, dl = 0) => this.play(k, v, r, 0.06, 0.02, pos, null, dl);
+    // AI 音效：武器的命中＋重量層＋派生的疊加＋超低頻
+    if (
+      this.aiPlay('melee_hit_' + (fam || 'blade'), 0.95, 1, 0.05, 0.02, pos) ||
+      this.aiPlay('melee_hit_blade', 0.95, 1, 0.05, 0.02, pos)
+    ) {
+      const wk = w >= 3 ? 'melee_hit_w_max' : w >= 2 ? 'melee_hit_w_heavy' : 'melee_hit_w_light';
+      this.aiPlay(wk, w >= 2 ? 0.9 : 0.6, 1, 0.05, 0.02, pos, null, 0.01);
+      const hk = { f: 'pierce', s: 'scrape', b: 'launch', d: 'ground' }[cat];
+      if (hk) this.aiPlay('melee_hitacc_' + hk, 0.6, 1, 0.05, 0.02, pos, null, 0.02);
+      if (!pos)
+        this.play(
+          w >= 2 ? '@sub_thump_heavy' : '@sub_thump_mid',
+          w >= 2 ? 0.7 : 0.5,
+          1,
+          0.03,
+          0.05,
+          null,
+          null,
+          0,
+          { pr: 3 },
+        );
+      return;
+    }
     this.pickPlay(['hit', 'hit2'], 0.9, 0.8, pos);
     switch (fam) {
       case 'saber':
@@ -1194,6 +1362,13 @@ export const SFX = {
   },
   // 刀刃互擊（彈刀、盾擋近戰）
   clash(pos, heavy) {
+    if (
+      this.aiPlay('parry_clash', heavy ? 1 : 0.85, heavy ? 0.85 : 1, 0.06, 0.05, pos, null, 0, {
+        pr: 2.5,
+        send: 0.4,
+      })
+    )
+      return;
     const k = this.pickKey(heavy ? ['clashHvy', 'clash4'] : ['clash1', 'clash2', 'clash3', 'clash4']);
     if (k) this.play(k, 0.9, heavy ? 0.6 : 0.75, 0.06, 0.05, pos, null, 0, { pr: 2.5, send: 0.4 });
     this.play('plate2', 0.6, 0.7, 0.05, 0.05, pos);
@@ -1294,9 +1469,24 @@ export const SFX = {
   },
   // ---- 武器的狀態音（第 4 期；自機）----
   reloadStart(heavy) {
+    if (this.aiPlay(heavy ? 'reload_heavy' : 'reload_light', 0.6, 1, 0.04, 0.2, null, 'ui')) return;
     this.play(heavy ? '~reloadH' : '~reload', 0.45, 1, 0.05, 0.2, null, 'ui');
   },
+  // 裝填完成（自機）
+  reloadDone(heavy) {
+    this.aiPlay('reload_done', heavy ? 0.6 : 0.45, heavy ? 0.85 : 1, 0.04, 0.2, null, 'ui');
+  },
+  // 導彈鎖定累積（n／N，自機）：每多鎖一發一聲，鎖滿另一聲
+  missileLock(n, N) {
+    if (n >= N) this.aiPlay('missile_lock_full', 0.5, 1, 0.02, 0.3, null, 'ui');
+    else this.aiPlay('missile_lock_tick', 0.35, 1 + n * 0.04, 0.01, 0.06, null, 'ui');
+  },
+  // 敵人的導彈朝自己飛來（警報；越近越急由呼叫端控制間隔）
+  missileIncoming() {
+    this.aiPlay('missile_incoming', 0.55, 1, 0.02, 0.35, null, 'ui');
+  },
   empty() {
+    if (this.aiPlay('dry_fire', 0.6, 1, 0.04, 0.12, null, 'ui')) return;
     this.play('~click', 0.5, 1, 0.05, 0.12, null, 'ui');
   },
   // EN 用完（推進器過熱）
@@ -1342,6 +1532,16 @@ export const SFX = {
           : type === 'shell' || type === 'grenade'
             ? 0.7
             : 1.25;
+    const ak = {
+      shotgun: 'hitconf_shotgun',
+      laser: 'hitconf_en',
+      shell: 'hitconf_exp',
+      grenade: 'hitconf_exp',
+    }[type];
+    if (this.aiPlay(ak || 'hitconf_kin', 0.3, 1, 0.04, 0.045, null, 'ui')) {
+      if (heavy) this.aiPlay('hitconf_heavy', 0.45, 1, 0.04, 0.08, null, 'ui');
+      return;
+    }
     this.play('uiTick', 0.22, r, 0.04, 0.045, null, 'ui');
     if (heavy) {
       this.play('thud1', 0.4, 1.1, 0.04, 0.08, null, 'ui');
@@ -1351,6 +1551,7 @@ export const SFX = {
   },
   // 打在弱點上（CRITICAL）：重一點的金屬碎裂
   crit() {
+    if (this.aiPlay('crit', 0.6, 1, 0.05, 0.08, null, 'ui')) return;
     this.play('glass', 0.35, 1.5, 0.05, 0.08, null, 'ui');
     this.play('plate2', 0.45, 0.9, 0.05, 0.08, null, 'ui');
   },
@@ -1443,10 +1644,12 @@ export const SFX = {
     }
   },
   bomber(pos) {
+    if (this.aiPlay('bomber_call', 1, 1, 0, 0, pos)) return;
     this.play('engineHi', 0.9, 0.6, 0, 0, pos);
     this.play('door', 0.6, 0.8, 0.06, 0.03, pos);
   },
   ally(pos) {
+    if (this.aiPlay('ally_drop', 0.9, 1, 0.06, 0.03, pos)) return;
     this.play('door', 0.8, 1.0, 0.06, 0.03, pos);
     this.play('boostDown', 0.6, 0.8, 0.06, 0.03, pos);
   },
