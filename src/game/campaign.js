@@ -589,8 +589,7 @@ Object.assign(Game.prototype, {
       c = this.camp;
     const S = w.trackS * 0.8;
     const dirS = Math.random() < 0.5 ? 1 : -1;
-    const path = [];
-    for (let s = -S; s <= S; s += 8 * DS) path.push(w.corridorPoint(s * dirS, 0));
+    const path = w.corridorPath(-S * dirS, S * dirS, 8 * DS);
     const start = path[0];
     const sp = w.corridorPoint(-S * dirS + dirS * 10 * DS, 9 * DS);
     this.player.pos.set(sp.x, w.terrainHeight(sp.x, sp.z), sp.z);
@@ -769,7 +768,7 @@ Object.assign(Game.prototype, {
   campSpots(n, kind) {
     const w = this.world,
       p = this.player.pos,
-      Z = w.zoneGoal || w.zone,
+      Z = w.zoneHome, // 相接的地圖：這一段開始時的那一格（出口在起點的另一側；玩家走到別格時結果搬到他附近的那一份）
       out = [];
     const ex = Math.min(Z[1] - Z[0], Z[3] - Z[2]);
     const free = (x, z) =>
@@ -818,6 +817,7 @@ Object.assign(Game.prototype, {
         continue;
       out.push(new THREE.Vector3(x, w.terrainHeight(x, z), z));
     }
+    if (w.torus && kind !== 'near') for (const q of out) w.img(q);
     while (out.length < n) {
       const sp = w.spawnPoint(p, out);
       out.push(new THREE.Vector3(sp.x, w.terrainHeight(sp.x, sp.z), sp.z));

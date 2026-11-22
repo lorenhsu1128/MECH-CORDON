@@ -52,26 +52,38 @@ export function planIslands(w, o0) {
   }
   // 橋的候選：兩街區在 X（或 Z）上重疊至少 12 m，就能沿 Z（或 X）架直橋
   const cand = [];
+  // 相接的地圖（docs/torus-map-design.md）：另一個街區也看搬了一格的那幾份，橋可以跨過接縫
+  const SH = w.torus
+    ? [
+        [0, 0],
+        [w.size, 0],
+        [-w.size, 0],
+        [0, w.size],
+        [0, -w.size],
+      ]
+    : [[0, 0]];
   for (let i = 0; i < blocks.length; i++)
-    for (let j = i + 1; j < blocks.length; j++) {
-      const a = blocks[i],
-        b = blocks[j];
-      const ox0 = Math.max(a.x0, b.x0),
-        ox1 = Math.min(a.x1, b.x1),
-        oz0 = Math.max(a.z0, b.z0),
-        oz1 = Math.min(a.z1, b.z1);
-      if (ox1 - ox0 >= 12 * G) {
-        const [lo, hi] = a.z1 < b.z0 ? [a, b] : [b, a];
-        const span = hi.z0 - lo.z1;
-        if (span > 0 && span <= o.span)
-          cand.push({ i, j, span, axis: 'z', at: (ox0 + ox1) / 2, s0: lo.z1, s1: hi.z0 });
-      } else if (oz1 - oz0 >= 12 * G) {
-        const [lo, hi] = a.x1 < b.x0 ? [a, b] : [b, a];
-        const span = hi.x0 - lo.x1;
-        if (span > 0 && span <= o.span)
-          cand.push({ i, j, span, axis: 'x', at: (oz0 + oz1) / 2, s0: lo.x1, s1: hi.x0 });
+    for (let j = i + 1; j < blocks.length; j++)
+      for (const [sx, sz] of SH) {
+        const a = blocks[i],
+          b0 = blocks[j],
+          b = sx || sz ? { x0: b0.x0 + sx, x1: b0.x1 + sx, z0: b0.z0 + sz, z1: b0.z1 + sz } : b0;
+        const ox0 = Math.max(a.x0, b.x0),
+          ox1 = Math.min(a.x1, b.x1),
+          oz0 = Math.max(a.z0, b.z0),
+          oz1 = Math.min(a.z1, b.z1);
+        if (ox1 - ox0 >= 12 * G) {
+          const [lo, hi] = a.z1 < b.z0 ? [a, b] : [b, a];
+          const span = hi.z0 - lo.z1;
+          if (span > 0 && span <= o.span)
+            cand.push({ i, j, span, axis: 'z', at: (ox0 + ox1) / 2, s0: lo.z1, s1: hi.z0 });
+        } else if (oz1 - oz0 >= 12 * G) {
+          const [lo, hi] = a.x1 < b.x0 ? [a, b] : [b, a];
+          const span = hi.x0 - lo.x1;
+          if (span > 0 && span <= o.span)
+            cand.push({ i, j, span, axis: 'x', at: (oz0 + oz1) / 2, s0: lo.x1, s1: hi.x0 });
+        }
       }
-    }
   // 最小生成樹（每個街區都連得到），再多加幾座
   cand.sort((a, b) => a.span - b.span);
   const par = blocks.map((_, i) => i);
@@ -88,7 +100,17 @@ export function planIslands(w, o0) {
   w.islands = { blocks, bridges, h: o.h };
   return (x, z) => {
     let d = 1e9;
-    for (const b of blocks) d = Math.min(d, Math.max(b.x0 - x, x - b.x1, b.z0 - z, z - b.z1));
+    if (w.torus)
+      // 到街區的距離繞過接縫算（地形本身就是週期的，不用接縫的交叉淡化：主題的 noSeam）
+      for (const b of blocks)
+        d = Math.min(
+          d,
+          Math.max(
+            Math.abs(w.dx(x, (b.x0 + b.x1) / 2)) - (b.x1 - b.x0) / 2,
+            Math.abs(w.dx(z, (b.z0 + b.z1) / 2)) - (b.z1 - b.z0) / 2,
+          ),
+        );
+    else for (const b of blocks) d = Math.min(d, Math.max(b.x0 - x, x - b.x1, b.z0 - z, z - b.z1));
     const t = clamp((d + G) / (2 * G), 0, 1);
     return o.h + (o.deep - o.h) * t;
   };
@@ -141,12 +163,12 @@ export function buildLedges(w, width, drop) {
       const bw = (I.bw || 9 * G) / 2 + G;
       if ((side === 'z0' || side === 'z1') && e.axis === 'z') {
         const zEdge = side === 'z0' ? b.z0 : b.z1;
-        if (Math.abs(e.s0 - zEdge) < 1 || Math.abs(e.s1 - zEdge) < 1)
+        if (Math.abs(w.dx(e.s0, zEdge)) < 1 || Math.abs(w.dx(e.s1, zEdge)) < 1)
           if (e.at > b.x0 - bw && e.at < b.x1 + bw) out.push([e.at - bw, e.at + bw]);
       }
       if ((side === 'x0' || side === 'x1') && e.axis === 'x') {
         const xEdge = side === 'x0' ? b.x0 : b.x1;
-        if (Math.abs(e.s0 - xEdge) < 1 || Math.abs(e.s1 - xEdge) < 1)
+        if (Math.abs(w.dx(e.s0, xEdge)) < 1 || Math.abs(w.dx(e.s1, xEdge)) < 1)
           if (e.at > b.z0 - bw && e.at < b.z1 + bw) out.push([e.at - bw, e.at + bw]);
       }
     }
@@ -640,6 +662,8 @@ function buildProps(w) {
 }
 
 export const XYLEM = {
+  torus: true, // 無邊界（上下左右相接，docs/torus-map-design.md）：街區的地形本身是週期的
+  noSeam: true,
   name: '洋上都市 Reefhold',
   ground: 0x9aa0a6,
   slope: 0x6a7076,

@@ -1433,6 +1433,7 @@ function buildBelow(w) {
   mesh.onBeforeRender = () => {
     t.offset.y = (performance.now() * 0.00006) % 1; // 往後流（要塞往 −Z 前進）
   };
+  mesh.userData.uniform = true; // 相接的地圖：跟著鏡頭以整格移動
   hullMesh(w, mesh, 'far');
   // 灰雲：比船底低、比地表高，流得比地表快（近的東西看起來比較快）
   const ct = cloudTexture().clone();
@@ -1451,6 +1452,7 @@ function buildBelow(w) {
   cloud.onBeforeRender = () => {
     ct.offset.y = (performance.now() * 0.00009) % 1;
   };
+  cloud.userData.uniform = true;
   hullMesh(w, cloud, 'far');
 }
 
@@ -1462,7 +1464,7 @@ export function buildHull(w) {
   buildSponsons(w);
   if (w.opt && w.opt.sample) return; // 作戰室的全像戰略桌：只要地形與障礙物
   buildGreebles(w);
-  buildFar(w);
+  if (!w.torus) buildFar(w); // 相接的地圖：沒有地圖外的船身（遠處用低解析度的地形）
   buildBelow(w);
 }
 // 渦輪雷射砲塔等版面指定的位置（主題的 buildProps 用）

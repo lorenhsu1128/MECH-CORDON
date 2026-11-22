@@ -845,8 +845,8 @@ Object.assign(Game.prototype, {
       // 壩頂巡邏砲車：站上壩頂（找不到時照一般的高處）
       const W = this.world;
       for (let t = 0; t < 20; t++) {
-        const x = rnd(-W.lim * 0.8, W.lim * 0.8),
-          z = W.dam.zc;
+        const x = W.fx + rnd(-W.lim * 0.8, W.lim * 0.8),
+          z = W.iz(W.dam.zc);
         const top = W.groundAt(x, z, 40 * MS);
         if (top > W.terrainHeight(x, z) + 6 * MS && W.inZone(x, z, 3 * MS)) {
           sp = { x, z };

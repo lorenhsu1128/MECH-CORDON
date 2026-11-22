@@ -328,6 +328,8 @@ function buildProps(w) {
 }
 
 export const ARK = {
+  torus: true, // 無邊界（上下左右相接，docs/torus-map-design.md）：船體沿艦長方向接回自己，兩舷外的虛空＝和旁邊那一份之間的深溝
+  noSeam: true,
   lightFloor: { sky: 0xa88878, amb: 0x9a8478, sunI: 1.45, hemiI: 2.15 }, // 最低亮度（World.applyLight，docs/brightness-design.md）
   name: '移動要塞「方舟」',
   ground: HULL,

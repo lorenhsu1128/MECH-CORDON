@@ -5,12 +5,9 @@
 //  遊戲從第 TILE0 格開始，真正的位置數值都很大，和速度、方向分得出來，不用逐一列舉欄位。
 //  座標不取餘數：玩家永遠不會被搬，被搬的都離參考點半張地圖以上（看不到、也超出互動距離）。
 // ============================================================
-import { WRAP_HYS, deepCtx, deepWrap } from '../world/torus.js';
+import { TILE0, WRAP_HYS, deepCtx, deepWrap } from '../world/torus.js';
 import { Game } from './game.js';
 
-// 測試：?tile=K 再多搬 K 格（確認不靠起始的那一格）
-const TILE_X =
-  typeof location !== 'undefined' ? +(new URLSearchParams(location.search).get('tile') || 0) || 0 : 0;
 // Game 上不進去掃的鍵：地圖與畫面的物件、存檔、連線、各個選單場景、特效（只在玩家附近）
 const SKIP_G =
   /^(world|scene|renderer|camera|save|net|fx|sfx|stylePipe|garagePipe|post|water|garageScene|hub|hubS|hangar|hg|cine|cineSets|lab|mapv|ed|ctrl|keys|pad|mouse|touch|styleP|tfx|textFx|gaze|player|players|enemies|allies|vehicles|projectiles|popups|bountyPops|wrapHooks|crushW)$/;
@@ -36,27 +33,33 @@ Object.assign(Game.prototype, {
       return d > H || d < -H ? S * Math.round(d / S) : 0;
     };
     const F = this.wrapRef();
-    // 參考點自己跳了半格以上（出生、被放回原格算出來的位置）：把它搬回上一格的參考點附近，世界不動
-    const jx = hopTo(F.x, w.fx),
-      jz = hopTo(F.z, w.fz);
-    if (jx || jz) {
-      const p = this.player;
-      if (p && F === p.pos && p.shiftBy) p.shiftBy(jx, jz);
-      else {
-        F.x += jx;
-        F.z += jz;
+    let fx, fz;
+    if (!TILE0) {
+      // 自動化測試（第 0 格）：參考點釘在玩家所在那一格的中心，在那一格裡什麼都不搬（舊的測試直接寫原格的座標、
+      // 把機體放到幾百公尺外）；玩家真的走出那一格才整格換。畫面照樣跟著玩家（下面的 wrapSee）
+      fx = w.fx + hopTo(w.fx, F.x);
+      fz = w.fz + hopTo(w.fz, F.z);
+    } else {
+      // 參考點自己跳了半格以上（出生、被放回原格算出來的位置）：把它搬回上一格的參考點附近，世界不動
+      const jx = hopTo(F.x, w.fx),
+        jz = hopTo(F.z, w.fz);
+      if (jx || jz) {
+        const p = this.player;
+        if (p && F === p.pos && p.shiftBy) p.shiftBy(jx, jz);
+        else {
+          F.x += jx;
+          F.z += jz;
+        }
       }
-    }
-    if (TILE_X && w._tx !== TILE_X && this.player && F === this.player.pos) {
-      w._tx = TILE_X;
-      this.player.shiftBy(TILE_X * S, TILE_X * S);
-    }
-    const fx = F.x,
+      fx = F.x;
       fz = F.z;
+    }
+    // 測試的第 0 格：參考點換格的那一格才搬（平常什麼都不動：測試把東西放在這一格的邊上也不會被搬到另一邊）
+    const sweep = !!TILE0 || fx !== w.fx || fz !== w.fz;
     w.wrap(fx, fz);
     // 機體（玩家、敵人、友軍、載具）
     for (const L of [this.players, this.enemies, this.allies, this.vehicles])
-      if (L)
+      if (L && sweep)
         for (const e of L) {
           if (!e || !e.pos) continue;
           const dx = hopTo(e.pos.x, fx),
@@ -74,7 +77,7 @@ Object.assign(Game.prototype, {
           }
         }
     // 投射物：位置、發射點、網格
-    for (const p of this.projectiles) {
+    for (const p of sweep ? this.projectiles : []) {
       const dx = hopTo(p.pos.x, fx),
         dz = hopTo(p.pos.z, fz);
       if (!dx && !dz) continue;
@@ -92,8 +95,8 @@ Object.assign(Game.prototype, {
     // 鏡頭
     for (const v of [this.camera.position, this.camTarget]) {
       if (!v || v === F) continue;
-      v.x += hopTo(v.x, fx);
-      v.z += hopTo(v.z, fz);
+      v.x += hopTo(v.x, F.x);
+      v.z += hopTo(v.z, F.z);
     }
     // 其他記著的位置：參考點每走 WRAP_HYS 的一半掃一次（或每半秒）
     const t = performance.now();
@@ -109,7 +112,7 @@ Object.assign(Game.prototype, {
     }
     const fog = this.scene.fog;
     if (fog && fog.far > w._fogCap) fog.far = w._fogCap; // 更遠的物件不出現：霧不超過半格多一點
-    w.wrapSee(fx, fz, fog ? fog.far : S / 2);
+    w.wrapSee(F.x, F.z, fog ? fog.far : S / 2);
   },
   // 通用的掃描：Game 與每台機體記著的位置、直接掛在場景上的遊戲端網格
   wrapDeep(fx, fz, hopTo) {

@@ -71,11 +71,10 @@ Object.assign(MechEntity.prototype, {
   // 躍過障礙物：朝目標跳一段（最多 45 m，落在目標前方），途中不碰撞
   beastLeap(pl, d, tyaw, M, clip) {
     const s = this.aiState,
-      w = this.game.world,
-      lim = w.lim - 3 * MS;
+      w = this.game.world;
     const far = Math.max(12, Math.min(d - this.radius - (pl.radius || 0) - 6, 45));
-    const tx = clamp(this.pos.x + ((pl.pos.x - this.pos.x) / (d || 1)) * far, -lim, lim),
-      tz = clamp(this.pos.z + ((pl.pos.z - this.pos.z) / (d || 1)) * far, -lim, lim);
+    const tx = w.clampX(this.pos.x + ((pl.pos.x - this.pos.x) / (d || 1)) * far, 3 * MS),
+      tz = w.clampZ(this.pos.z + ((pl.pos.z - this.pos.z) / (d || 1)) * far, 3 * MS);
     const [lx, lz] = w.collide(tx, tz, pl.pos.y, this.radius * 0.8);
     if (w.isVoid && w.isVoid(lx, lz)) return; // 落點是虛空：不跳
     s.leap = {
@@ -789,9 +788,8 @@ Object.assign(MechEntity.prototype, {
         this.pos.y,
         this.radius * 0.8,
       );
-      const lim = w.lim - 3 * MS;
-      this.pos.x = clamp(cx, -lim, lim);
-      this.pos.z = clamp(cz, -lim, lim);
+      this.pos.x = w.clampX(cx, 3 * MS);
+      this.pos.z = w.clampZ(cz, 3 * MS);
       // 虛空的地圖（洋上都市、高空軌道）：在地面上的不走出去（退回原位，當成被擋住）；飛在空中的不管
       if (!(FL && s.alt > 3) && w.isVoid && w.isVoid(this.pos.x, this.pos.z) && !w.isVoid(px, pz)) {
         this.pos.x = px;

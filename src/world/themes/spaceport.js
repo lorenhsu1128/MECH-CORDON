@@ -881,6 +881,7 @@ function buildProps(w) {
 }
 
 export const SPACEPORT = {
+  torus: true, // 無邊界（上下左右相接，docs/torus-map-design.md）
   name: '舊宇宙港',
   ground: 0x7c7f80,
   slope: 0x5f6366,

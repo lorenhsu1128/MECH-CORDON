@@ -597,16 +597,19 @@ function planTerrain(w) {
     oz = rnd(0, CELL);
   const n = w.noise,
     n2 = w.noise2;
-  w.city = { ox, oz };
-  const mod = (a) => ((a % CELL) + CELL) % CELL;
+  // 相接的地圖（docs/torus-map-design.md）：街區的間距調成整除地圖邊長，塌陷區用週期雜訊，街道才接得起來
+  const CL = w.torus ? w.size / Math.round(w.size / CELL) : CELL;
+  w.city = { ox, oz, cell: CL };
+  const mod = (a) => ((a % CL) + CL) % CL;
+  const sunkN = w.torus ? w.pnoise(0.012 / G, 3) : (x, z) => n((x / G) * 0.012 + 3, (z / G) * 0.012 - 2);
   return (x, z) => {
     const u = mod(x - ox),
       v = mod(z - oz);
-    const dx = Math.min(u - STREET, CELL - u),
-      dz = Math.min(v - STREET, CELL - v);
+    const dx = Math.min(u - STREET, CL - u),
+      dz = Math.min(v - STREET, CL - v);
     const t = clamp(Math.min(dx, dz) / (1.5 * G), 0, 1);
     // 塌陷的街區（低頻雜訊高的地方）整塊在水面下
-    const sunk = n((x / G) * 0.012 + 3, (z / G) * 0.012 - 2) > 0.72;
+    const sunk = sunkN(x, z) > 0.72;
     const top = sunk ? -0.25 : 0.75;
     return (lerp(-0.6, top, t * t * (3 - 2 * t)) + (n2((x / G) * 0.08, (z / G) * 0.08) - 0.5) * 0.3) * G;
   };
@@ -614,12 +617,20 @@ function planTerrain(w) {
 // 街區中心清單
 function blocks(w) {
   const out = [];
-  const half = w.lim - 6 * G;
-  for (let bx = w.city.ox + STREET - CELL * 6; bx < half; bx += CELL)
-    for (let bz = w.city.oz + STREET - CELL * 6; bz < half; bz += CELL) {
-      const cx = bx + (CELL - STREET) / 2,
-        cz = bz + (CELL - STREET) / 2;
-      if (Math.abs(cx) > half || Math.abs(cz) > half) continue;
+  const CL = w.city.cell || CELL;
+  // 相接的地圖：整格的街區都列出來（中心在原格裡的各一次）
+  const half = w.torus ? w.size / 2 : w.lim - 6 * G,
+    n0 = w.torus ? Math.ceil(w.size / 2 / CL) + 1 : 6;
+  for (let bx = w.city.ox + STREET - CL * n0; bx < half; bx += CL)
+    for (let bz = w.city.oz + STREET - CL * n0; bz < half; bz += CL) {
+      const cx = bx + (CL - STREET) / 2,
+        cz = bz + (CL - STREET) / 2;
+      if (
+        w.torus
+          ? cx < -half || cx >= half || cz < -half || cz >= half
+          : Math.abs(cx) > half || Math.abs(cz) > half
+      )
+        continue;
       out.push([cx, cz]);
     }
   return out;
@@ -635,7 +646,7 @@ export function overlaps(w, x, z, r) {
 }
 
 function buildProps(w) {
-  const B = CELL - STREET;
+  const B = (w.city.cell || CELL) - STREET;
   // 大樓廢墟：佔一個街區，可站上屋頂
   for (const [cx, cz] of blocks(w)) {
     if (Math.hypot(cx, cz) < 24 * G || RNG() > 0.5) continue;
@@ -744,6 +755,7 @@ function buildProps(w) {
 }
 
 export const FLOODED = {
+  torus: true, // 無邊界（上下左右相接，docs/torus-map-design.md）
   lightFloor: { sky: 0xb4c0b8, amb: 0x96a29a, sunI: 1.4, hemiI: 2.2 }, // 最低亮度（World.applyLight，docs/brightness-design.md）
   name: '汙染淹沒城區',
   ground: 0x55594f,

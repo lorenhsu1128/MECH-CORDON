@@ -330,12 +330,15 @@ Object.assign(MechEntity.prototype, {
       const D = w.dam;
       if (D && D.gates && D.gates.length) {
         w.gateUsed = w.gateUsed || new Set();
-        const free = D.gates.filter((q) => !w.gateUsed.has(q) && Math.abs(q.x) < w.lim);
+        const free = D.gates.filter((q) => !w.gateUsed.has(q) && !w.outLim(q.x, 0));
         if (free.length) {
-          const q = free.reduce((a, b) => (Math.abs(a.x - this.pos.x) < Math.abs(b.x - this.pos.x) ? a : b));
+          // 閘門的位置是產生時的原格座標：距離繞過接縫算、站上去時搬到參考點附近的那一份（w.ix／iz）
+          const q = free.reduce((a, b) =>
+            Math.abs(w.dx(a.x, this.pos.x)) < Math.abs(w.dx(b.x, this.pos.x)) ? a : b,
+          );
           w.gateUsed.add(q);
           s.gate = q;
-          this.pos.set(q.x, w.groundAt(q.x, D.zc, 999), D.zc);
+          this.pos.set(w.ix(q.x), w.groundAt(q.x, D.zc, 999), w.iz(D.zc));
           this.vel.set(0, 0, 0);
         }
       }
@@ -347,8 +350,8 @@ Object.assign(MechEntity.prototype, {
         const D = w.dam,
           dn = -D.up;
         fl = {
-          x: s.gate.x,
-          z: D.zc + dn * 5.5 * MS,
+          x: w.ix(s.gate.x),
+          z: w.iz(D.zc) + dn * 5.5 * MS,
           dx: 0,
           dz: dn,
           hw: s.gate.gw / 2 - 0.5 * MS,

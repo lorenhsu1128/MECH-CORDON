@@ -3846,19 +3846,21 @@ async function testMaps(browser, base) {
             (e) => e.pos,
           ),
           oob: p.oob || 0,
+          void: !!w.theme.void,
         };
       });
       await thawLoop(page);
+      // 虛空的地圖（洋上都市、高空軌道、方舟）走不過去（掉下去會被拉回），只看地形與資料
       check(
-        tr.jump < 3 &&
+        (tr.void || (tr.jump < 3 && tr.moved > info.size)) &&
           !tr.line &&
           tr.far &&
           !tr.edges &&
-          tr.moved > info.size &&
-          !tr.obOut &&
-          !tr.enOut &&
+          (tr.void || (!tr.obOut && !tr.enOut)) &&
           !tr.oob,
-        `${key}：上下左右相接（接縫兩側的地形差 ${tr.jump.toFixed(2)} m、沒有邊界線、遠處有低解析度的地形、往同一個方向走了 ${tr.moved.toFixed(0)} m 沒有被擋住、障礙物與敵人都跟到玩家周圍的一格）`,
+        `${key}：上下左右相接（接縫兩側的地形差 ${tr.jump.toFixed(2)} m、邊界線 ${tr.line}、遠處的低解析度地形 ${tr.far}、` +
+          `往同一個方向走了 ${tr.moved.toFixed(0)} m${tr.void ? '（虛空的地圖不看）' : ''}、` +
+          `沒跟到玩家周圍一格的障礙物 ${tr.obOut}／敵人 ${tr.enOut}、出界 ${tr.oob}）`,
       );
     } else {
       // 邊界（world/edges.js）：分段處理至少兩種、不是整圈隆起、有遠景地形；虛空地圖不改地形
@@ -11046,6 +11048,41 @@ async function testBoundary(browser, base) {
       pl = g.player;
     pl.hp = pl.maxHp = 1e7;
     const dt = 1 / 60;
+    if (w.torus) {
+      // 無邊界的地圖（docs/torus-map-design.md）：沒有邊界線與警告、不推回，電腦機體也走得過去
+      const x0 = w.fx + w.lim - 8;
+      pl.pos.set(x0, w.groundAt(x0, w.fz, 99) + 0.1, w.fz);
+      pl.vel.set(0, 0, 0);
+      g.drawHud(dt);
+      let stuck = 0,
+        px = pl.pos.x;
+      for (let i = 0; i < 240; i++) {
+        pl.move(dt, new THREE.Vector3(1, 0, 0), false, false, false, null);
+        if (i > 60 && pl.pos.x - px < 0.01) stuck++;
+        px = pl.pos.x;
+      }
+      g.drawHud(dt);
+      const warn = document.getElementById('oob').classList.contains('on');
+      const e = g.enemies.find((x) => !x.dead && !x.isBoss && x.move);
+      const ex = w.fx + w.lim + 6;
+      e.pos.set(ex, w.groundAt(ex, w.fz + 5, 99), w.fz + 5);
+      for (let i = 0; i < 30; i++) e.move(dt, new THREE.Vector3(1, 0, 0), false, false, false, null);
+      const out = {
+        torus: true,
+        line: !!w.bLine,
+        warn,
+        near: g.zoneNear || 0,
+        oob: pl.oob || 0,
+        moved: pl.pos.x - x0,
+        stuck,
+        ai: e.pos.x - ex,
+        // 地形在接縫兩側是同一個高度
+        hd: Math.abs(w.terrainHeight(w.lim - 0.5, 7) - w.terrainHeight(-w.lim - 0.5, 7)),
+      };
+      g.clearMission();
+      g.state = 'title';
+      return out;
+    }
     // 靠近邊界（場內）：地面的邊界線亮起、畫面邊緣發光；沒有以前的警示光幕
     const xn = w.zone[1] - 15;
     pl.pos.set(xn, w.groundAt(xn, 0, 99) + 0.1, 0);
@@ -11085,6 +11122,18 @@ async function testBoundary(browser, base) {
     g.state = 'title';
     return { warn, maxX, held, back, off, ai, lim: w.lim, out: w.limOut, nearLine, nearHud, noWall, farOff };
   });
+  if (r.torus) {
+    check(
+      !r.line && !r.warn && !r.near && !r.oob,
+      `無邊界的地圖：沒有邊界線（${!r.line}）、沒有離開作戰區域的警告（${!r.warn}）與畫面邊緣提示（${!r.near}）`,
+    );
+    check(
+      r.moved > 30 && r.stuck < 30 && r.ai > 0.5 && r.hd < 1e-6,
+      `走過原本的邊界不會被推回（往外走了 ${r.moved.toFixed(1)} m、卡住 ${r.stuck} 格）、電腦機體也走得過去（${r.ai.toFixed(2)} m）、接縫兩側是同一個高度（差 ${r.hd.toFixed(4)}）`,
+    );
+    await ctx.close();
+    return;
+  }
   check(
     r.nearLine && r.nearHud && r.noWall && r.farOff,
     `靠近邊界：地面的邊界線亮起（${r.nearLine}）、畫面邊緣提示（${r.nearHud}）、沒有警示光幕（${r.noWall}），場地中央都不顯示（${r.farOff}）`,
@@ -11210,11 +11259,13 @@ async function testCampaign(browser, base) {
       type: g.camp.ss.type,
       start: true,
       size: w.size,
+      torus: !!w.torus,
       prog: g.camp.exits.map((e) => +(((e.pos.x - s.x) * s.fx + (e.pos.z - s.z) * s.fz) / D).toFixed(2)),
     };
   });
   check(
-    adv.type !== 'battle' || (adv.start && adv.size === 320 * SC && adv.prog.every((q) => q >= 0.55)),
+    adv.type !== 'battle' ||
+      (adv.start && adv.size === (adv.torus ? 400 : 320) * SC && adv.prog.every((q) => q >= 0.55)),
     `推進路線：${adv.type} 區段是大地圖、邊緣進場，出口在前方深度 ${(adv.prog || []).join('／')}`,
   );
   // 截圖：玩家走到兩個出口之間、面向第一個出口
@@ -25925,10 +25976,14 @@ async function testBosses2(browser, base) {
           }
           // 撞上場地邊界 → 硬直、背後弱點
           const ex = g.world.lim - 16; // 撞牆點與正前方的測試位置都要在邊緣懸崖之內
-          boss.pos.set(ex, g.world.groundAt(ex, 0, 99), 0);
+          // 無邊界的地圖沒有場地邊界：前方放一道打不壞的牆代替（撞上不可破壞的障礙物同樣硬直）
+          const wall = g.world.torus && { kind: 'box', x: 60, z: 0, w: 6, d: 80, y: -99, top: 400 };
+          if (wall) g.world.obstacles.push(wall);
+          boss.pos.set(wall ? 0 : ex, g.world.groundAt(wall ? 0 : ex, 0, 99), 0);
           boss.rampartAim(new THREE.Vector3(1, 0, 0));
           step(2.4);
           r.stun = s.rm;
+          if (wall) g.world.obstacles.splice(g.world.obstacles.indexOf(wall), 1);
           boss.yaw = boss.aimYaw = -Math.PI / 2; // 面向 +X
           place(boss.pos.x - 15, boss.pos.z); // 背後（boss 面向 +X）
           r.rear = hit();
@@ -25989,6 +26044,7 @@ async function testBosses2(browser, base) {
         } else if (key === 'citadel') {
           r.rail = g.world.corridor && g.world.corridor.kind;
           r.cars = boss.partsOf().length;
+          r.loop = !!(g.world.corridor && g.world.corridor.loop); // 無邊界的地圖：鐵路繞一圈、沒有隧道
           r.tunnel = hit();
           step(4);
           const c = g.world.corridor;
@@ -26100,13 +26156,13 @@ async function testBosses2(browser, base) {
   check(
     r.rail === 'rail' &&
       r.cars === 4 &&
-      r.tunnel === 0 &&
+      (r.loop ? r.tunnel > 0 : r.tunnel === 0) &&
       r.onTrack &&
       r.out > 0 &&
       r.lost > 0 &&
       r.dead &&
       r.left === 0,
-    `${r.name}：${r.rail} 地圖、車廂 ${r.cars} 節、隧道裡 ${r.tunnel}／出來 ${r.out}、沿軌道 ${r.onTrack}、撞到軌道上的目標 ${r.lost}、擊破 ${r.dead}／剩 ${r.left}`,
+    `${r.name}：${r.rail} 地圖、車廂 ${r.cars} 節、${r.loop ? '沒有隧道（一直打得到）' : '隧道裡'} ${r.tunnel}／出來 ${r.out}、沿軌道 ${r.onTrack}、撞到軌道上的目標 ${r.lost}、擊破 ${r.dead}／剩 ${r.left}`,
   );
   r = await run(34, 'pulsar');
   check(

@@ -204,6 +204,7 @@ export function addLava(w) {
   mesh.position.y = LAVA_Y * G;
   mesh.userData.noFade = true;
   mesh.userData.noAO = true;
+  mesh.userData.uniform = true; // 相接的地圖：跟著鏡頭以整格移動（貼圖 60 m 一格，整除地圖邊長）
   mesh.receiveShadow = false;
   // 緩慢流動
   mesh.onBeforeRender = () => {
@@ -285,7 +286,10 @@ registerFeatureStyle('volcano', C, {
 function lavaChan(w, x, z) {
   const xo = x / G,
     zo = z / G;
-  const r = Math.abs(w.noise(xo * 0.009 + 31.7, zo * 0.009 - 17.3) - 0.5);
+  // 相接的地圖：河道用週期雜訊（繞過接縫接回自己）
+  const r = w.torus
+    ? Math.abs((w._lavaN || (w._lavaN = w.pnoise(0.009 / G, 31)))(x, z) - 0.5)
+    : Math.abs(w.noise(xo * 0.009 + 31.7, zo * 0.009 - 17.3) - 0.5);
   return clamp(1 - r / 0.055, 0, 1);
 }
 function planTerrain(w) {
@@ -365,6 +369,7 @@ export function volcanoOff(w, x, z) {
 }
 
 export const VOLCANO = {
+  torus: true, // 無邊界（上下左右相接，docs/torus-map-design.md）
   lightFloor: { sky: 0xc89a80, amb: 0xb08a76, fog: 0x7a5a4a, sunI: 2.1, hemiI: 3.45 }, // 最低亮度（World.applyLight，docs/brightness-design.md）
   name: '火山熔爐帶',
   ground: 0x3a302c,

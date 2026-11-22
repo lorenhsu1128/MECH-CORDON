@@ -386,9 +386,9 @@ Object.assign(MechEntity.prototype, {
     v.y = (ty - this.pos.y) * vk;
     if (s.wm === 'dive') v.y = Math.min(v.y, -6 * DS);
     this.pos.addScaledVector(v, dt);
-    const lim = this.game.world.lim - 2 * MS; // 場地邊界（world.collide 限制在 ±lim）
-    this.pos.x = clamp(this.pos.x, -lim, lim);
-    this.pos.z = clamp(this.pos.z, -lim, lim);
+    // 場地邊界（world.collide 限制在 ±lim；相接的地圖沒有邊界）
+    this.pos.x = this.game.world.clampX(this.pos.x, 2 * MS);
+    this.pos.z = this.game.world.clampZ(this.pos.z, 2 * MS);
     const hs = Math.hypot(v.x, v.z);
     if (s.wm === 'up') {
       const a = Math.atan2(-(pl.pos.x - this.pos.x), -(pl.pos.z - this.pos.z));

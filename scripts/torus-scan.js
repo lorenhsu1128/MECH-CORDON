@@ -12,7 +12,7 @@ const EXE = [
 const MAP = process.argv[2] || 'desert';
 const SECS = +(process.argv[3] || 40);
 const LV = +(process.argv[4] || 6);
-const TILE = +(process.argv[5] || 3);
+const TILE = +(process.argv[5] || 32);
 const URL = 'file:///' + ROOT + '/dist/mech-cordon.html?test&tile=' + TILE;
 const src = fs.readFileSync(path.join(ROOT, 'scripts/perf-campaign.js'), 'utf8');
 const i0 = src.indexOf('function botInstall(cfg) {');

@@ -2,7 +2,7 @@
 //  WORLD — 隨機關卡生成
 // ============================================================
 import { rawColor } from '../render/color-cm.js';
-import { RNG, clamp, lerp, makeNoise, makeRng, pick, rnd, rndi, withRng } from '../core/math.js';
+import { RNG, clamp, lerp, makeNoise, makeNoiseP, makeRng, pick, rnd, rndi, withRng } from '../core/math.js';
 import { DS, MS, WS } from '../core/scale.js';
 import {
   JERSEY,
@@ -255,6 +255,7 @@ export const THEMES = {
     props: 'snow',
   },
   industrial: {
+    torus: true, // 無邊界（上下左右相接，docs/torus-map-design.md）
     name: '貨運集散場',
     corridor: { p: 0.85, kinds: ['road', 'rail'] },
     ground: 0x5c626a,
@@ -476,6 +477,7 @@ export class World {
     // 無邊界（上下左右相接，docs/torus-map-design.md）：主題改好才打開（torus）；自訂關卡與 opt.bounded（過場的地圖）照舊有邊界
     this.torus = !!this.theme.torus && !LV && !opt.bounded;
     this.fx = this.fz = 0; // 參考點：資料都搬到離它最近的那一份（wrap）
+    this.tile0 = TILE0; // 起始的那一格（一般 32；自動化測試 0：參考點釘在格子中心，game/torus.js）
     this.size = this.torus
       ? this.theme.torusSize || (opt.big ? TORUS_BIG : TORUS_SIZE)
       : this.theme.size || (opt.big && !LV ? MAP_BIG : MAP_SIZE);
@@ -660,6 +662,14 @@ export class World {
       H = this.size / 2 + WRAP_HYS;
     return d > H || d < -H ? this.size * Math.round(d / this.size) : 0;
   }
+  // 週期雜訊（相接的地圖：河道、塌陷區這類「有或沒有」的圖樣不能靠接縫的交叉淡化）：頻率 f（每公尺）取最接近、
+  // 讓整格剛好是整數個週期的；回傳 (x, z) → 0～1
+  pnoise(f, salt = 0) {
+    const P = Math.max(1, Math.round(this.size * f)),
+      n = makeNoiseP(this.seed * 31 + salt, P),
+      k = P / this.size;
+    return (x, z) => n(x * k, z * k);
+  }
   // 夾在場地裡（離邊 m；相接的地圖沒有邊，不夾）
   clampX(x, m = 0) {
     return this.torus ? x : clamp(x, -this.lim + m, this.lim - m);
@@ -707,6 +717,13 @@ export class World {
   }
   set zone(z) {
     this._zone = z;
+  }
+  // 這一段開始時的那一格（相接的地圖；固定不跟著玩家）：推進路線的「起點的另一側」、出口的位置用它
+  get zoneHome() {
+    if (!this.torus) return this.zoneGoal || this._zone;
+    const h = this.size / 2,
+      c = TILE0 * this.size;
+    return this._zh || (this._zh = [c - h, c + h, c - h, c + h]);
   }
   // 地形的顏色（依坡度與高度；遠景地形用，和 buildTerrainMesh 的規則相同、沒有每個面的明暗跳動）
   terrainColor(ny, y, out) {
@@ -1136,6 +1153,24 @@ export class World {
     // raw：不搬到參考點附近（產生路面時要連續的座標）
     return new THREE.Vector3(raw ? x : this.ix(x), this.terrainHeight(x, z), raw ? z : this.iz(z));
   }
+  // 沿通道從 s0 到 s1 的一串點（每 step 一點）：連續的座標（相接的地圖：整串跟著第一點搬到參考點附近，中途不會跳到另一份）
+  corridorPath(s0, s1, step, u = 0) {
+    const out = [],
+      n = Math.max(1, Math.round(Math.abs(s1 - s0) / step));
+    let ox = 0,
+      oz = 0;
+    for (let i = 0; i <= n; i++) {
+      const p = this.corridorPoint(s0 + ((s1 - s0) * i) / n, u, true);
+      if (!i) {
+        ox = this.ix(p.x) - p.x;
+        oz = this.iz(p.z) - p.z;
+      }
+      p.x += ox;
+      p.z += oz;
+      out.push(p);
+    }
+    return out;
+  }
   // 參數 s 處的行進方向（單位向量，XZ）
   corridorDir(s) {
     const c = this.corridor,
@@ -1474,11 +1509,20 @@ export class World {
   }
   // 岩頂（地下）：朝下的平面，只從下方看得到（俯視的鏡頭看得穿），不擋陰影
   addRoof(R) {
-    const geo = new THREE.PlaneGeometry((FAR_R + 40) * 2, (FAR_R + 40) * 2, 48, 48);
+    // 相接的地圖：三格寬、格子整除地圖邊長、起伏用週期雜訊（跟著鏡頭以整格移動時形狀不變）
+    const RW = this.torus ? this.size * 3 : (FAR_R + 40) * 2,
+      RN = this.torus ? 72 : 48,
+      rn = this.torus ? this.pnoise(0.02 / G, 9) : null;
+    const geo = new THREE.PlaneGeometry(RW, RW, RN, RN);
     geo.rotateX(Math.PI / 2);
     const pos = geo.attributes.position;
     for (let i = 0; i < pos.count; i++)
-      pos.setY(i, -this.noise((pos.getX(i) / G) * 0.02 + 9, (pos.getZ(i) / G) * 0.02) * (R.bump || 8 * G));
+      pos.setY(
+        i,
+        -(rn
+          ? rn(pos.getX(i), pos.getZ(i))
+          : this.noise((pos.getX(i) / G) * 0.02 + 9, (pos.getZ(i) / G) * 0.02)) * (R.bump || 8 * G),
+      );
     geo.computeVertexNormals();
     const m = new THREE.Mesh(
       geo,
@@ -1486,11 +1530,12 @@ export class World {
     );
     m.position.y = R.y;
     m.userData.noFade = true; // 岩頂：俯視鏡頭本來就看得穿
+    m.userData.uniform = true;
     // 岩頂開洞（game/destruct.js 的 roofDamage）：格子＝平面的一格
     this.roofMesh = m;
     this.roofY = R.y;
     this.roofLow = R.y - (R.bump || 8 * G);
-    this.roofCell = ((FAR_R + 40) * 2) / 48;
+    this.roofCell = RW / RN;
     this.scene.add(m);
     this.meshes.push(m);
   }

@@ -15,7 +15,9 @@ export const WRAP_HYS = 8 * WS; // 超過半格再多這麼遠才搬（切口附
 export const TILE_N = 8; // 分塊：每邊幾塊
 // 遊戲從第 TILE0 格開始（座標約 TILE0 × S）：真正的位置數值都很大，速度、方向、尺寸這類向量都很小，
 // 所以「記著的位置」光看數值就分得出來（deepWrap），不用逐一列舉每個子系統的欄位
-export const TILE0 = 32;
+// 自動化測試（?test）預設第 0 格（舊的測試直接寫原格的座標）；?tile=K 指定（量測與相接地圖的測試用 32）
+const _q = typeof location !== 'undefined' ? new URLSearchParams(location.search) : null;
+export const TILE0 = _q && _q.has('tile') ? +_q.get('tile') || 0 : _q && _q.has('test') ? 0 : 32;
 const FAR_STEP = 4; // 遠景地形：每幾個地形格子取一點
 
 const sm = (t) => t * t * (3 - 2 * t);

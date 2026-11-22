@@ -9,7 +9,7 @@ const EXE = [
   'C:/Program Files/Microsoft/Edge/Application/msedge.exe',
 ].find((p) => fs.existsSync(p));
 const MAP = process.argv[2] || 'grid';
-const TILE = +(process.argv[3] || 0);
+const TILE = +(process.argv[3] || 32);
 const VIEW = process.argv[4] || 'tps';
 const OUT = path.join(ROOT, 'test-results/torus');
 fs.mkdirSync(OUT, { recursive: true });

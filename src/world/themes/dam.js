@@ -574,7 +574,8 @@ function buildStructures(w) {
   const D = w.dam,
     zc = D.zc,
     dn = -D.up;
-  const half = w.size / 2 + 4 * G;
+  // 相接的地圖（docs/torus-map-design.md）：壩體剛好橫跨一格，兩端接回自己
+  const half = w.torus ? w.size / 2 : w.size / 2 + 4 * G;
   // 閘門位置：公路／鐵路經過處、洩洪河道、再一個
   const gates = [];
   const c = w.corridor;
@@ -633,6 +634,18 @@ function buildStructures(w) {
     x0 = gt.x + gt.gw / 2;
     if (x0 > half) break;
   }
+  // 相接的地圖：一段最長 120 m（障礙物與外觀各自搬到玩家附近的那一份，太長的一段會有一半留在另一邊）
+  if (w.torus)
+    for (let i = segs.length - 1; i >= 0; i--) {
+      const [a, b] = segs[i],
+        n = Math.ceil((b - a) / (40 * G));
+      if (n > 1)
+        segs.splice(
+          i,
+          1,
+          ...Array.from({ length: n }, (_, q) => [a + ((b - a) * q) / n, a + ((b - a) * (q + 1)) / n]),
+        );
+    }
   for (const [a, b] of segs) {
     const len = b - a,
       cx = (a + b) / 2;
@@ -822,6 +835,7 @@ function buildProps(w) {
 }
 
 export const DAM = {
+  torus: true, // 無邊界（上下左右相接，docs/torus-map-design.md）：下游的地形在接縫和上游的水庫交叉淡化成湖岸
   name: '階梯水壩',
   ground: 0x6f6a5c,
   slope: 0x55524a,

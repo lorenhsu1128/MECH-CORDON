@@ -46,6 +46,21 @@ export class Vehicle {
     this.dirSign = dirSign;
     const w = game.world;
     this.s = -dirSign * (w.corridorHalf + 14);
+    // 相接的地圖（公路／鐵路繞一圈、沒有隧道口）：從離玩家最遠的那一段出發，繞一圈之後離玩家夠遠才離場
+    if (w.corridor && w.corridor.loop) {
+      const P = game.player && game.player.pos;
+      let best = -1;
+      for (let i = 0; i < 24; i++) {
+        const q = (i / 24 - 0.5) * w.corridor.len,
+          p = w.corridorPoint(q);
+        const d = P ? Math.hypot(p.x - P.x, p.z - P.z) : i;
+        if (d > best) {
+          best = d;
+          this.s = q;
+        }
+      }
+      this.run = 0;
+    }
     this.speed = kind === 'train' ? 24 : 18;
     this.hp = 600;
     this.maxHp = 600;
@@ -131,7 +146,13 @@ export class Vehicle {
     this.mesh.rotation.y = Math.atan2(t.x, t.y) + (this.dirSign > 0 ? 0 : Math.PI);
     // 車輪依行駛距離轉動（車頭朝 +Z，render/extra-models.js 的 wheels）
     if (this.mesh.wheels) for (const w of this.mesh.wheels) w.o.rotation.x += (this.speed * dt) / w.r;
-    if (Math.abs(this.s) > w.corridorHalf + 14 + this.cars * this.carLen) this.gone = true;
+    if (this.run !== undefined) {
+      this.run += this.speed * dt;
+      const L = w.corridor.len,
+        P = this.game.player && this.game.player.pos;
+      if (this.run > L * 2 || (this.run > L && (!P || Math.hypot(p.x - P.x, p.z - P.z) > w.size * 0.4)))
+        this.gone = true;
+    } else if (Math.abs(this.s) > w.corridorHalf + 14 + this.cars * this.carLen) this.gone = true;
   }
   takeDamage(dmg, impact, from, at) {
     if (this.dead) return;

@@ -2885,7 +2885,7 @@ export class MechEntity {
   // 所以之後記下來的位置（錨點、巡邏點…）一開始就在對的那一份
   wrapSelf() {
     const w = this.game.world;
-    if (!w || !w.torus) return;
+    if (!w || !w.torus || !w.tile0) return; // 測試的第 0 格不搬（game/torus.js）
     const dx = w.offX(this.pos.x),
       dz = w.offZ(this.pos.z);
     if (dx || dz) this.shiftBy(dx, dz);

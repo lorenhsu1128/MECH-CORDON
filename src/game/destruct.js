@@ -1325,7 +1325,7 @@ Object.assign(Game.prototype, {
       if (w.theme.water.level > sh.y0 + 1) {
         this.addFlow({
           x: (sh.x0 + sh.x1) / 2,
-          z: w.dam.zc,
+          z: w.iz(w.dam.zc),
           dx: 0,
           dz: -up,
           len: 48 * w.k,
@@ -1367,9 +1367,10 @@ Object.assign(Game.prototype, {
     if (this.destructMode() === 'off') return false; // 不可破壞：岩頂和以前一樣不擋子彈
     if (this.net && this.net.role === 'client') return true;
     const C = w.roofCell;
-    const ix = Math.floor(pos.x / C),
-      iz = Math.floor(pos.z / C);
-    if (Math.abs(ix * C) > w.limOut + C || Math.abs(iz * C) > w.limOut + C) return true;
+    // 相接的地圖：格子用原格的座標編號（岩頂每一格都重複同一份）
+    const ix = Math.floor(w.cx(pos.x) / C),
+      iz = Math.floor(w.cx(pos.z) / C);
+    if (!w.torus && (Math.abs(ix * C) > w.limOut + C || Math.abs(iz * C) > w.limOut + C)) return true;
     const k = ix + ',' + iz;
     if ((this.roofGone || []).includes(k)) return false; // 已經是洞：穿過去
     const H = this.roofHp || (this.roofHp = {});
@@ -1392,12 +1393,19 @@ Object.assign(Game.prototype, {
     const [ix, iz] = k.split(',').map(Number);
     const x0 = ix * C,
       z0 = iz * C,
-      cx = x0 + C / 2,
-      cz = z0 + C / 2;
-    splitTris(w.roofMesh, (c) => (c.x >= x0 && c.x < x0 + C && c.z >= z0 && c.z < z0 + C ? 1 : 0), {
-      max: 0,
-      keepOut: true,
-    });
+      cx = w.ix(x0 + C / 2),
+      cz = w.iz(z0 + C / 2);
+    // 相接的地圖：岩頂的平面有三格寬，同一個洞在每一份都開
+    splitTris(
+      w.roofMesh,
+      w.torus
+        ? (c) => (Math.abs(w.dx(c.x, cx)) < C / 2 && Math.abs(w.dx(c.z, cz)) < C / 2 ? 1 : 0)
+        : (c) => (c.x >= x0 && c.x < x0 + C && c.z >= z0 && c.z < z0 + C ? 1 : 0),
+      {
+        max: 0,
+        keepOut: true,
+      },
+    );
     // 光柱：從洞照到地上（加色、不寫深度）
     const gy = w.groundAt(cx, cz, w.roofLow);
     const h = w.roofY - gy;

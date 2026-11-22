@@ -26,7 +26,8 @@ const TIER_WEAK = new Set([
   'rampart',
   'ibis',
 ]);
-const TRACK = (e) => e.game.world.trackS;
+// 相接的地圖：鐵路繞一圈、沒有隧道，列車一直在場上繞（不掉頭、不躲進隧道）
+const TRACK = (e) => (e.game.world.corridor && e.game.world.corridor.loop ? Infinity : e.game.world.trackS);
 const LIM = (e) => e.game.world.lim;
 const KS = (e) => e.game.world.k;
 const CAR_SP = 9.6 * MS; // 車廂間距
@@ -801,8 +802,8 @@ Object.assign(MechEntity.prototype, {
       }
       s.pv.copy(cur).multiplyScalar(sp);
       s.pp.addScaledVector(s.pv, dt);
-      s.pp.x = clamp(s.pp.x, -LIM(this), LIM(this));
-      s.pp.z = clamp(s.pp.z, -LIM(this), LIM(this));
+      s.pp.x = this.game.world.clampX(s.pp.x);
+      s.pp.z = this.game.world.clampZ(s.pp.z);
       if ((s.tick -= dt) <= 0) {
         s.tick = 0.2;
         for (const t of g.hostilesOfEnt(this)) {
@@ -1100,7 +1101,7 @@ Object.assign(MechEntity.prototype, {
         }
         const past = this.pos.clone().sub(pl.pos).setY(0).dot(s.runDir);
         const leaving =
-          (Math.abs(this.pos.x) > LIM(this) + 4 * MS || Math.abs(this.pos.z) > LIM(this) + 4 * MS) &&
+          g.world.outLim(this.pos.x, this.pos.z, -4 * MS) &&
           this.pos.x * s.runDir.x + this.pos.z * s.runDir.z > 0;
         if (past > 15 * DS || leaving || (s.vmT -= dt) <= 0) {
           s.vm = 'turn';
@@ -1153,8 +1154,8 @@ Object.assign(MechEntity.prototype, {
       s.v.lerp(want, Math.min(1, dt * k));
       this.pos.addScaledVector(s.v, dt);
     }
-    this.pos.x = clamp(this.pos.x, -LIM(this) - 33 * DS, LIM(this) + 33 * DS);
-    this.pos.z = clamp(this.pos.z, -LIM(this) - 33 * DS, LIM(this) + 33 * DS);
+    this.pos.x = g.world.clampX(this.pos.x, -33 * DS);
+    this.pos.z = g.world.clampZ(this.pos.z, -33 * DS);
     this.pos.y = lerp(this.pos.y, gy + s.alt, Math.min(1, dt * (onLine ? 4 : 2.5)));
     if (s.vm === 'line')
       this.yaw = this.aimYaw = yawOf(s.runDir); // 拉開時機首照樣朝著航線
@@ -1215,7 +1216,7 @@ Object.assign(MechEntity.prototype, {
         const step = s.cdir.clone().multiplyScalar(s.v * dt);
         const nx = this.pos.x + step.x,
           nz = this.pos.z + step.z;
-        let crash = Math.abs(nx) > LIM(this) - 4 * MS || Math.abs(nz) > LIM(this) - 4 * MS;
+        let crash = this.game.world.outLim(nx, nz, 4 * MS); // 撞上場地邊界（相接的地圖沒有邊界：只會撞上障礙物）
         if (!crash) {
           // 前方的可破壞物件直接撞碎
           const front = V(nx, this.pos.y, nz).addScaledVector(s.cdir, 4.5 * MS);
@@ -1314,7 +1315,7 @@ Object.assign(MechEntity.prototype, {
     for (; L < 75 * KS(this); L += 2 * MS) {
       const x = this.pos.x + s.cdir.x * L,
         z = this.pos.z + s.cdir.z * L;
-      if (Math.abs(x) > LIM(this) - 4 * MS || Math.abs(z) > LIM(this) - 4 * MS) break;
+      if (this.game.world.outLim(x, z, 4 * MS)) break;
       const [cx, cz] = w.collide(x, z, this.pos.y, this.radius * 0.8);
       if (Math.hypot(cx - x, cz - z) > 0.5 * MS) break;
     }
@@ -1443,8 +1444,8 @@ Object.assign(MechEntity.prototype, {
         this.pos.addScaledVector(s.dDir, step);
         const gy = g.world.groundAt(this.pos.x, this.pos.z, this.pos.y);
         if (this.pos.y < gy + 0.5 * MS) this.pos.y = gy + 0.5 * MS;
-        this.pos.x = clamp(this.pos.x, -LIM(this), LIM(this));
-        this.pos.z = clamp(this.pos.z, -LIM(this), LIM(this));
+        this.pos.x = this.game.world.clampX(this.pos.x);
+        this.pos.z = this.game.world.clampZ(this.pos.z);
         s.dGone += step;
         for (const t of g.hostilesOfEnt(this)) {
           if (

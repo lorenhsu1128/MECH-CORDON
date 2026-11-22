@@ -242,8 +242,7 @@ Object.assign(Game.prototype, {
     }
     const S = w.trackS * 0.85,
       dirS = Math.random() < 0.5 ? 1 : -1;
-    const path = [];
-    for (let s = -S; s <= S; s += 8 * DS) path.push(w.corridorPoint(s * dirS, 0));
+    const path = w.corridorPath(-S * dirS, S * dirS, 8 * DS);
     let len = 0;
     for (let i = 1; i < path.length; i++) len += path[i].distanceTo(path[i - 1]);
     const sp = w.corridorPoint(-S * dirS, 9 * DS);
@@ -316,10 +315,7 @@ Object.assign(Game.prototype, {
       const path = lead.opts.path;
       const q = path[Math.min((lead.pathI || 0) + 5, path.length - 1)];
       const side = Math.random() < 0.5 ? 1 : -1;
-      const [x, z] = w.nearSolid(
-        w.clampX(q.x + side * 14 * DS, 4),
-        w.clampZ(q.z + side * 6 * DS, 4),
-      );
+      const [x, z] = w.nearSolid(w.clampX(q.x + side * 14 * DS, 4), w.clampZ(q.z + side * 6 * DS, 4));
       this.spawnLater(
         this.rollComp(Math.max(1, this.campLevel() - 1), ss.np || 1)
           .filter((t) => t !== 'ac')

@@ -529,6 +529,8 @@ function buildProps(w) {
 }
 
 export const ORBIT = {
+  torus: true, // 無邊界（上下左右相接，docs/torus-map-design.md）：街區的地形本身是週期的
+  noSeam: true,
   name: '高空軌道',
   ground: 0x9aa2ab,
   slope: 0x6d757e,
