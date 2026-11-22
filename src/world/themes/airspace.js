@@ -23,6 +23,9 @@ export const AIRSPACE = {
   name: '空域（空戰）',
   air: true, // 進場就是飛行狀態（game/air.js）
   size: 6000, // 公尺（不乘 WS）
+  torus: true, // 無邊界（上下左右相接，docs/torus-map-design.md）：一樣 6 km 一格
+  torusSize: 6000,
+  seamB: 600, // 島嶼很大：接縫兩側各 600 m 交叉淡化
   cell: 30,
   ground: 0x5f7a45,
   slope: 0x7a7468,

@@ -503,7 +503,7 @@ Object.assign(MechEntity.prototype, {
   // 留在空域裡、低空或前方有山時拉起、不超過高度上限（改 aim）
   airSafeAim(aim, fwd) {
     const lim = this.game.world.lim * 0.85;
-    if (Math.abs(this.pos.x) > lim || Math.abs(this.pos.z) > lim)
+    if (!this.game.world.torus && (Math.abs(this.pos.x) > lim || Math.abs(this.pos.z) > lim))
       aim.set(-this.pos.x, 0, -this.pos.z).normalize().setY(0.1);
     const floor = Math.max(
       this.airFloor(this.pos.x, this.pos.z),
@@ -623,7 +623,8 @@ Object.assign(MechEntity.prototype, {
     );
     if (this.pos.y - floor < AIR.AI_FLOOR) aim.normalize().y = 0.6;
     const lim = g.world.lim * 0.85;
-    if (Math.abs(this.pos.x) > lim || Math.abs(this.pos.z) > lim) aim.set(-this.pos.x, 0, -this.pos.z);
+    if (!g.world.torus && (Math.abs(this.pos.x) > lim || Math.abs(this.pos.z) > lim))
+      aim.set(-this.pos.x, 0, -this.pos.z);
     this.airAim = aim.clone();
     this.airIn = { thr: 0, side: 0 };
     this.move(dt, ZERO, false, false, false, null);

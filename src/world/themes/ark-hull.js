@@ -203,7 +203,8 @@ function mk(w, kind) {
   return {
     kind,
     L,
-    s: L / 285, // 大地圖（MAP_BIG）的版面跟著放大
+    // 大地圖（MAP_BIG）的版面跟著放大；相接的地圖更大，版面的比例最多放大到 1.4（再大上層建築會排不進通道之間）
+    s: Math.min(L / 285, 1.4),
     Z: w.size / 2 + 60, // 船身沿 Z 延伸到地圖外
     W: w.size / 2 + 60,
     rects: [],

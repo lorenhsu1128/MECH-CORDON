@@ -125,6 +125,7 @@ Object.assign(Game.prototype, {
     this.world = new World(this.scene, 'grid', seed, L, null, {
       zone: kind === 'boss' ? 'full' : 'arena',
       open: kind === 'boss' ? 1 : undefined,
+      pin: true, // 腳本直接寫原格的座標（docs/torus-map-design.md）
     });
     this.isClient = false;
     this.net.spawnReg = {};

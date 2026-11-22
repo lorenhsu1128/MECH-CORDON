@@ -23,6 +23,7 @@ const FAR_STEP = 4; // 遠景地形：每幾個地形格子取一點
 const sm = (t) => t * t * (3 - 2 * t);
 // H(x, z)（定義域比原格大 B）→ 週期 S 的函式（只在原格 −S/2～S/2 裡取值）
 export function seamBlend(H, S, B) {
+  B = Math.min(B, S / 4);
   const h = S / 2,
     a = h - B;
   const bx = (x, z) => {
@@ -260,6 +261,20 @@ export function wrapData(w, fx, fz) {
             shiftOb(o, dx, dz, done);
           }
     }
+  // Boss 縮小的作戰區域（矩形 [x0, x1, z0, z1]）：整塊跟著搬
+  if (w._arena) {
+    const A = w._arena,
+      dx = hop(fx - (A[0] + A[1]) / 2, S, H),
+      dz = hop(fz - (A[2] + A[3]) / 2, S, H);
+    if (dx || dz)
+      for (const R of [A, w.zoneGoal, w.zoneBase])
+        if (R) {
+          R[0] += dx;
+          R[1] += dx;
+          R[2] += dz;
+          R[3] += dz;
+        }
+  }
   for (const fn of w.wrapHooks || []) n += fn(fx, fz, S, H, hop) || 0;
   return n;
 }
@@ -351,7 +366,7 @@ function isPos(x, z, C) {
 // deepWrap 的參數：T＝多大才算位置、W＝離參考點多遠以內；參考點離原點太近（玩家繞了十幾格）時回傳 null（分不出來，不掃）
 export function deepCtx(w, fx, fz, skip, depth = 4) {
   const S = w.size,
-    T = (TILE0 * S) / 4,
+    T = (w.tile0 * S) / 4,
     W = 4 * S;
   if (Math.abs(fx) < T + W || Math.abs(fz) < T + W) return null;
   const C = w._dc || (w._dc = { seen: new Set() });
@@ -423,7 +438,48 @@ export function wrapView(w, cx, cz, R) {
   }
   farTick(w, cx, cz, R);
   if (w.bigs) for (const o of w.bigs) bigTick(w, o, cx, cz, R, S);
+  if (w.tiles) for (const o of w.tiles) tileTick(w, o, cx, cz, S);
   return n;
+}
+// 內容鋪滿整格的物件（空域的雲：一個粒子系統、粒子的座標是原格的）：本體放在鏡頭所在的那一格，
+// 另外三份（幾何與材質共用）放在鏡頭那一側的鄰格，所以走到格子邊上前後左右都有
+function tileTick(w, o, cx, cz, S) {
+  if (!o.parent) return;
+  const dx = hop(cx - o.position.x, S, S / 2 + WRAP_HYS),
+    dz = hop(cz - o.position.z, S, S / 2 + WRAP_HYS);
+  if (dx || dz) {
+    o.position.x += dx;
+    o.position.z += dz;
+    o.updateMatrix();
+  }
+  const G = o.userData.tileGhosts || (o.userData.tileGhosts = []);
+  const sx = cx > o.position.x ? S : -S,
+    sz = cz > o.position.z ? S : -S;
+  for (let q = 1; q < 4; q++) {
+    let m = G[q - 1];
+    if (!m) {
+      m = G[q - 1] = o.clone();
+      m.userData = { far: true, noFade: true };
+      o.parent.add(m);
+    }
+    m.visible = o.visible;
+    m.position.set(o.position.x + (q & 1 ? sx : 0), o.position.y, o.position.z + (q & 2 ? sz : 0));
+    m.updateMatrix();
+  }
+}
+// 登記／拿掉鋪滿整格的物件（拿掉時位置歸零、複製的幾份移除）
+export function tileAdd(w, o) {
+  if (!w.torus || !o) return;
+  o.userData.tile = true;
+  if (!(w.tiles = w.tiles || []).includes(o)) w.tiles.push(o);
+}
+export function tileDrop(w, o) {
+  if (!o) return;
+  for (const m of o.userData.tileGhosts || []) if (m.parent) m.parent.remove(m);
+  o.userData.tileGhosts = null;
+  o.position.x = o.position.z = 0;
+  o.updateMatrix();
+  if (w && w.tiles) w.tiles = w.tiles.filter((q) => q !== o);
 }
 // 切不了的大型物件（很長的管線、整座結構）：本體在離鏡頭最近的那一份，看得到範圍內的其他幾份用複製的外觀補上
 // （幾何與材質共用；最多 3 份，用到才建）
@@ -548,6 +604,7 @@ function farTick(w, cx, cz, R) {
   }
 }
 export function disposeFar(w) {
+  for (const o of (w.tiles || []).slice()) tileDrop(w, o);
   if (w.bigs && w._big)
     for (const o of w.bigs) {
       const I = w._big.get(o);

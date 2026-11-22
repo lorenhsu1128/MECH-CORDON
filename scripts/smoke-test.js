@@ -11147,6 +11147,134 @@ async function testBoundary(browser, base) {
   await ctx.close();
 }
 
+// 無邊界地圖（docs/torus-map-design.md）：正式的做法（?tile=32：從第 32 格開始、參考點跟著玩家、每格搬）。
+// 其他測試都在第 0 格（參考點釘在格子中心），這一個確認座標很大時也正常、隔著接縫打得到、繞一圈東西都跟得上
+async function testTorus(browser, base) {
+  console.log('無邊界地圖：從第 32 格開始、隔著接縫交戰、繞一圈');
+  const { ctx, page } = await newPage(browser, 'torus');
+  await page.goto(base + '?test&tile=32');
+  await waitVisible(page, 'title');
+  for (const map of ['desert', 'grid']) {
+    await page.evaluate((map) => {
+      localStorage.setItem('mech_cordon_map', map);
+      localStorage.setItem('mech_cordon_variant', 'base');
+      const g = window.__game;
+      g.save.level = 1;
+      g.startMission();
+    }, map);
+    check(await waitVisible(page, 'hudWrap', 40000), `${map}（第 32 格）出擊`);
+    await wait(600);
+    await freezeLoop(page);
+    const r = await page.evaluate(() => {
+      const g = window.__game,
+        w = g.world,
+        S = w.size,
+        h = S / 2,
+        p = g.player;
+      const out = { tile: w.tile0, torus: w.torus, px: p.pos.x, fx: w.fx };
+      p.hp = p.maxHp = 1e7;
+      g.waves = [];
+      g.wavePend = null;
+      const put = (x, z) => {
+        x = w.ix(x);
+        z = w.iz(z);
+        p.pos.set(x, w.groundAt(x, z, 1e9) + 0.1, z);
+        p.vel.set(0, 0, 0);
+      };
+      // 接縫上找一段平坦、沒有障礙物的地方
+      let zc = 0;
+      for (let q = 0; q < 60; q++) {
+        const z = (q % 2 ? -1 : 1) * Math.ceil(q / 2) * 15;
+        const clear = !w.obstacles.some((o) => Math.abs(w.dx(o.x, h)) < 90 && Math.abs(w.dx(o.z, z)) < 45);
+        const hs = [-30, -20, -10, 0, 10, 20, 30, 45].map((d) => w.terrainHeight(h + d, z));
+        const a = new THREE.Vector3(w.ix(h - 30), hs[0] + 5, w.iz(z)),
+          b = new THREE.Vector3(a.x + 75, hs[7] + 5, a.z);
+        if (
+          clear &&
+          Math.max(...hs) - Math.min(...hs) < 2 &&
+          !w.isVoid(h, z) &&
+          w.waterDepth(h, z) < 1 &&
+          !w.losBlocked(a, b)
+        ) {
+          zc = z;
+          break;
+        }
+      }
+      put(h - 30, zc);
+      window.__pump(0.3);
+      // 敵人在接縫的另一邊（原格的座標在另一側），離玩家 75 m
+      const e = g.spawnType('mt', 1, 1);
+      e.updateAI = () => {};
+      const ex = p.pos.x + 75;
+      e.pos.set(ex, w.groundAt(ex, p.pos.z, 1e9) + 0.1, p.pos.z);
+      e.vel.set(0, 0, 0);
+      e.mesh.position.copy(e.pos);
+      e.hp = e.maxHp = 1e6;
+      e.iFrames = 0;
+      out.across = Math.sign(w.cx(p.pos.x)) !== Math.sign(w.cx(e.pos.x));
+      out.dist = e.pos.distanceTo(p.pos);
+      for (const q of g.projectiles) q.dead = true;
+      const hp0 = e.hp;
+      for (let i = 0; i < 120; i++) {
+        const W = p.weapons.rarm;
+        W.cd = 0;
+        W.mag = Math.max(W.mag, 5);
+        p.fire('rarm', e.center(), e);
+        window.__pump(1 / 60);
+      }
+      window.__pump(0.8);
+      out.dmg = hp0 - e.hp;
+      g.autoLock(p);
+      out.lock = p.lock === e || (g.lockPool ? g.lockPool(p).includes(e) : false);
+      // 掉落物放在旁邊，然後往 +x 繞一圈多
+      g.spawnPickup('ammo', new THREE.Vector3(p.pos.x - 60, p.pos.y + 0.6, p.pos.z + 40));
+      const pk = g.pickups[g.pickups.length - 1];
+      const x0 = p.pos.x,
+        pk0 = pk.pos.x,
+        e0 = e.pos.x;
+      let bad = 0;
+      for (let i = 0; i < S / 12 + 6; i++) {
+        const nx = p.pos.x + 12;
+        p.pos.set(nx, w.groundAt(nx, p.pos.z, 1e9) + 0.1, p.pos.z);
+        window.__pump(1 / 60);
+        if (!isFinite(p.pos.y)) bad++;
+      }
+      window.__pump(0.6);
+      const near = (v) => Math.max(Math.abs(v.x - p.pos.x), Math.abs(v.z - p.pos.z)) <= h + 30;
+      out.moved = p.pos.x - x0;
+      out.bad = bad;
+      out.pkHop = (pk.pos.x - pk0) / S; // 掉落物跟著搬了一格
+      out.eHop = (e.pos.x - e0) / S;
+      out.pkMesh = pk.mesh ? Math.abs(pk.mesh.position.x - pk.pos.x) < 1 : true;
+      out.obOut = w.obstacles.filter((o) => !near(o)).length;
+      out.prOut = (w.props || []).filter((q) => !q.dead && !near(q.pos)).length;
+      out.enOut = g.enemies.filter((q) => !q.dead && !near(q.pos)).length;
+      out.big = Math.abs(p.pos.x) > 8 * S;
+      g.clearMission();
+      g.state = 'title';
+      return out;
+    });
+    await thawLoop(page);
+    check(
+      r.torus && r.tile === 32 && r.big && r.px > 8 * 900,
+      `${map}：從第 ${r.tile} 格開始（玩家的座標 ${Math.round(r.px)}）`,
+    );
+    check(
+      r.across && r.dist < 80 && r.dmg > 0 && r.lock,
+      `${map}：隔著接縫的敵人（距離 ${r.dist.toFixed(0)} m）打得到（傷害 ${Math.round(r.dmg)}）、鎖得到（${r.lock}）`,
+    );
+    check(
+      r.moved > 950 && !r.bad && Math.abs(r.pkHop - 1) < 0.01 && Math.abs(r.eHop - 1) < 0.01 && r.pkMesh,
+      `${map}：往同一個方向走 ${Math.round(r.moved)} m（繞一圈多），掉落物（${r.pkHop.toFixed(2)} 格）與敵人（${r.eHop.toFixed(2)} 格）跟著搬了一格`,
+    );
+    check(
+      !r.obOut && !r.prOut && !r.enOut,
+      `${map}：障礙物、地圖物件、敵人都在玩家周圍的一格裡（沒跟到的 ${r.obOut}／${r.prOut}／${r.enOut}）`,
+    );
+  }
+  await ctx.close();
+}
+
 // 主線任務模式第 1 期（game/campaign.js）：區段鏈、地圖上的出口、轉場、轉場整備、紀錄點、狀態延續、失敗重試、結束
 async function testCampaign(browser, base) {
   console.log('主線出擊：區段、出口、轉場、整備、紀錄點、失敗重試、完成');
@@ -11712,13 +11840,25 @@ async function testCampaign2(browser, base) {
     bar: getComputedStyle(document.getElementById('bossBar')).display,
   }));
   check(elb.n === 1 && elb.bar !== 'none', '精英：具名 AC 與血條');
-  check(
-    el.zone[1] - el.zone[0] < el.lim * 1.2,
-    '精英：小型戰場（作戰區域 ' + Math.round(el.zone[1] - el.zone[0]) + ' m）',
-  );
+  // 無邊界的地圖（docs/torus-map-design.md）：沒有作戰區域的形狀（小型、狹長、分段開放都不作用）
+  const tor = () => page.evaluate(() => !!window.__game.world.torus && !window.__game.world.fenced);
+  if (await tor())
+    check(
+      Math.abs(el.zone[1] - el.zone[0] - el.lim * 2) < 1,
+      '精英：無邊界的地圖沒有小型戰場（整格 ' + Math.round(el.zone[1] - el.zone[0]) + ' m）',
+    );
+  else
+    check(
+      el.zone[1] - el.zone[0] < el.lim * 1.2,
+      '精英：小型戰場（作戰區域 ' + Math.round(el.zone[1] - el.zone[0]) + ' m）',
+    );
   // 作戰區域：狹長（超出被推回）、分段開放（擊破一半後擴大）
   const lg = await enter('battle', 1, { zone: 'long', zoneAxis: 0 });
-  check(lg.zone[1] - lg.zone[0] < lg.lim && lg.zone[3] - lg.zone[2] > lg.lim * 1.9, '狹長地帶的作戰區域');
+  const lgTor = await tor();
+  if (lgTor)
+    check(Math.abs(lg.zone[1] - lg.zone[0] - lg.lim * 2) < 1, '狹長地帶：無邊界的地圖沒有作用（整格都能走）');
+  else
+    check(lg.zone[1] - lg.zone[0] < lg.lim && lg.zone[3] - lg.zone[2] > lg.lim * 1.9, '狹長地帶的作戰區域');
   const oob = await page.evaluate(() => {
     const g = window.__game,
       w = g.world,
@@ -11744,7 +11884,8 @@ async function testCampaign2(browser, base) {
     g.state = 'play';
     return { x: p.pos.x, edge: w.zone[1] };
   });
-  check(oob.x <= oob.edge + 0.5, '狹長地帶：超出作戰區域被推回');
+  if (lgTor) check(oob.x > oob.edge + 5, '無邊界的地圖：走出原本的範圍不會被推回');
+  else check(oob.x <= oob.edge + 0.5, '狹長地帶：超出作戰區域被推回');
   await enter('battle', 1, { zone: 'staged', zoneAxis: 1 });
   const stg = await page.evaluate(() => {
     const g = window.__game,
@@ -11760,10 +11901,13 @@ async function testCampaign2(browser, base) {
     g.state = 'play';
     return { z0, z1: w.zone[3], lim: w.lim };
   });
-  check(
-    stg.z0 < stg.lim * 0.5 && stg.z1 > stg.lim - 1,
-    '分段開放：擊破一半後作戰區域擴大（' + Math.round(stg.z0) + ' → ' + Math.round(stg.z1) + '）',
-  );
+  if (await tor())
+    check(stg.z1 > stg.lim - 1, '分段開放：無邊界的地圖一開始就是整格（' + Math.round(stg.z1) + '）');
+  else
+    check(
+      stg.z0 < stg.lim * 0.5 && stg.z1 > stg.lim - 1,
+      '分段開放：擊破一半後作戰區域擴大（' + Math.round(stg.z0) + ' → ' + Math.round(stg.z1) + '）',
+    );
   // 主題變體與地標：每種都能生成；坑道網有岩頂、生成點不在岩壁上；夜間變暗
   const vs = await page.evaluate(() => {
     const g = window.__game;
@@ -15056,7 +15200,8 @@ async function testAiDodge(browser, base) {
       bst.n++;
       const mv = +(mx / SC).toFixed(1);
       if (other) bst.clips[key + '後'] = other;
-      if ((b.dgN || 0) > 0 && clip && (mv > 2 || clip === 'dgDuck')) bst.ok++;
+      // 位移依地圖中央的地形而定（台地、河道旁邊閃得比較短）：有閃避的片段、動了 1 m 以上就算
+      if ((b.dgN || 0) > 0 && clip && (mv > 1 || clip === 'dgDuck')) bst.ok++;
       else bst.bad.push(key + ':' + (b.dgN || 0) + '/' + clip + '/' + mv);
       bst.clips[key] = clip;
       b.takeDamage(1e9, 0, null, b.center());
@@ -26316,10 +26461,15 @@ async function testMpBosses(browser, url, only = null) {
       key === 'halberd'
         ? r.aim > 0 && r.line > 0
         : key === 'citadel'
-          ? r.cars === 4 && r.hidden > 0 && r.shown > 0
+          ? r.cars === 4 && (loop || r.hidden > 0) && r.shown > 0
           : key === 'mirage'
             ? r.cloak > 0 && r.holo === 3
             : r.split > 0 && r.subs === 3;
+    // 無邊界的地圖：鐵路繞一圈、沒有隧道（列車一直看得到）
+    const loop = await cli.evaluate(() => {
+      const c = window.__game.world && window.__game.world.corridor;
+      return !!(c && c.loop);
+    });
     const tLoop = Date.now();
     for (let i = 0; ; i++) {
       await host.evaluate(() => window.__game.loop());
@@ -26333,8 +26483,8 @@ async function testMpBosses(browser, url, only = null) {
       check(ok && r.aim > 0 && r.line > 0, `多人：客機看到電磁砲台的瞄準線（${r.aim}／${r.line}）`);
     else if (key === 'citadel')
       check(
-        ok && r.cars === 4 && r.hidden > 0 && r.shown > 0,
-        `多人：客機的武裝列車有 ${r.cars} 節車廂、在隧道裡隱藏（${r.hidden}）、開出後顯示（${r.shown}）`,
+        ok && r.cars === 4 && (loop || r.hidden > 0) && r.shown > 0,
+        `多人：客機的武裝列車有 ${r.cars} 節車廂、${loop ? '沒有隧道' : '在隧道裡隱藏'}（${r.hidden}）、開出後顯示（${r.shown}）`,
       );
     else if (key === 'mirage')
       check(
@@ -36263,6 +36413,7 @@ const STEPS = [
   ['testEvents', (c) => testEvents(c.browser, c.base)],
   ['testLevelDevices', (c) => testLevelDevices(c.browser, c.base)],
   ['testBoundary', (c) => testBoundary(c.browser, c.base)],
+  ['testTorus', (c) => testTorus(c.browser, c.base)], // 無邊界地圖的正式做法（?tile=32）
   ['testAir', (c) => testAir(c.browser, c.base)],
   ['testCampaign', (c) => testCampaign(c.browser, c.base)],
   ['testCampaign2', (c) => testCampaign2(c.browser, c.base)],

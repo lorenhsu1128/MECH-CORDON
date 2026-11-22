@@ -477,7 +477,8 @@ export class World {
     // 無邊界（上下左右相接，docs/torus-map-design.md）：主題改好才打開（torus）；自訂關卡與 opt.bounded（過場的地圖）照舊有邊界
     this.torus = !!this.theme.torus && !LV && !opt.bounded;
     this.fx = this.fz = 0; // 參考點：資料都搬到離它最近的那一份（wrap）
-    this.tile0 = TILE0; // 起始的那一格（一般 32；自動化測試 0：參考點釘在格子中心，game/torus.js）
+    // opt.pin（靶場、模擬器、實驗室：腳本直接寫原格的座標）＝和測試一樣釘在第 0 格
+    this.tile0 = opt.pin ? 0 : TILE0; // 起始的那一格（一般 32；自動化測試 0：參考點釘在格子中心，game/torus.js）
     this.size = this.torus
       ? this.theme.torusSize || (opt.big ? TORUS_BIG : TORUS_SIZE)
       : this.theme.size || (opt.big && !LV ? MAP_BIG : MAP_SIZE);
@@ -607,7 +608,7 @@ export class World {
         window.__torusLog.push(...big.map((o) => `[tileize] 切不了：${o.type} ${o.name || ''}`));
       buildFarTerrain(this, (ny, y, out) => this.terrainColor(ny, y, out));
       // 遊戲從第 TILE0 格開始（座標都很大：位置和向量分得出來，torus.js 的 deepWrap）；資料與網格先搬過去
-      this.wrap(TILE0 * this.size, TILE0 * this.size);
+      this.wrap(this.tile0 * this.size, this.tile0 * this.size);
       if (this.start) this.img(this.start); // 出生點（產生時算的原格座標）
       this.wrapSee(this.fx, this.fz);
       const wk = opt.weather === 'none' ? null : opt.weather || this.theme.weather;
@@ -706,6 +707,8 @@ export class World {
   }
   get zone() {
     if (!this.torus) return this._zone;
+    // Boss 把作戰區域縮小之後（tierShrinkZone）：一塊明確的矩形，照有邊界的規則夾住、推回、畫邊界線
+    if (this._arena) return this._arena;
     // 相接的地圖沒有作戰區域的邊：回傳參考點周圍的一格（「在區域裡隨機挑一點」「夾在區域裡」照舊可用）
     const Z = this._tz || (this._tz = [0, 0, 0, 0]),
       h = this.size / 2;
@@ -716,13 +719,18 @@ export class World {
     return Z;
   }
   set zone(z) {
-    this._zone = z;
+    if (this.torus) this._arena = z;
+    else this._zone = z;
+  }
+  // 有沒有作戰區域的邊（有邊界的地圖，或相接的地圖被 Boss 縮小之後）
+  get fenced() {
+    return !this.torus || !!this._arena;
   }
   // 這一段開始時的那一格（相接的地圖；固定不跟著玩家）：推進路線的「起點的另一側」、出口的位置用它
   get zoneHome() {
     if (!this.torus) return this.zoneGoal || this._zone;
     const h = this.size / 2,
-      c = TILE0 * this.size;
+      c = this.tile0 * this.size;
     return this._zh || (this._zh = [c - h, c + h, c - h, c + h]);
   }
   // 地形的顏色（依坡度與高度；遠景地形用，和 buildTerrainMesh 的規則相同、沒有每個面的明暗跳動）
@@ -817,7 +825,7 @@ export class World {
       if (vt) h = vt(x, z, h);
       return h;
     };
-    const HT = TOR ? (T.noSeam ? raw : seamBlend(raw, this.size, SEAM_B)) : null;
+    const HT = TOR ? (T.noSeam ? raw : seamBlend(raw, this.size, T.seamB || SEAM_B)) : null;
     for (let j = 0; j <= this.cells; j++)
       for (let i = 0; i <= this.cells; i++) {
         const x = i * this.cell - this.size / 2,
@@ -1689,17 +1697,22 @@ export class World {
       z = axis ? [-L, L, -L, L * 0.2] : [-L, L * 0.2, -L, L];
     }
     this.zoneShape = shape || 'full';
-    this.zone = z;
+    // 相接的地圖：狹長、小型、分段開放的形狀都沒有作用（沒有邊界）
+    this._zone = z;
+    this._arena = null;
     this.zoneGoal = null;
     this.zoneBase = null; // Boss 改版的作戰區域縮小前的範圍（game/boss-tier.js 的 tierShrinkZone）
   }
   expandZone() {
+    if (this.torus) return;
     const L = this.lim;
     this.zoneGoal = [-L, L, -L, L];
   }
   // 分段開放：作戰區域慢慢擴大（每秒 90 m）
   tickZone(dt) {
     if (!this.zoneGoal) return;
+    // 相接的地圖：從參考點周圍的一格開始縮成明確的矩形
+    if (this.torus && !this._arena) this._arena = this.zone.slice();
     let done = true;
     for (let i = 0; i < 4; i++) {
       const d = this.zoneGoal[i] - this.zone[i];
@@ -1711,13 +1724,13 @@ export class World {
     if (done) this.zoneGoal = null;
   }
   inZone(x, z, m = 0) {
-    if (this.torus) return true;
+    if (!this.fenced) return true;
     const Z = this.zone;
     return x > Z[0] + m && x < Z[1] - m && z > Z[2] + m && z < Z[3] - m;
   }
   // 超出作戰區域的距離（場內為 0）
   zoneExcess(x, z) {
-    if (this.torus) return 0;
+    if (!this.fenced) return 0;
     const Z = this.zone;
     return Math.max(0, Z[0] - x, x - Z[1], Z[2] - z, z - Z[3]);
   }
@@ -4141,6 +4154,11 @@ export class World {
         b = soft ? OOB_BUF : 0;
       x = clamp(x, Math.max(Z[0] - b, -this.limOut), Math.min(Z[1] + b, this.limOut));
       z = clamp(z, Math.max(Z[2] - b, -this.limOut), Math.min(Z[3] + b, this.limOut));
+    } else if (this._arena) {
+      const Z = this._arena,
+        b = soft ? OOB_BUF : 0;
+      x = clamp(x, Z[0] - b, Z[1] + b);
+      z = clamp(z, Z[2] - b, Z[3] + b);
     }
     // 回傳共用的陣列（每格呼叫很多次，不要每次配置；呼叫端一律立刻解構，不要留著它）
     const out = this._col || (this._col = [0, 0]);
@@ -4262,8 +4280,8 @@ export class World {
   }
   // 作戰區域的邊界線：貼在地面上的發光線（往外有一條淡出的光暈帶、流動的斜紋），只在機體附近亮起，
   // 離邊界越近越亮；不立牆（2026-10-28 使用者定案：拿掉大片的警示光幕，改成地面線＋HUD 提示 game/hud.js 的 zoneEdgeHud）
-  buildBoundary() {
-    if (this.torus) return;
+  buildBoundary(force) {
+    if (this.torus && !force) return;
     this.bLine = new THREE.Mesh(
       new THREE.BufferGeometry(),
       new THREE.ShaderMaterial({
@@ -4365,6 +4383,7 @@ export class World {
   }
   // 每格：機體的位置（p）決定亮的範圍；作戰區域改變（分段開放）時重建網格
   updateBoundary(p) {
+    if (!this.bLine && this._arena) this.buildBoundary(true); // 相接的地圖被 Boss 縮小之後才有邊界線
     const m = this.bLine;
     if (!m || !p) return;
     const key = this.zone.join(',');

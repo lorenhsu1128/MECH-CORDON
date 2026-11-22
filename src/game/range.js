@@ -202,7 +202,7 @@ Object.assign(Game.prototype, {
     this.worldSeed = seed;
     this.worldTheme = 'grid';
     this.styleRefresh();
-    this.world = new World(this.scene, 'grid', seed, cfg.lv, null, { zone: 'full' });
+    this.world = new World(this.scene, 'grid', seed, cfg.lv, null, { zone: 'full', pin: true }); // pin：腳本直接寫原格的座標（docs/torus-map-design.md）
     this.isClient = false;
     this.net.spawnReg = {};
     this.world.applyLight(this);

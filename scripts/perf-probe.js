@@ -267,7 +267,7 @@ async function sampling(ctx, page) {
         (s) => localStorage.setItem('mech_cordon_shader_warm2', s),
         fs.readFileSync(LEARN, 'utf8'),
       );
-    await page.goto(require('url').pathToFileURL(path.join(DIST, 'mech-cordon.html')).href + '?test');
+    await page.goto(require('url').pathToFileURL(path.join(DIST, 'mech-cordon.html')).href + '?test&tile=32');
     await page.waitForFunction(() => window.__game, null, { timeout: 60000 });
     await sleep(1500);
     await page.click('#btnSaves');

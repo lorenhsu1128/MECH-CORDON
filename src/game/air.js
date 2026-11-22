@@ -6,6 +6,7 @@
 import { curtainMat } from '../fx/energy.js';
 import { clamp, lerp, makeRng, rnd } from '../core/math.js';
 import { GpuFx } from '../fx/gpu.js';
+import { tileAdd, tileDrop } from '../world/torus.js';
 import { FXG, pickCell } from '../fx/atlas.js';
 import { DS } from '../core/scale.js';
 import { AIR } from '../data/air.js';
@@ -63,7 +64,10 @@ Object.assign(Game.prototype, {
     this.camera.far = 400 * DS;
     this.camera.updateProjectionMatrix();
     document.body.classList.remove('airMode');
-    if (this.airCloud) this.airCloud.clear();
+    if (this.airCloud) {
+      this.airCloud.clear();
+      if (this.airCloud.mesh) tileDrop(this.world, this.airCloud.mesh);
+    }
     this.airBanks = [];
     this.airMsl = [];
     this.airStickG = false;
@@ -232,8 +236,9 @@ Object.assign(Game.prototype, {
       lim = this.world.lim * 0.9;
     const a = rnd(0, Math.PI * 2),
       r = rnd(r0, r1);
-    const x = clamp(o.x + Math.cos(a) * r, -lim, lim),
-      z = clamp(o.z + Math.sin(a) * r, -lim, lim);
+    const W = this.world;
+    const x = W.torus ? o.x + Math.cos(a) * r : clamp(o.x + Math.cos(a) * r, -lim, lim),
+      z = W.torus ? o.z + Math.sin(a) * r : clamp(o.z + Math.sin(a) * r, -lim, lim);
     return new THREE.Vector3(x, Math.max(rnd(250, 520), P.airFloor(x, z) + 120), z);
   },
   // 生成一台（或一組）：位置 at；空域的處理在 spawnEnemy 的 airAdopt
@@ -357,7 +362,7 @@ Object.assign(Game.prototype, {
         r = rnd(600, k < 300 ? 2200 : 3200); // 附近沒有島時再往外找
       const x = pl.x + Math.cos(a) * r,
         z = pl.z + Math.sin(a) * r;
-      if (Math.abs(x) > W.lim * 0.9 || Math.abs(z) > W.lim * 0.9) continue;
+      if (W.outLim(x, z, W.lim * 0.1)) continue;
       const h = W.terrainHeight(x, z);
       if (h < (k < 300 ? 30 : 15)) continue;
       if (this.spawnType('flak', this.scaleHp, this.scaleDmg, new THREE.Vector3(x, h, z), 1)) put++;
@@ -814,6 +819,11 @@ Object.assign(Game.prototype, {
           });
         }
       }
+    // 無邊界的地圖：雲的粒子是原格的座標，整個系統跟著鏡頭換格、鄰格再畫三份（world/torus.js）
+    if (C.mesh) {
+      tileDrop(this.world, C.mesh);
+      tileAdd(this.world, C.mesh);
+    }
   },
   // 每格（water.js 的 waterTick）：雲的時鐘
   airCloudTick(dt) {
@@ -827,9 +837,11 @@ Object.assign(Game.prototype, {
   },
   // 在不在雲裡（第 3 期：雲裡不能鎖定）
   airInCloud(pos) {
+    const W = this.world;
     for (const b of this.airBanks || []) {
-      const dx = (pos.x - b.x) / b.r,
-        dz = (pos.z - b.z) / b.r,
+      // 雲團的位置是原格的座標：繞過接縫算
+      const dx = (W ? W.dx(pos.x, b.x) : pos.x - b.x) / b.r,
+        dz = (W ? W.dx(pos.z, b.z) : pos.z - b.z) / b.r,
         dy = (pos.y - b.y) / b.h;
       if (dx * dx + dz * dz + dy * dy < 1) return true;
     }

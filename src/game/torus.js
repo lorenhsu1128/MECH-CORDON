@@ -5,7 +5,7 @@
 //  遊戲從第 TILE0 格開始，真正的位置數值都很大，和速度、方向分得出來，不用逐一列舉欄位。
 //  座標不取餘數：玩家永遠不會被搬，被搬的都離參考點半張地圖以上（看不到、也超出互動距離）。
 // ============================================================
-import { TILE0, WRAP_HYS, deepCtx, deepWrap } from '../world/torus.js';
+import { WRAP_HYS, deepCtx, deepWrap } from '../world/torus.js';
 import { Game } from './game.js';
 
 // Game 上不進去掃的鍵：地圖與畫面的物件、存檔、連線、各個選單場景、特效（只在玩家附近）
@@ -19,7 +19,7 @@ Object.assign(Game.prototype, {
   // 參考點：自己的機體（過場、沒有機體時＝鏡頭注視的位置）
   wrapRef() {
     const p = this.player;
-    if (p && p.pos && !this.cine) return p.pos;
+    if (p && p.pos && !this.cine && !this.mapv) return p.pos; // 地圖預覽器：鏡頭自由移動，跟著鏡頭
     return this.camTarget || this.camera.position;
   },
   // 每格（renderMain 開頭）：地圖資料 → 遊戲端的東西 → 網格與遠景地形
@@ -34,8 +34,8 @@ Object.assign(Game.prototype, {
     };
     const F = this.wrapRef();
     let fx, fz;
-    if (!TILE0) {
-      // 自動化測試（第 0 格）：參考點釘在玩家所在那一格的中心，在那一格裡什麼都不搬（舊的測試直接寫原格的座標、
+    if (!w.tile0) {
+      // 自動化測試與靶場、模擬器、實驗室（第 0 格，world.tile0）：參考點釘在玩家所在那一格的中心，在那一格裡什麼都不搬（舊的測試直接寫原格的座標、
       // 把機體放到幾百公尺外）；玩家真的走出那一格才整格換。畫面照樣跟著玩家（下面的 wrapSee）
       fx = w.fx + hopTo(w.fx, F.x);
       fz = w.fz + hopTo(w.fz, F.z);
@@ -72,7 +72,7 @@ Object.assign(Game.prototype, {
       }
     }
     // 測試的第 0 格：參考點換格的那一格才搬（平常什麼都不動：測試把東西放在這一格的邊上也不會被搬到另一邊）
-    const sweep = !!TILE0 || fx !== w.fx || fz !== w.fz;
+    const sweep = !!w.tile0 || fx !== w.fx || fz !== w.fz;
     w.wrap(fx, fz);
     // 機體（玩家、敵人、友軍、載具）
     for (const L of [this.players, this.enemies, this.allies, this.vehicles])
@@ -176,7 +176,7 @@ Object.assign(Game.prototype, {
       for (const o of w.meshes) own.add(o);
     }
     for (const o of this.scene.children) {
-      if (own.has(o) || o.userData.far) continue;
+      if (own.has(o) || o.userData.far || o.userData.tile) continue;
       const p = o.position;
       if (Math.abs(p.x) < C.T || Math.abs(p.z) < C.T) continue;
       const dx = hopTo(p.x, fx),

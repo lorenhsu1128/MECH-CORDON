@@ -564,8 +564,8 @@ export class MechEntity {
   }
   // 超出作戰區域（±lim）：往場內推回；最外到 limOut（collide 的 soft）。oob＝超出的距離
   oobPush(w, dt) {
-    if (w.torus) {
-      this.oob = 0; // 相接的地圖沒有作戰區域的邊
+    if (!w.fenced) {
+      this.oob = 0; // 相接的地圖沒有作戰區域的邊（Boss 把區域縮小之後才有）
       return;
     }
     let ex = 0;

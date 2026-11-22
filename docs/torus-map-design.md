@@ -94,6 +94,53 @@
 7. **自訂關卡與編輯器、作戰室的戰略桌、地圖預覽器、過場動畫的地圖**。
 8. **收尾**：全部打開、拿掉邊界的舊程式、冒煙測試、卡頓檢查、文件。
 
-## 3. 實作紀錄
+## 3. 實作紀錄（2026-11-22）
 
-（各期完成後寫在這裡）
+### 3.1 程式位置
+
+- `src/world/torus.js`（純函式）：常數（`TORUS_SIZE` 960、`TORUS_BIG` 1200、`TORUS_K` 124、`SEAM_B`、`WRAP_HYS`、`TILE_N`、`TILE0`）、
+  `seamBlend`、`splitMeshCells`／`splitInstanced`／`tileize`、`wrapData`、`deepWrap`／`deepCtx`、`wrapView`（＋遠景地形 `buildFarTerrain`／
+  `farTick`、切不了的大型物件 `bigTick`、鋪滿整格的物件 `tileAdd`／`tileDrop`）、`disposeFar`。
+- `World`：`torus`、`fx`／`fz`、`tile0`、`cx`／`ix`／`iz`／`img`／`dx`／`offX`／`offZ`、`clampX`／`clampZ`／`outLim`、`pnoise`（週期雜訊，
+  `core/math.js` 的 `makeNoiseP`）、`wrap`／`wrapSee`、`zone`（存取子：參考點周圍的一格）、`zoneHome`（這一段開始時的那一格）、
+  `corridorTorus`／`corridorPath`、`terrainColor`、`bigs`／`tiles`／`far`。
+- `src/game/torus.js`（Game 的 mixin）：`wrapRef`、`wrapTick`（`renderMain` 開頭）、`wrapDeep`、`wrapArr`。
+- `MechEntity.shiftBy`／`wrapSelf`（`updateAI` 開頭）。
+
+### 3.2 各主題怎麼接
+
+| 主題 | 做法 |
+|---|---|
+| 模擬訓練場、貨運集散場、礦坑、荒野、冰原、沙丘、宇宙港、Lattice-9、研究特區 | 自然地形＋接縫的交叉淡化（預設） |
+| 淹沒城區 | 街區間距調成整除地圖邊長（`w.city.cell`）、塌陷區用 `pnoise` |
+| 火山熔爐帶 | 熔岩河用 `pnoise`；熔岩面是 `uniform`（跟著鏡頭以整格移動） |
+| 研究特區、礦坑的坑道網 | 岩頂三格寬、格子整除邊長、起伏用 `pnoise`；開洞的格子用原格編號、在每一份都開 |
+| 階梯水壩 | 壩體剛好橫跨一格（每段最長 120 m）；下游在接縫和上游的水庫交叉淡化成湖岸（壩 → 河 → 湖 → 壩） |
+| 洋上都市、高空軌道 | `noSeam`；到街區的距離繞過接縫算、橋的候選包含搬了一格的街區（橋可以跨過接縫） |
+| 方舟 | `noSeam`；沿艦長方向接回自己（各層高度不同的地方就是一道牆），兩舷外的虛空＝和旁邊那一份之間的深溝；沒有地圖外的船身 |
+| 空域 | 一樣 6 km 一格、接縫兩側各 600 m 淡化（`seamB`）；雲的粒子系統跟著鏡頭換格、鄰格再畫三份（`tileAdd`） |
+| 公路／鐵路 | 沿軸一圈＝S、45° 一圈＝S√2；彎度是週期的 S 形；沒有隧道口。運輸車輛從離玩家最遠的那一段出發繞一圈；武裝列車不掉頭、不躲隧道 |
+
+### 3.3 遊戲規則
+
+- 沒有作戰區域的邊：`collide` 不夾住、`oobPush` 不推回、沒有邊界線與 HUD 的邊界提示；主線的狹長／小型／分段開放的作戰區域在相接的地圖
+  沒有作用（`setZone` 的形狀不影響 `zone`）；Boss 改版的「作戰區域縮小」同樣沒有作用。
+- 增援從玩家周圍約 350 m（看不清楚的距離）進場；出生點在參考點周圍那一格的任意位置。
+- 主線的出口與推進路線用 `zoneHome`（這一段開始時的那一格）：出口照舊在起點的另一側。
+- Boss：推土要塞沒有邊界可以撞（只會撞上打不壞的障礙物）、高速突擊機不用折返、電磁砲台的「最遠的角落」是那一格的角落。
+
+### 3.4 自動化測試
+
+- `?test` 從第 0 格開始、**參考點釘在玩家所在那一格的中心**（平常什麼都不搬）：舊的測試直接寫原格的座標、把機體放到幾百公尺外，
+  行為和以前一樣；玩家真的走出那一格才整格換。`?tile=32`（或正式遊戲）才是「參考點跟著玩家、每格搬」的做法。
+- 直接呼叫 `g.loop()` 會多出一條 `requestAnimationFrame` 的鏈（每格跑好幾次、頁面卡住）：一律 `freezeLoop` 之後用 `window.__pump`。
+- `testMaps`：相接的地圖檢查接縫兩側的高度、沒有邊界線、遠景地形、往同一個方向走超過一格。`testBoundary`：無邊界的版本。
+- 工具：`node scripts/torus-probe.js <主題> [tile] [視角]`（走過接縫與角落、繞兩圈、截圖 `test-results/torus/`）、
+  `node scripts/torus-scan.js <主題> [秒] [等級] [tile]`（自動實戰，列出離參考點半格以上、沒跟著搬的位置資料）。
+
+### 3.5 還沒做／已知的限制
+
+- 自訂關卡與關卡編輯器、過場動畫的地圖照舊有邊界（`opt.level`、`opt.bounded`）。
+- Lattice-9 的平台格子沒有跨過接縫（接縫上有一條沒有平台的帶子）。
+- 多人：玩家彼此離超過半張地圖時，遠處的特效可能畫在另一份。
+- 接縫附近產生時的重疊檢查不繞過接縫：偶爾有兩個物件隔著接縫靠得比較近。

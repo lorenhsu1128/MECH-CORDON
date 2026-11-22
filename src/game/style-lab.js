@@ -105,7 +105,7 @@ Object.assign(Game.prototype, {
     this.labClearWorld();
     this.styleStructural(L.P);
     this.stylePipe.rebase();
-    this.world = new World(this.scene, L.theme, L.seed, 3);
+    this.world = new World(this.scene, L.theme, L.seed, 3, null, { pin: true }); // pin：展示的腳本直接寫原格的座標
     const T = this.world.theme;
     this.worldSeed = L.seed;
     this.worldTheme = L.theme;
