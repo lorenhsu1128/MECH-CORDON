@@ -2727,6 +2727,7 @@ export class MechEntity {
     }
     SFX.explode(this.isBoss ? 'huge' : true, this.isPlayer ? null : c);
     SFX.wreck(this.isPlayer ? null : c);
+    if (this.isPlayer) SFX.aiPlay('self_destroyed', 0.9, 1, 0.02, 0.5); // 自機被擊破：駕駛艙警報與系統停止
     g.rumbleAt(
       c,
       this.isBoss ? 1.0 : 0.8,
@@ -2821,7 +2822,8 @@ export class MechEntity {
     this.comboHits = 0;
     this.initWeapons();
     g.fx.ring(this.center(), 6, 0x7ee081);
-    SFX.play('door', 0.7, 1.2, 0.05, 0.03, this.isPlayer ? null : this.center());
+    if (!SFX.aiPlay('revive_done', 0.8, 1, 0.05, 0.03, this.isPlayer ? null : this.center()))
+      SFX.play('door', 0.7, 1.2, 0.05, 0.03, this.isPlayer ? null : this.center());
     if (this.isPlayer) g.renderWeaponHud(true);
   }
   cleanup() {

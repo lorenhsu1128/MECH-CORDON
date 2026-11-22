@@ -74,7 +74,10 @@ Object.assign(Game.prototype, {
       p.lock = null;
     this.gazeLockTick(p); // 看哪鎖哪（game/gaze.js）
     if (this.chase || this.topAim()) return this.chaseAutoLock(p);
-    if (!p.lock) p.lock = this.lockCands(p).find((e) => !e.isTrap) || null; // 陷阱的弱點只用切換鎖定或點選
+    if (!p.lock) {
+      p.lock = this.lockCands(p).find((e) => !e.isTrap) || null; // 陷阱的弱點只用切換鎖定或點選
+      if (p.lock && p === this.player) SFX.aiPlay('lock_acquire', 0.35, 1, 0.03, 0.15, null, 'ui');
+    }
   },
   // 切換鍵：依 lockCands 的順序換下一個
   cycleLock() {
