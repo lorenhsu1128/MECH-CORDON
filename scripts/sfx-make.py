@@ -248,8 +248,16 @@ def cmd_score():
         scores[it['key']] = res
         picks[it['key']] = [r['f'] for r in res[: it['var']]]
         status(f"第 {ph} 期評分 {k + 1}／{len(its)}（{it['key']}：最高 {res[0]['clap']:.3f}）")
-    json.dump(scores, open(SCORES, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
-    json.dump(picks, open(PICKS, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+    save_json(SCORES, scores)
+    save_json(PICKS, picks)
+
+
+def save_json(path, obj):
+    """先寫暫存檔再改名（直接覆寫時被中斷或同時寫，會留下殘缺的 JSON）"""
+    tmp = path + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as f:
+        json.dump(obj, f, ensure_ascii=False, indent=1)
+    os.replace(tmp, path)
 
 
 _LU = {}

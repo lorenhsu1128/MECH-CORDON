@@ -235,15 +235,18 @@ export const SFX = {
     s.onerror = () => {};
     document.head.appendChild(s);
   },
-  // 自製的 AI 音效（src/assets/sfx3/ → lib/<file>，window.<name>）：遊戲啟動後載入，載到之前 '@' 退回舊素材
-  aiPacks: {},
-  loadAiPack(file, name) {
-    if (this.aiPacks[file] || typeof document === 'undefined') return;
-    this.aiPacks[file] = 1;
+  // 每種敵人、Boss、機獸各自的 AI 音效（lib/sfx3/<群組>.js，scripts/build.js 的 writeSfx3）：那個敵人生成時才載入與解碼
+  aiGroups: null, // 共用包的 '@groups'：有哪些群組
+  aiGroupSt: {},
+  needGroup(g) {
+    if (!g || this.aiGroupSt[g] || typeof document === 'undefined') return;
+    // 共用包還沒載入（不知道有哪些群組）：先排隊，載入後再處理（否則會去要不存在的檔案）
+    if (!this.aiGroups) return void (this.aiGroupQ = this.aiGroupQ || new Set()).add(g);
+    if (!this.aiGroups.includes(g)) return;
+    this.aiGroupSt[g] = 1;
     const go = () => {
-      const P = window[name];
-      if (!P) return;
-      this.aiV = {};
+      const P = window.MECH_CORDON_SFX3G && window.MECH_CORDON_SFX3G[g];
+      if (!P || !this.ctx) return;
       for (const k of Object.keys(P))
         this.ctx.decodeAudioData(
           this.b64(P[k]),
@@ -253,6 +256,39 @@ export const SFX = {
           },
           () => {},
         );
+      delete window.MECH_CORDON_SFX3G[g]; // 解碼後不必留著 base64
+    };
+    const s = document.createElement('script');
+    s.src = 'lib/sfx3/' + g + '.js';
+    s.onload = go;
+    s.onerror = () => {};
+    document.head.appendChild(s);
+  },
+  // 自製的 AI 音效（src/assets/sfx3/ → lib/<file>，window.<name>）：遊戲啟動後載入，載到之前 '@' 退回舊素材
+  aiPacks: {},
+  loadAiPack(file, name) {
+    if (this.aiPacks[file] || typeof document === 'undefined') return;
+    this.aiPacks[file] = 1;
+    const go = () => {
+      const P = window[name];
+      if (!P) return;
+      this.aiV = {};
+      if (P['@groups']) {
+        this.aiGroups = P['@groups'];
+        for (const g of this.aiGroupQ || []) this.needGroup(g);
+        this.aiGroupQ = null;
+      }
+      for (const k of Object.keys(P)) {
+        if (k[0] === '@') continue;
+        this.ctx.decodeAudioData(
+          this.b64(P[k]),
+          (b) => {
+            this.buf[k] = b;
+            this.aiV = {};
+          },
+          () => {},
+        );
+      }
     };
     if (window[name]) return go();
     const s = document.createElement('script');

@@ -261,6 +261,28 @@ export class MechEntity {
       stuck: 0,
     };
     this.specialInit(); // 特殊敵人的附加模型與狀態（mech-special.js）
+    this.sfxNeed();
+  }
+  // 這台機體自己的 AI 音效群組（lib/sfx3/<群組>.js）：生成時載入（audio.js 的 needGroup，沒有這個群組就略過）
+  sfxNeed() {
+    if (this.isPlayer || !this.game) return;
+    const t = this.etype;
+    if (t) {
+      SFX.needGroup('e_' + (t === 'mt_dome' ? 'dome' : t.replace(/_/g, '')));
+      SFX.needGroup('foe_' + t);
+    }
+    const n = (this.name || '').toLowerCase().match(/[a-z]+/);
+    if (n) {
+      SFX.needGroup('ace_' + n[0]);
+      SFX.needGroup('ac_' + n[0]);
+    }
+    if (this.ai) SFX.needGroup('ac_' + this.ai);
+    // Boss 與機獸：boss3Key 要等 Boss 的資料設定好（下一格再看）
+    if (this.isBoss || this.opts.bossKind || this.opts.parent)
+      setTimeout(() => {
+        const pre = this.bossSndPre && this.bossSndPre();
+        if (pre) SFX.needGroup(pre);
+      }, 0);
   }
   // 整台機體的前後傾（leanX 正值＝往前加速）：機甲與載具的正面都是 −Z，前傾是負的 x 旋轉；
   // 人形機甲幅度減小（上身的前傾在 animateMech）；坦克相反：加速時車頭微微抬起、煞車時往前點頭

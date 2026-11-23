@@ -168,6 +168,45 @@ function writeAudio(dir, file, name, title) {
     `// ${title}，由 scripts/build.js 產生\n` + credits + `window.${name} = ${JSON.stringify(data)};\n`,
   );
 }
+// 自製的 AI 音效（scripts/sfx-make.py，docs/sfx-gen-design.md）：audio.js 的 '@鍵'。
+// 共用的（武器、機體、介面、地圖、Boss 共用的提示訊號…）→ lib/sfx3-assets.js（遊戲啟動後載入）；
+// 每種敵人、Boss、機獸、專屬 AC 各自的（e_／foe_／ac_／ace_／boss_<種類>／beast_<獸>）→ lib/sfx3/<群組>.js，
+// 那個敵人生成時才載入（MechEntity 的 sfxNeed → SFX.needGroup）。群組清單放在共用包的 '@groups'
+function sfx3Group(k) {
+  if (/^boss_common_/.test(k)) return null;
+  const m = /^(e|foe|ac|ace|boss|beast)_([a-z0-9]+)_/.exec(k);
+  return m ? m[1] + '_' + m[2] : null;
+}
+function writeSfx3() {
+  const dir = path.join(SRC, 'assets', 'sfx3');
+  if (!fs.existsSync(dir)) return;
+  const core = {},
+    groups = {};
+  for (const f of fs.readdirSync(dir).sort()) {
+    if (!f.endsWith('.mp3')) continue;
+    const k = f.replace(/\.mp3$/, '');
+    const b = fs.readFileSync(path.join(dir, f)).toString('base64');
+    const g = sfx3Group(k);
+    if (g) (groups[g] = groups[g] || {})[k] = b;
+    else core[k] = b;
+  }
+  core['@groups'] = Object.keys(groups);
+  const head =
+    '// 自製的 AI 音效（src/assets/sfx3/，MOSS-SoundEffect v2.0 產生），由 scripts/build.js 產生\n';
+  fs.writeFileSync(
+    path.join(LIB, 'sfx3-assets.js'),
+    head + `window.MECH_CORDON_SFX3 = ${JSON.stringify(core)};\n`,
+  );
+  const gd = path.join(LIB, 'sfx3');
+  fs.rmSync(gd, { recursive: true, force: true });
+  fs.mkdirSync(gd, { recursive: true });
+  for (const g in groups)
+    fs.writeFileSync(
+      path.join(gd, g + '.js'),
+      head +
+        `(window.MECH_CORDON_SFX3G = window.MECH_CORDON_SFX3G || {})[${JSON.stringify(g)}] = ${JSON.stringify(groups[g])};\n`,
+    );
+}
 function writeSounds() {
   writeAudio(
     path.join(SRC, 'assets', 'sfx2'),
@@ -175,13 +214,7 @@ function writeSounds() {
     'MECH_CORDON_SFX2',
     '分層的音效素材（src/assets/sfx2/）',
   );
-  // 自製的 AI 音效（scripts/sfx-make.py，docs/sfx-gen-design.md）：audio.js 的 '@鍵'
-  writeAudio(
-    path.join(SRC, 'assets', 'sfx3'),
-    'sfx3-assets.js',
-    'MECH_CORDON_SFX3',
-    '自製的 AI 音效（src/assets/sfx3/，MOSS-SoundEffect v2.0 產生）',
-  );
+  writeSfx3();
   writeAudio(
     path.join(SRC, 'assets', 'bgm'),
     'bgm-assets.js',
