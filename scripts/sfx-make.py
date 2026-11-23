@@ -200,8 +200,26 @@ def cmd_list():
     print(f'第 {ph} 期：{len(its)} 項、產生 {n} 次')
 
 
+def gen_lock():
+    """同時只跑一份產生（兩份一起跑會吃掉兩倍的記憶體）：tools/sfxgen/gen.lock 記程序編號，那個程序還活著就不啟動"""
+    f = os.path.join(L.TOOLS, 'gen.lock')
+    try:
+        pid = int(open(f).read().strip())
+        if pid != os.getpid():
+            import psutil
+
+            if psutil.pid_exists(pid) and 'python' in psutil.Process(pid).name().lower():
+                print(f'已經有另一份產生在跑（程序 {pid}），這一份不啟動', flush=True)
+                sys.exit(3)
+    except (OSError, ValueError):
+        pass
+    open(f, 'w').write(str(os.getpid()))
+
+
 def cmd_gen():
     import torch
+
+    gen_lock()
 
     ph, its = sel()
     want = {i['key']: n_cand(i) for i in its}
