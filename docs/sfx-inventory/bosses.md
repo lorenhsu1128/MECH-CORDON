@@ -248,8 +248,8 @@
 | `boss_seraphim_deploy` | 浮游砲展開 | 沒有聲音（只有 SFX.alert） | entities/mech-boss2.js:283、:291 | 2 | 1 | Swarm of remote gun pods launching, multiple whooshing drones and electronic chirps |
 | `boss_seraphim_bit_loop` | 浮游砲飛行（每顆的循環） | 沒有聲音 | entities/mech-boss2.js:1451（bitAI） | 3 | 1 | Seamless loop of a small hovering drone, high-pitched whir with a light energy hum |
 | `boss_seraphim_bit_fire` | 浮游砲開火 | SFX.play('laser', 0.5, 1.3) | entities/mech-boss2.js:1499 | 0.6 | 3 | Small remote drone firing a quick laser shot, sharp sci-fi zap |
-| `boss_seraphim_bit_down` | 浮游砲被 EMP 打落墜毀 | 沒有聲音（die 的一般爆炸） | entities/mech-boss2.js:1460 | 1 | 2 | Small drone sparking and crashing, fizzling electronics and a light metal clatter |
-| `boss_seraphim_recall` | 回收充能（本體防禦下降） | 沒有聲音（只有訊息） | entities/mech-boss2.js:312 | 2 | 1 | Drones docking back into a mech, rapid magnetic clicks and recharge hum |
+| `boss_seraphim_bit_down` | 浮游砲被 EMP 打落墜毀 | 沒有聲音（die 的一般爆炸） | entities/mech-boss2.js:1460 | 1 | 2 | A small drone crashing, fizzling electrical sparks and a light metal clatter on the ground |
+| `boss_seraphim_recall` | 回收充能（本體防禦下降） | 沒有聲音（只有訊息） | entities/mech-boss2.js:312 | 2 | 1 | Several small metal objects snapping into place with quick magnetic clicks, then a rising electric recharge hum |
 | `boss_seraphim_death` | 擊破（大爆炸、殘骸） | SFX.explode('huge')＋SFX.wreck＋SFX.stinger(true)（配樂的重音） | entities/mech-entity.js:2722、:2723、:2762 | 5 | 2 | Colossal funnel-bit command mech destroyed, chain of internal explosions, collapsing steel and a long rumbling tail |
 
 ### HELIOS 重武裝母艦直升機（kind heli）
@@ -278,7 +278,7 @@
 | `boss_helios_overload` | 迫降後週期性的系統過載（硬直） | SFX.alert | entities/mech-entity.js:4355 | 1.5 | 1 | Damaged aircraft systems overloading, electrical sparking and alarm beeps |
 | `boss_helios_gun` | 機槍掃射 | SFX.shot('bullet') | entities/mech-entity.js:4363、:883 | 1.5 | 2 | Door-mounted heavy machine gun firing in long bursts from a helicopter |
 | `boss_helios_rockets` | MS-8 導彈／火箭齊射 | SFX.shot('missile') | entities/mech-entity.js:1074 | 2 | 2 | Rocket pods firing a rapid salvo from a gunship, whooshing rockets |
-| `boss_helios_drop` | 大招「投放空降兵」 | 沒有聲音 | data/boss-kit.js:161（tierDrop，game/boss-tier.js:94） | 2 | 1 | Troops rappelling from a helicopter, cargo hatch opening and cables whirring |
+| `boss_helios_drop` | 大招「投放空降兵」 | 沒有聲音 | data/boss-kit.js:161（tierDrop，game/boss-tier.js:94） | 2 | 1 | A helicopter cargo hatch opening with a hydraulic hiss, steel cables whirring out over loud rotor blades |
 | `boss_helios_death` | 擊破（大爆炸、殘骸） | SFX.explode('huge')＋SFX.wreck＋SFX.stinger(true)（配樂的重音） | entities/mech-entity.js:2722、:2723、:2762 | 5 | 2 | Colossal heavy gunship helicopter destroyed, chain of internal explosions, collapsing steel and a long rumbling tail |
 
 ### CINDER 熔爐清掃機（kind furnace）
@@ -334,7 +334,7 @@
 | `boss_bastille_guard_hit` | 防禦中被打中（護盾亮起） | 沒有聲音（只有一般的命中音） | entities/mech-dodge.js:757 | 0.5 | 3 | Bullets impacting a hexagonal energy shield, crisp energy deflection crackle |
 | `boss_bastille_cannon` | 砲台（部位）三發一組的砲擊 | 發射 SFX.shot('grenade')（game/support.js:165）＋落地 SFX.explode（entities/projectile.js:303）；預警圈無聲 | entities/mech-boss.js:184～204（partAI cannon） | 2 | 3 | Heavy artillery cannon firing a three-round salvo, deep booms and whistling shells |
 | `boss_bastille_barrage` | 砲擊彈幕（8 發） | 發射 SFX.shot('grenade')（game/support.js:165）＋落地 SFX.explode（entities/projectile.js:303）；預警圈無聲；開始時 SFX.alert | entities/mech-boss.js:557～583 | 3 | 2 | Massive artillery barrage, rapid thunderous launches and incoming shell whistles |
-| `boss_bastille_minelayer` | 補布雷無人機 | 沒有聲音 | entities/mech-boss.js:586 | 1.5 | 1 | Small drone launching from a bunker, mechanical catapult and buzzing rotor |
+| `boss_bastille_minelayer` | 補布雷無人機 | 沒有聲音 | entities/mech-boss.js:586 | 1.5 | 1 | A mechanical catapult launching with a sharp clank, then a small drone propeller buzzing away |
 | `boss_bastille_unarmored` | 砲台全滅、指揮所裝甲解除 | 沒有聲音（只有訊息） | entities/mech-boss.js:556 | 2 | 1 | Bunker armor plating releasing, hydraulic hiss and heavy plates dropping |
 | `boss_bastille_death` | 擊破（大爆炸、殘骸） | SFX.explode('huge')＋SFX.wreck＋SFX.stinger(true)（配樂的重音） | entities/mech-entity.js:2722、:2723、:2762 | 5 | 2 | Colossal fortified artillery emplacement destroyed, chain of internal explosions, collapsing steel and a long rumbling tail |
 
@@ -391,7 +391,7 @@
 | `boss_duo_brant_dodge` | 閃避（QB 側閃／後撤／跳躍，機甲型連續閃避） | SFX.qb（一般的 QB 音；閃避本身沒有額外聲音） | entities/mech-entity.js:3083、entities/mech-dodge.js:299 | 0.8 | 3 | Quick evasive thruster burst of a heavy ace mech, sharp jet blast with a mechanical whoosh |
 | `boss_duo_kestrel_missile` | KESTREL 的肩上飛彈 | SFX.shot('missile') | entities/mech-entity.js:1074 | 1.5 | 2 | Quick shoulder missile volley, crisp launch thumps and hissing trails |
 | `boss_duo_brant_grenade` | BRANT 的肩上榴彈 | SFX.shot('grenade') | entities/mech-entity.js:979 | 1.5 | 2 | Heavy shoulder grenade launcher thump with whistling arc |
-| `boss_duo_rescue` | 一台失衡時另一台來救 | 沒有聲音 | game/bosses2.js（duo 的救援） | 1.5 | 1 | Mech boosting in to cover its partner, urgent thruster roar and radio chirp |
+| `boss_duo_rescue` | 一台失衡時另一台來救 | 沒有聲音 | game/bosses2.js（duo 的救援） | 1.5 | 1 | A powerful jet thruster blast rushing past, urgent roaring whoosh with a heavy metal clank at the end |
 | `boss_duo_rage` | 一台倒下、另一台狂暴 | 沒有聲音（只有訊息） | game/bosses.js:197～206 | 2.5 | 1 | Surviving mech goes berserk, furious reactor surge and engine scream |
 | `boss_duo_final` | 最終型態「連攜齊射」 | 各武器的 SFX.shot（entities/mech-entity.js:883 實彈／:927 砲彈／:979 榴彈／:1074 導彈／:1264 雷射） | entities/mech-boss3.js:63 | 2.5 | 2 | Two mechs firing in perfect sync, layered heavy gunfire and missile launches |
 | `boss_duo_death` | 擊破（大爆炸、殘骸） | SFX.explode('huge')＋SFX.wreck＋SFX.stinger(true)（配樂的重音） | entities/mech-entity.js:2722、:2723、:2762 | 5 | 2 | Colossal twin ace mech squad destroyed, chain of internal explosions, collapsing steel and a long rumbling tail |
@@ -446,7 +446,7 @@
 | `boss_arachne_reflect` | 打回去（玩家打掉金色彈體、飛回去） | SFX.play('shield', 0.9, 1.4) | entities/mech-boss-tier.js:821 | 0.8 | 2 | Projectile deflected back toward a multi-legged spider fortress, bright energy ricochet ping with a whoosh |
 | `boss_arachne_guard_up` | 防禦反應（架起六角護盾） | 沒有聲音 | entities/mech-dodge.js:479 | 1 | 1 | A spider fortress raises a hexagonal energy barrier, electric hum swelling into a shield shimmer |
 | `boss_arachne_guard_hit` | 防禦中被打中（護盾亮起） | 沒有聲音（只有一般的命中音） | entities/mech-dodge.js:757 | 0.5 | 3 | Bullets impacting a hexagonal energy shield, crisp energy deflection crackle |
-| `boss_arachne_leap` | 躍起（準備跳躍閃避） | 沒有聲音（只有 SFX.alert） | entities/mech-boss.js:420～425 | 1.5 | 1 | Giant spider machine launching into the air, hydraulic legs firing and thrusters roaring |
+| `boss_arachne_leap` | 躍起（準備跳躍閃避） | 沒有聲音（只有 SFX.alert） | entities/mech-boss.js:420～425 | 1.5 | 1 | A giant mechanical spider jumping, hydraulic pistons firing with a loud hiss and jet thrusters roaring upward |
 | `boss_arachne_slam` | 落地砸地（衝擊波、破綻） | 預警無聲；擴散開始時 SFX.explode(true)（fx/effects.js:1817） | entities/mech-boss.js:430 | 2.5 | 2 | Spider fortress landing with an earth-shaking slam, shockwave boom and debris |
 | `boss_arachne_leg_break` | 腳部關節被打斷 | SFX.explode(true)＋SFX.wreck（部位擊破） | entities/mech-entity.js:2722 | 1.5 | 3 | Mechanical leg joint snapping off, sharp explosion and screeching metal |
 | `boss_arachne_collapse` | 斷三條腿倒下（核心暴露） | 沒有聲音（fx 無聲） | entities/mech-boss.js:405～408 | 3 | 1 | Giant spider machine collapsing onto its belly, crashing hull and groaning metal |
@@ -476,7 +476,7 @@
 | `boss_judgement_guard_hit` | 防禦中被打中（護盾亮起） | 沒有聲音（只有一般的命中音） | entities/mech-dodge.js:757 | 0.5 | 3 | Bullets impacting a hexagonal energy shield, crisp energy deflection crackle |
 | `boss_judgement_beam_start` | 衛星砲照射開始 | SFX.play('charge', 1, 0.4)＋SFX.alert | entities/mech-boss2.js:763、:764 | 2 | 1 | Orbital strike beam locking on, sky-splitting rising tone and crackle |
 | `boss_judgement_beam_loop` | 追蹤光柱（越追越快，循環） | 沒有聲音 | entities/mech-boss2.js:770～795 | 5 | 1 | Seamless loop of a searing orbital laser pillar, roaring plasma column and crackling ground |
-| `boss_judgement_cooldown` | 導引鏡冷卻（破綻） | 沒有聲音（只有訊息） | entities/mech-boss2.js:797、:803 | 2 | 1 | Large mirror array cooling down, venting steam and ticking metal |
+| `boss_judgement_cooldown` | 導引鏡冷卻（破綻） | 沒有聲音（只有訊息） | entities/mech-boss2.js:797、:803 | 2 | 1 | Hot metal machinery cooling down, steam venting with a long hiss and metal ticking and pinging |
 | `boss_judgement_grid_warn` | 格子砲擊預警 | 沒有聲音（只有 SFX.alert） | entities/mech-boss2.js:822、:835 | 1.5 | 1 | Targeting grid projected onto the ground, electronic sweep and rising tones |
 | `boss_judgement_grid_strike` | 格子砲擊落下 | SFX.play('laserBig', 0.9, 0.6) | entities/mech-boss2.js:840 | 2 | 2 | Multiple orbital beams striking the ground at once, thunderous energy impacts |
 | `boss_judgement_death` | 擊破（大爆炸、殘骸） | SFX.explode('huge')＋SFX.wreck＋SFX.stinger(true)（配樂的重音） | entities/mech-entity.js:2722、:2723、:2762 | 5 | 2 | Colossal satellite cannon guidance tower destroyed, chain of internal explosions, collapsing steel and a long rumbling tail |
@@ -539,7 +539,7 @@
 | `boss_cerberus_beta` | β 狙擊機的狙擊 | SFX.shot（狙擊槍種類） | entities/mech-entity.js:927 | 1.5 | 2 | Long-range sniper cannon shot, sharp crack with long echo |
 | `boss_cerberus_gamma` | γ 修理機的修理光束 | 沒有聲音 | entities/mech-special.js（repair） | 2 | 1 | Repair beam humming, gentle electric buzz with welding sparkle |
 | `boss_cerberus_countdown` | 合體倒數（30 秒） | 沒有聲音（只有訊息） | entities/mech-boss2.js:929 | 1 | 1 | Mechanical countdown tick with rising tension, synthetic beep |
-| `boss_cerberus_merge_start` | 開始合體（合體中無防備） | 沒有聲音（只有 SFX.alert） | entities/mech-boss2.js:936 | 2 | 1 | Three mechs converging, magnetic locking clanks and rising power hum |
+| `boss_cerberus_merge_start` | 開始合體（合體中無防備） | 沒有聲音（只有 SFX.alert） | entities/mech-boss2.js:936 | 2 | 1 | Heavy metal parts locking together with loud magnetic clanks, followed by a deep rising electric power hum |
 | `boss_cerberus_merge` | 重新合體並回復 AP | 沒有聲音（fx 無聲） | entities/mech-boss2.js:921～923 | 2.5 | 1 | Combining mech locking together with a huge clamp, energy burst and power-up roar |
 | `boss_cerberus_death` | 擊破（大爆炸、殘骸） | SFX.explode('huge')＋SFX.wreck＋SFX.stinger(true)（配樂的重音） | entities/mech-entity.js:2722、:2723、:2762 | 5 | 2 | Colossal three-in-one combining mech destroyed, chain of internal explosions, collapsing steel and a long rumbling tail |
 
@@ -594,11 +594,11 @@
 | `boss_citadel_guard_hit` | 防禦中被打中（護盾亮起） | 沒有聲音（只有一般的命中音） | entities/mech-dodge.js:757 | 0.5 | 3 | Bullets impacting a hexagonal energy shield, crisp energy deflection crackle |
 | `boss_citadel_tunnel` | 進出隧道（看不到、打不到） | 沒有聲音 | entities/mech-boss2.js:1601（inTunnel） | 3 | 1 | Train roaring out of a tunnel, echoing rumble bursting into open air |
 | `boss_citadel_horn` | 衝撞預警 | SFX.play('heavy', 1, 0.5)＋SFX.alert | entities/mech-boss2.js:368、:369 | 2.5 | 1 | Deafening train horn blast, deep and menacing |
-| `boss_citadel_ram` | 全速衝撞 | 沒有聲音 | entities/mech-boss2.js:379 | 3 | 1 | Armored train charging at full speed, thunderous wheels and screaming engine |
+| `boss_citadel_ram` | 全速衝撞 | 沒有聲音 | entities/mech-boss2.js:379 | 3 | 1 | A heavy train charging at full speed, thunderous rumbling steel wheels on rails and a roaring diesel engine |
 | `boss_citadel_overheat` | 鍋爐過熱、減速（弱點） | 沒有聲音（只有訊息） | entities/mech-boss2.js:387～389 | 2.5 | 1 | Locomotive boiler overheating, violent steam release and hissing valves |
 | `boss_citadel_car_aa` | 防空車廂（機槍＋高射砲） | SFX.shot('bullet') | entities/mech-boss2.js:476 | 1.5 | 2 | Anti-aircraft flak guns firing from a train car, rapid pops and bursts |
 | `boss_citadel_car_missile` | 飛彈車廂 | SFX.shot('missile') | entities/mech-boss2.js:490 | 1.5 | 2 | Missile launcher car firing, rocket whoosh |
-| `boss_citadel_car_laser` | 雷射舷砲（預警 0.9 秒後橫向射擊） | SFX.play('laserBig', 0.8, 0.8) | entities/mech-boss2.js:506、:523 | 1.5 | 2 | Broadside laser cannon on a train firing a heavy beam |
+| `boss_citadel_car_laser` | 雷射舷砲（預警 0.9 秒後橫向射擊） | SFX.play('laserBig', 0.8, 0.8) | entities/mech-boss2.js:506、:523 | 1.5 | 2 | A huge sci-fi laser cannon firing a heavy beam, deep powerful electric blast with a sustained buzzing roar |
 | `boss_citadel_car_mine` | 布雷車廂 | 布雷 SFX.play('ui2', 0.5, 1.6)（game/support.js:323）、觸發 ui2（:421／:428）、爆炸 SFX.explode（:474） | entities/mech-boss2.js:528 | 1 | 1 | Mines dropped from a train car onto the tracks, metallic clunks and beeps |
 | `boss_citadel_death` | 擊破（大爆炸、殘骸） | SFX.explode('huge')＋SFX.wreck＋SFX.stinger(true)（配樂的重音） | entities/mech-entity.js:2722、:2723、:2762 | 5 | 2 | Colossal armored war train destroyed, chain of internal explosions, collapsing steel and a long rumbling tail |
 
@@ -690,7 +690,7 @@
 | `boss_anvil_chain` | 第三型態：連續鎚擊沿直線推進 | SFX.alert（每一下 SFX.explode） | entities/mech-boss4.js:213～220 | 3 | 1 | Rapid sequence of hammer strikes marching forward, repeating clangs |
 | `boss_anvil_molten_rain` | 熔鐵雨 | SFX.play('heavy', 0.8, 0.8)＋發射 SFX.shot('grenade')（game/support.js:165）＋落地 SFX.explode（entities/projectile.js:303）；預警圈無聲 | entities/mech-boss4.js:239、:241 | 2.5 | 2 | Molten metal flung into the air and splattering down, sizzling impacts |
 | `boss_anvil_quench` | 淬火（減傷） | SFX.play('heavy', 0.9, 0.8)＋SFX.alert | entities/mech-boss4.js:257、:258 | 2.5 | 1 | Red-hot metal being quenched, explosive steam hiss and crackling |
-| `boss_anvil_stuck` | 鎚子卡在地上（破綻） | 沒有聲音 | entities/mech-boss4.js:277～283 | 2 | 1 | Huge hammer stuck in the ground, grinding struggle and creaking metal |
+| `boss_anvil_stuck` | 鎚子卡在地上（破綻） | 沒有聲音 | entities/mech-boss4.js:277～283 | 2 | 1 | A heavy metal object stuck in the ground, grinding scraping struggle with loud creaking and groaning steel |
 | `boss_anvil_death` | 擊破（大爆炸、殘骸） | SFX.explode('huge')＋SFX.wreck＋SFX.stinger(true)（配樂的重音） | entities/mech-entity.js:2722、:2723、:2762 | 5 | 2 | Colossal giant forge hammer titan destroyed, chain of internal explosions, collapsing steel and a long rumbling tail |
 
 ### SALAMANDER 熔岩潛龍（kind salamander）
@@ -746,7 +746,7 @@
 | `boss_gantry_reflect` | 打回去（玩家打掉金色彈體、飛回去） | SFX.play('shield', 0.9, 1.4) | entities/mech-boss-tier.js:821 | 0.8 | 2 | Projectile deflected back toward a dockyard gantry crane fortress, bright energy ricochet ping with a whoosh |
 | `boss_gantry_guard_up` | 防禦反應（架起六角護盾） | 沒有聲音 | entities/mech-dodge.js:479 | 1 | 1 | A gantry crane fortress raises a hexagonal energy barrier, electric hum swelling into a shield shimmer |
 | `boss_gantry_guard_hit` | 防禦中被打中（護盾亮起） | 沒有聲音（只有一般的命中音） | entities/mech-dodge.js:757 | 0.5 | 3 | Bullets impacting a hexagonal energy shield, crisp energy deflection crackle |
-| `boss_gantry_drop_warn` | 貨櫃落下預警 | SFX.play('heavy', 0.9, 0.5) | entities/mech-boss4.js:451、:452 | 1.5 | 1 | Crane releasing its load, magnetic clamp unlatching with a heavy clunk |
+| `boss_gantry_drop_warn` | 貨櫃落下預警 | SFX.play('heavy', 0.9, 0.5) | entities/mech-boss4.js:451、:452 | 1.5 | 1 | A large magnetic clamp unlatching, heavy metal clunk with a short electric buzz cutting off |
 | `boss_gantry_crate_impact` | 貨櫃落地（爆炸、留下掩體） | SFX.explode(true) | entities/mech-boss4.js:457、:458 | 2 | 3 | Shipping container slamming onto concrete, huge metallic crash |
 | `boss_gantry_rehoist` | 貨櫃重新吊上來 | 沒有聲音 | entities/mech-boss4.js:429 | 2.5 | 1 | Crane hoisting a container, winch motors whining and chains rattling |
 | `boss_gantry_magnet_pull` | 電磁鐵吸引 | SFX.play('charge', 0.8, 0.6)＋SFX.alert | entities/mech-boss4.js:492、:494 | 2 | 1 | Powerful electromagnet activating, deep magnetic hum pulling metal |
@@ -835,7 +835,7 @@
 | `boss_sovereign_dodge` | 閃避（QB 側閃／後撤／跳躍，機甲型連續閃避） | SFX.qb（一般的 QB 音；閃避本身沒有額外聲音） | entities/mech-entity.js:3083、entities/mech-dodge.js:299 | 0.8 | 3 | Quick evasive thruster burst of a regal final-boss mech, sharp jet blast with a mechanical whoosh |
 | `boss_sovereign_rush` | 突進＋近距離齊射 | SFX.ab＋各武器的 SFX.shot（entities/mech-entity.js:883 實彈／:927 砲彈／:979 榴彈／:1074 導彈／:1264 雷射） | entities/mech-boss4.js:851～856 | 1.5 | 2 | Elite mech boosting in and unleashing a point-blank volley |
 | `boss_sovereign_pillars` | 第二型態：甲板主砲的光柱 | SFX.alert＋預警圈與落雷無聲；爆炸 SFX.explode（game/support.js:355 blastTeam） | entities/mech-boss4.js:863～866 | 2.5 | 2 | Pillars of light crashing down from above, booming energy impacts |
-| `boss_sovereign_blades` | 第二型態：浮游刃 | 預警線無聲；發射 SFX.play('laserBig', 0.8, 0.9)（entities/mech-boss3.js:242） | entities/mech-boss4.js:875 | 1.5 | 2 | Floating energy blades launching, whirring slicing sounds |
+| `boss_sovereign_blades` | 第二型態：浮游刃 | 預警線無聲；發射 SFX.play('laserBig', 0.8, 0.9)（entities/mech-boss3.js:242） | entities/mech-boss4.js:875 | 1.5 | 2 | Spinning sci-fi energy blades flying through the air, fast whirring whooshes with a sharp electric hum |
 | `boss_sovereign_auth_start` | 第三型態「認證」開始 | SFX.alert | entities/mech-boss4.js:889 | 2 | 1 | Ominous authentication sequence starting, cold digital voice-like tones |
 | `boss_sovereign_auth_strike` | 認證：光帶落下（每波） | 光帶無聲；爆炸 explodeAt 的 SFX.explode | entities/mech-boss4.js:899～906 | 2.5 | 2 | Rows of energy beams sweeping down in sequence, rhythmic heavy blasts |
 | `boss_sovereign_echo` | 召喚上一位鑰匙的殘影 | SFX.alert | entities/mech-boss4.js:922～926（game/bosses4.js:8） | 3 | 1 | Ghostly echo of a past mech materializing, reverberating spectral synth |
@@ -861,7 +861,7 @@
 | `field_ice_loop` | 冰面（滑行，循環） | 沒有聲音 | game/boss-field.js:101（bfMove） | 4 | 1 | Seamless loop of metal skidding on ice, creaking ice sheet |
 | `field_haze_loop` | 煙霧（不能鎖定，循環） | 沒有聲音 | game/boss-field.js:403 | 5 | 1 | Seamless loop of drifting thick smoke, low wind |
 | `field_darkness` | 全場變暗 | 沒有聲音 | game/boss-field.js:134 | 2 | 1 | Power blackout, lights shutting down with descending hum |
-| `field_cover_rise` | 新掩體升起（berm／rubble／crate／pillar／slab） | 沒有聲音 | game/boss-field.js:362 | 1.5 | 3 | Concrete barrier rising from the ground, grinding stone |
+| `field_cover_rise` | 新掩體升起（berm／rubble／crate／pillar／slab） | 沒有聲音 | game/boss-field.js:362 | 1.5 | 3 | A heavy concrete wall rising from the ground, deep grinding of stone and rumbling earth |
 
 ## 二、機獸（8 隻，`data/beasts.js`）
 
@@ -914,7 +914,7 @@
 | `beast_tiger_roar_clip` | 威嚇／吼叫的片段（tSnarl） | ~roarL（音高 ×1.22） | entities/mech-beast-fx.js:244 | 2.5 | 2 | Fierce mechanical sabertooth roar, higher metallic snarl with icy hiss, short threatening display |
 | `beast_tiger_growl` | 出招前的低吼（每一招開始） | ~growl（音高 ×1.22） | entities/mech-beast-fx.js:242 | 1.2 | 3 | Low hissing sabertooth growl, frosty metallic rattle |
 | `beast_tiger_hurt` | 受傷（hit 片段） | 沒有聲音（只有一般的命中音 SFX.hit） | entities/mech-beast-fx.js:235（片段開始時沒有對應） | 0.8 | 3 | Sharp mechanical tiger yowl |
-| `beast_tiger_stagger` | 失衡的叫聲 | ~roarL（音高 ×1.22） ×1.35＋SFX.stagger | entities/mech-beast-fx.js:239、entities/mech-entity.js:1732 | 1.5 | 2 | Sharp mechanical tiger yowl, dazed and stumbling |
+| `beast_tiger_stagger` | 失衡的叫聲 | ~roarL（音高 ×1.22） ×1.35＋SFX.stagger | entities/mech-beast-fx.js:239、entities/mech-entity.js:1732 | 1.5 | 2 | A large robotic beast letting out a short pained growl with metallic distortion, sparks crackling |
 | `beast_tiger_death` | 倒下（death 片段的叫聲） | ~roarL（音高 ×1.22） ×0.7 | entities/mech-beast-fx.js:237 | 3.5 | 1 | Mechanical sabertooth dying howl fading into frozen crackle |
 | `beast_tiger_collapse` | 倒下後的碎裂、爆炸 | 火花無聲（mech-beast.js:131）；最後 SFX.explode('huge')＋SFX.wreck＋SFX.stinger(true) | entities/mech-beast.js:131、entities/mech-entity.js:2722、:2762 | 5 | 1 | Robotic sabertooth collapsing, shattering ice-coated armor and explosion |
 | `beast_tiger_step` | 腳步（每一步） | ~bstep（依體重：音量、音高） | entities/mech-beast-fx.js:300 | 0.6 | 3 | Quick heavy paw step of a robotic tiger on snow and metal |
@@ -931,7 +931,7 @@
 | `beast_tiger_freeze` | 冷凍光束（低吼、預警後一道，打中緩速） | 預警線無聲；發射 SFX.play('laserBig', 0.8, 0.9)（entities/mech-boss3.js:242） | entities/mech-beast.js:388～415 | 2 | 2 | Freezing beam fired from fangs, icy crackling ray |
 | `beast_tiger_charge_start` | 大招開始蓄力（Boss 改版） | SFX.play('alarm', 0.45, 0.7) | entities/mech-boss-tier.js:451 | 2 | 1 | Fierce mechanical sabertooth roar, higher metallic snarl with icy hiss, charging power, building up |
 | `beast_tiger_big_release` | 大招放出（冰錐彈幕、寒光掃射） | SFX.play('alarm', 0.5, 0.9)＋招式的聲音 | entities/mech-boss-tier.js:417 | 1.5 | 2 | Fierce mechanical sabertooth roar, higher metallic snarl with icy hiss, unleashing a devastating attack |
-| `beast_tiger_interrupt` | 大招被打斷 | SFX.stagger | entities/mech-boss-tier.js:511 | 2 | 1 | Sharp mechanical tiger yowl, power surge cut off with sparks |
+| `beast_tiger_interrupt` | 大招被打斷 | SFX.stagger | entities/mech-boss-tier.js:511 | 2 | 1 | A large robotic beast yelping in pain, sudden electric power cut off with loud crackling sparks |
 | `beast_tiger_open` | 破綻 | SFX.play('bell', 0.6, 1.3) | entities/mech-boss-tier.js:328 | 1.2 | 1 | Exposed weak spot on a robotic sabertooth tiger, armor plates loosening with a hiss and ping |
 | `beast_tiger_final_call` | 最終型態專屬招式「絕對零度」的宣告 | SFX.play('alarm', 0.5, 0.9) | entities/mech-boss3.js:104 | 2 | 1 | Fierce mechanical sabertooth roar, higher metallic snarl with icy hiss, ultimate battle cry |
 | `beast_tiger_part_break` | 外掛武器被打壞（電磁機砲、電漿導彈莢艙） | SFX.explode(true)＋SFX.wreck | entities/mech-entity.js:2722、game/boss-tier.js:252 | 2 | 2 | Weapon pod torn off a robotic sabertooth tiger, explosion and tearing metal |
@@ -992,7 +992,7 @@
 | `beast_turtle_uStomp` | 近戰「uStomp」：踩踏 | ~thC＋heavy | entities/mech-beast-fx.js:177、:178 | 1.2 | 2 | Massive turtle stomp, ground-shaking thud |
 | `beast_turtle_uSpin` | 近戰「uSpin」：縮殼旋轉（滑出去再橫掃） | ~claw＋~thC | entities/mech-beast-fx.js:147、:148 | 2 | 2 | Spinning armored shell sliding and grinding across ground |
 | `beast_turtle_cannon` | 背甲砲塔的雙管重機砲 | SFX.shot('bullet') | entities/mech-beast.js:285、entities/mech-entity.js:883 | 1.5 | 2 | Twin heavy machine gun turret firing |
-| `beast_turtle_torp` | 兩側的魚雷 | SFX.shot('missile') | entities/mech-beast.js:357、entities/mech-entity.js:1074 | 1.5 | 2 | Torpedoes launching with a whoosh and splash |
+| `beast_turtle_torp` | 兩側的魚雷 | SFX.shot('missile') | entities/mech-beast.js:357、entities/mech-entity.js:1074 | 1.5 | 2 | Torpedoes launching underwater, pressurized whoosh followed by a big splash and bubbling water |
 | `beast_turtle_dc` | 深水炸彈（三發拋射） | 發射 SFX.shot('grenade')（game/support.js:165）＋落地 SFX.explode（entities/projectile.js:303）；預警圈無聲 | entities/mech-beast.js:432 | 2 | 2 | Depth charges lobbed, thumps and splashing explosions |
 | `beast_turtle_spikes` | 背甲稜刺的四射刺彈（一整圈） | 預警線無聲；發射 SFX.play('laserBig', 0.8, 0.9)（entities/mech-boss3.js:242） | entities/mech-beast.js:360～385 | 1.5 | 2 | Spikes fired in all directions from a shell, metallic shooting thwacks |
 | `beast_turtle_charge_start` | 大招開始蓄力（Boss 改版） | SFX.play('alarm', 0.45, 0.7) | entities/mech-boss-tier.js:451 | 2 | 1 | Deep rumbling mechanical turtle bellow, low resonant hiss, charging power, building up |
@@ -1020,19 +1020,19 @@
 | `beast_gorilla_collapse` | 倒下後的碎裂、爆炸 | 火花無聲（mech-beast.js:131）；最後 SFX.explode('huge')＋SFX.wreck＋SFX.stinger(true) | entities/mech-beast.js:131、entities/mech-entity.js:2722、:2762 | 5 | 1 | Giant robotic gorilla toppling, heavy crash and explosion |
 | `beast_gorilla_step` | 腳步（每一步） | ~bstep（依體重：音量、音高） | entities/mech-beast-fx.js:300 | 0.6 | 3 | Robotic gorilla knuckle-walk thud |
 | `beast_gorilla_land` | 落地（撲擊、跳躍、躍過障礙、降落、鑽出） | ~thC＋~bstep | entities/mech-beast-fx.js:269、:270 | 1.2 | 2 | Robotic gorilla landing from a leap, huge thud |
-| `beast_gorilla_dodge` | 閃避（側跳 dgSideL／R、後跳 dgBack、伏低 dgDuck） | 沒有聲音 | entities/mech-dodge.js:668 | 1 | 2 | Robotic gorilla hopping sideways, knuckle scrape |
-| `beast_gorilla_gSlam` | 近戰「gSlam」：雙拳搥地 | ~thC＋heavy | entities/mech-beast-fx.js:177、:178 | 1.5 | 2 | Two giant metal fists smashing the ground |
+| `beast_gorilla_dodge` | 閃避（側跳 dgSideL／R、後跳 dgBack、伏低 dgDuck） | 沒有聲音 | entities/mech-dodge.js:668 | 1 | 2 | A heavy robot hopping sideways, quick thud of landing with metal knuckles scraping across the ground |
+| `beast_gorilla_gSlam` | 近戰「gSlam」：雙拳搥地 | ~thC＋heavy | entities/mech-beast-fx.js:177、:178 | 1.5 | 2 | Two giant metal fists smashing into the ground, a single massive thunderous impact with cracking earth |
 | `beast_gorilla_gSweepL` | 近戰「gSweepL」：左手橫掃 | ~claw＋~thC | entities/mech-beast-fx.js:147、:148 | 1.2 | 2 | Massive arm sweep, whooshing swing |
 | `beast_gorilla_gSweepR` | 近戰「gSweepR」：右手橫掃 | ~claw＋~thC | entities/mech-beast-fx.js:147、:148 | 1.2 | 2 | Massive arm sweep from the right |
-| `beast_gorilla_gLeap` | 近戰「gLeap」：跳躍搥擊 | ~thC＋heavy | entities/mech-beast-fx.js:177、:178 | 1.5 | 2 | Leaping ground pound, explosive impact |
+| `beast_gorilla_gLeap` | 近戰「gLeap」：跳躍搥擊 | ~thC＋heavy | entities/mech-beast-fx.js:177、:178 | 1.5 | 2 | A heavy creature leaping and crashing down, a whoosh then a huge explosive ground impact with rumbling debris |
 | `beast_gorilla_gSwing` | 近戰「gSwing」：擺盪飛踢 | ~claw＋~thC | entities/mech-beast-fx.js:147、:148 | 1.5 | 2 | Swinging flying kick, rushing whoosh and impact |
 | `beast_gorilla_rotary` | 前臂的轉管機砲（兩隻手一起掃） | SFX.shot('bullet') | entities/mech-beast.js:285、entities/mech-entity.js:883 | 2 | 2 | Arm-mounted rotary cannons spinning and firing |
 | `beast_gorilla_harpoon` | 絞盤魚叉砲（預警線後射出、鉤住拉過來） | 預警線無聲；發射 SFX.play('laserBig', 0.8, 0.9)（entities/mech-boss3.js:242）（鉤住本身無聲） | entities/mech-beast.js:388～415 | 2 | 2 | Harpoon cannon firing and winch reeling chain |
 | `beast_gorilla_chest` | 胸口反應爐胸砲（搥胸蓄力後） | 預警線無聲；發射 SFX.play('laserBig', 0.8, 0.9)（entities/mech-boss3.js:242） | entities/mech-beast.js:388 | 2.5 | 2 | Chest reactor beam cannon firing a thick energy blast |
-| `beast_gorilla_charge_start` | 大招開始蓄力（Boss 改版） | SFX.play('alarm', 0.45, 0.7) | entities/mech-boss-tier.js:451 | 2 | 1 | Furious mechanical gorilla roar with chest-drumming metal booms, charging power, building up |
+| `beast_gorilla_charge_start` | 大招開始蓄力（Boss 改版） | SFX.play('alarm', 0.45, 0.7) | entities/mech-boss-tier.js:451 | 2 | 1 | A furious mechanical gorilla roar with heavy metal chest pounding booms, deep and building in intensity |
 | `beast_gorilla_big_release` | 大招放出（搥地震波、彈雨掃射） | SFX.play('alarm', 0.5, 0.9)＋招式的聲音 | entities/mech-boss-tier.js:417 | 1.5 | 2 | Furious mechanical gorilla roar with chest-drumming metal booms, unleashing a devastating attack |
 | `beast_gorilla_interrupt` | 大招被打斷 | SFX.stagger | entities/mech-boss-tier.js:511 | 2 | 1 | Angry mechanical ape bark, power surge cut off with sparks |
-| `beast_gorilla_open` | 破綻 | SFX.play('bell', 0.6, 1.3) | entities/mech-boss-tier.js:328 | 1.2 | 1 | Exposed weak spot on a robotic gorilla, armor plates loosening with a hiss and ping |
+| `beast_gorilla_open` | 破綻 | SFX.play('bell', 0.6, 1.3) | entities/mech-boss-tier.js:328 | 1.2 | 1 | Metal armor plates loosening and opening with a pressurized hiss, followed by a bright metallic ping |
 | `beast_gorilla_final_call` | 最終型態專屬招式「狂暴連擊」的宣告 | SFX.play('alarm', 0.5, 0.9) | entities/mech-boss3.js:104 | 2 | 1 | Furious mechanical gorilla roar with chest-drumming metal booms, ultimate battle cry |
 | `beast_gorilla_part_break` | 外掛武器被打壞（左臂機砲、右臂機砲、左魚叉砲、右魚叉砲） | SFX.explode(true)＋SFX.wreck | entities/mech-entity.js:2722、game/boss-tier.js:252 | 2 | 2 | Weapon pod torn off a robotic gorilla, explosion and tearing metal |
 | `beast_gorilla_body_break` | 身體部位破壞（左拳、右拳、頭部、後腿） | SFX.explode(false) | entities/mech-body.js:147 | 2 | 3 | Armored limb of a robotic gorilla shattering, crunching metal and sparks |
@@ -1056,19 +1056,19 @@
 | `beast_scorpion_land` | 落地（撲擊、跳躍、躍過障礙、降落、鑽出） | ~thC＋~bstep | entities/mech-beast-fx.js:269、:270 | 1.2 | 2 | Robotic scorpion emerging and landing, sand burst |
 | `beast_scorpion_dodge` | 閃避（側跳 dgSideL／R、後跳 dgBack、伏低 dgDuck） | 沒有聲音 | entities/mech-dodge.js:668 | 1 | 2 | Robotic scorpion scuttling sideways, rapid leg clatter |
 | `beast_scorpion_sSting` | 近戰「sSting」：尾刺 | ~zapC＋~thB | entities/mech-beast-fx.js:164、:165 | 1 | 2 | Giant stinger striking down, piercing electric stab |
-| `beast_scorpion_sPinchL` | 近戰「sPinchL」：左螯夾 | ~tink3＋~thB | entities/mech-beast-fx.js:155、:156 | 0.8 | 2 | Giant pincer snapping shut, metallic clamp |
-| `beast_scorpion_sPinchR` | 近戰「sPinchR」：右螯夾 | ~tink3＋~thB | entities/mech-beast-fx.js:155、:156 | 0.8 | 2 | Giant pincer snapping shut from the right |
+| `beast_scorpion_sPinchL` | 近戰「sPinchL」：左螯夾 | ~tink3＋~thB | entities/mech-beast-fx.js:155、:156 | 0.8 | 2 | A giant metal claw snapping shut, single sharp heavy metallic clamp clang |
+| `beast_scorpion_sPinchR` | 近戰「sPinchR」：右螯夾 | ~tink3＋~thB | entities/mech-beast-fx.js:155、:156 | 0.8 | 2 | A giant metal claw snapping shut, single sharp heavy metallic clamp clang with a short scrape |
 | `beast_scorpion_sGrab` | 近戰「sGrab」：抓 | ~tink3＋~thB | entities/mech-beast-fx.js:155、:156 | 1.2 | 2 | Pincers grabbing and crushing |
 | `beast_scorpion_sTailSweep` | 近戰「sTailSweep」：甩尾橫掃（一整圈） | ~claw＋~thC | entities/mech-beast-fx.js:147、:148 | 1.5 | 2 | Scorpion tail sweeping in a full circle |
 | `beast_scorpion_sEmerge` | 近戰「sEmerge」：鑽地突襲（從腳下鑽出） | ~thC＋heavy | entities/mech-beast-fx.js:177、:178 | 2 | 2 | Robotic scorpion bursting out of the sand |
 | `beast_scorpion_cutter` | 螯臂的電漿切割砲（兩道光束） | 預警線無聲；發射 SFX.play('laserBig', 0.8, 0.9)（entities/mech-boss3.js:242） | entities/mech-beast.js:388 | 2 | 2 | Plasma cutter beams firing from claws |
-| `beast_scorpion_mortar` | 背上的爆破迫擊筒（六發） | 發射 SFX.shot('grenade')（game/support.js:165）＋落地 SFX.explode（entities/projectile.js:303）；預警圈無聲 | entities/mech-beast.js:432 | 2.5 | 2 | Mining mortar tubes firing six rounds |
+| `beast_scorpion_mortar` | 背上的爆破迫擊筒（六發） | 發射 SFX.shot('grenade')（game/support.js:165）＋落地 SFX.explode（entities/projectile.js:303）；預警圈無聲 | entities/mech-beast.js:432 | 2.5 | 2 | A rapid series of mortar shells firing, hollow thoomp after thoomp from metal tubes |
 | `beast_scorpion_venom` | 尾針的毒液彈（落地留腐蝕區） | 發射 SFX.shot('grenade')（game/support.js:165）＋落地 SFX.explode（entities/projectile.js:303）；預警圈無聲；腐蝕區無聲 | entities/mech-beast.js:432～445 | 1.5 | 2 | Venom glob spat from a stinger, wet splash and acid sizzle |
 | `beast_scorpion_charge_start` | 大招開始蓄力（Boss 改版） | SFX.play('alarm', 0.45, 0.7) | entities/mech-boss-tier.js:451 | 2 | 1 | Mechanical scorpion threat display, rapid metallic chittering and hiss, charging power, building up |
-| `beast_scorpion_big_release` | 大招放出（爆破砲雨、毒霧噴發） | SFX.play('alarm', 0.5, 0.9)＋招式的聲音 | entities/mech-boss-tier.js:417 | 1.5 | 2 | Mechanical scorpion threat display, rapid metallic chittering and hiss, unleashing a devastating attack |
+| `beast_scorpion_big_release` | 大招放出（爆破砲雨、毒霧噴發） | SFX.play('alarm', 0.5, 0.9)＋招式的聲音 | entities/mech-boss-tier.js:417 | 1.5 | 2 | A giant mechanical insect hissing aggressively, rapid metallic clicking chitter rising into a loud screech |
 | `beast_scorpion_interrupt` | 大招被打斷 | SFX.stagger | entities/mech-boss-tier.js:511 | 2 | 1 | Shrill mechanical insect screech, power surge cut off with sparks |
-| `beast_scorpion_open` | 破綻 | SFX.play('bell', 0.6, 1.3) | entities/mech-boss-tier.js:328 | 1.2 | 1 | Exposed weak spot on a robotic scorpion, armor plates loosening with a hiss and ping |
-| `beast_scorpion_final_call` | 最終型態專屬招式「毒沙風暴」的宣告 | SFX.play('alarm', 0.5, 0.9) | entities/mech-boss3.js:104 | 2 | 1 | Mechanical scorpion threat display, rapid metallic chittering and hiss, ultimate battle cry |
+| `beast_scorpion_open` | 破綻 | SFX.play('bell', 0.6, 1.3) | entities/mech-boss-tier.js:328 | 1.2 | 1 | Metal armor plates loosening and opening with a pressurized hiss, followed by a bright metallic ping |
+| `beast_scorpion_final_call` | 最終型態專屬招式「毒沙風暴」的宣告 | SFX.play('alarm', 0.5, 0.9) | entities/mech-boss3.js:104 | 2 | 1 | A giant mechanical scorpion screeching loudly, rapid metallic clicking chitter and hiss, aggressive and menacing |
 | `beast_scorpion_part_break` | 外掛武器被打壞（左切割砲、右切割砲、爆破迫擊筒） | SFX.explode(true)＋SFX.wreck | entities/mech-entity.js:2722、game/boss-tier.js:252 | 2 | 2 | Weapon pod torn off a robotic scorpion, explosion and tearing metal |
 | `beast_scorpion_body_break` | 身體部位破壞（左螯、右螯、尾針、步足） | SFX.explode(false) | entities/mech-body.js:147 | 2 | 3 | Armored limb of a robotic scorpion shattering, crunching metal and sparks |
 | `beast_scorpion_repair` | 修復被打壞的武器 | SFX.alert | entities/mech-beast.js:110、game/hud.js:152 | 2 | 1 | Robotic creature self-repairing, whirring nanotech and welding crackle |
@@ -1085,18 +1085,18 @@
 | `beast_mantis_growl` | 出招前的低吼（每一招開始） | ~growl（音高 ×1.2） | entities/mech-beast-fx.js:242 | 1.2 | 3 | Low clicking mantis chitter |
 | `beast_mantis_hurt` | 受傷（hit 片段） | 沒有聲音（只有一般的命中音 SFX.hit） | entities/mech-beast-fx.js:235（片段開始時沒有對應） | 0.8 | 3 | Sharp mechanical insect shriek |
 | `beast_mantis_stagger` | 失衡的叫聲 | ~chitter（音高 ×1.2） ×1.35＋SFX.stagger | entities/mech-beast-fx.js:239、entities/mech-entity.js:1732 | 1.5 | 2 | Sharp mechanical insect shriek, dazed and stumbling |
-| `beast_mantis_death` | 倒下（death 片段的叫聲） | ~chitter（音高 ×1.2） ×0.7 | entities/mech-beast-fx.js:237 | 3.5 | 1 | Dying mechanical mantis shriek fading out |
+| `beast_mantis_death` | 倒下（death 片段的叫聲） | ~chitter（音高 ×1.2） ×0.7 | entities/mech-beast-fx.js:237 | 3.5 | 1 | A giant mechanical insect dying, a long high-pitched metallic shriek slowly fading out with sputtering sparks |
 | `beast_mantis_collapse` | 倒下後的碎裂、爆炸 | 火花無聲（mech-beast.js:131）；最後 SFX.explode('huge')＋SFX.wreck＋SFX.stinger(true) | entities/mech-beast.js:131、entities/mech-entity.js:2722、:2762 | 5 | 1 | Giant robotic mantis collapsing, thin limbs clattering and explosion |
-| `beast_mantis_step` | 腳步（每一步） | ~bstep（依體重：音量、音高） | entities/mech-beast-fx.js:300 | 0.6 | 3 | Light sharp metallic step of a giant mantis |
-| `beast_mantis_land` | 落地（撲擊、跳躍、躍過障礙、降落、鑽出） | ~thC＋~bstep | entities/mech-beast-fx.js:269、:270 | 1.2 | 2 | Robotic mantis landing from a hover, sharp thud |
+| `beast_mantis_step` | 腳步（每一步） | ~bstep（依體重：音量、音高） | entities/mech-beast-fx.js:300 | 0.6 | 3 | A single light footstep of a giant metal insect, sharp pointed metal leg tapping on hard ground |
+| `beast_mantis_land` | 落地（撲擊、跳躍、躍過障礙、降落、鑽出） | ~thC＋~bstep | entities/mech-beast-fx.js:269、:270 | 1.2 | 2 | A large metal insect landing on the ground, short whoosh then a sharp heavy metallic thud |
 | `beast_mantis_dodge` | 閃避（側跳 dgSideL／R、後跳 dgBack、伏低 dgDuck） | 沒有聲音 | entities/mech-dodge.js:668 | 1 | 2 | Robotic mantis flitting sideways, quick wing buzz |
 | `beast_mantis_mSlashL` | 近戰「mSlashL」：左鐮 | ~claw＋~thB | entities/mech-beast-fx.js:140、:141 | 0.8 | 2 | Razor scythe slash, fast steel swish |
 | `beast_mantis_mSlashR` | 近戰「mSlashR」：右鐮 | ~claw＋~thB | entities/mech-beast-fx.js:140、:141 | 0.8 | 2 | Razor scythe slash from the right |
 | `beast_mantis_mCross` | 近戰「mCross」：雙鐮交叉斬 | ~claw＋~thB | entities/mech-beast-fx.js:140、:141 | 1 | 2 | Double scythe cross slash, ringing steel |
 | `beast_mantis_mGrab` | 近戰「mGrab」：捕捉 | ~tink3＋~thB | entities/mech-beast-fx.js:155、:156 | 1.2 | 2 | Mantis grabbing prey with spiked forelegs |
-| `beast_mantis_mDive` | 近戰「mDive」：飛起來俯衝斬 | ~thC＋heavy | entities/mech-beast-fx.js:177、:178 | 1.5 | 2 | Mantis diving from the air and slashing |
+| `beast_mantis_mDive` | 近戰「mDive」：飛起來俯衝斬 | ~thC＋heavy | entities/mech-beast-fx.js:177、:178 | 1.5 | 2 | A fast swooping whoosh diving downward ending in a sharp metal blade slicing slash |
 | `beast_mantis_pulse` | 前胸的脈衝雷射機砲 | SFX.shot('laser') | entities/mech-beast.js:285、entities/mech-entity.js:1264 | 1.5 | 2 | Pulse laser guns firing rapid shots |
-| `beast_mantis_ooth` | 腹下的卵鞘空雷（目標周圍一群） | 布雷 SFX.play('ui2', 0.5, 1.6)（game/support.js:323）、觸發 ui2（:421／:428）、爆炸 SFX.explode（:474） | entities/mech-beast.js:416～431 | 1.5 | 1 | Floating mines ejected from an egg sac, popping and beeping |
+| `beast_mantis_ooth` | 腹下的卵鞘空雷（目標周圍一群） | 布雷 SFX.play('ui2', 0.5, 1.6)（game/support.js:323）、觸發 ui2（:421／:428）、爆炸 SFX.explode（:474） | entities/mech-beast.js:416～431 | 1.5 | 1 | Several small objects popping out with soft thumps, followed by rapid electronic beeping |
 | `beast_mantis_wave` | 鐮的斬擊波 | 預警線無聲；發射 SFX.play('laserBig', 0.8, 0.9)（entities/mech-boss3.js:242） | entities/mech-beast.js:388 | 1.5 | 2 | Energy slash wave flying from a scythe |
 | `beast_mantis_charge_start` | 大招開始蓄力（Boss 改版） | SFX.play('alarm', 0.45, 0.7) | entities/mech-boss-tier.js:451 | 2 | 1 | Mechanical mantis threat screech, high metallic rasping and wing buzz, charging power, building up |
 | `beast_mantis_big_release` | 大招放出（空雷封鎖、刃光十字） | SFX.play('alarm', 0.5, 0.9)＋招式的聲音 | entities/mech-boss-tier.js:417 | 1.5 | 2 | Mechanical mantis threat screech, high metallic rasping and wing buzz, unleashing a devastating attack |
@@ -1124,10 +1124,10 @@
 | `beast_raptor_step` | 腳步（每一步） | ~bstep（依體重：音量、音高） | entities/mech-beast-fx.js:300 | 0.6 | 3 | Heavy taloned step of a giant robotic bird |
 | `beast_raptor_land` | 落地（撲擊、跳躍、躍過障礙、降落、鑽出） | ~thC＋~bstep | entities/mech-beast-fx.js:269、:270 | 1.2 | 2 | Giant robotic bird landing, wings flaring and talons striking |
 | `beast_raptor_dodge` | 閃避（側跳 dgSideL／R、後跳 dgBack、伏低 dgDuck） | 沒有聲音 | entities/mech-dodge.js:668 | 1 | 2 | Robotic raptor banking aside, wing whoosh |
-| `beast_raptor_rPeck` | 近戰「rPeck」：啄 | ~tink3＋~thB | entities/mech-beast-fx.js:155、:156 | 0.8 | 2 | Giant metal beak pecking, sharp strike |
+| `beast_raptor_rPeck` | 近戰「rPeck」：啄 | ~tink3＋~thB | entities/mech-beast-fx.js:155、:156 | 0.8 | 2 | A single sharp metal strike, a giant steel beak hitting armor with a hard metallic clack |
 | `beast_raptor_rWingSlashL` | 近戰「rWingSlashL」：左翼刃 | ~claw＋~thB | entities/mech-beast-fx.js:140、:141 | 1 | 2 | Bladed wing slash |
 | `beast_raptor_rWingSlashR` | 近戰「rWingSlashR」：右翼刃 | ~claw＋~thB | entities/mech-beast-fx.js:140、:141 | 1 | 2 | Bladed wing slash from the right |
-| `beast_raptor_rKick` | 近戰「rKick」：踢 | ~claw＋~thB | entities/mech-beast-fx.js:140、:141 | 1 | 2 | Talon kick, ripping strike |
+| `beast_raptor_rKick` | 近戰「rKick」：踢 | ~claw＋~thB | entities/mech-beast-fx.js:140、:141 | 1 | 2 | A heavy metal claw slashing, sharp ripping tear of steel with a hard impact thud |
 | `beast_raptor_rDive` | 近戰「rDive」：俯衝爪擊（招牌技，只在空中） | ~thC＋heavy | entities/mech-beast-fx.js:177、:178 | 2 | 2 | Raptor diving from the sky, screaming air and talon impact |
 | `beast_raptor_msl` | 翼下的空對地導彈 | SFX.shot('missile') | entities/mech-beast.js:357、entities/mech-entity.js:1074 | 1.5 | 2 | Underwing missiles launching |
 | `beast_raptor_bay` | 腹下的集束炸彈（落地留燃燒帶） | 發射 SFX.shot('grenade')（game/support.js:165）＋落地 SFX.explode（entities/projectile.js:303）；預警圈無聲 | entities/mech-beast.js:432 | 2.5 | 2 | Cluster bombs dropping and exploding in a line |
@@ -1142,7 +1142,7 @@
 | `beast_raptor_body_break` | 身體部位破壞（左翼、右翼、尾舵、腳爪） | SFX.explode(false) | entities/mech-body.js:147 | 2 | 3 | Armored limb of a robotic raptor bird shattering, crunching metal and sparks |
 | `beast_raptor_repair` | 修復被打壞的武器 | SFX.alert | entities/mech-beast.js:110、game/hud.js:152 | 2 | 1 | Robotic creature self-repairing, whirring nanotech and welding crackle |
 | `beast_raptor_reflect` | 打回去 | SFX.play('shield', 0.9, 1.4) | entities/mech-boss-tier.js:821 | 0.8 | 1 | Projectile deflected back toward a giant robotic beast, bright ricochet ping |
-| `beast_raptor_flap` | 在空中拍翼（每 0.58 秒） | ~flap | entities/mech-beast-fx.js:278 | 0.6 | 3 | Single heavy mechanical wing flap, whooshing air and metal creak |
+| `beast_raptor_flap` | 在空中拍翼（每 0.58 秒） | ~flap | entities/mech-beast-fx.js:278 | 0.6 | 3 | A single heavy wing flap, big whooshing gust of air with a light metal creak |
 | `beast_raptor_takeoff` | 起飛（rTakeoff） | 沒有聲音 | data/beasts.js:953 | 2 | 1 | Giant robotic bird taking off, wings beating hard |
 | `beast_raptor_glide_loop` | 在空中盤旋（循環） | 沒有聲音 | entities/mech-beast.js:550（beastMove 的 fly） | 5 | 1 | Seamless loop of a huge mechanical bird gliding, wind rush |
 
@@ -1176,7 +1176,7 @@
 | `ace_specimen_tired` | SPECIMEN（研究特區，ai specimen）：過載結束、硬直 | SFX.alert | entities/mech-foe.js:615 | 2 | 2 | Overheated mech shutting down, steam vent and power drop |
 | `ace_specimen_down` | SPECIMEN（研究特區，ai specimen）：擊破（aceDown） | SFX.explode(true)＋SFX.wreck | entities/mech-entity.js:2722、:2723 | 3 | 1 | Ace mech destroyed, big explosion and dying engine |
 | `ace_spire_intro` | SPIRE（Lattice-9，ai spire）：介入（名牌與介紹） | SFX.alert（flashAlert） | game/mission.js:684～688 | 2.5 | 1 | Rival ace mech arriving, signature engine roar and a menacing radio crackle |
-| `ace_spire_climb` | SPIRE（Lattice-9，ai spire）：爬上最高的平台 | 沒有聲音 | entities/mech-foe.js:685 | 2 | 2 | Mech climbing a steel structure, clanking grips and thrusters |
+| `ace_spire_climb` | SPIRE（Lattice-9，ai spire）：爬上最高的平台 | 沒有聲音 | entities/mech-foe.js:685 | 2 | 2 | A giant robot climbing a steel tower, repeated heavy metal clanking grips with short bursts of jet thrusters |
 | `ace_spire_down` | SPIRE（Lattice-9，ai spire）：擊破（aceDown） | SFX.explode(true)＋SFX.wreck | entities/mech-entity.js:2722、:2723 | 3 | 1 | Ace mech destroyed, big explosion and dying engine |
 | `ace_countdown_intro` | COUNTDOWN（舊宇宙港，ai rain）：介入（名牌與介紹） | SFX.alert（flashAlert） | game/mission.js:684～688 | 2.5 | 1 | Rival ace mech arriving, signature engine roar and a menacing radio crackle |
 | `ace_countdown_missile_rain` | COUNTDOWN（舊宇宙港，ai rain）：飛彈雨 | SFX.shot('missile') | entities/mech-entity.js:4008、:1074 | 2 | 2 | Missile rain salvo, multiple launches |
@@ -1191,7 +1191,7 @@
 | `ace_kiln_rush` | KILN（火山熔爐帶，ai rusher）：突進 | SFX.ab | entities/mech-entity.js:3989、:3119 | 1.5 | 2 | Mech charging with roaring heat-blasted boosters |
 | `ace_kiln_down` | KILN（火山熔爐帶，ai rusher）：擊破（aceDown） | SFX.explode(true)＋SFX.wreck | entities/mech-entity.js:2722、:2723 | 3 | 1 | Ace mech destroyed, big explosion and dying engine |
 | `ace_zenith_intro` | ZENITH（高空軌道，ai zenith）：介入（名牌與介紹） | SFX.alert（flashAlert） | game/mission.js:684～688 | 2.5 | 1 | Rival ace mech arriving, signature engine roar and a menacing radio crackle |
-| `ace_zenith_climb` | ZENITH（高空軌道，ai zenith）：離地 10 m 以下就爬升 | 推進／懸浮時共用 thrustLoop（game/feedback.js:243） | entities/mech-foe.js:932 | 2 | 2 | Mech boosting upward in thin air, strained thrusters |
+| `ace_zenith_climb` | ZENITH（高空軌道，ai zenith）：離地 10 m 以下就爬升 | 推進／懸浮時共用 thrustLoop（game/feedback.js:243） | entities/mech-foe.js:932 | 2 | 2 | Jet thrusters blasting upward, loud strained roaring engine rising in pitch, sci-fi |
 | `ace_zenith_down` | ZENITH（高空軌道，ai zenith）：擊破（aceDown） | SFX.explode(true)＋SFX.wreck | entities/mech-entity.js:2722、:2723 | 3 | 1 | Ace mech destroyed, big explosion and dying engine |
 | `ace_sirocco_intro` | SIROCCO（沙丘，ai duelist）：介入（名牌與介紹） | SFX.alert（flashAlert） | game/mission.js:684～688 | 2.5 | 1 | Rival ace mech arriving, signature engine roar and a menacing radio crackle |
 | `ace_sirocco_duel` | SIROCCO（沙丘，ai duelist）：決鬥（近距離連續 QB） | SFX.qb | entities/mech-entity.js:4026、:3083 | 1 | 2 | Duelist mech rapid dodges, sand-blasted thrusts |

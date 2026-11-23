@@ -60,7 +60,7 @@
 | e_drone_hover | 飛行循環 | C-THR（在空中 0.35） | game/feedback.js:243 | 3.0 循環 | 1 | Recon drone hovering, high-pitched ducted fan whine with electric hum |
 | e_drone_charge | 雷射蓄力（0.8 秒） | `SFX.play('charge')` | entities/mech-moves.js:129 | 0.9 | 2 | Small laser emitter charging up, rising electric whine, sci-fi |
 | e_drone_fire | 雷射射擊 | W-LAS（w_lr） | ME:1264 | 0.6 | 2 | Thin red laser bolt from a drone, sharp zap with crackle |
-| e_drone_die | 擊落 | C-DIE | ME:2722 | 1.5 | 2 | Small drone shot down, electrical pop, rotor sputter, debris falling |
+| e_drone_die | 擊落 | C-DIE | ME:2722 | 1.5 | 2 | A small flying drone exploding, electric pop and crackling sparks, propeller motor sputtering and metal debris clattering on the ground |
 
 ### turret（固定砲台）— ai turret，RF-31 ×2＋MS-4，招式 sweep／volley
 | 鍵 | 事件 | 目前的聲音 | 觸發處 | 長度 | 變化 | 提示詞 |
@@ -106,7 +106,7 @@
 | e_tank_engine | 引擎與履帶循環 | **沒有聲音** | — | 3.0 循環 | 1 | Armored tank engine idle and treads rolling, heavy diesel growl, squeaking track |
 | e_tank_aim_warn | 架砲（紅線） | 沒有聲音 | entities/mech-moves.js:160 | 0.8 | 1 | Tank turret traversing and cannon locking, hydraulic whine |
 | e_tank_cannon | 火箭筒主砲 | W-SHL（w_bz） | ME:927 | 1.5 | 2 | Tank main gun firing, deep booming report |
-| e_tank_gat_spin | 加特林掃射的架設 | 沒有聲音 | entities/mech-moves.js:226 | 0.8 | 1 | Rotary gatling barrels spinning up, rising motor whir |
+| e_tank_gat_spin | 加特林掃射的架設 | 沒有聲音 | entities/mech-moves.js:226 | 0.8 | 1 | A rotary gatling gun spinning up, electric motor whir rising quickly in pitch with rattling metal barrels |
 | e_tank_gat | 加特林掃射 | W-BUL（bw_gat） | ME:883 | 0.5 | 2 | Rotary gatling gun roaring, continuous buzzsaw fire |
 | e_tank_die | 擊破 | C-DIE | ME:2722 | 2.5 | 2 | Armored vehicle explosion, turret blown off, fuel fire whoosh |
 
@@ -117,7 +117,7 @@
 | e_strider_climb | 跳上高台（懸浮爬升） | C-THR、C-QB | ME:4043-4060 | 1.5 | 1 | Quadruped mech thrusters lifting it onto a platform, strained jet blast |
 | e_strider_charge | 雷射蓄力（1.1 秒） | `SFX.play('charge')` | entities/mech-moves.js:129 | 1.2 | 2 | Large back-mounted laser cannon charging, deep rising hum |
 | e_strider_fire | 雷射砲 | W-LAS（bw_lc） | ME:1264 | 1.0 | 2 | Heavy laser cannon discharge, thick energy blast with sizzle |
-| e_strider_die | 擊破 | C-DIE | ME:2722 | 2.5 | 2 | Quadruped walker collapsing and exploding, legs buckling |
+| e_strider_die | 擊破 | C-DIE | ME:2722 | 2.5 | 2 | A large metal walking robot collapsing, creaking and crunching steel legs buckling, then a heavy explosion and falling debris |
 
 ### heli（武裝直升機 HARRIER）— ai heli，MG-18＋BZ-31（extraWeapons），招式 strafeRun／aimShot
 | 鍵 | 事件 | 目前的聲音 | 觸發處 | 長度 | 變化 | 提示詞 |
@@ -151,11 +151,11 @@
 | 鍵 | 事件 | 目前的聲音 | 觸發處 | 長度 | 變化 | 提示詞 |
 |---|---|---|---|---|---|---|
 | e_mtmortar_step | 四足腳步 | C-STEP（四足） | game/feedback.js:304 | 0.5 | 2 | Quadruped mortar walker step, heavy servo thud |
-| e_mtmortar_fire | 迫擊砲發射（落點圈同時出現） | `SFX.shot('grenade')` | game/support.js:165 | 1.0 | 2 | Mortar tube firing upward, hollow deep thoomp |
+| e_mtmortar_fire | 迫擊砲發射（落點圈同時出現） | `SFX.shot('grenade')` | game/support.js:165 | 1.0 | 2 | A single mortar firing, hollow deep thoomp of a shell launched from a metal tube, short echo |
 | e_mtmortar_incoming | 砲彈落下的呼嘯 | **沒有聲音** | game/support.js:134-166 | 1.2 | 2 | Incoming mortar shell whistle descending |
 | e_mtmortar_impact | 落地爆炸 | W-PJ | entities/projectile.js:303 | 1.5 | 2 | Mortar shell impact explosion, earth-shaking thud |
 | e_mtmortar_rifle | 近距離步槍 | W-BUL（w_rifle） | entities/mech-special.js:544 | 0.3 | 2 | Assault rifle burst from a walker, crisp cracks |
-| e_mtmortar_die | 擊破 | C-DIE | ME:2722 | 2.0 | 2 | Mortar walker explodes, shells cooking off |
+| e_mtmortar_die | 擊破 | C-DIE | ME:2722 | 2.0 | 2 | A heavy vehicle explosion followed by several smaller popping secondary explosions of ammunition cooking off |
 
 ### minelayer（布雷無人機）— ai minelayer，飛行
 | 鍵 | 事件 | 目前的聲音 | 觸發處 | 長度 | 變化 | 提示詞 |
@@ -189,15 +189,15 @@
 | e_dome_hum | 護盾展開中的循環 | **沒有聲音** | entities/mech-special.js:264 起（specialFx） | 3.0 循環 | 1 | Energy dome generator humming, deep resonant force-field drone |
 | e_dome_absorb | 護盾吸收攻擊 | `SFX.hitDome` | entities/mech-special.js:139 | 0.4 | 3 | Bullet striking an energy shield, crackling hex-field ripple |
 | e_dome_break | 護盾被打破（產生器過載） | `SFX.play('overload', 0.9, 1.2)` | entities/mech-special.js:155 | 1.5 | 1 | Force field shattering, electrical overload burst and crackle |
-| e_dome_restore | 12 秒後重新展開 | `SFX.play('charge', 0.8, 1.2)` | entities/mech-special.js:639 | 1.5 | 1 | Shield generator powering back up, rising hum and field snapping on |
+| e_dome_restore | 12 秒後重新展開 | `SFX.play('charge', 0.8, 1.2)` | entities/mech-special.js:639 | 1.5 | 1 | A sci-fi energy shield powering up, electric hum rising in pitch and ending with a bright crackling snap |
 | e_dome_die | 擊破 | C-DIE | ME:2722 | 2.0 | 2 | Shield generator exploding with an electrical discharge |
 
 ### dropship（運輸機）— ai dropship，飛行
 | 鍵 | 事件 | 目前的聲音 | 觸發處 | 長度 | 變化 | 提示詞 |
 |---|---|---|---|---|---|---|
 | e_dropship_fly | 飛來、離開的引擎循環 | C-THR | game/feedback.js:243 | 4.0 循環 | 1 | VTOL dropship engines roaring overhead, heavy turbofans |
-| e_dropship_hover | 投放時降低高度（2.2 秒） | 沒有聲音（C-ALERT） | entities/mech-special.js:669 | 2.5 | 1 | Dropship descending to hover, engines throttling, bay door opening |
-| e_dropship_drop | 投放 | `SFX.play('door', 0.9, 0.8)` | game/support.js:445 | 1.2 | 2 | Cargo clamps releasing, mechs dropping and slamming into ground |
+| e_dropship_hover | 投放時降低高度（2.2 秒） | 沒有聲音（C-ALERT） | entities/mech-special.js:669 | 2.5 | 1 | A large aircraft hovering overhead, loud jet engines roaring and throttling down, deep rumbling turbine whine |
+| e_dropship_drop | 投放 | `SFX.play('door', 0.9, 0.8)` | game/support.js:445 | 1.2 | 2 | Heavy metal clamps releasing with a loud clank, then a giant robot slamming hard into the ground with a deep thud |
 | e_dropship_depart | 飛走離場 | 沒有聲音 | entities/mech-special.js:687 | 3.0 | 1 | Dropship engines powering up and flying away, fading doppler |
 | e_dropship_die | 擊落 | C-DIE | ME:2722 | 3.0 | 2 | Transport aircraft shot down, engine failure whine and crash explosion |
 
@@ -319,7 +319,7 @@
 |---|---|---|---|---|---|---|
 | foe_scav_step | 腳步 | C-STEP | game/feedback.js:304 | 0.4 | 3 | Scrappy patched-together walker step, rattling loose panels |
 | foe_scav_fire | 機槍 | W-BUL（w_mg） | ME:883 | 0.3 | 2 | Worn-out machine gun burst, gritty uneven rattle |
-| foe_scav_salvage | 撿同伴零件強化（AP +30%、火力 +12%） | **沒有聲音**（只有 `fx.ring`；第一次 C-ALERT） | game/mission.js:981-994 | 1.2 | 1 | Scavenger mech ripping salvage off a wreck and bolting it on, metal screech and ratchet |
+| foe_scav_salvage | 撿同伴零件強化（AP +30%、火力 +12%） | **沒有聲音**（只有 `fx.ring`；第一次 C-ALERT） | game/mission.js:981-994 | 1.2 | 1 | Metal being ripped and torn apart, harsh screeching steel, then a power wrench ratcheting bolts tight |
 | foe_scav_die | 擊破 | C-DIE | ME:2722 | 2.0 | 2 | Junk-armored walker falling apart in an explosion |
 
 ### junk（廢鐵合成體，荒野）— ai junk，MG-18＋GL-90，外殼吸收傷害
@@ -346,7 +346,7 @@
 ### forklift（叉架步行機，集散場）— ai forklift，MG-18，舉貨櫃當盾
 | 鍵 | 事件 | 目前的聲音 | 觸發處 | 長度 | 變化 | 提示詞 |
 |---|---|---|---|---|---|---|
-| foe_forklift_move | 移動循環 | **沒有聲音** | — | 2.0 循環 | 1 | Industrial forklift mech engine puttering, hydraulic forks creaking |
+| foe_forklift_move | 移動循環 | **沒有聲音** | — | 2.0 循環 | 1 | An industrial forklift engine idling and puttering, diesel motor chugging with creaking hydraulic forks |
 | foe_forklift_lift | 舉起新的貨櫃 | 沒有聲音（`fx.dust`） | entities/mech-foe.js:234-237 | 1.2 | 1 | Hydraulic forks hoisting a heavy container, pump whine and metal thunk |
 | foe_forklift_guard | 貨櫃正面擋子彈 | 沒有聲音（`fx.spark`） | entities/mech-foe.js:1082 | 0.4 | 3 | Bullets pinging off a steel shipping container |
 | foe_forklift_guardbreak | 近戰打掉貨櫃 | 沒有聲音（GUARD BREAK 文字） | entities/mech-foe.js:1074-1080 | 1.2 | 1 | Container knocked off forks, huge metallic crash and tumble |
@@ -386,7 +386,7 @@
 ### sprayer（汙染噴射步行機，淹沒城區）— ai sprayer，MG-18
 | 鍵 | 事件 | 目前的聲音 | 觸發處 | 長度 | 變化 | 提示詞 |
 |---|---|---|---|---|---|---|
-| foe_sprayer_move | 移動循環 | **沒有聲音** | — | 2.0 循環 | 1 | Chemical sprayer mech sloshing tanks, pump chugging |
+| foe_sprayer_move | 移動循環 | **沒有聲音** | — | 2.0 循環 | 1 | Liquid sloshing inside metal tanks while a mechanical pump chugs rhythmically, wet industrial machine noise |
 | foe_sprayer_warn | 快要噴（噴嘴抬起、1 秒前） | 沒有聲音 | entities/mech-foe.js:388 | 1.0 | 1 | Pressurized tank building pressure, valve hiss rising |
 | foe_sprayer_spray | 噴出汙染液（落點圈） | **沒有聲音**（`fx.streaks`＋warn 事件） | entities/mech-foe.js:379-384 | 1.2 | 2 | Thick toxic liquid jetting out of a nozzle, gurgling spray |
 | foe_sprayer_pool | 落地成腐蝕區（10 秒） | **沒有聲音**（`addPool` 沒有聲音） | entities/mech-foe.js:385 | 3.0 循環 | 1 | Corrosive acid puddle bubbling and sizzling on metal |
@@ -398,7 +398,7 @@
 |---|---|---|---|---|---|---|
 | foe_lurker_hide | 埋在雪裡爬近（熱源白煙） | **沒有聲音** | entities/mech-foe.js:416-424 | 3.0 循環 | 1 | Machine crawling under snow, muffled crunching and faint steam hiss |
 | foe_lurker_rise | 現身（雪噴起） | **沒有聲音**（`fx.dust`） | entities/mech-foe.js:437-443 | 1.2 | 2 | Mech bursting up out of deep snow, powder exploding, servo roar |
-| foe_lurker_rehide | 再埋回雪裡 | **沒有聲音** | entities/mech-foe.js:428-431 | 1.2 | 1 | Machine burrowing back into snow, crunching and settling |
+| foe_lurker_rehide | 再埋回雪裡 | **沒有聲音** | entities/mech-foe.js:428-431 | 1.2 | 1 | A heavy machine digging into deep snow, crunching and packing snow, settling with a soft muffled thump |
 | foe_lurker_fire | 霰彈 | W-SG（w_sg） | ME:903 | 0.8 | 2 | Ambush shotgun blast at close range |
 | foe_lurker_die | 擊破 | C-DIE | ME:2722 | 2.0 | 2 | Snow-camouflaged walker exploding, snow spray |
 
@@ -437,14 +437,14 @@
 | 鍵 | 事件 | 目前的聲音 | 觸發處 | 長度 | 變化 | 提示詞 |
 |---|---|---|---|---|---|---|
 | foe_crawler_step | 腳步 | C-STEP | game/feedback.js:304 | 0.4 | 3 | Spidery crawler machine skittering, sharp metal claw taps |
-| foe_crawler_climb | 垂直爬牆（火花） | **沒有聲音**（`fx.spark`） | entities/mech-foe.js:637-643 | 2.0 循環 | 1 | Claws scraping up a steel pillar, grinding sparks and servo clicks |
+| foe_crawler_climb | 垂直爬牆（火花） | **沒有聲音**（`fx.spark`） | entities/mech-foe.js:637-643 | 2.0 循環 | 1 | Metal claws scraping and gripping a steel pillar, grinding screech with sparks and quick servo motor clicks |
 | foe_crawler_fire | 霰彈 | W-SG（w_sg） | ME:903 | 0.8 | 2 | Shotgun blast from a crawler |
 | foe_crawler_die | 擊破 | C-DIE | ME:2722 | 1.5 | 2 | Crawler machine bursting, legs clattering |
 
 ### underturret（平台底部砲塔，Lattice-9）— ai underturret，MG-18，吊在平台底面
 | 鍵 | 事件 | 目前的聲音 | 觸發處 | 長度 | 變化 | 提示詞 |
 |---|---|---|---|---|---|---|
-| foe_underturret_idle | 吊掛砲塔的轉動 | **沒有聲音** | entities/mech-foe.js:651-683 | 2.0 循環 | 1 | Ceiling-mounted turret swiveling, servo whine and creaking mount |
+| foe_underturret_idle | 吊掛砲塔的轉動 | **沒有聲音** | entities/mech-foe.js:651-683 | 2.0 循環 | 1 | A mechanical gun turret slowly rotating, servo motor whine with creaking metal mount |
 | foe_underturret_fire | 往下機槍掃射 | W-BUL（w_mg） | ME:883 | 0.3 | 2 | Machine gun firing downward from an overhead turret, echoing |
 | foe_underturret_die | 擊破（掉下來） | C-DIE | ME:2722 | 2.0 | 1 | Overhead turret blown off its mount, falling and crashing |
 
@@ -454,7 +454,7 @@
 | foe_testrig_warn | 預警 1.5 秒（地上的長方形） | **沒有聲音** | entities/mech-foe.js:725-731 | 1.5 | 1 | Rocket engine test stand spooling up, turbopump whine rising |
 | foe_testrig_ignite | 噴火開始 | `SFX.play('overload', 0.8, 0.6)` | entities/mech-foe.js:735 | 1.0 | 1 | Rocket engine ignition, explosive roar kick-in |
 | foe_testrig_flame | 噴火 2.5 秒（橫掃） | **沒有聲音**（`fx.flameCone`） | entities/mech-foe.js:737-765 | 2.5 循環 | 1 | Sustained rocket exhaust blast, deafening roaring flame |
-| foe_testrig_shutdown | 噴完停機 | 沒有聲音 | entities/mech-foe.js:766-769 | 1.5 | 1 | Engine cutting off, dying roar and cooling metal ticks |
+| foe_testrig_shutdown | 噴完停機 | 沒有聲音 | entities/mech-foe.js:766-769 | 1.5 | 1 | A large rocket engine shutting down, roaring flame dying out, followed by hot metal ticking as it cools |
 | foe_testrig_die | 擊破 | C-DIE | ME:2722 | 2.5 | 1 | Test stand exploding, fuel lines bursting into fire |
 
 ### spacemt（舊式宇宙用步行機，宇宙港）— ai hopper，RF-31，長時間滯空
@@ -469,7 +469,7 @@
 | 鍵 | 事件 | 目前的聲音 | 觸發處 | 長度 | 變化 | 提示詞 |
 |---|---|---|---|---|---|---|
 | foe_rammer_fly | 飛行循環 | C-THR | game/feedback.js:243 | 3.0 循環 | 1 | Armored ram drone droning, heavy rotor buzz |
-| foe_rammer_warn | 預警線 0.8 秒 | **沒有聲音**（`fx.warnLine`） | entities/mech-foe.js:811-816 | 0.8 | 1 | Drone engines revving up to full, rising whine before charge |
+| foe_rammer_warn | 預警線 0.8 秒 | **沒有聲音**（`fx.warnLine`） | entities/mech-foe.js:811-816 | 0.8 | 1 | A small jet engine revving up to full power, whine rising quickly in pitch, aggressive and building |
 | foe_rammer_charge | 高速衝撞（1.2 秒） | **沒有聲音** | entities/mech-foe.js:825-830 | 1.2 | 2 | Drone rocketing forward at high speed, screaming doppler |
 | foe_rammer_hit | 撞上（往外推） | **沒有聲音**（`fx.meleeHit`） | entities/mech-foe.js:830-833 | 0.8 | 2 | Heavy drone slamming into mech armor, crunching metal impact |
 | foe_rammer_die | 擊落 | C-DIE | ME:2722 | 1.5 | 2 | Ram drone shot down, crashing explosion |
@@ -486,7 +486,7 @@
 | 鍵 | 事件 | 目前的聲音 | 觸發處 | 長度 | 變化 | 提示詞 |
 |---|---|---|---|---|---|---|
 | foe_vacuum_hover | 懸浮循環 | C-THR | game/feedback.js:243 | 3.0 循環 | 1 | Vacuum work pod hovering, soft RCS puffs and electric hum |
-| foe_vacuum_shift | 每 2 秒換高度 | 沒有聲音 | entities/mech-foe.js:903-906 | 0.6 | 2 | Maneuvering thrusters firing in short bursts, hissing gas |
+| foe_vacuum_shift | 每 2 秒換高度 | 沒有聲音 | entities/mech-foe.js:903-906 | 0.6 | 2 | Short bursts of compressed gas thrusters, quick sharp hissing puffs of air, sci-fi spacecraft maneuvering |
 | foe_vacuum_fire | 雷射 | W-LAS（w_lr） | ME:1264 | 0.6 | 2 | Industrial cutting laser repurposed as a weapon, bright zap |
 | foe_vacuum_die | 擊破 | C-DIE | ME:2722 | 1.5 | 2 | Work pod breaching, decompression hiss and explosion |
 
@@ -495,7 +495,7 @@
 |---|---|---|---|---|---|---|
 | foe_marker_hover | 衛星飛行循環 | C-THR | game/feedback.js:243 | 3.0 循環 | 1 | Small satellite humming, faint electronic telemetry tones |
 | foe_marker_mark | 光束標定目標（5 秒、受傷 ×1.3） | **沒有聲音**（`fx.beam`、`fx.ring`＋C-ALERT） | entities/mech-foe.js:920-927 | 1.0 | 2 | Targeting laser locking on, piercing high tone and data chirp |
-| foe_marker_die | 擊落 | C-DIE | ME:2722 | 1.5 | 1 | Satellite shattering, electric pop and spinning debris |
+| foe_marker_die | 擊落 | C-DIE | ME:2722 | 1.5 | 1 | A small satellite breaking apart, electric pop with crackling sparks and shattering metal and glass pieces |
 
 ### burrow（沙中伏擊者，沙丘）— ai burrow，SG-33
 | 鍵 | 事件 | 目前的聲音 | 觸發處 | 長度 | 變化 | 提示詞 |
@@ -526,7 +526,7 @@
 ### cart（炸藥礦車，礦坑）— ai kamikaze，explodeOnDeath（800）
 | 鍵 | 事件 | 目前的聲音 | 觸發處 | 長度 | 變化 | 提示詞 |
 |---|---|---|---|---|---|---|
-| foe_cart_roll | 礦車滾過來 | **沒有聲音** | ME:3989-4007 | 3.0 循環 | 1 | Mine cart rattling on rails, wheels squealing, explosives jostling |
+| foe_cart_roll | 礦車滾過來 | **沒有聲音** | ME:3989-4007 | 3.0 循環 | 1 | A mine cart rolling on steel rails, rattling wheels clacking over rail joints with metal squeals |
 | foe_cart_blast | 自爆（接觸或被打爆） | C-DIE＋`explodeAt` | ME:4005、game/game.js:353 | 3.0 | 2 | Massive dynamite cart explosion in a mine, deep blast and rock debris |
 
 ### crystal（結晶寄生無人機，礦坑）— ai drone，HG-22，explodeOnDeath（碎裂四射）
@@ -565,7 +565,7 @@
 | 鍵 | 事件 | 目前的聲音 | 觸發處 | 長度 | 變化 | 提示詞 |
 |---|---|---|---|---|---|---|
 | foe_ridgesniper_step | 移動腳步 | C-STEP（l_bp2） | game/feedback.js:304 | 0.4 | 2 | Light four-legged sniper walker steps on sand |
-| foe_ridgesniper_prone | 趴下架槍／起身換稜線 | **沒有聲音** | entities/mech-foe-b1.js:340-352 | 1.0 | 1 | Sniper mech lowering onto its legs, servo whine and bipod clank |
+| foe_ridgesniper_prone | 趴下架槍／起身換稜線 | **沒有聲音** | entities/mech-foe-b1.js:340-352 | 1.0 | 1 | A heavy robot lowering itself to the ground, servo motor whine descending, then a solid metal clank |
 | foe_ridgesniper_aim | 開始瞄準（藍色瞄準線 1.5 秒） | `SFX.play('charge', 0.8, 0.8)` | entities/mech-foe-b1.js:396 | 1.5 | 1 | Long-range energy rifle charging, rising high-pitched hum with scope beep |
 | foe_ridgesniper_fire | 一發高傷害能量彈 | `SFX.play('laserBig', 1, 0.85)` | entities/mech-foe-b1.js:471 | 1.2 | 2 | Powerful sniper energy shot, cracking beam with long echoing tail |
 | foe_ridgesniper_die | 擊破 | C-DIE | ME:2722 | 2.0 | 1 | Sniper walker destroyed, rifle capacitor bursting |
@@ -614,7 +614,7 @@
 ### welder（電焊步行機，集散場）— ai welder；電弧＝狀態效果 drain＋能量傷害
 | 鍵 | 事件 | 目前的聲音 | 觸發處 | 長度 | 變化 | 提示詞 |
 |---|---|---|---|---|---|---|
-| foe_welder_move | 移動循環 | **沒有聲音** | — | 2.0 循環 | 1 | Welding mech walking, transformer hum |
+| foe_welder_move | 移動循環 | **沒有聲音** | — | 2.0 循環 | 1 | Heavy machine walking with mechanical clanks, steady electrical transformer hum and buzzing current |
 | foe_welder_warn | 焊槍藍光預警（面罩拉下） | `SFX.play('charge', 0.6, 1.8)` | entities/mech-foe-b2.js:181 | 0.8 | 1 | Arc welder powering up, transformer buzz and mask visor clank |
 | foe_welder_arc_start | 電弧連到目標 | `SFX.play('laser2', 0.7, 0.8)` | entities/mech-foe-b2.js:194 | 0.5 | 2 | Electric arc snapping onto metal, loud crackling zap |
 | foe_welder_arc_loop | 電弧持續 3 秒（吸取 EN） | **沒有聲音** | entities/mech-foe-b2.js:200-226 | 3.0 循環 | 1 | Continuous welding arc buzzing and sizzling, crackling electricity |
@@ -636,7 +636,7 @@
 | foe_turbine_idle | 待機的渦輪 | **沒有聲音** | — | 3.0 循環 | 1 | Hydro turbine idling, low resonant hum and water flow |
 | foe_turbine_warn | 預警 1.5 秒（虹彩蓋半開） | `SFX.play('engineHi', 0.8, 0.7)` | entities/mech-foe-b2.js:358 | 1.5 | 1 | Turbine iris opening, blades spinning up with rising whine |
 | foe_turbine_suck | 吸入開始 | `SFX.play('engineHi', 1, 1.1)` | entities/mech-foe-b2.js:372 | 1.0 | 1 | Massive intake roaring to life, violent suction |
-| foe_turbine_suck_loop | 吸入 6 秒（漩渦、葉片近身傷害） | **沒有聲音** | entities/mech-foe-b2.js:375-400 | 4.0 循環 | 1 | Whirlpool vortex roaring, water being sucked into a giant turbine |
+| foe_turbine_suck_loop | 吸入 6 秒（漩渦、葉片近身傷害） | **沒有聲音** | entities/mech-foe-b2.js:375-400 | 4.0 循環 | 1 | A powerful whirlpool of rushing water, roaring swirling flow being sucked into a giant spinning turbine |
 | foe_turbine_mg | 哨戒機槍 | W-BUL（w_mg） | ME:883 | 0.3 | 2 | Sentry machine gun burst |
 | foe_turbine_die | 擊破 | C-DIE | ME:2722 | 2.5 | 1 | Turbine shattering, blades flying off, steam explosion |
 
@@ -652,7 +652,7 @@
 ### buoy（漂流水雷浮標，淹沒城區）— ai buoy，explodeOnDeath（敵我都炸）
 | 鍵 | 事件 | 目前的聲音 | 觸發處 | 長度 | 變化 | 提示詞 |
 |---|---|---|---|---|---|---|
-| foe_buoy_drift | 漂流與閃燈（靠近時變快） | **沒有聲音** | entities/mech-foe-b2.js:482-499 | 3.0 循環 | 1 | Floating mine bobbing in water, slow warning beeps and lapping waves |
+| foe_buoy_drift | 漂流與閃燈（靠近時變快） | **沒有聲音** | entities/mech-foe-b2.js:482-499 | 3.0 循環 | 1 | Gentle water waves lapping against a floating metal buoy, with slow repeating electronic warning beeps |
 | foe_buoy_fuse | 引信（0.4 秒後爆炸） | `SFX.play('bell', 0.9, 1.6)` | entities/mech-foe-b2.js:496 | 0.4 | 1 | Naval mine proximity fuse triggering, rapid alarm chirp |
 | foe_buoy_blast | 爆炸 | C-DIE＋`explodeAt` | ME:2718-2723 | 2.5 | 2 | Naval mine detonating, huge water explosion geyser |
 
@@ -670,7 +670,7 @@
 ### icemortar（冰錐迫擊砲，冰原）— ai icemortar，MG-18；落點長出冰牆
 | 鍵 | 事件 | 目前的聲音 | 觸發處 | 長度 | 變化 | 提示詞 |
 |---|---|---|---|---|---|---|
-| foe_icemortar_warn | 架砲預警（0.6 秒） | `SFX.play('charge', 0.6, 0.8)` | entities/mech-foe-c1.js:193 | 0.6 | 1 | Mortar tube elevating, frost-covered mechanism creaking |
+| foe_icemortar_warn | 架砲預警（0.6 秒） | `SFX.play('charge', 0.6, 0.8)` | entities/mech-foe-c1.js:193 | 0.6 | 1 | A heavy metal tube slowly tilting upward, creaking frozen hinges and grinding gears, cracking ice |
 | foe_icemortar_fire | 拋射冰錐 | `SFX.shot('grenade')` | entities/mech-foe-c1.js:239 | 0.8 | 2 | Ice spike mortar launch, hollow thump with crystalline ring |
 | foe_icemortar_land | 冰錐落地 | `SFX.play('glass', 0.9, 0.8)`＋W-PJ | entities/mech-foe-c1.js:251 | 1.2 | 2 | Giant ice spike shattering on impact, glassy crash and crunch |
 | foe_icemortar_wall | 長出冰牆 | `SFX.play('shield', 0.6, 1.6)`（tempWallBuild 的冰） | game/hazards2.js:414 | 1.2 | 2 | Ice wall rapidly forming, cracking and crystallizing groan |
@@ -695,7 +695,7 @@
 | foe_parasite_crouch | 蹲伏 0.7 秒（紅線預警） | `SFX.play('charge', 0.5, 2.2)` | entities/mech-foe-c1.js:405 | 0.7 | 1 | Creature coiling to pounce, hissing and tensing tendons |
 | foe_parasite_pounce | 撲擊 | `SFX.play('punch1', 0.6, 1.6)` | entities/mech-foe-c1.js:418 | 0.6 | 2 | Parasite leaping through the air, wet shriek and whoosh |
 | foe_parasite_latch | 纏上機體 | `SFX.play('crunch1', 0.9, 1.2)`＋狀態效果 latch | entities/mech-foe-c1.js:479 | 0.8 | 2 | Tendrils wrapping and clamping onto armor, squelching crunch |
-| foe_parasite_miss | 撲空落地（破綻） | **沒有聲音**（`fx.dust`） | entities/mech-foe-c1.js:429-437 | 0.6 | 1 | Creature thudding into the ground, dazed screech |
+| foe_parasite_miss | 撲空落地（破綻） | **沒有聲音**（`fx.dust`） | entities/mech-foe-c1.js:429-437 | 0.6 | 1 | A small creature landing hard on the ground with a soft thud, followed by a short shrill alien screech |
 | foe_parasite_shaken | 被甩掉、彈開硬直 | `SFX.play('thud1', 0.8, 1.3)` | entities/mech-foe-c1.js:497 | 0.8 | 2 | Parasite flung off and slamming into the ground, wet thud |
 | foe_parasite_die | 擊破 | C-DIE | ME:2722 | 1.5 | 2 | Parasite bursting, organic splatter and death squeal |
 
@@ -713,9 +713,9 @@
 |---|---|---|---|---|---|---|
 | foe_zipline_step | 腳步 | C-STEP（l_bp2） | game/feedback.js:304 | 0.4 | 2 | Light assault trooper mech step |
 | foe_zipline_cable | 射出纜索（鉤爪閃光，預警 0.9 秒） | `SFX.play('clatter1', 0.9, 1.6)` | entities/mech-foe-c1.js:664 | 0.8 | 2 | Grappling hook fired, cable zinging out and claw biting steel |
-| foe_zipline_zip | 開始滑行 | `SFX.play('boostUp', 0.8, 1.5)` | entities/mech-foe-c1.js:581 | 0.6 | 1 | Zipline trolley engaging, sharp whir |
+| foe_zipline_zip | 開始滑行 | `SFX.play('boostUp', 0.8, 1.5)` | entities/mech-foe-c1.js:581 | 0.6 | 1 | A metal pulley racing along a steel cable, sharp rising zipping whir of a zipline |
 | foe_zipline_slide | 沿纜索滑行（火花） | **沒有聲音** | entities/mech-foe-c1.js:583-610 | 2.0 循環 | 1 | Trolley screaming down a steel cable, grinding sparks |
-| foe_zipline_land | 落地（0.8 秒破綻） | `SFX.play('thud2', 1, 1)` | entities/mech-foe-c1.js:600 | 0.8 | 2 | Mech dropping onto the deck, heavy metal landing thud |
+| foe_zipline_land | 落地（0.8 秒破綻） | `SFX.play('thud2', 1, 1)` | entities/mech-foe-c1.js:600 | 0.8 | 2 | A giant robot dropping onto a steel deck, single loud heavy metal thud with a ringing clang |
 | foe_zipline_fire | 近距離霰彈 | W-SG（w_sg） | ME:903 | 0.8 | 2 | Close-range shotgun blast |
 | foe_zipline_die | 擊破 | C-DIE | ME:2722 | 2.0 | 1 | Assault trooper mech exploding |
 
@@ -745,7 +745,7 @@
 | 鍵 | 事件 | 目前的聲音 | 觸發處 | 長度 | 變化 | 提示詞 |
 |---|---|---|---|---|---|---|
 | foe_netter_fly | 飛行循環 | C-THR | game/feedback.js:243 | 3.0 循環 | 1 | Net-launcher drone hovering, buzzing rotors |
-| foe_netter_warn | 預警線 0.8 秒 | `SFX.play('ui2', 0.6, 1.3)` | entities/mech-foe-c2.js:281 | 0.8 | 1 | Net cannon priming, pneumatic charge click |
+| foe_netter_warn | 預警線 0.8 秒 | `SFX.play('ui2', 0.6, 1.3)` | entities/mech-foe-c2.js:281 | 0.8 | 1 | A pneumatic launcher priming, hiss of compressed air building up and a sharp mechanical click |
 | foe_netter_fire | 射出捕獲網 | `SFX.shot('grenade')` | entities/mech-foe-c2.js:342 | 0.8 | 2 | Capture net launched, pneumatic whump and unfurling mesh |
 | foe_netter_hit | 網套住目標 | 狀態效果 net（第 10 節） | entities/mech-foe-c2.js:312 | 0.8 | 2 | Steel net wrapping around a mech, clanking weights and mesh snapping tight |
 | foe_netter_die | 擊落 | C-DIE | ME:2722 | 1.5 | 1 | Drone shot down, crash and splash |
@@ -767,14 +767,14 @@
 | foe_mirror_hover | 衛星飛行循環 | C-THR | game/feedback.js:243 | 3.0 循環 | 1 | Mirror satellite gliding, soft crystalline hum |
 | foe_mirror_charge | 聚光蓄力 | `SFX.play('charge', 0.6, 1.4)` | entities/mech-foe-c2.js:460 | 1.5 | 1 | Solar mirror focusing light, shimmering rising tone |
 | foe_mirror_fire | 射出聚光光束（beamAttack） | **沒有聲音**（`beamAttack` 不播聲音） | entities/mech-foe-c2.js:474-482 | 1.0 | 2 | Concentrated solar beam firing, bright searing zap |
-| foe_mirror_deflect | 雷射打它只剩 30%（反射） | **沒有聲音**（只有 C-HIT） | （laserK，`spawnType`） | 0.4 | 2 | Laser glancing off a mirror surface, high glassy ping |
+| foe_mirror_deflect | 雷射打它只剩 30%（反射） | **沒有聲音**（只有 C-HIT） | （laserK，`spawnType`） | 0.4 | 2 | A laser beam glancing off a mirror, short high glassy ping with a bright electric zing |
 | foe_mirror_die | 擊落 | C-DIE | ME:2722 | 1.5 | 1 | Mirror satellite shattering, glass and metal fragments |
 
 ### focus（聚光鏡陣列，高空軌道）— ai focus；追蹤光束＝addZone('beam')
 | 鍵 | 事件 | 目前的聲音 | 觸發處 | 長度 | 變化 | 提示詞 |
 |---|---|---|---|---|---|---|
 | foe_focus_warn | 預警（俯仰架對準目標） | `SFX.play('charge', 0.8, 0.8)` | entities/mech-foe-c2.js:515 | 1.2 | 1 | Array of mirrors aligning, mechanical clicks and rising energy hum |
-| foe_focus_fire | 照射開始 | `SFX.play('laserBig', 0.7, 0.9)` | entities/mech-foe-c2.js:538 | 0.8 | 1 | Focused beam igniting, sharp searing blast |
+| foe_focus_fire | 照射開始 | `SFX.play('laserBig', 0.7, 0.9)` | entities/mech-foe-c2.js:538 | 0.8 | 1 | A powerful sci-fi laser beam firing, sharp searing electric blast with a sustained burning hum |
 | foe_focus_beam | 追蹤光束（照越久越痛） | **沒有聲音** | game/hazards2.js:323-345 | 4.0 循環 | 1 | Sustained concentrated light beam, intensifying buzzing sizzle |
 | foe_focus_break | 視線被擋住斷開 | **沒有聲音** | entities/mech-foe-c2.js:545-570 | 0.5 | 1 | Beam cutting off abruptly, power-down zap |
 | foe_focus_die | 擊破 | C-DIE | ME:2722 | 2.0 | 1 | Mirror array exploding, shattering panels |
@@ -784,8 +784,8 @@
 ### slagger（熔渣投擲機）— ai slagger；落點爆炸＋燃燒地面
 | 鍵 | 事件 | 目前的聲音 | 觸發處 | 長度 | 變化 | 提示詞 |
 |---|---|---|---|---|---|---|
-| foe_slagger_move | 移動循環（轉身慢） | **沒有聲音** | — | 3.0 循環 | 1 | Heavy slag-throwing machine grinding, furnace roar inside |
-| foe_slagger_warn | 預警圈 1.2 秒（投擲） | `SFX.play('ui2', 0.6, 0.8)` | entities/mech-foe-e1.js:91 | 1.2 | 1 | Molten slag ladle swinging back, bubbling and hissing lava |
+| foe_slagger_move | 移動循環（轉身慢） | **沒有聲音** | — | 3.0 循環 | 1 | A heavy industrial machine grinding and clanking, with the deep roar of a furnace burning inside |
+| foe_slagger_warn | 預警圈 1.2 秒（投擲） | `SFX.play('ui2', 0.6, 0.8)` | entities/mech-foe-e1.js:91 | 1.2 | 1 | Molten lava bubbling and hissing in a large metal bucket, heavy metal creaking as it swings back |
 | foe_slagger_lob | 熔渣在空中（目前沒有投射物，時間到直接落地） | **沒有聲音** | entities/mech-foe-e1.js:93-99 | 1.0 | 1 | Glob of molten slag whooshing through the air, crackling heat |
 | foe_slagger_impact | 熔渣落地爆炸 | `SFX.explode(false)` | entities/mech-foe-e1.js:111 | 1.5 | 2 | Molten slag splashing and exploding on impact, sizzling lava splatter |
 | foe_slagger_pool | 燃燒地面 | **沒有聲音**（`addPool`） | entities/mech-foe-e1.js:113 | 4.0 循環 | 1 | Pool of molten slag bubbling and hissing |
@@ -795,7 +795,7 @@
 | 鍵 | 事件 | 目前的聲音 | 觸發處 | 長度 | 變化 | 提示詞 |
 |---|---|---|---|---|---|---|
 | foe_heatguard_step | 腳步（踩熔岩不受傷） | C-STEP（二足 l_bp） | game/feedback.js:304 | 0.6 | 3 | Heat-armored walker stomping, heavy plating with sizzling contact |
-| foe_heatguard_ignite | 火焰噴射開始 | `SFX.play('ab', 0.8, 0.8)` | entities/mech-foe-e1.js:131 | 0.6 | 1 | Flamethrower igniting with a whoomp |
+| foe_heatguard_ignite | 火焰噴射開始 | `SFX.play('ab', 0.8, 0.8)` | entities/mech-foe-e1.js:131 | 0.6 | 1 | A flamethrower igniting, sudden loud whoomp of fire bursting into a roaring flame |
 | foe_heatguard_flame | 火焰噴射 2 秒 | **沒有聲音**（`fx.flameCone`） | entities/mech-foe-e1.js:133-150 | 2.0 循環 | 1 | Roaring flamethrower stream, intense rushing fire |
 | foe_heatguard_overheat | 過熱（受傷 ×1.5） | **沒有聲音** | entities/mech-foe-e1.js:151-157 | 1.5 | 1 | Overheated armor venting steam, metal ticking and hissing |
 | foe_heatguard_mg | 機槍 | W-BUL（w_mg） | ME:883 | 0.3 | 2 | Heavy walker machine gun burst |
@@ -827,15 +827,15 @@
 |---|---|---|---|---|---|---|
 | foe_popturret_warn | 井框的燈亮（0.9 秒） | `SFX.play('ui2', 0.5, 0.6)` | entities/mech-foe-e2.js:96 | 0.9 | 1 | Deck hatch warning light buzzer, hydraulic unlocking clank |
 | foe_popturret_rise | 升起 | **沒有聲音** | entities/mech-foe-e2.js:100-106 | 1.0 | 1 | Turret rising out of the deck on a hydraulic lift, heavy mechanical whir |
-| foe_popturret_fire | 砲擊（爆發屬性） | `SFX.play('heavy', 0.5, 1.1)` | entities/mech-foe-e2.js:132 | 0.6 | 3 | Deck cannon firing, sharp heavy bang |
-| foe_popturret_lower | 降回甲板 | **沒有聲音** | entities/mech-foe-e2.js:134-138 | 1.0 | 1 | Turret retracting into the deck, hatch sliding shut |
+| foe_popturret_fire | 砲擊（爆發屬性） | `SFX.play('heavy', 0.5, 1.1)` | entities/mech-foe-e2.js:132 | 0.6 | 3 | A single heavy cannon shot, sharp loud bang with a deep booming tail |
+| foe_popturret_lower | 降回甲板 | **沒有聲音** | entities/mech-foe-e2.js:134-138 | 1.0 | 1 | A mechanical turret retracting into the floor, motor whir descending, then a heavy metal hatch sliding shut with a clunk |
 | foe_popturret_die | 擊破 | C-DIE | ME:2722 | 2.0 | 1 | Deck turret exploding |
 
 ### boarder（登艦突擊兵）— ai boarder，SG-33，逆足 l_rj
 | 鍵 | 事件 | 目前的聲音 | 觸發處 | 長度 | 變化 | 提示詞 |
 |---|---|---|---|---|---|---|
 | foe_boarder_step | 腳步 | C-STEP（逆足） | game/feedback.js:304 | 0.4 | 3 | Reverse-jointed boarding mech step, springy metal clank |
-| foe_boarder_warn | 目標腳下預警圈（0.9 秒） | `SFX.play('charge', 0.5, 1.2)` | entities/mech-foe-e2.js:156 | 0.9 | 1 | Leg boosters charging for a leap, rising whine |
+| foe_boarder_warn | 目標腳下預警圈（0.9 秒） | `SFX.play('charge', 0.5, 1.2)` | entities/mech-foe-e2.js:156 | 0.9 | 1 | Thrusters charging up before a jump, electric whine rising quickly in pitch, sci-fi |
 | foe_boarder_leap | 突擊推進撲過去 | C-QB 的 `SFX.ab` | entities/mech-foe-e2.js:165-176 | 1.0 | 2 | Mech launching into a pouncing leap, jet roar |
 | foe_boarder_slam | 落點爆炸 | `SFX.explode(false)` | entities/mech-foe-e2.js:180 | 1.5 | 2 | Mech crash-landing with an explosive slam |
 | foe_boarder_sg | 霰彈 | W-SG（w_sg） | ME:903 | 0.8 | 2 | Boarding shotgun blast |
@@ -855,11 +855,11 @@
 | 鍵 | 事件 | 目前的聲音 | 觸發處 | 長度 | 變化 | 提示詞 |
 |---|---|---|---|---|---|---|
 | foe_spotter_fly | 飛行循環 | C-THR | game/feedback.js:243 | 3.0 循環 | 1 | Observation drone hovering, smooth electric whir |
-| foe_spotter_light | 探照燈照目標 1.4 秒 | `SFX.play('ui2', 0.5, 1.4)` | entities/mech-foe-e2.js:259 | 1.4 | 1 | Searchlight snapping on, electrical buzz and scanning tone |
+| foe_spotter_light | 探照燈照目標 1.4 秒 | `SFX.play('ui2', 0.5, 1.4)` | entities/mech-foe-e2.js:259 | 1.4 | 1 | A powerful searchlight switching on with a loud electric clunk, followed by a steady electrical buzz |
 | foe_spotter_mark | 標定（spotted）＋呼叫砲擊 | 狀態效果 spotted（第 10 節）；呼叫沒有聲音 | entities/mech-foe-e2.js:279 | 1.0 | 1 | Target designated, radio call for fire, rapid confirmation beeps |
 | foe_spotter_incoming | 砲擊的預警圈（3 個，間隔 0.25 秒） | **沒有聲音** | entities/mech-foe-e2.js:284-288 | 1.2 | 2 | Incoming artillery shell whistle |
 | foe_spotter_strike | 砲擊落下爆炸 | `SFX.explode(false)` | entities/mech-foe-e2.js:292 | 1.5 | 3 | Naval artillery shell impact, heavy explosive blast |
-| foe_spotter_die | 擊落 | C-DIE | ME:2722 | 1.5 | 1 | Observation drone shot down, sparking crash |
+| foe_spotter_die | 擊落 | C-DIE | ME:2722 | 1.5 | 1 | A small flying drone shot down, electric sparks crackling, then a crash of metal hitting the ground |
 
 ## 9. 專屬 AC（data/foes.js 的 ACES，14 名；主線精英區段）
 
@@ -881,7 +881,7 @@
 | ace_sluice_ms8 | sluice | 重導彈 | W-MSL（bw_ms8） | ME:1074 | 2.0 | 2 | Heavy missile barrage |
 | ace_sluice_die | sluice | 擊破 | C-DIE | ME:2722 | 3.0 | 1 | Dam captain mech destroyed |
 | ace_marsh_submerge | marsh（MARSH，ai marsh） | 在水裡潛行（隱藏、不能鎖定） | **沒有聲音**（`fx.dust`） | entities/mech-foe.js:392-410 | 3.0 循環 | 1 | Amphibious mech gliding underwater, muffled propulsion and bubbles |
-| ace_marsh_ambush | marsh | 從水裡 QB 突襲（浮出） | C-QB | entities/mech-foe.js:403-406 | 1.0 | 2 | Mech bursting out of water with a thruster surge, big splash |
+| ace_marsh_ambush | marsh | 從水裡 QB 突襲（浮出） | C-QB | entities/mech-foe.js:403-406 | 1.0 | 2 | A giant robot bursting up out of deep water, huge splash with water pouring off, roaring jet thrusters |
 | ace_marsh_sg | marsh | 霰彈 | W-SG（w_sg） | ME:903 | 0.8 | 2 | Close shotgun blast |
 | ace_marsh_claw | marsh | 破碎爪 | W-MEL（w_claw） | ME:1879、ME:2036 | 0.8 | 2 | Crushing claw slam |
 | ace_marsh_ms | marsh | 導彈 | W-MSL（bw_ms） | ME:1074 | 1.5 | 2 | Missile pod salvo |
@@ -897,7 +897,7 @@
 | ace_specimen_saber | specimen | 光束大劍 | W-MEL（w_saber） | ME:1879、ME:2036 | 0.8 | 3 | Beam greatsword swing, heavy humming energy slash |
 | ace_specimen_ms | specimen | 導彈 | W-MSL（bw_ms） | ME:1074 | 1.5 | 2 | Missile salvo |
 | ace_specimen_die | specimen | 擊破 | C-DIE | ME:2722 | 2.5 | 1 | Experimental mech exploding with energy discharge |
-| ace_spire_perch | spire（SPIRE，ai spire） | 爬上最高的平台 | C-THR、C-QB | entities/mech-foe.js:685-710 | 1.5 | 1 | Mech thrusting upward to a high perch |
+| ace_spire_perch | spire（SPIRE，ai spire） | 爬上最高的平台 | C-THR、C-QB | entities/mech-foe.js:685-710 | 1.5 | 1 | A jet thruster blasting upward, loud rising roar, then a heavy metal clank of landing on a steel platform |
 | ace_spire_bz | spire | 火箭筒 | W-SHL（w_bz） | ME:927 | 1.2 | 2 | Bazooka shot from above |
 | ace_spire_rifle | spire | 步槍 | W-BUL（w_rifle） | ME:883 | 0.3 | 2 | Rifle burst |
 | ace_spire_gr | spire | 榴彈 | W-GR（bw_gr） | ME:979 | 0.8 | 2 | Grenade lobbed from a height |
@@ -945,7 +945,7 @@
 | 鍵 | 狀態（施加的敵人） | 事件 | 目前的聲音 | 觸發處 | 長度 | 變化 | 提示詞 |
 |---|---|---|---|---|---|---|---|
 | st_hook_on | hook（harpoon；Boss ANVIL 也用） | 被鉤住 | `plate1`＋`clatter1` | entities/mech-status.js:361-362 | 0.8 | 2 | Steel hook latching onto armor, heavy clank and taut cable |
-| st_hook_pull | hook | 被拉過去（持續） | **沒有聲音** | entities/mech-status.js（move 裡） | 2.0 循環 | 1 | Mech being dragged across ground, grinding metal and straining cable |
+| st_hook_pull | hook | 被拉過去（持續） | **沒有聲音** | entities/mech-status.js（move 裡） | 2.0 循環 | 1 | Heavy metal being dragged across rough ground, harsh scraping and grinding with a taut steel cable straining and creaking |
 | st_stick_on | stick（riveter；金色詞條也用） | 黏附炸彈黏上 | `crunch1`＋`uiTick` | entities/mech-status.js:364-365 | 0.5 | 2 | Sticky bomb slapping onto armor, magnetic clunk and arming chirp |
 | st_stick_beep | stick | 倒數嗶聲（越來越快） | `SFX.tone(1700→2200 Hz, square)` | entities/mech-status.js:501-508 | 0.08 | 1 | Bomb countdown beep, sharp electronic tick |
 | st_stick_blast | stick | 3 秒後爆炸 | `SFX.explode(false)` | entities/mech-status.js:251 | 1.5 | 2 | Sticky bomb detonating on armor plating |
@@ -955,7 +955,7 @@
 | st_nojump_on | nojump（anchor 的重力圈） | 禁止跳躍 | `overload` | entities/mech-status.js:373 | 0.8 | 1 | Gravity clamp engaging, heavy bass thrum and servo strain |
 | st_net_on | net（netter） | 捕獲網 | `clatter2`＋`door` | entities/mech-status.js:375-376 | 0.8 | 2 | Weighted steel net entangling a mech, clanking mesh |
 | st_spotted_on | spotted（lamp、spotter） | 被標定 | `charge` | entities/mech-status.js:378 | 0.8 | 1 | Target lock warning tone, enemy designation beep |
-| st_drain_on | drain（welder） | 吸取 EN | `dome1` | entities/mech-status.js:380 | 0.8 | 1 | Energy being siphoned, descending electric drain whine |
+| st_drain_on | drain（welder） | 吸取 EN | `dome1` | entities/mech-status.js:380 | 0.8 | 1 | Sci-fi energy being drained, descending electric whine with crackling static, power fading down |
 | st_shake | 全部（QB 次數還不夠） | 甩動 | `clatter1` | entities/mech-status.js:436 | 0.4 | 2 | Mech jerking against restraints, rattling metal |
 | st_escape | 全部（QB／近戰掙脫） | 掙脫 | `plate2`＋`uiOk` | entities/mech-status.js:412-413 | 0.6 | 2 | Breaking free from restraint, metal snapping loose with a release whoosh |
 | st_cut | net、latch（近戰割開） | 割開 | `glass`＋`uiOk` | entities/mech-status.js:411-413 | 0.6 | 2 | Blade slicing through net or tendrils, sharp tearing snap |
@@ -968,7 +968,7 @@
 | hz_suction_loop | suction（twister、turbine） | 吸入持續 | **沒有聲音** | game/hazards2.js:194-206 | 4.0 循環 | 1 | Powerful vortex suction, howling wind |
 | hz_spot_loop | spot（lamp） | 探照區 | **沒有聲音** | game/hazards2.js:309-321 | 3.0 循環 | 1 | Searchlight electric hum |
 | hz_wall_rock_break | 岩牆被打碎（blaster；Boss 掩體也用） | 碎裂 | `SFX.explode(false)` | game/hazards2.js:582 | 1.0 | 2 | Rock barrier crumbling into rubble |
-| hz_shot_down | 可以打掉的投射物被擊落（missilerack 等） | 擊落 | `SFX.explode(false)` | game/hazards2.js:681 | 1.0 | 2 | Projectile shot down midair, small explosion |
+| hz_shot_down | 可以打掉的投射物被擊落（missilerack 等） | 擊落 | `SFX.explode(false)` | game/hazards2.js:681 | 1.0 | 2 | A small missile exploding in midair, short sharp blast with a crackling pop and debris |
 
 （gravity、electro、fuel、beam 已列在 anchor、eel、fueler、focus 底下。）
 
@@ -976,19 +976,19 @@
 
 | 鍵 | 詞綴 | 事件 | 目前的聲音 | 觸發處 | 長度 | 變化 | 提示詞 |
 |---|---|---|---|---|---|---|---|
-| af_shield_hit | shield 護盾 | 正面的護盾擋下遠程攻擊 | **沒有聲音**（六角格漣漪） | entities/mech-affix.js:62-73 | 0.4 | 3 | Hexagonal energy shield absorbing a hit, crisp electric ripple |
+| af_shield_hit | shield 護盾 | 正面的護盾擋下遠程攻擊 | **沒有聲音**（六角格漣漪） | entities/mech-affix.js:62-73 | 0.4 | 3 | A bullet hitting a sci-fi energy shield, crisp electric zap with a shimmering wobbling ripple |
 | af_split | split 分裂 | 擊破時分成兩台小的 | **沒有聲音**（`fx.shockwave`＋C-ALERT） | game/affix.js:84-98 | 1.2 | 1 | Machine splitting into two, mechanical separation clank and energy pop |
 | af_cloak_on | cloak 隱形 | 停火後隱形 | **沒有聲音** | entities/mech-affix.js:90-93 | 0.8 | 1 | Cloaking field engaging, fading shimmer hiss |
 | af_cloak_off | cloak 隱形 | 開火／被打現形 | **沒有聲音** | entities/mech-affix.js:90-93 | 0.6 | 1 | Cloak dropping, electric crackle as the machine reappears |
-| af_berserk | berserk 狂暴 | AP 剩一半時狂暴 | `SFX.play('alarm', 0.4, 1.2)` | entities/mech-affix.js:100 | 1.2 | 1 | Enemy machine going berserk, engine redlining roar and warning siren |
+| af_berserk | berserk 狂暴 | AP 剩一半時狂暴 | `SFX.play('alarm', 0.4, 1.2)` | entities/mech-affix.js:100 | 1.2 | 1 | A machine engine revving to the redline, aggressive mechanical roar with a loud blaring alarm siren |
 | af_reflect | reflect 反射 | 反射中彈開實彈 | `SFX.play('shield', 0.6, 1.5)` | entities/mech-affix.js:44 | 0.4 | 3 | Bullet deflected by a reflective barrier, bright ricochet ping |
 | af_regen | regen 再生 | 幾秒沒被打就回復 AP | **沒有聲音** | entities/mech-affix.js:109 | 1.5 循環 | 1 | Nanomachine repair humming, soft regenerating shimmer |
 | af_volatile_warn | volatile 殉爆 | 擊破後的預警圈 | `SFX.play('alarm', 0.5, 1.6)` | game/affix.js:103 | 1.0 | 1 | Reactor going critical, rapid rising alarm beeps |
 | af_volatile_blast | volatile 殉爆 | 大爆炸 | `SFX.explode(true)` | game/affix.js:108 | 2.5 | 2 | Reactor core detonation, massive explosion |
 | af_swift | swift 疾風 | 移動很快 | **沒有聲音** | data/affix.js:14 | 1.0 循環 | 1 | Overclocked servos whining at high speed |
-| af_magnet | magnet 磁力 | 把附近的導彈吸過去 | **沒有聲音** | entities/mech-affix.js:118 | 2.0 循環 | 1 | Magnetic field humming, metallic warble pulling missiles |
+| af_magnet | magnet 磁力 | 把附近的導彈吸過去 | **沒有聲音** | entities/mech-affix.js:118 | 2.0 循環 | 1 | A strong magnetic field humming, deep pulsing electric hum with a wobbling metallic warble |
 | af_leader | leader 指揮 | 附近的敵人減傷 | **沒有聲音** | entities/mech-affix.js:30-35 | 2.0 循環 | 1 | Command aura pulse, low radio harmonic |
-| af_adapt | adapt 適應（只有 Boss） | 抗性提高（跳字） | **沒有聲音** | entities/mech-affix.js:50-58 | 0.8 | 1 | Armor recalibrating, adaptive plating shifting with a hum |
+| af_adapt | adapt 適應（只有 Boss） | 抗性提高（跳字） | **沒有聲音** | entities/mech-affix.js:50-58 | 0.8 | 1 | Metal armor plates shifting and sliding into place, mechanical clicks with a rising electric hum |
 
 
 ## 13. 彙總

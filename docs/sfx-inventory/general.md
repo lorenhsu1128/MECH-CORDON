@@ -71,7 +71,7 @@
 | `hit_self` | 自己被打中（駕駛艙裡的悶響＋機殼共鳴） | `hit`＋`punch`＋`thud1`＋`mHvy1-3` | audio.js:987；entities/projectile.js:429、entities/mech-entity.js:1249 | 0.8 | 4 | Muffled impact heard from inside a mech cockpit, deep hull resonance and low metallic thump, claustrophobic |
 | `hit_prop_stone` | 子彈打中可破壞物件（混凝土、岩石） | `rock1/2`＋`impStone` | audio.js:995 | 0.5 | 4 | Bullet hitting concrete wall, chips of stone cracking off, gritty dust |
 | `hit_prop_metal` | 子彈打中金屬物件（貨櫃、油桶、車輛）——目前一律是石頭聲 | （沒有，用石頭聲） | audio.js:995 | 0.5 | 3 | Bullet hitting a hollow steel container, resonant tinny clang with rattle |
-| `hitw_conc` | 子彈打地形：混凝土、土地 | `rock1/2` | audio.js:1014 | 0.4 | 4 | Bullet impact on concrete ground, sharp dusty crack with small debris |
+| `hitw_conc` | 子彈打地形：混凝土、土地 | `rock1/2` | audio.js:1014 | 0.4 | 4 | A single bullet striking a concrete wall, sharp cracking impact with chips of stone and gravel scattering, short dusty crumble tail |
 | `hitw_metal` | 子彈打地形：金屬地板 | `mHit1/2/4`、`clink2` | audio.js:1011 | 0.4 | 4 | Bullet striking steel deck plating, bright metallic ping and clang |
 | `hitw_water` | 子彈打水面 | `splash`、`stepWet1/2` | audio.js:1008 | 0.5 | 4 | Bullet plunging into water, sharp small splash and bubble |
 | `hitw_snow` | 子彈打雪地 | `stepSnow1/2` | audio.js:1009 | 0.4 | 3 | Bullet thudding into deep snow, soft muffled puff |
@@ -106,7 +106,7 @@ AI 產生時建議每把武器做「近距離（含 body 的厚度）」「遠�
 | `gun_rifle_near` | RF-31 突擊步槍（w_rifle）近距離＋自機厚度；也是 `bullet` 種類的預設（敵人、固定砲台） | near `rifleN1-4`、body `bRifle`、low `~thA` | recipes.js:13；mech-entity.js:883 | 0.6 | 4 | Single shot of a giant mech-sized assault rifle, loud punchy crack with heavy low-end body, realistic |
 | `gun_rifle_far` | 步槍遠距離 | `rifleF1/2` | recipes.js:15 | 1.2 | 2 | Distant large caliber rifle shot echoing across terrain, thin crack with rolling tail |
 | `gun_rifle_mech` | 步槍的槍機聲（自機才有） | `clink1/2` | recipes.js:17 | 0.2 | 3 | Heavy rifle bolt cycling, short mechanical clack of a giant gun |
-| `gun_pistol_near` | HG-22 手槍 | near `pistolN1/2`、body `bPistol`、low `~thA` | recipes.js:21 | 0.5 | 4 | Single shot of an oversized mech handgun, sharp powerful bang with snappy tail, realistic |
+| `gun_pistol_near` | HG-22 手槍 | near `pistolN1/2`、body `bPistol`、low `~thA` | recipes.js:21 | 0.5 | 4 | A single loud handgun gunshot fired close up, sharp powerful bang with a short metallic snap and quick fading echo, realistic |
 | `gun_pistol_far` | 手槍遠距離 | `pistolF1` | recipes.js:23 | 1.0 | 2 | Distant heavy handgun shot, small crack with echo |
 | `gun_mg_near` | MG-18 手持格林機槍（每一發，連射；音高隨連射升高 `mgHeat`） | near `smgN1-3`、body `bChain`、low `~thD` | recipes.js:30；audio.js:889 | 0.15 | 4 | Single round of a rapid-fire mech gatling gun, short tight burst transient, heavy and mechanical |
 | `gun_mg_far` | 格林機槍遠距離 | `smgF1` | recipes.js:32 | 0.6 | 2 | Distant rapid machine gun burst, crackling rattle echoing |
@@ -115,13 +115,13 @@ AI 產生時建議每把武器做「近距離（含 body 的厚度）」「遠�
 | `gun_gat_hvy_far` | 背部加特林遠距離 | `smgF1` | recipes.js:43 | 0.7 | 2 | Distant heavy autocannon burst rumbling |
 | `gun_gat_hvy_spin` | 背部加特林轉管（**目前沒有**）**循環** | 沒有聲音 | entities/mech-entity.js:883 | 2（循環） | 1 | Large rotary cannon barrel spinning, heavy motor whine loop |
 | `gun_sg_near` | SG-33 霰彈槍 | near `sgN1-3`、body `bShotgun`、low `~thB` | recipes.js:51 | 0.9 | 4 | Giant mech shotgun blast, massive booming crack with wide spray, realistic |
-| `gun_sg_far` | 霰彈槍遠距離 | `sgF1/2` | recipes.js:53 | 1.4 | 2 | Distant shotgun boom with echo |
+| `gun_sg_far` | 霰彈槍遠距離 | `sgF1/2` | recipes.js:53 | 1.4 | 2 | A single distant shotgun blast heard from far away, muffled deep boom followed by a long rolling echo across open terrain |
 | `gun_sg_mech` | 霰彈槍的泵動 | `iron2/4` | recipes.js:55 | 0.3 | 3 | Heavy pump-action shotgun racking, two-stage metal clack |
 | `gun_lsg_near` | LSG-06 雷射霰彈槍（能量的散射） | near `beam2`／`rLaser`、body `~zapC`、mech `eHi2`、low `~thB` | recipes.js:61 | 0.7 | 4 | Laser shotgun blast, anime sci-fi scattered energy burst with crackling buzz |
-| `gun_lsg_far` | 雷射霰彈槍遠距離 | `lzB1/2` | recipes.js:63 | 1.0 | 2 | Distant energy scatter blast, thin zapping echo |
+| `gun_lsg_far` | 雷射霰彈槍遠距離 | `lzB1/2` | recipes.js:63 | 1.0 | 2 | A distant sci-fi laser blast heard from far away, thin electric zap with a faint crackling burst and a soft fading echo |
 | `gun_bz_near` | BZ-31 火箭筒／一般砲彈（`shell` 預設） | near `cannon1-3`、body `rocket`、low `~thB` | recipes.js:71；mech-entity.js:927 | 1.0 | 4 | Mech bazooka firing, heavy cannon boom with rocket backblast whoosh, realistic |
 | `gun_bz_far` | 火箭筒遠距離 | `hvyF1/2` | recipes.js:73 | 1.5 | 2 | Distant heavy cannon shot, deep boom rolling across terrain |
-| `gun_bz_mech` | 火箭筒裝填的機械聲 | `iron1/3` | recipes.js:75 | 0.3 | 2 | Heavy shell chambering clunk in a giant launcher |
+| `gun_bz_mech` | 火箭筒裝填的機械聲 | `iron1/3` | recipes.js:75 | 0.3 | 2 | A single heavy metal clunk of a large shell sliding into a launcher breech, solid mechanical latch click, short and dry |
 | `gun_gl_near` | GL-12 手持榴彈槍（`grenade` 預設，也用於敵人的迫擊砲） | near `cannon3`／`boomLow`、body `bang1`、low `~thB` | recipes.js:80；mech-entity.js:979 | 0.8 | 4 | Grenade launcher firing, hollow deep thoomp with metallic tube ring |
 | `gun_gl_far` | 榴彈槍遠距離 | `hvyF2` | recipes.js:82 | 1.2 | 2 | Distant grenade launcher thump |
 | `gun_glh_near` | GL-90 肩上榴彈砲 | near `cannon2`／`boomLow`、body `bang2`、low `~thC` | recipes.js:88 | 1.2 | 3 | Shoulder howitzer firing, huge deep artillery boom with long tail, realistic |
@@ -186,18 +186,18 @@ AI 產生時建議每把武器做「近距離（含 body 的厚度）」「遠�
 | `air_jump` | 空中跳（向上的 QB；目前和 QB 同一個） | `qb` | entities/mech-entity.js:3540 | 0.8 | 3 | Mech mid-air double jump, upward thruster kick burst, anime sci-fi |
 | `jump` | 起跳（推進器往下蹬） | `boostUp`＋`thrBurst`＋`~thB`＋`~hiss`＋`~jetTail` | audio.js:1211；entities/mech-entity.js:3514 | 1.0 | 3 | Giant mech jump take-off, hydraulic leg push and downward thruster blast |
 | `hover_engage` | 懸浮開始／爬升切換（**目前沒有**，只有推進器循環變大） | 沒有聲音 | entities/mech-entity.js（`hoverMode`） | 0.5 | 2 | Thrusters stabilizing into hover, quick pitch-up whoosh then steady |
-| `land_light` | 落地（輕，落下速度低） | `boostDown`＋`thud`＋`~thC`＋`~hissL` | audio.js:1219；entities/mech-entity.js:3243 | 0.8 | 3 | Mech landing lightly, thruster brake whoosh and soft heavy footfall |
+| `land_light` | 落地（輕，落下速度低） | `boostDown`＋`thud`＋`~thC`＋`~hissL` | audio.js:1219；entities/mech-entity.js:3243 | 0.8 | 3 | A large heavy robot landing softly on the ground, short thruster whoosh fading out followed by a dull heavy thud and hydraulic hiss |
 | `land_heavy` | 落地（重，從高處；加 `plate`、`mStomp`） | 同上＋`plate1/2`＋`mStomp` | audio.js:1222-1224 | 1.2 | 3 | Heavy mech crashing down onto ground from height, huge metal stomp with ground shake |
 | `ab_start` | 突擊推進開始 | `~qbPre`＋`boostUp`＋`thrBurst`＋`~thC` | audio.js:1279；entities/mech-entity.js:3119 | 1.0 | 2 | Assault boost ignition, powerful jet afterburner kick with intake roar, anime sci-fi |
-| `ab_end` | 突擊推進結束：降頻收尾 | `~jetTailL`＋`boostDown` | audio.js:1286；game/feedback.js:211 | 1.2 | 2 | Afterburner shutting down, descending jet whine fading out |
+| `ab_end` | 突擊推進結束：降頻收尾 | `~jetTailL`＋`boostDown` | audio.js:1286；game/feedback.js:211 | 1.2 | 2 | A jet engine shutting down, high turbine whine descending in pitch and fading out with a soft airy exhaust hiss |
 | `step_biped` | 二足的腳步（機甲的踩踏層） | `thud1/2`＋`mStep1-3`＋`~thD` | audio.js:1228；game/feedback.js:304（`ikGait` entities/mech-entity.js:3688） | 0.5 | 4 | Giant bipedal robot footstep, heavy metal foot stomping with servo whir, realistic |
 | `step_biped_heavy` | 重型二足（重量 > 0.7 或 Boss） | `mStep1/2`＋`qStomp` | audio.js:1238 | 0.6 | 4 | Very heavy armored mech footstep, massive stomp with deep impact |
-| `step_reverse` | 逆關節的腳步（輕快、音高較高） | `mStep3/4` | audio.js:1236 | 0.4 | 4 | Light reverse-jointed mech footstep, springy metal claw foot tap |
-| `step_quad` | 四足的腳步（目前用二足的） | `mStep1-3` | audio.js:1238 | 0.5 | 4 | Four-legged spider mech footstep, sharp metal leg tip planting with hydraulic hiss |
+| `step_reverse` | 逆關節的腳步（輕快、音高較高） | `mStep3/4` | audio.js:1236 | 0.4 | 4 | A single quick footstep of a giant robot on steel ground, light springy metal clank with a short hydraulic click |
+| `step_quad` | 四足的腳步（目前用二足的） | `mStep1-3` | audio.js:1238 | 0.5 | 4 | A single footstep of a giant mechanical spider, sharp pointed metal leg stabbing into the ground with a short hydraulic hiss |
 | `tank_tread_loop` | 戰車腳的履帶（**目前沒有**：`mechStep` 跳過 tank）**循環**，依速度 | 沒有聲音 | game/feedback.js:295 | 3（循環） | 1 | Heavy tank treads rolling and clanking, track links rattling loop |
 | `tank_engine_loop` | 戰車腳的引擎（**目前沒有**）**循環**，依油門 | 沒有聲音 | game/feedback.js:295 | 3（循環） | 1 | Diesel tank engine idle to drive rumble loop, deep and mechanical |
-| `surf_conc` | 腳步的地面層：混凝土、土地 | `stepConc1-3` | audio.js:1260 | 0.4 | 3 | Heavy footfall on concrete, gritty crunch of grit and dust |
-| `surf_metal` | 腳步的地面層：金屬地板、高台 | `armor1-3` | audio.js:1256 | 0.4 | 3 | Heavy footfall on steel deck plating, resonant metal boom |
+| `surf_conc` | 腳步的地面層：混凝土、土地 | `stepConc1-3` | audio.js:1260 | 0.4 | 3 | A single heavy footstep of a giant robot on concrete, deep thud with gritty crunch of gravel and dust |
+| `surf_metal` | 腳步的地面層：金屬地板、高台 | `armor1-3` | audio.js:1256 | 0.4 | 3 | A single heavy footstep of a giant robot on a steel floor, deep resonant metal boom with a ringing clang |
 | `surf_water` | 腳步的地面層：涉水 | `stepWet1/2`、`splash` | audio.js:1253 | 0.6 | 3 | Giant foot stepping into shallow water, big splash and slosh |
 | `surf_snow` | 腳步的地面層：雪 | `stepSnow1/2` | audio.js:1254 | 0.5 | 3 | Heavy footstep crunching into deep snow |
 | `surf_sand` | 腳步的地面層：沙（目前用雪的音高壓低） | `stepSnow1/2` | audio.js:1255 | 0.5 | 3 | Heavy footstep sinking into loose sand, dry soft crunch |
@@ -208,7 +208,7 @@ AI 產生時建議每把武器做「近距離（含 body 的厚度）」「遠�
 | `servo_aim` | 舉槍（`servo('aim')` 定義了但**沒有人呼叫**） | `~servoS` | audio.js:1270 | 0.2 | 2 | Quick servo twitch of a robot arm raising a weapon |
 | `hydraulic_hiss` | 液壓洩壓的嘶（起跳、急停、落地共用） | `~hiss`／`~hissL` | audio.js:1215、1225、1268 | 0.6 | 3 | Hydraulic pressure release hiss, short pneumatic burst |
 | `en_overheat` | EN 用完（推進器過熱） | `~hissL`＋`uiErr` | audio.js:1303；game/feedback.js:230 | 1.0 | 1 | Thruster overheating warning, steam venting hiss with an error buzzer, anime sci-fi |
-| `en_recover` | EN 回滿（**目前沒有**） | 沒有聲音 | game/feedback.js:227 附近 | 0.5 | 1 | Energy reserves restored, soft rising chime with power hum, anime sci-fi |
+| `en_recover` | EN 回滿（**目前沒有**） | 沒有聲音 | game/feedback.js:227 附近 | 0.5 | 1 | Short clean digital sci-fi sound, soft rising electronic chime with a gentle power-up hum, energy fully recharged |
 | `heartbeat` | 低 AP 心跳（AP 30% 以下，越低越快：間隔 1.05→0.55 秒）**分段**：單一下心跳由程式依速率排程 | `tone` 70→40 Hz 兩下 | audio.js:859；game/feedback.js:258 | 0.4 | 3 | Single deep heartbeat thump (lub-dub), low and tense |
 | `reload_light` | 裝填開始（輕武器） | `~reload` | audio.js:1296；entities/mech-entity.js:721、1358 | 1.0 | 3 | Mech rifle magazine reload, heavy mag release and insert clunk, realistic |
 | `reload_heavy` | 裝填開始（導彈、砲彈、榴彈） | `~reloadH` | 同上 | 1.4 | 3 | Heavy launcher reloading, large shell sliding in and locking with a deep clank |
@@ -221,7 +221,7 @@ AI 產生時建議每把武器做「近距離（含 body 的厚度）」「遠�
 | `melee_swing_blade` | 近戰揮擊：脈衝刀（預設音色） | `boostUp`＋`laser2` | audio.js:1085；entities/mech-entity.js:1879 | 0.5 | 4 | Energy blade swing, fast anime sci-fi whoosh with a sharp electric edge |
 | `melee_swing_saber` | 光束大劍 | `laserBig2`＋`boostUp`＋`eMid1` | audio.js:1067 | 0.7 | 4 | Huge beam saber swing, heavy humming anime sci-fi whoosh |
 | `melee_swing_claw` | 破碎爪 | `boostUp`＋`crunch1` | audio.js:1072 | 0.5 | 3 | Mechanical claw swipe, fast whoosh with metal joints snapping |
-| `melee_swing_pile` | 打樁機（蓄力衝刺） | `thrBurst`＋`heavy`＋`servo3` | audio.js:1076 | 0.7 | 3 | Pile bunker arm thrust windup, hydraulic piston charge and thruster push |
+| `melee_swing_pile` | 打樁機（蓄力衝刺） | `thrBurst`＋`heavy`＋`servo3` | audio.js:1076 | 0.7 | 3 | A heavy hydraulic piston charging up, pressurized hiss and mechanical clunk, then a powerful forward thrust whoosh |
 | `melee_swing_fist` | 拳頭（空手） | `boostUp` | audio.js:1081 | 0.4 | 3 | Giant robot punch swing, heavy air whoosh |
 | `melee_acc_f` | 前派生（突刺）的疊加 | `laser`＋`thrBurst`＋自機 `noise` 3400 Hz | audio.js:1090 | 0.3 | 2 | Quick forward thrust, sharp piercing whoosh |
 | `melee_acc_s` | 側派生（迴旋）的疊加 | `boostUp`＋`thrBurst`＋`noise` 900 Hz 0.42 秒 | audio.js:1095 | 0.6 | 2 | Spinning slash, long circular wind whoosh |
@@ -229,7 +229,7 @@ AI 產生時建議每把武器做「近距離（含 body 的厚度）」「遠�
 | `melee_acc_a` | 空中連段的疊加 | `thrBurst`＋`laser2` | audio.js:1104 | 0.4 | 2 | Aerial slash with a short thruster puff |
 | `melee_acc_d` | 下劈的疊加 | `boostDown`＋`thrBurst` | audio.js:1108 | 0.5 | 2 | Downward plunging slash, diving whoosh |
 | `melee_acc_x` | 衝刺斬的疊加 | `boostUp`＋`thrBurst`＋`noise` 600 Hz | audio.js:1112 | 0.6 | 2 | Dash slash, thruster burst rushing forward |
-| `melee_acc_e` | 處決的起手 | `charge`＋`overload` | audio.js:1117；entities/mech-entity.js:1706 | 0.8 | 2 | Execution finisher windup, ominous anime sci-fi energy charge |
+| `melee_acc_e` | 處決的起手 | `charge`＋`overload` | audio.js:1117；entities/mech-entity.js:1706 | 0.8 | 2 | A sci-fi energy weapon charging up, deep electric hum rising in pitch with crackling static, ominous and powerful |
 | `melee_acc_h` | 盾擊 | `shield`＋`thud1` | audio.js:1121 | 0.5 | 2 | Shield bash shove, heavy energy shield thump |
 | `melee_hit_blade` | 近戰命中：脈衝刀（預設） | `hit`＋`punch`＋`armor1`＋`mHit` | audio.js:1153；entities/mech-entity.js:2036 | 0.6 | 4 | Energy blade slicing into mech armor, sizzling cut with metal shriek |
 | `melee_hit_saber` | 光束大劍命中 | `laserBig`＋`armor1`＋`eLow1` | audio.js:1135 | 0.8 | 4 | Beam saber cleaving armor, heavy anime sci-fi burn slash with deep impact |
@@ -239,9 +239,9 @@ AI 產生時建議每把武器做「近距離（含 body 的厚度）」「遠�
 | `melee_hit_w_light` | 命中的重量層：輕（w 0～1） | `explode3` | audio.js:1185-1186 | 0.4 | 2 | Light impact burst, small crack of force |
 | `melee_hit_w_heavy` | 命中的重量層：重（w 2，終結技） | `explode2`＋`boom2` | audio.js:1188-1189 | 0.9 | 2 | Heavy finishing blow impact, powerful bang with shockwave |
 | `melee_hit_w_max` | 命中的重量層：極重（w 3，處決） | `explode2`＋`boom2`＋`explodeBig` | audio.js:1190 | 1.4 | 2 | Devastating crushing impact, massive boom with metal shattering |
-| `melee_hitacc_pierce` | 突刺貫穿的疊加 | `armor2` | audio.js:1161 | 0.3 | 2 | Armor being pierced, sharp metal puncture |
+| `melee_hitacc_pierce` | 突刺貫穿的疊加 | `armor2` | audio.js:1161 | 0.3 | 2 | A single sharp metal spike piercing through thick steel armor plate, harsh metallic puncture crunch with a short ringing tail |
 | `melee_hitacc_scrape` | 迴旋刮過裝甲 | `plate1`＋`grit` | audio.js:1164 | 0.4 | 2 | Blade scraping along armor plates, grinding screech |
-| `melee_hitacc_launch` | 上挑把對手打飛 | `plate2`＋`boostUp` | audio.js:1168 | 0.5 | 2 | Launcher hit, clang then upward whoosh |
+| `melee_hitacc_launch` | 上挑把對手打飛 | `plate2`＋`boostUp` | audio.js:1168 | 0.5 | 2 | A heavy metal clang impact immediately followed by a rising upward whoosh of air, sci-fi action hit |
 | `melee_hitacc_ground` | 下劈砸進地面 | `rock1`＋`boom1`＋`debris` | audio.js:1172 | 1.0 | 2 | Slam into the ground, rock cracking and dirt exploding |
 | `parry_clash` | 彈刀（反擊成功：對方的近戰被彈開；`clash` 方法現在沒人用，彈刀播的是 `shield`） | `shield` | entities/mech-entity.js:1631 | 0.9 | 3 | Two giant blades clashing in a parry, bright ringing metallic clang with spark burst, anime sci-fi |
 | `pqb_dodge` | 完美 QB（完美迴避） | `thrBurst`（ui） | game/feedback.js:377 | 0.8 | 2 | Perfect dodge, slick anime sci-fi time-slow whoosh with a shimmering chime |
@@ -251,24 +251,24 @@ AI 產生時建議每把武器做「近距離（含 body 的厚度）」「遠�
 | `hitconf_shotgun` | 命中確認：霰彈 | `uiTick`（0.85） | 同上 | 0.15 | 2 | Chunky hit marker click, short low tick |
 | `hitconf_en` | 命中確認：雷射 | `uiTick`（1.6） | 同上 | 0.12 | 2 | Bright anime sci-fi hit marker blip |
 | `hitconf_exp` | 命中確認：砲彈、榴彈 | `uiTick`（0.7） | 同上 | 0.15 | 2 | Deep hit marker thock |
-| `hitconf_heavy` | 命中確認的重擊層 | `thud1`＋`mHit2/4` | audio.js:1346 | 0.3 | 2 | Heavy hit confirm, low metallic thunk |
+| `hitconf_heavy` | 命中確認的重擊層 | `thud1`＋`mHit2/4` | audio.js:1346 | 0.3 | 2 | A single heavy low metallic thunk, deep solid impact of a hammer hitting thick steel, short and punchy |
 | `crit` | 打在弱點（CRITICAL） | `glass`＋`plate2` | audio.js:1353；entities/mech-weak.js:119、219；game/feedback.js:358 | 0.5 | 3 | Critical weak-point hit, sharp shattering armor crack with bright ring |
 | `break_fx` | 打出敵人失衡（BREAK） | `bell`＋`glass`＋`boom2`＋`~thC`＋`tone` 880→1760 | audio.js:1309；game/feedback.js:332、347 | 1.0 | 2 | Enemy posture break, heavy impact with shattering glass and rising anime chime |
-| `kill_confirm` | 擊破確認（連殺時音高一級級往上，10 級）**分段**：一個基準音由程式移調，或做 10 個上升音 | `tone` 660 Hz×2^(n/6)＋`uiTick`＋`~thB` | audio.js:1358；game/feedback.js:324 | 0.4 | 1（或 10 段） | Kill confirmed chime, satisfying clean anime sci-fi tone with soft thump |
+| `kill_confirm` | 擊破確認（連殺時音高一級級往上，10 級）**分段**：一個基準音由程式移調，或做 10 個上升音 | `tone` 660 Hz×2^(n/6)＋`uiTick`＋`~thB` | audio.js:1358；game/feedback.js:324 | 0.4 | 1（或 10 段） | Short clean digital UI sound, a single bright satisfying confirmation chime with a soft low thump underneath, sci-fi game |
 | `kill_confirm_big` | 擊破精英／AC 的加重 | `bell`＋`boom1`＋`~thC` | audio.js:1365 | 1.2 | 2 | Major enemy destroyed, deep gong-like bell with heavy boom |
 | `stinger_short` | Boss 的 BREAK：短的配樂重音 | `~sting` | audio.js:1317；game/feedback.js:336 | 1.5 | 2 | Short orchestral hit stinger, dramatic brass and drum accent |
 | `stinger_long` | Boss 擊破：長的配樂重音 | `~stingL` | audio.js:1317；entities/mech-entity.js:2762 | 3 | 2 | Triumphant cinematic stinger, big orchestral hit with long ringing tail |
-| `reaction_hot` | 屬性反應：過熱裝甲 | `heavy`＋`uiTick` | audio.js:1330；entities/mech-react.js:41 | 0.8 | 2 | Armor superheating, deep searing whoomp with sizzle |
+| `reaction_hot` | 屬性反應：過熱裝甲 | `heavy`＋`uiTick` | audio.js:1330；entities/mech-react.js:41 | 0.8 | 2 | A deep fiery whoosh of metal superheating, burning roar followed by sizzling and crackling hot steel |
 | `reaction_burst` | 屬性反應：破甲爆裂 | `bell`＋`uiTick` | audio.js:1331 | 0.8 | 2 | Armor bursting reaction, metallic ring and crack |
 | `reaction_jam` | 屬性反應：EMP 干擾 | `glitch`＋`uiTick` | audio.js:1332 | 0.6 | 2 | Electronic jamming glitch, stuttering digital static |
 | `ranged_bonus` | 邊閃邊打的加成打中 | `uiTick`＋`plate1` | audio.js:1323；entities/mech-ranged.js:122 | 0.3 | 3 | Bonus hit ping, crisp metallic tick with sparkle |
 | `ranged_bonus_ctr` | 加成是「反擊」時多一聲鐘 | `bell` | audio.js:1326 | 0.5 | 1 | Small bright bell accent |
 | `ar_ok` | 主動裝填成功 | `uiOk`＋`plate1` | game/feel.js:32-33 | 0.4 | 2 | Perfect reload, satisfying mechanical clack with success chime |
-| `ar_fail` | 主動裝填失敗 | `uiErr` | game/feel.js:34 | 0.4 | 1 | Reload jammed, dull clunk with error buzz |
+| `ar_fail` | 主動裝填失敗 | `uiErr` | game/feel.js:34 | 0.4 | 1 | A single dull mechanical clunk of a jammed gun, followed by a short low digital error buzz |
 | `style_rank_up` | 風格評價升級（D→C→…→S）（**目前沒有**） | 沒有聲音 | game/style-meter.js | 0.6 | 3 | Style rank up, punchy anime announcer-style whoosh swell |
-| `style_rank_down` | 風格評價掉級（**目前沒有**） | 沒有聲音 | game/style-meter.js | 0.5 | 1 | Rank drop, short descending deflating tone |
-| `lock_switch` | 換鎖定目標（按鍵、甩動、俯視游標吸附、眼動追蹤） | `uiClick` | game/player.js:107、game/chase.js:422、game/top-aim.js:184、game/gaze.js:451 | 0.15 | 2 | Target lock switch, quick anime sci-fi targeting beep |
-| `lock_acquire` | 自動鎖定到新目標（**目前沒有**） | 沒有聲音 | game/player.js（`autoLock`） | 0.2 | 2 | Lock-on acquired, short double targeting beep |
+| `style_rank_down` | 風格評價掉級（**目前沒有**） | 沒有聲音 | game/style-meter.js | 0.5 | 1 | Short clean digital UI sound, a quick descending two-note tone, deflating and disappointed, sci-fi game interface |
+| `lock_switch` | 換鎖定目標（按鍵、甩動、俯視游標吸附、眼動追蹤） | `uiClick` | game/player.js:107、game/chase.js:422、game/top-aim.js:184、game/gaze.js:451 | 0.15 | 2 | Short clean digital UI sound, a single quick high-pitched electronic beep of a targeting system switching target |
+| `lock_acquire` | 自動鎖定到新目標（**目前沒有**） | 沒有聲音 | game/player.js（`autoLock`） | 0.2 | 2 | Short clean digital UI sound, a crisp double electronic beep, targeting system locking on, sci-fi |
 | `missile_lock_tick` | 導彈鎖定累積（地面的「導彈鎖定 n／N」，**目前沒有**；空域另有）**分段** | 沒有聲音 | entities/mech-entity.js:2264（`missileN`） | 0.1 | 1 | Missile lock tone tick, short high beep |
 | `missile_lock_full` | 導彈全部鎖滿（**目前沒有**） | 沒有聲音 | 同上 | 0.4 | 1 | Full missile lock, steady high-pitched solid tone |
 | `missile_incoming` | 敵人導彈朝自己飛來的警報（地面，**目前沒有**；空域另有） | 沒有聲音 | entities/projectile.js | 1.0（可循環） | 1 | Incoming missile warning alarm, rapid urgent cockpit beeping |
@@ -276,7 +276,7 @@ AI 產生時建議每把武器做「近距離（含 body 的厚度）」「遠�
 | `view_switch` | 切換視角（俯視／追尾／第一人稱，**目前沒有**） | 沒有聲音 | game/view-tr.js | 0.4 | 2 | Camera mode switch, quick anime sci-fi HUD swoosh |
 | `repair_kit` | 使用修復套件（也用於補給完成、隊友撿東西、救援） | `ui2`＋`uiOpen` | audio.js:1389；game/mission.js:56、game/mp-host.js:295、325 | 1.2 | 2 | Mech repair kit deploying, nanomachine repair hum with mechanical clicks, anime sci-fi |
 | `consumable_use` | 使用消耗品（按鍵） | `uiClick` | game/mission.js:102 | 0.3 | 1 | Cockpit consumable button press, confirming electronic beep |
-| `revive_done` | 重生／整備後回滿（`door`） | `door` | entities/mech-entity.js:2818 | 1.0 | 1 | Systems reboot complete, power-up hum with hatch clunk |
+| `revive_done` | 重生／整備後回滿（`door`） | `door` | entities/mech-entity.js:2818 | 1.0 | 1 | A machine powering back on, electric hum rising in pitch with startup beeps and a heavy metal hatch clunk |
 | `self_destroyed` | 自機被擊破（**目前只有一般的爆炸**；駕駛艙警報、系統斷電） | `explode`＋`wreck` | entities/mech-entity.js:2722 | 2.5 | 2 | Cockpit critical failure, alarms cutting out into a power-down groan and explosion |
 | `status_hook` | 狀態：被鉤住 | `plate1`＋`clatter1` | entities/mech-status.js:361 | 0.6 | 2 | Steel harpoon hook latching onto armor, heavy clank and chain rattle |
 | `status_stick` | 狀態：黏附炸彈 | `crunch1`＋`uiTick` | entities/mech-status.js:364 | 0.5 | 2 | Sticky bomb attaching, wet magnetic clamp with arming click |
@@ -289,11 +289,11 @@ AI 產生時建議每把武器做「近距離（含 body 的厚度）」「遠�
 | `status_drain` | 狀態：吸取 EN | `dome1` | entities/mech-status.js:380 | 0.7 | 1 | Energy being siphoned, draining anime sci-fi whir |
 | `status_escape` | 掙脫狀態（QB 甩掉） | `plate2`＋`uiOk` | entities/mech-status.js:412-413 | 0.5 | 2 | Breaking free, metal snap release with relief chime |
 | `status_cut` | 近戰割開（捕獲網、纏附） | `glass`＋`uiOk` | entities/mech-status.js:411 | 0.5 | 2 | Cutting through restraints, sharp slice and snap |
-| `status_end` | 狀態自然結束 | `clatter1` | entities/mech-status.js:436 | 0.4 | 1 | Restraint falling off, light metal clatter |
+| `status_end` | 狀態自然結束 | `clatter1` | entities/mech-status.js:436 | 0.4 | 1 | A light metal clatter, small loose steel pieces dropping onto a hard floor and rattling briefly |
 | `wing_command` | 對僚機下指令（Z 鍵） | `uiClick` | game/wing.js:86 | 0.3 | 2 | Squad command issued, short radio chirp |
 | `wing_revive` | 救起倒地的僚機 | `ui2`＋`uiOpen`（kit） | game/wing.js:112 | 1.2 | 1 | Ally mech revived, power restore hum |
 | `gear_proc_affix` | 零件的紫／金詞條觸發（**目前沒有聲音**，例如觸發型詞條） | 沒有聲音 | entities/mech-gear-fx.js、mech-gear-gold.js | 0.5 | 3 | Special perk triggers, shimmering anime sci-fi power-up chime |
-| `legend_proc` | 傳說模組的效果觸發（繞背、殘影誘餌、護盾轉化…，**目前沒有**） | 沒有聲音 | entities/mech-legend.js | 0.7 | 3 | Legendary ability activates, grand anime sci-fi energy surge |
+| `legend_proc` | 傳說模組的效果觸發（繞背、殘影誘餌、護盾轉化…，**目前沒有**） | 沒有聲音 | entities/mech-legend.js | 0.7 | 3 | A powerful sci-fi energy surge, bright shimmering whoosh with rising electric hum and sparkling magical chime |
 | `shield_absorb` | 脈衝盾擋下傷害（**目前沒有專屬聲音**，只有一般命中） | 沒有聲音 | entities/mech-entity.js:2547-2553 | 0.5 | 3 | Pulse shield absorbing a hit, anime sci-fi hexagonal barrier ping with hum |
 
 ---

@@ -170,10 +170,25 @@ def status(s):
 
 
 def sel():
+    # --keys=<檔案>：補做（一行一個鍵，不分期）；試聽頁叫 redo
+    kf = arg('keys')
+    if kf:
+        ks = set(x.strip() for x in open(kf, encoding='utf-8') if x.strip())
+        return 'redo', [i for i in parse() if i['key'] in ks]
     ph = int(arg('phase', '2'))
     only = arg('only')
     its = [i for i in parse() if i['phase'] == ph and (not only or i['key'] in only.split(','))]
     return ph, its
+
+
+def n_cand(it):
+    """這一項要有幾個候選：變化數 × 3；補做（--extra=N）時在已有的之外再多 變化數 × N 個"""
+    n = it['var'] * NCAND
+    ex = int(arg('extra', '0'))
+    if ex:
+        have = len(glob.glob(os.path.join(CAND, it['key'], '*.wav')))
+        n = max(n, have) + it['var'] * ex
+    return n
 
 
 def cmd_list():
@@ -188,9 +203,10 @@ def cmd_gen():
     import torch
 
     ph, its = sel()
-    todo = [(i, v) for i in its for v in range(i['var'] * NCAND)
+    want = {i['key']: n_cand(i) for i in its}
+    todo = [(i, v) for i in its for v in range(want[i['key']])
             if not os.path.exists(os.path.join(CAND, i['key'], f'{v}.wav'))]
-    total = sum(i['var'] * NCAND for i in its)
+    total = sum(want.values())
     done0 = total - len(todo)
     if not todo:
         status(f'第 {ph} 期的候選已經全部產生（{total} 個）')
