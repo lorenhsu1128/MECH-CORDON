@@ -175,7 +175,8 @@ def sel():
     kf = arg('keys')
     if kf:
         ks = set(x.strip() for x in open(kf, encoding='utf-8') if x.strip())
-        return 'redo', [i for i in parse() if i['key'] in ks]
+        name = os.path.splitext(os.path.basename(kf))[0].replace('sfx-', '').replace('-keys', '')
+        return name, [i for i in parse() if i['key'] in ks]
     ph = int(arg('phase', '2'))
     only = arg('only')
     its = [i for i in parse() if i['phase'] == ph and (not only or i['key'] in only.split(','))]

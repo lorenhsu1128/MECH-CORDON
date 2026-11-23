@@ -1,6 +1,7 @@
 // ============================================================
 //  AUDIO — 音效、環境音、配樂的混音（docs/audio-design.md）
 // ============================================================
+import { SFX_ALIAS } from './sfx-alias.js';
 import { clamp, lerp, makeRng } from '../core/math.js';
 import { DS } from '../core/scale.js';
 import { SFX_DATA } from './sfx-data.js';
@@ -569,6 +570,11 @@ export const SFX = {
   play(k, vol = 1, rate = 1, detune = 0.06, minGap = 0.03, pos = null, bus = null, delay = 0, o = null) {
     if (pos && this.mirror && !this.netDepth) this.mirror(k, vol, rate, pos);
     if (!this.ctx || !this.on) return;
+    // 舊素材的鍵：對應的 AI 音效已經載入時改播 AI 音效（sfx-alias.js；AI 音效照遊戲要的音高做，不套用給舊素材的移調）
+    if (k[0] !== '@' && SFX_ALIAS[k] && this.aiVar(SFX_ALIAS[k]).length) {
+      k = '@' + SFX_ALIAS[k];
+      rate = 1;
+    }
     if (k[0] === '@') k = this.pickKey([k]);
     const b = k && this.buf[k];
     if (!b) return;

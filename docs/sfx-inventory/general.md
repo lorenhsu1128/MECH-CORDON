@@ -143,8 +143,8 @@ AI 產生時建議每把武器做「近距離（含 body 的厚度）」「遠�
 | `gun_emp_beam_far` | 電磁槍遠距離 | `eHi1` | recipes.js:159 | 1.0 | 2 | Distant electric zap |
 | `emp_beam_loop` | 電磁光束持續照射（目前每隔 `sndT` 重播 `laser2`＋`~empS`）**循環** | `laser2`＋`~empS` 重複 | entities/mech-entity.js:1165 | 1.5（循環） | 1 | Continuous electromagnetic beam, anime sci-fi buzzing electric hum loop with crackles |
 | `emp_overload` | 電磁槍過載（EN 回滿前不能發射） | `overload` | entities/mech-entity.js:1103 | 1.2 | 1 | Weapon overload shutdown, electric fizzle and power-down whine |
-| `gun_cannon_near` | 空域機首的機砲（`air_cannon`）——**空戰組** | near `hvyN1/2`、low `~thA` | recipes.js:166 | 0.4 | 3 | （空戰組負責） |
-| `gun_cannon_far` | 機砲遠距離——**空戰組** | `hvyF1/2` | recipes.js:168 | 0.8 | 2 | （空戰組負責） |
+| `gun_cannon_near` | 空域機首的機砲（`air_cannon`）——**空戰組** | near `hvyN1/2`、low `~thA` | recipes.js:166 | 0.4 | 3 | Rapid heavy autocannon shot from an aircraft nose gun, sharp punchy bang with a metallic mechanical rattle |
+| `gun_cannon_far` | 機砲遠距離——**空戰組** | `hvyF1/2` | recipes.js:168 | 0.8 | 2 | Distant aircraft autocannon burst, thin cracking rattle echoing across the open sky |
 | `→ shot('blade')` | `shot` 的 `blade` 種類沒有配方：`boostUp`＋`laser2`＋`thrBurst`（只有敵人的迴旋刃等用） | — | audio.js:880 | — | — | 敵人組 |
 
 ### 2-B 合成音 41 個（`audio/synth.js`）的實際用處與取代
