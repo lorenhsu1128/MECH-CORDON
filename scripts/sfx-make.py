@@ -153,7 +153,8 @@ def maxs_for(it):
 
 def gen_secs(it):
     """要模型產生的長度：循環音多產生一些給接縫的交叉淡化"""
-    return it['secs'] * 1.5 + 2 if it['loop'] else it['secs'] + 0.5
+    s = it['secs'] * 1.5 + 2 if it['loop'] else it['secs'] + 0.5
+    return min(s, MAXS - 0.5)  # 不能超過潛在空間的長度（30 秒）
 
 
 def arg(k, d=None):
