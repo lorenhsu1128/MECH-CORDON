@@ -170,12 +170,16 @@ function writeAudio(dir, file, name, title) {
 }
 // 自製的 AI 音效（scripts/sfx-make.py，docs/sfx-gen-design.md）：audio.js 的 '@鍵'。
 // 共用的（武器、機體、介面、地圖、Boss 共用的提示訊號…）→ lib/sfx3-assets.js（遊戲啟動後載入）；
-// 每種敵人、Boss、機獸、專屬 AC 各自的（e_／foe_／ac_／ace_／boss_<種類>／beast_<獸>）→ lib/sfx3/<群組>.js，
-// 那個敵人生成時才載入（MechEntity 的 sfxNeed → SFX.needGroup）。群組清單放在共用包的 '@groups'
+// 每種敵人、Boss、機獸、專屬 AC 各自的（e_／foe_／ac_／ace_／boss_<種類>／beast_<獸>）、各主題的環境音與天候
+// （amb_<主題>／weather_<種類>）、格納庫（hg）、過場（cine）→ lib/sfx3/<群組>.js：敵人生成時（MechEntity 的 sfxNeed）
+// 或第一次要播、還沒載入時（audio.js 的 aiVar）才載入。群組清單放在共用包的 '@groups'
+// 群組的規則和 src/audio/audio.js 的 sfx3Group 相同（改一邊要同步改另一邊）
 function sfx3Group(k) {
   if (/^boss_common_/.test(k)) return null;
-  const m = /^(e|foe|ac|ace|boss|beast)_([a-z0-9]+)_/.exec(k);
-  return m ? m[1] + '_' + m[2] : null;
+  const m = /^(e|foe|ac|ace|boss|beast|amb|weather)_([a-z0-9]+)_/.exec(k);
+  if (m) return m[1] + '_' + m[2];
+  const h = /^(hg|cine)_/.exec(k); // 格納庫、過場：用到才載入
+  return h ? h[1] : null;
 }
 function writeSfx3() {
   const dir = path.join(SRC, 'assets', 'sfx3');

@@ -63,6 +63,15 @@ const UI_AI = {
 // 事件提示的種類 → AI 音效（SFX.cue；phase 是 Boss 換型態，另外處理，這裡不列）
 const CUE_AI = { exit: 'exit_open', cache: 'cache_open', mod: 'mod_pick_open', clear: 'area_clear' };
 
+// 自製 AI 音效的群組（lib/sfx3/<群組>.js）：規則和 scripts/build.js 的 sfx3Group 相同（改一邊要同步改另一邊）
+function sfx3Group(k) {
+  if (/^boss_common_/.test(k)) return null;
+  const m = /^(e|foe|ac|ace|boss|beast|amb|weather)_([a-z0-9]+)_/.exec(k);
+  if (m) return m[1] + '_' + m[2];
+  const h = /^(hg|cine)_/.exec(k);
+  return h ? h[1] : null;
+}
+
 export const SFX = {
   dk: DS, // 3D 音效的距離倍率
   ctx: null,
@@ -673,6 +682,7 @@ export const SFX = {
     a = [];
     for (let i = 0; i < 32 && this.buf[k + '_' + i]; i++) a.push(k + '_' + i);
     if (a.length) this.aiV[k] = a;
+    else this.needGroup(sfx3Group(k + '_0')); // 屬於還沒載入的群組：載入（這一次照舊退回舊素材或不出聲）
     return a;
   },
   aiV: {},
