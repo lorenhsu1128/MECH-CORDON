@@ -221,3 +221,21 @@
     - 導彈來襲 `missileIncoming`
     - 加特林的轉管、飛行中的導彈：`game/feedback.js` 的 `audioWeaponTick`
     - 電磁光束的循環
+
+## 8. 完成（2026-11-23）
+
+- **產生**：第 2～5 期全部完成，加上低分項目的補做與空域機砲。合計約 1,390 個鍵、2,370 個變化版本、約 65 MB（mp3 96 kbps）。每期的試聽頁 `tools/sfx-trial/p2.html`～`p5.html`、補做 `predo.html`、機砲 `pextra.html`。
+- **補做**：CLAP 低於 0.1 的 111 項改寫提示詞（遊戲專有名詞改成聽起來像什麼、一句一個聲音），再多做 2 倍的候選，全部依新提示詞重新評分。中位數從 0.1 以下升到 0.237，仍有 17 項偏低（使用者抽聽後再處理）。
+- **分包**（`scripts/build.js` 的 `writeSfx3`，規則和 `audio/audio.js` 的 `sfx3Group` 相同）：
+  - 共用的（武器、機體、介面、地圖、Boss 共用的提示訊號）在 `lib/sfx3-assets.js`，約 16 MB，遊戲啟動後載入。
+  - 其他依群組放在 `lib/sfx3/<群組>.js`，約 154 個：每種一般敵人 `e_`、專屬敵人 `foe_`、敵對 AC `ac_`、專屬 AC `ace_`、Boss `boss_<種類>`、機獸 `beast_<獸>`、主題環境音 `amb_<主題>`、天候 `weather_<種類>`、格納庫 `hg`、過場 `cine`。
+  - 群組的載入時機：
+    - 敵人生成時（`MechEntity.sfxNeed`）。
+    - 或第一次要播、還沒載入時（`aiVar` 自動載入，這一次不出聲）。
+- **拿掉第三方素材**：`src/assets/sfx/`（83 個，原本內嵌在 HTML）、`src/assets/sfx2/`（114 個與 CREDITS.txt）全部刪除，`audio/sfx-data.js` 是空的、不再建置 `lib/sfx-assets.js`。程式裡留著的舊鍵經過 `audio/sfx-alias.js`（`scripts/sfx-alias.py` 依清單的「目前的聲音」欄產生，224 項＋手動補的）改播對應的 AI 音效；遊戲的 HTML 從 66 MB 降到 64.7 MB。
+- **坑**：
+  - 長的循環音要求的長度（秒數×1.5＋2）超過 30 秒的潛在空間會出錯，產生的長度一律限制在 29.5 秒。
+  - 兩個續跑腳本各自啟動一份產生，吃掉兩倍的記憶體。`gen` 改成同時只跑一份（`tools/sfxgen/gen.lock`）。
+  - 分數檔直接覆寫被中斷時會留下殘缺的 JSON，改成先寫暫存檔再改名。
+  - 用 `git worktree` 做比較時，在工作資料夾裡建了 `node_modules` 的連結。`git worktree remove --force` 會順著連結刪掉專案真正的套件，事後要 `npm install`。**不要在工作資料夾裡建 node_modules 的連結**；要比較改動前的版本就另外 `npm install`。
+- **測試**：用顯示卡算繪跑音效、手把選單、格納庫、Boss（刁鑽度與專屬內容）、機獸、專屬敵人、空域、過場，464 項全部通過。舊素材拿掉之後，音效的兩組測試改成接受 AI 音效的鍵、等 AI 音效包載入。CPU 算繪時，格納庫、Boss、機獸的截圖會逾時（改動前的版本也一樣，不是這次造成的）。

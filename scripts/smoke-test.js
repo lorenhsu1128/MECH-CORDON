@@ -17420,7 +17420,10 @@ async function testAudio(browser, base) {
   await page.goto(base + '?test');
   await waitVisible(page, 'title');
   await page.evaluate(() => window.__sfx.init());
-  await page.waitForFunction(() => window.__sfx.ready, null, { timeout: 30000 });
+  // 舊素材拿掉之後，音效＝合成音＋自製的 AI 音效（lib/sfx3-assets.js，遊戲啟動後載入）：等它解碼一部分
+  await page.waitForFunction(() => window.__sfx.ready && Object.keys(window.__sfx.buf).length >= 70, null, {
+    timeout: 30000,
+  });
   const r = await page.evaluate(() => {
     const g = window.__game,
       S = window.__sfx;
@@ -17489,24 +17492,31 @@ async function testAudio(browser, base) {
   check(r.n >= 70, `音效全部解碼（${r.n} 個）`);
   check(r.amb >= 2 && /^snow/.test(r.ambKey) && r.rev < 1, `冰原的環境音 ${r.amb} 層、殘響 ${r.rev} 秒`);
   check(
-    r.hitE.some((k) => /^armor/.test(k)) && r.hitP.some((k) => /^punch/.test(k)),
+    // 自製的 AI 音效（sfx3）載入後是 @hit_armor／@hit_self；之前是舊素材的分層
+    r.hitE.some((k) => /^(armor|@hit_armor)/.test(k)) && r.hitP.some((k) => /^(punch|@hit_self)/.test(k)),
     `命中依目標分類（敵人 ${r.hitE.join('+')}／自己 ${r.hitP.join('+')}）`,
   );
   check(
-    r.k1.includes('tone') && r.k1.includes('debris') && r.streak === 2,
+    r.k1.some((k) => k === 'tone' || /^@kill_confirm/.test(k)) &&
+      r.k1.some((k) => k === 'debris' || /^@wreck_collapse/.test(k)) &&
+      r.streak === 2,
     `擊破確認音、殘骸聲、連殺 ×${r.streak}`,
   );
-  check(r.brk.includes('bell') && r.brk.includes('glass'), `打出失衡的回饋音（${r.brk.join('+')}）`);
   check(
-    r.step.some((k) => /^stepSnow/.test(k)),
+    (r.brk.includes('bell') && r.brk.includes('glass')) || r.brk.includes('@break_fx'),
+    `打出失衡的回饋音（${r.brk.join('+')}）`,
+  );
+  check(
+    r.step.some((k) => /^(stepSnow|@surf_snow)/.test(k)),
     `雪地的腳步聲（${r.step.join('+')}）`,
   );
   check(
-    r.hb.includes('tone') && r.muf < 5000 && r.muf2 === 20000,
+    (r.hb.includes('tone') || r.hb.includes('@heartbeat')) && r.muf < 5000 && r.muf2 === 20000,
     `低 AP 心跳與變悶（${Math.round(r.muf)} Hz → 恢復）`,
   );
   check(
-    r.wave.includes('alarmBig') && r.wave.includes('glitch'),
+    r.wave.some((k) => /^(alarmBig|@wave_alarm)/.test(k)) &&
+      r.wave.some((k) => /^(glitch|@radio_open)/.test(k)),
     `最後一波的警報與 ECHO 的無線電聲（${r.wave.join('+')}）`,
   );
   check(r.btn.length === 1, '按鈕的介面音不重複');
@@ -18014,11 +18024,16 @@ async function testAudio2(browser, base) {
   await page.goto(base + '?test');
   await waitVisible(page, 'title');
   await page.evaluate(() => window.__sfx.init());
-  await page.waitForFunction(() => window.__sfx.ready && window.__sfx.pack, null, { timeout: 30000 });
+  // 自製的 AI 音效（lib/sfx3-assets.js）載入並解碼完槍聲（舊素材已經拿掉，沒有它就沒有槍聲）
+  await page.waitForFunction(
+    () => window.__sfx.ready && window.__sfx.aiGroups && window.__sfx.aiVar('gun_rifle_near').length > 0,
+    null,
+    { timeout: 30000 },
+  );
   const r = await page.evaluate(async () => {
     const g = window.__game,
       S = window.__sfx;
-    const out = { nPack: Object.keys(window.MECH_CORDON_SFX2 || {}).length, syn: !!S.buf['~thA'] };
+    const out = { nPack: Object.keys(window.MECH_CORDON_SFX3 || {}).length, syn: !!S.buf['~thA'] };
     const log = [];
     const play0 = S.play.bind(S);
     S.play = (k, ...a) => (log.push(k), play0(k, ...a));
@@ -18280,7 +18295,7 @@ async function testAudio2(browser, base) {
     g.state = 'title';
     return out;
   });
-  check(r.nPack >= 100 && r.syn, `分層素材 ${r.nPack} 個、合成音`);
+  check(r.nPack >= 100 && r.syn, `自製的 AI 音效 ${r.nPack} 個、合成音`);
   check(r.env === 'snow', `冰原的反射（${r.env}）`);
   check(
     // 自製的 AI 音效（sfx3）載入之後：近距離是 gun_rifle_near_*、不疊舊的 body、超低頻是 sub_thump_light_*

@@ -193,6 +193,7 @@ export const SFX = {
     const c = this.ctx;
     let n = 0;
     const keys = Object.keys(SFX_DATA);
+    if (!keys.length) this.ready = true; // 內嵌的舊素材已經拿掉（docs/sfx-gen-design.md）
     for (const k of keys) {
       c.decodeAudioData(
         this.b64(SFX_DATA[k]),
@@ -220,6 +221,8 @@ export const SFX = {
     if (this.packLoading) return;
     this.packLoading = true;
     this.loadAiPack('sfx3-assets.js', 'MECH_CORDON_SFX3');
+    this.pack = true;
+    if (!window.MECH_CORDON_SFX2) return; // 分層的舊素材（sfx2）已經拿掉，不再載入 lib/sfx-assets.js
     const go = () => {
       const P = window.MECH_CORDON_SFX2;
       if (!P) return;

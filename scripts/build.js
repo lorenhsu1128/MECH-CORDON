@@ -212,12 +212,7 @@ function writeSfx3() {
     );
 }
 function writeSounds() {
-  writeAudio(
-    path.join(SRC, 'assets', 'sfx2'),
-    'sfx-assets.js',
-    'MECH_CORDON_SFX2',
-    '分層的音效素材（src/assets/sfx2/）',
-  );
+  // 分層的舊素材（src/assets/sfx2 → lib/sfx-assets.js）在 2026-11-23 換成自製的 AI 音效之後拿掉（docs/sfx-gen-design.md）
   writeSfx3();
   writeAudio(
     path.join(SRC, 'assets', 'bgm'),
