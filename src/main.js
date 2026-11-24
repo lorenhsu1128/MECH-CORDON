@@ -134,6 +134,7 @@ import './game/crowd.js'; // 地圖上的小人：踩死、血跡、人員擊殺
 import './game/map-veh.js'; // 地圖上會動的載具（docs/map-vehicles-design.md）
 import './game/feedback.js';
 import './game/juice.js';
+import './game/hud-body.js';
 import './game/ranged.js'; // 遠程射擊：邊閃邊打的回饋與 HUD
 import './game/weak.js'; // 遠程射擊：弱點的 HUD 與追尾視角的改瞄
 import './game/feel.js'; // 遠程射擊：命中標記與主動裝填的畫面

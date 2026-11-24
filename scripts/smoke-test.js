@@ -7789,6 +7789,67 @@ async function testHudMode(browser, base) {
     return [c.hudMode, c.hudBg, c.hudOp].join(',');
   });
   check(saved === 'slim,none,0.5', `設定寫進 mech_cordon_ctrl（${saved}）`);
+  // 機體周邊：俯視時角落的狀態欄與武器卡片收起（只留任務資訊與消耗品），弧線與彈數畫在機體旁；追尾時回到精簡的版面
+  await set('ctrlHudBg', 'half');
+  await set('ctrlHudOp', '1');
+  await set('ctrlHudMode', 'body');
+  await page.waitForTimeout(800);
+  const body = await page.evaluate(async () => {
+    const g = window.__game;
+    const vis = (sel) => [...document.querySelectorAll(sel)].filter((e) => e.offsetParent).length;
+    // 畫在機體旁：數 bodyHud 這一格畫了幾段弧、幾個字，並量離機體在畫面上的位置多遠
+    const c = document.getElementById('hud').getContext('2d');
+    const b = g.popBox(g.player);
+    let arcs = 0,
+      texts = 0,
+      far = 0;
+    const a0 = c.arc.bind(c),
+      t0 = c.fillText.bind(c);
+    c.arc = (x, y, r, ...a) => {
+      arcs++;
+      far = Math.max(far, Math.hypot(x - b.cx, y - (b.top + b.bot) / 2));
+      return a0(x, y, r, ...a);
+    };
+    c.fillText = (t, x, y, ...a) => {
+      texts++;
+      far = Math.max(far, Math.hypot(x - b.cx, y - (b.top + b.bot) / 2));
+      return t0(t, x, y, ...a);
+    };
+    g.bodyHud(c, g.player, innerWidth, innerHeight);
+    c.arc = a0;
+    c.fillText = t0;
+    const top = {
+      on: g.hudBodyOn(),
+      attr: document.body.hasAttribute('data-hudbody'),
+      hb: vis('#hudBottom'),
+      ws: vis('#weapons .wslot:not(.cs)'),
+      cs: vis('#weapons .wslot.cs'),
+      ht: vis('#hudTop'),
+      htTop: document.getElementById('hudTop').getBoundingClientRect().top,
+      arcs,
+      texts,
+      far: Math.round(far),
+    };
+    g.setView('chase', true);
+    await new Promise((r) => setTimeout(r, 800));
+    const chase = { on: g.hudBodyOn(), hb: vis('#hudBottom'), ws: vis('#weapons .wslot:not(.cs)') };
+    g.setView('top', true);
+    await new Promise((r) => setTimeout(r, 800));
+    return { top, chase, back: document.body.hasAttribute('data-hudbody') };
+  });
+  check(
+    body.top.on && body.top.attr && !body.top.hb && !body.top.ws && body.top.cs === 2 && body.top.ht === 1,
+    `機體周邊（俯視）：狀態欄與武器卡片收起，留任務資訊與消耗品（消耗品 ${body.top.cs}、任務資訊在 y=${Math.round(body.top.htTop)}）`,
+  );
+  check(
+    body.top.arcs >= 4 && body.top.texts >= 3 && body.top.far < 260,
+    `弧線與彈數畫在機體旁（弧 ${body.top.arcs} 次、字 ${body.top.texts} 個、離機體最遠 ${body.top.far} px）`,
+  );
+  check(
+    !body.chase.on && body.chase.hb === 1 && body.chase.ws === 4 && body.back,
+    '追尾視角回到精簡的版面（狀態欄與武器卡片），切回俯視再收起',
+  );
+  await page.screenshot({ path: path.join(SHOT_DIR, 'hud-body.png') });
   await ctx.close();
 }
 

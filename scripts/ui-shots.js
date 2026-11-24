@@ -364,6 +364,22 @@ const SHOTS = {
   'hud-top': async (page) => hudShot(page, 'top'),
   'hud-chase': async (page) => hudShot(page, 'chase'),
   'hud-fp': async (page) => hudShot(page, 'fp'),
+  // 顯示模式「機體周邊」：AP／EN／BAL 的弧線與彈數在機體旁（game/hud-body.js）
+  'hud-body': async (page) => {
+    await page.evaluate(() => {
+      const g = window.__game;
+      g.ctrl.hudMode = 'body';
+      g.applyHud();
+    });
+    await hudShot(page, 'top');
+    await page.evaluate(() => {
+      const p = window.__game.player;
+      p.en = p.enMax * 0.55;
+      p.acs = p.acsMax * 0.4;
+      p.weapons.rarm.mag = 3;
+    });
+    await wait(600);
+  },
   'hud-boss': async (page) => hudShot(page, 'top', 3),
   // 主線的導航標記（出口的定位針：一個在畫面內、其他在畫面外；敵人的畫面外箭頭一起看）
   'hud-exits': async (page) => {

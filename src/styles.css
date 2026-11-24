@@ -12158,3 +12158,9 @@ body[data-hud='slim'] #lockHint {
   padding: 2px 12px;
   font-size: 11px;
 }
+/* 機體周邊（ctrl.hudMode＝body，俯視時 body[data-hudbody]）：狀態欄與四把武器的卡片收起，畫在機體旁（game/hud-body.js）；
+   角落只留任務資訊與消耗品 */
+body[data-hudbody] #hudBottom,
+body[data-hudbody] #weapons .wslot:not(.cs) {
+  display: none;
+}

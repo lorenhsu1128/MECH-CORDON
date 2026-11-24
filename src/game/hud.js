@@ -494,8 +494,9 @@ Object.assign(Game.prototype, {
       // 電腦：狀態欄在左上、任務資訊接在它下面；觸控：任務資訊在上、狀態欄接在下面（照舊）
       const view = this.airMode ? 'air' : this.chase ? 'chase' : this.fp ? 'fp' : 'top';
       if (document.body.dataset.view !== view) document.body.dataset.view = view;
+      document.body.toggleAttribute('data-hudbody', this.hudBodyOn()); // 機體周邊的 HUD：角落的狀態欄與武器卡片收起
       hb.style.top = vp ? ht.offsetTop + ht.offsetHeight + 4 + 'px' : '';
-      ht.style.top = vp ? '' : hb.offsetTop + hb.offsetHeight + 8 + 'px';
+      ht.style.top = vp ? '' : hb.offsetParent ? hb.offsetTop + hb.offsetHeight + 8 + 'px' : '14px';
       const tp = document.getElementById('tutPanel');
       if (tp) tp.style.top = vp ? '' : ht.offsetTop + ht.offsetHeight + 10 + 'px';
       // 靶場面板接在狀態欄下面
@@ -728,6 +729,7 @@ Object.assign(Game.prototype, {
     this.gazeHud(c, W, H, p); // 眼動追蹤：停留中的目標、注視點、狀態（game/gaze.js）
     this.drawWaveMarks(c, W, H, p, dt);
     this.drawEncMarks(c, W, H, p, dt); // 遠處的敵群（encounters.js）
+    this.bodyHud(c, p, W, H); // 顯示模式「機體周邊」：AP／EN／BAL 的弧線與彈數（hud-body.js）
     // reticle at mouse
     if (this.pvp) this.drawPvpHud(c, W, H, p);
     if (this.chase) {

@@ -274,13 +274,13 @@
 
 ## HUD 精簡（2026-11-24）
 
-使用者回報：任務中的資訊面板墊黑底、佔的面積大，常擋到射擊敵人。調查（1280×720：常駐四塊約佔畫面 15%，黑底不透明度 0.62～0.78）與其他遊戲的做法（Destiny 2 的 HUD 透明度、FF14 每個元件的大小與透明度、The Last of Us Part II 的 HUD 底色、Helldivers 2／Horizon 的動態顯示、Hades 把 HUD 放在視野周邊）之後，定案「精簡的版面當預設＋底色與透明度的設定」；「資訊搬到機體周邊」做成另一個顯示模式（之後做）。
+使用者回報：任務中的資訊面板墊黑底、佔的面積大，常擋到射擊敵人。調查（1280×720：常駐四塊約佔畫面 15%，黑底不透明度 0.62～0.78）與其他遊戲的做法（Destiny 2 的 HUD 透明度、FF14 每個元件的大小與透明度、The Last of Us Part II 的 HUD 底色、Helldivers 2／Horizon 的動態顯示、Hades 把 HUD 放在視野周邊）之後，定案「精簡的版面當預設＋底色與透明度的設定」；「資訊搬到機體周邊」做成另一個顯示模式（下面的「機體周邊」）。
 
 設定（「介面與演出」分頁的「戰鬥 HUD」，任務中改了立刻生效；`input.js` 的 `applyHud`）：
 
 | 設定 | 鍵 | 值 |
 |---|---|---|
-| HUD 的顯示模式 | `ctrl.hudMode` → `body[data-hud]` | `slim` 精簡（預設）／`full` 完整（原本的大面板） |
+| HUD 的顯示模式 | `ctrl.hudMode` → `body[data-hud]` | `slim` 精簡（預設）／`body` 機體周邊／`full` 完整（原本的大面板）；`body[data-hud]` 只有 slim／full，機體周邊是 slim＋俯視時的 `body[data-hudbody]` |
 | HUD 的底色 | `ctrl.hudBg` → `body[data-hudbg]` | `half` 半透明（預設，0.32～0.4）／`solid` 實心（原本的 0.62～0.78）／`none` 無（文字加陰影） |
 | HUD 的透明度 | `ctrl.hudOp` → `--hudOp` | 1（預設）／0.75／0.5，面板整體 |
 
@@ -294,4 +294,13 @@
 
 量測（1280×720，`testHudMode`）：狀態欄＋任務資訊＋武器欄的面積是完整版的 24%。完整的版面本來就有的問題：剛鎖定時很長的鎖定提示會碰到武器欄（沒有改）。
 
-檢查：`node scripts/ui-shots.js hud-top,hud-chase,hud-fp --size=all`（16 種解析度）、冒煙測試 `testHudMode`。
+### 機體周邊（`ctrl.hudMode`＝`body`，`game/hud-body.js`）
+
+只在俯視（傳統與面向游標）生效；追尾、第一人稱、空域、觀戰、機體被擊破時照精簡的版面（準星旁本來就有彈數）。`hudBodyOn()` 每 16 格寫到 `body[data-hudbody]`，CSS 依它把狀態欄與四把武器的卡片收起，角落只留任務資訊與消耗品。`bodyHud` 畫在 HUD 的畫布上、跟著機體在畫面上的外框（`popBox`，半徑＝機體的大小＋`R_PAD`，夾在 `R_MIN`～`R_MAX`）：
+
+- 左側的弧＝AP（60% 以下黃、30% 以下紅），弧的左下是 AP 數字與修復套件的格子。
+- 右側的弧＝EN（25% 以下紅），內圈的細弧＝BAL（有累積才畫；失衡中紅、失衡後保護中藍）。
+- 下方的短弧＝破甲充能（Boss 戰，讀 `#bkBar`）。
+- 四把武器的彈數在弧的外側：左背／左手在左上、左下，右背／右手在右上、右下（和追尾視角準星旁的排法一樣）；彈匣快空變黃、裝填中橘色並有裝填條、彈藥用完紅色，強力彈充滿時旁邊有小菱形。
+
+檢查：`node scripts/ui-shots.js hud-top,hud-chase,hud-fp,hud-body --size=all`（16 種解析度）、冒煙測試 `testHudMode`。
