@@ -136,6 +136,13 @@ function scenarios(phase) {
     L.push({ id: 'weak-hub', kind: 'hub', args: ['--ch=8', '--secs=15'], env: WEAK });
     L.push({ id: 'weak-cine', kind: 'cine', args: ['i1_2,o1_4,i1_6'], env: WEAK });
     L.push({ id: 'weak-startup', kind: 'inline', fn: startup, env: WEAK });
+    // 補量：主線裡空戰／補給段讓自動操作停下、沒跑到的段（低標 1600×900，和第 1 期相同）
+    for (const [sid, segs] of [
+      ['c2s3b', [5]],
+      ['c4s3a', [2, 3, 4, 5]],
+      ['c6s2', [2, 3, 4, 5, 6]],
+    ])
+      for (const g of segs) probe(`fill-${sid}-${g + 1}`, [`--sortie=${sid}`, `--seg=${g}`]);
   }
   if (phase === 5) L.push({ id: 'soak', kind: 'inline', fn: soak });
   return L;
@@ -530,7 +537,7 @@ function report() {
     .filter((f) => f.endsWith('.json'))
     .map((f) => f.slice(0, -5));
   const probes = ids.filter((id) =>
-    /^(free|view|full|air|boss|beast|weak-(?!camp|hub|cine|startup))/.test(id),
+    /^(free|view|full|air|boss|beast|fill|weak-(?!camp|hub|cine|startup))/.test(id),
   );
   if (probes.length) {
     L.push(
@@ -684,6 +691,14 @@ function report() {
       for (let k = 1; k <= 3; k++) {
         oomHit = false;
         await runOne(s);
+        if (oomHit && s.kind === 'campaign' && k < 3) {
+          // 主線：被停掉的出擊保留跑完的段（partial），換新的程序從下一個出擊接著跑
+          log(`  ${s.id} 記憶體不足，保留跑完的段、從下一個出擊接著跑`);
+          args.resume = true;
+          await killStray();
+          await sleep(5000);
+          continue;
+        }
         if (oomHit) {
           log(`  ${s.id} 記憶體不足，不重跑（結果裡記下的部分照樣彙整）`);
           await killStray();

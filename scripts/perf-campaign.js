@@ -20,6 +20,7 @@ const { launch, initScript, instrument } = require('./perf-lib');
 
 const ROOT = path.join(__dirname, '..');
 const OUTD = path.join(ROOT, 'test-results', 'perf-campaign');
+let PARTIAL_JF = null;
 const args = {};
 for (const a of process.argv.slice(2)) {
   const m = /^--([^=]+)(?:=(.*))?$/.exec(a);
@@ -645,6 +646,11 @@ async function runSortie(browser, sid, done, seen) {
       seen[row.type] = (seen[row.type] || 0) + 1;
       await page.evaluate((s) => (window.__bot.seen = s), seen);
       res.segs.push(row);
+      // 每段都先寫一次（被記憶體防護停掉時，跑完的段照樣留著；mem 標記讓 --resume 跳過這個出擊）
+      if (PARTIAL_JF) {
+        done[sid] = Object.assign({}, res, { partial: 'mem' });
+        fs.writeFileSync(PARTIAL_JF, JSON.stringify(done, null, 1));
+      }
       console.log(
         `  ${sid} 段 ${seg + 1}/${nSeg} ${meta.theme} ${row.variant || ''} ${meta.type}${meta.boss ? '(Boss)' : ''}：` +
           `進場 ${row.sync}+${row.prep} ms、${row.secs} 秒、主迴圈 p50 ${row.cpu.p50} p99 ${row.cpu.p99}、` +
@@ -810,6 +816,7 @@ function report(all) {
   if (args.only) ids = String(args.only).split(',');
   fs.mkdirSync(OUTD, { recursive: true });
   const JF = path.join(OUTD, `${TAG}.json`);
+  PARTIAL_JF = JF;
   const all = args.resume && fs.existsSync(JF) ? JSON.parse(fs.readFileSync(JF, 'utf8')) : {};
   const seen = {};
   const browser = await launch();
