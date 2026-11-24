@@ -25,6 +25,8 @@ const CAM_AIR_FAR = 20,
   CAM_AIR_ZOOM = 0.2;
 // 鏡頭拉遠的上限（倍率）：設定的「鏡頭最遠距離」，預設 1.8（約 55 m 高，一定在霧的範圍內）
 const CAM_MAX_DEF = 1.8;
+const PAN_KEEP = 0.42; // 鏡頭往鎖定目標偏移時，機體最多離畫面中心這麼遠（NDC）
+const PAN_RATE = 2.5; // 偏移的平滑速度
 // 平時的鏡頭距離（倍率，設定的「鏡頭距離」ctrl.camDist）：標準 0.65＝機體約佔畫面高度的 18%
 const CAM_DIST = { near: 0.5, std: 0.65, far: 0.85 };
 const MELEE_ZK = 0.62; // 近戰時最近拉到平時距離的這個倍率（標準＝0.4，機體約佔畫面 30%）
@@ -34,6 +36,7 @@ const CAM_PITCH_MELEE = 0.8; // 近戰時的俯角（約 46°，從比較側面�
 const CU_PITCH = 0.36; // 俯角約 21°
 const CU_CD = 2.5; // 處決以外的特寫最短間隔（秒）
 // 機體被擋住時的透視輪廓：只畫在被擋住的地方（深度比遮擋物遠）
+const _zero = new THREE.Vector3();
 const XRAY_MAT = new THREE.MeshBasicMaterial({
   color: 0x8fdcff,
   transparent: true,
@@ -392,7 +395,8 @@ Object.assign(Game.prototype, {
       if (this.camMeleeFoe.pos.distanceTo(p.pos) < 30 * this.camK()) meleeFoe = this.camMeleeFoe;
     }
     let zoomT = B,
-      focus = p.pos.clone();
+      focus = p.pos.clone(),
+      pan = null; // 往鎖定目標的偏移（下面的 lock 分支）
     const lookAhead = new THREE.Vector3(); // 玩家永遠在畫面正中央：不做滑鼠方向偏移
     // 注視點永遠在玩家（不平移鏡頭），只改變鏡頭距離
     focus = p.pos.clone(); // 玩家永遠置中：不再依滑鼠方向偏移
@@ -446,7 +450,31 @@ Object.assign(Game.prototype, {
         zoomT = B;
         this.camMode = 'default';
       } else {
-        zoomT = this.fitZoom(focus, [p.center(), p.lock.center()], B, ZMAX);
+        // 放不進畫面：鏡頭往目標偏移＋拉遠（2026-11-24 使用者定案；以前注視點永遠在玩家、只拉遠）。
+        // 偏移最多到兩者的中點，而且機體要留在畫面中央 PAN_KEEP 的範圍內；更遠的看畫面邊緣的鎖定指示
+        const pts = [p.center(), p.lock.center()];
+        const dir = p.lock.pos.clone().sub(p.pos).setY(0);
+        const dist = dir.length();
+        if (dist > 1e-3 && !this.spectator) {
+          dir.multiplyScalar(1 / dist);
+          const at = (s) => p.pos.clone().addScaledVector(dir, s);
+          const shiftAt = (z) => {
+            let lo = 0,
+              hi = dist / 2;
+            if (this.fitsAt(at(hi), z, [pts[0]], PAN_KEEP)) return hi;
+            for (let i = 0; i < 6; i++) {
+              const m = (lo + hi) / 2;
+              if (this.fitsAt(at(m), z, [pts[0]], PAN_KEEP)) lo = m;
+              else hi = m;
+            }
+            return lo;
+          };
+          let z = this.fitZoom(focus, pts, B, ZMAX);
+          z = this.fitZoom(at(shiftAt(z)), pts, B, z); // 偏移之後不用拉那麼遠
+          const s = shiftAt(z);
+          zoomT = this.fitZoom(at(s), pts, z, ZMAX);
+          pan = dir.multiplyScalar(s);
+        } else zoomT = this.fitZoom(focus, pts, B, ZMAX);
         this.camMode = 'wide';
       }
     } else {
@@ -475,7 +503,9 @@ Object.assign(Game.prototype, {
       this.camMode === 'melee' && !this.spectator ? CAM_PITCH_MELEE : this.camPitchStd(),
       Math.min(1, dt * 2.5),
     );
-    const tgt = focus;
+    if (!this.camPan) this.camPan = new THREE.Vector3();
+    this.camPan.lerp(pan || _zero, Math.min(1, dt * PAN_RATE));
+    const tgt = focus.add(this.camPan);
     tgt.y = p.pos.y + p.model.height * 0.35; // 以機體中段為中心
     // 跳躍時鏡頭只跟一半的離地高度（2026-11-06：以前整個跟著，機體停在畫面中央，看不出往上跳）；
     // 站上高台這種貼地的高度差照舊全跟，落地後平滑回到原位。

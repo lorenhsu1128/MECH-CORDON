@@ -7566,6 +7566,39 @@ async function testLockOn(browser, base) {
     g.autoLock(pl);
     const side = !g.onScreen(es[4]);
     const relock = pl.lock && pl.lock !== es[0] && pl.lock !== es[3];
+    // 畫面內優先：側面畫面外的比較近、前方畫面內的比較遠 → 鎖前方那台；畫面內沒有敵人時才鎖畫面外的
+    put(es[0], 0, 300 * SC);
+    put(es[2], 0, 300 * SC);
+    pl.lock = null;
+    cam();
+    let sx = 0;
+    for (let x = 6; x <= 40 && !sx; x += 1) {
+      put(es[4], x * SC, -1 * SC);
+      if (!g.onScreen(es[4])) sx = x;
+    }
+    let fz = 0;
+    // 畫面內比較遠的位置：另一側的斜前方（畫面的角落比左右邊緣遠）
+    for (let z = 30; z > 2 && !fz; z -= 1) {
+      put(es[1], -(sx - 2) * SC, -z * SC);
+      if (g.onScreen(es[1])) fz = z;
+    }
+    g.autoLock(pl);
+    const inFirst = sx > 0 && Math.hypot(sx - 2, fz) > Math.hypot(sx, 1) + 1 && pl.lock === es[1];
+    put(es[1], 0, 300 * SC);
+    pl.lock = null;
+    g.autoLock(pl);
+    const offOk = pl.lock === es[4];
+    // 鏡頭往鎖定目標偏移：注視點移向目標、機體還在畫面內；解除鎖定後回到機體
+    cam();
+    const panX = g.camTarget.x - pl.pos.x;
+    const panIn = g.onScreen(pl);
+    put(es[4], 0, 300 * SC);
+    pl.lock = null;
+    for (let i = 0; i < 200; i++) g.updateCamera(1 / 60);
+    const panBack = Math.abs(g.camTarget.x - pl.pos.x);
+    put(es[4], 30 * SC, -1 * SC);
+    put(es[1], 0, -14 * SC);
+    put(es[2], 6 * SC, -10 * SC);
     // 第一人稱：依離準星的角度（準星對著偏右那台）
     put(es[0], 0, -8 * SC);
     g.setFp(true);
@@ -7578,13 +7611,34 @@ async function testLockOn(browser, base) {
     g.setFp(false);
     g.clearMission();
     g.state = 'title';
-    return { first, order: order.join(','), behind, side, relock, fp };
+    return {
+      first,
+      order: order.join(','),
+      behind,
+      side,
+      relock,
+      fp,
+      inFirst,
+      offOk,
+      sx,
+      fz,
+      panX,
+      panIn,
+      panBack,
+    };
   }, SC);
   check(
     r.first && r.order === '2,1,4,0,2' && r.behind && r.side,
     `第三人稱：鎖定機甲前方最近的、正面 180° 內由近到遠（含畫面外的側面，${r.order}）、背後的不鎖定`,
   );
   check(r.relock, '目標移到攻擊距離外時改鎖其他近的敵人');
+  check(r.inFirst, `畫面內優先：側面畫面外 ${r.sx} 的比較近，照樣鎖前方畫面內 ${r.fz} 的`);
+  check(r.offOk, '畫面內沒有敵人時鎖畫面外的');
+  check(
+    r.panX > 3 * SC && r.panIn,
+    `鎖定畫面外的目標：鏡頭往目標偏移（${r.panX.toFixed(1)} m）、機體還在畫面內`,
+  );
+  check(r.panBack < 0.5, `解除鎖定後鏡頭回到機體（${r.panBack.toFixed(2)} m）`);
   check(r.fp, '第一人稱：鎖定離準星最近的');
   await ctx.close();
 }

@@ -808,17 +808,41 @@ Object.assign(Game.prototype, {
         c.stroke();
         c.fill();
         c.restore();
+        if (isLock) {
+          // 鎖定的目標：脈動的外圈（和一般的畫面外箭頭分得出來）
+          const pu = 0.5 + 0.5 * Math.sin(tt * 6);
+          c.save();
+          c.strokeStyle = col;
+          c.globalAlpha = 0.4 + 0.45 * pu;
+          c.lineWidth = 2;
+          c.beginPath();
+          c.arc(ax, ay, sz + 6 + 3 * pu, 0, Math.PI * 2);
+          c.stroke();
+          c.restore();
+        }
         {
           const dist = Math.round(e.pos.distanceTo(p.pos));
-          const label = `${e.name} ${dist}m`;
+          const label = `${isLock ? '◎ ' : ''}${e.name} ${dist}m`;
           c.font = 'bold 12px Rubik, Noto Sans TC';
           c.textAlign = 'center';
           const lx = clamp(ax, 70, W - 70),
-            ly = ay + (ay < H / 2 ? 32 : -22);
+            ly = ay + (ay < H / 2 ? (isLock ? 40 : 32) : isLock ? -46 : -22);
           c.fillStyle = 'rgba(0,0,0,.6)';
           c.fillRect(lx - 58, ly - 12, 116, 17);
           c.fillStyle = col;
           c.fillText(label, lx, ly);
+          // 鎖定的目標在畫面外：AP／BAL 小條（名牌看不到，資訊搬到箭頭旁邊）
+          if (isLock) {
+            const bw = 116,
+              bx = lx - bw / 2,
+              by = ly + 6;
+            c.fillStyle = 'rgba(0,0,0,.6)';
+            c.fillRect(bx, by, bw, 9);
+            c.fillStyle = e.staggerT > 0 ? '#ffd21a' : '#ff5a4d';
+            c.fillRect(bx + 2, by + 1, (bw - 4) * clamp(e.hp / e.maxHp, 0, 1), 4);
+            c.fillStyle = '#ffd21a';
+            c.fillRect(bx + 2, by + 6, (bw - 4) * clamp(e.acs / (e.acsMax || 1), 0, 1), 2);
+          }
         }
         continue;
       }
