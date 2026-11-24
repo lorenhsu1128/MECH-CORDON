@@ -612,15 +612,24 @@ function report() {
     L.push(
       `## 作戰室（${id}）`,
       '',
-      '| 次 | 格 | fps | 間隔 p99／最長 | 卡頓 | 繪製 |',
+      '| 次 | 格 | fps | 間隔 p99／最長 | 卡頓 | 耗時最多的呼叫 |',
       '|---|---|---|---|---|---|',
     );
     for (const r of o) {
       const gaps = (r.frames || []).map((f) => f.gap).filter((x) => x !== undefined);
-      const s = gapSum(gaps.slice(30));
+      // 格數少（低標第一次進作戰室）時不丟掉開頭
+      const s = gapSum(gaps.length > 60 ? gaps.slice(30) : gaps);
       tally.push([`${id}:${r.label}`, s.fps]);
+      // 耗時最多的呼叫（依名稱合計）
+      const by = {};
+      for (const c of r.calls || []) by[c.tag] = (by[c.tag] || 0) + c.ms;
+      const top = Object.entries(by)
+        .sort((x, y) => y[1] - x[1])
+        .slice(0, 3)
+        .map(([k, v]) => `${k} ${Math.round(v)} ms`)
+        .join('、');
       L.push(
-        `| ${r.label} | ${gaps.length} | ${mark(s.fps)} ${s.fps} | ${s.p99}／${s.max} | ${s.hitch} | ${r.calls || ''} |`,
+        `| ${r.label} | ${gaps.length} | ${mark(s.fps)} ${s.fps} | ${s.p99}／${s.max} | ${s.hitch} | ${top} |`,
       );
     }
     L.push('');
