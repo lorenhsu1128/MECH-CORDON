@@ -125,7 +125,26 @@ export class FxBatch {
     if (this.free.length < 2048) this.free.push(p);
   }
   clear() {
-    if (this.attached) return; // 由別處擁有（推進器光暈），照舊留著
+    if (this.attached) {
+      // 由別處擁有（推進器光暈），照舊留著；已經不在場景底下的（上一場的機體）放掉，不然留著整台舊機體
+      const S = this.scene,
+        it = this.items;
+      let j = 0;
+      for (const p of it) {
+        let o = p;
+        while (o && o !== S) o = o.parent;
+        if (!o) {
+          p._bi = -1;
+          p.fxBatch = null;
+          p.owner = null;
+          continue;
+        }
+        p._bi = j;
+        it[j++] = p;
+      }
+      it.length = j;
+      return;
+    }
     for (const p of this.items) {
       p._bi = -1;
       p.fxBatch = null;

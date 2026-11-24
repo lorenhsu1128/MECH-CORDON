@@ -5,11 +5,15 @@
 //   材質要開 vertexColors（vcMat：共用顏色的複本；或建模時自己的材質直接打開）。
 // - 小細節分級（fineReg／fineTick）：螺栓、把手、纜線這類小零件放在另一個網格，鏡頭遠了就隱藏。
 const HP = Math.PI / 2;
+// 同樣參數的幾何共用（鍵 → { g 幾何, n 最後用到時的代數 }）。地圖物件的尺寸每張地圖都不同，鍵會一直增加：
+// 每次清除任務（detailSweep）代數加 1，最近兩代都沒用到的放掉（還在用的物件自己留著幾何，不受影響）
 const CACHE = new Map();
+let cacheGen = 0;
 const cached = (k, make) => {
-  let g = CACHE.get(k);
-  if (!g) CACHE.set(k, (g = make()));
-  return g;
+  let e = CACHE.get(k);
+  if (!e) CACHE.set(k, (e = { g: make(), n: cacheGen }));
+  else e.n = cacheGen;
+  return e.g;
 };
 const r3 = (x) => Math.round(x * 1000) / 1000;
 const key = (n, a) => n + ':' + a.map((x) => (typeof x === 'number' ? r3(x) : JSON.stringify(x))).join(',');
@@ -1025,6 +1029,20 @@ export function fineReg(mesh, dist = FINE_DIST) {
   FINE.set(mesh, dist);
 }
 export const isFine = (mesh) => FINE.has(mesh);
+// 清除任務時（game/mission.js 的 clearMission）：幾何快取換代、小細節裡已經不在場景的網格放掉
+// （平常由 fineTick 每 120 格清一次，但只在任務中跑：留著的話上一張地圖的物件整個留在記憶體裡）
+export function detailSweep() {
+  cacheGen++;
+  for (const [k, e] of CACHE) if (e.n < cacheGen - 1) CACHE.delete(k);
+  for (const m of [...FINE.keys()]) {
+    let r = m;
+    while (r.parent) r = r.parent;
+    if (!r.isScene) {
+      FINE.delete(m);
+      m.visible = true;
+    }
+  }
+}
 // 同類材質的合併（地圖物件的 PK.tint）：沒有貼圖、不發光、正面、不透明度 1 的標準材質，依粗糙度與金屬感分成 3×3 類，
 // 顏色烘進頂點色；回傳類別的鍵（null＝不能合併，照原本的材質）
 const bin = (v) => (v < 0.35 ? 0 : v < 0.65 ? 1 : 2);

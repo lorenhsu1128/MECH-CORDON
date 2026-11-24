@@ -160,6 +160,7 @@ Object.assign(Game.prototype, {
       const v = e[k];
       if (v && typeof v === 'object') deepWrap(v, C, 1);
     }
+    C.seen.clear(); // 掃完就放掉：留著的話掃到的東西（含上一張地圖）整個留在記憶體裡
   },
   // 通用的掃描：Game 與每台機體記著的位置、直接掛在場景上的遊戲端網格
   wrapDeep(fx, fz, hopTo) {
@@ -208,6 +209,7 @@ Object.assign(Game.prototype, {
         o.updateMatrix();
       }
     }
+    C.seen.clear(); // 同上
     for (const fn of this.wrapHooks || []) fn.call(this, fx, fz, hopTo);
   },
 });

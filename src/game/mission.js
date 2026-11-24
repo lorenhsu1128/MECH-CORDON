@@ -26,7 +26,9 @@ import { buildDrone, buildHeli, buildVehicle } from '../render/vehicle-models.js
 import { buildBossModel } from '../render/boss-models.js';
 import { mergeRig } from '../render/mesh-merge.js';
 import { buildMech } from '../render/mech-model.js';
+import { SHARED_GEO } from '../render/geometry.js';
 import { PALETTES } from '../render/materials.js';
+import { detailSweep } from '../render/detail.js';
 import { FOES, themeFoes } from '../data/foes.js';
 import { VARIANTS, variantKeys } from '../world/variants.js';
 import { THEMES, World, corridorSpec } from '../world/world.js';
@@ -1020,6 +1022,7 @@ Object.assign(Game.prototype, {
     }, 2600);
   },
   clearMission() {
+    const before = this.scene.children.slice(); // 清完之後離開場景的，釋放幾何（結尾）
     this.paceCapture(); // 這次出擊用的節奏設定組（game/pace-lab.js）
     this.gearDropsFlush(); // 地上沒撿的裝備自動撿起（gear-loot.js）
     this.wingRingDrop(); // 僚機的救援圈（wing.js）
@@ -1100,6 +1103,29 @@ Object.assign(Game.prototype, {
     this.crowdClear(); // 地圖上的小人與血跡（crowd.js）
     this.mvClear(); // 地圖上會動的載具（map-veh.js）
     this.killStreak = null; // 連殺計數不帶到下一場
+    // 記著上一張地圖或機體的快取（不清的話舊的 World 整個留在記憶體裡）
+    this.crushW = this.crushList = null; // 踩平的清單（destruct.js）
+    this._gcW = null; // 地面的顏色（game.js 的 fx.groundCol）
+    this.camFocus = null; // 鏡頭跟著的機體（camera.js）
+    this.lhLock = null; // HUD 上次畫的鎖定目標（hud.js）
+    this.warmWorld = this.warmNote = this.warmLite = null; // 預熱過的地圖（render-setup.js）
+    this.fxaW = null; // 地圖的持續特效（fx-ambient.js）
+    this.fxa = [];
+    this.propW = null; // 地圖物件的受損（destruct.js）
+    this.propActive = [];
+    this.fxwCol = null; // 地面的顏色帶（fx-ambient.js）
+    if (this.water) this.water.attach(null); // 水面系統（fx/water/）
+    this.dCache = null; // 同一格共用的可破壞物件清單（map-extras.js）
+    detailSweep(); // 程式模型的幾何快取與小細節分級（render/detail.js）
+    // 這一場的物件（地圖裝置、地圖載具、掉落物、殘骸與特效、機體…）各自的清除只把它們拿出場景、沒有釋放幾何：
+    // three.js 的繪製狀態會一直留著沒釋放的幾何的頂點資料（每場幾十 MB）。共用的幾何（SHARED_GEO、特效的基本形體）不動
+    const keep = this.fx.keepGeos;
+    for (const o of before)
+      if (!o.parent)
+        o.traverse((x) => {
+          const gm = x.geometry;
+          if (gm && !SHARED_GEO.has(gm) && !(keep && keep.has(gm))) gm.dispose();
+        });
   },
   endMission(success, aborted) {
     const S = this.save,
