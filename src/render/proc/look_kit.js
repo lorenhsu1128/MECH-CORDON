@@ -182,3 +182,122 @@ export function xf(prims, { s = [1, 1, 1], r = [0, 0, 0], t = [0, 0, 0], p = [0,
 }
 // 換色槽：map＝{ 原本的色槽: 新的色槽 }
 export const recolor = (prims, map) => [['T', trisOf(prims).map(([s, a, b, c]) => [map[s] ?? s, a, b, c])]];
+
+// ===== 切角凸塊（現有機甲的造型語言：深色的塊狀骨架外面浮著一塊塊切角的多面裝甲）=====
+// 一組點的凸包 → 三角形（逐點加入：看得到的面拿掉，沿著邊界補上新的面）
+function hullTris(P) {
+  const n = P.length;
+  const nrm = (a, b, c) => cross(sub(P[b], P[a]), sub(P[c], P[a]));
+  // 起始的四面體：最遠的兩點 → 離這條線最遠 → 離這個面最遠
+  let i0 = 0,
+    i1 = 0,
+    best = -1;
+  for (let i = 1; i < n; i++) {
+    const d = Math.hypot(...sub(P[i], P[0]));
+    if (d > best) ((best = d), (i1 = i));
+  }
+  let i2 = -1;
+  best = 1e-9;
+  for (let i = 0; i < n; i++) {
+    const c = cross(sub(P[i1], P[i0]), sub(P[i], P[i0]));
+    const d = Math.hypot(...c);
+    if (d > best) ((best = d), (i2 = i));
+  }
+  if (i2 < 0) return [];
+  const n0 = nrm(i0, i1, i2);
+  let i3 = -1;
+  best = 1e-9;
+  for (let i = 0; i < n; i++) {
+    const d = Math.abs(dot(n0, sub(P[i], P[i0])));
+    if (d > best) ((best = d), (i3 = i));
+  }
+  if (i3 < 0) return [];
+  let faces = dot(n0, sub(P[i3], P[i0])) < 0 ? [[i0, i1, i2]] : [[i0, i2, i1]];
+  const [a, b, c] = faces[0];
+  faces.push([a, i3, b], [b, i3, c], [c, i3, a]);
+  const used = new Set([i0, i1, i2, i3]);
+  for (let i = 0; i < n; i++) {
+    if (used.has(i)) continue;
+    const vis = [],
+      keep = [];
+    for (const f of faces) {
+      const nf = nrm(f[0], f[1], f[2]);
+      const l = Math.hypot(...nf) || 1;
+      (dot(nf, sub(P[i], P[f[0]])) / l > 1e-6 ? vis : keep).push(f);
+    }
+    if (!vis.length) continue;
+    const edge = new Set();
+    for (const f of vis) for (let k = 0; k < 3; k++) edge.add(f[k] + '_' + f[(k + 1) % 3]);
+    for (const f of vis)
+      for (let k = 0; k < 3; k++) {
+        const u = f[k],
+          v = f[(k + 1) % 3];
+        if (!edge.has(v + '_' + u)) keep.push([u, v, i]);
+      }
+    faces = keep;
+  }
+  return faces;
+}
+// 切角：每個點換成三個往中心退 r 的點（沿兩個軸各退一次），凸包出來就是邊與角都切過的塊
+function bevelPts(pts, r) {
+  if (!r) return pts;
+  const c = mid(pts);
+  const out = [];
+  for (const p of pts) {
+    const s = [0, 1, 2].map((k) => (Math.abs(p[k] - c[k]) < 1e-4 ? 0 : Math.sign(p[k] - c[k])));
+    for (let k = 0; k < 3; k++) {
+      const q = p.slice();
+      for (let j = 0; j < 3; j++) if (j !== k) q[j] -= s[j] * r;
+      out.push(q);
+    }
+  }
+  return out;
+}
+// 切角凸塊：pts＝外形的角點（凸包），r＝切角
+export function chunk(s, pts, r = 0.06) {
+  const seen = new Map();
+  for (const p of bevelPts(pts, r)) {
+    const q = p.map(r4);
+    seen.set(q.join(','), q);
+  }
+  const P = [...seen.values()];
+  return ['T', hullTris(P).map(([a, b, c]) => [s, P[a], P[b], P[c]])];
+}
+// 角點的寫法：方塊的八個角、某個高度／前後／左右位置上的矩形（接起來就是收窄或歪斜的塊）
+export const bx = (a, b) => [...rY(a[1], [a[0], b[0], a[2], b[2]]), ...rY(b[1], [a[0], b[0], a[2], b[2]])];
+export function rY(y, [x0, x1, z0, z1]) {
+  return [
+    [x0, y, z0],
+    [x1, y, z0],
+    [x1, y, z1],
+    [x0, y, z1],
+  ];
+}
+export function rZ(z, [x0, x1, y0, y1]) {
+  return [
+    [x0, y0, z],
+    [x1, y0, z],
+    [x1, y1, z],
+    [x0, y1, z],
+  ];
+}
+export function rX(x, [y0, y1, z0, z1]) {
+  return [
+    [x, y0, z0],
+    [x, y1, z0],
+    [x, y1, z1],
+    [x, y0, z1],
+  ];
+}
+// 前後兩片（z＝±）的點：[[x, y, 半深]…] → 每個點 z 取正負
+export const zz = (list, cz = 0) =>
+  list.flatMap(([x, y, d]) => [
+    [x, y, cz - d],
+    [x, y, cz + d],
+  ]);
+// 左右兩片（x＝±）的點：[[半寬, y, z]…]
+export const xx = (list, cx = 0) =>
+  list.flatMap(([w, y, z]) => [
+    [cx - w, y, z],
+    [cx + w, y, z],
+  ]);
