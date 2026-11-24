@@ -101,7 +101,7 @@ Object.assign(MechEntity.prototype, {
   // 滑行中每格：每隻腳兩條貼地的帶子（fx/trail.js 的地面模式）與沿路的揚塵（docs/mech-animation.md 的「地面的推進氣流帶」）
   //   氣流：短（GT_JET.life）、加色、帶推進器的顏色，條紋往後流
   //   痕跡：2～4 秒、一般混合、依地面材質（GT_MARK），條紋固定在地上、越舊越窄
-  //   每個邊點各自貼地形（groundAt；水面上貼水面），斜坡與高低不平的地面也貼得住
+  //   每個邊點各自貼地形（groundAt；水裡也貼著腳下的地面），斜坡與高低不平的地面也貼得住
   groundTrail(dt, an, hv, k) {
     const g = this.game,
       m = this.model,
@@ -162,7 +162,7 @@ Object.assign(MechEntity.prototype, {
       }
     });
   },
-  // 帶子的兩個邊點（_a、_b）：腳的位置往左右 hw，各自貼地形（水面上貼水面）並稍微抬起
+  // 帶子的兩個邊點（_a、_b）：腳的位置往左右 hw，各自貼地形並稍微抬起
   gtEdge(w, f, hw, k, surf) {
     const top = this.pos.y + 1.2 * k,
       lift = 0.06 * k;
@@ -174,7 +174,7 @@ Object.assign(MechEntity.prototype, {
         y = w.groundAt(p.x, p.z, top);
         // 離機體的腳太遠（懸崖邊、物件邊緣）時照機體的高度
         if (Math.abs(y - this.pos.y) > 0.9 * k) y = this.pos.y;
-        if (surf === 'water' && w.theme && w.theme.water) y = Math.max(y, w.theme.water.level);
+        // 水面上不再抬到水面：淺水裡看得到腳，抬上去的帶子會浮在小腿／膝蓋的高度、對不到腳底（2026-11-24 使用者回報）
       }
       p.y = y + lift;
     }
