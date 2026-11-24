@@ -801,7 +801,11 @@ function report(all) {
   const { SORTIES } = await import(
     require('url').pathToFileURL(path.join(ROOT, 'src/data/campaign.js')).href
   );
-  let ids = Object.keys(SORTIES).filter((k) => args.all || !SORTIES[k].cycle);
+  // 第 2、3 周目的委託（c1x～c8x、c1y～c8y）標在簡報的 cycle（data/story.js 的 BRIEFINGS），出擊本身沒有標
+  const { BRIEFINGS } = await import(require('url').pathToFileURL(path.join(ROOT, 'src/data/story.js')).href);
+  let ids = Object.keys(SORTIES).filter(
+    (k) => args.all || !(SORTIES[k].cycle || (BRIEFINGS[k] && BRIEFINGS[k].cycle > 1)),
+  );
   if (args.ch) ids = ids.filter((k) => String(SORTIES[k].chapter) === String(args.ch));
   if (args.only) ids = String(args.only).split(',');
   fs.mkdirSync(OUTD, { recursive: true });
