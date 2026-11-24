@@ -427,6 +427,7 @@
 | 導彈的尾焰 | 彈尾一顆發光的球 | 和機體推進器同一套噴流（`fx/jet.js`：白熱的核心、馬赫環、閃爍），依陣營換色 | `Projectile.jetFx`（每格 `fx.thruster.jets.add`，各端自己畫） |
 | 砲彈、榴彈、電漿彈 | 多層放大的色塊 | 只留白熱的芯，外面是柔邊的彗星狀光（同樣用噴流畫） | `Projectile.jetFx`、`buildProjectileMesh` |
 | 魚雷 | 尾端的發光球 | 尾流 | 同上 |
+| 導彈的白煙帶 | （華麗才有）單色、硬邊、等寬的帶子，俯視時像一條平塗的色塊 | 橫向的柔邊＋沿著帶子的雜訊（`fx/trail.js` 地面帶子的著色器），越舊越寬（`shrink` 負的） | `fx.smokeRibbon` |
 | 電焊 MT 的電弧 | 折線的圓柱 | 鋸齒電弧 `fx.zap`（每 0.1 秒重新長一次） | `mech-foe-b2.js` 的 `arcFx_b2` |
 | 高壓水砲車的水柱 | 半透明的圓柱 | 往前噴的水滴＋白色的水霧 `fx.waterJet` | `waterFx_b2` |
 | 沙脊狙擊機的瞄準線 | 圓柱 | 瞄準雷射的光束帶（`ribbonMesh` 的 kind 2） | `mech-foe-b1.js` |

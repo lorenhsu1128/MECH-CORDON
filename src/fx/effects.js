@@ -1115,12 +1115,16 @@ export class Effects {
     const eye = this.view ? this.viewPos.clone().sub(p).normalize() : new THREE.Vector3(0, 1, 0);
     const side = key.vel.clone().cross(eye);
     if (side.lengthSq() < 1e-6) return;
-    side.normalize().multiplyScalar(0.13 * this.k);
+    side.normalize().multiplyScalar(0.2 * this.k);
+    // 2026-11-24 使用者回報導彈的尾流像一條平塗的色塊：原本是單色、硬邊、等寬的帶子。改用地面帶子的著色器
+    // （fx/trail.js 的 ground：橫向的柔邊＋沿著帶子的雜訊，把帶子打散成一團一團的煙），並且越舊越寬（shrink 負的＝往外擴）
     this.ribbons.push(key, p.clone().add(side), p.clone().sub(side), {
       color: 0xe6eaee,
-      opacity: 0.38,
-      life: 1.1,
-      max: 28,
+      opacity: 0.62,
+      life: 1.5,
+      max: 36,
+      shrink: -2.2,
+      ground: { soft: 0.95, streak: 0.8, freq: 2.2, along: 0.5, k: this.k },
     });
   }
   // 黑洞（重力場、吸入區；game/hazards2.js 的 zoneAnim 每格呼叫，砲火特效「華麗」，不轉送）：
