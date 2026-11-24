@@ -173,8 +173,8 @@ function check(s) {
     if (bad.length) return '沒有區段的出擊：' + bad.join('、');
   }
   if (s.kind === 'cine' && !(Array.isArray(o) && o.length)) return '過場沒有結果';
-  if (s.kind === 'hub' && !(Array.isArray(o) && o.length && o[0].frames && o[0].frames.length > 50))
-    return '作戰室的格數太少';
+  if (s.kind === 'hub' && !(Array.isArray(o) && o.length && o[0].frames && o[0].frames.length > 5))
+    return '作戰室沒有記到格（每一格都很慢的話是真的慢，不是量測失敗）';
   if (s.kind === 'inline' && o.errs && o.errs.length > 20) return `頁面錯誤 ${o.errs.length} 筆`;
   return '';
 }
