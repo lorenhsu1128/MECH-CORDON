@@ -16,7 +16,6 @@ import { buildPod, buildStation } from './cine-sets.js';
 import { buildCineVeh } from './cine-vehicles.js';
 import { FOE_CATALOG } from './foe-models.js';
 import { PARTS, START_ASM } from '../data/parts.js';
-import { LOOKS } from './proc/index.js';
 import { BEAST_SCALE } from '../data/beasts.js';
 import { PALETTES, mechMats } from './materials.js';
 import { PIECE_NAMES, SIDE_NAMES, buildMech, buildPiece, partPieces } from './mech-model.js';
@@ -117,7 +116,6 @@ export const CATEGORIES = [
   { id: 'booster', name: '推進器（背包）' },
   { id: 'weapon', name: '手持武器' },
   { id: 'back', name: '背部武器' },
-  { id: 'looks', name: '暫時（敵方外型）' },
   { id: 'temp', name: '暫時（機獸的程式模型與動作）' },
   { id: 'mech', name: '完整機甲' },
   { id: 'vehicle', name: '非機甲／載具' },
@@ -171,30 +169,6 @@ for (const [cat, list] of PART_LISTS)
           return { obj: wrap, scaleNode: wrap, scale: v3(1), rig: null, piece: info };
         },
       });
-
-// ---------- 暫時：敵方專用外觀（docs/mech-looks-design.md；等使用者檢查）----------
-for (const [id, L] of Object.entries(LOOKS)) {
-  const asm = {
-    ...START_ASM,
-    ...L.base,
-    look: id,
-    rarm: 'w_mg',
-    larm: 'w_sg',
-    rback: 'bw_none',
-    lback: 'bw_gr',
-  };
-  add({
-    id: 'temp/look_' + id,
-    cat: 'looks',
-    name: '敵方外型：' + L.name,
-    note: '暫時：敵方專用外觀（外觀和零件分開：數值與骨架照基底的零件，模型換成這個外型）',
-    pal: 'enemy',
-    asm,
-    spec: 'mech',
-    noGlb: true,
-    build: (k) => wholeRig(buildMech(asm, pal(k), 1), 1),
-  });
-}
 
 // ---------- 暫時：獅型機獸（原創設計，之後當敵人／Boss；等使用者檢查品質）----------
 for (const [key, label, palKey] of [
