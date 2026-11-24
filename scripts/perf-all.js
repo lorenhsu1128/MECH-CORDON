@@ -39,7 +39,7 @@ const FPS_OK = 30,
   FPS_MIN = 24;
 const mark = (fps) => (fps >= FPS_OK ? '✅' : fps >= FPS_MIN ? '△' : '✗');
 const tally = [];
-const MEM_MIN = 3e9;
+const MEM_MIN = 8e9; // 2026-11-24：3 GB 來不及，Claude Code 會先把整個量測停掉
 let oomHit = false;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -168,7 +168,7 @@ function runChild(script, a, env, tag) {
         p.kill('SIGKILL');
         killStray();
       }
-    }, 5000);
+    }, 2000);
     p.on('close', (code) => {
       clearInterval(iv);
       res(code);
