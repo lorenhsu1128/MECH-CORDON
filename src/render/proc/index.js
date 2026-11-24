@@ -252,9 +252,10 @@ export const LOOKS = { warden: LOOK_WARDEN };
 export const LOOK_JOINTS = {};
 for (const id in LOOKS) {
   const L = LOOKS[id];
-  for (const k in L.pieces) {
-    const keys = [[`look/${id}/${k}`, L.pieces[k]]];
-    if (k.startsWith('r_')) keys.push([`look/${id}/l_${k.slice(2)}`, mirrorPrims(L.pieces[k])]);
+  const PC = typeof L.pieces === 'function' ? L.pieces(PROC_PRIMS) : L.pieces; // 函式＝拿現有的清單來拼裝
+  for (const k in PC) {
+    const keys = [[`look/${id}/${k}`, PC[k]]];
+    if (k.startsWith('r_')) keys.push([`look/${id}/l_${k.slice(2)}`, mirrorPrims(PC[k])]);
     for (const [key, prims] of keys) {
       PROC_PRIMS[key] = prims;
       if (L.cols) PROC_COLS[key] = L.cols;

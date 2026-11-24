@@ -143,3 +143,42 @@ export function plate(s, c, w, h, th, r = [0, 0, 0], ch = 0.08) {
   );
 }
 export { norm, cross };
+
+// ===== 拿現有區塊的清單來拼裝（敵方外型要和現有機型同樣的精緻度：2026-11-24 使用者定案）=====
+// 攤成三角形的清單 [[色槽, a, b, c]…]
+export function trisOf(prims) {
+  const list = [];
+  primsTris(prims).forEach((pos, s) => {
+    for (let i = 0; i < pos.length; i += 9)
+      list.push([
+        s,
+        [pos[i], pos[i + 1], pos[i + 2]],
+        [pos[i + 3], pos[i + 4], pos[i + 5]],
+        [pos[i + 6], pos[i + 7], pos[i + 8]],
+      ]);
+  });
+  return list;
+}
+// 只留重心符合 keep(x, y, z, 色槽) 的三角形
+export function pick(prims, keep) {
+  return [
+    [
+      'T',
+      trisOf(prims).filter(([s, a, b, c]) =>
+        keep((a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3, (a[2] + b[2] + c[2]) / 3, s),
+      ),
+    ],
+  ];
+}
+// 縮放（s，以 p 為中心）→ 旋轉（r，度，x → y → z，以 p 為中心）→ 位移 t；縮放有奇數個負的時把三角形翻面
+export function xf(prims, { s = [1, 1, 1], r = [0, 0, 0], t = [0, 0, 0], p = [0, 0, 0] } = {}) {
+  const sc = typeof s === 'number' ? [s, s, s] : s;
+  const neg = sc[0] * sc[1] * sc[2] < 0;
+  const scaled = trisOf(prims).map(([k, a, b, c]) => {
+    const f = (v) => [0, 1, 2].map((i) => p[i] + (v[i] - p[i]) * sc[i]);
+    return neg ? [k, f(a), f(c), f(b)] : [k, f(a), f(b), f(c)];
+  });
+  return tf([['T', scaled]], { r, t, p });
+}
+// 換色槽：map＝{ 原本的色槽: 新的色槽 }
+export const recolor = (prims, map) => [['T', trisOf(prims).map(([s, a, b, c]) => [map[s] ?? s, a, b, c])]];
