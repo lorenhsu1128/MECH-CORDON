@@ -33,6 +33,11 @@ const log = (s) => {
   console.log(line);
   fs.appendFileSync(LOG, line + '\n');
 };
+// 目標（2026-11-24 使用者定案）：低標的裝置上 fps 至少 24～30——平均 30 以上＝達標、24～30＝勉強、24 以下＝不合格
+const FPS_OK = 30,
+  FPS_MIN = 24;
+const mark = (fps) => (fps >= FPS_OK ? '✅' : fps >= FPS_MIN ? '△' : '✗');
+const tally = [];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const THEMES = [
@@ -144,6 +149,42 @@ function runChild(script, a, env, tag) {
     p.stdout.pipe(lf);
     p.stderr.pipe(lf);
     p.on('close', (code) => res(code));
+  });
+}
+// 結果檢查：沒有檔案、格數太少、頁面錯誤、主線的出擊沒跑完 → 回傳原因（沒問題回傳空字串）
+function check(s) {
+  const p = path.join(OUT, s.id + '.json');
+  if (!fs.existsSync(p)) return '沒有結果';
+  let o;
+  try {
+    o = JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch (e) {
+    return '結果的 JSON 壞了';
+  }
+  if (s.kind === 'probe') {
+    const n = (o.frames || []).filter((r) => r.st === 'play').length;
+    if (n < 60) return `任務中只有 ${n} 格`;
+  }
+  if (s.kind === 'campaign') {
+    const want = s.args.find((a) => a.startsWith('--only='));
+    const ids = Object.keys(o);
+    if (want && ids.length < want.slice(7).split(',').length) return `只跑完 ${ids.length} 個出擊`;
+    const bad = ids.filter((k) => !(o[k].segs || []).length);
+    if (bad.length) return '沒有區段的出擊：' + bad.join('、');
+  }
+  if (s.kind === 'cine' && !(Array.isArray(o) && o.length)) return '過場沒有結果';
+  if (s.kind === 'hub' && !(Array.isArray(o) && o.length && o[0].frames && o[0].frames.length > 50))
+    return '作戰室的格數太少';
+  if (s.kind === 'inline' && o.errs && o.errs.length > 20) return `頁面錯誤 ${o.errs.length} 筆`;
+  return '';
+}
+// 重跑前關掉這次留下的無頭瀏覽器（只篩 chrome／msedge 的程序名稱，見 CLAUDE.md 的記憶）
+function killStray() {
+  return new Promise((res) => {
+    const ps =
+      "Get-CimInstance Win32_Process -Filter \"Name='chrome.exe' OR Name='msedge.exe'\" | " +
+      "Where-Object { $_.CommandLine -like '*--headless*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }";
+    cp.execFile('powershell', ['-NoProfile', '-Command', ps], () => setTimeout(res, 2000));
   });
 }
 async function runOne(s0) {
@@ -474,15 +515,16 @@ function report() {
     L.push(
       '## 自由出擊（每個 ' + SECS + ' 秒；進場後 3 秒起算）',
       '',
-      '| 項目 | 地圖 | Boss | 載入 ms | fps | 間隔 p50／p99／最長 | 卡頓 ≥50 | 主迴圈 p99 | 任務中編譯（個／ms） | GC 次數 | 幾何／貼圖 | 各段平均前四（ms／格） |',
-      '|---|---|---|---|---|---|---|---|---|---|---|---|',
+      '| 項目 | 地圖 | Boss | 載入 ms | 達標 | fps | 間隔 p50／p99／最長 | 卡頓 ≥50 | 主迴圈 p99 | 任務中編譯（個／ms） | GC 次數 | 幾何／貼圖 | 各段平均前四（ms／格） |',
+      '|---|---|---|---|---|---|---|---|---|---|---|---|---|',
     );
     for (const id of probes) {
       const o = J(id);
       if (!o || !o.frames) continue;
       const r = probeRow(o);
+      tally.push([id, r.g.fps]);
       L.push(
-        `| ${id} | ${r.map} | ${r.boss || ''} | ${r.load} | ${r.g.fps} | ${r.g.p50}／${r.g.p99}／${r.g.max} | ${r.g.hitch} | ${r.cpu.p99} | ${r.sh ? r.sh.n + '／' + r.sh.ms : ''} | ${r.gc} | ${r.geo}／${r.tex} | ${r.top} |`,
+        `| ${id} | ${r.map} | ${r.boss || ''} | ${r.load} | ${mark(r.g.fps)} | ${r.g.fps} | ${r.g.p50}／${r.g.p99}／${r.g.max} | ${r.g.hitch} | ${r.cpu.p99} | ${r.sh ? r.sh.n + '／' + r.sh.ms : ''} | ${r.gc} | ${r.geo}／${r.tex} | ${r.top} |`,
       );
     }
     L.push('');
@@ -490,7 +532,22 @@ function report() {
   for (const id of ['camp', 'weak-camp']) {
     const o = J(id);
     if (!o) continue;
-    L.push(`## 主線（${id}）`, '', `詳細報告：test-results/perf-campaign/pa-${TAG}-${id}.md`, '');
+    L.push(
+      `## 主線（${id}）`,
+      '',
+      `詳細報告：test-results/perf-campaign/pa-${TAG}-${id}.md`,
+      '',
+      '| 出擊 | 段 | 主題／變體 | 類型 | 達標 | fps 平均／最差 1% | 間隔 p99／最長 | 卡頓／小卡頓 | 進場 ms | heap MB |',
+      '|---|---|---|---|---|---|---|---|---|---|',
+    );
+    for (const sid of Object.keys(o))
+      for (const g of o[sid].segs || []) {
+        tally.push([`${id}:${sid}#${g.seg + 1}`, g.fps]);
+        L.push(
+          `| ${sid} | ${g.seg + 1} | ${g.theme} ${g.variant || ''} | ${g.type}${g.boss ? '(Boss)' : ''} | ${mark(g.fps)} | ${g.fps}／${g.low1} | ${g.gap.p99}／${g.gap.max} | ${g.hitch}／${g.mini} | ${g.sync}＋${g.prep} | ${g.mem ? g.mem.heap : ''} |`,
+        );
+      }
+    L.push('');
   }
   for (const id of ['startup', 'weak-startup']) {
     const o = J(id);
@@ -515,9 +572,10 @@ function report() {
   if (ga) {
     L.push('## 機甲庫', '', '| 動作 | fps | 間隔 p99／最長 | 卡頓 |', '|---|---|---|---|');
     for (const k of ['idle', 'drag', 'slots'])
-      L.push(
-        `| ${{ idle: '待機', drag: '拖曳繞看', slots: '換部位' }[k]} | ${ga[k].fps} | ${ga[k].p99}／${ga[k].max} | ${ga[k].hitch} |`,
-      );
+      (tally.push(['garage-' + k, ga[k].fps]),
+        L.push(
+          `| ${{ idle: '待機', drag: '拖曳繞看', slots: '換部位' }[k]} | ${mark(ga[k].fps)} ${ga[k].fps} | ${ga[k].p99}／${ga[k].max} | ${ga[k].hitch} |`,
+        ));
     L.push('');
   }
   for (const id of ['hub', 'weak-hub']) {
@@ -532,8 +590,9 @@ function report() {
     for (const r of o) {
       const gaps = (r.frames || []).map((f) => f.gap).filter((x) => x !== undefined);
       const s = gapSum(gaps.slice(30));
+      tally.push([`${id}:${r.label}`, s.fps]);
       L.push(
-        `| ${r.label} | ${gaps.length} | ${s.fps} | ${s.p99}／${s.max} | ${s.hitch} | ${r.calls || ''} |`,
+        `| ${r.label} | ${gaps.length} | ${mark(s.fps)} ${s.fps} | ${s.p99}／${s.max} | ${s.hitch} | ${r.calls || ''} |`,
       );
     }
     L.push('');
@@ -548,9 +607,10 @@ function report() {
       '|---|---|---|---|---|---|',
     );
     for (const r of o)
-      L.push(
-        `| ${r.key} | ${r.prep} | ${r.fps} | ${r.p99} | ${r.hitch} | ${r.worst.map((x) => x[0] + '@' + x[1]).join('、')} |`,
-      );
+      (tally.push([`${id}:${r.key}`, r.fps]),
+        L.push(
+          `| ${r.key} | ${r.prep} | ${mark(r.fps)} ${r.fps} | ${r.p99} | ${r.hitch} | ${r.worst.map((x) => x[0] + '@' + x[1]).join('、')} |`,
+        ));
     L.push('');
   }
   const so = J('soak');
@@ -569,6 +629,19 @@ function report() {
     }
     L.push('');
   }
+  // 開頭的總覽：達標的比例與不合格的項目（由低到高）
+  const bad = tally.filter((x) => x[1] < FPS_MIN).sort((a, b) => a[1] - b[1]);
+  const mid = tally.filter((x) => x[1] >= FPS_MIN && x[1] < FPS_OK);
+  L.splice(
+    6,
+    0,
+    `## 目標：fps 至少 ${FPS_MIN}～${FPS_OK}`,
+    '',
+    `共 ${tally.length} 項：✅ 平均 ${FPS_OK} 以上 ${tally.length - bad.length - mid.length} 項、△ ${FPS_MIN}～${FPS_OK} ${mid.length} 項、✗ ${FPS_MIN} 以下 ${bad.length} 項。`,
+    '',
+    bad.length ? '不合格（由低到高）：' + bad.map((x) => `${x[0]} ${x[1]}`).join('、') : '',
+    '',
+  );
   fs.writeFileSync(path.join(OUT, 'report.md'), L.join('\n'));
   log('報告：' + path.join(OUT, 'report.md'));
 }
@@ -586,7 +659,16 @@ function report() {
       if (ONLY && !ONLY.some((o) => s.id.startsWith(o))) continue;
       if (args.resume && fs.existsSync(path.join(OUT, s.id + '.json')) && s.kind !== 'campaign') continue;
       log(`  開始 ${s.id}`);
-      await runOne(s);
+      // 失敗或結果不完整時重跑（最多 3 次；主線用 --resume 從沒跑完的出擊接著跑）
+      for (let k = 1; k <= 3; k++) {
+        await runOne(s);
+        const why = check(s);
+        if (!why) break;
+        log(`  ${s.id} 有問題（${why}），${k < 3 ? '重跑第 ' + k + ' 次' : '放棄'}`);
+        if (k < 3 && s.kind !== 'campaign') fs.rmSync(path.join(OUT, s.id + '.json'), { force: true });
+        if (s.kind === 'campaign') args.resume = true;
+        await killStray();
+      }
     }
     report();
   }
