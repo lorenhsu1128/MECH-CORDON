@@ -1313,6 +1313,33 @@
               <div id="ikBox"></div>
             </section>
             <section class="setPage" data-st="ui" data-intro="傷害數字、狀態字、文字演出、劇情動畫與整備演出">
+              <h4>戰鬥 HUD</h4>
+              <div class="krow">
+                <span>HUD 的顯示模式</span
+                ><select
+                  id="ctrlHudMode"
+                  title="任務中角落的資訊面板。精簡＝狀態欄變窄、武器欄只留彈數與裝填條、任務資訊一行、鎖定提示 2 秒後只留名稱與距離；完整＝原本的大面板"
+                >
+                  <option value="slim">精簡（預設）</option>
+                  <option value="full">完整（原本的大面板）</option>
+                </select>
+              </div>
+              <div class="krow">
+                <span>HUD 的底色</span
+                ><select id="ctrlHudBg" title="資訊面板後面墊的黑底；無＝只留文字與條（加陰影），最不擋畫面">
+                  <option value="half">半透明（預設）</option>
+                  <option value="solid">實心</option>
+                  <option value="none">無</option>
+                </select>
+              </div>
+              <div class="krow">
+                <span>HUD 的透明度</span
+                ><select id="ctrlHudOp" title="資訊面板整體（含文字與條）的不透明度">
+                  <option value="1">100%（預設）</option>
+                  <option value="0.75">75%</option>
+                  <option value="0.5">50%</option>
+                </select>
+              </div>
               <h4>戰鬥中的文字</h4>
               <div class="krow">
                 <span>傷害數字</span

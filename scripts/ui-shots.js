@@ -441,7 +441,10 @@ async function hudShot(page, view, level = 1) {
     [view, level],
   );
   await wait(5000);
-  // 開場的過關條件卡片收起來之後
+  // 開場的過關條件卡片收起來之後（慢的時候等到它收起）
+  await page
+    .waitForFunction(() => !document.querySelector('#goalCard.on'), null, { timeout: 15000 })
+    .catch(() => {});
   await page.evaluate(() => {
     const g = window.__game;
     if (g.player.lock == null && g.enemies[0]) g.player.lock = g.enemies[0];

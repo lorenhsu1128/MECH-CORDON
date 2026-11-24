@@ -7643,6 +7643,155 @@ async function testLockOn(browser, base) {
   await ctx.close();
 }
 
+// 戰鬥 HUD 的顯示模式、底色、透明度（設定「戰鬥 HUD」；input.js 的 applyHud，docs/zzz-ui-design.md 的「HUD 精簡」）
+async function testHudMode(browser, base) {
+  console.log('戰鬥 HUD：精簡（預設）與完整的面板大小、短文字、鎖定提示收起、底色與透明度、設定切換');
+  const { ctx, page } = await newPage(browser, 'hudmode');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await page.evaluate(() => {
+    const g = window.__game;
+    g.save.level = 1;
+    g.startMission();
+  });
+  await page.waitForFunction(() => window.__game.state === 'play' && window.__game.player, null, {
+    timeout: 60000,
+  });
+  await page.waitForTimeout(1500);
+  // 一台敵人固定在前方（攻擊距離內、不會動），當鎖定目標
+  await page.evaluate((SC) => {
+    const g = window.__game;
+    const p = g.player;
+    p.hp = p.maxHp = 1e8;
+    p.yaw = p.aimYaw = 0;
+    const e = g.enemies.find((x) => !x.dead);
+    e.updateAI = () => {};
+    e.hp = e.maxHp = 1e8;
+    e.pos.set(p.pos.x, p.pos.y, p.pos.z - 12 * SC);
+    e.mesh.position.copy(e.pos);
+    for (const x of g.enemies) if (x !== e) x.pos.set(p.pos.x + 250 * SC, p.pos.y, p.pos.z + 250 * SC);
+    g.__hudE = e;
+    p.lock = e;
+  }, SC);
+  const measure = () =>
+    page.evaluate(async () => {
+      const g = window.__game;
+      const p = g.player;
+      p.lock = g.__hudE;
+      g.lhLock = null; // 當成剛鎖定
+      await new Promise((r) => setTimeout(r, 700));
+      const R = (id) => {
+        const el = document.getElementById(id);
+        const b = el.getBoundingClientRect();
+        return { x: b.left, y: b.top, w: b.width, h: b.height, r: b.right, b: b.bottom };
+      };
+      const rs = { hb: R('hudBottom'), ht: R('hudTop'), wp: R('weapons'), lh: R('lockHint') };
+      const hit = (a, b) => a.w && b.w && a.x < b.r && b.x < a.r && a.y < b.b && b.y < a.b;
+      const ks = Object.keys(rs);
+      const over = [];
+      for (let i = 0; i < ks.length; i++)
+        for (let j = i + 1; j < ks.length; j++) if (hit(rs[ks[i]], rs[ks[j]])) over.push(ks[i] + '×' + ks[j]);
+      const lh = document.getElementById('lockHint');
+      const cs = (id) => getComputedStyle(document.getElementById(id));
+      return {
+        hud: document.body.dataset.hud,
+        bg: document.body.dataset.hudbg,
+        area: Math.round(rs.hb.w * rs.hb.h + rs.ht.w * rs.ht.h + rs.wp.w * rs.wp.h),
+        inView: ks.every(
+          (k) => rs[k].x >= 0 && rs[k].y >= 0 && rs[k].r <= innerWidth && rs[k].b <= innerHeight,
+        ),
+        over,
+        slots: document.querySelectorAll('#weapons .wslot').length,
+        rarm: document.querySelector('#ws_rarm em').textContent,
+        rarmB: document.querySelector('#ws_rarm b').textContent,
+        keyVis: !!document.querySelector('#ws_rarm .k').offsetParent,
+        lhFull: lh.textContent.length,
+        lhBrief: lh.classList.contains('brief'),
+        lhW: rs.lh.w,
+        hbBg: cs('hudBottom').backgroundColor,
+        wsBg: getComputedStyle(document.querySelector('#weapons .wslot')).backgroundColor,
+        op: cs('hudBottom').opacity,
+      };
+    });
+  const slim = await measure();
+  check(
+    slim.hud === 'slim' && slim.bg === 'half' && slim.slots === 6 && slim.inView && !slim.over.length,
+    `預設＝精簡＋半透明，四塊面板都在畫面內、互不重疊（${slim.hud}／${slim.bg}${slim.over.length ? '；重疊 ' + slim.over.join('、') : ''}）`,
+  );
+  check(
+    /^\d+\/\d+$|^裝填$|^∞$/.test(slim.rarm) && slim.rarmB === '右手' && !slim.keyVis,
+    `精簡的武器卡片：只有位置與彈數（${slim.rarmB} ${slim.rarm}）、不顯示按鍵`,
+  );
+  check(/0\.4\)$/.test(slim.hbBg) && /0\.4\)$/.test(slim.wsBg), `半透明的底色（${slim.hbBg}）`);
+  // 鎖定提示：鎖定 2 秒之後完整說明收起（文字內容照舊在，只是不顯示）
+  const lh = await page.evaluate(async () => {
+    const g = window.__game;
+    const el = document.getElementById('lockHint');
+    const w0 = el.getBoundingClientRect().width;
+    const b0 = el.classList.contains('brief');
+    g.lhT = (g.time || 0) - 5;
+    await new Promise((r) => setTimeout(r, 500));
+    const w1 = el.getBoundingClientRect().width;
+    const b1 = el.classList.contains('brief');
+    const lock = g.player.lock;
+    g.player.lock = null;
+    g.autoLock = () => {};
+    await new Promise((r) => setTimeout(r, 500));
+    const none = !el.offsetParent;
+    g.player.lock = lock;
+    return { w0, b0, w1, b1, none, txt: el.textContent.length };
+  });
+  check(
+    !lh.b0 && lh.b1 && lh.w1 <= lh.w0 && lh.none,
+    `鎖定提示：剛鎖定顯示完整說明（${Math.round(lh.w0)} px），2 秒後收起（${Math.round(lh.w1)} px），沒有目標時不顯示`,
+  );
+  await page.screenshot({ path: path.join(SHOT_DIR, 'hud-slim.png') });
+  // 設定切換：完整＝原本的大面板
+  const set = (id, v) =>
+    page.evaluate(
+      ([id, v]) => {
+        const el = document.getElementById(id);
+        el.value = v;
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      },
+      [id, v],
+    );
+  await set('ctrlHudMode', 'full');
+  await page.waitForTimeout(800);
+  const full = await measure();
+  check(
+    full.hud === 'full' &&
+      full.keyVis &&
+      full.rarmB.startsWith('右手 ') &&
+      full.inView &&
+      !full.over.filter((o) => o !== 'wp×lh').length, // 完整的版面：剛鎖定時很長的鎖定提示會碰到武器欄（原本就這樣）
+    `完整：武器卡片有名稱與按鍵（${full.rarmB}）、面板在畫面內不重疊（${full.keyVis}／${full.inView}／${full.over.join('、')}）`,
+  );
+  check(
+    slim.area < full.area * 0.5,
+    `精簡的面板面積不到完整的一半（${slim.area} / ${full.area} px²＝${Math.round((slim.area / full.area) * 100)}%）`,
+  );
+  await page.screenshot({ path: path.join(SHOT_DIR, 'hud-full.png') });
+  await set('ctrlHudBg', 'solid');
+  const solid = await measure();
+  await set('ctrlHudBg', 'none');
+  await set('ctrlHudOp', '0.5');
+  await set('ctrlHudMode', 'slim');
+  await page.waitForTimeout(600);
+  const none = await measure();
+  check(
+    /0\.78\)$/.test(solid.hbBg) && /, 0\)$/.test(none.hbBg) && /, 0\)$/.test(none.wsBg) && none.op === '0.5',
+    `底色：實心（${solid.hbBg}）、無（${none.hbBg}）；透明度 50%（${none.op}）`,
+  );
+  await page.screenshot({ path: path.join(SHOT_DIR, 'hud-slim-nobg.png') });
+  const saved = await page.evaluate(() => {
+    const c = JSON.parse(localStorage.getItem('mech_cordon_ctrl') || '{}');
+    return [c.hudMode, c.hudBg, c.hudOp].join(',');
+  });
+  check(saved === 'slim,none,0.5', `設定寫進 mech_cordon_ctrl（${saved}）`);
+  await ctx.close();
+}
+
 // 俯視的「面向游標」操作（game/top-aim.js，docs/topdown-control-design.md）：機體面向游標、上／下＝往游標前進／後退、
 // 左右＝側移，鎖定框跟著游標，游標吸附（靠近就鎖定、遲滯、最近的、切換鎖定後放開、設定關閉）、手把右搖桿的角度吸附
 async function testTopAim(browser, base) {
@@ -36503,6 +36652,7 @@ const STEPS = [
   ['testBosses', (c) => testBosses(c.browser, c.base)],
   ['testBosses2', (c) => testBosses2(c.browser, c.base)],
   ['testLockOn', (c) => testLockOn(c.browser, c.base)],
+  ['testHudMode', (c) => testHudMode(c.browser, c.base)],
   ['testTopAim', (c) => testTopAim(c.browser, c.base)],
   ['testCamOcclusion', (c) => testCamOcclusion(c.browser, c.base)],
   ['testChase', (c) => testChase(c.browser, c.base)],

@@ -1734,7 +1734,7 @@ Object.assign(Game.prototype, {
   },
   // HUD 上方的作戰資訊（房主與單人由 campView 產生，客機用快照帶來的同一份資料）
   campHudHtml(v) {
-    return `<b>${v.free ? '' : '主線｜'}${escHtml(v.so)}</b> ｜ 區段 ${v.seg + 1}／${v.n}【${escHtml((SEG_TYPES[v.type] || SEG_TYPES.battle).name)}】${escHtml(v.name)}<div id="objective">${escHtml(v.goal)} ｜ ${Math.floor(v.time / 60)} 分</div><div style="color:var(--acc)">SP ${this.save.coam.toLocaleString()}${v.pend ? ` <span class="dim">（清除後：${escHtml(v.pend)}）</span>` : ''}</div>`;
+    return `<b>${v.free ? '' : '主線｜'}${escHtml(v.so)}</b> ｜ 區段 ${v.seg + 1}／${v.n}<span class="hudX">【${escHtml((SEG_TYPES[v.type] || SEG_TYPES.battle).name)}】${escHtml(v.name)}</span><div id="objective">${escHtml(v.goal)} ｜ ${Math.floor(v.time / 60)} 分</div><div class="hudX" style="color:var(--acc)">SP ${this.save.coam.toLocaleString()}${v.pend ? ` <span class="dim">（清除後：${escHtml(v.pend)}）</span>` : ''}</div>`;
   },
   campGoal(alive, wavesLeft) {
     const c = this.camp,
