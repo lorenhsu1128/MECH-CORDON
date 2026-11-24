@@ -14,6 +14,7 @@ import { clamp, rnd } from '../core/math.js';
 import { DS, MS } from '../core/scale.js';
 import { MechEntity } from './mech-entity.js';
 import { snLegIK } from '../render/foe-models-b1.js';
+import { ribbonMesh } from '../fx/energy.js';
 import { Projectile } from './projectile.js';
 import { firePoint, losTol, measureLocal, rayClear } from './fire-point.js';
 
@@ -817,7 +818,22 @@ Object.assign(MechEntity.prototype, {
     }
     if (m.xGun) m.xGun.position.z = ease(m.xGun.position.z, bv & 2 ? 0.4 : 0, bv & 2 ? 30 : 4);
     // 瞄準線（藍色、跟著瞄準點；房主與客機都依 bx 畫）
-    const aim = bv & 1 && this.bx ? this.bx : null;
+    let aim = bv & 1 && this.bx ? this.bx : null;
+    // 砲火特效「華麗」：瞄準雷射的光束帶（fx/energy.js 的 ribbonMesh，和預警線同一種：柔和的光芯、往前跑的光點），不畫圓柱
+    const fxr = this.game.fx;
+    let rb = this.b1Rib;
+    if (aim && fxr.rich) {
+      if (!rb) {
+        rb = this.b1Rib = ribbonMesh(0x2a8cff, 2);
+        this.mesh.add(rb); // 位置由著色器的世界座標決定，掛在機體底下只是跟著一起移除與隱藏
+      }
+      rb.setAB(this.muzzle('rarm'), new THREE.Vector3(aim[0], aim[1], aim[2]), 0.6 * fxr.k);
+      const U = rb.material.uniforms;
+      U.uTime.value = fxr.time;
+      U.uFill.value = 0.55 + 0.45 * Math.abs(Math.sin(this.t * 6));
+      rb.visible = true;
+      aim = null;
+    } else if (rb) rb.visible = false;
     let ln = this.b1Line;
     if (aim) {
       if (!ln) {

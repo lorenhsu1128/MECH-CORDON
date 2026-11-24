@@ -2280,6 +2280,44 @@ export class Effects {
       }
     });
   }
+  // 高壓水柱（砲火特效「華麗」；各端自己畫、不轉送，每格呼叫）：a＝砲口、dir＝方向、L＝長度（公尺）。
+  // 往前噴的水滴（依速度拉長）＋打到的地方的水霧，取代原本掛在砲口的半透明圓柱
+  waterJet(a, dir, L) {
+    if (this.skip(a, L / this.k)) return;
+    const K = this.k,
+      T = 0.22;
+    for (let i = 0; i < 5; i++) {
+      const v = dir
+        .clone()
+        .multiplyScalar((L / T) * rnd(0.8, 1.05))
+        .add(new THREE.Vector3(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).multiplyScalar(0.7 * K));
+      this.g.ln.emit({
+        p: a.clone().addScaledVector(dir, rnd(0, 0.15) * L),
+        v,
+        life: T * rnd(0.7, 1),
+        s0: 0.45 * K,
+        s1: 0.95 * K,
+        c0: 0xf6fcff,
+        c1: 0x7fc0f0,
+        a: 0.5,
+        cell: SOFT,
+      });
+      // 白色的水霧團跟著水柱往前（一般混合：亮的地面上也看得到，不會像雷射）
+      this.g.sm.emit({
+        p: a.clone().addScaledVector(dir, rnd(0, 0.2) * L),
+        v: v.clone().multiplyScalar(rnd(0.75, 1)),
+        life: T * rnd(0.8, 1.1),
+        s0: 0.6 * K,
+        s1: 1.7 * K,
+        c0: 0xf2f9ff,
+        a: 0.9,
+        cell: pickCell(FXG.smoke),
+        fade: 1,
+        rot: frand() * 6.28,
+      });
+    }
+    if (frand() < 0.6) this.smoke(a.clone().addScaledVector(dir, L), 0.55, 0xe4f1fa, 0.5, 1);
+  }
   // 火焰噴射：從 p 沿 dir 噴出 len 公尺（世界尺寸）、半角 ang 的火焰粒子
   flameCone(p, dir, len, ang, n = 10) {
     const K = this.k;
