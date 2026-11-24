@@ -14,6 +14,7 @@
 const fs = require('fs');
 const path = require('path');
 const cp = require('child_process');
+const os = require('os');
 const { launch, initScript } = require('./perf-lib');
 
 const args = {};
@@ -38,6 +39,8 @@ const FPS_OK = 30,
   FPS_MIN = 24;
 const mark = (fps) => (fps >= FPS_OK ? '✅' : fps >= FPS_MIN ? '△' : '✗');
 const tally = [];
+const MEM_MIN = 3e9;
+let oomHit = false;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const THEMES = [
@@ -148,7 +151,21 @@ function runChild(script, a, env, tag) {
     const lf = fs.createWriteStream(path.join(OUT, tag + '.log'));
     p.stdout.pipe(lf);
     p.stderr.pipe(lf);
-    p.on('close', (code) => res(code));
+    // 記憶體防護：可用記憶體低於 MEM_MIN 時停掉這一項（Claude Code 會在系統記憶體不足時把整個量測停掉；
+    // 2026-11-24 低標的主線 3 個出擊連跑時發生過）
+    const iv = setInterval(() => {
+      if (os.freemem() < MEM_MIN) {
+        clearInterval(iv);
+        oomHit = true;
+        log(`  ${tag}：可用記憶體只剩 ${(os.freemem() / 1e9).toFixed(1)} GB，停掉這一項`);
+        p.kill('SIGKILL');
+        killStray();
+      }
+    }, 5000);
+    p.on('close', (code) => {
+      clearInterval(iv);
+      res(code);
+    });
   });
 }
 // 結果檢查：沒有檔案、格數太少、頁面錯誤、主線的出擊沒跑完 → 回傳原因（沒問題回傳空字串）
@@ -415,6 +432,10 @@ async function soak() {
     await sample(0, 'garage');
     const fights = [];
     for (let i = 1; i <= N; i++) {
+      if (os.freemem() < MEM_MIN) {
+        log(`    可用記憶體只剩 ${(os.freemem() / 1e9).toFixed(1)} GB，第 ${i} 輪之前停止`);
+        break;
+      }
       const map = maps[(i - 1) % maps.length];
       await page.evaluate((m) => {
         localStorage.setItem('mech_cordon_map', m);
@@ -661,7 +682,14 @@ function report() {
       log(`  開始 ${s.id}`);
       // 失敗或結果不完整時重跑（最多 3 次；主線用 --resume 從沒跑完的出擊接著跑）
       for (let k = 1; k <= 3; k++) {
+        oomHit = false;
         await runOne(s);
+        if (oomHit) {
+          log(`  ${s.id} 記憶體不足，不重跑（結果裡記下的部分照樣彙整）`);
+          await killStray();
+          await sleep(5000);
+          break;
+        }
         const why = check(s);
         if (!why) break;
         log(`  ${s.id} 有問題（${why}），${k < 3 ? '重跑第 ' + k + ' 次' : '放棄'}`);
