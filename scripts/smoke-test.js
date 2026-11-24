@@ -7592,6 +7592,17 @@ async function testLockOn(browser, base) {
     cam();
     const panX = g.camTarget.x - pl.pos.x;
     const panIn = g.onScreen(pl);
+    // 鎖定的目標不框在角落的面板底下：假的面板放在目標現在的位置 → 鏡頭重新框景後目標離開那個範圍
+    const ndc = () => es[4].center().project(g.camera);
+    const n0 = ndc();
+    g.hudRects = [[n0.x - 0.12, n0.y - 0.12, n0.x + 0.12, n0.y + 0.12]];
+    for (let i = 0; i < 200; i++) g.updateCamera(1 / 60);
+    g.camera.updateMatrixWorld(true);
+    const n1 = ndc();
+    const R = g.hudRects[0];
+    const hudFree =
+      g.onScreen(es[4]) && g.onScreen(pl) && !(n1.x > R[0] && n1.x < R[2] && n1.y > R[1] && n1.y < R[3]);
+    g.hudRects = null;
     put(es[4], 0, 300 * SC);
     pl.lock = null;
     for (let i = 0; i < 200; i++) g.updateCamera(1 / 60);
@@ -7625,6 +7636,7 @@ async function testLockOn(browser, base) {
       panX,
       panIn,
       panBack,
+      hudFree,
     };
   }, SC);
   check(
@@ -7638,6 +7650,7 @@ async function testLockOn(browser, base) {
     r.panX > 3 * SC && r.panIn,
     `鎖定畫面外的目標：鏡頭往目標偏移（${r.panX.toFixed(1)} m）、機體還在畫面內`,
   );
+  check(r.hudFree, '鎖定的目標不框在角落的面板底下（假的面板放在目標的位置，鏡頭重新框景後離開）');
   check(r.panBack < 0.5, `解除鎖定後鏡頭回到機體（${r.panBack.toFixed(2)} m）`);
   check(r.fp, '第一人稱：鎖定離準星最近的');
   await ctx.close();

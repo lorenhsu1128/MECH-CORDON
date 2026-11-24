@@ -494,6 +494,20 @@ Object.assign(Game.prototype, {
       // 電腦：狀態欄在左上、任務資訊接在它下面；觸控：任務資訊在上、狀態欄接在下面（照舊）
       const view = this.airMode ? 'air' : this.chase ? 'chase' : this.fp ? 'fp' : 'top';
       if (document.body.dataset.view !== view) document.body.dataset.view = view;
+      // 角落的面板在畫面上的範圍（NDC，外擴一點）：鏡頭框住鎖定目標時避開（camera.js 的 fitsAt）
+      this.hudRects = ['hudBottom', 'hudTop', 'weapons', 'bossBar']
+        .map((id) => document.getElementById(id))
+        .filter((el) => el && el.offsetParent)
+        .map((el) => {
+          const r = el.getBoundingClientRect(),
+            m = 14;
+          return [
+            ((r.left - m) / innerWidth) * 2 - 1,
+            1 - ((r.bottom + m) / innerHeight) * 2,
+            ((r.right + m) / innerWidth) * 2 - 1,
+            1 - ((r.top - m) / innerHeight) * 2,
+          ];
+        });
       document.body.toggleAttribute('data-hudbody', this.hudBodyOn()); // 機體周邊的 HUD：角落的狀態欄與武器卡片收起
       hb.style.top = vp ? ht.offsetTop + ht.offsetHeight + 4 + 'px' : '';
       ht.style.top = vp ? '' : hb.offsetParent ? hb.offsetTop + hb.offsetHeight + 8 + 'px' : '14px';

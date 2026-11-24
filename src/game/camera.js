@@ -147,7 +147,8 @@ Object.assign(Game.prototype, {
     ];
   },
   // 給定注視點與縮放倍率，兩個點是否都在畫面內（NDC 邊距 margin）
-  fitsAt(target, zoom, pts, margin = 0.82) {
+  // avoid＝畫面上不能落進去的範圍（NDC 的 [x0, y0, x1, y1]，hud.js 的 hudRects＝角落的面板）：只檢查最後一個點（鎖定的目標）
+  fitsAt(target, zoom, pts, margin = 0.82, avoid = null) {
     const a = this.camPitch0 || this.camPitchStd(),
       L = this.camOff().length() * zoom;
     const off = new THREE.Vector3(0, Math.sin(a) * L, Math.cos(a) * L);
@@ -159,6 +160,7 @@ Object.assign(Game.prototype, {
       v.copy(p).project(this.camScratch);
       if (Math.abs(v.x) > margin || Math.abs(v.y) > margin || v.z > 1) return false;
     }
+    if (avoid) for (const r of avoid) if (v.x > r[0] && v.x < r[2] && v.y > r[1] && v.y < r[3]) return false;
     return true;
   },
   // 平時的鏡頭距離（倍率）
@@ -217,9 +219,9 @@ Object.assign(Game.prototype, {
     return ok(pos) ? { pos, look: mid } : null;
   },
   // 找到能同時容納兩點的最小縮放（0.65 ~ 2.2）
-  fitZoom(target, pts, minZ, maxZ) {
+  fitZoom(target, pts, minZ, maxZ, avoid) {
     for (let z = minZ; z <= maxZ + 1e-6; z += z < 2 ? 0.05 : 0.15) {
-      if (this.fitsAt(target, z, pts)) return z;
+      if (this.fitsAt(target, z, pts, undefined, avoid)) return z;
     }
     return maxZ;
   },
@@ -446,7 +448,9 @@ Object.assign(Game.prototype, {
       zoomT = this.fitZoom(focus, [p.center(), meleeFoe.center()], ZMELEE, ZMAX);
       this.camMode = 'melee';
     } else if (p.lock && !p.lock.dead) {
-      if (this.fitsAt(focus, B, [p.center(), p.lock.center()])) {
+      // 鎖定的目標不框在角落的面板底下（hud.js 每 16 格量的 hudRects；觀戰不管）
+      const hr = this.spectator ? null : this.hudRects;
+      if (this.fitsAt(focus, B, [p.center(), p.lock.center()], undefined, hr)) {
         zoomT = B;
         this.camMode = 'default';
       } else {
@@ -469,10 +473,10 @@ Object.assign(Game.prototype, {
             }
             return lo;
           };
-          let z = this.fitZoom(focus, pts, B, ZMAX);
-          z = this.fitZoom(at(shiftAt(z)), pts, B, z); // 偏移之後不用拉那麼遠
+          let z = this.fitZoom(focus, pts, B, ZMAX, hr);
+          z = this.fitZoom(at(shiftAt(z)), pts, B, z, hr); // 偏移之後不用拉那麼遠
           const s = shiftAt(z);
-          zoomT = this.fitZoom(at(s), pts, z, ZMAX);
+          zoomT = this.fitZoom(at(s), pts, z, ZMAX, hr);
           pan = dir.multiplyScalar(s);
         } else zoomT = this.fitZoom(focus, pts, B, ZMAX);
         this.camMode = 'wide';
