@@ -897,7 +897,7 @@ function glbProjectile(kind, col, speed, rich) {
   inner.rotation.y = Math.PI;
   if (kind === 'bullet') inner.scale.z = bulletLen(speed) / 0.9;
   mesh.add(inner);
-  if (kind === 'missile') {
+  if (kind === 'missile' && !rich) {
     const box = new THREE.Box3().setFromObject(inner);
     const fl = new THREE.Mesh(FlameGeo, glow(rich ? col : 0xffb060, 0.9));
     fl.position.z = box.isEmpty() ? -0.5 : box.min.z;
@@ -941,27 +941,19 @@ export function buildProjectileMesh(kind, color, speed, part = null, o = null) {
     halo.scale.set(1.3, 1.3, L * 1.1);
   } else if (plasma) {
     // 電漿彈（能量的導彈，例如 PM-6）：白熱的芯＋紫色的光球＋大一圈的光暈，沒有彈體
-    gm(OrbGeo, 0xfff0ff, 1).scale.setScalar(0.65);
-    gm(OrbGeo, col, 0.7).scale.setScalar(1.15);
-    gm(OrbGeo, col, 0.22).scale.setScalar(2);
+    // 外面的光暈由 Projectile.jetFx 畫（柔邊的光，fx/jet.js），這裡只留白熱的芯
+    gm(OrbGeo, 0xfff0ff, 1).scale.setScalar(0.6);
   } else if (kind === 'missile') {
     const body = new THREE.Mesh(
       MissileGeo,
       new THREE.MeshStandardMaterial({ color: 0xd0d4d8, metalness: 0.6, roughness: 0.4 }),
     );
-    const fl = new THREE.Mesh(FlameGeo, glow(rich ? col : 0xffb060, 0.9));
-    fl.position.y = -0.5;
     mesh.add(body);
-    mesh.add(fl);
-    if (rich) {
-      // 華麗：尾焰的白熱芯＋大一圈的光暈
-      const hot = new THREE.Mesh(FlameGeo, glow(0xfff4d8, 0.95));
-      hot.scale.setScalar(0.6);
-      hot.position.y = -0.5;
-      const hal = new THREE.Mesh(FlameGeo, glow(col, 0.3));
-      hal.scale.setScalar(2.4);
-      hal.position.y = -0.55;
-      mesh.add(hot, hal);
+    // 尾焰：「標準」是彈尾的一顆發光色塊；「華麗」不放，改由 Projectile.jetFx 每格畫噴流（fx/jet.js）
+    if (!rich) {
+      const fl = new THREE.Mesh(FlameGeo, glow(0xffb060, 0.9));
+      fl.position.y = -0.5;
+      mesh.add(fl);
     }
   } else if (kind === 'torpedo') {
     // 潛航砲艇的魚雷：沿水面直線前進（長軸沿 Z）
@@ -991,8 +983,13 @@ export function buildProjectileMesh(kind, color, speed, part = null, o = null) {
     }
   } else {
     const geo = kind === 'shell' || kind === 'grenade' ? ShellGeo : ProjGeo;
-    gm(geo, rich ? 0xfff0e0 : col, 0.95);
-    gm(geo, col, rich ? 0.5 : 0.4).scale.setScalar(rich ? 2.8 : 2.2);
+    // 華麗：只留白熱的芯，外面放大的那一層色塊換成 Projectile.jetFx 的柔邊光（遊戲裡；模型庫沒有 part，照舊兩層）
+    if (rich && part && (kind === 'shell' || kind === 'grenade'))
+      gm(geo, 0xfff0e0, 0.95).scale.setScalar(0.8);
+    else {
+      gm(geo, rich ? 0xfff0e0 : col, 0.95);
+      gm(geo, col, rich ? 0.5 : 0.4).scale.setScalar(rich ? 2.8 : 2.2);
+    }
   }
   return mesh;
 }

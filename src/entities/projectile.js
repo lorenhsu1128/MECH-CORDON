@@ -14,7 +14,9 @@ import { hitRay, nearestPiece, nearestSurface } from '../render/hit-parts.js';
 
 const _pjS = new THREE.Vector3(),
   _pjN = new THREE.Vector3(),
-  _pjC = new THREE.Vector3();
+  _pjC = new THREE.Vector3(),
+  _pjA = new THREE.Vector3(),
+  _pjB = new THREE.Vector3();
 
 const AAM_LOSE = 1.3; // 空戰導彈失去追蹤的夾角（data/air.js 的 AAM_LOSE）
 const BEND_CONE = 0.25; // 彈道修正只修正這個角度（弧度）以內的偏差：差一點擦過的會修正，大幅閃避照樣打不中
@@ -46,6 +48,7 @@ export class Projectile {
       game.fx && game.fx.projPart,
       rich ? { rich: true, team: this.team, at: this.at } : null,
     );
+    this.jsc = (o.scale || 1) * K; // 尾端噴流的大小（jetFx）
     this.mesh.scale.setScalar((o.scale || 1) * K); // o.scale：外觀的放大（誘導飛彈架的大型飛彈；客機以 proj 事件的 sc 照做）
     this.mesh.position.copy(this.pos);
     game.scene.add(this.mesh);
@@ -73,6 +76,41 @@ export class Projectile {
       });
     }
     if (this.shootable) game.shotInit(this); // 代理目標（鎖定、子彈與爆炸打得到）
+  }
+  // 導彈尾端的噴流（砲火特效「華麗」；2026-11-24 使用者回報尾焰是一顆發光的色塊）：和機體的推進器同一套
+  // 戰鬥機式的噴流（fx/jet.js：白熱的核心、馬赫環、閃爍），每格從彈尾往後加一條。各端自己畫、不轉送；
+  // 電漿彈沒有彈體、不噴。「標準」照舊是彈尾的色塊（render/extra-models.js）
+  jetFx() {
+    const fx = this.game.fx;
+    if (!fx || !fx.rich || !fx.thruster) return;
+    const k = this.kind;
+    if (k !== 'missile' && k !== 'shell' && k !== 'grenade') return;
+    const sc = this.jsc || 1;
+    const back = _pjB.copy(this.vel).normalize().negate();
+    if (this.jseed === undefined) this.jseed = (this.pos.x * 7.3 + this.pos.z * 3.1 + this.life * 11) % 10;
+    // 砲彈、榴彈、電漿彈：彈體外面那幾層放大的色塊換成一道柔邊的光（從彈頭前面一點往後拉成彗星的形狀）
+    if (k !== 'missile' || this.at === 'en') {
+      const pl = k === 'missile';
+      fx.thruster.jets.add(
+        _pjA.copy(this.pos).addScaledVector(back, (pl ? -0.5 : -0.38) * sc),
+        back,
+        (pl ? 2.6 : k === 'grenade' ? 1.3 : 1.9) * sc,
+        (pl ? 0.5 : 0.36) * sc,
+        pl ? 1 : 0.85,
+        this.color || 0xffb060,
+        this.jseed,
+      );
+      return;
+    }
+    fx.thruster.jets.add(
+      _pjA.copy(this.pos).addScaledVector(back, 0.45 * sc),
+      back,
+      1.9 * sc,
+      0.13 * sc,
+      1,
+      this.color || 0xffb060,
+      this.jseed,
+    );
   }
   // 導彈、砲彈、榴彈的尾煙與尾焰（各端自己畫、不轉送）；砲火特效「華麗」時煙更粗更白、導彈多一道火焰尾巴
   trailFx(dt) {
@@ -160,6 +198,7 @@ export class Projectile {
     this.life -= dt;
     this.mesh.position.copy(this.pos);
     this.orient();
+    this.jetFx();
     if (g.waterCross) g.waterCross(prev, this.pos, this.kind); // 穿過水面：水花與漣漪（game/water.js，只有外觀）
     if (!this.whz && !g.airMode && g.projWhiz) g.projWhiz(this, prev); // 子彈從身邊飛過（game/feedback.js，各端自己算）
     // 追著自機的導彈接近：ECHO 提醒（game/voice.js，各端自己算）
