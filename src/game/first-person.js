@@ -243,8 +243,10 @@ Object.assign(Game.prototype, {
     c.fill();
     const dot = (pos, col, r = 3) => {
       const d = pos.clone().sub(p.pos);
-      const dx = d.x * Math.cos(yaw) + d.z * Math.sin(yaw),
-        dz = -d.x * Math.sin(yaw) + d.z * Math.cos(yaw);
+      // 轉到機體的座標：前方＝(−sin yaw, −cos yaw)＝雷達的上方、右方＝(cos yaw, −sin yaw)。
+      // 以前兩個 sin 的正負號寫反（等於往反方向轉），只有面向正北、正南時是對的，面向東西時前後剛好顛倒
+      const dx = d.x * Math.cos(yaw) - d.z * Math.sin(yaw),
+        dz = d.x * Math.sin(yaw) + d.z * Math.cos(yaw);
       const k = R / (60 * DS); // 雷達的範圍（m）
       const x = rx + dx * k,
         y = ry + dz * k;
