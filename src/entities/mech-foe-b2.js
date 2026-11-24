@@ -623,6 +623,20 @@ Object.assign(MechEntity.prototype, {
   // 電焊 MT 的電弧：從焊槍到目標的折線（掛在機體上，跟著一起移除）
   arcFx_b2(tgt) {
     let a = this.b2arc;
+    // 砲火特效「華麗」：鋸齒電弧（fx.zap，不轉送：房主與客機各自呼叫），每 0.1 秒重新長一次；不畫折線的圓柱
+    const fx = this.game.fx;
+    if (fx.rich) {
+      if (a) a.visible = false;
+      if (!tgt || tgt.dead) {
+        this.b2zT = -1; // 斷了（冒煙測試看這個時間）
+        return;
+      }
+      if (!(fx.time - this.b2zT < 0.1) || fx.time < this.b2zT) {
+        this.b2zT = fx.time;
+        fx.zap(this.muzzle('rarm'), tgt.center(), 0x60a8ff, 0.14);
+      }
+      return;
+    }
     if (!tgt || tgt.dead) {
       if (a) a.visible = false;
       return;
@@ -676,6 +690,19 @@ Object.assign(MechEntity.prototype, {
   // 高壓水砲車的水柱：掛在砲口（hand）上往 −Z 延伸 L 公尺（bx[0]）
   waterFx_b2(L) {
     let c = this.b2col;
+    // 砲火特效「華麗」：往前噴的水滴與水霧（fx.waterJet），不畫半透明的圓柱
+    if (L > 0 && this.game.fx.rich) {
+      if (c) c.visible = false;
+      this.b2wT = this.game.fx.time; // 最近一次噴的時間（冒煙測試看）
+      const h = this.model.arms.r.hand;
+      h.updateWorldMatrix(true, false);
+      this.game.fx.waterJet(
+        new THREE.Vector3().setFromMatrixPosition(h.matrixWorld),
+        new THREE.Vector3(0, 0, -1).transformDirection(h.matrixWorld),
+        L,
+      );
+      return;
+    }
     if (!(L > 0)) {
       if (c) c.visible = false;
       return;

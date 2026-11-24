@@ -200,6 +200,30 @@ void main() {
   vec3 c = mix(uColor, vec3(1.0), clamp(core * 0.9 + n * 0.15, 0.0, 1.0));
   gl_FragColor = vec4(c * a * uOp, 1.0);
 }`;
+// 光錐（探照燈；砲火特效「華麗」）：有體積感的光——面向鏡頭的中間最亮、輪廓的邊緣淡掉，離燈越遠越淡。
+// 給開口的 ConeGeometry 用（uv.y＝1 是錐尖＝燈）
+const CONE_FS = /* glsl */ `
+uniform vec3 uColor;
+uniform float uOp;
+varying vec2 vUv;
+varying vec3 vN;
+varying vec3 vV;
+void main() {
+  float f = pow(abs(dot(normalize(vN), normalize(vV))), 1.6);
+  float along = mix(0.12, 1.0, vUv.y * vUv.y);
+  gl_FragColor = vec4(uColor * f * along * uOp, 1.0);
+}`;
+export function lightConeMat(color) {
+  return new THREE.ShaderMaterial({
+    vertexShader: COL_VS,
+    fragmentShader: CONE_FS,
+    uniforms: { uColor: { value: new THREE.Color(color) }, uOp: { value: 1 } },
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+  });
+}
 export function pillarMat(color) {
   return new THREE.ShaderMaterial({
     vertexShader: COL_VS,

@@ -1,5 +1,5 @@
 // ---------------- WEAPONS（Q 版：粗大方塊化） ----------------
-import { LOOK_JOINTS, PROC_COLS, PROC_PARTS, PROC_PRIMS, PROC_SPIN, PROC_WHEELS } from './proc/index.js';
+import { PROC_COLS, PROC_PARTS, PROC_PRIMS, PROC_SPIN, PROC_WHEELS } from './proc/index.js';
 import { WHEEL_COLS, wheelPrims } from './proc/foot_wheels.js';
 import { tankPartsGroup, tankPartsPose } from './proc-tank.js';
 import { primsGroup, primsTris } from './proc-prims.js';
@@ -28,7 +28,7 @@ import {
   sideProfile,
 } from './geometry.js';
 import { mechMats } from './materials.js';
-import { gltfToGame, jointSetting, resolveConn, setProcJoints, withJoints } from './mech-joints.js';
+import { jointSetting, resolveConn, setProcJoints, withJoints } from './mech-joints.js';
 import PLAYER_MECH from 'virtual:player-mech';
 import { matsOf } from './glb.js';
 import { providedModel } from './model-provider.js';
@@ -866,14 +866,6 @@ export function mechPieces(asm) {
   const p = asmParts(asm);
   const out = [];
   for (const [k, cat] of Object.entries(ASM_CAT)) out.push(...partPieces(cat, p[k]));
-  // 敵方專用外觀（asm.look，proc/index.js 的 LOOKS）：區塊照舊是零件的（槽位、骨架、判定），模型換成外型的那一塊。
-  // 外型的腳只有二足的；背包與武器不換
-  if (asm.look)
-    for (const i of out) {
-      if (i.cat === 'legs' && i.legType !== 'biped') continue;
-      const k = `look/${asm.look}/${i.key ? i.key + '_' : ''}${i.kind}`;
-      if (PROC_PRIMS[k]) i.look = k;
-    }
   for (const [key, cat, k] of [
     ['rarm', 'weapon', 'r'],
     ['larm', 'weapon', 'l'],
@@ -1025,8 +1017,6 @@ export function parentConnOf(info) {
 }
 // 連接點：關節設定覆寫＞預設值
 export function connOf(info, name) {
-  const lj = info.look && LOOK_JOINTS[info.look] && LOOK_JOINTS[info.look][name]; // 外型自己的連接點
-  if (lj) return gltfToGame(lj);
   return resolveConn(info.slot, name, pieceConns(info)[name]);
 }
 
@@ -2163,9 +2153,8 @@ export function procPrimPiece(prims, M, slot) {
 }
 function makeProcPiece0(info, ctx) {
   // 照 GLB 量測重建的程式模型（render/proc/）：已經是建模尺寸與內建 GLB 的外形，不用變形與放大
-  const pk = info.look || info.slot; // 敵方專用外觀：模型用外型的清單
-  const pr = !HAND_ONLY && PROC_PRIMS[pk];
-  if (pr) return procPrimPiece(pr, ctx.M, pk);
+  const pr = !HAND_ONLY && PROC_PRIMS[info.slot];
+  if (pr) return procPrimPiece(pr, ctx.M, info.slot);
   const g = new THREE.Group();
   (BUILD[info.kind] || (() => {}))(g, info, ctx);
   // 變形到內建預設機甲的外框（先合併成網格；區塊本身維持單位變換，換成 GLB、拖曳原點等都以區塊本身為準）
@@ -2209,14 +2198,11 @@ export function buildMech(asm, pal, scale = 1, opts = {}) {
   const provided = [];
   const place = (parent, info) => {
     // 沒有指定 opts.piece 時問模型來源（遊戲的本地模型庫）；每台機甲各自一份材質（受擊閃光）
-    // 敵方專用外觀的區塊一律是程式模型（模型來源的 GLB 是基底零件的外觀）
-    let obj = info.look
-      ? null
-      : opts.piece
-        ? opts.piece(info)
-        : opts.source
-          ? opts.source.model(info.slot, pal, true)
-          : providedModel(info.slot, pal, true);
+    let obj = opts.piece
+      ? opts.piece(info)
+      : opts.source
+        ? opts.source.model(info.slot, pal, true)
+        : providedModel(info.slot, pal, true);
     if (obj && !opts.piece) provided.push(obj);
     if (!obj) {
       obj = makeProcPiece(info, ctx);

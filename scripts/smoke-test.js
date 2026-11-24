@@ -34311,7 +34311,7 @@ async function testFoesB2(browser, base) {
       pid: p.id,
       hurt: h0 - p.hp,
       drain: T.rec.status.includes('drain') && p.hasStatus('drain'),
-      arc: !!(e.b2arc && e.b2arc.visible),
+      arc: !!(e.b2arc && e.b2arc.visible) || (window.__game.fx.rich && window.__game.fx.time - e.b2zT < 0.25),
     };
   });
   check(
@@ -34326,7 +34326,11 @@ async function testFoesB2(browser, base) {
     const dir = p.pos.clone().sub(e.pos).setY(0).normalize();
     p.pos.addScaledVector(dir, 16 * 3); // 拉開 36 m 以上
     T.step([e], 3);
-    const out = { vis: e.bossVis, bx: e.bx, arc: !!(e.b2arc && e.b2arc.visible) };
+    const out = {
+      vis: e.bossVis,
+      bx: e.bx,
+      arc: !!(e.b2arc && e.b2arc.visible) || (window.__game.fx.rich && window.__game.fx.time - e.b2zT < 0.25),
+    };
     T.kill(e);
     return out;
   });
@@ -34401,7 +34405,7 @@ async function testFoesB2(browser, base) {
       bx: e.bx,
       dmg: Math.round(h0 - p.hp),
       acs: Math.round(p.acs - a0),
-      col: !!(e.b2col && e.b2col.visible),
+      col: !!(e.b2col && e.b2col.visible) || (window.__game.fx.rich && window.__game.fx.time - e.b2wT < 0.25), // 華麗：水柱是粒子（fx.waterJet）
       L: e.aiState.lastL,
       d: +e.pos.distanceTo(p.pos).toFixed(1),
       dy: +(e.pos.y - p.pos.y).toFixed(1),

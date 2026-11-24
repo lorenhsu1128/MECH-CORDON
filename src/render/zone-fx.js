@@ -4,7 +4,7 @@
 // （groundAt／terrainHeight／hitsWorld／theme）與 zoneLosHook。
 import { lerp, rnd } from '../core/math.js';
 import { frand, frnd } from '../fx/rand.js';
-import { curtainMat, ribbonMesh } from '../fx/energy.js';
+import { curtainMat, lightConeMat, ribbonMesh } from '../fx/energy.js';
 import { LINE } from '../fx/atlas.js';
 
 export const glow = (color, opacity, additive = true) =>
@@ -159,8 +159,10 @@ export const ZONE_FX = {
         F.core.scale.set(0.45, 1, 0.45);
         F.lamp = new THREE.Mesh(SPH, glow(0xfff6d0, 0.95));
         F.lamp.scale.setScalar(0.45);
+        // 華麗：有體積感的光錐（fx/energy.js 的 lightConeMat），取代兩層平塗的圓錐
+        F.coneR = new THREE.Mesh(geo, lightConeMat(0xfff0b0));
         F.aim = new THREE.Group();
-        F.aim.add(F.cone, F.core, F.lamp);
+        F.aim.add(F.cone, F.core, F.lamp, F.coneR);
         g.add(F.aim);
         F.spot = new THREE.Mesh(DISC, glow(0xfff0b0, 0.28));
         F.spot.rotation.x = -Math.PI / 2;
@@ -435,6 +437,9 @@ export const ZONE_FX = {
         }
         F.cone.material.opacity = 0.1 * f * lit;
         F.core.material.opacity = 0.05 * f * lit;
+        F.cone.visible = F.core.visible = !this.fx.rich;
+        F.coneR.visible = this.fx.rich;
+        F.coneR.material.uniforms.uOp.value = 0.34 * f * lit;
         F.spot.material.opacity = 0.28 * f * lit;
         break;
       }

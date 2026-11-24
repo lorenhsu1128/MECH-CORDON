@@ -1115,12 +1115,16 @@ export class Effects {
     const eye = this.view ? this.viewPos.clone().sub(p).normalize() : new THREE.Vector3(0, 1, 0);
     const side = key.vel.clone().cross(eye);
     if (side.lengthSq() < 1e-6) return;
-    side.normalize().multiplyScalar(0.13 * this.k);
+    side.normalize().multiplyScalar(0.2 * this.k);
+    // 2026-11-24 使用者回報導彈的尾流像一條平塗的色塊：原本是單色、硬邊、等寬的帶子。改用地面帶子的著色器
+    // （fx/trail.js 的 ground：橫向的柔邊＋沿著帶子的雜訊，把帶子打散成一團一團的煙），並且越舊越寬（shrink 負的＝往外擴）
     this.ribbons.push(key, p.clone().add(side), p.clone().sub(side), {
       color: 0xe6eaee,
-      opacity: 0.38,
-      life: 1.1,
-      max: 28,
+      opacity: 0.62,
+      life: 1.5,
+      max: 36,
+      shrink: -2.2,
+      ground: { soft: 0.95, streak: 0.8, freq: 2.2, along: 0.5, k: this.k },
     });
   }
   // 黑洞（重力場、吸入區；game/hazards2.js 的 zoneAnim 每格呼叫，砲火特效「華麗」，不轉送）：
@@ -1628,6 +1632,22 @@ export class Effects {
     w.beamCore.scale.set(this.k, d, this.k);
     w.beamGlow.scale.set(this.k, d, this.k);
     w.beamGlow.material.opacity = 0.12 + frand() * 0.08;
+    // 砲火特效「華麗」：流動的能量光束帶（fx/energy.js 的 ribbonMesh），不畫兩層圓柱。
+    // 光束帶的位置由著色器的世界座標決定，掛在同一個群組底下只是跟著顯示與移除
+    const R = this.rich;
+    w.beamCore.visible = w.beamGlow.visible = !R;
+    if (R && !w.beamRib) {
+      w.beamRib = ribbonMesh(color, 1);
+      SHARED_GEO.add(w.beamRib.geometry);
+      grp.add(w.beamRib);
+    }
+    if (w.beamRib) {
+      w.beamRib.visible = R;
+      if (R) {
+        w.beamRib.setAB(a, b, (0.55 + frand() * 0.12) * this.k);
+        w.beamRib.material.uniforms.uTime.value = this.time;
+      }
+    }
     w.beamHideT = 0.08;
   }
   // team（第 5 個參數，隨轉送帶給客機）：砲火特效「華麗」時依陣營換色（fx/palette.js：敵人的雷射＝洋紅）
@@ -2279,6 +2299,44 @@ export class Effects {
         if (kind !== 1 && frand() < 0.3) this.heat(q.clone().setY(q.y + 1.5 * K), (R * 0.5) / K, 0.7, 0.35);
       }
     });
+  }
+  // 高壓水柱（砲火特效「華麗」；各端自己畫、不轉送，每格呼叫）：a＝砲口、dir＝方向、L＝長度（公尺）。
+  // 往前噴的水滴（依速度拉長）＋打到的地方的水霧，取代原本掛在砲口的半透明圓柱
+  waterJet(a, dir, L) {
+    if (this.skip(a, L / this.k)) return;
+    const K = this.k,
+      T = 0.22;
+    for (let i = 0; i < 5; i++) {
+      const v = dir
+        .clone()
+        .multiplyScalar((L / T) * rnd(0.8, 1.05))
+        .add(new THREE.Vector3(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).multiplyScalar(0.7 * K));
+      this.g.ln.emit({
+        p: a.clone().addScaledVector(dir, rnd(0, 0.15) * L),
+        v,
+        life: T * rnd(0.7, 1),
+        s0: 0.45 * K,
+        s1: 0.95 * K,
+        c0: 0xf6fcff,
+        c1: 0x7fc0f0,
+        a: 0.5,
+        cell: SOFT,
+      });
+      // 白色的水霧團跟著水柱往前（一般混合：亮的地面上也看得到，不會像雷射）
+      this.g.sm.emit({
+        p: a.clone().addScaledVector(dir, rnd(0, 0.2) * L),
+        v: v.clone().multiplyScalar(rnd(0.75, 1)),
+        life: T * rnd(0.8, 1.1),
+        s0: 0.6 * K,
+        s1: 1.7 * K,
+        c0: 0xf2f9ff,
+        a: 0.9,
+        cell: pickCell(FXG.smoke),
+        fade: 1,
+        rot: frand() * 6.28,
+      });
+    }
+    if (frand() < 0.6) this.smoke(a.clone().addScaledVector(dir, L), 0.55, 0xe4f1fa, 0.5, 1);
   }
   // 火焰噴射：從 p 沿 dir 噴出 len 公尺（世界尺寸）、半角 ang 的火焰粒子
   flameCone(p, dir, len, ang, n = 10) {
