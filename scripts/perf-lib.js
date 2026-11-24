@@ -12,7 +12,8 @@ const BROWSERS = [
 ].filter(Boolean);
 
 // 模擬弱的裝置（docs/perf-full-plan.md 第 4 期）：環境變數 PERF_GPU=low 改用省電的顯示卡（這台是內顯 Intel UHD 770）、
-// PERF_CPU=4 把 CPU 降速成 1/4（Chrome DevTools 的 CPU throttling，每個新分頁自動套用）
+// PERF_CPU=4 把 CPU 降速成 1/4（Chrome DevTools 的 CPU throttling，每個新分頁自動套用）、
+// PERF_TABLET=1180x820（寬x高）＝平板：畫面改成這個大小、2 倍像素、觸控（取代各腳本自己的 viewport）
 async function launch() {
   const exe = BROWSERS.find((p) => fs.existsSync(p));
   if (!exe) throw new Error('找不到 Edge 或 Chrome');
@@ -30,10 +31,18 @@ async function launch() {
       ...(gpu === 'low' ? ['--force_low_power_gpu'] : gpu === 'high' ? ['--force_high_performance_gpu'] : []),
     ],
   });
-  if (cpu > 1) {
+  const tab = /^(\d+)x(\d+)$/.exec(process.env.PERF_TABLET || '');
+  if (cpu > 1 || tab) {
     const nc = br.newContext.bind(br);
-    br.newContext = async (...a) => {
-      const ctx = await nc(...a);
+    br.newContext = async (o = {}, ...a) => {
+      if (tab)
+        o = Object.assign({}, o, {
+          viewport: { width: +tab[1], height: +tab[2] },
+          deviceScaleFactor: 2,
+          hasTouch: true,
+        });
+      const ctx = await nc(o, ...a);
+      if (!(cpu > 1)) return ctx;
       const np = ctx.newPage.bind(ctx);
       ctx.newPage = async () => {
         const pg = await np();

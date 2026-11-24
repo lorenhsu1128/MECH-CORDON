@@ -3,7 +3,7 @@
 //   node scripts/perf-all.js --phase=1        主線的全部出擊（scripts/perf-campaign.js，第 1 周目）
 //   node scripts/perf-all.js --phase=2        自由出擊：15 個主題、重的地圖換視角與畫質全開、空域、全部 Boss 與機獸
 //   node scripts/perf-all.js --phase=3        選單與過場：開遊戲、機甲庫、作戰室（八個區域）、第 1 周目的過場
-//   node scripts/perf-all.js --phase=4        弱的裝置：內顯（Intel UHD 770）＋CPU 降速 1/4，重的地圖、主線 3 段、作戰室、過場
+//   node scripts/perf-all.js --phase=4        平板（模擬）：1180x820 兩倍像素＋觸控＋內顯（Intel UHD 770）＋CPU 降速 1/4，重的地圖、主線 3 段、作戰室、過場
 //   node scripts/perf-all.js --phase=5        長時間：同一個網頁反覆出擊、回機甲庫、進作戰室，每輪回收記憶體後記錄
 //   node scripts/perf-all.js --phase=2,3,4,5  依序跑幾期；--resume＝已經有結果的項目略過（中斷後接著跑）
 //   node scripts/perf-all.js --report         只重新彙整報告（test-results/perf-all/<tag>/report.md）
@@ -84,7 +84,9 @@ const BOSSES = [
   'sovereign',
 ];
 const BEASTS = ['lion', 'tiger', 'bear', 'turtle', 'gorilla', 'scorpion', 'mantis', 'raptor'];
-const WEAK = { PERF_GPU: 'low', PERF_CPU: '4' };
+// 平板（使用者不在電腦旁，2026-11-24 改成模擬）：平板的解析度、2 倍像素、觸控＋內顯＋CPU 降速 1/4
+const WEAK = { PERF_GPU: 'low', PERF_CPU: '4', PERF_TABLET: '1180x820' };
+const WEAK_S = Object.assign({}, WEAK, { PERF_TABLET: '1000x626' }); // 小一點的平板（冒煙測試的平板大小）
 
 // ---------- 各期的項目：{ id, kind: 'probe'|'campaign'|'hub'|'cine'|'inline', args, env } ----------
 function scenarios(phase) {
@@ -113,6 +115,9 @@ function scenarios(phase) {
       probe('weak-' + t, ['--map=' + t], WEAK);
     probe('weak-boss-sovereign', ['--boss=sovereign'], WEAK);
     probe('weak-beast-lion', ['--beast=lion'], WEAK);
+    for (const t of ['grid086', 'institute']) probe('weak-s-' + t, ['--map=' + t], WEAK_S);
+    // 只有平板的解析度與觸控（獨立顯示卡、CPU 不降速）：分開看解析度與裝置效能各自的影響
+    for (const t of ['grid086', 'institute']) probe('tab-' + t, ['--map=' + t], { PERF_TABLET: '1180x820' });
     L.push({ id: 'weak-camp', kind: 'campaign', args: ['--only=c4s1,c5s1,c3s2', '--segsecs=80'], env: WEAK });
     L.push({ id: 'weak-hub', kind: 'hub', args: ['--ch=8', '--secs=15'], env: WEAK });
     L.push({ id: 'weak-cine', kind: 'cine', args: ['i1_2,o1_4,i1_6'], env: WEAK });

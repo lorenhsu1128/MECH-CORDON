@@ -2,7 +2,7 @@
 
 上一次全面的量測是 2026-11-15（`test-results/perf-campaign/mv6-on.md`，docs/perf-campaign-plan.md）。之後加了無邊界地圖（11-22）、機獸（11-19）、敵人的閃避（11-21）、身體部位破壞（11-21～22）、AI 音效的分包（11-23），都還沒量過。這一輪**先只量不修**，報告出來再和使用者決定優化的分期。
 
-使用者的決定（2026-11-24）：平板實機要量（遊戲內的效能紀錄）；第 2、3 周目的委託先不跑；多人先不量。
+使用者的決定（2026-11-24）：平板要量——使用者不在電腦旁，改成在這台模擬平板（解析度、2 倍像素、觸控＋內顯＋CPU 降速），遊戲內的效能紀錄留著之後實機用；第 2、3 周目的委託先不跑；多人先不量。
 
 ## 量什麼
 
@@ -28,7 +28,7 @@
 
 ## 弱裝置的模擬
 
-`scripts/perf-lib.js` 的 `launch` 讀環境變數：`PERF_GPU=low` 加 `--force_low_power_gpu`（這台會改用內顯，WebGL 的 renderer 字串確認過）、`high` 強制獨立顯示卡；`PERF_CPU=4` 每個新分頁以 DevTools 的 `Emulation.setCPUThrottlingRate` 降速（`newPage` 時等它設定好；長運算量到約 4.3 倍慢）。perf-probe、perf-campaign、perf-hub、cine-perf 都經過它。
+`scripts/perf-lib.js` 的 `launch` 讀環境變數：`PERF_GPU=low` 加 `--force_low_power_gpu`（這台會改用內顯，WebGL 的 renderer 字串確認過）、`high` 強制獨立顯示卡；`PERF_TABLET=1180x820` 把每個新的瀏覽器環境改成這個畫面大小、2 倍像素、觸控（`pointer: coarse` 成立，取代各腳本自己的 viewport）；`PERF_CPU=4` 每個新分頁以 DevTools 的 `Emulation.setCPUThrottlingRate` 降速（`newPage` 時等它設定好；長運算量到約 4.3 倍慢）。perf-probe、perf-campaign、perf-hub、cine-perf 都經過它。
 
 ## 遊戲內的效能紀錄（平板實機）
 
