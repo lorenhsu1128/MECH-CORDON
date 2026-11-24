@@ -84,6 +84,9 @@ const BOSSES = [
   'sovereign',
 ];
 const BEASTS = ['lion', 'tiger', 'bear', 'turtle', 'gorilla', 'scorpion', 'mantis', 'raptor'];
+// 全部的項目一律用低標跑（2026-11-24 使用者定案：要確認一般的設備就跑得順）：內顯 Intel UHD 770＋CPU 降速 1/4；
+// --hw＝改回這台的獨立顯示卡、不降速（比較用）
+const LOW = args.hw ? {} : { PERF_GPU: 'low', PERF_CPU: '4' };
 // 平板（使用者不在電腦旁，2026-11-24 改成模擬）：平板的解析度、2 倍像素、觸控＋內顯＋CPU 降速 1/4
 const WEAK = { PERF_GPU: 'low', PERF_CPU: '4', PERF_TABLET: '1180x820' };
 const WEAK_S = Object.assign({}, WEAK, { PERF_TABLET: '1000x626' }); // 小一點的平板（冒煙測試的平板大小）
@@ -92,7 +95,7 @@ const WEAK_S = Object.assign({}, WEAK, { PERF_TABLET: '1000x626' }); // 小一�
 function scenarios(phase) {
   const L = [];
   const probe = (id, a, env) => L.push({ id, kind: 'probe', args: a, env });
-  if (phase === 1) L.push({ id: 'camp', kind: 'campaign', args: ['--segsecs=100'] });
+  if (phase === 1) L.push({ id: 'camp', kind: 'campaign', args: ['--segsecs=150'] }); // 低標的自動操作比較慢
   if (phase === 2) {
     for (const t of THEMES) probe('free-' + t, ['--map=' + t]);
     for (const t of HEAVY) {
@@ -116,9 +119,12 @@ function scenarios(phase) {
     probe('weak-boss-sovereign', ['--boss=sovereign'], WEAK);
     probe('weak-beast-lion', ['--beast=lion'], WEAK);
     for (const t of ['grid086', 'institute']) probe('weak-s-' + t, ['--map=' + t], WEAK_S);
-    // 只有平板的解析度與觸控（獨立顯示卡、CPU 不降速）：分開看解析度與裝置效能各自的影響
-    for (const t of ['grid086', 'institute']) probe('tab-' + t, ['--map=' + t], { PERF_TABLET: '1180x820' });
-    L.push({ id: 'weak-camp', kind: 'campaign', args: ['--only=c4s1,c5s1,c3s2', '--segsecs=80'], env: WEAK });
+    L.push({
+      id: 'weak-camp',
+      kind: 'campaign',
+      args: ['--only=c4s1,c5s1,c3s2', '--segsecs=150'],
+      env: WEAK,
+    });
     L.push({ id: 'weak-hub', kind: 'hub', args: ['--ch=8', '--secs=15'], env: WEAK });
     L.push({ id: 'weak-cine', kind: 'cine', args: ['i1_2,o1_4,i1_6'], env: WEAK });
     L.push({ id: 'weak-startup', kind: 'inline', fn: startup, env: WEAK });
@@ -140,7 +146,8 @@ function runChild(script, a, env, tag) {
     p.on('close', (code) => res(code));
   });
 }
-async function runOne(s) {
+async function runOne(s0) {
+  const s = Object.assign({}, s0, { env: Object.assign({}, LOW, s0.env || {}) });
   const out = path.join(OUT, s.id + '.json');
   const t0 = Date.now();
   let code = 0;
@@ -445,6 +452,10 @@ function report() {
     '# 全遊戲的效能與卡頓檢查（' + TAG + '）',
     '',
     `產生時間：${new Date().toLocaleString('zh-TW')}`,
+    '',
+    args.hw
+      ? '裝置：這台的獨立顯示卡（RTX 4070），CPU 不降速。'
+      : '裝置：低標——內顯 Intel UHD 770＋CPU 降速 1/4（畫面 1600×900；weak-＝平板 1180×820 兩倍像素＋觸控，weak-s-＝1000×626）。',
     '',
   ];
   const J = (id) => {
