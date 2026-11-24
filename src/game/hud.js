@@ -14,6 +14,7 @@ import { GRADES } from '../data/gear.js';
 import { Game } from './game.js';
 import { PACE } from '../data/pace.js';
 
+const LH_FULL = 2; // 精簡的 HUD：鎖定提示的完整說明顯示幾秒
 const ZONE_WARN = 14; // ×DS：離作戰區域的邊界這麼近時畫面邊緣發光（hud.js 的 zoneEdgeHud）
 
 Object.assign(Game.prototype, {
@@ -192,6 +193,7 @@ Object.assign(Game.prototype, {
             lback: this.keyLabel(this.keymap.backL),
           },
       labels = { rarm: '右手', larm: '左手', rback: '右背', lback: '左背' };
+    const slim = document.body.dataset.hud !== 'full'; // 精簡：只留彈數與裝填條，文字用短的
     if (force || !el.children.length) {
       el.innerHTML =
         ['larm', 'rarm', 'lback', 'rback']
@@ -253,6 +255,30 @@ Object.assign(Game.prototype, {
         txt = w.arFxT.ok ? '完美裝填' : '卡彈';
       } else if (w.arN > 0) txt += '　強化彈';
       d.classList.toggle('arGood', !!(w.arFxT && w.arFxT.t > 0 && w.arFxT.ok));
+      if (slim) {
+        // 精簡的文字：彈數、裝填、冷卻；強力彈與強化彈看卡片的邊框與直條
+        const t = w.def.type;
+        if (t === 'none') txt = '—';
+        else if (w.arFxT && w.arFxT.t > 0) txt = w.arFxT.ok ? '完美' : '卡彈';
+        else if (arOk) txt = '▸開火';
+        else if (t === 'melee')
+          txt = p.melee.active && p.melee.slot === s ? `連 ${p.melee.stage + 1}` : '近戰';
+        else if (t === 'shield') txt = '盾';
+        else if (t === 'emp') txt = w.cd > 0 ? Math.ceil(w.cd) + 's' : '就緒';
+        else if (t === 'empbeam') txt = p.empLock ? '過載' : w.firing ? '發射' : 'EN';
+        else if (!usesAmmo(w.def))
+          txt = w.charging ? Math.round(clamp(w.charge / w.def.chargeT, 0, 1) * 100) + '%' : '∞';
+        else txt = w.reloadT > 0 ? '裝填' : w.mag + '/' + w.ammo;
+        d.querySelector('b').textContent = labels[s];
+        d.querySelector('em').textContent = txt;
+        d.querySelector('.rl').style.width =
+          (w.reloadT > 0
+            ? (1 - w.reloadT / w.def.reload) * 100
+            : w.cd > 0
+              ? (1 - w.cd / w.def.rof) * 100
+              : 0) + '%';
+        continue;
+      }
       d.querySelector('b').textContent = labels[s] + ' ' + w.def.name.split(' ')[0];
       d.querySelector('em').textContent = txt;
       d.querySelector('.rl').style.width =
@@ -266,7 +292,11 @@ Object.assign(Game.prototype, {
       const def = CONSUMABLES.find((c) => c.id === id);
       const n = (this.save.items && this.save.items[id]) || 0;
       d.classList.toggle('empty', !def || id === 'cs_none' || n <= 0);
-      d.querySelector('b').textContent = def && id !== 'cs_none' ? def.name.split(' ')[0] : '消耗品';
+      d.querySelector('b').textContent = slim
+        ? this.keyLabel(this.keymap[s === 'c1' ? 'cs1' : 'cs2'])
+        : def && id !== 'cs_none'
+          ? def.name.split(' ')[0]
+          : '消耗品';
       d.querySelector('em').textContent = def && id !== 'cs_none' ? '×' + n : '—';
       const cd = (this.csCd && this.csCd[s]) || 0;
       d.querySelector('.rl').style.width = (cd > 0 ? (cd / 4) * 100 : 0) + '%';
@@ -444,10 +474,10 @@ Object.assign(Game.prototype, {
     document.getElementById('hudTop').innerHTML = this.camp
       ? this.campHudTop(alive, wavesLeft)
       : this.lv
-        ? `<b>${this.lv.test ? '試玩' : '自訂關卡'}</b> ｜ ${escHtml(this.levelName)}<div id="objective">殘存敵軍 ${alive} ｜ ${this.missionT.toFixed(0)}s</div>${this.lv.hudHtml || ''}`
+        ? `<b>${this.lv.test ? '試玩' : '自訂關卡'}</b> ｜ <span class="hudX">${escHtml(this.levelName)}</span><div id="objective">殘存敵軍 ${alive} ｜ ${this.missionT.toFixed(0)}s</div>${this.lv.hudHtml || ''}`
         : this.campC && this.campC.view
           ? this.campHudHtml(this.campC.view)
-          : `<b>${this.isBossLevel ? '決戰任務' : '任務'} ${String(this.save.level).padStart(2, '0')}</b> ｜ ${escHtml(this.levelName)}<div id="objective">${this.extract > 0 ? `撤離倒數 ${Math.ceil(this.extract)} 秒（回收補給箱）` : `殘存敵軍 ${alive}${wavesLeft ? ' （尚有增援）' : ''}`} ｜ ${this.missionT.toFixed(0)}s</div><div style="color:var(--acc)">SP ${this.save.coam.toLocaleString()} <span class="dim">（本次 +${(this.missionEarned || 0).toLocaleString()}）</span></div>`;
+          : `<b>${this.isBossLevel ? '決戰任務' : '任務'} ${String(this.save.level).padStart(2, '0')}</b> ｜ <span class="hudX">${escHtml(this.levelName)}</span><div id="objective">${this.extract > 0 ? `撤離倒數 ${Math.ceil(this.extract)} 秒（回收補給箱）` : `殘存敵軍 ${alive}${wavesLeft ? ' （尚有增援）' : ''}`} ｜ ${this.missionT.toFixed(0)}s</div><div class="hudX" style="color:var(--acc)">SP ${this.save.coam.toLocaleString()} <span class="dim">（本次 +${(this.missionEarned || 0).toLocaleString()}）</span></div>`;
     if (this.goalCur) document.getElementById('hudTop').insertAdjacentHTML('beforeend', this.goalHudHtml());
     if (PACE.on && !PACE.lab && PACE.name)
       document
@@ -464,8 +494,23 @@ Object.assign(Game.prototype, {
       // 電腦：狀態欄在左上、任務資訊接在它下面；觸控：任務資訊在上、狀態欄接在下面（照舊）
       const view = this.airMode ? 'air' : this.chase ? 'chase' : this.fp ? 'fp' : 'top';
       if (document.body.dataset.view !== view) document.body.dataset.view = view;
+      // 角落的面板在畫面上的範圍（NDC，外擴一點）：鏡頭框住鎖定目標時避開（camera.js 的 fitsAt）
+      this.hudRects = ['hudBottom', 'hudTop', 'weapons', 'bossBar']
+        .map((id) => document.getElementById(id))
+        .filter((el) => el && el.offsetParent)
+        .map((el) => {
+          const r = el.getBoundingClientRect(),
+            m = 14;
+          return [
+            ((r.left - m) / innerWidth) * 2 - 1,
+            1 - ((r.bottom + m) / innerHeight) * 2,
+            ((r.right + m) / innerWidth) * 2 - 1,
+            1 - ((r.top - m) / innerHeight) * 2,
+          ];
+        });
+      document.body.toggleAttribute('data-hudbody', this.hudBodyOn()); // 機體周邊的 HUD：角落的狀態欄與武器卡片收起
       hb.style.top = vp ? ht.offsetTop + ht.offsetHeight + 4 + 'px' : '';
-      ht.style.top = vp ? '' : hb.offsetTop + hb.offsetHeight + 8 + 'px';
+      ht.style.top = vp ? '' : hb.offsetParent ? hb.offsetTop + hb.offsetHeight + 8 + 'px' : '14px';
       const tp = document.getElementById('tutPanel');
       if (tp) tp.style.top = vp ? '' : ht.offsetTop + ht.offsetHeight + 10 + 'px';
       // 靶場面板接在狀態欄下面
@@ -658,17 +703,24 @@ Object.assign(Game.prototype, {
               ? `　▼ 高度劣勢 −${Math.round(Math.min(45, -dy * 7))}%`
               : '';
       }
-      document.getElementById('lockHint').textContent = p.lock
-        ? `LOCK ▸ ${p.lock.name}  ${Math.round(p.lock.pos.distanceTo(p.pos))}m${p.lock.res || p.lock.laserK !== 1 ? '　' + weakText(p.lock.res, p.lock.laserK) : ''}${this.wpHint(p.lock)}${this.afHint(p.lock)}${this.hudMissileLock(p)}${hTxt}`
+      // 弱點、詞綴、鏡頭的說明包在 .lhX：精簡模式在鎖定 LH_FULL 秒之後收起（CSS 的 #lockHint.brief），只留名稱、距離、導彈鎖定、高度
+      const lh = document.getElementById('lockHint');
+      if (this.lhLock !== p.lock) {
+        this.lhLock = p.lock;
+        this.lhT = this.time || 0;
+      }
+      lh.classList.toggle('brief', !p.lock || (this.time || 0) - this.lhT > LH_FULL);
+      lh.classList.toggle('none', !p.lock);
+      const cam =
+        this.camMode === 'wide'
+          ? `　⤢ ${this.camZoom.toFixed(1)}×`
+          : this.camMode === 'melee'
+            ? '　⤡ 近戰視角'
+            : '';
+      lh.innerHTML = p.lock
+        ? `LOCK ▸ ${escHtml(p.lock.name)}  ${Math.round(p.lock.pos.distanceTo(p.pos))}m<span class="lhX">${escHtml((p.lock.res || p.lock.laserK !== 1 ? '　' + weakText(p.lock.res, p.lock.laserK) : '') + this.wpHint(p.lock) + this.afHint(p.lock))}</span>${escHtml(this.hudMissileLock(p) + hTxt)}<span class="lhX">${cam}</span>`
         : '無鎖定目標';
-      document.getElementById('lockHint').style.color = hTxt.includes('▲')
-        ? '#7ee081'
-        : hTxt.includes('▼')
-          ? '#ff8a8a'
-          : '';
-      if (this.camMode === 'wide')
-        document.getElementById('lockHint').textContent += `　⤢ ${this.camZoom.toFixed(1)}×`;
-      else if (this.camMode === 'melee') document.getElementById('lockHint').textContent += '　⤡ 近戰視角';
+      lh.style.color = hTxt.includes('▲') ? '#7ee081' : hTxt.includes('▼') ? '#ff8a8a' : '';
     }
     if (p.melee.active) {
       const d = p.weapons[p.melee.slot].def;
@@ -691,6 +743,7 @@ Object.assign(Game.prototype, {
     this.gazeHud(c, W, H, p); // 眼動追蹤：停留中的目標、注視點、狀態（game/gaze.js）
     this.drawWaveMarks(c, W, H, p, dt);
     this.drawEncMarks(c, W, H, p, dt); // 遠處的敵群（encounters.js）
+    this.bodyHud(c, p, W, H); // 顯示模式「機體周邊」：AP／EN／BAL 的弧線與彈數（hud-body.js）
     // reticle at mouse
     if (this.pvp) this.drawPvpHud(c, W, H, p);
     if (this.chase) {
@@ -808,17 +861,41 @@ Object.assign(Game.prototype, {
         c.stroke();
         c.fill();
         c.restore();
+        if (isLock) {
+          // 鎖定的目標：脈動的外圈（和一般的畫面外箭頭分得出來）
+          const pu = 0.5 + 0.5 * Math.sin(tt * 6);
+          c.save();
+          c.strokeStyle = col;
+          c.globalAlpha = 0.4 + 0.45 * pu;
+          c.lineWidth = 2;
+          c.beginPath();
+          c.arc(ax, ay, sz + 6 + 3 * pu, 0, Math.PI * 2);
+          c.stroke();
+          c.restore();
+        }
         {
           const dist = Math.round(e.pos.distanceTo(p.pos));
-          const label = `${e.name} ${dist}m`;
+          const label = `${isLock ? '◎ ' : ''}${e.name} ${dist}m`;
           c.font = 'bold 12px Rubik, Noto Sans TC';
           c.textAlign = 'center';
           const lx = clamp(ax, 70, W - 70),
-            ly = ay + (ay < H / 2 ? 32 : -22);
+            ly = ay + (ay < H / 2 ? (isLock ? 40 : 32) : isLock ? -46 : -22);
           c.fillStyle = 'rgba(0,0,0,.6)';
           c.fillRect(lx - 58, ly - 12, 116, 17);
           c.fillStyle = col;
           c.fillText(label, lx, ly);
+          // 鎖定的目標在畫面外：AP／BAL 小條（名牌看不到，資訊搬到箭頭旁邊）
+          if (isLock) {
+            const bw = 116,
+              bx = lx - bw / 2,
+              by = ly + 6;
+            c.fillStyle = 'rgba(0,0,0,.6)';
+            c.fillRect(bx, by, bw, 9);
+            c.fillStyle = e.staggerT > 0 ? '#ffd21a' : '#ff5a4d';
+            c.fillRect(bx + 2, by + 1, (bw - 4) * clamp(e.hp / e.maxHp, 0, 1), 4);
+            c.fillStyle = '#ffd21a';
+            c.fillRect(bx + 2, by + 6, (bw - 4) * clamp(e.acs / (e.acsMax || 1), 0, 1), 2);
+          }
         }
         continue;
       }

@@ -7566,6 +7566,50 @@ async function testLockOn(browser, base) {
     g.autoLock(pl);
     const side = !g.onScreen(es[4]);
     const relock = pl.lock && pl.lock !== es[0] && pl.lock !== es[3];
+    // 畫面內優先：側面畫面外的比較近、前方畫面內的比較遠 → 鎖前方那台；畫面內沒有敵人時才鎖畫面外的
+    put(es[0], 0, 300 * SC);
+    put(es[2], 0, 300 * SC);
+    pl.lock = null;
+    cam();
+    let sx = 0;
+    for (let x = 6; x <= 40 && !sx; x += 1) {
+      put(es[4], x * SC, -1 * SC);
+      if (!g.onScreen(es[4])) sx = x;
+    }
+    let fz = 0;
+    // 畫面內比較遠的位置：另一側的斜前方（畫面的角落比左右邊緣遠）
+    for (let z = 30; z > 2 && !fz; z -= 1) {
+      put(es[1], -(sx - 2) * SC, -z * SC);
+      if (g.onScreen(es[1])) fz = z;
+    }
+    g.autoLock(pl);
+    const inFirst = sx > 0 && Math.hypot(sx - 2, fz) > Math.hypot(sx, 1) + 1 && pl.lock === es[1];
+    put(es[1], 0, 300 * SC);
+    pl.lock = null;
+    g.autoLock(pl);
+    const offOk = pl.lock === es[4];
+    // 鏡頭往鎖定目標偏移：注視點移向目標、機體還在畫面內；解除鎖定後回到機體
+    cam();
+    const panX = g.camTarget.x - pl.pos.x;
+    const panIn = g.onScreen(pl);
+    // 鎖定的目標不框在角落的面板底下：假的面板放在目標現在的位置 → 鏡頭重新框景後目標離開那個範圍
+    const ndc = () => es[4].center().project(g.camera);
+    const n0 = ndc();
+    g.hudRects = [[n0.x - 0.12, n0.y - 0.12, n0.x + 0.12, n0.y + 0.12]];
+    for (let i = 0; i < 200; i++) g.updateCamera(1 / 60);
+    g.camera.updateMatrixWorld(true);
+    const n1 = ndc();
+    const R = g.hudRects[0];
+    const hudFree =
+      g.onScreen(es[4]) && g.onScreen(pl) && !(n1.x > R[0] && n1.x < R[2] && n1.y > R[1] && n1.y < R[3]);
+    g.hudRects = null;
+    put(es[4], 0, 300 * SC);
+    pl.lock = null;
+    for (let i = 0; i < 200; i++) g.updateCamera(1 / 60);
+    const panBack = Math.abs(g.camTarget.x - pl.pos.x);
+    put(es[4], 30 * SC, -1 * SC);
+    put(es[1], 0, -14 * SC);
+    put(es[2], 6 * SC, -10 * SC);
     // 第一人稱：依離準星的角度（準星對著偏右那台）
     put(es[0], 0, -8 * SC);
     g.setFp(true);
@@ -7578,14 +7622,247 @@ async function testLockOn(browser, base) {
     g.setFp(false);
     g.clearMission();
     g.state = 'title';
-    return { first, order: order.join(','), behind, side, relock, fp };
+    return {
+      first,
+      order: order.join(','),
+      behind,
+      side,
+      relock,
+      fp,
+      inFirst,
+      offOk,
+      sx,
+      fz,
+      panX,
+      panIn,
+      panBack,
+      hudFree,
+    };
   }, SC);
   check(
     r.first && r.order === '2,1,4,0,2' && r.behind && r.side,
     `第三人稱：鎖定機甲前方最近的、正面 180° 內由近到遠（含畫面外的側面，${r.order}）、背後的不鎖定`,
   );
   check(r.relock, '目標移到攻擊距離外時改鎖其他近的敵人');
+  check(r.inFirst, `畫面內優先：側面畫面外 ${r.sx} 的比較近，照樣鎖前方畫面內 ${r.fz} 的`);
+  check(r.offOk, '畫面內沒有敵人時鎖畫面外的');
+  check(
+    r.panX > 3 * SC && r.panIn,
+    `鎖定畫面外的目標：鏡頭往目標偏移（${r.panX.toFixed(1)} m）、機體還在畫面內`,
+  );
+  check(r.hudFree, '鎖定的目標不框在角落的面板底下（假的面板放在目標的位置，鏡頭重新框景後離開）');
+  check(r.panBack < 0.5, `解除鎖定後鏡頭回到機體（${r.panBack.toFixed(2)} m）`);
   check(r.fp, '第一人稱：鎖定離準星最近的');
+  await ctx.close();
+}
+
+// 戰鬥 HUD 的顯示模式、底色、透明度（設定「戰鬥 HUD」；input.js 的 applyHud，docs/zzz-ui-design.md 的「HUD 精簡」）
+async function testHudMode(browser, base) {
+  console.log('戰鬥 HUD：精簡（預設）與完整的面板大小、短文字、鎖定提示收起、底色與透明度、設定切換');
+  const { ctx, page } = await newPage(browser, 'hudmode');
+  await page.goto(base + '?test');
+  await waitVisible(page, 'title');
+  await page.evaluate(() => {
+    const g = window.__game;
+    g.save.level = 1;
+    g.startMission();
+  });
+  await page.waitForFunction(() => window.__game.state === 'play' && window.__game.player, null, {
+    timeout: 60000,
+  });
+  await page.waitForTimeout(1500);
+  // 一台敵人固定在前方（攻擊距離內、不會動），當鎖定目標
+  await page.evaluate((SC) => {
+    const g = window.__game;
+    const p = g.player;
+    p.hp = p.maxHp = 1e8;
+    p.yaw = p.aimYaw = 0;
+    const e = g.enemies.find((x) => !x.dead);
+    e.updateAI = () => {};
+    e.hp = e.maxHp = 1e8;
+    e.pos.set(p.pos.x, p.pos.y, p.pos.z - 12 * SC);
+    e.mesh.position.copy(e.pos);
+    for (const x of g.enemies) if (x !== e) x.pos.set(p.pos.x + 250 * SC, p.pos.y, p.pos.z + 250 * SC);
+    g.__hudE = e;
+    p.lock = e;
+  }, SC);
+  const measure = () =>
+    page.evaluate(async () => {
+      const g = window.__game;
+      const p = g.player;
+      p.lock = g.__hudE;
+      g.lhLock = null; // 當成剛鎖定
+      await new Promise((r) => setTimeout(r, 700));
+      const R = (id) => {
+        const el = document.getElementById(id);
+        const b = el.getBoundingClientRect();
+        return { x: b.left, y: b.top, w: b.width, h: b.height, r: b.right, b: b.bottom };
+      };
+      const rs = { hb: R('hudBottom'), ht: R('hudTop'), wp: R('weapons'), lh: R('lockHint') };
+      const hit = (a, b) => a.w && b.w && a.x < b.r && b.x < a.r && a.y < b.b && b.y < a.b;
+      const ks = Object.keys(rs);
+      const over = [];
+      for (let i = 0; i < ks.length; i++)
+        for (let j = i + 1; j < ks.length; j++) if (hit(rs[ks[i]], rs[ks[j]])) over.push(ks[i] + '×' + ks[j]);
+      const lh = document.getElementById('lockHint');
+      const cs = (id) => getComputedStyle(document.getElementById(id));
+      return {
+        hud: document.body.dataset.hud,
+        bg: document.body.dataset.hudbg,
+        area: Math.round(rs.hb.w * rs.hb.h + rs.ht.w * rs.ht.h + rs.wp.w * rs.wp.h),
+        inView: ks.every(
+          (k) => rs[k].x >= 0 && rs[k].y >= 0 && rs[k].r <= innerWidth && rs[k].b <= innerHeight,
+        ),
+        over,
+        slots: document.querySelectorAll('#weapons .wslot').length,
+        rarm: document.querySelector('#ws_rarm em').textContent,
+        rarmB: document.querySelector('#ws_rarm b').textContent,
+        keyVis: !!document.querySelector('#ws_rarm .k').offsetParent,
+        lhFull: lh.textContent.length,
+        lhBrief: lh.classList.contains('brief'),
+        lhW: rs.lh.w,
+        hbBg: cs('hudBottom').backgroundColor,
+        wsBg: getComputedStyle(document.querySelector('#weapons .wslot')).backgroundColor,
+        op: cs('hudBottom').opacity,
+      };
+    });
+  const slim = await measure();
+  check(
+    slim.hud === 'slim' && slim.bg === 'half' && slim.slots === 6 && slim.inView && !slim.over.length,
+    `預設＝精簡＋半透明，四塊面板都在畫面內、互不重疊（${slim.hud}／${slim.bg}${slim.over.length ? '；重疊 ' + slim.over.join('、') : ''}）`,
+  );
+  check(
+    /^\d+\/\d+$|^裝填$|^∞$/.test(slim.rarm) && slim.rarmB === '右手' && !slim.keyVis,
+    `精簡的武器卡片：只有位置與彈數（${slim.rarmB} ${slim.rarm}）、不顯示按鍵`,
+  );
+  check(/0\.4\)$/.test(slim.hbBg) && /0\.4\)$/.test(slim.wsBg), `半透明的底色（${slim.hbBg}）`);
+  // 鎖定提示：鎖定 2 秒之後完整說明收起（文字內容照舊在，只是不顯示）
+  const lh = await page.evaluate(async () => {
+    const g = window.__game;
+    const el = document.getElementById('lockHint');
+    const w0 = el.getBoundingClientRect().width;
+    const b0 = el.classList.contains('brief');
+    g.lhT = (g.time || 0) - 5;
+    await new Promise((r) => setTimeout(r, 500));
+    const w1 = el.getBoundingClientRect().width;
+    const b1 = el.classList.contains('brief');
+    const lock = g.player.lock;
+    g.player.lock = null;
+    g.autoLock = () => {};
+    await new Promise((r) => setTimeout(r, 500));
+    const none = !el.offsetParent;
+    g.player.lock = lock;
+    return { w0, b0, w1, b1, none, txt: el.textContent.length };
+  });
+  check(
+    !lh.b0 && lh.b1 && lh.w1 <= lh.w0 && lh.none,
+    `鎖定提示：剛鎖定顯示完整說明（${Math.round(lh.w0)} px），2 秒後收起（${Math.round(lh.w1)} px），沒有目標時不顯示`,
+  );
+  await page.screenshot({ path: path.join(SHOT_DIR, 'hud-slim.png') });
+  // 設定切換：完整＝原本的大面板
+  const set = (id, v) =>
+    page.evaluate(
+      ([id, v]) => {
+        const el = document.getElementById(id);
+        el.value = v;
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      },
+      [id, v],
+    );
+  await set('ctrlHudMode', 'full');
+  await page.waitForTimeout(800);
+  const full = await measure();
+  check(
+    full.hud === 'full' &&
+      full.keyVis &&
+      full.rarmB.startsWith('右手 ') &&
+      full.inView &&
+      !full.over.filter((o) => o !== 'wp×lh').length, // 完整的版面：剛鎖定時很長的鎖定提示會碰到武器欄（原本就這樣）
+    `完整：武器卡片有名稱與按鍵（${full.rarmB}）、面板在畫面內不重疊（${full.keyVis}／${full.inView}／${full.over.join('、')}）`,
+  );
+  check(
+    slim.area < full.area * 0.5,
+    `精簡的面板面積不到完整的一半（${slim.area} / ${full.area} px²＝${Math.round((slim.area / full.area) * 100)}%）`,
+  );
+  await page.screenshot({ path: path.join(SHOT_DIR, 'hud-full.png') });
+  await set('ctrlHudBg', 'solid');
+  const solid = await measure();
+  await set('ctrlHudBg', 'none');
+  await set('ctrlHudOp', '0.5');
+  await set('ctrlHudMode', 'slim');
+  await page.waitForTimeout(600);
+  const none = await measure();
+  check(
+    /0\.78\)$/.test(solid.hbBg) && /, 0\)$/.test(none.hbBg) && /, 0\)$/.test(none.wsBg) && none.op === '0.5',
+    `底色：實心（${solid.hbBg}）、無（${none.hbBg}）；透明度 50%（${none.op}）`,
+  );
+  await page.screenshot({ path: path.join(SHOT_DIR, 'hud-slim-nobg.png') });
+  const saved = await page.evaluate(() => {
+    const c = JSON.parse(localStorage.getItem('mech_cordon_ctrl') || '{}');
+    return [c.hudMode, c.hudBg, c.hudOp].join(',');
+  });
+  check(saved === 'slim,none,0.5', `設定寫進 mech_cordon_ctrl（${saved}）`);
+  // 機體周邊：俯視時角落的狀態欄與武器卡片收起（只留任務資訊與消耗品），弧線與彈數畫在機體旁；追尾時回到精簡的版面
+  await set('ctrlHudBg', 'half');
+  await set('ctrlHudOp', '1');
+  await set('ctrlHudMode', 'body');
+  await page.waitForTimeout(800);
+  const body = await page.evaluate(async () => {
+    const g = window.__game;
+    const vis = (sel) => [...document.querySelectorAll(sel)].filter((e) => e.offsetParent).length;
+    // 畫在機體旁：數 bodyHud 這一格畫了幾段弧、幾個字，並量離機體在畫面上的位置多遠
+    const c = document.getElementById('hud').getContext('2d');
+    const b = g.popBox(g.player);
+    let arcs = 0,
+      texts = 0,
+      far = 0;
+    const a0 = c.arc.bind(c),
+      t0 = c.fillText.bind(c);
+    c.arc = (x, y, r, ...a) => {
+      arcs++;
+      far = Math.max(far, Math.hypot(x - b.cx, y - (b.top + b.bot) / 2));
+      return a0(x, y, r, ...a);
+    };
+    c.fillText = (t, x, y, ...a) => {
+      texts++;
+      far = Math.max(far, Math.hypot(x - b.cx, y - (b.top + b.bot) / 2));
+      return t0(t, x, y, ...a);
+    };
+    g.bodyHud(c, g.player, innerWidth, innerHeight);
+    c.arc = a0;
+    c.fillText = t0;
+    const top = {
+      on: g.hudBodyOn(),
+      attr: document.body.hasAttribute('data-hudbody'),
+      hb: vis('#hudBottom'),
+      ws: vis('#weapons .wslot:not(.cs)'),
+      cs: vis('#weapons .wslot.cs'),
+      ht: vis('#hudTop'),
+      htTop: document.getElementById('hudTop').getBoundingClientRect().top,
+      arcs,
+      texts,
+      far: Math.round(far),
+    };
+    g.setView('chase', true);
+    await new Promise((r) => setTimeout(r, 800));
+    const chase = { on: g.hudBodyOn(), hb: vis('#hudBottom'), ws: vis('#weapons .wslot:not(.cs)') };
+    g.setView('top', true);
+    await new Promise((r) => setTimeout(r, 800));
+    return { top, chase, back: document.body.hasAttribute('data-hudbody') };
+  });
+  check(
+    body.top.on && body.top.attr && !body.top.hb && !body.top.ws && body.top.cs === 2 && body.top.ht === 1,
+    `機體周邊（俯視）：狀態欄與武器卡片收起，留任務資訊與消耗品（消耗品 ${body.top.cs}、任務資訊在 y=${Math.round(body.top.htTop)}）`,
+  );
+  check(
+    body.top.arcs >= 4 && body.top.texts >= 3 && body.top.far < 260,
+    `弧線與彈數畫在機體旁（弧 ${body.top.arcs} 次、字 ${body.top.texts} 個、離機體最遠 ${body.top.far} px）`,
+  );
+  check(
+    !body.chase.on && body.chase.hb === 1 && body.chase.ws === 4 && body.back,
+    '追尾視角回到精簡的版面（狀態欄與武器卡片），切回俯視再收起',
+  );
+  await page.screenshot({ path: path.join(SHOT_DIR, 'hud-body.png') });
   await ctx.close();
 }
 
@@ -36449,6 +36726,7 @@ const STEPS = [
   ['testBosses', (c) => testBosses(c.browser, c.base)],
   ['testBosses2', (c) => testBosses2(c.browser, c.base)],
   ['testLockOn', (c) => testLockOn(c.browser, c.base)],
+  ['testHudMode', (c) => testHudMode(c.browser, c.base)],
   ['testTopAim', (c) => testTopAim(c.browser, c.base)],
   ['testCamOcclusion', (c) => testCamOcclusion(c.browser, c.base)],
   ['testChase', (c) => testChase(c.browser, c.base)],

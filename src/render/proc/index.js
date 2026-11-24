@@ -88,6 +88,7 @@ import { p_back_bw_ms_rPrims, p_back_bw_ms_rCols } from './back_bw_ms_r.js';
 import { p_back_bw_ms8_rPrims, p_back_bw_ms8_rCols } from './back_bw_ms8_r.js';
 import { p_back_bw_pm_rPrims, p_back_bw_pm_rCols } from './back_bw_pm_r.js';
 import { p_back_bw_sh_rPrims, p_back_bw_sh_rCols } from './back_bw_sh_r.js';
+import { LOOK_WARDEN } from './look_warden.js';
 
 export const PROC_PRIMS = {
   'core/c_std': cStdPrims, // BD-100 GRANITE
@@ -243,4 +244,21 @@ for (const k in WEAPONS) {
       at: [-spin.at[0], spin.at[1], spin.at[2]],
     };
   }
+}
+// 敵方專用外觀（docs/mech-looks-design.md）：外觀和零件分開——組裝的 look 指定一個外型，機體照舊用零件的數值與骨架，
+// 區塊的模型換成外型的（mech-model.js 的 mechPieces 在區塊資訊記 look＝'look/<外型>/<區塊>'）。手寫的清單，沒有 GLB；
+// 右側的手臂與腳照寫的、左側是鏡像。LOOK_JOINTS：外型自己的連接點（glTF 座標，覆寫基底零件的）
+export const LOOKS = { warden: LOOK_WARDEN };
+export const LOOK_JOINTS = {};
+for (const id in LOOKS) {
+  const L = LOOKS[id];
+  for (const k in L.pieces) {
+    const keys = [[`look/${id}/${k}`, L.pieces[k]]];
+    if (k.startsWith('r_')) keys.push([`look/${id}/l_${k.slice(2)}`, mirrorPrims(L.pieces[k])]);
+    for (const [key, prims] of keys) {
+      PROC_PRIMS[key] = prims;
+      if (L.cols) PROC_COLS[key] = L.cols;
+    }
+  }
+  for (const k in L.joints || {}) LOOK_JOINTS[`look/${id}/${k}`] = L.joints[k];
 }

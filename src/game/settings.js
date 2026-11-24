@@ -387,6 +387,11 @@ Object.assign(Game.prototype, {
     }
     $('ctrlTfx').value = this.ctrl.tfx || 'full';
     $('ctrlUiFx').value = this.ctrl.uiFx || 'full';
+    $('ctrlHudMode').value = this.hudMode();
+    $('ctrlHudBg').value = document.body.dataset.hudbg || 'half';
+    $('ctrlHudOp').value = String(
+      +this.ctrl.hudOp === 0.75 || +this.ctrl.hudOp === 0.5 ? +this.ctrl.hudOp : 1,
+    );
     $('ctrlCine').value = this.ctrl.cine || 'on';
     $('ctrlVoiceClear').value = this.ctrl.voiceClear || 'std';
     $('ctrlCutin').value = this.ctrl.cutin || 'on';

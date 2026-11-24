@@ -7,6 +7,7 @@ import { Game } from './game.js';
 
 // 已鎖住的 Boss 要離開攻擊距離的幾倍才解除（2026-11-16：高速飛行的 Boss 一下就飛出去，鎖定一直斷）
 const BOSS_LOCK_KEEP = 1.5;
+const OFF_K = 1e6; // 俯視的傳統操作：畫面外的候選排在畫面內的後面（加在排序用的距離上）
 
 Object.assign(Game.prototype, {
   // 鎖定的有效距離：裝備的武器（不含近戰）最遠的射程，上限是火控的鎖定距離；只有近戰武器時用鎖定距離
@@ -31,7 +32,7 @@ Object.assign(Game.prototype, {
     return v.z > -1 && v.z < 1 && Math.abs(v.x) <= 1 && Math.abs(v.y) <= 1;
   },
   // 可以鎖定的敵人（依鎖定順序）：有效距離內；
-  // 第一人稱：畫面內、依離準星的角度；追尾：畫面中央的鎖定框裡、依離準星的遠近（chase.js）；俯視：機甲面向的正面 180° 內（不論在不在畫面裡）由近到遠，背後的完全不鎖定
+  // 第一人稱：畫面內、依離準星的角度；追尾：畫面中央的鎖定框裡、依離準星的遠近（chase.js）；俯視：機甲面向的正面 180° 內、畫面內的優先（畫面外的排在後面），各自由近到遠，背後的完全不鎖定
   lockCands(p) {
     const reach = this.lockReach(p);
     const out = [];
@@ -56,7 +57,8 @@ Object.assign(Game.prototype, {
         const rel = e.pos.clone().sub(p.pos).setY(0);
         // Boss 不受正面 180° 的限制（2026-11-16：高速飛行的 Boss 常在背後，轉過去之前就鎖不到）
         if (!e.isBoss && rel.lengthSq() > 0.01 && rel.normalize().dot(fwd) < 0) continue;
-        out.push({ e, k: dist });
+        // 畫面內優先（2026-11-24 使用者定案）：畫面裡有敵人就不去鎖畫面外的；畫面外的排在後面、照樣由近到遠
+        out.push({ e, k: dist + (this.onScreen(e) ? 0 : OFF_K) });
       }
     }
     // 可以打掉的投射物排在敵人後面（hazards2.js 的 lockPool）

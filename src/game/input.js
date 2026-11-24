@@ -90,6 +90,22 @@ Object.assign(Game.prototype, {
   uiFx() {
     return document.body.dataset.uifx || 'full';
   },
+  // HUD 的顯示模式、底色、透明度（docs/zzz-ui-design.md 的「HUD 精簡」）：ctrl.hudMode＝slim 精簡（預設）／body 機體周邊／full 完整 → body[data-hud]＝slim／full，
+  // body[data-hudbg]＝half 半透明（預設）／solid 實心／none 無，--hudOp＝面板的不透明度；CSS 依它們排版
+  hudMode() {
+    return ['full', 'body'].includes(this.ctrl.hudMode) ? this.ctrl.hudMode : 'slim';
+  },
+  applyHud() {
+    const b = document.body;
+    // body 機體周邊：版面照精簡的，俯視時另外加 body[data-hudbody]（hud.js 每 16 格更新；game/hud-body.js）
+    b.dataset.hud = this.hudMode() === 'full' ? 'full' : 'slim';
+    if (this.hudMode() !== 'body') b.removeAttribute('data-hudbody');
+    b.dataset.hudbg = ['solid', 'none'].includes(this.ctrl.hudBg) ? this.ctrl.hudBg : 'half';
+    const op = +this.ctrl.hudOp;
+    b.style.setProperty('--hudOp', op === 0.75 || op === 0.5 ? String(op) : '1');
+    const w = document.getElementById('weapons');
+    if (w) w.innerHTML = ''; // 武器欄照新的模式重建（renderWeaponHud）
+  },
   saveKeys() {
     try {
       localStorage.setItem('mech_cordon_keys', JSON.stringify(this.keymap));
@@ -733,6 +749,7 @@ Object.assign(Game.prototype, {
     this.down = {};
     this.loadKeys();
     this.applyUiFx();
+    this.applyHud();
     this.setupTouch();
     this.setupFullscreen();
     // 標題的操作說明（絕區零式的標題：說明改成按鈕打開的面板）
@@ -959,6 +976,16 @@ Object.assign(Game.prototype, {
       this.applyUiFx();
       this.saveKeys();
     };
+    for (const [id, key] of [
+      ['ctrlHudMode', 'hudMode'],
+      ['ctrlHudBg', 'hudBg'],
+      ['ctrlHudOp', 'hudOp'],
+    ])
+      document.getElementById(id).onchange = (e) => {
+        this.ctrl[key] = key === 'hudOp' ? +e.target.value : e.target.value;
+        this.applyHud();
+        this.saveKeys();
+      };
     document.getElementById('ctrlTfx').onchange = (e) => {
       this.tfxSetMode(e.target.value);
       this.saveKeys();
