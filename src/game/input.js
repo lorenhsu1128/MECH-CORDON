@@ -779,6 +779,7 @@ Object.assign(Game.prototype, {
     const st = document.getElementById('btnSfxTrial');
     if (window.MECH_CORDON_SERVER) st.style.display = '';
     st.onclick = () => window.open('/sfx-trial/', 'mech-cordon-sfx-trial');
+    this.prfInitUi(); // 效能紀錄（game/perf-rec.js）
     // 從模型庫回來（分頁重新取得焦點）：停在標題或車庫時重新讀取本地模型（沒變動就不解析）
     const back = () => {
       if (document.hidden || (this.net && this.net.role)) return;

@@ -1,0 +1,580 @@
+// 全遊戲的效能與卡頓檢查（docs/perf-full-plan.md）：依分期跑各個量測、結果放在 test-results/perf-all/<tag>/，最後彙整成一份報告。
+//
+//   node scripts/perf-all.js --phase=1        主線的全部出擊（scripts/perf-campaign.js，第 1 周目）
+//   node scripts/perf-all.js --phase=2        自由出擊：15 個主題、重的地圖換視角與畫質全開、空域、全部 Boss 與機獸
+//   node scripts/perf-all.js --phase=3        選單與過場：開遊戲、機甲庫、作戰室（八個區域）、第 1 周目的過場
+//   node scripts/perf-all.js --phase=4        弱的裝置：內顯（Intel UHD 770）＋CPU 降速 1/4，重的地圖、主線 3 段、作戰室、過場
+//   node scripts/perf-all.js --phase=5        長時間：同一個網頁反覆出擊、回機甲庫、進作戰室，每輪回收記憶體後記錄
+//   node scripts/perf-all.js --phase=2,3,4,5  依序跑幾期；--resume＝已經有結果的項目略過（中斷後接著跑）
+//   node scripts/perf-all.js --report         只重新彙整報告（test-results/perf-all/<tag>/report.md）
+//   --tag=名稱（預設 full）、--only=項目名稱的開頭（逗號分隔）、--secs=每個自由出擊量幾秒（預設 40）
+//
+// 量測時電腦不要做其他重的事（音效產生、ComfyUI、語音、完整測試）。需要先 npm run build。
+/* global window, document, requestAnimationFrame, localStorage, MutationObserver */
+const fs = require('fs');
+const path = require('path');
+const cp = require('child_process');
+const { launch, initScript } = require('./perf-lib');
+
+const args = {};
+for (const a of process.argv.slice(2)) {
+  const m = /^--([^=]+)(?:=(.*))?$/.exec(a);
+  if (m) args[m[1]] = m[2] === undefined ? true : m[2];
+}
+const ROOT = path.join(__dirname, '..');
+const TAG = args.tag || 'full';
+const OUT = path.join(ROOT, 'test-results', 'perf-all', TAG);
+const SECS = +(args.secs || 40);
+const ONLY = args.only ? String(args.only).split(',') : null;
+fs.mkdirSync(OUT, { recursive: true });
+const LOG = path.join(OUT, 'run.log');
+const log = (s) => {
+  const line = `[${new Date().toLocaleTimeString('zh-TW', { hour12: false })}] ${s}`;
+  console.log(line);
+  fs.appendFileSync(LOG, line + '\n');
+};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const THEMES = [
+  'industrial',
+  'grid',
+  'desert',
+  'snow',
+  'wasteland',
+  'dunes',
+  'flooded',
+  'dam',
+  'spaceport',
+  'grid086',
+  'xylem',
+  'orbit',
+  'institute',
+  'volcano',
+  'ark',
+];
+const HEAVY = ['grid086', 'institute', 'xylem', 'volcano']; // 上次量測最重、平板回報過卡的
+const BOSSES = [
+  'MONOLITH',
+  'mirror',
+  'flagship',
+  'interceptor',
+  'TETRARCH',
+  'railgun',
+  'worm',
+  'funnel',
+  'heli',
+  'furnace',
+  'artillery',
+  'rampart',
+  'duo',
+  'phantom',
+  'spider',
+  'orbital',
+  'ARCHON',
+  'trinity',
+  'hunter',
+  'train',
+  'fortress',
+  'ibis',
+  'anvil',
+  'salamander',
+  'gantry',
+  'deckgun',
+  'reactor',
+  'sovereign',
+];
+const BEASTS = ['lion', 'tiger', 'bear', 'turtle', 'gorilla', 'scorpion', 'mantis', 'raptor'];
+const WEAK = { PERF_GPU: 'low', PERF_CPU: '4' };
+
+// ---------- 各期的項目：{ id, kind: 'probe'|'campaign'|'hub'|'cine'|'inline', args, env } ----------
+function scenarios(phase) {
+  const L = [];
+  const probe = (id, a, env) => L.push({ id, kind: 'probe', args: a, env });
+  if (phase === 1) L.push({ id: 'camp', kind: 'campaign', args: ['--segsecs=100'] });
+  if (phase === 2) {
+    for (const t of THEMES) probe('free-' + t, ['--map=' + t]);
+    for (const t of HEAVY) {
+      probe(`view-${t}-chase`, ['--map=' + t, '--view=chase']);
+      probe(`view-${t}-fps`, ['--map=' + t, '--view=fps']);
+      probe(`full-${t}`, ['--map=' + t, '--full']);
+    }
+    probe('air', ['--map=airspace']);
+    for (const b of BOSSES) probe('boss-' + b, ['--boss=' + b]);
+    for (const b of BEASTS) probe('beast-' + b, ['--beast=' + b]);
+  }
+  if (phase === 3) {
+    L.push({ id: 'startup', kind: 'inline', fn: startup });
+    L.push({ id: 'garage', kind: 'inline', fn: garage });
+    L.push({ id: 'hub', kind: 'hub', args: ['--ch=8', '--again', '--secs=15'] });
+    L.push({ id: 'cine', kind: 'cine', args: ['c1'] });
+  }
+  if (phase === 4) {
+    for (const t of [...HEAVY, 'orbit', 'ark', 'flooded', 'industrial'])
+      probe('weak-' + t, ['--map=' + t], WEAK);
+    probe('weak-boss-sovereign', ['--boss=sovereign'], WEAK);
+    probe('weak-beast-lion', ['--beast=lion'], WEAK);
+    L.push({ id: 'weak-camp', kind: 'campaign', args: ['--only=c4s1,c5s1,c3s2', '--segsecs=80'], env: WEAK });
+    L.push({ id: 'weak-hub', kind: 'hub', args: ['--ch=8', '--secs=15'], env: WEAK });
+    L.push({ id: 'weak-cine', kind: 'cine', args: ['i1_2,o1_4,i1_6'], env: WEAK });
+    L.push({ id: 'weak-startup', kind: 'inline', fn: startup, env: WEAK });
+  }
+  if (phase === 5) L.push({ id: 'soak', kind: 'inline', fn: soak });
+  return L;
+}
+
+// ---------- 執行子程序 ----------
+function runChild(script, a, env, tag) {
+  return new Promise((res) => {
+    const p = cp.spawn(process.execPath, ['--no-warnings', path.join(__dirname, script), ...a], {
+      cwd: ROOT,
+      env: Object.assign({}, process.env, env || {}),
+    });
+    const lf = fs.createWriteStream(path.join(OUT, tag + '.log'));
+    p.stdout.pipe(lf);
+    p.stderr.pipe(lf);
+    p.on('close', (code) => res(code));
+  });
+}
+async function runOne(s) {
+  const out = path.join(OUT, s.id + '.json');
+  const t0 = Date.now();
+  let code = 0;
+  if (s.kind === 'probe') {
+    code = await runChild(
+      'perf-probe.js',
+      [...s.args, `--secs=${SECS}`, `--tag=pa-${TAG}-${s.id}`],
+      s.env,
+      s.id,
+    );
+    const src = path.join(ROOT, 'test-results', `perf-pa-${TAG}-${s.id}.json`);
+    if (fs.existsSync(src)) fs.renameSync(src, out);
+  } else if (s.kind === 'campaign') {
+    code = await runChild(
+      'perf-campaign.js',
+      [...s.args, `--tag=pa-${TAG}-${s.id}`, ...(args.resume ? ['--resume'] : [])],
+      s.env,
+      s.id,
+    );
+    const src = path.join(ROOT, 'test-results', 'perf-campaign', `pa-${TAG}-${s.id}.json`);
+    if (fs.existsSync(src)) fs.copyFileSync(src, out);
+  } else if (s.kind === 'hub') {
+    code = await runChild('perf-hub.js', [...s.args, `--tag=pa-${TAG}-${s.id}`], s.env, s.id);
+    const src = path.join(ROOT, 'test-results', `perf-hub-pa-${TAG}-${s.id}.json`);
+    if (fs.existsSync(src)) fs.renameSync(src, out);
+  } else if (s.kind === 'cine') {
+    code = await runChild('cine-perf.js', [...s.args, `--tag=pa-${TAG}-${s.id}`], s.env, s.id);
+    const src = path.join(ROOT, 'test-results', `cine-perf-pa-${TAG}-${s.id}.json`);
+    if (fs.existsSync(src)) fs.renameSync(src, out);
+  } else {
+    const old = {};
+    for (const k in s.env || {}) ((old[k] = process.env[k]), (process.env[k] = s.env[k]));
+    try {
+      fs.writeFileSync(out, JSON.stringify(await s.fn(), null, 1));
+    } catch (e) {
+      code = 1;
+      log(`  ${s.id} 失敗：${e.message}`);
+    } finally {
+      for (const k in old)
+        if (old[k] === undefined) delete process.env[k];
+        else process.env[k] = old[k];
+    }
+  }
+  log(
+    `  ${s.id}：${code === 0 && fs.existsSync(out) ? '完成' : '失敗（結束碼 ' + code + '）'}，${Math.round((Date.now() - t0) / 1000)} 秒`,
+  );
+}
+
+// ---------- 頁面裡的共用：記錄每一格的間隔 ----------
+function gapRec(secs) {
+  return new Promise((done) => {
+    const gaps = [];
+    let last = performance.now();
+    const t0 = last;
+    const tick = (now) => {
+      gaps.push(+(now - last).toFixed(1));
+      last = now;
+      if (now - t0 < secs * 1000) requestAnimationFrame(tick);
+      else done(gaps);
+    };
+    requestAnimationFrame(tick);
+  });
+}
+function gapSum(gaps) {
+  const s = gaps.slice().sort((a, b) => a - b);
+  const q = (p) => (s.length ? s[Math.min(s.length - 1, Math.floor(s.length * p))] : 0);
+  const tot = gaps.reduce((a, b) => a + b, 0);
+  return {
+    n: gaps.length,
+    fps: tot ? +((gaps.length * 1000) / tot).toFixed(1) : 0,
+    p50: q(0.5),
+    p99: q(0.99),
+    max: q(1),
+    hitch: gaps.filter((g) => g >= 50).length,
+    worst: gaps
+      .map((g, i) => [g, i])
+      .filter((x) => x[0] >= 50)
+      .sort((a, b) => b[0] - a[0])
+      .slice(0, 8)
+      .map((x) => x[0]),
+  };
+}
+async function newPage(br) {
+  const ctx = await br.newContext({ viewport: { width: 1600, height: 900 } });
+  const page = await ctx.newPage();
+  page.__errs = [];
+  page.on('pageerror', (e) => page.__errs.push(e.message));
+  await page.addInitScript(initScript);
+  await page.addInitScript(() => (window.__warmAsync = true));
+  return { ctx, page };
+}
+const URL0 = require('url').pathToFileURL(path.join(ROOT, 'dist', 'mech-cordon.html')).href + '?test&tile=32';
+async function newSave(page) {
+  await page.click('#btnSaves');
+  await page.click('#saveSlots [data-slot="1"] [data-act="new"]');
+  await page.waitForFunction(() => window.__game.state === 'garage', null, { timeout: 30000 });
+}
+
+// 開遊戲：到標題畫面要多久、之後 40 秒（背景載入各個素材包）的卡頓與長任務、載入的資源
+async function startup() {
+  const br = await launch();
+  try {
+    const { page } = await newPage(br);
+    // file:// 的資源不在 resource timing 裡：記錄加進頁面的 <script>（素材包 lib/*.js）的加入與載入完成時間
+    await page.addInitScript(() => {
+      window.__scr = [];
+      new MutationObserver((ms) => {
+        for (const m of ms)
+          for (const n of m.addedNodes)
+            if (n.tagName === 'SCRIPT' && n.src) {
+              const r = {
+                src: n.src.split('/lib/')[1] || n.src.split('/').pop(),
+                t: Math.round(performance.now()),
+              };
+              window.__scr.push(r);
+              n.addEventListener('load', () => (r.d = Math.round(performance.now() - r.t)));
+            }
+      }).observe(document, { childList: true, subtree: true });
+    });
+    const t0 = Date.now();
+    await page.goto(URL0);
+    const tGame = Date.now() - t0;
+    await page.waitForFunction(() => window.__game && window.__game.state === 'title', null, {
+      timeout: 90000,
+    });
+    const tTitle = Date.now() - t0;
+    const gaps = await page.evaluate(gapRec, 40);
+    const r = await page.evaluate(() => ({
+      lt: window.__lt.map((x) => [Math.round(x.t), Math.round(x.d)]),
+      res: window.__scr.map((r) => [r.src, r.t, r.d === undefined ? '' : r.d, '']),
+      heap: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1e6) : 0,
+      sfx: window.__sfx ? Object.keys(window.__sfx.buf).length : 0,
+    }));
+    return { tGame, tTitle, gap: gapSum(gaps), ...r, errs: page.__errs };
+  } finally {
+    await br.close();
+  }
+}
+
+// 機甲庫：格納庫的待機、拖曳繞看、換部位的鏡頭
+async function garage() {
+  const br = await launch();
+  try {
+    const { page } = await newPage(br);
+    await page.goto(URL0);
+    await page.waitForFunction(() => window.__game && window.__game.state === 'title', null, {
+      timeout: 90000,
+    });
+    await sleep(1500);
+    await newSave(page);
+    await page
+      .waitForFunction(() => window.MECH_CORDON_HANGAR || window.__game.hangarRich, null, { timeout: 30000 })
+      .catch(() => {});
+    await sleep(4000);
+    const idle = gapSum(await page.evaluate(gapRec, 12));
+    // 拖曳繞看
+    const p = page.evaluate(gapRec, 12);
+    for (let i = 0; i < 10; i++) {
+      await page.mouse.move(800, 450);
+      await page.mouse.down({ button: 'left' });
+      for (let k = 0; k < 10; k++) await page.mouse.move(800 + k * 25, 450 + (k % 3) * 5);
+      await page.mouse.up({ button: 'left' });
+      await sleep(400);
+    }
+    const drag = gapSum(await p);
+    // 換部位（鏡頭轉過去）
+    const p2 = page.evaluate(gapRec, 12);
+    await page.evaluate(async () => {
+      const g = window.__game;
+      for (const s of ['head', 'core', 'arms', 'legs', 'booster', 'rarm', 'larm', 'rback', 'lback']) {
+        g.garageSlot = s;
+        if (g.renderGarage) g.renderGarage();
+        await new Promise((r) => setTimeout(r, 1200));
+      }
+    });
+    const slots = gapSum(await p2);
+    return { idle, drag, slots, errs: page.__errs };
+  } finally {
+    await br.close();
+  }
+}
+
+// 長時間：同一個網頁反覆出擊（換地圖）→ 放棄 → 機甲庫，每 3 輪進一次作戰室；每輪回收記憶體後記錄
+async function soak() {
+  const N = +(args.rounds || 14);
+  const br = await launch();
+  const maps = ['industrial', 'grid086', 'xylem', 'institute', 'snow', 'volcano', 'ark', 'dam'];
+  try {
+    const { ctx, page } = await newPage(br);
+    const cdp = await ctx.newCDPSession(page);
+    await page.goto(URL0);
+    await page.waitForFunction(() => window.__game && window.__game.state === 'title', null, {
+      timeout: 90000,
+    });
+    await sleep(1500);
+    await newSave(page);
+    await sleep(3000);
+    const rows = [];
+    const t0 = Date.now();
+    const sample = async (i, what) => {
+      await cdp.send('HeapProfiler.collectGarbage');
+      await sleep(500);
+      const r = await page.evaluate(() => {
+        const g = window.__game,
+          I = g.renderer.info;
+        let objs = 0;
+        g.scene.traverse(() => objs++);
+        return {
+          heap: +(performance.memory.usedJSHeapSize / 1e6).toFixed(1),
+          geo: I.memory.geometries,
+          tex: I.memory.textures,
+          prog: I.programs ? I.programs.length : 0,
+          objs,
+          sfx: window.__sfx ? Object.keys(window.__sfx.buf).length : 0,
+          dom: document.getElementsByTagName('*').length,
+          state: g.state,
+        };
+      });
+      rows.push({ i, what, t: Math.round((Date.now() - t0) / 1000), ...r });
+      log(
+        `    第 ${i} 輪 ${what}：heap ${r.heap} MB、幾何 ${r.geo}、貼圖 ${r.tex}、程式 ${r.prog}、場景物件 ${r.objs}、音效 ${r.sfx}`,
+      );
+    };
+    await sample(0, 'garage');
+    const fights = [];
+    for (let i = 1; i <= N; i++) {
+      const map = maps[(i - 1) % maps.length];
+      await page.evaluate((m) => {
+        localStorage.setItem('mech_cordon_map', m);
+        window.__game.encLazy = true;
+        window.__game.startMission();
+      }, map);
+      await page.waitForFunction(
+        () => window.__game.state === 'play' && window.__game.player && !window.__game.warmBusy,
+        null,
+        {
+          timeout: 120000,
+        },
+      );
+      // 出擊中：每 4 秒擊破最近的兩台敵人、玩家不會被擊破；同時記錄每格的間隔
+      const gp = page.evaluate(gapRec, 50);
+      for (let k = 0; k < 12; k++) {
+        await page.evaluate(() => {
+          const g = window.__game,
+            p = g.player;
+          if (!p || p.dead) return;
+          p.hp = p.maxHp;
+          const al = g.enemies.filter((e) => !e.dead && !e.isBoss);
+          al.sort((a, b) => a.pos.distanceTo(p.pos) - b.pos.distanceTo(p.pos));
+          for (const e of al.slice(0, 2)) e.takeDamage(1e7, 0, p, e.pos.clone(), null, false, 'w_rifle');
+        });
+        await sleep(4000);
+      }
+      fights.push({ i, map, ...gapSum(await gp) });
+      await page.evaluate(() => document.getElementById('btnAbort').click());
+      await page.waitForFunction(() => window.__game.state !== 'play', null, { timeout: 30000 });
+      await sleep(1500);
+      await page.evaluate(() => window.__game.openGarage());
+      await sleep(2000);
+      if (i % 3 === 0) {
+        await page.evaluate(() => window.__game.openHub());
+        await sleep(6000);
+        await page.evaluate(() => window.__game.openGarage());
+        await sleep(2000);
+      }
+      await sample(i, map);
+    }
+    return { rows, fights, errs: page.__errs };
+  } finally {
+    await br.close();
+  }
+}
+
+// ---------- 彙整 ----------
+function probeRow(o) {
+  const f = (o.frames || []).filter((r) => r.st === 'play');
+  const t0 = f.length ? f[0].i : 0;
+  const steady = f.slice(Math.min(f.length, 240)); // 進場後約 3 秒以後
+  const gaps = steady.map((r) => r.gap);
+  const g = gapSum(gaps);
+  const top = Object.entries(o.sec || {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+    .map(([k, v]) => `${k} ${v}`)
+    .join('、');
+  return {
+    load: o.load,
+    cpu: o.cpu,
+    g,
+    top,
+    sh: o.shPlay,
+    gc: o.gcN,
+    geo: o.geos,
+    tex: o.texs,
+    boss: o.boss,
+    map: o.map,
+    t0,
+  };
+}
+function report() {
+  const L = [
+    '# 全遊戲的效能與卡頓檢查（' + TAG + '）',
+    '',
+    `產生時間：${new Date().toLocaleString('zh-TW')}`,
+    '',
+  ];
+  const J = (id) => {
+    const p = path.join(OUT, id + '.json');
+    return fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : null;
+  };
+  // 自由出擊類（第 2、4 期）
+  const ids = fs
+    .readdirSync(OUT)
+    .filter((f) => f.endsWith('.json'))
+    .map((f) => f.slice(0, -5));
+  const probes = ids.filter((id) =>
+    /^(free|view|full|air|boss|beast|weak-(?!camp|hub|cine|startup))/.test(id),
+  );
+  if (probes.length) {
+    L.push(
+      '## 自由出擊（每個 ' + SECS + ' 秒；進場後 3 秒起算）',
+      '',
+      '| 項目 | 地圖 | Boss | 載入 ms | fps | 間隔 p50／p99／最長 | 卡頓 ≥50 | 主迴圈 p99 | 任務中編譯（個／ms） | GC 次數 | 幾何／貼圖 | 各段平均前四（ms／格） |',
+      '|---|---|---|---|---|---|---|---|---|---|---|---|',
+    );
+    for (const id of probes) {
+      const o = J(id);
+      if (!o || !o.frames) continue;
+      const r = probeRow(o);
+      L.push(
+        `| ${id} | ${r.map} | ${r.boss || ''} | ${r.load} | ${r.g.fps} | ${r.g.p50}／${r.g.p99}／${r.g.max} | ${r.g.hitch} | ${r.cpu.p99} | ${r.sh ? r.sh.n + '／' + r.sh.ms : ''} | ${r.gc} | ${r.geo}／${r.tex} | ${r.top} |`,
+      );
+    }
+    L.push('');
+  }
+  for (const id of ['camp', 'weak-camp']) {
+    const o = J(id);
+    if (!o) continue;
+    L.push(`## 主線（${id}）`, '', `詳細報告：test-results/perf-campaign/pa-${TAG}-${id}.md`, '');
+  }
+  for (const id of ['startup', 'weak-startup']) {
+    const o = J(id);
+    if (!o) continue;
+    const big = (o.lt || []).filter((x) => x[1] >= 100);
+    L.push(
+      `## 開遊戲（${id}）`,
+      '',
+      `到遊戲實例 ${o.tGame} ms、到標題畫面 ${o.tTitle} ms；之後 40 秒：fps ${o.gap.fps}、卡頓 ${o.gap.hitch} 次（最長 ${o.gap.worst.join('、')} ms）、` +
+        `長任務 ${o.lt.length} 次（100 ms 以上 ${big.length} 次：${big
+          .slice(0, 10)
+          .map((x) => `${x[1]} ms@${(x[0] / 1000).toFixed(1)}s`)
+          .join('、')}）；heap ${o.heap} MB、音效 ${o.sfx} 個`,
+      '',
+      '| 素材包 | 開始 ms | 載入 ms |',
+      '|---|---|---|',
+      ...(o.res || []).map((x) => `| ${x[0]} | ${x[1]} | ${x[2]} |`),
+      '',
+    );
+  }
+  const ga = J('garage');
+  if (ga) {
+    L.push('## 機甲庫', '', '| 動作 | fps | 間隔 p99／最長 | 卡頓 |', '|---|---|---|---|');
+    for (const k of ['idle', 'drag', 'slots'])
+      L.push(
+        `| ${{ idle: '待機', drag: '拖曳繞看', slots: '換部位' }[k]} | ${ga[k].fps} | ${ga[k].p99}／${ga[k].max} | ${ga[k].hitch} |`,
+      );
+    L.push('');
+  }
+  for (const id of ['hub', 'weak-hub']) {
+    const o = J(id);
+    if (!o) continue;
+    L.push(
+      `## 作戰室（${id}）`,
+      '',
+      '| 次 | 格 | fps | 間隔 p99／最長 | 卡頓 | 繪製 |',
+      '|---|---|---|---|---|---|',
+    );
+    for (const r of o) {
+      const gaps = (r.frames || []).map((f) => f.gap).filter((x) => x !== undefined);
+      const s = gapSum(gaps.slice(30));
+      L.push(
+        `| ${r.label} | ${gaps.length} | ${s.fps} | ${s.p99}／${s.max} | ${s.hitch} | ${r.calls || ''} |`,
+      );
+    }
+    L.push('');
+  }
+  for (const id of ['cine', 'weak-cine']) {
+    const o = J(id);
+    if (!o) continue;
+    L.push(
+      `## 過場（${id}）`,
+      '',
+      '| 段 | 準備 秒 | fps | 間隔 p99 | 卡頓 | 最長的幾次（ms@秒） |',
+      '|---|---|---|---|---|---|',
+    );
+    for (const r of o)
+      L.push(
+        `| ${r.key} | ${r.prep} | ${r.fps} | ${r.p99} | ${r.hitch} | ${r.worst.map((x) => x[0] + '@' + x[1]).join('、')} |`,
+      );
+    L.push('');
+  }
+  const so = J('soak');
+  if (so) {
+    L.push(
+      '## 長時間（每輪回收記憶體之後）',
+      '',
+      '| 輪 | 秒 | 地圖 | heap MB | 幾何 | 貼圖 | 程式 | 場景物件 | 音效 | DOM | 那一輪的 fps／卡頓 |',
+      '|---|---|---|---|---|---|---|---|---|---|---|',
+    );
+    for (const r of so.rows) {
+      const f = so.fights.find((x) => x.i === r.i);
+      L.push(
+        `| ${r.i} | ${r.t} | ${r.what} | ${r.heap} | ${r.geo} | ${r.tex} | ${r.prog} | ${r.objs} | ${r.sfx} | ${r.dom} | ${f ? f.fps + '／' + f.hitch : ''} |`,
+      );
+    }
+    L.push('');
+  }
+  fs.writeFileSync(path.join(OUT, 'report.md'), L.join('\n'));
+  log('報告：' + path.join(OUT, 'report.md'));
+}
+
+(async () => {
+  if (args.report) return report();
+  const phases = String(args.phase || '')
+    .split(',')
+    .filter(Boolean)
+    .map(Number);
+  if (!phases.length) throw new Error('要指定 --phase=1～5 或 --report');
+  for (const ph of phases) {
+    log(`== 第 ${ph} 期`);
+    for (const s of scenarios(ph)) {
+      if (ONLY && !ONLY.some((o) => s.id.startsWith(o))) continue;
+      if (args.resume && fs.existsSync(path.join(OUT, s.id + '.json')) && s.kind !== 'campaign') continue;
+      log(`  開始 ${s.id}`);
+      await runOne(s);
+    }
+    report();
+  }
+})().catch((e) => {
+  log('中止：' + e.stack);
+  process.exit(1);
+});

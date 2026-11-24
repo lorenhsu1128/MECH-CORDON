@@ -1,36 +1,31 @@
 // 過場的卡頓量測（docs/cine-redesign-design.md 第十一節第 7 期）：用實際時間播完一段過場，記錄每一格的間隔，
 // 報告準備時間、平均 fps、卡頓（兩格間隔 ≥ 50 ms）的次數與最大的幾次（發生的秒數）。
-//   node scripts/cine-perf.js i1_2,i1_4,o1_2 [--nocrowd]      要先 npm run build；量測時電腦不要做其他重的事
+//   node scripts/cine-perf.js i1_2,i1_4,o1_2 [--nocrowd] [--tag=名稱]   要先 npm run build；量測時電腦不要做其他重的事
+//   node scripts/cine-perf.js c1（第 1 周目）／all（全部）；結果另存 test-results/cine-perf-<tag>.json
 /* global window, requestAnimationFrame -- page.evaluate 的回呼在瀏覽器端執行 */
 const path = require('path');
 const fs = require('fs');
-const { chromium } = require('playwright-core');
 
-const keys = (process.argv[2] || 'i1_2').split(',');
+const { launch } = require('./perf-lib'); // PERF_GPU／PERF_CPU 模擬弱的裝置（docs/perf-full-plan.md）
 const NOCROWD = process.argv.includes('--nocrowd'); // 不加自動的人與車（比較用）
+const TAG = (process.argv.find((a) => a.startsWith('--tag=')) || '--tag=now').slice(6);
+const out = [];
 (async () => {
-  const exe = [
-    'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
-    'C:/Program Files/Microsoft/Edge/Application/msedge.exe',
-    'C:/Program Files/Google/Chrome/Application/chrome.exe',
-  ].find((p) => fs.existsSync(p));
-  const browser = await chromium.launch({
-    executablePath: exe,
-    headless: true,
-    args: [
-      '--use-angle=d3d11',
-      '--enable-gpu',
-      '--ignore-gpu-blocklist',
-      '--autoplay-policy=no-user-gesture-required',
-    ],
-  });
+  // 第一個參數：逗號分隔的鍵，或 all＝全部、c1＝第 1 周目（序章、各章開場與章末、抉擇、真結局）
+  let keys = (process.argv[2] || 'i1_2').split(',');
+  if (keys[0] === 'all' || keys[0] === 'c1') {
+    const { CINES } = await import('../src/data/cine/index.js');
+    keys = Object.keys(CINES);
+    if (process.argv[2] === 'c1') keys = keys.filter((k) => /^(p1|[io]1_|x_|e_)/.test(k));
+  }
+  const browser = await launch();
   const url =
     'file:///' +
     path.resolve(__dirname, '..', 'dist', 'mech-cordon.html').split(path.sep).join('/') +
     '?test';
   try {
     for (const key of keys) {
-      const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+      const page = await (await browser.newContext({ viewport: { width: 1600, height: 900 } })).newPage();
       page.on('pageerror', (e) => console.log(`[${key}] 頁面錯誤`, e.message));
       await page.goto(url);
       await page.waitForFunction(() => window.__game && window.__game.state === 'title', null, {
@@ -77,9 +72,23 @@ const NOCROWD = process.argv.includes('--nocrowd'); // 不加自動的人與車�
                 .join('、')}）`
             : ''),
       );
+      const gs = g.map((x) => x[0]).sort((a, b) => a - b);
+      out.push({
+        key,
+        prep: +(r.prep / 1000).toFixed(2),
+        fps: +((g.length / tot) * 1000).toFixed(1),
+        p99: gs.length ? +gs[Math.floor(gs.length * 0.99)].toFixed(1) : 0,
+        hitch: hitch.length,
+        worst: hitch.slice(0, 6).map((x) => [Math.round(x[0]), +x[1].toFixed(1)]),
+      });
       await page.close();
     }
   } finally {
     await browser.close();
+    fs.mkdirSync(path.join(__dirname, '..', 'test-results'), { recursive: true });
+    fs.writeFileSync(
+      path.join(__dirname, '..', 'test-results', `cine-perf-${TAG}.json`),
+      JSON.stringify(out, null, 1),
+    );
   }
 })();

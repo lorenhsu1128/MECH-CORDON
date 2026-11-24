@@ -478,7 +478,20 @@ function segSum(o) {
   const cam = g.camp || {};
   const ss = cam.ss || {};
   const W2 = g.world || {};
+  // 平均 fps、最差 1% 的 fps、小卡頓（33 ms～門檻）、段尾的記憶體（找洩漏：同一個網頁連打下去會不會一直變大）
+  const gsum = steady.reduce((s, r) => s + r.gap, 0);
+  const worst1 = gaps.slice(Math.floor(gaps.length * 0.99));
+  const I = g.renderer.info;
   const out = {
+    fps: gsum ? +((steady.length * 1000) / gsum).toFixed(1) : 0,
+    low1: worst1.length ? +((worst1.length * 1000) / worst1.reduce((s, v) => s + v, 0)).toFixed(1) : 0,
+    mini: steady.filter((r) => r.gap >= 33 && r.gap < o.hitch).length,
+    mem: {
+      heap: fr.length ? fr[fr.length - 1].hp : 0,
+      geo: I.memory.geometries,
+      tex: I.memory.textures,
+      prog: I.programs ? I.programs.length : 0,
+    },
     prep: prepMs,
     frames: play.length,
     secs: +((fr.length ? fr[fr.length - 1].t0 - o.tPlay : 0) / 1000).toFixed(1),
@@ -533,6 +546,7 @@ async function runSortie(browser, sid, done, seen) {
   });
   await page.addInitScript(initScript);
   await page.addInitScript(() => (window.__warmAsync = true));
+  if (args.raid) await page.addInitScript(() => (window.__raid = true));
   if (args.nomv) await page.addInitScript(() => (window.__mvOff = true)); // 不放地圖上的載具（比較用，game/map-veh.js）
   const LEARN = path.join(OUTD, 'warm.json');
   if (args.learn && fs.existsSync(LEARN))
@@ -556,6 +570,7 @@ async function runSortie(browser, sid, done, seen) {
       window.__reseed(4242);
       g.encLazy = true; // 和玩家的瀏覽器相同（?test 時預設關掉）
       g.autoPickMod = true; // 三選一、抉擇說明卡不擋住流程
+      if (window.__raid) g.raidForce = true; // --raid：機獸出擊一定有獅型亂入（game/beast-raid.js）
       g.save.level = Math.max(g.save.level || 1, 12);
       window.__prof.on = true;
       g.campBegin(sid);
@@ -633,7 +648,8 @@ async function runSortie(browser, sid, done, seen) {
       console.log(
         `  ${sid} 段 ${seg + 1}/${nSeg} ${meta.theme} ${row.variant || ''} ${meta.type}${meta.boss ? '(Boss)' : ''}：` +
           `進場 ${row.sync}+${row.prep} ms、${row.secs} 秒、主迴圈 p50 ${row.cpu.p50} p99 ${row.cpu.p99}、` +
-          `間隔 p99 ${row.gap.p99} 最長 ${row.gap.max}、卡頓 ${row.hitch}（進場 ${row.hitchOpen}）、繪製 ${row.calls}、敵 ${row.en}/${row.enMax}` +
+          `間隔 p99 ${row.gap.p99} 最長 ${row.gap.max}、fps ${row.fps}／1% ${row.low1}、卡頓 ${row.hitch}（進場 ${row.hitchOpen}）小 ${row.mini}、` +
+          `繪製 ${row.calls}、敵 ${row.en}/${row.enMax}、heap ${row.mem.heap} MB 幾何 ${row.mem.geo} 貼圖 ${row.mem.tex}` +
           (row.bot.forced ? '、逾時強制清除' : '') +
           (row.bot.tp ? `、脫困瞬移 ${row.bot.tp}` : ''),
       );
@@ -736,8 +752,8 @@ function report(all) {
     '',
     '## 每一段',
     '',
-    '| 出擊 | 段 | 主題／變體 | 類型 | 進場（同步＋準備畫面） | 秒 | 主迴圈 p50／p99 | 間隔 p99／最長 | 卡頓（進場） | 繪製 | 敵（最多） | 各段平均前三 | 備註 |',
-    '|---|---|---|---|---|---|---|---|---|---|---|---|---|',
+    '| 出擊 | 段 | 主題／變體 | 類型 | 進場（同步＋準備畫面） | 秒 | 主迴圈 p50／p99 | 間隔 p99／最長 | fps 平均／最差 1% | 卡頓（進場）／小卡頓 | 繪製 | 敵（最多） | heap MB／幾何／貼圖 | 各段平均前三 | 備註 |',
+    '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',
   );
   for (const s of segs) {
     const top = Object.entries(s.sec)
@@ -749,7 +765,7 @@ function report(all) {
       .filter(Boolean)
       .join('、');
     L.push(
-      `| ${s.sid} | ${s.seg + 1} | ${s.theme} ${s.variant || ''} | ${s.type}${s.boss ? '(Boss)' : ''} | ${s.sync}＋${s.prep !== undefined ? s.prep : s.warm - s.sync} ms | ${s.secs} | ${s.cpu.p50}／${s.cpu.p99} | ${s.gap.p99}／${s.gap.max} | ${s.hitch}（${s.hitchOpen}） | ${s.calls} | ${s.en}（${s.enMax}） | ${top} | ${note} |`,
+      `| ${s.sid} | ${s.seg + 1} | ${s.theme} ${s.variant || ''} | ${s.type}${s.boss ? '(Boss)' : ''} | ${s.sync}＋${s.prep !== undefined ? s.prep : s.warm - s.sync} ms | ${s.secs} | ${s.cpu.p50}／${s.cpu.p99} | ${s.gap.p99}／${s.gap.max} | ${s.fps || ''}／${s.low1 || ''} | ${s.hitch}（${s.hitchOpen}）／${s.mini || 0} | ${s.calls} | ${s.en}（${s.enMax}） | ${s.mem ? `${s.mem.heap}／${s.mem.geo}／${s.mem.tex}` : ''} | ${top} | ${note} |`,
     );
   }
   // 最長的卡頓

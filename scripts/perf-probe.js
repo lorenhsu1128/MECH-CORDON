@@ -95,9 +95,17 @@ async function act(page, secs) {
         }
         for (const e of al.slice(0, 2)) e.takeDamage(1e7, 0, p, e.pos.clone(), null, false, 'w_rifle');
       });
+    // Boss 關：每隔一段打掉 Boss 一成多的 AP（換型態、大招、部位，量 Boss 的重的時刻）
+    if (k % 20 === 0)
+      await page.evaluate(() => {
+        const g = window.__game,
+          b = g.boss,
+          p = g.player;
+        if (b && !b.dead && p) b.takeDamage(b.maxHp * 0.12, 0, p, b.pos.clone(), null, false, 'w_rifle');
+      });
     await page.evaluate(() => {
       const p = window.__game.player;
-      if (p) p.ap = p.maxAp; // 不要被擊破
+      if (p) p.hp = p.maxHp; // 不要被擊破
     });
     await sleep(200);
   }
@@ -254,6 +262,13 @@ async function sampling(ctx, page) {
       );
     if (args.variant)
       await page.addInitScript((v) => localStorage.setItem('mech_cordon_variant', v), args.variant);
+    // --view＝出擊時的視角（tps 俯視／chase 追尾／fps 第一人稱）
+    if (args.view)
+      await page.addInitScript((v) => {
+        const c = JSON.parse(localStorage.getItem('mech_cordon_ctrl') || '{}');
+        c.view = v;
+        localStorage.setItem('mech_cordon_ctrl', JSON.stringify(c));
+      }, args.view);
     if (args.full)
       await page.addInitScript(() => {
         const c = JSON.parse(localStorage.getItem('mech_cordon_ctrl') || '{}');
@@ -294,7 +309,26 @@ async function sampling(ctx, page) {
         [args.sortie, +(args.seg || 0)],
       );
     } else {
-      await page.evaluate(() => (window.__game.encLazy = true));
+      // --boss＝指定 Boss（kind 或名稱開頭；BOSS_DEFS）、--beast＝指定機獸（BEAST_DEFS 的 beast）、--level＝等級
+      // （指定 Boss／機獸時預設 12）；--map=airspace＝空域
+      await page.evaluate(
+        ([boss, beast, level]) => {
+          const g = window.__game,
+            S = window.__SPAWN;
+          g.encLazy = true;
+          let bd = null;
+          if (beast) bd = S.BEAST_DEFS.find((b) => b.beast === beast || b.kind === beast);
+          else if (boss) bd = S.BOSS_DEFS.find((b) => b.kind === boss || (b.name || '').startsWith(boss));
+          if ((boss || beast) && !bd) throw new Error('找不到 Boss：' + (boss || beast));
+          if (level) g.save.level = +level;
+          if (bd) {
+            if (!level) g.save.level = 12; // Boss 關（3 的倍數）
+            g.freeBoss = () => bd;
+            window.__probeBoss = bd.name;
+          }
+        },
+        [args.boss || '', args.beast || '', args.level || ''],
+      );
       await page.click('#btnSortie');
     }
     await page.waitForFunction(() => window.__game.state === 'play' && window.__game.player, null, {
@@ -323,6 +357,9 @@ async function sampling(ctx, page) {
     if (learned) fs.writeFileSync(LEARN, learned);
     out.map = MAP;
     out.load = load;
+    out.boss = await page.evaluate(
+      () => window.__probeBoss || (window.__game.boss && window.__game.boss.name) || '',
+    );
     if (gp) out.gp = { total: gp.reduce((s, x) => s + x[1], 0), list: gp.slice(0, 20) };
     if (args.cpu) out.sampling = await sampling(ctx, page);
     fs.mkdirSync(OUT, { recursive: true });

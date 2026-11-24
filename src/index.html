@@ -241,6 +241,12 @@
               音效試做試聽
             </button>
             <button
+              id="btnPerfRec"
+              title="記錄這台裝置的幀時間與卡頓（給開發者分析效能；從伺服器網址開時自動上傳，也可以下載 JSON）"
+            >
+              效能紀錄
+            </button>
+            <button
               id="btnLmReload"
               title="單人模式使用模型庫存在這個瀏覽器的 GLB 與關節設定（在設定的「遊戲與進階」開啟）"
             >
@@ -248,6 +254,21 @@
             </button>
           </div>
           <div class="row"><button class="primary" id="btnTitleToolsClose">關閉</button></div>
+        </div>
+        <!-- 效能紀錄（game/perf-rec.js）：開始之後照常玩，畫面左下角有紀錄標示；停止時上傳到伺服器 -->
+        <div id="perfRecBox" class="panel">
+          <h2>效能紀錄</h2>
+          <p class="dim">
+            按「開始紀錄」之後照常玩（出擊、作戰室、機甲庫、過場都會記），左下角顯示 fps 與卡頓次數。
+            玩完回來按「停止並上傳」：從伺服器網址開時存到伺服器（紀錄中每分鐘也會上傳一次）；直接開檔時用「下載
+            JSON」。 網址加 ?perfrec 從開啟網頁就開始記。
+          </p>
+          <p id="perfRecSt"></p>
+          <div class="row">
+            <button class="primary" id="perfRecGo">開始紀錄</button>
+            <button id="perfRecDl">下載 JSON</button>
+            <button id="perfRecClose">關閉</button>
+          </div>
         </div>
         <div id="titleHelp" class="panel">
           <h2>操作說明</h2>

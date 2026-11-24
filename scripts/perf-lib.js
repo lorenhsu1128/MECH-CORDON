@@ -11,10 +11,14 @@ const BROWSERS = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
 ].filter(Boolean);
 
+// 模擬弱的裝置（docs/perf-full-plan.md 第 4 期）：環境變數 PERF_GPU=low 改用省電的顯示卡（這台是內顯 Intel UHD 770）、
+// PERF_CPU=4 把 CPU 降速成 1/4（Chrome DevTools 的 CPU throttling，每個新分頁自動套用）
 async function launch() {
   const exe = BROWSERS.find((p) => fs.existsSync(p));
   if (!exe) throw new Error('找不到 Edge 或 Chrome');
-  return chromium.launch({
+  const gpu = process.env.PERF_GPU,
+    cpu = +process.env.PERF_CPU || 0;
+  const br = await chromium.launch({
     executablePath: exe,
     headless: true,
     args: [
@@ -23,8 +27,25 @@ async function launch() {
       '--ignore-gpu-blocklist',
       '--autoplay-policy=no-user-gesture-required',
       '--enable-precise-memory-info',
+      ...(gpu === 'low' ? ['--force_low_power_gpu'] : gpu === 'high' ? ['--force_high_performance_gpu'] : []),
     ],
   });
+  if (cpu > 1) {
+    const nc = br.newContext.bind(br);
+    br.newContext = async (...a) => {
+      const ctx = await nc(...a);
+      const np = ctx.newPage.bind(ctx);
+      ctx.newPage = async () => {
+        const pg = await np();
+        const cdp = await ctx.newCDPSession(pg);
+        await cdp.send('Emulation.setCPUThrottlingRate', { rate: cpu });
+        pg.__cdp = cdp; // 留著（回收了降速就失效）
+        return pg;
+      };
+      return ctx;
+    };
+  }
+  return br;
 }
 
 // 頁面載入前：固定亂數、記錄著色器連結、getProgram 的原因
@@ -168,8 +189,20 @@ function instrument() {
     'spawnQTick',
     'hudTick',
     'updateOcclusion',
+    'wrapTick', // 無邊界地圖的搬移與通用的掃描（game/torus.js）
+    'mvTick', // 地圖載具（game/map-veh.js）
   ])
     wrap(P, n, n);
+  // 機體每格的方法（全部機體加起來）：AI、移動、閃避、身體部位破壞、特效
+  // （機體的原型等第一台機體出現時才包裝：見下面的 loop）
+  const wrapE = (e) => {
+    const EP = Object.getPrototypeOf(e);
+    for (const n of ['updateAI', 'move', 'dgMove', 'bodyTick', 'specialFx', 'mvfxTick'])
+      wrap(EP, n, 'e.' + n);
+    W.ep = true;
+  };
+  // AI 音效包：base64 轉成 ArrayBuffer 在主執行緒（敵人生成時才載入的群組，docs/sfx-gen-design.md）
+  if (window.__sfx) for (const n of ['b64', 'needGroup']) wrap(window.__sfx, n, 'sfx.' + n);
   if (g.world)
     for (const n of ['updateOcclusion', 'poolTick']) wrap(Object.getPrototypeOf(g.world), n, 'world.' + n);
   for (const n of [
@@ -197,6 +230,7 @@ function instrument() {
     'tfx',
     'flashAlert',
     'bossPhaseShift',
+    'beastSpawn',
   ])
     wrap(P, n, '!' + n);
   const fxP = Object.getPrototypeOf(g.fx);
@@ -231,6 +265,7 @@ function instrument() {
   let lastHeap = 0,
     lastT = performance.now();
   P.loop = function () {
+    if (!W.ep && this.player && this.player.updateAI) wrapE(this.player);
     const t0 = performance.now();
     const rec = { t0, gap: t0 - lastT, sec: {}, st: this.state };
     lastT = t0;
@@ -258,6 +293,7 @@ function instrument() {
       const hp = performance.memory ? performance.memory.usedJSHeapSize : 0;
       rec.gc = lastHeap && hp < lastHeap - 2e6 ? +((lastHeap - hp) / 1e6).toFixed(1) : 0;
       lastHeap = hp;
+      rec.hp = +(hp / 1e6).toFixed(1);
       W.cur = null;
       if (W.on) W.frames.push(rec);
     }

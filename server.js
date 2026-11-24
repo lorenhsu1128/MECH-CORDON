@@ -486,6 +486,35 @@ async function modelsApi(req, resp, u, q) {
     });
     return json({ ok: true, rev: man.rev });
   }
+  // 遊戲內的效能紀錄（game/perf-rec.js，docs/perf-full-plan.md）：平板等實機錄的紀錄上傳到 server-models/perf/<id>.json，
+  // 同一個 id 覆寫（紀錄中每分鐘上傳一次）；GET 列出
+  if (u === '/api/perf') {
+    if (M !== 'GET') return bad('不支援的操作', 405);
+    const dir = path.join(MODELS_DIR, 'perf');
+    const list = fs.existsSync(dir)
+      ? fs
+          .readdirSync(dir)
+          .filter((f) => f.endsWith('.json'))
+          .map((f) => ({ id: f.slice(0, -5), size: fs.statSync(path.join(dir, f)).size }))
+      : [];
+    return json({ list });
+  }
+  if ((m = /^\/api\/perf\/([A-Za-z0-9_-]{4,80})$/.exec(u))) {
+    if (M !== 'PUT') return bad('不支援的操作', 405);
+    const body = await readBody(req, 48 * 1024 * 1024);
+    if (!body) return bad('內容太大', 413);
+    try {
+      JSON.parse(body.toString('utf8'));
+    } catch (e) {
+      return bad('JSON 格式錯誤');
+    }
+    const dir = path.join(MODELS_DIR, 'perf');
+    await queued(() => {
+      fs.mkdirSync(dir, { recursive: true });
+      writeAtomic(path.join(dir, m[1] + '.json'), body);
+    });
+    return json({ ok: true });
+  }
   // 渲染風格：區網內分享的風格參數（styles.json；任何人都能新增、覆寫、刪除）
   if (u === '/api/styles') {
     if (M !== 'GET') return bad('不支援的操作', 405);
@@ -759,7 +788,8 @@ function startGame(port) {
         u.startsWith('/api/models/') ||
         u.startsWith('/api/sets/') ||
         u.startsWith('/api/styles') ||
-        u.startsWith('/api/levels')
+        u.startsWith('/api/levels') ||
+        u.startsWith('/api/perf')
       ) {
         const q = new URL(req.url, 'http://x').searchParams;
         modelsApi(req, resp, u, q)
