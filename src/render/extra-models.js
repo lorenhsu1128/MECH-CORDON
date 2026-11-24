@@ -962,10 +962,13 @@ export function buildProjectileMesh(kind, color, speed, part = null, o = null) {
       new THREE.MeshStandardMaterial({ color: 0x3a4a3a, metalness: 0.6, roughness: 0.4 }),
     );
     body.rotation.x = Math.PI / 2;
-    const tail = new THREE.Mesh(new THREE.SphereGeometry(0.25, 6, 5), glow(col, 0.9));
-    tail.position.z = -1;
     mesh.add(body);
-    mesh.add(tail);
+    // 尾端的光：「標準」是一顆發光的球；「華麗」（遊戲裡）不放，改由 Projectile.jetFx 畫尾流
+    if (!(rich && part)) {
+      const tail = new THREE.Mesh(new THREE.SphereGeometry(0.25, 6, 5), glow(col, 0.9));
+      tail.position.z = -1;
+      mesh.add(tail);
+    }
   } else if (kind === 'crate') {
     // 起重機砲台／叉架 MT 丟出的貨櫃（長軸沿 X，飛行中不轉向）
     const cm = new THREE.MeshStandardMaterial({

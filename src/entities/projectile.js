@@ -84,10 +84,23 @@ export class Projectile {
     const fx = this.game.fx;
     if (!fx || !fx.rich || !fx.thruster) return;
     const k = this.kind;
-    if (k !== 'missile' && k !== 'shell' && k !== 'grenade') return;
+    if (k !== 'missile' && k !== 'shell' && k !== 'grenade' && k !== 'torpedo') return;
     const sc = this.jsc || 1;
     const back = _pjB.copy(this.vel).normalize().negate();
     if (this.jseed === undefined) this.jseed = (this.pos.x * 7.3 + this.pos.z * 3.1 + this.life * 11) % 10;
+    // 魚雷：尾端的螺旋槳尾流（短的噴流），取代尾端的發光球
+    if (k === 'torpedo') {
+      fx.thruster.jets.add(
+        _pjA.copy(this.pos).addScaledVector(back, 0.9 * sc),
+        back,
+        1.5 * sc,
+        0.16 * sc,
+        0.8,
+        this.color || 0x9fe8ff,
+        this.jseed,
+      );
+      return;
+    }
     // 砲彈、榴彈、電漿彈：彈體外面那幾層放大的色塊換成一道柔邊的光（從彈頭前面一點往後拉成彗星的形狀）
     if (k !== 'missile' || this.at === 'en') {
       const pl = k === 'missile';

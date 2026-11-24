@@ -1628,6 +1628,22 @@ export class Effects {
     w.beamCore.scale.set(this.k, d, this.k);
     w.beamGlow.scale.set(this.k, d, this.k);
     w.beamGlow.material.opacity = 0.12 + frand() * 0.08;
+    // 砲火特效「華麗」：流動的能量光束帶（fx/energy.js 的 ribbonMesh），不畫兩層圓柱。
+    // 光束帶的位置由著色器的世界座標決定，掛在同一個群組底下只是跟著顯示與移除
+    const R = this.rich;
+    w.beamCore.visible = w.beamGlow.visible = !R;
+    if (R && !w.beamRib) {
+      w.beamRib = ribbonMesh(color, 1);
+      SHARED_GEO.add(w.beamRib.geometry);
+      grp.add(w.beamRib);
+    }
+    if (w.beamRib) {
+      w.beamRib.visible = R;
+      if (R) {
+        w.beamRib.setAB(a, b, (0.55 + frand() * 0.12) * this.k);
+        w.beamRib.material.uniforms.uTime.value = this.time;
+      }
+    }
     w.beamHideT = 0.08;
   }
   // team（第 5 個參數，隨轉送帶給客機）：砲火特效「華麗」時依陣營換色（fx/palette.js：敵人的雷射＝洋紅）
