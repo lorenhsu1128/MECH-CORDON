@@ -39,7 +39,9 @@ const FPS_OK = 30,
   FPS_MIN = 24;
 const mark = (fps) => (fps >= FPS_OK ? '✅' : fps >= FPS_MIN ? '△' : '✗');
 const tally = [];
-const MEM_MIN = 8e9; // 2026-11-24：3 GB 來不及，Claude Code 會先把整個量測停掉
+// 2026-11-24：3 GB 來不及，Claude Code 會先把整個量測停掉。環境變數 PERF_MEM_MIN（GB）可以改（第 1 章的過場預先準備
+// 時瀏覽器約 9 GB、之後持平，可用記憶體停在 7 GB 左右：補跑時用 5）
+const MEM_MIN = (+process.env.PERF_MEM_MIN || 8) * 1e9;
 let oomHit = false;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -517,6 +519,7 @@ function probeRow(o) {
   };
 }
 function report() {
+  tally.length = 0; // 每一期跑完都重新彙整一次：清掉上一次的，不重複列
   const L = [
     '# 全遊戲的效能與卡頓檢查（' + TAG + '）',
     '',
