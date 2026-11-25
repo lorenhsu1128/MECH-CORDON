@@ -963,11 +963,21 @@ export class StylePipeline {
   // 光源的版本每格改兩次，每個受光的材質每格都要重新找程式（每格約 80 次、大量的記憶體配置，
   // docs/perf-threejs-upgrade.md）。所以把場景裡的光源也加進粒子圖層（光源本身不畫東西，不影響畫面）；
   // 每 60 格重新掃一次場景，新加的光源最多晚 60 格
+  // 同時記下光源所在的最上層物件（場景的子物件）：第二次只走訪這些與粒子（fxRoots）
   fxLights(s) {
     if (this.lightScene === s && this.lightN++ % 60) return;
     this.lightScene = s;
     this.lightN = 1;
-    if (!this.lightVisit) this.lightVisit = (o) => o.isLight && o.layers.enable(FX_LAYER);
+    const roots = this.lightRoots || (this.lightRoots = new Set());
+    roots.clear();
+    if (!this.lightVisit)
+      this.lightVisit = (o) => {
+        if (!o.isLight) return;
+        o.layers.enable(FX_LAYER);
+        let r = o;
+        while (r.parent && r.parent !== this.lightScene) r = r.parent;
+        if (r.parent === this.lightScene) this.lightRoots.add(r);
+      };
     s.traverse(this.lightVisit);
   }
   // 粒子另外畫：第一次隱藏粒子，深度拷貝到 rtD，第二次鏡頭只看粒子的圖層（不清除、不畫背景、不更新陰影）
@@ -1005,10 +1015,20 @@ export class StylePipeline {
     R.autoClear = false;
     s.background = null;
     R.shadowMap.needsUpdate = false;
+    // 第二次只走訪粒子與光源：three.js 的 render 會走訪整個場景（幾千個物件）檢查圖層，低標的電腦每格 2～4 ms。
+    // 粒子都直接掛在場景底下（fx/gpu.js）；暫時把場景的子物件換成這些，畫完換回來
+    const kids = s.children,
+      only = this.fxRoots || (this.fxRoots = []);
+    only.length = 0;
+    for (const m of hid) if (m.parent === s) only.push(m);
+    if (this.lightRoots) for (const r of this.lightRoots) if (r.parent === s) only.push(r);
+    const swap = only.length === hid.length + (this.lightRoots ? this.lightRoots.size : 0);
+    if (swap) s.children = only;
     try {
       R.setRenderTarget(this.rtScene);
       R.render(s, cam);
     } finally {
+      if (swap) s.children = kids;
       cam.layers.mask = mask;
       R.autoClear = ac;
       s.background = bg;

@@ -1,7 +1,45 @@
 // 殘影（docs/vfx-design.md 第 6 期，只給玩家自己）：複製機體當下的姿勢，畫成淡的加色剪影，GHOST_T 秒淡出。
 // 網格共用原本的幾何；蒙皮網格（mesh-merge.js 的合併：每個錨點一根骨頭）另建一副骨架，骨頭的世界矩陣凍結在複製的那一刻
 // （骨頭不在場景裡，不會被更新）。描邊外殼、加色與半透明的網格（推進器光暈等）略過。同時最多 MAX 個。
+// 材質用完放回池子、不 dispose：dispose 會讓 three.js 釋放著色器程式，下一次 QB 又要重新編譯
+// （低標的電腦一次 50～400 ms，2026-11-25 的效能檢查）；出擊的預熱（ghostWarm）先編好
 import { isOutline } from './geometry.js';
+
+const POOL = { b: [], s: [] };
+function poolMat(skin, color) {
+  const m =
+    POOL[skin ? 's' : 'b'].pop() ||
+    new THREE.MeshBasicMaterial({
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+  m.color.set(color);
+  m.opacity = OPACITY;
+  m.userData.ghostSkin = skin;
+  return m;
+}
+// 著色器預熱（Game.shaderWarm）：一般與蒙皮各一個（材質用完放回池子，程式一直留著）
+export function ghostWarm() {
+  const g = new THREE.Group();
+  const geo = new THREE.BoxGeometry(0.01, 0.01, 0.01);
+  const mb = poolMat(false, 0xffffff);
+  g.add(new THREE.Mesh(geo, mb));
+  const sg = geo.clone();
+  const n = sg.attributes.position.count;
+  sg.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(new Uint16Array(n * 4), 4));
+  sg.setAttribute('skinWeight', new THREE.Float32BufferAttribute(new Float32Array(n * 4).fill(0.25), 4));
+  const b = new THREE.Bone();
+  const ms = poolMat(true, 0xffffff);
+  const sm = new THREE.SkinnedMesh(sg, ms);
+  sm.add(b);
+  sm.bind(new THREE.Skeleton([b]));
+  sm.renderOrder = 3;
+  g.add(sm);
+  POOL.b.push(mb);
+  POOL.s.push(ms);
+  return g;
+}
 
 const GHOST_T = 0.25;
 const MAX = 6;
@@ -20,14 +58,7 @@ export class GhostFx {
     const mats = [],
       skels = [];
     const mk = (skin) => {
-      const m = new THREE.MeshBasicMaterial({
-        color,
-        transparent: true,
-        opacity: OPACITY,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        skinning: skin,
-      });
+      const m = poolMat(skin, color);
       mats.push(m);
       return m;
     };
@@ -86,7 +117,7 @@ export class GhostFx {
   }
   drop(e) {
     this.scene.remove(e.grp);
-    for (const m of e.mats) m.dispose();
+    for (const m of e.mats) POOL[m.userData.ghostSkin ? 's' : 'b'].push(m);
     for (const s of e.skels) if (s.dispose) s.dispose();
   }
   clear() {

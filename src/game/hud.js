@@ -1,7 +1,7 @@
 import { weakText } from '../data/attrs.js';
 // Game：HUD 繪製與訊息提示
 import { SFX } from '../audio/audio.js';
-import { escHtml } from '../core/html.js';
+import { escHtml, setHtml, setText } from '../core/html.js';
 import { clamp } from '../core/math.js';
 import { DS, MS } from '../core/scale.js';
 import { CONSUMABLES, usesAmmo } from '../data/parts.js';
@@ -35,16 +35,20 @@ Object.assign(Game.prototype, {
     c.clearRect(0, 0, W, H);
     const p = this.player;
     if (!p) return;
-    document.getElementById('hudTop').innerHTML =
-      `<div><b>觀戰</b>　${escHtml(this.levelName)}</div><div id="objective">殘存敵軍 ${this.clientAlive || 0}${this.clientWaves ? ' （尚有增援）' : ''} ｜ ${this.missionT.toFixed(0)}s</div><div class="dim" style="font-size:11px">鏡頭 <b>${{ follow: '跟隨', director: '導演', all: '全景', free: '自由', boss: '魔王' }[this.specMode || 'follow']}</b>　V：切換視角　C／1–5：切換模式　Tab／點擊玩家：換人　滾輪：縮放　D：${this.specDetail ? '隱藏' : '顯示'}細節</div>`;
+    setHtml(
+      document.getElementById('hudTop'),
+      `<div><b>觀戰</b>　${escHtml(this.levelName)}</div><div id="objective">殘存敵軍 ${this.clientAlive || 0}${this.clientWaves ? ' （尚有增援）' : ''} ｜ ${this.missionT.toFixed(0)}s</div><div class="dim" style="font-size:11px">鏡頭 <b>${{ follow: '跟隨', director: '導演', all: '全景', free: '自由', boss: '魔王' }[this.specMode || 'follow']}</b>　V：切換視角　C／1–5：切換模式　Tab／點擊玩家：換人　滾輪：縮放　D：${this.specDetail ? '隱藏' : '顯示'}細節</div>`,
+    );
     document.getElementById('hudBottom').style.display = 'none';
     document.getElementById('weapons').style.display = 'none';
-    document.getElementById('lockHint').textContent =
+    setText(
+      document.getElementById('lockHint'),
       this.specMode === 'all'
         ? '全景'
         : this.specMode === 'free'
           ? '自由視角（拖曳平移）'
-          : `${this.specMode === 'director' ? '導演' : this.specMode === 'boss' ? '魔王' : '跟隨'} ▸ ${p.name}`;
+          : `${this.specMode === 'director' ? '導演' : this.specMode === 'boss' ? '魔王' : '跟隨'} ▸ ${p.name}`,
+    );
     // 敵人血條 / 名牌（沿用）
     for (const e of [...this.enemies, ...this.allies]) {
       if (e.dead || e.noLock) continue;
@@ -269,8 +273,8 @@ Object.assign(Game.prototype, {
         else if (!usesAmmo(w.def))
           txt = w.charging ? Math.round(clamp(w.charge / w.def.chargeT, 0, 1) * 100) + '%' : '∞';
         else txt = w.reloadT > 0 ? '裝填' : w.mag + '/' + w.ammo;
-        d.querySelector('b').textContent = labels[s];
-        d.querySelector('em').textContent = txt;
+        setText(d.querySelector('b'), labels[s]);
+        setText(d.querySelector('em'), txt);
         d.querySelector('.rl').style.width =
           (w.reloadT > 0
             ? (1 - w.reloadT / w.def.reload) * 100
@@ -279,8 +283,8 @@ Object.assign(Game.prototype, {
               : 0) + '%';
         continue;
       }
-      d.querySelector('b').textContent = labels[s] + ' ' + w.def.name.split(' ')[0];
-      d.querySelector('em').textContent = txt;
+      setText(d.querySelector('b'), labels[s] + ' ' + w.def.name.split(' ')[0]);
+      setText(d.querySelector('em'), txt);
       d.querySelector('.rl').style.width =
         (w.reloadT > 0 ? (1 - w.reloadT / w.def.reload) * 100 : w.cd > 0 ? (1 - w.cd / w.def.rof) * 100 : 0) +
         '%';
@@ -292,12 +296,15 @@ Object.assign(Game.prototype, {
       const def = CONSUMABLES.find((c) => c.id === id);
       const n = (this.save.items && this.save.items[id]) || 0;
       d.classList.toggle('empty', !def || id === 'cs_none' || n <= 0);
-      d.querySelector('b').textContent = slim
-        ? this.keyLabel(this.keymap[s === 'c1' ? 'cs1' : 'cs2'])
-        : def && id !== 'cs_none'
-          ? def.name.split(' ')[0]
-          : '消耗品';
-      d.querySelector('em').textContent = def && id !== 'cs_none' ? '×' + n : '—';
+      setText(
+        d.querySelector('b'),
+        slim
+          ? this.keyLabel(this.keymap[s === 'c1' ? 'cs1' : 'cs2'])
+          : def && id !== 'cs_none'
+            ? def.name.split(' ')[0]
+            : '消耗品',
+      );
+      setText(d.querySelector('em'), def && id !== 'cs_none' ? '×' + n : '—');
       const cd = (this.csCd && this.csCd[s]) || 0;
       d.querySelector('.rl').style.width = (cd > 0 ? (cd / 4) * 100 : 0) + '%';
     }
@@ -441,7 +448,7 @@ Object.assign(Game.prototype, {
     c.clearRect(0, 0, W, H);
     // bars
     document.getElementById('hpBar').style.width = clamp((p.hp / p.maxHp) * 100, 0, 100) + '%';
-    document.getElementById('hpTxt').textContent = `${Math.max(0, Math.round(p.hp))} / ${p.maxHp}`;
+    setText(document.getElementById('hpTxt'), `${Math.max(0, Math.round(p.hp))} / ${p.maxHp}`);
     // 結構損傷：AP 條右邊的灰色段（補不回來的部分）
     const sc = document.getElementById('hpScar');
     if (sc) sc.style.width = clamp(((p.scar || 0) / p.maxHp) * 100, 0, 100) + '%';
@@ -465,27 +472,25 @@ Object.assign(Game.prototype, {
     this.tierHud(c, p, W, H); // Boss 改版：打斷量表、破綻、破甲充能、風格加成（game/boss-tier.js）
     this.statusHud(dt); // 狀態效果：狀態列、倒數、掙脫提示、畫面邊緣（status-hud.js）
     if (this.tut) this.tutHud(c); // 近戰訓練的方向箭頭（tutorial.js）
-    document.getElementById('kits').innerHTML =
-      `修復套件 <b>${'▮'.repeat(p.kits)}${'▯'.repeat(Math.max(0, (p.kitsMax || 3) - p.kits))}</b>　<span class="dim">[R]</span>`;
+    setHtml(
+      document.getElementById('kits'),
+      `修復套件 <b>${'▮'.repeat(p.kits)}${'▯'.repeat(Math.max(0, (p.kitsMax || 3) - p.kits))}</b>　<span class="dim">[R]</span>`,
+    );
     const alive = this.isClient
       ? this.clientAlive || 0
       : this.enemies.filter((e) => !e.dead && !e.guardOf && !e.decoy).length + this.encPendN(); // 還沒生成的遠處敵群也算
     const wavesLeft = this.isClient ? this.clientWaves || 0 : this.waves.length;
-    document.getElementById('hudTop').innerHTML = this.camp
+    let top = this.camp
       ? this.campHudTop(alive, wavesLeft)
       : this.lv
         ? `<b>${this.lv.test ? '試玩' : '自訂關卡'}</b> ｜ <span class="hudX">${escHtml(this.levelName)}</span><div id="objective">殘存敵軍 ${alive} ｜ ${this.missionT.toFixed(0)}s</div>${this.lv.hudHtml || ''}`
         : this.campC && this.campC.view
           ? this.campHudHtml(this.campC.view)
           : `<b>${this.isBossLevel ? '決戰任務' : '任務'} ${String(this.save.level).padStart(2, '0')}</b> ｜ <span class="hudX">${escHtml(this.levelName)}</span><div id="objective">${this.extract > 0 ? `撤離倒數 ${Math.ceil(this.extract)} 秒（回收補給箱）` : `殘存敵軍 ${alive}${wavesLeft ? ' （尚有增援）' : ''}`} ｜ ${this.missionT.toFixed(0)}s</div><div class="hudX" style="color:var(--acc)">SP ${this.save.coam.toLocaleString()} <span class="dim">（本次 +${(this.missionEarned || 0).toLocaleString()}）</span></div>`;
-    if (this.goalCur) document.getElementById('hudTop').insertAdjacentHTML('beforeend', this.goalHudHtml());
+    if (this.goalCur) top += this.goalHudHtml();
     if (PACE.on && !PACE.lab && PACE.name)
-      document
-        .getElementById('hudTop')
-        .insertAdjacentHTML(
-          'beforeend',
-          `<div class="goalLine"><span>節奏</span>${escHtml(PACE.name)}</div>`,
-        ); // 節奏設定組
+      top += `<div class="goalLine"><span>節奏</span>${escHtml(PACE.name)}</div>`; // 節奏設定組
+    setHtml(document.getElementById('hudTop'), top);
     if ((this.frames & 15) === 0) {
       const ht = document.getElementById('hudTop'),
         hb = document.getElementById('hudBottom');
@@ -717,9 +722,12 @@ Object.assign(Game.prototype, {
           : this.camMode === 'melee'
             ? '　⤡ 近戰視角'
             : '';
-      lh.innerHTML = p.lock
-        ? `LOCK ▸ ${escHtml(p.lock.name)}  ${Math.round(p.lock.pos.distanceTo(p.pos))}m<span class="lhX">${escHtml((p.lock.res || p.lock.laserK !== 1 ? '　' + weakText(p.lock.res, p.lock.laserK) : '') + this.wpHint(p.lock) + this.afHint(p.lock))}</span>${escHtml(this.hudMissileLock(p) + hTxt)}<span class="lhX">${cam}</span>`
-        : '無鎖定目標';
+      setHtml(
+        lh,
+        p.lock
+          ? `LOCK ▸ ${escHtml(p.lock.name)}  ${Math.round(p.lock.pos.distanceTo(p.pos))}m<span class="lhX">${escHtml((p.lock.res || p.lock.laserK !== 1 ? '　' + weakText(p.lock.res, p.lock.laserK) : '') + this.wpHint(p.lock) + this.afHint(p.lock))}</span>${escHtml(this.hudMissileLock(p) + hTxt)}<span class="lhX">${cam}</span>`
+          : '無鎖定目標',
+      );
       lh.style.color = hTxt.includes('▲') ? '#7ee081' : hTxt.includes('▼') ? '#ff8a8a' : '';
     }
     if (p.melee.active) {

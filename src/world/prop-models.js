@@ -449,13 +449,14 @@ export class PK {
           pos[o * 3] = _v1.x;
           pos[o * 3 + 1] = _v1.y;
           pos[o * 3 + 2] = _v1.z;
-          if (nn) {
+          // 只取樣地形與障礙物（PK_LITE）：法線與貼圖座標用不到（外框只看位置），不算
+          if (nn && !PK_LITE) {
             _v2.set(nn.getX(i), nn.getY(i), nn.getZ(i)).applyMatrix3(nm).normalize();
             nor[o * 3] = _v2.x;
             nor[o * 3 + 1] = _v2.y;
             nor[o * 3 + 2] = _v2.z;
           }
-          if (u) {
+          if (u && !PK_LITE) {
             uv[o * 2] = u.getX(i);
             uv[o * 2 + 1] = u.getY(i);
           }

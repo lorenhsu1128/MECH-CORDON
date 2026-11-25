@@ -186,16 +186,49 @@ export function fixMat(mats, hex) {
   }
   return x;
 }
-// cols＝固定色的色碼（色槽 4 起）
-export function primsGroup(prims, mats, flip = false, cols = null) {
+// 固定色全部用頂點色的那一份（primsGroup 的 vc）：白色＋頂點色
+function fixVcMat(mats) {
+  let m = FIX.get(mats.main);
+  if (!m) FIX.set(mats.main, (m = new Map()));
+  let x = m.get('vc');
+  if (!x) {
+    x = mats.main.clone();
+    x.color.set(0xffffff);
+    x.vertexColors = true;
+    x.name = 'fix';
+    m.set('vc', x);
+  }
+  return x;
+}
+// cols＝固定色的色碼（色槽 4 起）。vc＝不發光的固定色合成一個網格、顏色寫進頂點色（機甲的區塊：固定色一個區塊常有
+// 好幾種，每種一個網格的話一台機甲多十幾個 draw call，2026-11-25 的效能檢查；動作要改個別固定色材質的（機獸的眼睛）不用）
+export function primsGroup(prims, mats, flip = false, cols = null, vc = false) {
   const g = new THREE.Group();
+  const vcPos = [],
+    vcCol = [];
+  const c = new THREE.Color();
   primsTris(prims).forEach((pos, i) => {
     if (!pos.length) return;
     if (flip) for (let k = 0; k < pos.length; k += 3) ((pos[k] = -pos[k]), (pos[k + 2] = -pos[k + 2]));
+    if (vc && i >= 4 && !String(cols[i - 4]).endsWith('!')) {
+      c.set(cols[i - 4]);
+      for (let k = 0; k < pos.length; k += 3) {
+        vcPos.push(pos[k], pos[k + 1], pos[k + 2]);
+        vcCol.push(c.r, c.g, c.b);
+      }
+      return;
+    }
     const geo = posGeo(pos);
     const m = new THREE.Mesh(geo, i < 4 ? mats[PRIM_SLOTS[i]] : fixMat(mats, cols[i - 4]));
     m.castShadow = m.receiveShadow = true;
     g.add(m);
   });
+  if (vcPos.length) {
+    const geo = posGeo(vcPos);
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(vcCol, 3));
+    const m = new THREE.Mesh(geo, fixVcMat(mats));
+    m.castShadow = m.receiveShadow = true;
+    g.add(m);
+  }
   return g;
 }

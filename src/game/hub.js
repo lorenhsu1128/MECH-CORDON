@@ -205,6 +205,7 @@ Object.assign(Game.prototype, {
     const hb = document.querySelector('#btnHubBack .hdT');
     if (hb) hb.textContent = this.navLabel('hub');
     this.hubDrawn = false; // 這次進來還沒畫過（hub-holo.js 的 hubWarm：背景編譯中顯示「作戰室準備中」）
+    this.hubPrep = null; // 進來時先取樣的區域地形的進度（hub-holo.js 的 hubTick）
     this.renderHub();
     // 窗外的機體用伺服器預設組（或自己的模型組）：讀一次（有變動才解析，hub-holo.js 的 hubMechSync 會換上）
     if (!(this.net && this.net.role)) this.lmRefresh().catch(() => {});

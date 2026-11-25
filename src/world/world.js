@@ -82,6 +82,7 @@ import {
   stripMesh,
 } from './prop-models.js';
 import { propShape, shapeContains, shapeSegT } from './prop-hit.js';
+import { gridable, segHitMesh } from './ray-grid.js';
 import { Weather } from './weather.js';
 import { buildWaterMesh, disposeWater } from '../fx/water/surface.js';
 import { FAR_R, OOB_BUF, buildBackdrop, edgeDelta, planEdges } from './edges.js';
@@ -129,6 +130,7 @@ import { AIRSPACE } from './themes/airspace.js';
 const _seg = new THREE.Vector3(); // propBlocks 的暫存
 const _fdir = new THREE.Vector3(), // fadeRay 的暫存
   _fpt = new THREE.Vector3();
+const _fend = new THREE.Vector3();
 // 障礙物的空間格子（obsAt；docs/perf-threejs-upgrade.md 第 8 期）：格子邊長、每個障礙物外框往外加寬的距離
 // （查詢的半徑在這之內時只看所在的那一格；collide 的機體半徑最大約 5 MS）
 const OG_C = 8 * WS,
@@ -889,7 +891,10 @@ export class World {
     if (LH && LH.length === this.h.length) this.h = Float32Array.from(LH);
     else if (LH && Math.sqrt(LH.length) % 1 === 0)
       this.h = resampleGrid(LH, Math.round(Math.sqrt(this.h.length))); // 舊格子（三倍高改版前的關卡）
-    this.buildTerrainMesh();
+    // 只取樣地形與障礙物（作戰室的全像戰略桌，opt.sample）：不建地形網格，但照樣抽它用掉的亂數（每個三角形一次），
+    // 之後的生成才和真的地圖相同
+    if (this.opt.sample) for (let k = 0, n = this.cells * this.cells * 2; k < n; k++) rnd(-0.02, 0.02);
+    else this.buildTerrainMesh();
     if (T.water) this.addWater(T.water);
     if (T.roof) this.addRoof(T.roof);
     if (lake) {
@@ -4463,6 +4468,10 @@ export class World {
         }
       }
       if (hit) any = true;
+      // 沒擋住、材質也已經回到不透明的：不用再處理（以前每格每個遮擋物都重設材質，低標的電腦每格約 4 ms）
+      // （第一次照舊處理：材質原本不是不透明的也拉到不透明，和以前相同）
+      if (!hit && !o._occAct && o._occInit) continue;
+      o._occInit = o._occAct = true;
       if (hit && this.pool && o.group) this.poolOut(o.group); // 合併池裡的：拿出來才淡得了
       if (hit && o.group) {
         if (this.pillarOf) this.pillarOut(o.group); // 甲板格子的支柱（mergeGridPillars）同樣要拿出來
@@ -4478,9 +4487,16 @@ export class World {
           m._occTo = target;
           mats.push(m);
         } else if (target < m._occTo) m._occTo = target;
+      if (!hit) {
+        // 淡回中：材質全部回到不透明就不再處理
+        let back = true;
+        for (const m of o.mats) if (m.opacity < 0.999) back = false;
+        if (back) o._occAct = false;
+      }
     }
     for (const m of mats) {
       m.opacity = lerp(m.opacity, m._occTo, Math.min(1, dt * 10));
+      if (Math.abs(m.opacity - m._occTo) < 0.002) m.opacity = m._occTo;
       m.depthWrite = m.opacity > 0.9;
     }
     this.poolTick();
@@ -4576,18 +4592,20 @@ export class World {
       const dist = dir.length();
       rc.set(camPos, dir.normalize());
       rc.far = dist - 0.8 * MS;
-      const out = this._mbOut || (this._mbOut = []);
-      out.length = 0;
       const floor = p.y - 1.6 * MS;
+      // 合併的網格三角形很多：逐一的網格先看外框，大的用分格的線段檢測（world/ray-grid.js）
+      const end = _fend.copy(rc.ray.direction).multiplyScalar(rc.far).add(camPos);
+      let hit = false;
       for (const g of roots) {
-        rc.intersectObject(g, true, out);
-        if (out.some((h) => h.object.visible && h.point.y > floor)) {
+        g.traverse((o) => {
+          if (hit || !o.isMesh || !o.visible) return;
+          if (this.segMesh(rc, o, camPos, end, floor)) hit = true;
+        });
+        if (hit) {
           this._mbT = now;
           break;
         }
-        out.length = 0;
       }
-      out.length = 0;
     }
     return !!this._mbT && now - this._mbT < 500;
   }
@@ -4610,13 +4628,12 @@ export class World {
       if (!root.visible || !root.parent) continue;
       const b = this.occBox(root);
       if (!b || !rc.ray.intersectBox(b, _fpt) || _fpt.distanceTo(camPos) > rc.far) continue;
-      out.length = 0;
-      rc.intersectObject(root, true, out);
-      for (const h of out) {
-        const o = h.object;
+      const end = _fend.copy(rc.ray.direction).multiplyScalar(rc.far).add(camPos);
+      // 逐一的網格先看外框，大的用分格的線段檢測（world/ray-grid.js；以前 three.js 的 Raycaster 逐一檢查每個三角形）
+      root.traverse((o) => {
         // 合併池裡藏起來的原本網格也算（2026-11-18：以前跳過看不見的網格，合併的物件永遠偵測不到、不會拿出來淡出）
-        if (!o.isMesh || o.isInstancedMesh || h.point.y < floor) continue;
-        if (!o.visible && !(this.poolOf && this.poolOf.has(o))) continue;
+        if (!o.isMesh || o.isInstancedMesh || hit.has(o)) return;
+        if (!o.visible && !(this.poolOf && this.poolOf.has(o))) return;
         const f = this._fading && this._fading.get(o);
         const m = o.material;
         if (
@@ -4626,11 +4643,59 @@ export class World {
             (m.transparent &&
               (m.opacity < 0.5 || m.blending !== THREE.NormalBlending || this.occOwned(o, m))))
         )
-          continue;
-        hit.add(o);
-      }
+          return;
+        if (this.segMesh(rc, o, camPos, end, floor, out)) hit.add(o);
+      });
     }
     out.length = 0;
+  }
+  // 線段 camPos→end 有沒有打到網格 o（命中點高於 floor 才算）：先看網格的世界外框（快取），
+  // 三角形多的用分格的線段檢測，其他照 three.js 的 raycast
+  segMesh(rc, o, camPos, end, floor, out) {
+    const b = this.meshBox(o);
+    if (!b || !rc.ray.intersectBox(b, _fpt) || _fpt.distanceTo(camPos) > rc.far) return false;
+    if (gridable(o)) return !!segHitMesh(o, camPos, end, (h) => h.y >= floor);
+    const L = out || this._smOut || (this._smOut = []);
+    L.length = 0;
+    o.raycast(rc, L);
+    let ok = false;
+    for (const h of L)
+      if (h.point.y >= floor && h.distance <= rc.far) {
+        ok = true;
+        break;
+      }
+    L.length = 0;
+    return ok;
+  }
+  // 單一網格的世界外框（幾何的外框套上矩陣；矩陣改變時重算）
+  meshBox(o) {
+    const C = this._meshBoxes || (this._meshBoxes = new WeakMap());
+    const e = o.matrixWorld.elements;
+    let c = C.get(o);
+    if (c && c.g === o.geometry && c.k === e[0] && c.k2 === e[12] && c.k3 === e[13] && c.k4 === e[14])
+      return c.empty ? null : c.b;
+    if (!c) C.set(o, (c = { b: new THREE.Box3() }));
+    c.g = o.geometry;
+    c.k = e[0];
+    c.k2 = e[12];
+    c.k3 = e[13];
+    c.k4 = e[14];
+    const g = o.geometry;
+    if (!g || !g.attributes || !g.attributes.position) {
+      c.empty = true;
+      return null;
+    }
+    if (o.isSkinnedMesh) {
+      if (!o.boundingBox) o.computeBoundingBox();
+      c.b.copy(o.boundingBox);
+    } else {
+      if (!g.boundingBox) g.computeBoundingBox();
+      c.b.copy(g.boundingBox);
+    }
+    c.b.applyMatrix4(o.matrixWorld);
+    c.empty = c.b.isEmpty();
+    if (!c.empty) c.b.expandByScalar(0.05 * MS);
+    return c.empty ? null : c.b;
   }
   // 候選群組的世界外框（快取；根的矩陣改變或 force 時重算，稍微加寬）
   occBox(root, force = false) {

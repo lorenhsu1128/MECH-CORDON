@@ -2069,10 +2069,29 @@ function clonePiece(tpl, ctx) {
   const map = new Map();
   for (const k in tpl.ctx.M) map.set(tpl.ctx.M[k], ctx.M[k]);
   map.set(tpl.ctx.red, ctx.red);
+  // 固定色的材質（proc-prims.js 的 fixMat，名稱 fix）：同一台機甲裡外觀相同的共用一份（以前每個區塊各複製一份，
+  // 網格合併（mesh-merge.js）依材質分組，所以每個區塊的固定色各剩一個網格，一台步行機多 18 個 draw call）
+  const share = ctx.fixShare || (ctx.fixShare = new Map());
   const one = (m) => {
     if (!m || isOutline(m)) return m;
     let r = map.get(m);
-    if (!r) map.set(m, (r = m.clone()));
+    if (r) return r;
+    if (m.name === 'fix') {
+      const k = [
+        m.color.getHex(),
+        m.emissive ? m.emissive.getHex() : 0,
+        m.emissiveIntensity,
+        m.map ? m.map.uuid : '',
+        m.roughness,
+        m.metalness,
+        m.vertexColors,
+        m.side,
+        m._stFlat,
+      ].join('|');
+      r = share.get(k);
+      if (!r) share.set(k, (r = m.clone()));
+    } else r = m.clone();
+    map.set(m, r);
     return r;
   };
   g.traverse((o) => {
@@ -2101,7 +2120,7 @@ function makeProcPiece(info, ctx) {
 // 固定色（PROC_COLS：顏色在貼圖上的 GLB，例如背包推進器）與會動的零件（PROC_PARTS：戰車腳的輪子與履帶片）依槽位帶上
 const WHEEL_X = new THREE.Vector3(1, 0, 0);
 export function procPrimPiece(prims, M, slot) {
-  const pg = primsGroup(prims, M, true, PROC_COLS[slot]);
+  const pg = primsGroup(prims, M, true, PROC_COLS[slot], true);
   const pos = [];
   for (const c of pg.children) pos.push(...c.geometry.attributes.position.array);
   const og = new THREE.BufferGeometry();
@@ -2113,7 +2132,7 @@ export function procPrimPiece(prims, M, slot) {
   if (PROC_SPIN[slot]) {
     // 會轉的槍管：名稱 spin 的子群組（buildMech 找這個名稱，開火時繞自己的 Z 軸轉），位置＝GLB 的節點位置轉成遊戲的座標
     const sp = PROC_SPIN[slot];
-    const sg = primsGroup(sp.prims, M, true, sp.cols);
+    const sg = primsGroup(sp.prims, M, true, sp.cols, true);
     sg.name = 'spin';
     sg.position.set(-sp.at[0], sp.at[1], -sp.at[2]);
     pg.add(sg);

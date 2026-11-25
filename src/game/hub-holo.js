@@ -662,6 +662,20 @@ Object.assign(Game.prototype, {
     const R = this.hubRoom;
     // 區域地形：每格最多建一塊（第一格先畫出來）
     this.hubFrames = (this.hubFrames || 0) + 1;
+    // 這次進來還沒畫過、還有區域地形沒取樣（瀏覽器沒存過）：先不畫，「作戰室準備中」底下一格取樣一塊（顯示進度），
+    // 全部好了才開始畫。以前是邊畫邊取樣，一塊就停住 0.3～2.7 秒，第一次進作戰室約 15 秒幾乎不動
+    // （2026-11-25 的效能檢查：低標 1.3～1.8 fps）。之後才加進佇列的（簡報的地形）照舊每格一塊
+    if (!this.hubDrawn && this.hubQ.length) {
+      const P = this.hubPrep || (this.hubPrep = { done: 0, shown: false });
+      // 第一格只顯示提示（讓瀏覽器先畫出來），之後一格一塊
+      if (P.shown) {
+        this.hubQStep();
+        P.done++;
+      }
+      P.shown = true;
+      this.warmMsg(true, `作戰室準備中…　區域地形 ${P.done}／${P.done + this.hubQ.length}`);
+      return;
+    }
     if (this.hubFrames > 1) this.hubQStep();
     // 鏡頭：繞桌子（拖曳轉一點，停手後回到正面）；標籤要能點，所以游標停留時鏡頭不動
     const C = this.hubCamS;

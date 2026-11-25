@@ -124,7 +124,14 @@ function initScript() {
           name,
           len: v.length,
           defs: DEFS.filter((d) => v.includes('#define ' + d)).join(','),
-          st: window.__game ? window.__game.state : '',
+          // 出擊的著色器預熱（載入畫面蓋著）編的記成 prep，不算任務中
+          st: window.__game
+            ? window.__inWarm ||
+              window.__game.warmBusy ||
+              (window.__game.world && window.__game.warmWorld !== window.__game.world)
+              ? 'prep'
+              : window.__game.state
+            : '',
         });
         pg.__src = null;
       }
@@ -270,6 +277,21 @@ function instrument() {
     }
     return obc.call(this, sh, r);
   };
+  // 預熱（shaderWarm／warmPrime）進行中：那一格是載入畫面蓋著的準備，不算任務中的卡頓與編譯
+  window.__warmN = 0;
+  for (const n of ['shaderWarm', 'warmPrime']) {
+    const f = P[n];
+    if (typeof f !== 'function') continue;
+    P[n] = function (...a) {
+      window.__inWarm = (window.__inWarm || 0) + 1;
+      window.__warmN++;
+      try {
+        return f.apply(this, a);
+      } finally {
+        window.__inWarm--;
+      }
+    };
+  }
   const loop = P.loop;
   let lastHeap = 0,
     lastT = performance.now();
@@ -277,6 +299,8 @@ function instrument() {
     if (!W.ep && this.player && this.player.updateAI) wrapE(this.player);
     const t0 = performance.now();
     const rec = { t0, gap: t0 - lastT, sec: {}, st: this.state };
+    const wn0 = window.__warmN;
+    const prep0 = this.warmBusy || (this.world && this.warmWorld !== this.world);
     lastT = t0;
     W.cur = rec;
     const p0 = R.info.programs ? R.info.programs.length : 0;
@@ -298,7 +322,10 @@ function instrument() {
       rec.en = en;
       if (window.__botFlag) rec.bot = window.__botFlag;
       // 「戰場準備中」還蓋著（預熱的編譯、warmPrime）：畫面本來就停著，卡頓另外算
-      if (this.warmBusy || (this.world && this.warmWorld !== this.world)) rec.prep = 1;
+      if (prep0 || window.__warmN !== wn0 || this.warmBusy || (this.world && this.warmWorld !== this.world)) {
+        rec.prep = 1;
+        if (rec.st === 'play') rec.st = 'prep';
+      }
       const hp = performance.memory ? performance.memory.usedJSHeapSize : 0;
       rec.gc = lastHeap && hp < lastHeap - 2e6 ? +((lastHeap - hp) / 1e6).toFixed(1) : 0;
       lastHeap = hp;

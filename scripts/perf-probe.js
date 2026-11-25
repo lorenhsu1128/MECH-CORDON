@@ -115,7 +115,8 @@ async function act(page, secs) {
 function summarize() {
   const W = window.__prof;
   W.on = false;
-  const f = W.frames.filter((r) => r.st === 'play');
+  // 預熱那一格（st 'prep'）與它的下一格（間隔含預熱的時間）不算
+  const f = W.frames.filter((r, i) => r.st === 'play' && !(i && W.frames[i - 1].prep));
   const q = (a, p) => (a.length ? +a[Math.min(a.length - 1, Math.floor(a.length * p))].toFixed(1) : 0);
   const ms = f.map((r) => r.ms).sort((a, b) => a - b);
   const gaps = f.map((r) => r.gap).sort((a, b) => a - b);
@@ -125,6 +126,7 @@ function summarize() {
   const frames = W.frames.map((r, i) => ({
     i,
     st: r.st,
+    prep: r.prep || undefined,
     ms: +r.ms.toFixed(1),
     gap: +r.gap.toFixed(1),
     prog: r.prog,
