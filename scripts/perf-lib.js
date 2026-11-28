@@ -1,6 +1,6 @@
 // 卡頓量測的共用部分（scripts/perf-probe.js、scripts/perf-campaign.js）：頁面載入前的紀錄（固定亂數、著色器連結、長任務）、
 // 出擊後各段的計時（instrument）、啟動顯示卡算繪的瀏覽器
-/* global THREE, window, requestAnimationFrame, WebGLRenderingContext, WebGL2RenderingContext */
+/* global THREE, window, localStorage, requestAnimationFrame, WebGLRenderingContext, WebGL2RenderingContext */
 const fs = require('fs');
 const { chromium } = require('playwright-core');
 
@@ -13,7 +13,8 @@ const BROWSERS = [
 
 // 模擬弱的裝置（docs/perf-full-plan.md 第 4 期）：環境變數 PERF_GPU=low 改用省電的顯示卡（這台是內顯 Intel UHD 770）、
 // PERF_CPU=4 把 CPU 降速成 1/4（Chrome DevTools 的 CPU throttling，每個新分頁自動套用）、
-// PERF_TABLET=1180x820（寬x高）＝平板：畫面改成這個大小、2 倍像素、觸控（取代各腳本自己的 viewport）
+// PERF_TABLET=1180x820（寬x高）＝平板：畫面改成這個大小、2 倍像素、觸控（取代各腳本自己的 viewport）、
+// PERF_DYN=24|30（＋PERF_DYN_MIN=0.6）＝打開動態解析度（設定的預設是關閉）
 async function launch() {
   const exe = BROWSERS.find((p) => fs.existsSync(p));
   if (!exe) throw new Error('找不到 Edge 或 Chrome');
@@ -32,7 +33,9 @@ async function launch() {
     ],
   });
   const tab = /^(\d+)x(\d+)$/.exec(process.env.PERF_TABLET || '');
-  if (cpu > 1 || tab) {
+  const dyn = +process.env.PERF_DYN || 0,
+    dynMin = +process.env.PERF_DYN_MIN || 0.6;
+  if (cpu > 1 || tab || dyn) {
     const nc = br.newContext.bind(br);
     br.newContext = async (o = {}, ...a) => {
       if (tab)
@@ -42,6 +45,19 @@ async function launch() {
           hasTouch: true,
         });
       const ctx = await nc(o, ...a);
+      if (dyn)
+        await ctx.addInitScript(
+          ([f, m]) => {
+            let o = {};
+            try {
+              o = JSON.parse(localStorage.getItem('mech_cordon_style') || '{}') || {};
+            } catch (e) {}
+            o.dyn = f;
+            o.dynMin = m;
+            localStorage.setItem('mech_cordon_style', JSON.stringify(o));
+          },
+          [dyn, dynMin],
+        );
       if (!(cpu > 1)) return ctx;
       const np = ctx.newPage.bind(ctx);
       ctx.newPage = async () => {
@@ -312,6 +328,7 @@ function instrument() {
       loop.call(this);
     } finally {
       rec.ms = performance.now() - t0;
+      rec.dk = this.dynK || 1; // 動態解析度的倍率
       rec.prog = (R.info.programs ? R.info.programs.length : 0) - p0;
       rec.geo = R.info.memory.geometries - g0;
       rec.tex = R.info.memory.textures - x0;

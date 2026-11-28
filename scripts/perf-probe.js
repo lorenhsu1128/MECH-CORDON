@@ -185,6 +185,7 @@ function summarize() {
     n: f.length,
     cpu: { p50: q(ms, 0.5), p90: q(ms, 0.9), p99: q(ms, 0.99), max: q(ms, 1) },
     gap: { p50: q(gaps, 0.5), p90: q(gaps, 0.9), p99: q(gaps, 0.99), max: q(gaps, 1) },
+    dynK: f.length ? +(f.reduce((s, r) => s + (r.dk || 1), 0) / f.length).toFixed(2) : 1, // 動態解析度的平均倍率
     over100: f.filter((r) => r.ms > 100).length,
     over50: f.filter((r) => r.ms > 50).length,
     sec,
@@ -354,6 +355,8 @@ async function sampling(ctx, page) {
         return [...window.__gpc].sort((a, b) => b[1] - a[1]);
       });
     }
+    // --shot：結束時的畫面（test-results/perf-<tag>.png；動態解析度開關的清晰度比較）
+    if (args.shot) await page.screenshot({ path: path.join(ROOT, 'test-results', `perf-${TAG}.png`) });
     const out = await page.evaluate(summarize);
     const learned = await page.evaluate(() => localStorage.getItem('mech_cordon_shader_warm2'));
     if (learned) fs.writeFileSync(LEARN, learned);
@@ -372,7 +375,9 @@ async function sampling(ctx, page) {
     console.log(
       `每格 CPU：p50 ${out.cpu.p50}、p90 ${out.cpu.p90}、p99 ${out.cpu.p99}、最長 ${out.cpu.max} ms`,
     );
-    console.log(`兩格間隔：p50 ${out.gap.p50}、p99 ${out.gap.p99}、最長 ${out.gap.max} ms`);
+    console.log(
+      `兩格間隔：p50 ${out.gap.p50}、p99 ${out.gap.p99}、最長 ${out.gap.max} ms；動態解析度平均 ${out.dynK}`,
+    );
     console.log(`超過 50 ms 的格 ${out.over50}、超過 100 ms 的格 ${out.over100}`);
     console.log(
       `著色器：整段 ${out.shAll.n} 個 ${out.shAll.ms} ms；任務中 ${sh.length} 個 ${out.shPlay.ms} ms`,

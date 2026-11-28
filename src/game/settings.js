@@ -29,6 +29,7 @@ const PRESETS = {
         '效能',
         {
           styleRes: '0.7',
+          styleDyn: '24',
           ctrlWater: 'low',
           ctrlMechFx: 'simple',
           ctrlFxLv: 'std',
@@ -41,6 +42,7 @@ const PRESETS = {
         '平衡',
         {
           styleRes: '1',
+          styleDyn: '0',
           ctrlWater: '',
           ctrlMechFx: 'full',
           ctrlFxLv: 'rich',
@@ -53,6 +55,7 @@ const PRESETS = {
         '品質',
         {
           styleRes: '1',
+          styleDyn: '0',
           ctrlWater: 'high',
           ctrlMechFx: 'full',
           ctrlFxLv: 'rich',
@@ -512,6 +515,8 @@ Object.assign(Game.prototype, {
     const inMission = this.settingsFrom === 'pause';
     $('styleMetal').checked = d.metal;
     $('styleRes').value = String(d.res);
+    $('styleDyn').value = String(d.dyn);
+    $('styleDynMin').value = String(d.dynMin);
     $('btnStyleLab2').disabled = inMission || !!(this.net && this.net.role);
     $('styleNote').textContent = inMission
       ? '任務中也能切換（色調或陰影種類不同的風格要重新編譯材質，回到遊戲時可能會頓一下）'

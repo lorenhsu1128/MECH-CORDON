@@ -486,8 +486,17 @@ export class Game {
               : '放棄任務';
   }
   // ---------- loop ----------
+  // 主迴圈：量本身的 CPU 時間給動態解析度（render-setup.js 的 dynResTick）
+  loopTimed() {
+    const t = performance.now();
+    if (this.loopEnd && !this.pumpDt) this.dynResTick(t - this.loopStart, this.loopCpu || 0);
+    this.loopStart = t;
+    this.loop();
+    this.loopEnd = performance.now();
+    this.loopCpu = this.loopEnd - t;
+  }
   loop() {
-    requestAnimationFrame(() => this.loop());
+    requestAnimationFrame(() => this.loopTimed());
     hbFrame(); // 命中外框的矩陣每格每台最多更新一次（render/hit-parts.js）
     this.loopN = (this.loopN || 0) + 1; // 每格的編號（同一格共用的清單：map-extras.js 的 destructiblesF）
     this.renderer.shadowMap.needsUpdate = true; // 陰影貼圖每格只畫一次（render/style/pipeline.js 的 manualShadows）
@@ -525,7 +534,10 @@ export class Game {
     this.frames++;
     this.fpsT += dt;
     if (this.fpsT > 0.5) {
-      document.getElementById('fps').textContent = 'FPS:' + Math.round(this.frames / this.fpsT);
+      document.getElementById('fps').textContent =
+        'FPS:' +
+        Math.round(this.frames / this.fpsT) +
+        (this.dynK && this.dynK < 1 ? ' · ' + Math.round(this.dynK * 100) + '%' : ''); // 動態解析度目前的倍率
       this.frames = 0;
       this.fpsT = 0;
     }

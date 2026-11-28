@@ -109,8 +109,75 @@ Object.assign(Game.prototype, {
     this.stylePipe.applyStructural(this.styleP);
   },
   // 渲染解析度（效能設定，不屬於風格）：裝置像素比上限 1.75 再乘上設定值
+  // 動態解析度（dynK）再乘在上面：只往下調，不超過設定的解析度
   applyRes() {
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75) * StyleStore.data.res);
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75) * StyleStore.data.res * (this.dynK || 1));
+  },
+  // 動態解析度（設定「動態解析度」StyleStore.data.dyn：0 關閉、30／24＝目標 FPS）：主迴圈每格以上一格的間隔
+  // 與主迴圈本身的 CPU 時間判斷；間隔超過預算、而且不是 CPU 自己就用掉整格（降解析度幫不上）時往下調一級，
+  // 有餘裕一段時間才往上調。每次改變要重新配置 render target，所以最快 0.8 秒調一次（往上 2.5 秒）
+  dynResTick(gap, cpu) {
+    const d = StyleStore.data;
+    const on =
+      d.dyn &&
+      (this.state === 'play' || this.state === 'cine' || this.state === 'hub' || this.state === 'brief');
+    const S = this.dynS || (this.dynS = { gap: 0, cpu: 0, n: 0, t: 0, upT: 0, skip: 0 });
+    if (!on) {
+      // 關掉、回到機甲庫或標題時恢復（暫停之類的照目前的倍率，回到遊戲不用重新配置）
+      if (this.dynK && this.dynK !== 1 && (!d.dyn || this.state === 'garage' || this.state === 'title'))
+        this.dynResSet(1);
+      return;
+    }
+    // 卡頓（載入、編譯）與剛改過解析度的那幾格不算
+    if (gap > 250 || S.skip > 0) {
+      S.skip = Math.max(0, S.skip - 1);
+      return;
+    }
+    const a = S.n < 8 ? 1 / (S.n + 1) : 0.12; // 平均約最近 8 格
+    S.gap += (gap - S.gap) * a;
+    S.cpu += (cpu - S.cpu) * a;
+    S.n++;
+    S.t += gap;
+    if (S.n < 12 || S.t < 800) return;
+    const B = 1000 / d.dyn,
+      k = this.dynK || 1,
+      lo = d.dynMin;
+    const gpu = S.gap - S.cpu; // 主迴圈以外的時間：顯示卡（與瀏覽器）
+    if (S.gap > B * 1.08 && gpu > B * 0.2 && k > lo + 1e-3) {
+      // 超出越多降越多；像素數＝倍率的平方
+      const step = S.gap > B * 1.5 ? 0.15 : 0.1;
+      this.dynResSet(Math.max(lo, k - step));
+      S.upT = 0;
+    } else if (S.gap < B * 0.78 && k < 1) {
+      S.upT += S.t;
+      if (S.upT >= 2500) {
+        this.dynResSet(Math.min(1, k + 0.05));
+        S.upT = 0;
+      }
+    } else S.upT = 0;
+    S.t = 0;
+  },
+  dynResSet(k) {
+    k = Math.round(k * 100) / 100;
+    if (k === (this.dynK || 1)) return;
+    this.dynK = k;
+    this.applyRes();
+    const w = innerWidth,
+      h = innerHeight;
+    this.renderer.setSize(w, h);
+    this.postResize(w, h);
+    if (this.stylePipe) this.stylePipe.resetHistory(); // 動態模糊不拿不同大小的上一格
+    const S = this.dynS;
+    if (S) {
+      S.skip = 3;
+      S.n = 0;
+      S.t = 0;
+    }
+  },
+  // 設定改了、換地圖：從設定的解析度重新開始
+  dynResReset() {
+    this.dynS = null;
+    this.dynResSet(1);
   },
   // 重新讀取選用的渲染風格（任務中不換：只在標題、車庫、出擊前呼叫）
   // 選用某個風格並立刻套用（截圖比較腳本 scripts/style-shots.js 在任務中切換用；一般的流程走設定畫面）

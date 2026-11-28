@@ -826,6 +826,14 @@ Object.assign(Game.prototype, {
       this.applyRes();
       this.resize();
     };
+    document.getElementById('styleDyn').onchange = (e) => {
+      StyleStore.setDyn(Number(e.target.value) || 0);
+      this.dynResReset(); // 關掉時立刻回到設定的解析度
+    };
+    document.getElementById('styleDynMin').onchange = (e) => {
+      StyleStore.setDyn(undefined, Number(e.target.value) || 0.6);
+      this.dynResReset();
+    };
     document.getElementById('btnSettingsP').onclick = () => this.openSettings('pause');
     document.getElementById('btnSettingsBack').onclick = () => this.closeSettings();
     // 「恢復這一頁的預設」在 settings.js 的 settingsReset（只重設目前的分頁）

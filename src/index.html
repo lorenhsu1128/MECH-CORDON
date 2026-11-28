@@ -1245,6 +1245,25 @@
                   <option value="0.5">50%（最快）</option>
                 </select>
               </div>
+              <div
+                class="krow"
+                data-desc="畫面忙的時候自動調低解析度、有餘裕時調回來（不超過上面的渲染解析度），保住流暢度；調低時畫面會稍微變糊，介面與文字不受影響"
+              >
+                <span>動態解析度</span
+                ><select id="styleDyn" data-def="0">
+                  <option value="0">關閉（預設）</option>
+                  <option value="30">開啟（目標 30 FPS）</option>
+                  <option value="24">省電（目標 24 FPS，給平板與內顯）</option>
+                </select>
+              </div>
+              <div class="krow" data-desc="動態解析度最低降到多少；越低越順、也越糊">
+                <span>動態解析度的下限</span
+                ><select id="styleDynMin" data-def="0.6">
+                  <option value="0.7">70%</option>
+                  <option value="0.6">60%（預設）</option>
+                  <option value="0.5">50%</option>
+                </select>
+              </div>
               <div class="krow">
                 <span id="styleNote" class="dim" style="font-size: 11px"></span
                 ><button id="btnStyleLab2">開啟渲染風格實驗室</button>

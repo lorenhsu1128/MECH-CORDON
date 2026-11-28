@@ -1,5 +1,5 @@
 // 渲染風格：選擇與儲存（localStorage mech_cordon_style）、我的預設、伺服器上分享的風格（/api/styles）
-// 內容：{ sel: { k: 'builtin'|'mine'|'server', id }, metal, res, mine: [{ id, name, base, params }],
+// 內容：{ sel: { k: 'builtin'|'mine'|'server', id }, metal, res, dyn, dynMin, mine: [{ id, name, base, params }],
 //         server: { id: { name, author, params } }（伺服器清單的快取，伺服器暫時連不上時仍可使用）}
 import { BUILTIN_STYLES, DEFAULT_STYLE, builtinParams, normalizeStyle } from './params.js';
 
@@ -20,6 +20,9 @@ export const StyleStore = {
       sel: o.sel && typeof o.sel.id === 'string' ? o.sel : { k: 'builtin', id: DEFAULT_STYLE },
       metal: !!o.metal,
       res: typeof o.res === 'number' ? Math.min(1, Math.max(0.5, o.res)) : 1,
+      // 動態解析度（game/render-setup.js 的 dynResTick）：0＝關閉（預設）、目標 fps 30／24；dynMin＝最低降到幾成
+      dyn: o.dyn === 30 || o.dyn === 24 ? o.dyn : 0,
+      dynMin: [0.5, 0.6, 0.7].includes(o.dynMin) ? o.dynMin : 0.6,
       mine: Array.isArray(o.mine) ? o.mine.filter((m) => m && typeof m.id === 'string') : [],
       server: o.server && typeof o.server === 'object' ? o.server : {},
     };
@@ -79,6 +82,12 @@ export const StyleStore = {
   },
   setRes(r) {
     this.data.res = Math.min(1, Math.max(0.5, r));
+    this.save();
+  },
+  setDyn(fps, min) {
+    const d = this.data;
+    if (fps !== undefined) d.dyn = fps === 30 || fps === 24 ? fps : 0;
+    if (min !== undefined) d.dynMin = [0.5, 0.6, 0.7].includes(min) ? min : 0.6;
     this.save();
   },
   saveMine(name, params, id) {
